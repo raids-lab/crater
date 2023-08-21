@@ -1,0 +1,25 @@
+apiVersion: aisystem.k8s.io/v1alpha1
+kind: TenantQuota
+metadata:
+  name: user-zhuangkr
+  namespace: user-zhuangkr
+spec:
+  hard:
+    cpu: 100
+    nvidia.com/gpu: 20
+    memory: 1Ti
+  soft:
+    cpu: 100
+    nvidia.com/gpu: 20
+    memory: 1Ti
+status: # 代表已经使用的资源, <= spec.hard, spec.soft
+  hard:
+    cpu: 10
+    nvidia.com/gpu: 4
+    memory: 10Gi
+  soft:
+    cpu: 20
+    nvidia.com/gpu: 2
+    memory: 20Gi
+
+  

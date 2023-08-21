@@ -1,0 +1,133 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: hub-6bfdc4fcb7-
+  labels:
+    tasktype: "training"
+  name: hub-6bfdc4fcb7-lhm8t
+  namespace: user-zkr
+  ownerReferences:
+  - apiVersion: apps/v1
+    blockOwnerDeletion: true
+    controller: true
+    kind: ReplicaSet
+    name: hub-6bfdc4fcb7
+    uid: 46e6fe07-d37a-49af-8da2-7abb5af1b940
+spec:
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - preference:
+          matchExpressions:
+          - key: hub.jupyter.org/node-purpose
+            operator: In
+            values:
+            - core
+        weight: 100
+  containers:
+  - args:
+    - jupyterhub
+    - --config
+    - /usr/local/etc/jupyterhub/jupyterhub_config.py
+    - --upgrade-db
+    env:
+    - name: PYTHONUNBUFFERED
+      value: "1"
+    - name: HELM_RELEASE_NAME
+      value: jupyter-hub
+    - name: POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.namespace
+    - name: CONFIGPROXY_AUTH_TOKEN
+      valueFrom:
+        secretKeyRef:
+          key: hub.config.ConfigurableHTTPProxy.auth_token
+          name: hub
+    image: jupyterhub/k8s-hub:2.0.0
+    imagePullPolicy: IfNotPresent
+    livenessProbe:
+      failureThreshold: 30
+      httpGet:
+        path: /hub/health
+        port: http
+        scheme: HTTP
+      initialDelaySeconds: 300
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 3
+    name: hub
+    ports:
+    - containerPort: 8081
+      name: http
+      protocol: TCP
+    readinessProbe:
+      failureThreshold: 1000
+      httpGet:
+        path: /hub/health
+        port: http
+        scheme: HTTP
+      periodSeconds: 2
+      successThreshold: 1
+      timeoutSeconds: 1
+    resources: {}
+    securityContext:
+      allowPrivilegeEscalation: false
+      runAsGroup: 1000
+      runAsUser: 1000
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /usr/local/etc/jupyterhub/jupyterhub_config.py
+      name: config
+      subPath: jupyterhub_config.py
+    - mountPath: /usr/local/etc/jupyterhub/z2jh.py
+      name: config
+      subPath: z2jh.py
+    - mountPath: /usr/local/etc/jupyterhub/config/
+      name: config
+    - mountPath: /usr/local/etc/jupyterhub/secret/
+      name: secret
+    - mountPath: /srv/jupyterhub
+      name: pvc
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-rhzv2
+      readOnly: true
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  preemptionPolicy: PreemptLowerPriority
+  priority: 0
+  restartPolicy: Always
+  schedulerName: default-scheduler
+  securityContext:
+    fsGroup: 1000
+  serviceAccount: hub
+  serviceAccountName: hub
+  terminationGracePeriodSeconds: 30
+  tolerations:
+  - effect: NoSchedule
+    key: hub.jupyter.org/dedicated
+    operator: Equal
+    value: core
+  - effect: NoSchedule
+    key: hub.jupyter.org_dedicated
+    operator: Equal
+    value: core
+  - effect: NoExecute
+    key: node.kubernetes.io/not-ready
+    operator: Exists
+    tolerationSeconds: 300
+  - effect: NoExecute
+    key: node.kubernetes.io/unreachable
+    operator: Exists
+    tolerationSeconds: 300
+  volumes:
+  - configMap:
+      defaultMode: 420
+      name: hub
+    name: config
+  - name: secret
+    secret:
+      defaultMode: 420
+      secretName: hub

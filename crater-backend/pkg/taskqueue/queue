@@ -1,0 +1,11 @@
+package taskqueue
+
+import (
+	clusterclient "k8s.io/ai-task-controller/pkg/client"
+)
+
+type TaskController struct {
+	jobClient  *clusterclient.JobClient
+	dbClient 
+
+}
