@@ -11,7 +11,7 @@ This project uses node and pnpm. Go check them out if you don't have them locall
 - Install Node.js: [Win / Mac](https://nodejs.org/en/download) | [Linux](https://github.com/nodesource/distributions/blob/master/README.md#installation-instructions)
 - Pnpm: `npm install -g pnpm@latest`
 
-检查 Node 与 Pnpm 版本：
+Check the version of Node and Pnpm:
 
 ```bash
 node -v
@@ -20,7 +20,7 @@ pnpm -v
 # 8.6.10
 ```
 
-现在您可以 Clone 本项目，并尝试在本地部署：
+Now you can clone this project, and deploy it:
 
 ```bash
 git clone git@gitlab.act.buaa.edu.cn:gpu-portal/gpu-portal-frontend.git
@@ -31,6 +31,12 @@ pnpm run dev
 ```
 
 The app will automatically reload if you change any of the source files.
+
+## Development
+
+If you are using _Visual Studio Code_, follow [Profiles in Visual Studio Code](https://code.visualstudio.com/docs/editor/profiles#_import) to import configure from `.vscode/React.code-profile`.
+
+If you are using _WebStorm_, you should install required plugins manually.
 
 ## [WIP] What's included
 
@@ -56,33 +62,3 @@ coreui-free-react-admin-template
 │
 └── package.json
 ```
-
----
-
-> 以下为 Vite 生成
-
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
-
-- Configure the top-level `parserOptions` property like this:
-
-```js
-   parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-   },
-```
-
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
