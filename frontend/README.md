@@ -8,7 +8,7 @@ Portal of GPU Cluster Management and Job Scheduling based on K8S.
 
 This project uses node and pnpm. Go check them out if you don't have them locally installed.
 
-- 安装 Node.js 并配置环境变量: [Download | Node.js](https://nodejs.org/en/download)
+- Install Node.js: [Win / Mac](https://nodejs.org/en/download) | [Linux](https://github.com/nodesource/distributions/blob/master/README.md#installation-instructions)
 - Pnpm: `npm install -g pnpm@latest`
 
 检查 Node 与 Pnpm 版本：
@@ -52,12 +52,10 @@ coreui-free-react-admin-template
 │   ├── ...
 │   ├── index.js
 │   ├── routes.js    # routes config
-│   └── store.js     # template state example 
+│   └── store.js     # template state example
 │
 └── package.json
 ```
-
-
 
 ---
 
