@@ -38,6 +38,10 @@ If you are using _Visual Studio Code_, follow [Profiles in Visual Studio Code](h
 
 If you are using _WebStorm_, you should install required plugins manually.
 
+- Lint: [Pritter](https://prettier.io/docs/en/install)
+- CSS: [tailwindcss](https://tailwindcss.com/docs/guides/vite)
+- UI Kit: [shadcn](https://ui.shadcn.com/examples/dashboard)
+
 ## [WIP] What's included
 
 Within the download you'll find the following directories and files, logically grouping common assets and providing both compiled and minified variations. You'll see something like this:
