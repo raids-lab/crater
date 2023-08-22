@@ -1,0 +1,5 @@
+{
+  "name": "React",
+  "settings": "{\"settings\":\"{\\r\\n  \\\"editor.inlineSuggest.enabled\\\": true,\\r\\n  \\\"editor.formatOnSave\\\": true,\\r\\n  \\\"editor.formatOnPaste\\\": true,\\r\\n  \\\"editor.defaultFormatter\\\": \\\"esbenp.prettier-vscode\\\",\\r\\n  \\\"eslint.validate\\\": [\\r\\n    \\\"javascript\\\",\\r\\n    \\\"javascriptreact\\\",\\r\\n    \\\"typescript\\\",\\r\\n    \\\"typescriptreact\\\"\\r\\n  ]\\r\\n}\\r\\n\"}",
+  "extensions": "[{\"identifier\":{\"id\":\"dbaeumer.vscode-eslint\",\"uuid\":\"583b2b34-2c1e-4634-8c0b-0b82e283ea3a\"},\"displayName\":\"ESLint\"},{\"identifier\":{\"id\":\"eamodio.gitlens\",\"uuid\":\"4de763bd-505d-4978-9575-2b7696ecf94e\"},\"displayName\":\"GitLens — Git supercharged\"},{\"identifier\":{\"id\":\"esbenp.prettier-vscode\",\"uuid\":\"96fa4707-6983-4489-b7c5-d5ffdfdcce90\"},\"displayName\":\"Prettier - Code formatter\"}]"
+}
