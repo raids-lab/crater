@@ -48,4 +48,3 @@ func (s *service) GetByID(taskID uint) (*models.TaskModel, error) {
 	err := db.Orm.First(&task, taskID).Error
 	return &task, err
 }
-

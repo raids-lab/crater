@@ -127,5 +127,3 @@ func CheckJobQuotaExceed(info *QuotaInfo, job *aijobapi.AIJob) bool {
 	}
 	return false
 }
-
-
