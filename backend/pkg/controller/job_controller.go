@@ -165,7 +165,7 @@ func (jc *JobController) UpdateJobStatus(aijob *aijobapi.AIJob) error {
 	for _, pod := range pods {
 		if pod.Status.Phase == corev1.PodFailed {
 			podFailed = true
-			msg = fmt.Sprintf("AIJob %s is failed because Pod %s is failed because %s", aijob.Namespace, aijob.Name, pod.Name, pod.Status.Message)
+			msg = fmt.Sprintf("AIJob %s/%s is failed because Pod %s is failed because %s", aijob.Namespace, aijob.Name, pod.Name, pod.Status.Message)
 		} else if pod.Status.Phase == corev1.PodSucceeded {
 			podSucceeded = true
 			msg = fmt.Sprintf("AIJob %s/%s complete successfully, Pod %s is succeeded.", aijob.Namespace, aijob.Name, pod.Name)
