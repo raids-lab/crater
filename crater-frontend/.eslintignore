@@ -2,3 +2,6 @@
 postcss.config.js
 tailwind.config.js
 vite.config.ts
+
+# Shadcn UI
+/src/components/ui/*

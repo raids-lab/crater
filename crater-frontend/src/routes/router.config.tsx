@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 import { FC, Suspense, lazy } from "react";
 import { Navigate, RouteObject } from "react-router-dom";
 
@@ -6,7 +5,7 @@ import { Navigate, RouteObject } from "react-router-dom";
  * Lazy loading components.
  * @example const Component = React.lazy(() => import('./Component'));
  */
-const HomeLazy = lazy(() => import("@/App"));
+const HomeLazy = lazy(() => import("@/pages/Home"));
 
 /**
  * Router elements
@@ -25,12 +24,12 @@ const Home: FC = () => {
  */
 export const routerConfig: RouteObject[] = [
   {
-    path: "/app",
+    path: "/",
     element: <Home />,
   },
   {
     path: "*",
-    element: <Navigate to="/app" replace />,
+    element: <Navigate to="/" replace />,
   },
 ];
 
