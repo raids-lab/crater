@@ -1,5 +1,9 @@
 # GPU Portal Frontend
 
+[![Pipeline Status](https://gitlab.act.buaa.edu.cn/gpu-portal/gpu-portal-frontend/badges/main/pipeline.svg)](https://gitlab.act.buaa.edu.cn/gpu-portal/gpu-portal-frontend/-/commits/main)
+[![Release Version](https://img.shields.io/badge/Release-0.0.0-blue)](https://codec.sensetime.com/)
+[![Develop Version](https://img.shields.io/badge/Develop-0.0.0-orange)](http://10.151.166.71:8000/)
+
 > [GPU 集群管理与作业调度 Portal 设计和任务分解](https://docs.qq.com/doc/DWENFVWpzSW16TGFV)
 
 Portal of GPU Cluster Management and Job Scheduling based on K8S.
@@ -34,35 +38,31 @@ The app will automatically reload if you change any of the source files.
 
 ## Development
 
-If you are using _Visual Studio Code_, follow [Profiles in Visual Studio Code](https://code.visualstudio.com/docs/editor/profiles#_import) to import configure from `.vscode/React.code-profile`.
-
-If you are using _WebStorm_, you should install required plugins manually.
+If you are using _Visual Studio Code_, follow [Profiles in Visual Studio Code](https://code.visualstudio.com/docs/editor/profiles#_import) to import configure from `.vscode/React.code-profile`. Else if you are using any other IDE, you should install required plugins manually.
 
 - Lint: [Pritter](https://prettier.io/docs/en/install)
 - CSS: [tailwindcss](https://tailwindcss.com/docs/guides/vite)
 - UI Kit: [shadcn](https://ui.shadcn.com/examples/dashboard)
 
-## [WIP] What's included
+## What's included
 
-Within the download you'll find the following directories and files, logically grouping common assets and providing both compiled and minified variations. You'll see something like this:
+Within the download you'll see something like this:
 
-```
-coreui-free-react-admin-template
+```bash
+gpu-portal-frontend
 ├── public/          # static files
-│   └── index.html   # html template
 │
 ├── src/             # project root
-│   ├── assets/      # images, icons, etc.
-│   ├── components/  # common components - header, footer, sidebar, etc.
-│   ├── layouts/     # layout containers
-│   ├── scss/        # scss styles
-│   ├── views/       # application views
-│   ├── _nav.js      # sidebar navigation config
-│   ├── App.js
+│   ├── assets/      # images, icons, etc.
+│   ├── compoments/  # common components
+│   ├── pages/       # application pages
+│   ├── routes/      # routes config
+│   ├── services/    # application apis
+│   ├── utils/       # logger, store, etc.
 │   ├── ...
-│   ├── index.js
-│   ├── routes.js    # routes config
-│   └── store.js     # template state example
-│
-└── package.json
+│   ├── index.css    # tailwind styles
+│   └── main.tsx     # react root
+├── ...
+├── index.html       # html template
+└── package.json     # dependencies
 ```
