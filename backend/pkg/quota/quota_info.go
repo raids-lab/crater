@@ -1,11 +1,12 @@
-package controller
+package quota
 
 import (
+	"fmt"
 	"sync"
 
 	aijobapi "k8s.io/ai-task-controller/pkg/apis/aijob/v1alpha1"
-	quotaapi "k8s.io/ai-task-controller/pkg/apis/tenantquota/v1alpha1"
 	constants "k8s.io/ai-task-controller/pkg/constants"
+	"k8s.io/ai-task-controller/pkg/models"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -26,46 +27,55 @@ type QuotaInfo struct {
 	UsedJobs  map[string]*aijobapi.AIJob
 }
 
-func (m *QuotaInfosMap) AddOrUpdateQuotaInfo(key string, dq *quotaapi.TenantQuota) (added bool, quotaInfo *QuotaInfo) {
-	// key := dq.Namespace + "/" + dq.Name
+func QuotaNamespaceFunc(userName string) string {
+	return fmt.Sprintf("user-%s", userName)
+}
+
+func UserNameFromNamespaceFunc(namespace string) string {
+	return namespace[len("user-"):]
+}
+
+func (m *QuotaInfosMap) AddOrUpdateQuotaInfo(name string, quota models.Quota) (added bool, quotaInfo *QuotaInfo) {
+	namespace := QuotaNamespaceFunc(quota.UserName)
 	// key, _ := cache.MetaNamespaceKeyFunc(dq)
-	if _, ok := m.m.Load(key); !ok {
+	hardQuota, _ := models.JSONToResourceList(quota.HardQuota)
+	if _, ok := m.m.Load(namespace); !ok {
 		quotaInfo := &QuotaInfo{
-			Name:      dq.Name,
-			Namespace: dq.Namespace,
-			Hard:      dq.Spec.Hard.DeepCopy(),
-			Soft:      dq.Spec.Soft.DeepCopy(),
-			HardUsed:  v1.ResourceList{},
-			SoftUsed:  v1.ResourceList{},
-			UsedJobs:  map[string]*aijobapi.AIJob{},
+			Name:      quota.UserName,
+			Namespace: namespace,
+			Hard:      hardQuota,
+			// Soft:      dq.Spec.Soft.DeepCopy(),
+			HardUsed: v1.ResourceList{},
+			SoftUsed: v1.ResourceList{},
+			UsedJobs: map[string]*aijobapi.AIJob{},
 		}
-		m.m.Store(key, quotaInfo)
+		m.m.Store(namespace, quotaInfo)
 		added = true
 	} else {
-		m.UpdateQuotaInfo(key, dq)
+		m.UpdateQuotaInfoHard(namespace, hardQuota)
 		added = false
 	}
 	return
 }
 
-// UpdateQuotaInfo updates QuotaInfo Hard and Soft
-func (m *QuotaInfosMap) UpdateQuotaInfo(key string, dq *quotaapi.TenantQuota) {
+// UpdateQuotaInfoHard updates QuotaInfo Hard
+func (m *QuotaInfosMap) UpdateQuotaInfoHard(namespace string, hard v1.ResourceList) {
 	// key := dq.Namespace + "/" + dq.Name
 	// key, _ := cache.MetaNamespaceKeyFunc(dq)
-	if value, ok := m.m.Load(key); ok {
+	if value, ok := m.m.Load(namespace); ok {
 		info := value.(*QuotaInfo)
 		info.Lock()
 		defer info.Unlock()
-		if !CmpQuotaInfoAndDQSame(info, dq) {
-			info.Hard = dq.Spec.Hard.DeepCopy()
-			info.Soft = dq.Spec.Soft.DeepCopy()
+		if !CmpResourceListSame(info.Hard, hard) {
+			info.Hard = hard.DeepCopy()
+			// info.Soft = dq.Spec.Soft.DeepCopy()
 		}
 	}
 }
 
 // DeleteQuotaInfo deletes QuotaInfo
-func (m *QuotaInfosMap) DeleteQuotaInfo(key string) {
-	m.m.Delete(key)
+func (m *QuotaInfosMap) DeleteQuotaInfo(namespace string) {
+	m.m.Delete(namespace)
 }
 
 // AddJob adds Running Job Quota
@@ -98,32 +108,32 @@ func (info *QuotaInfo) DeleteJob(job *aijobapi.AIJob) {
 	}
 }
 
-// CmpQuotaInfoAndDQSame compares the hard and soft resource list of QuotaInfo and TenantQuota
-func CmpQuotaInfoAndDQSame(info *QuotaInfo, dq *quotaapi.TenantQuota) bool {
-	if !CmpResourceListSame(info.Hard, dq.Spec.Hard) {
-		return false
-	}
-	if !CmpResourceListSame(info.Soft, dq.Spec.Soft) {
-		return false
-	}
-	return true
-}
-
-func GetQuotaInfo(namespace string, name string) *QuotaInfo {
-	key := namespace + "/" + name
-	if value, ok := QuotaInfosData.m.Load(key); ok {
-		return value.(*QuotaInfo)
-	}
-	return nil
-}
-
-func CheckJobQuotaExceed(info *QuotaInfo, job *aijobapi.AIJob) bool {
+// CheckJobQuotaExceed 判断作业的hard quota是否超出限制
+func (info *QuotaInfo) CheckJobQuotaExceed(job *aijobapi.AIJob) bool {
 	info.RLock()
 	defer info.RUnlock()
 	if job.Labels[constants.TaskSLOLabelKey] == constants.TaskHighSLOLabelValue {
 		return CheckResourceListExceed(info.Hard, info.HardUsed, job.Spec.ResourceRequest)
 	} else if job.Labels[constants.TaskSLOLabelKey] == constants.TaskLowSLOLabelValue {
-		return CheckResourceListExceed(info.Soft, info.SoftUsed, job.Spec.ResourceRequest)
+		// return CheckResourceListExceed(info.Soft, info.SoftUsed, job.Spec.ResourceRequest)
+		// todo:
 	}
 	return false
+}
+
+// GetQuotaInfo 通过namespace获取quota信息
+func GetQuotaInfo(namespace string) *QuotaInfo {
+	if value, ok := QuotaInfosData.m.Load(namespace); ok {
+		return value.(*QuotaInfo)
+	} else {
+		// 从数据库拉数据
+		username := UserNameFromNamespaceFunc(namespace)
+		quotadb, err := quotaDB.GetByUserName(username)
+		if err != nil{
+			// todo: handler err
+			return nil
+		}
+		_, info := QuotaInfosData.AddOrUpdateQuotaInfo(username, *quotadb)
+		return info
+	}
 }

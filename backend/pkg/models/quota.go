@@ -1,13 +1,8 @@
 package models
 
-import (
-	v1 "k8s.io/api/core/v1"
-)
-
 // Quota model
 type Quota struct {
-	UserName  string
-	Namespace string
-	Hard      v1.ResourceList
-	Soft      v1.ResourceList
+	UserName  string `gorm:"primaryKey" json:"username"`
+	Namespace string `gorm:"column:namespace;type:varchar(128);not null" json:"namespace"`
+	HardQuota string `gorm:"column:hardQuota;type:text;" json:"hardQuota"`
 }

@@ -1,5 +1,5 @@
 package models
 
 type User struct {
-	Username string `gorm:"primaryKey"`
+	UserName  string `gorm:"primaryKey" json:"username"`
 }

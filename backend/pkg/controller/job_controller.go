@@ -30,6 +30,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"k8s.io/ai-task-controller/pkg/constants"
 	"k8s.io/ai-task-controller/pkg/control"
+	"k8s.io/ai-task-controller/pkg/quota"
 	commonutil "k8s.io/ai-task-controller/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -187,7 +188,7 @@ func (jc *JobController) UpdateJobStatus(aijob *aijobapi.AIJob) error {
 				commonutil.LoggerForJob(aijob).Infof("Append job condition error: %v", err)
 				return err
 			}
-			quotaInfo := GetQuotaInfo(aijob.Namespace, aijob.Namespace)
+			quotaInfo := quota.GetQuotaInfo(aijob.Namespace)
 			quotaInfo.DeleteJob(aijob)
 		} else if podSucceeded {
 			jc.recorder.Event(aijob, corev1.EventTypeNormal, commonutil.JobSucceededReason, msg)
@@ -201,7 +202,7 @@ func (jc *JobController) UpdateJobStatus(aijob *aijobapi.AIJob) error {
 				commonutil.LoggerForJob(aijob).Infof("Append job condition error: %v", err)
 				return err
 			}
-			quotaInfo := GetQuotaInfo(aijob.Namespace, aijob.Namespace)
+			quotaInfo := quota.GetQuotaInfo(aijob.Namespace)
 			quotaInfo.DeleteJob(aijob)
 		}
 	}
@@ -294,7 +295,7 @@ func (jc *JobController) RunScheduling(stopCh <-chan struct{}) {
 
 func (jc *JobController) scheduleJob(job *aijobapi.AIJob) error {
 	// 1. 获取job的quotainfo, todo: 定义quotaInfo的key格式
-	quotaInfo := GetQuotaInfo(job.Namespace, job.Namespace)
+	quotaInfo := quota.GetQuotaInfo(job.Namespace)
 	if quotaInfo == nil {
 		return fmt.Errorf("quotaInfo %s for job %s not found", job.Namespace, job.Name)
 	}
@@ -449,7 +450,7 @@ func (jc *JobController) onJobDeleteFunc() func(event.DeleteEvent) bool {
 		// 从队列中删除
 		jc.removeJobFromQueue(key)
 		// quota清除
-		quotaInfo := GetQuotaInfo(aijob.Namespace, aijob.Namespace)
+		quotaInfo := quota.GetQuotaInfo(aijob.Namespace)
 		if quotaInfo != nil {
 			quotaInfo.DeleteJob(aijob)
 		}
