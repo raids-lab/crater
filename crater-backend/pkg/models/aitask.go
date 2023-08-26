@@ -5,7 +5,6 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // TaskType
@@ -70,7 +69,7 @@ func FormatTaskAttrToModel(task *TaskAttr) *TaskModel {
 		UserName:        task.UserName,
 		TaskType:        task.TaskType,
 		Image:           task.Image,
-		ResourceRequest: resourceListToString(task.ResourceRequest),
+		ResourceRequest: ResourceListToJSON(task.ResourceRequest),
 		WorkingDir:      task.WorkingDir,
 		Command:         task.Command,
 		Args:            argsToString(task.Args),
@@ -79,6 +78,7 @@ func FormatTaskAttrToModel(task *TaskAttr) *TaskModel {
 }
 
 func FormatTaskModelToAttr(model *TaskModel) *TaskAttr {
+	resourceJson, _ := JSONToResourceList(model.ResourceRequest)
 	return &TaskAttr{
 		ID:              model.ID,
 		TaskName:        model.TaskName,
@@ -86,7 +86,7 @@ func FormatTaskModelToAttr(model *TaskModel) *TaskAttr {
 		Namespace:       model.Namespace,
 		TaskType:        model.TaskType,
 		Image:           model.Image,
-		ResourceRequest: dbStringToResourceList(model.ResourceRequest),
+		ResourceRequest: resourceJson,
 		WorkingDir:      model.WorkingDir,
 		Command:         model.Command,
 		Args:            dbstringToArgs(model.Args),
@@ -114,26 +114,4 @@ func dbstringToArgs(str string) map[string]string {
 		args[kv[0]] = kv[1]
 	}
 	return args
-}
-
-func resourceListToString(rs v1.ResourceList) string {
-	str := ""
-	for key, value := range rs {
-		str += key.String() + "=" + value.String() + ";"
-	}
-	return str
-}
-
-func dbStringToResourceList(str string) v1.ResourceList {
-	rs := v1.ResourceList{}
-	if len(str) == 0 {
-		return rs
-	}
-	ls := strings.Split(str, ";")
-	for item := range ls {
-		kv := strings.Split(ls[item], "=")
-		resourceVal := resource.MustParse(kv[1])
-		rs[v1.ResourceName(kv[0])] = resourceVal
-	}
-	return rs
 }
