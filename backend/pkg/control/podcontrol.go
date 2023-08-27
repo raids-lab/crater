@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	commonutil "k8s.io/ai-task-controller/pkg/util"
+	commonutil "github.com/aisys/ai-task-controller/pkg/util"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"

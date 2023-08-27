@@ -3,9 +3,9 @@ package quota
 import (
 	"context"
 
+	aijobapi "github.com/aisys/ai-task-controller/pkg/apis/aijob/v1alpha1"
+	quotadb "github.com/aisys/ai-task-controller/pkg/db/quota"
 	"github.com/go-logr/logr"
-	aijobapi "k8s.io/ai-task-controller/pkg/apis/aijob/v1alpha1"
-	quotadb "k8s.io/ai-task-controller/pkg/db/quota"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

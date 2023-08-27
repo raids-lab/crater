@@ -1,6 +1,6 @@
 package payload
 
-import "k8s.io/ai-task-controller/pkg/models"
+import "github.com/aisys/ai-task-controller/pkg/models"
 
 type CreateTaskReq struct {
 	models.TaskAttr

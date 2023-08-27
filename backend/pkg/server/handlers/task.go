@@ -3,13 +3,13 @@ package handlers
 import (
 	"fmt"
 
+	"github.com/aisys/ai-task-controller/pkg/constants"
+	tasksvc "github.com/aisys/ai-task-controller/pkg/db/task"
+	"github.com/aisys/ai-task-controller/pkg/models"
+	payload "github.com/aisys/ai-task-controller/pkg/server/payload"
+	resputil "github.com/aisys/ai-task-controller/pkg/server/response"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/ai-task-controller/pkg/constants"
-	tasksvc "k8s.io/ai-task-controller/pkg/db/task"
-	"k8s.io/ai-task-controller/pkg/models"
-	payload "k8s.io/ai-task-controller/pkg/server/payload"
-	resputil "k8s.io/ai-task-controller/pkg/server/response"
 )
 
 func (mgr *TaskMgr) RegisterRoute(r *gin.Engine) {

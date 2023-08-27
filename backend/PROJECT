@@ -2,7 +2,7 @@ domain: k8s.io
 layout:
 - go.kubebuilder.io/v3
 projectName: ai-task-controller
-repo: k8s.io/ai-task-controller
+repo: github.com/aisys/ai-task-controller
 resources:
 - api:
     crdVersion: v1
@@ -11,6 +11,6 @@ resources:
   domain: k8s.io
   group: aisystem
   kind: AIJob
-  path: k8s.io/ai-task-controller/pkg/apis/aijob
+  path: github.com/aisys/ai-task-controller/pkg/apis/aijob
   version: v1alpha1
 version: "3"

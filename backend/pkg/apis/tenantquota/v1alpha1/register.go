@@ -1,7 +1,7 @@
 package v1alpha1
 
 import (
-	"k8s.io/ai-task-controller/pkg/apis/tenantquota"
+	"github.com/aisys/ai-task-controller/pkg/apis/tenantquota"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"

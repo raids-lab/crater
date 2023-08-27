@@ -29,18 +29,18 @@ echo "OUTPUT_BASE=$OUTPUT_BASE"
 #                  k8s.io/kubernetes. The output-base is needed for the generators to output into the vendor dir
 #                  instead of the $GOPATH directly. For normal projects this can be dropped.
 bash "${CODEGEN_PKG}"/generate-internal-groups.sh "deepcopy,client,informer,lister" \
-  k8s.io/ai-task-controller/pkg/generated/tenantquota \
-  k8s.io/ai-task-controller/pkg/apis \
-  k8s.io/ai-task-controller/pkg/apis \
+  github.com/aisys/ai-task-controller/pkg/generated/tenantquota \
+  github.com/aisys/ai-task-controller/pkg/apis \
+  github.com/aisys/ai-task-controller/pkg/apis \
   tenantquota:v1alpha1 -v 10 \
   --output-base $OUTPUT_BASE \
   --go-header-file "${SCRIPT_ROOT}"/hack/boilerplate.go.txt
 
 # aijob generation
 bash "${CODEGEN_PKG}"/generate-internal-groups.sh "deepcopy,client,informer,lister" \
-  k8s.io/ai-task-controller/pkg/generated/aijob \
-  k8s.io/ai-task-controller/pkg/apis \
-  k8s.io/ai-task-controller/pkg/apis \
+  github.com/aisys/ai-task-controller/pkg/generated/aijob \
+  github.com/aisys/ai-task-controller/pkg/apis \
+  github.com/aisys/ai-task-controller/pkg/apis \
   aijob:v1alpha1 -v 10 \
   --output-base $OUTPUT_BASE \
   --go-header-file "${SCRIPT_ROOT}"/hack/boilerplate.go.txt

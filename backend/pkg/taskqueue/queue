@@ -1,7 +1,7 @@
 package taskqueue
 
 import (
-	clusterclient "k8s.io/ai-task-controller/pkg/client"
+	clusterclient "github.com/aisys/ai-task-controller/pkg/client"
 )
 
 type TaskController struct {

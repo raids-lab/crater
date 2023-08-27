@@ -7,8 +7,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	aijobapi "k8s.io/ai-task-controller/pkg/apis/aijob/v1alpha1"
-	"k8s.io/ai-task-controller/pkg/models"
+	aijobapi "github.com/aisys/ai-task-controller/pkg/apis/aijob/v1alpha1"
+	"github.com/aisys/ai-task-controller/pkg/models"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
