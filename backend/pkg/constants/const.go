@@ -13,15 +13,15 @@ const (
 	// ReplicaTypeLabel = "training.kubeflow.org/replica-type"
 
 	// OperatorNameLabel represents the label key for the operator name, e.g. tf-operator, mpi-operator, etc.
-	OperatorNameLabel = "aisystem.k8s.io/operator-name"
+	OperatorNameLabel = "aisystem.org/operator-name"
 
 	// JobNameLabel represents the label key for the job name, the value is the job name.
-	JobNameLabel = "aisystem.k8s.io/job-name"
+	JobNameLabel = "aisystem.org/job-name"
 
 	// JobRoleLabel represents the label key for the job role, e.g. master.
-	JobRoleLabel = "aisystem.k8s.io/job-role"
+	JobRoleLabel = "aisystem.org/job-role"
 
 	// Labels for job
-	TaskTypeLabelKey = "aisystem.k8s.io/task-type"
-	TaskSLOLabelKey  = "aisystem.k8s.io/task-slo"
+	TaskTypeLabelKey = "aisystem.org/task-type"
+	TaskSLOLabelKey  = "aisystem.org/task-slo"
 )

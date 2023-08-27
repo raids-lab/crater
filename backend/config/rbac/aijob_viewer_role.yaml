@@ -12,7 +12,7 @@ metadata:
   name: aijob-viewer-role
 rules:
 - apiGroups:
-  - aisystem.k8s.io
+  - aisystem.org
   resources:
   - aijobs
   verbs:
@@ -20,7 +20,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - aisystem.k8s.io
+  - aisystem.org
   resources:
   - aijobs/status
   verbs:
