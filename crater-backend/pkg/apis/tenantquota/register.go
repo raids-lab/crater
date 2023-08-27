@@ -18,5 +18,5 @@ package tenantquota
 
 // GroupName is the group name used in this package
 const (
-	GroupName = "aisystem.k8s.io"
+	GroupName = "aisystem.org"
 )
