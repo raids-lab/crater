@@ -1,3 +1,3 @@
 #!/bin/bash
 # go mod tidy && go mod vendor
-go build -o ./bin/controller main.go
+go build -mod=vendor -o bin/controller main.go

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sync"
 
-	aijobapi "k8s.io/ai-task-controller/pkg/apis/aijob/v1alpha1"
-	constants "k8s.io/ai-task-controller/pkg/constants"
-	"k8s.io/ai-task-controller/pkg/models"
+	aijobapi "github.com/aisys/ai-task-controller/pkg/apis/aijob/v1alpha1"
+	constants "github.com/aisys/ai-task-controller/pkg/constants"
+	"github.com/aisys/ai-task-controller/pkg/models"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -129,7 +129,7 @@ func GetQuotaInfo(namespace string) *QuotaInfo {
 		// 从数据库拉数据
 		username := UserNameFromNamespaceFunc(namespace)
 		quotadb, err := quotaDB.GetByUserName(username)
-		if err != nil{
+		if err != nil {
 			// todo: handler err
 			return nil
 		}

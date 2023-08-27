@@ -24,14 +24,14 @@ import (
 	"sync"
 	"time"
 
+	aijobapi "github.com/aisys/ai-task-controller/pkg/apis/aijob/v1alpha1"
 	"github.com/go-logr/logr"
-	aijobapi "k8s.io/ai-task-controller/pkg/apis/aijob/v1alpha1"
 
+	"github.com/aisys/ai-task-controller/pkg/constants"
+	"github.com/aisys/ai-task-controller/pkg/control"
+	"github.com/aisys/ai-task-controller/pkg/quota"
+	commonutil "github.com/aisys/ai-task-controller/pkg/util"
 	"github.com/sirupsen/logrus"
-	"k8s.io/ai-task-controller/pkg/constants"
-	"k8s.io/ai-task-controller/pkg/control"
-	"k8s.io/ai-task-controller/pkg/quota"
-	commonutil "k8s.io/ai-task-controller/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -221,7 +221,7 @@ func (jc *JobController) SetupWithManager(mgr ctrl.Manager, controllerThreads in
 		MaxConcurrentReconciles: controllerThreads,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("setup controller error: %v", err)
 	}
 
 	// using onOwnerCreateFunc is easier to set defaults
@@ -235,7 +235,7 @@ func (jc *JobController) SetupWithManager(mgr ctrl.Manager, controllerThreads in
 			DeleteFunc: jc.onJobDeleteFunc(),
 		},
 	); err != nil {
-		return err
+		return fmt.Errorf("setup watch job error: %v", err)
 	}
 
 	// inject watching for job related pod
@@ -253,7 +253,7 @@ func (jc *JobController) SetupWithManager(mgr ctrl.Manager, controllerThreads in
 				return false
 			},
 		}); err != nil {
-		return err
+		return fmt.Errorf("setup watch pod error: %v", err)
 	}
 
 	return nil

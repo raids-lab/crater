@@ -30,17 +30,15 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	schedulerpluginsv1alpha1 "sigs.k8s.io/scheduler-plugins/apis/scheduling/v1alpha1"
 
-	aisystemv1alpha1 "k8s.io/ai-task-controller/pkg/apis/aijob/v1alpha1"
-	"k8s.io/ai-task-controller/pkg/controller"
+	aisystemv1alpha1 "github.com/aisys/ai-task-controller/pkg/apis/aijob/v1alpha1"
+	"github.com/aisys/ai-task-controller/pkg/controller"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 var (
-	masterURL  string
-	kubeconfig string
-	scheme     = runtime.NewScheme()
-	setupLog   = ctrl.Log.WithName("setup")
+	scheme   = runtime.NewScheme()
+	setupLog = ctrl.Log.WithName("setup")
 )
 
 func init() {
@@ -95,8 +93,10 @@ func main() {
 	// setup controller
 	jobController := controller.NewJobController(mgr)
 	err = jobController.SetupWithManager(mgr, controllerThreads)
-	setupLog.Error(err, "unable to create controller", "controller", jobController.ControllerName())
-	os.Exit(1)
+	if err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", jobController.ControllerName())
+		os.Exit(1)
+	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
@@ -113,9 +113,4 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
-}
-
-func init() {
-	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 }

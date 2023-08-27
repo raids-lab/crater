@@ -1,6 +1,6 @@
 // This is a generated file. Do not edit directly.
 
-module k8s.io/ai-task-controller
+module github.com/aisys/ai-task-controller
 
 go 1.19
 

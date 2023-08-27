@@ -1,4 +1,4 @@
-# sample-controller
+# ai-task-controller
 
 This repository implements a simple controller for watching Foo resources as
 defined with a CustomResourceDefinition (CRD).
@@ -156,22 +156,8 @@ kubectl create -f artifacts/examples/crd-status-subresource.yaml
 ## A Note on the API version
 The [group](https://kubernetes.io/docs/reference/using-api/#api-groups) version of the custom resource in `crd.yaml` is `v1alpha`, this can be evolved to a stable API version, `v1`, using [CRD Versioning](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definition-versioning/).
 
-## Cleanup
+## Config
 
-You can clean up the created CustomResourceDefinition with:
-```sh
-kubectl delete crd foos.samplecontroller.k8s.io
+```bash
+go run main.go --kubeconfig ~/.kube/config
 ```
-
-## Compatibility
-
-HEAD of this repository will match HEAD of k8s.io/apimachinery and
-k8s.io/client-go.
-
-## Where does it come from?
-
-`sample-controller` is synced from
-https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/sample-controller.
-Code changes are made in that location, merged into k8s.io/kubernetes and
-later synced here.
-

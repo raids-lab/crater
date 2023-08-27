@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/aisys/ai-task-controller/pkg/models"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"k8s.io/ai-task-controller/pkg/models"
 )
 
 var Orm *gorm.DB

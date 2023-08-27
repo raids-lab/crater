@@ -2,7 +2,8 @@ package controller
 
 import (
 	"container/heap"
-	aijobapi "k8s.io/ai-task-controller/pkg/apis/aijob/v1alpha1"
+
+	aijobapi "github.com/aisys/ai-task-controller/pkg/apis/aijob/v1alpha1"
 )
 
 type JobPQ []*aijobapi.AIJob

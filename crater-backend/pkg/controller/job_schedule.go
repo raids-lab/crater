@@ -1,7 +1,7 @@
 package controller
 
 import (
-	aijobapi "k8s.io/ai-task-controller/pkg/apis/aijob/v1alpha1"
+	aijobapi "github.com/aisys/ai-task-controller/pkg/apis/aijob/v1alpha1"
 )
 
 func (jc *JobController) addJobToQueue(jobKey string, aijob *aijobapi.AIJob) {

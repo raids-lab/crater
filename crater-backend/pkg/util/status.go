@@ -1,7 +1,7 @@
 package util
 
 import (
-	aijobapi "k8s.io/ai-task-controller/pkg/apis/aijob/v1alpha1"
+	aijobapi "github.com/aisys/ai-task-controller/pkg/apis/aijob/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
