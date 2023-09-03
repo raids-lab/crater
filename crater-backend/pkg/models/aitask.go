@@ -17,6 +17,7 @@ const (
 	HighSLO = 1
 	LowSLO  = 0
 
+	QueueingStatus  = "Queueing" // 用户队列里的状态
 	RunningStatus   = "Running"
 	PendingStatus   = "Pending"
 	FailedStatus    = "Failed"
@@ -36,12 +37,12 @@ type TaskModel struct {
 	Image           string    `gorm:"column:image;type:text;not null" json:"image"`
 	ResourceRequest string    `gorm:"column:resource_request;type:text;not null" json:"resourceRequest"`
 	WorkingDir      string    `gorm:"column:working_dir;type:text" json:"workingDir"`
+	ShareDirs       string    `gorm:"column:share_dirs;type:text" json:"ShareDirs"`
 	Command         string    `gorm:"column:command;type:text" json:"command"`
 	Args            string    `gorm:"column:args;type:text" json:"args"`
 	SLO             uint      `gorm:"column:slo;type:int;not null" json:"slo"`
 	Status          string    `gorm:"column:status;type:varchar(128)" json:"status"`
 	IsDeleted       bool      `gorm:"column:is_deleted;type:bool" json:"isDeleted"`
-
 	// PreTaskID       uint
 	// PostTaskID      uint
 }
@@ -57,6 +58,7 @@ type TaskAttr struct {
 	Command         string            `json:"command" binding:"required"`
 	Args            map[string]string `json:"args"`
 	WorkingDir      string            `json:"workingDir"`
+	ShareDirs       []string          `json:"ShareDirs"`
 	// not for request
 	ID        uint `json:"id"`
 	Namespace string
@@ -71,6 +73,7 @@ func FormatTaskAttrToModel(task *TaskAttr) *TaskModel {
 		Image:           task.Image,
 		ResourceRequest: ResourceListToJSON(task.ResourceRequest),
 		WorkingDir:      task.WorkingDir,
+		ShareDirs:       strings.Join(task.ShareDirs, ","),
 		Command:         task.Command,
 		Args:            argsToString(task.Args),
 		SLO:             task.SLO,
@@ -88,6 +91,7 @@ func FormatTaskModelToAttr(model *TaskModel) *TaskAttr {
 		Image:           model.Image,
 		ResourceRequest: resourceJson,
 		WorkingDir:      model.WorkingDir,
+		ShareDirs:       strings.Split(model.ShareDirs, ","),
 		Command:         model.Command,
 		Args:            dbstringToArgs(model.Args),
 		SLO:             model.SLO,
