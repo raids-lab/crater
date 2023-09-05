@@ -3,7 +3,7 @@ package server
 import (
 	"net/http"
 
-	"github.com/aisys/ai-task-controller/pkg/server/handlers"
+	"github.com/aisystem/ai-protal/pkg/server/handlers"
 	"github.com/gin-gonic/gin"
 )
 

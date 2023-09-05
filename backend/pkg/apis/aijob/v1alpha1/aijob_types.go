@@ -1,16 +1,18 @@
-// Copyright 2018 The Kubeflow Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//	http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+Copyright 2023.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package v1alpha1
 
@@ -28,14 +30,13 @@ const (
 	AIJobSingular = "aijob"
 )
 
-// AIJob Represents an AIJob resource.
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +resource:path=pytorchjob
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.conditions[-1:].type`
-// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
+// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
+// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+
+//+kubebuilder:object:root=true
+//+kubebuilder:subresource:status
+
+// AIJob is the Schema for the aijobs API
 type AIJob struct {
 	// Standard Kubernetes type metadata.
 	metav1.TypeMeta `json:",inline"`
@@ -58,22 +59,6 @@ type JobSpec struct {
 	Replicas        int32              `json:"replicas,omitempty"`
 	Template        v1.PodTemplateSpec `json:"template,omitempty"`
 	ResourceRequest v1.ResourceList    `json:"resourceRequest,omitempty"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +resource:path=aijobs
-// +kubebuilder:object:root=true
-
-// AIJobList is a list of AIJobs.
-type AIJobList struct {
-	// Standard type metadata.
-	metav1.TypeMeta `json:",inline"`
-
-	// Standard list metadata.
-	metav1.ListMeta `json:"metadata,omitempty"`
-
-	// List of AITorchJobs.
-	Items []AIJob `json:"items"`
 }
 
 // JobStatus represents the current observed state of the training Job.
@@ -156,3 +141,16 @@ const (
 	// The training has failed its execution.
 	JobSuspended JobConditionType = "Suspended"
 )
+
+//+kubebuilder:object:root=true
+
+// AIJobList contains a list of AIJob
+type AIJobList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []AIJob `json:"items"`
+}
+
+func init() {
+	SchemeBuilder.Register(&AIJob{}, &AIJobList{})
+}

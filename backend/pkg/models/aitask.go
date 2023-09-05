@@ -63,6 +63,8 @@ type TaskAttr struct {
 	ID        uint `json:"id"`
 	Namespace string
 	Status    string
+	CreatedAt time.Time `gorm:"column:created_at;not null" json:"createdAt"`
+	UpdatedAt time.Time `gorm:"column:updated_at;not null" json:"updatedAt"`
 }
 
 func FormatTaskAttrToModel(task *TaskAttr) *TaskModel {
@@ -96,6 +98,8 @@ func FormatTaskModelToAttr(model *TaskModel) *TaskAttr {
 		Args:            dbstringToArgs(model.Args),
 		SLO:             model.SLO,
 		Status:          model.Status,
+		CreatedAt:       model.CreatedAt,
+		UpdatedAt:       model.UpdatedAt,
 	}
 }
 

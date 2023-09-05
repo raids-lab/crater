@@ -1,4 +1,4 @@
-package control
+package crclient
 
 import (
 	"context"
@@ -7,8 +7,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	aijobapi "github.com/aisys/ai-task-controller/pkg/apis/aijob/v1alpha1"
-	"github.com/aisys/ai-task-controller/pkg/models"
+	aijobapi "github.com/aisystem/ai-protal/pkg/apis/aijob/v1alpha1"
+	"github.com/aisystem/ai-protal/pkg/models"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -17,7 +17,7 @@ type JobControl struct {
 }
 
 // todo: add more volumes, args etc..
-func (c *JobControl) CreateJobFromTask(task models.TaskAttr) error {
+func (c *JobControl) CreateJobFromTask(task *models.TaskAttr) error {
 	args := []string{}
 	for k, v := range task.Args {
 		args = append(args, k, v)

@@ -1,8 +1,8 @@
 package task
 
 import (
-	db "github.com/aisys/ai-task-controller/pkg/db/internal"
-	"github.com/aisys/ai-task-controller/pkg/models"
+	db "github.com/aisystem/ai-protal/pkg/db/internal"
+	"github.com/aisystem/ai-protal/pkg/models"
 )
 
 type DBService interface {
