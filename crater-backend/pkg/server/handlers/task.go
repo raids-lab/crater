@@ -3,11 +3,11 @@ package handlers
 import (
 	"fmt"
 
-	"github.com/aisys/ai-task-controller/pkg/constants"
-	tasksvc "github.com/aisys/ai-task-controller/pkg/db/task"
-	"github.com/aisys/ai-task-controller/pkg/models"
-	payload "github.com/aisys/ai-task-controller/pkg/server/payload"
-	resputil "github.com/aisys/ai-task-controller/pkg/server/response"
+	"github.com/aisystem/ai-protal/pkg/constants"
+	tasksvc "github.com/aisystem/ai-protal/pkg/db/task"
+	"github.com/aisystem/ai-protal/pkg/models"
+	payload "github.com/aisystem/ai-protal/pkg/server/payload"
+	resputil "github.com/aisystem/ai-protal/pkg/server/response"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )

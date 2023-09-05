@@ -1,6 +1,6 @@
 package payload
 
-import "github.com/aisys/ai-task-controller/pkg/models"
+import "github.com/aisystem/ai-protal/pkg/models"
 
 type CreateTaskResp struct {
 }

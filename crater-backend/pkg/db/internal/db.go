@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aisys/ai-task-controller/pkg/models"
+	"github.com/aisystem/ai-protal/pkg/models"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"

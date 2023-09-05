@@ -30,8 +30,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	schedulerpluginsv1alpha1 "sigs.k8s.io/scheduler-plugins/apis/scheduling/v1alpha1"
 
-	aisystemv1alpha1 "github.com/aisys/ai-task-controller/pkg/apis/aijob/v1alpha1"
-	"github.com/aisys/ai-task-controller/pkg/controller"
+	aisystemv1alpha1 "github.com/aisystem/ai-protal/pkg/apis/aijob/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
@@ -90,13 +89,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// setup controller
-	jobController := controller.NewJobController(mgr)
-	err = jobController.SetupWithManager(mgr, controllerThreads)
-	if err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", jobController.ControllerName())
-		os.Exit(1)
-	}
+	// todo: setup server
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")

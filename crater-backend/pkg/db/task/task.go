@@ -1,13 +1,14 @@
 package task
 
 import (
-	db "github.com/aisys/ai-task-controller/pkg/db/internal"
-	"github.com/aisys/ai-task-controller/pkg/models"
+	db "github.com/aisystem/ai-protal/pkg/db/internal"
+	"github.com/aisystem/ai-protal/pkg/models"
 )
 
 type DBService interface {
 	Create(task *models.TaskModel) error
 	Update(task *models.TaskModel) error
+	UpdateStatus(taskID uint, status string) error
 	DeleteByID(taskID uint) error
 	ListByUserAndStatus(userName string, status string) ([]models.TaskModel, error)
 	GetByID(taskID uint) (*models.TaskModel, error)
@@ -25,6 +26,11 @@ func (s *service) Create(task *models.TaskModel) error {
 
 func (s *service) Update(task *models.TaskModel) error {
 	return db.Orm.Save(task).Error
+}
+
+func (s *service) UpdateStatus(taskID uint, status string) error {
+	err := db.Orm.Model(&models.TaskModel{}).Where("id = ?", taskID).Update("status", status).Error
+	return err
 }
 
 func (s *service) DeleteByID(taskID uint) error {
