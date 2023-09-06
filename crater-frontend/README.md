@@ -19,9 +19,9 @@ Check the version of Node and Pnpm:
 
 ```bash
 node -v
-# v18.17.0
+# v18.17.1
 pnpm -v
-# 8.6.10
+# 8.7.1
 ```
 
 Now you can clone this project, and deploy it:
@@ -30,8 +30,8 @@ Now you can clone this project, and deploy it:
 git clone git@gitlab.act.buaa.edu.cn:gpu-portal/gpu-portal-frontend.git
 cd gpu-portal-frontend
 pnpm install
-pnpm run dev
-# pnpm run build
+pnpm dev
+# pnpm build
 ```
 
 The app will automatically reload if you change any of the source files.
