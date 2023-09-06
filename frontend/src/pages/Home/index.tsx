@@ -9,7 +9,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ScrollArea } from "@radix-ui/react-scroll-area";
 
 const Home: FC = () => {
   useEffect(() => {
@@ -17,9 +16,9 @@ const Home: FC = () => {
   }, []);
 
   return (
-    <div className="grid overflow-hidden lg:grid-cols-7">
+    <div className="grid overflow-hidden lg:grid-cols-6">
       <Sidebar playlists={playlists} className="hidden bg-slate-100 lg:block" />
-      <div className="col-span-5 h-screen space-y-4 overflow-auto bg-slate-100 lg:col-span-6">
+      <div className="col-span-4 h-screen space-y-4 overflow-auto bg-slate-100 lg:col-span-5">
         <div className="space-y-4 py-8 pr-6">
           <div className="grid h-48 grid-cols-5 space-x-4">
             <Card className="col-span-2">
