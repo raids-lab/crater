@@ -1,4 +1,3 @@
 package config
 
-// db config
-
+// todo: db config

@@ -22,6 +22,7 @@ func (info *QuotaInfo) AddTask(task *models.TaskAttr) {
 	info.Lock()
 	defer info.Unlock()
 	key := keyFunc(task)
+	// 没有找到task的时候才添加quota
 	if task, ok := info.UsedTasks[key]; !ok {
 		info.UsedTasks[key] = task
 		if task.SLO == models.HighSLO {
@@ -37,6 +38,7 @@ func (info *QuotaInfo) DeleteTask(task *models.TaskAttr) {
 	info.Lock()
 	defer info.Unlock()
 	key := keyFunc(task)
+	// 找到quotainfo里的task时才删除quota
 	if task, ok := info.UsedTasks[key]; ok {
 		delete(info.UsedTasks, key)
 		if task.SLO == models.HighSLO {

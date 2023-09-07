@@ -15,7 +15,7 @@ var Orm *gorm.DB
 
 // todo: mysql configuration
 // InitDB init mysql connection
-func InitDB() {
+func InitDB() error {
 	user := viper.GetString("DB_USER")
 	password := viper.GetString("DB_PASSWORD")
 	dbName := viper.GetString("DB_NAME")
@@ -35,24 +35,37 @@ func InitDB() {
 	var err error
 	Orm, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
 	maxIdleConns := 5
 	maxOpenConns := 10
 	sqlDB, err := Orm.DB()
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
 	sqlDB.SetMaxIdleConns(maxIdleConns)
 	sqlDB.SetMaxOpenConns(maxOpenConns)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
 	log.Info("mysql init success!")
+	return nil
 }
 
 // InitMigration init mysql migration
-func InitMigration() {
+func InitMigration() error {
 	if err := Orm.AutoMigrate(&models.TaskModel{}); err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("init migration TaskModel err: %v", err)
 	}
+	if err := Orm.AutoMigrate(&models.User{}); err != nil {
+		return fmt.Errorf("init migration User err: %v", err)
+	}
+	if err := Orm.AutoMigrate(&models.Quota{}); err != nil {
+		return fmt.Errorf("init migration Quota err: %v", err)
+	}
+	return nil
+}
+
+// todo: init db conf
+func init(){
+	viper.AddConfigPath("./conf")
 }

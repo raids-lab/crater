@@ -40,22 +40,7 @@ func NewTaskController(client client.Client, statusChan <-chan util.JobStatusCha
 	}
 }
 
-// Start method
-func (c *TaskController) Start(ctx context.Context) error {
-	log := ctrl.LoggerFrom(ctx).WithName("task-controller")
-	ctx = ctrl.LoggerInto(ctx, log)
-	// 1. init 初始化task队列和quota信息，存在缓存里
-	// c.Init()
-	// 2. 接受job状态变更信息
-	go c.WatchJobStatus(ctx)
-	// 3. 接收task变更信息
-	go c.WatchTaskUpdate(ctx)
-	// 4. schedule线程
-	go wait.UntilWithContext(ctx, c.schedule, 0)
-	return nil
-}
-
-// Init 初始化队列信息, quota 信息
+// Init init taskQueue And quotaInfos
 func (c *TaskController) Init() error {
 	quotas, err := c.quotaDB.ListAllQuotas()
 	if err != nil {
@@ -74,8 +59,25 @@ func (c *TaskController) Init() error {
 	return nil
 }
 
+// Start method
+func (c *TaskController) Start(ctx context.Context) error {
+	log := ctrl.LoggerFrom(ctx).WithName("task-controller")
+	ctx = ctrl.LoggerInto(ctx, log)
+	// 1. init 初始化task队列和quota信息，存在缓存里
+	// c.Init()
+	// 2. 接受job状态变更信息
+	go c.watchJobStatus(ctx)
+	// 3. 接收task变更信息
+	go c.watchTaskUpdate(ctx)
+	// 4. schedule线程
+	go wait.UntilWithContext(ctx, c.schedule, 0)
+	return nil
+}
+
+// Init 初始化队列信息, quota 信息
+
 // WatchJobStatus
-func (c *TaskController) WatchJobStatus(ctx context.Context) {
+func (c *TaskController) watchJobStatus(ctx context.Context) {
 	for {
 		select {
 		case status := <-c.jobStatusChan:
@@ -101,7 +103,7 @@ func (c *TaskController) WatchJobStatus(ctx context.Context) {
 }
 
 // WatchTaskUpdate
-func (c *TaskController) WatchTaskUpdate(ctx context.Context) {
+func (c *TaskController) watchTaskUpdate(ctx context.Context) {
 	for {
 		select {
 		case t := <-c.taskUpdateChan:
@@ -143,8 +145,7 @@ func (c *TaskController) updateTaskStatus(taskID string, status string) (*models
 	return models.FormatTaskModelToAttr(t), nil
 }
 
-// Schedule
-// 简单功能：从用户队列中
+// schedule 简单功能：从用户队列中
 func (c *TaskController) schedule(ctx context.Context) {
 	// log := ctrl.LoggerFrom(ctx)
 	// 等待调度的队列
@@ -182,6 +183,7 @@ func (c *TaskController) schedule(ctx context.Context) {
 
 }
 
+// admitTask 创建对应的aijob到集群中，更新task状态，更新quota
 func (c *TaskController) admitTask(task *models.TaskAttr) error {
 	//
 	err := c.jobControl.CreateJobFromTask(task)
