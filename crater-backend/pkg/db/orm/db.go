@@ -13,6 +13,8 @@ import (
 
 var Orm *gorm.DB
 
+// todo: mysql configuration
+// InitDB init mysql connection
 func InitDB() {
 	user := viper.GetString("DB_USER")
 	password := viper.GetString("DB_PASSWORD")
@@ -48,6 +50,7 @@ func InitDB() {
 	log.Info("mysql init success!")
 }
 
+// InitMigration init mysql migration
 func InitMigration() {
 	if err := Orm.AutoMigrate(&models.TaskModel{}); err != nil {
 		log.Fatal(err)
