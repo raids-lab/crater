@@ -123,3 +123,10 @@ func filterOutCondition(conditions []aijobapi.JobCondition, condType aijobapi.Jo
 	}
 	return newConditions
 }
+
+func IsCompletedStatus(status string) bool {
+	if status == string(aijobapi.JobFailed) || status == string(aijobapi.JobSucceeded) {
+		return true
+	}
+	return false
+}

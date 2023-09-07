@@ -8,6 +8,7 @@ import (
 	"github.com/aisystem/ai-protal/pkg/models"
 	payload "github.com/aisystem/ai-protal/pkg/server/payload"
 	resputil "github.com/aisystem/ai-protal/pkg/server/response"
+	"github.com/aisystem/ai-protal/pkg/util"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
@@ -24,11 +25,13 @@ func (mgr *TaskMgr) RegisterRoute(r *gin.Engine) {
 
 type TaskMgr struct {
 	taskService tasksvc.DBService
+	taskUpdateChan <-chan util.TaskUpdateChan
 }
 
-func NewTaskMgr() *TaskMgr {
+func NewTaskMgr(taskUpdateChan <-chan util.TaskUpdateChan) *TaskMgr {
 	return &TaskMgr{
 		taskService: tasksvc.NewDBService(),
+		taskUpdateChan: taskUpdateChan,
 	}
 }
 

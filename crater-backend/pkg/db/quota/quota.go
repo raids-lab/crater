@@ -1,7 +1,7 @@
-package task
+package quota
 
 import (
-	db "github.com/aisystem/ai-protal/pkg/db/internal"
+	db "github.com/aisystem/ai-protal/pkg/db/orm"
 	"github.com/aisystem/ai-protal/pkg/models"
 )
 

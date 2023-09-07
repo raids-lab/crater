@@ -18,8 +18,8 @@ const (
 	LowSLO  = 0
 
 	QueueingStatus  = "Queueing" // 用户队列里的状态
+	PendingStatus   = "Pending" // AIJob排队的状态
 	RunningStatus   = "Running"
-	PendingStatus   = "Pending"
 	FailedStatus    = "Failed"
 	SucceededStatus = "Succeeded"
 	SuspendedStatus = "Suspended"

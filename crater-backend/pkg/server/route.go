@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/aisystem/ai-protal/pkg/server/handlers"
+	"github.com/aisystem/ai-protal/pkg/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -15,7 +16,7 @@ func (b *Backend) RegisterService(manager handlers.Manager) {
 	manager.RegisterRoute(b.R)
 }
 
-func Register() (*Backend, error) {
+func Register(taskUpdateChan <-chan util.TaskUpdateChan) (*Backend, error) {
 	s := new(Backend)
 
 	s.R = gin.Default()
@@ -24,5 +25,6 @@ func Register() (*Backend, error) {
 			"message": "ok",
 		})
 	})
+	s.RegisterService(handlers.NewTaskMgr(taskUpdateChan))
 	return s, nil
 }

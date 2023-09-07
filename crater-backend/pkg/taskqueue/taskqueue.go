@@ -21,11 +21,12 @@ func NewTaskQueue() *TaskQueue {
 }
 
 // InitUserQueue 有新quota/user添加的时候，初始化，传入的是用户的taskList
-func (tq *TaskQueue) InitUserQueue(username string, taskList []models.TaskAttr) {
+func (tq *TaskQueue) InitUserQueue(username string, taskList []models.TaskModel) {
 	tq.Lock()
 	defer tq.Unlock()
 	q := NewUserQueue(username)
-	for _, task := range taskList {
+	for _, t := range taskList {
+		task := models.FormatTaskModelToAttr(&t)
 		if task.SLO == models.HighSLO {
 			q.gauranteedQueue.PushIfNotPresent(task)
 		} else if task.SLO == models.LowSLO {
@@ -41,16 +42,17 @@ func (tq *TaskQueue) AddTask(task *models.TaskAttr) {
 	tq.Lock()
 	defer tq.Unlock()
 	q, ok := tq.userQueues[task.UserName]
-	if ok {
+	if !ok {
 		return
 	}
 	if task.SLO == models.HighSLO {
-		q.gauranteedQueue.PushIfNotPresent(task)
+		q.gauranteedQueue.PushOrUpdate(task)
 	} else if task.SLO == models.LowSLO {
-		q.bestEffortQueue.PushIfNotPresent(task)
+		q.bestEffortQueue.PushOrUpdate(task)
 	}
 }
 
+// DeleteTask deletes task in queue when task is scheduled
 func (tq *TaskQueue) DeleteTask(task *models.TaskAttr) {
 	tq.Lock()
 	defer tq.Unlock()
@@ -62,5 +64,34 @@ func (tq *TaskQueue) DeleteTask(task *models.TaskAttr) {
 		q.gauranteedQueue.Delete(task)
 	} else if task.SLO == models.LowSLO {
 		q.bestEffortQueue.Delete(task)
+	}
+}
+
+// DeleteTaskByUserNameAndTaskID deletes task that is deleted
+func (tq *TaskQueue) DeleteTaskByUserNameAndTaskID(username string, taskid string) {
+	tq.Lock()
+	defer tq.Unlock()
+	q, ok := tq.userQueues[username]
+	if !ok {
+		return
+	}
+	q.gauranteedQueue.DeleteByKey(taskid)
+	q.bestEffortQueue.DeleteByKey(taskid)
+}
+
+// UpdateTask updates task
+func (tq *TaskQueue) UpdateTask(task *models.TaskAttr) {
+	tq.Lock()
+	defer tq.Unlock()
+	q, ok := tq.userQueues[task.UserName]
+	if !ok {
+		return
+	}
+	if task.SLO == models.HighSLO {
+		q.gauranteedQueue.PushOrUpdate(task)
+		q.bestEffortQueue.Delete(task)
+	} else if task.SLO == models.LowSLO {
+		q.bestEffortQueue.PushOrUpdate(task)
+		q.gauranteedQueue.Delete(task)
 	}
 }
