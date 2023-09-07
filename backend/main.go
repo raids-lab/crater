@@ -31,6 +31,11 @@ import (
 	schedulerpluginsv1alpha1 "sigs.k8s.io/scheduler-plugins/apis/scheduling/v1alpha1"
 
 	aisystemv1alpha1 "github.com/aisystem/ai-protal/pkg/apis/aijob/v1alpha1"
+	db "github.com/aisystem/ai-protal/pkg/db/orm"
+	"github.com/aisystem/ai-protal/pkg/reconciler"
+	"github.com/aisystem/ai-protal/pkg/server"
+	"github.com/aisystem/ai-protal/pkg/taskqueue"
+	"github.com/aisystem/ai-protal/pkg/util"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
@@ -54,6 +59,7 @@ func main() {
 	var gangSchedulerName string
 	var monitoringPort int
 	var controllerThreads int
+	var serverPort string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -65,6 +71,7 @@ func main() {
 	flag.IntVar(&monitoringPort, "monitoring-port", 9443, "Endpoint port for displaying monitoring metrics. "+
 		"It can be set to \"0\" to disable the metrics serving.")
 	flag.IntVar(&controllerThreads, "controller-threads", 1, "Number of worker threads used by the controller.")
+	flag.StringVar(&serverPort, "server-port", ":8088", "The address the server endpoint binds to.")
 
 	opts := zap.Options{
 		Development:     true,
@@ -89,7 +96,35 @@ func main() {
 		os.Exit(1)
 	}
 
-	// todo: setup server
+	// 1. init db
+	db.InitDB()
+	db.InitMigration()
+
+	// 2. init task controller
+
+	taskUpdateChan := make(chan util.TaskUpdateChan)
+	jobStatusChan := make(chan util.JobStatusChan)
+
+	backend, err := server.Register(taskUpdateChan)
+	taskCtrl := taskqueue.NewTaskController(
+		mgr.GetClient(),
+		jobStatusChan,
+		taskUpdateChan,
+	)
+	if err := taskCtrl.Init(); err != nil {
+		setupLog.Error(err, "unable to set up task controller")
+		os.Exit(1)
+	}
+
+	// 3. init job controller
+
+	jobReconciler := reconciler.NewAIJobReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+		jobStatusChan,
+	)
+
+	jobReconciler.SetupWithManager(mgr)
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
@@ -100,10 +135,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	// start manager
+	// 4. start manager
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+
+	// 5. start server
+	setupLog.Info("starting server")
+	if err := backend.R.Run(serverPort); err != nil {
+		setupLog.Error(err, "problem running server")
+		os.Exit(1)
+	}
+
 }

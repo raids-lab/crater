@@ -17,7 +17,7 @@ type QuotaInfo struct {
 	UsedTasks map[string]*models.TaskAttr
 }
 
-// AddJob adds Running Job Quota
+// AddTask adds Running Job Quota
 func (info *QuotaInfo) AddTask(task *models.TaskAttr) {
 	info.Lock()
 	defer info.Unlock()

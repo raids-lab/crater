@@ -18,7 +18,7 @@ type userQueue struct {
 	bestEffortQueue *queueBase
 }
 
-// NewUserQueue: 新建一个空的用户队列
+// NewUserQueue 新建一个空的用户队列
 func NewUserQueue(username string) *userQueue {
 	return &userQueue{
 		username: username,
