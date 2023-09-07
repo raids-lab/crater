@@ -81,7 +81,7 @@ func main() {
 	flag.Parse()
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	// create manager
+	// 0. create manager
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
@@ -97,11 +97,16 @@ func main() {
 	}
 
 	// 1. init db
-	db.InitDB()
-	db.InitMigration()
+	if err := db.InitDB(); err != nil {
+		setupLog.Error(err, "unable to init db")
+		os.Exit(1)
+	}
+	if err := db.InitMigration(); err != nil {
+		setupLog.Error(err, "unable to init db migration")
+		os.Exit(1)
+	}
 
 	// 2. init task controller
-
 	taskUpdateChan := make(chan util.TaskUpdateChan)
 	jobStatusChan := make(chan util.JobStatusChan)
 
@@ -117,7 +122,6 @@ func main() {
 	}
 
 	// 3. init job controller
-
 	jobReconciler := reconciler.NewAIJobReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),

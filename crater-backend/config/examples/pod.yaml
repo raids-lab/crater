@@ -7,7 +7,7 @@ metadata:
   # - apiVersion: apps/v1
   #   blockOwnerDeletion: true
   #   controller: true
-  #   kind: ReplicaSet
+  #   kind: AIJob
   #   name: deployment-yolo-58bbdbc7f6
   #   uid: 2521f78b-7ef0-46db-880a-b23bb5dfb2e2
 spec:
