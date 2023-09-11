@@ -1,3 +1,4 @@
+import Login from "@/pages/Login";
 import { FC, Suspense, lazy } from "react";
 import { Navigate, RouteObject } from "react-router-dom";
 
@@ -25,7 +26,30 @@ const Home: FC = () => {
 export const routerConfig: RouteObject[] = [
   {
     path: "/",
+    element: <Login />,
+  },
+  {
+    path: "/dashboard",
     element: <Home />,
+  },
+  {
+    path: "/admin",
+    loader: () => {
+      throw new Response("Not Found", { status: 404 });
+
+      return { status: "success" };
+    },
+    errorElement: <div>401 Unauth</div>,
+    children: [
+      {
+        path: "dashboard",
+        element: <Home />,
+      },
+      {
+        path: "settings",
+        element: <div>Settings</div>,
+      },
+    ],
   },
   {
     path: "*",
