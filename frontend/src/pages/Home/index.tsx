@@ -1,6 +1,4 @@
 import type { FC } from "react";
-import { useEffect } from "react";
-import log from "@/utils/loglevel";
 import { Sidebar, playlists } from "@/components/sidebar";
 import {
   Card,
@@ -11,10 +9,6 @@ import {
 } from "@/components/ui/card";
 
 const Home: FC = () => {
-  useEffect(() => {
-    log.debug("test");
-  }, []);
-
   return (
     <div className="grid overflow-hidden lg:grid-cols-6">
       <Sidebar playlists={playlists} className="hidden bg-slate-100 lg:block" />
