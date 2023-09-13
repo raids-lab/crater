@@ -40,7 +40,9 @@ The app will automatically reload if you change any of the source files.
 
 If you are using _Visual Studio Code_, follow [Profiles in Visual Studio Code](https://code.visualstudio.com/docs/editor/profiles#_import) to import configure from `.vscode/React.code-profile`. Else if you are using any other IDE, you should install required plugins manually.
 
-- Lint: [Pritter](https://prettier.io/docs/en/install)
+- Frame: [React](https://react.dev/learn)
+  - State Manager: [recoil](https://recoiljs.org/zh-hans/)
+  - Query Manager: [tanstack query](https://tanstack.com/query/latest)
 - CSS: [tailwindcss](https://tailwindcss.com/docs/guides/vite)
 - UI Kit: [shadcn](https://ui.shadcn.com/examples/dashboard)
 
