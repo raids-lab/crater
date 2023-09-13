@@ -6,4 +6,4 @@ if (process.env.NODE_ENV === "development") {
   log.disableAll(false);
 }
 
-export default log;
+export { log as logger };
