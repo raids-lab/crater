@@ -1,4 +1,3 @@
-import type { FC } from "react";
 import { Sidebar, playlists } from "@/components/sidebar";
 import {
   Card,
@@ -8,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const Home: FC = () => {
+export function Component() {
   return (
     <div className="grid overflow-hidden lg:grid-cols-6">
       <Sidebar playlists={playlists} className="hidden bg-slate-100 lg:block" />
@@ -57,6 +56,4 @@ const Home: FC = () => {
       </div>
     </div>
   );
-};
-
-export default Home;
+}

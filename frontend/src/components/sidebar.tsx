@@ -7,8 +7,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { sidebarIndexes } from "@/utils/store";
-import { useRecoilState } from "recoil";
+import { sidebarIndexes, currentUserState } from "@/utils/store";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { useEffect } from "react";
 import { logger } from "@/utils/loglevel";
 
@@ -22,10 +22,12 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function Sidebar({ className, playlists }: SidebarProps) {
   const [indexes, setIndexes] = useRecoilState(sidebarIndexes);
+  const user = useRecoilValue(currentUserState);
 
   useEffect(() => {
     logger.debug("indexes: ", indexes);
-  }, [indexes]);
+    logger.debug("user token: ", user.token);
+  }, [indexes, user]);
   return (
     <ScrollArea className={cn("h-screen", className)}>
       <div className="py-4">
