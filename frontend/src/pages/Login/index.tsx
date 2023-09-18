@@ -1,9 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
+import { currentUserState } from "@/utils/store";
+import { useSetRecoilState } from "recoil";
 
 export default function Login() {
   const navigate = useNavigate();
+  const setUserState = useSetRecoilState(currentUserState);
 
   return (
     <>
@@ -48,6 +51,12 @@ export default function Login() {
               <Button
                 className="bg-sky-700 hover:bg-sky-800"
                 onClick={() => {
+                  setUserState((old) => {
+                    return {
+                      ...old,
+                      role: "admin",
+                    };
+                  });
                   navigate("/dashboard");
                 }}
               >

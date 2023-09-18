@@ -1,4 +1,4 @@
-import React, { Suspense } from "react";
+import React, { FC, PropsWithChildren, Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import {
   createBrowserRouter,
@@ -9,19 +9,31 @@ import {
 import "./index.css";
 import { RecoilRoot } from "recoil";
 import Login from "./pages/Login";
+import { useAuth } from "./hooks/useAuth";
+
+const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
+  const isAuthenticated = useAuth("admin");
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
 
 const router = createBrowserRouter([
+  {
+    path: "/login",
+    element: <Login />,
+  },
   {
     path: "/",
     element: (
       <Suspense fallback={<h2>Loading...</h2>}>
-        <Outlet />
+        <AuthedRouter>
+          <Outlet />
+        </AuthedRouter>
       </Suspense>
     ),
     children: [
       {
         index: true,
-        element: <Login />,
+        lazy: () => import("./pages/Home"),
       },
       {
         path: "dashboard",
