@@ -7,7 +7,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { sidebarIndexes, currentUserState } from "@/utils/store";
+import { uiAccordionState, userInfoState } from "@/utils/store";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { useEffect } from "react";
 import { logger } from "@/utils/loglevel";
@@ -21,8 +21,8 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function Sidebar({ className, playlists }: SidebarProps) {
-  const [indexes, setIndexes] = useRecoilState(sidebarIndexes);
-  const user = useRecoilValue(currentUserState);
+  const [indexes, setIndexes] = useRecoilState(uiAccordionState);
+  const user = useRecoilValue(userInfoState);
 
   useEffect(() => {
     logger.debug("indexes: ", indexes);
