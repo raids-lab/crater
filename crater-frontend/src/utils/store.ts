@@ -1,5 +1,5 @@
 import { AtomEffect, atom } from "recoil";
-import { UserInfo } from "./auth";
+import { UserInfo } from "@/hooks/useAuth";
 
 /**
  * Global UI States

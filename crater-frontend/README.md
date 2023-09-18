@@ -57,13 +57,14 @@ gpu-portal-frontend
 ├── src/             # project root
 │   ├── assets/      # images, icons, etc.
 │   ├── compoments/  # common components
+│   ├── hooks/       # react hooks
+│   ├── lib/         # shadcn's lib
 │   ├── pages/       # application pages
-│   ├── routes/      # routes config
 │   ├── services/    # application apis
 │   ├── utils/       # logger, store, etc.
 │   ├── ...
 │   ├── index.css    # tailwind styles
-│   └── main.tsx     # react root
+│   └── main.tsx     # app router
 ├── ...
 ├── index.html       # html template
 └── package.json     # dependencies
