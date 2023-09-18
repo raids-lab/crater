@@ -1,12 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
-import { currentUserState } from "@/utils/store";
+import { userInfoState } from "@/utils/store";
 import { useSetRecoilState } from "recoil";
 
 export default function Login() {
   const navigate = useNavigate();
-  const setUserState = useSetRecoilState(currentUserState);
+  const setUserState = useSetRecoilState(userInfoState);
 
   return (
     <>

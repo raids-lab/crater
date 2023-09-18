@@ -1,4 +1,4 @@
-import { Sidebar, playlists } from "@/components/sidebar";
+import { Sidebar, playlists } from "@/components/Sidebar";
 import {
   Card,
   CardContent,

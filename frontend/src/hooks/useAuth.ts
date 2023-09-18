@@ -1,4 +1,4 @@
-import { currentUserState } from "@/utils/store";
+import { userInfoState } from "@/utils/store";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 
@@ -9,7 +9,7 @@ export interface UserInfo {
 }
 
 export function useAuth(role: UserInfo["role"]) {
-  const userInfo = useRecoilValue(currentUserState);
+  const userInfo = useRecoilValue(userInfoState);
   const isAuthenticated = useMemo(() => {
     return userInfo.role === role;
   }, [userInfo, role]);
