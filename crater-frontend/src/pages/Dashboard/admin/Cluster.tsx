@@ -9,7 +9,7 @@ import {
 
 export const Component: FC = () => {
   return (
-    <div className="space-y-4 py-8 pr-6">
+    <div className="space-y-4 py-6 pr-6">
       <div className="grid h-48 grid-cols-5 space-x-4">
         <Card className="col-span-2">
           <CardHeader>

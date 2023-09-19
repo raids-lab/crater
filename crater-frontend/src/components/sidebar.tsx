@@ -8,7 +8,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { uiAccordionState, userInfoState } from "@/utils/store";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState } from "recoil";
 import { useEffect } from "react";
 import { logger } from "@/utils/loglevel";
 
@@ -21,23 +21,25 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function Sidebar({ className, playlists }: SidebarProps) {
-  const [indexes, setIndexes] = useRecoilState(uiAccordionState);
-  const user = useRecoilValue(userInfoState);
+  const [accordion, setAccordion] = useRecoilState(uiAccordionState);
+  const [userInfo, setUserInfo] = useRecoilState(userInfoState);
 
   useEffect(() => {
-    logger.debug("indexes: ", indexes);
-    logger.debug("user token: ", user.token);
-  }, [indexes, user]);
+    logger.debug("indexes: ", accordion);
+    logger.debug("user token: ", userInfo.token);
+  }, [accordion, userInfo]);
   return (
-    <ScrollArea className={cn("h-screen", className)}>
-      <div className="py-4">
+    <ScrollArea className={cn("h-full", className)}>
+      <div
+        className={cn("flex flex-col items-stretch justify-between px-2 py-2")}
+      >
         <Accordion
           type="multiple"
           // collapsible
-          className="px-2 py-2"
+          className="w-full py-2"
           defaultValue={["item-2"]}
-          value={indexes}
-          onValueChange={setIndexes}
+          value={accordion}
+          onValueChange={setAccordion}
         >
           {["集群资源查看", "训练任务管理", "资源配额", "Jupyter 管理"].map(
             (name, i) => (
@@ -69,7 +71,7 @@ export function Sidebar({ className, playlists }: SidebarProps) {
                   {playlists?.map((playlist, ii) => (
                     <Button
                       key={`${name}-${ii}`}
-                      variant="ghost"
+                      variant="colorable"
                       className="w-full justify-start pl-10"
                     >
                       {playlist}
@@ -80,6 +82,19 @@ export function Sidebar({ className, playlists }: SidebarProps) {
             ),
           )}
         </Accordion>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setUserInfo((old) => {
+              return {
+                ...old,
+                role: "viewer",
+              };
+            });
+          }}
+        >
+          Logout
+        </Button>
       </div>
     </ScrollArea>
   );
