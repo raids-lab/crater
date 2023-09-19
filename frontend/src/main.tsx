@@ -8,7 +8,7 @@ import {
 import "./index.css";
 import { RecoilRoot } from "recoil";
 import Login from "./pages/Login";
-import DashboardLayout from "./pages/Dashboard/admin/Layout";
+import DashboardLayout from "./pages/Dashboard/Admin/Layout";
 import { useAuth } from "./hooks/useAuth";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -36,11 +36,11 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        lazy: () => import("./pages/Dashboard/admin/Cluster"),
+        lazy: () => import("./pages/Dashboard/Admin/Cluster"),
       },
       {
         path: "dashboard",
-        lazy: () => import("./pages/Dashboard/admin/Cluster"),
+        lazy: () => import("./pages/Dashboard/Admin/Cluster"),
       },
     ],
   },
