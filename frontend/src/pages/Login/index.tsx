@@ -1,13 +1,6 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useNavigate } from "react-router-dom";
-import { userInfoState } from "@/utils/store";
-import { useSetRecoilState } from "recoil";
+import { ProfileForm } from "./Form";
 
 export default function Login() {
-  const navigate = useNavigate();
-  const setUserState = useSetRecoilState(userInfoState);
-
   return (
     <>
       <div className="container relative hidden h-screen flex-col items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0">
@@ -46,7 +39,7 @@ export default function Login() {
               {/* <p className="text-sm text-muted-foreground">
                 admin: 123456 user: 000000
               </p> */}
-              <Input type="text" placeholder="用户名" id="user" />
+              {/* <Input type="text" placeholder="用户名" id="user" />
               <Input type="password" placeholder="密码" id="pass" />
               <Button
                 className="bg-sky-700 hover:bg-sky-800"
@@ -61,7 +54,8 @@ export default function Login() {
                 }}
               >
                 登录
-              </Button>
+              </Button> */}
+              <ProfileForm />
             </div>
             <p className="px-2 text-center text-sm text-muted-foreground">
               测试用账号：admin 123456

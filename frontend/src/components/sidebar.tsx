@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Accordion,
   AccordionContent,
@@ -29,9 +28,11 @@ export function Sidebar({ className, playlists }: SidebarProps) {
     logger.debug("user token: ", userInfo.token);
   }, [accordion, userInfo]);
   return (
-    <ScrollArea className={cn("h-full", className)}>
+    <div className={cn("h-full border-r", className)}>
       <div
-        className={cn("flex flex-col items-stretch justify-between px-2 py-2")}
+        className={cn(
+          "flex h-full flex-col items-stretch justify-between px-2 py-2",
+        )}
       >
         <Accordion
           type="multiple"
@@ -71,7 +72,7 @@ export function Sidebar({ className, playlists }: SidebarProps) {
                   {playlists?.map((playlist, ii) => (
                     <Button
                       key={`${name}-${ii}`}
-                      variant="colorable"
+                      variant="ghost"
                       className="w-full justify-start pl-10"
                     >
                       {playlist}
@@ -93,9 +94,9 @@ export function Sidebar({ className, playlists }: SidebarProps) {
             });
           }}
         >
-          Logout
+          退出登录
         </Button>
       </div>
-    </ScrollArea>
+    </div>
   );
 }
