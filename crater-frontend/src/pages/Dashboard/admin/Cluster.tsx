@@ -9,7 +9,7 @@ import {
 
 export const Component: FC = () => {
   return (
-    <div className="space-y-4 py-6 pr-6">
+    <div className="space-y-4 px-6 py-6">
       <div className="grid h-48 grid-cols-5 space-x-4">
         <Card className="col-span-2">
           <CardHeader>
@@ -31,15 +31,6 @@ export const Component: FC = () => {
         </Card>
       </div>
 
-      <Card className="h-72">
-        <CardHeader>
-          <CardTitle>Cluster Resource Usage</CardTitle>
-          <CardDescription>Card Description</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p>Card Content</p>
-        </CardContent>
-      </Card>
       <Card className="h-72">
         <CardHeader>
           <CardTitle>Cluster Resource Usage</CardTitle>
