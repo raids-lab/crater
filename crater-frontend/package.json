@@ -18,6 +18,8 @@
     "@radix-ui/react-scroll-area": "^1.0.4",
     "@radix-ui/react-slot": "^1.0.2",
     "@tanstack/react-query": "^4.35.3",
+    "@tanstack/react-query-devtools": "^4.35.3",
+    "axios": "^1.5.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "loglevel": "^1.8.1",
