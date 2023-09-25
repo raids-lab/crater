@@ -1,6 +1,43 @@
 // https://codevoweb.com/react-query-context-api-axios-interceptors-jwt-auth/
-export interface IUser {
+export interface IErrorResponse {
+  message: string;
+}
+
+/**
+ * Signup
+ */
+export interface ISignup {
   name: string;
-  id: string;
-  token: string;
+  role: string;
+  password: string;
+}
+
+export interface ISignupResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
+/**
+ * Login
+ */
+export interface ILogin {
+  username: string;
+  password: string;
+}
+
+export interface ILoginResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
+/**
+ * Refresh
+ */
+export interface IRefresh {
+  refreshToken: string;
+}
+
+export interface IRefreshResponse {
+  accessToken: string;
+  refreshToken: string;
 }
