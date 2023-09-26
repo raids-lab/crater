@@ -16,35 +16,45 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
 import { userInfoState } from "@/utils/store";
-import { loginUserFn } from "@/services/authApi";
+import { signupUserFn } from "@/services/authApi";
 import { useMutation } from "@tanstack/react-query";
 
-const formSchema = z.object({
-  username: z
-    .string()
-    .min(1, {
-      message: "Username can not be empty.",
-    })
-    .max(20, {
-      message: "Username must be at most 20 characters.",
-    }),
-  password: z
-    .string()
-    .min(1, {
-      message: "Password can not be empty.",
-    })
-    .max(20, {
-      message: "Password must be at most 20 characters.",
-    }),
-});
+const formSchema = z
+  .object({
+    username: z
+      .string()
+      .min(1, {
+        message: "Username can not be empty.",
+      })
+      .max(20, {
+        message: "Username must be at most 20 characters.",
+      }),
+    password: z
+      .string()
+      .min(1, {
+        message: "Password can not be empty.",
+      })
+      .max(20, {
+        message: "Password must be at most 20 characters.",
+      }),
+    passwordConfirm: z.string(),
+  })
+  .refine((data) => data.password === data.passwordConfirm, {
+    message: "Passwords don't match",
+    path: ["passwordConfirm"],
+  });
 
-export function ProfileForm() {
+export function SignupForm() {
   const navigate = useNavigate();
   const setUserState = useSetRecoilState(userInfoState);
 
   const { mutate: loginUser, isLoading } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
-      loginUserFn({ username: values.username, password: values.password }),
+      signupUserFn({
+        name: values.username,
+        role: "admin",
+        password: values.password,
+      }),
     onSuccess: (_, { username }) => {
       setUserState((old) => {
         return {
@@ -56,7 +66,7 @@ export function ProfileForm() {
       alert(username);
       navigate("/dashboard");
     },
-    onError: () => alert("login error"),
+    onError: () => alert("signup error"),
   });
 
   // 1. Define your form.
@@ -116,8 +126,26 @@ export function ProfileForm() {
             </FormItem>
           )}
         />
+        <FormField
+          control={form.control}
+          name="passwordConfirm"
+          render={({ field }) => (
+            <FormItem>
+              {/* <FormLabel>Password</FormLabel> */}
+              <FormControl>
+                <Input
+                  type="password"
+                  placeholder="再次输入密码"
+                  autoComplete="current-password"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <Button type="submit" className="w-full">
-          {isLoading ? "loading" : "登录"}
+          {isLoading ? "loading" : "注册"}
         </Button>
       </form>
     </Form>

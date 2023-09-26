@@ -1,4 +1,4 @@
-import type { FC } from "react";
+import { type FC } from "react";
 import {
   Card,
   CardContent,
@@ -6,8 +6,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { testFn } from "@/services/authApi";
+import { logger } from "@/utils/loglevel";
 
 export const Component: FC = () => {
+  const { data: testMessage, isLoading } = useQuery({
+    queryKey: ["test"],
+    retry: 1,
+    queryFn: testFn,
+    select: (data) => data.message,
+    onSuccess: (data) => {
+      logger.debug(data);
+    },
+    // onError: () => alert("failed to fetch"),
+  });
   return (
     <div className="space-y-4 px-6 py-6">
       <div className="grid h-48 grid-cols-5 space-x-4">
@@ -17,7 +30,7 @@ export const Component: FC = () => {
             <CardDescription>Card Description</CardDescription>
           </CardHeader>
           <CardContent>
-            <p>Cluster Node Status</p>
+            <p>{isLoading ? "isLoading" : testMessage}</p>
           </CardContent>
         </Card>
         <Card className="col-span-3">

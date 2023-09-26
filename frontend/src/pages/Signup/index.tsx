@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import { ProfileForm } from "./Form";
+import { SignupForm } from "./Form";
 
-export default function Login() {
+export default function Signup() {
   const navigate = useNavigate();
   return (
     <>
@@ -11,7 +11,7 @@ export default function Login() {
           <button
             className="relative z-20 flex items-center text-lg font-medium"
             onClick={() => {
-              navigate("/signup");
+              navigate("/login");
             }}
           >
             <svg
@@ -41,7 +41,7 @@ export default function Login() {
           <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
             <div className="flex flex-col space-y-2 text-center">
               <h1 className="text-2xl font-semibold tracking-tight">
-                用户登录
+                用户注册
               </h1>
               {/* <p className="text-sm text-muted-foreground">
                 admin: 123456 user: 000000
@@ -62,11 +62,8 @@ export default function Login() {
               >
                 登录
               </Button> */}
-              <ProfileForm />
+              <SignupForm />
             </div>
-            <p className="px-2 text-center text-sm text-muted-foreground">
-              测试用账号：admin 123456
-            </p>
           </div>
         </div>
       </div>
