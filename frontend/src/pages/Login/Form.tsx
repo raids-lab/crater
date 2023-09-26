@@ -16,6 +16,9 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
 import { userInfoState } from "@/utils/store";
+import { loginUserFn } from "@/services/authApi";
+import { logger } from "@/utils/loglevel";
+import { useMutation } from "@tanstack/react-query";
 
 const formSchema = z.object({
   username: z
@@ -33,6 +36,25 @@ export function ProfileForm() {
   const navigate = useNavigate();
   const setUserState = useSetRecoilState(userInfoState);
 
+  const { mutate: loginUser } = useMutation(
+    (values: z.infer<typeof formSchema>) =>
+      loginUserFn({ username: values.username, password: values.password }),
+    {
+      onSuccess: (_, { username }) => {
+        setUserState((old) => {
+          return {
+            ...old,
+            id: username,
+            role: "admin",
+          };
+        });
+        alert(username);
+        navigate("/dashboard");
+      },
+      onError: (e) => logger.debug("login ", e),
+    },
+  );
+
   // 1. Define your form.
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -46,12 +68,7 @@ export function ProfileForm() {
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
-    setUserState({
-      id: values.username,
-      token: "",
-      role: "admin",
-    });
-    navigate("/dashboard");
+    loginUser(values);
   };
 
   return (
