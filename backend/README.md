@@ -1,5 +1,11 @@
 # ai-task-controller
 
+## crd 创建
+
+```bash
+kubectl apply -f config/crd/bases/aisystem.github.com_aijobs.yaml 
+```
+
 ## 编译和运行
 
 ``` bash
