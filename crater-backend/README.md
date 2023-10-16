@@ -1,5 +1,21 @@
 # ai-task-controller
 
+## 编译和运行
+
+``` bash
+# 编译
+go build -mod=vendor -o bin/controller main.go
+# 运行
+./bin/controller --db-config-file ./dbconf.yaml
+```
+
+## 数据库
+
+* `deploy/mysql`： 在集群上部署mysql集群
+* `dbconf.yaml`： 数据库配置文件，可以通过 `kubectl port-forward service/mycluster mysql` 在本机上暴露3306端口
+
+## 
+
 This repository implements a simple controller for watching Foo resources as
 defined with a CustomResourceDefinition (CRD).
 
