@@ -23,7 +23,7 @@ func InitDB(configFile string) error {
 			return err
 		}
 	}
-	
+
 	user := viper.GetString("DB_USER")
 	password := viper.GetString("DB_PASSWORD")
 	dbName := viper.GetString("DB_NAME")
@@ -74,6 +74,6 @@ func InitMigration() error {
 }
 
 // todo: init db conf
-func init(){
+func init() {
 	viper.AddConfigPath("./conf")
 }
