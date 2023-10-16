@@ -15,7 +15,10 @@ var Orm *gorm.DB
 
 // todo: mysql configuration
 // InitDB init mysql connection
-func InitDB() error {
+func InitDB(configFile string) error {
+	if configFile != "" {
+		viper.SetConfigFile(configFile)
+	}
 	user := viper.GetString("DB_USER")
 	password := viper.GetString("DB_PASSWORD")
 	dbName := viper.GetString("DB_NAME")
