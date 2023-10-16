@@ -24,13 +24,13 @@ func (mgr *TaskMgr) RegisterRoute(r *gin.Engine) {
 }
 
 type TaskMgr struct {
-	taskService tasksvc.DBService
+	taskService    tasksvc.DBService
 	taskUpdateChan <-chan util.TaskUpdateChan
 }
 
 func NewTaskMgr(taskUpdateChan <-chan util.TaskUpdateChan) *TaskMgr {
 	return &TaskMgr{
-		taskService: tasksvc.NewDBService(),
+		taskService:    tasksvc.NewDBService(),
 		taskUpdateChan: taskUpdateChan,
 	}
 }
