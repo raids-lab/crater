@@ -1,0 +1,816 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: innodbclusters.mysql.oracle.com
+spec:
+  group: mysql.oracle.com
+  versions:
+    - name: v2
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: ["spec"]
+          properties:
+            metadata:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 40
+            spec:
+              type: object
+              required: ["secretName"]
+              properties:
+                secretName:
+                  type: string
+                  description: "Name of a generic type Secret containing root/default account password"
+                tlsCASecretName:
+                  type: string
+                  description: "Name of a generic type Secret containing CA (ca.pem) and optional CRL (crl.pem) for SSL"
+                tlsSecretName:
+                  type: string
+                  description: "Name of a TLS type Secret containing Server certificate and private key for SSL"
+                tlsUseSelfSigned:
+                  type: boolean
+                  default: false
+                  description: "Enables use of self-signed TLS certificates, reducing or disabling TLS based security verifications"
+                version:
+                  type: string
+                  pattern: '^\d+\.\d+\.\d+(-.+)?'
+                  description: "MySQL Server version"
+                edition:
+                  type: string
+                  pattern: "^(community|enterprise)$"
+                  description: "MySQL Server Edition (community or enterprise)"
+                imageRepository:
+                  type: string
+                  description: "Repository where images are pulled from; defaults to container-registry.oracle.com/mysql"
+                imagePullPolicy:
+                  type: string
+                  description: "Defaults to Always, but set to IfNotPresent in deploy-operator.yaml when deploying Operator"
+                imagePullSecrets:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                serviceAccountName:
+                  type: string
+                baseServerId:
+                  type: integer
+                  minimum: 0
+                  maximum: 4294967195
+                  default: 1000
+                  description: "Base value for MySQL server_id for instances in the cluster"
+                datadirVolumeClaimTemplate:
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
+                  description: "Template for a PersistentVolumeClaim, to be used as datadir"
+                mycnf:
+                  type: string
+                  description: "Custom configuration additions for my.cnf"
+                instances:
+                  type: integer
+                  minimum: 1
+                  maximum: 9
+                  default: 1
+                  description: "Number of MySQL replica instances for the cluster"
+                podSpec:
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
+                podAnnotations:
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
+                podLabels:
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
+                keyring:
+                  type: object
+                  description: "Keyring specification"
+                  properties:
+                    file:
+                      type: object
+                      description: "Keyring 'File' specification"
+                      required: ["fileName", "storage"]
+                      properties:
+                        fileName:
+                          type: string
+                          description: "Full path to the keyring file name inside the storage volume"
+                        readOnly:
+                          type: boolean
+                          default: false
+                          description: "Whether to open the keyring file in read-only mode"
+                        storage:
+                          type: object
+                          description : "Specification of the volume to be mounted where the keyring file resides"
+                          x-kubernetes-preserve-unknown-fields: true
+                    encryptedFile:
+                      type: object
+                      description: "Keyring 'Encrypted File' specification"
+                      required: ["fileName", "storage", "password"]
+                      properties:
+                        fileName:
+                          type: string
+                          description: "Full path to the keyring file name inside the storage volume"
+                        readOnly:
+                          type: boolean
+                          default: false
+                          description: "Whether to open the keyring file in read-only mode"
+                        password:
+                          type: string
+                          description: "Name of a secret that contains password for the keyring in the key 'keyring_password'"
+                        storage:
+                          type: object
+                          description : "Specification of the volume to be mounted where the keyring file resides"
+                          x-kubernetes-preserve-unknown-fields: true
+                    oci:
+                      type: object
+                      description: "Keyring 'OCI' specification"
+                      required: ["user", "keySecret", "keyFingerprint", "tenancy"]
+                      properties:
+                        user:
+                          type: string
+                          description: "User identifier in the form of ocid1.user.oc1..."
+                          pattern: '^ocid1\.user\.'
+                        keySecret:
+                          type: string
+                          description: "A secret that contains the private key under the field 'privatekey'"
+                        keyFingerprint:
+                          type: string
+                          description: "Private key fingerprint"
+                          pattern: '([0-9a-f]{2}:){15}[0-9a-f]{2}$'
+                        tenancy:
+                          type: string
+                          description: "Tenancy identifier in the form ocid1.tenancy.oc1..."
+                          pattern:  '^ocid1\.tenancy\.'
+                        compartment:
+                          type: string
+                          description: "Compartment identifier in the form ocid1.compartment.oc1..."
+                          pattern:  '^ocid1\.compartment\.'
+                        virtualVault:
+                          type: string
+                          description: "Vault identifier in the form ocid1.vault.oc1..."
+                          pattern:  '^ocid1\.vault\.'
+                        masterKey:
+                          type: string
+                          description: "Master key identified in the form ocid1.key.oc1..."
+                          pattern:  '^ocid1\.key\.'
+                        endpoints:
+                          type: object
+                          description: ""
+                          properties:
+                            encryption:
+                              type: string
+                              description: "Encryption endpoint URI like {identifier}-crypto.kms.{region}.oraclecloud.com"
+                            management:
+                              type: string
+                              description: "Management endpoint URI like {identifier}-management.kms.{region}.oraclecloud.com"
+                            vaults:
+                              type: string
+                              description: "Vaults endpoint URI like vaults.{region}.oci.oraclecloud.com"
+                            secrets:
+                              type: string
+                              description: "Secrets endpoint URI like secrets.vaults.{region}.oci.oraclecloud.com"
+                        caCertificate:
+                          type: string
+                          description: "Secret that contains ca.crt field with CA certificate bundle file that the keyring_oci plugin uses for Oracle Cloud Infrastructure certificate verification"
+                initDB:
+                  type: object
+                  properties:
+                    clone:
+                      type: object
+                      required: ["donorUrl", "secretKeyRef"]
+                      properties:
+                        donorUrl:
+                          type: string
+                          description: "URL of the cluster to clone from"
+                        rootUser:
+                          type: string
+                          default: "root"
+                          description: "User name used for cloning"
+                        secretKeyRef:
+                          type: object
+                          required: ["name"]
+                          properties:
+                            name:
+                              type: string
+                              description: "Secret name with key 'rootPassword' storing the password for the user specified in rootUser"
+                    dump:
+                      type: object
+                      required: ["storage"]
+                      properties:
+                        name:
+                          type: string
+                          description: "Name of the dump. Not used by the operator, but a descriptive hint for the cluster administrator"
+                        path:
+                          type: string
+                          description: "Path to the dump in the PVC. Use when specifying persistentVolumeClaim. Omit for ociObjectStorage, S3, or azure."
+                        options:
+                          type: object
+                          description: "A dictionary of key-value pairs passed directly to MySQL Shell's loadDump()"
+                          x-kubernetes-preserve-unknown-fields: true
+                        storage:
+                          type: object
+                          properties:
+                            ociObjectStorage:
+                              type: object
+                              required: ["bucketName", "prefix", "credentials"]
+                              properties:
+                                bucketName:
+                                  type: string
+                                  description: "Name of the OCI bucket where the dump is stored"
+                                prefix:
+                                  type: string
+                                  description: "Path in the bucket where the dump files are stored"
+                                credentials:
+                                  type: string
+                                  description: "Name of a Secret with data for accessing the bucket"
+                            s3:
+                              type: object
+                              required: ["bucketName", "prefix", "config"]
+                              properties:
+                                bucketName:
+                                  type: string
+                                  description: "Name of the S3 bucket where the dump is stored"
+                                prefix:
+                                  type: string
+                                  description: "Path in the bucket where the dump files are stored"
+                                config:
+                                  type: string
+                                  description: "Name of a Secret with S3 configuration and credentials"
+                                profile:
+                                  type: string
+                                  default: ""
+                                  description: "Profile being used in configuration files"
+                                endpoint:
+                                  type: string
+                                  description: "Override endpoint URL"
+                            azure:
+                              type: object
+                              required: ["containerName", "prefix", "config"]
+                              properties:
+                                containerName:
+                                  type: string
+                                  description: "Name of the Azure  BLOB Storage container where the dump is stored"
+                                prefix:
+                                  type: string
+                                  description: "Path in the container where the dump files are stored"
+                                config:
+                                  type: string
+                                  description: "Name of a Secret with Azure BLOB Storage configuration and credentials"
+                            persistentVolumeClaim:
+                              type: object
+                              description : "Specification of the PVC to be used. Used 'as is' in the cloning pod."
+                              x-kubernetes-preserve-unknown-fields: true
+                          x-kubernetes-preserve-unknown-fields: true
+                  x-kubernetes-preserve-unknown-fields: true
+                router:
+                  type: object
+                  description: "MySQL Router specification"
+                  properties:
+                    instances:
+                      type: integer
+                      minimum: 0
+                      default: 1
+                      description: "Number of MySQL Router instances to deploy"
+                    tlsSecretName:
+                      type: string
+                      description: "Name of a TLS type Secret containing MySQL Router certificate and private key used for SSL"
+                    version:
+                      type: string
+                      pattern: '^\d+\.\d+\.\d+(-.+)?'
+                      description: "Override MySQL Router version"
+                    podSpec:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    podAnnotations:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    podLabels:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+
+                metrics:
+                  type: object
+                  description: "Configuration of a Prometheus-style metrics provider"
+                  required: ["enable", "image"]
+                  properties:
+                    enable:
+                      type: boolean
+                      default: false
+                      description: "Toggle to enable or disable the metrics sidecar"
+                    image:
+                      type: string
+                      description: "Name of an image to be used for the metrics sidecar, if provided metrics will be enabled"
+                    options:
+                      type: array
+                      description: "Options passed to the metrics provider as command line arguments"
+                      items:
+                        type: string
+                    webConfig:
+                      type: string
+                      description: "Name of a ConfigMap with a web.config file, if this option is provided a command line option --web.config.file is added"
+                    tlsSecret:
+                      type: string
+                      description: "Name of a Secret with TLS certificate, key and CA, which will be mounted at /tls into the container an can be used from webConfig"
+                    monitor:
+                      type: boolean
+                      description: "Create a ServiceMonitor for Prometheus Operator"
+                      default: false
+                    monitorSpec:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                      description: "Custom configuration for the ServiceMonitor object"
+                      default: {}
+
+                    # These are only supported for development purpose:
+                    #dbUser:
+                    #  type: object
+                    #  description: "MySQL user accoutn to be used for collecting metrics"
+                    #  properties:
+                    #    name:
+                    #      type: string
+                    #      description: "The account name, host part will always be localhost"
+                    #      default: mysqlmetrics
+                    #    grants:
+                    #      type: array
+                    #      description: "GRANTs given to the account"
+                    #      default: [ 'PROCESS', 'REPLICATION CLIENT', 'SELECT' ]
+                    #      items:
+                    #        type: string
+                    #    maxConnections:
+                    #      type: integer
+                    #      default: 3
+                    #      description: "Maximum number of connections"
+
+                backupProfiles:
+                  type: array
+                  description: "Backup profile specifications for the cluster, which can be referenced from backup schedules and one-off backup jobs"
+                  items:
+                    type: object
+                    required: ["name"]
+                    properties:
+                      name:
+                        type: string
+                        description: "Embedded backup profile, referenced as backupProfileName elsewhere"
+                      podAnnotations:
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                      podLabels:
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                      dumpInstance:
+                        type: object
+                        properties:
+                          dumpOptions:
+                            type: object
+                            description: "A dictionary of key-value pairs passed directly to MySQL Shell's DumpInstance()"
+                            x-kubernetes-preserve-unknown-fields: true
+                          storage:
+                            type: object
+                            properties:
+                              ociObjectStorage:
+                                type: object
+                                required: ["bucketName", "credentials"]
+                                properties:
+                                  bucketName:
+                                    type: string
+                                    description: "Name of the OCI bucket where backup is stored"
+                                  prefix:
+                                    type: string
+                                    description: "Path in bucket where backup is stored"
+                                  credentials:
+                                    type: string
+                                    description: "Name of a Secret with data for accessing the bucket"
+                              s3:
+                                type: object
+                                required: ["bucketName", "config"]
+                                properties:
+                                  bucketName:
+                                    type: string
+                                    description: "Name of the S3 bucket where the dump is stored"
+                                  prefix:
+                                    type: string
+                                    description: "Path in the bucket where the dump files are stored"
+                                  config:
+                                    type: string
+                                    description: "Name of a Secret with S3 configuration and credentials"
+                                  profile:
+                                    type: string
+                                    default: ""
+                                    description: "Profile being used in configuration files"
+                                  endpoint:
+                                    type: string
+                                    description: "Override endpoint URL"
+                              azure:
+                                type: object
+                                required: ["containerName", "config"]
+                                properties:
+                                  containerName:
+                                    type: string
+                                    description: "Name of the Azure  BLOB Storage container where the dump is stored"
+                                  prefix:
+                                    type: string
+                                    description: "Path in the container where the dump files are stored"
+                                  config:
+                                    type: string
+                                    description: "Name of a Secret with Azure BLOB Storage configuration and credentials"
+                              persistentVolumeClaim:
+                                type: object
+                                description : "Specification of the PVC to be used. Used 'as is' in pod executing the backup."
+                                x-kubernetes-preserve-unknown-fields: true
+                            x-kubernetes-preserve-unknown-fields: true
+                      snapshot:
+                        type: object
+                        properties:
+                          storage:
+                            type: object
+                            properties:
+                              ociObjectStorage:
+                                type: object
+                                required: ["bucketName", "credentials"]
+                                properties:
+                                  bucketName:
+                                    type: string
+                                    description: "Bucket name where backup is stored"
+                                  prefix:
+                                    type: string
+                                    description: "Path in bucket where backup is stored"
+                                  credentials:
+                                    type: string
+                                    description: "Name of a Secret with data for accessing the bucket"
+                              s3:
+                                type: object
+                                required: ["bucketName", "config"]
+                                properties:
+                                  bucketName:
+                                    type: string
+                                    description: "Name of the S3 bucket where the dump is stored"
+                                  prefix:
+                                    type: string
+                                    description: "Path in the bucket where the dump files are stored"
+                                  config:
+                                    type: string
+                                    description: "Name of a Secret with S3 configuration and credentials"
+                                  profile:
+                                    type: string
+                                    default: ""
+                                    description: "Profile being used in configuration files"
+                                  endpoint:
+                                    type: string
+                                    description: "Override endpoint URL"
+                              azure:
+                                type: object
+                                required: ["containerName", "config"]
+                                properties:
+                                  containerName:
+                                    type: string
+                                    description: "Name of the Azure  BLOB Storage container where the dump is stored"
+                                  prefix:
+                                    type: string
+                                    description: "Path in the container where the dump files are stored"
+                                  config:
+                                    type: string
+                                    description: "Name of a Secret with Azure BLOB Storage configuration and credentials"
+                              persistentVolumeClaim:
+                                type: object
+                                description : "Specification of the PVC to be used. Used 'as is' in pod executing the backup."
+                                x-kubernetes-preserve-unknown-fields: true
+                            x-kubernetes-preserve-unknown-fields: true
+                    x-kubernetes-preserve-unknown-fields: true
+                backupSchedules:
+                  type: array
+                  description: "Schedules for periodically executed backups"
+                  items:
+                    type: object
+                    required: ["name", "schedule"]
+                    x-kubernetes-preserve-unknown-fields: true
+                    properties:
+                      name:
+                        type: string
+                        description: "Name of the backup schedule"
+                      schedule:
+                        type: string
+                        description: "The schedule of the job, syntax as a cron expression"
+                      backupProfileName:
+                        type: string
+                        description: "Name of the backupProfile to be used"
+                      backupProfile:
+                        type: object
+                        description: "backupProfile specification if backupProfileName is not specified"
+                        x-kubernetes-preserve-unknown-fields: true
+                        properties:
+                          podAnnotations:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                          podLabels:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                          dumpInstance:
+                            type: object
+                            properties:
+                              dumpOptions:
+                                type: object
+                                description: "A dictionary of key-value pairs passed directly to MySQL Shell's DumpInstance()"
+                                x-kubernetes-preserve-unknown-fields: true
+                              storage:
+                                type: object
+                                properties:
+                                  ociObjectStorage:
+                                    type: object
+                                    required: ["bucketName", "credentials"]
+                                    properties:
+                                      bucketName:
+                                        type: string
+                                        description: "Name of the OCI Bucket where backup is stored"
+                                      prefix:
+                                        type: string
+                                        description: "Path in bucket where backup is stored"
+                                      credentials:
+                                        type: string
+                                        description: "Name of a Secret with data for accessing the bucket"
+                                  s3:
+                                    type: object
+                                    required: ["bucketName", "config"]
+                                    properties:
+                                      bucketName:
+                                        type: string
+                                        description: "Name of the S3 bucket where the dump is stored"
+                                      prefix:
+                                        type: string
+                                        description: "Path in the bucket where the dump files are stored"
+                                      config:
+                                        type: string
+                                        description: "Name of a Secret with S3 configuration and credentials"
+                                      profile:
+                                        type: string
+                                        default: ""
+                                        description: "Profile being used in configuration files"
+                                      endpoint:
+                                        type: string
+                                        description: "Override endpoint URL"
+                                  azure:
+                                    type: object
+                                    required: ["containerName", "config"]
+                                    properties:
+                                      containerName:
+                                        type: string
+                                        description: "Name of the Azure  BLOB Storage container where the dump is stored"
+                                      prefix:
+                                        type: string
+                                        description: "Path in the container where the dump files are stored"
+                                      config:
+                                        type: string
+                                        description: "Name of a Secret with Azure BLOB Storage configuration and credentials"
+                                  persistentVolumeClaim:
+                                    type: object
+                                    description : "Specification of the PVC to be used. Used 'as is' in pod executing the backup."
+                                    x-kubernetes-preserve-unknown-fields: true
+                                x-kubernetes-preserve-unknown-fields: true
+                      deleteBackupData:
+                        type: boolean
+                        default: false
+                        description: "Whether to delete the backup data in case the MySQLBackup object created by the job is deleted"
+                      enabled:
+                        type: boolean
+                        default: true
+                        description: "Whether the schedule is enabled or not"
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Status
+          type: string
+          description: Status of the InnoDB Cluster
+          jsonPath: .status.cluster.status
+        - name: Online
+          type: integer
+          description: Number of ONLINE InnoDB Cluster instances
+          jsonPath: .status.cluster.onlineInstances
+        - name: Instances
+          type: integer
+          description: Number of InnoDB Cluster instances configured
+          jsonPath: .spec.instances
+        - name: Routers
+          type: integer
+          description: Number of Router instances configured for the InnoDB Cluster
+          jsonPath: .spec.router.instances
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+  scope: Namespaced
+  names:
+    kind: InnoDBCluster
+    listKind: InnoDBClusterList
+    singular: innodbcluster
+    plural: innodbclusters
+    shortNames:
+      - ic
+      - ics
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: mysqlbackups.mysql.oracle.com
+spec:
+  group: mysql.oracle.com
+  scope: Namespaced
+  names:
+    kind: MySQLBackup
+    listKind: MySQLBackupList
+    singular: mysqlbackup
+    plural: mysqlbackups
+    shortNames:
+      - mbk
+  versions:
+    - name: v2
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: ["clusterName"]
+              properties:
+                clusterName:
+                  type: string
+                backupProfileName:
+                  type: string
+                backupProfile:
+                  type: object
+                  description: "backupProfile specification if backupProfileName is not specified"
+                  x-kubernetes-preserve-unknown-fields: true
+                  properties:
+                    podAnnotations:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    podLabels:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    dumpInstance:
+                      type: object
+                      properties:
+                        dumpOptions:
+                          type: object
+                          description: "A dictionary of key-value pairs passed directly to MySQL Shell's DumpInstance()"
+                          x-kubernetes-preserve-unknown-fields: true
+                        storage:
+                          type: object
+                          properties:
+                            ociObjectStorage:
+                              type: object
+                              required: ["bucketName", "credentials"]
+                              properties:
+                                bucketName:
+                                  type: string
+                                  description: "Name of the OCI bucket where backup is stored"
+                                prefix:
+                                  type: string
+                                  description: "Path in bucket where backup is stored"
+                                credentials:
+                                  type: string
+                                  description: "Name of a Secret with data for accessing the bucket"
+                            s3:
+                              type: object
+                              required: ["bucketName", "config"]
+                              properties:
+                                bucketName:
+                                  type: string
+                                  description: "Name of the S3 bucket where the dump is stored"
+                                prefix:
+                                  type: string
+                                  description: "Path in the bucket where the dump files are stored"
+                                config:
+                                  type: string
+                                  description: "Name of a Secret with S3 configuration and credentials"
+                                profile:
+                                  type: string
+                                  default: ""
+                                  description: "Profile being used in configuration files"
+                                endpoint:
+                                  type: string
+                                  description: "Override endpoint URL"
+                            azure:
+                              type: object
+                              required: ["containerName", "config"]
+                              properties:
+                                containerName:
+                                  type: string
+                                  description: "Name of the Azure  BLOB Storage container where the dump is stored"
+                                prefix:
+                                  type: string
+                                  description: "Path in the container where the dump files are stored"
+                                config:
+                                  type: string
+                                  description: "Name of a Secret with Azure BLOB Storage configuration and credentials"
+                            persistentVolumeClaim:
+                              type: object
+                              description : "Specification of the PVC to be used. Used 'as is' in pod executing the backup."
+                              x-kubernetes-preserve-unknown-fields: true
+                          x-kubernetes-preserve-unknown-fields: true
+                addTimestampToBackupDirectory:
+                  type: boolean
+                  default: true
+                deleteBackupData:
+                  type: boolean
+                  default: false
+            status:
+              type: object
+              properties:
+                status:
+                  type: string
+                startTime:
+                  type: string
+                completionTime:
+                  type: string
+                elapsedTime:
+                  type: string
+                output:
+                  type: string
+                method:
+                  type: string
+                source:
+                  type: string
+                bucket:
+                  type: string
+                ociTenancy:
+                  type: string
+                container:
+                  type: string
+                spaceAvailable:
+                  type: string
+                size:
+                  type: string
+                message:
+                  type: string
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Cluster
+          type: string
+          description: Name of the target cluster
+          jsonPath: .spec.clusterName
+        - name: Status
+          type: string
+          description: Status of the Backup
+          jsonPath: .status.status
+        - name: Output
+          type: string
+          description: Name of the produced file/directory
+          jsonPath: .status.output
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: clusterkopfpeerings.zalando.org
+spec:
+  scope: Cluster
+  group: zalando.org
+  names:
+    kind: ClusterKopfPeering
+    plural: clusterkopfpeerings
+    singular: clusterkopfpeering
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: kopfpeerings.zalando.org
+spec:
+  scope: Namespaced
+  group: zalando.org
+  names:
+    kind: KopfPeering
+    plural: kopfpeerings
+    singular: kopfpeering
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
