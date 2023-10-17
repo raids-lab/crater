@@ -16,8 +16,8 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
 import { userInfoState } from "@/utils/store";
-import { signupUserFn } from "@/services/authApi";
 import { useMutation } from "@tanstack/react-query";
+import useAuth from "@/services/useAuth";
 
 const formSchema = z
   .object({
@@ -47,6 +47,7 @@ const formSchema = z
 export function SignupForm() {
   const navigate = useNavigate();
   const setUserState = useSetRecoilState(userInfoState);
+  const { signupUserFn } = useAuth();
 
   const { mutate: loginUser, isLoading } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
