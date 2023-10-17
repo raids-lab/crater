@@ -16,8 +16,8 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
 import { userInfoState } from "@/utils/store";
-import { loginUserFn } from "@/services/authApi";
 import { useMutation } from "@tanstack/react-query";
+import useAuth from "@/services/useAuth";
 
 const formSchema = z.object({
   username: z
@@ -41,6 +41,7 @@ const formSchema = z.object({
 export function ProfileForm() {
   const navigate = useNavigate();
   const setUserState = useSetRecoilState(userInfoState);
+  const { loginUserFn } = useAuth();
 
   const { mutate: loginUser, isLoading } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>

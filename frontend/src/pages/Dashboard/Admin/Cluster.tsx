@@ -7,17 +7,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { testFn } from "@/services/authApi";
 import { logger } from "@/utils/loglevel";
+import useAxios from "@/services/useAxios";
 
 export const Component: FC = () => {
+  const { instance } = useAxios();
+
   const { data: testMessage, isLoading } = useQuery({
     queryKey: ["test"],
     retry: 1,
-    queryFn: testFn,
-    select: (data) => data.message,
+    queryFn: () => instance.get<string>("huojian"),
+    select: (res) => res.data,
     onSuccess: (data) => {
-      logger.debug(data);
+      logger.debug("Data is: ", data);
     },
     // onError: () => alert("failed to fetch"),
   });
