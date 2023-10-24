@@ -19,9 +19,9 @@ Check the version of Node and Pnpm:
 
 ```bash
 node -v
-# v18.17.1
+# v20.8.1
 pnpm -v
-# 8.7.1
+# 8.9.2
 ```
 
 Now you can clone this project, and deploy it:
