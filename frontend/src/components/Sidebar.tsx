@@ -6,27 +6,46 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { uiAccordionState, userInfoState } from "@/utils/store";
-import { useRecoilState } from "recoil";
+import { uiAccordionState, uiActivedState, userInfoState } from "@/utils/store";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { useEffect } from "react";
-import { logger } from "@/utils/loglevel";
+// import { logger } from "@/utils/loglevel";
+import clsx from "clsx";
+import { useNavigate } from "react-router-dom";
 
-export const playlists = ["训练任务列表", "新建训练任务", "任务监控"];
+export type SidebarSubItem = {
+  title: string;
+  path: string;
+  icon?: React.ReactNode;
+};
 
-type Playlist = (typeof playlists)[number];
+export type SidebarItem = {
+  title: string;
+  path: string;
+  icon?: React.ReactNode;
+  children: SidebarSubItem[];
+};
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
-  playlists: Playlist[];
+  sidebarItems: SidebarItem[];
 }
 
-export function Sidebar({ className, playlists }: SidebarProps) {
+export function Sidebar({ className, sidebarItems }: SidebarProps) {
   const [accordion, setAccordion] = useRecoilState(uiAccordionState);
-  const [userInfo, setUserInfo] = useRecoilState(userInfoState);
+  const actived = useRecoilValue(uiActivedState);
+  const setUserInfo = useSetRecoilState(userInfoState);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    logger.debug("indexes: ", accordion);
-    logger.debug("user token: ", userInfo.token);
-  }, [accordion, userInfo]);
+    setAccordion((old) => {
+      // if sidebarItem.path not in old, add it
+      if (!old.includes(actived.item)) {
+        return [...old, actived.item];
+      }
+      return old;
+    });
+  }, [actived, setAccordion]);
+
   return (
     <div className={cn("h-full border-r", className)}>
       <div
@@ -38,50 +57,55 @@ export function Sidebar({ className, playlists }: SidebarProps) {
           type="multiple"
           // collapsible
           className="w-full py-2"
-          defaultValue={["item-2"]}
+          defaultValue={[]}
           value={accordion}
           onValueChange={setAccordion}
         >
-          {["集群资源查看", "训练任务管理", "资源配额", "Jupyter 管理"].map(
-            (name, i) => (
-              <AccordionItem value={`item-${i + 1}`} key={`sidebar-item-${i}`}>
-                <AccordionTrigger>
-                  <div
-                    key={`$button-${i}`}
-                    className="flex flex-row items-center justify-start"
+          {sidebarItems.map((item, i) => (
+            <AccordionItem value={item.path} key={item.path}>
+              <AccordionTrigger>
+                <div
+                  key={`$button-${i}`}
+                  className="flex flex-row items-center justify-start"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="mr-2 h-4 w-4"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="mr-2 h-4 w-4"
-                    >
-                      <rect width="7" height="7" x="3" y="3" rx="1" />
-                      <rect width="7" height="7" x="14" y="3" rx="1" />
-                      <rect width="7" height="7" x="14" y="14" rx="1" />
-                      <rect width="7" height="7" x="3" y="14" rx="1" />
-                    </svg>
-                    {name}
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  {playlists?.map((playlist, ii) => (
-                    <Button
-                      key={`${name}-${ii}`}
-                      variant="ghost"
-                      className="w-full justify-start pl-10"
-                    >
-                      {playlist}
-                    </Button>
-                  ))}
-                </AccordionContent>
-              </AccordionItem>
-            ),
-          )}
+                    <rect width="7" height="7" x="3" y="3" rx="1" />
+                    <rect width="7" height="7" x="14" y="3" rx="1" />
+                    <rect width="7" height="7" x="14" y="14" rx="1" />
+                    <rect width="7" height="7" x="3" y="14" rx="1" />
+                  </svg>
+                  {item.title}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                {item.children?.map((subItem) => (
+                  <Button
+                    key={`${item.path}-${subItem.path}`}
+                    variant="ghost"
+                    className={clsx("w-full justify-start pl-10", {
+                      "text-sky-600":
+                        item.path === actived.item &&
+                        subItem.path === actived.subItem,
+                    })}
+                    onClick={() => {
+                      navigate(`/dashboard/${item.path}`);
+                    }}
+                  >
+                    {subItem.title}
+                  </Button>
+                ))}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
         </Accordion>
         <Button
           variant="outline"

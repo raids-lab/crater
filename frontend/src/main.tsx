@@ -31,7 +31,7 @@ const router = createBrowserRouter([
     element: <Signup />,
   },
   {
-    path: "/",
+    path: "/dashboard",
     element: (
       <Suspense fallback={<h2>Loading...</h2>}>
         <AuthedRouter>
@@ -45,14 +45,18 @@ const router = createBrowserRouter([
         lazy: () => import("./pages/Dashboard/Admin/Cluster"),
       },
       {
-        path: "dashboard",
+        path: "cluster",
         lazy: () => import("./pages/Dashboard/Admin/Cluster"),
+      },
+      {
+        path: "training",
+        lazy: () => import("./pages/Dashboard/Admin/Training"),
       },
     ],
   },
   {
     path: "*",
-    element: <Navigate to="/" replace />,
+    element: <Navigate to="/dashboard" replace />,
   },
 ]);
 
