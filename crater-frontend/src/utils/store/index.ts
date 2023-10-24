@@ -15,13 +15,16 @@ const USER_INFO_KEY = "user_info";
  */
 export const uiAccordionState = atom({
   key: UI_ACCORDION_KEY,
-  default: ["item-2"],
+  default: [] as string[],
 });
 
-export const uiIndexState = atom({
+export const uiActivedState = atom({
   key: UI_INDEX_KEY,
-  default: 0,
-  effects: [localStorageEffect(UI_INDEX_KEY)],
+  default: {
+    item: "training",
+    subItem: "list",
+  },
+  // effects: [localStorageEffect(UI_INDEX_KEY)],
 });
 
 /**
