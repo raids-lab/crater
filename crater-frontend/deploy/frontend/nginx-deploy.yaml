@@ -1,0 +1,45 @@
+apiVersion: apps/v1                             # apiserver的版本
+kind: Deployment                                # 副本控制器deployment，管理pod和RS
+metadata:
+  name: mysql                                   # deployment的名称，全局唯一
+  namespace: default                            # deployment所在的命名空间
+  labels:
+    app: mysql
+spec:
+  replicas: 1                                   # Pod副本期待数量
+  selector:
+    matchLabels:                                # 定义RS的标签
+      app: mysql                                # 符合目标的Pod拥有此标签
+  strategy:                                     # 定义升级的策略
+    type: RollingUpdate                         # 滚动升级，逐步替换的策略
+  template:                                     # 根据此模板创建Pod的副本（实例）
+    metadata:
+      labels:
+        app: mysql                              # Pod副本的标签，对应RS的Selector
+    spec:
+      nodeName: lpx-2                           # 指定pod运行在的node
+      containers:                               # Pod里容器的定义部分
+        - name: mysql                           # 容器的名称
+          image: mysql:8.0                      # 容器对应的docker镜像
+          volumeMounts:                         # 容器内挂载点的定义部分
+            - name: time-zone                   # 容器内挂载点名称
+              mountPath: /etc/localtime         # 容器内挂载点路径，可以是文件或目录
+            - name: mysql-data
+              mountPath: /var/lib/mysql         # 容器内mysql的数据目录
+            - name: mysql-logs
+              mountPath: /var/log/mysql         # 容器内mysql的日志目录
+          ports:
+            - containerPort: 3306               # 容器暴露的端口号
+          env:                                  # 写入到容器内的环境容量
+            - name: MYSQL_ROOT_PASSWORD         # 定义了一个mysql的root密码的变量
+              value: "root"
+      volumes:                                  # 本地需要挂载到容器里的数据卷定义部分
+        - name: time-zone                       # 数据卷名称，需要与容器内挂载点名称一致
+          hostPath:
+            path: /etc/localtime                # 挂载到容器里的路径，将localtime文件挂载到容器里，可让容器使用本地的时区
+        - name: mysql-data
+          hostPath:
+            path: /root/lyl/mysql/data              # 本地存放mysql数据的目录
+        - name: mysql-logs
+          hostPath:
+            path: /root/lyl/mysql/logs              # 本地存入mysql日志的目录
