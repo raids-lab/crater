@@ -92,7 +92,7 @@ export function Sidebar({ className, sidebarItems }: SidebarProps) {
                   <Button
                     key={`${item.path}-${subItem.path}`}
                     variant="colorable"
-                    className={clsx("w-full justify-start pl-10", {
+                    className={clsx("w-full justify-start pl-10 font-normal", {
                       "font-semibold text-primary":
                         item.path === actived.item &&
                         subItem.path === actived.subItem,
@@ -108,22 +108,26 @@ export function Sidebar({ className, sidebarItems }: SidebarProps) {
             </AccordionItem>
           ))}
         </Accordion>
-        <Button
-          variant="sideline"
-          onClick={() => {
-            setUserInfo((old) => {
-              return {
-                ...old,
-                role: "viewer",
-              };
-            });
-            toast({
-              title: "已退出",
-            });
-          }}
-        >
-          退出登录
-        </Button>
+        <div className="flex w-full flex-col items-center">
+          <Button
+            className="w-full"
+            variant="sideline"
+            onClick={() => {
+              setUserInfo((old) => {
+                return {
+                  ...old,
+                  role: "viewer",
+                };
+              });
+              toast({
+                title: "已退出",
+              });
+            }}
+          >
+            退出登录
+          </Button>
+          {/* <p>v0.0.1</p> */}
+        </div>
       </div>
     </div>
   );

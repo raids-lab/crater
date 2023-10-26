@@ -30,10 +30,8 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
-  SheetClose,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -49,6 +47,7 @@ import {
 import { useIndex } from "../../hooks/useIndex";
 import { NewTaskForm } from "./Form";
 import { useState } from "react";
+import { Separator } from "@/components/ui/separator";
 
 type TaskInfo = {
   id: string;
@@ -71,6 +70,36 @@ const getTaskInfoTitle = (key: string) => {
 };
 
 const data: TaskInfo[] = [
+  {
+    id: "m5gr84i9",
+    startTime: 1698306744000,
+    status: "success",
+    name: "手写数字识别",
+  },
+  {
+    id: "3u1reuv4",
+    startTime: 1698406744000,
+    status: "success",
+    name: "人格测试分类",
+  },
+  {
+    id: "derv1ws0",
+    startTime: 1698406244000,
+    status: "processing",
+    name: "葡萄酒分类",
+  },
+  {
+    id: "5kma53ae",
+    startTime: 1698406747000,
+    status: "success",
+    name: "农作物推荐",
+  },
+  {
+    id: "bhqecj4p",
+    startTime: 1698406744000,
+    status: "failed",
+    name: "金融风控申请评分",
+  },
   {
     id: "m5gr84i9",
     startTime: 1698306744000,
@@ -174,7 +203,7 @@ export const columns: ColumnDef<TaskInfo>[] = [
       const date = new Date(amount);
       const formatted = date.toLocaleString();
 
-      return <div className="font-medium">{formatted}</div>;
+      return <div>{formatted}</div>;
     },
   },
   {
@@ -249,11 +278,12 @@ export function Component() {
           <SheetTrigger asChild>
             <Button className="min-w-fit">新建任务</Button>
           </SheetTrigger>
-          <SheetContent>
+          <SheetContent className="sm:max-w-2xl">
             <SheetHeader>
               <SheetTitle>新建任务</SheetTitle>
-              <SheetDescription>创建一个新的离线 AI 训练任务</SheetDescription>
+              <SheetDescription>创建一个新的 AI 训练任务</SheetDescription>
             </SheetHeader>
+            <Separator className="mt-4" />
             <NewTaskForm closeSheet={() => setOpenSheet(false)} />
           </SheetContent>
         </Sheet>
