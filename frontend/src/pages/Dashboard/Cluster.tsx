@@ -9,7 +9,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { logger } from "@/utils/loglevel";
 import useAxios from "@/services/useAxios";
-import { useIndex } from "../hooks/useIndex";
+import { useIndex } from "./hooks/useIndex";
 
 export const Component: FC = () => {
   useIndex("cluster", "pvc");

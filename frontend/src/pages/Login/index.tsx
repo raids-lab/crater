@@ -38,30 +38,11 @@ export default function Login() {
           </div>
         </div>
         <div className="lg:p-8">
-          <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
+          <div className="mx-auto flex w-full flex-col items-stretch space-y-6 sm:w-[350px]">
             <div className="flex flex-col space-y-2 text-center">
               <h1 className="text-2xl font-semibold tracking-tight">
                 用户登录
               </h1>
-              {/* <p className="text-sm text-muted-foreground">
-                admin: 123456 user: 000000
-              </p> */}
-              {/* <Input type="text" placeholder="用户名" id="user" />
-              <Input type="password" placeholder="密码" id="pass" />
-              <Button
-                className="bg-sky-700 hover:bg-sky-800"
-                onClick={() => {
-                  setUserState((old) => {
-                    return {
-                      ...old,
-                      role: "admin",
-                    };
-                  });
-                  navigate("/dashboard");
-                }}
-              >
-                登录
-              </Button> */}
               <ProfileForm />
             </div>
             <p className="px-2 text-center text-sm text-muted-foreground">
