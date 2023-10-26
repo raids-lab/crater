@@ -9,7 +9,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -19,6 +18,7 @@ import { useSetRecoilState } from "recoil";
 import { userInfoState } from "@/utils/store";
 import { useMutation } from "@tanstack/react-query";
 import useAuth from "@/services/useAuth";
+import { useToast } from "@/components/ui/use-toast";
 
 const formSchema = z.object({
   username: z
@@ -43,6 +43,7 @@ export function ProfileForm() {
   const navigate = useNavigate();
   const setUserState = useSetRecoilState(userInfoState);
   const { loginUserFn } = useAuth();
+  const { toast } = useToast();
 
   const { mutate: loginUser, isLoading } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
@@ -55,7 +56,10 @@ export function ProfileForm() {
           role: "user",
         };
       });
-      alert(username);
+      toast({
+        title: `登陆成功`,
+        description: `你好，用户 ${username}`,
+      });
       navigate("/dashboard");
     },
     onError: () => alert("login error"),

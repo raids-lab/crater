@@ -96,7 +96,7 @@ export function Sidebar({ className, sidebarItems }: SidebarProps) {
                         subItem.path === actived.subItem,
                     })}
                     onClick={() => {
-                      navigate(`/dashboard/${item.path}`);
+                      navigate(`/dashboard/${item.path}/${subItem.path}`);
                     }}
                   >
                     {subItem.title}

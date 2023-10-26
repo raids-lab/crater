@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import Signup from "./pages/Signup";
 import { dashboardRoute } from "./pages/Dashboard";
+import { Toaster } from "@/components/ui/toaster";
 
 const router = createBrowserRouter([
   {
@@ -36,6 +37,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <RecoilRoot>
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
+        <Toaster />
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>
     </RecoilRoot>
