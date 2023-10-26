@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ProfileForm } from "./Form";
 
 export default function Login() {
@@ -66,6 +66,9 @@ export default function Login() {
             </div>
             <p className="px-2 text-center text-sm text-muted-foreground">
               测试用账号：admin 123456
+              <span className="ml-2 underline">
+                <Link to="/signup">注册</Link>
+              </span>
             </p>
           </div>
         </div>

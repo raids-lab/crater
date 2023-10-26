@@ -98,7 +98,7 @@ const invoices = [
 ];
 
 export const Component: FC = () => {
-  useIndex("training", "list");
+  useIndex("task", "list");
 
   return (
     <div className="space-y-4 px-6 py-6">
