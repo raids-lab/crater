@@ -12,7 +12,7 @@ const Layout = () => {
   return (
     <div className="grid overflow-hidden lg:grid-cols-6">
       <Sidebar sidebarItems={items} className="hidden lg:block" />
-      <div className="col-span-4 h-screen overflow-auto lg:col-span-5">
+      <div className="col-span-4 h-screen overflow-auto px-6 py-6 lg:col-span-5">
         <Outlet />
       </div>
     </div>
@@ -31,19 +31,22 @@ export const dashboardRoute: RouteObject = {
   children: [
     {
       index: true,
-      lazy: () => import("./Training"),
+      lazy: () => import("./Training/List"),
+    },
+    {
+      path: "training",
+      children: [{ path: "list", lazy: () => import("./Training/List") }],
+    },
+    {
+      path: "dl_training",
+      children: [
+        { path: "list", lazy: () => import("./DlTraining/List") },
+        { path: "scheduler", lazy: () => import("./DlTraining/Scheduler") },
+      ],
     },
     {
       path: "cluster",
-      lazy: () => import("./Cluster"),
-    },
-    {
-      path: "task",
-      lazy: () => import("./Training"),
-    },
-    {
-      path: "ai_task",
-      lazy: () => import("./Training"),
+      children: [{ path: "pvc", lazy: () => import("./Cluster/Pvc") }],
     },
   ],
 };
@@ -51,15 +54,15 @@ export const dashboardRoute: RouteObject = {
 const items: SidebarItem[] = [
   {
     title: "AI 训练任务",
-    path: "task",
+    path: "training",
     children: [{ title: "任务列表", path: "list" }],
   },
   {
     title: "深度推荐训练任务",
-    path: "deeplearing",
+    path: "dl_training",
     children: [
       { title: "任务列表", path: "list" },
-      { title: "调度结果", path: "schedule" },
+      { title: "调度结果", path: "scheduler" },
     ],
   },
   {
@@ -68,22 +71,9 @@ const items: SidebarItem[] = [
     children: [{ title: "PVC", path: "pvc" }],
   },
   {
-    title: "资源配额",
-    path: "resource",
-    children: [
-      { title: "训练任务列表", path: "list" },
-      { title: "新建训练任务", path: "new" },
-      { title: "任务监控", path: "monitor" },
-    ],
-  },
-  {
     title: "Jupyter 管理",
     path: "jupyter",
-    children: [
-      { title: "训练任务列表", path: "list" },
-      { title: "新建训练任务", path: "new" },
-      { title: "任务监控", path: "monitor" },
-    ],
+    children: [],
   },
   {
     title: "数据集管理",
