@@ -68,7 +68,7 @@ const items: SidebarItem[] = [
   {
     title: "集群资源查看",
     path: "cluster",
-    children: [{ title: "PVC", path: "pvc" }],
+    children: [{ title: "Persistent Volume", path: "pvc" }],
   },
   {
     title: "Jupyter 管理",

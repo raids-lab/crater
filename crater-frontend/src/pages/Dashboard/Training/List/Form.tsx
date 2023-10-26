@@ -1,3 +1,5 @@
+// https://github.com/shadcn-ui/ui/issues/709
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -11,12 +13,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
-import { useSetRecoilState } from "recoil";
-import { userInfoState } from "@/utils/store";
-import { useMutation } from "@tanstack/react-query";
-import useAuth from "@/services/useAuth";
-import { useToast } from "@/components/ui/use-toast";
 
 const formSchema = z.object({
   username: z
@@ -37,31 +33,29 @@ const formSchema = z.object({
     }),
 });
 
-export function ProfileForm() {
-  const navigate = useNavigate();
-  const setUserState = useSetRecoilState(userInfoState);
-  const { loginUserFn } = useAuth();
-  const { toast } = useToast();
+interface TaskFormProps extends React.HTMLAttributes<HTMLDivElement> {
+  closeSheet: () => void;
+}
 
-  const { mutate: loginUser, isLoading } = useMutation({
-    mutationFn: (values: z.infer<typeof formSchema>) =>
-      loginUserFn({ username: values.username, password: values.password }),
-    onSuccess: (_, { username }) => {
-      setUserState((old) => {
-        return {
-          ...old,
-          id: username,
-          role: "user",
-        };
-      });
-      toast({
-        title: `登陆成功`,
-        description: `你好，用户 ${username}`,
-      });
-      navigate("/dashboard");
-    },
-    onError: () => alert("login error"),
-  });
+export function NewTaskForm({ closeSheet }: TaskFormProps) {
+  //   const { mutate: loginUser, isLoading } = useMutation({
+  //     mutationFn: (values: z.infer<typeof formSchema>) =>
+  //       loginUserFn({ username: values.username, password: values.password }),
+  //     onSuccess: (_, { username }) => {
+  //       setUserState((old) => {
+  //         return {
+  //           ...old,
+  //           id: username,
+  //           role: "user",
+  //         };
+  //       });
+  //       toast({
+  //         title: `登陆成功`,
+  //         description: `你好，用户 ${username}`,
+  //       });
+  //     },
+  //     onError: () => alert("login error"),
+  //   });
 
   // 1. Define your form.
   const form = useForm<z.infer<typeof formSchema>>({
@@ -76,7 +70,8 @@ export function ProfileForm() {
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
-    !isLoading && loginUser(values);
+    alert({ title: values.username });
+    closeSheet();
   };
 
   return (
@@ -120,9 +115,7 @@ export function ProfileForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full">
-          {isLoading ? "loading" : "登录"}
-        </Button>
+        <Button type="submit">Save changes</Button>
       </form>
     </Form>
   );

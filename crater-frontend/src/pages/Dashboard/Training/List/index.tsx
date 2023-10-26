@@ -1,6 +1,3 @@
-"use client";
-
-import * as React from "react";
 import {
   CaretSortIcon,
   ChevronDownIcon,
@@ -32,6 +29,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
   Table,
   TableBody,
   TableCell,
@@ -39,45 +46,60 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useIndex } from "./hooks/useIndex";
+import { useIndex } from "../../hooks/useIndex";
+import { NewTaskForm } from "./Form";
+import { useState } from "react";
 
 type TaskInfo = {
   id: string;
   name: string;
-  amount: number;
   status: "pending" | "processing" | "success" | "failed";
+  startTime: number;
+};
+
+const getTaskInfoTitle = (key: string) => {
+  switch (key) {
+    case "name":
+      return "任务名";
+    case "status":
+      return "状态";
+    case "startTime":
+      return "开始时间";
+    default:
+      return "";
+  }
 };
 
 const data: TaskInfo[] = [
   {
     id: "m5gr84i9",
-    amount: 316,
+    startTime: 1698306744000,
     status: "success",
-    name: "ken99@yahoo.com",
+    name: "手写数字识别",
   },
   {
     id: "3u1reuv4",
-    amount: 242,
+    startTime: 1698406744000,
     status: "success",
-    name: "Abe45@gmail.com",
+    name: "人格测试分类",
   },
   {
     id: "derv1ws0",
-    amount: 837,
+    startTime: 1698406244000,
     status: "processing",
-    name: "Monserrat44@gmail.com",
+    name: "葡萄酒分类",
   },
   {
     id: "5kma53ae",
-    amount: 874,
+    startTime: 1698406747000,
     status: "success",
-    name: "Silas22@gmail.com",
+    name: "农作物推荐",
   },
   {
     id: "bhqecj4p",
-    amount: 721,
+    startTime: 1698406744000,
     status: "failed",
-    name: "carmella@hotmail.com",
+    name: "金融风控申请评分",
   },
 ];
 
@@ -108,7 +130,7 @@ export const columns: ColumnDef<TaskInfo>[] = [
     header: ({ column }) => {
       return (
         <div className="flex flex-row items-center space-x-1">
-          <p>任务名</p>
+          <p>{getTaskInfoTitle("name")}</p>
           <Button
             variant="ghost"
             size="icon"
@@ -119,21 +141,21 @@ export const columns: ColumnDef<TaskInfo>[] = [
         </div>
       );
     },
-    cell: ({ row }) => <div className="lowercase">{row.getValue("name")}</div>,
+    cell: ({ row }) => <div>{row.getValue("name")}</div>,
   },
   {
     accessorKey: "status",
-    header: "Status",
+    header: getTaskInfoTitle("status"),
     cell: ({ row }) => (
       <div className="capitalize">{row.getValue("status")}</div>
     ),
   },
   {
-    accessorKey: "amount",
+    accessorKey: "startTime",
     header: ({ column }) => {
       return (
         <div className="flex flex-row items-center space-x-1">
-          <p>Amount</p>
+          <p>{getTaskInfoTitle("startTime")}</p>
           <Button
             variant="ghost"
             size="icon"
@@ -146,13 +168,11 @@ export const columns: ColumnDef<TaskInfo>[] = [
       );
     },
     cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("amount"));
+      const amount = parseFloat(row.getValue("startTime"));
 
-      // Format the amount as a dollar amount
-      const formatted = new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(amount);
+      // Format the unix timestamp
+      const date = new Date(amount);
+      const formatted = date.toLocaleString();
 
       return <div className="font-medium">{formatted}</div>;
     },
@@ -196,14 +216,12 @@ export const columns: ColumnDef<TaskInfo>[] = [
 ];
 
 export function Component() {
-  useIndex("task", "list");
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    [],
-  );
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = React.useState({});
+  useIndex("training", "list");
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = useState({});
+  const [openSheet, setOpenSheet] = useState(false);
 
   const table = useReactTable({
     data,
@@ -227,7 +245,18 @@ export function Component() {
   return (
     <div className="w-full space-y-4">
       <div className="flex items-center space-x-2">
-        <Button className="min-w-fit">新建任务</Button>
+        <Sheet open={openSheet} onOpenChange={setOpenSheet}>
+          <SheetTrigger asChild>
+            <Button className="min-w-fit">新建任务</Button>
+          </SheetTrigger>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>新建任务</SheetTitle>
+              <SheetDescription>创建一个新的离线 AI 训练任务</SheetDescription>
+            </SheetHeader>
+            <NewTaskForm closeSheet={() => setOpenSheet(false)} />
+          </SheetContent>
+        </Sheet>
         <Input
           placeholder="请输入搜索内容"
           value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
@@ -239,7 +268,7 @@ export function Component() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto min-w-fit">
-              展示列 <ChevronDownIcon className="ml-2 h-4 w-4" />
+              显示内容 <ChevronDownIcon className="ml-2 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -256,7 +285,7 @@ export function Component() {
                       column.toggleVisibility(!!value)
                     }
                   >
-                    {column.id}
+                    {getTaskInfoTitle(column.id) ?? column.id}
                   </DropdownMenuCheckboxItem>
                 );
               })}
