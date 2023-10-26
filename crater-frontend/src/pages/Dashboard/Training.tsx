@@ -1,5 +1,5 @@
 import { type FC } from "react";
-import { useIndex } from "../hooks/useIndex";
+import { useIndex } from "./hooks/useIndex";
 import {
   Table,
   TableBody,

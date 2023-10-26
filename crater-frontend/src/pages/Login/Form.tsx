@@ -9,6 +9,7 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -51,7 +52,7 @@ export function ProfileForm() {
         return {
           ...old,
           id: username,
-          role: "admin",
+          role: "user",
         };
       });
       alert(username);
@@ -64,8 +65,8 @@ export function ProfileForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: "",
-      password: "",
+      username: "admin",
+      password: "123456",
     },
   });
 
@@ -84,8 +85,8 @@ export function ProfileForm() {
           control={form.control}
           name="username"
           render={({ field }) => (
-            <FormItem>
-              {/* <FormLabel className=" text-left">Username</FormLabel> */}
+            <FormItem className="flex flex-col">
+              {/* <FormLabel>用户名</FormLabel> */}
               <FormControl>
                 <Input
                   placeholder="用户名"
