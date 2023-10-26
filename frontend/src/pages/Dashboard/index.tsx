@@ -31,7 +31,7 @@ export const dashboardRoute: RouteObject = {
   children: [
     {
       index: true,
-      lazy: () => import("./Cluster"),
+      lazy: () => import("./Training"),
     },
     {
       path: "cluster",
@@ -50,12 +50,16 @@ export const dashboardRoute: RouteObject = {
 
 const items: SidebarItem[] = [
   {
-    title: "训练任务管理",
+    title: "AI 训练任务",
     path: "task",
+    children: [{ title: "任务列表", path: "list" }],
+  },
+  {
+    title: "深度推荐训练任务",
+    path: "deeplearing",
     children: [
-      { title: "通用任务", path: "list" },
-      { title: "AI训练任务", path: "new" },
-      { title: "深度推荐训练任务", path: "monitor" },
+      { title: "任务列表", path: "list" },
+      { title: "调度结果", path: "schedule" },
     ],
   },
   {
@@ -80,5 +84,10 @@ const items: SidebarItem[] = [
       { title: "新建训练任务", path: "new" },
       { title: "任务监控", path: "monitor" },
     ],
+  },
+  {
+    title: "数据集管理",
+    path: "dataset",
+    children: [],
   },
 ];

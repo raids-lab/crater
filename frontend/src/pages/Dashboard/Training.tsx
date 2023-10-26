@@ -109,10 +109,6 @@ export const Component: FC = () => {
             <TableHead className="w-[100px]">Invoice</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Method</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Method</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Method</TableHead>
             <TableHead className="text-right">Amount</TableHead>
           </TableRow>
         </TableHeader>
@@ -120,10 +116,6 @@ export const Component: FC = () => {
           {invoices.map((invoice) => (
             <TableRow key={invoice.invoice}>
               <TableCell className="font-medium">{invoice.invoice}</TableCell>
-              <TableCell>{invoice.paymentStatus}</TableCell>
-              <TableCell>{invoice.paymentMethod}</TableCell>
-              <TableCell>{invoice.paymentStatus}</TableCell>
-              <TableCell>{invoice.paymentMethod}</TableCell>
               <TableCell>{invoice.paymentStatus}</TableCell>
               <TableCell>{invoice.paymentMethod}</TableCell>
               <TableCell className="text-right">
