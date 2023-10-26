@@ -49,7 +49,11 @@ const router = createBrowserRouter([
         lazy: () => import("./pages/Dashboard/Admin/Cluster"),
       },
       {
-        path: "training",
+        path: "task",
+        lazy: () => import("./pages/Dashboard/Admin/Training"),
+      },
+      {
+        path: "ai_task",
         lazy: () => import("./pages/Dashboard/Admin/Training"),
       },
     ],

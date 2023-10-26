@@ -21,8 +21,8 @@ export const uiAccordionState = atom({
 export const uiActivedState = atom({
   key: UI_INDEX_KEY,
   default: {
-    item: "training",
-    subItem: "list",
+    item: "",
+    subItem: "",
   },
   // effects: [localStorageEffect(UI_INDEX_KEY)],
 });
