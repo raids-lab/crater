@@ -16,7 +16,6 @@ import { useNavigate } from "react-router-dom";
 export type SidebarSubItem = {
   title: string;
   path: string;
-  icon?: React.ReactNode;
 };
 
 export type SidebarItem = {
