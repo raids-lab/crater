@@ -12,6 +12,7 @@ import { useEffect } from "react";
 // import { logger } from "@/utils/loglevel";
 import clsx from "clsx";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "./ui/use-toast";
 
 export type SidebarSubItem = {
   title: string;
@@ -34,6 +35,7 @@ export function Sidebar({ className, sidebarItems }: SidebarProps) {
   const actived = useRecoilValue(uiActivedState);
   const setUserInfo = useSetRecoilState(userInfoState);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     setAccordion((old) => {
@@ -46,7 +48,7 @@ export function Sidebar({ className, sidebarItems }: SidebarProps) {
   }, [actived, setAccordion]);
 
   return (
-    <div className={cn("h-full border-r", className)}>
+    <div className={cn("h-full border-r bg-secondary", className)}>
       <div
         className={cn(
           "flex h-full flex-col items-stretch justify-between px-2 py-2",
@@ -65,7 +67,7 @@ export function Sidebar({ className, sidebarItems }: SidebarProps) {
               <AccordionTrigger>
                 <div
                   key={`$button-${i}`}
-                  className="flex flex-row items-center justify-start"
+                  className="flex flex-row items-center justify-start text-black hover:text-primary"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -89,9 +91,9 @@ export function Sidebar({ className, sidebarItems }: SidebarProps) {
                 {item.children?.map((subItem) => (
                   <Button
                     key={`${item.path}-${subItem.path}`}
-                    variant="ghost"
+                    variant="colorable"
                     className={clsx("w-full justify-start pl-10", {
-                      "text-sky-600":
+                      "font-semibold text-primary":
                         item.path === actived.item &&
                         subItem.path === actived.subItem,
                     })}
@@ -107,13 +109,16 @@ export function Sidebar({ className, sidebarItems }: SidebarProps) {
           ))}
         </Accordion>
         <Button
-          variant="outline"
+          variant="sideline"
           onClick={() => {
             setUserInfo((old) => {
               return {
                 ...old,
                 role: "viewer",
               };
+            });
+            toast({
+              title: "已退出",
             });
           }}
         >
