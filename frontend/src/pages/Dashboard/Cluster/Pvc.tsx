@@ -6,25 +6,31 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
-import { logger } from "@/utils/loglevel";
-import useAxios from "@/services/useAxios";
+// import { useQuery } from "@tanstack/react-query";
+// import { logger } from "@/utils/loglevel";
+// import useAxios from "@/services/useAxios";
 import { useIndex } from "../hooks/useIndex";
 
 export const Component: FC = () => {
   useIndex("cluster", "pvc");
-  const { instance } = useAxios();
+  // const { instance } = useAxios();
 
-  const { data: testMessage, isLoading } = useQuery({
-    queryKey: ["test"],
-    retry: 1,
-    queryFn: () => instance.get<string>("huojian"),
-    select: (res) => res.data,
-    onSuccess: (data) => {
-      logger.debug("Data is: ", data);
-    },
-    // onError: () => alert("failed to fetch"),
-  });
+  // const { data: testMessage, isLoading } = useQuery({
+  //   queryKey: ["test"],
+  //   retry: 1,
+  //   queryFn: () =>
+  //     instance.get("v1/task/list", {
+  //       params: {
+  //         userName: "admin",
+  //       },
+  //     }),
+  //   select: (res) => res.data,
+  //   onSuccess: (data) => {
+  //     logger.debug("Data is: ");
+  //     console.debug(data);
+  //   },
+  //   onError: () => alert("failed to fetch"),
+  // });
 
   return (
     <div className="space-y-4">
@@ -35,7 +41,7 @@ export const Component: FC = () => {
             <CardDescription>Card Description</CardDescription>
           </CardHeader>
           <CardContent>
-            <p>{isLoading ? "isLoading" : testMessage}</p>
+            {/* <p>{isLoading ? "isLoading" : "loaded"}</p> */}
           </CardContent>
         </Card>
         <Card className="col-span-3">
@@ -48,7 +54,6 @@ export const Component: FC = () => {
           </CardContent>
         </Card>
       </div>
-
       <Card className="h-72">
         <CardHeader>
           <CardTitle>Cluster Resource Usage</CardTitle>

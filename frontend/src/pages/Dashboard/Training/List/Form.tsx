@@ -23,6 +23,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useMutation } from "@tanstack/react-query";
+import useApiTask from "@/services/useApiTask";
+import { showErrorToast } from "@/utils/toast";
 
 const formSchema = z.object({
   taskname: z
@@ -39,7 +42,9 @@ const formSchema = z.object({
   image: z.string().url(),
   dir: z.string(),
   shareDir: z.string(),
-  command: z.string(),
+  command: z.string().min(1, {
+    message: "任务名称不能为空",
+  }),
   args: z.string(),
   priority: z.enum(["low", "high"], {
     invalid_type_error: "Select a priority",
@@ -53,24 +58,61 @@ interface TaskFormProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function NewTaskForm({ closeSheet }: TaskFormProps) {
   const { toast } = useToast();
-  //   const { mutate: loginUser, isLoading } = useMutation({
-  //     mutationFn: (values: z.infer<typeof formSchema>) =>
-  //       loginUserFn({ username: values.username, password: values.password }),
-  //     onSuccess: (_, { username }) => {
-  //       setUserState((old) => {
-  //         return {
-  //           ...old,
-  //           id: username,
-  //           role: "user",
-  //         };
-  //       });
-  //       toast({
-  //         title: `登陆成功`,
-  //         description: `你好，用户 ${username}`,
-  //       });
-  //     },
-  //     onError: () => alert("login error"),
-  //   });
+  const { apiCreateTask } = useApiTask();
+  // userName: string;
+  // taskName: string;
+  // slo: number;
+  // taskType: string;
+  // resourceRequest: {
+  //   gpu: number;
+  //   memory: string;
+  //   cpu: number;
+  // };
+  // image: string;
+  // dir: string;
+  // share_dir: string[];
+  // command: string;
+  // args: {
+  //   [key: string]: string;
+  // };
+  // priority: string;
+  const convertArgs = (args: string): { [key: string]: string } => {
+    const argsList = args.split(",");
+    const argsDict: { [key: string]: string } = {};
+    argsList.forEach((arg) => {
+      const [key, value] = arg.split("=");
+      argsDict[key] = value;
+    });
+    return argsDict;
+  };
+
+  const { mutate: createTask } = useMutation({
+    mutationFn: (values: z.infer<typeof formSchema>) =>
+      apiCreateTask({
+        userName: "admin",
+        taskName: values.taskname,
+        slo: 7,
+        taskType: "training",
+        resourceRequest: {
+          gpu: values.gpu,
+          memory: `${values.memory}Gi`,
+          cpu: values.cpu,
+        },
+        image: values.image,
+        dir: values.dir,
+        share_dir: values.shareDir.split(","),
+        command: values.command,
+        args: convertArgs(values.args),
+        priority: values.priority,
+      }),
+    onSuccess: (_, { taskname }) => {
+      toast({
+        title: `创建成功`,
+        description: `任务 ${taskname} 创建成功`,
+      });
+    },
+    onError: (err) => showErrorToast("创建失败", err),
+  });
 
   // 1. Define your form.
   const form = useForm<z.infer<typeof formSchema>>({
@@ -94,6 +136,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
     toast({ title: values.taskname });
+    createTask(values);
     closeSheet();
   };
 
@@ -192,7 +235,9 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
           name="command"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>执行命令</FormLabel>
+              <FormLabel>
+                执行命令<span className="ml-1 text-red-500">*</span>
+              </FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
