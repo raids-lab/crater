@@ -1,7 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-
-import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -15,8 +13,10 @@ import { useNavigate } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
 import { userInfoState } from "@/utils/store";
 import { useMutation } from "@tanstack/react-query";
-import useAuth from "@/services/useAuth";
+import useApiAuth from "@/services/useApiAuth";
 import { useToast } from "@/components/ui/use-toast";
+import { showErrorToast } from "@/utils/toast";
+import LoadableButton from "@/components/LoadableButton";
 
 const formSchema = z.object({
   username: z
@@ -40,12 +40,12 @@ const formSchema = z.object({
 export function ProfileForm() {
   const navigate = useNavigate();
   const setUserState = useSetRecoilState(userInfoState);
-  const { loginUserFn } = useAuth();
+  const { apiLoginUser } = useApiAuth();
   const { toast } = useToast();
 
   const { mutate: loginUser, isLoading } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
-      loginUserFn({ username: values.username, password: values.password }),
+      apiLoginUser({ username: values.username, password: values.password }),
     onSuccess: (_, { username }) => {
       setUserState((old) => {
         return {
@@ -60,7 +60,7 @@ export function ProfileForm() {
       });
       navigate("/dashboard");
     },
-    onError: () => alert("login error"),
+    onError: (error) => showErrorToast("登陆失败", error),
   });
 
   // 1. Define your form.
@@ -120,9 +120,9 @@ export function ProfileForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full">
-          {isLoading ? "loading" : "登录"}
-        </Button>
+        <LoadableButton type="submit" className="w-full" isLoading={isLoading}>
+          登录
+        </LoadableButton>
       </form>
     </Form>
   );

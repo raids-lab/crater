@@ -1,7 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-
-import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -15,7 +13,9 @@ import { useNavigate } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
 import { userInfoState } from "@/utils/store";
 import { useMutation } from "@tanstack/react-query";
-import useAuth from "@/services/useAuth";
+import useApiAuth from "@/services/useApiAuth";
+import { showErrorToast } from "@/utils/toast";
+import LoadableButton from "@/components/LoadableButton";
 
 const formSchema = z
   .object({
@@ -45,12 +45,12 @@ const formSchema = z
 export function SignupForm() {
   const navigate = useNavigate();
   const setUserState = useSetRecoilState(userInfoState);
-  const { signupUserFn } = useAuth();
+  const { apiSignupUser } = useApiAuth();
 
   const { mutate: loginUser, isLoading } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
-      signupUserFn({
-        name: values.username,
+      apiSignupUser({
+        userName: values.username,
         role: "admin",
         password: values.password,
       }),
@@ -65,7 +65,7 @@ export function SignupForm() {
       alert(username);
       navigate("/dashboard");
     },
-    onError: () => alert("signup error"),
+    onError: (error) => showErrorToast("注册失败", error),
   });
 
   // 1. Define your form.
@@ -144,9 +144,9 @@ export function SignupForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full">
-          {isLoading ? "loading" : "注册"}
-        </Button>
+        <LoadableButton type="submit" className="w-full" isLoading={isLoading}>
+          注册
+        </LoadableButton>
       </form>
     </Form>
   );

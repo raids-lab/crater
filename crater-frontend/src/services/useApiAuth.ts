@@ -8,10 +8,10 @@ import {
 } from "./types";
 import useAxios from "./useAxios";
 
-const useAuth = () => {
+const useApiAuth = () => {
   const { instance } = useAxios();
 
-  const signupUserFn = async (user: ISignup) => {
+  const apiSignupUser = async (user: ISignup) => {
     const response = await instance.post<ISignupResponse>("signup", user);
     const { accessToken, refreshToken } = response.data;
     localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
@@ -19,7 +19,7 @@ const useAuth = () => {
     return response.data;
   };
 
-  const loginUserFn = async (user: ILogin) => {
+  const apiLoginUser = async (user: ILogin): Promise<ILoginResponse> => {
     const response = await instance.post<ILoginResponse>("login", user);
     const { accessToken, refreshToken } = response.data;
     localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
@@ -27,7 +27,7 @@ const useAuth = () => {
     return response.data;
   };
 
-  return { signupUserFn, loginUserFn };
+  return { apiSignupUser, apiLoginUser };
 };
 
-export default useAuth;
+export default useApiAuth;

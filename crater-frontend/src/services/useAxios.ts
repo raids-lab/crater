@@ -7,8 +7,10 @@ import {
   IRefreshResponse,
   REFRESH_TOKEN_KEY,
 } from "./types";
+import { ERROR_TOKEN_EXPIRED } from "./error_code";
 
-const BASE_URL = "http://192.168.103.128:8888/api/";
+const BASE_URL = "http://192.168.5.60:8078/";
+export const VERSION = "v1";
 
 interface AxiosRetryRequestConfig extends AxiosRequestConfig {
   _retry: boolean;
@@ -60,9 +62,8 @@ const useAxios = () => {
     async (error) => {
       if (isAxiosError<IErrorResponse>(error)) {
         const originalRequest = error.config as AxiosRetryRequestConfig;
-        const errMessage = error.response?.data.message || "";
         if (
-          errMessage.includes("Token is expired") &&
+          error.response?.data.error_code === ERROR_TOKEN_EXPIRED &&
           originalRequest &&
           !originalRequest._retry
         ) {
@@ -76,8 +77,6 @@ const useAxios = () => {
           } catch (refreshError) {
             navigate("/login");
           }
-        } else {
-          navigate("/login");
         }
       }
       return Promise.reject(error);
