@@ -13,7 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
 import { userInfoState } from "@/utils/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import useApiAuth from "@/services/useApiAuth";
+import { apiUserSignup } from "@/services/api/auth";
 import { showErrorToast } from "@/utils/toast";
 import LoadableButton from "@/components/LoadableButton";
 
@@ -46,11 +46,10 @@ export function SignupForm() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const setUserState = useSetRecoilState(userInfoState);
-  const { apiSignupUser } = useApiAuth();
 
   const { mutate: loginUser, isLoading } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
-      apiSignupUser({
+      apiUserSignup({
         userName: values.username,
         role: "admin",
         password: values.password,

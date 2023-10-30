@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import useApiTask from "@/services/useApiTask";
+import { apiTaskCreate } from "@/services/api/task";
 import { showErrorToast } from "@/utils/toast";
 import { cn } from "@/lib/utils";
 import { Cross1Icon } from "@radix-ui/react-icons";
@@ -68,7 +68,6 @@ interface TaskFormProps extends React.HTMLAttributes<HTMLDivElement> {
 export function NewTaskForm({ closeSheet }: TaskFormProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { apiCreateTask } = useApiTask();
 
   const convertArgs = (
     argsList: { key: string; value: string }[],
@@ -84,7 +83,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
 
   const { mutate: createTask } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
-      apiCreateTask({
+      apiTaskCreate({
         taskName: values.taskname,
         slo: 7,
         taskType: "training",

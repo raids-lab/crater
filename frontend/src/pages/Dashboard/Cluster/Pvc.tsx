@@ -13,25 +13,6 @@ import { useIndex } from "../hooks/useIndex";
 
 export const Component: FC = () => {
   useIndex("cluster", "pvc");
-  // const { instance } = useAxios();
-
-  // const { data: testMessage, isLoading } = useQuery({
-  //   queryKey: ["test"],
-  //   retry: 1,
-  //   queryFn: () =>
-  //     instance.get("v1/task/list", {
-  //       params: {
-  //         userName: "admin",
-  //       },
-  //     }),
-  //   select: (res) => res.data,
-  //   onSuccess: (data) => {
-  //     logger.debug("Data is: ");
-  //     console.debug(data);
-  //   },
-  //   onError: () => alert("failed to fetch"),
-  // });
-
   return (
     <div className="space-y-4">
       <div className="grid h-48 grid-cols-5 space-x-4">

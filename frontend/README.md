@@ -62,7 +62,7 @@ docker run -d -p 8888:80 \
 nginx
 ```
 
-This command launches a Docker container with Nginx and maps the container's port 80 to the host's port 8888. It also mounts the Nginx configuration file nginx.conf and the application's build files located in the dist directory.
+This command launches a Docker container with Nginx and maps the container's port 80 to the host's port 8888. It also mounts the Nginx configuration file `nginx.conf` and the application's build files located in the dist directory.
 
 Make sure to replace the paths `/home/lyl/workspace/nginx.conf` and `/home/lyl/workspace/dist` with the actual paths on your system where the Nginx configuration file and the application's build files are located.
 
