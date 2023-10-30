@@ -12,7 +12,7 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
 import { userInfoState } from "@/utils/store";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import useApiAuth from "@/services/useApiAuth";
 import { showErrorToast } from "@/utils/toast";
 import LoadableButton from "@/components/LoadableButton";
@@ -43,6 +43,7 @@ const formSchema = z
   });
 
 export function SignupForm() {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const setUserState = useSetRecoilState(userInfoState);
   const { apiSignupUser } = useApiAuth();
@@ -54,12 +55,13 @@ export function SignupForm() {
         role: "admin",
         password: values.password,
       }),
-    onSuccess: (_, { username }) => {
+    onSuccess: async (_, { username }) => {
+      await queryClient.invalidateQueries();
       setUserState((old) => {
         return {
           ...old,
           id: username,
-          role: "admin",
+          role: "user",
         };
       });
       alert(username);

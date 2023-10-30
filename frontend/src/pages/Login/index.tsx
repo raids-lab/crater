@@ -44,7 +44,7 @@ export default function Login() {
             <ProfileForm />
           </div>
           <p className="px-2 text-center text-sm text-muted-foreground">
-            测试用账号：admin 123456
+            测试用账号：test 123456
             <span className="ml-2 underline">
               <Link to="/signup">注册</Link>
             </span>

@@ -12,7 +12,7 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
 import { userInfoState } from "@/utils/store";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import useApiAuth from "@/services/useApiAuth";
 import { useToast } from "@/components/ui/use-toast";
 import { showErrorToast } from "@/utils/toast";
@@ -38,6 +38,7 @@ const formSchema = z.object({
 });
 
 export function ProfileForm() {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const setUserState = useSetRecoilState(userInfoState);
   const { apiLoginUser } = useApiAuth();
@@ -46,7 +47,8 @@ export function ProfileForm() {
   const { mutate: loginUser, isLoading } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
       apiLoginUser({ username: values.username, password: values.password }),
-    onSuccess: (_, { username }) => {
+    onSuccess: async (_, { username }) => {
+      await queryClient.invalidateQueries();
       setUserState((old) => {
         return {
           ...old,
@@ -68,7 +70,7 @@ export function ProfileForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: "admin",
+      username: "test",
       password: "123456",
     },
   });
