@@ -48,7 +48,7 @@ import { NewTaskForm } from "./Form";
 import { useEffect, useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import { useQuery } from "@tanstack/react-query";
-import useApiTask from "@/services/useApiTask";
+import { apiTaskList } from "@/services/api/task";
 import { logger } from "@/utils/loglevel";
 import { showErrorToast } from "@/utils/toast";
 
@@ -164,11 +164,18 @@ export const columns: ColumnDef<TaskInfo>[] = [
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem
               onClick={() => {
-                navigator.clipboard
-                  .writeText(payment.id.toString())
-                  .catch(() =>
-                    alert("Failed to copy payment ID to clipboard."),
+                // check if browser support clipboard
+                if (window.isSecureContext && navigator.clipboard) {
+                  navigator.clipboard
+                    .writeText(payment.id.toString())
+                    .catch(() =>
+                      alert("Failed to copy payment ID to clipboard."),
+                    );
+                } else {
+                  alert(
+                    "Failed to copy payment ID to clipboard, please use HTTPs.",
                   );
+                }
               }}
             >
               复制任务 ID
@@ -190,13 +197,12 @@ export function Component() {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [openSheet, setOpenSheet] = useState(false);
-  const { apiGetTaskList } = useApiTask();
   const [data, setData] = useState<TaskInfo[]>([]);
 
   const { data: taskList, isLoading } = useQuery({
     queryKey: ["tasklist"],
     retry: 1,
-    queryFn: apiGetTaskList,
+    queryFn: apiTaskList,
     select: (res) => res.data.data.Tasks,
     onSuccess: (data) => {
       logger.debug("Data is: ", data);
