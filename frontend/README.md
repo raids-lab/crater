@@ -27,7 +27,7 @@ pnpm -v
 Now you can clone this project, and deploy it:
 
 ```bash
-git clone git@gitlab.act.buaa.edu.cn:gpu-portal/gpu-portal-frontend.git
+git clone git@gitlab.act.buaa.edu.cn:act-k8s-portal-system/gpu-portal-frontend.git
 cd gpu-portal-frontend
 pnpm install
 pnpm dev
@@ -44,7 +44,29 @@ If you are using _Visual Studio Code_, follow [Profiles in Visual Studio Code](h
   - State Manager: [recoil](https://recoiljs.org/zh-hans/)
   - Query Manager: [tanstack query](https://tanstack.com/query/latest)
 - CSS: [tailwindcss](https://tailwindcss.com/docs/guides/vite)
-- UI Kit: [shadcn](https://ui.shadcn.com/examples/dashboard)
+- UI Kit:
+  - [shadcn](https://ui.shadcn.com/examples/dashboard)
+  - [flowbite](https://flowbite.com/docs/getting-started/react/)
+  - [tanstack table](https://tanstack.com/table/v8)
+
+## Deployment
+
+To deploy the application, you can use Docker with Nginx. The Nginx configuration template can be found at `deploy/frontend/nginx.conf`. Use the following command as a reference:
+
+```bash
+pnpm build  # output /dist
+
+docker run -d -p 8888:80 \
+-v /home/lyl/workspace/nginx.conf:/etc/nginx/nginx.conf \
+-v /home/lyl/workspace/dist:/usr/share/nginx/html \
+nginx
+```
+
+This command launches a Docker container with Nginx and maps the container's port 80 to the host's port 8888. It also mounts the Nginx configuration file nginx.conf and the application's build files located in the dist directory.
+
+Make sure to replace the paths `/home/lyl/workspace/nginx.conf` and `/home/lyl/workspace/dist` with the actual paths on your system where the Nginx configuration file and the application's build files are located.
+
+Once the Docker container is running, you should be able to access the deployed application by navigating to http://192.168.5.60:8888 in your web browser.
 
 ## What's included
 
