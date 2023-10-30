@@ -24,7 +24,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -46,14 +45,18 @@ import {
 } from "@/components/ui/table";
 import { useIndex } from "../../hooks/useIndex";
 import { NewTaskForm } from "./Form";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Separator } from "@/components/ui/separator";
+import { useQuery } from "@tanstack/react-query";
+import useApiTask from "@/services/useApiTask";
+import { logger } from "@/utils/loglevel";
+import { showErrorToast } from "@/utils/toast";
 
 type TaskInfo = {
-  id: string;
+  id: number;
   name: string;
-  status: "pending" | "processing" | "success" | "failed";
-  startTime: number;
+  status: string;
+  startTime: string;
 };
 
 const getTaskInfoTitle = (key: string) => {
@@ -68,69 +71,6 @@ const getTaskInfoTitle = (key: string) => {
       return "";
   }
 };
-
-const data: TaskInfo[] = [
-  {
-    id: "m5gr84i9",
-    startTime: 1698306744000,
-    status: "success",
-    name: "手写数字识别",
-  },
-  {
-    id: "3u1reuv4",
-    startTime: 1698406744000,
-    status: "success",
-    name: "人格测试分类",
-  },
-  {
-    id: "derv1ws0",
-    startTime: 1698406244000,
-    status: "processing",
-    name: "葡萄酒分类",
-  },
-  {
-    id: "5kma53ae",
-    startTime: 1698406747000,
-    status: "success",
-    name: "农作物推荐",
-  },
-  {
-    id: "bhqecj4p",
-    startTime: 1698406744000,
-    status: "failed",
-    name: "金融风控申请评分",
-  },
-  {
-    id: "m5gr84i9",
-    startTime: 1698306744000,
-    status: "success",
-    name: "手写数字识别",
-  },
-  {
-    id: "3u1reuv4",
-    startTime: 1698406744000,
-    status: "success",
-    name: "人格测试分类",
-  },
-  {
-    id: "derv1ws0",
-    startTime: 1698406244000,
-    status: "processing",
-    name: "葡萄酒分类",
-  },
-  {
-    id: "5kma53ae",
-    startTime: 1698406747000,
-    status: "success",
-    name: "农作物推荐",
-  },
-  {
-    id: "bhqecj4p",
-    startTime: 1698406744000,
-    status: "failed",
-    name: "金融风控申请评分",
-  },
-];
 
 export const columns: ColumnDef<TaskInfo>[] = [
   {
@@ -197,12 +137,11 @@ export const columns: ColumnDef<TaskInfo>[] = [
       );
     },
     cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("startTime"));
-
-      // Format the unix timestamp
-      const date = new Date(amount);
-      const formatted = date.toLocaleString();
-
+      // row format: "2023-10-30T03:21:03.733Z"
+      const date = new Date(row.getValue("startTime"));
+      const formatted = date.toLocaleString("zh-CN", {
+        timeZone: "Asia/Shanghai",
+      });
       return <div>{formatted}</div>;
     },
   },
@@ -226,17 +165,17 @@ export const columns: ColumnDef<TaskInfo>[] = [
             <DropdownMenuItem
               onClick={() => {
                 navigator.clipboard
-                  .writeText(payment.id)
+                  .writeText(payment.id.toString())
                   .catch(() =>
                     alert("Failed to copy payment ID to clipboard."),
                   );
               }}
             >
-              Copy payment ID
+              复制任务 ID
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>View customer</DropdownMenuItem>
-            <DropdownMenuItem>View payment details</DropdownMenuItem>
+            {/* <DropdownMenuSeparator /> */}
+            {/* <DropdownMenuItem>View customer</DropdownMenuItem>
+            <DropdownMenuItem>View payment details</DropdownMenuItem> */}
           </DropdownMenuContent>
         </DropdownMenu>
       );
@@ -251,6 +190,32 @@ export function Component() {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [openSheet, setOpenSheet] = useState(false);
+  const { apiGetTaskList } = useApiTask();
+  const [data, setData] = useState<TaskInfo[]>([]);
+
+  const { data: taskList, isLoading } = useQuery({
+    queryKey: ["tasklist"],
+    retry: 1,
+    queryFn: apiGetTaskList,
+    select: (res) => res.data.data.Tasks,
+    onSuccess: (data) => {
+      logger.debug("Data is: ");
+      logger.debug(data);
+    },
+    onError: (err) => showErrorToast("获取任务列表失败", err),
+  });
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!taskList) return;
+    const tableData: TaskInfo[] = taskList.map((task) => ({
+      id: task.id,
+      name: task.taskName,
+      status: task.Status,
+      startTime: task.createdAt,
+    }));
+    setData(tableData);
+  }, [taskList, isLoading]);
 
   const table = useReactTable({
     data,
@@ -278,7 +243,8 @@ export function Component() {
           <SheetTrigger asChild>
             <Button className="min-w-fit">新建任务</Button>
           </SheetTrigger>
-          <SheetContent className="sm:max-w-2xl">
+          {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
+          <SheetContent className="max-h-screen overflow-y-auto sm:max-w-2xl">
             <SheetHeader>
               <SheetTitle>新建任务</SheetTitle>
               <SheetDescription>创建一个新的 AI 训练任务</SheetDescription>

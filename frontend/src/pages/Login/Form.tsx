@@ -58,7 +58,8 @@ export function ProfileForm() {
         title: `登陆成功`,
         description: `你好，用户 ${username}`,
       });
-      navigate("/dashboard");
+      // navigate to /dashboard and clear all history
+      navigate("/dashboard", { replace: true });
     },
     onError: (error) => showErrorToast("登陆失败", error),
   });

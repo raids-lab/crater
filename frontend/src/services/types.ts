@@ -9,32 +9,37 @@ export interface IErrorResponse {
   error_code: ErrorCode;
 }
 
-// {
-//   "userName": "hjx",
-//   "taskName": "xxx",
-//   "slo":7,
-//   "taskType":"ii",
-//   "resourceRequest": {
-// 	"gpu": 1,
-// 	"memory": "10Gi",
-//         "cpu": 10
-//   },
-//   "image": "xxx",
-//   "dir": "/home/zhuangkr/DNN",
-//   "share_dir": [
-//     "/mnt/nfs/opt/xxx",
-//     "/mnt/nfs/dataset/minst"
-//   ],
-//   "command": "python dnn.py",
-//   "args": {
-//       "--batch-size": "100",
-//       "--epochs": "10",
-//       "--workers": "5"
-//    },
-//   "priority": "high"
-// }
-export interface ITaskAttr {
-  userName: string;
+export interface ITaskListResponse {
+  data: {
+    Tasks: ITask[];
+  };
+}
+
+export interface ITask {
+  taskName: string;
+  UserName: string;
+  slo: number;
+  taskType: string;
+  image: string;
+  resourceRequest: {
+    cpu: string;
+    gpu: string;
+    memory: string;
+  };
+  command: string;
+  args: {
+    [key: string]: string;
+  };
+  workingDir: string;
+  ShareDirs: string[];
+  id: number;
+  Namespace: string;
+  Status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ICreateTask {
   taskName: string;
   slo: number;
   taskType: string;
@@ -53,7 +58,11 @@ export interface ITaskAttr {
   priority: string;
 }
 
-export interface ITaskAttrResponse {}
+export interface ICreateTaskResponse {
+  data: string;
+  error: string;
+  status: boolean;
+}
 
 /**
  * Signup
