@@ -13,6 +13,7 @@ import { useEffect } from "react";
 import clsx from "clsx";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "./ui/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 export type SidebarSubItem = {
   title: string;
@@ -36,6 +37,7 @@ export function Sidebar({ className, sidebarItems }: SidebarProps) {
   const setUserInfo = useSetRecoilState(userInfoState);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     setAccordion((old) => {
@@ -113,6 +115,7 @@ export function Sidebar({ className, sidebarItems }: SidebarProps) {
             className="w-full"
             variant="sideline"
             onClick={() => {
+              queryClient.clear();
               setUserInfo((old) => {
                 return {
                   ...old,

@@ -9,8 +9,7 @@ import {
 } from "./types";
 import { ERROR_TOKEN_EXPIRED } from "./error_code";
 
-const BASE_URL = "http://192.168.5.60:8078/";
-export const VERSION = "v1";
+export const VERSION = import.meta.env.VITE_API_VERSION;
 
 interface AxiosRetryRequestConfig extends AxiosRequestConfig {
   _retry: boolean;
@@ -20,7 +19,7 @@ const useAxios = () => {
   const navigate = useNavigate();
 
   const instance = axios.create({
-    baseURL: BASE_URL,
+    baseURL: import.meta.env.VITE_API_BASE_URL,
     withCredentials: true,
   });
 

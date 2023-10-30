@@ -199,8 +199,7 @@ export function Component() {
     queryFn: apiGetTaskList,
     select: (res) => res.data.data.Tasks,
     onSuccess: (data) => {
-      logger.debug("Data is: ");
-      logger.debug(data);
+      logger.debug("Data is: ", data);
     },
     onError: (err) => showErrorToast("获取任务列表失败", err),
   });
@@ -329,7 +328,7 @@ export function Component() {
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center text-gray-400"
+                  className="h-48 text-center text-gray-400"
                 >
                   暂无数据
                 </TableCell>
