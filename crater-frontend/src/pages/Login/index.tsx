@@ -5,11 +5,12 @@ export default function Login() {
   const navigate = useNavigate();
   return (
     <>
-      <div className="container relative h-screen flex-col items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0">
-        <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r lg:flex">
+      <div className="container relative grid h-screen items-center justify-center md:grid-cols-2 md:px-0 lg:max-w-none">
+        <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r md:flex">
           <div className="absolute inset-0 bg-gradient-to-tr from-sky-900 to-sky-600" />
           <button
             className="relative z-20 flex items-center text-lg font-medium"
+            title="Switch signup and login"
             onClick={() => {
               navigate("/signup");
             }}
@@ -37,21 +38,17 @@ export default function Login() {
             </blockquote>
           </div>
         </div>
-        <div className="lg:p-8">
-          <div className="mx-auto flex w-full flex-col items-stretch space-y-6 sm:w-[350px]">
-            <div className="flex flex-col space-y-2 text-center">
-              <h1 className="text-2xl font-semibold tracking-tight">
-                用户登录
-              </h1>
-              <ProfileForm />
-            </div>
-            <p className="px-2 text-center text-sm text-muted-foreground">
-              测试用账号：admin 123456
-              <span className="ml-2 underline">
-                <Link to="/signup">注册</Link>
-              </span>
-            </p>
+        <div className="m-auto flex w-full flex-col items-stretch space-y-6 sm:w-[350px] lg:p-8">
+          <div className="flex flex-col space-y-2 text-center">
+            <h1 className="text-2xl font-semibold tracking-tight">用户登录</h1>
+            <ProfileForm />
           </div>
+          <p className="px-2 text-center text-sm text-muted-foreground">
+            测试用账号：admin 123456
+            <span className="ml-2 underline">
+              <Link to="/signup">注册</Link>
+            </span>
+          </p>
         </div>
       </div>
     </>

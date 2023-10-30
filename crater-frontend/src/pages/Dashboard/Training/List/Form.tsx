@@ -1,4 +1,5 @@
-// https://github.com/shadcn-ui/ui/issues/709
+// Form in dialog: https://github.com/shadcn-ui/ui/issues/709
+// Zod Number: https://github.com/shadcn-ui/ui/issues/421
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -7,15 +8,15 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { useToast } from "@/components/ui/use-toast";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -23,9 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import useApiTask from "@/services/useApiTask";
 import { showErrorToast } from "@/utils/toast";
+import { cn } from "@/lib/utils";
+import { Cross1Icon } from "@radix-ui/react-icons";
+import { logger } from "@/utils/loglevel";
 
 const formSchema = z.object({
   taskname: z
@@ -45,7 +49,12 @@ const formSchema = z.object({
   command: z.string().min(1, {
     message: "任务名称不能为空",
   }),
-  args: z.string(),
+  args: z.array(
+    z.object({
+      key: z.string(),
+      value: z.string(),
+    }),
+  ),
   priority: z.enum(["low", "high"], {
     invalid_type_error: "Select a priority",
     required_error: "Please select a priority",
@@ -57,39 +66,25 @@ interface TaskFormProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function NewTaskForm({ closeSheet }: TaskFormProps) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const { apiCreateTask } = useApiTask();
-  // userName: string;
-  // taskName: string;
-  // slo: number;
-  // taskType: string;
-  // resourceRequest: {
-  //   gpu: number;
-  //   memory: string;
-  //   cpu: number;
-  // };
-  // image: string;
-  // dir: string;
-  // share_dir: string[];
-  // command: string;
-  // args: {
-  //   [key: string]: string;
-  // };
-  // priority: string;
-  const convertArgs = (args: string): { [key: string]: string } => {
-    const argsList = args.split(",");
+
+  const convertArgs = (
+    argsList: { key: string; value: string }[],
+  ): { [key: string]: string } => {
     const argsDict: { [key: string]: string } = {};
-    argsList.forEach((arg) => {
-      const [key, value] = arg.split("=");
-      argsDict[key] = value;
-    });
+    argsList
+      .filter((arg) => arg.key.length > 0 || arg.value.length > 0)
+      .forEach((arg) => {
+        argsDict[arg.key] = arg.value ?? "";
+      });
     return argsDict;
   };
 
   const { mutate: createTask } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
       apiCreateTask({
-        userName: "admin",
         taskName: values.taskname,
         slo: 7,
         taskType: "training",
@@ -106,10 +101,18 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
         priority: values.priority,
       }),
     onSuccess: (_, { taskname }) => {
-      toast({
-        title: `创建成功`,
-        description: `任务 ${taskname} 创建成功`,
-      });
+      queryClient
+        .invalidateQueries({ queryKey: ["tasklist"] })
+        .then(() => {
+          toast({
+            title: `创建成功`,
+            description: `任务 ${taskname} 创建成功`,
+          });
+          closeSheet();
+        })
+        .catch((err) => {
+          showErrorToast("刷新任务列表失败", err);
+        });
     },
     onError: (err) => showErrorToast("创建失败", err),
   });
@@ -123,12 +126,21 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
       gpu: 0,
       memory: 8,
       image: "",
-      dir: "",
+      dir: "~",
       shareDir: "",
       command: "",
-      args: "",
+      args: [{ key: "", value: "" }],
       priority: undefined,
     },
+  });
+
+  const {
+    fields: argsFields,
+    append: argsAppend,
+    remove: argsRemove,
+  } = useFieldArray({
+    name: "args",
+    control: form.control,
   });
 
   // 2. Define a submit handler.
@@ -136,8 +148,8 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
     toast({ title: values.taskname });
+    logger.debug(convertArgs(values.args));
     createTask(values);
-    closeSheet();
   };
 
   return (
@@ -164,7 +176,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
           )}
         />
         <div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-3">
             <FormField
               control={form.control}
               name="cpu"
@@ -174,7 +186,11 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                     CPU<span className="ml-1 text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} />
+                    <Input
+                      type="number"
+                      {...field}
+                      onChange={(event) => field.onChange(+event.target.value)}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -189,7 +205,11 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                     GPU<span className="ml-1 text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} />
+                    <Input
+                      type="number"
+                      {...field}
+                      onChange={(event) => field.onChange(+event.target.value)}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -204,7 +224,11 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                     内存 (GB)<span className="ml-1 text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} />
+                    <Input
+                      type="number"
+                      {...field}
+                      onChange={(event) => field.onChange(+event.target.value)}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -245,19 +269,66 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="args"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>命令参数</FormLabel>
-              <FormControl>
-                <Textarea {...field} className="resize-none" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div>
+          {argsFields.map((field, index) => (
+            <FormField
+              control={form.control}
+              key={field.id}
+              name={`args.${index}`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className={cn(index !== 0 && "sr-only")}>
+                    命令参数
+                  </FormLabel>
+                  <FormDescription className={cn(index !== 0 && "sr-only")}>
+                    请在左侧输入 Key，右侧输入 Value
+                  </FormDescription>
+                  <FormControl>
+                    <div className="flex flex-row space-x-2">
+                      <Input
+                        id={`input.args.${index}.key`}
+                        value={field.value.key}
+                        onChange={(event) =>
+                          field.onChange({
+                            ...field.value,
+                            key: event.target.value,
+                          })
+                        }
+                      />
+                      <Input
+                        id={`input.args.${index}.value`}
+                        value={field.value.value}
+                        onChange={(event) =>
+                          field.onChange({
+                            ...field.value,
+                            value: event.target.value,
+                          })
+                        }
+                      />
+                      <div>
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          onClick={() => argsRemove(index)}
+                        >
+                          <Cross1Icon className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3"
+            onClick={() => argsAppend({ key: "", value: "" })}
+          >
+            添加命令参数
+          </Button>
+        </div>
         <FormField
           control={form.control}
           name="priority"
