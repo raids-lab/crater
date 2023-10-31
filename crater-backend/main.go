@@ -60,6 +60,7 @@ func main() {
 	var monitoringPort int
 	var controllerThreads int
 	var serverPort string
+	var dbConfigFile string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -72,7 +73,7 @@ func main() {
 		"It can be set to \"0\" to disable the metrics serving.")
 	flag.IntVar(&controllerThreads, "controller-threads", 1, "Number of worker threads used by the controller.")
 	flag.StringVar(&serverPort, "server-port", ":8088", "The address the server endpoint binds to.")
-
+	flag.StringVar(&dbConfigFile, "db-config-file", "", "The db config file path.")
 	opts := zap.Options{
 		Development:     true,
 		StacktraceLevel: zapcore.DPanicLevel,
@@ -97,7 +98,7 @@ func main() {
 	}
 
 	// 1. init db
-	if err := db.InitDB(); err != nil {
+	if err := db.InitDB(dbConfigFile); err != nil {
 		setupLog.Error(err, "unable to init db")
 		os.Exit(1)
 	}
@@ -110,7 +111,7 @@ func main() {
 	taskUpdateChan := make(chan util.TaskUpdateChan)
 	jobStatusChan := make(chan util.JobStatusChan)
 
-	backend, err := server.Register(taskUpdateChan)
+	backend, err := server.Register(taskUpdateChan, mgr.GetClient())
 	taskCtrl := taskqueue.NewTaskController(
 		mgr.GetClient(),
 		jobStatusChan,
