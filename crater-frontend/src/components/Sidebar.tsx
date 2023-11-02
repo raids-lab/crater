@@ -11,13 +11,13 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { useEffect } from "react";
 // import { logger } from "@/utils/loglevel";
 import clsx from "clsx";
-import { useNavigate } from "react-router-dom";
+import { RouteObject, useNavigate } from "react-router-dom";
 import { useToast } from "./ui/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 
 export type SidebarSubItem = {
   title: string;
-  path: string;
+  route: RouteObject;
 };
 
 export type SidebarItem = {
@@ -92,15 +92,15 @@ export function Sidebar({ className, sidebarItems }: SidebarProps) {
               <AccordionContent>
                 {item.children?.map((subItem) => (
                   <Button
-                    key={`${item.path}-${subItem.path}`}
+                    key={`${item.path}-${subItem.route.path}`}
                     variant="colorable"
                     className={clsx("w-full justify-start pl-10 font-normal", {
                       "font-semibold text-primary":
                         item.path === actived.item &&
-                        subItem.path === actived.subItem,
+                        subItem.route.path === actived.subItem,
                     })}
                     onClick={() => {
-                      navigate(`/dashboard/${item.path}/${subItem.path}`);
+                      navigate(`/dashboard/${item.path}/${subItem.route.path}`);
                     }}
                   >
                     {subItem.title}

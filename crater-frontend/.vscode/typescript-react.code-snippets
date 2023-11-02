@@ -32,5 +32,18 @@
       "export default $TM_FILENAME_BASE;"
     ],
     "description": "Create A New React Function Component with Necessary Imports"
+  },
+  "New Dashboard Component": {
+    "prefix": "ndc",
+    "body": [
+      "import type { FC } from \"react\";",
+      "import { useIndex } from \"../hooks/useIndex\";",
+      "",
+      "export const Component: FC = () => {",
+      "  useIndex(${1}, ${2});",
+      "  return <>$TM_FILENAME_BASE</>;",
+      "};"
+    ],
+    "description": ""
   }
 }
