@@ -6,13 +6,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-// import { useQuery } from "@tanstack/react-query";
-// import { logger } from "@/utils/loglevel";
-// import useAxios from "@/services/useAxios";
 import { useIndex } from "../hooks/useIndex";
 
 export const Component: FC = () => {
-  useIndex("cluster", "pvc");
+  useIndex("cluster", "node");
   return (
     <div className="space-y-4">
       <div className="grid h-48 grid-cols-5 space-x-4">

@@ -3,20 +3,112 @@ import { useAuth } from "@/hooks/useAuth";
 import { FC, PropsWithChildren, Suspense } from "react";
 import { Navigate, Outlet, RouteObject } from "react-router-dom";
 
+const items: SidebarItem[] = [
+  {
+    title: "任务管理",
+    path: "task",
+    children: [
+      {
+        title: "通用任务",
+        route: {
+          path: "default",
+          lazy: () => import("./Task/Default"),
+        },
+      },
+      {
+        title: "AI 训练任务",
+        route: {
+          path: "ai",
+          lazy: () => import("./Task/Ai"),
+        },
+      },
+      {
+        title: "深度推荐训练任务",
+        route: {
+          path: "dl",
+          lazy: () => import("./Task/Dl"),
+        },
+      },
+    ],
+  },
+  {
+    title: "数据管理",
+    path: "data",
+    children: [
+      {
+        title: "个人空间",
+        route: {
+          path: "personal",
+          lazy: () => import("./Data/Personal"),
+        },
+      },
+      {
+        title: "数据集",
+        route: {
+          path: "dataset",
+          lazy: () => import("./Data/Dataset"),
+        },
+      },
+    ],
+  },
+  {
+    title: "代码管理",
+    path: "code",
+    children: [
+      {
+        title: "Gitlab",
+        route: {
+          path: "gitlab",
+          lazy: () => import("./Code/Gitlab"),
+        },
+      },
+    ],
+  },
+  {
+    title: "镜像管理",
+    path: "image",
+    children: [
+      {
+        title: "镜像列表",
+        route: {
+          path: "list",
+          lazy: () => import("./Image/List"),
+        },
+      },
+      {
+        title: "镜像制作",
+        route: {
+          path: "make",
+          lazy: () => import("./Image/Make"),
+        },
+      },
+    ],
+  },
+  {
+    title: "集群监控",
+    path: "cluster",
+    children: [
+      {
+        title: "节点监控",
+        route: {
+          path: "node",
+          lazy: () => import("./Cluster/Node"),
+        },
+      },
+      {
+        title: "任务监控",
+        route: {
+          path: "task",
+          lazy: () => import("./Cluster/Task"),
+        },
+      },
+    ],
+  },
+];
+
 const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
   const isAuthenticated = useAuth("user");
   return isAuthenticated ? children : <Navigate to="/login" replace />;
-};
-
-const Layout = () => {
-  return (
-    <div className="grid overflow-hidden lg:grid-cols-6">
-      <Sidebar sidebarItems={items} className="hidden lg:block" />
-      <div className="col-span-4 h-screen overflow-auto px-6 py-6 lg:col-span-5">
-        <Outlet />
-      </div>
-    </div>
-  );
 };
 
 export const dashboardRoute: RouteObject = {
@@ -24,7 +116,12 @@ export const dashboardRoute: RouteObject = {
   element: (
     <Suspense fallback={<h2>Loading...</h2>}>
       <AuthedRouter>
-        <Layout />
+        <div className="grid overflow-hidden lg:grid-cols-6">
+          <Sidebar sidebarItems={items} className="hidden lg:block" />
+          <div className="col-span-4 h-screen overflow-auto px-6 py-6 lg:col-span-5">
+            <Outlet />
+          </div>
+        </div>
       </AuthedRouter>
     </Suspense>
   ),
@@ -33,51 +130,9 @@ export const dashboardRoute: RouteObject = {
       index: true,
       lazy: () => import("./Training/List"),
     },
-    {
-      path: "training",
-      children: [{ path: "list", lazy: () => import("./Training/List") }],
-    },
-    {
-      path: "dl_training",
-      children: [
-        { path: "list", lazy: () => import("./DlTraining/List") },
-        { path: "scheduler", lazy: () => import("./DlTraining/Scheduler") },
-      ],
-    },
-    {
-      path: "cluster",
-      children: [{ path: "pvc", lazy: () => import("./Cluster/Pvc") }],
-    },
+    ...items.map((item) => ({
+      path: item.path,
+      children: item.children.map((child) => child.route),
+    })),
   ],
 };
-
-const items: SidebarItem[] = [
-  {
-    title: "AI 训练任务",
-    path: "training",
-    children: [{ title: "任务列表", path: "list" }],
-  },
-  {
-    title: "深度推荐训练任务",
-    path: "dl_training",
-    children: [
-      { title: "任务列表", path: "list" },
-      { title: "调度结果", path: "scheduler" },
-    ],
-  },
-  {
-    title: "集群资源查看",
-    path: "cluster",
-    children: [{ title: "Persistent Volume", path: "pvc" }],
-  },
-  {
-    title: "Jupyter 管理",
-    path: "jupyter",
-    children: [],
-  },
-  {
-    title: "数据集管理",
-    path: "dataset",
-    children: [],
-  },
-];
