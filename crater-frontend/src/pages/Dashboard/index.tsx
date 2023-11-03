@@ -6,27 +6,27 @@ import { Navigate, Outlet, RouteObject } from "react-router-dom";
 const items: SidebarItem[] = [
   {
     title: "任务管理",
-    path: "task",
+    path: "job",
     children: [
       {
         title: "通用任务",
         route: {
           path: "default",
-          lazy: () => import("./Task/Default"),
+          lazy: () => import("./Job/Default"),
         },
       },
       {
         title: "AI 训练任务",
         route: {
           path: "ai",
-          lazy: () => import("./Task/Ai"),
+          lazy: () => import("./Job/Ai"),
         },
       },
       {
         title: "深度推荐训练任务",
         route: {
           path: "dl",
-          lazy: () => import("./Task/Dl"),
+          lazy: () => import("./Job/Dl"),
         },
       },
     ],
@@ -56,7 +56,7 @@ const items: SidebarItem[] = [
     path: "code",
     children: [
       {
-        title: "Gitlab",
+        title: "关联 Gitlab 仓库",
         route: {
           path: "gitlab",
           lazy: () => import("./Code/Gitlab"),
@@ -128,11 +128,15 @@ export const dashboardRoute: RouteObject = {
   children: [
     {
       index: true,
-      lazy: () => import("./Training/List"),
+      lazy: () => import("./Job/Ai"),
     },
     ...items.map((item) => ({
       path: item.path,
       children: item.children.map((child) => child.route),
     })),
+    {
+      path: "*",
+      element: <h1>404</h1>,
+    },
   ],
 };

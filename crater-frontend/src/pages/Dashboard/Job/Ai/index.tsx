@@ -191,7 +191,7 @@ export const columns: ColumnDef<TaskInfo>[] = [
 ];
 
 export function Component() {
-  useIndex("training", "list");
+  useIndex("job", "ai");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});

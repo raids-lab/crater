@@ -2,6 +2,6 @@ import type { FC } from "react";
 import { useIndex } from "../hooks/useIndex";
 
 export const Component: FC = () => {
-  useIndex("dl_training", "list");
-  return <>List</>;
+  useIndex("job", "dl");
+  return <>Dl</>;
 };
