@@ -62,7 +62,6 @@ export function Sidebar({ className, sidebarItems }: SidebarProps) {
         type="multiple"
         // collapsible
         className="w-full space-y-1 py-2"
-        defaultValue={[]}
         value={accordion}
         onValueChange={setAccordion}
       >
