@@ -50,7 +50,7 @@ const items: SidebarItem[] = [
     ],
   },
   {
-    title: "数据管理",
+    title: "个人空间",
     path: "data",
     children: [
       {
@@ -61,10 +61,10 @@ const items: SidebarItem[] = [
         },
       },
       {
-        title: "个人空间",
+        title: "其他文件",
         route: {
-          path: "personal",
-          lazy: () => import("./Data/Personal"),
+          path: "other",
+          lazy: () => import("./Data/Other"),
         },
       },
     ],
@@ -98,26 +98,6 @@ const items: SidebarItem[] = [
         route: {
           path: "make",
           lazy: () => import("./Image/Make"),
-        },
-      },
-    ],
-  },
-  {
-    title: "集群监控",
-    path: "cluster",
-    children: [
-      {
-        title: "节点监控",
-        route: {
-          path: "node",
-          lazy: () => import("./Cluster/Node"),
-        },
-      },
-      {
-        title: "任务监控",
-        route: {
-          path: "task",
-          lazy: () => import("./Cluster/Task"),
         },
       },
     ],
