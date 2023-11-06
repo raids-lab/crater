@@ -50,7 +50,7 @@ const items: SidebarItem[] = [
     ],
   },
   {
-    title: "个人空间",
+    title: "数据管理",
     path: "data",
     children: [
       {
@@ -61,23 +61,17 @@ const items: SidebarItem[] = [
         },
       },
       {
-        title: "其他文件",
+        title: "代码",
+        route: {
+          path: "code",
+          lazy: () => import("./Data/Code"),
+        },
+      },
+      {
+        title: "其他",
         route: {
           path: "other",
           lazy: () => import("./Data/Other"),
-        },
-      },
-    ],
-  },
-  {
-    title: "代码管理",
-    path: "code",
-    children: [
-      {
-        title: "关联 Gitlab 仓库",
-        route: {
-          path: "gitlab",
-          lazy: () => import("./Code/Gitlab"),
         },
       },
     ],

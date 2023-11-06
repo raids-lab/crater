@@ -6,7 +6,7 @@ export const Component: FC = () => {
   return (
     <div className="space-y-1 px-6 py-6 text-xl">
       <h1 className="text-3xl font-bold leading-loose">其他类型文件管理</h1>
-      <p>如用户使用的工具等，跳转到一个 Jupyter 界面。</p>
+      <p>跳转到一个 Jupyter 界面。</p>
     </div>
   );
 };

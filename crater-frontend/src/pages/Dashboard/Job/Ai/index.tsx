@@ -374,6 +374,12 @@ export function Component() {
             </Button>
           </div>
         </div>
+        <Separator />
+        <div className="space-y-1 text-xl">
+          <h1 className="text-3xl font-bold leading-loose">AI 训练任务</h1>
+          <p>点击某个任务后，可查看具体的进度、资源监控等信息。</p>
+          <p>新建任务时，可以打包关联的代码和数据集。</p>
+        </div>
       </div>
     </div>
   );
