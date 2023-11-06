@@ -5,6 +5,24 @@ import { Navigate, Outlet, RouteObject } from "react-router-dom";
 
 const items: SidebarItem[] = [
   {
+    title: "概览",
+    path: "overview",
+    children: [],
+    route: {
+      path: "overview",
+      lazy: () => import("./Overview"),
+    },
+  },
+  {
+    title: "Jupyter 管理",
+    path: "jupyter",
+    children: [],
+    route: {
+      path: "jupyter",
+      lazy: () => import("./Jupyter"),
+    },
+  },
+  {
     title: "任务管理",
     path: "job",
     children: [
@@ -36,17 +54,17 @@ const items: SidebarItem[] = [
     path: "data",
     children: [
       {
-        title: "个人空间",
-        route: {
-          path: "personal",
-          lazy: () => import("./Data/Personal"),
-        },
-      },
-      {
         title: "数据集",
         route: {
           path: "dataset",
           lazy: () => import("./Data/Dataset"),
+        },
+      },
+      {
+        title: "个人空间",
+        route: {
+          path: "personal",
+          lazy: () => import("./Data/Personal"),
         },
       },
     ],
@@ -111,17 +129,21 @@ const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
+const Layout = () => {
+  return (
+    <div className="grid min-h-screen bg-zinc-100 md:grid-cols-sidebar">
+      <Sidebar sidebarItems={items} />
+      <Outlet />
+    </div>
+  );
+};
+
 export const dashboardRoute: RouteObject = {
   path: "/dashboard",
   element: (
     <Suspense fallback={<h2>Loading...</h2>}>
       <AuthedRouter>
-        <div className="grid overflow-hidden lg:grid-cols-6">
-          <Sidebar sidebarItems={items} className="hidden lg:block" />
-          <div className="col-span-4 h-screen overflow-auto px-6 py-6 lg:col-span-5">
-            <Outlet />
-          </div>
-        </div>
+        <Layout />
       </AuthedRouter>
     </Suspense>
   ),
@@ -130,10 +152,14 @@ export const dashboardRoute: RouteObject = {
       index: true,
       lazy: () => import("./Job/Ai"),
     },
-    ...items.map((item) => ({
-      path: item.path,
-      children: item.children.map((child) => child.route),
-    })),
+    ...items.map((item) => {
+      return (
+        item.route ?? {
+          path: item.path,
+          children: item.children.map((child) => child.route),
+        }
+      );
+    }),
     {
       path: "*",
       element: <h1>404</h1>,

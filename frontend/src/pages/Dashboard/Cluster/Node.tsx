@@ -11,7 +11,7 @@ import { useIndex } from "../hooks/useIndex";
 export const Component: FC = () => {
   useIndex("cluster", "node");
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 px-6 py-6">
       <div className="grid h-48 grid-cols-5 space-x-4">
         <Card className="col-span-2">
           <CardHeader>
@@ -32,6 +32,15 @@ export const Component: FC = () => {
           </CardContent>
         </Card>
       </div>
+      <Card className="h-72">
+        <CardHeader>
+          <CardTitle>Cluster Resource Usage</CardTitle>
+          <CardDescription>Card Description</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p>Card Content</p>
+        </CardContent>
+      </Card>
       <Card className="h-72">
         <CardHeader>
           <CardTitle>Cluster Resource Usage</CardTitle>
