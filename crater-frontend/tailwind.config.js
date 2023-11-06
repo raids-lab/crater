@@ -70,6 +70,13 @@ module.exports = {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
+      // added by me
+      gridTemplateColumns: {
+        sidebar: "240px auto", // for sidebar layout. adds grid-cols-sidebar class
+      },
+      gridTemplateRows: {
+        header: "52px auto", // for the navbar layout. adds grid-rows-header class
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],
