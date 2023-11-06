@@ -55,7 +55,7 @@ export function Sidebar({ className, sidebarItems }: SidebarProps) {
     <div
       className={cn(
         className,
-        "flex h-full flex-col items-stretch justify-between border-r bg-secondary-foreground px-2 py-2 text-white",
+        "flex h-full flex-col items-center justify-between border-r bg-secondary-foreground px-2 py-2 text-white",
       )}
     >
       <Accordion
