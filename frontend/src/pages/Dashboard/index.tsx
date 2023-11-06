@@ -1,12 +1,22 @@
-import { Sidebar, SidebarItem } from "@/components/Sidebar";
+import { Sidebar, SidebarItem, SidebarMenu } from "@/components/Sidebar";
+import DatabaseIcon from "@/components/icon/DatabaseIcon";
+import OverviewIcon from "@/components/icon/OverviewIcon";
+import CodeOneIcon from "@/components/icon/CodeOneIcon";
+import LightHouseIcon from "@/components/icon/LightHouseIcon";
+import WorkBenchIcon from "@/components/icon/WorkBenchIcon";
 import { useAuth } from "@/hooks/useAuth";
-import { FC, PropsWithChildren, Suspense } from "react";
+import { FC, PropsWithChildren, Suspense, useState } from "react";
 import { Navigate, Outlet, RouteObject } from "react-router-dom";
+import { FileTextIcon, Pencil2Icon } from "@radix-ui/react-icons";
+import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 
-const items: SidebarItem[] = [
+const sidebarItems: SidebarItem[] = [
   {
     title: "概览",
     path: "overview",
+    icon: <WorkBenchIcon />,
     children: [],
     route: {
       path: "overview",
@@ -16,6 +26,7 @@ const items: SidebarItem[] = [
   {
     title: "Jupyter 管理",
     path: "jupyter",
+    icon: <CodeOneIcon />,
     children: [],
     route: {
       path: "jupyter",
@@ -25,6 +36,7 @@ const items: SidebarItem[] = [
   {
     title: "任务管理",
     path: "job",
+    icon: <OverviewIcon />,
     children: [
       {
         title: "通用任务",
@@ -50,8 +62,30 @@ const items: SidebarItem[] = [
     ],
   },
   {
+    title: "镜像管理",
+    path: "image",
+    icon: <LightHouseIcon />,
+    children: [
+      {
+        title: "镜像列表",
+        route: {
+          path: "list",
+          lazy: () => import("./Image/List"),
+        },
+      },
+      {
+        title: "镜像制作",
+        route: {
+          path: "make",
+          lazy: () => import("./Image/Make"),
+        },
+      },
+    ],
+  },
+  {
     title: "数据管理",
     path: "data",
+    icon: <DatabaseIcon />,
     children: [
       {
         title: "数据集",
@@ -76,25 +110,25 @@ const items: SidebarItem[] = [
       },
     ],
   },
+];
+const sidebarMenus: SidebarMenu[] = [
   {
-    title: "镜像管理",
-    path: "image",
-    children: [
-      {
-        title: "镜像列表",
-        route: {
-          path: "list",
-          lazy: () => import("./Image/List"),
-        },
-      },
-      {
-        title: "镜像制作",
-        route: {
-          path: "make",
-          lazy: () => import("./Image/Make"),
-        },
-      },
-    ],
+    title: "使用文档",
+    path: "docs",
+    icon: <FileTextIcon />,
+    route: {
+      path: "docs",
+      lazy: () => import("./Docs"),
+    },
+  },
+  {
+    title: "问题反馈",
+    path: "feedback",
+    icon: <Pencil2Icon />,
+    route: {
+      path: "feedback",
+      lazy: () => import("./Feedback"),
+    },
   },
 ];
 
@@ -104,11 +138,67 @@ const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
 };
 
 const Layout = () => {
+  const [showSidebar, setShowSidebar] = useState(false);
   return (
-    <div className="grid min-h-screen bg-zinc-100 md:grid-cols-sidebar">
-      <Sidebar sidebarItems={items} />
-      <Outlet />
-    </div>
+    <>
+      <div className="grid h-screen w-screen bg-zinc-100 md:grid-cols-sidebar ">
+        <Sidebar
+          sidebarItems={sidebarItems}
+          sidebarMenus={sidebarMenus}
+          className={cn({
+            " -translate-x-full": !showSidebar,
+          })}
+        />
+        <ScrollArea className="h-screen w-full">
+          <Outlet />
+        </ScrollArea>
+      </div>
+      {/* When screen size is smaller than md, show a float button to open and close sidebar */}
+      {/* See https://reacthustle.com/blog/next-js-tailwind-responsive-sidebar-layout*/}
+      <div className="md:hidden">
+        <Button
+          variant={"default"}
+          className="fixed bottom-4 right-4 h-12 w-12 rounded-full backdrop-blur-md backdrop-filter"
+          onClick={() => {
+            setShowSidebar((prev) => !prev);
+          }}
+        >
+          {showSidebar ? (
+            <svg
+              className="h-6 w-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {/* X Icon */}
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          ) : (
+            <svg
+              className="h-6 w-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {/* Bar Icon */}
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h8m-8 6h16"
+              />
+            </svg>
+          )}
+        </Button>
+      </div>
+    </>
   );
 };
 
@@ -126,7 +216,7 @@ export const dashboardRoute: RouteObject = {
       index: true,
       lazy: () => import("./Job/Ai"),
     },
-    ...items.map((item) => {
+    ...sidebarItems.map((item) => {
       return (
         item.route ?? {
           path: item.path,
@@ -134,6 +224,7 @@ export const dashboardRoute: RouteObject = {
         }
       );
     }),
+    ...sidebarMenus.map((item) => item.route),
     {
       path: "*",
       element: <h1>404</h1>,

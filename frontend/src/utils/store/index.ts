@@ -16,6 +16,7 @@ const USER_INFO_KEY = "user_info";
 export const uiAccordionState = atom({
   key: UI_ACCORDION_KEY,
   default: [] as string[],
+  // effects: [localStorageEffect(UI_ACCORDION_KEY)],
 });
 
 export const uiActivedState = atom({
