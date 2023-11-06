@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/accordion";
 import { uiAccordionState, uiActivedState, userInfoState } from "@/utils/store";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 // import { logger } from "@/utils/loglevel";
 import { RouteObject, useNavigate } from "react-router-dom";
 import { useToast } from "./ui/use-toast";
@@ -16,6 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Separator } from "./ui/separator";
 import { ExitIcon } from "@radix-ui/react-icons";
 import { ScrollArea } from "./ui/scroll-area";
+import { useOnClickOutside } from "usehooks-ts";
 
 export type SidebarSubItem = {
   title: string;
@@ -40,12 +41,14 @@ export type SidebarMenu = {
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   sidebarItems: SidebarItem[];
   sidebarMenus: SidebarMenu[];
+  closeSidebar: () => void;
 }
 
 export function Sidebar({
   className,
   sidebarItems,
   sidebarMenus,
+  closeSidebar,
 }: SidebarProps) {
   const [accordion, setAccordion] = useRecoilState(uiAccordionState);
   const actived = useRecoilValue(uiActivedState);
@@ -53,6 +56,7 @@ export function Sidebar({
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setAccordion((old) => {
@@ -64,18 +68,21 @@ export function Sidebar({
     });
   }, [actived, setAccordion]);
 
+  useOnClickOutside(ref, closeSidebar);
+
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-between py-4",
+        "flex flex-col items-center justify-between pb-4",
         "border-r bg-secondary-foreground  text-white",
         "fixed top-0 z-20 md:sticky md:top-16 md:z-0 md:w-full",
         "min-h-full w-[300px]",
         ".3s transition-transform ease-in-out md:translate-x-0",
         className,
       )}
+      ref={ref}
     >
-      <ScrollArea className="h-[calc(100vh_-_192px)] w-full">
+      <ScrollArea className="h-[calc(100vh_-_176px)] w-full pt-4">
         <Accordion
           type="multiple"
           // collapsible
@@ -126,6 +133,7 @@ export function Sidebar({
               </AccordionItem>
             ) : (
               <button
+                key={`sidebar-item-${item.path}`}
                 className={cn(
                   "flex h-9 w-full flex-row items-center justify-start rounded-md px-4 text-base hover:bg-primary/80",
                   {

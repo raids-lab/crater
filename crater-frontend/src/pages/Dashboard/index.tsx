@@ -145,6 +145,7 @@ const Layout = () => {
         <Sidebar
           sidebarItems={sidebarItems}
           sidebarMenus={sidebarMenus}
+          closeSidebar={() => setShowSidebar(false)}
           className={cn({
             " -translate-x-full": !showSidebar,
           })}
@@ -155,7 +156,14 @@ const Layout = () => {
       </div>
       {/* When screen size is smaller than md, show a float button to open and close sidebar */}
       {/* See https://reacthustle.com/blog/next-js-tailwind-responsive-sidebar-layout*/}
-      <div className="md:hidden">
+      <div
+        className={cn(
+          ".3s translate-x-0 transition-transform ease-in-out md:hidden",
+          {
+            "translate-x-full": showSidebar,
+          },
+        )}
+      >
         <Button
           variant={"default"}
           className="fixed bottom-4 right-4 h-12 w-12 rounded-full backdrop-blur-md backdrop-filter"
@@ -163,39 +171,21 @@ const Layout = () => {
             setShowSidebar((prev) => !prev);
           }}
         >
-          {showSidebar ? (
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              {/* X Icon */}
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          ) : (
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              {/* Bar Icon */}
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h8m-8 6h16"
-              />
-            </svg>
-          )}
+          <svg
+            className="h-6 w-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            {/* Bar Icon */}
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 6h16M4 12h8m-8 6h16"
+            />
+          </svg>
         </Button>
       </div>
     </>
