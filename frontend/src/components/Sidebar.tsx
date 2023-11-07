@@ -76,7 +76,7 @@ export function Sidebar({
         "flex flex-col items-center justify-between pb-4",
         "border-r bg-secondary-foreground  text-white",
         "fixed top-0 z-20 md:sticky md:top-16 md:z-0 md:w-full",
-        "min-h-full w-[300px]",
+        "min-h-full w-[240px]",
         ".3s transition-transform ease-in-out md:translate-x-0",
         className,
       )}
