@@ -5,7 +5,6 @@ import { localStorageEffect } from "./utils";
 /**
  * LocalStorage and Recoil Keys
  */
-const UI_ACCORDION_KEY = "ui_accordion";
 const UI_INDEX_KEY = "ui_index";
 const USER_INFO_KEY = "user_info";
 
@@ -16,11 +15,6 @@ export const VITE_UI_THEME_KEY = "vite_ui_theme";
 /**
  * Global UI States
  */
-export const uiAccordionState = atom({
-  key: UI_ACCORDION_KEY,
-  default: [] as string[],
-  // effects: [localStorageEffect(UI_ACCORDION_KEY)],
-});
 
 export const uiActivedState = atom({
   key: UI_INDEX_KEY,
@@ -39,7 +33,6 @@ export const userInfoState = atom({
   default: {
     id: "",
     role: "viewer",
-    token: "",
   } as UserInfo,
   effects: [localStorageEffect(USER_INFO_KEY)],
 });
@@ -47,14 +40,12 @@ export const userInfoState = atom({
 /**
  * Reset all states
  */
-export const useResetRecoil = () => {
-  const resetUIAccordion = useResetRecoilState(uiAccordionState);
+export const useResetStore = () => {
   const resetUIActived = useResetRecoilState(uiActivedState);
   const resetUserInfo = useResetRecoilState(userInfoState);
 
   const resetAll = () => {
     // Recoil
-    resetUIAccordion();
     resetUIActived();
     resetUserInfo();
     // LocalStorage

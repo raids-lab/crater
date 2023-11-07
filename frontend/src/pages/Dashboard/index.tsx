@@ -158,6 +158,7 @@ const Layout = () => {
       {/* When screen size is smaller than md, show a float button to open and close sidebar */}
       {/* See https://reacthustle.com/blog/next-js-tailwind-responsive-sidebar-layout*/}
       <Button
+        title="Sidebar Controller"
         variant={"default"}
         className={cn(
           "fixed bottom-4 right-4 h-12 w-12 rounded-full backdrop-blur-md backdrop-filter",
@@ -166,6 +167,7 @@ const Layout = () => {
             " translate-x-20": showSidebar,
           },
         )}
+        type="button"
         onClick={() => {
           setShowSidebar((prev) => !prev);
         }}

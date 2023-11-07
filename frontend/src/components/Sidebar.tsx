@@ -6,13 +6,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import {
-  uiAccordionState,
-  uiActivedState,
-  useResetRecoil,
-} from "@/utils/store";
-import { useRecoilState, useRecoilValue } from "recoil";
-import { useEffect, useRef } from "react";
+import { uiActivedState, useResetStore } from "@/utils/store";
+import { useRecoilValue } from "recoil";
+import { useEffect, useRef, useState } from "react";
 // import { logger } from "@/utils/loglevel";
 import { RouteObject, useNavigate } from "react-router-dom";
 import { useToast } from "./ui/use-toast";
@@ -55,14 +51,14 @@ export function Sidebar({
   sidebarMenus,
   closeSidebar,
 }: SidebarProps) {
-  const [accordion, setAccordion] = useRecoilState(uiAccordionState);
+  const [accordion, setAccordion] = useState<string[]>([]);
   const actived = useRecoilValue(uiActivedState);
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const ref = useRef<HTMLDivElement>(null);
   const { theme, setTheme } = useTheme();
-  const { resetAll } = useResetRecoil();
+  const { resetAll } = useResetStore();
 
   useEffect(() => {
     setAccordion((old) => {
@@ -96,14 +92,11 @@ export function Sidebar({
           value={accordion}
           onValueChange={setAccordion}
         >
-          {sidebarItems.map((item, i) => {
+          {sidebarItems.map((item) => {
             return item.children.length > 0 ? (
               <AccordionItem value={item.path} key={item.path}>
-                <AccordionTrigger className="h-9 rounded-md hover:bg-primary/80">
-                  <div
-                    key={`$button-${i}`}
-                    className="flex flex-row items-center justify-start"
-                  >
+                <AccordionTrigger>
+                  <div className="flex flex-row items-center justify-start">
                     <div className="mr-3">{item.icon}</div>
                     {item.title}
                   </div>
@@ -123,6 +116,7 @@ export function Sidebar({
                                 subItem.route.path === actived.subItem,
                             },
                           )}
+                          type="button"
                           onClick={() => {
                             const url = subItem.route.path
                               ? `/dashboard/${item.path}/${subItem.route.path}`
@@ -147,6 +141,7 @@ export function Sidebar({
                       item.path === actived.item,
                   },
                 )}
+                type="button"
                 onClick={() => navigate(`/dashboard/${item.path}`)}
               >
                 <div className="mr-3">{item.icon}</div>
@@ -162,6 +157,7 @@ export function Sidebar({
           {sidebarMenus.map((item) => (
             <button
               key={`sidebar-menu-${item.path}`}
+              type="button"
               onClick={() => navigate(`/dashboard/${item.path}`)}
               className={cn(
                 "flex h-9 w-full flex-row items-center justify-start rounded-md px-4 text-base hover:bg-primary/80",
@@ -176,6 +172,7 @@ export function Sidebar({
           ))}
           <button
             className="flex h-9 w-full flex-row items-center justify-start rounded-md px-4 text-base hover:bg-destructive"
+            type="button"
             onClick={() => {
               queryClient.clear();
               resetAll();

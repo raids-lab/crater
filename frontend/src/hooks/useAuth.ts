@@ -5,7 +5,6 @@ import { useRecoilValue } from "recoil";
 export interface UserInfo {
   id: string;
   role: "admin" | "user" | "viewer"; // admin | power user | user | viewer
-  token: string;
 }
 
 export function useAuth(role: UserInfo["role"]) {
