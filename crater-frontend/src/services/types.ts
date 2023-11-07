@@ -1,8 +1,5 @@
 import { ErrorCode } from "./error_code";
 
-export const ACCESS_TOKEN_KEY = "access_token";
-export const REFRESH_TOKEN_KEY = "refresh_token";
-
 // https://codevoweb.com/react-query-context-api-axios-interceptors-jwt-auth/
 export interface IErrorResponse {
   error: string;
