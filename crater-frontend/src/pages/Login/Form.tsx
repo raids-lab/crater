@@ -48,12 +48,9 @@ export function ProfileForm() {
       apiUserLogin({ username: values.username, password: values.password }),
     onSuccess: async (_, { username }) => {
       await queryClient.invalidateQueries();
-      setUserState((old) => {
-        return {
-          ...old,
-          id: username,
-          role: "user",
-        };
+      setUserState({
+        id: username,
+        role: "user",
       });
       toast({
         title: `登陆成功`,

@@ -56,12 +56,9 @@ export function SignupForm() {
       }),
     onSuccess: async (_, { username }) => {
       await queryClient.invalidateQueries();
-      setUserState((old) => {
-        return {
-          ...old,
-          id: username,
-          role: "user",
-        };
+      setUserState({
+        id: username,
+        role: "user",
       });
       alert(username);
       navigate("/dashboard");
