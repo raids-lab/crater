@@ -1,12 +1,7 @@
 import axios, { AxiosRequestConfig, isAxiosError } from "axios";
-import {
-  ACCESS_TOKEN_KEY,
-  IErrorResponse,
-  IRefresh,
-  IRefreshResponse,
-  REFRESH_TOKEN_KEY,
-} from "./types";
+import { IErrorResponse, IRefresh, IRefreshResponse } from "./types";
 import { ERROR_TOKEN_EXPIRED } from "./error_code";
+import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/utils/store";
 
 export const VERSION = import.meta.env.VITE_API_VERSION;
 

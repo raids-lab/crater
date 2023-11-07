@@ -6,8 +6,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { uiAccordionState, uiActivedState, userInfoState } from "@/utils/store";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  uiAccordionState,
+  uiActivedState,
+  useResetRecoil,
+} from "@/utils/store";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { useEffect, useRef } from "react";
 // import { logger } from "@/utils/loglevel";
 import { RouteObject, useNavigate } from "react-router-dom";
@@ -17,6 +21,7 @@ import { Separator } from "./ui/separator";
 import { ExitIcon } from "@radix-ui/react-icons";
 import { ScrollArea } from "./ui/scroll-area";
 import { useOnClickOutside } from "usehooks-ts";
+import { useTheme } from "@/utils/theme";
 
 export type SidebarSubItem = {
   title: string;
@@ -52,11 +57,12 @@ export function Sidebar({
 }: SidebarProps) {
   const [accordion, setAccordion] = useRecoilState(uiAccordionState);
   const actived = useRecoilValue(uiActivedState);
-  const setUserInfo = useSetRecoilState(userInfoState);
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const ref = useRef<HTMLDivElement>(null);
+  const { theme, setTheme } = useTheme();
+  const { resetAll } = useResetRecoil();
 
   useEffect(() => {
     setAccordion((old) => {
@@ -74,7 +80,7 @@ export function Sidebar({
     <div
       className={cn(
         "flex flex-col items-center justify-between pb-4",
-        "border-r bg-secondary-foreground  text-white",
+        "border-r bg-slate-800 text-white dark:bg-background",
         "fixed top-0 z-20 md:sticky md:top-16 md:z-0 md:w-full",
         "min-h-full w-[240px]",
         ".3s transition-transform ease-in-out md:translate-x-0",
@@ -98,7 +104,7 @@ export function Sidebar({
                     key={`$button-${i}`}
                     className="flex flex-row items-center justify-start"
                   >
-                    <div className="mr-2">{item.icon}</div>
+                    <div className="mr-3">{item.icon}</div>
                     {item.title}
                   </div>
                 </AccordionTrigger>
@@ -110,9 +116,9 @@ export function Sidebar({
                           key={`${item.path}-${subItem.route.path}`}
                           variant="colorable"
                           className={cn(
-                            "w-full justify-start pl-10 font-normal hover:bg-primary/80",
+                            "w-full justify-start pl-11 font-normal hover:bg-primary/80",
                             {
-                              "bg-slate-700":
+                              "bg-slate-700 dark:bg-secondary":
                                 item.path === actived.item &&
                                 subItem.route.path === actived.subItem,
                             },
@@ -137,54 +143,55 @@ export function Sidebar({
                 className={cn(
                   "flex h-9 w-full flex-row items-center justify-start rounded-md px-4 text-base hover:bg-primary/80",
                   {
-                    "bg-slate-700": item.path === actived.item,
+                    "bg-slate-700 dark:bg-secondary":
+                      item.path === actived.item,
                   },
                 )}
                 onClick={() => navigate(`/dashboard/${item.path}`)}
               >
-                <div className="mr-2">{item.icon}</div>
+                <div className="mr-3">{item.icon}</div>
                 {item.title}
               </button>
             );
           })}
         </Accordion>
       </ScrollArea>
-      <div className="w-full space-y-1 px-2">
-        <Separator className="mb-3 bg-slate-800" />
-        {sidebarMenus.map((item) => (
+      <div className="w-full">
+        <Separator className="mb-4 bg-slate-700 dark:bg-secondary" />
+        <div className="space-y-1 px-2">
+          {sidebarMenus.map((item) => (
+            <button
+              key={`sidebar-menu-${item.path}`}
+              onClick={() => navigate(`/dashboard/${item.path}`)}
+              className={cn(
+                "flex h-9 w-full flex-row items-center justify-start rounded-md px-4 text-base hover:bg-primary/80",
+                {
+                  "bg-slate-700 dark:bg-secondary": item.path === actived.item,
+                },
+              )}
+            >
+              <div className="mr-3">{item.icon}</div>
+              {item.title}
+            </button>
+          ))}
           <button
-            key={`sidebar-menu-${item.path}`}
-            onClick={() => navigate(`/dashboard/${item.path}`)}
-            className={cn(
-              "flex h-9 w-full flex-row items-center justify-start rounded-md px-4 text-base hover:bg-primary/80",
-              {
-                "bg-slate-700": item.path === actived.item,
-              },
-            )}
+            className="flex h-9 w-full flex-row items-center justify-start rounded-md px-4 text-base hover:bg-destructive"
+            onClick={() => {
+              queryClient.clear();
+              resetAll();
+              toast({
+                title: "已退出",
+              });
+            }}
           >
-            <div className="mr-2">{item.icon}</div>
-            {item.title}
+            <ExitIcon className="mr-3 h-4 w-4" />
+            退出登录
           </button>
-        ))}
-        <button
-          className="flex h-9 w-full flex-row items-center justify-start rounded-md px-4 text-base hover:bg-destructive"
-          onClick={() => {
-            queryClient.clear();
-            setUserInfo((old) => {
-              return {
-                ...old,
-                role: "viewer",
-              };
-            });
-            toast({
-              title: "已退出",
-            });
-          }}
+        </div>
+        <p
+          className="select-none pt-2 text-center text-sm font-light text-muted-foreground"
+          onDoubleClick={() => setTheme(theme === "dark" ? "light" : "dark")}
         >
-          <ExitIcon className="mr-2 h-4 w-4" />
-          退出登录
-        </button>
-        <p className="pt-2 text-center text-sm font-light text-muted-foreground">
           v0.0.0
         </p>
         {/* <p>v0.0.1</p> */}
