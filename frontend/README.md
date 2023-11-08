@@ -24,30 +24,33 @@ pnpm -v
 # 8.9.2
 ```
 
-Now you can clone this project, and deploy it:
+Now you can clone this project, and run locally:
 
 ```bash
 git clone git@gitlab.act.buaa.edu.cn:act-k8s-portal-system/gpu-portal-frontend.git
 cd gpu-portal-frontend
 pnpm install
 pnpm dev
-# pnpm build
 ```
 
 The app will automatically reload if you change any of the source files.
 
 ## Development
 
-If you are using _Visual Studio Code_, follow [Profiles in Visual Studio Code](https://code.visualstudio.com/docs/editor/profiles#_import) to import configure from `.vscode/React.code-profile`. Else if you are using any other IDE, you should install required plugins manually.
+If you are using _Visual Studio Code_, follow the [Profiles in Visual Studio Code](https://code.visualstudio.com/docs/editor/profiles#_import) documentation to import and configure the `.vscode/React.code-profile` file. If you are using any other IDE, you will need to manually install the required plugins.
 
-- Frame: [React](https://react.dev/learn)
-  - State Manager: [recoil](https://recoiljs.org/zh-hans/)
-  - Query Manager: [tanstack query](https://tanstack.com/query/latest)
-- CSS: [tailwindcss](https://tailwindcss.com/docs/guides/vite)
-- UI Kit:
-  - [shadcn](https://ui.shadcn.com/examples/dashboard)
-  - [flowbite](https://flowbite.com/docs/getting-started/react/)
-  - [tanstack table](https://tanstack.com/table/v8)
+Understanding the following frameworks will help you in developing this project more effectively:
+
+- Frontend Framework: [React](https://react.dev/learn)
+  - State Management: [Recoil](https://recoiljs.org/zh-hans/)
+  - Query Management: [Tanstack Query](https://tanstack.com/query/latest)
+- CSS Framework: [Tailwind CSS](https://tailwindcss.com/docs/guides/vite)
+
+This project utilizes the following UI libraries. You can refer to their documentation for more information:
+
+- [shadcn/ui](https://ui.shadcn.com/examples/dashboard): The primary headless component library used in the project.
+- [Flowbite](https://flowbite.com/docs/getting-started/react/): When you need to _borrow_ some Tailwind CSS code.
+- [Tanstack Table](https://tanstack.com/table/v8): Headless table component used in the project.
 
 ## Deployment
 
