@@ -193,7 +193,7 @@ const Layout = () => {
 };
 
 export const dashboardRoute: RouteObject = {
-  path: "/dashboard",
+  path: "/portal",
   element: (
     <Suspense fallback={<h2>Loading...</h2>}>
       <AuthedRouter>

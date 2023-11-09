@@ -1,8 +1,6 @@
 import type { FC } from "react";
-import { useIndex } from "../hooks/useIndex";
 
 export const Component: FC = () => {
-  useIndex("data", "code");
   return (
     <div className="space-y-1 px-6 py-6 text-xl">
       <h1 className="text-3xl font-bold leading-loose">关联 Gitlab 仓库</h1>

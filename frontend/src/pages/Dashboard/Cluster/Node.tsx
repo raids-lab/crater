@@ -6,10 +6,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useIndex } from "../hooks/useIndex";
 
 export const Component: FC = () => {
-  useIndex("cluster", "node");
   return (
     <div className="space-y-4 px-6 py-6">
       <div className="grid h-48 grid-cols-5 space-x-4">

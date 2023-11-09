@@ -1,9 +1,8 @@
 import type { FC } from "react";
-import { useIndex } from "../hooks/useIndex";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const Component: FC = () => {
-  useIndex("overview", "");
   return (
     <div className="space-y-1 px-6 py-6 text-xl">
       <h1 className="text-3xl font-bold leading-loose">Overview</h1>
