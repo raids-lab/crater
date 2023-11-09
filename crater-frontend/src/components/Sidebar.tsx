@@ -6,11 +6,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { uiActivedState, useResetStore } from "@/utils/store";
-import { useRecoilValue } from "recoil";
-import { useEffect, useRef, useState } from "react";
-// import { logger } from "@/utils/loglevel";
-import { RouteObject, useNavigate } from "react-router-dom";
+import { useResetStore } from "@/utils/store";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { RouteObject, useLocation, useNavigate } from "react-router-dom";
 import { useToast } from "./ui/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Separator } from "./ui/separator";
@@ -52,17 +50,25 @@ export function Sidebar({
   closeSidebar,
 }: SidebarProps) {
   const [accordion, setAccordion] = useState<string[]>([]);
-  const actived = useRecoilValue(uiActivedState);
+  const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const ref = useRef<HTMLDivElement>(null);
   const { theme, setTheme } = useTheme();
   const { resetAll } = useResetStore();
 
+  // Get actived item from location
+  const actived = useMemo(() => {
+    const pathParts = location.pathname.split("/").filter(Boolean);
+    return {
+      item: pathParts[1],
+      subItem: pathParts[2],
+    };
+  }, [location]);
+
+  // Expand sidebar accordion
   useEffect(() => {
     setAccordion((old) => {
-      // if sidebarItem.path not in old, add it
       if (!old.includes(actived.item)) {
         return [...old, actived.item];
       }
@@ -70,6 +76,8 @@ export function Sidebar({
     });
   }, [actived, setAccordion]);
 
+  // Close sidebar when click outside
+  const ref = useRef<HTMLDivElement>(null);
   useOnClickOutside(ref, closeSidebar);
 
   return (
@@ -119,8 +127,8 @@ export function Sidebar({
                           type="button"
                           onClick={() => {
                             const url = subItem.route.path
-                              ? `/dashboard/${item.path}/${subItem.route.path}`
-                              : `/dashboard/${item.path}`;
+                              ? `/portal/${item.path}/${subItem.route.path}`
+                              : `/portal/${item.path}`;
                             navigate(url);
                           }}
                         >
@@ -142,7 +150,7 @@ export function Sidebar({
                   },
                 )}
                 type="button"
-                onClick={() => navigate(`/dashboard/${item.path}`)}
+                onClick={() => navigate(`/portal/${item.path}`)}
               >
                 <div className="mr-3">{item.icon}</div>
                 {item.title}
@@ -158,7 +166,7 @@ export function Sidebar({
             <button
               key={`sidebar-menu-${item.path}`}
               type="button"
-              onClick={() => navigate(`/dashboard/${item.path}`)}
+              onClick={() => navigate(`/portal/${item.path}`)}
               className={cn(
                 "flex h-9 w-full flex-row items-center justify-start rounded-md px-4 text-base hover:bg-primary/80",
                 {

@@ -1,8 +1,6 @@
 import type { FC } from "react";
-import { useIndex } from "../hooks/useIndex";
 
 export const Component: FC = () => {
-  useIndex("job", "dl");
   return (
     <div className="space-y-1 px-6 py-6 text-xl">
       <h1 className="text-3xl font-bold leading-loose">深度推荐训练任务</h1>

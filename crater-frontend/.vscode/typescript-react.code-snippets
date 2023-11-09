@@ -37,10 +37,8 @@
     "prefix": "ndc",
     "body": [
       "import type { FC } from \"react\";",
-      "import { useIndex } from \"../hooks/useIndex\";",
       "",
       "export const Component: FC = () => {",
-      "  useIndex(${1}, ${2});",
       "  return <>$TM_FILENAME_BASE</>;",
       "};"
     ],
