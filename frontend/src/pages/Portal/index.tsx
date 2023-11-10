@@ -192,7 +192,7 @@ const Layout = () => {
   );
 };
 
-export const dashboardRoute: RouteObject = {
+export const portalRoute: RouteObject = {
   path: "/portal",
   element: (
     <Suspense fallback={<h2>Loading...</h2>}>
