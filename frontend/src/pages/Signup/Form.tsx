@@ -61,7 +61,7 @@ export function SignupForm() {
         role: "user",
       });
       alert(username);
-      navigate("/dashboard");
+      navigate("/portal");
     },
     onError: (error) => showErrorToast("注册失败", error),
   });
