@@ -5,6 +5,7 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -57,7 +58,7 @@ export function ProfileForm() {
         description: `你好，用户 ${username}`,
       });
       // navigate to /dashboard and clear all history
-      navigate("/dashboard", { replace: true });
+      navigate("/portal", { replace: true });
     },
     onError: (error) => showErrorToast("登陆失败", error),
   });
@@ -81,13 +82,13 @@ export function ProfileForm() {
   return (
     <Form {...form}>
       {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="username"
           render={({ field }) => (
-            <FormItem className="flex flex-col">
-              {/* <FormLabel>用户名</FormLabel> */}
+            <FormItem>
+              <FormLabel>用户名</FormLabel>
               <FormControl>
                 <Input
                   placeholder="用户名"
@@ -106,7 +107,7 @@ export function ProfileForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              {/* <FormLabel>Password</FormLabel> */}
+              <FormLabel>密码</FormLabel>
               <FormControl>
                 <Input
                   type="password"

@@ -6,7 +6,7 @@ export default function Signup() {
   return (
     <div className="container relative grid h-screen items-center justify-center md:grid-cols-2 md:px-0 lg:max-w-none">
       <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r lg:flex">
-        <div className="absolute inset-0 bg-gradient-to-tr from-sky-900 to-sky-600" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-sky-900 to-sky-600 dark:from-secondary dark:to-secondary" />
         <button
           className="relative z-20 flex items-center text-lg font-medium"
           onClick={() => {
@@ -40,25 +40,6 @@ export default function Signup() {
         <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
           <div className="flex flex-col space-y-2 text-center">
             <h1 className="text-2xl font-semibold tracking-tight">用户注册</h1>
-            {/* <p className="text-sm text-muted-foreground">
-                admin: 123456 user: 000000
-              </p> */}
-            {/* <Input type="text" placeholder="用户名" id="user" />
-              <Input type="password" placeholder="密码" id="pass" />
-              <Button
-                className="bg-sky-700 hover:bg-sky-800"
-                onClick={() => {
-                  setUserState((old) => {
-                    return {
-                      ...old,
-                      role: "admin",
-                    };
-                  });
-                  navigate("/dashboard");
-                }}
-              >
-                登录
-              </Button> */}
             <SignupForm />
           </div>
         </div>

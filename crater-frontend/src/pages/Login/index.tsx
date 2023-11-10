@@ -5,9 +5,8 @@ export default function Login() {
   const navigate = useNavigate();
   return (
     <>
-      <div className="container relative grid h-screen items-center justify-center md:grid-cols-2 md:px-0 lg:max-w-none">
-        <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r md:flex">
-          <div className="absolute inset-0 bg-gradient-to-tr from-sky-900 to-sky-600" />
+      <div className="container relative grid h-screen md:grid-cols-2 md:px-0">
+        <div className="relative hidden h-full flex-col bg-gradient-to-tr from-sky-900 to-sky-600 p-10 text-white dark:border-r dark:from-secondary dark:to-secondary md:flex">
           <button
             className="relative z-20 flex items-center text-lg font-medium"
             title="Switch signup and login"
@@ -38,17 +37,16 @@ export default function Login() {
             </blockquote>
           </div>
         </div>
-        <div className="m-auto flex w-full flex-col items-stretch space-y-6 sm:w-[350px] lg:p-8">
-          <div className="flex flex-col space-y-2 text-center">
-            <h1 className="text-2xl font-semibold tracking-tight">用户登录</h1>
+        <div className="flex items-center justify-center">
+          <div className="w-full md:w-[350px]">
             <ProfileForm />
+            <p className="mt-4 px-2 text-center text-sm text-muted-foreground">
+              测试用账号：test 123456
+              <span className="ml-2 underline">
+                <Link to="/signup">注册</Link>
+              </span>
+            </p>
           </div>
-          <p className="px-2 text-center text-sm text-muted-foreground">
-            测试用账号：test 123456
-            <span className="ml-2 underline">
-              <Link to="/signup">注册</Link>
-            </span>
-          </p>
         </div>
       </div>
     </>
