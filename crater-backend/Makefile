@@ -61,12 +61,12 @@ test: manifests generate fmt vet envtest ## Run tests.
 ##@ Build
 
 .PHONY: build
-build: generate fmt vet ## Build manager binary.
+build: fmt # generate vet ## Build manager binary.
 	go build -mod=vendor -o bin/controller main.go
 
 .PHONY: run
-run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./main.go
+run: fmt # manifests generate vet ## Run a controller from your host.
+	go run ./main.go -db-config-file ./dbconf.yaml
 
 # If you wish built the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
