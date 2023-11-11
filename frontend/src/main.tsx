@@ -28,7 +28,7 @@ const router = createBrowserRouter([
   portalRoute,
   {
     path: "*",
-    element: <Navigate to="/dashboard" replace />,
+    element: <Navigate to="/portal" replace />,
   },
 ]);
 
