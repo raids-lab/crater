@@ -3,7 +3,7 @@ package server
 import (
 	"net/http"
 
-	"github.com/aisystem/ai-protal/pkg/bootstrap"
+	"github.com/aisystem/ai-protal/pkg/config"
 	"github.com/aisystem/ai-protal/pkg/constants"
 	"github.com/aisystem/ai-protal/pkg/db/user"
 	"github.com/aisystem/ai-protal/pkg/server/handlers"
@@ -18,7 +18,7 @@ type Backend struct {
 }
 
 func (b *Backend) RegisterService(manager handlers.Manager, cl client.Client) {
-	Env := bootstrap.NewEnv()
+	Env := config.NewTokenConf()
 	b.R.Use(middleware.Cors())
 	publicRouter := b.R.Group("")
 	db := user.NewDBService()

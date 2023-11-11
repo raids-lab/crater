@@ -1,11 +1,6 @@
-package bootstrap
+package config
 
-import (
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
-)
-
-type Env struct {
+type TokenConf struct {
 	//AppEnv                 string `mapstructure:"APP_ENV"`
 	//ServerAddress          string `mapstructure:"SERVER_ADDRESS"`
 	ContextTimeout int `mapstructure:"CONTEXT_TIMEOUT"`
@@ -20,23 +15,30 @@ type Env struct {
 	RefreshTokenSecret     string `mapstructure:"REFRESH_TOKEN_SECRET"`
 }
 
-func NewEnv() *Env {
-	env := Env{}
-	viper.SetConfigFile(".env")
+func NewTokenConf() *TokenConf {
+	// env := Env{
+	// }
+	// viper.SetConfigFile(".env")
 
-	err := viper.ReadInConfig()
-	if err != nil {
-		log.Fatal("Can't find the file .env : ", err)
-	}
+	// err := viper.ReadInConfig()
+	// if err != nil {
+	// 	log.Fatal("Can't find the file .env : ", err)
+	// }
 
-	err = viper.Unmarshal(&env)
-	if err != nil {
-		log.Fatal("Environment can't be loaded: ", err)
-	}
+	// err = viper.Unmarshal(&env)
+	// if err != nil {
+	// 	log.Fatal("Environment can't be loaded: ", err)
+	// }
 
 	/*if env.AppEnv == "development" {
 		log.Println("The App is running in development env")
 	}*/
 
-	return &env
+	return &TokenConf{
+		ContextTimeout:         2,
+		AccessTokenExpiryHour:  1,
+		RefreshTokenExpiryHour: 168,
+		AccessTokenSecret:      ***REMOVED***,
+		RefreshTokenSecret:     ***REMOVED***,
+	}
 }

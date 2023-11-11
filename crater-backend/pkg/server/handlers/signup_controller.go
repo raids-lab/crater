@@ -1,18 +1,15 @@
 package handlers
 
 import (
-	"github.com/aisystem/ai-protal/pkg/bootstrap"
+	"github.com/aisystem/ai-protal/pkg/config"
 	"github.com/aisystem/ai-protal/pkg/crclient"
 
 	"github.com/aisystem/ai-protal/pkg/db/user"
 	"github.com/aisystem/ai-protal/pkg/domain"
 	"github.com/aisystem/ai-protal/pkg/models"
 
-	//"github.com/amitshekhariitbhu/go-backend-clean-architecture/bootstrap"
-	//"github.com/amitshekhariitbhu/go-backend-clean-architecture/domain"
 	"github.com/gin-gonic/gin"
 
-	//"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -23,7 +20,7 @@ import (
 type SignupController struct {
 	SignupUsecase user.DBService
 	//contextTimeout time.Duration
-	Env *bootstrap.Env
+	Env *config.TokenConf
 
 	CL client.Client
 	//ID             int    `json:"_id"`
@@ -91,9 +88,9 @@ func (sc *SignupController) Signup(c *gin.Context) {
 	ct = &crclient.Control{Client: sc.CL}
 	request.Password = string(encryptedPassword)
 	namespace := "user-" + request.Name
-	err = ct.CreateNameSpace(namespace)
-	pvcname := "user-" + request.Name + "-pvc"
-	ct.CreatePVC(namespace, pvcname)
+	err = ct.CreateUserNameSpace(namespace)
+	pvcname := "home-" + request.Name + "-pvc"
+	ct.CreateUserHomePVC(namespace, pvcname)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":      "namespace creating wrong",
