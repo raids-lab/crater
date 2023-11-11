@@ -15,7 +15,15 @@ var Orm *gorm.DB
 
 // todo: mysql configuration
 // InitDB init mysql connection
-func InitDB() error {
+func InitDB(configFile string) error {
+	if configFile != "" {
+		viper.SetConfigFile(configFile)
+		if err := viper.ReadInConfig(); err != nil {
+			// 配置文件出错
+			return err
+		}
+	}
+
 	user := viper.GetString("DB_USER")
 	password := viper.GetString("DB_PASSWORD")
 	dbName := viper.GetString("DB_NAME")
@@ -33,7 +41,7 @@ func InitDB() error {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=%s&parseTime=True&loc=Local&timeout=%ds", user, password, host, port, dbName, charset, timeout)
 	log.Infof("dsn: %s", dsn)
 	var err error
-	Orm, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	Orm, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return err
 	}
@@ -66,6 +74,6 @@ func InitMigration() error {
 }
 
 // todo: init db conf
-func init(){
+func init() {
 	viper.AddConfigPath("./conf")
 }
