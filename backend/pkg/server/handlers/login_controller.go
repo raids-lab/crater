@@ -7,14 +7,14 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/aisystem/ai-protal/pkg/bootstrap"
+	"github.com/aisystem/ai-protal/pkg/config"
 	//"github.com/amitshekhariitbhu/go-backend-clean-architecture/domain"
 	"github.com/gin-gonic/gin"
 )
 
 type LoginController struct {
 	LoginUsecase user.DBService //domain.LoginUsecase
-	Env          *bootstrap.Env
+	Env          *config.TokenConf
 }
 type LoginRequest struct {
 	UserName string `json:"userName" binding:"required"`

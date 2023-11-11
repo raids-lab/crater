@@ -6,7 +6,7 @@ import (
 
 	"github.com/aisystem/ai-protal/pkg/domain"
 
-	"github.com/aisystem/ai-protal/pkg/bootstrap"
+	"github.com/aisystem/ai-protal/pkg/config"
 	"github.com/aisystem/ai-protal/pkg/db/user"
 	"github.com/aisystem/ai-protal/pkg/util"
 
@@ -17,7 +17,7 @@ import (
 
 type RefreshTokenController struct {
 	//Refres
-	Env *bootstrap.Env
+	Env *config.TokenConf
 }
 
 func (rtc *RefreshTokenController) NewRefreshTokenRouter(group *gin.RouterGroup) {
