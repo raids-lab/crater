@@ -51,13 +51,13 @@ export function ProfileForm() {
       await queryClient.invalidateQueries();
       setUserState({
         id: username,
-        role: "user",
+        role: "admin",
       });
       toast({
         title: `登陆成功`,
         description: `你好，用户 ${username}`,
       });
-      // navigate to /dashboard and clear all history
+      // navigate to /portal and clear all history
       navigate("/portal", { replace: true });
     },
     onError: (error) => showErrorToast("登陆失败", error),
@@ -88,13 +88,9 @@ export function ProfileForm() {
           name="username"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>用户名</FormLabel>
+              <FormLabel>账号</FormLabel>
               <FormControl>
-                <Input
-                  placeholder="用户名"
-                  autoComplete="username"
-                  {...field}
-                />
+                <Input autoComplete="username" {...field} />
                 {/* <Input placeholder="shadcn" {...field} /> */}
               </FormControl>
               {/* <FormDescription>密码</FormDescription> */}
@@ -111,7 +107,6 @@ export function ProfileForm() {
               <FormControl>
                 <Input
                   type="password"
-                  placeholder="密码"
                   autoComplete="current-password"
                   {...field}
                 />

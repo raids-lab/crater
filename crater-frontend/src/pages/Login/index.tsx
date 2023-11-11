@@ -5,7 +5,7 @@ export default function Login() {
   const navigate = useNavigate();
   return (
     <>
-      <div className="container relative grid h-screen md:grid-cols-2 md:px-0">
+      <div className="relative grid h-screen md:grid-cols-2 md:px-0">
         <div className="relative hidden h-full flex-col bg-gradient-to-tr from-sky-900 to-sky-600 p-10 text-white dark:border-r dark:from-secondary dark:to-secondary md:flex">
           <button
             className="relative z-20 flex items-center text-lg font-medium"
@@ -38,7 +38,10 @@ export default function Login() {
           </div>
         </div>
         <div className="flex items-center justify-center">
-          <div className="w-full md:w-[350px]">
+          <div className="w-full px-4 md:w-[350px]">
+            <h1 className="mb-4 text-center text-2xl font-semibold tracking-tight">
+              用户登录
+            </h1>
             <ProfileForm />
             <p className="mt-4 px-2 text-center text-sm text-muted-foreground">
               测试用账号：test 123456
