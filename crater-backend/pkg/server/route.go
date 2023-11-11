@@ -7,7 +7,7 @@ import (
 	"github.com/aisystem/ai-protal/pkg/constants"
 	"github.com/aisystem/ai-protal/pkg/db/user"
 	"github.com/aisystem/ai-protal/pkg/server/handlers"
-	"github.com/aisystem/ai-protal/pkg/sever/middleware"
+	"github.com/aisystem/ai-protal/pkg/server/middleware"
 	"github.com/aisystem/ai-protal/pkg/util"
 	"github.com/gin-gonic/gin"
 	"sigs.k8s.io/controller-runtime/pkg/client"
