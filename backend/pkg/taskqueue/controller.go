@@ -10,6 +10,7 @@ import (
 	quotadb "github.com/aisystem/ai-protal/pkg/db/quota"
 	taskdb "github.com/aisystem/ai-protal/pkg/db/task"
 	"github.com/aisystem/ai-protal/pkg/models"
+	"github.com/aisystem/ai-protal/pkg/server/handlers"
 	"github.com/aisystem/ai-protal/pkg/util"
 	"k8s.io/apimachinery/pkg/util/wait"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -116,10 +117,10 @@ func (c *TaskController) watchTaskUpdate(ctx context.Context) {
 				continue
 			} else if t.Operation == util.CreateTask {
 				// 2. create
-				c.taskQueue.AddTask(models.FormatTaskModelToAttr(task))
+				c.taskQueue.AddTask(handlers.FormatTaskModelToAttr(task))
 			} else if t.Operation == util.UpdateTask {
 				// 3. update slo
-				c.taskQueue.UpdateTask(models.FormatTaskModelToAttr(task))
+				c.taskQueue.UpdateTask(handlers.FormatTaskModelToAttr(task))
 			}
 		case <-ctx.Done():
 			return
@@ -142,7 +143,7 @@ func (c *TaskController) updateTaskStatus(taskID string, status string) (*models
 		}
 	}
 	t.Status = status
-	return models.FormatTaskModelToAttr(t), nil
+	return handlers.FormatTaskModelToAttr(t), nil
 }
 
 // schedule 简单功能：从用户队列中

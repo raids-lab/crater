@@ -111,7 +111,7 @@ func main() {
 	taskUpdateChan := make(chan util.TaskUpdateChan)
 	jobStatusChan := make(chan util.JobStatusChan)
 
-	backend, err := server.Register(taskUpdateChan)
+	backend, err := server.Register(taskUpdateChan, mgr.GetClient())
 	taskCtrl := taskqueue.NewTaskController(
 		mgr.GetClient(),
 		jobStatusChan,

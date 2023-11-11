@@ -3,7 +3,7 @@ package handlers
 import "github.com/gin-gonic/gin"
 
 type Manager interface {
-	RegisterRoute(r *gin.Engine)
+	RegisterRoute(r *gin.RouterGroup)
 }
 
 type Handler struct {
