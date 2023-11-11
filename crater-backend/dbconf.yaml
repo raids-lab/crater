@@ -5,4 +5,4 @@ DB_HOST: 127.0.0.1
 DB_PORT: 3306
 DB_CHARSET: utf8mb4
 DB_CONN_TIMEOUT: 10
-# kubectl port-forward service/mycluster mysql
+# kubectl port-forward service/mycluster mysql -n jupyter

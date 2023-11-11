@@ -8,7 +8,7 @@ type CreateTaskReq struct {
 
 // ListTaskReq is the request payload for listing tasks. Get Method
 type ListTaskReq struct {
-	UserName string `form:"userName" binding:"required"`
+	UserName string `form:"userName"`
 	Status   string `form:"status"`
 }
 
@@ -24,5 +24,4 @@ type UpdateTaskSLOReq struct {
 	TaskID uint `json:"taskID" binding:"required"`
 	SLO    uint `json:"slo" binding:"required"` // change the slo of the task
 }
-
 // TODO: update task sequence
