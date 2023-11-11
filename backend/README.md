@@ -1,5 +1,32 @@
 # ai-task-controller
 
+## crd 创建
+
+```bash
+kubectl apply -f config/crd/bases/aisystem.github.com_aijobs.yaml 
+```
+
+
+## 数据库部署和连接
+
+* `deploy/mysql`： 在集群上部署mysql集群
+* `dbconf.yaml`： 数据库配置文件，可以通过 `kubectl port-forward service/mycluster mysql` 在本机上暴露3306端口
+
+
+## 编译和运行
+
+``` bash
+# 编译
+go build -mod=vendor -o bin/controller main.go
+# 集群数据库端口暴露
+kubectl port-forward service/mycluster mysql
+# 运行
+./bin/controller --db-config-file ./dbconf.yaml
+```
+
+
+## 
+
 This repository implements a simple controller for watching Foo resources as
 defined with a CustomResourceDefinition (CRD).
 
