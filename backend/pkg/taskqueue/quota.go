@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/aisystem/ai-protal/pkg/models"
+	"github.com/aisystem/ai-protal/pkg/server/handlers"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -110,7 +111,7 @@ func (c *TaskController) AddOrUpdateQuotaInfo(name string, quota models.Quota) (
 			// todo: handler err
 		}
 		for _, task := range tasksRunning {
-			quotaInfo.AddTask(models.FormatTaskModelToAttr(&task))
+			quotaInfo.AddTask(handlers.FormatTaskModelToAttr(&task))
 		}
 
 		// add db tasks
@@ -119,7 +120,7 @@ func (c *TaskController) AddOrUpdateQuotaInfo(name string, quota models.Quota) (
 			// todo: handler err
 		}
 		for _, task := range tasksPending {
-			quotaInfo.AddTask(models.FormatTaskModelToAttr(&task))
+			quotaInfo.AddTask(handlers.FormatTaskModelToAttr(&task))
 		}
 
 		c.quotaInfos.Store(name, quotaInfo)
