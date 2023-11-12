@@ -14,7 +14,7 @@ type DBService interface {
 	GetByUserName(username string) (*models.User, error)
 	CreateAccessToken(user *models.User, secret string, expiry int) (accessToken string, err error)
 	CreateRefreshToken(user *models.User, secret string, expiry int) (refreshToken string, err error)
-	GetUserByID(id uint) (*models.User, error) //*********************************************************************************************
+	GetUserByID(id uint) (*models.User, error) 
 }
 
 type service struct{}

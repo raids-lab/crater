@@ -34,7 +34,7 @@ import (
 	db "github.com/aisystem/ai-protal/pkg/db/orm"
 	"github.com/aisystem/ai-protal/pkg/reconciler"
 	"github.com/aisystem/ai-protal/pkg/server"
-	"github.com/aisystem/ai-protal/pkg/taskqueue"
+	"github.com/aisystem/ai-protal/pkg/aitaskctl"
 	"github.com/aisystem/ai-protal/pkg/util"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -112,7 +112,7 @@ func main() {
 	jobStatusChan := make(chan util.JobStatusChan)
 
 	backend, err := server.Register(taskUpdateChan, mgr.GetClient())
-	taskCtrl := taskqueue.NewTaskController(
+	taskCtrl := aitaskctl.NewTaskController(
 		mgr.GetClient(),
 		jobStatusChan,
 		taskUpdateChan,
@@ -121,7 +121,7 @@ func main() {
 		setupLog.Error(err, "unable to set up task controller")
 		os.Exit(1)
 	}
-
+	setupLog.Info("task controller init success")
 	// 3. init job controller
 	jobReconciler := reconciler.NewAIJobReconciler(
 		mgr.GetClient(),
@@ -130,6 +130,25 @@ func main() {
 	)
 
 	jobReconciler.SetupWithManager(mgr)
+	stopCh := ctrl.SetupSignalHandler()
+
+	// 4. start manager
+	setupLog.Info("starting manager")
+	go func() {
+		if err := mgr.Start(stopCh); err != nil {
+			setupLog.Error(err, "problem running manager")
+			os.Exit(1)
+		}
+	}()
+
+	taskCtrl.Start(stopCh)
+
+	// 5. start server
+	setupLog.Info("starting server")
+	if err := backend.R.Run(serverPort); err != nil {
+		setupLog.Error(err, "problem running server")
+		os.Exit(1)
+	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
@@ -137,20 +156,6 @@ func main() {
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
-		os.Exit(1)
-	}
-
-	// 4. start manager
-	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
-	}
-
-	// 5. start server
-	setupLog.Info("starting server")
-	if err := backend.R.Run(serverPort); err != nil {
-		setupLog.Error(err, "problem running server")
 		os.Exit(1)
 	}
 
