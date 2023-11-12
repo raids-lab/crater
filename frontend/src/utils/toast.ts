@@ -1,16 +1,29 @@
 import { toast } from "@/components/ui/use-toast";
 import { IErrorResponse } from "@/services/types";
 import { isAxiosError } from "axios";
-import { logger } from "./loglevel";
 
 export const showErrorToast = (title: string, error: unknown) => {
   if (isAxiosError(error)) {
     if (error.response?.data) {
-      const responseData = error.response.data as IErrorResponse;
-      if ("error" in responseData) {
+      try {
+        const errorResponse = error.response.data as IErrorResponse;
+        if (errorResponse.error) {
+          toast({
+            title: title,
+            description: `${errorResponse.error}`,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: title,
+            description: `${error.message}`,
+            variant: "destructive",
+          });
+        }
+      } catch (e) {
         toast({
           title: title,
-          description: `${responseData.error}`,
+          description: `${error.message}`,
           variant: "destructive",
         });
       }
@@ -22,7 +35,6 @@ export const showErrorToast = (title: string, error: unknown) => {
       });
     }
   } else {
-    logger.error(error);
     toast({
       title: title,
       description: `Received unknown error, please contact admin.`,
