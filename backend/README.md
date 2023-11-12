@@ -13,15 +13,14 @@ kubectl apply -f config/crd/bases/aisystem.github.com_aijobs.yaml
 * `dbconf.yaml`： 数据库配置文件，可以通过 `kubectl port-forward service/mycluster mysql` 在本机上暴露3306端口
 
 
-## 编译和运行
+## Debug
 
 ``` bash
 # 编译
 go build -mod=vendor -o bin/controller main.go
-# 集群数据库端口暴露
-kubectl port-forward service/mycluster mysql
+
 # 运行
-./bin/controller --db-config-file ./dbconf.yaml
+./bin/controller --db-config-file ./debug-dbconf.yaml --server-port :8067 --metrics-bind-address :8066 --health-probe-bind-address :8065
 ```
 
 
