@@ -3,19 +3,14 @@ package handlers
 import (
 	"strings"
 
-	"github.com/aisystem/ai-protal/pkg/db/user"
 	"github.com/aisystem/ai-protal/pkg/models"
-	"github.com/gin-gonic/gin"
 )
 
-func FormatTaskAttrToModel(c *gin.Context, task *models.TaskAttr) *models.TaskModel {
-	id, _ := c.Get("x-user-id")
-	var dd int
-	dd = GetInterfaceToInt(id)
-	user1, _ := user.NewDBService().GetUserByID(uint(dd))
-	return &models.TaskModel{
+func FormatTaskAttrToModel(task *models.TaskAttr) *models.AITask {
+	return &models.AITask{
 		TaskName:        task.TaskName,
-		UserName:        user1.UserName,
+		UserName:        task.UserName,
+		Namespace:       task.Namespace,
 		TaskType:        task.TaskType,
 		Image:           task.Image,
 		ResourceRequest: models.ResourceListToJSON(task.ResourceRequest),
@@ -24,11 +19,11 @@ func FormatTaskAttrToModel(c *gin.Context, task *models.TaskAttr) *models.TaskMo
 		Command:         task.Command,
 		Args:            argsToString(task.Args),
 		SLO:             task.SLO,
-		Status:          "1",
+		Status:          models.QueueingStatus,
 	}
 }
 
-func FormatTaskModelToAttr(model *models.TaskModel) *models.TaskAttr {
+func FormatAITaskToAttr(model *models.AITask) *models.TaskAttr {
 	resourceJson, _ := models.JSONToResourceList(model.ResourceRequest)
 	return &models.TaskAttr{
 		ID:              model.ID,

@@ -5,6 +5,7 @@ import (
 
 	"github.com/aisystem/ai-protal/pkg/config"
 	"github.com/aisystem/ai-protal/pkg/constants"
+	"github.com/aisystem/ai-protal/pkg/db/quota"
 	"github.com/aisystem/ai-protal/pkg/db/user"
 	"github.com/aisystem/ai-protal/pkg/server/handlers"
 	"github.com/aisystem/ai-protal/pkg/server/middleware"
@@ -21,25 +22,25 @@ func (b *Backend) RegisterService(manager handlers.Manager, cl client.Client) {
 	Env := config.NewTokenConf()
 	b.R.Use(middleware.Cors())
 	publicRouter := b.R.Group("")
-	db := user.NewDBService()
+
 	//timeout := time.Duration(Env.ContextTimeout) * time.Second
 	lc := &handlers.LoginController{
-		LoginUsecase: db,
+		LoginUsecase: user.NewDBService(),
 		Env:          Env,
 	}
 	sc := &handlers.SignupController{
-		SignupUsecase: db,
-		Env:           Env,
-		CL:            cl,
+		UserDB:  user.NewDBService(),
+		QuotaDB: quota.NewDBService(),
+		Env:     Env,
+		CL:      cl,
 	}
 	rtc := &handlers.RefreshTokenController{
-
 		Env: Env,
 	}
 	sc.NewSignupRouter(publicRouter)
 	lc.NewLoginRouter(publicRouter)
 	rtc.NewRefreshTokenRouter(publicRouter)
-	protectedRouter := b.R.Group(constants.APIPrefix + "/task")
+	protectedRouter := b.R.Group(constants.APIPrefix + "/aitask")
 	protectedRouter.Use(middleware.JwtAuthMiddleware(Env.AccessTokenSecret))
 	manager.RegisterRoute(protectedRouter)
 }
@@ -54,7 +55,7 @@ func Register(taskUpdateChan <-chan util.TaskUpdateChan, cl client.Client) (*Bac
 			"message": "ok",
 		})
 	})
-	s.RegisterService(handlers.NewTaskMgr(taskUpdateChan), cl)
-	s.R.Run(":8078")
+	s.RegisterService(handlers.NewAITaskMgr(taskUpdateChan), cl)
+	// s.R.Run(":8078")
 	return s, nil
 }

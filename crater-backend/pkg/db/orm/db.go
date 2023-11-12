@@ -39,7 +39,7 @@ func InitDB(configFile string) error {
 		charset = "utf8mb4"
 	}
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=%s&parseTime=True&loc=Local&timeout=%ds", user, password, host, port, dbName, charset, timeout)
-	log.Infof("dsn: %s", dsn)
+	// log.Infof("dsn: %s", dsn)
 	var err error
 	Orm, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
@@ -61,8 +61,8 @@ func InitDB(configFile string) error {
 
 // InitMigration init mysql migration
 func InitMigration() error {
-	if err := Orm.AutoMigrate(&models.TaskModel{}); err != nil {
-		return fmt.Errorf("init migration TaskModel err: %v", err)
+	if err := Orm.AutoMigrate(&models.AITask{}); err != nil {
+		return fmt.Errorf("init migration AITask err: %v", err)
 	}
 	if err := Orm.AutoMigrate(&models.User{}); err != nil {
 		return fmt.Errorf("init migration User err: %v", err)
