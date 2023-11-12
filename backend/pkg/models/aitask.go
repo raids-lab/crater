@@ -25,7 +25,7 @@ const (
 )
 
 // TaskModel is task presented in db
-type TaskModel struct {
+type AITask struct {
 	ID              uint      `gorm:"primaryKey" json:"id"`
 	TaskName        string    `gorm:"column:task_name;type:varchar(128);not null" json:"taskName"`
 	UserName        string    `gorm:"column:user_name;type:varchar(128);not null" json:"userName"`
@@ -42,8 +42,10 @@ type TaskModel struct {
 	SLO             uint      `gorm:"column:slo;type:int;not null" json:"slo"`
 	Status          string    `gorm:"column:status;type:varchar(128)" json:"status"`
 	IsDeleted       bool      `gorm:"column:is_deleted;type:bool" json:"isDeleted"`
-	// PreTaskID       uint
-	// PostTaskID      uint
+	Profiled        bool      `gorm:"column:profiled;type:bool" json:"profiled"`
+	UtilStat        string    `gorm:"column:util_stat;type:text" json:"utilStat"`
+	EsitmatedTime   uint      `gorm:"column:estimated_time;type:int" json:"estimatedTime"`
+	ScheduleInfo    string   `gorm:"column:schedule_info;type:text" json:"scheduleInfo"`
 }
 
 // TaskAttr request

@@ -18,3 +18,12 @@ type DeleteTaskResp struct {
 
 type UpdateTaskResp struct {
 }
+
+
+type ListQuotaResp struct {
+	Quotas []models.Quota
+}
+
+type GetQuotaResp struct {
+	Quota models.Quota
+}
