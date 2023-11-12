@@ -3,7 +3,9 @@ package handlers
 import (
 	"github.com/aisystem/ai-protal/pkg/config"
 	"github.com/aisystem/ai-protal/pkg/crclient"
+	"github.com/sirupsen/logrus"
 
+	"github.com/aisystem/ai-protal/pkg/db/quota"
 	"github.com/aisystem/ai-protal/pkg/db/user"
 	"github.com/aisystem/ai-protal/pkg/domain"
 	"github.com/aisystem/ai-protal/pkg/models"
@@ -18,7 +20,8 @@ import (
 )
 
 type SignupController struct {
-	SignupUsecase user.DBService
+	UserDB  user.DBService
+	QuotaDB quota.DBService
 	//contextTimeout time.Duration
 	Env *config.TokenConf
 
@@ -56,7 +59,7 @@ func (sc *SignupController) Signup(c *gin.Context) {
 		return
 	}
 
-	_, err = sc.SignupUsecase.GetByUserName(request.Name) //GetUserByEmail(c, request.Email)
+	_, err = sc.UserDB.GetByUserName(request.Name) //GetUserByEmail(c, request.Email)
 	if err == nil {
 		c.JSON(http.StatusConflict, ErrorResponse{
 			Message: "User already exists with the given Name",
@@ -106,7 +109,13 @@ func (sc *SignupController) Signup(c *gin.Context) {
 		NameSpace: namespace,
 	}
 
-	err = sc.SignupUsecase.Create(&user)
+	quota := models.Quota{
+		UserName:  request.Name,
+		NameSpace: namespace,
+		HardQuota: models.ResourceListToJSON(models.DefaultQuota),
+	}
+
+	err = sc.UserDB.Create(&user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Message: err.Error(),
@@ -114,8 +123,12 @@ func (sc *SignupController) Signup(c *gin.Context) {
 		})
 		return
 	}
+	err = sc.QuotaDB.Create(&quota)
+	if err != nil {
+		logrus.Infof("quota create failed: %v", err)
+	}
 
-	accessToken, err := sc.SignupUsecase.CreateAccessToken(&user, sc.Env.AccessTokenSecret, sc.Env.AccessTokenExpiryHour)
+	accessToken, err := sc.UserDB.CreateAccessToken(&user, sc.Env.AccessTokenSecret, sc.Env.AccessTokenExpiryHour)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Message: err.Error(),
@@ -124,7 +137,7 @@ func (sc *SignupController) Signup(c *gin.Context) {
 		return
 	}
 
-	refreshToken, err := sc.SignupUsecase.CreateRefreshToken(&user, sc.Env.RefreshTokenSecret, sc.Env.RefreshTokenExpiryHour)
+	refreshToken, err := sc.UserDB.CreateRefreshToken(&user, sc.Env.RefreshTokenSecret, sc.Env.RefreshTokenExpiryHour)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Message: err.Error(),
