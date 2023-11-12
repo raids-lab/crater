@@ -8,7 +8,7 @@ import instance, { VERSION } from "../axios";
 
 export const apiTaskCreate = async (task: ITaskCreate) => {
   const response = await instance.post<ITaskCreateResponse>(
-    VERSION + "/task/create",
+    VERSION + "/aitask/create",
     task,
   );
   return response.data;
@@ -16,7 +16,7 @@ export const apiTaskCreate = async (task: ITaskCreate) => {
 
 export const apiTaskDelete = async (taskID: number) => {
   const response = await instance.post<ITaskDeleteResponse>(
-    VERSION + "/task/delete",
+    VERSION + "/aitask/delete",
     {
       taskID,
     },
@@ -25,4 +25,4 @@ export const apiTaskDelete = async (taskID: number) => {
 };
 
 export const apiTaskList = async () =>
-  instance.get<ITaskListResponse>(VERSION + "/task/list");
+  instance.get<ITaskListResponse>(VERSION + "/aitask/list");
