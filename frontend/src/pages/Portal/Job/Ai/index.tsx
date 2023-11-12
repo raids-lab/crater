@@ -43,14 +43,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useIndex } from "../../hooks/useIndex";
 import { NewTaskForm } from "./Form";
 import { useEffect, useState } from "react";
 import { Separator } from "@/components/ui/separator";
-import { useQuery } from "@tanstack/react-query";
-import { apiTaskList } from "@/services/api/task";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiTaskDelete, apiTaskList } from "@/services/api/task";
 import { logger } from "@/utils/loglevel";
 import { showErrorToast } from "@/utils/toast";
+import { useToast } from "@/components/ui/use-toast";
 
 type TaskInfo = {
   id: number;
@@ -72,124 +72,6 @@ const getTaskInfoTitle = (key: string) => {
   }
 };
 
-export const columns: ColumnDef<TaskInfo>[] = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={table.getIsAllPageRowsSelected()}
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-        className="ml-2"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-        className="ml-2"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "name",
-    header: ({ column }) => {
-      return (
-        <div className="flex flex-row items-center space-x-1">
-          <p>{getTaskInfoTitle("name")}</p>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          >
-            <CaretSortIcon className="h-4 w-4" />
-          </Button>
-        </div>
-      );
-    },
-    cell: ({ row }) => <div>{row.getValue("name")}</div>,
-  },
-  {
-    accessorKey: "status",
-    header: getTaskInfoTitle("status"),
-    cell: ({ row }) => (
-      <div className="capitalize">{row.getValue("status")}</div>
-    ),
-  },
-  {
-    accessorKey: "startTime",
-    header: ({ column }) => {
-      return (
-        <div className="flex flex-row items-center space-x-1">
-          <p>{getTaskInfoTitle("startTime")}</p>
-          <Button
-            variant="ghost"
-            size="icon"
-            title="amount sort"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          >
-            <CaretSortIcon className="h-4 w-4" />
-          </Button>
-        </div>
-      );
-    },
-    cell: ({ row }) => {
-      // row format: "2023-10-30T03:21:03.733Z"
-      const date = new Date(row.getValue("startTime"));
-      const formatted = date.toLocaleString("zh-CN", {
-        timeZone: "Asia/Shanghai",
-      });
-      return <div>{formatted}</div>;
-    },
-  },
-  {
-    id: "actions",
-    header: "Action",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const payment = row.original;
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <DotsHorizontalIcon className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => {
-                // check if browser support clipboard
-                if (window.isSecureContext && navigator.clipboard) {
-                  navigator.clipboard
-                    .writeText(payment.id.toString())
-                    .catch(() =>
-                      alert("Failed to copy payment ID to clipboard."),
-                    );
-                } else {
-                  alert(
-                    "Failed to copy payment ID to clipboard, please use HTTPs.",
-                  );
-                }
-              }}
-            >
-              复制任务 ID
-            </DropdownMenuItem>
-            {/* <DropdownMenuSeparator /> */}
-            {/* <DropdownMenuItem>View customer</DropdownMenuItem>
-            <DropdownMenuItem>View payment details</DropdownMenuItem> */}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
-  },
-];
-
 export function Component() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -197,6 +79,8 @@ export function Component() {
   const [rowSelection, setRowSelection] = useState({});
   const [openSheet, setOpenSheet] = useState(false);
   const [data, setData] = useState<TaskInfo[]>([]);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: taskList, isLoading } = useQuery({
     queryKey: ["tasklist"],
@@ -208,6 +92,136 @@ export function Component() {
     },
     onError: (err) => showErrorToast("获取任务列表失败", err),
   });
+
+  const { mutate: deleteTask } = useMutation({
+    mutationFn: (id: number) => apiTaskDelete(id),
+    onSuccess: () => {
+      queryClient
+        .invalidateQueries({ queryKey: ["tasklist"] })
+        .then(() => {
+          toast({
+            title: `删除成功`,
+            description: `任务已删除`,
+          });
+        })
+        .catch((err) => {
+          showErrorToast("刷新任务列表失败", err);
+        });
+    },
+    onError: (err) => showErrorToast("无法删除任务", err),
+  });
+
+  const columns: ColumnDef<TaskInfo>[] = [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+          className="ml-2"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+          className="ml-2"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "name",
+      header: ({ column }) => {
+        return (
+          <div className="flex flex-row items-center space-x-1">
+            <p>{getTaskInfoTitle("name")}</p>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() =>
+                column.toggleSorting(column.getIsSorted() === "asc")
+              }
+            >
+              <CaretSortIcon className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      },
+      cell: ({ row }) => <div>{row.getValue("name")}</div>,
+    },
+    {
+      accessorKey: "status",
+      header: getTaskInfoTitle("status"),
+      cell: ({ row }) => (
+        <div className="capitalize">{row.getValue("status")}</div>
+      ),
+    },
+    {
+      accessorKey: "startTime",
+      header: ({ column }) => {
+        return (
+          <div className="flex flex-row items-center space-x-1">
+            <p>{getTaskInfoTitle("startTime")}</p>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="amount sort"
+              onClick={() =>
+                column.toggleSorting(column.getIsSorted() === "asc")
+              }
+            >
+              <CaretSortIcon className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      },
+      cell: ({ row }) => {
+        // row format: "2023-10-30T03:21:03.733Z"
+        const date = new Date(row.getValue("startTime"));
+        const formatted = date.toLocaleString("zh-CN", {
+          timeZone: "Asia/Shanghai",
+        });
+        return <div>{formatted}</div>;
+      },
+    },
+    {
+      id: "actions",
+      header: "Action",
+      enableHiding: false,
+      cell: ({ row }) => {
+        const taskInfo = row.original;
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <DotsHorizontalIcon className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => {
+                  // check if browser support clipboard
+                  deleteTask(taskInfo.id);
+                }}
+              >
+                删除
+              </DropdownMenuItem>
+              {/* <DropdownMenuSeparator /> */}
+              {/* <DropdownMenuItem>View customer</DropdownMenuItem>
+              <DropdownMenuItem>View payment details</DropdownMenuItem> */}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
 
   useEffect(() => {
     if (isLoading) return;

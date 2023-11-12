@@ -6,6 +6,16 @@ export interface IErrorResponse {
   error_code: ErrorCode;
 }
 
+export interface ITaskDelete {
+  taskID: number;
+}
+
+export interface ITaskDeleteResponse {
+  data: string;
+  error: string;
+  status: boolean;
+}
+
 export interface ITaskListResponse {
   data: {
     Tasks: ITask[];
@@ -19,9 +29,7 @@ export interface ITask {
   taskType: string;
   image: string;
   resourceRequest: {
-    cpu: string;
-    gpu: string;
-    memory: string;
+    [key: string]: string;
   };
   command: string;
   args: {
@@ -36,14 +44,12 @@ export interface ITask {
   updatedAt: string;
 }
 
-export interface ICreateTask {
+export interface ITaskCreate {
   taskName: string;
   slo: number;
   taskType: string;
   resourceRequest: {
-    gpu: number;
-    memory: string;
-    cpu: number;
+    [key: string]: string;
   };
   image: string;
   dir: string;
@@ -55,7 +61,7 @@ export interface ICreateTask {
   priority: string;
 }
 
-export interface ICreateTaskResponse {
+export interface ITaskCreateResponse {
   data: string;
   error: string;
   status: boolean;

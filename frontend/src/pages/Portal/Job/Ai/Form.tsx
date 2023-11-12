@@ -43,7 +43,8 @@ const formSchema = z.object({
   cpu: z.number().int().positive({ message: "CPU 核心数至少为 1" }),
   gpu: z.number().int().min(0),
   memory: z.number().int().positive(),
-  image: z.string().url(),
+  // image: z.string().url(),
+  image: z.string(),
   dir: z.string(),
   shareDir: z.string(),
   command: z.string().min(1, {
@@ -88,9 +89,9 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
         slo: 7,
         taskType: "training",
         resourceRequest: {
-          gpu: values.gpu,
+          "nvidia.com/gpu": values.gpu.toString(),
           memory: `${values.memory}Gi`,
-          cpu: values.cpu,
+          cpu: values.cpu.toString(),
         },
         image: values.image,
         dir: values.dir,
