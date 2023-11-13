@@ -6,7 +6,6 @@ import (
 
 	tasksvc "github.com/aisystem/ai-protal/pkg/db/task"
 	usersvc "github.com/aisystem/ai-protal/pkg/db/user"
-	"github.com/aisystem/ai-protal/pkg/models"
 	payload "github.com/aisystem/ai-protal/pkg/server/payload"
 	resputil "github.com/aisystem/ai-protal/pkg/server/response"
 	"github.com/aisystem/ai-protal/pkg/util"
@@ -84,10 +83,7 @@ func (mgr *AITaskMgr) List(c *gin.Context) {
 		return
 	}
 	resp := payload.ListTaskResp{
-		Tasks: make([]models.TaskAttr, 0),
-	}
-	for _, taskModel := range taskModels {
-		resp.Tasks = append(resp.Tasks, *FormatAITaskToAttr(&taskModel))
+		Tasks: taskModels,
 	}
 	log.Infof("list task success, taskNum: %d", len(resp.Tasks))
 	resputil.WrapSuccessResponse(c, resp)
@@ -111,7 +107,7 @@ func (mgr *AITaskMgr) Get(c *gin.Context) {
 		return
 	}
 	resp := payload.GetTaskResp{
-		*FormatAITaskToAttr(taskModel),
+		*taskModel,
 	}
 	log.Infof("get task success, taskID: %d", req.TaskID)
 	resputil.WrapSuccessResponse(c, resp)
