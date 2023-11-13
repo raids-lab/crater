@@ -56,7 +56,7 @@ const getTaskInfoTitle = (key: string) => {
     case "status":
       return "状态";
     case "startTime":
-      return "开始时间";
+      return "创建时间";
     case "actions":
       return "操作";
     default:

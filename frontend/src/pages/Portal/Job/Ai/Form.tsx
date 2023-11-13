@@ -86,7 +86,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
     mutationFn: (values: z.infer<typeof formSchema>) =>
       apiTaskCreate({
         taskName: values.taskname,
-        slo: 7,
+        slo: values.priority === "high" ? 1 : 0,
         taskType: "training",
         resourceRequest: {
           "nvidia.com/gpu": values.gpu.toString(),
