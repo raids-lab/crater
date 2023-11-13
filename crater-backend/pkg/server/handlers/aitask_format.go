@@ -37,11 +37,11 @@ func FormatAITaskToAttr(model *models.AITask) *models.TaskAttr {
 		WorkingDir:      model.WorkingDir,
 		ShareDirs:       strings.Split(model.ShareDirs, ","),
 		Command:         model.Command,
-		Args:            dbstringToArgs(model.Args),
-		SLO:             model.SLO,
-		Status:          model.Status,
-		CreatedAt:       model.CreatedAt,
-		UpdatedAt:       model.UpdatedAt,
+		// Args:            dbstringToArgs(model.Args), // fixme
+		SLO:       model.SLO,
+		Status:    model.Status,
+		CreatedAt: model.CreatedAt,
+		UpdatedAt: model.UpdatedAt,
 	}
 }
 func argsToString(args map[string]string) string {

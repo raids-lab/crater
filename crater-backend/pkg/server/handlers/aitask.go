@@ -26,14 +26,22 @@ func (mgr *AITaskMgr) RegisterRoute(g *gin.RouterGroup) {
 type AITaskMgr struct {
 	taskService    tasksvc.DBService
 	userService    usersvc.DBService
-	taskUpdateChan <-chan util.TaskUpdateChan
+	taskUpdateChan chan<- util.TaskUpdateChan
 }
 
-func NewAITaskMgr(taskUpdateChan <-chan util.TaskUpdateChan) *AITaskMgr {
+func NewAITaskMgr(taskUpdateChan chan<- util.TaskUpdateChan) *AITaskMgr {
 	return &AITaskMgr{
 		taskService:    tasksvc.NewDBService(),
 		userService:    usersvc.NewDBService(),
 		taskUpdateChan: taskUpdateChan,
+	}
+}
+
+func (mgr *AITaskMgr) NotifyTaskUpdate(taskID uint, userName string, op util.TaskOperation) {
+	mgr.taskUpdateChan <- util.TaskUpdateChan{
+		TaskID:    taskID,
+		UserName:  userName,
+		Operation: op,
 	}
 }
 
@@ -60,13 +68,14 @@ func (mgr *AITaskMgr) Create(c *gin.Context) {
 		resputil.WrapFailedResponse(c, msg, 50001)
 		return
 	}
+	mgr.NotifyTaskUpdate(taskModel.ID, taskModel.UserName, util.CreateTask)
 
 	log.Infof("create task success, taskID: %d", req.ID)
 	resputil.WrapSuccessResponse(c, "")
 }
 
 func (mgr *AITaskMgr) List(c *gin.Context) {
-	log.Infof("Task List, url: %s", c.Request.URL)
+	// log.Infof("Task List, url: %s", c.Request.URL)
 	var req payload.ListTaskReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		msg := fmt.Sprintf("validate list parameters failed, err %v", err)
@@ -85,7 +94,7 @@ func (mgr *AITaskMgr) List(c *gin.Context) {
 	resp := payload.ListTaskResp{
 		Tasks: taskModels,
 	}
-	log.Infof("list task success, taskNum: %d", len(resp.Tasks))
+	// log.Infof("list task success, taskNum: %d", len(resp.Tasks))
 	resputil.WrapSuccessResponse(c, resp)
 }
 
@@ -130,6 +139,7 @@ func (mgr *AITaskMgr) Delete(c *gin.Context) {
 		resputil.WrapFailedResponse(c, msg, 50007)
 		return
 	}
+	mgr.NotifyTaskUpdate(req.TaskID, username.(string), util.DeleteTask)
 	log.Infof("delete task success, taskID: %d", req.TaskID)
 	resputil.WrapSuccessResponse(c, "")
 }
@@ -153,6 +163,7 @@ func (mgr *AITaskMgr) UpdateSLO(c *gin.Context) {
 	}
 	task.SLO = req.SLO
 	err = mgr.taskService.Update(task)
+	mgr.NotifyTaskUpdate(req.TaskID, username.(string), util.UpdateTask)
 	log.Infof("update task success, taskID: %d", req.TaskID)
 	resputil.WrapSuccessResponse(c, "")
 }

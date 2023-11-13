@@ -49,7 +49,7 @@ func (b *Backend) RegisterService(manager handlers.Manager, cl client.Client) {
 	manager.RegisterRoute(protectedRouter)
 }
 
-func Register(taskUpdateChan <-chan util.TaskUpdateChan, cl client.Client) (*Backend, error) {
+func Register(taskUpdateChan chan<- util.TaskUpdateChan, cl client.Client) (*Backend, error) {
 	s := new(Backend)
 
 	s.R = gin.Default()
