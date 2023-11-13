@@ -28,14 +28,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import {
   Table,
   TableBody,
   TableCell,
@@ -43,16 +35,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { NewTaskForm } from "./Form";
 import { useEffect, useState } from "react";
-import { Separator } from "@/components/ui/separator";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiTaskDelete, apiTaskList } from "@/services/api/task";
+import { apiTaskDelete } from "@/services/api/task";
 import { logger } from "@/utils/loglevel";
 import { showErrorToast } from "@/utils/toast";
 import { useToast } from "@/components/ui/use-toast";
 
-type TaskInfo = {
+type UserInfo = {
   id: number;
   name: string;
   status: string;
@@ -74,21 +64,35 @@ const getTaskInfoTitle = (key: string) => {
   }
 };
 
+async function getData(): Promise<UserInfo[]> {
+  // Fetch data from your API here.
+  // For now, we'll just return some fake data.
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  return [
+    {
+      id: 1,
+      name: "100",
+      status: "pending",
+      startTime: "m@example.com",
+    },
+    // ...
+  ];
+}
+
 export function Component() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
-  const [openSheet, setOpenSheet] = useState(false);
-  const [data, setData] = useState<TaskInfo[]>([]);
+  const [data, setData] = useState<UserInfo[]>([]);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data: taskList, isLoading } = useQuery({
-    queryKey: ["tasklist"],
+    queryKey: ["userlist"],
     retry: 1,
-    queryFn: apiTaskList,
-    select: (res) => res.data.data.Tasks,
+    queryFn: getData,
+    select: (res) => res,
     onSuccess: (data) => {
       logger.debug("Data is: ", data);
     },
@@ -113,7 +117,7 @@ export function Component() {
     onError: (err) => showErrorToast("无法删除任务", err),
   });
 
-  const columns: ColumnDef<TaskInfo>[] = [
+  const columns: ColumnDef<UserInfo>[] = [
     {
       id: "select",
       header: ({ table }) => (
@@ -217,7 +221,7 @@ export function Component() {
               </DropdownMenuItem>
               {/* <DropdownMenuSeparator /> */}
               {/* <DropdownMenuItem>View customer</DropdownMenuItem>
-              <DropdownMenuItem>View payment details</DropdownMenuItem> */}
+                <DropdownMenuItem>View payment details</DropdownMenuItem> */}
             </DropdownMenuContent>
           </DropdownMenu>
         );
@@ -228,12 +232,7 @@ export function Component() {
   useEffect(() => {
     if (isLoading) return;
     if (!taskList) return;
-    const tableData: TaskInfo[] = taskList.map((task) => ({
-      id: task.id,
-      name: task.taskName,
-      status: task.Status,
-      startTime: task.createdAt,
-    }));
+    const tableData: UserInfo[] = taskList;
     setData(tableData);
   }, [taskList, isLoading]);
 
@@ -259,20 +258,6 @@ export function Component() {
   return (
     <div className="space-y-4 px-6 py-6">
       <div className="flex items-center space-x-2">
-        <Sheet open={openSheet} onOpenChange={setOpenSheet}>
-          <SheetTrigger asChild>
-            <Button className="min-w-fit">新建任务</Button>
-          </SheetTrigger>
-          {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
-          <SheetContent className="max-h-screen overflow-y-auto sm:max-w-2xl">
-            <SheetHeader>
-              <SheetTitle>新建任务</SheetTitle>
-              <SheetDescription>创建一个新的 AI 训练任务</SheetDescription>
-            </SheetHeader>
-            <Separator className="mt-4" />
-            <NewTaskForm closeSheet={() => setOpenSheet(false)} />
-          </SheetContent>
-        </Sheet>
         <Input
           placeholder="请输入搜索内容"
           value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
