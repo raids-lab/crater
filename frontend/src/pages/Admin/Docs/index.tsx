@@ -1,12 +1,7 @@
 import type { FC } from "react";
-import path from "path";
-import { z } from "zod";
 
 import { columns } from "@/components/tasks/components/columns";
 import { DataTable } from "@/components/tasks/components/data-table";
-import { UserNav } from "@/components/tasks/components/user-nav";
-import { taskSchema } from "@/components/tasks/data/schema";
-import { readFile } from "fs";
 
 // Simulate a database read for tasks.
 const tasks = [
