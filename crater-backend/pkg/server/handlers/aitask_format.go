@@ -23,6 +23,7 @@ func FormatTaskAttrToModel(task *models.TaskAttr) *models.AITask {
 	}
 }
 
+// TODO: directly return models.AITask
 func FormatAITaskToAttr(model *models.AITask) *models.TaskAttr {
 	resourceJson, _ := models.JSONToResourceList(model.ResourceRequest)
 	return &models.TaskAttr{

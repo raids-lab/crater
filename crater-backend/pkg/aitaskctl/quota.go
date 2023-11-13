@@ -5,6 +5,7 @@ import (
 
 	"github.com/aisystem/ai-protal/pkg/models"
 	"github.com/aisystem/ai-protal/pkg/server/handlers"
+	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -24,7 +25,7 @@ func (info *QuotaInfo) AddTask(task *models.TaskAttr) {
 	defer info.Unlock()
 	key := keyFunc(task)
 	// 没有找到task的时候才添加quota
-	if task, ok := info.UsedTasks[key]; !ok {
+	if _, ok := info.UsedTasks[key]; !ok {
 		info.UsedTasks[key] = task
 		if task.SLO == models.HighSLO {
 			AddResourceList(info.HardUsed, task.ResourceRequest)
@@ -61,11 +62,12 @@ func (info *QuotaInfo) Snapshot() *QuotaInfo {
 	info.RLock()
 	defer info.RUnlock()
 	return &QuotaInfo{
-		Name:     info.Name,
-		Hard:     info.Hard.DeepCopy(),
-		Soft:     info.Soft.DeepCopy(),
-		HardUsed: info.HardUsed.DeepCopy(),
-		SoftUsed: info.SoftUsed.DeepCopy(),
+		Name:      info.Name,
+		Hard:      info.Hard.DeepCopy(),
+		Soft:      info.Soft.DeepCopy(),
+		HardUsed:  info.HardUsed.DeepCopy(),
+		SoftUsed:  info.SoftUsed.DeepCopy(),
+		UsedTasks: make(map[string]*models.TaskAttr),
 	}
 }
 
@@ -75,7 +77,7 @@ func (c *TaskController) GetQuotaInfo(username string) *QuotaInfo {
 	} else {
 		quotadb, err := c.quotaDB.GetByUserName(username)
 		if err != nil {
-			// todo: handler err
+			logrus.Errorf("get quota from db failed, err: %v", err)
 			return nil
 		}
 		_, info := c.AddOrUpdateQuotaInfo(username, *quotadb)
@@ -110,16 +112,18 @@ func (c *TaskController) AddOrUpdateQuotaInfo(name string, quota models.Quota) (
 		if err != nil {
 			// todo: handler err
 		}
+
 		for _, task := range tasksRunning {
 			quotaInfo.AddTask(handlers.FormatAITaskToAttr(&task))
 		}
 
 		// add db tasks
-		tasksPending, err := c.taskDB.ListByUserAndStatus(name, models.PendingStatus)
+		taskQueuing, err := c.taskDB.ListByUserAndStatus(name, models.QueueingStatus)
 		if err != nil {
 			// todo: handler err
 		}
-		for _, task := range tasksPending {
+		// logrus.Info(tasksRunning)
+		for _, task := range taskQueuing {
 			quotaInfo.AddTask(handlers.FormatAITaskToAttr(&task))
 		}
 

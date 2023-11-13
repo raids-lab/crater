@@ -24,7 +24,7 @@ type DeleteTaskReq struct {
 
 type UpdateTaskSLOReq struct {
 	TaskID uint `json:"taskID" binding:"required"`
-	SLO    uint `json:"slo" binding:"required"` // change the slo of the task
+	SLO    uint `json:"slo"` // change the slo of the task
 }
 
 // TODO: update task sequence

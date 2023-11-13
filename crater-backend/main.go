@@ -30,12 +30,13 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	schedulerpluginsv1alpha1 "sigs.k8s.io/scheduler-plugins/apis/scheduling/v1alpha1"
 
+	"github.com/aisystem/ai-protal/pkg/aitaskctl"
 	aisystemv1alpha1 "github.com/aisystem/ai-protal/pkg/apis/aijob/v1alpha1"
 	db "github.com/aisystem/ai-protal/pkg/db/orm"
 	"github.com/aisystem/ai-protal/pkg/reconciler"
 	"github.com/aisystem/ai-protal/pkg/server"
-	"github.com/aisystem/ai-protal/pkg/aitaskctl"
 	"github.com/aisystem/ai-protal/pkg/util"
+	"github.com/sirupsen/logrus"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
@@ -159,4 +160,15 @@ func main() {
 		os.Exit(1)
 	}
 
+}
+
+func init() {
+	logrus.SetFormatter(&logrus.TextFormatter{
+		TimestampFormat:           "2006-01-02 15:04:05",
+		ForceColors:               true,
+		EnvironmentOverrideColors: true,
+		FullTimestamp:             true,
+		// DisableLevelTruncation:    true,
+	})
+	logrus.SetReportCaller(true)
 }
