@@ -42,6 +42,10 @@ func (b *Backend) RegisterService(manager handlers.Manager, cl client.Client) {
 	rtc.NewRefreshTokenRouter(publicRouter)
 	protectedRouter := b.R.Group(constants.APIPrefix + "/aitask")
 	protectedRouter.Use(middleware.JwtAuthMiddleware(Env.AccessTokenSecret))
+	adminRouter := b.R.Group(constants.APIPrefix + "/admin")
+	adminRouter.Use(middleware.JwtAuthMiddleware(Env.AccessTokenSecret), middleware.AdminMiddleware())
+	adminMgr := handlers.NewAdminMgr()
+	adminMgr.RegisterRoute(adminRouter)
 	manager.RegisterRoute(protectedRouter)
 }
 

@@ -3,7 +3,6 @@ package handlers
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
 	tasksvc "github.com/aisystem/ai-protal/pkg/db/task"
 	usersvc "github.com/aisystem/ai-protal/pkg/db/user"
@@ -40,7 +39,7 @@ func NewAITaskMgr(taskUpdateChan <-chan util.TaskUpdateChan) *AITaskMgr {
 }
 
 func (mgr *AITaskMgr) Create(c *gin.Context) {
-	log.Infof("Quota Create, url: %s", c.Request.URL)
+	log.Infof("Task Create, url: %s", c.Request.URL)
 	var req payload.CreateTaskReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
@@ -51,19 +50,11 @@ func (mgr *AITaskMgr) Create(c *gin.Context) {
 		})
 		return
 	}
-	idValue, _ := c.Get("x-user-id")
-	id, _ := strconv.Atoi(idValue.(string))
-	user, err := mgr.userService.GetUserByID(uint(id))
-	if err != nil {
-		msg := fmt.Sprintf("user not found")
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50003)
-		return
-	}
-	req.UserName = user.UserName
-	req.Namespace = user.NameSpace
+	username, _ := c.Get("username")
+	req.UserName = username.(string)
+	req.Namespace = fmt.Sprintf("user-%s", username.(string))
 	taskModel := FormatTaskAttrToModel(&req.TaskAttr)
-	err = mgr.taskService.Create(taskModel)
+	err := mgr.taskService.Create(taskModel)
 	if err != nil {
 		msg := fmt.Sprintf("create task failed, err %v", err)
 		log.Error(msg)
@@ -76,7 +67,7 @@ func (mgr *AITaskMgr) Create(c *gin.Context) {
 }
 
 func (mgr *AITaskMgr) List(c *gin.Context) {
-	log.Infof("Quota List, url: %s", c.Request.URL)
+	log.Infof("Task List, url: %s", c.Request.URL)
 	var req payload.ListTaskReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		msg := fmt.Sprintf("validate list parameters failed, err %v", err)
@@ -84,16 +75,8 @@ func (mgr *AITaskMgr) List(c *gin.Context) {
 		resputil.WrapFailedResponse(c, msg, 50002)
 		return
 	}
-	idValue, _ := c.Get("x-user-id")
-	id, _ := strconv.Atoi(idValue.(string))
-	user, err := mgr.userService.GetUserByID(uint(id))
-	if err != nil {
-		msg := fmt.Sprintf("user not found")
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50003)
-		return
-	}
-	taskModels, err := mgr.taskService.ListByUserAndStatus(user.UserName, "")
+	username, _ := c.Get("username")
+	taskModels, err := mgr.taskService.ListByUserAndStatus(username.(string), "")
 	if err != nil {
 		msg := fmt.Sprintf("list task failed, err %v", err)
 		log.Error(msg)
@@ -111,7 +94,7 @@ func (mgr *AITaskMgr) List(c *gin.Context) {
 }
 
 func (mgr *AITaskMgr) Get(c *gin.Context) {
-	log.Infof("Quota Get, url: %s", c.Request.URL)
+	log.Infof("Task Get, url: %s", c.Request.URL)
 	var req payload.GetTaskReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		msg := fmt.Sprintf("validate get parameters failed, err %v", err)
@@ -119,17 +102,8 @@ func (mgr *AITaskMgr) Get(c *gin.Context) {
 		resputil.WrapFailedResponse(c, msg, 50004)
 		return
 	}
-	idValue, _ := c.Get("x-user-id")
-	id, _ := strconv.Atoi(idValue.(string))
-	user, err := mgr.userService.GetUserByID(uint(id))
-	if err != nil {
-		msg := fmt.Sprintf("user not found")
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50003)
-		return
-	}
-
-	taskModel, err := mgr.taskService.GetByUserAndID(user.UserName, req.TaskID)
+	username, _ := c.Get("username")
+	taskModel, err := mgr.taskService.GetByUserAndID(username.(string), req.TaskID)
 	if err != nil {
 		msg := fmt.Sprintf("get task failed, err %v", err)
 		log.Error(msg)
@@ -144,7 +118,7 @@ func (mgr *AITaskMgr) Get(c *gin.Context) {
 }
 
 func (mgr *AITaskMgr) Delete(c *gin.Context) {
-	log.Infof("Quota Delete, url: %s", c.Request.URL)
+	log.Infof("Task Delete, url: %s", c.Request.URL)
 	var req payload.DeleteTaskReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
@@ -152,16 +126,8 @@ func (mgr *AITaskMgr) Delete(c *gin.Context) {
 		resputil.WrapFailedResponse(c, msg, 50006)
 		return
 	}
-	idValue, _ := c.Get("x-user-id")
-	id, _ := strconv.Atoi(idValue.(string))
-	user, err := mgr.userService.GetUserByID(uint(id))
-	if err != nil {
-		msg := fmt.Sprintf("user not found")
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50003)
-		return
-	}
-	err = mgr.taskService.DeleteByUserAndID(user.UserName, req.TaskID)
+	username, _ := c.Get("username")
+	err := mgr.taskService.DeleteByUserAndID(username.(string), req.TaskID)
 	if err != nil {
 		msg := fmt.Sprintf("delete task failed, err %v", err)
 		log.Error(msg)
@@ -173,7 +139,7 @@ func (mgr *AITaskMgr) Delete(c *gin.Context) {
 }
 
 func (mgr *AITaskMgr) UpdateSLO(c *gin.Context) {
-	log.Infof("Quota Update, url: %s", c.Request.URL)
+	log.Infof("Task Update, url: %s", c.Request.URL)
 	var req payload.UpdateTaskSLOReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		msg := fmt.Sprintf("validate update parameters failed, err %v", err)
@@ -181,17 +147,8 @@ func (mgr *AITaskMgr) UpdateSLO(c *gin.Context) {
 		resputil.WrapFailedResponse(c, msg, 50008)
 		return
 	}
-	idValue, _ := c.Get("x-user-id")
-	id, _ := strconv.Atoi(idValue.(string))
-	user, err := mgr.userService.GetUserByID(uint(id))
-	if err != nil {
-		msg := fmt.Sprintf("user not found")
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50003)
-		return
-	}
-
-	task, err := mgr.taskService.GetByUserAndID(user.UserName, req.TaskID)
+	username, _ := c.Get("username")
+	task, err := mgr.taskService.GetByUserAndID(username.(string), req.TaskID)
 	if err != nil {
 		msg := fmt.Sprintf("get task failed, err %v", err)
 		log.Error(msg)
