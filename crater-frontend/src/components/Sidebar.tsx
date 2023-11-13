@@ -181,7 +181,6 @@ export function Sidebar({
         >
           v0.0.0
         </p>
-        {/* <p>v0.0.1</p> */}
       </div>
     </div>
   );

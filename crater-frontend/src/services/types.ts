@@ -23,25 +23,31 @@ export interface ITaskListResponse {
 }
 
 export interface ITask {
-  taskName: string;
-  UserName: string;
-  slo: number;
-  taskType: string;
-  image: string;
-  resourceRequest: {
-    [key: string]: string;
-  };
-  command: string;
-  args: {
-    [key: string]: string;
-  };
-  workingDir: string;
-  ShareDirs: string[];
   id: number;
-  Namespace: string;
-  Status: string;
+  taskName: string;
+  userName: string;
+  namespace: string;
+  taskType: string;
   createdAt: string;
   updatedAt: string;
+  admittedAt: string;
+  startedAt: string;
+  image: string;
+  // resourceRequest: {
+  //   [key: string]: string;
+  // };
+  resourceRequest: string;
+  workingDir: string;
+  ShareDirs: string[];
+  command: string;
+  args: string;
+  slo: number;
+  status: string;
+  isDeleted: false;
+  profiled: false;
+  utilStat: string;
+  estimatedTime: number;
+  scheduleInfo: string;
 }
 
 export interface ITaskCreate {

@@ -1,33 +1,15 @@
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  CaretSortIcon,
-  ChevronDownIcon,
-  DotsHorizontalIcon,
-} from "@radix-ui/react-icons";
-import {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
+import { DotsHorizontalIcon } from "@radix-ui/react-icons";
+import { ColumnDef } from "@tanstack/react-table";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetContent,
@@ -44,49 +26,19 @@ import { apiTaskDelete, apiTaskList } from "@/services/api/task";
 import { logger } from "@/utils/loglevel";
 import { showErrorToast } from "@/utils/toast";
 import { useToast } from "@/components/ui/use-toast";
-import { DataTable } from "@/components/tasks/components/data-table";
+import { DataTable } from "@/components/DataTable";
 import { DataTableColumnHeader } from "@/components/tasks/components/data-table-column-header";
+import { priorities, toolbarConfig } from "./Table/data";
 
 type TaskInfo = {
   id: number;
-  name: string;
+  title: string;
   status: string;
+  priority: string;
   startTime: string;
 };
 
-const getTaskInfoTitle = (key: string) => {
-  switch (key) {
-    case "name":
-      return "任务名";
-    case "status":
-      return "状态";
-    case "startTime":
-      return "创建时间";
-    case "actions":
-      return "操作";
-    default:
-      return "";
-  }
-};
-
-export const priorities = [
-  {
-    label: "低",
-    value: "low",
-    icon: ArrowDownIcon,
-  },
-  {
-    label: "高",
-    value: "high",
-    icon: ArrowUpIcon,
-  },
-];
-
 export function Component() {
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = useState({});
   const [openSheet, setOpenSheet] = useState(false);
   const [data, setData] = useState<TaskInfo[]>([]);
   const queryClient = useQueryClient();
@@ -144,11 +96,11 @@ export function Component() {
       enableHiding: false,
     },
     {
-      accessorKey: "name",
+      accessorKey: "title",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="任务名" />
+        <DataTableColumnHeader column={column} title="任务名称" />
       ),
-      cell: ({ row }) => <div>{row.getValue("name")}</div>,
+      cell: ({ row }) => <div>{row.getValue("title")}</div>,
     },
     {
       accessorKey: "status",
@@ -158,6 +110,9 @@ export function Component() {
       cell: ({ row }) => (
         <div className="capitalize">{row.getValue("status")}</div>
       ),
+      filterFn: (row, id, value) => {
+        return (value as string[]).includes(row.getValue(id));
+      },
     },
     {
       accessorKey: "priority",
@@ -168,11 +123,9 @@ export function Component() {
         const priority = priorities.find(
           (priority) => priority.value === row.getValue("priority"),
         );
-
         if (!priority) {
           return null;
         }
-
         return (
           <div className="flex items-center">
             {priority.icon && (
@@ -183,7 +136,7 @@ export function Component() {
         );
       },
       filterFn: (row, id, value) => {
-        return value.includes(row.getValue(id));
+        return (value as string[]).includes(row.getValue(id));
       },
     },
     {
@@ -239,8 +192,9 @@ export function Component() {
     if (!taskList) return;
     const tableData: TaskInfo[] = taskList.map((task) => ({
       id: task.id,
-      name: task.taskName,
-      status: task.Status,
+      title: task.taskName,
+      status: task.status,
+      priority: task.slo ? "high" : "low",
       startTime: task.createdAt,
     }));
     setData(tableData);
@@ -264,7 +218,7 @@ export function Component() {
           </SheetContent>
         </Sheet>
       </div>
-      <DataTable data={data} columns={columns} />
+      <DataTable data={data} columns={columns} toolbarConfig={toolbarConfig} />
     </div>
   );
 }
