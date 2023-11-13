@@ -111,7 +111,7 @@ const sidebarMenus: SidebarMenu[] = [
 ];
 
 const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
-  const isAuthenticated = useAuth("viewer");
+  const isAuthenticated = useAuth("admin");
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
