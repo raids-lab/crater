@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/aisystem/ai-protal/pkg/crclient"
 	quotadb "github.com/aisystem/ai-protal/pkg/db/quota"
@@ -71,7 +72,7 @@ func (c *TaskController) Start(ctx context.Context) error {
 	// 3. 接收task变更信息
 	go c.watchTaskUpdate(ctx)
 	// 4. schedule线程
-	go wait.UntilWithContext(ctx, c.schedule, 10)
+	go wait.UntilWithContext(ctx, c.schedule, time.Second*5)
 	return nil
 }
 
@@ -112,9 +113,16 @@ func (c *TaskController) watchTaskUpdate(ctx context.Context) {
 			// 更新task在队列的状态
 			task, err := c.taskDB.GetByID(t.TaskID)
 			tidStr := strconv.FormatUint(uint64(t.TaskID), 10)
+			logrus.Infof("get task update event, taskID: %v, operation: %v", tidStr, t.Operation)
 			// 1. delete的情况
-			if err != nil && t.Operation == util.DeleteTask {
+			if t.Operation == util.DeleteTask {
 				c.taskQueue.DeleteTaskByUserNameAndTaskID(t.UserName, tidStr)
+				// delete in cluster
+				err = c.jobControl.DeleteJobFromTask(task)
+				if err != nil {
+					logrus.Errorf("delete job from task failed, err: %v", err)
+				}
+				logrus.Infof("delete task in task controller, %d", t.TaskID)
 				continue
 			} else if t.Operation == util.CreateTask {
 				// 2. create
@@ -152,7 +160,7 @@ func (c *TaskController) schedule(ctx context.Context) {
 	// log := ctrl.LoggerFrom(ctx)
 	// 等待调度的队列
 	candiates := make([]*models.TaskAttr, 0)
-	// logrus.Info(c.taskQueue)
+	// logrus.Info("start schedule")
 	for username, q := range c.taskQueue.userQueues {
 		// 1. 复制一份quota
 		// logrus.Info(username, q.gauranteedQueue)
@@ -164,10 +172,13 @@ func (c *TaskController) schedule(ctx context.Context) {
 		// 2. 从gauranteedQueue队列选出不超过quota的作业
 		for _, t := range q.gauranteedQueue.List() {
 			task := t.(*models.TaskAttr)
+			// logrus.Info(task)
 			if !quotaCopy.CheckHardQuotaExceed(task.ResourceRequest) {
 				candiates = append(candiates, task)
 				quotaCopy.AddTask(task)
+				// logrus.Infof("task quota check succeed, %v/%v", task.UserName, task.TaskName)
 			} else {
+				// logrus.Infof("task quota exceed, %v/%v, request:%v, used:%v, hard:%v", task.UserName, task.TaskName, task.ResourceRequest, quotaCopy.HardUsed, quotaCopy.Hard)
 				break
 			}
 		}

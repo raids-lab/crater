@@ -18,8 +18,14 @@ type Control struct {
 	client.Client
 }
 
+const (
+	NameSpaceFormat = "user-%s"
+	PVCFormat       = "user-%s-home"
+)
+
 // todo: add more volumes, args etc..
-func (c *Control) CreateUserNameSpace(ns string) error {
+func (c *Control) CreateUserNameSpace(username string) error {
+	ns := fmt.Sprintf(NameSpaceFormat, username)
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ns,
@@ -36,7 +42,10 @@ func (c *Control) CreateUserNameSpace(ns string) error {
 	}
 	return nil
 }
-func (c *Control) CreateUserHomePVC(namespace string, pvcname string) error {
+func (c *Control) CreateUserHomePVC(username string) error {
+	namespace := fmt.Sprintf(NameSpaceFormat, username)
+	pvcname := fmt.Sprintf(PVCFormat, username)
+
 	SCN := "rook-cephfs"
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{

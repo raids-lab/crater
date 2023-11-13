@@ -38,7 +38,7 @@ type AITask struct {
 	Image           string     `gorm:"column:image;type:text;not null" json:"image"`
 	ResourceRequest string     `gorm:"column:resource_request;type:text;not null" json:"resourceRequest"`
 	WorkingDir      string     `gorm:"column:working_dir;type:text" json:"workingDir"`
-	ShareDirs       string     `gorm:"column:share_dirs;type:text" json:"ShareDirs"`
+	ShareDirs       string     `gorm:"column:share_dirs;type:text" json:"shareDirs"`
 	Command         string     `gorm:"column:command;type:text" json:"command"`
 	Args            string     `gorm:"column:args;type:text" json:"args"`
 	SLO             uint       `gorm:"column:slo;type:int;not null" json:"slo"`
@@ -61,7 +61,7 @@ type TaskAttr struct {
 	Command         string            `json:"command" binding:"required"`
 	Args            map[string]string `json:"args"`
 	WorkingDir      string            `json:"workingDir"`
-	ShareDirs       []string          `json:"ShareDirs"`
+	ShareDirs       []string          `json:"shareDirs"`
 	// not for request
 	ID        uint `json:"id"`
 	Namespace string

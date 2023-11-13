@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"fmt"
+
 	"github.com/aisystem/ai-protal/pkg/config"
 	"github.com/aisystem/ai-protal/pkg/crclient"
 	"github.com/sirupsen/logrus"
@@ -88,10 +90,8 @@ func (sc *SignupController) Signup(c *gin.Context) {
 	var ct *crclient.Control
 	ct = &crclient.Control{Client: sc.CL}
 	request.Password = string(encryptedPassword)
-	namespace := "user-" + request.Name
-	err = ct.CreateUserNameSpace(namespace)
-	pvcname := "home-" + request.Name + "-pvc"
-	ct.CreateUserHomePVC(namespace, pvcname)
+	err = ct.CreateUserNameSpace(request.Name)
+	ct.CreateUserHomePVC(request.Name)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":      "namespace creating wrong",
@@ -100,11 +100,12 @@ func (sc *SignupController) Signup(c *gin.Context) {
 
 		return
 	}
+	ns := fmt.Sprintf("user-%s", request.Name)
 	user := models.User{
 		UserName:  request.Name,
 		Role:      request.Role,
 		Password:  request.Password,
-		NameSpace: namespace,
+		NameSpace: ns,
 	}
 
 	err = sc.UserDB.Create(&user)
@@ -118,7 +119,7 @@ func (sc *SignupController) Signup(c *gin.Context) {
 	quota := models.Quota{
 		// UserID:    user.ID,
 		UserName:  user.UserName,
-		NameSpace: namespace,
+		NameSpace: ns,
 		HardQuota: models.ResourceListToJSON(v1.ResourceList{}),
 		// HardQuota: models.ResourceListToJSON(models.DefaultQuota),
 	}
