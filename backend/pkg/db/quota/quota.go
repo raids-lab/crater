@@ -10,7 +10,7 @@ type DBService interface {
 	Update(task *models.Quota) error
 	ListAllQuotas() ([]models.Quota, error)
 	DeleteByUserName(username string) error
-	GetByUserName(username string) (*models.Quota, error)
+	GetByUserName(userName string) (*models.Quota, error)
 }
 
 type service struct{}
@@ -37,8 +37,8 @@ func (s *service) DeleteByUserName(username string) error {
 	return db.Orm.Delete(&models.Quota{}, username).Error
 }
 
-func (s *service) GetByUserName(username string) (*models.Quota, error) {
+func (s *service) GetByUserName(userName string) (*models.Quota, error) {
 	var quota models.Quota
-	err := db.Orm.First(&quota, username).Error
+	err := db.Orm.Where("username=?", userName).First(&quota).Error
 	return &quota, err
 }
