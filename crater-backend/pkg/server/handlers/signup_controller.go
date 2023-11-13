@@ -4,6 +4,7 @@ import (
 	"github.com/aisystem/ai-protal/pkg/config"
 	"github.com/aisystem/ai-protal/pkg/crclient"
 	"github.com/sirupsen/logrus"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/aisystem/ai-protal/pkg/db/quota"
 	"github.com/aisystem/ai-protal/pkg/db/user"
@@ -37,9 +38,6 @@ type SignupRequest struct {
 	Role     string `json:"role" binding:"required"`
 	Password string `json:"password" binding:"required"`
 } //domain
-/*type ErrorResponse struct {
-	Message string `json:"message"`
-}*/
 
 func (sc *SignupController) NewSignupRouter(group *gin.RouterGroup) {
 	//ur := repository.NewUserRepository(db, domain.CollectionUser)
@@ -109,12 +107,6 @@ func (sc *SignupController) Signup(c *gin.Context) {
 		NameSpace: namespace,
 	}
 
-	quota := models.Quota{
-		UserName:  request.Name,
-		NameSpace: namespace,
-		HardQuota: models.ResourceListToJSON(models.DefaultQuota),
-	}
-
 	err = sc.UserDB.Create(&user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
@@ -122,6 +114,13 @@ func (sc *SignupController) Signup(c *gin.Context) {
 			Code:    50016,
 		})
 		return
+	}
+	quota := models.Quota{
+		// UserID:    user.ID,
+		UserName:  user.UserName,
+		NameSpace: namespace,
+		HardQuota: models.ResourceListToJSON(v1.ResourceList{}),
+		// HardQuota: models.ResourceListToJSON(models.DefaultQuota),
 	}
 	err = sc.QuotaDB.Create(&quota)
 	if err != nil {

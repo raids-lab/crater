@@ -36,7 +36,7 @@ func (s *service) UpdateStatus(taskID uint, status string) error {
 }
 
 func (s *service) DeleteByUserAndID(userName string, taskID uint) error {
-	err := db.Orm.Model(&models.AITask{}).Where("user_name = ? and id = ?", userName, taskID).Update("is_deleted", true).Error
+	err := db.Orm.Model(&models.AITask{}).Where("username = ? and id = ?", userName, taskID).Update("is_deleted", true).Error
 	return err
 	// return db.Orm.Delete(&models.AITask{}, taskID).Error
 }
@@ -49,9 +49,9 @@ func (s *service) ListByUserAndStatus(userName string, status string) ([]models.
 	var tasks []models.AITask
 	var err error
 	if status == "" {
-		err = db.Orm.Where("user_name = ? and is_deleted = ?", userName, false).Find(&tasks).Error
+		err = db.Orm.Where("username = ? and is_deleted = ?", userName, false).Find(&tasks).Error
 	} else {
-		err = db.Orm.Where("user_name = ? and status = ? and is_deleted = ?", userName, status, false).Find(&tasks).Error
+		err = db.Orm.Where("username = ? and status = ? and is_deleted = ?", userName, status, false).Find(&tasks).Error
 
 	}
 	return tasks, err
@@ -65,6 +65,6 @@ func (s *service) GetByID(taskID uint) (*models.AITask, error) {
 
 func (s *service) GetByUserAndID(userName string, taskID uint) (*models.AITask, error) {
 	var task models.AITask
-	err := db.Orm.Where("user_name = ? and id = ?", userName, taskID).First(&task).Error
+	err := db.Orm.Where("username = ? and id = ?", userName, taskID).First(&task).Error
 	return &task, err
 }

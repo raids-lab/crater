@@ -3,12 +3,19 @@ package middleware
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
+	usersvc "github.com/aisystem/ai-protal/pkg/db/user"
 	"github.com/aisystem/ai-protal/pkg/util"
+
 	//"github.com/amitshekhariitbhu/go-backend-clean-architecture/domain"
 	//"github.com/amitshekhariitbhu/go-backend-clean-architecture/internal/tokenutil"
 	"github.com/gin-gonic/gin"
+)
+
+var (
+	userDB = usersvc.NewDBService()
 )
 
 type ErrorResponse struct {
@@ -36,6 +43,18 @@ func JwtAuthMiddleware(secret string) gin.HandlerFunc {
 					return
 				}
 				c.Set("x-user-id", userID)
+				id, _ := strconv.Atoi(userID)
+				user, err := userDB.GetUserByID(uint(id))
+				if err != nil {
+					c.JSON(http.StatusUnauthorized, ErrorResponse{
+						Message: "user Not found",
+						Code:    40105,
+					})
+					c.Abort()
+					return
+				}
+				c.Set("username", user.UserName)
+				c.Set("role", user.Role)
 				c.Next()
 				return
 			}
@@ -51,6 +70,21 @@ func JwtAuthMiddleware(secret string) gin.HandlerFunc {
 			Code:    40106,
 		})
 		c.Abort()
+	}
+}
+
+func AdminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, _ := c.Get("role")
+		if role != "admin" {
+			c.JSON(http.StatusUnauthorized, ErrorResponse{
+				Message: "Not authorized",
+				Code:    40107,
+			})
+			c.Abort()
+			return
+		}
+		c.Next()
 	}
 }
 

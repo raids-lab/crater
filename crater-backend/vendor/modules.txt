@@ -419,8 +419,8 @@ gopkg.in/yaml.v3
 # gorm.io/driver/mysql v1.5.1
 ## explicit; go 1.14
 gorm.io/driver/mysql
-# gorm.io/gorm v1.25.1
-## explicit; go 1.16
+# gorm.io/gorm v1.25.5
+## explicit; go 1.18
 gorm.io/gorm
 gorm.io/gorm/callbacks
 gorm.io/gorm/clause

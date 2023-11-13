@@ -5,6 +5,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
+const (
+	QuotaTableName = "quotas"
+)
+
 var (
 	DefaultQuota = v1.ResourceList{
 		v1.ResourceCPU:                    resource.MustParse("40"),
@@ -15,7 +19,12 @@ var (
 
 // Quota model
 type Quota struct {
-	UserName  string `gorm:"primaryKey" json:"username"`
+	Model
+	UserName  string `gorm:"column:username;type:varchar(128);not null;uniqueIndex" json:"username"`
 	NameSpace string `gorm:"column:namespace;type:varchar(128);not null" json:"namespace"`
 	HardQuota string `gorm:"column:hardQuota;type:text;" json:"hardQuota"`
+}
+
+func (Quota) TableName() string {
+	return QuotaTableName
 }
