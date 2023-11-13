@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
-import { userInfoState } from "@/utils/store";
+import { globalUserInfo } from "@/utils/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUserLogin } from "@/services/api/auth";
 import { useToast } from "@/components/ui/use-toast";
@@ -41,7 +41,7 @@ const formSchema = z.object({
 export function ProfileForm() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const setUserState = useSetRecoilState(userInfoState);
+  const setUserState = useSetRecoilState(globalUserInfo);
   const { toast } = useToast();
 
   const { mutate: loginUser, isLoading } = useMutation({

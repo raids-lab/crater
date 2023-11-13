@@ -1,4 +1,4 @@
-import { userInfoState } from "@/utils/store";
+import { globalUserInfo } from "@/utils/store";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 
@@ -16,7 +16,7 @@ export interface UserInfo {
  * @returns A boolean indicating whether the user is authenticated and has the required role.
  */
 export function useAuth(requireRole: Role) {
-  const { role } = useRecoilValue(userInfoState);
+  const { role } = useRecoilValue(globalUserInfo);
   const isAuthenticated = useMemo(() => {
     switch (requireRole) {
       case "admin":

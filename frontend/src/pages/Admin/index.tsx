@@ -1,37 +1,39 @@
 import { Sidebar, SidebarItem, SidebarMenu } from "@/components/Sidebar";
-import DatabaseIcon from "@/components/icon/DatabaseIcon";
-import OverviewIcon from "@/components/icon/OverviewIcon";
-import CodeOneIcon from "@/components/icon/CodeOneIcon";
-import LightHouseIcon from "@/components/icon/LightHouseIcon";
-import WorkBenchIcon from "@/components/icon/WorkBenchIcon";
 import { useAuth } from "@/hooks/useAuth";
 import { FC, PropsWithChildren, Suspense, useState } from "react";
 import { Navigate, Outlet, RouteObject } from "react-router-dom";
-import { FileTextIcon, Pencil2Icon } from "@radix-ui/react-icons";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import Navibar from "@/components/Navibar";
+import {
+  BarChartIcon,
+  FileTextIcon,
+  Pencil2Icon,
+  PersonIcon,
+} from "@radix-ui/react-icons";
+import OverviewIcon from "@/components/icon/OverviewIcon";
+import DatabaseIcon from "@/components/icon/DatabaseIcon";
+import LightHouseIcon from "@/components/icon/LightHouseIcon";
 
 const sidebarItems: SidebarItem[] = [
   {
-    title: "概览",
+    title: "资源监控",
     path: "overview",
-    icon: <WorkBenchIcon />,
+    icon: <BarChartIcon />,
     children: [],
     route: {
       path: "overview",
-      lazy: () => import("./Overview"),
     },
   },
   {
-    title: "Jupyter 管理",
-    path: "jupyter",
-    icon: <CodeOneIcon />,
+    title: "用户管理",
+    path: "user",
+    icon: <PersonIcon />,
     children: [],
     route: {
-      path: "jupyter",
-      lazy: () => import("./Jupyter"),
+      path: "user",
+      lazy: () => import("./User"),
     },
   },
   {
@@ -43,21 +45,18 @@ const sidebarItems: SidebarItem[] = [
         title: "通用任务",
         route: {
           path: "default",
-          lazy: () => import("./Job/Default"),
         },
       },
       {
         title: "AI 训练任务",
         route: {
           path: "ai",
-          lazy: () => import("./Job/Ai"),
         },
       },
       {
         title: "深度推荐训练任务",
         route: {
           path: "dl",
-          lazy: () => import("./Job/Dl"),
         },
       },
     ],
@@ -71,14 +70,6 @@ const sidebarItems: SidebarItem[] = [
         title: "镜像列表",
         route: {
           path: "list",
-          lazy: () => import("./Image/List"),
-        },
-      },
-      {
-        title: "镜像制作",
-        route: {
-          path: "make",
-          lazy: () => import("./Image/Make"),
         },
       },
     ],
@@ -89,24 +80,9 @@ const sidebarItems: SidebarItem[] = [
     icon: <DatabaseIcon />,
     children: [
       {
-        title: "数据集",
+        title: "公开数据集",
         route: {
           path: "dataset",
-          lazy: () => import("./Data/Dataset"),
-        },
-      },
-      {
-        title: "代码",
-        route: {
-          path: "code",
-          lazy: () => import("./Data/Code"),
-        },
-      },
-      {
-        title: "其他",
-        route: {
-          path: "other",
-          lazy: () => import("./Data/Other"),
         },
       },
     ],
@@ -115,7 +91,7 @@ const sidebarItems: SidebarItem[] = [
 
 const sidebarMenus: SidebarMenu[] = [
   {
-    title: "使用文档",
+    title: "文档编辑",
     path: "docs",
     icon: <FileTextIcon />,
     route: {
@@ -124,7 +100,7 @@ const sidebarMenus: SidebarMenu[] = [
     },
   },
   {
-    title: "问题反馈",
+    title: "问题收集",
     path: "feedback",
     icon: <Pencil2Icon />,
     route: {
@@ -135,7 +111,7 @@ const sidebarMenus: SidebarMenu[] = [
 ];
 
 const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
-  const isAuthenticated = useAuth("user");
+  const isAuthenticated = useAuth("viewer");
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
@@ -196,8 +172,8 @@ const Layout = () => {
   );
 };
 
-export const portalRoute: RouteObject = {
-  path: "/portal",
+export const adminRoute: RouteObject = {
+  path: "/admin",
   element: (
     <Suspense fallback={<h2>Loading...</h2>}>
       <AuthedRouter>
@@ -206,10 +182,6 @@ export const portalRoute: RouteObject = {
     </Suspense>
   ),
   children: [
-    {
-      index: true,
-      lazy: () => import("./Job/Ai"),
-    },
     ...sidebarItems.map((item) => {
       return (
         item.route ?? {

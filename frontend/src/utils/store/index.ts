@@ -14,7 +14,7 @@ export const VITE_UI_THEME_KEY = "vite_ui_theme";
 /**
  * User States
  */
-export const userInfoState = atom({
+export const globalUserInfo = atom({
   key: "userInfo",
   default: {
     id: "",
@@ -27,7 +27,7 @@ export const userInfoState = atom({
  * Reset all states
  */
 export const useResetStore = () => {
-  const resetUserInfo = useResetRecoilState(userInfoState);
+  const resetUserInfo = useResetRecoilState(globalUserInfo);
 
   const resetAll = () => {
     // Recoil

@@ -15,6 +15,7 @@ import { portalRoute } from "./pages/Portal";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "./utils/theme";
 import { VITE_UI_THEME_KEY } from "./utils/store";
+import { adminRoute } from "./pages/Admin";
 
 const router = createBrowserRouter([
   {
@@ -26,6 +27,7 @@ const router = createBrowserRouter([
     element: <Signup />,
   },
   portalRoute,
+  adminRoute,
   {
     path: "*",
     element: <Navigate to="/portal" replace />,
@@ -41,7 +43,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <QueryClientProvider client={queryClient}>
           <RouterProvider router={router} />
           <Toaster />
-          <ReactQueryDevtools initialIsOpen={false} position="top-right" />
+          <ReactQueryDevtools initialIsOpen={false} position="top-left" />
         </QueryClientProvider>
       </ThemeProvider>
     </RecoilRoot>

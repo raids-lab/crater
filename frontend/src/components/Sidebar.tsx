@@ -6,13 +6,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { useResetStore } from "@/utils/store";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RouteObject, useLocation, useNavigate } from "react-router-dom";
-import { useToast } from "./ui/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
 import { Separator } from "./ui/separator";
-import { ExitIcon } from "@radix-ui/react-icons";
 import { ScrollArea } from "./ui/scroll-area";
 import { useOnClickOutside } from "usehooks-ts";
 import { useTheme } from "@/utils/theme";
@@ -52,15 +48,13 @@ export function Sidebar({
   const [accordion, setAccordion] = useState<string[]>([]);
   const location = useLocation();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
   const { theme, setTheme } = useTheme();
-  const { resetAll } = useResetStore();
 
   // Get actived item from location
   const actived = useMemo(() => {
     const pathParts = location.pathname.split("/").filter(Boolean);
     return {
+      view: pathParts[0],
       item: pathParts[1],
       subItem: pathParts[2],
     };
@@ -92,7 +86,9 @@ export function Sidebar({
       )}
       ref={ref}
     >
-      <ScrollArea className="h-[calc(100vh_-_176px)] w-full pt-4">
+      {/* Calculate of ScrollArea height: */}
+      {/* 100vh - (40px * 2 + 56px) */}
+      <ScrollArea className="h-[calc(100vh_-_136px)] w-full pt-2">
         <Accordion
           type="multiple"
           // collapsible
@@ -127,8 +123,8 @@ export function Sidebar({
                           type="button"
                           onClick={() => {
                             const url = subItem.route.path
-                              ? `/portal/${item.path}/${subItem.route.path}`
-                              : `/portal/${item.path}`;
+                              ? `/${actived.view}/${item.path}/${subItem.route.path}`
+                              : `/${actived.view}/${item.path}`;
                             navigate(url);
                           }}
                         >
@@ -150,7 +146,7 @@ export function Sidebar({
                   },
                 )}
                 type="button"
-                onClick={() => navigate(`/portal/${item.path}`)}
+                onClick={() => navigate(`/${actived.view}/${item.path}`)}
               >
                 <div className="mr-3">{item.icon}</div>
                 {item.title}
@@ -166,7 +162,7 @@ export function Sidebar({
             <button
               key={`sidebar-menu-${item.path}`}
               type="button"
-              onClick={() => navigate(`/portal/${item.path}`)}
+              onClick={() => navigate(`/${actived.view}/${item.path}`)}
               className={cn(
                 "flex h-9 w-full flex-row items-center justify-start rounded-md px-4 text-base hover:bg-primary/80",
                 {
@@ -178,20 +174,6 @@ export function Sidebar({
               {item.title}
             </button>
           ))}
-          <button
-            className="flex h-9 w-full flex-row items-center justify-start rounded-md px-4 text-base hover:bg-destructive"
-            type="button"
-            onClick={() => {
-              queryClient.clear();
-              resetAll();
-              toast({
-                title: "已退出",
-              });
-            }}
-          >
-            <ExitIcon className="mr-3 h-4 w-4" />
-            退出登录
-          </button>
         </div>
         <p
           className="select-none pt-2 text-center text-sm font-light text-muted-foreground"
