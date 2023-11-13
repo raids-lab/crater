@@ -11,11 +11,11 @@ type CreateTaskResp struct {
 }
 
 type ListTaskResp struct {
-	Tasks []models.TaskAttr
+	Tasks []models.AITask
 }
 
 type GetTaskResp struct {
-	models.TaskAttr
+	models.AITask
 }
 
 type DeleteTaskResp struct {
@@ -40,3 +40,4 @@ type GetUserResp struct {
 	CreatedAt time.Time       `json:"createdAt"`
 	UpdatedAt time.Time       `json:"updatedAt"`
 }
+
