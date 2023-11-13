@@ -20,22 +20,26 @@ export interface DataTableToolbarConfig {
     title: string;
     option: DataTableFacetedFilterOption[];
   }[];
+  getHeader: (key: string) => string;
 }
 
-interface DataTableToolbarProps<TData> {
+interface DataTableToolbarProps<TData>
+  extends React.HTMLAttributes<HTMLDivElement> {
   table: Table<TData>;
   config: DataTableToolbarConfig;
 }
 
 export function DataTableToolbar<TData>({
   table,
-  config: { filterInput, filterOptions },
+  config: { filterInput, filterOptions, getHeader },
+  children,
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0;
 
   return (
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center space-x-2">
+        {children}
         <Input
           placeholder={filterInput.placeholder}
           value={
@@ -70,7 +74,7 @@ export function DataTableToolbar<TData>({
           </Button>
         )}
       </div>
-      <DataTableViewOptions table={table} />
+      <DataTableViewOptions table={table} getHeader={getHeader} />
     </div>
   );
 }

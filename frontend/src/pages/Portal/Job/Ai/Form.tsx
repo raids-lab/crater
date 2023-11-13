@@ -45,8 +45,12 @@ const formSchema = z.object({
   memory: z.number().int().positive(),
   // image: z.string().url(),
   image: z.string(),
-  dir: z.string(),
-  shareDir: z.string(),
+  workingDir: z.string(),
+  shareDirs: z.array(
+    z.object({
+      path: z.string(),
+    }),
+  ),
   command: z.string().min(1, {
     message: "任务名称不能为空",
   }),
@@ -58,9 +62,11 @@ const formSchema = z.object({
   ),
   priority: z.enum(["low", "high"], {
     invalid_type_error: "Select a priority",
-    required_error: "Please select a priority",
+    required_error: "请选择任务优先级",
   }),
 });
+
+type FormSchema = z.infer<typeof formSchema>;
 
 interface TaskFormProps extends React.HTMLAttributes<HTMLDivElement> {
   closeSheet: () => void;
@@ -83,7 +89,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
   };
 
   const { mutate: createTask } = useMutation({
-    mutationFn: (values: z.infer<typeof formSchema>) =>
+    mutationFn: (values: FormSchema) =>
       apiTaskCreate({
         taskName: values.taskname,
         slo: values.priority === "high" ? 1 : 0,
@@ -94,11 +100,10 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
           cpu: values.cpu.toString(),
         },
         image: values.image,
-        dir: values.dir,
-        share_dir: values.shareDir.split(","),
+        workingDir: values.workingDir,
+        shareDirs: values.shareDirs.map((shareDir) => shareDir.path),
         command: values.command,
         args: convertArgs(values.args),
-        priority: values.priority,
       }),
     onSuccess: (_, { taskname }) => {
       queryClient
@@ -118,7 +123,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
   });
 
   // 1. Define your form.
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       taskname: "",
@@ -126,8 +131,8 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
       gpu: 0,
       memory: 8,
       image: "",
-      dir: "~",
-      shareDir: "",
+      workingDir: "",
+      shareDirs: [{ path: "" }],
       command: "",
       args: [{ key: "", value: "" }],
       priority: undefined,
@@ -138,8 +143,17 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
     fields: argsFields,
     append: argsAppend,
     remove: argsRemove,
-  } = useFieldArray({
+  } = useFieldArray<FormSchema>({
     name: "args",
+    control: form.control,
+  });
+
+  const {
+    fields: shareDirsFields,
+    append: shareDirsAppend,
+    remove: shareDirsRemove,
+  } = useFieldArray<FormSchema>({
+    name: "shareDirs",
     control: form.control,
   });
 
@@ -248,12 +262,78 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                 镜像地址<span className="ml-1 text-red-500">*</span>
               </FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input {...field} className="font-mono" />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
+        <FormField
+          control={form.control}
+          name="workingDir"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                执行目录<span className="ml-1 text-red-500">*</span>
+              </FormLabel>
+              <FormControl>
+                <Input {...field} className="font-mono" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="space-y-3">
+          {argsFields.length > 0 && (
+            <div>
+              {shareDirsFields.map((field, index) => (
+                <FormField
+                  control={form.control}
+                  key={field.id}
+                  name={`shareDirs.${index}`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={cn(index !== 0 && "sr-only")}>
+                        共享目录
+                      </FormLabel>
+                      <FormControl>
+                        <div className="flex flex-row space-x-2">
+                          <Input
+                            id={`input.args.${index}.path`}
+                            value={field.value.path}
+                            className="font-mono"
+                            onChange={(event) =>
+                              field.onChange({
+                                ...field.value,
+                                path: event.target.value,
+                              })
+                            }
+                          />
+                          <div>
+                            <Button
+                              size="icon"
+                              variant="secondary"
+                              onClick={() => shareDirsRemove(index)}
+                            >
+                              <Cross1Icon className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              ))}
+            </div>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => shareDirsAppend({ path: "" })}
+          >
+            添加共享目录
+          </Button>
+        </div>
         <FormField
           control={form.control}
           name="command"
@@ -263,67 +343,72 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                 执行命令<span className="ml-1 text-red-500">*</span>
               </FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input {...field} className="font-mono" />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <div>
-          {argsFields.map((field, index) => (
-            <FormField
-              control={form.control}
-              key={field.id}
-              name={`args.${index}`}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className={cn(index !== 0 && "sr-only")}>
-                    命令参数
-                  </FormLabel>
-                  <FormDescription className={cn(index !== 0 && "sr-only")}>
-                    请在左侧输入 Key，右侧输入 Value
-                  </FormDescription>
-                  <FormControl>
-                    <div className="flex flex-row space-x-2">
-                      <Input
-                        id={`input.args.${index}.key`}
-                        value={field.value.key}
-                        onChange={(event) =>
-                          field.onChange({
-                            ...field.value,
-                            key: event.target.value,
-                          })
-                        }
-                      />
-                      <Input
-                        id={`input.args.${index}.value`}
-                        value={field.value.value}
-                        onChange={(event) =>
-                          field.onChange({
-                            ...field.value,
-                            value: event.target.value,
-                          })
-                        }
-                      />
-                      <div>
-                        <Button
-                          size="icon"
-                          variant="secondary"
-                          onClick={() => argsRemove(index)}
-                        >
-                          <Cross1Icon className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          ))}
+        <div className="space-y-3">
+          {argsFields.length > 0 && (
+            <div>
+              {argsFields.map((field, index) => (
+                <FormField
+                  control={form.control}
+                  key={field.id}
+                  name={`args.${index}`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={cn(index !== 0 && "sr-only")}>
+                        命令参数
+                      </FormLabel>
+                      <FormDescription className={cn(index !== 0 && "sr-only")}>
+                        请在左侧输入 Key，右侧输入 Value
+                      </FormDescription>
+                      <FormControl>
+                        <div className="flex flex-row space-x-2">
+                          <Input
+                            id={`input.args.${index}.key`}
+                            className="font-mono"
+                            value={field.value.key}
+                            onChange={(event) =>
+                              field.onChange({
+                                ...field.value,
+                                key: event.target.value,
+                              })
+                            }
+                          />
+                          <Input
+                            id={`input.args.${index}.value`}
+                            className="font-mono"
+                            value={field.value.value}
+                            onChange={(event) =>
+                              field.onChange({
+                                ...field.value,
+                                value: event.target.value,
+                              })
+                            }
+                          />
+                          <div>
+                            <Button
+                              size="icon"
+                              variant="secondary"
+                              onClick={() => argsRemove(index)}
+                            >
+                              <Cross1Icon className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              ))}
+            </div>
+          )}
           <Button
             type="button"
             variant="outline"
-            className="mt-3"
             onClick={() => argsAppend({ key: "", value: "" })}
           >
             添加命令参数
@@ -346,8 +431,8 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                     <SelectValue placeholder="请选择" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">低优先级</SelectItem>
                     <SelectItem value="high">高优先级</SelectItem>
+                    <SelectItem value="low">低优先级</SelectItem>
                   </SelectContent>
                 </Select>
               </FormControl>
