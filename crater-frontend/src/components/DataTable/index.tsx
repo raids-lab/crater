@@ -26,7 +26,8 @@ import {
 import { DataTablePagination } from "./DataTablePagination";
 import { DataTableToolbar, DataTableToolbarConfig } from "./DataTableToolbar";
 
-interface DataTableProps<TData, TValue> {
+interface DataTableProps<TData, TValue>
+  extends React.HTMLAttributes<HTMLDivElement> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   toolbarConfig: DataTableToolbarConfig;
@@ -36,6 +37,7 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   toolbarConfig,
+  children,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
@@ -69,7 +71,9 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      <DataTableToolbar table={table} config={toolbarConfig} />
+      <DataTableToolbar table={table} config={toolbarConfig}>
+        {children}
+      </DataTableToolbar>
       <div className="rounded-md border bg-background">
         <Table>
           <TableHeader>

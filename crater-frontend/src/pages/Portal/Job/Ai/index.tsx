@@ -1,4 +1,8 @@
-import { DotsHorizontalIcon } from "@radix-ui/react-icons";
+import {
+  ClockIcon,
+  DotsHorizontalIcon,
+  MinusCircledIcon,
+} from "@radix-ui/react-icons";
 import { ColumnDef } from "@tanstack/react-table";
 
 import { Button } from "@/components/ui/button";
@@ -19,7 +23,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { NewTaskForm } from "./Form";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiTaskDelete, apiTaskList } from "@/services/api/task";
@@ -27,15 +31,103 @@ import { logger } from "@/utils/loglevel";
 import { showErrorToast } from "@/utils/toast";
 import { useToast } from "@/components/ui/use-toast";
 import { DataTable } from "@/components/DataTable";
-import { DataTableColumnHeader } from "@/components/tasks/components/data-table-column-header";
-import { priorities, toolbarConfig } from "./Table/data";
+import { DataTableColumnHeader } from "@/components/DataTable/DataTableColumnHeader";
+import { DataTableToolbarConfig } from "@/components/DataTable/DataTableToolbar";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  CheckCircledIcon,
+  CrossCircledIcon,
+  StopwatchIcon,
+} from "@radix-ui/react-icons";
 
 type TaskInfo = {
   id: number;
   title: string;
   status: string;
   priority: string;
-  startTime: string;
+  createdAt: string;
+};
+
+const getHeader = (key: string): string => {
+  switch (key) {
+    case "title":
+      return "任务名称";
+    case "status":
+      return "状态";
+    case "priority":
+      return "优先级";
+    case "createdAt":
+      return "创建时间";
+    default:
+      return key;
+  }
+};
+
+const priorities = [
+  {
+    label: "高优先级",
+    value: "high",
+    icon: ArrowUpIcon,
+  },
+  {
+    label: "低优先级",
+    value: "low",
+    icon: ArrowDownIcon,
+  },
+];
+
+const statuses = [
+  {
+    value: "Queueing",
+    label: "Queueing",
+    icon: ClockIcon,
+  },
+  {
+    value: "Pending",
+    label: "Pending",
+    icon: StopwatchIcon,
+  },
+  {
+    value: "Running",
+    label: "Running",
+    icon: StopwatchIcon,
+  },
+  {
+    value: "Failed",
+    label: "Failed",
+    icon: CrossCircledIcon,
+  },
+  {
+    value: "Succeeded",
+    label: "Succeeded",
+    icon: CheckCircledIcon,
+  },
+  {
+    value: "Suspended",
+    label: "Suspended",
+    icon: MinusCircledIcon,
+  },
+];
+
+const toolbarConfig: DataTableToolbarConfig = {
+  filterInput: {
+    placeholder: "搜索任务名称",
+    key: "title",
+  },
+  filterOptions: [
+    {
+      key: "status",
+      title: "状态",
+      option: statuses,
+    },
+    {
+      key: "priority",
+      title: "优先级",
+      option: priorities,
+    },
+  ],
+  getHeader: getHeader,
 };
 
 export function Component() {
@@ -73,119 +165,143 @@ export function Component() {
     onError: (err) => showErrorToast("无法删除任务", err),
   });
 
-  const columns: ColumnDef<TaskInfo>[] = [
-    {
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-          className="ml-2"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-          className="ml-2"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
-    {
-      accessorKey: "title",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="任务名称" />
-      ),
-      cell: ({ row }) => <div>{row.getValue("title")}</div>,
-    },
-    {
-      accessorKey: "status",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="状态" />
-      ),
-      cell: ({ row }) => (
-        <div className="capitalize">{row.getValue("status")}</div>
-      ),
-      filterFn: (row, id, value) => {
-        return (value as string[]).includes(row.getValue(id));
+  const columns = useMemo<ColumnDef<TaskInfo>[]>(
+    () => [
+      {
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            onCheckedChange={(value) =>
+              table.toggleAllPageRowsSelected(!!value)
+            }
+            aria-label="Select all"
+            className="ml-2"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Select row"
+            className="ml-2"
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
       },
-    },
-    {
-      accessorKey: "priority",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="优先级" />
-      ),
-      cell: ({ row }) => {
-        const priority = priorities.find(
-          (priority) => priority.value === row.getValue("priority"),
-        );
-        if (!priority) {
-          return null;
-        }
-        return (
-          <div className="flex items-center">
-            {priority.icon && (
-              <priority.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-            )}
-            <span>{priority.label}</span>
-          </div>
-        );
+      {
+        accessorKey: "title",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("title")} />
+        ),
+        cell: ({ row }) => <div>{row.getValue("title")}</div>,
       },
-      filterFn: (row, id, value) => {
-        return (value as string[]).includes(row.getValue(id));
+      {
+        accessorKey: "status",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("status")} />
+        ),
+        cell: ({ row }) => {
+          const status = statuses.find(
+            (status) => status.value === row.getValue("status"),
+          );
+          if (!status) {
+            return null;
+          }
+          return (
+            <div className="flex w-[100px] items-center">
+              {status.icon && (
+                <status.icon className="mr-2 h-4 w-4 text-muted-foreground" />
+              )}
+              <span>{status.label}</span>
+            </div>
+          );
+        },
+        filterFn: (row, id, value) => {
+          return (value as string[]).includes(row.getValue(id));
+        },
       },
-    },
-    {
-      accessorKey: "startTime",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="创建时间" />
-      ),
-      cell: ({ row }) => {
-        // row format: "2023-10-30T03:21:03.733Z"
-        const date = new Date(row.getValue("startTime"));
-        const formatted = date.toLocaleString("zh-CN", {
-          timeZone: "Asia/Shanghai",
-        });
-        return <div>{formatted}</div>;
+      {
+        accessorKey: "priority",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("priority")}
+          />
+        ),
+        cell: ({ row }) => {
+          const priority = priorities.find(
+            (priority) => priority.value === row.getValue("priority"),
+          );
+          if (!priority) {
+            return null;
+          }
+          return (
+            <div className="flex items-center">
+              {priority.icon && (
+                <priority.icon className="mr-2 h-4 w-4 text-muted-foreground" />
+              )}
+              <span>{priority.label}</span>
+            </div>
+          );
+        },
+        filterFn: (row, id, value) => {
+          return (value as string[]).includes(row.getValue(id));
+        },
       },
-    },
-    {
-      id: "actions",
-      enableHiding: false,
-      cell: ({ row }) => {
-        const taskInfo = row.original;
+      {
+        accessorKey: "createdAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("createdAt")}
+          />
+        ),
+        cell: ({ row }) => {
+          // row format: "2023-10-30T03:21:03.733Z"
+          const date = new Date(row.getValue("createdAt"));
+          const formatted = date.toLocaleString("zh-CN", {
+            timeZone: "Asia/Shanghai",
+          });
+          return <div>{formatted}</div>;
+        },
+      },
+      {
+        id: "actions",
+        enableHiding: false,
+        cell: ({ row }) => {
+          const taskInfo = row.original;
 
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <DotsHorizontalIcon className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() => {
-                  // check if browser support clipboard
-                  deleteTask(taskInfo.id);
-                }}
-              >
-                删除
-              </DropdownMenuItem>
-              {/* <DropdownMenuSeparator /> */}
-              {/* <DropdownMenuItem>View customer</DropdownMenuItem>
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">操作</span>
+                  <DotsHorizontalIcon className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>操作</DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => {
+                    // check if browser support clipboard
+                    deleteTask(taskInfo.id);
+                  }}
+                >
+                  删除
+                </DropdownMenuItem>
+                {/* <DropdownMenuSeparator /> */}
+                {/* <DropdownMenuItem>View customer</DropdownMenuItem>
               <DropdownMenuItem>View payment details</DropdownMenuItem> */}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
       },
-    },
-  ];
+    ],
+    [deleteTask],
+  );
 
   useEffect(() => {
     if (isLoading) return;
@@ -195,17 +311,17 @@ export function Component() {
       title: task.taskName,
       status: task.status,
       priority: task.slo ? "high" : "low",
-      startTime: task.createdAt,
+      createdAt: task.createdAt,
     }));
     setData(tableData);
   }, [taskList, isLoading]);
 
   return (
     <div className="space-y-4 px-6 py-6">
-      <div className="flex items-center space-x-2">
+      <DataTable data={data} columns={columns} toolbarConfig={toolbarConfig}>
         <Sheet open={openSheet} onOpenChange={setOpenSheet}>
           <SheetTrigger asChild>
-            <Button className="min-w-fit">新建任务</Button>
+            <Button className="h-8 min-w-fit">新建任务</Button>
           </SheetTrigger>
           {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
           <SheetContent className="max-h-screen overflow-y-auto sm:max-w-2xl">
@@ -217,8 +333,7 @@ export function Component() {
             <NewTaskForm closeSheet={() => setOpenSheet(false)} />
           </SheetContent>
         </Sheet>
-      </div>
-      <DataTable data={data} columns={columns} toolbarConfig={toolbarConfig} />
+      </DataTable>
     </div>
   );
 }

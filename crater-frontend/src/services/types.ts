@@ -58,13 +58,12 @@ export interface ITaskCreate {
     [key: string]: string;
   };
   image: string;
-  dir: string;
-  share_dir: string[];
+  workingDir: string;
+  shareDirs: string[];
   command: string;
   args: {
     [key: string]: string;
   };
-  priority: string;
 }
 
 export interface ITaskCreateResponse {
