@@ -44,10 +44,11 @@ func NewTaskController(client client.Client, statusChan <-chan util.JobStatusCha
 // Init init taskQueue And quotaInfos
 func (c *TaskController) Init() error {
 	quotas, err := c.quotaDB.ListAllQuotas()
+	// logrus.Info(quotas)
 	if err != nil {
 		logrus.Errorf("list all quotas failed, err: %v", err)
 	}
-	// logrus.Infof("list all quotas success, len: %v", len(quotas))
+	logrus.Infof("list all quotas success, len: %v", len(quotas))
 	for _, quota := range quotas {
 		// 添加quota
 		c.AddOrUpdateQuotaInfo(quota.UserName, quota)
@@ -70,7 +71,7 @@ func (c *TaskController) Start(ctx context.Context) error {
 	// 3. 接收task变更信息
 	go c.watchTaskUpdate(ctx)
 	// 4. schedule线程
-	go wait.UntilWithContext(ctx, c.schedule, 0)
+	go wait.UntilWithContext(ctx, c.schedule, 10)
 	return nil
 }
 
@@ -151,9 +152,10 @@ func (c *TaskController) schedule(ctx context.Context) {
 	// log := ctrl.LoggerFrom(ctx)
 	// 等待调度的队列
 	candiates := make([]*models.TaskAttr, 0)
-
+	// logrus.Info(c.taskQueue)
 	for username, q := range c.taskQueue.userQueues {
 		// 1. 复制一份quota
+		// logrus.Info(username, q.gauranteedQueue)
 		quotaCopy := c.GetQuotaInfoSnapshotByUsername(username)
 		if quotaCopy == nil {
 			logrus.Errorf("quota not found, username: %v", username)
@@ -178,6 +180,8 @@ func (c *TaskController) schedule(ctx context.Context) {
 		err := c.admitTask(task)
 		if err != nil {
 			logrus.Errorf("create job from task failed, err: %v", err)
+		} else {
+			logrus.Infof("create job from task success, taskID: %v", task.ID)
 		}
 
 	}
