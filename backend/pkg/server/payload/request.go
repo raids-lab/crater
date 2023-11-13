@@ -11,7 +11,7 @@ type CreateTaskReq struct {
 
 // ListTaskReq is the request payload for listing tasks. Get Method
 type ListTaskReq struct {
-	Status   string `form:"status"`
+	Status string `form:"status"`
 }
 
 type GetTaskReq struct {
@@ -29,14 +29,29 @@ type UpdateTaskSLOReq struct {
 
 // TODO: update task sequence
 
-type CreateOrUpdateQuotaReq struct {
+type UpdateQuotaReq struct {
 	UserName  string          `json:"userName" binding:"required"`
 	HardQuota v1.ResourceList `json:"hardQuota" binding:"required"`
 }
 
-type ListQuotaReq struct {
+type UpdateRoleReq struct {
+	UserName string `json:"userName" binding:"required"`
+	Role     string `json:"role" binding:"required"`
 }
 
-type GetQuotaReq struct {
-	UserName string `form:"userName" binding:"required"`
+type DeleteUserReq struct {
+	UserName       string `json:"userName" binding:"required"`
+	DeleteResource bool   `json:"deleteResource"`
+}
+
+type GetUserReq struct {
+	UserName string `json:"userName"`
+	UserID   uint   `json:"userID"`
+}
+
+type CreateUserRequest struct {
+	//Id       int    `json:"_id"`
+	Name     string `json:"userName" binding:"required"`
+	Role     string `json:"role" binding:"required"`
+	Password string `json:"password" binding:"required"`
 }
