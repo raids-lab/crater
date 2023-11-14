@@ -6,6 +6,12 @@ export interface IErrorResponse {
   error_code: ErrorCode;
 }
 
+export interface IResponse<T> {
+  data: T;
+  error: string;
+  status: boolean;
+}
+
 /**
  * Refresh
  */

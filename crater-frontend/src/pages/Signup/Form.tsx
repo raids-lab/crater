@@ -51,14 +51,15 @@ export function SignupForm() {
     mutationFn: (values: z.infer<typeof formSchema>) =>
       apiUserSignup({
         userName: values.username,
-        role: "admin",
         password: values.password,
+        role: "user",
       }),
-    onSuccess: async (_, { username }) => {
+    onSuccess: async (data, { username }) => {
       await queryClient.invalidateQueries();
+      const role = data.role === "admin" ? "admin" : "user";
       setUserState({
         id: username,
-        role: "user",
+        role: role,
       });
       alert(username);
       navigate("/portal");

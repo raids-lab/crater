@@ -1,8 +1,23 @@
 import type { FC } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { apiAiTaskQuota } from "@/services/api/aiTask";
+import { showErrorToast } from "@/utils/toast";
+import { logger } from "@/utils/loglevel";
 
 export const Component: FC = () => {
+  const { data: quota, isLoading } = useQuery({
+    queryKey: ["aitask", "quota"],
+    retry: 1,
+    queryFn: apiAiTaskQuota,
+    select: (res) => res.data.data,
+    onSuccess: (data) => {
+      logger.debug("Data is: ", data);
+    },
+    onError: (err) => showErrorToast("获取任务列表失败", err),
+  });
+
   return (
     <div className="space-y-1 px-6 py-6 text-xl">
       <h1 className="text-3xl font-bold leading-loose">Overview</h1>
@@ -23,6 +38,15 @@ export const Component: FC = () => {
           </CardHeader>
           <CardContent>
             <p>Prometheus</p>
+            {isLoading ? (
+              <p>loading...</p>
+            ) : (
+              quota && (
+                <p>
+                  CPU: {quota.hard.cpu} / {quota.hardUsed.cpu}
+                </p>
+              )
+            )}
           </CardContent>
         </Card>
         <Card className="col-span-1 h-48">

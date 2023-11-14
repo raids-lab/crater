@@ -47,15 +47,18 @@ export function ProfileForm() {
   const { mutate: loginUser, isLoading } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
       apiUserLogin({ username: values.username, password: values.password }),
-    onSuccess: async (_, { username }) => {
+    onSuccess: async (data, { username }) => {
       await queryClient.invalidateQueries();
+      const role = data.role === "admin" ? "admin" : "user";
       setUserState({
         id: username,
-        role: "admin",
+        role: role,
       });
       toast({
         title: `登陆成功`,
-        description: `你好，用户 ${username}`,
+        description: `你好，${
+          role === "admin" ? "管理员" : "用户"
+        } ${username}`,
       });
       // navigate to /portal and clear all history
       navigate("/portal", { replace: true });
