@@ -1,9 +1,10 @@
 // Error Code from server
-// 40105: Token is expired
 // def type of error code as number
 export type ErrorCode = number;
 
+// 40105: Token is expired
 export const ERROR_TOKEN_EXPIRED: ErrorCode = 40105;
+export const ERROR_NOT_ADMIN: ErrorCode = 40107;
 
 // error: "User not found with the given name"
 // error_code: 40401

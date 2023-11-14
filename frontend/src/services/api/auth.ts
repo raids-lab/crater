@@ -10,11 +10,6 @@ export interface ISignup {
   password: string;
 }
 
-export interface ISignupResponse {
-  accessToken: string;
-  refreshToken: string;
-}
-
 /**
  * Login
  */
@@ -23,21 +18,22 @@ export interface ILogin {
   password: string;
 }
 
-export interface ILoginResponse {
+export interface IAuthResponse {
   accessToken: string;
   refreshToken: string;
+  role: string;
 }
 
 export const apiUserSignup = async (user: ISignup) => {
-  const response = await instance.post<ISignupResponse>("signup", user);
+  const response = await instance.post<IAuthResponse>("signup", user);
   const { accessToken, refreshToken } = response.data;
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
   return response.data;
 };
 
-export const apiUserLogin = async (user: ILogin): Promise<ILoginResponse> => {
-  const response = await instance.post<ILoginResponse>("login", user);
+export const apiUserLogin = async (user: ILogin) => {
+  const response = await instance.post<IAuthResponse>("login", user);
   const { accessToken, refreshToken } = response.data;
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);

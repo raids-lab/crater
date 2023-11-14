@@ -1,6 +1,6 @@
 import axios, { AxiosRequestConfig, isAxiosError } from "axios";
 import { IErrorResponse, IRefresh, IRefreshResponse } from "./types";
-import { ERROR_TOKEN_EXPIRED } from "./error_code";
+import { ERROR_NOT_ADMIN, ERROR_TOKEN_EXPIRED } from "./error_code";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/utils/store";
 
 export const VERSION = import.meta.env.VITE_API_VERSION;
@@ -63,6 +63,8 @@ instance.interceptors.response.use(
         } catch (refreshError) {
           window.location.href = "/login";
         }
+      } else if (error.response?.data.error_code === ERROR_NOT_ADMIN) {
+        window.location.href = "/portal";
       }
     }
     return Promise.reject(error);
