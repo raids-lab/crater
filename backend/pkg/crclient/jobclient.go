@@ -50,7 +50,7 @@ func (c *JobControl) CreateJobFromTask(task *models.TaskAttr) error {
 	for k, v := range task.Args {
 		args = append(args, k, v)
 	}
-	pvcname := fmt.Sprintf(PVCFormat, task.UserName)
+	pvcname := fmt.Sprintf(UserHomePVC, task.UserName)
 	jobname := fmt.Sprintf("%s-%d", task.TaskName, task.ID)
 	taskID := strconv.Itoa(int(task.ID))
 	labels := map[string]string{
@@ -70,6 +70,10 @@ func (c *JobControl) CreateJobFromTask(task *models.TaskAttr) error {
 					Namespace: task.Namespace,
 				},
 				Spec: corev1.PodSpec{
+					RestartPolicy: corev1.RestartPolicyNever,
+					NodeSelector: map[string]string{
+						"v100": "true", // todo: for test
+					},
 					Containers: []corev1.Container{
 						{
 							Image:   task.Image,
@@ -80,6 +84,7 @@ func (c *JobControl) CreateJobFromTask(task *models.TaskAttr) error {
 								Limits:   task.ResourceRequest.DeepCopy(),
 								Requests: task.ResourceRequest.DeepCopy(),
 							},
+							WorkingDir: task.WorkingDir,
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "user-volume",
@@ -88,6 +93,10 @@ func (c *JobControl) CreateJobFromTask(task *models.TaskAttr) error {
 								{
 									Name:      "cache-volume",
 									MountPath: "/dev/shm",
+								},
+								{
+									Name:      "data-volume",
+									MountPath: "/data",
 								},
 							},
 						},
@@ -106,6 +115,14 @@ func (c *JobControl) CreateJobFromTask(task *models.TaskAttr) error {
 							VolumeSource: corev1.VolumeSource{
 								EmptyDir: &corev1.EmptyDirVolumeSource{
 									Medium: corev1.StorageMediumMemory,
+								},
+							},
+						},
+						{
+							Name: "data-volume",
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: DataPVCName,
 								},
 							},
 						},

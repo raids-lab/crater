@@ -20,7 +20,8 @@ type Control struct {
 
 const (
 	NameSpaceFormat = "user-%s"
-	PVCFormat       = "user-%s-home"
+	UserHomePVC     = "home-%s-pvc"
+	DataPVCName     = "data-pvc"
 )
 
 // todo: add more volumes, args etc..
@@ -44,7 +45,7 @@ func (c *Control) CreateUserNameSpace(username string) error {
 }
 func (c *Control) CreateUserHomePVC(username string) error {
 	namespace := fmt.Sprintf(NameSpaceFormat, username)
-	pvcname := fmt.Sprintf(PVCFormat, username)
+	pvcname := fmt.Sprintf(UserHomePVC, username)
 
 	SCN := "rook-cephfs"
 	pvc := &corev1.PersistentVolumeClaim{
