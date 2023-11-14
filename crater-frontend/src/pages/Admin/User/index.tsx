@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/table";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiTaskDelete } from "@/services/api/task";
+import { apiAiTaskDelete } from "@/services/api/aiTask";
 import { logger } from "@/utils/loglevel";
 import { showErrorToast } from "@/utils/toast";
 import { useToast } from "@/components/ui/use-toast";
@@ -100,7 +100,7 @@ export function Component() {
   });
 
   const { mutate: deleteTask } = useMutation({
-    mutationFn: (id: number) => apiTaskDelete(id),
+    mutationFn: (id: number) => apiAiTaskDelete(id),
     onSuccess: () => {
       queryClient
         .invalidateQueries({ queryKey: ["tasklist"] })
