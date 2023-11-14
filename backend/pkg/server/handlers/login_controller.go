@@ -12,9 +12,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type LoginController struct {
+type LoginMgr struct {
 	LoginUsecase user.DBService //domain.LoginUsecase
-	Env          *config.TokenConf
+	TokenConf    *config.TokenConf
 }
 type LoginRequest struct {
 	UserName string `json:"userName" binding:"required"`
@@ -30,13 +30,18 @@ type ErrorResponse struct {
 	Code    int    `json:"error_code"`
 }
 
-func (lc *LoginController) NewLoginRouter(group *gin.RouterGroup) {
-	//ur := repository.NewUserRepository(db, domain.CollectionUser)
+func NewLoginMgr(tokenConf *config.TokenConf) *LoginMgr {
+	return &LoginMgr{
+		LoginUsecase: user.NewDBService(),
+		TokenConf:    tokenConf,
+	}
+}
 
+func (lc *LoginMgr) RegisterRoute(group *gin.RouterGroup) {
 	group.POST("/login", lc.Login)
 }
 
-func (lc *LoginController) Login(c *gin.Context) {
+func (lc *LoginMgr) Login(c *gin.Context) {
 	var request LoginRequest //domain.LoginRequest
 
 	err := c.ShouldBind(&request)
@@ -65,7 +70,7 @@ func (lc *LoginController) Login(c *gin.Context) {
 		return
 	}
 
-	accessToken, err := lc.LoginUsecase.CreateAccessToken(user, lc.Env.AccessTokenSecret, lc.Env.AccessTokenExpiryHour)
+	accessToken, err := lc.LoginUsecase.CreateAccessToken(user, lc.TokenConf.AccessTokenSecret, lc.TokenConf.AccessTokenExpiryHour)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Message: err.Error(),
@@ -74,7 +79,7 @@ func (lc *LoginController) Login(c *gin.Context) {
 		return
 	}
 
-	refreshToken, err := lc.LoginUsecase.CreateRefreshToken(user, lc.Env.RefreshTokenSecret, lc.Env.RefreshTokenExpiryHour)
+	refreshToken, err := lc.LoginUsecase.CreateRefreshToken(user, lc.TokenConf.RefreshTokenSecret, lc.TokenConf.RefreshTokenExpiryHour)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Message: err.Error(),
