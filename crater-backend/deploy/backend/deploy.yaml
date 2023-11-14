@@ -1,0 +1,110 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ai-portal-backend
+  namespace: ai-portal
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-portal-backend
+  namespace: ai-portal
+  labels:
+    app: ai-portal-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-portal-backend
+  template:
+    metadata:
+      labels:
+        app: ai-portal-backend
+    spec:
+      containers:
+        - name: ai-portal-backend
+          image: container:v1
+          imagePullPolicy: IfNotPresent
+          command:
+            - /controller
+            - --db-config-file=/dbconf.yaml
+            - --server-port=:8088
+            - --metrics-bind-address=:8080
+            - --health-probe-bind-address=:8081
+      serviceAccountName: ai-portal-backend
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-portal-backend-svc
+  namespace: ai-portal
+spec:
+  selector:
+    app: ai-portal-backend
+  type: NodePort
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8088
+    nodePort: 31088
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ai-portal-backend-cluster-role
+rules:
+  - apiGroups:
+      - "*"
+    resources:
+      - "*"
+    verbs: 
+      - "*"
+  - apiGroups:
+      - apps
+      - extensions
+    resources:
+      - "*"
+    verbs:
+      - "*"
+  - apiGroups:
+      - policy
+    resources:
+      - poddisruptionbudgets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "storage.k8s.io"
+    resources:
+      - "*"
+    verbs:
+      - "*"
+  - apiGroups:
+      - "coordination.k8s.io"
+    resources:
+      - leases
+    verbs:
+      - create
+      - get
+      - list
+      - update
+  - apiGroups:
+      - "events.k8s.io"
+    resources:
+      - "*"
+    verbs:
+      - "*"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ai-portal-backend-cluster-role-binding
+subjects:
+- kind: ServiceAccount
+  name: ai-portal-backend
+  namespace: ai-portal
+roleRef:
+  kind: ClusterRole
+  name: ai-portal-backend-cluster-role
+  apiGroup: rbac.authorization.k8s.io
