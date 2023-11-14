@@ -107,7 +107,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
       }),
     onSuccess: (_, { taskname }) => {
       queryClient
-        .invalidateQueries({ queryKey: ["tasklist"] })
+        .invalidateQueries({ queryKey: ["aitask", "list"] })
         .then(() => {
           toast({
             title: `创建成功`,

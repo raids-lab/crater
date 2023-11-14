@@ -137,7 +137,7 @@ export function Component() {
   const { toast } = useToast();
 
   const { data: taskList, isLoading } = useQuery({
-    queryKey: ["tasklist"],
+    queryKey: ["aitask", "list"],
     retry: 1,
     queryFn: apiAiTaskList,
     select: (res) => res.data.data.Tasks,
@@ -151,7 +151,7 @@ export function Component() {
     mutationFn: (id: number) => apiAiTaskDelete(id),
     onSuccess: () => {
       queryClient
-        .invalidateQueries({ queryKey: ["tasklist"] })
+        .invalidateQueries({ queryKey: ["aitask", "list"] })
         .then(() => {
           toast({
             title: `删除成功`,
@@ -317,7 +317,7 @@ export function Component() {
   }, [taskList, isLoading]);
 
   return (
-    <div className="space-y-4 px-6 py-6">
+    <div className="space-y-4 px-6 py-4">
       <DataTable data={data} columns={columns} toolbarConfig={toolbarConfig}>
         <Sheet open={openSheet} onOpenChange={setOpenSheet}>
           <SheetTrigger asChild>
