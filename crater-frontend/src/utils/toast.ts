@@ -37,7 +37,7 @@ export const showErrorToast = (title: string, error: unknown) => {
   } else {
     toast({
       title: title,
-      description: `Received unknown error, please contact admin.`,
+      description: `${(error as Error).message}`,
       variant: "destructive",
     });
   }

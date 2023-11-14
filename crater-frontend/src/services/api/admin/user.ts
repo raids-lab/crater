@@ -20,3 +20,14 @@ type IAdminUserListResponse = IResponse<{
 
 export const apiAdminUserList = async () =>
   instance.get<IAdminUserListResponse>(VERSION + "/admin/listUser");
+
+type IAdminUserDelete = {
+  userName: string;
+};
+
+type IAdminUserDeleteResponse = IResponse<string>;
+
+export const apiAdminUserDelete = async (userName: string) =>
+  await instance.post<IAdminUserDeleteResponse>(VERSION + "/admin/deleteUser", {
+    userName,
+  } as IAdminUserDelete);

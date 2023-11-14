@@ -16,15 +16,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiAiTaskDelete } from "@/services/api/aiTask";
-import { logger } from "@/utils/loglevel";
 import { showErrorToast } from "@/utils/toast";
 import { useToast } from "@/components/ui/use-toast";
 import { DataTable } from "@/components/DataTable";
 import { DataTableColumnHeader } from "@/components/DataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/DataTable/DataTableToolbar";
-import { apiAdminUserList } from "@/services/api/admin/user";
+import {
+  apiAdminUserDelete,
+  apiAdminUserList,
+} from "@/services/api/admin/user";
 import { z } from "zod";
+import { useRecoilValue } from "recoil";
+import { globalUserInfo } from "@/utils/store";
 
 const ResourceSchema = z
   .object({
@@ -93,34 +96,32 @@ export function Component() {
   const [data, setData] = useState<TUser[]>([]);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { id: currentUserName } = useRecoilValue(globalUserInfo);
 
   const { data: userList, isLoading } = useQuery({
     queryKey: ["admin", "userlist"],
     retry: 1,
     queryFn: apiAdminUserList,
     select: (res) => res.data.data.Users,
-    onSuccess: (data) => {
-      logger.debug("Data is: ", data);
-    },
-    onError: (err) => showErrorToast("获取任务列表失败", err),
+    onError: (err) => showErrorToast("获取用户列表失败", err),
   });
 
-  const { mutate: deleteTask } = useMutation({
-    mutationFn: (id: number) => apiAiTaskDelete(id),
-    onSuccess: () => {
+  const { mutate: deleteUser } = useMutation({
+    mutationFn: (userName: string) => apiAdminUserDelete(userName),
+    onSuccess: (_, userName) => {
       queryClient
-        .invalidateQueries({ queryKey: ["tasklist"] })
+        .invalidateQueries({ queryKey: ["admin", "userlist"] })
         .then(() => {
           toast({
             title: `删除成功`,
-            description: `任务已删除`,
+            description: `用户 ${userName} 已删除`,
           });
         })
         .catch((err) => {
-          showErrorToast("刷新任务列表失败", err);
+          showErrorToast("刷新用户列表失败", err);
         });
     },
-    onError: (err) => showErrorToast("无法删除任务", err),
+    onError: (err) => showErrorToast("无法删除用户", err),
   });
 
   const columns = useMemo<ColumnDef<TUser>[]>(
@@ -217,8 +218,14 @@ export function Component() {
                 <DropdownMenuLabel>操作</DropdownMenuLabel>
                 <DropdownMenuItem
                   onClick={() => {
-                    // check if browser support clipboard
-                    deleteTask(taskInfo.id);
+                    if (taskInfo.userName === currentUserName) {
+                      showErrorToast(
+                        "删除失败",
+                        new Error("无法删除自己，如需删除请换个用户登录"),
+                      );
+                    } else {
+                      deleteUser(taskInfo.userName);
+                    }
                   }}
                 >
                   删除
@@ -232,7 +239,7 @@ export function Component() {
         },
       },
     ],
-    [deleteTask],
+    [deleteUser],
   );
 
   useEffect(() => {
