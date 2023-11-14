@@ -1,8 +1,8 @@
 # GPU Portal Frontend
 
 [![Pipeline Status](https://gitlab.act.buaa.edu.cn/gpu-portal/gpu-portal-frontend/badges/main/pipeline.svg)](https://gitlab.act.buaa.edu.cn/gpu-portal/gpu-portal-frontend/-/commits/main)
-[![Release Version](https://img.shields.io/badge/Release-0.0.0-blue)](https://codec.sensetime.com/)
-[![Develop Version](https://img.shields.io/badge/Develop-0.0.0-orange)](http://10.151.166.71:8000/)
+[![Release Version](https://img.shields.io/badge/Release-0.0.0-blue)](http://192.168.5.60:8888/)
+[![Develop Version](https://img.shields.io/badge/Develop-0.0.0-orange)](http://192.168.5.60:8888/)
 
 > [GPU 集群管理与作业调度 Portal 设计和任务分解](https://docs.qq.com/doc/DWENFVWpzSW16TGFV)
 
