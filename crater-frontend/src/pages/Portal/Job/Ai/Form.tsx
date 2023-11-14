@@ -273,9 +273,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
           name="workingDir"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>
-                执行目录<span className="ml-1 text-red-500">*</span>
-              </FormLabel>
+              <FormLabel>执行目录</FormLabel>
               <FormControl>
                 <Input {...field} className="font-mono" />
               </FormControl>
