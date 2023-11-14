@@ -40,13 +40,24 @@ func (b *Backend) RegisterService(manager handlers.Manager, cl client.Client) {
 	sc.NewSignupRouter(publicRouter)
 	lc.NewLoginRouter(publicRouter)
 	rtc.NewRefreshTokenRouter(publicRouter)
-	protectedRouter := b.R.Group(constants.APIPrefix + "/aitask")
+
+	protectedRouter := b.R.Group(constants.APIPrefix)
 	protectedRouter.Use(middleware.JwtAuthMiddleware(Env.AccessTokenSecret))
-	adminRouter := b.R.Group(constants.APIPrefix + "/admin")
-	adminRouter.Use(middleware.JwtAuthMiddleware(Env.AccessTokenSecret), middleware.AdminMiddleware())
+
+	adminRouter := protectedRouter.Group("/admin")
 	adminMgr := handlers.NewAdminMgr()
 	adminMgr.RegisterRoute(adminRouter)
-	manager.RegisterRoute(protectedRouter)
+
+	aitaskRouter := protectedRouter.Group("/aitask")
+	manager.RegisterRoute(aitaskRouter)
+
+	recommenddljobMgr := handlers.NewRecommendDLJobMgr(user.NewDBService(), cl)
+	recommenddljobRouter := protectedRouter.Group("/recommenddljob")
+	recommenddljobMgr.RegisterRoute(recommenddljobRouter)
+
+	datasetMgr := handlers.NewDataSetMgr(user.NewDBService(), cl)
+	dataSetRouter := protectedRouter.Group("/dataset")
+	datasetMgr.RegisterRoute(dataSetRouter)
 }
 
 func Register(taskUpdateChan chan<- util.TaskUpdateChan, cl client.Client) (*Backend, error) {

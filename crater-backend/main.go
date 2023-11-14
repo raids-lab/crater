@@ -32,6 +32,7 @@ import (
 
 	"github.com/aisystem/ai-protal/pkg/aitaskctl"
 	aisystemv1alpha1 "github.com/aisystem/ai-protal/pkg/apis/aijob/v1alpha1"
+	recommenddljob "github.com/aisystem/ai-protal/pkg/apis/recommenddljob/v1"
 	db "github.com/aisystem/ai-protal/pkg/db/orm"
 	"github.com/aisystem/ai-protal/pkg/reconciler"
 	"github.com/aisystem/ai-protal/pkg/server"
@@ -50,6 +51,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(schedulerpluginsv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(aisystemv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(recommenddljob.AddToScheme(scheme))
 }
 
 func main() {
