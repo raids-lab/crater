@@ -111,14 +111,13 @@ func main() {
 	}
 
 	// 2. init task controller
-	taskUpdateChan := make(chan util.TaskUpdateChan)
+	// taskUpdateChan := make(chan util.TaskUpdateChan)
 	jobStatusChan := make(chan util.JobStatusChan)
 
-	backend, err := server.Register(taskUpdateChan, mgr.GetClient())
 	taskCtrl := aitaskctl.NewTaskController(
 		mgr.GetClient(),
 		jobStatusChan,
-		taskUpdateChan,
+		// taskUpdateChan,
 	)
 	if err := taskCtrl.Init(); err != nil {
 		setupLog.Error(err, "unable to set up task controller")
@@ -147,6 +146,7 @@ func main() {
 	taskCtrl.Start(stopCh)
 
 	// 5. start server
+	backend, err := server.Register(taskCtrl, mgr.GetClient())
 	setupLog.Info("starting server")
 	if err := backend.R.Run(serverPort); err != nil {
 		setupLog.Error(err, "problem running server")

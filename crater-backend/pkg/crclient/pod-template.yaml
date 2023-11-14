@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: img2img-train
+  namespace: user-{zkr}
+spec:
+  # securityContext:
+  #   runAsUser: 1005 # 运行容器的用户 zhuangkr
+  #   runAsGroup: 0 # 容器进程运行的组
+  #   fsGroup: 100 # 创建文件目录用的组
+  containers:
+    - name: main
+      # image: jupyter/tensorflow-notebook:latest
+      image: nvidia/cuda:12.2.0-base-ubuntu22.04
+      resources:
+        limits:
+          cpu: "40"
+          memory: 50Gi
+          nvidia.com/gpu: "2"
+        requests:
+          cpu: "40"
+          memory: 50Gi
+          nvidia.com/gpu: "2"
+      volumeMounts:
+        - name: data-volume
+          mountPath: /datasets/
+        - name: user-volume
+          mountPath: /home/{zkr}
+        - name: cache-volume
+          mountPath: /dev/shm
+        - mountPath: /home/shared
+          name: jupyterhub-shared
+          subPath: code
+        # - mountPath: /jupyterhub-shared
+        #   name: jupyterhub-shared
+        # miniconda环境
+        - mountPath: /miniconda
+          name: jupyterhub-shared
+          subPath: miniconda
+      command:
+        - "/bin/bash"
+        - "-c"
+        - |
+          # export PATH=/miniconda/bin:${PATH}
+          # source /miniconda/etc/profile.d/conda.sh
+          sleep inf
+          # PATH=/miniconda/bin:${PATH}
+          # source /miniconda/etc/profile.d/conda.sh
+          # conda activate img2img
+          # cd /home/shared/ai_training_job/image2image
+          # python train.py --dataroot /datasets/img2img/maps --name maps_cyclegan --model cycle_gan --pool_size 50 --no_dropout --display_id 0
+          # python train.py --dataroot /datasets/img2img/facades --name facades_pix2pix --model pix2pix --netG unet_256 --direction BtoA --lambda_L1 100 --dataset_mode aligned --norm batch --pool_size 0 --display_id 0
+  restartPolicy: Never
+  volumes:
+    - name: data-volume
+      persistentVolumeClaim:
+        claimName: dnn-train-data
+    - name: cache-volume
+      emptyDir:
+        medium: Memory
+    - name: jupyterhub-shared # 共享目录，包括/miniconda,/code
+      persistentVolumeClaim:
+        claimName: jupyterhub-shared-volume
+    - name: volume-zhuangkr # home目录
+      persistentVolumeClaim:
+        claimName: home-zhuangkr
+  nodeSelector: # 添加节点选择器
+    kubernetes.io/hostname: dell-68
