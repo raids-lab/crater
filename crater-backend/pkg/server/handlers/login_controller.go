@@ -24,6 +24,7 @@ type LoginRequest struct {
 type LoginResponse struct {
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken"`
+	Role         string `json:"role"`
 }
 type ErrorResponse struct {
 	Message string `json:"error"`
@@ -91,6 +92,7 @@ func (lc *LoginMgr) Login(c *gin.Context) {
 	loginResponse := LoginResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
+		Role:         user.Role,
 	}
 
 	c.JSON(http.StatusOK, loginResponse)
