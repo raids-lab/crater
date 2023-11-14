@@ -37,14 +37,22 @@ export const Component: FC = () => {
             <CardTitle>资源占用</CardTitle>
           </CardHeader>
           <CardContent>
-            <p>Prometheus</p>
             {isLoading ? (
               <p>loading...</p>
             ) : (
               quota && (
-                <p>
-                  CPU: {quota.hard.cpu} / {quota.hardUsed.cpu}
-                </p>
+                <>
+                  <p>
+                    CPU: {quota.hardUsed.cpu} / {quota.hard.cpu}
+                  </p>
+                  <p>
+                    GPU: {quota.hardUsed["nvidia.com/gpu"]} /{" "}
+                    {quota.hard["nvidia.com/gpu"]}
+                  </p>
+                  <p>
+                    Memory: {quota.hardUsed.memory} / {quota.hard.memory}
+                  </p>
+                </>
               )
             )}
           </CardContent>
