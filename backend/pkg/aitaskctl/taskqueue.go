@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/aisystem/ai-protal/pkg/models"
-	"github.com/aisystem/ai-protal/pkg/server/handlers"
 )
 
 // TaskQueue 保存每个用户的队列
@@ -27,7 +26,7 @@ func (tq *TaskQueue) InitUserQueue(username string, taskList []models.AITask) {
 	defer tq.Unlock()
 	q := NewUserQueue(username)
 	for _, t := range taskList {
-		task := handlers.FormatAITaskToAttr(&t)
+		task := models.FormatAITaskToAttr(&t)
 		if task.SLO == models.HighSLO {
 			q.gauranteedQueue.PushIfNotPresent(task)
 		} else if task.SLO == models.LowSLO {

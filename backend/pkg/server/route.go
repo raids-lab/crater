@@ -3,12 +3,12 @@ package server
 import (
 	"net/http"
 
+	"github.com/aisystem/ai-protal/pkg/aitaskctl"
 	"github.com/aisystem/ai-protal/pkg/config"
 	"github.com/aisystem/ai-protal/pkg/constants"
 	"github.com/aisystem/ai-protal/pkg/db/user"
 	"github.com/aisystem/ai-protal/pkg/server/handlers"
 	"github.com/aisystem/ai-protal/pkg/server/middleware"
-	"github.com/aisystem/ai-protal/pkg/util"
 	"github.com/gin-gonic/gin"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -17,7 +17,7 @@ type Backend struct {
 	R *gin.Engine
 }
 
-func (b *Backend) RegisterService(taskUpdateChan chan<- util.TaskUpdateChan, cl client.Client) {
+func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl client.Client) {
 
 	b.R.Use(middleware.Cors())
 
@@ -39,7 +39,7 @@ func (b *Backend) RegisterService(taskUpdateChan chan<- util.TaskUpdateChan, cl 
 	protectedRouter := b.R.Group(constants.APIPrefix)
 	protectedRouter.Use(middleware.JwtAuthMiddleware(tokenConf.AccessTokenSecret))
 
-	aitaskMgr := handlers.NewAITaskMgr(taskUpdateChan)
+	aitaskMgr := handlers.NewAITaskMgr(aitaskCtrl)
 	recommenddljobMgr := handlers.NewRecommendDLJobMgr(user.NewDBService(), cl)
 	datasetMgr := handlers.NewDataSetMgr(user.NewDBService(), cl)
 
@@ -49,11 +49,11 @@ func (b *Backend) RegisterService(taskUpdateChan chan<- util.TaskUpdateChan, cl 
 
 	adminRouter := b.R.Group(constants.APIPrefix + "/admin")
 	adminRouter.Use(middleware.JwtAuthMiddleware(tokenConf.AccessTokenSecret), middleware.AdminMiddleware())
-	adminMgr := handlers.NewAdminMgr()
+	adminMgr := handlers.NewAdminMgr(aitaskCtrl)
 	adminMgr.RegisterRoute(adminRouter)
 }
 
-func Register(taskUpdateChan chan<- util.TaskUpdateChan, cl client.Client) (*Backend, error) {
+func Register(aitaskCtrl *aitaskctl.TaskController, cl client.Client) (*Backend, error) {
 	s := new(Backend)
 
 	s.R = gin.Default()
@@ -63,6 +63,6 @@ func Register(taskUpdateChan chan<- util.TaskUpdateChan, cl client.Client) (*Bac
 			"message": "ok",
 		})
 	})
-	s.RegisterService(taskUpdateChan, cl)
+	s.RegisterService(aitaskCtrl, cl)
 	return s, nil
 }

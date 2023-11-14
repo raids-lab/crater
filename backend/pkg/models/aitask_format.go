@@ -1,32 +1,30 @@
-package handlers
+package models
 
 import (
 	"strings"
-
-	"github.com/aisystem/ai-protal/pkg/models"
 )
 
-func FormatTaskAttrToModel(task *models.TaskAttr) *models.AITask {
-	return &models.AITask{
+func FormatTaskAttrToModel(task *TaskAttr) *AITask {
+	return &AITask{
 		TaskName:        task.TaskName,
 		UserName:        task.UserName,
 		Namespace:       task.Namespace,
 		TaskType:        task.TaskType,
 		Image:           task.Image,
-		ResourceRequest: models.ResourceListToJSON(task.ResourceRequest),
+		ResourceRequest: ResourceListToJSON(task.ResourceRequest),
 		WorkingDir:      task.WorkingDir,
 		ShareDirs:       strings.Join(task.ShareDirs, ","),
 		Command:         task.Command,
 		Args:            argsToString(task.Args),
 		SLO:             task.SLO,
-		Status:          models.QueueingStatus,
+		Status:          QueueingStatus,
 	}
 }
 
-// TODO: directly return models.AITask
-func FormatAITaskToAttr(model *models.AITask) *models.TaskAttr {
-	resourceJson, _ := models.JSONToResourceList(model.ResourceRequest)
-	return &models.TaskAttr{
+// TODO: directly return AITask
+func FormatAITaskToAttr(model *AITask) *TaskAttr {
+	resourceJson, _ := JSONToResourceList(model.ResourceRequest)
+	return &TaskAttr{
 		ID:              model.ID,
 		TaskName:        model.TaskName,
 		UserName:        model.UserName,

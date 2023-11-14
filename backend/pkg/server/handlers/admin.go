@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 
+	"github.com/aisystem/ai-protal/pkg/aitaskctl"
 	quotasvc "github.com/aisystem/ai-protal/pkg/db/quota"
 	usersvc "github.com/aisystem/ai-protal/pkg/db/user"
 	"github.com/aisystem/ai-protal/pkg/models"
@@ -24,15 +25,16 @@ func (mgr *AdminMgr) RegisterRoute(g *gin.RouterGroup) {
 }
 
 type AdminMgr struct {
-	quotaService quotasvc.DBService
-	userService  usersvc.DBService
-	// taskUpdateChan <-chan util.TaskUpdateChan
+	quotaService   quotasvc.DBService
+	userService    usersvc.DBService
+	taskController *aitaskctl.TaskController
 }
 
-func NewAdminMgr() *AdminMgr {
+func NewAdminMgr(taskController *aitaskctl.TaskController) *AdminMgr {
 	return &AdminMgr{
-		quotaService: quotasvc.NewDBService(),
-		userService:  usersvc.NewDBService(),
+		quotaService:   quotasvc.NewDBService(),
+		userService:    usersvc.NewDBService(),
+		taskController: taskController,
 	}
 }
 
@@ -154,6 +156,15 @@ func (mgr *AdminMgr) UpdateQuota(c *gin.Context) {
 	}
 	quota.HardQuota = models.ResourceListToJSON(req.HardQuota)
 	err = mgr.quotaService.Update(quota)
+	if err != nil {
+		msg := fmt.Sprintf("update quota failed, err %v", err)
+		log.Error(msg)
+		resputil.WrapFailedResponse(c, msg, 50010)
+		return
+	}
+	// notify taskController to update quota
+	mgr.taskController.AddOrUpdateQuotaInfo(quota.UserName, *quota)
+
 	log.Infof("update quota success, user: %d, quota:%v", req.UserName, req.HardQuota)
 	resputil.WrapSuccessResponse(c, "")
 }

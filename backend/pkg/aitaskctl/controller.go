@@ -11,7 +11,6 @@ import (
 	quotadb "github.com/aisystem/ai-protal/pkg/db/quota"
 	taskdb "github.com/aisystem/ai-protal/pkg/db/task"
 	"github.com/aisystem/ai-protal/pkg/models"
-	"github.com/aisystem/ai-protal/pkg/server/handlers"
 	"github.com/aisystem/ai-protal/pkg/util"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -30,15 +29,15 @@ type TaskController struct {
 }
 
 // NewTaskController returns a new *TaskController
-func NewTaskController(client client.Client, statusChan <-chan util.JobStatusChan, taskChan <-chan util.TaskUpdateChan) *TaskController {
+func NewTaskController(client client.Client, statusChan <-chan util.JobStatusChan) *TaskController {
 	return &TaskController{
-		jobControl:     &crclient.JobControl{Client: client},
-		quotaDB:        quotadb.NewDBService(),
-		taskDB:         taskdb.NewDBService(),
-		taskQueue:      NewTaskQueue(),
-		quotaInfos:     sync.Map{},
-		jobStatusChan:  statusChan,
-		taskUpdateChan: taskChan,
+		jobControl:    &crclient.JobControl{Client: client},
+		quotaDB:       quotadb.NewDBService(),
+		taskDB:        taskdb.NewDBService(),
+		taskQueue:     NewTaskQueue(),
+		quotaInfos:    sync.Map{},
+		jobStatusChan: statusChan,
+		// taskUpdateChan: taskChan,
 	}
 }
 
@@ -70,7 +69,7 @@ func (c *TaskController) Start(ctx context.Context) error {
 	// 2. 接受AIJOB的crd状态变更信息，通过jobStatusChan
 	go c.watchJobStatus(ctx)
 	// 3. 接收task变更信息
-	go c.watchTaskUpdate(ctx)
+	// go c.watchTaskUpdate(ctx)
 	// 4. schedule线程
 	go wait.UntilWithContext(ctx, c.schedule, time.Second*5)
 	return nil
@@ -83,6 +82,7 @@ func (c *TaskController) watchJobStatus(ctx context.Context) {
 	for {
 		select {
 		case status := <-c.jobStatusChan:
+			// logrus.Infof("get job status event, taskID: %v, newStatus: %v", status.TaskID, status.NewStatus)
 			// 更新task在db中的状态
 			task, err := c.updateTaskStatus(status.TaskID, status.NewStatus)
 			if err != nil {
@@ -105,7 +105,38 @@ func (c *TaskController) watchJobStatus(ctx context.Context) {
 	}
 }
 
-// WatchTaskUpdate
+// receive task updated event
+func (c *TaskController) TaskUpdated(event util.TaskUpdateChan) {
+	task, err := c.taskDB.GetByID(event.TaskID)
+	if err != nil {
+		logrus.Errorf("get task update event failed, err: %v", err)
+		return
+	}
+	tidStr := strconv.FormatUint(uint64(event.TaskID), 10)
+	logrus.Infof("get task update event, taskID: %v, operation: %v", tidStr, event.Operation)
+	taskCopy := models.FormatAITaskToAttr(task)
+	switch event.Operation {
+	case util.CreateTask:
+		// 1. add task to queue
+		c.taskQueue.AddTask(taskCopy)
+	case util.UpdateTask:
+		c.taskQueue.UpdateTask(taskCopy)
+	case util.DeleteTask:
+		c.taskQueue.DeleteTaskByUserNameAndTaskID(event.UserName, tidStr)
+		quotaInfo := c.GetQuotaInfo(task.UserName)
+		if quotaInfo != nil {
+			quotaInfo.DeleteTask(taskCopy)
+		}
+		// delete in cluster
+		err = c.jobControl.DeleteJobFromTask(task)
+		if err != nil {
+			logrus.Errorf("delete job from task failed, err: %v", err)
+		}
+		logrus.Infof("delete task in task controller, %d", event.TaskID)
+	}
+}
+
+// deprecated
 func (c *TaskController) watchTaskUpdate(ctx context.Context) {
 	for {
 		select {
@@ -126,10 +157,10 @@ func (c *TaskController) watchTaskUpdate(ctx context.Context) {
 				continue
 			} else if t.Operation == util.CreateTask {
 				// 2. create
-				c.taskQueue.AddTask(handlers.FormatAITaskToAttr(task))
+				c.taskQueue.AddTask(models.FormatAITaskToAttr(task))
 			} else if t.Operation == util.UpdateTask {
 				// 3. update slo
-				c.taskQueue.UpdateTask(handlers.FormatAITaskToAttr(task))
+				c.taskQueue.UpdateTask(models.FormatAITaskToAttr(task))
 			}
 		case <-ctx.Done():
 			return
@@ -152,7 +183,7 @@ func (c *TaskController) updateTaskStatus(taskID string, status string) (*models
 		}
 	}
 	t.Status = status
-	return handlers.FormatAITaskToAttr(t), nil
+	return models.FormatAITaskToAttr(t), nil
 }
 
 // schedule 简单功能：从用户队列中
