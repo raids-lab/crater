@@ -29,7 +29,9 @@ type ListUserResp struct {
 }
 
 type GetQuotaResp struct {
-	Quota models.Quota
+	Hard     v1.ResourceList `json:"hard"`
+	HardUsed v1.ResourceList `json:"hardUsed"`
+	SoftUsed v1.ResourceList `json:"softUsed"`
 }
 
 type GetUserResp struct {
@@ -40,4 +42,3 @@ type GetUserResp struct {
 	CreatedAt time.Time       `json:"createdAt"`
 	UpdatedAt time.Time       `json:"updatedAt"`
 }
-

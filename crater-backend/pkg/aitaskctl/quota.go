@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/aisystem/ai-protal/pkg/models"
-	"github.com/aisystem/ai-protal/pkg/server/handlers"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 )
@@ -114,7 +113,7 @@ func (c *TaskController) AddOrUpdateQuotaInfo(name string, quota models.Quota) (
 		}
 
 		for _, task := range tasksRunning {
-			quotaInfo.AddTask(handlers.FormatAITaskToAttr(&task))
+			quotaInfo.AddTask(models.FormatAITaskToAttr(&task))
 		}
 
 		// add db tasks
@@ -124,7 +123,7 @@ func (c *TaskController) AddOrUpdateQuotaInfo(name string, quota models.Quota) (
 		}
 		// logrus.Info(tasksRunning)
 		for _, task := range taskQueuing {
-			quotaInfo.AddTask(handlers.FormatAITaskToAttr(&task))
+			quotaInfo.AddTask(models.FormatAITaskToAttr(&task))
 		}
 
 		c.quotaInfos.Store(name, quotaInfo)
