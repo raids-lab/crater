@@ -1,14 +1,9 @@
 package domain
 
-type SignupRequest struct {
-	Name     string `form:"name" binding:"required"`
-	Email    string `form:"email" binding:"required,email"`
-	Password string `form:"password" binding:"required"`
-}
-
 type SignupResponse struct {
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken"`
+	Role         string `json:"role"`
 }
 
 /*
@@ -19,14 +14,11 @@ type SignupResponse struct {
 		CreateRefreshToken(user *User, secret string, expiry int) (refreshToken string, err error)
 	}
 */
-type LoginRequest struct {
-	Email    string `form:"email" binding:"required,email"`
-	Password string `form:"password" binding:"required"`
-}
 
 type LoginResponse struct {
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken"`
+	Role         string `json:"role"`
 }
 
 /*type LoginUsecase interface {

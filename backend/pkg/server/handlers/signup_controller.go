@@ -157,6 +157,7 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 	signupResponse := domain.SignupResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
+		Role:         user.Role,
 	}
 
 	c.JSON(http.StatusOK, signupResponse)
