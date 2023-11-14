@@ -3,6 +3,7 @@ package crclient
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -14,6 +15,20 @@ import (
 
 type JobControl struct {
 	client.Client
+}
+
+func (c *JobControl) GetJobStatus(task *models.AITask) (aijobapi.JobPhase, error) {
+	jobname := fmt.Sprintf("%s-%d", task.TaskName, task.ID)
+	ns := task.Namespace
+	job := &aijobapi.AIJob{}
+	err := c.Get(context.Background(), client.ObjectKey{
+		Namespace: ns,
+		Name:      jobname,
+	}, job)
+	if err != nil {
+		return "", err
+	}
+	return job.Status.Phase, nil
 }
 
 func (c *JobControl) DeleteJobFromTask(task *models.AITask) error {
@@ -37,14 +52,23 @@ func (c *JobControl) CreateJobFromTask(task *models.TaskAttr) error {
 	}
 	pvcname := fmt.Sprintf(PVCFormat, task.UserName)
 	jobname := fmt.Sprintf("%s-%d", task.TaskName, task.ID)
+	taskID := strconv.Itoa(int(task.ID))
+	labels := map[string]string{
+		aijobapi.TaskIDKey: taskID,
+	}
 	job := &aijobapi.AIJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobname,
 			Namespace: task.Namespace,
+			Labels:    labels,
 		},
 		Spec: aijobapi.JobSpec{
 			Replicas: 1,
 			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:    labels,
+					Namespace: task.Namespace,
+				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
@@ -90,9 +114,9 @@ func (c *JobControl) CreateJobFromTask(task *models.TaskAttr) error {
 			},
 			ResourceRequest: task.ResourceRequest.DeepCopy(),
 		},
-		Status: aijobapi.JobStatus{
-			Phase: aijobapi.Pending,
-		},
+		// Status: aijobapi.JobStatus{
+		// 	Phase: aijobapi.Pending,
+		// },
 	}
 	err := c.Create(context.Background(), job)
 	if err != nil {

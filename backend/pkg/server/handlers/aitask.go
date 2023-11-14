@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/aisystem/ai-protal/pkg/aitaskctl"
 	tasksvc "github.com/aisystem/ai-protal/pkg/db/task"
 	usersvc "github.com/aisystem/ai-protal/pkg/db/user"
+	"github.com/aisystem/ai-protal/pkg/models"
 	payload "github.com/aisystem/ai-protal/pkg/server/payload"
 	resputil "github.com/aisystem/ai-protal/pkg/server/response"
 	"github.com/aisystem/ai-protal/pkg/util"
@@ -19,29 +21,31 @@ func (mgr *AITaskMgr) RegisterRoute(g *gin.RouterGroup) {
 	g.POST("updateSLO", mgr.UpdateSLO)
 	g.GET("list", mgr.List)
 	g.GET("get", mgr.Get)
-
+	g.GET("getQuota", mgr.GetQuota)
 }
 
 type AITaskMgr struct {
-	taskService    tasksvc.DBService
-	userService    usersvc.DBService
-	taskUpdateChan chan<- util.TaskUpdateChan
+	taskService tasksvc.DBService
+	userService usersvc.DBService
+	// taskUpdateChan chan<- util.TaskUpdateChan
+	taskController *aitaskctl.TaskController
 }
 
-func NewAITaskMgr(taskUpdateChan chan<- util.TaskUpdateChan) *AITaskMgr {
+func NewAITaskMgr(taskController *aitaskctl.TaskController) *AITaskMgr {
 	return &AITaskMgr{
-		taskService:    tasksvc.NewDBService(),
-		userService:    usersvc.NewDBService(),
-		taskUpdateChan: taskUpdateChan,
+		taskService: tasksvc.NewDBService(),
+		userService: usersvc.NewDBService(),
+		// taskUpdateChan: taskUpdateChan,
+		taskController: taskController,
 	}
 }
 
 func (mgr *AITaskMgr) NotifyTaskUpdate(taskID uint, userName string, op util.TaskOperation) {
-	mgr.taskUpdateChan <- util.TaskUpdateChan{
+	mgr.taskController.TaskUpdated(util.TaskUpdateChan{
 		TaskID:    taskID,
 		UserName:  userName,
 		Operation: op,
-	}
+	})
 }
 
 func (mgr *AITaskMgr) Create(c *gin.Context) {
@@ -59,7 +63,7 @@ func (mgr *AITaskMgr) Create(c *gin.Context) {
 	username, _ := c.Get("username")
 	req.UserName = username.(string)
 	req.Namespace = fmt.Sprintf("user-%s", username.(string))
-	taskModel := FormatTaskAttrToModel(&req.TaskAttr)
+	taskModel := models.FormatTaskAttrToModel(&req.TaskAttr)
 	err := mgr.taskService.Create(taskModel)
 	if err != nil {
 		msg := fmt.Sprintf("create task failed, err %v", err)
@@ -165,4 +169,22 @@ func (mgr *AITaskMgr) UpdateSLO(c *gin.Context) {
 	mgr.NotifyTaskUpdate(req.TaskID, username.(string), util.UpdateTask)
 	log.Infof("update task success, taskID: %d", req.TaskID)
 	resputil.WrapSuccessResponse(c, "")
+}
+
+func (mgr *AITaskMgr) GetQuota(c *gin.Context) {
+	username, _ := c.Get("username")
+	quotaInfo := mgr.taskController.GetQuotaInfoSnapshotByUsername(username.(string))
+	if quotaInfo == nil {
+		msg := fmt.Sprintf("get user:%v quota failed", username.(string))
+		log.Errorf(msg)
+		resputil.WrapFailedResponse(c, msg, 50009)
+		return
+	}
+	resp := payload.GetQuotaResp{
+		Hard:     quotaInfo.Hard,
+		HardUsed: quotaInfo.HardUsed,
+		SoftUsed: quotaInfo.SoftUsed,
+	}
+	log.Infof("get quota success, user: %v", username.(string))
+	resputil.WrapSuccessResponse(c, resp)
 }
