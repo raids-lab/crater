@@ -14,7 +14,6 @@ import (
 )
 
 func (mgr *AITaskMgr) RegisterRoute(g *gin.RouterGroup) {
-
 	g.POST("create", mgr.Create)
 	g.POST("delete", mgr.Delete)
 	g.POST("updateSLO", mgr.UpdateSLO)

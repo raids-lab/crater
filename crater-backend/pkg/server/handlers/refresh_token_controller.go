@@ -15,18 +15,24 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type RefreshTokenController struct {
+type RefreshTokenMgr struct {
 	//Refres
-	Env *config.TokenConf
+	TokenConf *config.TokenConf
 }
 
-func (rtc *RefreshTokenController) NewRefreshTokenRouter(group *gin.RouterGroup) {
+func NewRefreshTokenMgr(tokenConf *config.TokenConf) *RefreshTokenMgr {
+	return &RefreshTokenMgr{
+		TokenConf: tokenConf,
+	}
+}
+
+func (rtc *RefreshTokenMgr) RegisterRoute(group *gin.RouterGroup) {
 	//ur := repository.NewUserRepository(db, domain.CollectionUser)
 
 	group.POST("/refresh", rtc.RefreshToken)
 }
 
-func (rtc *RefreshTokenController) RefreshToken(c *gin.Context) {
+func (rtc *RefreshTokenMgr) RefreshToken(c *gin.Context) {
 	var request domain.RefreshTokenRequest
 
 	err := c.ShouldBind(&request)
@@ -38,7 +44,7 @@ func (rtc *RefreshTokenController) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	id, err := util.ExtractIDFromToken(request.RefreshToken, rtc.Env.RefreshTokenSecret)
+	id, err := util.ExtractIDFromToken(request.RefreshToken, rtc.TokenConf.RefreshTokenSecret)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{
 			Message: "User not found",
@@ -57,7 +63,7 @@ func (rtc *RefreshTokenController) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	accessToken, err := util.CreateAccessToken(user, rtc.Env.AccessTokenSecret, rtc.Env.AccessTokenExpiryHour)
+	accessToken, err := util.CreateAccessToken(user, rtc.TokenConf.AccessTokenSecret, rtc.TokenConf.AccessTokenExpiryHour)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Message: err.Error(),
@@ -66,7 +72,7 @@ func (rtc *RefreshTokenController) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	refreshToken, err := util.CreateRefreshToken(user, rtc.Env.RefreshTokenSecret, rtc.Env.RefreshTokenExpiryHour)
+	refreshToken, err := util.CreateRefreshToken(user, rtc.TokenConf.RefreshTokenSecret, rtc.TokenConf.RefreshTokenExpiryHour)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Message: err.Error(),

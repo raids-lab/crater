@@ -22,11 +22,11 @@ import (
 	"net/http"
 )
 
-type SignupController struct {
+type SignupMgr struct {
 	UserDB  user.DBService
 	QuotaDB quota.DBService
 	//contextTimeout time.Duration
-	Env *config.TokenConf
+	TokenConf *config.TokenConf
 
 	CL client.Client
 	//ID             int    `json:"_id"`
@@ -41,13 +41,21 @@ type SignupRequest struct {
 	Password string `json:"password" binding:"required"`
 } //domain
 
-func (sc *SignupController) NewSignupRouter(group *gin.RouterGroup) {
-	//ur := repository.NewUserRepository(db, domain.CollectionUser)
+func NewSignupMgr(tokenConf *config.TokenConf, cl client.Client) *SignupMgr {
+	return &SignupMgr{
+		UserDB:    user.NewDBService(),
+		QuotaDB:   quota.NewDBService(),
+		TokenConf: tokenConf,
+		CL:        cl,
+	}
+}
 
+func (sc *SignupMgr) RegisterRoute(group *gin.RouterGroup) {
+	//ur := repository.NewUserRepository(db, domain.CollectionUser)
 	group.POST("/signup", sc.Signup)
 }
 
-func (sc *SignupController) Signup(c *gin.Context) {
+func (sc *SignupMgr) Signup(c *gin.Context) {
 	var request SignupRequest
 
 	err := c.ShouldBind(&request)
@@ -128,7 +136,7 @@ func (sc *SignupController) Signup(c *gin.Context) {
 		logrus.Infof("quota create failed: %v", err)
 	}
 
-	accessToken, err := sc.UserDB.CreateAccessToken(&user, sc.Env.AccessTokenSecret, sc.Env.AccessTokenExpiryHour)
+	accessToken, err := sc.UserDB.CreateAccessToken(&user, sc.TokenConf.AccessTokenSecret, sc.TokenConf.AccessTokenExpiryHour)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Message: err.Error(),
@@ -137,7 +145,7 @@ func (sc *SignupController) Signup(c *gin.Context) {
 		return
 	}
 
-	refreshToken, err := sc.UserDB.CreateRefreshToken(&user, sc.Env.RefreshTokenSecret, sc.Env.RefreshTokenExpiryHour)
+	refreshToken, err := sc.UserDB.CreateRefreshToken(&user, sc.TokenConf.RefreshTokenSecret, sc.TokenConf.RefreshTokenExpiryHour)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Message: err.Error(),

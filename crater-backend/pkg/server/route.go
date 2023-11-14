@@ -5,7 +5,6 @@ import (
 
 	"github.com/aisystem/ai-protal/pkg/config"
 	"github.com/aisystem/ai-protal/pkg/constants"
-	"github.com/aisystem/ai-protal/pkg/db/quota"
 	"github.com/aisystem/ai-protal/pkg/db/user"
 	"github.com/aisystem/ai-protal/pkg/server/handlers"
 	"github.com/aisystem/ai-protal/pkg/server/middleware"
@@ -18,46 +17,40 @@ type Backend struct {
 	R *gin.Engine
 }
 
-func (b *Backend) RegisterService(manager handlers.Manager, cl client.Client) {
-	Env := config.NewTokenConf()
-	b.R.Use(middleware.Cors())
-	publicRouter := b.R.Group("")
+func (b *Backend) RegisterService(taskUpdateChan chan<- util.TaskUpdateChan, cl client.Client) {
 
-	//timeout := time.Duration(Env.ContextTimeout) * time.Second
-	lc := &handlers.LoginController{
-		LoginUsecase: user.NewDBService(),
-		Env:          Env,
-	}
-	sc := &handlers.SignupController{
-		UserDB:  user.NewDBService(),
-		QuotaDB: quota.NewDBService(),
-		Env:     Env,
-		CL:      cl,
-	}
-	rtc := &handlers.RefreshTokenController{
-		Env: Env,
-	}
-	sc.NewSignupRouter(publicRouter)
-	lc.NewLoginRouter(publicRouter)
-	rtc.NewRefreshTokenRouter(publicRouter)
+	b.R.Use(middleware.Cors())
+
+	// timeout := time.Duration(Env.ContextTimeout) * time.Second
+	// public routers
+	publicRouter := b.R.Group("")
+	tokenConf := config.NewTokenConf()
+
+	loginMgr := handlers.NewLoginMgr(tokenConf)
+	signupMgr := handlers.NewSignupMgr(tokenConf, cl)
+	tokenMgr := handlers.NewRefreshTokenMgr(tokenConf)
+
+	loginMgr.RegisterRoute(publicRouter)
+	signupMgr.RegisterRoute(publicRouter)
+	tokenMgr.RegisterRoute(publicRouter)
+
+	// protected routers, need login
 
 	protectedRouter := b.R.Group(constants.APIPrefix)
-	protectedRouter.Use(middleware.JwtAuthMiddleware(Env.AccessTokenSecret))
+	protectedRouter.Use(middleware.JwtAuthMiddleware(tokenConf.AccessTokenSecret))
 
-	adminRouter := protectedRouter.Group("/admin")
+	aitaskMgr := handlers.NewAITaskMgr(taskUpdateChan)
+	recommenddljobMgr := handlers.NewRecommendDLJobMgr(user.NewDBService(), cl)
+	datasetMgr := handlers.NewDataSetMgr(user.NewDBService(), cl)
+
+	aitaskMgr.RegisterRoute(protectedRouter.Group("/aitask"))
+	recommenddljobMgr.RegisterRoute(protectedRouter.Group("/recommenddljob"))
+	datasetMgr.RegisterRoute(protectedRouter.Group("/dataset"))
+
+	adminRouter := b.R.Group(constants.APIPrefix + "/admin")
+	adminRouter.Use(middleware.JwtAuthMiddleware(tokenConf.AccessTokenSecret), middleware.AdminMiddleware())
 	adminMgr := handlers.NewAdminMgr()
 	adminMgr.RegisterRoute(adminRouter)
-
-	aitaskRouter := protectedRouter.Group("/aitask")
-	manager.RegisterRoute(aitaskRouter)
-
-	recommenddljobMgr := handlers.NewRecommendDLJobMgr(user.NewDBService(), cl)
-	recommenddljobRouter := protectedRouter.Group("/recommenddljob")
-	recommenddljobMgr.RegisterRoute(recommenddljobRouter)
-
-	datasetMgr := handlers.NewDataSetMgr(user.NewDBService(), cl)
-	dataSetRouter := protectedRouter.Group("/dataset")
-	datasetMgr.RegisterRoute(dataSetRouter)
 }
 
 func Register(taskUpdateChan chan<- util.TaskUpdateChan, cl client.Client) (*Backend, error) {
@@ -70,7 +63,6 @@ func Register(taskUpdateChan chan<- util.TaskUpdateChan, cl client.Client) (*Bac
 			"message": "ok",
 		})
 	})
-	s.RegisterService(handlers.NewAITaskMgr(taskUpdateChan), cl)
-	// s.R.Run(":8078")
+	s.RegisterService(taskUpdateChan, cl)
 	return s, nil
 }
