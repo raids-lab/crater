@@ -13,18 +13,33 @@ kubectl apply -f config/crd/bases/aisystem.github.com_aijobs.yaml
 * `dbconf.yaml`： 数据库配置文件，可以通过 `kubectl port-forward service/mycluster mysql` 在本机上暴露3306端口
 
 
-## Debug
+## 运行
 
 ``` bash
 # 编译
-go build -mod=vendor -o bin/controller main.go
+go mod tidy && go build -o bin/controller main.go
 
-# 运行
-./bin/controller --db-config-file ./debug-dbconf.yaml --server-port :8067 --metrics-bind-address :8066 --health-probe-bind-address :8065
+# 本地运行
+./bin/controller --db-config-file ./debug-dbconf.yaml
 ```
 
+## 开发与部署规范
 
-## 
+### 开发
+
+1. 从main中checkout出分支单独开发
+2. 完成开发后可以先用postman自测
+	- 使用`debug.sh`启动后端，默认端口8078，如遇端口冲突请自行修改端口
+	- 可以在header中添加`X-Debug-Username`指定用户名绕过登录认证，直接测试接口
+3. 自测完成后，若需要与前端联调，则告知前端端口并进行联调
+4. 测试完成后合入主分支，gitlab上提mr，发群里，有群友ap后合入即可
+
+### 部署
+
+- 建议上线前群里沟通好
+- 打包：`make build-backend IMG={YOUR IMAGE PATH}`
+- 部署：`make deploy-backend IMG={YOUR IMAGE PATH}`
+- 验证：联系前端部署到k8s里，前端部署完成后进行整体的功能验证
 
 This repository implements a simple controller for watching Foo resources as
 defined with a CustomResourceDefinition (CRD).

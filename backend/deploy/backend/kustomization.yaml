@@ -1,0 +1,8 @@
+resources:
+- deploy.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- name: container
+  newName: pxllpx/ai-portal-backend
+  newTag: v1
