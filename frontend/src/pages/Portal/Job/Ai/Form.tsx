@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiTaskCreate } from "@/services/api/task";
+import { apiAiTaskCreate } from "@/services/api/aiTask";
 import { showErrorToast } from "@/utils/toast";
 import { cn } from "@/lib/utils";
 import { Cross1Icon } from "@radix-ui/react-icons";
@@ -90,7 +90,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
 
   const { mutate: createTask } = useMutation({
     mutationFn: (values: FormSchema) =>
-      apiTaskCreate({
+      apiAiTaskCreate({
         taskName: values.taskname,
         slo: values.priority === "high" ? 1 : 0,
         taskType: "training",

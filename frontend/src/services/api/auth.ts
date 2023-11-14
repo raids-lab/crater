@@ -1,6 +1,32 @@
-import { ILogin, ILoginResponse, ISignup, ISignupResponse } from "../types";
 import instance from "../axios";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/utils/store";
+
+/**
+ * Signup
+ */
+export interface ISignup {
+  userName: string;
+  role: string;
+  password: string;
+}
+
+export interface ISignupResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
+/**
+ * Login
+ */
+export interface ILogin {
+  username: string;
+  password: string;
+}
+
+export interface ILoginResponse {
+  accessToken: string;
+  refreshToken: string;
+}
 
 export const apiUserSignup = async (user: ISignup) => {
   const response = await instance.post<ISignupResponse>("signup", user);

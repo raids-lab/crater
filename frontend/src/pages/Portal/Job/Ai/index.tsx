@@ -26,7 +26,7 @@ import { NewTaskForm } from "./Form";
 import { useEffect, useMemo, useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiTaskDelete, apiTaskList } from "@/services/api/task";
+import { apiAiTaskDelete, apiAiTaskList } from "@/services/api/aiTask";
 import { logger } from "@/utils/loglevel";
 import { showErrorToast } from "@/utils/toast";
 import { useToast } from "@/components/ui/use-toast";
@@ -139,7 +139,7 @@ export function Component() {
   const { data: taskList, isLoading } = useQuery({
     queryKey: ["tasklist"],
     retry: 1,
-    queryFn: apiTaskList,
+    queryFn: apiAiTaskList,
     select: (res) => res.data.data.Tasks,
     onSuccess: (data) => {
       logger.debug("Data is: ", data);
@@ -148,7 +148,7 @@ export function Component() {
   });
 
   const { mutate: deleteTask } = useMutation({
-    mutationFn: (id: number) => apiTaskDelete(id),
+    mutationFn: (id: number) => apiAiTaskDelete(id),
     onSuccess: () => {
       queryClient
         .invalidateQueries({ queryKey: ["tasklist"] })
