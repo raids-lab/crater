@@ -13,9 +13,9 @@ func FormatTaskAttrToModel(task *TaskAttr) *AITask {
 		Image:           task.Image,
 		ResourceRequest: ResourceListToJSON(task.ResourceRequest),
 		WorkingDir:      task.WorkingDir,
-		ShareDirs:       strings.Join(task.ShareDirs, ","),
+		ShareDirs:       MapToJSONString(task.ShareDirs),
 		Command:         task.Command,
-		Args:            argsToString(task.Args),
+		Args:            MapToJSONString(task.Args),
 		SLO:             task.SLO,
 		Status:          QueueingStatus,
 	}
@@ -33,13 +33,13 @@ func FormatAITaskToAttr(model *AITask) *TaskAttr {
 		Image:           model.Image,
 		ResourceRequest: resourceJson,
 		WorkingDir:      model.WorkingDir,
-		ShareDirs:       strings.Split(model.ShareDirs, ","),
+		ShareDirs:       JSONStringToMap(model.ShareDirs),
 		Command:         model.Command,
-		// Args:            dbstringToArgs(model.Args), // fixme
-		SLO:       model.SLO,
-		Status:    model.Status,
-		CreatedAt: model.CreatedAt,
-		UpdatedAt: model.UpdatedAt,
+		Args:            JSONStringToMap(model.Args),
+		SLO:             model.SLO,
+		Status:          model.Status,
+		CreatedAt:       model.CreatedAt,
+		UpdatedAt:       model.UpdatedAt,
 	}
 }
 func argsToString(args map[string]string) string {

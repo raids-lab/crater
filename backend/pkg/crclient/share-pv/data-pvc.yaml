@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-pvc
+  namespace: {user-zkr}
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+  volumeName: pvc-869cee33-fe70-46ee-a6d3-24428957a82b-{user-zkr} # 绑定PV
+  storageClassName: rook-cephfs
+  volumeMode: Filesystem
