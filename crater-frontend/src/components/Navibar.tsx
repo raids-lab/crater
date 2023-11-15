@@ -11,11 +11,12 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
-import { useRecoilValue } from "recoil";
-import { globalUserInfo, useResetStore } from "@/utils/store";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { globalLastView, globalUserInfo, useResetStore } from "@/utils/store";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "./ui/use-toast";
+import { useTheme } from "@/utils/theme";
 
 const Navibar: FC = () => {
   const queryClient = useQueryClient();
@@ -24,10 +25,17 @@ const Navibar: FC = () => {
   const userInfo = useRecoilValue(globalUserInfo);
   const navigate = useNavigate();
   const location = useLocation();
-  const isAdminView = useMemo(() => {
+  const { theme, setTheme } = useTheme();
+  const setLastView = useSetRecoilState(globalLastView);
+
+  const view = useMemo(() => {
     const pathParts = location.pathname.split("/").filter(Boolean);
-    return pathParts[0] === "admin";
+    return pathParts[0];
   }, [location]);
+
+  const isAdminView = useMemo(() => {
+    return view === "admin";
+  }, [view]);
 
   return (
     <div className="flex h-full flex-row items-center justify-between border-b bg-background px-6 shadow-sm">
@@ -61,7 +69,6 @@ const Navibar: FC = () => {
               <DropdownMenuItem onClick={() => navigate("/portal")}>
                 切换为普通用户
               </DropdownMenuItem>
-              <DropdownMenuItem>系统设置</DropdownMenuItem>
             </DropdownMenuGroup>
           ) : (
             <DropdownMenuGroup>
@@ -71,14 +78,19 @@ const Navibar: FC = () => {
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem>个人空间</DropdownMenuItem>
-              <DropdownMenuItem>系统设置</DropdownMenuItem>
             </DropdownMenuGroup>
           )}
-
+          <DropdownMenuItem>系统设置</DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          >
+            {theme === "light" ? "深色模式" : "浅色模式"}
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="focus:bg-destructive focus:text-destructive-foreground"
             onClick={() => {
+              setLastView(view);
               queryClient.clear();
               resetAll();
               toast({

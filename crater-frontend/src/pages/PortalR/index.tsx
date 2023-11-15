@@ -1,39 +1,26 @@
 import { Sidebar, SidebarItem, SidebarMenu } from "@/components/Sidebar";
+import DatabaseIcon from "@/components/icon/DatabaseIcon";
+import OverviewIcon from "@/components/icon/OverviewIcon";
+import LightHouseIcon from "@/components/icon/LightHouseIcon";
+import WorkBenchIcon from "@/components/icon/WorkBenchIcon";
 import { useAuth } from "@/hooks/useAuth";
 import { FC, PropsWithChildren, Suspense, useState } from "react";
 import { Navigate, Outlet, RouteObject } from "react-router-dom";
+import { FileTextIcon, Pencil2Icon } from "@radix-ui/react-icons";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import Navibar from "@/components/Navibar";
-import {
-  BarChartIcon,
-  FileTextIcon,
-  Pencil2Icon,
-  PersonIcon,
-} from "@radix-ui/react-icons";
-import OverviewIcon from "@/components/icon/OverviewIcon";
-import DatabaseIcon from "@/components/icon/DatabaseIcon";
-import LightHouseIcon from "@/components/icon/LightHouseIcon";
 
 const sidebarItems: SidebarItem[] = [
   {
-    title: "资源监控",
+    title: "概览",
     path: "overview",
-    icon: <BarChartIcon />,
+    icon: <WorkBenchIcon />,
     children: [],
     route: {
       path: "overview",
-    },
-  },
-  {
-    title: "用户管理",
-    path: "user",
-    icon: <PersonIcon />,
-    children: [],
-    route: {
-      path: "user",
-      lazy: () => import("./User"),
+      lazy: () => import("./Overview"),
     },
   },
   {
@@ -42,21 +29,10 @@ const sidebarItems: SidebarItem[] = [
     icon: <OverviewIcon />,
     children: [
       {
-        title: "通用任务",
-        route: {
-          path: "default",
-        },
-      },
-      {
-        title: "AI 训练任务",
-        route: {
-          path: "ai",
-        },
-      },
-      {
         title: "深度推荐训练任务",
         route: {
           path: "dl",
+          lazy: () => import("./Job/Dl"),
         },
       },
     ],
@@ -70,6 +46,14 @@ const sidebarItems: SidebarItem[] = [
         title: "镜像列表",
         route: {
           path: "list",
+          lazy: () => import("../Portal/Image/List"),
+        },
+      },
+      {
+        title: "镜像制作",
+        route: {
+          path: "make",
+          lazy: () => import("../Portal/Image/Make"),
         },
       },
     ],
@@ -80,9 +64,17 @@ const sidebarItems: SidebarItem[] = [
     icon: <DatabaseIcon />,
     children: [
       {
-        title: "公开数据集",
+        title: "数据集",
         route: {
           path: "dataset",
+          lazy: () => import("./Data/Dataset"),
+        },
+      },
+      {
+        title: "其他",
+        route: {
+          path: "other",
+          lazy: () => import("./Data/Other"),
         },
       },
     ],
@@ -91,27 +83,27 @@ const sidebarItems: SidebarItem[] = [
 
 const sidebarMenus: SidebarMenu[] = [
   {
-    title: "文档编辑",
+    title: "使用文档",
     path: "docs",
     icon: <FileTextIcon />,
     route: {
       path: "docs",
-      lazy: () => import("./Docs"),
+      lazy: () => import("../Portal/Docs"),
     },
   },
   {
-    title: "问题收集",
+    title: "问题反馈",
     path: "feedback",
     icon: <Pencil2Icon />,
     route: {
       path: "feedback",
-      lazy: () => import("./Feedback"),
+      lazy: () => import("../Portal/Feedback"),
     },
   },
 ];
 
 const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
-  const isAuthenticated = useAuth("admin");
+  const isAuthenticated = useAuth("user");
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
@@ -172,8 +164,8 @@ const Layout = () => {
   );
 };
 
-export const adminRoute: RouteObject = {
-  path: "/admin",
+export const recommendRoute: RouteObject = {
+  path: "/recommend",
   element: (
     <Suspense fallback={<h2>Loading...</h2>}>
       <AuthedRouter>
@@ -184,7 +176,7 @@ export const adminRoute: RouteObject = {
   children: [
     {
       index: true,
-      element: <Navigate to="user" replace={true} />,
+      element: <Navigate to="job/dl" replace />,
     },
     ...sidebarItems.map((item) => {
       return (
