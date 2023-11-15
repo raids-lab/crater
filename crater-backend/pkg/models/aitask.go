@@ -16,12 +16,19 @@ const (
 	HighSLO = 1
 	LowSLO  = 0
 
+	// TaskStatus
 	QueueingStatus  = "Queueing" // 用户队列里的状态
 	PendingStatus   = "Pending"  // AIJob排队的状态
 	RunningStatus   = "Running"
 	FailedStatus    = "Failed"
 	SucceededStatus = "Succeeded"
 	SuspendedStatus = "Suspended"
+
+	// ProfilingStatus
+	UnProfiled    = 0
+	ProfileQueued = 1
+	Profiling     = 2
+	ProfileFinish = 3
 )
 
 // TaskModel is task presented in db
@@ -44,8 +51,8 @@ type AITask struct {
 	SLO             uint       `gorm:"column:slo;type:int;not null" json:"slo"`
 	Status          string     `gorm:"column:status;type:varchar(128)" json:"status"`
 	IsDeleted       bool       `gorm:"column:is_deleted;type:bool" json:"isDeleted"`
-	Profiled        bool       `gorm:"column:profiled;type:bool" json:"profiled"`
-	UtilStat        string     `gorm:"column:util_stat;type:text" json:"utilStat"`
+	ProfileStatus   uint       `gorm:"column:profile_status;type:int" json:"profileStatus"`
+	ProfileStat     string     `gorm:"column:profile_stat;type:text" json:"profileStat"`
 	EsitmatedTime   uint       `gorm:"column:estimated_time;type:int" json:"estimatedTime"`
 	ScheduleInfo    string     `gorm:"column:schedule_info;type:text" json:"scheduleInfo"`
 }
@@ -61,7 +68,7 @@ type TaskAttr struct {
 	Command         string            `json:"command" binding:"required"`
 	Args            map[string]string `json:"args"`
 	WorkingDir      string            `json:"workingDir"`
-	ShareDirs       []string          `json:"shareDirs"`
+	ShareDirs       map[string]string `json:"shareDirs"`
 	// not for request
 	ID        uint `json:"id"`
 	Namespace string
