@@ -23,7 +23,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { NewTaskForm } from "./Form";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiAiTaskDelete, apiAiTaskList } from "@/services/api/aiTask";
@@ -40,6 +40,14 @@ import {
   CrossCircledIcon,
   StopwatchIcon,
 } from "@radix-ui/react-icons";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type TaskInfo = {
   id: number;
@@ -165,6 +173,16 @@ export function Component() {
     onError: (err) => showErrorToast("无法删除任务", err),
   });
 
+  const [openDialog, setOpenDialog] = useState(false);
+  const [taskInfo, setTaskInfo] = useState<TaskInfo | null>(null);
+  const handleDeleteTask = useCallback(
+    (taskInfo: TaskInfo) => {
+      setTaskInfo(taskInfo);
+      setOpenDialog(true);
+    },
+    [setOpenDialog, setTaskInfo],
+  );
+
   const columns = useMemo<ColumnDef<TaskInfo>[]>(
     () => [
       {
@@ -272,7 +290,6 @@ export function Component() {
         enableHiding: false,
         cell: ({ row }) => {
           const taskInfo = row.original;
-
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -285,8 +302,7 @@ export function Component() {
                 <DropdownMenuLabel>操作</DropdownMenuLabel>
                 <DropdownMenuItem
                   onClick={() => {
-                    // check if browser support clipboard
-                    deleteTask(taskInfo.id);
+                    handleDeleteTask(taskInfo);
                   }}
                 >
                   删除
@@ -300,7 +316,7 @@ export function Component() {
         },
       },
     ],
-    [deleteTask],
+    [handleDeleteTask],
   );
 
   useEffect(() => {
@@ -334,6 +350,39 @@ export function Component() {
           </SheetContent>
         </Sheet>
       </DataTable>
+      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>删除任务</DialogTitle>
+            <DialogDescription className="pt-2">
+              任务「{taskInfo?.title}」将不再可见，请谨慎操作。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              type="button"
+              className="h-8"
+              onClick={() => {
+                setOpenDialog(false);
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              type="submit"
+              className="h-8"
+              onClick={() => {
+                taskInfo && deleteTask(taskInfo.id);
+                setOpenDialog(false);
+              }}
+            >
+              删除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

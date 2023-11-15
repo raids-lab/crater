@@ -11,7 +11,6 @@ import { RouteObject, useLocation, useNavigate } from "react-router-dom";
 import { Separator } from "./ui/separator";
 import { ScrollArea } from "./ui/scroll-area";
 import { useOnClickOutside } from "usehooks-ts";
-import { useTheme } from "@/utils/theme";
 
 export type SidebarSubItem = {
   title: string;
@@ -48,7 +47,6 @@ export function Sidebar({
   const [accordion, setAccordion] = useState<string[]>([]);
   const location = useLocation();
   const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
 
   // Get actived item from location
   const actived = useMemo(() => {
