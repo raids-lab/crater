@@ -4,7 +4,17 @@ import {
   MinusCircledIcon,
 } from "@radix-ui/react-icons";
 import { ColumnDef } from "@tanstack/react-table";
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -12,6 +22,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -23,7 +34,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { NewTaskForm } from "./Form";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiAiTaskDelete, apiAiTaskList } from "@/services/api/aiTask";
@@ -40,14 +51,6 @@ import {
   CrossCircledIcon,
   StopwatchIcon,
 } from "@radix-ui/react-icons";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 type TaskInfo = {
   id: number;
@@ -173,16 +176,6 @@ export function Component() {
     onError: (err) => showErrorToast("无法删除任务", err),
   });
 
-  const [openDialog, setOpenDialog] = useState(false);
-  const [taskInfo, setTaskInfo] = useState<TaskInfo | null>(null);
-  const handleDeleteTask = useCallback(
-    (taskInfo: TaskInfo) => {
-      setTaskInfo(taskInfo);
-      setOpenDialog(true);
-    },
-    [setOpenDialog, setTaskInfo],
-  );
-
   const columns = useMemo<ColumnDef<TaskInfo>[]>(
     () => [
       {
@@ -290,33 +283,52 @@ export function Component() {
         enableHiding: false,
         cell: ({ row }) => {
           const taskInfo = row.original;
+
           return (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">操作</span>
-                  <DotsHorizontalIcon className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>操作</DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={() => {
-                    handleDeleteTask(taskInfo);
-                  }}
-                >
-                  删除
-                </DropdownMenuItem>
-                {/* <DropdownMenuSeparator /> */}
-                {/* <DropdownMenuItem>View customer</DropdownMenuItem>
-              <DropdownMenuItem>View payment details</DropdownMenuItem> */}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <AlertDialog>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="h-8 w-8 p-0">
+                    <span className="sr-only">操作</span>
+                    <DotsHorizontalIcon className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>操作</DropdownMenuLabel>
+
+                  <AlertDialogTrigger asChild>
+                    <DropdownMenuItem>删除</DropdownMenuItem>
+                  </AlertDialogTrigger>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>View customer</DropdownMenuItem>
+                  <DropdownMenuItem>View payment details</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>删除任务</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    任务「{taskInfo?.title}」将不再可见，请谨慎操作。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      // check if browser support clipboard
+                      deleteTask(taskInfo.id);
+                    }}
+                  >
+                    删除
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           );
         },
       },
     ],
-    [handleDeleteTask],
+    [deleteTask],
   );
 
   useEffect(() => {
@@ -350,39 +362,6 @@ export function Component() {
           </SheetContent>
         </Sheet>
       </DataTable>
-      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>删除任务</DialogTitle>
-            <DialogDescription className="pt-2">
-              任务「{taskInfo?.title}」将不再可见，请谨慎操作。
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="secondary"
-              type="button"
-              className="h-8"
-              onClick={() => {
-                setOpenDialog(false);
-              }}
-            >
-              取消
-            </Button>
-            <Button
-              variant="destructive"
-              type="submit"
-              className="h-8"
-              onClick={() => {
-                taskInfo && deleteTask(taskInfo.id);
-                setOpenDialog(false);
-              }}
-            >
-              删除
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

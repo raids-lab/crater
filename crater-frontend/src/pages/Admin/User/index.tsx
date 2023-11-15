@@ -4,7 +4,17 @@ import {
   StarIcon,
 } from "@radix-ui/react-icons";
 import { ColumnDef } from "@tanstack/react-table";
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -207,34 +217,48 @@ export function Component() {
           const taskInfo = row.original;
 
           return (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">操作</span>
-                  <DotsHorizontalIcon className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>操作</DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={() => {
-                    if (taskInfo.userName === currentUserName) {
-                      showErrorToast(
-                        "删除失败",
-                        new Error("无法删除自己，如需删除请换个用户登录"),
-                      );
-                    } else {
-                      deleteUser(taskInfo.userName);
-                    }
-                  }}
-                >
-                  删除
-                </DropdownMenuItem>
-                {/* <DropdownMenuSeparator /> */}
-                {/* <DropdownMenuItem>View customer</DropdownMenuItem>
-              <DropdownMenuItem>View payment details</DropdownMenuItem> */}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <AlertDialog>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="h-8 w-8 p-0">
+                    <span className="sr-only">操作</span>
+                    <DotsHorizontalIcon className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>操作</DropdownMenuLabel>
+
+                  <AlertDialogTrigger asChild>
+                    <DropdownMenuItem>删除</DropdownMenuItem>
+                  </AlertDialogTrigger>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>删除用户</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    用户「{taskInfo?.userName}」将被删除，请谨慎操作。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      if (taskInfo.userName === currentUserName) {
+                        showErrorToast(
+                          "删除失败",
+                          new Error("无法删除自己，如需删除请换个用户登录"),
+                        );
+                      } else {
+                        deleteUser(taskInfo.userName);
+                      }
+                    }}
+                  >
+                    删除
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           );
         },
       },
