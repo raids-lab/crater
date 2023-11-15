@@ -16,6 +16,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "./utils/theme";
 import { VITE_UI_THEME_KEY } from "./utils/store";
 import { adminRoute } from "./pages/Admin";
+import { recommendRoute } from "./pages/PortalR";
 
 const router = createBrowserRouter([
   {
@@ -27,6 +28,7 @@ const router = createBrowserRouter([
     element: <Signup />,
   },
   portalRoute,
+  recommendRoute,
   adminRoute,
   {
     path: "*",

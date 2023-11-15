@@ -40,24 +40,10 @@ const sidebarItems: SidebarItem[] = [
     icon: <OverviewIcon />,
     children: [
       {
-        title: "通用任务",
-        route: {
-          path: "default",
-          lazy: () => import("./Job/Default"),
-        },
-      },
-      {
         title: "AI 训练任务",
         route: {
           path: "ai",
           lazy: () => import("./Job/Ai"),
-        },
-      },
-      {
-        title: "深度推荐训练任务",
-        route: {
-          path: "dl",
-          lazy: () => import("./Job/Dl"),
         },
       },
     ],
@@ -89,10 +75,10 @@ const sidebarItems: SidebarItem[] = [
     icon: <DatabaseIcon />,
     children: [
       {
-        title: "数据集",
+        title: "共享空间",
         route: {
-          path: "dataset",
-          lazy: () => import("./Data/Dataset"),
+          path: "share",
+          lazy: () => import("./Data/Share"),
         },
       },
       {
@@ -208,7 +194,7 @@ export const portalRoute: RouteObject = {
   children: [
     {
       index: true,
-      lazy: () => import("./Job/Ai"),
+      element: <Navigate to="job/ai" replace />,
     },
     ...sidebarItems.map((item) => {
       return (

@@ -177,7 +177,13 @@ export function Sidebar({
         </div>
         <p
           className="select-none pt-2 text-center text-sm font-light text-muted-foreground"
-          onDoubleClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          onDoubleClick={() => {
+            if (actived.view === "portal") {
+              navigate("/recommend");
+            } else if (actived.view === "recommend") {
+              navigate("/portal");
+            }
+          }}
         >
           v0.0.0
         </p>

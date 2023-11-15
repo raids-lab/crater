@@ -11,8 +11,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import { useSetRecoilState } from "recoil";
-import { globalUserInfo } from "@/utils/store";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { globalLastView, globalUserInfo } from "@/utils/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUserLogin } from "@/services/api/auth";
 import { useToast } from "@/components/ui/use-toast";
@@ -43,6 +43,7 @@ export function ProfileForm() {
   const navigate = useNavigate();
   const setUserState = useSetRecoilState(globalUserInfo);
   const { toast } = useToast();
+  const lastView = useRecoilValue(globalLastView);
 
   const { mutate: loginUser, isLoading } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
@@ -61,7 +62,13 @@ export function ProfileForm() {
         } ${username}`,
       });
       // navigate to /portal and clear all history
-      navigate("/portal", { replace: true });
+      const dashboard =
+        lastView === "admin" && role === "admin"
+          ? "/admin"
+          : lastView === "recommend"
+          ? "/recommend"
+          : "/portal";
+      navigate(dashboard, { replace: true });
     },
     onError: (error) => showErrorToast("登陆失败", error),
   });
