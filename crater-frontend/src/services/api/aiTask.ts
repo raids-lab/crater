@@ -1,3 +1,4 @@
+import { KubernetesResource } from "@/utils/resource";
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
 
@@ -33,9 +34,7 @@ export interface ITaskCreate {
   taskName: string;
   slo: number;
   taskType: string;
-  resourceRequest: {
-    [key: string]: string;
-  };
+  resourceRequest: KubernetesResource;
   image: string;
   workingDir: string;
   shareDirs: {
@@ -81,21 +80,9 @@ export const apiAiTaskList = async () =>
   instance.get<ITaskListResponse>(VERSION + "/aitask/list");
 
 export type ITaskQuotaResponse = IResponse<{
-  hard: {
-    cpu: number;
-    memory: string;
-    "nvidia.com/gpu": number;
-  };
-  hardUsed: {
-    cpu: number;
-    memory: string;
-    "nvidia.com/gpu": number;
-  };
-  softUsed: {
-    cpu: number;
-    memory: string;
-    "nvidia.com/gpu": number;
-  };
+  hard: KubernetesResource;
+  hardUsed: KubernetesResource;
+  softUsed: KubernetesResource;
 }>;
 
 export const apiAiTaskQuota = async () =>

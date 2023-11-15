@@ -1,15 +1,12 @@
 import instance, { VERSION } from "@/services/axios";
 import { IResponse } from "@/services/types";
+import { KubernetesResource } from "@/utils/resource";
 
 export interface User {
   userID: number;
   userName: string;
   role: string;
-  quotaHard: {
-    cpu: number;
-    memory: string;
-    "nvidia.com/gpu": number;
-  };
+  quotaHard: KubernetesResource;
   createdAt: string;
   updatedAt: string;
 }

@@ -30,6 +30,7 @@ import { showErrorToast } from "@/utils/toast";
 import { cn } from "@/lib/utils";
 import { Cross1Icon } from "@radix-ui/react-icons";
 import { logger } from "@/utils/loglevel";
+import { getKubernetesResource } from "@/utils/resource";
 
 const formSchema = z.object({
   taskname: z
@@ -95,11 +96,11 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
         taskName: values.taskname,
         slo: values.priority === "high" ? 1 : 0,
         taskType: "training",
-        resourceRequest: {
-          "nvidia.com/gpu": values.gpu.toString(),
+        resourceRequest: getKubernetesResource({
+          gpu: values.gpu,
           memory: `${values.memory}Gi`,
-          cpu: values.cpu.toString(),
-        },
+          cpu: values.cpu,
+        }),
         image: values.image,
         workingDir: values.workingDir,
         shareDirs: convertArgs(values.shareDirs),

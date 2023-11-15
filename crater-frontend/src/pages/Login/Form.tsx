@@ -17,7 +17,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUserLogin } from "@/services/api/auth";
 import { useToast } from "@/components/ui/use-toast";
 import { showErrorToast } from "@/utils/toast";
-import LoadableButton from "@/components/LoadableButton";
+import LoadableButton from "@/components/custom/loadable-button";
 
 const formSchema = z.object({
   username: z
