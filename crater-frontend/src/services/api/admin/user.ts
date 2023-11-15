@@ -15,7 +15,7 @@ type IAdminUserListResponse = IResponse<{
   Users: User[];
 }>;
 
-export const apiAdminUserList = async () =>
+export const apiAdminUserList = () =>
   instance.get<IAdminUserListResponse>(VERSION + "/admin/listUser");
 
 type IAdminUserDelete = {
@@ -24,7 +24,26 @@ type IAdminUserDelete = {
 
 type IAdminUserDeleteResponse = IResponse<string>;
 
-export const apiAdminUserDelete = async (userName: string) =>
-  await instance.post<IAdminUserDeleteResponse>(VERSION + "/admin/deleteUser", {
+export const apiAdminUserDelete = (userName: string) =>
+  instance.post<IAdminUserDeleteResponse>(VERSION + "/admin/deleteUser", {
     userName,
   } as IAdminUserDelete);
+
+// "/v1/admin/updateQuota"
+// {
+//   "userName": "zkr",
+//   "hardQuota": {
+//       "cpu": 40,
+//       "memory": "40Gi",
+//       "nvidia.com/gpu": 4
+//   }
+// }
+export interface IAdminUserUpdate {
+  userName: string;
+  hardQuota: KubernetesResource;
+}
+
+type IAdminUserUpdateResponse = IResponse<string>;
+
+export const apiAdminUserUpdate = (data: IAdminUserUpdate) =>
+  instance.post<IAdminUserUpdateResponse>(VERSION + "/admin/updateQuota", data);

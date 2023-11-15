@@ -160,7 +160,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
   });
 
   // 2. Define a submit handler.
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = (values: FormSchema) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
     toast({ title: values.taskname });
