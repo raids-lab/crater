@@ -1,5 +1,6 @@
 import {
   DotsHorizontalIcon,
+  Pencil2Icon,
   StarFilledIcon,
   StarIcon,
 } from "@radix-ui/react-icons";
@@ -15,6 +16,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -40,6 +48,7 @@ import { useRecoilValue } from "recoil";
 import { globalUserInfo } from "@/utils/store";
 import { ResourceSchema, getResource } from "@/utils/resource";
 import { Badge } from "@/components/ui/badge";
+import { QuotaForm } from "./QuotaForm";
 
 const QuotaSchema = z.object({
   hard: ResourceSchema,
@@ -197,29 +206,14 @@ export function Component() {
           const { quota } = row.original;
           return (
             <div className="flex items-center">
-              <Badge
-                className="mr-2"
-                variant={
-                  quota.hard.cpu && quota.hard.cpu > 0 ? "default" : "secondary"
-                }
-              >
-                CPU {quota.hard.cpu}
+              <Badge className="mr-2" variant={"secondary"}>
+                {quota.hard.cpu} CPU
               </Badge>
-              <Badge
-                className="mr-2"
-                variant={
-                  quota.hard.gpu && quota.hard.gpu > 0 ? "default" : "secondary"
-                }
-              >
-                GPU {quota.hard.gpu}
+              <Badge className="mr-2" variant={"secondary"}>
+                {quota.hard.gpu} GPU
               </Badge>
-              <Badge
-                className="mr-2"
-                variant={
-                  quota.hard.gpu && quota.hard.gpu > 0 ? "default" : "secondary"
-                }
-              >
-                MEM {quota.hard.memory}
+              <Badge className="mr-2" variant={"secondary"}>
+                {quota.hard.memory}
               </Badge>
             </div>
           );
@@ -228,60 +222,104 @@ export function Component() {
         sortingFn: (rowA, rowB) => {
           const a = rowA.original.quota.hard.cpu || 0;
           const b = rowB.original.quota.hard.cpu || 0;
-          if (a === b) return 0;
+          if (a === b) {
+            const a = rowA.original.quota.hard.gpu || 0;
+            const b = rowB.original.quota.hard.gpu || 0;
+            if (a === b) {
+              const a = rowA.original.quota.hard.memoryNum || 0;
+              const b = rowB.original.quota.hard.memoryNum || 0;
+              if (a === b) {
+                return 0;
+              }
+              if (b === 0) return 1;
+              if (a === 0) return -1;
+              return a - b;
+            }
+            if (b === 0) return 1;
+            if (a === 0) return -1;
+            return a - b;
+          }
           if (b === 0) return 1;
           if (a === 0) return -1;
-          return b - a;
+          return a - b;
         },
       },
       {
         id: "actions",
         enableHiding: false,
         cell: ({ row }) => {
-          const taskInfo = row.original;
+          const user = row.original;
+          // eslint-disable-next-line react-hooks/rules-of-hooks
+          const [openQuotaDialog, setOpenQuotaDialog] = useState(false);
 
           return (
-            <AlertDialog>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-8 w-8 p-0">
-                    <span className="sr-only">操作</span>
-                    <DotsHorizontalIcon className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>操作</DropdownMenuLabel>
-                  <AlertDialogTrigger asChild>
-                    <DropdownMenuItem>删除</DropdownMenuItem>
-                  </AlertDialogTrigger>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>删除用户</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    用户「{taskInfo?.userName}」将被删除，请谨慎操作。
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>取消</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      if (taskInfo.userName === currentUserName) {
-                        showErrorToast(
-                          "删除失败",
-                          new Error("无法删除自己，如需删除请换个用户登录"),
-                        );
-                      } else {
-                        deleteUser(taskInfo.userName);
-                      }
-                    }}
+            <div>
+              <Dialog open={openQuotaDialog} onOpenChange={setOpenQuotaDialog}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="h-8 w-8 p-0"
+                    title="配额管理"
                   >
-                    删除
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                    <Pencil2Icon className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle className="mb-2">修改配额</DialogTitle>
+                    <QuotaForm
+                      closeSheet={() => setOpenQuotaDialog(false)}
+                      userName={user.userName}
+                      quota={user.quota.hard}
+                    />
+                  </DialogHeader>
+                </DialogContent>
+              </Dialog>
+              <AlertDialog>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="h-8 w-8 p-0"
+                      title="更多选项"
+                    >
+                      <DotsHorizontalIcon className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>操作</DropdownMenuLabel>
+                    <AlertDialogTrigger asChild>
+                      <DropdownMenuItem>删除</DropdownMenuItem>
+                    </AlertDialogTrigger>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>删除用户</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      用户「{user?.userName}」将被删除，请谨慎操作。
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>取消</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => {
+                        if (user.userName === currentUserName) {
+                          showErrorToast(
+                            "删除失败",
+                            new Error("无法删除自己，如需删除请换个用户登录"),
+                          );
+                        } else {
+                          deleteUser(user.userName);
+                        }
+                      }}
+                    >
+                      删除
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           );
         },
       },
