@@ -15,7 +15,7 @@ import { globalUserInfo } from "@/utils/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUserSignup } from "@/services/api/auth";
 import { showErrorToast } from "@/utils/toast";
-import LoadableButton from "@/components/LoadableButton";
+import LoadableButton from "@/components/custom/loadable-button";
 
 const formSchema = z
   .object({

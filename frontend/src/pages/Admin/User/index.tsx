@@ -38,18 +38,11 @@ import {
 import { z } from "zod";
 import { useRecoilValue } from "recoil";
 import { globalUserInfo } from "@/utils/store";
-
-const ResourceSchema = z
-  .object({
-    cpu: z.number(),
-    gpu: z.number(),
-    memory: z.number(),
-  })
-  .strict();
+import { ResourceSchema, getResource } from "@/utils/resource";
+import { Badge } from "@/components/ui/badge";
 
 const QuotaSchema = z.object({
   hard: ResourceSchema,
-  hardUsed: ResourceSchema,
 });
 
 const TUserSchema = z.object({
@@ -196,6 +189,7 @@ export function Component() {
       },
       {
         id: "quota",
+        accessorFn: (row) => row.quota,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("quota")} />
         ),
@@ -203,11 +197,41 @@ export function Component() {
           const { quota } = row.original;
           return (
             <div className="flex items-center">
-              <span className="mr-2">CPU:{quota.hard.cpu}</span>
-              <span className="mr-2">GPU:{quota.hard.gpu}</span>
-              <span className="mr-2">MEM:{quota.hard.memory}</span>
+              <Badge
+                className="mr-2"
+                variant={
+                  quota.hard.cpu && quota.hard.cpu > 0 ? "default" : "secondary"
+                }
+              >
+                CPU {quota.hard.cpu}
+              </Badge>
+              <Badge
+                className="mr-2"
+                variant={
+                  quota.hard.gpu && quota.hard.gpu > 0 ? "default" : "secondary"
+                }
+              >
+                GPU {quota.hard.gpu}
+              </Badge>
+              <Badge
+                className="mr-2"
+                variant={
+                  quota.hard.gpu && quota.hard.gpu > 0 ? "default" : "secondary"
+                }
+              >
+                MEM {quota.hard.memory}
+              </Badge>
             </div>
           );
+        },
+        // issue: https://github.com/TanStack/table/issues/4591
+        sortingFn: (rowA, rowB) => {
+          const a = rowA.original.quota.hard.cpu || 0;
+          const b = rowB.original.quota.hard.cpu || 0;
+          if (a === b) return 0;
+          if (b === 0) return 1;
+          if (a === 0) return -1;
+          return b - a;
         },
       },
       {
@@ -227,7 +251,6 @@ export function Component() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>操作</DropdownMenuLabel>
-
                   <AlertDialogTrigger asChild>
                     <DropdownMenuItem>删除</DropdownMenuItem>
                   </AlertDialogTrigger>
@@ -263,7 +286,7 @@ export function Component() {
         },
       },
     ],
-    [deleteUser],
+    [deleteUser, currentUserName],
   );
 
   useEffect(() => {
@@ -274,16 +297,7 @@ export function Component() {
       userName: user.userName,
       role: user.role,
       quota: {
-        hard: {
-          cpu: 10,
-          gpu: 10,
-          memory: 40,
-        },
-        hardUsed: {
-          cpu: 1,
-          gpu: 2,
-          memory: 3,
-        },
+        hard: getResource(user.quotaHard),
       },
     }));
     setData(tableData);

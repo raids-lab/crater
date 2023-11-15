@@ -1,5 +1,5 @@
 import React from "react";
-import { ButtonProps, buttonVariants, Button } from "./ui/button";
+import { ButtonProps, buttonVariants, Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 
 export interface LoadableButtonProps extends ButtonProps {
