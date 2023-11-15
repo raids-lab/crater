@@ -38,7 +38,9 @@ export interface ITaskCreate {
   };
   image: string;
   workingDir: string;
-  shareDirs: string[];
+  shareDirs: {
+    [key: string]: string;
+  };
   command: string;
   args: {
     [key: string]: string;

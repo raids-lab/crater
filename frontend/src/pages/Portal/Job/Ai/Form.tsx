@@ -48,7 +48,8 @@ const formSchema = z.object({
   workingDir: z.string(),
   shareDirs: z.array(
     z.object({
-      path: z.string(),
+      key: z.string(),
+      value: z.string(),
     }),
   ),
   command: z.string().min(1, {
@@ -81,7 +82,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
   ): { [key: string]: string } => {
     const argsDict: { [key: string]: string } = {};
     argsList
-      .filter((arg) => arg.key.length > 0 || arg.value.length > 0)
+      .filter((arg) => arg.key.length > 0)
       .forEach((arg) => {
         argsDict[arg.key] = arg.value ?? "";
       });
@@ -101,7 +102,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
         },
         image: values.image,
         workingDir: values.workingDir,
-        shareDirs: values.shareDirs.map((shareDir) => shareDir.path),
+        shareDirs: convertArgs(values.shareDirs),
         command: values.command,
         args: convertArgs(values.args),
       }),
@@ -132,7 +133,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
       memory: 8,
       image: "",
       workingDir: "",
-      shareDirs: [{ path: "" }],
+      shareDirs: [{ key: "", value: "" }],
       command: "",
       args: [{ key: "", value: "" }],
       priority: undefined,
@@ -297,13 +298,24 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                       <FormControl>
                         <div className="flex flex-row space-x-2">
                           <Input
-                            id={`input.args.${index}.path`}
-                            value={field.value.path}
+                            id={`input.args.${index}.key`}
                             className="font-mono"
+                            value={field.value.key}
                             onChange={(event) =>
                               field.onChange({
                                 ...field.value,
-                                path: event.target.value,
+                                key: event.target.value,
+                              })
+                            }
+                          />
+                          <Input
+                            id={`input.args.${index}.value`}
+                            className="font-mono"
+                            value={field.value.value}
+                            onChange={(event) =>
+                              field.onChange({
+                                ...field.value,
+                                value: event.target.value,
                               })
                             }
                           />
@@ -327,7 +339,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
           <Button
             type="button"
             variant="outline"
-            onClick={() => shareDirsAppend({ path: "" })}
+            onClick={() => shareDirsAppend({ key: "", value: "" })}
           >
             添加共享目录
           </Button>
