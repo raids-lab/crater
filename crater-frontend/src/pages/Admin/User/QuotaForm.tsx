@@ -18,9 +18,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 const formSchema = z.object({
-  cpu: z.number().int().positive({ message: "CPU 核心数至少为 1" }),
-  gpu: z.number().int().min(0),
-  memory: z.number().int().positive(),
+  cpu: z.coerce.number().int().positive({ message: "CPU 核心数至少为 1" }),
+  gpu: z.coerce.number().int().min(0),
+  memory: z.coerce.number().int().positive(),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -65,9 +65,9 @@ export const QuotaForm = ({ userName, closeSheet, quota }: QuotaFormProps) => {
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      cpu: quota.cpu || 1,
-      gpu: quota.gpu || 0,
-      memory: quota.memoryNum || 0,
+      cpu: quota.cpu ?? 0,
+      gpu: quota.gpu ?? 0,
+      memory: quota.memoryNum ?? 0,
     },
   });
 
@@ -93,11 +93,7 @@ export const QuotaForm = ({ userName, closeSheet, quota }: QuotaFormProps) => {
                 CPU<span className="ml-1 text-red-500">*</span>
               </FormLabel>
               <FormControl>
-                <Input
-                  type="number"
-                  {...field}
-                  onChange={(event) => field.onChange(+event.target.value)}
-                />
+                <Input type="number" {...field} defaultValue={0} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -112,11 +108,7 @@ export const QuotaForm = ({ userName, closeSheet, quota }: QuotaFormProps) => {
                 GPU<span className="ml-1 text-red-500">*</span>
               </FormLabel>
               <FormControl>
-                <Input
-                  type="number"
-                  {...field}
-                  onChange={(event) => field.onChange(+event.target.value)}
-                />
+                <Input type="number" {...field} defaultValue={0} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -131,17 +123,13 @@ export const QuotaForm = ({ userName, closeSheet, quota }: QuotaFormProps) => {
                 内存 (GB)<span className="ml-1 text-red-500">*</span>
               </FormLabel>
               <FormControl>
-                <Input
-                  type="number"
-                  {...field}
-                  onChange={(event) => field.onChange(+event.target.value)}
-                />
+                <Input type="number" {...field} defaultValue={0} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button type="submit">提交任务</Button>
+        <Button type="submit">提交修改</Button>
       </form>
     </Form>
   );
