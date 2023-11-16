@@ -41,9 +41,9 @@ const formSchema = z.object({
     .max(40, {
       message: "任务名称最多包含40个字符",
     }),
-  cpu: z.number().int().positive({ message: "CPU 核心数至少为 1" }),
-  gpu: z.number().int().min(0),
-  memory: z.number().int().positive(),
+  cpu: z.coerce.number().int().positive({ message: "CPU 核心数至少为 1" }),
+  gpu: z.coerce.number().int().min(0),
+  memory: z.coerce.number().int().positive(),
   // image: z.string().url(),
   image: z.string(),
   workingDir: z.string(),
@@ -202,11 +202,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                     CPU<span className="ml-1 text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      {...field}
-                      onChange={(event) => field.onChange(+event.target.value)}
-                    />
+                    <Input type="number" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -221,11 +217,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                     GPU<span className="ml-1 text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      {...field}
-                      onChange={(event) => field.onChange(+event.target.value)}
-                    />
+                    <Input type="number" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -240,11 +232,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                     内存 (GB)<span className="ml-1 text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      {...field}
-                      onChange={(event) => field.onChange(+event.target.value)}
-                    />
+                    <Input type="number" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
