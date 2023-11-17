@@ -1,7 +1,8 @@
 type PathInfo = {
   path: string; // router path
   title: string; // title in sidebar
-  titleNav?: string; // title in nav (if not set, use title)
+  titleNav?: string; // title in navibar (if not set, use title)
+  hiddenNav?: boolean; // if set, this path will not be shown in navibar
   children?: PathInfo[]; // children path info
 };
 
@@ -26,6 +27,7 @@ const pathDict: PathInfo[] = [
           {
             path: "ai",
             title: "AI 训练任务",
+            hiddenNav: true,
           },
         ],
       },
@@ -195,12 +197,15 @@ const pathDict: PathInfo[] = [
  */
 export const getBreadcrumbByPath = (
   path: string[],
-): { path: string; title: string }[] => {
+): { path: string; title: string }[] | null => {
   const result = [];
   let currentPath = pathDict;
   for (let i = 0; i < path.length; i++) {
     const item = currentPath.find((item) => item.path === path[i]);
     if (item) {
+      if (item.hiddenNav) {
+        return null;
+      }
       result.push({ title: item.titleNav ?? item.title, path: item.path });
       currentPath = item.children || [];
     } else {

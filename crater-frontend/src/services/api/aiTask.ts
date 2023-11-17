@@ -46,44 +46,43 @@ export interface ITaskCreate {
   };
 }
 
-export type ITaskCreateResponse = IResponse<string>;
-
 export const apiAiTaskCreate = async (task: ITaskCreate) => {
-  const response = await instance.post<ITaskCreateResponse>(
+  const response = await instance.post<IResponse<string>>(
     VERSION + "/aitask/create",
     task,
   );
   return response.data;
 };
 
-export interface ITaskDelete {
-  taskID: number;
-}
-
-export type ITaskDeleteResponse = IResponse<string>;
-
 export const apiAiTaskDelete = async (taskID: number) => {
-  const response = await instance.post<ITaskDeleteResponse>(
+  const response = await instance.post<IResponse<string>>(
     VERSION + "/aitask/delete",
     {
       taskID,
-    } as ITaskDelete,
+    },
   );
   return response.data;
 };
 
-export type ITaskListResponse = IResponse<{
-  Tasks: ITask[];
-}>;
+export const apiAiTaskList = () =>
+  instance.get<
+    IResponse<{
+      Tasks: ITask[];
+    }>
+  >(VERSION + "/aitask/list");
 
-export const apiAiTaskList = async () =>
-  instance.get<ITaskListResponse>(VERSION + "/aitask/list");
+export const apiAiTaskQuota = () =>
+  instance.get<
+    IResponse<{
+      hard: KubernetesResource;
+      hardUsed: KubernetesResource;
+      softUsed: KubernetesResource;
+    }>
+  >(VERSION + "/aitask/getQuota");
 
-export type ITaskQuotaResponse = IResponse<{
-  hard: KubernetesResource;
-  hardUsed: KubernetesResource;
-  softUsed: KubernetesResource;
-}>;
-
-export const apiAiTaskQuota = async () =>
-  instance.get<ITaskQuotaResponse>(VERSION + "/aitask/getQuota");
+export const apiAiTaskGet = (taskID: number) =>
+  instance.get<IResponse<ITask>>(VERSION + "/aitask/get", {
+    params: {
+      taskID,
+    },
+  });

@@ -1,5 +1,5 @@
-import { useMemo, type FC } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useMemo, type FC, useEffect } from "react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,9 +11,14 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
-import { useRecoilValue, useSetRecoilState } from "recoil";
-import { globalLastView, globalUserInfo, useResetStore } from "@/utils/store";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  globalBreadCrumb,
+  globalLastView,
+  globalUserInfo,
+  useResetStore,
+} from "@/utils/store";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "./ui/use-toast";
 import { useTheme } from "@/utils/theme";
@@ -29,6 +34,7 @@ const Navibar: FC = () => {
   const location = useLocation();
   const { theme, setTheme } = useTheme();
   const setLastView = useSetRecoilState(globalLastView);
+  const [breadcrumb, setBreadcrumb] = useRecoilState(globalBreadCrumb);
 
   const pathParts = useMemo(() => {
     const pathParts = location.pathname.split("/").filter(Boolean);
@@ -39,60 +45,64 @@ const Navibar: FC = () => {
     return pathParts[0] === "admin";
   }, [pathParts]);
 
-  const breadcrumb = useMemo(() => {
-    return getBreadcrumbByPath(pathParts);
-  }, [pathParts]);
+  useEffect(() => {
+    const titles = getBreadcrumbByPath(pathParts);
+    if (titles) {
+      let url = "";
+      const ans = [];
+      for (let i = 0; i < titles.length; i++) {
+        url += `/${titles[i].path}`;
+        ans.push({
+          title: titles[i].title,
+          path: i !== titles.length - 1 ? url : undefined,
+        });
+      }
+      setBreadcrumb(ans.slice(1));
+    }
+  }, [pathParts, setBreadcrumb]);
 
   return (
     <div className="flex h-full flex-row items-center justify-between border-b bg-background px-6 shadow-sm">
-      <nav className="flex" aria-label="Breadcrumb">
-        <ol className="inline-flex items-center space-x-1 rtl:space-x-reverse md:space-x-2">
-          {breadcrumb.slice(1).map((item, index) => {
-            if (index === 0) {
-              return (
-                <li className="inline-flex items-center" key={item.path}>
-                  <a
-                    href="#"
-                    className="inline-flex items-center text-sm font-medium text-gray-700 hover:text-primary dark:text-gray-400 dark:hover:text-white"
-                  >
-                    {item.title}
-                  </a>
-                </li>
-              );
-            }
-            if (index === breadcrumb.length - 1) {
-              return (
-                <li key={item.path}>
-                  <div className="flex items-center">
-                    <ChevronRightIcon className="text-muted-foreground" />
-                    <span className="ms-1 text-sm font-medium text-muted-foreground dark:text-gray-400 md:ms-2">
-                      {item.title}
-                    </span>
-                  </div>
-                </li>
-              );
-            }
+      <div
+        className="flex items-center space-x-1 md:space-x-2"
+        aria-label="Breadcrumb"
+      >
+        {breadcrumb.map((item, index) => {
+          if (item.path) {
             return (
-              <li key={item.path}>
-                <div className="flex items-center">
-                  <ChevronRightIcon className="text-muted-foreground" />
-                  <a
-                    href="#"
-                    className="ms-1 text-sm font-medium text-gray-700 hover:text-primary dark:text-gray-400 dark:hover:text-white md:ms-2"
-                  >
-                    {item.title}
-                  </a>
-                </div>
-              </li>
+              <div className="inline-flex items-center" key={`item${index}`}>
+                {index !== 0 && (
+                  <ChevronRightIcon className="mr-1 text-muted-foreground md:mr-2" />
+                )}
+                <Link
+                  to={item.path}
+                  className="inline-flex select-none items-center text-sm font-medium text-gray-700 hover:text-primary dark:text-gray-400 dark:hover:text-white"
+                >
+                  {item.title}
+                </Link>
+              </div>
             );
-          })}
-        </ol>
-      </nav>
+          } else {
+            return (
+              <div key={`item${index}`}>
+                <div className="flex items-center">
+                  {index !== 0 && (
+                    <ChevronRightIcon className="mr-1 text-muted-foreground md:mr-2" />
+                  )}
+                  <span className="select-none text-sm font-medium text-muted-foreground dark:text-gray-400">
+                    {item.title}
+                  </span>
+                </div>
+              </div>
+            );
+          }
+        })}
+      </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">
             <Avatar className="h-8 w-8">
-              <AvatarImage src="/avatars/01.png" alt="@shadcn" />
+              {/* <AvatarImage src="/avatars/01.png" alt="@shadcn" /> */}
               <AvatarFallback className="select-none">
                 {
                   // Get first two char of userInfo.id and upper case
