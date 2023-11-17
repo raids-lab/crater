@@ -22,7 +22,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -51,6 +50,10 @@ import {
   CrossCircledIcon,
   StopwatchIcon,
 } from "@radix-ui/react-icons";
+import { useSetRecoilState } from "recoil";
+import { globalBreadCrumb } from "@/utils/store";
+import { useNavigate, useRoutes } from "react-router-dom";
+import AiJobDetail from "./Detail";
 
 type TaskInfo = {
   id: number;
@@ -141,11 +144,12 @@ const toolbarConfig: DataTableToolbarConfig = {
   getHeader: getHeader,
 };
 
-export function Component() {
+const AiJobHome = () => {
   const [openSheet, setOpenSheet] = useState(false);
   const [data, setData] = useState<TaskInfo[]>([]);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const { data: taskList, isLoading } = useQuery({
     queryKey: ["aitask", "list"],
@@ -175,6 +179,15 @@ export function Component() {
     },
     onError: (err) => showErrorToast("无法删除任务", err),
   });
+
+  const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
+  useEffect(() => {
+    setBreadcrumb([
+      {
+        title: "AI 训练任务",
+      },
+    ]);
+  }, [setBreadcrumb]);
 
   const columns = useMemo<ColumnDef<TaskInfo>[]>(
     () => [
@@ -206,7 +219,15 @@ export function Component() {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("title")} />
         ),
-        cell: ({ row }) => <div>{row.getValue("title")}</div>,
+        cell: ({ row }) => (
+          <Button
+            onClick={() => navigate(`${row.original.id}`)}
+            variant={"link"}
+            className="h-8 px-0 text-secondary-foreground"
+          >
+            {row.getValue("title")}
+          </Button>
+        ),
       },
       {
         accessorKey: "status",
@@ -295,13 +316,12 @@ export function Component() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>操作</DropdownMenuLabel>
-
+                  <DropdownMenuItem onClick={() => navigate(`${taskInfo.id}`)}>
+                    详情
+                  </DropdownMenuItem>
                   <AlertDialogTrigger asChild>
                     <DropdownMenuItem>删除</DropdownMenuItem>
                   </AlertDialogTrigger>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>View customer</DropdownMenuItem>
-                  <DropdownMenuItem>View payment details</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <AlertDialogContent>
@@ -328,7 +348,7 @@ export function Component() {
         },
       },
     ],
-    [deleteTask],
+    [deleteTask, navigate],
   );
 
   useEffect(() => {
@@ -364,4 +384,19 @@ export function Component() {
       </DataTable>
     </div>
   );
-}
+};
+
+export const Component = () => {
+  const routes = useRoutes([
+    {
+      index: true,
+      element: <AiJobHome />,
+    },
+    {
+      path: ":id",
+      element: <AiJobDetail />,
+    },
+  ]);
+
+  return <>{routes}</>;
+};

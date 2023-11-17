@@ -104,33 +104,39 @@ export function Sidebar({
                 {item.children && item.children.length > 0 && (
                   <AccordionContent>
                     <div className="space-y-1">
-                      {item.children?.map((subItem) => (
-                        <Button
-                          key={`${item.path}-${subItem.route.path}`}
-                          variant="colorable"
-                          className={cn(
-                            "w-full justify-start pl-11 font-normal hover:bg-primary/80",
-                            {
-                              "bg-slate-700 dark:bg-secondary":
-                                item.path === actived.item &&
-                                subItem.route.path === actived.subItem,
-                            },
-                          )}
-                          type="button"
-                          onClick={() => {
-                            const url = subItem.route.path
-                              ? `/${actived.view}/${item.path}/${subItem.route.path}`
-                              : `/${actived.view}/${item.path}`;
-                            navigate(url);
-                          }}
-                        >
-                          {getTitleByPath([
-                            actived.view,
-                            item.path,
-                            subItem.route.path || "",
-                          ])}
-                        </Button>
-                      ))}
+                      {item.children?.map((subItem) => {
+                        const subItemPath = subItem.route.path?.replace(
+                          "/*",
+                          "",
+                        );
+                        return (
+                          <Button
+                            key={`${item.path}-${subItemPath}`}
+                            variant="colorable"
+                            className={cn(
+                              "w-full justify-start pl-11 font-normal hover:bg-primary/80",
+                              {
+                                "bg-slate-700 dark:bg-secondary":
+                                  item.path === actived.item &&
+                                  subItemPath === actived.subItem,
+                              },
+                            )}
+                            type="button"
+                            onClick={() => {
+                              const url = subItemPath
+                                ? `/${actived.view}/${item.path}/${subItemPath}`
+                                : `/${actived.view}/${item.path}`;
+                              navigate(url);
+                            }}
+                          >
+                            {getTitleByPath([
+                              actived.view,
+                              item.path,
+                              subItemPath || "",
+                            ])}
+                          </Button>
+                        );
+                      })}
                     </div>
                   </AccordionContent>
                 )}

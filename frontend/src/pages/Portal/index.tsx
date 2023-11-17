@@ -38,7 +38,7 @@ const sidebarItems: SidebarItem[] = [
     children: [
       {
         route: {
-          path: "ai",
+          path: "ai/*",
           lazy: () => import("./Job/Ai"),
         },
       },

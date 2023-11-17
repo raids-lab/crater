@@ -7,6 +7,7 @@ import { localStorageEffect } from "./utils";
  */
 const USER_INFO_KEY = "user_info";
 const LAST_VIEW_KEY = "last_view";
+const BREAD_CRUMB_KEY = "bread_crumb";
 
 export const ACCESS_TOKEN_KEY = "access_token";
 export const REFRESH_TOKEN_KEY = "refresh_token";
@@ -24,6 +25,10 @@ export const globalUserInfo = atom({
   effects: [localStorageEffect(USER_INFO_KEY)],
 });
 
+/**
+ * Remember the last view.
+ * Will not be cleared when logout.
+ */
 export const globalLastView = atom({
   key: LAST_VIEW_KEY,
   default: "",
@@ -31,14 +36,29 @@ export const globalLastView = atom({
 });
 
 /**
+ * Navigation BreadCrumb
+ */
+type BreadCrumbItem = {
+  title: string;
+  path?: string;
+};
+
+export const globalBreadCrumb = atom({
+  key: BREAD_CRUMB_KEY,
+  default: [] as BreadCrumbItem[],
+});
+
+/**
  * Reset all states
  */
 export const useResetStore = () => {
   const resetUserInfo = useResetRecoilState(globalUserInfo);
+  const resetBreadCrumb = useResetRecoilState(globalBreadCrumb);
 
   const resetAll = () => {
     // Recoil
     resetUserInfo();
+    resetBreadCrumb();
     // LocalStorage
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
