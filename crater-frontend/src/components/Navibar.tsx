@@ -17,6 +17,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "./ui/use-toast";
 import { useTheme } from "@/utils/theme";
+import { ChevronRightIcon } from "@radix-ui/react-icons";
+import { getBreadcrumbByPath } from "@/utils/title";
 
 const Navibar: FC = () => {
   const queryClient = useQueryClient();
@@ -28,18 +30,64 @@ const Navibar: FC = () => {
   const { theme, setTheme } = useTheme();
   const setLastView = useSetRecoilState(globalLastView);
 
-  const view = useMemo(() => {
+  const pathParts = useMemo(() => {
     const pathParts = location.pathname.split("/").filter(Boolean);
-    return pathParts[0];
+    return pathParts;
   }, [location]);
 
   const isAdminView = useMemo(() => {
-    return view === "admin";
-  }, [view]);
+    return pathParts[0] === "admin";
+  }, [pathParts]);
+
+  const breadcrumb = useMemo(() => {
+    return getBreadcrumbByPath(pathParts);
+  }, [pathParts]);
 
   return (
     <div className="flex h-full flex-row items-center justify-between border-b bg-background px-6 shadow-sm">
-      <p className="font-bold">GPU 集群管理系统</p>
+      <nav className="flex" aria-label="Breadcrumb">
+        <ol className="inline-flex items-center space-x-1 rtl:space-x-reverse md:space-x-2">
+          {breadcrumb.slice(1).map((item, index) => {
+            if (index === 0) {
+              return (
+                <li className="inline-flex items-center" key={item.path}>
+                  <a
+                    href="#"
+                    className="inline-flex items-center text-sm font-medium text-gray-700 hover:text-primary dark:text-gray-400 dark:hover:text-white"
+                  >
+                    {item.title}
+                  </a>
+                </li>
+              );
+            }
+            if (index === breadcrumb.length - 1) {
+              return (
+                <li key={item.path}>
+                  <div className="flex items-center">
+                    <ChevronRightIcon className="text-muted-foreground" />
+                    <span className="ms-1 text-sm font-medium text-muted-foreground dark:text-gray-400 md:ms-2">
+                      {item.title}
+                    </span>
+                  </div>
+                </li>
+              );
+            }
+            return (
+              <li key={item.path}>
+                <div className="flex items-center">
+                  <ChevronRightIcon className="text-muted-foreground" />
+                  <a
+                    href="#"
+                    className="ms-1 text-sm font-medium text-gray-700 hover:text-primary dark:text-gray-400 dark:hover:text-white md:ms-2"
+                  >
+                    {item.title}
+                  </a>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -90,7 +138,7 @@ const Navibar: FC = () => {
           <DropdownMenuItem
             className="focus:bg-destructive focus:text-destructive-foreground"
             onClick={() => {
-              setLastView(view);
+              setLastView(pathParts[0]);
               queryClient.clear();
               resetAll();
               toast({

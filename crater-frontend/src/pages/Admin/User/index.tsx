@@ -205,15 +205,24 @@ export function Component() {
         cell: ({ row }) => {
           const { quota } = row.original;
           return (
-            <div className="flex items-center">
-              <Badge className="mr-2" variant={"secondary"}>
+            <div className="flex items-center space-x-1">
+              <Badge
+                className="rounded-sm px-1 font-normal"
+                variant={"secondary"}
+              >
                 {quota.hard.cpu} CPU
               </Badge>
-              <Badge className="mr-2" variant={"secondary"}>
+              <Badge
+                className="rounded-sm px-1 font-normal"
+                variant={"secondary"}
+              >
                 {quota.hard.gpu} GPU
               </Badge>
-              <Badge className="mr-2" variant={"secondary"}>
-                {quota.hard.memory}
+              <Badge
+                className="rounded-sm px-1 font-normal"
+                variant={"secondary"}
+              >
+                {quota.hard.memoryNum || 0} {quota.hard.memoryUnit}
               </Badge>
             </div>
           );

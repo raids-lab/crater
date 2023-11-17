@@ -12,6 +12,7 @@ export const ResourceSchema = z
     gpu: z.number().optional(),
     memory: z.string().optional(),
     memoryNum: z.number().optional(),
+    memoryUnit: z.string().optional(),
   })
   .strict();
 
@@ -22,12 +23,14 @@ export const getResource = (resource: KubernetesResource): KResource => {
   const gpu = resource["nvidia.com/gpu"] ?? 0;
   const memory = resource.memory ?? "0Gi";
   const memoryNum = parseInt(memory.replace("Gi", ""));
+  const memoryUnit = "Gi";
 
   return {
     cpu,
     gpu,
     memory,
     memoryNum,
+    memoryUnit,
   };
 };
 

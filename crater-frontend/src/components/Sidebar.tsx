@@ -11,14 +11,13 @@ import { RouteObject, useLocation, useNavigate } from "react-router-dom";
 import { Separator } from "./ui/separator";
 import { ScrollArea } from "./ui/scroll-area";
 import { useOnClickOutside } from "usehooks-ts";
+import { getTitleByPath } from "@/utils/title";
 
 export type SidebarSubItem = {
-  title: string;
   route: RouteObject;
 };
 
 export type SidebarItem = {
-  title: string;
   path: string;
   icon: React.ReactNode;
   children: SidebarSubItem[];
@@ -26,7 +25,6 @@ export type SidebarItem = {
 };
 
 export type SidebarMenu = {
-  title: string;
   path: string;
   icon: React.ReactNode;
   route: RouteObject;
@@ -100,7 +98,7 @@ export function Sidebar({
                 <AccordionTrigger>
                   <div className="flex flex-row items-center justify-start">
                     <div className="mr-3">{item.icon}</div>
-                    {item.title}
+                    {getTitleByPath([actived.view, item.path])}
                   </div>
                 </AccordionTrigger>
                 {item.children && item.children.length > 0 && (
@@ -126,7 +124,11 @@ export function Sidebar({
                             navigate(url);
                           }}
                         >
-                          {subItem.title}
+                          {getTitleByPath([
+                            actived.view,
+                            item.path,
+                            subItem.route.path || "",
+                          ])}
                         </Button>
                       ))}
                     </div>
@@ -147,7 +149,7 @@ export function Sidebar({
                 onClick={() => navigate(`/${actived.view}/${item.path}`)}
               >
                 <div className="mr-3">{item.icon}</div>
-                {item.title}
+                {getTitleByPath([actived.view, item.path])}
               </button>
             );
           })}
@@ -169,7 +171,7 @@ export function Sidebar({
               )}
             >
               <div className="mr-3">{item.icon}</div>
-              {item.title}
+              {getTitleByPath([actived.view, item.path])}
             </button>
           ))}
         </div>
