@@ -5,13 +5,17 @@ import { useQuery } from "@tanstack/react-query";
 import { apiAiTaskQuota } from "@/services/api/aiTask";
 import { showErrorToast } from "@/utils/toast";
 import { logger } from "@/utils/loglevel";
+import { getResource } from "@/utils/resource";
 
 export const Component: FC = () => {
   const { data: quota, isLoading } = useQuery({
     queryKey: ["aitask", "quota"],
     retry: 1,
     queryFn: apiAiTaskQuota,
-    select: (res) => res.data.data,
+    select: (res) => ({
+      hard: getResource(res.data.data.hard),
+      hardUsed: getResource(res.data.data.hardUsed),
+    }),
     onSuccess: (data) => {
       logger.debug("Data is: ", data);
     },
@@ -36,21 +40,20 @@ export const Component: FC = () => {
           <CardHeader>
             <CardTitle>资源占用</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="font-mono text-base">
             {isLoading ? (
               <p>loading...</p>
             ) : (
               quota && (
                 <>
                   <p>
-                    CPU: {quota.hardUsed.cpu} / {quota.hard.cpu}
+                    CPU: {quota.hardUsed.cpu}/{quota.hard.cpu}
                   </p>
                   <p>
-                    GPU: {quota.hardUsed["nvidia.com/gpu"]} /{" "}
-                    {quota.hard["nvidia.com/gpu"]}
+                    GPU: {quota.hardUsed.gpu}/{quota.hard.gpu}
                   </p>
                   <p>
-                    Memory: {quota.hardUsed.memory} / {quota.hard.memory}
+                    MEM: {quota.hardUsed.memory}/{quota.hard.memory}
                   </p>
                 </>
               )

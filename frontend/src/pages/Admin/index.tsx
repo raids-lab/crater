@@ -18,7 +18,6 @@ import LightHouseIcon from "@/components/icon/LightHouseIcon";
 
 const sidebarItems: SidebarItem[] = [
   {
-    title: "资源监控",
     path: "overview",
     icon: <BarChartIcon />,
     children: [],
@@ -27,7 +26,6 @@ const sidebarItems: SidebarItem[] = [
     },
   },
   {
-    title: "用户管理",
     path: "user",
     icon: <PersonIcon />,
     children: [],
@@ -37,24 +35,20 @@ const sidebarItems: SidebarItem[] = [
     },
   },
   {
-    title: "任务管理",
     path: "job",
     icon: <OverviewIcon />,
     children: [
       {
-        title: "通用任务",
         route: {
           path: "default",
         },
       },
       {
-        title: "AI 训练任务",
         route: {
           path: "ai",
         },
       },
       {
-        title: "深度推荐训练任务",
         route: {
           path: "dl",
         },
@@ -62,12 +56,10 @@ const sidebarItems: SidebarItem[] = [
     ],
   },
   {
-    title: "镜像管理",
     path: "image",
     icon: <LightHouseIcon />,
     children: [
       {
-        title: "镜像列表",
         route: {
           path: "list",
         },
@@ -75,12 +67,10 @@ const sidebarItems: SidebarItem[] = [
     ],
   },
   {
-    title: "数据管理",
     path: "data",
     icon: <DatabaseIcon />,
     children: [
       {
-        title: "公开数据集",
         route: {
           path: "dataset",
         },
@@ -91,7 +81,6 @@ const sidebarItems: SidebarItem[] = [
 
 const sidebarMenus: SidebarMenu[] = [
   {
-    title: "文档编辑",
     path: "docs",
     icon: <FileTextIcon />,
     route: {
@@ -100,7 +89,6 @@ const sidebarMenus: SidebarMenu[] = [
     },
   },
   {
-    title: "问题收集",
     path: "feedback",
     icon: <Pencil2Icon />,
     route: {

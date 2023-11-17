@@ -14,7 +14,6 @@ import Navibar from "@/components/Navibar";
 
 const sidebarItems: SidebarItem[] = [
   {
-    title: "概览",
     path: "overview",
     icon: <WorkBenchIcon />,
     children: [],
@@ -24,12 +23,10 @@ const sidebarItems: SidebarItem[] = [
     },
   },
   {
-    title: "任务管理",
     path: "job",
     icon: <OverviewIcon />,
     children: [
       {
-        title: "深度推荐训练任务",
         route: {
           path: "dl",
           lazy: () => import("./Job/Dl"),
@@ -38,19 +35,16 @@ const sidebarItems: SidebarItem[] = [
     ],
   },
   {
-    title: "镜像管理",
     path: "image",
     icon: <LightHouseIcon />,
     children: [
       {
-        title: "镜像列表",
         route: {
           path: "list",
           lazy: () => import("../Portal/Image/List"),
         },
       },
       {
-        title: "镜像制作",
         route: {
           path: "make",
           lazy: () => import("../Portal/Image/Make"),
@@ -59,19 +53,16 @@ const sidebarItems: SidebarItem[] = [
     ],
   },
   {
-    title: "数据管理",
     path: "data",
     icon: <DatabaseIcon />,
     children: [
       {
-        title: "数据集",
         route: {
           path: "dataset",
           lazy: () => import("./Data/Dataset"),
         },
       },
       {
-        title: "其他",
         route: {
           path: "other",
           lazy: () => import("./Data/Other"),
@@ -83,7 +74,6 @@ const sidebarItems: SidebarItem[] = [
 
 const sidebarMenus: SidebarMenu[] = [
   {
-    title: "使用文档",
     path: "docs",
     icon: <FileTextIcon />,
     route: {
@@ -92,7 +82,6 @@ const sidebarMenus: SidebarMenu[] = [
     },
   },
   {
-    title: "问题反馈",
     path: "feedback",
     icon: <Pencil2Icon />,
     route: {
