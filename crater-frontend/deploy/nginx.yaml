@@ -29,7 +29,8 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: nginx-service
+  name: ai-portal-frontend-svc
+  namespace: ai-portal
 spec:
   selector:
     app: ai-portal-frontend
