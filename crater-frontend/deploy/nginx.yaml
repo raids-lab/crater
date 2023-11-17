@@ -1,0 +1,41 @@
+# nginx-deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-portal-frontend
+  namespace: ai-portal
+  labels:
+    app: ai-portal-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-portal-frontend
+  template:
+    metadata:
+      labels:
+        app: ai-portal-frontend
+    spec:
+      containers:
+        - name: ai-portal-frontend
+          image: harbor.act.buaa.edu.cn/gpu-portal/ai-portal-frontend:v1
+          ports:
+            - containerPort: 80
+
+---
+# nginx-service.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  selector:
+    app: ai-portal-frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      nodePort: 32088
+  type: NodePort

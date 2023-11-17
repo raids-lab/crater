@@ -20,7 +20,7 @@ RUN pnpm build
 FROM nginx:stable-alpine
 
 # Copy custom nginx.conf
-COPY deploy/nginx.conf /etc/nginx/nginx.conf
+COPY deploy/k8s-nginx.conf /etc/nginx/nginx.conf
 
 # Copy the built files from the builder phase to the Nginx image
 COPY --from=builder /app/dist /usr/share/nginx/html
