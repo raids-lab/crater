@@ -55,7 +55,7 @@ type CreateUserRequest struct {
 	//Id       int    `json:"_id"`
 	Name     string `json:"userName" binding:"required"`
 	Role     string `json:"role" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Password string `json:"passWord" binding:"required"`
 }
 
 // RecommendDLJob Request
