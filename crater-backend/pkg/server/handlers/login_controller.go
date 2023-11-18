@@ -18,7 +18,7 @@ type LoginMgr struct {
 }
 type LoginRequest struct {
 	UserName string `json:"userName" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Password string `json:"passWord" binding:"required"`
 }
 
 type LoginResponse struct {
@@ -28,7 +28,7 @@ type LoginResponse struct {
 }
 type ErrorResponse struct {
 	Message string `json:"error"`
-	Code    int    `json:"error_code"`
+	Code    int    `json:"errorCode"`
 }
 
 func NewLoginMgr(tokenConf *config.TokenConf) *LoginMgr {

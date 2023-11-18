@@ -38,7 +38,7 @@ type SignupRequest struct {
 	//Id       int    `json:"_id"`
 	Name     string `json:"userName" binding:"required"`
 	Role     string `json:"role" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Password string `json:"passWord" binding:"required"`
 } //domain
 
 func NewSignupMgr(tokenConf *config.TokenConf, cl client.Client) *SignupMgr {
@@ -89,8 +89,8 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 	}
 	if request.Role != "user" && request.Role != "admin" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":      "role is invalid",
-			"error_code": 40005,
+			"error":     "role is invalid",
+			"errorCode": 40005,
 		})
 
 		return
@@ -102,8 +102,8 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 	ct.CreateUserHomePVC(request.Name)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":      "namespace creating wrong",
-			"error_code": 50015,
+			"error":     "namespace creating wrong",
+			"errorCode": 50015,
 		})
 
 		return
