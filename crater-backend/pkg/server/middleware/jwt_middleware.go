@@ -20,7 +20,7 @@ var (
 
 type ErrorResponse struct {
 	Message string `json:"error"`
-	Code    int    `json:"error_code"`
+	Code    int    `json:"errorCode"`
 }
 
 func JwtAuthMiddleware(secret string) gin.HandlerFunc {
