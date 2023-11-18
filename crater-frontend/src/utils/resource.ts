@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 export interface KubernetesResource {
-  cpu?: number; // 1
+  cpu?: number | string; // 1
   memory?: string; // "1Gi"
-  "nvidia.com/gpu"?: number; // "1"
+  "nvidia.com/gpu"?: number | string; // "1"
 }
 
 export const ResourceSchema = z
@@ -19,8 +19,16 @@ export const ResourceSchema = z
 export type KResource = z.infer<typeof ResourceSchema>;
 
 export const getResource = (resource: KubernetesResource): KResource => {
-  const cpu = resource.cpu ?? 0;
-  const gpu = resource["nvidia.com/gpu"] ?? 0;
+  // if resource.cpu is string, parse to int
+  // if resource.cpu is number, keep it
+  const cpu =
+    typeof resource.cpu === "string"
+      ? parseInt(resource.cpu)
+      : resource.cpu ?? 0;
+  const gpu =
+    typeof resource["nvidia.com/gpu"] === "string"
+      ? parseInt(resource["nvidia.com/gpu"])
+      : resource["nvidia.com/gpu"] ?? 0;
   const memory = resource.memory ?? "0Gi";
   const memoryNum = parseInt(memory.replace("Gi", ""));
   const memoryUnit = "Gi";

@@ -125,7 +125,7 @@ const Layout = () => {
             "-translate-x-full": !showSidebar,
           })}
         />
-        <ScrollArea className="h-screen w-full overflow-y-hidden">
+        <ScrollArea className="h-screen w-full">
           <div className="grid w-full grid-rows-header">
             <Navibar />
             <Outlet />

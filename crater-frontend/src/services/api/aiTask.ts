@@ -13,9 +13,6 @@ export interface ITask {
   admittedAt: string;
   startedAt: string;
   image: string;
-  // resourceRequest: {
-  //   [key: string]: string;
-  // };
   resourceRequest: string;
   workingDir: string;
   ShareDirs: string[];
@@ -29,6 +26,38 @@ export interface ITask {
   estimatedTime: number;
   scheduleInfo: string;
 }
+
+export interface AiTask {
+  id: number;
+  taskName: string;
+  userName: string;
+  namespace: string;
+  taskType: string;
+  createdAt: string;
+  updatedAt: string;
+  admittedAt: string;
+  startedAt: string;
+  image: string;
+  resourceRequest: KubernetesResource;
+  workingDir: string;
+  ShareDirs: string[];
+  command: string;
+  args: string;
+  slo: number;
+  status: string;
+  isDeleted: false;
+  profiled: false;
+  utilStat: string;
+  estimatedTime: number;
+  scheduleInfo: string;
+}
+
+export const convertAiTask = (task: ITask): AiTask => {
+  return {
+    ...task,
+    resourceRequest: JSON.parse(task.resourceRequest) as KubernetesResource,
+  };
+};
 
 export interface ITaskCreate {
   taskName: string;
