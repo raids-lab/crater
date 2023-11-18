@@ -11,21 +11,19 @@ export interface User {
   updatedAt: string;
 }
 
-type IAdminUserListResponse = IResponse<{
-  Users: User[];
-}>;
-
 export const apiAdminUserList = () =>
-  instance.get<IAdminUserListResponse>(VERSION + "/admin/listUser");
+  instance.get<
+    IResponse<{
+      Users: User[];
+    }>
+  >(VERSION + "/admin/listUser");
 
 type IAdminUserDelete = {
   userName: string;
 };
 
-type IAdminUserDeleteResponse = IResponse<string>;
-
 export const apiAdminUserDelete = (userName: string) =>
-  instance.post<IAdminUserDeleteResponse>(VERSION + "/admin/deleteUser", {
+  instance.post<IResponse<string>>(VERSION + "/admin/deleteUser", {
     userName,
   } as IAdminUserDelete);
 
@@ -43,7 +41,11 @@ export interface IAdminUserUpdate {
   hardQuota: KubernetesResource;
 }
 
-type IAdminUserUpdateResponse = IResponse<string>;
+export const apiAdminUserUpdateQuota = (data: IAdminUserUpdate) =>
+  instance.post<IResponse<string>>(VERSION + "/admin/updateQuota", data);
 
-export const apiAdminUserUpdate = (data: IAdminUserUpdate) =>
-  instance.post<IAdminUserUpdateResponse>(VERSION + "/admin/updateQuota", data);
+export const apiAdminUserUpdateRole = (userName: string, role: string) =>
+  instance.post<IResponse<string>>(VERSION + "/admin/updateRole", {
+    userName,
+    role,
+  });

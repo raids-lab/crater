@@ -1,5 +1,5 @@
 import { useToast } from "@/components/ui/use-toast";
-import { apiAdminUserUpdate } from "@/services/api/admin/user";
+import { apiAdminUserUpdateQuota } from "@/services/api/admin/user";
 import { getKubernetesResource, KResource } from "@/utils/resource";
 import { showErrorToast } from "@/utils/toast";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,7 +37,7 @@ export const QuotaForm = ({ userName, closeSheet, quota }: QuotaFormProps) => {
 
   const { mutate: updateQuota } = useMutation({
     mutationFn: (values: FormSchema) =>
-      apiAdminUserUpdate({
+      apiAdminUserUpdateQuota({
         userName: userName,
         hardQuota: getKubernetesResource({
           gpu: values.gpu,

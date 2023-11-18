@@ -30,6 +30,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useEffect, useMemo, useState } from "react";
@@ -42,6 +48,7 @@ import { DataTableToolbarConfig } from "@/components/DataTable/DataTableToolbar"
 import {
   apiAdminUserDelete,
   apiAdminUserList,
+  apiAdminUserUpdateRole,
 } from "@/services/api/admin/user";
 import { z } from "zod";
 import { useRecoilValue } from "recoil";
@@ -134,6 +141,24 @@ export function Component() {
         });
     },
     onError: (err) => showErrorToast("无法删除用户", err),
+  });
+
+  const { mutate: updateRole } = useMutation({
+    mutationFn: ({ userName, role }: { userName: string; role: string }) =>
+      apiAdminUserUpdateRole(userName, role),
+    onSuccess: (_, variables) => {
+      queryClient
+        .invalidateQueries({ queryKey: ["admin", "userlist"] })
+        .then(() => {
+          toast({
+            title: `更新成功`,
+            description: `用户 ${variables.userName} 权限已更新`,
+          });
+        })
+        .catch((err) => {
+          showErrorToast("刷新用户列表失败", err);
+        });
+    },
   });
 
   const columns = useMemo<ColumnDef<TUser>[]>(
@@ -297,6 +322,28 @@ export function Component() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>操作</DropdownMenuLabel>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>权限</DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuRadioGroup value={user.role}>
+                          {roles.map((role) => (
+                            <DropdownMenuRadioItem
+                              key={role.value}
+                              value={role.value}
+                              onClick={() =>
+                                updateRole({
+                                  userName: user.userName,
+                                  role: role.value,
+                                })
+                              }
+                            >
+                              {role.label}
+                            </DropdownMenuRadioItem>
+                          ))}
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                    <DropdownMenuSeparator />
                     <AlertDialogTrigger asChild>
                       <DropdownMenuItem>删除</DropdownMenuItem>
                     </AlertDialogTrigger>
@@ -333,7 +380,7 @@ export function Component() {
         },
       },
     ],
-    [deleteUser, currentUserName],
+    [deleteUser, currentUserName, updateRole],
   );
 
   useEffect(() => {
