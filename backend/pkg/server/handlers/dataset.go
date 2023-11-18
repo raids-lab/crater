@@ -47,7 +47,21 @@ func (mgr *DataSetMgr) List(c *gin.Context) {
 		resputil.WrapFailedResponse(c, fmt.Sprintf("list dataset failed, err:%v", err), 500)
 		return
 	}
-	resputil.WrapSuccessResponse(c, datasetList)
+	ret := make(payload.ListDatasetResp, 0, len(datasetList))
+	for _, dataset := range datasetList {
+		ret = append(ret, payload.GetDatasetResp{
+			ObjectMeta: dataset.ObjectMeta,
+			Spec: &payload.DatasetSpec{
+				PVC:         dataset.Spec.PVC,
+				DownloadURL: dataset.Spec.DownloadURL,
+				Size:        dataset.Spec.Size,
+			},
+			Status: &payload.DatasetStaus{
+				Phase: string(dataset.Status.Phase),
+			},
+		})
+	}
+	resputil.WrapSuccessResponse(c, ret)
 }
 
 func (mgr *DataSetMgr) Get(c *gin.Context) {
@@ -72,5 +86,16 @@ func (mgr *DataSetMgr) Get(c *gin.Context) {
 		resputil.WrapFailedResponse(c, fmt.Sprintf("get dataset failed, err:%v", err), 500)
 		return
 	}
-	resputil.WrapSuccessResponse(c, dataset)
+	ret := &payload.GetDatasetResp{
+		ObjectMeta: dataset.ObjectMeta,
+		Spec: &payload.DatasetSpec{
+			PVC:         dataset.Spec.PVC,
+			DownloadURL: dataset.Spec.DownloadURL,
+			Size:        dataset.Spec.Size,
+		},
+		Status: &payload.DatasetStaus{
+			Phase: string(dataset.Status.Phase),
+		},
+	}
+	resputil.WrapSuccessResponse(c, ret)
 }
