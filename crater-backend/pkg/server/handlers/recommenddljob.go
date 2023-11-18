@@ -51,21 +51,55 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 		resputil.WrapFailedResponse(c, fmt.Sprintf("bind request body failed, err:%v", err), 500)
 		return
 	}
-	for i := range req.RelationShips {
-		req.RelationShips[i].JobNamespace = user.NameSpace
-	}
 	job := &recommenddljobapi.RecommendDLJob{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      req.Name,
 			Namespace: user.NameSpace,
 		},
-		Spec: req.RecommendDLJobSpec,
+		Spec: recommenddljobapi.RecommendDLJobSpec{
+			Replicas:            req.Replicas,
+			RunningType:         recommenddljobapi.RunningType(req.RunningType),
+			DataSets:            make([]recommenddljobapi.DataSetRef, 0, len(req.DataSets)),
+			RelationShips:       make([]recommenddljobapi.DataRelationShip, 0, len(req.RelationShips)),
+			Template:            req.Template,
+			Username:            user.UserName,
+			Macs:                req.Macs,
+			Params:              req.Params,
+			BatchSize:           req.BatchSize,
+			EmbeddingSizeTotal:  req.EmbeddingSizeTotal,
+			EmbeddingDimTotal:   req.EmbeddingDimTotal,
+			EmbeddingTableCount: req.EmbeddingTableCount,
+			VocabularySize:      req.VocabularySize,
+			EmbeddingDim:        req.EmbeddingDim,
+			InputTensor:         req.InputTensor,
+		},
 	}
+	for _, releationShip := range req.RelationShips {
+		job.Spec.RelationShips = append(job.Spec.RelationShips, recommenddljobapi.DataRelationShip{
+			Type:         recommenddljobapi.DataRelationShipType(releationShip.Type),
+			JobName:      releationShip.JobName,
+			JobNamespace: user.NameSpace,
+		})
+	}
+	for _, datasetName := range req.DataSets {
+		job.Spec.DataSets = append(job.Spec.DataSets, recommenddljobapi.DataSetRef{
+			Name: datasetName,
+		})
+	}
+
 	if err := mgr.jobclient.CreateRecommendDLJob(c, job); err != nil {
 		resputil.WrapFailedResponse(c, fmt.Sprintf("create recommenddljob failed, err:%v", err), 500)
 		return
 	}
-	resputil.WrapSuccessResponse(c, job)
+	resp := payload.GetRecommendDLJobResp{
+		ObjectMeta: job.ObjectMeta,
+		Spec:       &req.RecommendDLJobSpec,
+		Status: &payload.RecommendDLJobStatus{
+			Phase:    string(job.Status.Phase),
+			PodNames: job.Status.PodNames,
+		},
+	}
+	resputil.WrapSuccessResponse(c, resp)
 }
 
 func (mgr *RecommendDLJobMgr) List(c *gin.Context) {
@@ -85,7 +119,44 @@ func (mgr *RecommendDLJobMgr) List(c *gin.Context) {
 		resputil.WrapFailedResponse(c, fmt.Sprintf("list recommenddljob failed, err:%v", err), 500)
 		return
 	}
-	resputil.WrapSuccessResponse(c, jobList)
+	ret := make(payload.ListRecommendDLJobResp, 0, len(jobList))
+	for _, job := range jobList {
+		retJob := payload.GetRecommendDLJobResp{
+			ObjectMeta: job.ObjectMeta,
+			Spec: &payload.RecommendDLJobSpec{
+				Replicas:            job.Spec.Replicas,
+				RunningType:         string(job.Spec.RunningType),
+				DataSets:            make([]string, 0, len(job.Spec.DataSets)),
+				RelationShips:       make([]payload.DataRelationShipReq, 0, len(job.Spec.RelationShips)),
+				Template:            job.Spec.Template,
+				Username:            job.Spec.Username,
+				Macs:                job.Spec.Macs,
+				Params:              job.Spec.Params,
+				BatchSize:           job.Spec.BatchSize,
+				EmbeddingSizeTotal:  job.Spec.EmbeddingSizeTotal,
+				EmbeddingDimTotal:   job.Spec.EmbeddingDimTotal,
+				EmbeddingTableCount: job.Spec.EmbeddingTableCount,
+				VocabularySize:      job.Spec.VocabularySize,
+				EmbeddingDim:        job.Spec.EmbeddingDim,
+				InputTensor:         job.Spec.InputTensor,
+			},
+			Status: &payload.RecommendDLJobStatus{
+				Phase:    string(job.Status.Phase),
+				PodNames: job.Status.PodNames,
+			},
+		}
+		for _, dataset := range job.Spec.DataSets {
+			retJob.Spec.DataSets = append(retJob.Spec.DataSets, dataset.Name)
+		}
+		for _, releationship := range job.Spec.RelationShips {
+			retJob.Spec.RelationShips = append(retJob.Spec.RelationShips, payload.DataRelationShipReq{
+				Type:    string(releationship.Type),
+				JobName: releationship.JobName,
+			})
+		}
+		ret = append(ret, retJob)
+	}
+	resputil.WrapSuccessResponse(c, ret)
 }
 
 func (mgr *RecommendDLJobMgr) GetByName(c *gin.Context) {
@@ -110,7 +181,40 @@ func (mgr *RecommendDLJobMgr) GetByName(c *gin.Context) {
 		resputil.WrapFailedResponse(c, fmt.Sprintf("get recommenddljob failed, err:%v", err), 500)
 		return
 	}
-	resputil.WrapSuccessResponse(c, job)
+	ret := payload.GetRecommendDLJobResp{
+		ObjectMeta: job.ObjectMeta,
+		Spec: &payload.RecommendDLJobSpec{
+			Replicas:            job.Spec.Replicas,
+			RunningType:         string(job.Spec.RunningType),
+			DataSets:            make([]string, 0, len(job.Spec.DataSets)),
+			RelationShips:       make([]payload.DataRelationShipReq, 0, len(job.Spec.RelationShips)),
+			Template:            job.Spec.Template,
+			Username:            job.Spec.Username,
+			Macs:                job.Spec.Macs,
+			Params:              job.Spec.Params,
+			BatchSize:           job.Spec.BatchSize,
+			EmbeddingSizeTotal:  job.Spec.EmbeddingSizeTotal,
+			EmbeddingDimTotal:   job.Spec.EmbeddingDimTotal,
+			EmbeddingTableCount: job.Spec.EmbeddingTableCount,
+			VocabularySize:      job.Spec.VocabularySize,
+			EmbeddingDim:        job.Spec.EmbeddingDim,
+			InputTensor:         job.Spec.InputTensor,
+		},
+		Status: &payload.RecommendDLJobStatus{
+			Phase:    string(job.Status.Phase),
+			PodNames: job.Status.PodNames,
+		},
+	}
+	for _, dataset := range job.Spec.DataSets {
+		ret.Spec.DataSets = append(ret.Spec.DataSets, dataset.Name)
+	}
+	for _, releationship := range job.Spec.RelationShips {
+		ret.Spec.RelationShips = append(ret.Spec.RelationShips, payload.DataRelationShipReq{
+			Type:    string(releationship.Type),
+			JobName: releationship.JobName,
+		})
+	}
+	resputil.WrapSuccessResponse(c, ret)
 }
 
 func (mgr *RecommendDLJobMgr) GetPodsByName(c *gin.Context) {
