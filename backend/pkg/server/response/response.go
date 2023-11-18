@@ -15,9 +15,9 @@ func WrapResponse(c *gin.Context, status bool, msg string, data interface{}, er_
 		})
 	} else {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":     status,
-			"error":      msg,
-			"error_code": er_code,
+			"status":    status,
+			"error":     msg,
+			"errorCode": er_code,
 		})
 	}
 }
