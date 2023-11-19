@@ -51,7 +51,7 @@ instance.interceptors.response.use(
     if (isAxiosError<IErrorResponse>(error)) {
       const originalRequest = error.config as AxiosRetryRequestConfig;
       if (
-        error.response?.data.error_code === ERROR_TOKEN_EXPIRED &&
+        error.response?.data.errorCode === ERROR_TOKEN_EXPIRED &&
         originalRequest &&
         !originalRequest._retry
       ) {
@@ -63,7 +63,7 @@ instance.interceptors.response.use(
         } catch (refreshError) {
           window.location.href = "/login";
         }
-      } else if (error.response?.data.error_code === ERROR_NOT_ADMIN) {
+      } else if (error.response?.data.errorCode === ERROR_NOT_ADMIN) {
         window.location.href = "/portal";
       }
     }
