@@ -45,7 +45,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <QueryClientProvider client={queryClient}>
           <RouterProvider router={router} />
           <Toaster />
-          <ReactQueryDevtools initialIsOpen={false} position="top-left" />
+          <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>
       </ThemeProvider>
     </RecoilRoot>

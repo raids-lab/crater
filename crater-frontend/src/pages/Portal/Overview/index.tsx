@@ -3,23 +3,16 @@ import type { FC } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { apiAiTaskQuota } from "@/services/api/aiTask";
-import { showErrorToast } from "@/utils/toast";
-import { logger } from "@/utils/loglevel";
 import { getResource } from "@/utils/resource";
 
 export const Component: FC = () => {
   const { data: quota, isLoading } = useQuery({
     queryKey: ["aitask", "quota"],
-    retry: 1,
     queryFn: apiAiTaskQuota,
     select: (res) => ({
       hard: getResource(res.data.data.hard),
       hardUsed: getResource(res.data.data.hardUsed),
     }),
-    onSuccess: (data) => {
-      logger.debug("Data is: ", data);
-    },
-    onError: (err) => showErrorToast("获取任务列表失败", err),
   });
 
   return (
