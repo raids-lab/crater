@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/select";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiAiTaskCreate } from "@/services/api/aiTask";
-import { showErrorToast } from "@/utils/toast";
 import { cn } from "@/lib/utils";
 import { Cross1Icon } from "@radix-ui/react-icons";
 import { logger } from "@/utils/loglevel";
@@ -107,21 +106,14 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
         command: values.command,
         args: convertArgs(values.args),
       }),
-    onSuccess: (_, { taskname }) => {
-      queryClient
-        .invalidateQueries({ queryKey: ["aitask", "list"] })
-        .then(() => {
-          toast({
-            title: `创建成功`,
-            description: `任务 ${taskname} 创建成功`,
-          });
-          closeSheet();
-        })
-        .catch((err) => {
-          showErrorToast("刷新任务列表失败", err);
-        });
+    onSuccess: async (_, { taskname }) => {
+      await queryClient.invalidateQueries({ queryKey: ["aitask", "list"] });
+      toast({
+        title: `创建成功`,
+        description: `任务 ${taskname} 创建成功`,
+      });
+      closeSheet();
     },
-    onError: (err) => showErrorToast("创建失败", err),
   });
 
   // 1. Define your form.

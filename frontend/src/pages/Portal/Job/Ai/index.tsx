@@ -37,8 +37,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiAiTaskDelete, apiAiTaskList } from "@/services/api/aiTask";
-import { logger } from "@/utils/loglevel";
-import { showErrorToast } from "@/utils/toast";
 import { useToast } from "@/components/ui/use-toast";
 import { DataTable } from "@/components/DataTable";
 import { DataTableColumnHeader } from "@/components/DataTable/DataTableColumnHeader";
@@ -153,31 +151,19 @@ const AiJobHome = () => {
 
   const { data: taskList, isLoading } = useQuery({
     queryKey: ["aitask", "list"],
-    retry: 1,
     queryFn: apiAiTaskList,
     select: (res) => res.data.data.Tasks,
-    onSuccess: (data) => {
-      logger.debug("Data is: ", data);
-    },
-    onError: (err) => showErrorToast("获取任务列表失败", err),
   });
 
   const { mutate: deleteTask } = useMutation({
     mutationFn: (id: number) => apiAiTaskDelete(id),
-    onSuccess: () => {
-      queryClient
-        .invalidateQueries({ queryKey: ["aitask", "list"] })
-        .then(() => {
-          toast({
-            title: `删除成功`,
-            description: `任务已删除`,
-          });
-        })
-        .catch((err) => {
-          showErrorToast("刷新任务列表失败", err);
-        });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["aitask", "list"] });
+      toast({
+        title: "删除成功",
+        description: "任务已删除",
+      });
     },
-    onError: (err) => showErrorToast("无法删除任务", err),
   });
 
   const setBreadcrumb = useSetRecoilState(globalBreadCrumb);

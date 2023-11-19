@@ -1,7 +1,6 @@
 import { useToast } from "@/components/ui/use-toast";
 import { apiAdminUserUpdateQuota } from "@/services/api/admin/user";
 import { getKubernetesResource, KResource } from "@/utils/resource";
-import { showErrorToast } from "@/utils/toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -45,21 +44,14 @@ export const QuotaForm = ({ userName, closeSheet, quota }: QuotaFormProps) => {
           cpu: values.cpu,
         }),
       }),
-    onSuccess: () => {
-      queryClient
-        .invalidateQueries({ queryKey: ["admin", "userlist"] })
-        .then(() => {
-          toast({
-            title: `更新成功`,
-            description: `用户「${userName}」配额已更新`,
-          });
-          closeSheet();
-        })
-        .catch((err) => {
-          showErrorToast("刷新任务列表失败", err);
-        });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "userlist"] });
+      toast({
+        title: `更新成功`,
+        description: `用户「${userName}」配额已更新`,
+      });
+      closeSheet();
     },
-    onError: (err) => showErrorToast("更新失败", err),
   });
 
   const form = useForm<FormSchema>({
@@ -72,8 +64,15 @@ export const QuotaForm = ({ userName, closeSheet, quota }: QuotaFormProps) => {
   });
 
   const onSubmit = (values: FormSchema) => {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
+    // if quota has not changed, do not submit
+    if (
+      values.cpu === quota.cpu &&
+      values.gpu === quota.gpu &&
+      values.memory === quota.memoryNum
+    ) {
+      closeSheet();
+      return;
+    }
     updateQuota(values);
   };
 

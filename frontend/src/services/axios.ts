@@ -2,6 +2,7 @@ import axios, { AxiosRequestConfig, isAxiosError } from "axios";
 import { IErrorResponse, IRefresh, IRefreshResponse } from "./types";
 import { ERROR_NOT_ADMIN, ERROR_TOKEN_EXPIRED } from "./error_code";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/utils/store";
+import { showErrorToast } from "@/utils/toast";
 
 export const VERSION = import.meta.env.VITE_API_VERSION;
 
@@ -67,6 +68,7 @@ instance.interceptors.response.use(
         window.location.href = "/portal";
       }
     }
+    showErrorToast("Error", error);
     return Promise.reject(error);
   },
 );

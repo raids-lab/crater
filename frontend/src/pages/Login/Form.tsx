@@ -16,7 +16,6 @@ import { globalLastView, globalUserInfo } from "@/utils/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUserLogin } from "@/services/api/auth";
 import { useToast } from "@/components/ui/use-toast";
-import { showErrorToast } from "@/utils/toast";
 import LoadableButton from "@/components/custom/loadable-button";
 
 const formSchema = z.object({
@@ -45,7 +44,7 @@ export function ProfileForm() {
   const { toast } = useToast();
   const lastView = useRecoilValue(globalLastView);
 
-  const { mutate: loginUser, isLoading } = useMutation({
+  const { mutate: loginUser, status } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
       apiUserLogin({ username: values.username, password: values.password }),
     onSuccess: async (data, { username }) => {
@@ -70,7 +69,6 @@ export function ProfileForm() {
           : "/portal";
       navigate(dashboard, { replace: true });
     },
-    onError: (error) => showErrorToast("登陆失败", error),
   });
 
   // 1. Define your form.
@@ -86,7 +84,9 @@ export function ProfileForm() {
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
-    !isLoading && loginUser(values);
+    if (status !== "pending") {
+      loginUser(values);
+    }
   };
 
   return (
@@ -125,7 +125,11 @@ export function ProfileForm() {
             </FormItem>
           )}
         />
-        <LoadableButton type="submit" className="w-full" isLoading={isLoading}>
+        <LoadableButton
+          type="submit"
+          className="w-full"
+          isLoading={status === "pending"}
+        >
           登录
         </LoadableButton>
       </form>

@@ -119,45 +119,30 @@ export function Component() {
 
   const { data: userList, isLoading } = useQuery({
     queryKey: ["admin", "userlist"],
-    retry: 1,
     queryFn: apiAdminUserList,
     select: (res) => res.data.data.Users,
-    onError: (err) => showErrorToast("获取用户列表失败", err),
   });
 
   const { mutate: deleteUser } = useMutation({
     mutationFn: (userName: string) => apiAdminUserDelete(userName),
-    onSuccess: (_, userName) => {
-      queryClient
-        .invalidateQueries({ queryKey: ["admin", "userlist"] })
-        .then(() => {
-          toast({
-            title: `删除成功`,
-            description: `用户 ${userName} 已删除`,
-          });
-        })
-        .catch((err) => {
-          showErrorToast("刷新用户列表失败", err);
-        });
+    onSuccess: async (_, userName) => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "userlist"] });
+      toast({
+        title: `删除成功`,
+        description: `用户 ${userName} 已删除`,
+      });
     },
-    onError: (err) => showErrorToast("无法删除用户", err),
   });
 
   const { mutate: updateRole } = useMutation({
     mutationFn: ({ userName, role }: { userName: string; role: string }) =>
       apiAdminUserUpdateRole(userName, role),
-    onSuccess: (_, variables) => {
-      queryClient
-        .invalidateQueries({ queryKey: ["admin", "userlist"] })
-        .then(() => {
-          toast({
-            title: `更新成功`,
-            description: `用户 ${variables.userName} 权限已更新`,
-          });
-        })
-        .catch((err) => {
-          showErrorToast("刷新用户列表失败", err);
-        });
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "userlist"] });
+      toast({
+        title: `更新成功`,
+        description: `用户 ${variables.userName} 权限已更新`,
+      });
     },
   });
 

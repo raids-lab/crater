@@ -14,7 +14,6 @@ import { useSetRecoilState } from "recoil";
 import { globalUserInfo } from "@/utils/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUserSignup } from "@/services/api/auth";
-import { showErrorToast } from "@/utils/toast";
 import LoadableButton from "@/components/custom/loadable-button";
 
 const formSchema = z
@@ -47,7 +46,7 @@ export function SignupForm() {
   const navigate = useNavigate();
   const setUserState = useSetRecoilState(globalUserInfo);
 
-  const { mutate: loginUser, isLoading } = useMutation({
+  const { mutate: loginUser, isPending } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
       apiUserSignup({
         userName: values.username,
@@ -64,7 +63,6 @@ export function SignupForm() {
       alert(username);
       navigate("/portal");
     },
-    onError: (error) => showErrorToast("注册失败", error),
   });
 
   // 1. Define your form.
@@ -81,7 +79,7 @@ export function SignupForm() {
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
-    !isLoading && loginUser(values);
+    !isPending && loginUser(values);
   };
 
   return (
@@ -143,7 +141,7 @@ export function SignupForm() {
             </FormItem>
           )}
         />
-        <LoadableButton type="submit" className="w-full" isLoading={isLoading}>
+        <LoadableButton type="submit" className="w-full" isLoading={isPending}>
           注册
         </LoadableButton>
       </form>
