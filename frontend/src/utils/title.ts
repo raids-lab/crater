@@ -88,6 +88,7 @@ const pathDict: PathInfo[] = [
           {
             path: "dl",
             title: "深度推荐训练任务",
+            hiddenNav: true,
           },
         ],
       },

@@ -3,15 +3,15 @@ import type { FC } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { apiAiTaskQuota } from "@/services/api/aiTask";
-import { getResource } from "@/utils/resource";
+import { getAiResource } from "@/utils/resource";
 
 export const Component: FC = () => {
   const { data: quota, isLoading } = useQuery({
     queryKey: ["aitask", "quota"],
     queryFn: apiAiTaskQuota,
     select: (res) => ({
-      hard: getResource(res.data.data.hard),
-      hardUsed: getResource(res.data.data.hardUsed),
+      hard: getAiResource(res.data.data.hard),
+      hardUsed: getAiResource(res.data.data.hardUsed),
     }),
   });
 

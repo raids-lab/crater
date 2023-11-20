@@ -1,6 +1,6 @@
 import { useToast } from "@/components/ui/use-toast";
 import { apiAdminUserUpdateQuota } from "@/services/api/admin/user";
-import { getKubernetesResource, KResource } from "@/utils/resource";
+import { getAiKResource, AiResource } from "@/utils/resource";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -27,7 +27,7 @@ type FormSchema = z.infer<typeof formSchema>;
 interface QuotaFormProps {
   closeSheet: () => void;
   userName: string;
-  quota: KResource;
+  quota: AiResource;
 }
 
 export const QuotaForm = ({ userName, closeSheet, quota }: QuotaFormProps) => {
@@ -38,7 +38,7 @@ export const QuotaForm = ({ userName, closeSheet, quota }: QuotaFormProps) => {
     mutationFn: (values: FormSchema) =>
       apiAdminUserUpdateQuota({
         userName: userName,
-        hardQuota: getKubernetesResource({
+        hardQuota: getAiKResource({
           gpu: values.gpu,
           memory: `${values.memory}Gi`,
           cpu: values.cpu,
