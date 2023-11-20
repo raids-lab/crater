@@ -28,7 +28,7 @@ const sidebarItems: SidebarItem[] = [
     children: [
       {
         route: {
-          path: "dl",
+          path: "dl/*",
           lazy: () => import("./Job/Dl"),
         },
       },

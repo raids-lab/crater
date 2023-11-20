@@ -2,7 +2,7 @@ import { KubernetesResource } from "@/utils/resource";
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
 
-export interface ITask {
+export interface IAiTask {
   id: number;
   taskName: string;
   userName: string;
@@ -52,7 +52,7 @@ export interface AiTask {
   scheduleInfo: string;
 }
 
-export const convertAiTask = (task: ITask): AiTask => {
+export const convertAiTask = (task: IAiTask): AiTask => {
   return {
     ...task,
     resourceRequest: JSON.parse(task.resourceRequest) as KubernetesResource,
@@ -96,7 +96,7 @@ export const apiAiTaskDelete = async (taskID: number) => {
 export const apiAiTaskList = () =>
   instance.get<
     IResponse<{
-      Tasks: ITask[];
+      Tasks: IAiTask[];
     }>
   >(VERSION + "/aitask/list");
 
@@ -110,7 +110,7 @@ export const apiAiTaskQuota = () =>
   >(VERSION + "/aitask/getQuota");
 
 export const apiAiTaskGet = (taskID: number) =>
-  instance.get<IResponse<ITask>>(VERSION + "/aitask/get", {
+  instance.get<IResponse<IAiTask>>(VERSION + "/aitask/get", {
     params: {
       taskID,
     },

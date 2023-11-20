@@ -53,12 +53,12 @@ import {
 import { z } from "zod";
 import { useRecoilValue } from "recoil";
 import { globalUserInfo } from "@/utils/store";
-import { ResourceSchema, getResource } from "@/utils/resource";
+import { AiResourceSchema, getAiResource } from "@/utils/resource";
 import { Badge } from "@/components/ui/badge";
 import { QuotaForm } from "./QuotaForm";
 
 const QuotaSchema = z.object({
-  hard: ResourceSchema,
+  hard: AiResourceSchema,
 });
 
 const TUserSchema = z.object({
@@ -376,7 +376,7 @@ export function Component() {
       userName: user.userName,
       role: user.role,
       quota: {
-        hard: getResource(user.quotaHard),
+        hard: getAiResource(user.quotaHard),
       },
     }));
     setData(tableData);

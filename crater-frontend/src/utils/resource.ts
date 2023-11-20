@@ -6,7 +6,7 @@ export interface KubernetesResource {
   "nvidia.com/gpu"?: number | string; // "1"
 }
 
-export const ResourceSchema = z
+export const AiResourceSchema = z
   .object({
     cpu: z.number().optional(),
     gpu: z.number().optional(),
@@ -16,9 +16,9 @@ export const ResourceSchema = z
   })
   .strict();
 
-export type KResource = z.infer<typeof ResourceSchema>;
+export type AiResource = z.infer<typeof AiResourceSchema>;
 
-export const getResource = (resource: KubernetesResource): KResource => {
+export const getAiResource = (resource: KubernetesResource): AiResource => {
   // if resource.cpu is string, parse to int
   // if resource.cpu is number, keep it
   const cpu =
@@ -42,9 +42,7 @@ export const getResource = (resource: KubernetesResource): KResource => {
   };
 };
 
-export const getKubernetesResource = (
-  resource: KResource,
-): KubernetesResource => {
+export const getAiKResource = (resource: AiResource): KubernetesResource => {
   // if resource.cpu is undefined, then cpu will be undefined
   // if resource.cpu is null, then cpu will be null
   const cpu = resource.cpu;
@@ -55,5 +53,32 @@ export const getKubernetesResource = (
     cpu,
     "nvidia.com/gpu": gpu,
     memory,
+  };
+};
+
+export const DlResourceSchema = z
+  .object({
+    gpu: z.number().optional(),
+  })
+  .strict();
+
+export type DlResource = z.infer<typeof DlResourceSchema>;
+
+export const getDlResource = (resource: KubernetesResource): DlResource => {
+  const gpu =
+    typeof resource["nvidia.com/gpu"] === "string"
+      ? parseInt(resource["nvidia.com/gpu"])
+      : resource["nvidia.com/gpu"] ?? 0;
+
+  return {
+    gpu,
+  };
+};
+
+export const getDlKResource = (resource: DlResource): KubernetesResource => {
+  const gpu = resource.gpu;
+
+  return {
+    "nvidia.com/gpu": gpu,
   };
 };
