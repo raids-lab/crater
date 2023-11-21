@@ -1,26 +1,106 @@
+import { DataTable } from "@/components/DataTable";
+import { DataTableColumnHeader } from "@/components/DataTable/DataTableColumnHeader";
+import { DataTableToolbarConfig } from "@/components/DataTable/DataTableToolbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { apiDlTaskInfo } from "@/services/api/dlTask";
+import { apiDlTaskInfo, apiDlTaskPods } from "@/services/api/dlTask";
 import { globalBreadCrumb } from "@/utils/store";
+import {
+  CheckCircledIcon,
+  CircleIcon,
+  ClockIcon,
+  CrossCircledIcon,
+  StopwatchIcon,
+} from "@radix-ui/react-icons";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, type FC } from "react";
+import { ColumnDef } from "@tanstack/react-table";
+import { useEffect, type FC, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
+
+type PodInfo = {
+  name: string;
+  status: string;
+  createdAt: string;
+};
+
+const getHeader = (key: string): string => {
+  switch (key) {
+    case "name":
+      return "Pod 名称";
+    case "status":
+      return "状态";
+    case "createdAt":
+      return "创建时间";
+    default:
+      return key;
+  }
+};
+
+const statuses = [
+  {
+    value: "Initial",
+    label: "Initial",
+    icon: CircleIcon,
+  },
+  {
+    value: "Pending",
+    label: "Pending",
+    icon: ClockIcon,
+  },
+  {
+    value: "Running",
+    label: "Running",
+    icon: StopwatchIcon,
+  },
+  {
+    value: "Failed",
+    label: "Failed",
+    icon: CrossCircledIcon,
+  },
+  {
+    value: "Finished",
+    label: "Finished",
+    icon: CheckCircledIcon,
+  },
+];
+
+const toolbarConfig: DataTableToolbarConfig = {
+  filterInput: {
+    placeholder: "搜索 Pod 名称",
+    key: "name",
+  },
+  filterOptions: [
+    {
+      key: "status",
+      title: "状态",
+      option: statuses,
+    },
+  ],
+  getHeader: getHeader,
+};
 
 // route format: /portal/job/ai/detail?id=xxx
 const DlJobDetail: FC = () => {
   const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
   const { name: taskName } = useParams();
 
-  const { data: taskInfo, isLoading } = useQuery({
+  const taskInfo = useQuery({
     queryKey: ["dltask", "task", taskName],
     queryFn: () => apiDlTaskInfo(taskName ?? ""),
     select: (res) => res.data.data,
     enabled: !!taskName,
   });
 
+  const podInfo = useQuery({
+    queryKey: ["dltask", "task", taskName, "pod"],
+    queryFn: () => apiDlTaskPods(taskName ?? ""),
+    select: (res) => res.data.data,
+    enabled: !!taskName,
+  });
+
   useEffect(() => {
-    if (isLoading) {
+    if (taskInfo.isLoading) {
       return;
     }
     setBreadcrumb([
@@ -29,22 +109,89 @@ const DlJobDetail: FC = () => {
         path: "/recommend/job/dl",
       },
       {
-        title: `任务「${taskInfo?.name}」详情`,
+        title: `任务「${taskInfo.data?.name}」详情`,
       },
     ]);
-  }, [setBreadcrumb, taskInfo, isLoading]);
+  }, [setBreadcrumb, taskInfo]);
 
-  if (isLoading) {
+  const columns = useMemo<ColumnDef<PodInfo>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("name")} />
+        ),
+        cell: ({ row }) => <div>{row.getValue("name")}</div>,
+      },
+      {
+        accessorKey: "status",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("status")} />
+        ),
+        cell: ({ row }) => {
+          const status = statuses.find(
+            (status) => status.value === row.getValue("status"),
+          );
+          if (!status) {
+            return null;
+          }
+          return (
+            <div className="flex w-[100px] items-center">
+              {status.icon && (
+                <status.icon className="mr-2 h-4 w-4 text-muted-foreground" />
+              )}
+              <span>{status.label}</span>
+            </div>
+          );
+        },
+        filterFn: (row, id, value) => {
+          return (value as string[]).includes(row.getValue(id));
+        },
+      },
+      {
+        accessorKey: "createdAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("createdAt")}
+          />
+        ),
+        cell: ({ row }) => {
+          // row format: "2023-10-30T03:21:03.733Z"
+          const date = new Date(row.getValue("createdAt"));
+          const formatted = date.toLocaleString("zh-CN", {
+            timeZone: "Asia/Shanghai",
+          });
+          return <div>{formatted}</div>;
+        },
+      },
+    ],
+    [],
+  );
+
+  const data = useMemo(() => {
+    if (!podInfo.data) {
+      return [];
+    }
+    return podInfo.data.map((pod) => ({
+      name: pod.metadata.name,
+      status: pod.status.phase,
+      createdAt: pod.metadata.creationTimestamp,
+    }));
+  }, [podInfo.data]);
+
+  if (taskInfo.isLoading || podInfo.isLoading) {
     return <></>;
   }
 
   return (
     <div className="space-y-4 px-6 py-4">
+      <DataTable data={data} columns={columns} toolbarConfig={toolbarConfig} />
       <Card>
         <ScrollArea className="w-full">
           <CardContent className="w-full max-w-screen-sm pt-6">
             <pre className="text-clip text-sm">
-              {JSON.stringify(taskInfo, null, 2)}
+              {JSON.stringify(taskInfo.data, null, 2)}
             </pre>
           </CardContent>
           <ScrollBar orientation="horizontal" className="hidden" />
