@@ -3,7 +3,7 @@ import { DataTableColumnHeader } from "@/components/DataTable/DataTableColumnHea
 import { DataTableToolbarConfig } from "@/components/DataTable/DataTableToolbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { apiDlTaskInfo, apiDlTaskPods } from "@/services/api/dlTask";
+import { apiDlTaskInfo, apiDlTaskPods } from "@/services/api/recommend/dlTask";
 import { globalBreadCrumb } from "@/utils/store";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -11,13 +11,22 @@ import {
   CircleIcon,
   ClockIcon,
   CrossCircledIcon,
+  DotsHorizontalIcon,
   StopwatchIcon,
 } from "@radix-ui/react-icons";
 import { useQuery } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { useEffect, type FC, useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 type PodInfo = {
   id: string;
@@ -61,8 +70,8 @@ const statuses = [
     icon: CrossCircledIcon,
   },
   {
-    value: "Finished",
-    label: "Finished",
+    value: "Succeeded",
+    label: "Succeeded",
     icon: CheckCircledIcon,
   },
 ];
@@ -85,6 +94,7 @@ const toolbarConfig: DataTableToolbarConfig = {
 // route format: /portal/job/ai/detail?id=xxx
 const DlJobDetail: FC = () => {
   const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
+  const navigate = useNavigate();
   const { name: taskName } = useParams();
 
   const taskInfo = useQuery({
@@ -190,6 +200,29 @@ const DlJobDetail: FC = () => {
             timeZone: "Asia/Shanghai",
           });
           return <div>{formatted}</div>;
+        },
+      },
+      {
+        id: "actions",
+        enableHiding: false,
+        cell: ({ row }) => {
+          const podInfo = row.original;
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">操作</span>
+                  <DotsHorizontalIcon className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>操作</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => navigate(`${podInfo.name}`)}>
+                  详情
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
         },
       },
     ],
