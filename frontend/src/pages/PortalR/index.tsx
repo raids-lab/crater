@@ -100,7 +100,7 @@ const Layout = () => {
   const [showSidebar, setShowSidebar] = useState(false);
   return (
     <>
-      <div className="grid h-screen w-screen overflow-hidden bg-zinc-100 dark:bg-background md:grid-cols-sidebar">
+      <div className="grid h-screen w-screen overflow-hidden bg-dashboard md:grid-cols-sidebar">
         <Sidebar
           sidebarItems={sidebarItems}
           sidebarMenus={sidebarMenus}
