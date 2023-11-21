@@ -92,3 +92,29 @@ type GetDatasetResp struct {
 }
 
 type ListDatasetResp []GetDatasetResp
+
+type ResourceAnalyzeResponse map[string]ResourceAnalyzeResult
+
+type ResourceAnalyzeResult struct {
+	GPUUtilAvg     float32 `json:"gpuUtilAvg"`
+	GPUMemoryMax   float32 `json:"gpuMemoryMaxGB"`
+	SMActiveAvg    float32 `json:"smActiveAvg"`
+	SMOccupancyAvg float32 `json:"smOccupancyAvg"`
+	FP32ActiveAvg  float32 `json:"fp32ActiveAvg"`
+	DramActiveAvg  float32 `json:"dramActiveAvg"`
+}
+
+type ResourceAnalyzeWebhookData struct {
+	GPUUtilAvg     float32 `json:"gpu_util_avg"`
+	GPUMemoryMax   float32 `json:"mem_usage"`
+	SMActiveAvg    float32 `json:"sm_active_avg,omitempty"`
+	SMOccupancyAvg float32 `json:"sm_occupied_avg,omitempty"`
+	FP32ActiveAvg  float32 `json:"fp32_active_avg,omitempty"`
+	DramActiveAvg  float32 `json:"dram_active_avg,omitempty"`
+}
+
+type ResourceAnalyzeWebhookResponse struct {
+	Code int                                   `json:"code"`
+	Data map[string]ResourceAnalyzeWebhookData `json:"data"`
+	Msg  string                                `json:"msg"`
+}
