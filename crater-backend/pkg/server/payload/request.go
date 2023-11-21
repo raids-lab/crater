@@ -65,6 +65,10 @@ type CreateRecommendDLJobReq struct {
 	RecommendDLJobSpec
 }
 
+type AnalyzeRecommendDLJobReq struct {
+	RecommendDLJobSpec
+}
+
 type DataRelationShipReq struct {
 	Type    string `json:"type"` // input, output, bothyway
 	JobName string `json:"jobName"`

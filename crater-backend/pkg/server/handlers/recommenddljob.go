@@ -9,6 +9,7 @@ import (
 	"github.com/aisystem/ai-protal/pkg/models"
 	"github.com/aisystem/ai-protal/pkg/server/payload"
 	resputil "github.com/aisystem/ai-protal/pkg/server/response"
+	"github.com/aisystem/ai-protal/pkg/util"
 	"github.com/gin-gonic/gin"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,6 +34,7 @@ func (mgr *RecommendDLJobMgr) RegisterRoute(g *gin.RouterGroup) {
 	g.GET("/list", mgr.List)
 	g.GET("/info", mgr.GetByName)
 	g.GET("/pods", mgr.GetPodsByName)
+	g.POST("/analyze", mgr.AnalyzeResourceUsage)
 }
 
 func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
@@ -263,4 +265,56 @@ func (mgr *RecommendDLJobMgr) Delete(c *gin.Context) {
 		return
 	}
 	resputil.WrapSuccessResponse(c, nil)
+}
+
+func (mgr *RecommendDLJobMgr) AnalyzeResourceUsage(c *gin.Context) {
+	req := &payload.AnalyzeRecommendDLJobReq{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		resputil.WrapFailedResponse(c, fmt.Sprintf("bind request body failed, err:%v", err), 500)
+		return
+	}
+	if len(req.VocabularySize) != 0 {
+		req.EmbeddingSizeTotal = 0
+		for _, size := range req.VocabularySize {
+			req.EmbeddingSizeTotal += int64(size)
+		}
+		req.EmbeddingTableCount = len(req.VocabularySize)
+	}
+	if len(req.EmbeddingDim) != 0 {
+		req.EmbeddingDimTotal = 0
+		for _, dim := range req.EmbeddingDim {
+			req.EmbeddingDimTotal += dim
+		}
+	}
+	if len(req.RelationShips) != 0 {
+		req.EmbeddingSizeTotal = 0
+		req.EmbeddingDimTotal = 0
+		req.EmbeddingTableCount = 0
+	}
+	analyzeResp := &payload.ResourceAnalyzeWebhookResponse{}
+	if err := util.PostJson(c, "http://***REMOVED***:30500", "/api/v1/task/analyze/end2end", map[string]interface{}{
+		"embedding_table_count": req.EmbeddingTableCount,
+		"embedding_dim_total":   req.EmbeddingDimTotal,
+		"embedding_size_total":  req.EmbeddingSizeTotal / 1e4,
+		"batch_size":            req.BatchSize,
+		"params":                req.Params / 1e3,
+		"macs":                  req.Macs / 1e6,
+	}, nil, analyzeResp); err != nil {
+		resputil.WrapFailedResponse(c, fmt.Sprintf("request resource analyze failed, err:%v", err), 500)
+		return
+	}
+	resputil.WrapSuccessResponse(c, &payload.ResourceAnalyzeResponse{
+		"p100": payload.ResourceAnalyzeResult{
+			GPUUtilAvg:   analyzeResp.Data["P100"].GPUUtilAvg,
+			GPUMemoryMax: analyzeResp.Data["P100"].GPUMemoryMax,
+		},
+		"v100": payload.ResourceAnalyzeResult{
+			GPUUtilAvg:     analyzeResp.Data["V100"].GPUUtilAvg,
+			GPUMemoryMax:   analyzeResp.Data["V100"].GPUMemoryMax,
+			SMActiveAvg:    analyzeResp.Data["V100"].SMActiveAvg,
+			SMOccupancyAvg: analyzeResp.Data["V100"].SMOccupancyAvg,
+			DramActiveAvg:  analyzeResp.Data["V100"].DramActiveAvg,
+			FP32ActiveAvg:  analyzeResp.Data["V100"].FP32ActiveAvg,
+		},
+	})
 }
