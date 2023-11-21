@@ -181,7 +181,7 @@ export const portalRoute: RouteObject = {
   children: [
     {
       index: true,
-      element: <Navigate to="job/ai" replace />,
+      element: <Navigate to="overview" replace />,
     },
     ...sidebarItems.map((item) => {
       return (

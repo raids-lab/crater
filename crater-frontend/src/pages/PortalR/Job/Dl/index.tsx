@@ -27,17 +27,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { NewTaskForm } from "./Form";
 import { useEffect, useMemo, useState } from "react";
-import { Separator } from "@/components/ui/separator";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
 import { DataTable } from "@/components/DataTable";
@@ -114,7 +104,6 @@ const toolbarConfig: DataTableToolbarConfig = {
 };
 
 const AiJobHome = () => {
-  const [openSheet, setOpenSheet] = useState(false);
   const [data, setData] = useState<TaskInfo[]>([]);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -297,20 +286,7 @@ const AiJobHome = () => {
   return (
     <div className="space-y-4 px-6 py-4">
       <DataTable data={data} columns={columns} toolbarConfig={toolbarConfig}>
-        <Sheet open={openSheet} onOpenChange={setOpenSheet}>
-          <SheetTrigger asChild>
-            <Button className="h-8 min-w-fit">新建任务</Button>
-          </SheetTrigger>
-          {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
-          <SheetContent className="max-h-screen overflow-y-auto sm:max-w-2xl">
-            <SheetHeader>
-              <SheetTitle>新建任务</SheetTitle>
-              <SheetDescription>创建一个新的 AI 训练任务</SheetDescription>
-            </SheetHeader>
-            <Separator className="mt-4" />
-            <NewTaskForm closeSheet={() => setOpenSheet(false)} />
-          </SheetContent>
-        </Sheet>
+        <Button className="h-8 min-w-fit">新建任务</Button>
       </DataTable>
     </div>
   );

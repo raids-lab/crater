@@ -1,6 +1,12 @@
 import type { FC } from "react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { apiAiTaskQuota } from "@/services/api/aiTask";
 import { getAiResource } from "@/utils/resource";
@@ -16,21 +22,27 @@ export const Component: FC = () => {
   });
 
   return (
-    <div className="space-y-1 px-6 py-6 text-xl">
-      <p>用户登录到系统后，最先看到的页面。</p>
-      <p>集中显示用户的近期项目、资源使用情况、任务进度等。</p>
-      <div className="grid grid-flow-row-dense grid-cols-2 gap-4 pt-6 md:grid-cols-4">
-        <Card className="col-span-2 h-48">
+    <div className="space-y-1 px-6 py-4 text-base">
+      <div className="grid grid-flow-row-dense grid-cols-2 gap-4 md:grid-cols-2">
+        <Card className="col-span-1 h-60">
           <CardHeader>
-            <CardTitle>当前任务摘要</CardTitle>
+            <CardTitle>作业队列</CardTitle>
+            <CardDescription>
+              <p>1. 所有正在系统中运行的作业</p>
+              <p>2. (如果有) 用户自己正在运行的作业</p>
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <p>如果不存在，则引导用户新建任务</p>
+            <p></p>
           </CardContent>
         </Card>
-        <Card className="col-span-1 h-48">
+        <Card className="col-span-1 h-60">
           <CardHeader>
-            <CardTitle>资源占用</CardTitle>
+            <CardTitle>查看配额</CardTitle>
+            <CardDescription>
+              <p>1. 查看用户个人账户的资源配额</p>
+              <p>2. 查看用户在不同账户下的资源配额</p>
+            </CardDescription>
           </CardHeader>
           <CardContent className="font-mono text-base">
             {isLoading ? (
@@ -52,21 +64,16 @@ export const Component: FC = () => {
             )}
           </CardContent>
         </Card>
-        <Card className="col-span-1 h-48">
-          <CardHeader>
-            <CardTitle>使用建议</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>链接使用文档</p>
-          </CardContent>
-        </Card>
         <Card className="col-span-full h-80">
           <CardHeader>
-            <CardTitle>近期项目</CardTitle>
+            <CardTitle>资源使用情况</CardTitle>
+            <CardDescription>
+              <p>1. 当前整体集群的资源使用情况</p>
+              <p>2. 查看整体集群的历史资源使用情况 (详细信息对接prometheus)</p>
+              <p>3. 查看本用户的历史资源使用情况 (汇总统计)</p>
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <p>显示用户近期的项目，点击进入项目详情</p>
-          </CardContent>
+          <CardContent></CardContent>
         </Card>
       </div>
     </div>

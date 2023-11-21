@@ -140,7 +140,17 @@ const pathDict: PathInfo[] = [
       },
       {
         path: "user",
-        title: "用户管理",
+        title: "账户管理",
+        children: [
+          {
+            path: "personal",
+            title: "个人用户",
+          },
+          {
+            path: "group",
+            title: "组用户",
+          },
+        ],
       },
       {
         path: "job",
