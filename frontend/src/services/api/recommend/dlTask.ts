@@ -1,6 +1,6 @@
 import { KubernetesResource } from "@/utils/resource";
-import instance, { VERSION } from "../axios";
-import { IResponse } from "../types";
+import instance, { VERSION } from "../../axios";
+import { IResponse } from "../../types";
 
 interface IDlTask {
   name: string;

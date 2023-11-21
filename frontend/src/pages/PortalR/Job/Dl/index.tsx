@@ -37,7 +37,10 @@ import { useSetRecoilState } from "recoil";
 import { globalBreadCrumb } from "@/utils/store";
 import { useNavigate, useRoutes } from "react-router-dom";
 import DlJobDetail from "./Detail";
-import { apiDlTaskDelete, apiDlTaskList } from "@/services/api/dlTask";
+import {
+  apiDlTaskDelete,
+  apiDlTaskList,
+} from "@/services/api/recommend/dlTask";
 
 type TaskInfo = {
   id: number;
@@ -169,7 +172,7 @@ const AiJobHome = () => {
           <Button
             onClick={() => navigate(`${row.original.name}`)}
             variant={"link"}
-            className="h-8 px-0 text-secondary-foreground"
+            className="h-8 px-0 font-normal text-secondary-foreground"
           >
             {row.getValue("name")}
           </Button>

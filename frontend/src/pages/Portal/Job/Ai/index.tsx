@@ -209,7 +209,7 @@ const AiJobHome = () => {
           <Button
             onClick={() => navigate(`${row.original.id}`)}
             variant={"link"}
-            className="h-8 px-0 text-secondary-foreground"
+            className="h-8 px-0 font-normal text-secondary-foreground"
           >
             {row.getValue("title")}
           </Button>
