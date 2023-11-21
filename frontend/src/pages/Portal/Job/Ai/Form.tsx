@@ -303,7 +303,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                           <div>
                             <Button
                               size="icon"
-                              variant="secondary"
+                              variant="outline"
                               onClick={() => shareDirsRemove(index)}
                             >
                               <Cross1Icon className="h-3 w-3" />
@@ -383,7 +383,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                           <div>
                             <Button
                               size="icon"
-                              variant="secondary"
+                              variant="outline"
                               onClick={() => argsRemove(index)}
                             >
                               <Cross1Icon className="h-3 w-3" />

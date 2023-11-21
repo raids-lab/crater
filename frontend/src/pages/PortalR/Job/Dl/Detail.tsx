@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { apiDlTaskInfo, apiDlTaskPods } from "@/services/api/dlTask";
 import { globalBreadCrumb } from "@/utils/store";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   CheckCircledIcon,
   CircleIcon,
@@ -19,6 +20,7 @@ import { useParams } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
 
 type PodInfo = {
+  id: string;
   name: string;
   status: string;
   createdAt: string;
@@ -117,6 +119,31 @@ const DlJobDetail: FC = () => {
   const columns = useMemo<ColumnDef<PodInfo>[]>(
     () => [
       {
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            onCheckedChange={(value) =>
+              table.toggleAllPageRowsSelected(!!value)
+            }
+            aria-label="Select all"
+            className="ml-2"
+          />
+        ),
+        cell: ({ row }) => (
+          <>
+            <Checkbox
+              checked={row.getIsSelected()}
+              onCheckedChange={(value) => row.toggleSelected(!!value)}
+              aria-label="Select row"
+              className="ml-2"
+            />
+          </>
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      },
+      {
         accessorKey: "name",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("name")} />
@@ -169,11 +196,12 @@ const DlJobDetail: FC = () => {
     [],
   );
 
-  const data = useMemo(() => {
+  const data: PodInfo[] = useMemo(() => {
     if (!podInfo.data) {
       return [];
     }
     return podInfo.data.map((pod) => ({
+      id: pod.metadata.uid,
       name: pod.metadata.name,
       status: pod.status.phase,
       createdAt: pod.metadata.creationTimestamp,
