@@ -111,7 +111,7 @@ const toolbarConfig: DataTableToolbarConfig = {
   getHeader: getHeader,
 };
 
-export function Component() {
+export const PersonalUser = () => {
   const [data, setData] = useState<TUser[]>([]);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -391,4 +391,4 @@ export function Component() {
       ></DataTable>
     </div>
   );
-}
+};

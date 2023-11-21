@@ -15,6 +15,8 @@ import {
 import OverviewIcon from "@/components/icon/OverviewIcon";
 import DatabaseIcon from "@/components/icon/DatabaseIcon";
 import LightHouseIcon from "@/components/icon/LightHouseIcon";
+import { PersonalUser } from "./User/Personal";
+import { GroupUser } from "./User/Group";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -28,11 +30,20 @@ const sidebarItems: SidebarItem[] = [
   {
     path: "user",
     icon: <PersonIcon />,
-    children: [],
-    route: {
-      path: "user",
-      lazy: () => import("./User"),
-    },
+    children: [
+      {
+        route: {
+          path: "personal",
+          element: <PersonalUser />,
+        },
+      },
+      {
+        route: {
+          path: "group",
+          element: <GroupUser />,
+        },
+      },
+    ],
   },
   {
     path: "job",

@@ -264,7 +264,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
           )}
         />
         <div className="space-y-3">
-          {argsFields.length > 0 && (
+          {shareDirsFields.length > 0 && (
             <div>
               {shareDirsFields.map((field, index) => (
                 <FormField
