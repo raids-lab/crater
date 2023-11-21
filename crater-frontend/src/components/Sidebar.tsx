@@ -74,7 +74,7 @@ export function Sidebar({
     <div
       className={cn(
         "flex flex-col items-center justify-between pb-4",
-        "border-r bg-slate-800 text-white dark:bg-background",
+        "border-r bg-sidebar text-sidebar-foreground",
         "fixed top-0 z-20 md:sticky md:top-16 md:z-0 md:w-full",
         "min-h-full w-[240px]",
         ".3s transition-transform ease-in-out md:translate-x-0",
@@ -116,7 +116,7 @@ export function Sidebar({
                             className={cn(
                               "w-full justify-start pl-11 font-normal hover:bg-primary/80",
                               {
-                                "bg-slate-700 dark:bg-secondary":
+                                "bg-sidebar-item":
                                   item.path === actived.item &&
                                   subItemPath === actived.subItem,
                               },
@@ -147,8 +147,7 @@ export function Sidebar({
                 className={cn(
                   "flex h-9 w-full flex-row items-center justify-start rounded-md px-4 text-base hover:bg-primary/80",
                   {
-                    "bg-slate-700 dark:bg-secondary":
-                      item.path === actived.item,
+                    "bg-sidebar-item": item.path === actived.item,
                   },
                 )}
                 type="button"
@@ -162,7 +161,7 @@ export function Sidebar({
         </Accordion>
       </ScrollArea>
       <div className="w-full">
-        <Separator className="mb-4 bg-slate-700 dark:bg-secondary" />
+        <Separator className="mb-4 bg-sidebar-item dark:bg-border" />
         <div className="space-y-1 px-2">
           {sidebarMenus.map((item) => (
             <button
@@ -172,7 +171,7 @@ export function Sidebar({
               className={cn(
                 "flex h-9 w-full flex-row items-center justify-start rounded-md px-4 text-base hover:bg-primary/80",
                 {
-                  "bg-slate-700 dark:bg-secondary": item.path === actived.item,
+                  "bg-sidebar-item": item.path === actived.item,
                 },
               )}
             >

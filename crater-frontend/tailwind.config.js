@@ -50,6 +50,15 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // custom
+        dashboard: {
+          DEFAULT: "hsl(var(--dashboard))",
+        },
+        sidebar: {
+          DEFAULT: "hsl(var(--sidebar))",
+          item: "hsl(var(--sidebar-item))",
+          foreground: "hsl(var(--sidebar-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -70,7 +79,7 @@ module.exports = {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
-      // added by me
+      // custom
       gridTemplateColumns: {
         sidebar: "240px auto", // for sidebar layout. adds grid-cols-sidebar class
       },

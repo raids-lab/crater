@@ -49,6 +49,7 @@ Understanding the following frameworks will help you in developing this project 
 This project utilizes the following UI libraries. You can refer to their documentation for more information:
 
 - [shadcn/ui](https://ui.shadcn.com/examples/dashboard): The primary headless component library used in the project.
+  - [Oxidus](https://oxidus.vercel.app/): Theme Color Generator for _shadcn/ui_.
 - [Flowbite](https://flowbite.com/docs/getting-started/react/): When you need to _borrow_ some Tailwind CSS code.
 - [Tanstack Table](https://tanstack.com/table/v8): Headless table component used in the project.
 
