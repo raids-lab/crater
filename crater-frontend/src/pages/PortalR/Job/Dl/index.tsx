@@ -41,6 +41,16 @@ import {
   apiDlTaskDelete,
   apiDlTaskList,
 } from "@/services/api/recommend/dlTask";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { NewDlTaskForm } from "./Form";
+import { Separator } from "@/components/ui/separator";
 
 type TaskInfo = {
   id: number;
@@ -107,6 +117,7 @@ const toolbarConfig: DataTableToolbarConfig = {
 };
 
 const AiJobHome = () => {
+  const [openSheet, setOpenSheet] = useState(false);
   const [data, setData] = useState<TaskInfo[]>([]);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -289,7 +300,20 @@ const AiJobHome = () => {
   return (
     <div className="space-y-4 px-6 py-4">
       <DataTable data={data} columns={columns} toolbarConfig={toolbarConfig}>
-        <Button className="h-8 min-w-fit">新建任务</Button>
+        <Sheet open={openSheet} onOpenChange={setOpenSheet}>
+          <SheetTrigger asChild>
+            <Button className="h-8 min-w-fit">新建任务</Button>
+          </SheetTrigger>
+          {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
+          <SheetContent className="max-h-screen overflow-y-auto sm:max-w-2xl">
+            <SheetHeader>
+              <SheetTitle>新建任务</SheetTitle>
+              <SheetDescription>创建一个新的深度推荐训练任务</SheetDescription>
+            </SheetHeader>
+            <Separator className="mt-4" />
+            <NewDlTaskForm closeSheet={() => setOpenSheet(false)} />
+          </SheetContent>
+        </Sheet>
       </DataTable>
     </div>
   );

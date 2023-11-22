@@ -386,3 +386,62 @@ export const apiDlTaskPods = (name: string) =>
       name,
     },
   });
+
+// {
+//   "p100": {
+//       "gpuUtilAvg": 89.072716,
+//       "gpuMemoryMaxGB": 3.0564356,
+//       "smActiveAvg": 0,
+//       "smOccupancyAvg": 0,
+//       "fp32ActiveAvg": 0,
+//       "dramActiveAvg": 0
+//   },
+//   "v100": {
+//       "gpuUtilAvg": 75.4836,
+//       "gpuMemoryMaxGB": 7.706247,
+//       "smActiveAvg": 68.70431,
+//       "smOccupancyAvg": 61.6621,
+//       "fp32ActiveAvg": 3.939799,
+//       "dramActiveAvg": 62.314323
+//   }
+// },
+interface IDlAnalyze {
+  p100: {
+    gpuUtilAvg: number;
+    gpuMemoryMaxGB: number;
+  };
+  v100: {
+    gpuUtilAvg: number;
+    gpuMemoryMaxGB: number;
+    smActiveAvg: number;
+    smOccupancyAvg: number;
+    fp32ActiveAvg: number;
+    dramActiveAvg: number;
+  };
+}
+
+// analyze body
+// {
+//   "runningType": "one-shot",
+//   "relationShips": [],
+//   "macs": 230006514,
+//   "params": 66665211,
+//   "batchSize": 64,
+//   "vocabularySize": [5000000,10000000,600000],
+//   "embeddingDim": [32,32,32]
+// }
+interface IDlAnalyzeRequest {
+  runningType: string;
+  relationShips: unknown[];
+  macs: number;
+  params: number;
+  batchSize: number;
+  vocabularySize: number[];
+  embeddingDim: number[];
+}
+
+// /v1/recommenddljob/analyze
+export const apiDlAnalyze = (data: IDlAnalyzeRequest) =>
+  instance.post<IResponse<IDlAnalyze>>(VERSION + "/recommenddljob/analyze", {
+    ...data,
+  });
