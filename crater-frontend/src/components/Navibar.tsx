@@ -131,7 +131,9 @@ const Navibar: FC = () => {
           ) : (
             <DropdownMenuGroup>
               {userInfo.role === "admin" && (
-                <DropdownMenuItem onClick={() => navigate("/admin/user")}>
+                <DropdownMenuItem
+                  onClick={() => navigate("/admin/user/personal")}
+                >
                   切换为管理员
                 </DropdownMenuItem>
               )}

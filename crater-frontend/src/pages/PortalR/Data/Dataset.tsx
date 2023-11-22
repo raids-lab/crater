@@ -126,7 +126,7 @@ export const Component: FC = () => {
         },
       },
     ],
-    [],
+    [navigate],
   );
 
   const data: DatasetInfo[] = useMemo(() => {
