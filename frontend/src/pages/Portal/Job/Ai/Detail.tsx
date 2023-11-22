@@ -1,5 +1,4 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { apiAiTaskGet, convertAiTask } from "@/services/api/aiTask";
 import { globalBreadCrumb } from "@/utils/store";
 import { useQuery } from "@tanstack/react-query";
@@ -40,15 +39,12 @@ const AiJobDetail: FC = () => {
 
   return (
     <div className="space-y-4 px-6 py-4">
-      <Card>
-        <ScrollArea className="w-full">
-          <CardContent className="w-full max-w-screen-sm pt-6">
-            <pre className="text-clip text-sm">
-              {JSON.stringify(taskInfo, null, 2)}
-            </pre>
-          </CardContent>
-          <ScrollBar orientation="horizontal" className="hidden" />
-        </ScrollArea>
+      <Card className="w-full pt-6">
+        <CardContent>
+          <pre className="whitespace-pre-wrap text-xs">
+            {JSON.stringify(taskInfo, null, 2)}
+          </pre>
+        </CardContent>
       </Card>
     </div>
   );

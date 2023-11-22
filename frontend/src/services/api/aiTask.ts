@@ -21,8 +21,8 @@ export interface IAiTask {
   slo: number;
   status: string;
   isDeleted: false;
-  profiled: false;
-  utilStat: string;
+  profileStatus: number;
+  profileStat: string;
   estimatedTime: number;
   scheduleInfo: string;
 }
@@ -46,8 +46,8 @@ export interface AiTask {
   slo: number;
   status: string;
   isDeleted: false;
-  profiled: false;
-  utilStat: string;
+  profileStatus: number;
+  profileStat: unknown;
   estimatedTime: number;
   scheduleInfo: string;
 }
@@ -56,6 +56,7 @@ export const convertAiTask = (task: IAiTask): AiTask => {
   return {
     ...task,
     resourceRequest: JSON.parse(task.resourceRequest) as KubernetesResource,
+    profileStat: JSON.parse(task.profileStat),
   };
 };
 

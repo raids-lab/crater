@@ -2,7 +2,6 @@ import { DataTable } from "@/components/DataTable";
 import { DataTableColumnHeader } from "@/components/DataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/DataTable/DataTableToolbar";
 import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { apiDlTaskInfo, apiDlTaskPods } from "@/services/api/recommend/dlTask";
 import { globalBreadCrumb } from "@/utils/store";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -226,7 +225,7 @@ const DlJobDetail: FC = () => {
         },
       },
     ],
-    [],
+    [navigate],
   );
 
   const data: PodInfo[] = useMemo(() => {
@@ -248,15 +247,12 @@ const DlJobDetail: FC = () => {
   return (
     <div className="space-y-4 px-6 py-4">
       <DataTable data={data} columns={columns} toolbarConfig={toolbarConfig} />
-      <Card>
-        <ScrollArea className="w-full">
-          <CardContent className="w-full max-w-screen-sm pt-6">
-            <pre className="text-clip text-sm">
-              {JSON.stringify(taskInfo.data, null, 2)}
-            </pre>
-          </CardContent>
-          <ScrollBar orientation="horizontal" className="hidden" />
-        </ScrollArea>
+      <Card className="w-full pt-6">
+        <CardContent>
+          <pre className="whitespace-pre-wrap text-xs">
+            {JSON.stringify(taskInfo, null, 2)}
+          </pre>
+        </CardContent>
       </Card>
     </div>
   );
