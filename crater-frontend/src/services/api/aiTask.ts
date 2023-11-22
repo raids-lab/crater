@@ -1,6 +1,7 @@
 import { KubernetesResource } from "@/utils/resource";
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
+import { showErrorToast } from "@/utils/toast";
 
 export interface IAiTask {
   id: number;
@@ -53,11 +54,17 @@ export interface AiTask {
 }
 
 export const convertAiTask = (task: IAiTask): AiTask => {
-  return {
-    ...task,
-    resourceRequest: JSON.parse(task.resourceRequest) as KubernetesResource,
-    profileStat: JSON.parse(task.profileStat),
-  };
+  try {
+    const aiTaskINfo: AiTask = {
+      ...task,
+      resourceRequest: JSON.parse(task.resourceRequest) as KubernetesResource,
+      profileStat: task.profileStat === "" ? "" : JSON.parse(task.profileStat),
+    };
+    return aiTaskINfo;
+  } catch (e) {
+    showErrorToast("任务信息解析失败", e);
+    return task as AiTask;
+  }
 };
 
 export interface ITaskCreate {
