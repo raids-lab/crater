@@ -23,11 +23,53 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { Cross1Icon } from "@radix-ui/react-icons";
+import { CaretSortIcon, CheckIcon, Cross1Icon } from "@radix-ui/react-icons";
 import { getDlKResource } from "@/utils/resource";
-import { apiDlTaskCreate } from "@/services/api/recommend/dlTask";
+import {
+  IDlAnalyze,
+  apiDlAnalyze,
+  apiDlTaskCreate,
+} from "@/services/api/recommend/dlTask";
+import { useMemo, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import { apiDlDatasetList } from "@/services/api/recommend/dataset";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+const ProgressBar = ({ width, label }: { width: number; label: string }) => {
+  // dramActiveAvg: 19.41%, split by :
+  const [first, second] = label.split(":");
+  return (
+    <div className="relative h-4 rounded bg-gray-200 dark:bg-slate-700">
+      <div
+        className={cn("h-4 rounded", {
+          "bg-green-400 dark:bg-green-700": width <= 30,
+          "bg-yellow-400 dark:bg-yellow-700": width > 30 && width <= 60,
+          "bg-orange-400 dark:bg-orange-700": width > 60 && width <= 80,
+          "bg-red-400 dark:bg-red-700": width > 80,
+        })}
+        style={{ width: `${width}%` }}
+      ></div>
+      <div className="absolute inset-0 grid grid-cols-5 gap-1 text-xs font-medium text-foreground">
+        <div className="col-span-3 text-right">{first}:</div>
+        <div className="col-span-2">{second}</div>
+      </div>
+    </div>
+  );
+};
 
 // {
 //   "name": "test-recommenddljob", // 任务名称，必填
@@ -72,7 +114,11 @@ const formSchema = z.object({
     invalid_type_error: "Select a runningType",
     required_error: "请选择运行模式",
   }),
-  datasets: z.array(z.string()),
+  datasets: z.array(
+    z.object({
+      name: z.string(),
+    }),
+  ),
   relationShips: z.array(z.string()),
   macs: z.coerce.number(),
   params: z.coerce.number(),
@@ -98,6 +144,23 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const datasetInfo = useQuery({
+    queryKey: ["recommend", "dataset", "list"],
+    queryFn: () => apiDlDatasetList(),
+    select: (res) => res.data.data,
+  });
+
+  const datasetList = useMemo(() => {
+    if (!datasetInfo.data) {
+      return [];
+    }
+    const sets = datasetInfo.data.map((item) => ({
+      value: item.name,
+      label: item.name,
+    }));
+    return sets;
+  }, [datasetInfo.data]);
+
   const { mutate: createTask } = useMutation({
     mutationFn: (values: FormSchema) => {
       const {
@@ -110,7 +173,7 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
       } = values;
       return apiDlTaskCreate({
         ...props,
-        datasets: datasets.map((item) => ({ name: item })),
+        datasets: datasets.map((item) => item.name),
         vocabularySize: dim.map((item) => item.vocabularySize),
         embeddingDim: dim.map((item) => item.embeddingDim),
         template: {
@@ -162,6 +225,36 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
   } = useFieldArray<FormSchema>({
     name: "dim",
     control: form.control,
+  });
+
+  const {
+    fields: datasetsFields,
+    append: datasetsAppend,
+    remove: datasetsRemove,
+  } = useFieldArray<FormSchema>({
+    name: "datasets",
+    control: form.control,
+  });
+
+  const [analyze, setAnalyze] = useState<IDlAnalyze>();
+  const { mutate: analyzeTask } = useMutation({
+    mutationFn: () =>
+      apiDlAnalyze({
+        runningType: form.getValues("runningType"),
+        relationShips: form.getValues("relationShips"),
+        macs: parseInt(form.getValues("macs") as unknown as string),
+        params: parseInt(form.getValues("params") as unknown as string),
+        batchSize: parseInt(form.getValues("batchSize") as unknown as string),
+        vocabularySize: form
+          .getValues("dim")
+          .map((item) => parseInt(item.vocabularySize as unknown as string)),
+        embeddingDim: form
+          .getValues("dim")
+          .map((item) => parseInt(item.embeddingDim as unknown as string)),
+      }),
+    onSuccess: (data) => {
+      setAnalyze(data.data.data);
+    },
   });
 
   // 2. Define a submit handler.
@@ -239,6 +332,109 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
             </FormItem>
           )}
         />
+        <div className="space-y-3">
+          {datasetsFields.length > 0 && (
+            <div>
+              {datasetsFields.map((field, index) => (
+                <FormField
+                  control={form.control}
+                  key={field.id}
+                  name={`datasets.${index}`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={cn(index !== 0 && "sr-only")}>
+                        数据集
+                      </FormLabel>
+                      <div className="flex flex-row space-x-2">
+                        <Popover modal={true}>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                  "w-full justify-between",
+                                  !field.value && "text-muted-foreground",
+                                )}
+                              >
+                                {field.value.name
+                                  ? datasetList.find(
+                                      (dataset) =>
+                                        dataset.value === field.value.name,
+                                    )?.label
+                                  : "选择数据集"}
+                                <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            className="p-0"
+                            style={{
+                              width: "var(--radix-popover-trigger-width)",
+                              maxHeight:
+                                "var(--radix-popover-content-available-height)",
+                            }}
+                          >
+                            <Command>
+                              <CommandInput
+                                placeholder="查找数据集"
+                                className="h-9"
+                              />
+                              <CommandEmpty>未找到匹配的数据集</CommandEmpty>
+                              <ScrollArea className="h-60">
+                                <CommandGroup>
+                                  {datasetList.map((dataset) => (
+                                    <CommandItem
+                                      value={dataset.label}
+                                      key={dataset.value}
+                                      onSelect={() => {
+                                        field.onChange({
+                                          ...field.value,
+                                          name: dataset.value,
+                                        });
+                                      }}
+                                    >
+                                      {dataset.label}
+                                      <CheckIcon
+                                        className={cn(
+                                          "ml-auto h-4 w-4",
+                                          dataset.value === field.value.name
+                                            ? "opacity-100"
+                                            : "opacity-0",
+                                        )}
+                                      />
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </ScrollArea>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <div>
+                          <Button
+                            size="icon"
+                            variant={"outline"}
+                            onClick={() => datasetsRemove(index)}
+                          >
+                            <Cross1Icon className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                      {index === dimFields.length - 1 && <FormMessage />}
+                    </FormItem>
+                  )}
+                />
+              ))}
+            </div>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => datasetsAppend({ name: "" })}
+          >
+            添加数据集
+          </Button>
+        </div>
         <div className="grid grid-cols-3 gap-3">
           <FormField
             control={form.control}
@@ -286,6 +482,7 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
             )}
           />
         </div>
+        {/* TODO: show message, see https://stackoverflow.com/questions/76786515/how-to-display-an-error-message-with-react-hook-form-in-a-usefieldarray */}
         <div className="space-y-3">
           {dimFields.length > 0 && (
             <div>
@@ -343,13 +540,88 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
               ))}
             </div>
           )}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => dimAppend({ embeddingDim: 0, vocabularySize: 0 })}
-          >
-            添加稀疏特征维度
-          </Button>
+          <div className="space-x-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => dimAppend({ embeddingDim: 0, vocabularySize: 0 })}
+            >
+              添加稀疏特征维度
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => analyzeTask()}
+            >
+              分析
+            </Button>
+          </div>
+          {analyze && (
+            <div className="grid grid-cols-2 gap-3">
+              <Card>
+                <CardHeader className="pb-3 pt-4">
+                  <CardTitle>P100 资源占用预测</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1.5">
+                  <ProgressBar
+                    width={analyze.p100.gpuUtilAvg}
+                    label={`gpuUtilAvg: ${analyze.p100.gpuUtilAvg.toFixed(2)}%`}
+                  />
+                  <ProgressBar
+                    width={(analyze.p100.gpuMemoryMaxGB / 16.0) * 100}
+                    label={`gpuMemoryMaxGB: ${analyze.p100.gpuMemoryMaxGB.toFixed(
+                      2,
+                    )}GB`}
+                  />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-3 pt-4">
+                  <CardTitle>V100 资源占用预测</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1.5">
+                  <ProgressBar
+                    width={analyze.v100.gpuUtilAvg}
+                    label={`gpuUtilAvg: ${analyze.v100.gpuUtilAvg.toFixed(2)}%`}
+                  />
+                  <ProgressBar
+                    width={(analyze.v100.gpuMemoryMaxGB / 32.0) * 100}
+                    label={`gpuMemoryMaxGB: ${analyze.v100.gpuMemoryMaxGB.toFixed(
+                      2,
+                    )}GB`}
+                  />
+                  {/* // smActiveAvg: number;
+                    // smOccupancyAvg: number;
+                    // fp32ActiveAvg: number;
+                    // dramActiveAvg: number; */}
+                  <ProgressBar
+                    width={analyze.v100.smActiveAvg}
+                    label={`smActiveAvg: ${analyze.v100.smActiveAvg.toFixed(
+                      2,
+                    )}%`}
+                  />
+                  <ProgressBar
+                    width={analyze.v100.smOccupancyAvg}
+                    label={`smOccupancyAvg: ${analyze.v100.smOccupancyAvg.toFixed(
+                      2,
+                    )}%`}
+                  />
+                  <ProgressBar
+                    width={analyze.v100.fp32ActiveAvg}
+                    label={`fp32ActiveAvg: ${analyze.v100.fp32ActiveAvg.toFixed(
+                      2,
+                    )}%`}
+                  />
+                  <ProgressBar
+                    width={analyze.v100.dramActiveAvg}
+                    label={`dramActiveAvg: ${analyze.v100.dramActiveAvg.toFixed(
+                      2,
+                    )}%`}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
         <FormField
           control={form.control}
