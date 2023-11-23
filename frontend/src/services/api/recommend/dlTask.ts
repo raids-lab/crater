@@ -79,9 +79,7 @@ export interface IDlTaskCreate {
   name: string;
   replicas: number;
   runningType: string;
-  datasets: {
-    name: string;
-  }[];
+  datasets: string[];
   relationShips: unknown[];
   macs: number;
   params: number;
@@ -405,7 +403,7 @@ export const apiDlTaskPods = (name: string) =>
 //       "dramActiveAvg": 62.314323
 //   }
 // },
-interface IDlAnalyze {
+export interface IDlAnalyze {
   p100: {
     gpuUtilAvg: number;
     gpuMemoryMaxGB: number;
