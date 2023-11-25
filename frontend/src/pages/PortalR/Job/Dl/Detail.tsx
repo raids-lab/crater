@@ -245,7 +245,7 @@ const DlJobDetail: FC = () => {
   }
 
   return (
-    <div className="space-y-4 px-6 py-4">
+    <div className="space-y-4">
       <DataTable data={data} columns={columns} toolbarConfig={toolbarConfig} />
       <Card className="w-full pt-6">
         <CardContent>

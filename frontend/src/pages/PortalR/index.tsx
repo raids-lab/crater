@@ -112,7 +112,9 @@ const Layout = () => {
         <ScrollArea className="h-screen w-full overflow-y-hidden">
           <div className="grid w-full grid-rows-header">
             <Navibar />
-            <Outlet />
+            <div className="px-6 py-6">
+              <Outlet />
+            </div>
           </div>
         </ScrollArea>
       </div>

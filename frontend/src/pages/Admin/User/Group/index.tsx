@@ -2,7 +2,7 @@ import type { FC } from "react";
 
 export const GroupUser: FC = () => {
   return (
-    <div className="space-y-1 px-6 py-6 text-base">
+    <div className="space-y-1 text-base">
       <p>1. 创建账户</p>
       <p>2. 编辑账户信息</p>
       <p>3. 删除账户</p>

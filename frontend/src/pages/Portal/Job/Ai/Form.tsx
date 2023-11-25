@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -30,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { Cross1Icon } from "@radix-ui/react-icons";
 import { logger } from "@/utils/loglevel";
 import { getAiKResource } from "@/utils/resource";
+import { Textarea } from "@/components/ui/textarea";
 
 const formSchema = z.object({
   taskname: z
@@ -131,15 +131,6 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
       args: [{ key: "", value: "" }],
       priority: undefined,
     },
-  });
-
-  const {
-    fields: argsFields,
-    append: argsAppend,
-    remove: argsRemove,
-  } = useFieldArray<FormSchema>({
-    name: "args",
-    control: form.control,
   });
 
   const {
@@ -263,7 +254,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
             </FormItem>
           )}
         />
-        <div className="space-y-3">
+        <div className="space-y-2">
           {shareDirsFields.length > 0 && (
             <div>
               {shareDirsFields.map((field, index) => (
@@ -334,77 +325,12 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                 执行命令<span className="ml-1 text-red-500">*</span>
               </FormLabel>
               <FormControl>
-                <Input {...field} className="font-mono" />
+                <Textarea {...field} className="font-mono" />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <div className="space-y-3">
-          {argsFields.length > 0 && (
-            <div>
-              {argsFields.map((field, index) => (
-                <FormField
-                  control={form.control}
-                  key={field.id}
-                  name={`args.${index}`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={cn(index !== 0 && "sr-only")}>
-                        命令参数
-                      </FormLabel>
-                      <FormDescription className={cn(index !== 0 && "sr-only")}>
-                        请在左侧输入 Key，右侧输入 Value
-                      </FormDescription>
-                      <FormControl>
-                        <div className="flex flex-row space-x-2">
-                          <Input
-                            id={`input.args.${index}.key`}
-                            className="font-mono"
-                            value={field.value.key}
-                            onChange={(event) =>
-                              field.onChange({
-                                ...field.value,
-                                key: event.target.value,
-                              })
-                            }
-                          />
-                          <Input
-                            id={`input.args.${index}.value`}
-                            className="font-mono"
-                            value={field.value.value}
-                            onChange={(event) =>
-                              field.onChange({
-                                ...field.value,
-                                value: event.target.value,
-                              })
-                            }
-                          />
-                          <div>
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              onClick={() => argsRemove(index)}
-                            >
-                              <Cross1Icon className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              ))}
-            </div>
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => argsAppend({ key: "", value: "" })}
-          >
-            添加命令参数
-          </Button>
-        </div>
         <FormField
           control={form.control}
           name="priority"

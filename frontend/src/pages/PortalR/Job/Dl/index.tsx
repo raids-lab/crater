@@ -298,7 +298,7 @@ const AiJobHome = () => {
   }, [taskList, isLoading]);
 
   return (
-    <div className="space-y-4 px-6 py-4">
+    <div className="space-y-4">
       <DataTable data={data} columns={columns} toolbarConfig={toolbarConfig}>
         <Sheet open={openSheet} onOpenChange={setOpenSheet}>
           <SheetTrigger asChild>
