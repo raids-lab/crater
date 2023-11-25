@@ -58,6 +58,7 @@ type TaskInfo = {
   title: string;
   status: string;
   priority: string;
+  profileStatus: string;
   createdAt: string;
 };
 
@@ -66,9 +67,11 @@ const getHeader = (key: string): string => {
     case "title":
       return "任务名称";
     case "status":
-      return "状态";
+      return "任务状态";
     case "priority":
       return "优先级";
+    case "profileStatus":
+      return "分析状态";
     case "createdAt":
       return "创建时间";
     default:
@@ -98,7 +101,7 @@ const statuses = [
   {
     value: "Pending",
     label: "Pending",
-    icon: StopwatchIcon,
+    icon: ClockIcon,
   },
   {
     value: "Running",
@@ -122,6 +125,40 @@ const statuses = [
   },
 ];
 
+// Profilingstatus
+// UnProfiled = 0 // 未分析
+// ProfileQueued = 1 // 等待分析
+// Profiling = 2 // 正在进行分析
+// ProfileFinish = 3 // 分析完成
+// ProfileFailed = 4 // 分析失败
+const profilingStatuses = [
+  {
+    value: "0",
+    label: "未分析",
+    icon: ClockIcon,
+  },
+  {
+    value: "1",
+    label: "等待分析",
+    icon: ClockIcon,
+  },
+  {
+    value: "2",
+    label: "分析中",
+    icon: StopwatchIcon,
+  },
+  {
+    value: "3",
+    label: "分析完成",
+    icon: CheckCircledIcon,
+  },
+  {
+    value: "4",
+    label: "分析失败",
+    icon: CrossCircledIcon,
+  },
+];
+
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
     placeholder: "搜索任务名称",
@@ -130,13 +167,18 @@ const toolbarConfig: DataTableToolbarConfig = {
   filterOptions: [
     {
       key: "status",
-      title: "状态",
+      title: "任务状态",
       option: statuses,
     },
     {
       key: "priority",
       title: "优先级",
       option: priorities,
+    },
+    {
+      key: "profileStatus",
+      title: "分析状态",
+      option: profilingStatuses,
     },
   ],
   getHeader: getHeader,
@@ -269,6 +311,34 @@ const AiJobHome = () => {
         },
       },
       {
+        accessorKey: "profileStatus",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("profileStatus")}
+          />
+        ),
+        cell: ({ row }) => {
+          const profiling = profilingStatuses.find(
+            (profiling) => profiling.value === row.getValue("profileStatus"),
+          );
+          if (!profiling) {
+            return null;
+          }
+          return (
+            <div className="flex items-center">
+              {profiling.icon && (
+                <profiling.icon className="mr-2 h-4 w-4 text-muted-foreground" />
+              )}
+              <span>{profiling.label}</span>
+            </div>
+          );
+        },
+        filterFn: (row, id, value) => {
+          return (value as string[]).includes(row.getValue(id));
+        },
+      },
+      {
         accessorKey: "createdAt",
         header: ({ column }) => (
           <DataTableColumnHeader
@@ -345,13 +415,14 @@ const AiJobHome = () => {
       title: task.taskName,
       status: task.status,
       priority: task.slo ? "high" : "low",
+      profileStatus: task.profileStatus.toString(),
       createdAt: task.createdAt,
     }));
     setData(tableData);
   }, [taskList, isLoading]);
 
   return (
-    <div className="space-y-4 px-6 py-4">
+    <div className="space-y-4">
       <DataTable data={data} columns={columns} toolbarConfig={toolbarConfig}>
         <Sheet open={openSheet} onOpenChange={setOpenSheet}>
           <SheetTrigger asChild>

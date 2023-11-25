@@ -141,7 +141,7 @@ export const Component: FC = () => {
   }, [datasetInfo.data]);
 
   return (
-    <div className="space-y-1 px-6 py-6 text-xl">
+    <div className="space-y-1 text-xl">
       <DataTable data={data} columns={columns} toolbarConfig={toolbarConfig} />
     </div>
   );

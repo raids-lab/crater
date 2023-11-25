@@ -48,28 +48,7 @@ import {
 } from "@/components/ui/command";
 import { apiDlDatasetList } from "@/services/api/recommend/dataset";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-const ProgressBar = ({ width, label }: { width: number; label: string }) => {
-  // dramActiveAvg: 19.41%, split by :
-  const [first, second] = label.split(":");
-  return (
-    <div className="relative h-4 rounded bg-gray-200 dark:bg-slate-700">
-      <div
-        className={cn("h-4 rounded", {
-          "bg-green-400 dark:bg-green-700": width <= 30,
-          "bg-yellow-400 dark:bg-yellow-700": width > 30 && width <= 60,
-          "bg-orange-400 dark:bg-orange-700": width > 60 && width <= 80,
-          "bg-red-400 dark:bg-red-700": width > 80,
-        })}
-        style={{ width: `${width}%` }}
-      ></div>
-      <div className="absolute inset-0 grid grid-cols-5 gap-1 text-xs font-medium text-foreground">
-        <div className="col-span-3 text-right">{first}:</div>
-        <div className="col-span-2">{second}</div>
-      </div>
-    </div>
-  );
-};
+import { ProgressBar } from "@/components/ProgressBar";
 
 // {
 //   "name": "test-recommenddljob", // 任务名称，必填
@@ -332,7 +311,7 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
             </FormItem>
           )}
         />
-        <div className="space-y-3">
+        <div className="space-y-2">
           {datasetsFields.length > 0 && (
             <div>
               {datasetsFields.map((field, index) => (
@@ -483,7 +462,7 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
           />
         </div>
         {/* TODO: show message, see https://stackoverflow.com/questions/76786515/how-to-display-an-error-message-with-react-hook-form-in-a-usefieldarray */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           {dimFields.length > 0 && (
             <div>
               {dimFields.map((field, index) => (
@@ -540,7 +519,7 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
               ))}
             </div>
           )}
-          <div className="space-x-3">
+          <div className="space-x-2">
             <Button
               type="button"
               variant="outline"
@@ -557,7 +536,7 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
             </Button>
           </div>
           {analyze && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               <Card>
                 <CardHeader className="pb-3 pt-4">
                   <CardTitle>P100 资源占用预测</CardTitle>

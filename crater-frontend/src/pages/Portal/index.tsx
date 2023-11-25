@@ -128,7 +128,9 @@ const Layout = () => {
         <ScrollArea className="h-screen w-full">
           <div className="grid w-full grid-rows-header">
             <Navibar />
-            <Outlet />
+            <div className="px-6 py-6">
+              <Outlet />
+            </div>
           </div>
         </ScrollArea>
       </div>
@@ -181,7 +183,7 @@ export const portalRoute: RouteObject = {
   children: [
     {
       index: true,
-      element: <Navigate to="overview" replace />,
+      element: <Navigate to="job/ai" replace />,
     },
     ...sidebarItems.map((item) => {
       return (
