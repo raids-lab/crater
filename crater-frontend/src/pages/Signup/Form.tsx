@@ -14,7 +14,7 @@ import { useSetRecoilState } from "recoil";
 import { globalUserInfo } from "@/utils/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUserSignup } from "@/services/api/auth";
-import LoadableButton from "@/components/custom/loadable-button";
+import LoadableButton from "@/components/custom/LoadableButton";
 
 const formSchema = z
   .object({

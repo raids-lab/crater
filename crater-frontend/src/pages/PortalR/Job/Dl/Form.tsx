@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/command";
 import { apiDlDatasetList } from "@/services/api/recommend/dataset";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ProgressBar } from "@/components/ProgressBar";
+import { ProgressBar } from "@/components/custom/ProgressBar";
 
 // {
 //   "name": "test-recommenddljob", // 任务名称，必填

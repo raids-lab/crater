@@ -1,11 +1,11 @@
-import { Sidebar, SidebarItem, SidebarMenu } from "@/components/Sidebar";
+import { Sidebar, SidebarItem, SidebarMenu } from "@/components/layout/Sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { FC, PropsWithChildren, Suspense, useState } from "react";
 import { Navigate, Outlet, RouteObject } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import Navibar from "@/components/Navibar";
+import Navibar from "@/components/layout/Navibar";
 import {
   BarChartIcon,
   FileTextIcon,

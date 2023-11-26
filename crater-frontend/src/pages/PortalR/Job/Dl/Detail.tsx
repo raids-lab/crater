@@ -1,7 +1,7 @@
-import { DataTable } from "@/components/DataTable";
-import { DataTableColumnHeader } from "@/components/DataTable/DataTableColumnHeader";
-import { DataTableToolbarConfig } from "@/components/DataTable/DataTableToolbar";
-import { Card, CardContent } from "@/components/ui/card";
+import { DataTable } from "@/components/custom/DataTable";
+import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
+import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { apiDlTaskInfo, apiDlTaskPods } from "@/services/api/recommend/dlTask";
 import { globalBreadCrumb } from "@/utils/store";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { SmallDataCard } from "@/components/custom/DataCard";
 
 type PodInfo = {
   id: string;
@@ -157,7 +158,15 @@ const DlJobDetail: FC = () => {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("name")} />
         ),
-        cell: ({ row }) => <div>{row.getValue("name")}</div>,
+        cell: ({ row }) => (
+          <Button
+            onClick={() => navigate(`${row.original.name}`)}
+            variant={"link"}
+            className="h-8 px-0 font-normal text-secondary-foreground"
+          >
+            {row.getValue("name")}
+          </Button>
+        ),
       },
       {
         accessorKey: "status",
@@ -245,10 +254,44 @@ const DlJobDetail: FC = () => {
   }
 
   return (
-    <div className="space-y-4">
-      <DataTable data={data} columns={columns} toolbarConfig={toolbarConfig} />
-      <Card className="w-full pt-6">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      {taskInfo.data && (
+        <>
+          <h2 className="col-span-full text-xl font-bold">基本信息</h2>
+          <SmallDataCard
+            title="macs"
+            value={`${taskInfo.data?.spec.macs}`}
+            description="模型乘加运算数"
+          />
+          <SmallDataCard
+            title="Params"
+            value={`${taskInfo.data?.spec.params}`}
+            description="模型参数量"
+          />
+          <SmallDataCard
+            title="Batch Size"
+            value={`${taskInfo.data?.spec.batchSize}`}
+            description="模型批次大小"
+          />
+          <SmallDataCard
+            title="replicas"
+            value={`${taskInfo.data?.spec.replicas}`}
+            description="副本数"
+          />
+        </>
+      )}
+      <h2 className="col-span-full pt-2 text-xl font-bold">Pod 列表</h2>
+      <div className="col-span-full">
+        <DataTable
+          data={data}
+          columns={columns}
+          toolbarConfig={toolbarConfig}
+        />
+      </div>
+      <h2 className="col-span-full pt-2 text-xl font-bold">任务数据</h2>
+      <Card className="col-span-full">
         <CardContent>
+          <CardHeader className="p-3" />
           <pre className="whitespace-pre-wrap text-xs">
             {JSON.stringify(taskInfo, null, 2)}
           </pre>

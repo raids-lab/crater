@@ -16,7 +16,7 @@ import { globalLastView, globalUserInfo } from "@/utils/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUserLogin } from "@/services/api/auth";
 import { useToast } from "@/components/ui/use-toast";
-import LoadableButton from "@/components/custom/loadable-button";
+import LoadableButton from "@/components/custom/LoadableButton";
 
 const formSchema = z.object({
   username: z
@@ -65,8 +65,8 @@ export function ProfileForm() {
         lastView === "admin" && role === "admin"
           ? "/admin"
           : lastView === "recommend"
-          ? "/recommend"
-          : "/portal";
+            ? "/recommend"
+            : "/portal";
       navigate(dashboard, { replace: true });
     },
   });

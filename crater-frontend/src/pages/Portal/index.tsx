@@ -1,4 +1,4 @@
-import { Sidebar, SidebarItem, SidebarMenu } from "@/components/Sidebar";
+import { Sidebar, SidebarItem, SidebarMenu } from "@/components/layout/Sidebar";
 import DatabaseIcon from "@/components/icon/DatabaseIcon";
 import OverviewIcon from "@/components/icon/OverviewIcon";
 import CodeOneIcon from "@/components/icon/CodeOneIcon";
@@ -11,7 +11,7 @@ import { FileTextIcon, Pencil2Icon } from "@radix-ui/react-icons";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import Navibar from "@/components/Navibar";
+import Navibar from "@/components/layout/Navibar";
 
 const sidebarItems: SidebarItem[] = [
   {
