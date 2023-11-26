@@ -8,12 +8,15 @@ import (
 type DBService interface {
 	Create(task *models.AITask) error
 	Update(task *models.AITask) error
-	UpdateStatus(taskID uint, status string) error
+	UpdateStatus(taskID uint, status string, reason string) error
 	DeleteByID(taskID uint) error
 	DeleteByUserAndID(userName string, taskID uint) error
-	ListByUserAndStatus(userName string, status string) ([]models.AITask, error)
+	ForceDeleteByUserAndID(userName string, taskID uint) error
+
+	ListByUserAndStatuses(userName string, status []string) ([]models.AITask, error)
 	GetByID(taskID uint) (*models.AITask, error)
 	GetByUserAndID(userName string, taskID uint) (*models.AITask, error)
+	UpdateProfilingStat(taskID uint, profileStatus uint, stat string, status string) error
 }
 
 type service struct{}
@@ -30,8 +33,11 @@ func (s *service) Update(task *models.AITask) error {
 	return db.Orm.Save(task).Error
 }
 
-func (s *service) UpdateStatus(taskID uint, status string) error {
-	err := db.Orm.Model(&models.AITask{}).Where("id = ?", taskID).Update("status", status).Error
+func (s *service) UpdateStatus(taskID uint, status string, reason string) error {
+	updateMap := make(map[string]interface{})
+	updateMap["status"] = status
+	updateMap["status_reason"] = reason
+	err := db.Orm.Model(&models.AITask{}).Where("id = ?", taskID).Updates(updateMap).Error
 	return err
 }
 
@@ -41,17 +47,22 @@ func (s *service) DeleteByUserAndID(userName string, taskID uint) error {
 	// return db.Orm.Delete(&models.AITask{}, taskID).Error
 }
 
+func (s *service) ForceDeleteByUserAndID(userName string, taskID uint) error {
+	err := db.Orm.Where("username = ? and id = ?", userName, taskID).Delete(&models.AITask{}).Error
+	return err
+}
+
 func (s *service) DeleteByID(taskID uint) error {
 	return db.Orm.Delete(&models.AITask{}, taskID).Error
 }
 
-func (s *service) ListByUserAndStatus(userName string, status string) ([]models.AITask, error) {
+func (s *service) ListByUserAndStatuses(userName string, statuses []string) ([]models.AITask, error) {
 	var tasks []models.AITask
 	var err error
-	if status == "" {
-		err = db.Orm.Where("username = ? and is_deleted = ?", userName, false).Find(&tasks).Error
+	if statuses == nil || len(statuses) == 0 {
+		err = db.Orm.Where("username = ? ", userName, false).Find(&tasks).Error
 	} else {
-		err = db.Orm.Where("username = ? and status = ? and is_deleted = ?", userName, status, false).Find(&tasks).Error
+		err = db.Orm.Where("username = ? and status IN ? and is_deleted = ?", userName, statuses, false).Find(&tasks).Error
 
 	}
 	return tasks, err
@@ -67,4 +78,17 @@ func (s *service) GetByUserAndID(userName string, taskID uint) (*models.AITask, 
 	var task models.AITask
 	err := db.Orm.Where("username = ? and id = ?", userName, taskID).First(&task).Error
 	return &task, err
+}
+
+func (s *service) UpdateProfilingStat(taskID uint, profileStatus uint, stat string, status string) error {
+	updateMap := make(map[string]interface{})
+	updateMap["profile_status"] = profileStatus
+	if profileStatus == models.ProfileFinish {
+		updateMap["profile_stat"] = stat
+		if status != "" {
+			updateMap["status"] = status
+		}
+	}
+	err := db.Orm.Model(&models.AITask{}).Where("id = ?", taskID).Updates(updateMap).Error
+	return err
 }

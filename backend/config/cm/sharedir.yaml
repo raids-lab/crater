@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: share-dir
+  namespace: ai-portal
+data:
+  conf.yaml: |- 
+    shareDirs:
+    - pvc: dnn-train-data
+      namespace: user-wjh
+    - pvc: jupyterhub-shared-volume
+      namespace: jupyter
