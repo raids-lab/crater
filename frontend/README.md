@@ -1,61 +1,75 @@
 # GPU Portal Frontend
 
 [![Pipeline Status](https://gitlab.act.buaa.edu.cn/gpu-portal/gpu-portal-frontend/badges/main/pipeline.svg)](https://gitlab.act.buaa.edu.cn/gpu-portal/gpu-portal-frontend/-/commits/main)
-[![Release Version](https://img.shields.io/badge/Release-0.0.0-blue)](http://192.168.5.60:8888/)
+[![Release Version](https://img.shields.io/badge/Release-0.0.0-blue)](http://192.168.5.60:32088/)
 [![Develop Version](https://img.shields.io/badge/Develop-0.0.0-orange)](http://192.168.5.60:8888/)
 
 > [GPU 集群管理与作业调度 Portal 设计和任务分解](https://docs.qq.com/doc/DWENFVWpzSW16TGFV)
 
-Portal of GPU Cluster Management and Job Scheduling based on K8S.
+## 1. 安装
 
-## Installation
+在开始之前，请确保您的开发环境中已安装 Node.js 和 pnpm。如果尚未安装，请参考以下步骤：
 
-This project uses node and pnpm. Go check them out if you don't have them locally installed.
-
-- Install Node.js: [Win / Mac](https://nodejs.org/en/download) | [Linux](https://github.com/nodesource/distributions/blob/master/README.md#installation-instructions)
+- Node.js: [Win / Mac](https://nodejs.org/en/download) | [Linux](https://github.com/nodesource/distributions/blob/master/README.md#installation-instructions)
 - Pnpm: `npm install -g pnpm@latest`
 
-Check the version of Node and Pnpm:
+检查 Node 和 pnpm 是否安装成功：
 
 ```bash
 node -v
 # v20.8.1
+
 pnpm -v
 # 8.9.2
 ```
 
-Now you can clone this project, and run locally:
+现在，您可以克隆本项目并在本地运行：
 
 ```bash
 git clone git@gitlab.act.buaa.edu.cn:act-k8s-portal-system/gpu-portal-frontend.git
 cd gpu-portal-frontend
+
+# 安装依赖
 pnpm install
+
+# 启动开发服务器
 pnpm dev
 ```
 
-The app will automatically reload if you change any of the source files.
+## 2. 开发
 
-## Development
+如果您使用 _Visual Studio Code_ 开发本项目，可参考 [Profiles in Visual Studio Code](https://code.visualstudio.com/docs/editor/profiles#_import)，导入 `.vscode/React.code-profile` 路径下的配置文件。配置文件中包含项目所需的基本插件和配置，导入后即可直接开发。
 
-If you are using _Visual Studio Code_, follow the [Profiles in Visual Studio Code](https://code.visualstudio.com/docs/editor/profiles#_import) documentation to import and configure the `.vscode/React.code-profile` file. If you are using any other IDE, you will need to manually install the required plugins.
+如果您使用其他 IDE，则需要手动配置开发环境。
 
-Understanding the following frameworks will help you in developing this project more effectively:
+本项目使用的主要技术栈如下：
 
+- Language: [TypeScript](https://www.typescriptlang.org/docs)
 - Frontend Framework: [React](https://react.dev/learn)
   - State Management: [Recoil](https://recoiljs.org/zh-hans/)
   - Query Management: [Tanstack Query](https://tanstack.com/query/latest)
 - CSS Framework: [Tailwind CSS](https://tailwindcss.com/docs/guides/vite)
 
-This project utilizes the following UI libraries. You can refer to their documentation for more information:
+本项目使用了以下 UI 库，您可以阅读其文档了解更多信息：
 
 - [shadcn/ui](https://ui.shadcn.com/examples/dashboard): The primary headless component library used in the project.
   - [Oxidus](https://oxidus.vercel.app/): Theme Color Generator for _shadcn/ui_.
 - [Flowbite](https://flowbite.com/docs/getting-started/react/): When you need to _borrow_ some Tailwind CSS code.
 - [Tanstack Table](https://tanstack.com/table/v8): Headless table component used in the project.
 
-## Deployment
+为了规范代码风格与提交风格，本项目使用了以下工具：
 
-To deploy the application, you can use Docker with Nginx. The Nginx configuration template can be found at `deploy/frontend/nginx.conf`. Use the following command as a reference:
+- [ESLint](https://eslint.org/docs/user-guide/getting-started): Linting tool for JavaScript and TypeScript.
+- [Prettier](https://prettier.io/docs/en/index.html): Code formatter.
+- [Commitlint](https://commitlint.js.org/#/): Linting tool for commit messages.
+- [Commitizen](https://github.com/commitizen/cz-cli): The commitizen command line utility.
+- [Husky](https://typicode.github.io/husky/#/): Git hooks.
+
+## 3. 部署
+
+### 3.1 使用 Docker 部署
+
+为快速部署本项目，您可以使用基于 Docker 的 Nginx 托管。Nginx 配置模板位于 `deploy/nginx.conf`。参考以下命令：
 
 ```bash
 pnpm build  # output /dist
@@ -66,32 +80,38 @@ docker run -d -p 8888:80 \
 nginx
 ```
 
-This command launches a Docker container with Nginx and maps the container's port 80 to the host's port 8888. It also mounts the Nginx configuration file `nginx.conf` and the application's build files located in the dist directory.
+此命令启动一个带有 Nginx 的 Docker 容器，并将容器的端口 80 映射到主机的端口 8888。它还挂载了 Nginx 配置文件 nginx.conf 和位于 dist 目录中的应用程序构建文件，以便通过 `docker restart` 命令快速更新。
 
-Make sure to replace the paths `/home/lyl/workspace/nginx.conf` and `/home/lyl/workspace/dist` with the actual paths on your system where the Nginx configuration file and the application's build files are located.
+确保将路径 `/home/lyl/workspace/nginx.conf` 和 `/home/lyl/workspace/dist`dist 替换为您的系统上实际的 Nginx 配置文件和应用程序构建文件所在的路径。
 
-Once the Docker container is running, you should be able to access the deployed application by navigating to http://192.168.5.60:8888 in your web browser.
+一旦 Docker 容器运行，您应该能够通过在 web 浏览器中访问 `[host_ip]:8888` ，以查看部署的应用程序。
 
-## What's included
+### 3.2 使用 Kubernetes 部署
 
-Within the download you'll see something like this:
+相关配置文件位于 `deploy/` 目录下。待补充。
+
+## 4. 项目结构
 
 ```bash
 gpu-portal-frontend
-├── public/          # static files
+├── public/          # 静态文件
 │
-├── src/             # project root
-│   ├── assets/      # images, icons, etc.
-│   ├── compoments/  # common components
-│   ├── hooks/       # react hooks
-│   ├── lib/         # shadcn's lib
-│   ├── pages/       # application pages
-│   ├── services/    # application apis
-│   ├── utils/       # logger, store, etc.
+├── src/             # 项目根目录
+│   ├── assets/      # 图片、图标等
+│   ├── compoments/  # 通用组件
+│   ├── hooks/       # 通用 Hook
+│   ├── lib/         # 通用 Library
+│   ├── pages/       # 页面
+│   ├── services/    # 后端 API
+│   ├── utils/       # 日志记录器、存储等
 │   ├── ...
-│   ├── index.css    # tailwind styles
-│   └── main.tsx     # app router
+│   ├── index.css    # Tailwind 根样式
+│   └── main.tsx     # 应用程序入口
 ├── ...
-├── index.html       # html template
-└── package.json     # dependencies
+├── index.html       # HTML 模板
+└── package.json     # 依赖
 ```
+
+## 5. 未解决的问题
+
+1. 在深色模式下，使用浏览器的自动填充功能时，INPUT 背景变为白色。相关讨论请参见 [Tailwind autofill: prefix on form inputs not working](https://github.com/tailwindlabs/tailwindcss/discussions/8679)。
