@@ -25,14 +25,19 @@ go mod tidy && go build -o bin/controller main.go
 
 ## 开发与部署规范
 
-### 开发
+### 开发与自测
 
 1. 从main中checkout出分支单独开发
 2. 完成开发后可以先用postman自测
-	- 使用`debug.sh`启动后端，默认端口8078，如遇端口冲突请自行修改端口
+	- 在***REMOVED***，使用`debug.sh`启动后端，默认端口8099，如遇端口冲突请自行修改端口
 	- 可以在header中添加`X-Debug-Username`指定用户名绕过登录认证，直接测试接口
 3. 自测完成后，若需要与前端联调，则告知前端端口并进行联调
 4. 测试完成后合入主分支，gitlab上提mr，发群里，有群友ap后合入即可
+
+### 联调
+
+1. 合入main分支后，在***REMOVED***运行`docker restart ai-portal-backend`，会启动main分支版本，暴露8078端口
+2. 通知前端联调前端功能
 
 ### 部署
 

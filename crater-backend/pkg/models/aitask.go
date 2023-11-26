@@ -48,7 +48,7 @@ type AITask struct {
 	ID              uint       `gorm:"primaryKey" json:"id"`
 	TaskName        string     `gorm:"column:task_name;type:varchar(128);not null" json:"taskName"`
 	UserName        string     `gorm:"column:username;type:varchar(128);not null" json:"userName"`
-	Namespace       string     `gorm:"column:namespace;type:varchar(128);not null" json:"namespace"`
+	Namespace       string     `gorm:"column:namespace;type:varchar(128);not null" json:"nameSpace"`
 	TaskType        string     `gorm:"column:task_type;type:varchar(128);not null" json:"taskType"`
 	CreatedAt       time.Time  `gorm:"column:created_at;not null" json:"createdAt"`
 	UpdatedAt       time.Time  `gorm:"column:updated_at;not null" json:"updatedAt"`

@@ -3,7 +3,6 @@ package payload
 import (
 	"fmt"
 
-	recommenddljobapi "github.com/aisystem/ai-protal/pkg/apis/recommenddljob/v1"
 	"github.com/aisystem/ai-protal/pkg/models"
 	v1 "k8s.io/api/core/v1"
 )
@@ -57,14 +56,23 @@ type CreateUserRequest struct {
 	//Id       int    `json:"_id"`
 	Name     string `json:"userName" binding:"required"`
 	Role     string `json:"role" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Password string `json:"passWord" binding:"required"`
 }
 
 // RecommendDLJob Request
 
 type CreateRecommendDLJobReq struct {
 	Name string `json:"name" binding:"required"`
-	recommenddljobapi.RecommendDLJobSpec
+	RecommendDLJobSpec
+}
+
+type AnalyzeRecommendDLJobReq struct {
+	RecommendDLJobSpec
+}
+
+type DataRelationShipReq struct {
+	Type    string `json:"type"` // input, output, bothyway
+	JobName string `json:"jobName"`
 }
 
 func (r *CreateRecommendDLJobReq) PreCheck() error {
