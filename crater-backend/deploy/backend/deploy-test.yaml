@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-portal-backend-test
+  namespace: ai-portal
+  labels:
+    app: ai-portal-backend-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-portal-backend-test
+  template:
+    metadata:
+      labels:
+        app: ai-portal-backend-test
+    spec:
+      containers:
+        - name: ai-portal-backend
+          image: container:v1
+          imagePullPolicy: IfNotPresent
+          command:
+            - /controller
+            # - --db-config-file=/dbconf.yaml
+            - --config-file=/etc/config/config.yaml
+            - --share-dir-file=/etc/config/share-dir.yaml
+            - --server-port=:8088
+            - --metrics-bind-address=:8080
+            - --health-probe-bind-address=:8081
+          volumeMounts:
+            - name: backend-conf
+              mountPath: /etc/config
+            - name: share-dir-conf
+              mountPath: /etc/config
+      serviceAccountName: ai-portal-backend
+      volumes:
+        - name: backend-conf
+          configMap:
+            name: backend-config
+            items:
+              - key: config.yaml
+                path: config.yaml
+        - name: share-dir-conf
+          configMap:
+            name: share-dir
+            items:
+              - key: share-dir.yaml
+                path: share-dir.yaml

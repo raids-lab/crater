@@ -33,7 +33,10 @@ import (
 	"github.com/aisystem/ai-protal/pkg/aitaskctl"
 	aisystemv1alpha1 "github.com/aisystem/ai-protal/pkg/apis/aijob/v1alpha1"
 	recommenddljob "github.com/aisystem/ai-protal/pkg/apis/recommenddljob/v1"
+	"github.com/aisystem/ai-protal/pkg/config"
 	db "github.com/aisystem/ai-protal/pkg/db/orm"
+	"github.com/aisystem/ai-protal/pkg/monitor"
+	"github.com/aisystem/ai-protal/pkg/profiler"
 	"github.com/aisystem/ai-protal/pkg/reconciler"
 	"github.com/aisystem/ai-protal/pkg/server"
 	"github.com/aisystem/ai-protal/pkg/util"
@@ -64,6 +67,9 @@ func main() {
 	var controllerThreads int
 	var serverPort string
 	var dbConfigFile string
+	var enableProfiling bool
+	var configFile string
+	var shareDirFile string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -77,6 +83,9 @@ func main() {
 	flag.IntVar(&controllerThreads, "controller-threads", 1, "Number of worker threads used by the controller.")
 	flag.StringVar(&serverPort, "server-port", ":8088", "The address the server endpoint binds to.")
 	flag.StringVar(&dbConfigFile, "db-config-file", "", "The db config file path.")
+	flag.StringVar(&configFile, "config-file", "", "server config file")
+	flag.StringVar(&shareDirFile, "share-dir-file", "", "share dir config file")
+	flag.BoolVar(&enableProfiling, "enable-profiling", false, "Enable profiling.")
 	opts := zap.Options{
 		Development:     true,
 		StacktraceLevel: zapcore.DPanicLevel,
@@ -85,6 +94,11 @@ func main() {
 	flag.Parse()
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	config, err := config.NewConfig(configFile)
+	if err != nil {
+		setupLog.Error(err, "unable to init config")
+		os.Exit(1)
+	}
 	// 0. create manager
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -101,7 +115,7 @@ func main() {
 	}
 
 	// 1. init db
-	if err := db.InitDB(dbConfigFile); err != nil {
+	if err := db.InitDB(*config); err != nil {
 		setupLog.Error(err, "unable to init db")
 		os.Exit(1)
 	}
@@ -117,13 +131,13 @@ func main() {
 	taskCtrl := aitaskctl.NewTaskController(
 		mgr.GetClient(),
 		jobStatusChan,
-		// taskUpdateChan,
 	)
 	if err := taskCtrl.Init(); err != nil {
 		setupLog.Error(err, "unable to set up task controller")
 		os.Exit(1)
 	}
 	setupLog.Info("task controller init success")
+
 	// 3. init job controller
 	jobReconciler := reconciler.NewAIJobReconciler(
 		mgr.GetClient(),
@@ -142,6 +156,19 @@ func main() {
 			os.Exit(1)
 		}
 	}()
+
+	mgr.GetCache().WaitForCacheSync(stopCh)
+	setupLog.Info("cache sync success")
+
+	// profiler config
+	if config.EnableProfiling {
+		prometheusClient := monitor.NewPrometheusClient(config.PrometheusAPI)
+		profiler := profiler.NewProfiler(mgr, prometheusClient, config.ProfilingTimeout)
+		taskCtrl.SetProfiler(profiler)
+		// todo: start profiling
+		profiler.Start(stopCh)
+		setupLog.Info("enable profiling success")
+	}
 
 	taskCtrl.Start(stopCh)
 

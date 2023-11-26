@@ -103,6 +103,18 @@ func (h *data) pop() interface{} {
 	return item.obj
 }
 
+// Pop is supposed to be called by heap.Pop only.
+func (h *data) top() interface{} {
+	key := h.keys[len(h.keys)-1]
+	h.keys = h.keys[:len(h.keys)-1]
+	item, ok := h.items[key]
+	if !ok {
+		// This is an error
+		return nil
+	}
+	return item.obj
+}
+
 func (h *data) delete(key string) interface{} {
 	item, ok := h.items[key]
 	if !ok {
@@ -163,6 +175,11 @@ func (q *Queue) Delete(obj interface{}) interface{} {
 // Pop returns the head of the heap and removes it.
 func (q *Queue) Pop() interface{} {
 	return q.pop()
+}
+
+// 
+func (q *Queue) Top() interface{} {
+	return q.top()
 }
 
 // Get returns the requested item, exists, error.

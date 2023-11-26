@@ -15,37 +15,39 @@ type QuotaInfo struct {
 	Soft      v1.ResourceList
 	HardUsed  v1.ResourceList
 	SoftUsed  v1.ResourceList
-	UsedTasks map[string]*models.TaskAttr
+	UsedTasks map[string]*models.AITask
 }
 
 // AddTask adds Running Job Quota
-func (info *QuotaInfo) AddTask(task *models.TaskAttr) {
+func (info *QuotaInfo) AddTask(task *models.AITask) {
 	info.Lock()
 	defer info.Unlock()
 	key := keyFunc(task)
 	// 没有找到task的时候才添加quota
 	if _, ok := info.UsedTasks[key]; !ok {
 		info.UsedTasks[key] = task
+		resourceRequest, _ := models.JSONToResourceList(task.ResourceRequest)
 		if task.SLO == models.HighSLO {
-			AddResourceList(info.HardUsed, task.ResourceRequest)
+			AddResourceList(info.HardUsed, resourceRequest)
 		} else if task.SLO == models.LowSLO {
-			AddResourceList(info.SoftUsed, task.ResourceRequest)
+			AddResourceList(info.SoftUsed, resourceRequest)
 		}
 	}
 }
 
 // DeleteTask deletes Completed or Deleted Job Quota
-func (info *QuotaInfo) DeleteTask(task *models.TaskAttr) {
+func (info *QuotaInfo) DeleteTask(task *models.AITask) {
 	info.Lock()
 	defer info.Unlock()
 	key := keyFunc(task)
 	// 找到quotainfo里的task时才删除quota
 	if task, ok := info.UsedTasks[key]; ok {
 		delete(info.UsedTasks, key)
+		resourceRequest, _ := models.JSONToResourceList(task.ResourceRequest)
 		if task.SLO == models.HighSLO {
-			SubResourceList(info.HardUsed, task.ResourceRequest)
+			SubResourceList(info.HardUsed, resourceRequest)
 		} else if task.SLO == models.LowSLO {
-			SubResourceList(info.SoftUsed, task.ResourceRequest)
+			SubResourceList(info.SoftUsed, resourceRequest)
 		}
 	}
 }
@@ -66,7 +68,7 @@ func (info *QuotaInfo) Snapshot() *QuotaInfo {
 		Soft:      info.Soft.DeepCopy(),
 		HardUsed:  info.HardUsed.DeepCopy(),
 		SoftUsed:  info.SoftUsed.DeepCopy(),
-		UsedTasks: make(map[string]*models.TaskAttr),
+		UsedTasks: make(map[string]*models.AITask),
 	}
 }
 
@@ -103,27 +105,27 @@ func (c *TaskController) AddOrUpdateQuotaInfo(name string, quota models.Quota) (
 			// Soft:      dq.Spec.Soft.DeepCopy(),
 			HardUsed:  v1.ResourceList{},
 			SoftUsed:  v1.ResourceList{},
-			UsedTasks: make(map[string]*models.TaskAttr),
+			UsedTasks: make(map[string]*models.AITask),
 		}
 
 		// todo: add db tasks
-		tasksRunning, err := c.taskDB.ListByUserAndStatus(name, models.RunningStatus)
+		tasksRunning, err := c.taskDB.ListByUserAndStatuses(name, models.TaskOcupiedQuotaStatuses)
 		if err != nil {
 			// todo: handler err
 		}
 
 		for _, task := range tasksRunning {
-			quotaInfo.AddTask(models.FormatAITaskToAttr(&task))
+			quotaInfo.AddTask(&task)
 		}
 
 		// add db tasks
-		taskQueuing, err := c.taskDB.ListByUserAndStatus(name, models.QueueingStatus)
+		taskQueuing, err := c.taskDB.ListByUserAndStatuses(name, models.TaskQueueingStatuses)
 		if err != nil {
 			// todo: handler err
 		}
 		// logrus.Info(tasksRunning)
 		for _, task := range taskQueuing {
-			quotaInfo.AddTask(models.FormatAITaskToAttr(&task))
+			quotaInfo.AddTask(&task)
 		}
 
 		c.quotaInfos.Store(name, quotaInfo)

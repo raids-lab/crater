@@ -1,9 +1,5 @@
 package models
 
-import (
-	"strings"
-)
-
 func FormatTaskAttrToModel(task *TaskAttr) *AITask {
 	return &AITask{
 		TaskName:        task.TaskName,
@@ -13,11 +9,11 @@ func FormatTaskAttrToModel(task *TaskAttr) *AITask {
 		Image:           task.Image,
 		ResourceRequest: ResourceListToJSON(task.ResourceRequest),
 		WorkingDir:      task.WorkingDir,
-		ShareDirs:       MapToJSONString(task.ShareDirs),
+		ShareDirs:       VolumesToJSONString(task.ShareDirs),
 		Command:         task.Command,
 		Args:            MapToJSONString(task.Args),
 		SLO:             task.SLO,
-		Status:          QueueingStatus,
+		Status:          TaskQueueingStatus,
 	}
 }
 
@@ -33,7 +29,7 @@ func FormatAITaskToAttr(model *AITask) *TaskAttr {
 		Image:           model.Image,
 		ResourceRequest: resourceJson,
 		WorkingDir:      model.WorkingDir,
-		ShareDirs:       JSONStringToMap(model.ShareDirs),
+		ShareDirs:       JSONStringToVolumes(model.ShareDirs),
 		Command:         model.Command,
 		Args:            JSONStringToMap(model.Args),
 		SLO:             model.SLO,
@@ -41,30 +37,4 @@ func FormatAITaskToAttr(model *AITask) *TaskAttr {
 		CreatedAt:       model.CreatedAt,
 		UpdatedAt:       model.UpdatedAt,
 	}
-}
-func argsToString(args map[string]string) string {
-	str := ""
-	var count = 0
-	for key, value := range args {
-		if count == len(args)-1 {
-			str += key + "=" + value
-		} else {
-			str += key + "=" + value + " "
-		}
-		count++
-	}
-	return str
-}
-
-func dbstringToArgs(str string) map[string]string {
-	args := map[string]string{}
-	if len(str) == 0 {
-		return args
-	}
-	ls := strings.Split(str, " ")
-	for item := range ls {
-		kv := strings.Split(ls[item], "=")
-		args[kv[0]] = kv[1]
-	}
-	return args
 }
