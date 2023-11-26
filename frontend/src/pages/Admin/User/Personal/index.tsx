@@ -42,9 +42,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { showErrorToast } from "@/utils/toast";
 import { useToast } from "@/components/ui/use-toast";
-import { DataTable } from "@/components/DataTable";
-import { DataTableColumnHeader } from "@/components/DataTable/DataTableColumnHeader";
-import { DataTableToolbarConfig } from "@/components/DataTable/DataTableToolbar";
+import { DataTable } from "@/components/custom/DataTable";
+import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
+import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import {
   apiAdminUserDelete,
   apiAdminUserList,

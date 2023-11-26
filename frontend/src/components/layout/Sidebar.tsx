@@ -8,8 +8,8 @@ import {
 } from "@/components/ui/accordion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RouteObject, useLocation, useNavigate } from "react-router-dom";
-import { Separator } from "./ui/separator";
-import { ScrollArea } from "./ui/scroll-area";
+import { Separator } from "../ui/separator";
+import { ScrollArea } from "../ui/scroll-area";
 import { useOnClickOutside } from "usehooks-ts";
 import { getTitleByPath } from "@/utils/title";
 

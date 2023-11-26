@@ -9,8 +9,8 @@ import {
   DropdownMenuSeparator,
   // DropdownMenuShortcut,
   DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
-import { Button } from "./ui/button";
+} from "../ui/dropdown-menu";
+import { Button } from "../ui/button";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import {
   globalBreadCrumb,
@@ -20,7 +20,7 @@ import {
 } from "@/utils/store";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { useToast } from "./ui/use-toast";
+import { useToast } from "../ui/use-toast";
 import { useTheme } from "@/utils/theme";
 import { ChevronRightIcon } from "@radix-ui/react-icons";
 import { getBreadcrumbByPath } from "@/utils/title";

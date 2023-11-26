@@ -1,6 +1,6 @@
-import { DataTable } from "@/components/DataTable";
-import { DataTableColumnHeader } from "@/components/DataTable/DataTableColumnHeader";
-import { DataTableToolbarConfig } from "@/components/DataTable/DataTableToolbar";
+import { DataTable } from "@/components/custom/DataTable";
+import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
+import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { apiDlDatasetList } from "@/services/api/recommend/dataset";
 import { useQuery } from "@tanstack/react-query";

@@ -1,42 +1,13 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiAiTaskGet, convertAiTask } from "@/services/api/aiTask";
 import { globalBreadCrumb } from "@/utils/store";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, type FC } from "react";
 import { useParams } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
-import { ProgressBar } from "@/components/ProgressBar";
-
-const SmallCard = ({
-  title,
-  value,
-  unit,
-  description,
-}: {
-  title: string;
-  value: string;
-  unit?: string;
-  description?: string;
-}) => {
-  return (
-    <Card>
-      <CardHeader className="pb-1">
-        <CardTitle className="text-sm font-medium capitalize">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">
-          {value}
-          {unit && <span className="ml-0.5 text-lg">{unit}</span>}
-        </div>
-        {description && (
-          <p className="pt-1 text-xs text-muted-foreground">{description}</p>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
+import { ProgressBar } from "@/components/custom/ProgressBar";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { SmallDataCard } from "@/components/custom/DataCard";
+import { cn } from "@/lib/utils";
 
 // route format: /portal/job/ai/detail?id=xxx
 const AiJobDetail: FC = () => {
@@ -79,27 +50,27 @@ const AiJobDetail: FC = () => {
               //   cpu_usage_avg: 1.3134052, //展示数值
               //   gpu_mem_max: 10007, //展示单位MB，上限是32768
               //   cpu_mem_max: 7325.039, // 展示单位MB，不用进度条 */}
-          <SmallCard
+          <SmallDataCard
             title="CPU usage avg"
             value={taskInfo.profileStat.cpu_usage_avg.toFixed(2)}
             unit="Core"
           />
-          <SmallCard
+          <SmallDataCard
             title="CPU mem max"
             value={taskInfo.profileStat.cpu_mem_max.toFixed(2)}
             unit="MB"
           />
-          <SmallCard
+          <SmallDataCard
             title="GPU mem max"
             value={`${taskInfo.profileStat.gpu_mem_max}`}
             unit="MB"
           />{" "}
-          <SmallCard
+          <SmallDataCard
             title="PCIE tx avg"
             value={taskInfo.profileStat.pcie_tx_avg.toFixed(2)}
             unit="MB/s"
           />
-          <SmallCard
+          <SmallDataCard
             title="PCIE rx avg"
             value={taskInfo.profileStat.pcie_rx_avg.toFixed(2)}
             unit="MB/s"
@@ -160,7 +131,13 @@ const AiJobDetail: FC = () => {
           </Card>
         </>
       )}
-      <h2 className="col-span-full text-xl font-bold">任务数据</h2>
+      <h2
+        className={cn("col-span-full text-xl font-bold", {
+          "pt-2": taskInfo && taskInfo.profileStat,
+        })}
+      >
+        任务数据
+      </h2>
       <Card className="col-span-full">
         <CardHeader className="p-3"></CardHeader>
         <CardContent>
