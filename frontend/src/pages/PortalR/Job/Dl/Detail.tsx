@@ -257,7 +257,7 @@ const DlJobDetail: FC = () => {
     <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
       {taskInfo.data && (
         <>
-          <h2 className="col-span-full text-xl font-bold">基本信息</h2>
+          <h2 className="col-span-full text-base font-bold">基本信息</h2>
           <SmallDataCard
             title="macs"
             value={`${taskInfo.data?.spec.macs}`}
@@ -280,7 +280,7 @@ const DlJobDetail: FC = () => {
           />
         </>
       )}
-      <h2 className="col-span-full pt-2 text-xl font-bold">Pod 列表</h2>
+      <h2 className="col-span-full pt-2 text-base font-bold">Pod 列表</h2>
       <div className="col-span-full">
         <DataTable
           data={data}
@@ -288,7 +288,7 @@ const DlJobDetail: FC = () => {
           toolbarConfig={toolbarConfig}
         />
       </div>
-      <h2 className="col-span-full pt-2 text-xl font-bold">任务数据</h2>
+      <h2 className="col-span-full pt-2 text-base font-bold">任务数据</h2>
       <Card className="col-span-full">
         <CardContent>
           <CardHeader className="p-3" />
