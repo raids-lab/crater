@@ -36,10 +36,10 @@ const PodDetail: FC = () => {
     ]);
   }, [setBreadcrumb, taskName]);
   return (
-    <div className="grid gap-4">
-      <h2 className="col-span-full text-xl font-bold">Pod 详情</h2>
+    <div className="grid grid-cols-2 gap-4">
+      <h2 className="col-span-full text-base font-bold">Pod 详情</h2>
       {podInfo.data && (
-        <Card className="w-full pt-6">
+        <Card className="col-span-full pt-6">
           <CardContent>
             <pre className="whitespace-pre-wrap text-xs">
               {JSON.stringify(

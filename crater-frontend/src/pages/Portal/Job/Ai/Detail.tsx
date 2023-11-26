@@ -44,7 +44,7 @@ const AiJobDetail: FC = () => {
     <div className="grid grid-flow-row-dense grid-cols-2 gap-4 md:grid-cols-5">
       {taskInfo && taskInfo.profileStat && (
         <>
-          <h2 className="col-span-full text-xl font-bold">分析结果</h2>
+          <h2 className="col-span-full text-base font-bold">分析结果</h2>
           {/* //   pcie_tx_avg: 92.72305, // 展示数值 MB/s
               //   pcie_rx_avg: 717.1082, // 展示数值 MB/s
               //   cpu_usage_avg: 1.3134052, //展示数值
@@ -132,7 +132,7 @@ const AiJobDetail: FC = () => {
         </>
       )}
       <h2
-        className={cn("col-span-full text-xl font-bold", {
+        className={cn("col-span-full text-base font-bold", {
           "pt-2": taskInfo && taskInfo.profileStat,
         })}
       >

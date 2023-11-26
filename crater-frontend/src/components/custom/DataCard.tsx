@@ -25,7 +25,7 @@ export const SmallDataCard = ({
   }, [value, unit]);
   return (
     <Card>
-      <CardHeader className="pb-1">
+      <CardHeader className="pb-0">
         <CardTitle className="text-sm font-medium capitalize">
           {title}
         </CardTitle>
