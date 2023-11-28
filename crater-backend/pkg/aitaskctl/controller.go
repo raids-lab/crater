@@ -147,7 +147,7 @@ func (c *TaskController) TaskUpdated(event util.TaskUpdateChan) {
 			logrus.Errorf("delete job from task failed, err: %v", err)
 		}
 		// delete from profiler
-		if c.profiler != nil && task.ProfileStatus == models.Profiling {
+		if c.profiler != nil && (task.ProfileStatus == models.ProfileQueued || task.ProfileStatus == models.Profiling) {
 			c.profiler.DeleteProfilePodFromTask(task.ID)
 		}
 		logrus.Infof("delete task in task controller, %d", event.TaskID)
@@ -227,9 +227,9 @@ func (c *TaskController) schedule(ctx context.Context) {
 			if !quotaCopy.CheckHardQuotaExceed(resourcelist) {
 				candiates = append(candiates, task)
 				quotaCopy.AddTask(task)
-				// logrus.Infof("task quota check succeed, %v/%v", task.UserName, task.TaskName)
+				logrus.Infof("task quota check succeed,user %v task %v taskid %v", task.UserName, task.TaskName, task.ID)
 			} else {
-				// logrus.Infof("task quota exceed, %v/%v, request:%v, used:%v, hard:%v", task.UserName, task.TaskName, task.ResourceRequest, quotaCopy.HardUsed, quotaCopy.Hard)
+				logrus.Infof("task quota exceed, user %v task %v taskid %v, request:%v, used:%v, hard:%v", task.UserName, task.TaskName, task.ID, task.ResourceRequest, quotaCopy.HardUsed, quotaCopy.Hard)
 				// break // bug: 如果先检查资源多的，可能后面的都调度不了？？
 			}
 		}
@@ -237,14 +237,15 @@ func (c *TaskController) schedule(ctx context.Context) {
 
 	// 2. best effort queue的作业调度
 	for _, q := range c.taskQueue.userQueues {
-
 		for _, t := range q.bestEffortQueue.List() {
 			task := t.(*models.AITask)
+			logrus.Infof("user:%v, task: %v, task status:%v, profile status: %v", task.UserName, task.ID, task.Status, task.ProfileStatus)
 			// update profile status
 			if c.profiler != nil {
 				// todo: udpate profile status???
 				if task.Status == models.TaskQueueingStatus && task.ProfileStatus == models.UnProfiled {
 					c.profiler.SubmitProfileTask(task.ID)
+					task.ProfileStatus = models.ProfileQueued
 				} else {
 					// todo: 优化 check profile status
 					candiates = append(candiates, task)
@@ -263,10 +264,10 @@ func (c *TaskController) schedule(ctx context.Context) {
 			continue
 		}
 		// check profiling status
-		if task.ProfileStatus == models.Profiling {
+		if task.ProfileStatus == models.Profiling || task.ProfileStatus == models.ProfileQueued {
 			continue
 		} else if task.ProfileStatus == models.ProfileFailed {
-			c.taskDB.UpdateStatus(task.ID, models.TaskFailedStatus, "task profile failed")
+			// c.taskDB.UpdateStatus(task.ID, models.TaskFailedStatus, "task profile failed")
 			c.taskQueue.DeleteTask(task)
 			continue
 		}
@@ -285,7 +286,7 @@ func (c *TaskController) schedule(ctx context.Context) {
 // admitTask 创建对应的aijob到集群中，更新task状态，更新quota
 func (c *TaskController) admitTask(task *models.AITask) error {
 
-	err := c.jobControl.CreateJobFromTask(task)
+	err, jobname := c.jobControl.CreateJobFromTask(task)
 	if err != nil {
 		c.taskDB.UpdateStatus(task.ID, models.TaskFailedStatus, err.Error())
 		c.taskQueue.DeleteTask(task)
@@ -293,6 +294,10 @@ func (c *TaskController) admitTask(task *models.AITask) error {
 	}
 	// 更新task状态
 	if err = c.taskDB.UpdateStatus(task.ID, models.TaskCreatedStatus, "AIJob created"); err != nil {
+		return err
+	}
+	// 更新jobname
+	if err = c.taskDB.UpdateJobName(task.ID, jobname); err != nil {
 		return err
 	}
 	// 更新quota

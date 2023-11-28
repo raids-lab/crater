@@ -20,12 +20,12 @@ type JobControl struct {
 }
 
 func (c *JobControl) GetJobStatus(task *models.AITask) (aijobapi.JobPhase, error) {
-	jobname := fmt.Sprintf("%s-%d", task.TaskName, task.ID)
+	// todo: 存储jobname到数据库
 	ns := task.Namespace
 	job := &aijobapi.AIJob{}
 	err := c.Get(context.Background(), client.ObjectKey{
 		Namespace: ns,
-		Name:      jobname,
+		Name:      task.JobName,
 	}, job)
 	if err != nil {
 		return "", err
@@ -34,11 +34,11 @@ func (c *JobControl) GetJobStatus(task *models.AITask) (aijobapi.JobPhase, error
 }
 
 func (c *JobControl) DeleteJobFromTask(task *models.AITask) error {
-	jobname := fmt.Sprintf("%s-%d", task.TaskName, task.ID)
+
 	ns := task.Namespace
 	job := &aijobapi.AIJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      jobname,
+			Name:      task.JobName,
 			Namespace: ns,
 		},
 	}
@@ -47,29 +47,32 @@ func (c *JobControl) DeleteJobFromTask(task *models.AITask) error {
 }
 
 //
-func (c *JobControl) CreateJobFromTask(task *models.AITask) error {
+func (c *JobControl) CreateJobFromTask(task *models.AITask) (err error, jobname string) {
 	resourceRequest, err := models.JSONToResourceList(task.ResourceRequest)
 	if err != nil {
-		return fmt.Errorf("resource request is not valid: %v", err)
+		err = fmt.Errorf("resource request is not valid: %v", err)
+		return
 	}
 
 	// convert metadata to lower case
 	taskName := strings.ToLower(task.TaskName)
-	jobname := fmt.Sprintf("%s-%d", taskName, task.ID)
+	jobname = fmt.Sprintf("%s-%d", taskName, task.ID)
+	jobname = strings.Replace(jobname, "_", "-", -1)
 	taskID := strconv.Itoa(int(task.ID))
 
 	// set labels and annotations
 	labels := map[string]string{
-		aijobapi.LabeKeyTaskID:    taskID,
-		aijobapi.LabelKeyTaskUser: task.UserName,
-		aijobapi.LabelKeyTaskType: task.TaskType,
-		aijobapi.LabelKeyTaskSLO:  strconv.FormatUint(uint64(task.SLO), 10),
-		aijobapi.JobNameLabel:     jobname,
+		aijobapi.LabeKeyTaskID:         taskID,
+		aijobapi.LabelKeyTaskUser:      task.UserName,
+		aijobapi.LabelKeyTaskType:      task.TaskType,
+		aijobapi.LabelKeyTaskSLO:       strconv.FormatUint(uint64(task.SLO), 10),
+		aijobapi.JobNameLabel:          jobname,
+		aijobapi.LabelKeyEstimatedTime: strconv.FormatUint(uint64(task.EsitmatedTime), 10),
 	}
 
 	annotations := make(map[string]string)
+	annotations[aijobapi.AnnotationKeyProfileStat] = task.ProfileStat
 	if task.ProfileStatus == models.ProfileFinish {
-		annotations[aijobapi.AnnotationKeyProfileStat] = task.ProfileStat
 		annotations[aijobapi.AnnotationKeyPreemptCount] = "0"
 	}
 
@@ -83,7 +86,8 @@ func (c *JobControl) CreateJobFromTask(task *models.AITask) error {
 
 	volumes, volumeMounts, err := GenVolumeAndMountsFromAITask(task)
 	if err != nil {
-		return fmt.Errorf("gen volumes and mounts failed: %v", err)
+		err = fmt.Errorf("gen volumes and mounts failed: %v", err)
+		return
 	}
 	job := &aijobapi.AIJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -129,9 +133,10 @@ func (c *JobControl) CreateJobFromTask(task *models.AITask) error {
 	}
 	err = c.Create(context.Background(), job)
 	if err != nil {
-		return fmt.Errorf("create job %s failed: %v", task.TaskName, err)
+		err = fmt.Errorf("create job %s failed: %v", task.TaskName, err)
+		return
 	}
-	return nil
+	return
 }
 
 func GenVolumeAndMountsFromAITask(task *models.AITask) ([]corev1.Volume, []corev1.VolumeMount, error) {

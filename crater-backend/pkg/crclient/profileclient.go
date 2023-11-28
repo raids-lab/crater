@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	aijobapi "github.com/aisystem/ai-protal/pkg/apis/aijob/v1alpha1"
 	"github.com/aisystem/ai-protal/pkg/models"
@@ -33,6 +34,8 @@ func (c *ProfilingPodControl) ListProflingPods() ([]corev1.Pod, error) {
 
 func (c *ProfilingPodControl) DeleteProfilePodFromTask(task *models.AITask) error {
 	podName := fmt.Sprintf("%s-%d-profiling", task.TaskName, task.ID)
+	podName = strings.ToLower(podName)
+	podName = strings.Replace(podName, "_", "-", -1)
 	ns := task.Namespace
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -61,6 +64,8 @@ func (c *ProfilingPodControl) CreateProfilePodFromTask(task *models.AITask) erro
 		return fmt.Errorf("resource request is not valid: %v", err)
 	}
 	podName := fmt.Sprintf("%s-%d-profiling", task.TaskName, task.ID)
+	podName = strings.ToLower(podName)
+	podName = strings.Replace(podName, "_", "-", -1)
 	taskID := strconv.Itoa(int(task.ID))
 	labels := map[string]string{
 		aijobapi.LabeKeyTaskID: taskID,
@@ -78,6 +83,9 @@ func (c *ProfilingPodControl) CreateProfilePodFromTask(task *models.AITask) erro
 			Name:      podName,
 			Namespace: task.Namespace,
 			Labels:    labels,
+			Annotations: map[string]string{
+				"profiling-pod": "true",
+			},
 		},
 
 		Spec: corev1.PodSpec{

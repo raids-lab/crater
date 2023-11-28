@@ -1,6 +1,8 @@
 package task
 
 import (
+	"time"
+
 	db "github.com/aisystem/ai-protal/pkg/db/orm"
 	"github.com/aisystem/ai-protal/pkg/models"
 )
@@ -9,6 +11,7 @@ type DBService interface {
 	Create(task *models.AITask) error
 	Update(task *models.AITask) error
 	UpdateStatus(taskID uint, status string, reason string) error
+	UpdateJobName(taskID uint, jobname string) error
 	DeleteByID(taskID uint) error
 	DeleteByUserAndID(userName string, taskID uint) error
 	ForceDeleteByUserAndID(userName string, taskID uint) error
@@ -34,10 +37,32 @@ func (s *service) Update(task *models.AITask) error {
 }
 
 func (s *service) UpdateStatus(taskID uint, status string, reason string) error {
+	task, _ := s.GetByID(taskID)
+	if task.Status == status {
+		return nil
+	}
 	updateMap := make(map[string]interface{})
 	updateMap["status"] = status
+	// 取前100
 	updateMap["status_reason"] = reason
+	t := time.Now()
+	if status == models.TaskCreatedStatus {
+		updateMap["admitted_at"] = &t
+	} else if status == models.TaskRunningStatus {
+		updateMap["started_at"] = &t
+	} else if status == models.TaskSucceededStatus || status == models.TaskFailedStatus {
+		updateMap["finish_at"] = &t
+		if task.StartedAt != nil {
+			updateMap["duration"] = t.Sub(*task.StartedAt).Seconds()
+		}
+		updateMap["jct"] = t.Sub(task.CreatedAt).Seconds()
+	}
 	err := db.Orm.Model(&models.AITask{}).Where("id = ?", taskID).Updates(updateMap).Error
+	return err
+}
+
+func (s *service) UpdateJobName(taskID uint, jobname string) error {
+	err := db.Orm.Model(&models.AITask{}).Where("id = ?", taskID).Update("jobname", jobname).Error
 	return err
 }
 
@@ -60,10 +85,9 @@ func (s *service) ListByUserAndStatuses(userName string, statuses []string) ([]m
 	var tasks []models.AITask
 	var err error
 	if statuses == nil || len(statuses) == 0 {
-		err = db.Orm.Where("username = ? ", userName, false).Find(&tasks).Error
+		err = db.Orm.Where("username = ? ", userName).Find(&tasks).Error
 	} else {
 		err = db.Orm.Where("username = ? and status IN ? and is_deleted = ?", userName, statuses, false).Find(&tasks).Error
-
 	}
 	return tasks, err
 }
