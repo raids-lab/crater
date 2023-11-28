@@ -90,7 +90,10 @@ func (mgr *AITaskMgr) Create(c *gin.Context) {
 	mgr.NotifyTaskUpdate(taskModel.ID, taskModel.UserName, util.CreateTask)
 
 	log.Infof("create task success, taskID: %d", taskModel.ID)
-	resputil.WrapSuccessResponse(c, "")
+	resp := payload.CreateTaskResp{
+		TaskID: taskModel.ID,
+	}
+	resputil.WrapSuccessResponse(c, resp)
 }
 
 func (mgr *AITaskMgr) List(c *gin.Context) {
@@ -152,6 +155,7 @@ func (mgr *AITaskMgr) Delete(c *gin.Context) {
 		return
 	}
 	username, _ := c.Get("username")
+	mgr.NotifyTaskUpdate(req.TaskID, username.(string), util.DeleteTask)
 	if req.ForceDelete {
 		err = mgr.taskService.ForceDeleteByUserAndID(username.(string), req.TaskID)
 	} else {
@@ -163,7 +167,7 @@ func (mgr *AITaskMgr) Delete(c *gin.Context) {
 		resputil.WrapFailedResponse(c, msg, 50007)
 		return
 	}
-	mgr.NotifyTaskUpdate(req.TaskID, username.(string), util.DeleteTask)
+
 	log.Infof("delete task success, taskID: %d", req.TaskID)
 	resputil.WrapSuccessResponse(c, "")
 }

@@ -54,6 +54,9 @@ type AITask struct {
 	UpdatedAt       time.Time  `gorm:"column:updated_at;not null" json:"updatedAt"`
 	AdmittedAt      *time.Time `gorm:"column:admitted_at" json:"admittedAt"`
 	StartedAt       *time.Time `gorm:"column:started_at" json:"startedAt"`
+	FinishAt        *time.Time `gorm:"column:finish_at" json:"finishAt"`
+	Duration        uint       `gorm:"column:duration;type:int;not null" json:"duration"`
+	JCT             uint       `gorm:"column:jct;type:int;not null" json:"jct"`
 	Image           string     `gorm:"column:image;type:text;not null" json:"image"`
 	ResourceRequest string     `gorm:"column:resource_request;type:text;not null" json:"resourceRequest"`
 	WorkingDir      string     `gorm:"column:working_dir;type:text" json:"workingDir"`
@@ -62,7 +65,8 @@ type AITask struct {
 	Args            string     `gorm:"column:args;type:text" json:"args"`
 	SLO             uint       `gorm:"column:slo;type:int;not null" json:"slo"`
 	Status          string     `gorm:"column:status;type:varchar(128)" json:"status"`
-	StatusReason    string     `gorm:"column:status_reason;type:varchar(128)" json:"statusReason"`
+	StatusReason    string     `gorm:"column:status_reason;type:text" json:"statusReason"`
+	JobName         string     `gorm:"column:jobname;type:varchar(128)" json:"jobName"`
 	IsDeleted       bool       `gorm:"column:is_deleted;type:bool" json:"isDeleted"`
 	ProfileStatus   uint       `gorm:"column:profile_status;type:int" json:"profileStatus"`
 	ProfileStat     string     `gorm:"column:profile_stat;type:text" json:"profileStat"`
@@ -82,6 +86,7 @@ type TaskAttr struct {
 	Args            map[string]string     `json:"args"`
 	WorkingDir      string                `json:"workingDir"`
 	ShareDirs       map[string][]DirMount `json:"shareDirs"`
+	EsitmatedTime   uint                  `json:"estimatedTime"`
 	// not for request
 	ID        uint      `json:"id"`
 	Namespace string    `json:"namspace"`

@@ -14,6 +14,7 @@ func FormatTaskAttrToModel(task *TaskAttr) *AITask {
 		Args:            MapToJSONString(task.Args),
 		SLO:             task.SLO,
 		Status:          TaskQueueingStatus,
+		EsitmatedTime:   task.EsitmatedTime,
 	}
 }
 

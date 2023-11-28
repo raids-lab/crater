@@ -105,6 +105,8 @@ func (p *Profiler) run(ctx context.Context) {
 				// pod.Status.ContainerStatuses[0].State.Running.StartedAt?
 				// pod.Status.StartTime
 				if pod.Status.Phase == corev1.PodRunning && time.Now().Sub(pod.Status.StartTime.Time) < p.profilingTimeout {
+					// p.taskDB.UpdateProfilingStat(task.ID, models.ProfileFailed, "", "")
+					// todo: pod running-> update profiling stat
 					continue
 				}
 				if pod.Status.Phase == corev1.PodUnknown {
@@ -132,7 +134,7 @@ func (p *Profiler) run(ctx context.Context) {
 				} else {
 					p.taskDB.UpdateProfilingStat(taskID, models.ProfileFinish, monitor.PodUtilToJSON(podUtil), jobStatus)
 					// todo: error handle
-					logrus.Infof("profile query pod util success, taskID:%v, pod:%v/%v", taskID, pod.Namespace, pod.Name)
+					logrus.Infof("profile query pod util success, taskID:%v, pod:%v/%v, status:%v", taskID, pod.Namespace, pod.Name, jobStatus)
 				}
 				p.podControl.Delete(context.Background(), &pod)
 			}

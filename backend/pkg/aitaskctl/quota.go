@@ -118,16 +118,6 @@ func (c *TaskController) AddOrUpdateQuotaInfo(name string, quota models.Quota) (
 			quotaInfo.AddTask(&task)
 		}
 
-		// add db tasks
-		taskQueuing, err := c.taskDB.ListByUserAndStatuses(name, models.TaskQueueingStatuses)
-		if err != nil {
-			// todo: handler err
-		}
-		// logrus.Info(tasksRunning)
-		for _, task := range taskQueuing {
-			quotaInfo.AddTask(&task)
-		}
-
 		c.quotaInfos.Store(name, quotaInfo)
 		added = true
 	} else {
