@@ -21,7 +21,8 @@ type GetTaskReq struct {
 }
 
 type DeleteTaskReq struct {
-	TaskID uint `json:"taskID" binding:"required"`
+	TaskID      uint `json:"taskID" binding:"required"`
+	ForceDelete bool `json:"forceDelete"`
 }
 
 type UpdateTaskSLOReq struct {

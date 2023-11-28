@@ -25,12 +25,11 @@ func (tq *TaskQueue) InitUserQueue(username string, taskList []models.AITask) {
 	tq.Lock()
 	defer tq.Unlock()
 	q := NewUserQueue(username)
-	for _, t := range taskList {
-		task := models.FormatAITaskToAttr(&t)
+	for _, task := range taskList {
 		if task.SLO == models.HighSLO {
-			q.gauranteedQueue.PushIfNotPresent(task)
+			q.gauranteedQueue.PushIfNotPresent(&task)
 		} else if task.SLO == models.LowSLO {
-			q.bestEffortQueue.PushIfNotPresent(task)
+			q.bestEffortQueue.PushIfNotPresent(&task)
 		}
 	}
 	tq.userQueues[username] = q
@@ -38,7 +37,7 @@ func (tq *TaskQueue) InitUserQueue(username string, taskList []models.AITask) {
 }
 
 // AddTask 有新的task提交的时候，添加到队列中
-func (tq *TaskQueue) AddTask(task *models.TaskAttr) {
+func (tq *TaskQueue) AddTask(task *models.AITask) {
 	tq.Lock()
 	defer tq.Unlock()
 	q, ok := tq.userQueues[task.UserName]
@@ -53,7 +52,7 @@ func (tq *TaskQueue) AddTask(task *models.TaskAttr) {
 }
 
 // DeleteTask deletes task in queue when task is scheduled
-func (tq *TaskQueue) DeleteTask(task *models.TaskAttr) {
+func (tq *TaskQueue) DeleteTask(task *models.AITask) {
 	tq.Lock()
 	defer tq.Unlock()
 	q, ok := tq.userQueues[task.UserName]
@@ -80,7 +79,7 @@ func (tq *TaskQueue) DeleteTaskByUserNameAndTaskID(username string, taskid strin
 }
 
 // UpdateTask updates task
-func (tq *TaskQueue) UpdateTask(task *models.TaskAttr) {
+func (tq *TaskQueue) UpdateTask(task *models.AITask) {
 	tq.Lock()
 	defer tq.Unlock()
 	q, ok := tq.userQueues[task.UserName]

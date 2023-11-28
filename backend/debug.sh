@@ -1,3 +1,3 @@
 #!/bin/bash
 # 运行
-./bin/controller --db-config-file ./debug-dbconf.yaml --server-port :8067 --metrics-bind-address :8066 --health-probe-bind-address :8065
+go run main.go --db-config-file ./debug-dbconf.yaml --server-port :8099 --metrics-bind-address :8097 --health-probe-bind-address :8096 --config-file etc/debug-config.yaml

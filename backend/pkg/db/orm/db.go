@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/aisystem/ai-protal/pkg/config"
 	"github.com/aisystem/ai-protal/pkg/models"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -15,23 +16,16 @@ var Orm *gorm.DB
 
 // todo: mysql configuration
 // InitDB init mysql connection
-func InitDB(configFile string) error {
-	if configFile != "" {
-		viper.SetConfigFile(configFile)
-		if err := viper.ReadInConfig(); err != nil {
-			// 配置文件出错
-			return err
-		}
-	}
+func InitDB(config config.Config) error {
 
-	user := viper.GetString("DB_USER")
-	password := viper.GetString("DB_PASSWORD")
-	dbName := viper.GetString("DB_NAME")
-	host := viper.GetString("DB_HOST")
-	port := viper.GetString("DB_PORT")
-	charset := viper.GetString("DB_CHARSET")
+	user := config.DBUser
+	password := config.DBPassword
+	dbName := config.DBName
+	host := config.DBHost
+	port := config.DBPort
+	charset := config.DBCharset
 
-	timeout := viper.GetUint32("DB_CONN_TIMEOUT")
+	timeout := config.DBConnectionTimeout
 	if timeout == 0 {
 		timeout = 10
 	}

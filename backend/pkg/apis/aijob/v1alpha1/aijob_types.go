@@ -108,8 +108,8 @@ const (
 	Running   JobPhase = "Running"
 	Succeeded JobPhase = "Succeeded"
 	Failed    JobPhase = "Failed"
-	Suspended JobPhase = "Suspended"
-	Unknown   JobPhase = ""
+	Preempted JobPhase = "Preempted"
+	Init      JobPhase = ""
 )
 
 // JobConditionType defines all kinds of types of JobStatus.
@@ -136,10 +136,10 @@ const (
 	// The training has failed its execution.
 	JobFailed JobConditionType = "Failed"
 
-	// JobSuspended means one or more sub-resources (e.g. services/pods) of this job
-	// reached phase suspended with no restarting.
+	// JobPreempted means one or more sub-resources (e.g. services/pods) of this job
+	// get preempted
 	// The training has failed its execution.
-	JobSuspended JobConditionType = "Suspended"
+	JobPreempted JobConditionType = "Preempted"
 )
 
 //+kubebuilder:object:root=true

@@ -6,6 +6,26 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
+func JSONStringToList(str string) []string {
+	list := []string{}
+	if str == "" {
+		return list
+	}
+	err := json.Unmarshal([]byte(str), &list)
+	if err != nil {
+		return []string{}
+	}
+	return list
+}
+
+func ListToJSONString(list []string) string {
+	jsonBytes, err := json.Marshal(list)
+	if err != nil {
+		return ""
+	}
+	return string(jsonBytes)
+}
+
 func JSONStringToMap(str string) map[string]string {
 	m := map[string]string{}
 	if str == "" {
