@@ -175,3 +175,17 @@ export const apiAiTaskGet = (taskID: number) =>
       taskID,
     },
   });
+
+//   path: /v1/sharedir/list
+//   method: GET
+//   response
+// {
+// "data": [
+//     "dnn-train-data",
+//     "jupyterhub-shared-volume"
+// ],
+// "error": "",
+// "status": true
+// }
+export const apiAiTaskShareDirList = () =>
+  instance.get<IResponse<string[]>>(VERSION + "/sharedir/list");
