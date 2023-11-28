@@ -52,10 +52,17 @@ import { useSetRecoilState } from "recoil";
 import { globalBreadCrumb } from "@/utils/store";
 import { useNavigate, useRoutes } from "react-router-dom";
 import AiJobDetail from "./Detail";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type TaskInfo = {
   id: number;
   title: string;
+  taskType: string;
   status: string;
   priority: string;
   profileStatus: string;
@@ -64,8 +71,12 @@ type TaskInfo = {
 
 const getHeader = (key: string): string => {
   switch (key) {
+    case "id":
+      return "序号";
     case "title":
       return "任务名称";
+    case "taskType":
+      return "类型";
     case "status":
       return "任务状态";
     case "priority":
@@ -190,6 +201,7 @@ const AiJobHome = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [showDeleted, setShowDeleted] = useState(false);
 
   const { data: taskList, isLoading } = useQuery({
     queryKey: ["aitask", "list"],
@@ -242,6 +254,15 @@ const AiJobHome = () => {
         enableSorting: false,
         enableHiding: false,
       },
+
+      {
+        accessorKey: "id",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("id")} />
+        ),
+        cell: ({ row }) => <>{row.getValue("id")}</>,
+        enableSorting: false,
+      },
       {
         accessorKey: "title",
         header: ({ column }) => (
@@ -256,6 +277,16 @@ const AiJobHome = () => {
             {row.getValue("title")}
           </Button>
         ),
+      },
+      {
+        accessorKey: "taskType",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("taskType")}
+          />
+        ),
+        cell: ({ row }) => <>{row.getValue("taskType")}</>,
       },
       {
         accessorKey: "status",
@@ -348,12 +379,39 @@ const AiJobHome = () => {
         ),
         cell: ({ row }) => {
           // row format: "2023-10-30T03:21:03.733Z"
-          const date = new Date(row.getValue("createdAt"));
-          const formatted = date.toLocaleString("zh-CN", {
-            timeZone: "Asia/Shanghai",
-          });
-          return <div>{formatted}</div>;
+          // show: 2 天前 / 2 小时前 / 2 分钟前 / 1 个月前
+          const now = new Date();
+          const createdAt = new Date(row.getValue("createdAt"));
+          const diff = now.getTime() - createdAt.getTime();
+          const mouthDiff = now.getMonth() - createdAt.getMonth();
+          let formatted = "";
+          if (mouthDiff > 0) {
+            formatted = `${mouthDiff} 个月前`;
+          } else if (diff > 1000 * 60 * 60 * 24) {
+            formatted = `${Math.floor(diff / (1000 * 60 * 60 * 24))} 天前`;
+          } else if (diff > 1000 * 60 * 60) {
+            formatted = `${Math.floor(diff / (1000 * 60 * 60))} 小时前`;
+          } else if (diff > 1000 * 60) {
+            formatted = `${Math.floor(diff / (1000 * 60))} 分钟前`;
+          } else {
+            formatted = `${Math.floor(diff / 1000)} 秒前`;
+          }
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>{formatted}</TooltipTrigger>
+                <TooltipContent>
+                  <p>
+                    {createdAt.toLocaleString("zh-CN", {
+                      timeZone: "Asia/Shanghai",
+                    })}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
         },
+        sortingFn: "datetime",
       },
       {
         id: "actions",
@@ -410,16 +468,19 @@ const AiJobHome = () => {
   useEffect(() => {
     if (isLoading) return;
     if (!taskList) return;
-    const tableData: TaskInfo[] = taskList.map((task) => ({
-      id: task.id,
-      title: task.taskName,
-      status: task.status,
-      priority: task.slo ? "high" : "low",
-      profileStatus: task.profileStatus.toString(),
-      createdAt: task.createdAt,
-    }));
+    const tableData: TaskInfo[] = taskList
+      .filter((task) => (showDeleted ? task.isDeleted : !task.isDeleted))
+      .map((task) => ({
+        id: task.id,
+        title: task.taskName,
+        taskType: task.taskType,
+        status: task.status,
+        priority: task.slo ? "high" : "low",
+        profileStatus: task.profileStatus.toString(),
+        createdAt: task.createdAt,
+      }));
     setData(tableData);
-  }, [taskList, isLoading]);
+  }, [taskList, isLoading, showDeleted]);
 
   return (
     <div className="space-y-4">
@@ -439,6 +500,13 @@ const AiJobHome = () => {
           </SheetContent>
         </Sheet>
       </DataTable>
+      <Button
+        className="h-8 min-w-fit"
+        variant="outline"
+        onClick={() => setShowDeleted((v) => !v)}
+      >
+        {showDeleted ? "显示当前任务" : "显示已删除任务"}
+      </Button>
     </div>
   );
 };
