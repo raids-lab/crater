@@ -27,11 +27,31 @@ spec:
           imagePullPolicy: IfNotPresent
           command:
             - /controller
-            - --db-config-file=/dbconf.yaml
+            # - --db-config-file=/dbconf.yaml
+            - --config-file=/etc/config/config.yaml
+            - --share-dir-file=/etc/config/share-dir.yaml
             - --server-port=:8088
             - --metrics-bind-address=:8080
             - --health-probe-bind-address=:8081
+          volumeMounts:
+            - name: backend-conf
+              mountPath: /etc/config
+            - name: share-dir-conf
+              mountPath: /etc/config
       serviceAccountName: ai-portal-backend
+      volumes:
+        - name: backend-conf
+          configMap:
+            name: backend-config
+            items:
+              - key: config.yaml
+                path: config.yaml
+        - name: share-dir-conf
+          configMap:
+            name: share-dir
+            items:
+              - key: share-dir.yaml
+                path: share-dir.yaml
 ---
 apiVersion: v1
 kind: Service
@@ -43,10 +63,10 @@ spec:
     app: ai-portal-backend
   type: NodePort
   ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 8088
-    nodePort: 31088
+    - protocol: TCP
+      port: 80
+      targetPort: 8088
+      nodePort: 31088
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -57,7 +77,7 @@ rules:
       - "*"
     resources:
       - "*"
-    verbs: 
+    verbs:
       - "*"
   - apiGroups:
       - apps
@@ -101,9 +121,9 @@ kind: ClusterRoleBinding
 metadata:
   name: ai-portal-backend-cluster-role-binding
 subjects:
-- kind: ServiceAccount
-  name: ai-portal-backend
-  namespace: ai-portal
+  - kind: ServiceAccount
+    name: ai-portal-backend
+    namespace: ai-portal
 roleRef:
   kind: ClusterRole
   name: ai-portal-backend-cluster-role

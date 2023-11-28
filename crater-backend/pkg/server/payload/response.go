@@ -9,6 +9,7 @@ import (
 )
 
 type CreateTaskResp struct {
+	TaskID uint
 }
 
 type ListTaskResp struct {

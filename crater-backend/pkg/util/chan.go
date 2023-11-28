@@ -3,6 +3,7 @@ package util
 type JobStatusChan struct {
 	TaskID    string
 	NewStatus string
+	Reason    string
 }
 
 type TaskUpdateChan struct {

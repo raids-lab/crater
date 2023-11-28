@@ -6,6 +6,7 @@ import (
 	"github.com/aisystem/ai-protal/pkg/aitaskctl"
 	"github.com/aisystem/ai-protal/pkg/config"
 	"github.com/aisystem/ai-protal/pkg/constants"
+	"github.com/aisystem/ai-protal/pkg/crclient"
 	"github.com/aisystem/ai-protal/pkg/db/user"
 	"github.com/aisystem/ai-protal/pkg/server/handlers"
 	"github.com/aisystem/ai-protal/pkg/server/middleware"
@@ -39,7 +40,10 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	protectedRouter := b.R.Group(constants.APIPrefix)
 	protectedRouter.Use(middleware.JwtAuthMiddleware(tokenConf.AccessTokenSecret))
 
-	aitaskMgr := handlers.NewAITaskMgr(aitaskCtrl)
+	shareDirMgr := handlers.NewShareDirMgr()
+	shareDirMgr.RegisterRoute(protectedRouter.Group("/sharedir"))
+
+	aitaskMgr := handlers.NewAITaskMgr(aitaskCtrl, &crclient.PVCClient{Client: cl})
 	recommenddljobMgr := handlers.NewRecommendDLJobMgr(user.NewDBService(), cl)
 	datasetMgr := handlers.NewDataSetMgr(user.NewDBService(), cl)
 

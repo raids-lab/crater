@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: ai-portal
+data:
+  config.yaml: |
+    enableProfiling: true
+    prometheusAPI: http://***REMOVED***:31110
+    profilingTimeout: 120
+    dbHost: mycluster.jupyter
+    dbPort: 3306
+    dbUser: root
+    dbPassword: buaak8sportal@2023mysql
+    dbName: ai_portal
+    dbCharset: utf8mb4
+    dbConnTimeout: 10
+    serverAddr: :8088
+    metricsAddr: :8080
+    probeAddr: :8081
+    monitoringPort: 9443

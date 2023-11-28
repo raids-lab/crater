@@ -210,6 +210,8 @@ github.com/pelletier/go-toml/v2/unstable
 github.com/pkg/errors
 # github.com/prometheus/client_golang v1.14.0
 ## explicit; go 1.17
+github.com/prometheus/client_golang/api
+github.com/prometheus/client_golang/api/prometheus/v1
 github.com/prometheus/client_golang/prometheus
 github.com/prometheus/client_golang/prometheus/collectors
 github.com/prometheus/client_golang/prometheus/internal

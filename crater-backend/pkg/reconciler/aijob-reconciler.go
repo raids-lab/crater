@@ -115,15 +115,20 @@ func (r *AIJobReconciler) Generic(e event.GenericEvent) bool {
 }
 
 func getTaskIDFromAIJob(aijob *aijobapi.AIJob) string {
-	return aijob.Labels[aijobapi.TaskIDKey]
+	return aijob.Labels[aijobapi.LabeKeyTaskID]
 }
 
 func (r *AIJobReconciler) notifyJobStatus(job *aijobapi.AIJob) {
-	if job.Status.Phase == aijobapi.Suspended || job.Status.Phase == aijobapi.Running ||
-		job.Status.Phase == aijobapi.Succeeded || job.Status.Phase == aijobapi.Failed {
+	if job.Status.Phase == aijobapi.Preempted || job.Status.Phase == aijobapi.Running ||
+		job.Status.Phase == aijobapi.Succeeded || job.Status.Phase == aijobapi.Failed { // 是否需要加Pending状态？
+		reason := ""
+		if job.Status.Conditions != nil && len(job.Status.Conditions) > 0 {
+			reason = job.Status.Conditions[len(job.Status.Conditions)-1].Message
+		}
 		c := util.JobStatusChan{
 			TaskID:    getTaskIDFromAIJob(job),
 			NewStatus: string(job.Status.Phase),
+			Reason:    reason,
 		}
 		r.statusChan <- c
 	}

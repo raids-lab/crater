@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/aisystem/ai-protal/pkg/aitaskctl"
+	"github.com/aisystem/ai-protal/pkg/crclient"
 	tasksvc "github.com/aisystem/ai-protal/pkg/db/task"
 	usersvc "github.com/aisystem/ai-protal/pkg/db/user"
 	"github.com/aisystem/ai-protal/pkg/models"
@@ -27,15 +28,17 @@ func (mgr *AITaskMgr) RegisterRoute(g *gin.RouterGroup) {
 type AITaskMgr struct {
 	taskService tasksvc.DBService
 	userService usersvc.DBService
+	pvcClient   *crclient.PVCClient
 	// taskUpdateChan chan<- util.TaskUpdateChan
 	taskController *aitaskctl.TaskController
 }
 
-func NewAITaskMgr(taskController *aitaskctl.TaskController) *AITaskMgr {
+func NewAITaskMgr(taskController *aitaskctl.TaskController, pvcClient *crclient.PVCClient) *AITaskMgr {
+	pvcClient.InitShareDir()
 	return &AITaskMgr{
-		taskService: tasksvc.NewDBService(),
-		userService: usersvc.NewDBService(),
-		// taskUpdateChan: taskUpdateChan,
+		taskService:    tasksvc.NewDBService(),
+		userService:    usersvc.NewDBService(),
+		pvcClient:      pvcClient,
 		taskController: taskController,
 	}
 }
@@ -63,6 +66,19 @@ func (mgr *AITaskMgr) Create(c *gin.Context) {
 	username, _ := c.Get("username")
 	req.UserName = username.(string)
 	req.Namespace = fmt.Sprintf("user-%s", username.(string))
+
+	if req.ShareDirs != nil && len(req.ShareDirs) > 0 {
+		for pvcName := range req.ShareDirs {
+			err := mgr.pvcClient.CheckOrCreateUserPvc(req.Namespace, pvcName)
+			if err != nil {
+				msg := fmt.Sprintf("get user pvc failed, err %v", err)
+				log.Error(msg)
+				resputil.WrapFailedResponse(c, msg, 50001)
+				return
+			}
+		}
+	}
+
 	taskModel := models.FormatTaskAttrToModel(&req.TaskAttr)
 	err := mgr.taskService.Create(taskModel)
 	if err != nil {
@@ -73,8 +89,11 @@ func (mgr *AITaskMgr) Create(c *gin.Context) {
 	}
 	mgr.NotifyTaskUpdate(taskModel.ID, taskModel.UserName, util.CreateTask)
 
-	log.Infof("create task success, taskID: %d", req.ID)
-	resputil.WrapSuccessResponse(c, "")
+	log.Infof("create task success, taskID: %d", taskModel.ID)
+	resp := payload.CreateTaskResp{
+		TaskID: taskModel.ID,
+	}
+	resputil.WrapSuccessResponse(c, resp)
 }
 
 func (mgr *AITaskMgr) List(c *gin.Context) {
@@ -87,7 +106,7 @@ func (mgr *AITaskMgr) List(c *gin.Context) {
 		return
 	}
 	username, _ := c.Get("username")
-	taskModels, err := mgr.taskService.ListByUserAndStatus(username.(string), "")
+	taskModels, err := mgr.taskService.ListByUserAndStatuses(username.(string), nil)
 	if err != nil {
 		msg := fmt.Sprintf("list task failed, err %v", err)
 		log.Error(msg)
@@ -128,21 +147,27 @@ func (mgr *AITaskMgr) Get(c *gin.Context) {
 func (mgr *AITaskMgr) Delete(c *gin.Context) {
 	log.Infof("Task Delete, url: %s", c.Request.URL)
 	var req payload.DeleteTaskReq
-	if err := c.ShouldBindJSON(&req); err != nil {
+	var err error
+	if err = c.ShouldBindJSON(&req); err != nil {
 		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
 		log.Error(msg)
 		resputil.WrapFailedResponse(c, msg, 50006)
 		return
 	}
 	username, _ := c.Get("username")
-	err := mgr.taskService.DeleteByUserAndID(username.(string), req.TaskID)
+	mgr.NotifyTaskUpdate(req.TaskID, username.(string), util.DeleteTask)
+	if req.ForceDelete {
+		err = mgr.taskService.ForceDeleteByUserAndID(username.(string), req.TaskID)
+	} else {
+		err = mgr.taskService.DeleteByUserAndID(username.(string), req.TaskID)
+	}
 	if err != nil {
 		msg := fmt.Sprintf("delete task failed, err %v", err)
 		log.Error(msg)
 		resputil.WrapFailedResponse(c, msg, 50007)
 		return
 	}
-	mgr.NotifyTaskUpdate(req.TaskID, username.(string), util.DeleteTask)
+
 	log.Infof("delete task success, taskID: %d", req.TaskID)
 	resputil.WrapSuccessResponse(c, "")
 }

@@ -1,0 +1,143 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jupyter-zkr
+  namespace: user-zkr
+spec:
+  ports:
+    - name: hub
+      port: 80
+      protocol: TCP
+      targetPort: 8888 # port in container
+      nodePort: 31989
+  selector:
+    app: jupyter-user
+    component: singleuser-server
+    username: zhuangkr
+  sessionAffinity: None
+  type: NodePort
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: jupyter-zkr-singleuser
+  namespace: user-zkr
+  labels:
+    app: jupyter-user
+    component: singleuser-server
+    username: zhuangkr
+spec:
+  automountServiceAccountToken: false
+  containers:
+    - name: notebook
+      command:
+        - "/bin/bash"
+        - "-c"
+        - |
+          # echo "export PATH=/miniconda/bin:${PATH}" >> ~/.bashrc
+          # echo "source /miniconda/etc/profile.d/conda.sh" >> ~/.bashrc
+          # sleep inf
+          export PATH=$CONDA_DIR/bin:${PATH}
+          start.sh jupyter lab --allow-root
+      # args:
+      # - start.sh
+      # - jupyterhub-singleuser
+      # - --allow-root
+      env:
+        - name: GRANT_SUDO
+          value: "1"
+        - name: CHOWN_HOME
+          value: "1"
+        - name: NB_UID
+          value: "1005"
+        - name: NB_USER
+          value: zhuangkr
+        - name: CONDA_DIR
+          value: /miniconda
+          # value: /shared/miniconda
+        # - name: NVIDIA_VISIBLE_DEVICES
+        # value: GPU-9abdb713-e3e5-4116-0291-afdf28d9ab6e,GPU-4dacd256-cad0-573b-f421-0a3e8ac2e153
+        # value: GPU-22bd0d7b-83e4-b6ab-6a75-5ac5164cf1d8,GPU-21244380-1823-0bb9-e43e-13a9a86eac63
+      image: jupyter/tensorflow-notebook:latest
+      imagePullPolicy: IfNotPresent
+      ports:
+        - containerPort: 8888
+          name: notebook-port
+          protocol: TCP
+      resources:
+        limits:
+          cpu: "20"
+          memory: 50Gi
+          nvidia.com/gpu: "4"
+        requests:
+          cpu: "20"
+          memory: 50Gi
+          nvidia.com/gpu: "4"
+      securityContext:
+        allowPrivilegeEscalation: false
+        runAsUser: 0 # root
+        # runAsUser: 1005 # zhuangkr
+        runAsGroup: 0 # 容器进程运行的组
+        # privileged: true
+        # runAsUser: 0
+        # runAsGroup: 0
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+        - mountPath: /home/shared
+          name: jupyterhub-shared
+          subPath: code
+        - name: data-volume
+          mountPath: /datasets/
+        - mountPath: /home/zhuangkr
+          name: volume-zhuangkr
+        - mountPath: /dev/shm
+          name: cache-volume
+        # miniconda环境
+        - mountPath: /miniconda
+          name: jupyterhub-shared
+          subPath: miniconda
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  nodeSelector:
+    kubernetes.io/hostname: dell-65
+  preemptionPolicy: PreemptLowerPriority
+  priority: 0
+  restartPolicy: Never
+  securityContext:
+    #   runAsUser: 1005 # 运行容器的用户 zhuangkr
+    #   runAsGroup: 0 # 容器进程运行的组
+    fsGroup: 100 # 创建文件目录用的组
+  serviceAccount: default
+  serviceAccountName: default
+  terminationGracePeriodSeconds: 30
+  tolerations:
+    - effect: NoSchedule
+      key: hub.jupyter.org/dedicated
+      operator: Equal
+      value: user
+    - effect: NoSchedule
+      key: hub.jupyter.org_dedicated
+      operator: Equal
+      value: user
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+  volumes:
+    - name: data-volume
+      persistentVolumeClaim:
+        claimName: dnn-train-data
+    - name: volume-zhuangkr
+      persistentVolumeClaim:
+        claimName: home-zkr-pvc
+    - emptyDir:
+        medium: Memory
+      name: cache-volume
+    - name: jupyterhub-shared
+      persistentVolumeClaim:
+        claimName: jupyterhub-shared-volume
