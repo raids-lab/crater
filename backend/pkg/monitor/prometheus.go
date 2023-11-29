@@ -19,9 +19,9 @@ type PodUtil struct {
 	GPUUtilAvg     float32 `json:"gpu_util_avg"`
 	GPUUtilMax     float32 `json:"gpu_util_max"`
 	GPUUtilStd     float32 `json:"gpu_util_std"`
-	SMUtilAvg      float32 `json:"sm_util_avg"`
-	SMUtilMax      float32 `json:"sm_util_max"`
-	SMUtilStd      float32 `json:"sm_util_std"`
+	SMActiveAvg    float32 `json:"sm_active_avg"`
+	SMActiveMax    float32 `json:"sm_active_max"`
+	SMActiveStd    float32 `json:"sm_active_std"`
 	SMOccupancyAvg float32 `json:"sm_occupancy_avg"`
 	SMOccupancyMax float32 `json:"sm_occupancy_max"`
 	SMOccupancyStd float32 `json:"sm_occupancy_std"`
@@ -89,9 +89,9 @@ func (p *PrometheusClient) QueryPodUtilMetric(namespace string, podname string) 
 	}
 	podUtil.GPUUtilMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_DEV_GPU_UTIL{exported_namespace=\"%s\",exported_pod=\"%s\"}[60s])/100", namespace, podname))
 	podUtil.GPUUtilStd, _ = p.queryMetric(fmt.Sprintf("stddev_over_time(DCGM_FI_DEV_GPU_UTIL{exported_namespace=\"%s\",exported_pod=\"%s\"}[60s])/100", namespace, podname))
-	podUtil.SMUtilAvg, _ = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_SM_ACTIVE{exported_namespace=\"%s\",exported_pod=\"%s\"}[60s])", namespace, podname))
-	podUtil.SMUtilMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_PROF_SM_ACTIVE{exported_namespace=\"%s\",exported_pod=\"%s\"}[60s])", namespace, podname))
-	podUtil.SMUtilStd, _ = p.queryMetric(fmt.Sprintf("stddev_over_time(DCGM_FI_PROF_SM_ACTIVE{exported_namespace=\"%s\",exported_pod=\"%s\"}[60s])", namespace, podname))
+	podUtil.SMActiveAvg, _ = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_SM_ACTIVE{exported_namespace=\"%s\",exported_pod=\"%s\"}[60s])", namespace, podname))
+	podUtil.SMActiveMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_PROF_SM_ACTIVE{exported_namespace=\"%s\",exported_pod=\"%s\"}[60s])", namespace, podname))
+	podUtil.SMActiveStd, _ = p.queryMetric(fmt.Sprintf("stddev_over_time(DCGM_FI_PROF_SM_ACTIVE{exported_namespace=\"%s\",exported_pod=\"%s\"}[60s])", namespace, podname))
 	podUtil.SMOccupancyAvg, _ = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_SM_OCCUPANCY{exported_namespace=\"%s\",exported_pod=\"%s\"}[60s])", namespace, podname))
 	podUtil.SMOccupancyMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_PROF_SM_OCCUPANCY{exported_namespace=\"%s\",exported_pod=\"%s\"}[60s])", namespace, podname))
 	podUtil.SMOccupancyStd, _ = p.queryMetric(fmt.Sprintf("stddev_over_time(DCGM_FI_PROF_SM_OCCUPANCY{exported_namespace=\"%s\",exported_pod=\"%s\"}[60s])", namespace, podname))

@@ -53,10 +53,14 @@ func (info *QuotaInfo) DeleteTask(task *models.AITask) {
 }
 
 // CheckHardQuotaExceed 判断作业的hard quota是否超出限制
-func (info *QuotaInfo) CheckHardQuotaExceed(rl v1.ResourceList) bool {
+func (info *QuotaInfo) CheckHardQuotaExceed(task *models.AITask) bool {
+	if task.SLO == models.LowSLO {
+		return false
+	}
 	info.RLock()
 	defer info.RUnlock()
-	return CheckResourceListExceed(info.Hard, info.HardUsed, rl)
+	resourcelist, _ := models.JSONToResourceList(task.ResourceRequest)
+	return CheckResourceListExceed(info.Hard, info.HardUsed, resourcelist)
 }
 
 func (info *QuotaInfo) Snapshot() *QuotaInfo {
