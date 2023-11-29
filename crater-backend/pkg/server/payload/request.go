@@ -16,6 +16,10 @@ type ListTaskReq struct {
 	Status string `form:"status"`
 }
 
+type ListTaskByTypeReq struct {
+	TaskType string `form:"taskType"`
+}
+
 type GetTaskReq struct {
 	TaskID uint `form:"taskID" binding:"required"`
 }

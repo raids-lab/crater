@@ -223,8 +223,7 @@ func (c *TaskController) schedule(ctx context.Context) {
 		for _, t := range q.gauranteedQueue.List() {
 			task := t.(*models.AITask)
 
-			resourcelist, _ := models.JSONToResourceList(task.ResourceRequest)
-			if !quotaCopy.CheckHardQuotaExceed(resourcelist) {
+			if !quotaCopy.CheckHardQuotaExceed(task) {
 				candiates = append(candiates, task)
 				quotaCopy.AddTask(task)
 				logrus.Infof("task quota check succeed,user %v task %v taskid %v", task.UserName, task.TaskName, task.ID)
@@ -285,6 +284,17 @@ func (c *TaskController) schedule(ctx context.Context) {
 
 // admitTask 创建对应的aijob到集群中，更新task状态，更新quota
 func (c *TaskController) admitTask(task *models.AITask) error {
+	// 重新check quota
+	// 更新quota
+	quotaInfo := c.GetQuotaInfo(task.UserName)
+	if quotaInfo == nil {
+		// todo:
+		return fmt.Errorf("quota not found")
+	}
+
+	if quotaInfo.CheckHardQuotaExceed(task) {
+		return fmt.Errorf("quota exceed")
+	}
 
 	err, jobname := c.jobControl.CreateJobFromTask(task)
 	if err != nil {
@@ -300,12 +310,7 @@ func (c *TaskController) admitTask(task *models.AITask) error {
 	if err = c.taskDB.UpdateJobName(task.ID, jobname); err != nil {
 		return err
 	}
-	// 更新quota
-	quotaInfo := c.GetQuotaInfo(task.UserName)
-	if quotaInfo == nil {
-		// todo:
-		return fmt.Errorf("quota not found")
-	}
+
 	quotaInfo.AddTask(task)
 	c.taskQueue.DeleteTask(task)
 	return nil
