@@ -46,21 +46,21 @@ type GetUserResp struct {
 }
 
 type RecommendDLJobSpec struct {
-	Replicas            int32                 `json:"replicas"`
-	RunningType         string                `json:"runningType"`
-	DataSets            []string              `json:"datasets"`
-	RelationShips       []DataRelationShipReq `json:"releationShips"`
-	Template            v1.PodTemplateSpec    `json:"template"`
-	Username            string                `json:"username"`
-	Macs                int64                 `json:"macs"`
-	Params              int64                 `json:"params"`
-	BatchSize           int                   `json:"batchSize"`
-	EmbeddingSizeTotal  int64                 `json:"embeddingSizeTotal"`
-	EmbeddingDimTotal   int                   `json:"embeddingDimTotal"`
-	EmbeddingTableCount int                   `json:"embeddingTableCount"`
-	VocabularySize      []int                 `json:"vocabularySize"`
-	EmbeddingDim        []int                 `json:"embeddingDim"`
-	InputTensor         []int                 `json:"inputTensor"`
+	Replicas            int32              `json:"replicas"`
+	RunningType         string             `json:"runningType"`
+	DataSets            []string           `json:"datasets"`
+	RelationShips       []string           `json:"relationShips"`
+	Template            v1.PodTemplateSpec `json:"template"`
+	Username            string             `json:"username"`
+	Macs                int64              `json:"macs"`
+	Params              int64              `json:"params"`
+	BatchSize           int                `json:"batchSize"`
+	EmbeddingSizeTotal  int64              `json:"embeddingSizeTotal"`
+	EmbeddingDimTotal   int                `json:"embeddingDimTotal"`
+	EmbeddingTableCount int                `json:"embeddingTableCount"`
+	VocabularySize      []int              `json:"vocabularySize"`
+	EmbeddingDim        []int              `json:"embeddingDim"`
+	InputTensor         []int              `json:"inputTensor"`
 }
 
 type RecommendDLJobStatus struct {
