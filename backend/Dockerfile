@@ -15,8 +15,22 @@
 
 FROM ubuntu:22.04
 
-COPY ./bin/controller /controller
-COPY ./etc/config.yaml /etc/config.yaml
-RUN chmod +x /controller
+WORKDIR /
+
+RUN apt update && apt install -y git wget
+
+RUN git config --global url."https://ai-portal-backend-development:***REMOVED***@gitlab.***REMOVED***".insteadof "https://gitlab.***REMOVED***" 
+
+RUN wget https://golang.google.cn/dl/go1.19.13.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.19.13.linux-amd64.tar.gz
+
+RUN git clone https://gitlab.***REMOVED***/act-k8s-portal-system/ai-portal-backend.git
+
+COPY kubeconfig /root/kubeconfig
+
+COPY start.sh /
+
 EXPOSE 8078:8078
-ENTRYPOINT ["/controller --server-port :8078 --config-file /etc/config.yaml"]
+
+RUN chmod +x /start.sh
+
+ENTRYPOINT ["/start.sh"]
