@@ -78,8 +78,8 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 	}
 	for _, releationShip := range req.RelationShips {
 		job.Spec.RelationShips = append(job.Spec.RelationShips, recommenddljobapi.DataRelationShip{
-			Type:         recommenddljobapi.DataRelationShipType(releationShip.Type),
-			JobName:      releationShip.JobName,
+			Type:         recommenddljobapi.DataRelationShipType("input"),
+			JobName:      releationShip,
 			JobNamespace: user.NameSpace,
 		})
 	}
@@ -129,7 +129,7 @@ func (mgr *RecommendDLJobMgr) List(c *gin.Context) {
 				Replicas:            job.Spec.Replicas,
 				RunningType:         string(job.Spec.RunningType),
 				DataSets:            make([]string, 0, len(job.Spec.DataSets)),
-				RelationShips:       make([]payload.DataRelationShipReq, 0, len(job.Spec.RelationShips)),
+				RelationShips:       make([]string, 0, len(job.Spec.RelationShips)),
 				Template:            job.Spec.Template,
 				Username:            job.Spec.Username,
 				Macs:                job.Spec.Macs,
@@ -151,10 +151,7 @@ func (mgr *RecommendDLJobMgr) List(c *gin.Context) {
 			retJob.Spec.DataSets = append(retJob.Spec.DataSets, dataset.Name)
 		}
 		for _, releationship := range job.Spec.RelationShips {
-			retJob.Spec.RelationShips = append(retJob.Spec.RelationShips, payload.DataRelationShipReq{
-				Type:    string(releationship.Type),
-				JobName: releationship.JobName,
-			})
+			retJob.Spec.RelationShips = append(retJob.Spec.RelationShips, releationship.JobName)
 		}
 		ret = append(ret, retJob)
 	}
@@ -189,7 +186,7 @@ func (mgr *RecommendDLJobMgr) GetByName(c *gin.Context) {
 			Replicas:            job.Spec.Replicas,
 			RunningType:         string(job.Spec.RunningType),
 			DataSets:            make([]string, 0, len(job.Spec.DataSets)),
-			RelationShips:       make([]payload.DataRelationShipReq, 0, len(job.Spec.RelationShips)),
+			RelationShips:       make([]string, 0, len(job.Spec.RelationShips)),
 			Template:            job.Spec.Template,
 			Username:            job.Spec.Username,
 			Macs:                job.Spec.Macs,
@@ -211,10 +208,7 @@ func (mgr *RecommendDLJobMgr) GetByName(c *gin.Context) {
 		ret.Spec.DataSets = append(ret.Spec.DataSets, dataset.Name)
 	}
 	for _, releationship := range job.Spec.RelationShips {
-		ret.Spec.RelationShips = append(ret.Spec.RelationShips, payload.DataRelationShipReq{
-			Type:    string(releationship.Type),
-			JobName: releationship.JobName,
-		})
+		ret.Spec.RelationShips = append(ret.Spec.RelationShips, releationship.JobName)
 	}
 	resputil.WrapSuccessResponse(c, ret)
 }
