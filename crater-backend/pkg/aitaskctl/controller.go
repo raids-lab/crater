@@ -3,6 +3,7 @@ package aitaskctl
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -244,6 +245,7 @@ func (c *TaskController) schedule(ctx context.Context) {
 				// todo: udpate profile status???
 				if task.Status == models.TaskQueueingStatus && task.ProfileStatus == models.UnProfiled {
 					c.profiler.SubmitProfileTask(task.ID)
+					logrus.Infof("submit profile task, user:%v taskID:%v, taskName:%v", task.UserName, task.ID, task.TaskName)
 					task.ProfileStatus = models.ProfileQueued
 				} else {
 					// todo: 优化 check profile status
@@ -256,6 +258,10 @@ func (c *TaskController) schedule(ctx context.Context) {
 	}
 
 	// todo: candidates队列的调度策略
+	// sort by submit time
+	sort.Slice(candiates, func(i, j int) bool {
+		return candiates[i].CreatedAt.Before(candiates[j].CreatedAt)
+	})
 	for _, candidate := range candiates {
 		task, err := c.taskDB.GetByID(candidate.ID)
 		if err != nil {

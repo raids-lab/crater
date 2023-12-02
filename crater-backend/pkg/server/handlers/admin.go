@@ -5,6 +5,7 @@ import (
 
 	"github.com/aisystem/ai-protal/pkg/aitaskctl"
 	quotasvc "github.com/aisystem/ai-protal/pkg/db/quota"
+	tasksvc "github.com/aisystem/ai-protal/pkg/db/task"
 	usersvc "github.com/aisystem/ai-protal/pkg/db/user"
 	"github.com/aisystem/ai-protal/pkg/models"
 	payload "github.com/aisystem/ai-protal/pkg/server/payload"
@@ -18,6 +19,7 @@ func (mgr *AdminMgr) RegisterRoute(g *gin.RouterGroup) {
 	// g.POST("createUser", mgr.CreateUser)
 	g.GET("listUser", mgr.ListUser)
 	g.GET("getUser", mgr.GetUser)
+	g.GET("listByTaskType", mgr.ListTaskByTaskType)
 	g.POST("updateQuota", mgr.UpdateQuota)
 	g.POST("deleteUser", mgr.DeleteUser)
 	g.POST("updateRole", mgr.UpdateRole)
@@ -27,6 +29,7 @@ func (mgr *AdminMgr) RegisterRoute(g *gin.RouterGroup) {
 type AdminMgr struct {
 	quotaService   quotasvc.DBService
 	userService    usersvc.DBService
+	taskServcie    tasksvc.DBService
 	taskController *aitaskctl.TaskController
 }
 
@@ -34,6 +37,7 @@ func NewAdminMgr(taskController *aitaskctl.TaskController) *AdminMgr {
 	return &AdminMgr{
 		quotaService:   quotasvc.NewDBService(),
 		userService:    usersvc.NewDBService(),
+		taskServcie:    tasksvc.NewDBService(),
 		taskController: taskController,
 	}
 }
@@ -196,4 +200,28 @@ func (mgr *AdminMgr) UpdateRole(c *gin.Context) {
 	}
 	log.Infof("update user role success, user: %s, role: %s", req.UserName, req.Role)
 	resputil.WrapSuccessResponse(c, "")
+}
+
+func (mgr *AdminMgr) ListTaskByTaskType(c *gin.Context) {
+	log.Infof("Task List, url: %s", c.Request.URL)
+	var req payload.ListTaskByTypeReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		msg := fmt.Sprintf("validate list parameters failed, err %v", err)
+		log.Error(msg)
+		resputil.WrapFailedResponse(c, msg, 50002)
+		return
+	}
+	
+	taskModels, err := mgr.taskServcie.ListByTaskType(req.TaskType)
+	if err != nil {
+		msg := fmt.Sprintf("list task failed, err %v", err)
+		log.Error(msg)
+		resputil.WrapFailedResponse(c, msg, 50003)
+		return
+	}
+	resp := payload.ListTaskResp{
+		Tasks: taskModels,
+	}
+	// log.Infof("list task success, taskNum: %d", len(resp.Tasks))
+	resputil.WrapSuccessResponse(c, resp)
 }
