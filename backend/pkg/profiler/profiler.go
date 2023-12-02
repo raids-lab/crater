@@ -2,8 +2,11 @@ package profiler
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
+
+	"hash/fnv"
 
 	"github.com/aisystem/ai-protal/pkg/crclient"
 	tasksvc "github.com/aisystem/ai-protal/pkg/db/task"
@@ -22,6 +25,7 @@ type Profiler struct {
 	prometheusClient *monitor.PrometheusClient     // get monitor data
 	podControl       *crclient.ProfilingPodControl // get pod status
 	profilingTimeout time.Duration                 // profiling timeout
+	profileCache     map[uint64]monitor.PodUtil
 }
 
 func NewProfiler(mgr manager.Manager, prometheusClient *monitor.PrometheusClient, profileTimeout int) *Profiler {
@@ -32,7 +36,33 @@ func NewProfiler(mgr manager.Manager, prometheusClient *monitor.PrometheusClient
 		profilingTimeout: time.Duration(profileTimeout) * time.Second, //todo: configuraion
 		podControl:       &crclient.ProfilingPodControl{mgr.GetClient()},
 		prometheusClient: prometheusClient,
+		profileCache:     make(map[uint64]monitor.PodUtil),
 	}
+}
+
+func hashString(s string) uint64 {
+	h := fnv.New64a()
+	h.Write([]byte(s))
+	return h.Sum64()
+}
+
+func (p *Profiler) checkAndGetCache(task *models.AITask) (monitor.PodUtil, bool) {
+	key := fmt.Sprintf("%s-%s", task.TaskType, task.Command)
+	cacheKey := hashString(key)
+	p.mutex.Lock()
+	util, ok := p.profileCache[cacheKey]
+	p.mutex.Unlock()
+	logrus.Infof("get profile cache, key:%v, ok:%v", key, ok)
+	return util, ok
+}
+
+func (p *Profiler) storeProfileCache(task *models.AITask, util monitor.PodUtil) {
+	key := fmt.Sprintf("%s-%s", task.TaskType, task.Command)
+	cacheKey := hashString(key)
+	p.mutex.Lock()
+	p.profileCache[cacheKey] = util
+	p.mutex.Unlock()
+	logrus.Infof("store profile cache, key:%v", key)
 }
 
 func (p *Profiler) SubmitProfileTask(taskID uint) {
@@ -41,6 +71,14 @@ func (p *Profiler) SubmitProfileTask(taskID uint) {
 		logrus.Errorf("profiling task not found, taskID: %v", taskID)
 		return
 	}
+	// check cache
+	util, ok := p.checkAndGetCache(task)
+	if ok {
+		logrus.Infof("profile cache hit, taskID:%v, taskName:%v, taskType:%v, command:%v", task.ID, task.TaskName, task.TaskType, task.Command)
+		p.taskDB.UpdateProfilingStat(task.ID, models.ProfileFinish, monitor.PodUtilToJSON(util), "")
+		return
+	}
+
 	if task.ProfileStatus == models.UnProfiled {
 		logrus.Infof("submit profiling task, user:%v, taskName:%v, taskID: %v", task.UserName, task.TaskName, taskID)
 		p.taskDB.UpdateProfilingStat(task.ID, models.ProfileQueued, "", "")
@@ -98,7 +136,23 @@ func (p *Profiler) run(ctx context.Context) {
 			}
 			for _, pod := range podList {
 
+				// get task
+				taskID, err := p.podControl.GetTaskIDFromPod(&pod)
+				if err != nil {
+					logrus.Error(err)
+					continue
+				}
+				task, _ := p.taskDB.GetByID(taskID)
+
 				if pod.Status.Phase == corev1.PodPending {
+					util, ok := p.checkAndGetCache(task)
+					if ok {
+						logrus.Infof("profile cache hit, taskID:%v, taskName:%v, taskType:%v, command:%v", task.ID, task.TaskName, task.TaskType, task.Command)
+						p.taskDB.UpdateProfilingStat(task.ID, models.ProfileFinish, monitor.PodUtilToJSON(util), "")
+						p.podControl.Delete(context.Background(), &pod)
+						continue
+					}
+
 					continue
 				}
 				// todo:
@@ -115,12 +169,6 @@ func (p *Profiler) run(ctx context.Context) {
 					continue
 				}
 
-				taskID, err := p.podControl.GetTaskIDFromPod(&pod)
-				if err != nil {
-					logrus.Error(err)
-					continue
-				}
-
 				jobStatus := ""
 				if pod.Status.Phase == corev1.PodFailed {
 					jobStatus = models.TaskFailedStatus
@@ -133,6 +181,8 @@ func (p *Profiler) run(ctx context.Context) {
 					p.taskDB.UpdateProfilingStat(taskID, models.ProfileFailed, "", jobStatus)
 				} else {
 					p.taskDB.UpdateProfilingStat(taskID, models.ProfileFinish, monitor.PodUtilToJSON(podUtil), jobStatus)
+
+					p.storeProfileCache(task, podUtil)
 					// todo: error handle
 					logrus.Infof("profile query pod util success, taskID:%v, pod:%v/%v, status:%v", taskID, pod.Namespace, pod.Name, jobStatus)
 				}
