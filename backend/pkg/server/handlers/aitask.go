@@ -23,6 +23,8 @@ func (mgr *AITaskMgr) RegisterRoute(g *gin.RouterGroup) {
 	g.GET("list", mgr.List)
 	g.GET("get", mgr.Get)
 	g.GET("getQuota", mgr.GetQuota)
+	g.GET("getTaskCountStatistic", mgr.GetTaskCountStatistic)
+
 }
 
 type AITaskMgr struct {
@@ -211,5 +213,38 @@ func (mgr *AITaskMgr) GetQuota(c *gin.Context) {
 		SoftUsed: quotaInfo.SoftUsed,
 	}
 	log.Infof("get quota success, user: %v", username.(string))
+	resputil.WrapSuccessResponse(c, resp)
+}
+
+func (mgr *AITaskMgr) GetTaskCountStatistic(c *gin.Context) {
+	log.Infof("Task Count Statistic, url: %s", c.Request.URL)
+	username, _ := c.Get("username")
+	taskCountList, err := mgr.taskService.GetUserTaskStatusCount(username.(string))
+	if err != nil {
+		msg := fmt.Sprintf("get task count statistic failed, err %v", err)
+		log.Error(msg)
+		resputil.WrapFailedResponse(c, msg, 50003)
+		return
+	}
+	var resp payload.AITaskCountStatistic
+	for _, taskCount := range taskCountList {
+		switch taskCount.Status {
+		case models.TaskQueueingStatus:
+			resp.QueueingTaskNum += taskCount.Count
+		case models.TaskRunningStatus:
+			resp.RunningTaskNum += taskCount.Count
+		case models.TaskCreatedStatus:
+			resp.PendingTaskNum += taskCount.Count
+		case models.TaskPendingStatus:
+			resp.PendingTaskNum += taskCount.Count
+		case models.TaskPreemptedStatus:
+			resp.PendingTaskNum += taskCount.Count
+		case models.TaskSucceededStatus:
+			resp.FinishedTaskNum += taskCount.Count
+		case models.TaskFailedStatus:
+			resp.FinishedTaskNum += taskCount.Count
+		}
+	}
+	// log.Infof("list task success, taskNum: %d", len(resp.Tasks))
 	resputil.WrapSuccessResponse(c, resp)
 }

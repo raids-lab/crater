@@ -19,7 +19,9 @@ func (mgr *AdminMgr) RegisterRoute(g *gin.RouterGroup) {
 	// g.POST("createUser", mgr.CreateUser)
 	g.GET("listUser", mgr.ListUser)
 	g.GET("getUser", mgr.GetUser)
+	g.GET("listQuota", mgr.ListQuota)
 	g.GET("listByTaskType", mgr.ListTaskByTaskType)
+	g.GET("getTaskCountStatistic", mgr.GetTaskCountStatistic)
 	g.POST("updateQuota", mgr.UpdateQuota)
 	g.POST("deleteUser", mgr.DeleteUser)
 	g.POST("updateRole", mgr.UpdateRole)
@@ -98,6 +100,27 @@ func (mgr *AdminMgr) ListUser(c *gin.Context) {
 	}
 
 	log.Infof("list users success, taskNum: %d", len(resp.Users))
+	resputil.WrapSuccessResponse(c, resp)
+}
+
+func (mgr *AdminMgr) ListQuota(c *gin.Context) {
+	log.Infof("Quota List, url: %s", c.Request.URL)
+	userQuotas := mgr.taskController.ListQuotaInfoSnapshot()
+
+	resp := payload.ListUserQuotaResp{
+		Quotas: make([]payload.GetQuotaResp, 0),
+	}
+	for _, quotaInfo := range userQuotas {
+		r := payload.GetQuotaResp{
+			User:     quotaInfo.Name,
+			Hard:     quotaInfo.Hard,
+			HardUsed: quotaInfo.HardUsed,
+			SoftUsed: quotaInfo.SoftUsed,
+		}
+		resp.Quotas = append(resp.Quotas, r)
+	}
+
+	log.Infof("list users success, taskNum: %d", len(resp.Quotas))
 	resputil.WrapSuccessResponse(c, resp)
 }
 
@@ -211,7 +234,7 @@ func (mgr *AdminMgr) ListTaskByTaskType(c *gin.Context) {
 		resputil.WrapFailedResponse(c, msg, 50002)
 		return
 	}
-	
+
 	taskModels, err := mgr.taskServcie.ListByTaskType(req.TaskType)
 	if err != nil {
 		msg := fmt.Sprintf("list task failed, err %v", err)
@@ -221,6 +244,38 @@ func (mgr *AdminMgr) ListTaskByTaskType(c *gin.Context) {
 	}
 	resp := payload.ListTaskResp{
 		Tasks: taskModels,
+	}
+	// log.Infof("list task success, taskNum: %d", len(resp.Tasks))
+	resputil.WrapSuccessResponse(c, resp)
+}
+
+func (mgr *AdminMgr) GetTaskCountStatistic(c *gin.Context) {
+	log.Infof("Task Count Statistic, url: %s", c.Request.URL)
+	taskCountList, err := mgr.taskServcie.GetTaskStatusCount()
+	if err != nil {
+		msg := fmt.Sprintf("get task count statistic failed, err %v", err)
+		log.Error(msg)
+		resputil.WrapFailedResponse(c, msg, 50003)
+		return
+	}
+	var resp payload.AITaskCountStatistic
+	for _, taskCount := range taskCountList {
+		switch taskCount.Status {
+		case models.TaskQueueingStatus:
+			resp.QueueingTaskNum += taskCount.Count
+		case models.TaskRunningStatus:
+			resp.RunningTaskNum += taskCount.Count
+		case models.TaskCreatedStatus:
+			resp.PendingTaskNum += taskCount.Count
+		case models.TaskPendingStatus:
+			resp.PendingTaskNum += taskCount.Count
+		case models.TaskPreemptedStatus:
+			resp.PendingTaskNum += taskCount.Count
+		case models.TaskSucceededStatus:
+			resp.FinishedTaskNum += taskCount.Count
+		case models.TaskFailedStatus:
+			resp.FinishedTaskNum += taskCount.Count
+		}
 	}
 	// log.Infof("list task success, taskNum: %d", len(resp.Tasks))
 	resputil.WrapSuccessResponse(c, resp)

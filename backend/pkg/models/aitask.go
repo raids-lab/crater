@@ -96,6 +96,11 @@ type TaskAttr struct {
 	StartedAt time.Time `gorm:"column:started_at" json:"startedAt"`
 }
 
+type TaskStatusCount struct {
+	Status string
+	Count  int
+}
+
 // type Volume struct {
 // 	Name string `json:"name"`
 // 	Mounts []DirMount `json:"mounts"`

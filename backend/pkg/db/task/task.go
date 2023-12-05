@@ -20,6 +20,8 @@ type DBService interface {
 	GetByID(taskID uint) (*models.AITask, error)
 	GetByUserAndID(userName string, taskID uint) (*models.AITask, error)
 	UpdateProfilingStat(taskID uint, profileStatus uint, stat string, status string) error
+	GetTaskStatusCount() ([]models.TaskStatusCount, error)
+	GetUserTaskStatusCount(userName string) ([]models.TaskStatusCount, error)
 }
 
 type service struct{}
@@ -92,7 +94,7 @@ func (s *service) ListByUserAndStatuses(userName string, statuses []string) ([]m
 	return tasks, err
 }
 
-func (s *service) ListByTaskType(taskType string)([]models.AITask, error) {
+func (s *service) ListByTaskType(taskType string) ([]models.AITask, error) {
 	var tasks []models.AITask
 	err := db.Orm.Where("task_type = ?", taskType).Find(&tasks).Error
 	return tasks, err
@@ -121,4 +123,22 @@ func (s *service) UpdateProfilingStat(taskID uint, profileStatus uint, stat stri
 	}
 	err := db.Orm.Model(&models.AITask{}).Where("id = ?", taskID).Updates(updateMap).Error
 	return err
+}
+
+func (s *service) GetTaskStatusCount() ([]models.TaskStatusCount, error) {
+	var stats []models.TaskStatusCount
+	err := db.Orm.Model(&models.AITask{}).Where("is_deleted = ?", false).
+		Select("status, count(*) as count").
+		Group("status").
+		Scan(&stats).Error
+	return stats, err
+}
+
+func (s *service) GetUserTaskStatusCount(userName string) ([]models.TaskStatusCount, error) {
+	var stats []models.TaskStatusCount
+	err := db.Orm.Model(&models.AITask{}).Where("username = ? and is_deleted = ?", userName, false).
+		Select("status, count(*) as count").
+		Group("status").
+		Scan(&stats).Error
+	return stats, err
 }

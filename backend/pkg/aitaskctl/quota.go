@@ -99,6 +99,18 @@ func (c *TaskController) GetQuotaInfoSnapshotByUsername(username string) *QuotaI
 	}
 }
 
+// GetQuotaInfoSnapshotByUsername 获取某个用户的QuotaInfo的clone，对quota的增加减少不改变原数据
+func (c *TaskController) ListQuotaInfoSnapshot() []QuotaInfo {
+	quotaInfos := make([]QuotaInfo, 0)
+	c.quotaInfos.Range(func(key, value any) bool {
+		info := value.(*QuotaInfo)
+		infoSnapShot := info.Snapshot()
+		quotaInfos = append(quotaInfos, *infoSnapShot)
+		return true
+	})
+	return quotaInfos
+}
+
 func (c *TaskController) AddOrUpdateQuotaInfo(name string, quota models.Quota) (added bool, quotaInfo *QuotaInfo) {
 
 	hardQuota, _ := models.JSONToResourceList(quota.HardQuota)
