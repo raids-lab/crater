@@ -30,7 +30,12 @@ type ListUserResp struct {
 	Users []GetUserResp
 }
 
+type ListUserQuotaResp struct {
+	Quotas []GetQuotaResp
+}
+
 type GetQuotaResp struct {
+	User     string          `json:"user"`
 	Hard     v1.ResourceList `json:"hard"`
 	HardUsed v1.ResourceList `json:"hardUsed"`
 	SoftUsed v1.ResourceList `json:"softUsed"`
@@ -43,6 +48,13 @@ type GetUserResp struct {
 	QuotaHard v1.ResourceList `json:"quotaHard"`
 	CreatedAt time.Time       `json:"createdAt"`
 	UpdatedAt time.Time       `json:"updatedAt"`
+}
+
+type AITaskCountStatistic struct {
+	QueueingTaskNum int `json:"queueingTaskNum"`
+	PendingTaskNum  int `json:"pendingTaskNum"`
+	RunningTaskNum  int `json:"runningTaskNum"`
+	FinishedTaskNum int `json:"finishedTaskNum"`
 }
 
 type RecommendDLJobSpec struct {

@@ -156,36 +156,36 @@ func (c *TaskController) TaskUpdated(event util.TaskUpdateChan) {
 }
 
 // deprecated
-func (c *TaskController) watchTaskUpdate(ctx context.Context) {
-	for {
-		select {
-		case t := <-c.taskUpdateChan:
-			// 更新task在队列的状态
-			task, err := c.taskDB.GetByID(t.TaskID)
-			tidStr := strconv.FormatUint(uint64(t.TaskID), 10)
-			logrus.Infof("get task update event, taskID: %v, operation: %v", tidStr, t.Operation)
-			// 1. delete的情况
-			if t.Operation == util.DeleteTask {
-				c.taskQueue.DeleteTaskByUserNameAndTaskID(t.UserName, tidStr)
-				// delete in cluster
-				err = c.jobControl.DeleteJobFromTask(task)
-				if err != nil {
-					logrus.Errorf("delete job from task failed, err: %v", err)
-				}
-				logrus.Infof("delete task in task controller, %d", t.TaskID)
-				continue
-			} else if t.Operation == util.CreateTask {
-				// 2. create
-				c.taskQueue.AddTask(task)
-			} else if t.Operation == util.UpdateTask {
-				// 3. update slo
-				c.taskQueue.UpdateTask(task)
-			}
-		case <-ctx.Done():
-			return
-		}
-	}
-}
+// func (c *TaskController) watchTaskUpdate(ctx context.Context) {
+// 	for {
+// 		select {
+// 		case t := <-c.taskUpdateChan:
+// 			// 更新task在队列的状态
+// 			task, err := c.taskDB.GetByID(t.TaskID)
+// 			tidStr := strconv.FormatUint(uint64(t.TaskID), 10)
+// 			logrus.Infof("get task update event, taskID: %v, operation: %v", tidStr, t.Operation)
+// 			// 1. delete的情况
+// 			if t.Operation == util.DeleteTask {
+// 				c.taskQueue.DeleteTaskByUserNameAndTaskID(t.UserName, tidStr)
+// 				// delete in cluster
+// 				err = c.jobControl.DeleteJobFromTask(task)
+// 				if err != nil {
+// 					logrus.Errorf("delete job from task failed, err: %v", err)
+// 				}
+// 				logrus.Infof("delete task in task controller, %d", t.TaskID)
+// 				continue
+// 			} else if t.Operation == util.CreateTask {
+// 				// 2. create
+// 				c.taskQueue.AddTask(task)
+// 			} else if t.Operation == util.UpdateTask {
+// 				// 3. update slo
+// 				c.taskQueue.UpdateTask(task)
+// 			}
+// 		case <-ctx.Done():
+// 			return
+// 		}
+// 	}
+// }
 
 func (c *TaskController) updateTaskStatus(taskID string, status string, reason string) (*models.AITask, error) {
 	//convert taskID to uint
@@ -239,7 +239,7 @@ func (c *TaskController) schedule(ctx context.Context) {
 	for _, q := range c.taskQueue.userQueues {
 		for _, t := range q.bestEffortQueue.List() {
 			task := t.(*models.AITask)
-			logrus.Infof("user:%v, task: %v, task status:%v, profile status: %v", task.UserName, task.ID, task.Status, task.ProfileStatus)
+			// logrus.Infof("user:%v, task: %v, task status:%v, profile status: %v", task.UserName, task.ID, task.Status, task.ProfileStatus)
 			// update profile status
 			if c.profiler != nil {
 				// todo: udpate profile status???
