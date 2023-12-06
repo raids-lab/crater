@@ -258,7 +258,7 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
     mutationFn: () =>
       apiDlAnalyze({
         runningType: form.getValues("runningType"),
-        relationShips: form.getValues("relationShips"),
+        relationShips: form.getValues("relationShips").map((item) => item.name),
         macs: parseInt(form.getValues("macs") as unknown as string),
         params: parseInt(form.getValues("params") as unknown as string),
         batchSize: parseInt(form.getValues("batchSize") as unknown as string),
