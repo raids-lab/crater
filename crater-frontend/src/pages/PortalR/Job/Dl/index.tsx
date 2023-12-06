@@ -52,6 +52,7 @@ import {
 import { NewDlTaskForm } from "./Form";
 import { Separator } from "@/components/ui/separator";
 import PodDetail from "./PodDetail";
+import { TableDate } from "@/components/custom/TableDate";
 
 type TaskInfo = {
   id: number;
@@ -224,22 +225,7 @@ const AiJobHome = () => {
           />
         ),
         cell: ({ row }) => {
-          // row format: "2023-10-30T03:21:03.733Z"
-          // show: 2 天前 / 2 小时前 / 2 分钟前
-          const now = new Date();
-          const createdAt = new Date(row.getValue("createdAt"));
-          const diff = now.getTime() - createdAt.getTime();
-          let formatted = "";
-          if (diff > 1000 * 60 * 60 * 24) {
-            formatted = `${Math.floor(diff / (1000 * 60 * 60 * 24))} 天前`;
-          } else if (diff > 1000 * 60 * 60) {
-            formatted = `${Math.floor(diff / (1000 * 60 * 60))} 小时前`;
-          } else if (diff > 1000 * 60) {
-            formatted = `${Math.floor(diff / (1000 * 60))} 分钟前`;
-          } else {
-            formatted = `${Math.floor(diff / 1000)} 秒前`;
-          }
-          return <div>{formatted}</div>;
+          return <TableDate date={row.getValue("createdAt")}></TableDate>;
         },
         sortingFn: "datetime",
       },
