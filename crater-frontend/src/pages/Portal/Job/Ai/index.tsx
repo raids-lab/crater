@@ -1,4 +1,5 @@
 import {
+  CircleIcon,
   ClockIcon,
   DotsHorizontalIcon,
   MinusCircledIcon,
@@ -36,7 +37,11 @@ import { NewTaskForm } from "./Form";
 import { useEffect, useMemo, useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiAiTaskDelete, apiAiTaskList } from "@/services/api/aiTask";
+import {
+  apiAiTaskDelete,
+  apiAiTaskList,
+  convertAiTask,
+} from "@/services/api/aiTask";
 import { useToast } from "@/components/ui/use-toast";
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
@@ -53,6 +58,8 @@ import { globalBreadCrumb } from "@/utils/store";
 import { useNavigate, useRoutes } from "react-router-dom";
 import AiJobDetail from "./Detail";
 import { TableDate } from "@/components/custom/TableDate";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 type TaskInfo = {
   id: number;
@@ -62,6 +69,9 @@ type TaskInfo = {
   priority: string;
   profileStatus: string;
   createdAt: string;
+  startedAt: string;
+  finishAt: string;
+  gpus: string | number | undefined;
 };
 
 const getHeader = (key: string): string => {
@@ -72,6 +82,8 @@ const getHeader = (key: string): string => {
       return "任务名称";
     case "taskType":
       return "类型";
+    case "gpus":
+      return "GPU 数";
     case "status":
       return "任务状态";
     case "priority":
@@ -80,6 +92,10 @@ const getHeader = (key: string): string => {
       return "分析状态";
     case "createdAt":
       return "创建时间";
+    case "startedAt":
+      return "开始时间";
+    case "finishAt":
+      return "完成时间";
     default:
       return key;
   }
@@ -87,22 +103,40 @@ const getHeader = (key: string): string => {
 
 const priorities = [
   {
-    label: "高优先级",
+    label: "高",
     value: "high",
     icon: ArrowUpIcon,
   },
   {
-    label: "低优先级",
+    label: "低",
     value: "low",
     icon: ArrowDownIcon,
   },
 ];
 
-const statuses = [
+type StatusValue =
+  | "Queueing"
+  | "Created"
+  | "Pending"
+  | "Running"
+  | "Failed"
+  | "Succeeded"
+  | "Preempted";
+
+const statuses: {
+  value: StatusValue;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
   {
     value: "Queueing",
     label: "Queueing",
     icon: ClockIcon,
+  },
+  {
+    value: "Created",
+    label: "Created",
+    icon: CircleIcon,
   },
   {
     value: "Pending",
@@ -125,8 +159,8 @@ const statuses = [
     icon: CheckCircledIcon,
   },
   {
-    value: "Suspended",
-    label: "Suspended",
+    value: "Preempted",
+    label: "Preempted",
     icon: MinusCircledIcon,
   },
 ];
@@ -143,11 +177,11 @@ const profilingStatuses = [
     label: "未分析",
     icon: ClockIcon,
   },
-  {
-    value: "1",
-    label: "等待分析",
-    icon: ClockIcon,
-  },
+  // {
+  //   value: "1",
+  //   label: "等待分析",
+  //   icon: ClockIcon,
+  // },
   {
     value: "2",
     label: "分析中",
@@ -267,7 +301,7 @@ const AiJobHome = () => {
           <Button
             onClick={() => navigate(`${row.original.id}`)}
             variant={"link"}
-            className="h-8 px-0 font-normal text-secondary-foreground"
+            className="h-8 px-0 text-left font-normal text-secondary-foreground"
           >
             {row.getValue("title")}
           </Button>
@@ -284,6 +318,13 @@ const AiJobHome = () => {
         cell: ({ row }) => <>{row.getValue("taskType")}</>,
       },
       {
+        accessorKey: "gpus",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("gpus")} />
+        ),
+        cell: ({ row }) => <>{row.getValue("gpus")}</>,
+      },
+      {
         accessorKey: "status",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("status")} />
@@ -296,12 +337,23 @@ const AiJobHome = () => {
             return null;
           }
           return (
-            <div className="flex w-[100px] items-center">
-              {status.icon && (
-                <status.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-              )}
+            <Badge
+              className={cn("flex w-fit items-center px-1.5 py-1", {
+                "bg-purple-500 hover:bg-purple-400":
+                  status.value === "Queueing",
+                "bg-slate-500 hover:bg-slate-400": status.value === "Created",
+                "bg-pink-500 hover:bg-pink-400": status.value === "Pending",
+                "bg-sky-500 hover:bg-sky-400": status.value === "Running",
+                "bg-red-500 hover:bg-red-400": status.value === "Failed",
+                "bg-emerald-500 hover:bg-emerald-400":
+                  status.value === "Succeeded",
+                "bg-orange-500 hover:bg-orange-400":
+                  status.value === "Preempted",
+              })}
+            >
+              {status.icon && <status.icon className="mr-[3px] h-4 w-4" />}
               <span>{status.label}</span>
-            </div>
+            </Badge>
           );
         },
         filterFn: (row, id, value) => {
@@ -330,6 +382,15 @@ const AiJobHome = () => {
               )}
               <span>{priority.label}</span>
             </div>
+            // <Badge
+            //   className={cn("flex w-fit items-center px-2 font-normal", {
+            //     "bg-secondary text-secondary-foreground hover:bg-secondary/80":
+            //       priority.value === "low",
+            //   })}
+            // >
+            //   {priority.icon && <priority.icon className="mr-1 h-4 w-4" />}
+            //   <span>{priority.label}</span>
+            // </Badge>
           );
         },
         filterFn: (row, id, value) => {
@@ -374,6 +435,32 @@ const AiJobHome = () => {
         ),
         cell: ({ row }) => {
           return <TableDate date={row.getValue("createdAt")}></TableDate>;
+        },
+        sortingFn: "datetime",
+      },
+      {
+        accessorKey: "startedAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("startedAt")}
+          />
+        ),
+        cell: ({ row }) => {
+          return <TableDate date={row.getValue("startedAt")}></TableDate>;
+        },
+        sortingFn: "datetime",
+      },
+      {
+        accessorKey: "finishAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("finishAt")}
+          />
+        ),
+        cell: ({ row }) => {
+          return <TableDate date={row.getValue("finishAt")}></TableDate>;
         },
         sortingFn: "datetime",
       },
@@ -434,15 +521,23 @@ const AiJobHome = () => {
     if (!taskList) return;
     const tableData: TaskInfo[] = taskList
       .filter((task) => (showDeleted ? task.isDeleted : !task.isDeleted))
-      .map((task) => ({
-        id: task.id,
-        title: task.taskName,
-        taskType: task.taskType,
-        status: task.status,
-        priority: task.slo ? "high" : "low",
-        profileStatus: task.profileStatus.toString(),
-        createdAt: task.createdAt,
-      }));
+      .map((t) => {
+        const task = convertAiTask(t);
+        return {
+          id: task.id,
+          title: task.taskName,
+          taskType: task.taskType,
+          status: task.status,
+          priority: task.slo ? "high" : "low",
+          profileStatus:
+            // 分析状态：profileStatus = 1 或 2 都显示分析中，不需要等待分析这个选项了
+            task.profileStatus === 1 ? "2" : task.profileStatus.toString(),
+          createdAt: task.createdAt,
+          startedAt: task.startedAt,
+          finishAt: task.finishAt,
+          gpus: task.resourceRequest["nvidia.com/gpu"],
+        };
+      });
     setData(tableData);
   }, [taskList, isLoading, showDeleted]);
 
@@ -454,7 +549,7 @@ const AiJobHome = () => {
             <Button className="h-8 min-w-fit">新建任务</Button>
           </SheetTrigger>
           {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
-          <SheetContent className="max-h-screen overflow-y-auto sm:max-w-2xl">
+          <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
             <SheetHeader>
               <SheetTitle>新建任务</SheetTitle>
               <SheetDescription>创建一个新的 AI 训练任务</SheetDescription>

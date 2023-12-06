@@ -3,7 +3,10 @@
  * @param dateString - The date string to calculate the difference from.
  * @returns A formatted string representing the time difference.
  */
-export const getDateDiff = (dateString: string): string => {
+export const getDateDiff = (dateString: string | undefined): string => {
+  if (!dateString || dateString === "") {
+    return "";
+  }
   const now = new Date();
   const createdAt = new Date(dateString);
   const diff = now.getTime() - createdAt.getTime();

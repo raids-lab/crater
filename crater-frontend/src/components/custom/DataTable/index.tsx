@@ -76,7 +76,7 @@ export function DataTable<TData, TValue>({
       <DataTableToolbar table={table} config={toolbarConfig}>
         {children}
       </DataTableToolbar>
-      <div className="rounded-md border bg-background shadow-sm">
+      <div className="w-full rounded-md border bg-background shadow-sm">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
