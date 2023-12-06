@@ -31,6 +31,7 @@ import {
   IDlAnalyze,
   apiDlAnalyze,
   apiDlTaskCreate,
+  apiDlTaskList,
 } from "@/services/api/recommend/dlTask";
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,6 +50,8 @@ import {
 import { apiDlDatasetList } from "@/services/api/recommend/dataset";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ProgressBar } from "@/components/custom/ProgressBar";
+import { PopoverClose } from "@radix-ui/react-popover";
+import { showErrorToast } from "@/utils/toast";
 
 // {
 //   "name": "test-recommenddljob", // 任务名称，必填
@@ -98,7 +101,11 @@ const formSchema = z.object({
       name: z.string(),
     }),
   ),
-  relationShips: z.array(z.string()),
+  relationShips: z.array(
+    z.object({
+      name: z.string(),
+    }),
+  ),
   macs: z.coerce.number(),
   params: z.coerce.number(),
   batchSize: z.coerce.number(),
@@ -125,7 +132,7 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
 
   const datasetInfo = useQuery({
     queryKey: ["recommend", "dataset", "list"],
-    queryFn: () => apiDlDatasetList(),
+    queryFn: apiDlDatasetList,
     select: (res) => res.data.data,
   });
 
@@ -140,6 +147,22 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
     return sets;
   }, [datasetInfo.data]);
 
+  const taskListInfo = useQuery({
+    queryKey: ["dltask", "list"],
+    queryFn: apiDlTaskList,
+    select: (res) => res.data.data,
+  });
+
+  const taskList = useMemo(() => {
+    if (!taskListInfo.data) {
+      return [];
+    }
+    return taskListInfo.data.map((item) => ({
+      value: item.name,
+      label: item.name,
+    }));
+  }, [taskListInfo.data]);
+
   const { mutate: createTask } = useMutation({
     mutationFn: (values: FormSchema) => {
       const {
@@ -148,11 +171,17 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
         containerGpu,
         dim,
         datasets,
+        relationShips,
         ...props
       } = values;
       return apiDlTaskCreate({
         ...props,
-        datasets: datasets.map((item) => item.name),
+        datasets: datasets
+          .map((item) => item.name)
+          .filter((item) => item.length > 0),
+        relationShips: relationShips
+          .map((item) => item.name)
+          .filter((item) => item.length > 0),
         vocabularySize: dim.map((item) => item.vocabularySize),
         embeddingDim: dim.map((item) => item.embeddingDim),
         template: {
@@ -185,8 +214,8 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
       name: "",
       replicas: 1,
       runningType: undefined,
-      datasets: [],
-      relationShips: [],
+      datasets: [{ name: "" }],
+      relationShips: [{ name: "" }],
       macs: 0,
       params: 0,
       batchSize: 0,
@@ -212,6 +241,15 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
     remove: datasetsRemove,
   } = useFieldArray<FormSchema>({
     name: "datasets",
+    control: form.control,
+  });
+
+  const {
+    fields: relationShipsFields,
+    append: relationShipsAppend,
+    remove: relationShipsRemove,
+  } = useFieldArray<FormSchema>({
+    name: "relationShips",
     control: form.control,
   });
 
@@ -363,26 +401,46 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
                               <ScrollArea className="h-60">
                                 <CommandGroup>
                                   {datasetList.map((dataset) => (
-                                    <CommandItem
-                                      value={dataset.label}
+                                    <PopoverClose
                                       key={dataset.value}
-                                      onSelect={() => {
-                                        field.onChange({
-                                          ...field.value,
-                                          name: dataset.value,
-                                        });
-                                      }}
+                                      className="w-full"
                                     >
-                                      {dataset.label}
-                                      <CheckIcon
-                                        className={cn(
-                                          "ml-auto h-4 w-4",
-                                          dataset.value === field.value.name
-                                            ? "opacity-100"
-                                            : "opacity-0",
-                                        )}
-                                      />
-                                    </CommandItem>
+                                      <CommandItem
+                                        value={dataset.label}
+                                        key={dataset.value}
+                                        onSelect={() => {
+                                          if (
+                                            form
+                                              .getValues("datasets")
+                                              .find(
+                                                (d) => d.name === dataset.value,
+                                              )
+                                          ) {
+                                            showErrorToast(
+                                              "添加数据集失败",
+                                              new Error(
+                                                `数据集「${dataset.label}」已存在`,
+                                              ),
+                                            );
+                                          } else {
+                                            field.onChange({
+                                              ...field.value,
+                                              name: dataset.value,
+                                            });
+                                          }
+                                        }}
+                                      >
+                                        {dataset.label}
+                                        <CheckIcon
+                                          className={cn(
+                                            "ml-auto h-4 w-4",
+                                            dataset.value === field.value.name
+                                              ? "opacity-100"
+                                              : "opacity-0",
+                                          )}
+                                        />
+                                      </CommandItem>
+                                    </PopoverClose>
                                   ))}
                                 </CommandGroup>
                               </ScrollArea>
@@ -412,6 +470,129 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
             onClick={() => datasetsAppend({ name: "" })}
           >
             添加数据集
+          </Button>
+        </div>
+        <div className="space-y-2">
+          {relationShipsFields.length > 0 && (
+            <div>
+              {relationShipsFields.map((field, index) => (
+                <FormField
+                  control={form.control}
+                  key={field.id}
+                  name={`relationShips.${index}`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={cn(index !== 0 && "sr-only")}>
+                        关联任务
+                      </FormLabel>
+                      <div className="flex flex-row space-x-2">
+                        <Popover modal={true}>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                  "w-full justify-between",
+                                  !field.value && "text-muted-foreground",
+                                )}
+                              >
+                                {field.value.name
+                                  ? taskList.find(
+                                      (dataset) =>
+                                        dataset.value === field.value.name,
+                                    )?.label
+                                  : "选择要关联的任务"}
+                                <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            className="p-0"
+                            style={{
+                              width: "var(--radix-popover-trigger-width)",
+                              maxHeight:
+                                "var(--radix-popover-content-available-height)",
+                            }}
+                          >
+                            <Command>
+                              <CommandInput
+                                placeholder="查找任务"
+                                className="h-9"
+                              />
+                              <ScrollArea className="h-60">
+                                <CommandEmpty>未找到匹配的任务</CommandEmpty>
+                                <CommandGroup>
+                                  {taskList.map((task) => (
+                                    <PopoverClose
+                                      key={task.value}
+                                      className="w-full"
+                                    >
+                                      <CommandItem
+                                        value={task.label}
+                                        key={task.value}
+                                        onSelect={() => {
+                                          if (
+                                            form
+                                              .getValues("relationShips")
+                                              .find(
+                                                (d) => d.name === task.value,
+                                              )
+                                          ) {
+                                            showErrorToast(
+                                              "添加关系失败",
+                                              new Error(
+                                                `与任务${task.label}」的关系已存在`,
+                                              ),
+                                            );
+                                          } else {
+                                            field.onChange({
+                                              ...field.value,
+                                              name: task.value,
+                                            });
+                                          }
+                                        }}
+                                      >
+                                        {task.label}
+                                        <CheckIcon
+                                          className={cn(
+                                            "ml-auto h-4 w-4",
+                                            task.value === field.value.name
+                                              ? "opacity-100"
+                                              : "opacity-0",
+                                          )}
+                                        />
+                                      </CommandItem>
+                                    </PopoverClose>
+                                  ))}
+                                </CommandGroup>
+                              </ScrollArea>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <div>
+                          <Button
+                            size="icon"
+                            variant={"outline"}
+                            onClick={() => relationShipsRemove(index)}
+                          >
+                            <Cross1Icon className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                      {index === dimFields.length - 1 && <FormMessage />}
+                    </FormItem>
+                  )}
+                />
+              ))}
+            </div>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => relationShipsAppend({ name: "" })}
+          >
+            添加关联任务
           </Button>
         </div>
         <div className="grid grid-cols-3 gap-3">
