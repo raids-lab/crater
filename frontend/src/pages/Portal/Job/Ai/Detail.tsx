@@ -84,7 +84,7 @@ const AiJobDetail: FC = () => {
               //   mem_copy_util_avg: 0.3405, //上限1 */}
           <Card className="col-span-full">
             <CardHeader className="p-3"></CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-2">
+            <CardContent className="grid gap-3 capitalize md:grid-cols-2">
               <ProgressBar
                 label={`GPU util avg: ${(
                   taskInfo.profileStat.gpu_util_avg * 100
@@ -98,16 +98,16 @@ const AiJobDetail: FC = () => {
                 width={taskInfo.profileStat.gpu_util_max * 100}
               />
               <ProgressBar
-                label={`SM util avg: ${(
-                  taskInfo.profileStat.sm_util_avg * 100
+                label={`SM active avg: ${(
+                  taskInfo.profileStat.sm_active_avg * 100
                 ).toFixed(2)}%`}
-                width={taskInfo.profileStat.sm_util_avg * 100}
+                width={taskInfo.profileStat.sm_active_avg * 100}
               />
               <ProgressBar
-                label={`SM util max: ${(
-                  taskInfo.profileStat.sm_util_max * 100
+                label={`SM active max: ${(
+                  taskInfo.profileStat.sm_active_max * 100
                 ).toFixed(2)}%`}
-                width={taskInfo.profileStat.sm_util_max * 100}
+                width={taskInfo.profileStat.sm_active_max * 100}
               />
               <ProgressBar
                 label={`SM occupancy avg: ${(

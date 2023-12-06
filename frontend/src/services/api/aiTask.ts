@@ -13,6 +13,9 @@ export interface IAiTask {
   updatedAt: string;
   admittedAt: string;
   startedAt: string;
+  finishAt: string;
+  duration: number;
+  jct: number;
   image: string;
   resourceRequest: string;
   workingDir: string;
@@ -56,8 +59,8 @@ interface ProfileStat {
   gpu_util_avg: number; //上限1
   gpu_util_max: number; //上限1
   gpu_util_std: number;
-  sm_util_avg: number; //上限1
-  sm_util_max: number; //上限1
+  sm_active_avg: number; //上限1
+  sm_active_max: number; //上限1
   sm_util_std: number;
   sm_occupancy_avg: number; //上限1
   sm_occupancy_max: number;
@@ -87,6 +90,9 @@ export interface AiTask {
   updatedAt: string;
   admittedAt: string;
   startedAt: string;
+  finishAt: string;
+  duration: number;
+  jct: number;
   image: string;
   resourceRequest: KubernetesResource;
   workingDir: string;
@@ -127,12 +133,11 @@ export interface ITaskCreate {
   image: string;
   workingDir: string;
   shareDirs: {
-    [key: string]: string;
+    [key: string]: {
+      [key: string]: string;
+    }[];
   };
   command: string;
-  args: {
-    [key: string]: string;
-  };
 }
 
 export const apiAiTaskCreate = async (task: ITaskCreate) => {

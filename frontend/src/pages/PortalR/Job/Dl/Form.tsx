@@ -401,35 +401,32 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
                               <ScrollArea className="h-60">
                                 <CommandGroup>
                                   {datasetList.map((dataset) => (
-                                    <PopoverClose
+                                    <CommandItem
+                                      value={dataset.label}
                                       key={dataset.value}
-                                      className="w-full"
+                                      onSelect={() => {
+                                        if (
+                                          form
+                                            .getValues("datasets")
+                                            .find(
+                                              (d) => d.name === dataset.value,
+                                            )
+                                        ) {
+                                          showErrorToast(
+                                            "添加数据集失败",
+                                            new Error(
+                                              `数据集「${dataset.label}」已存在`,
+                                            ),
+                                          );
+                                        } else {
+                                          field.onChange({
+                                            ...field.value,
+                                            name: dataset.value,
+                                          });
+                                        }
+                                      }}
                                     >
-                                      <CommandItem
-                                        value={dataset.label}
-                                        key={dataset.value}
-                                        onSelect={() => {
-                                          if (
-                                            form
-                                              .getValues("datasets")
-                                              .find(
-                                                (d) => d.name === dataset.value,
-                                              )
-                                          ) {
-                                            showErrorToast(
-                                              "添加数据集失败",
-                                              new Error(
-                                                `数据集「${dataset.label}」已存在`,
-                                              ),
-                                            );
-                                          } else {
-                                            field.onChange({
-                                              ...field.value,
-                                              name: dataset.value,
-                                            });
-                                          }
-                                        }}
-                                      >
+                                      <PopoverClose className="flex w-full flex-row items-center justify-between">
                                         {dataset.label}
                                         <CheckIcon
                                           className={cn(
@@ -439,8 +436,8 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
                                               : "opacity-0",
                                           )}
                                         />
-                                      </CommandItem>
-                                    </PopoverClose>
+                                      </PopoverClose>
+                                    </CommandItem>
                                   ))}
                                 </CommandGroup>
                               </ScrollArea>
@@ -520,39 +517,34 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
                                 placeholder="查找任务"
                                 className="h-9"
                               />
-                              <ScrollArea className="h-60">
+                              <ScrollArea className="h-40">
                                 <CommandEmpty>未找到匹配的任务</CommandEmpty>
                                 <CommandGroup>
                                   {taskList.map((task) => (
-                                    <PopoverClose
+                                    <CommandItem
+                                      value={task.label}
                                       key={task.value}
-                                      className="w-full"
+                                      onSelect={() => {
+                                        if (
+                                          form
+                                            .getValues("relationShips")
+                                            .find((d) => d.name === task.value)
+                                        ) {
+                                          showErrorToast(
+                                            "添加关系失败",
+                                            new Error(
+                                              `与任务${task.label}」的关系已存在`,
+                                            ),
+                                          );
+                                        } else {
+                                          field.onChange({
+                                            ...field.value,
+                                            name: task.value,
+                                          });
+                                        }
+                                      }}
                                     >
-                                      <CommandItem
-                                        value={task.label}
-                                        key={task.value}
-                                        onSelect={() => {
-                                          if (
-                                            form
-                                              .getValues("relationShips")
-                                              .find(
-                                                (d) => d.name === task.value,
-                                              )
-                                          ) {
-                                            showErrorToast(
-                                              "添加关系失败",
-                                              new Error(
-                                                `与任务${task.label}」的关系已存在`,
-                                              ),
-                                            );
-                                          } else {
-                                            field.onChange({
-                                              ...field.value,
-                                              name: task.value,
-                                            });
-                                          }
-                                        }}
-                                      >
+                                      <PopoverClose className="flex w-full flex-row items-center justify-between">
                                         {task.label}
                                         <CheckIcon
                                           className={cn(
@@ -562,8 +554,8 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
                                               : "opacity-0",
                                           )}
                                         />
-                                      </CommandItem>
-                                    </PopoverClose>
+                                      </PopoverClose>
+                                    </CommandItem>
                                   ))}
                                 </CommandGroup>
                               </ScrollArea>

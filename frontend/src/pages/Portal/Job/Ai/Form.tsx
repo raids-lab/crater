@@ -23,13 +23,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiAiTaskCreate } from "@/services/api/aiTask";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiAiTaskCreate, apiAiTaskShareDirList } from "@/services/api/aiTask";
 import { cn } from "@/lib/utils";
-import { Cross1Icon } from "@radix-ui/react-icons";
-import { logger } from "@/utils/loglevel";
+import { CaretSortIcon, CheckIcon, Cross1Icon } from "@radix-ui/react-icons";
 import { getAiKResource } from "@/utils/resource";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Popover,
+  PopoverClose,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import { useMemo } from "react";
 
 const formSchema = z.object({
   taskname: z
@@ -40,6 +53,7 @@ const formSchema = z.object({
     .max(40, {
       message: "任务名称最多包含40个字符",
     }),
+  taskType: z.string(),
   cpu: z.coerce.number().int().positive({ message: "CPU 核心数至少为 1" }),
   gpu: z.coerce.number().int().min(0),
   memory: z.coerce.number().int().positive(),
@@ -48,19 +62,14 @@ const formSchema = z.object({
   workingDir: z.string(),
   shareDirs: z.array(
     z.object({
-      key: z.string(),
-      value: z.string(),
+      path: z.string(),
+      subPath: z.string(),
+      mountPath: z.string(),
     }),
   ),
   command: z.string().min(1, {
     message: "任务名称不能为空",
   }),
-  args: z.array(
-    z.object({
-      key: z.string(),
-      value: z.string(),
-    }),
-  ),
   priority: z.enum(["low", "high"], {
     invalid_type_error: "Select a priority",
     required_error: "请选择任务优先级",
@@ -73,18 +82,35 @@ interface TaskFormProps extends React.HTMLAttributes<HTMLDivElement> {
   closeSheet: () => void;
 }
 
+type MountDir = {
+  mountPath: string;
+  subPath?: string;
+};
+
 export function NewTaskForm({ closeSheet }: TaskFormProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const convertArgs = (
-    argsList: { key: string; value: string }[],
-  ): { [key: string]: string } => {
-    const argsDict: { [key: string]: string } = {};
+  const convertShareDirs = (
+    argsList: FormSchema["shareDirs"],
+  ): { [key: string]: MountDir[] } => {
+    const argsDict: { [key: string]: MountDir[] } = {};
     argsList
-      .filter((arg) => arg.key.length > 0)
-      .forEach((arg) => {
-        argsDict[arg.key] = arg.value ?? "";
+      .filter((dir) => dir.path.length > 0)
+      .forEach((dir) => {
+        if (!argsDict[dir.path]) {
+          argsDict[dir.path] = [];
+        }
+        argsDict[dir.path].push(
+          dir.subPath
+            ? {
+                mountPath: dir.mountPath,
+                subPath: dir.subPath,
+              }
+            : {
+                mountPath: dir.mountPath,
+              },
+        );
       });
     return argsDict;
   };
@@ -94,7 +120,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
       apiAiTaskCreate({
         taskName: values.taskname,
         slo: values.priority === "high" ? 1 : 0,
-        taskType: "training",
+        taskType: values.taskType,
         resourceRequest: getAiKResource({
           gpu: values.gpu,
           memory: `${values.memory}Gi`,
@@ -102,9 +128,8 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
         }),
         image: values.image,
         workingDir: values.workingDir,
-        shareDirs: convertArgs(values.shareDirs),
+        shareDirs: convertShareDirs(values.shareDirs),
         command: values.command,
-        args: convertArgs(values.args),
       }),
     onSuccess: async (_, { taskname }) => {
       await queryClient.invalidateQueries({ queryKey: ["aitask", "list"] });
@@ -116,19 +141,35 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
     },
   });
 
+  const shareDirsInfo = useQuery({
+    queryKey: ["aitask", "shareDirs"],
+    queryFn: apiAiTaskShareDirList,
+    select: (res) => res.data.data,
+  });
+
+  const shareDirList = useMemo(() => {
+    if (!shareDirsInfo.data) {
+      return [];
+    }
+    return shareDirsInfo.data.map((item) => ({
+      value: item,
+      label: item,
+    }));
+  }, [shareDirsInfo.data]);
+
   // 1. Define your form.
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       taskname: "",
+      taskType: "",
       cpu: 1,
       gpu: 0,
       memory: 8,
       image: "",
       workingDir: "",
-      shareDirs: [{ key: "", value: "" }],
+      shareDirs: [{ subPath: "", mountPath: "" }],
       command: "",
-      args: [{ key: "", value: "" }],
       priority: undefined,
     },
   });
@@ -147,7 +188,6 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
     toast({ title: values.taskname });
-    logger.debug(convertArgs(values.args));
     createTask(values);
   };
 
@@ -158,22 +198,42 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
         onSubmit={form.handleSubmit(onSubmit)}
         className="mt-6 flex flex-col space-y-4"
       >
-        <FormField
-          control={form.control}
-          name="taskname"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                任务名<span className="ml-1 text-red-500">*</span>
-              </FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              {/* <FormMessage>请输入任务名称</FormMessage> */}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-3 gap-3">
+          <div className="col-span-2">
+            <FormField
+              control={form.control}
+              name="taskname"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    任务名<span className="ml-1 text-red-500">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  {/* <FormMessage>请输入任务名称</FormMessage> */}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <FormField
+            control={form.control}
+            name="taskType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  任务类型<span className="ml-1 text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                {/* <FormMessage>请输入任务名称</FormMessage> */}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         <div>
           <div className="grid grid-cols-3 gap-3">
             <FormField
@@ -269,25 +329,93 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                       </FormLabel>
                       <FormControl>
                         <div className="flex flex-row space-x-2">
+                          <Popover modal={true}>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  className={cn(
+                                    "w-full justify-between text-ellipsis whitespace-nowrap",
+                                    !field.value && "text-muted-foreground",
+                                  )}
+                                >
+                                  {field.value.path
+                                    ? shareDirList.find(
+                                        (dataset) =>
+                                          dataset.value === field.value.path,
+                                      )?.label
+                                    : "选择目录"}
+                                  <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              className="p-0"
+                              style={{
+                                maxHeight:
+                                  "var(--radix-popover-content-available-height)",
+                              }}
+                            >
+                              <Command>
+                                <CommandInput
+                                  placeholder="查找目录"
+                                  className="h-9"
+                                />
+                                <CommandEmpty>未找到匹配的数据集</CommandEmpty>
+                                <CommandGroup>
+                                  {shareDirList.map((shareDir) => (
+                                    <CommandItem
+                                      value={shareDir.label}
+                                      key={shareDir.value}
+                                      onSelect={() => {
+                                        field.onChange({
+                                          ...field.value,
+                                          path: shareDir.value,
+                                        });
+                                      }}
+                                    >
+                                      <PopoverClose
+                                        key={shareDir.value}
+                                        className="flex w-full flex-row items-center justify-between font-mono"
+                                      >
+                                        {shareDir.label}
+                                        <CheckIcon
+                                          className={cn(
+                                            "ml-auto h-4 w-4",
+                                            shareDir.value === field.value.path
+                                              ? "opacity-100"
+                                              : "opacity-0",
+                                          )}
+                                        />
+                                      </PopoverClose>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                           <Input
-                            id={`input.args.${index}.key`}
+                            id={`input.args.${index}.subPath`}
                             className="font-mono"
-                            value={field.value.key}
+                            placeholder="Sub Path"
+                            value={field.value.subPath}
                             onChange={(event) =>
                               field.onChange({
                                 ...field.value,
-                                key: event.target.value,
+                                subPath: event.target.value,
                               })
                             }
                           />
                           <Input
-                            id={`input.args.${index}.value`}
+                            id={`input.args.${index}.mountPath`}
                             className="font-mono"
-                            value={field.value.value}
+                            placeholder="Mount Path"
+                            value={field.value.mountPath}
                             onChange={(event) =>
                               field.onChange({
                                 ...field.value,
-                                value: event.target.value,
+                                mountPath: event.target.value,
                               })
                             }
                           />
@@ -311,7 +439,9 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
           <Button
             type="button"
             variant="outline"
-            onClick={() => shareDirsAppend({ key: "", value: "" })}
+            onClick={() =>
+              shareDirsAppend({ path: "", subPath: "", mountPath: "" })
+            }
           >
             添加共享目录
           </Button>
