@@ -52,12 +52,7 @@ import { useSetRecoilState } from "recoil";
 import { globalBreadCrumb } from "@/utils/store";
 import { useNavigate, useRoutes } from "react-router-dom";
 import AiJobDetail from "./Detail";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { TableDate } from "@/components/custom/TableDate";
 
 type TaskInfo = {
   id: number;
@@ -378,38 +373,7 @@ const AiJobHome = () => {
           />
         ),
         cell: ({ row }) => {
-          // row format: "2023-10-30T03:21:03.733Z"
-          // show: 2 天前 / 2 小时前 / 2 分钟前 / 1 个月前
-          const now = new Date();
-          const createdAt = new Date(row.getValue("createdAt"));
-          const diff = now.getTime() - createdAt.getTime();
-          const mouthDiff = now.getMonth() - createdAt.getMonth();
-          let formatted = "";
-          if (mouthDiff > 0) {
-            formatted = `${mouthDiff} 个月前`;
-          } else if (diff > 1000 * 60 * 60 * 24) {
-            formatted = `${Math.floor(diff / (1000 * 60 * 60 * 24))} 天前`;
-          } else if (diff > 1000 * 60 * 60) {
-            formatted = `${Math.floor(diff / (1000 * 60 * 60))} 小时前`;
-          } else if (diff > 1000 * 60) {
-            formatted = `${Math.floor(diff / (1000 * 60))} 分钟前`;
-          } else {
-            formatted = `${Math.floor(diff / 1000)} 秒前`;
-          }
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>{formatted}</TooltipTrigger>
-                <TooltipContent>
-                  <p>
-                    {createdAt.toLocaleString("zh-CN", {
-                      timeZone: "Asia/Shanghai",
-                    })}
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          );
+          return <TableDate date={row.getValue("createdAt")}></TableDate>;
         },
         sortingFn: "datetime",
       },
