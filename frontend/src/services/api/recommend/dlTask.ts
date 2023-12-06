@@ -430,7 +430,7 @@ export interface IDlAnalyze {
 // }
 interface IDlAnalyzeRequest {
   runningType: string;
-  relationShips: unknown[];
+  relationShips: string[];
   macs: number;
   params: number;
   batchSize: number;
