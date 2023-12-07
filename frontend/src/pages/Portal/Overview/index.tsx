@@ -26,6 +26,8 @@ import {
 } from "@/components/ui/table";
 import Tasks from "./Tasks";
 import Status from "./Status";
+import "./index.css";
+import { logger } from "@/utils/loglevel";
 
 interface Quota {
   resource: string;
@@ -58,26 +60,26 @@ export const Component: FC = () => {
     },
     {
       accessorKey: "progress",
-      header: () => <div className="text-xs">固定配额</div>,
+      header: () => <div className="text-xs">固定配额用量</div>,
       cell: ({ row }) => {
         const progress: Quota["progress"] = row.getValue("progress");
         return (
-          <div className="w-32">
-            <ProgressBar width={progress.width} label="" />
+          <div className="w-40">
+            <ProgressBar width={progress.width * 100} label={progress.label} />
           </div>
         );
       },
     },
-    {
-      accessorKey: "usage",
-      header: () => <div className="text-xs">Used/Hard</div>,
-      cell: ({ row }) => (
-        <div className="font-mono">{row.getValue("usage")}</div>
-      ),
-    },
+    // {
+    //   accessorKey: "usage",
+    //   header: () => <div className="text-xs">Used/Hard</div>,
+    //   cell: ({ row }) => (
+    //     <div className="font-mono">{row.getValue("usage")}</div>
+    //   ),
+    // },
     {
       accessorKey: "soft",
-      header: () => <div className="text-xs">弹性配额 (Used)</div>,
+      header: () => <div className="text-xs">弹性配额用量</div>,
       cell: ({ row }) => (
         <div className="font-mono">{row.getValue("soft")}</div>
       ),
@@ -88,7 +90,7 @@ export const Component: FC = () => {
     if (isLoading || !quota) {
       return [];
     }
-    return [
+    const tableData = [
       {
         resource: "CPU",
         progress: {
@@ -126,6 +128,8 @@ export const Component: FC = () => {
         soft: `${quota.softUsed.memory}`,
       },
     ];
+    logger.debug("Table Data: ", tableData);
+    return tableData;
   }, [quota, isLoading]);
 
   const table = useReactTable({
@@ -138,7 +142,7 @@ export const Component: FC = () => {
     <div className="grid grid-flow-row-dense gap-6 md:grid-cols-2">
       <Card className="col-span-1">
         <CardHeader>
-          <CardTitle>作业队列 [WIP]</CardTitle>
+          <CardTitle>作业队列</CardTitle>
           {/* <CardDescription>
             <p>1. 所有正在系统中运行的作业</p>
             <p>2. (如果有) 用户自己正在运行的作业</p>
@@ -160,7 +164,7 @@ export const Component: FC = () => {
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
+                <TableRow key={headerGroup.id} className="hover:bg-background">
                   {headerGroup.headers.map((header) => {
                     return (
                       <TableHead key={header.id} colSpan={header.colSpan}>
@@ -179,10 +183,7 @@ export const Component: FC = () => {
             <TableBody>
               {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                  >
+                  <TableRow key={row.id} className="hover:bg-background">
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>
                         {flexRender(
