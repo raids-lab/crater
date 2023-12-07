@@ -59,6 +59,9 @@ module.exports = {
           item: "hsl(var(--sidebar-item))",
           foreground: "hsl(var(--sidebar-foreground))",
         },
+        navibar: {
+          DEFAULT: "hsl(var(--navibar))",
+        },
       },
       borderRadius: {
         lg: "calc(var(--radius) + 2px)",
