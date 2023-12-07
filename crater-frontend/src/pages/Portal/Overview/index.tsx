@@ -24,6 +24,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import Tasks from "./Tasks";
+import Status from "./Status";
 
 interface Quota {
   resource: string;
@@ -60,7 +62,7 @@ export const Component: FC = () => {
       cell: ({ row }) => {
         const progress: Quota["progress"] = row.getValue("progress");
         return (
-          <div className="w-48">
+          <div className="w-32">
             <ProgressBar width={progress.width} label="" />
           </div>
         );
@@ -133,17 +135,17 @@ export const Component: FC = () => {
   });
 
   return (
-    <div className="grid grid-flow-row-dense grid-cols-2 gap-6 md:grid-cols-2">
+    <div className="grid grid-flow-row-dense gap-6 md:grid-cols-2">
       <Card className="col-span-1">
         <CardHeader>
-          <CardTitle>作业队列</CardTitle>
-          <CardDescription>
+          <CardTitle>作业队列 [WIP]</CardTitle>
+          {/* <CardDescription>
             <p>1. 所有正在系统中运行的作业</p>
             <p>2. (如果有) 用户自己正在运行的作业</p>
-          </CardDescription>
+          </CardDescription> */}
         </CardHeader>
         <CardContent>
-          <p></p>
+          <Status />
         </CardContent>
       </Card>
       <Card className="col-span-1">
@@ -205,16 +207,18 @@ export const Component: FC = () => {
           </Table>
         </CardContent>
       </Card>
-      <Card className="col-span-full h-80">
+      <Card className="col-span-full">
         <CardHeader>
-          <CardTitle>资源使用情况</CardTitle>
+          <CardTitle>资源使用情况 [WIP]</CardTitle>
           <CardDescription>
             <p>1. 当前整体集群的资源使用情况</p>
             <p>2. 查看整体集群的历史资源使用情况 (详细信息对接prometheus)</p>
             <p>3. 查看本用户的历史资源使用情况 (汇总统计)</p>
           </CardDescription>
         </CardHeader>
-        <CardContent></CardContent>
+        <CardContent>
+          <Tasks />
+        </CardContent>
       </Card>
     </div>
   );
