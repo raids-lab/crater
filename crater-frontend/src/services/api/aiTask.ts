@@ -24,6 +24,7 @@ export interface IAiTask {
   args: string;
   slo: number;
   status: string;
+  jobName: string;
   isDeleted: false;
   profileStatus: number;
   profileStat: string;
@@ -101,6 +102,7 @@ export interface AiTask {
   args: string;
   slo: number;
   status: string;
+  jobName: string;
   isDeleted: false;
   profileStatus: number;
   profileStat?: ProfileStat;

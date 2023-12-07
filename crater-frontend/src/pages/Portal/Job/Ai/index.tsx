@@ -83,7 +83,7 @@ const getHeader = (key: string): string => {
     case "taskType":
       return "类型";
     case "gpus":
-      return "GPU 数";
+      return "GPU";
     case "status":
       return "任务状态";
     case "priority":
