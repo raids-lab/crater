@@ -23,7 +23,7 @@ func (mgr *AITaskMgr) RegisterRoute(g *gin.RouterGroup) {
 	g.GET("list", mgr.List)
 	g.GET("get", mgr.Get)
 	g.GET("getQuota", mgr.GetQuota)
-	g.GET("getTaskCountStatistic", mgr.GetTaskCountStatistic)
+	g.GET("taskStats", mgr.GetTaskStats)
 
 }
 
@@ -216,7 +216,7 @@ func (mgr *AITaskMgr) GetQuota(c *gin.Context) {
 	resputil.WrapSuccessResponse(c, resp)
 }
 
-func (mgr *AITaskMgr) GetTaskCountStatistic(c *gin.Context) {
+func (mgr *AITaskMgr) GetTaskStats(c *gin.Context) {
 	log.Infof("Task Count Statistic, url: %s", c.Request.URL)
 	username, _ := c.Get("username")
 	taskCountList, err := mgr.taskService.GetUserTaskStatusCount(username.(string))
@@ -226,24 +226,27 @@ func (mgr *AITaskMgr) GetTaskCountStatistic(c *gin.Context) {
 		resputil.WrapFailedResponse(c, msg, 50003)
 		return
 	}
-	var resp payload.AITaskCountStatistic
-	for _, taskCount := range taskCountList {
-		switch taskCount.Status {
-		case models.TaskQueueingStatus:
-			resp.QueueingTaskNum += taskCount.Count
-		case models.TaskRunningStatus:
-			resp.RunningTaskNum += taskCount.Count
-		case models.TaskCreatedStatus:
-			resp.PendingTaskNum += taskCount.Count
-		case models.TaskPendingStatus:
-			resp.PendingTaskNum += taskCount.Count
-		case models.TaskPreemptedStatus:
-			resp.PendingTaskNum += taskCount.Count
-		case models.TaskSucceededStatus:
-			resp.FinishedTaskNum += taskCount.Count
-		case models.TaskFailedStatus:
-			resp.FinishedTaskNum += taskCount.Count
-		}
+	// var respCnt payload.AITaskCountStatistic
+	// for _, taskCount := range taskCountList {
+	// 	switch taskCount.Status {
+	// 	case models.TaskQueueingStatus:
+	// 		respCnt.Queueing += taskCount.Count
+	// 	case models.TaskRunningStatus:
+	// 		respCnt.Running += taskCount.Count
+	// 	case models.TaskCreatedStatus:
+	// 		respCnt.Pending += taskCount.Count
+	// 	case models.TaskPendingStatus:
+	// 		respCnt.Pending += taskCount.Count
+	// 	case models.TaskPreemptedStatus:
+	// 		respCnt.Pending += taskCount.Count
+	// 	case models.TaskSucceededStatus:
+	// 		respCnt.Finished += taskCount.Count
+	// 	case models.TaskFailedStatus:
+	// 		respCnt.Finished += taskCount.Count
+	// 	}
+	// }
+	resp := payload.AITaskStatistic{
+		TaskCount: taskCountList,
 	}
 	// log.Infof("list task success, taskNum: %d", len(resp.Tasks))
 	resputil.WrapSuccessResponse(c, resp)

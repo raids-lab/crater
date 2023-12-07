@@ -50,11 +50,15 @@ type GetUserResp struct {
 	UpdatedAt time.Time       `json:"updatedAt"`
 }
 
+type AITaskStatistic struct {
+	TaskCount []models.TaskStatusCount `json:"taskCount"`
+}
+
 type AITaskCountStatistic struct {
-	QueueingTaskNum int `json:"queueingTaskNum"`
-	PendingTaskNum  int `json:"pendingTaskNum"`
-	RunningTaskNum  int `json:"runningTaskNum"`
-	FinishedTaskNum int `json:"finishedTaskNum"`
+	Queueing int `json:"queueing"`
+	Pending  int `json:"pending"`
+	Running  int `json:"running"`
+	Finished int `json:"finished"`
 }
 
 type RecommendDLJobSpec struct {
