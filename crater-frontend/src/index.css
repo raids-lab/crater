@@ -39,6 +39,7 @@
     --sidebar: 217, 33%, 17%;
     --sidebar-item: 215, 25%, 27%;
     --sidebar-foreground: 0 0% 100%;
+    --navibar: 0 0% 100%;
   }
 
   .dark {
@@ -75,6 +76,7 @@
     --sidebar: 222.2 84% 4.9%;
     --sidebar-item: 217.2 32.6% 17.5%;
     --sidebar-foreground: 0 0% 100%;
+    --navibar: 217.2 32.6% 2.5%;
   }
 }
 

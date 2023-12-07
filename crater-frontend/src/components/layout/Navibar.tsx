@@ -62,7 +62,7 @@ const Navibar: FC = () => {
   }, [pathParts, setBreadcrumb]);
 
   return (
-    <div className="flex h-full flex-row items-center justify-between border-b bg-background px-6 shadow-sm">
+    <div className="flex h-full flex-row items-center justify-between border-b bg-navibar px-6 shadow-sm">
       <div
         className="flex items-center space-x-1 md:space-x-2"
         aria-label="Breadcrumb"
