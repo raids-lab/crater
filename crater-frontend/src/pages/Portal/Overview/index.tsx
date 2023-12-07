@@ -1,5 +1,10 @@
-import type { FC } from "react";
-
+import { useMemo, type FC } from "react";
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
 import {
   Card,
   CardContent,
@@ -10,6 +15,25 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { apiAiTaskQuota } from "@/services/api/aiTask";
 import { getAiResource } from "@/utils/resource";
+import { ProgressBar } from "@/components/custom/ProgressBar";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+interface Quota {
+  resource: string;
+  progress: {
+    width: number;
+    label: string;
+  };
+  usage: string;
+  soft: string;
+}
 
 export const Component: FC = () => {
   const { data: quota, isLoading } = useQuery({
@@ -18,12 +42,99 @@ export const Component: FC = () => {
     select: (res) => ({
       hard: getAiResource(res.data.data.hard),
       hardUsed: getAiResource(res.data.data.hardUsed),
+      softUsed: getAiResource(res.data.data.softUsed),
     }),
+  });
+
+  const columns: ColumnDef<Quota>[] = [
+    {
+      accessorKey: "resource",
+      header: () => <></>,
+      cell: ({ row }) => (
+        <div className="ml-2 font-mono">{row.getValue("resource")}</div>
+      ),
+    },
+    {
+      accessorKey: "progress",
+      header: () => <div className="text-xs">固定配额</div>,
+      cell: ({ row }) => {
+        const progress: Quota["progress"] = row.getValue("progress");
+        return (
+          <div className="w-48">
+            <ProgressBar width={progress.width} label="" />
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "usage",
+      header: () => <div className="text-xs">Used/Hard</div>,
+      cell: ({ row }) => (
+        <div className="font-mono">{row.getValue("usage")}</div>
+      ),
+    },
+    {
+      accessorKey: "soft",
+      header: () => <div className="text-xs">弹性配额 (Used)</div>,
+      cell: ({ row }) => (
+        <div className="font-mono">{row.getValue("soft")}</div>
+      ),
+    },
+  ];
+
+  const data = useMemo<Quota[]>(() => {
+    if (isLoading || !quota) {
+      return [];
+    }
+    return [
+      {
+        resource: "CPU",
+        progress: {
+          width:
+            quota.hardUsed.cpu && quota.hard.cpu
+              ? quota.hardUsed.cpu / quota.hard.cpu
+              : 0,
+          label: `${quota.hardUsed.cpu}/${quota.hard.cpu}`,
+        },
+        usage: `${quota.hardUsed.cpu}/${quota.hard.cpu}`,
+        soft: `${quota.softUsed.cpu}`,
+      },
+      {
+        resource: "GPU",
+        progress: {
+          width:
+            quota.hardUsed.gpu && quota.hard.gpu
+              ? quota.hardUsed.gpu / quota.hard.gpu
+              : 0,
+          label: `${quota.hardUsed.gpu}/${quota.hard.gpu}`,
+        },
+        usage: `${quota.hardUsed.gpu}/${quota.hard.gpu}`,
+        soft: `${quota.softUsed.gpu}`,
+      },
+      {
+        resource: "Memory",
+        progress: {
+          width:
+            quota.hardUsed.memoryNum && quota.hard.memoryNum
+              ? quota.hardUsed.memoryNum / quota.hard.memoryNum
+              : 0,
+          label: `${quota.hardUsed.memoryNum}/${quota.hard.memory}`,
+        },
+        usage: `${quota.hardUsed.memoryNum}/${quota.hard.memory}`,
+        soft: `${quota.softUsed.memory}`,
+      },
+    ];
+  }, [quota, isLoading]);
+
+  const table = useReactTable({
+    data,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
   });
 
   return (
     <div className="grid grid-flow-row-dense grid-cols-2 gap-6 md:grid-cols-2">
-      <Card className="col-span-1 h-60">
+      <Card className="col-span-1">
         <CardHeader>
           <CardTitle>作业队列</CardTitle>
           <CardDescription>
@@ -35,32 +146,63 @@ export const Component: FC = () => {
           <p></p>
         </CardContent>
       </Card>
-      <Card className="col-span-1 h-60">
+      <Card className="col-span-1">
         <CardHeader>
-          <CardTitle>查看配额</CardTitle>
+          <CardTitle>我的配额</CardTitle>
           <CardDescription>
             <p>1. 查看用户个人账户的资源配额</p>
             <p>2. 查看用户在不同账户下的资源配额</p>
           </CardDescription>
         </CardHeader>
-        <CardContent className="font-mono text-base">
-          {isLoading ? (
-            <p>loading...</p>
-          ) : (
-            quota && (
-              <>
-                <p>
-                  CPU: {quota.hardUsed.cpu}/{quota.hard.cpu}
-                </p>
-                <p>
-                  GPU: {quota.hardUsed.gpu}/{quota.hard.gpu}
-                </p>
-                <p>
-                  MEM: {quota.hardUsed.memory}/{quota.hard.memory}
-                </p>
-              </>
-            )
-          )}
+        <CardContent className="text-base">
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    return (
+                      <TableHead key={header.id} colSpan={header.colSpan}>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
+                      </TableHead>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center"
+                  >
+                    暂无数据
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
       <Card className="col-span-full h-80">
