@@ -196,3 +196,30 @@ export const apiAiTaskGet = (taskID: number) =>
 // }
 export const apiAiTaskShareDirList = () =>
   instance.get<IResponse<string[]>>(VERSION + "/sharedir/list");
+
+// taskStats
+// path: /v1/aitask/taskStats
+// method: GET
+// response
+// "taskCount": [
+//   {
+//       "Status": "Queueing",
+//       "Count": 2
+//   },
+//   {
+//       "Status": "Running",
+//       "Count": 1
+//   },
+//   {
+//       "Status": "Pending",
+//       "Count": 2
+//   },
+//   {
+//       "Status": "Succeeded",
+//       "Count": 99
+//   }
+// ]
+export const apiAiTaskStats = () =>
+  instance.get<IResponse<{ taskCount: { Status: string; Count: number }[] }>>(
+    VERSION + "/aitask/taskStats",
+  );
