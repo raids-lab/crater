@@ -38,16 +38,34 @@ const router = createBrowserRouter([
 
 const queryClient = new QueryClient();
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <RecoilRoot>
-      <ThemeProvider defaultTheme="light" storageKey={VITE_UI_THEME_KEY}>
-        <QueryClientProvider client={queryClient}>
-          <RouterProvider router={router} />
-          <Toaster />
-          <ReactQueryDevtools initialIsOpen={false} />
-        </QueryClientProvider>
-      </ThemeProvider>
-    </RecoilRoot>
-  </React.StrictMode>,
-);
+async function enableMocking() {
+  if (process.env.NODE_ENV !== "development") {
+    return;
+  }
+
+  const { worker } = await import("./mocks/browser");
+
+  // `worker.start()` returns a Promise that resolves
+  // once the Service Worker is up and ready to intercept requests.
+  return worker.start();
+}
+
+enableMocking()
+  .then(() => {
+    ReactDOM.createRoot(document.getElementById("root")!).render(
+      <React.StrictMode>
+        <RecoilRoot>
+          <ThemeProvider defaultTheme="light" storageKey={VITE_UI_THEME_KEY}>
+            <QueryClientProvider client={queryClient}>
+              <RouterProvider router={router} />
+              <Toaster />
+              <ReactQueryDevtools initialIsOpen={false} />
+            </QueryClientProvider>
+          </ThemeProvider>
+        </RecoilRoot>
+      </React.StrictMode>,
+    );
+  })
+  .catch((err) => {
+    console.error(err);
+  });
