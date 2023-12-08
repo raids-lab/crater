@@ -156,8 +156,9 @@ export const Component: FC = () => {
         <CardHeader>
           <CardTitle>我的配额</CardTitle>
           <CardDescription>
-            <p>1. 查看用户个人账户的资源配额</p>
-            <p>2. 查看用户在不同账户下的资源配额</p>
+            <span>1. 查看用户个人账户的资源配额</span>
+            <br />
+            <span>2. 查看用户在不同账户下的资源配额</span>
           </CardDescription>
         </CardHeader>
         <CardContent className="text-base">
@@ -212,9 +213,13 @@ export const Component: FC = () => {
         <CardHeader>
           <CardTitle>资源使用情况 [WIP]</CardTitle>
           <CardDescription>
-            <p>1. 当前整体集群的资源使用情况</p>
-            <p>2. 查看整体集群的历史资源使用情况 (详细信息对接prometheus)</p>
-            <p>3. 查看本用户的历史资源使用情况 (汇总统计)</p>
+            <span>1. 当前整体集群的资源使用情况</span>
+            <br />
+            <span>
+              2. 查看整体集群的历史资源使用情况 (详细信息对接prometheus)
+            </span>
+            <br />
+            <span>3. 查看本用户的历史资源使用情况 (汇总统计)</span>
           </CardDescription>
         </CardHeader>
         <CardContent>
