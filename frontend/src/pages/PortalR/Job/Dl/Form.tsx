@@ -533,7 +533,7 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
                                           showErrorToast(
                                             "添加关系失败",
                                             new Error(
-                                              `与任务${task.label}」的关系已存在`,
+                                              `与任务「${task.label}」的关系已存在`,
                                             ),
                                           );
                                         } else {
