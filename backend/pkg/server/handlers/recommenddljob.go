@@ -297,10 +297,14 @@ func (mgr *RecommendDLJobMgr) AnalyzeResourceUsage(c *gin.Context) {
 		resputil.WrapFailedResponse(c, fmt.Sprintf("request resource analyze failed, err:%v", err), 500)
 		return
 	}
+	p100Mem := analyzeResp.Data["V100"].GPUMemoryMax
+	if p100Mem > 16 {
+		p100Mem = 16.01
+	}
 	resputil.WrapSuccessResponse(c, &payload.ResourceAnalyzeResponse{
 		"p100": payload.ResourceAnalyzeResult{
 			GPUUtilAvg:   analyzeResp.Data["P100"].GPUUtilAvg,
-			GPUMemoryMax: analyzeResp.Data["P100"].GPUMemoryMax,
+			GPUMemoryMax: p100Mem,
 		},
 		"v100": payload.ResourceAnalyzeResult{
 			GPUUtilAvg:     analyzeResp.Data["V100"].GPUUtilAvg,
