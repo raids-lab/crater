@@ -12,6 +12,7 @@ import { Separator } from "../ui/separator";
 import { ScrollArea } from "../ui/scroll-area";
 import { useOnClickOutside } from "usehooks-ts";
 import { getTitleByPath } from "@/utils/title";
+import LogoWhite from "@/assets/logo_white.svg";
 
 export type SidebarSubItem = {
   route: RouteObject;
@@ -85,7 +86,7 @@ export function Sidebar({
       {/* Logo */}
       <div className="flex h-14 w-full items-center justify-center pt-2">
         <img
-          src="/src/assets/logo_white.svg"
+          src={LogoWhite}
           alt="logo"
           className="h-8 w-auto select-none pr-2"
         />
