@@ -82,9 +82,18 @@ export function Sidebar({
       )}
       ref={ref}
     >
+      {/* Logo */}
+      <div className="flex h-14 w-full items-center justify-center pt-2">
+        <img
+          src="/src/assets/logo_white.svg"
+          alt="logo"
+          className="h-8 w-auto select-none pr-2"
+        />
+      </div>
+      {/* <Separator className="bg-sidebar-item dark:bg-border" /> */}
       {/* Calculate of ScrollArea height: */}
-      {/* 100vh - (40px * 2 + 56px) */}
-      <ScrollArea className="h-[calc(100vh_-_136px)] w-full pt-2">
+      {/* 100vh - (40px * 2 + 56px + 48px) */}
+      <ScrollArea className="mt-2 h-[calc(100vh_-_193px)] w-full">
         <Accordion
           type="multiple"
           // collapsible

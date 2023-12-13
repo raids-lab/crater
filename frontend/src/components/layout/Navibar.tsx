@@ -76,7 +76,7 @@ const Navibar: FC = () => {
                 )}
                 <Link
                   to={item.path}
-                  className="inline-flex select-none items-center text-sm font-medium text-foreground hover:text-primary"
+                  className="inline-flex select-none items-center text-sm font-medium text-muted-foreground hover:text-primary"
                 >
                   {item.title}
                 </Link>
@@ -89,7 +89,7 @@ const Navibar: FC = () => {
                   {index !== 0 && (
                     <ChevronRightIcon className="mr-1 text-muted-foreground md:mr-2" />
                   )}
-                  <span className="select-none text-sm font-medium text-muted-foreground">
+                  <span className="select-none text-sm font-medium text-foreground">
                     {item.title}
                   </span>
                 </div>
