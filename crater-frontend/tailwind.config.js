@@ -84,10 +84,10 @@ module.exports = {
       },
       // custom
       gridTemplateColumns: {
-        sidebar: "240px auto", // for sidebar layout. adds grid-cols-sidebar class
+        sidebar: "220px auto", // for sidebar layout. adds grid-cols-sidebar class
       },
       gridTemplateRows: {
-        header: "52px auto", // for the navbar layout. adds grid-rows-header class
+        header: "48px auto", // for the navbar layout. adds grid-rows-header class
       },
     },
   },
