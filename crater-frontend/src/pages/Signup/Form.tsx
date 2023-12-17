@@ -5,6 +5,7 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -92,12 +93,9 @@ export function SignupForm() {
           render={({ field }) => (
             <FormItem>
               {/* <FormLabel className=" text-left">Username</FormLabel> */}
+              <FormLabel>账号</FormLabel>
               <FormControl>
-                <Input
-                  placeholder="用户名"
-                  autoComplete="username"
-                  {...field}
-                />
+                <Input autoComplete="off" {...field} />
                 {/* <Input placeholder="shadcn" {...field} /> */}
               </FormControl>
               {/* <FormDescription>密码</FormDescription> */}
@@ -110,14 +108,9 @@ export function SignupForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              {/* <FormLabel>Password</FormLabel> */}
+              <FormLabel>密码</FormLabel>
               <FormControl>
-                <Input
-                  type="password"
-                  placeholder="密码"
-                  autoComplete="current-password"
-                  {...field}
-                />
+                <Input type="password" autoComplete="off" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -128,14 +121,9 @@ export function SignupForm() {
           name="passwordConfirm"
           render={({ field }) => (
             <FormItem>
-              {/* <FormLabel>Password</FormLabel> */}
+              <FormLabel>确认密码</FormLabel>
               <FormControl>
-                <Input
-                  type="password"
-                  placeholder="再次输入密码"
-                  autoComplete="current-password"
-                  {...field}
-                />
+                <Input type="password" autoComplete="off" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
