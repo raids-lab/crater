@@ -12,7 +12,12 @@ import { Separator } from "../ui/separator";
 import { ScrollArea } from "../ui/scroll-area";
 import { useOnClickOutside } from "usehooks-ts";
 import { getTitleByPath } from "@/utils/title";
-import LogoWhite from "@/assets/logo_white.svg";
+import Logo1 from "@/assets/logo1.svg";
+import Logo2 from "@/assets/logo2.svg";
+import Logo3 from "@/assets/logo3.svg";
+import Logo4 from "@/assets/logo4.svg";
+import Logo5 from "@/assets/logo5.svg";
+import Logo6 from "@/assets/logo6.svg";
 
 export type SidebarSubItem = {
   route: RouteObject;
@@ -46,6 +51,7 @@ export function Sidebar({
   const [accordion, setAccordion] = useState<string[]>([]);
   const location = useLocation();
   const navigate = useNavigate();
+  const [logoIndex, setLogoIndex] = useState(0);
 
   // Get actived item from location
   const actived = useMemo(() => {
@@ -84,11 +90,24 @@ export function Sidebar({
       ref={ref}
     >
       {/* Logo */}
-      <div className="flex h-14 w-full items-center justify-center pt-2">
+      <div className="flex h-14 w-full items-center justify-center pb-0 pt-3">
         <img
-          src={LogoWhite}
+          src={
+            logoIndex === 0
+              ? Logo1
+              : logoIndex === 1
+                ? Logo2
+                : logoIndex === 2
+                  ? Logo3
+                  : logoIndex === 3
+                    ? Logo4
+                    : logoIndex === 4
+                      ? Logo5
+                      : Logo6
+          }
           alt="logo"
-          className="h-8 w-auto select-none pr-2"
+          className="h-10 w-auto select-none pr-2"
+          onClick={() => setLogoIndex((prev) => (prev + 1) % 6)}
         />
       </div>
       {/* <Separator className="bg-sidebar-item dark:bg-border" /> */}
