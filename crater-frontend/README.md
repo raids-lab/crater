@@ -54,6 +54,7 @@ pnpm dev
 
 - [shadcn/ui](https://ui.shadcn.com/examples/dashboard): The primary headless component library used in the project.
   - [Oxidus](https://oxidus.vercel.app/): Theme Color Generator for _shadcn/ui_.
+  - [v0 by Vercel](https://v0.dev/): Use generative AI to create copy-and-paste friendly React code based on shadcn/ui and Tailwind CSS.
 - [Flowbite](https://flowbite.com/docs/getting-started/react/): When you need to _borrow_ some Tailwind CSS code.
 - [Tanstack Table](https://tanstack.com/table/v8): Headless table component used in the project.
 
