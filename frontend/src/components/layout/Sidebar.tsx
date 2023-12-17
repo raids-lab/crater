@@ -51,7 +51,7 @@ export function Sidebar({
   const [accordion, setAccordion] = useState<string[]>([]);
   const location = useLocation();
   const navigate = useNavigate();
-  const [logoIndex, setLogoIndex] = useState(0);
+  const [logoIndex, setLogoIndex] = useState(1);
 
   // Get actived item from location
   const actived = useMemo(() => {
