@@ -91,11 +91,11 @@ const getHeader = (key: string): string => {
     case "profileStatus":
       return "分析状态";
     case "createdAt":
-      return "创建时间";
+      return "创建于";
     case "startedAt":
-      return "开始时间";
+      return "开始于";
     case "finishAt":
-      return "完成时间";
+      return "完成于";
     default:
       return key;
   }
