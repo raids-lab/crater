@@ -6,7 +6,7 @@ import Logo2 from "@/assets/logo2.svg";
 
 export default function Login() {
   return (
-    <div className="relative grid h-screen w-screen bg-gradient-to-tr from-sidebar to-primary md:grid-cols-2 md:px-0">
+    <div className="relative grid h-screen w-screen bg-gradient-to-tr from-sidebar to-primary dark:from-black dark:to-secondary md:grid-cols-2 md:px-0">
       <div
         className="absolute left-10 top-10 z-20 flex items-center text-lg font-medium"
         title="Switch signup and login"
@@ -18,9 +18,9 @@ export default function Login() {
           <footer className="text-sm text-white">Copyright @ACT</footer>
         </blockquote>
       </div>
-      <div className="relative hidden h-full text-white dark:from-secondary dark:to-secondary md:block">
+      <div className="relative hidden h-full text-white md:block">
         <div className="flex h-full w-full flex-col items-start justify-center px-6 py-8 lg:px-16 lg:py-12">
-          <h1 className="mb-4 text-left text-6xl font-bold leading-tight">
+          <h1 className="mb-4 text-left text-6xl font-bold leading-tight dark:text-primary">
             欢迎体验
             <br />
             GPU 集群管理平台
@@ -32,7 +32,7 @@ export default function Login() {
         </div>
       </div>
       <div className="flex items-center justify-center">
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-md shadow-2xl">
           <CardHeader>
             <h2 className="text-center text-2xl font-bold">用户登录</h2>
           </CardHeader>
