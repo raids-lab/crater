@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
+  PaginationState,
   SortingState,
   VisibilityState,
   flexRender,
@@ -25,6 +26,7 @@ import {
 
 import { DataTablePagination } from "./DataTablePagination";
 import { DataTableToolbar, DataTableToolbarConfig } from "./DataTableToolbar";
+import { useLocalStorage } from "usehooks-ts";
 
 interface DataTableProps<TData, TValue>
   extends React.HTMLAttributes<HTMLDivElement> {
@@ -48,6 +50,13 @@ export function DataTable<TData, TValue>({
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "createdAt", desc: true },
   ]);
+  const [pagination, setPagination] = useLocalStorage<PaginationState>(
+    "pagination",
+    {
+      pageIndex: 0,
+      pageSize: 10,
+    },
+  );
 
   const table = useReactTable({
     data,
@@ -57,12 +66,14 @@ export function DataTable<TData, TValue>({
       columnVisibility,
       rowSelection,
       columnFilters,
+      pagination,
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
