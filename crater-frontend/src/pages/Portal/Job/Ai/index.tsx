@@ -232,16 +232,26 @@ const AiJobHome = () => {
   const navigate = useNavigate();
   const [showDeleted, setShowDeleted] = useState(false);
 
-  const { data: taskList, isLoading } = useQuery({
+  const {
+    data: taskList,
+    isLoading,
+    dataUpdatedAt,
+  } = useQuery({
     queryKey: ["aitask", "list"],
     queryFn: apiAiTaskList,
     select: (res) => res.data.data.Tasks,
+    // refetchInterval: 5000,
   });
+
+  const refetchTaskList = async () =>
+    await queryClient.invalidateQueries({
+      queryKey: ["aitask", "list"],
+    });
 
   const { mutate: deleteTask } = useMutation({
     mutationFn: (id: number) => apiAiTaskDelete(id),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["aitask", "list"] });
+      await refetchTaskList();
       toast({
         title: "删除成功",
         description: "任务已删除",
@@ -541,6 +551,10 @@ const AiJobHome = () => {
     setData(tableData);
   }, [taskList, isLoading, showDeleted]);
 
+  const updatedAt = useMemo(() => {
+    return new Date(dataUpdatedAt).toLocaleString();
+  }, [dataUpdatedAt]);
+
   return (
     <div className="space-y-4">
       <DataTable data={data} columns={columns} toolbarConfig={toolbarConfig}>
@@ -559,13 +573,25 @@ const AiJobHome = () => {
           </SheetContent>
         </Sheet>
       </DataTable>
-      <Button
-        className="h-8 min-w-fit"
-        variant="outline"
-        onClick={() => setShowDeleted((v) => !v)}
-      >
-        {showDeleted ? "显示当前任务" : "显示已删除任务"}
-      </Button>
+      <div className="flex flex-row items-center justify-start space-x-2">
+        <Button
+          className="h-8 min-w-fit"
+          variant="outline"
+          onClick={() => setShowDeleted((v) => !v)}
+        >
+          {showDeleted ? "显示当前任务" : "显示已删除任务"}
+        </Button>
+        <Button
+          className="h-8 min-w-fit"
+          variant="outline"
+          onClick={() => void refetchTaskList()}
+        >
+          刷新列表
+        </Button>
+        <div className="pl-2 text-sm text-muted-foreground">
+          数据更新于 {updatedAt}
+        </div>
+      </div>
     </div>
   );
 };
