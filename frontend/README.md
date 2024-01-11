@@ -1,10 +1,12 @@
-# GPU Portal Frontend
+![Crater](./src/assets/Logo2.svg)
+
+---
 
 [![Pipeline Status](https://gitlab.act.buaa.edu.cn/gpu-portal/gpu-portal-frontend/badges/main/pipeline.svg)](https://gitlab.act.buaa.edu.cn/gpu-portal/gpu-portal-frontend/-/commits/main)
 [![Release Version](https://img.shields.io/badge/Release-0.0.0-blue)](http://192.168.5.60:32088/)
 [![Develop Version](https://img.shields.io/badge/Develop-0.0.0-orange)](http://192.168.5.60:8888/)
 
-> [GPU 集群管理与作业调度 Portal 设计和任务分解](https://docs.qq.com/doc/DWENFVWpzSW16TGFV)
+Crater 是一个基于 Kubernetes 的 GPU 集群管理系统，提供了一站式的 GPU 集群管理解决方案。要了解更多信息，请访问 [GPU 集群管理与作业调度 Portal 设计和任务分解](https://docs.qq.com/doc/DWENFVWpzSW16TGFV)。
 
 ## 1. 安装
 
