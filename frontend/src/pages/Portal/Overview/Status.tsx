@@ -11,6 +11,7 @@ const Status: FC = () => {
     queryKey: ["aitask", "stats"],
     queryFn: apiAiTaskStats,
     select: (res) => res.data.data.taskCount,
+    refetchInterval: 2000,
   });
 
   const chartConfig = useMemo<ChartProps>(() => {
@@ -109,7 +110,7 @@ const Status: FC = () => {
   return (
     <Card className="col-span-1">
       <CardHeader>
-        <CardTitle>作业队列</CardTitle>
+        <CardTitle>任务状态</CardTitle>
       </CardHeader>
       <CardContent>
         <Chart {...chartConfig} />
