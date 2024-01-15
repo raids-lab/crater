@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { ProfileForm } from "./Form";
 import { CardHeader, CardContent, Card } from "@/components/ui/card";
 
-import Logo2 from "@/assets/logo2.svg";
+import Logo2 from "@/assets/crater.svg";
 
 export default function Login() {
   return (
