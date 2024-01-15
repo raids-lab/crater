@@ -3,6 +3,7 @@ import { useTheme } from "@/utils/theme";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, type FC } from "react";
 import Chart, { Props as ChartProps } from "react-apexcharts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Status: FC = () => {
   const { theme } = useTheme();
@@ -13,30 +14,6 @@ const Status: FC = () => {
   });
 
   const chartConfig = useMemo<ChartProps>(() => {
-    // const labels = stats?.map((stat) => stat.Status) ?? [];
-    // const series = stats?.map((stat) => stat.Count) ?? [];
-    // const colors = labels.map((label) => {
-    //   // labels: ["Queueing", "Pending", "Running", "Succeeded"],
-    //   // colors: ["#ff8f00", "#d81b60", "#1e88e5", "#00897b"],
-    //   switch (label) {
-    //     case "Queueing":
-    //       return "#9d59ef";
-    //     case "Created":
-    //       return "#677489";
-    //     case "Pending":
-    //       return "#da5597";
-    //     case "Running":
-    //       return "#4ba3e3";
-    //     case "Failed":
-    //       return "#dd524c";
-    //     case "Succeeded":
-    //       return "#55b685";
-    //     case "Preempted":
-    //       return "#e87b35";
-    //     default:
-    //       return "#000000";
-    //   }
-    // });
     const labels = [
       "Queueing",
       "Created",
@@ -129,7 +106,16 @@ const Status: FC = () => {
     return <p className="text-muted-foreground">暂无作业数据</p>;
   }
 
-  return <Chart {...chartConfig} />;
+  return (
+    <Card className="col-span-1">
+      <CardHeader>
+        <CardTitle>作业队列</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Chart {...chartConfig} />
+      </CardContent>
+    </Card>
+  );
 };
 
 export default Status;

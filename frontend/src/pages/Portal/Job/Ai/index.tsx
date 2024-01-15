@@ -60,6 +60,8 @@ import AiJobDetail from "./Detail";
 import { TableDate } from "@/components/custom/TableDate";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import Status from "../../Overview/Status";
+import Quota from "../../Overview/Quota";
 
 type TaskInfo = {
   id: number;
@@ -240,7 +242,7 @@ const AiJobHome = () => {
     queryKey: ["aitask", "list"],
     queryFn: apiAiTaskList,
     select: (res) => res.data.data.Tasks,
-    // refetchInterval: 5000,
+    refetchInterval: 5000,
   });
 
   const refetchTaskList = async () =>
@@ -556,7 +558,11 @@ const AiJobHome = () => {
   }, [dataUpdatedAt]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-6">
+        <Status />
+        <Quota />
+      </div>
       <DataTable data={data} columns={columns} toolbarConfig={toolbarConfig}>
         <Sheet open={openSheet} onOpenChange={setOpenSheet}>
           <SheetTrigger asChild>
