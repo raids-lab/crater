@@ -14,7 +14,7 @@ import { ProgressBar } from "@/components/custom/ProgressBar";
 import {
   Card,
   CardContent,
-  CardDescription,
+  // CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -46,6 +46,7 @@ const Quota: FC = () => {
       hardUsed: getAiResource(res.data.data.hardUsed),
       softUsed: getAiResource(res.data.data.softUsed),
     }),
+    refetchInterval: 2000,
   });
 
   const columns: ColumnDef<Quota>[] = [
@@ -139,11 +140,11 @@ const Quota: FC = () => {
     <Card className="col-span-1">
       <CardHeader>
         <CardTitle>我的配额</CardTitle>
-        <CardDescription>
+        {/* <CardDescription>
           <span>1. 查看用户个人账户的资源配额</span>
           <br />
           <span>2. 查看用户在不同账户下的资源配额</span>
-        </CardDescription>
+        </CardDescription> */}
       </CardHeader>
       <CardContent className="text-base">
         <Table>
