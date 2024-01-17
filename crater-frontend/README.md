@@ -1,10 +1,11 @@
-![Crater](./src/assets/Logo2.svg)
-
----
+<p align="center">
+<img src="./public/vite.svg" alt="Logo" width="200"/>
+</p>
+<h1 align="center">Crater</h1>
 
 [![Pipeline Status](https://gitlab.act.buaa.edu.cn/gpu-portal/gpu-portal-frontend/badges/main/pipeline.svg)](https://gitlab.act.buaa.edu.cn/gpu-portal/gpu-portal-frontend/-/commits/main)
-[![Release Version](https://img.shields.io/badge/Release-0.0.0-blue)](http://192.168.5.60:32088/)
-[![Develop Version](https://img.shields.io/badge/Develop-0.0.0-orange)](http://192.168.5.60:8888/)
+[![Develop Version](https://img.shields.io/badge/Develop-0.1.0-orange)](http://192.168.5.60:8888/)
+[![Release Version](https://img.shields.io/badge/Release-0.1.0-blue)](http://192.168.5.60:32088/)
 
 Crater 是一个基于 Kubernetes 的 GPU 集群管理系统，提供了一站式的 GPU 集群管理解决方案。要了解更多信息，请访问 [GPU 集群管理与作业调度 Portal 设计和任务分解](https://docs.qq.com/doc/DWENFVWpzSW16TGFV)。
 
@@ -28,7 +29,7 @@ pnpm -v
 现在，您可以克隆本项目并在本地运行：
 
 ```bash
-git clone git@gitlab.act.buaa.edu.cn:act-k8s-portal-system/gpu-portal-frontend.git
+git clone git@gitlab.act.buaa.edu.cn:raids/resource-scheduling/crater/web-frontend.git
 cd gpu-portal-frontend
 
 # 安装依赖
@@ -46,27 +47,27 @@ pnpm dev
 
 本项目使用的主要技术栈如下：
 
-- Language: [TypeScript](https://www.typescriptlang.org/docs)
-- Frontend Framework: [React](https://react.dev/learn)
-  - State Management: [Recoil](https://recoiljs.org/zh-hans/)
-  - Query Management: [Tanstack Query](https://tanstack.com/query/latest)
-- CSS Framework: [Tailwind CSS](https://tailwindcss.com/docs/guides/vite)
+- 语言：[TypeScript](https://www.typescriptlang.org/docs)
+- 前端框架：[React](https://react.dev/learn)
+  - 状态管理：[Recoil](https://recoiljs.org/zh-hans/)
+  - 查询管理：[Tanstack Query](https://tanstack.com/query/latest)
+- CSS 框架：[Tailwind CSS](https://tailwindcss.com/docs/guides/vite)
 
 本项目使用了以下 UI 库，您可以阅读其文档了解更多信息：
 
-- [shadcn/ui](https://ui.shadcn.com/examples/dashboard): The primary headless component library used in the project.
-  - [Oxidus](https://oxidus.vercel.app/): Theme Color Generator for _shadcn/ui_.
-  - [v0 by Vercel](https://v0.dev/): Use generative AI to create copy-and-paste friendly React code based on shadcn/ui and Tailwind CSS.
-- [Flowbite](https://flowbite.com/docs/getting-started/react/): When you need to _borrow_ some Tailwind CSS code.
-- [Tanstack Table](https://tanstack.com/table/v8): Headless table component used in the project.
+- [shadcn/ui](https://ui.shadcn.com/examples/dashboard)：项目中使用的主要无头部件（headless component）库。
+  - [Oxidus](https://oxidus.vercel.app/)：_shadcn/ui_ 的主题颜色生成器。
+  - [v0 by Vercel](https://v0.dev/)：使用生成式 AI 基于 shadcn/ui 和 Tailwind CSS 创建可复制粘贴的 React 代码。
+- [Flowbite](https://flowbite.com/docs/getting-started/react/)：当你需要借用一些 Tailwind CSS 代码时使用。
+- [Tanstack Table](https://tanstack.com/table/v8)：项目中使用的无头表格（headless table）组件。
 
 为了规范代码风格与提交风格，本项目使用了以下工具：
 
-- [ESLint](https://eslint.org/docs/user-guide/getting-started): Linting tool for JavaScript and TypeScript.
-- [Prettier](https://prettier.io/docs/en/index.html): Code formatter.
-- [Commitlint](https://commitlint.js.org/#/): Linting tool for commit messages.
-- [Commitizen](https://github.com/commitizen/cz-cli): The commitizen command line utility.
-- [Husky](https://typicode.github.io/husky/#/): Git hooks.
+- [ESLint](https://eslint.org/docs/user-guide/getting-started)：用于 JavaScript 和 TypeScript 的代码检查工具。
+- [Prettier](https://prettier.io/docs/en/index.html)：代码格式化工具。
+- [Commitlint](https://commitlint.js.org/#/)：用于提交信息的代码检查工具。
+- [Commitizen](https://github.com/commitizen/cz-cli)：commitizen 命令行工具。
+- [Husky](https://typicode.github.io/husky/#/)：Git 钩子。
 
 ## 3. 部署
 
