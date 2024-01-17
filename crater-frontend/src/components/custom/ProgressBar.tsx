@@ -20,7 +20,7 @@ export const ProgressBar = ({
       )}
     >
       <div
-        className={cn("h-4 rounded", {
+        className={cn("h-4 rounded transition-all duration-500", {
           "bg-green-400 dark:bg-green-700": width <= 30,
           "bg-yellow-400 dark:bg-yellow-700": width > 30 && width <= 60,
           "bg-orange-400 dark:bg-orange-700": width > 60 && width <= 90,

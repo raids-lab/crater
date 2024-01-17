@@ -103,17 +103,17 @@ const Status: FC = () => {
     return <></>;
   }
 
-  if (!stats || stats?.length === 0) {
-    return <p className="text-muted-foreground">暂无作业数据</p>;
-  }
-
   return (
     <Card className="col-span-1">
       <CardHeader>
         <CardTitle>任务状态</CardTitle>
       </CardHeader>
       <CardContent>
-        <Chart {...chartConfig} />
+        {!stats || stats?.length === 0 ? (
+          <p className="text-muted-foreground">暂无作业数据</p>
+        ) : (
+          <Chart {...chartConfig} />
+        )}
       </CardContent>
     </Card>
   );
