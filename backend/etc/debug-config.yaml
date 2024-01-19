@@ -1,8 +1,8 @@
 enableProfiling: true
 prometheusAPI: ***REMOVED***
 profilingTimeout: 120
-dbHost: 10.1.167.230
-dbPort: 3306
+dbHost: ***REMOVED***
+dbPort: 30306
 dbUser: root
 dbPassword: buaak8sportal@2023mysql
 dbName: ai_portal
