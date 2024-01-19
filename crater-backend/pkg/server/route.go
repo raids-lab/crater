@@ -19,8 +19,10 @@ type Backend struct {
 }
 
 func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl client.Client) {
-
-	b.R.Use(middleware.Cors())
+	// enable cors in debug mode
+	if gin.Mode() == gin.DebugMode {
+		b.R.Use(middleware.Cors())
+	}
 
 	// timeout := time.Duration(Env.ContextTimeout) * time.Second
 	// public routers
