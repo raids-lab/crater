@@ -1,209 +1,98 @@
-# ai-task-controller
+<h1 align="center">Crater Web Backend</h1>
 
-## crd 创建
+ [![Pipeline Status](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-backend/badges/main/pipeline.svg) ](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-backend/-/commits/main)
+ [![Develop Version](https://img.shields.io/badge/Develop-0.1.0-orange) ](http://***REMOVED***:8888/)
+ [![Release Version](https://img.shields.io/badge/Release-0.1.0-blue) ](http://***REMOVED***:32088/)
+
+Crater 是一个基于 Kubernetes 的 GPU 集群管理系统，提供了一站式的 GPU 集群管理解决方案。要了解更多信息，请访问 [GPU 集群管理与作业调度 Portal 设计和任务分解](***REMOVED***) 。
+
+## 1. 环境准备
+
+在开始之前，请确保您的开发环境中已安装 Go 和 Kubectl。如果尚未安装，请参考以下步骤：
+
+- Go: [Download and install](https://go.dev/doc/install)
+- Kubectl: [Install Tools | Kubernetes](https://kubernetes.io/docs/tasks/tools/)
+
+以 Ubuntu 系统为例，使用如下命令安装匹配的版本：
 
 ```bash
-kubectl apply -f config/crd/bases/aisystem.github.com_aijobs.yaml 
+# build essential
+sudo apt-get install build-essential
+
+# install go
+rm -rf /usr/local/go
+wget -qO- https://go.dev/dl/go1.19.13.linux-amd64.tar.gz | sudo tar xz -C /usr/local
+
+# ~/.zshrc
+export PATH=$PATH:/usr/local/go/bin
+export GOPROXY=https://goproxy.cn
+
+# install kubectl
+curl -LO https://dl.k8s.io/release/v1.22.1/bin/linux/amd64/kubectl
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 ```
 
+之后需要获取 K8s 集群的访问权限。申请通过后，集群管理员会提供 `user-xxx.kubeconfig` 文件，创建 `~/.kube` 目录，并将 `user-xxx.kubeconfig` 文件放置在该路径下，仍以 Ubuntu 系统为例：
 
-## 数据库部署和连接
-
-* `deploy/mysql`： 在集群上部署mysql集群
-* `dbconf.yaml`： 数据库配置文件，可以通过 `kubectl port-forward service/mycluster mysql` 在本机上暴露3306端口
-
-
-## 运行
-
-``` bash
-# 编译
-go mod tidy && go build -o bin/controller main.go
-
-# 本地运行
-./bin/controller --db-config-file ./debug-dbconf.yaml
+```bash
+mkdir -p ~/.kube
+# Kubectl 默认配置文件路径位于 `~/.kube/config`
+cp ./${user-xxx.kubeconfig} ~/.kube/config
 ```
 
-## 开发与部署规范
+检查 Go 和 Kubectl 是否安装成功，Kubectl 是否连接集群：
 
-### 开发与自测
+```bash
+go version
+# v1.19.13
 
-1. 从main中checkout出分支单独开发
-2. 完成开发后可以先用postman自测
-	- 在***REMOVED***，使用`debug.sh`启动后端，默认端口8099，如遇端口冲突请自行修改端口
-	- 可以在header中添加`X-Debug-Username`指定用户名绕过登录认证，直接测试接口
-3. 自测完成后，若需要与前端联调，则告知前端端口并进行联调
-4. 测试完成后合入主分支，gitlab上提mr，发群里，有群友ap后合入即可
-
-### 联调
-
-1. 合入main分支后，在***REMOVED***运行`docker restart ai-portal-backend`，会启动main分支版本，暴露8078端口
-2. 通知前端联调前端功能
-
-### 部署
-
-- 建议上线前群里沟通好
-- 打包：`make build-backend IMG={YOUR IMAGE PATH}`
-- 部署：`make deploy-backend IMG={YOUR IMAGE PATH}`
-- 验证：联系前端部署到k8s里，前端部署完成后进行整体的功能验证
-
-This repository implements a simple controller for watching Foo resources as
-defined with a CustomResourceDefinition (CRD).
-
-**Note:** go-get or vendor this package as `k8s.io/sample-controller`.
-
-This particular example demonstrates how to perform basic operations such as:
-
-* How to register a new custom resource (custom resource type) of type `Foo` using a CustomResourceDefinition.
-* How to create/get/list instances of your new resource type `Foo`.
-* How to setup a controller on resource handling create/update/delete events.
-
-It makes use of the generators in [k8s.io/code-generator](https://github.com/kubernetes/code-generator)
-to generate a typed client, informers, listers and deep-copy functions. You can
-do this yourself using the `./hack/update-codegen.sh` script.
-
-The `update-codegen` script will automatically generate the following files &
-directories:
-
-* `pkg/apis/samplecontroller/v1alpha1/zz_generated.deepcopy.go`
-* `pkg/generated/`
-
-Changes should not be made to these files manually, and when creating your own
-controller based off of this implementation you should not copy these files and
-instead run the `update-codegen` script to generate your own.
-
-## Details
-
-The sample controller uses [client-go library](https://github.com/kubernetes/client-go/tree/master/tools/cache) extensively.
-The details of interaction points of the sample controller with various mechanisms from this library are
-explained [here](docs/controller-client-go.md).
-
-## Fetch sample-controller and its dependencies
-
-Like the rest of Kubernetes, sample-controller has used
-[godep](https://github.com/tools/godep) and `$GOPATH` for years and is
-now adopting go 1.11 modules.  There are thus two alternative ways to
-go about fetching this demo and its dependencies.
-
-### Fetch with godep
-
-When NOT using go 1.11 modules, you can use the following commands.
-
-```sh
-go get -d k8s.io/sample-controller
-cd $GOPATH/src/k8s.io/sample-controller
-godep restore
+kubectl version
+# Client Version: version.Info{Major:"1", Minor:"22", GitVersion:"v1.22.1", ...}
+# Server Version: version.Info{Major:"1", Minor:"22", GitVersion:"v1.22.1", ...}
 ```
 
-### When using go 1.11 modules
+## 2. 开发
 
-When using go 1.11 modules (`GO111MODULE=on`), issue the following
-commands --- starting in whatever working directory you like.
+Crater 目前部署于 [K8s 小集群](https://gitlab.***REMOVED***/raids/resource-scheduling/gpu-cluster-portal/-/wikis/home) 中，在 Web Backend 下游，集群中还有以下组件：
 
-```sh
-git clone https://github.com/kubernetes/sample-controller.git
-cd sample-controller
+- [MySQL](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-backend/-/tree/main/deploy/mysql?ref_type=heads) ：Web Backend 所使用的数据库
+- [AI Job Controller](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/aijob-controller) ：连接 Web Backend 与调度层的中间层
+  1. 维护 AIJob 队列，进行 AI Job 到 Pod 的转换工作，将 Pod 提交到调度层
+  2. 监控 Pod 生命周期，将 Pod 的状态同步到 AI Job 里，反馈给  Web Backend
+- [AI Job Scheduler](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/aijob-scheduler) ：Crater 的调度层，实现了 Best Effort 作业抢占等机制
+
+为便于开发人员测试，目前将 MySQL 数据库的 3306 端口暴露到集群外的 30306 端口（见 `deploy/mysql/mysql-hack.yaml` ），使用 `./debug.sh` 脚本在本地 `8099` 端口运行：
+
+```bash
+#!/bin/bash
+go run main.go \
+    --db-config-file ./debug-dbconf.yaml \
+    --config-file ./etc/debug-config.yaml \
+    --metrics-bind-address :8097 \
+    --health-probe-bind-address :8096 \
+    --server-port :8099
 ```
 
-Note, however, that if you intend to
-generate code then you will also need the
-code-generator repo to exist in an old-style location.  One easy way
-to do this is to use the command `go mod vendor` to create and
-populate the `vendor` directory.
+完成新功能开发后，可以用 Postman 自测。可以在 Header 中添加 `X-Debug-Username` 指定用户名绕过登录认证，直接测试接口功能。
 
-### A Note on kubernetes/kubernetes
-
-If you are developing Kubernetes according to
-https://github.com/kubernetes/community/blob/master/contributors/guide/github-workflow.md
-then you already have a copy of this demo in
-`kubernetes/staging/src/k8s.io/sample-controller` and its dependencies
---- including the code generator --- are in usable locations
-(valid for all Go versions).
-
-## Purpose
-
-This is an example of how to build a kube-like controller with a single type.
-
-## Running
-
-**Prerequisite**: Since the sample-controller uses `apps/v1` deployments, the Kubernetes cluster version should be greater than 1.9.
-
-```sh
-# assumes you have a working kubeconfig, not required if operating in-cluster
-go build -o sample-controller .
-./sample-controller -kubeconfig=$HOME/.kube/config
-
-# create a CustomResourceDefinition
-kubectl create -f artifacts/examples/crd-status-subresource.yaml
-
-# create a custom resource of type Foo
-kubectl create -f artifacts/examples/example-foo.yaml
-
-# check deployments created through the custom resource
-kubectl get deployments
-```
-
-## Use Cases
-
-CustomResourceDefinitions can be used to implement custom resource types for your Kubernetes cluster.
-These act like most other Resources in Kubernetes, and may be `kubectl apply`'d, etc.
-
-Some example use cases:
-
-* Provisioning/Management of external datastores/databases (eg. CloudSQL/RDS instances)
-* Higher level abstractions around Kubernetes primitives (eg. a single Resource to define an etcd cluster, backed by a Service and a ReplicationController)
-
-## Defining types
-
-Each instance of your custom resource has an attached Spec, which should be defined via a `struct{}` to provide data format validation.
-In practice, this Spec is arbitrary key-value data that specifies the configuration/behavior of your Resource.
-
-For example, if you were implementing a custom resource for a Database, you might provide a DatabaseSpec like the following:
-
-``` go
-type DatabaseSpec struct {
-	Databases []string `json:"databases"`
-	Users     []User   `json:"users"`
-	Version   string   `json:"version"`
-}
-
-type User struct {
-	Name     string `json:"name"`
-	Password string `json:"password"`
+```json
+{
+  "X-Debug-Username": "lyl"
 }
 ```
 
-## Validation
+也可以在本地运行 [Web Frontend](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-frontend) 进行测试，在 `pkg/server/middleware/cors.go` 中，允许了来自 `http://localhost:5173` 的跨域请求。
 
-To validate custom resources, use the [`CustomResourceValidation`](https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-custom-resource-definitions/#validation) feature. Validation in the form of a [structured schema](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#specifying-a-structural-schema) is mandatory to be provided for `apiextensions.k8s.io/v1`.
+合入 `main` 分支后，在 ***REMOVED*** 运行 `docker restart ai-portal-backend`，会启动 main 分支版本，暴露 8078 端口。
 
-### Example
+## 3. 部署
 
-The schema in [`crd.yaml`](./artifacts/examples/crd.yaml) applies the following validation on the custom resource:
-`spec.replicas` must be an integer and must have a minimum value of 1 and a maximum value of 10.
+(WIP)
 
-## Subresources
+## 4. 项目结构
 
-Custom Resources support `/status` and `/scale` [subresources](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/#subresources). The `CustomResourceSubresources` feature is in GA from v1.16.
+(WIP)
 
-### Example
+## 5. 其他
 
-The CRD in [`crd-status-subresource.yaml`](./artifacts/examples/crd-status-subresource.yaml) enables the `/status` subresource for custom resources.
-This means that [`UpdateStatus`](./controller.go) can be used by the controller to update only the status part of the custom resource.
-
-To understand why only the status part of the custom resource should be updated, please refer to the [Kubernetes API conventions](https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status).
-
-In the above steps, use `crd-status-subresource.yaml` to create the CRD:
-
-```sh
-# create a CustomResourceDefinition supporting the status subresource
-kubectl create -f artifacts/examples/crd-status-subresource.yaml
-```
-
-## A Note on the API version
-The [group](https://kubernetes.io/docs/reference/using-api/#api-groups) version of the custom resource in `crd.yaml` is `v1alpha`, this can be evolved to a stable API version, `v1`, using [CRD Versioning](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definition-versioning/).
-
-## Config
-
-```bash
-go run main.go --kubeconfig ~/.kube/config
-```
+- 旧文档位于 `docs/README.md`。
