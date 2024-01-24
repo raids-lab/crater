@@ -110,7 +110,8 @@ func (mgr *AdminMgr) ListQuota(c *gin.Context) {
 	resp := payload.ListUserQuotaResp{
 		Quotas: make([]payload.GetQuotaResp, 0),
 	}
-	for _, quotaInfo := range userQuotas {
+	for i := 0; i < len(userQuotas); i++ {
+		quotaInfo := &userQuotas[i]
 		r := payload.GetQuotaResp{
 			User:     quotaInfo.Name,
 			Hard:     quotaInfo.Hard,
@@ -153,7 +154,7 @@ func (mgr *AdminMgr) GetUser(c *gin.Context) {
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 	}
-	log.Infof("get user success, user: %d", resp.UserName)
+	log.Infof("get user success, user: %s", resp.UserName)
 	resputil.WrapSuccessResponse(c, resp)
 }
 
@@ -192,7 +193,7 @@ func (mgr *AdminMgr) UpdateQuota(c *gin.Context) {
 	// notify taskController to update quota
 	mgr.taskController.AddOrUpdateQuotaInfo(quota.UserName, *quota)
 
-	log.Infof("update quota success, user: %d, quota:%v", req.UserName, req.HardQuota)
+	log.Infof("update quota success, user: %s, quota:%v", req.UserName, req.HardQuota)
 	resputil.WrapSuccessResponse(c, "")
 }
 
