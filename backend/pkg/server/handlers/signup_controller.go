@@ -95,8 +95,7 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 
 		return
 	}
-	var ct *crclient.Control
-	ct = &crclient.Control{Client: sc.CL}
+	ct := &crclient.Control{Client: sc.CL}
 	request.Password = string(encryptedPassword)
 	err = ct.CreateUserNameSpace(request.Name)
 	ct.CreateUserHomePVC(request.Name)

@@ -140,7 +140,7 @@ func (mgr *AITaskMgr) Get(c *gin.Context) {
 		return
 	}
 	resp := payload.GetTaskResp{
-		*taskModel,
+		AITask: *taskModel,
 	}
 	log.Infof("get task success, taskID: %d", req.TaskID)
 	resputil.WrapSuccessResponse(c, resp)
@@ -193,6 +193,12 @@ func (mgr *AITaskMgr) UpdateSLO(c *gin.Context) {
 	}
 	task.SLO = req.SLO
 	err = mgr.taskService.Update(task)
+	if err != nil {
+		msg := fmt.Sprintf("update task failed, err %v", err)
+		log.Error(msg)
+		resputil.WrapFailedResponse(c, msg, 50009)
+		return
+	}
 	mgr.NotifyTaskUpdate(req.TaskID, username.(string), util.UpdateTask)
 	log.Infof("update task success, taskID: %d", req.TaskID)
 	resputil.WrapSuccessResponse(c, "")

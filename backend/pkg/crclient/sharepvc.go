@@ -123,22 +123,23 @@ func (c *PVCClient) createUserPVCFromShareDir(userNamespace, pvcName string) err
 
 func (c *PVCClient) GetPVC(name, namespace string) (*corev1.PersistentVolumeClaim, error) {
 	pvc := &corev1.PersistentVolumeClaim{}
-	if err := c.Get(context.Background(), types.NamespacedName{namespace, name}, pvc); err != nil {
+	if err := c.Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: name}, pvc); err != nil {
 		return nil, err
 	}
 	return pvc, nil
 }
+
 func (c *PVCClient) GetPVCRelatedPV(name, namespace string) (*corev1.PersistentVolume, error) {
 	pvc := &corev1.PersistentVolumeClaim{}
 
-	if err := c.Get(context.Background(), types.NamespacedName{namespace, name}, pvc); err != nil {
+	if err := c.Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: name}, pvc); err != nil {
 		return nil, err
 	}
 	if pvc.Spec.VolumeName == "" {
 		return nil, fmt.Errorf("volume name empty")
 	}
 	pv := &corev1.PersistentVolume{}
-	if err := c.Get(context.Background(), types.NamespacedName{"", pvc.Spec.VolumeName}, pv); err != nil {
+	if err := c.Get(context.Background(), types.NamespacedName{Namespace: "", Name: pvc.Spec.VolumeName}, pv); err != nil {
 		return nil, err
 	}
 	if pv.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimRetain {
