@@ -45,11 +45,14 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	shareDirMgr := handlers.NewShareDirMgr()
 	shareDirMgr.RegisterRoute(protectedRouter.Group("/sharedir"))
 
-	aitaskMgr := handlers.NewAITaskMgr(aitaskCtrl, &crclient.PVCClient{Client: cl})
+	pvcClient := crclient.PVCClient{Client: cl}
+	aitaskMgr := handlers.NewAITaskMgr(aitaskCtrl, &pvcClient)
+	jupyterMgr := handlers.NewJupyterMgr(aitaskCtrl, &pvcClient)
 	recommenddljobMgr := handlers.NewRecommendDLJobMgr(user.NewDBService(), cl)
 	datasetMgr := handlers.NewDataSetMgr(user.NewDBService(), cl)
 
 	aitaskMgr.RegisterRoute(protectedRouter.Group("/aitask"))
+	jupyterMgr.RegisterRoute(protectedRouter.Group("/jupyter"))
 	recommenddljobMgr.RegisterRoute(protectedRouter.Group("/recommenddljob"))
 	datasetMgr.RegisterRoute(protectedRouter.Group("/dataset"))
 
