@@ -11,6 +11,10 @@ type CreateTaskReq struct {
 	models.TaskAttr
 }
 
+type CreateJupyterReq struct {
+	models.JupyterTaskAttr
+}
+
 // ListTaskReq is the request payload for listing tasks. Get Method
 type ListTaskReq struct {
 	Status string `form:"status"`
