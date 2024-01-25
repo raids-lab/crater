@@ -27,6 +27,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	schedulerpluginsv1alpha1 "sigs.k8s.io/scheduler-plugins/apis/scheduling/v1alpha1"
 
@@ -100,7 +101,8 @@ func main() {
 		os.Exit(1)
 	}
 	// 0. create manager
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	cfg := ctrl.GetConfigOrDie()
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
 		Port:                   monitoringPort,
@@ -112,6 +114,11 @@ func main() {
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
+	}
+
+	clientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		panic(err.Error())
 	}
 
 	// 1. init db
@@ -173,8 +180,12 @@ func main() {
 	taskCtrl.Start(stopCh)
 
 	// 5. start server
-	backend, err := server.Register(taskCtrl, mgr.GetClient())
 	setupLog.Info("starting server")
+	backend, err := server.Register(taskCtrl, mgr.GetClient(), clientset)
+	if err != nil {
+		setupLog.Error(err, "unable to set up server")
+		os.Exit(1)
+	}
 	if err := backend.R.Run(serverPort); err != nil {
 		setupLog.Error(err, "problem running server")
 		os.Exit(1)

@@ -11,6 +11,7 @@ import (
 	"github.com/aisystem/ai-protal/pkg/server/handlers"
 	"github.com/aisystem/ai-protal/pkg/server/middleware"
 	"github.com/gin-gonic/gin"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -18,7 +19,7 @@ type Backend struct {
 	R *gin.Engine
 }
 
-func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl client.Client) {
+func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl client.Client, cs kubernetes.Interface) {
 	// enable cors in debug mode
 	if gin.Mode() == gin.DebugMode {
 		b.R.Use(middleware.Cors())
@@ -46,7 +47,8 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	shareDirMgr.RegisterRoute(protectedRouter.Group("/sharedir"))
 
 	pvcClient := crclient.PVCClient{Client: cl}
-	aitaskMgr := handlers.NewAITaskMgr(aitaskCtrl, &pvcClient)
+	logClient := crclient.LogClient{Client: cl, KubeClient: cs}
+	aitaskMgr := handlers.NewAITaskMgr(aitaskCtrl, &pvcClient, &logClient)
 	jupyterMgr := handlers.NewJupyterMgr(aitaskCtrl, &pvcClient)
 	recommenddljobMgr := handlers.NewRecommendDLJobMgr(user.NewDBService(), cl)
 	datasetMgr := handlers.NewDataSetMgr(user.NewDBService(), cl)
@@ -62,7 +64,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	adminMgr.RegisterRoute(adminRouter)
 }
 
-func Register(aitaskCtrl *aitaskctl.TaskController, cl client.Client) (*Backend, error) {
+func Register(aitaskCtrl *aitaskctl.TaskController, cl client.Client, cs kubernetes.Interface) (*Backend, error) {
 	s := new(Backend)
 
 	s.R = gin.Default()
@@ -72,6 +74,6 @@ func Register(aitaskCtrl *aitaskctl.TaskController, cl client.Client) (*Backend,
 			"message": "ok",
 		})
 	})
-	s.RegisterService(aitaskCtrl, cl)
+	s.RegisterService(aitaskCtrl, cl, cs)
 	return s, nil
 }
