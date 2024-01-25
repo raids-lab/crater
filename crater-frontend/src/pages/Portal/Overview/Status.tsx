@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, type FC } from "react";
 import Chart, { Props as ChartProps } from "react-apexcharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { REFETCH_INTERVAL } from "@/config/task";
 
 const Status: FC = () => {
   const { theme } = useTheme();
@@ -11,7 +12,7 @@ const Status: FC = () => {
     queryKey: ["aitask", "stats"],
     queryFn: apiAiTaskStats,
     select: (res) => res.data.data.taskCount,
-    refetchInterval: 2000,
+    refetchInterval: REFETCH_INTERVAL,
   });
 
   const chartConfig = useMemo<ChartProps>(() => {
