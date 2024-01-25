@@ -70,10 +70,10 @@ func (mgr *JupyterMgr) Create(c *gin.Context) {
 	taskAttr.TaskType = "jupyter"
 	taskAttr.Image = req.Image
 	taskAttr.ResourceRequest = req.ResourceRequest
-
+	taskAttr.Command = "start.sh jupyter lab --allow-root"
 	taskAttr.ShareDirs = req.ShareDirs
 
-	if taskAttr.ShareDirs != nil && len(taskAttr.ShareDirs) > 0 {
+	if len(taskAttr.ShareDirs) > 0 {
 		for pvcName := range taskAttr.ShareDirs {
 			err := mgr.pvcClient.CheckOrCreateUserPvc(taskAttr.Namespace, pvcName)
 			if err != nil {
@@ -85,7 +85,7 @@ func (mgr *JupyterMgr) Create(c *gin.Context) {
 		}
 	}
 
-	taskModel := models.FormatTaskAttrToModel(&req.TaskAttr)
+	taskModel := models.FormatTaskAttrToModel(&taskAttr)
 	err := mgr.taskService.Create(taskModel)
 	if err != nil {
 		msg := fmt.Sprintf("create task failed, err %v", err)
@@ -112,7 +112,7 @@ func (mgr *JupyterMgr) List(c *gin.Context) {
 		return
 	}
 	username, _ := c.Get("username")
-	taskModels, err := mgr.taskService.ListByUserAndStatuses(username.(string), nil)
+	taskModels, err := mgr.taskService.ListByUserAndTaskType(username.(string), "jupyter")
 	if err != nil {
 		msg := fmt.Sprintf("list task failed, err %v", err)
 		log.Error(msg)
@@ -176,88 +176,4 @@ func (mgr *JupyterMgr) Delete(c *gin.Context) {
 
 	log.Infof("delete task success, taskID: %d", req.TaskID)
 	resputil.WrapSuccessResponse(c, "")
-}
-
-func (mgr *JupyterMgr) UpdateSLO(c *gin.Context) {
-	log.Infof("Task Update, url: %s", c.Request.URL)
-	var req payload.UpdateTaskSLOReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		msg := fmt.Sprintf("validate update parameters failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50008)
-		return
-	}
-	username, _ := c.Get("username")
-	task, err := mgr.taskService.GetByUserAndID(username.(string), req.TaskID)
-	if err != nil {
-		msg := fmt.Sprintf("get task failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50009)
-		return
-	}
-	task.SLO = req.SLO
-	err = mgr.taskService.Update(task)
-	if err != nil {
-		msg := fmt.Sprintf("update task failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50009)
-		return
-	}
-	mgr.NotifyTaskUpdate(req.TaskID, username.(string), util.UpdateTask)
-	log.Infof("update task success, taskID: %d", req.TaskID)
-	resputil.WrapSuccessResponse(c, "")
-}
-
-func (mgr *JupyterMgr) GetQuota(c *gin.Context) {
-	username, _ := c.Get("username")
-	quotaInfo := mgr.taskController.GetQuotaInfoSnapshotByUsername(username.(string))
-	if quotaInfo == nil {
-		msg := fmt.Sprintf("get user:%v quota failed", username.(string))
-		log.Errorf(msg)
-		resputil.WrapFailedResponse(c, msg, 50009)
-		return
-	}
-	resp := payload.GetQuotaResp{
-		Hard:     quotaInfo.Hard,
-		HardUsed: quotaInfo.HardUsed,
-		SoftUsed: quotaInfo.SoftUsed,
-	}
-	log.Infof("get quota success, user: %v", username.(string))
-	resputil.WrapSuccessResponse(c, resp)
-}
-
-func (mgr *JupyterMgr) GetTaskStats(c *gin.Context) {
-	log.Infof("Task Count Statistic, url: %s", c.Request.URL)
-	username, _ := c.Get("username")
-	taskCountList, err := mgr.taskService.GetUserTaskStatusCount(username.(string))
-	if err != nil {
-		msg := fmt.Sprintf("get task count statistic failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50003)
-		return
-	}
-	// var respCnt payload.AITaskCountStatistic
-	// for _, taskCount := range taskCountList {
-	// 	switch taskCount.Status {
-	// 	case models.TaskQueueingStatus:
-	// 		respCnt.Queueing += taskCount.Count
-	// 	case models.TaskRunningStatus:
-	// 		respCnt.Running += taskCount.Count
-	// 	case models.TaskCreatedStatus:
-	// 		respCnt.Pending += taskCount.Count
-	// 	case models.TaskPendingStatus:
-	// 		respCnt.Pending += taskCount.Count
-	// 	case models.TaskPreemptedStatus:
-	// 		respCnt.Pending += taskCount.Count
-	// 	case models.TaskSucceededStatus:
-	// 		respCnt.Finished += taskCount.Count
-	// 	case models.TaskFailedStatus:
-	// 		respCnt.Finished += taskCount.Count
-	// 	}
-	// }
-	resp := payload.AITaskStatistic{
-		TaskCount: taskCountList,
-	}
-	// log.Infof("list task success, taskNum: %d", len(resp.Tasks))
-	resputil.WrapSuccessResponse(c, resp)
 }
