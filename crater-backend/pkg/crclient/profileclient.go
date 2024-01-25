@@ -48,7 +48,7 @@ func (c *ProfilingPodControl) DeleteProfilePodFromTask(task *models.AITask) erro
 }
 
 func (c *ProfilingPodControl) GetTaskIDFromPod(pod *corev1.Pod) (uint, error) {
-	id, ok := pod.Labels[aijobapi.LabeKeyTaskID]
+	id, ok := pod.Labels[aijobapi.LabelKeyTaskID]
 	if !ok {
 		return 0, fmt.Errorf("taskID not found in pod: %v/%v", pod.Namespace, pod.Name)
 	}
@@ -56,7 +56,6 @@ func (c *ProfilingPodControl) GetTaskIDFromPod(pod *corev1.Pod) (uint, error) {
 	return uint(taskID), nil
 }
 
-//
 func (c *ProfilingPodControl) CreateProfilePodFromTask(task *models.AITask) error {
 
 	resourceRequest, err := models.JSONToResourceList(task.ResourceRequest)
@@ -68,7 +67,7 @@ func (c *ProfilingPodControl) CreateProfilePodFromTask(task *models.AITask) erro
 	podName = strings.Replace(podName, "_", "-", -1)
 	taskID := strconv.Itoa(int(task.ID))
 	labels := map[string]string{
-		aijobapi.LabeKeyTaskID: taskID,
+		aijobapi.LabelKeyTaskID: taskID,
 	}
 	for k, v := range ProfilingPodLabels {
 		labels[k] = v

@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/aisystem/ai-protal/pkg/aitaskctl"
 	"github.com/aisystem/ai-protal/pkg/crclient"
@@ -20,22 +21,24 @@ func (mgr *JupyterMgr) RegisterRoute(g *gin.RouterGroup) {
 	g.POST("create", mgr.Create)
 	g.POST("delete", mgr.Delete)
 	g.GET("list", mgr.List)
-	g.GET("get", mgr.Get)
+	g.GET("getToken", mgr.GetToken)
+	g.GET("getImages", mgr.GetImages)
 }
 
 type JupyterMgr struct {
 	taskService    tasksvc.DBService
 	userService    usersvc.DBService
 	pvcClient      *crclient.PVCClient
+	logClient      *crclient.LogClient
 	taskController *aitaskctl.TaskController
 }
 
-func NewJupyterMgr(taskController *aitaskctl.TaskController, pvcClient *crclient.PVCClient) *JupyterMgr {
-	// pvcClient.InitShareDir() // 在 AiTaskMgr 中初始化过了
+func NewJupyterMgr(taskController *aitaskctl.TaskController, pvcClient *crclient.PVCClient, logClient *crclient.LogClient) *JupyterMgr {
 	return &JupyterMgr{
 		taskService:    tasksvc.NewDBService(),
 		userService:    usersvc.NewDBService(),
 		pvcClient:      pvcClient,
+		logClient:      logClient,
 		taskController: taskController,
 	}
 }
@@ -67,10 +70,11 @@ func (mgr *JupyterMgr) Create(c *gin.Context) {
 	taskAttr.UserName = username.(string)
 	taskAttr.Namespace = fmt.Sprintf("user-%s", username.(string))
 	taskAttr.SLO = 1
-	taskAttr.TaskType = "jupyter"
+	taskAttr.TaskType = models.JupyterTask
 	taskAttr.Image = req.Image
 	taskAttr.ResourceRequest = req.ResourceRequest
 	taskAttr.Command = "start.sh jupyter lab --allow-root"
+	taskAttr.WorkingDir = fmt.Sprintf("/home/%s", username.(string))
 	taskAttr.ShareDirs = req.ShareDirs
 
 	if len(taskAttr.ShareDirs) > 0 {
@@ -112,7 +116,7 @@ func (mgr *JupyterMgr) List(c *gin.Context) {
 		return
 	}
 	username, _ := c.Get("username")
-	taskModels, err := mgr.taskService.ListByUserAndTaskType(username.(string), "jupyter")
+	taskModels, err := mgr.taskService.ListByUserAndTaskType(username.(string), models.JupyterTask)
 	if err != nil {
 		msg := fmt.Sprintf("list task failed, err %v", err)
 		log.Error(msg)
@@ -126,8 +130,8 @@ func (mgr *JupyterMgr) List(c *gin.Context) {
 	resputil.WrapSuccessResponse(c, resp)
 }
 
-func (mgr *JupyterMgr) Get(c *gin.Context) {
-	log.Infof("Task Get, url: %s", c.Request.URL)
+func (mgr *JupyterMgr) GetToken(c *gin.Context) {
+	log.Infof("Task Token Get, url: %s", c.Request.URL)
 	var req payload.GetTaskReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		msg := fmt.Sprintf("validate get parameters failed, err %v", err)
@@ -143,10 +147,80 @@ func (mgr *JupyterMgr) Get(c *gin.Context) {
 		resputil.WrapFailedResponse(c, msg, 50005)
 		return
 	}
-	resp := payload.GetTaskResp{
-		AITask: *taskModel,
+	if taskModel.Status != "Running" {
+		resp := payload.GetJupyterResp{
+			Port:  0,
+			Token: "",
+		}
+		log.Infof("task token not ready, taskID: %d", req.TaskID)
+		resputil.WrapSuccessResponse(c, resp)
+		return
 	}
-	log.Infof("get task success, taskID: %d", req.TaskID)
+	if taskModel.Token != "" {
+		resp := payload.GetJupyterResp{
+			Port:  taskModel.NodePort,
+			Token: taskModel.Token,
+		}
+		log.Infof("get task token success, taskID: %d", req.TaskID)
+		resputil.WrapSuccessResponse(c, resp)
+		return
+	}
+
+	// get log
+	pods, err := mgr.logClient.GetPodsWithLabel(taskModel.Namespace, taskModel.JobName)
+	if err != nil {
+		msg := fmt.Sprintf("get task log failed, err %v", err)
+		log.Error(msg)
+		resputil.WrapFailedResponse(c, msg, 50005)
+		return
+	}
+	var token string
+	re := regexp.MustCompile(`\?token=([a-zA-Z0-9]+)`)
+	for _, pod := range pods {
+		podLog, err := mgr.logClient.GetPodLogs(pod)
+		if err != nil {
+			msg := fmt.Sprintf("get task log failed, err %v", err)
+			log.Error(msg)
+			resputil.WrapFailedResponse(c, msg, 50005)
+			return
+		}
+		matches := re.FindStringSubmatch(podLog)
+		if len(matches) >= 2 {
+			token = matches[1]
+			break
+		}
+	}
+
+	// Get service port
+	port, err := mgr.logClient.GetSvcPort(taskModel.Namespace, taskModel.JobName)
+	if err != nil {
+		msg := fmt.Sprintf("get task svc failed, err %v", err)
+		log.Error(msg)
+		resputil.WrapFailedResponse(c, msg, 50005)
+		return
+	}
+
+	// Save token to db
+	err = mgr.taskService.UpdateToken(taskModel.ID, token)
+	if err != nil {
+		msg := fmt.Sprintf("update task token failed, err %v", err)
+		log.Error(msg)
+		resputil.WrapFailedResponse(c, msg, 50005)
+		return
+	}
+	err = mgr.taskService.UpdateNodePort(taskModel.ID, port)
+	if err != nil {
+		msg := fmt.Sprintf("update task node port failed, err %v", err)
+		log.Error(msg)
+		resputil.WrapFailedResponse(c, msg, 50005)
+		return
+	}
+
+	resp := payload.GetJupyterResp{
+		Port:  port,
+		Token: token,
+	}
+	log.Infof("get task token success, taskID: %d", req.TaskID)
 	resputil.WrapSuccessResponse(c, resp)
 }
 
@@ -176,4 +250,15 @@ func (mgr *JupyterMgr) Delete(c *gin.Context) {
 
 	log.Infof("delete task success, taskID: %d", req.TaskID)
 	resputil.WrapSuccessResponse(c, "")
+}
+
+func (mgr *JupyterMgr) GetImages(c *gin.Context) {
+	// 现阶段先返回一个固定的镜像列表
+	images := []string{
+		"jupyter/base-notebook:ubuntu-22.04",
+	}
+	resp := payload.GetImagesResp{
+		Images: images,
+	}
+	resputil.WrapSuccessResponse(c, resp)
 }

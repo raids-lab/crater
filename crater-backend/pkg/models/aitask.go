@@ -11,6 +11,7 @@ import (
 // TaskType
 const (
 	TrainingTask   = "training"
+	JupyterTask    = "jupyter"
 	DebuggingTask  = "debugging"
 	InferenceTask  = "inference"
 	ExperimentTask = "experiment"
@@ -72,6 +73,8 @@ type AITask struct {
 	ProfileStat     string     `gorm:"column:profile_stat;type:text" json:"profileStat"`
 	EsitmatedTime   uint       `gorm:"column:estimated_time;type:int" json:"estimatedTime"`
 	ScheduleInfo    string     `gorm:"column:schedule_info;type:text" json:"scheduleInfo"`
+	Token           string     `gorm:"column:token;type:text" json:"token"`
+	NodePort        int32      `gorm:"column:node_port;type:int" json:"nodePort"`
 }
 
 // TaskAttr request
