@@ -38,6 +38,10 @@ type UpdateTaskSLOReq struct {
 	SLO    uint `json:"slo"` // change the slo of the task
 }
 
+type GetImagesResp struct {
+	Images []string `json:"images"`
+}
+
 // TODO: update task sequence
 
 type UpdateQuotaReq struct {

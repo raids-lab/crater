@@ -24,6 +24,11 @@ type GetTaskLogResp struct {
 	Logs []string `json:"logs"`
 }
 
+type GetJupyterResp struct {
+	Port  int32  `json:"port"`
+	Token string `json:"token"`
+}
+
 type DeleteTaskResp struct {
 }
 

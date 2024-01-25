@@ -13,7 +13,7 @@ const (
 	// Labels for job
 	LabelKeyTaskType          = "aisystem.github.com/task-type"
 	LabelKeyTaskSLO           = "aisystem.github.com/task-slo"
-	LabeKeyTaskID             = "aisystem.github.com/taskid"
+	LabelKeyTaskID            = "aisystem.github.com/taskid"
 	LabelKeyTaskUser          = "aisystem.github.com/task-user"
 	LabelKeyEstimatedTime     = "aisystem.github.com/estimated-time"
 	AnnotationKeyProfileStat  = "aisystem.github.com/profile-stat"

@@ -38,7 +38,6 @@ type AITaskMgr struct {
 }
 
 func NewAITaskMgr(taskController *aitaskctl.TaskController, pvcClient *crclient.PVCClient, logClient *crclient.LogClient) *AITaskMgr {
-	pvcClient.InitShareDir()
 	return &AITaskMgr{
 		taskService:    tasksvc.NewDBService(),
 		userService:    usersvc.NewDBService(),
@@ -111,7 +110,8 @@ func (mgr *AITaskMgr) List(c *gin.Context) {
 		return
 	}
 	username, _ := c.Get("username")
-	taskModels, err := mgr.taskService.ListByUserAndStatuses(username.(string), nil)
+	// taskModels, err := mgr.taskService.ListByUserAndStatuses(username.(string), nil)
+	taskModels, err := mgr.taskService.ListByUserAndTaskType(username.(string), models.TrainingTask)
 	if err != nil {
 		msg := fmt.Sprintf("list task failed, err %v", err)
 		log.Error(msg)

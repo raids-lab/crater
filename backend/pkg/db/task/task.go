@@ -21,6 +21,8 @@ type DBService interface {
 	GetByID(taskID uint) (*models.AITask, error)
 	GetByUserAndID(userName string, taskID uint) (*models.AITask, error)
 	UpdateProfilingStat(taskID uint, profileStatus uint, stat string, status string) error
+	UpdateToken(taskID uint, token string) error
+	UpdateNodePort(taskID uint, nodePort int32) error
 	GetTaskStatusCount() ([]models.TaskStatusCount, error)
 	GetUserTaskStatusCount(userName string) ([]models.TaskStatusCount, error)
 }
@@ -129,6 +131,16 @@ func (s *service) UpdateProfilingStat(taskID uint, profileStatus uint, stat stri
 		}
 	}
 	err := db.Orm.Model(&models.AITask{}).Where("id = ?", taskID).Updates(updateMap).Error
+	return err
+}
+
+func (s *service) UpdateToken(taskID uint, token string) error {
+	err := db.Orm.Model(&models.AITask{}).Where("id = ?", taskID).Update("token", token).Error
+	return err
+}
+
+func (s *service) UpdateNodePort(taskID uint, nodePort int32) error {
+	err := db.Orm.Model(&models.AITask{}).Where("id = ?", taskID).Update("node_port", nodePort).Error
 	return err
 }
 

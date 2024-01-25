@@ -6,6 +6,7 @@ import (
 
 	aijobapi "github.com/aisystem/ai-protal/pkg/apis/aijob/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,4 +48,18 @@ func (lc *LogClient) GetPodLogs(pod corev1.Pod) (string, error) {
 	}
 
 	return buf.String(), nil
+}
+
+// GetSvcPort 获取指定 Service 的 NodePort
+func (lc *LogClient) GetSvcPort(namespace string, svcName string) (int32, error) {
+	svc, err := lc.KubeClient.CoreV1().Services(namespace).Get(context.Background(), svcName, metav1.GetOptions{})
+	if err != nil {
+		return 0, err
+	}
+	for _, p := range svc.Spec.Ports {
+		if p.NodePort != 0 {
+			return p.NodePort, nil
+		}
+	}
+	return 0, nil
 }

@@ -302,7 +302,7 @@ func (c *TaskController) admitTask(task *models.AITask) error {
 		return fmt.Errorf("quota exceed")
 	}
 
-	err, jobname := c.jobControl.CreateJobFromTask(task)
+	jobname, err := c.jobControl.CreateJobFromTask(task)
 	if err != nil {
 		c.taskDB.UpdateStatus(task.ID, models.TaskFailedStatus, err.Error())
 		c.taskQueue.DeleteTask(task)

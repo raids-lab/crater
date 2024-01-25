@@ -115,7 +115,7 @@ func (r *AIJobReconciler) Generic(e event.GenericEvent) bool {
 }
 
 func getTaskIDFromAIJob(aijob *aijobapi.AIJob) string {
-	return aijob.Labels[aijobapi.LabeKeyTaskID]
+	return aijob.Labels[aijobapi.LabelKeyTaskID]
 }
 
 func (r *AIJobReconciler) notifyJobStatus(job *aijobapi.AIJob) {
