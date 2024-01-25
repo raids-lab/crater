@@ -62,6 +62,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import Status from "../../Overview/Status";
 import Quota from "../../Overview/Quota";
+import { REFETCH_INTERVAL } from "@/config/task";
 
 type TaskInfo = {
   id: number;
@@ -242,7 +243,7 @@ const AiJobHome = () => {
     queryKey: ["aitask", "list"],
     queryFn: apiAiTaskList,
     select: (res) => res.data.data.Tasks,
-    refetchInterval: 10000,
+    refetchInterval: REFETCH_INTERVAL,
   });
 
   const refetchTaskList = async () =>

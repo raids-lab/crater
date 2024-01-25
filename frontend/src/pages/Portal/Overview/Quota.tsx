@@ -26,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { REFETCH_INTERVAL } from "@/config/task";
 
 interface Quota {
   resource: string;
@@ -46,7 +47,7 @@ const Quota: FC = () => {
       hardUsed: getAiResource(res.data.data.hardUsed),
       softUsed: getAiResource(res.data.data.softUsed),
     }),
-    refetchInterval: 2000,
+    refetchInterval: REFETCH_INTERVAL,
   });
 
   const columns: ColumnDef<Quota>[] = [

@@ -188,15 +188,16 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
   const exportToJson = () => {
     const json = JSON.stringify(currentValues, null, 2);
     console.log(json); // 或者可以保存到文件
-    // 复制到剪贴板
-    navigator.clipboard.writeText(json).then(
-      () => {
-        toast({ title: "复制成功" });
-      },
-      () => {
-        toast({ title: "复制失败" });
-      },
-    );
+    // 保存到 LocalStorage
+    localStorage.setItem("form", json);
+  };
+
+  const loadFromJson = () => {
+    const json = localStorage.getItem("form");
+    if (json) {
+      const data = JSON.parse(json) as FormSchema;
+      form.reset(data);
+    }
   };
 
   // 2. Define a submit handler.
@@ -204,6 +205,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
     toast({ title: values.taskname });
+    exportToJson();
     createTask(values);
   };
 
@@ -503,14 +505,11 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
             </FormItem>
           )}
         />
-        <div className="grid grid-cols-4 gap-3">
-          <Button variant={"secondary"} onClick={exportToJson} type="button">
-            复制任务
+        <div className="grid grid-cols-2 gap-3">
+          <Button variant={"secondary"} onClick={loadFromJson} type="button">
+            上次任务
           </Button>
-          <Button variant={"secondary"}>导入任务</Button>
-          <Button type="submit" className="col-span-2">
-            提交任务
-          </Button>
+          <Button type="submit">提交任务</Button>
         </div>
       </form>
     </Form>
