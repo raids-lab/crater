@@ -17,6 +17,7 @@ type DBService interface {
 	ForceDeleteByUserAndID(userName string, taskID uint) error
 	ListByTaskType(taskType string) ([]models.AITask, error)
 	ListByUserAndStatuses(userName string, status []string) ([]models.AITask, error)
+	ListByUserAndTaskType(userName string, taskType string) ([]models.AITask, error)
 	GetByID(taskID uint) (*models.AITask, error)
 	GetByUserAndID(userName string, taskID uint) (*models.AITask, error)
 	UpdateProfilingStat(taskID uint, profileStatus uint, stat string, status string) error
@@ -86,7 +87,7 @@ func (s *service) DeleteByID(taskID uint) error {
 func (s *service) ListByUserAndStatuses(userName string, statuses []string) ([]models.AITask, error) {
 	var tasks []models.AITask
 	var err error
-	if statuses == nil || len(statuses) == 0 {
+	if len(statuses) == 0 {
 		err = db.Orm.Where("username = ? ", userName).Find(&tasks).Error
 	} else {
 		err = db.Orm.Where("username = ? and status IN ? and is_deleted = ?", userName, statuses, false).Find(&tasks).Error
@@ -97,6 +98,12 @@ func (s *service) ListByUserAndStatuses(userName string, statuses []string) ([]m
 func (s *service) ListByTaskType(taskType string) ([]models.AITask, error) {
 	var tasks []models.AITask
 	err := db.Orm.Where("task_type = ?", taskType).Find(&tasks).Error
+	return tasks, err
+}
+
+func (s *service) ListByUserAndTaskType(userName string, taskType string) ([]models.AITask, error) {
+	var tasks []models.AITask
+	err := db.Orm.Where("username = ? and task_type = ? and is_deleted = ?", userName, taskType, false).Find(&tasks).Error
 	return tasks, err
 }
 
