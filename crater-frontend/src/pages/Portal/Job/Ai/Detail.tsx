@@ -1,4 +1,8 @@
-import { apiAiTaskGet, convertAiTask } from "@/services/api/aiTask";
+import {
+  apiAiTaskGet,
+  apiAiTaskGetLogs,
+  convertAiTask,
+} from "@/services/api/aiTask";
 import { globalBreadCrumb } from "@/utils/store";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, type FC } from "react";
@@ -20,6 +24,13 @@ const AiJobDetail: FC = () => {
     enabled: !!taskID,
   });
 
+  const { data: taskLogs, isLoading: isLoadingLogs } = useQuery({
+    queryKey: ["aitask", "tasklog", taskID],
+    queryFn: () => apiAiTaskGetLogs(parseInt(taskID ?? "")),
+    select: (res) => res.data.data.logs,
+    enabled: !!taskID,
+  });
+
   useEffect(() => {
     if (isLoading) {
       return;
@@ -35,7 +46,7 @@ const AiJobDetail: FC = () => {
     ]);
   }, [setBreadcrumb, taskInfo, isLoading]);
 
-  if (isLoading) {
+  if (isLoading || isLoadingLogs) {
     return <></>;
   }
 
@@ -208,15 +219,17 @@ const AiJobDetail: FC = () => {
           </Card>
         </div>
       )}
-      <h2 className="col-span-full pt-2 text-base font-bold">任务数据</h2>
-      <Card className="col-span-full">
-        <CardHeader className="p-3"></CardHeader>
-        <CardContent>
-          <pre className="whitespace-pre-wrap text-sm">
-            {JSON.stringify(taskInfo, null, 2)}
-          </pre>
-        </CardContent>
-      </Card>
+      {taskLogs && (
+        <>
+          <h2 className="col-span-full pt-2 text-base font-bold">任务日志</h2>
+          <Card className="col-span-full">
+            <CardHeader className="p-3"></CardHeader>
+            <CardContent>
+              <pre className="whitespace-pre-wrap text-sm">{taskLogs[0]}</pre>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 };
