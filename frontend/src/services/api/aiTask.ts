@@ -183,6 +183,17 @@ export const apiAiTaskGet = (taskID: number) =>
     },
   });
 
+export const apiAiTaskGetLogs = (taskID: number) =>
+  instance.get<
+    IResponse<{
+      logs: string[];
+    }>
+  >(VERSION + "/aitask/getLogs", {
+    params: {
+      taskID,
+    },
+  });
+
 //   path: /v1/sharedir/list
 //   method: GET
 //   response

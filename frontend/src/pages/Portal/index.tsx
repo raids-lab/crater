@@ -125,14 +125,14 @@ const Layout = () => {
             "-translate-x-full": !showSidebar,
           })}
         />
-        <ScrollArea className="h-screen w-full">
-          <div className="grid w-full grid-rows-header">
-            <Navibar />
+        <div className="grid w-full grid-rows-header">
+          <Navibar />
+          <ScrollArea className="h-[calc(100vh_-_48px)] w-full">
             <div className="px-6 py-6">
               <Outlet />
             </div>
-          </div>
-        </ScrollArea>
+          </ScrollArea>
+        </div>
       </div>
       {/* When screen size is smaller than md, show a float button to open and close sidebar */}
       {/* See https://reacthustle.com/blog/next-js-tailwind-responsive-sidebar-layout*/}

@@ -242,7 +242,7 @@ const AiJobHome = () => {
     queryKey: ["aitask", "list"],
     queryFn: apiAiTaskList,
     select: (res) => res.data.data.Tasks,
-    refetchInterval: 2000,
+    refetchInterval: 10000,
   });
 
   const refetchTaskList = async () =>
