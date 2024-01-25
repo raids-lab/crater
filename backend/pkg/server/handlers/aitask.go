@@ -22,6 +22,7 @@ func (mgr *AITaskMgr) RegisterRoute(g *gin.RouterGroup) {
 	g.POST("updateSLO", mgr.UpdateSLO)
 	g.GET("list", mgr.List)
 	g.GET("get", mgr.Get)
+	g.GET("getLogs", mgr.GetLogs)
 	g.GET("getQuota", mgr.GetQuota)
 	g.GET("taskStats", mgr.GetTaskStats)
 
@@ -31,16 +32,18 @@ type AITaskMgr struct {
 	taskService tasksvc.DBService
 	userService usersvc.DBService
 	pvcClient   *crclient.PVCClient
+	logClient   *crclient.LogClient
 	// taskUpdateChan chan<- util.TaskUpdateChan
 	taskController *aitaskctl.TaskController
 }
 
-func NewAITaskMgr(taskController *aitaskctl.TaskController, pvcClient *crclient.PVCClient) *AITaskMgr {
+func NewAITaskMgr(taskController *aitaskctl.TaskController, pvcClient *crclient.PVCClient, logClient *crclient.LogClient) *AITaskMgr {
 	pvcClient.InitShareDir()
 	return &AITaskMgr{
 		taskService:    tasksvc.NewDBService(),
 		userService:    usersvc.NewDBService(),
 		pvcClient:      pvcClient,
+		logClient:      logClient,
 		taskController: taskController,
 	}
 }
@@ -141,6 +144,49 @@ func (mgr *AITaskMgr) Get(c *gin.Context) {
 	}
 	resp := payload.GetTaskResp{
 		AITask: *taskModel,
+	}
+	log.Infof("get task success, taskID: %d", req.TaskID)
+	resputil.WrapSuccessResponse(c, resp)
+}
+
+func (mgr *AITaskMgr) GetLogs(c *gin.Context) {
+	log.Infof("Task Get, url: %s", c.Request.URL)
+	var req payload.GetTaskReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		msg := fmt.Sprintf("validate get parameters failed, err %v", err)
+		log.Error(msg)
+		resputil.WrapFailedResponse(c, msg, 50004)
+		return
+	}
+	username, _ := c.Get("username")
+	taskModel, err := mgr.taskService.GetByUserAndID(username.(string), req.TaskID)
+	if err != nil {
+		msg := fmt.Sprintf("get task failed, err %v", err)
+		log.Error(msg)
+		resputil.WrapFailedResponse(c, msg, 50005)
+		return
+	}
+	// get log
+	pods, err := mgr.logClient.GetPodsWithLabel(taskModel.Namespace, taskModel.JobName)
+	if err != nil {
+		msg := fmt.Sprintf("get task log failed, err %v", err)
+		log.Error(msg)
+		resputil.WrapFailedResponse(c, msg, 50005)
+		return
+	}
+	var logs []string
+	for _, pod := range pods {
+		podLog, err := mgr.logClient.GetPodLogs(pod)
+		if err != nil {
+			msg := fmt.Sprintf("get task log failed, err %v", err)
+			log.Error(msg)
+			resputil.WrapFailedResponse(c, msg, 50005)
+			return
+		}
+		logs = append(logs, podLog)
+	}
+	resp := payload.GetTaskLogResp{
+		Logs: logs,
 	}
 	log.Infof("get task success, taskID: %d", req.TaskID)
 	resputil.WrapSuccessResponse(c, resp)

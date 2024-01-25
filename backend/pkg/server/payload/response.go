@@ -20,6 +20,10 @@ type GetTaskResp struct {
 	models.AITask
 }
 
+type GetTaskLogResp struct {
+	Logs []string `json:"logs"`
+}
+
 type DeleteTaskResp struct {
 }
 
