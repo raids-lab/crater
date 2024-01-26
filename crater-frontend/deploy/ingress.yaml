@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ai-portal-frontend-ingress
+  namespace: ai-portal
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - crater.act.buaa.edu.cn
+      secretName: crater-tls-secret
+  rules:
+    - host: crater.act.buaa.edu.cn
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ai-portal-frontend-svc
+                port:
+                  number: 80
