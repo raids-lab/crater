@@ -92,7 +92,12 @@ nginx
 
 ### 3.2 使用 Kubernetes 部署
 
-相关配置文件位于 `deploy/` 目录下。待补充。
+确保 `make.sh` 具有可执行权限（使用 `chmod +x make.sh`）。
+
+- 使用 `./make.sh build "IMAGE_URL:VERSION"` 来在本地构建应用，然后构建并上传 Docker 镜像。
+- 使用 `./make.sh deploy "IMAGE_URL:VERSION"` 来部署到 Kubernetes。
+
+确保项目中有可运行的 pnpm 构建脚本，并且 dist 目录是构建输出的位置。脚本假设你有权限执行 Docker、kubectl 和 pnpm 命令。
 
 ## 4. 项目结构
 

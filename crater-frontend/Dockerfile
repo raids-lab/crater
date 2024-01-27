@@ -1,33 +1,14 @@
-# Phase 1: Build the React Vite app with PNPM
-FROM node:20 AS builder
-
-# Set working directory
-WORKDIR /app
-
-# Copy only package.json and pnpm-lock.yaml to take advantage of caching
-COPY package.json pnpm-lock.yaml ./
-
-# Install dependencies
-RUN npm install -g pnpm && pnpm install
-
-# Copy the entire project
-COPY . .
-
-# Build the Vite app
-RUN pnpm build
-
-# Phase 2: Use Nginx to serve the built app
+# 使用 Nginx 稳定版的 Alpine 版本作为基础镜像
 FROM nginx:stable-alpine
 
-# Copy custom nginx.conf
-COPY deploy/k8s-nginx.conf /etc/nginx/nginx.conf
+# 复制定制的 nginx 配置
+COPY ./deploy/k8s-nginx.conf /etc/nginx/nginx.conf
 
-# Copy the built files from the builder phase to the Nginx image
-COPY --from=builder /app/dist /usr/share/nginx/html
+# 从本地复制构建好的 dist 目录
+COPY ./dist /usr/share/nginx/html
 
-# Expose port 80
+# 暴露端口 80
 EXPOSE 80
 
-# Default command to start Nginx
+# 默认命令启动 Nginx
 CMD ["nginx", "-g", "daemon off;"]
-
