@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 检查 docker 和 kubectl 是否安装
+# 检查 docker、kubectl 和 pnpm 是否安装
 check_dependencies() {
     if ! command -v docker &> /dev/null; then
         echo "Error: docker is not installed." >&2
@@ -11,6 +11,17 @@ check_dependencies() {
         echo "Error: kubectl is not installed." >&2
         exit 1
     fi
+
+    if ! command -v pnpm &> /dev/null; then
+        echo "Error: pnpm is not installed." >&2
+        exit 1
+    fi
+}
+
+# 在本地使用 pnpm 构建应用
+build_app() {
+    pnpm install
+    pnpm run build
 }
 
 # 构建并上传 Docker 镜像
@@ -36,6 +47,7 @@ main() {
 
     case $command in
         build)
+            build_app
             build_and_push_image "$image_url"
             ;;
         deploy)
