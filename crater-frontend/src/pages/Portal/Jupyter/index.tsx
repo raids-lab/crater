@@ -1,9 +1,560 @@
-import type { FC } from "react";
+import {
+  CircleIcon,
+  ClockIcon,
+  MinusCircledIcon,
+  PlayIcon,
+  StopIcon,
+} from "@radix-ui/react-icons";
+import { ColumnDef } from "@tanstack/react-table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { NewTaskForm } from "./Form";
+import { useEffect, useMemo, useState } from "react";
+import { Separator } from "@/components/ui/separator";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  apiJTaskDelete,
+  apiJTaskList,
+  convertJTask,
+  apiJTaskGetPortToken,
+} from "@/services/api/jupyterTask";
+import { useToast } from "@/components/ui/use-toast";
+import { DataTable } from "@/components/custom/DataTable";
+import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
+import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
+import {
+  //ArrowDownIcon,
+  //ArrowUpIcon,
+  CheckCircledIcon,
+  CrossCircledIcon,
+  StopwatchIcon,
+} from "@radix-ui/react-icons";
+import { useSetRecoilState } from "recoil";
+import { globalBreadCrumb } from "@/utils/store";
+import { useNavigate, useRoutes } from "react-router-dom";
+//import AiJobDetail from "./Form";
+import { TableDate } from "@/components/custom/TableDate";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import Status from "../Overview/Status";
+import Quota from "../Overview/Quota";
+import { REFETCH_INTERVAL } from "@/config/task";
 
-export const Component: FC = () => {
+type JTaskInfo = {
+  id: number;
+  title: string;
+  taskType: string;
+  status: string;
+  createdAt: string;
+  startedAt: string;
+  finishAt: string;
+  gpus: string | number | undefined;
+};
+
+const getHeader = (key: string): string => {
+  switch (key) {
+    case "id":
+      return "序号";
+    case "title":
+      return "任务名称";
+    case "taskType":
+      return "类型";
+    case "gpus":
+      return "GPU";
+    case "status":
+      return "任务状态";
+    case "priority":
+      return "优先级";
+    case "profileStatus":
+      return "分析状态";
+    case "createdAt":
+      return "创建于";
+    case "startedAt":
+      return "开始于";
+    case "finishAt":
+      return "完成于";
+    default:
+      return key;
+  }
+};
+
+// const priorities = [
+//   {
+//     label: "高",
+//     value: "high",
+//     icon: ArrowUpIcon,
+//   },
+//   {
+//     label: "低",
+//     value: "low",
+//     icon: ArrowDownIcon,
+//   },
+// ];
+
+type StatusValue =
+  | "Queueing"
+  | "Created"
+  | "Pending"
+  | "Running"
+  | "Failed"
+  | "Succeeded"
+  | "Preempted";
+
+const statuses: {
+  value: StatusValue;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  {
+    value: "Queueing",
+    label: "Queueing",
+    icon: ClockIcon,
+  },
+  {
+    value: "Created",
+    label: "Created",
+    icon: CircleIcon,
+  },
+  {
+    value: "Pending",
+    label: "Pending",
+    icon: ClockIcon,
+  },
+  {
+    value: "Running",
+    label: "Running",
+    icon: StopwatchIcon,
+  },
+  {
+    value: "Failed",
+    label: "Failed",
+    icon: CrossCircledIcon,
+  },
+  {
+    value: "Succeeded",
+    label: "Succeeded",
+    icon: CheckCircledIcon,
+  },
+  {
+    value: "Preempted",
+    label: "Preempted",
+    icon: MinusCircledIcon,
+  },
+];
+
+// Profilingstatus
+// UnProfiled = 0 // 未分析
+// ProfileQueued = 1 // 等待分析
+// Profiling = 2 // 正在进行分析
+// ProfileFinish = 3 // 分析完成
+// ProfileFailed = 4 // 分析失败
+// const profilingStatuses = [
+//   {
+//     value: "0",
+//     label: "未分析",
+//     icon: ClockIcon,
+//   },
+//   // {
+//   //   value: "1",
+//   //   label: "等待分析",
+//   //   icon: ClockIcon,
+//   // },
+//   {
+//     value: "2",
+//     label: "分析中",
+//     icon: StopwatchIcon,
+//   },
+//   {
+//     value: "3",
+//     label: "分析完成",
+//     icon: CheckCircledIcon,
+//   },
+//   {
+//     value: "4",
+//     label: "分析失败",
+//     icon: CrossCircledIcon,
+//   },
+// ];
+// export interface IPortTokenResponse {
+//   port: number;
+//   token: string;
+// }
+const toolbarConfig: DataTableToolbarConfig = {
+  filterInput: {
+    placeholder: "搜索任务名称",
+    key: "title",
+  },
+  filterOptions: [
+    {
+      key: "status",
+      title: "任务状态",
+      option: statuses,
+    },
+  ],
+  getHeader: getHeader,
+};
+const JupyterJobHome = () => {
+  const [openSheet, setOpenSheet] = useState(false);
+  const [data, setData] = useState<JTaskInfo[]>([]);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [showDeleted, setShowDeleted] = useState(false);
+
+  const {
+    data: taskList,
+    isLoading,
+    dataUpdatedAt,
+  } = useQuery({
+    queryKey: ["jupyter", "list"],
+    queryFn: apiJTaskList,
+    select: (res) => res.data.data.Tasks,
+    refetchInterval: REFETCH_INTERVAL,
+  });
+
+  const refetchTaskList = async () =>
+    await queryClient.invalidateQueries({
+      queryKey: ["jupyter", "list"],
+    });
+
+  const { mutate: deleteJTask } = useMutation({
+    mutationFn: (id: number) => apiJTaskDelete(id),
+    onSuccess: async () => {
+      await refetchTaskList();
+      toast({
+        title: "删除成功",
+        description: "任务已删除",
+      });
+    },
+  });
+
+  const { mutate: JTaskGetPortToken } = useMutation({
+    mutationFn: (id: number) => apiJTaskGetPortToken(id),
+    onSuccess: (data) => {
+      const jupyterPort = data.data.data.port;
+      const jupyterToken = data.data.data.token;
+      toast({
+        title: "打开 Jupyter 页面",
+        description: "Jupyter 页面即将打开",
+      });
+      window.open(`http://192.168.5.60:${jupyterPort}?token=${jupyterToken}`);
+    },
+  });
+
+  // const refetchPortToken = async () =>
+  //   await queryClient.invalidateQueries({
+  //     queryKey: ["jupyter", "list"],
+  //   });
+  // const { mutate: GetJTaskToken } = useMutation({
+  //   mutationFn: (id: number) => apiJTaskGetPortToken(id),
+  //   onSuccess: async () => {
+  //     await refetchTaskList();
+  //     toast({
+  //       title: "获取token成功",
+  //       description: "jupyter页面即将打开",
+  //     });
+  //   },
+  // });
+
+  const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
+  useEffect(() => {
+    setBreadcrumb([
+      {
+        title: "Jupyter 任务",
+      },
+    ]);
+  }, [setBreadcrumb]);
+
+  const columns = useMemo<ColumnDef<JTaskInfo>[]>(
+    () => [
+      {
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            onCheckedChange={(value) =>
+              table.toggleAllPageRowsSelected(!!value)
+            }
+            aria-label="Select all"
+            className="ml-2"
+          />
+        ),
+        cell: ({ row }) => (
+          <div>
+            <Checkbox
+              checked={row.getIsSelected()}
+              onCheckedChange={(value) => row.toggleSelected(!!value)}
+              aria-label="Select row"
+              className="ml-2"
+            />
+          </div>
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      },
+
+      {
+        accessorKey: "id",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("id")} />
+        ),
+        cell: ({ row }) => <>{row.getValue("id")}</>,
+        enableSorting: false,
+      },
+      {
+        accessorKey: "title",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("title")} />
+        ),
+        cell: ({ row }) => <>{row.getValue("title")}</>,
+      },
+      // {
+      //   accessorKey: "taskType",
+      //   header: ({ column }) => (
+      //     <DataTableColumnHeader
+      //       column={column}
+      //       title={getHeader("taskType")}
+      //     />
+      //   ),
+      //   cell: ({ row }) => <>{row.getValue("taskType")}</>,
+      // },
+      {
+        accessorKey: "gpus",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("gpus")} />
+        ),
+        cell: ({ row }) => <>{row.getValue("gpus")}</>,
+      },
+      {
+        accessorKey: "status",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("status")} />
+        ),
+        cell: ({ row }) => {
+          const status = statuses.find(
+            (status) => status.value === row.getValue("status"),
+          );
+          if (!status) {
+            return null;
+          }
+          return (
+            <Badge
+              className={cn("flex w-fit items-center px-1.5 py-1", {
+                "bg-purple-500 hover:bg-purple-400":
+                  status.value === "Queueing",
+                "bg-slate-500 hover:bg-slate-400": status.value === "Created",
+                "bg-pink-500 hover:bg-pink-400": status.value === "Pending",
+                "bg-sky-500 hover:bg-sky-400": status.value === "Running",
+                "bg-red-500 hover:bg-red-400": status.value === "Failed",
+                "bg-emerald-500 hover:bg-emerald-400":
+                  status.value === "Succeeded",
+                "bg-orange-500 hover:bg-orange-400":
+                  status.value === "Preempted",
+              })}
+            >
+              {status.icon && <status.icon className="mr-[3px] h-4 w-4" />}
+              <span>{status.label}</span>
+            </Badge>
+          );
+        },
+        filterFn: (row, id, value) => {
+          return (value as string[]).includes(row.getValue(id));
+        },
+      },
+      {
+        accessorKey: "createdAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("createdAt")}
+          />
+        ),
+        cell: ({ row }) => {
+          return <TableDate date={row.getValue("createdAt")}></TableDate>;
+        },
+        sortingFn: "datetime",
+      },
+      {
+        accessorKey: "startedAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("startedAt")}
+          />
+        ),
+        cell: ({ row }) => {
+          return <TableDate date={row.getValue("startedAt")}></TableDate>;
+        },
+        sortingFn: "datetime",
+      },
+      {
+        accessorKey: "finishAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("finishAt")}
+          />
+        ),
+        cell: ({ row }) => {
+          return <TableDate date={row.getValue("finishAt")}></TableDate>;
+        },
+        sortingFn: "datetime",
+      },
+      {
+        id: "actions",
+        enableHiding: false,
+        cell: ({ row }) => {
+          const taskInfo = row.original;
+          return (
+            <div className="flex flex-row space-x-2">
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => {
+                  if (row.getValue("status") === "Running") {
+                    JTaskGetPortToken(taskInfo.id);
+                  }
+                }}
+                disabled={row.getValue("status") !== "Running"}
+              >
+                <PlayIcon />
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <div>
+                    <Button size="icon" variant="outline">
+                      <StopIcon />
+                    </Button>
+                  </div>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>删除任务</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      任务「{taskInfo?.title}」将不再可见，请谨慎操作。
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>取消</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => {
+                        // check if browser support clipboard
+                        deleteJTask(taskInfo.id);
+                      }}
+                    >
+                      删除
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          );
+        },
+      },
+    ],
+    [deleteJTask, navigate],
+  );
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!taskList) return;
+    const tableData: JTaskInfo[] = taskList
+      .filter((task) => (showDeleted ? task.isDeleted : !task.isDeleted))
+      .map((t) => {
+        const task = convertJTask(t);
+        return {
+          id: task.id,
+          title: task.taskName,
+          taskType: task.taskType,
+          status: task.status,
+          //priority: task.slo ? "high" : "low",
+          // profileStatus:
+          //   // 分析状态：profileStatus = 1 或 2 都显示分析中，不需要等待分析这个选项了
+          //   task.profileStatus === 1 ? "2" : task.profileStatus.toString(),
+          createdAt: task.createdAt,
+          startedAt: task.startedAt,
+          finishAt: task.finishAt,
+          gpus: task.resourceRequest["nvidia.com/gpu"],
+        };
+      });
+    setData(tableData);
+  }, [taskList, isLoading, showDeleted]);
+
+  const updatedAt = useMemo(() => {
+    return new Date(dataUpdatedAt).toLocaleString();
+  }, [dataUpdatedAt]);
+
   return (
-    <div className="space-y-1 text-xl">
-      <p>显示已申请的 Jupyter Notebook 列表、新建 Jupyter Notebook 等功能。</p>
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-6">
+        <Status />
+        <Quota />
+      </div>
+      <DataTable data={data} columns={columns} toolbarConfig={toolbarConfig}>
+        <Sheet open={openSheet} onOpenChange={setOpenSheet}>
+          <SheetTrigger asChild>
+            <Button className="h-8 min-w-fit">新建任务</Button>
+          </SheetTrigger>
+          {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
+          <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
+            <SheetHeader>
+              <SheetTitle>新建任务</SheetTitle>
+              <SheetDescription>创建一个新的 Jupyter 训练任务</SheetDescription>
+            </SheetHeader>
+            <Separator className="mt-4" />
+            <NewTaskForm closeSheet={() => setOpenSheet(false)} />
+          </SheetContent>
+        </Sheet>
+      </DataTable>
+      <div className="flex flex-row items-center justify-start space-x-2">
+        <Button
+          className="h-8 min-w-fit"
+          variant="outline"
+          onClick={() => setShowDeleted((v) => !v)}
+        >
+          {showDeleted ? "显示当前任务" : "显示已删除任务"}
+        </Button>
+        <Button
+          className="h-8 min-w-fit"
+          variant="outline"
+          onClick={() => void refetchTaskList()}
+        >
+          刷新列表
+        </Button>
+        <div className="pl-2 text-sm text-muted-foreground">
+          数据更新于 {updatedAt}
+        </div>
+      </div>
     </div>
   );
+};
+
+export const Component = () => {
+  const routes = useRoutes([
+    {
+      index: true,
+      element: <JupyterJobHome />,
+    },
+  ]);
+
+  return <>{routes}</>;
 };
