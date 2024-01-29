@@ -16,19 +16,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiAiTaskCreate, apiAiTaskShareDirList } from "@/services/api/aiTask";
+import {
+  apiJTaskCreate,
+  apiJTaskShareDirList,
+  apiJTaskImageList,
+} from "@/services/api/jupyterTask";
 import { cn } from "@/lib/utils";
 import { CaretSortIcon, CheckIcon, Cross1Icon } from "@radix-ui/react-icons";
 import { getAiKResource } from "@/utils/resource";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Popover,
   PopoverClose,
@@ -53,27 +49,26 @@ const formSchema = z.object({
     .max(40, {
       message: "任务名称最多包含40个字符",
     }),
-  taskType: z.string(),
+  //taskType: z.string(),
   cpu: z.coerce.number().int().positive({ message: "CPU 核心数至少为 1" }),
   gpu: z.coerce.number().int().min(0),
   memory: z.coerce.number().int().positive(),
   // image: z.string().url(),
-  image: z.string(),
-  workingDir: z.string(),
+  image: z.string().min(1, {
+    message: "任务镜像不能为空",
+  }),
+  //workingDir: z.string(),
   shareDirs: z.array(
     z.object({
       path: z.string(),
-      subPath: z.string(),
-      mountPath: z.string(),
+      subPath: z.string().min(1, {
+        message: "subPath 不能为空",
+      }),
+      mountPath: z.string().min(1, {
+        message: "mountPath 不能为空",
+      }),
     }),
   ),
-  command: z.string().min(1, {
-    message: "任务名称不能为空",
-  }),
-  priority: z.enum(["low", "high"], {
-    invalid_type_error: "Select a priority",
-    required_error: "请选择任务优先级",
-  }),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -117,22 +112,21 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
 
   const { mutate: createTask } = useMutation({
     mutationFn: (values: FormSchema) =>
-      apiAiTaskCreate({
+      apiJTaskCreate({
         taskName: values.taskname,
-        slo: values.priority === "high" ? 1 : 0,
-        taskType: "training",
+        taskType: "jupyter",
         resourceRequest: getAiKResource({
           gpu: values.gpu,
           memory: `${values.memory}Gi`,
           cpu: values.cpu,
         }),
         image: values.image,
-        workingDir: values.workingDir,
+        //workingDir: values.workingDir,
         shareDirs: convertShareDirs(values.shareDirs),
-        command: values.command,
+        //command: values.command,
       }),
     onSuccess: async (_, { taskname }) => {
-      await queryClient.invalidateQueries({ queryKey: ["aitask", "list"] });
+      await queryClient.invalidateQueries({ queryKey: ["jupyter", "list"] });
       toast({
         title: `创建成功`,
         description: `任务 ${taskname} 创建成功`,
@@ -141,9 +135,25 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
     },
   });
 
+  const imagesInfo = useQuery({
+    queryKey: ["jupyter", "images"],
+    queryFn: apiJTaskImageList,
+    select: (res) => res.data.data.images,
+  });
+
+  const imageList = useMemo(() => {
+    if (!imagesInfo.data) {
+      return [];
+    }
+    return imagesInfo.data.map((item) => ({
+      value: item,
+      label: item,
+    }));
+  }, [imagesInfo.data]);
+
   const shareDirsInfo = useQuery({
-    queryKey: ["aitask", "shareDirs"],
-    queryFn: apiAiTaskShareDirList,
+    queryKey: ["jupyter", "shareDirs"],
+    queryFn: apiJTaskShareDirList,
     select: (res) => res.data.data,
   });
 
@@ -162,15 +172,15 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       taskname: "",
-      taskType: "",
+      //taskType: "",
       cpu: 1,
       gpu: 0,
       memory: 8,
       image: "",
-      workingDir: "",
+      //workingDir: "",
       shareDirs: [{ subPath: "", mountPath: "" }],
-      command: "",
-      priority: undefined,
+      //command: "",
+      //priority: undefined,
     },
   });
 
@@ -184,6 +194,15 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
     name: "shareDirs",
     control: form.control,
   });
+
+  // const {
+  //   fields: imagesFields,
+  //   append: imagesAppend,
+  //   remove: imagesRemove,
+  // } = useFieldArray<FormSchema>({
+  //   name: "image",
+  //   control: form.control,
+  // });
 
   const exportToJson = () => {
     const json = JSON.stringify(currentValues, null, 2);
@@ -288,34 +307,87 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
             请选择需要分配的机器配置
           </FormDescription> */}
         </div>
-        <FormField
-          control={form.control}
-          name="image"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                镜像地址<span className="ml-1 text-red-500">*</span>
-              </FormLabel>
-              <FormControl>
-                <Input {...field} className="font-mono" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="workingDir"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>执行目录</FormLabel>
-              <FormControl>
-                <Input {...field} className="font-mono" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="space-y-2">
+          <div>
+            <FormField
+              control={form.control}
+              name={`image`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    镜像地址<span className="ml-1 text-red-500">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    {/* <div className="flex flex-row space-x-2"> */}
+                    <Popover modal={true}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              "w-full justify-between text-ellipsis whitespace-nowrap",
+                              !field.value && "text-muted-foreground",
+                            )}
+                          >
+                            {field.value
+                              ? imageList.find(
+                                  (dataset) => dataset.value === field.value,
+                                )?.label
+                              : "选择镜像"}
+                            <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="p-0"
+                        style={{
+                          width: "var(--radix-popover-trigger-width)",
+                          maxHeight:
+                            "var(--radix-popover-content-available-height)",
+                        }}
+                      >
+                        <Command>
+                          <CommandInput
+                            placeholder="查找镜像"
+                            className="h-9"
+                          />
+                          <CommandEmpty>未找到匹配的镜像</CommandEmpty>
+                          <CommandGroup>
+                            {imageList.map((image) => (
+                              <CommandItem
+                                value={image.label}
+                                key={image.value}
+                                onSelect={() => {
+                                  field.onChange(image.value);
+                                }}
+                              >
+                                <PopoverClose
+                                  key={image.value}
+                                  className="flex w-full flex-row items-center justify-between font-mono"
+                                >
+                                  {image.label}
+                                  <CheckIcon
+                                    className={cn(
+                                      "ml-auto h-4 w-4",
+                                      image.value === field.value
+                                        ? "opacity-100"
+                                        : "opacity-0",
+                                    )}
+                                  />
+                                </PopoverClose>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
         <div className="space-y-2">
           {shareDirsFields.length > 0 && (
             <div>
@@ -448,52 +520,11 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
             添加共享目录
           </Button>
         </div>
-        <FormField
-          control={form.control}
-          name="command"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                执行命令<span className="ml-1 text-red-500">*</span>
-              </FormLabel>
-              <FormControl>
-                <Textarea {...field} className="font-mono" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="priority"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                任务优先级<span className="ml-1 text-red-500">*</span>
-              </FormLabel>
-              <FormControl>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <SelectTrigger className="">
-                    <SelectValue placeholder="请选择" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="high">高优先级</SelectItem>
-                    <SelectItem value="low">低优先级</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         <div className="grid grid-cols-2 gap-3">
           <Button variant={"secondary"} onClick={loadFromJson} type="button">
             上次任务
           </Button>
-          <Button type="submit">提交任务</Button>
+          <Button type="submit">提交 Jupyter 任务</Button>
         </div>
       </form>
     </Form>
