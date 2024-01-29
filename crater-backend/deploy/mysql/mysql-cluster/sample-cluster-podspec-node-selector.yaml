@@ -19,8 +19,3 @@ spec:
   router:
     instances: 1
   tlsUseSelfSigned: true
-
-  podSpec:
-    nodeSelector:
-      failure-domain.beta.kubernetes.io/zone: US-ASHBURN-AD-1
-

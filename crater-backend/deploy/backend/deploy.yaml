@@ -35,9 +35,11 @@ spec:
             - --health-probe-bind-address=:8081
           volumeMounts:
             - name: backend-conf
-              mountPath: /etc/config
+              mountPath: /etc/config/config.yaml
+              subPath: config.yaml
             - name: share-dir-conf
-              mountPath: /etc/config
+              mountPath: /etc/config/share-dir.yaml
+              subPath: share-dir.yaml
       serviceAccountName: ai-portal-backend
       volumes:
         - name: backend-conf
