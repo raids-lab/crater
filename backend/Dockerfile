@@ -1,36 +1,36 @@
-# FROM golang:1.21-alpine AS builder
-# WORKDIR /app
-# COPY . /app
-# RUN go env -w GO111MODULE=on
-# RUN go env -w GOPROXY=https://goproxy.cn,direct
-# RUN go mod download
-# RUN CGO_ENABLED=0 go build -o bin/controller main.go
+FROM golang:1.21-alpine AS builder
+WORKDIR /app
+COPY . /app
+RUN go env -w GO111MODULE=on
+RUN go env -w GOPROXY=https://goproxy.cn,direct
+RUN go mod download
+RUN CGO_ENABLED=0 go build -o bin/controller main.go
 
-# FROM alpine AS runner
-# WORKDIR /
-# COPY --from=builder /app/bin/controller .
-# COPY --from=builder /app/dbconf.yaml .
-# EXPOSE 8088:8088
-# ENTRYPOINT ["/controller --db-config-file /dbconf.yaml --server-port 8078 --metrics-bind-address 8077 --health-probe-bind-address 8076"]
-
-FROM ubuntu:22.04
-
+FROM alpine AS runner
 WORKDIR /
+COPY --from=builder /app/bin/controller .
+COPY --from=builder /app/dbconf.yaml .
+EXPOSE 8088:8088
+ENTRYPOINT ["/controller --db-config-file /dbconf.yaml --server-port 8078 --metrics-bind-address 8077 --health-probe-bind-address 8076"]
 
-RUN apt update && apt install -y git wget
+# FROM ubuntu:22.04
 
-RUN git config --global url."https://ai-portal-backend-development:***REMOVED***@gitlab.***REMOVED***".insteadof "https://gitlab.***REMOVED***" 
+# WORKDIR /
 
-RUN wget https://golang.google.cn/dl/go1.19.13.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.19.13.linux-amd64.tar.gz
+# RUN apt update && apt install -y git wget
 
-RUN git clone https://gitlab.***REMOVED***/act-k8s-portal-system/ai-portal-backend.git
+# RUN git config --global url."https://ai-portal-backend-development:***REMOVED***@gitlab.***REMOVED***".insteadof "https://gitlab.***REMOVED***" 
 
-COPY kubeconfig /root/kubeconfig
+# RUN wget https://golang.google.cn/dl/go1.19.13.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.19.13.linux-amd64.tar.gz
 
-COPY start.sh /
+# RUN git clone https://gitlab.***REMOVED***/act-k8s-portal-system/ai-portal-backend.git
 
-EXPOSE 8078:8078
+# COPY kubeconfig /root/kubeconfig
 
-RUN chmod +x /start.sh
+# COPY start.sh /
 
-ENTRYPOINT ["/start.sh"]
+# EXPOSE 8078:8078
+
+# RUN chmod +x /start.sh
+
+# ENTRYPOINT ["/start.sh"]
