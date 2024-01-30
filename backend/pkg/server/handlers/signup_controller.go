@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 
+	"github.com/aisystem/ai-protal/pkg/aitaskctl"
 	"github.com/aisystem/ai-protal/pkg/config"
 	"github.com/aisystem/ai-protal/pkg/crclient"
 	"github.com/sirupsen/logrus"
@@ -22,30 +23,25 @@ import (
 )
 
 type SignupMgr struct {
-	UserDB  user.DBService
-	QuotaDB quota.DBService
-	//contextTimeout time.Duration
-	TokenConf *config.TokenConf
-
-	CL client.Client
-	//ID             int    `json:"_id"`
-	//Name           string `json:"name"`
-	//Email          string `json:"email"`
-	//Password       string `json:"password"`
+	UserDB         user.DBService
+	QuotaDB        quota.DBService
+	TokenConf      *config.TokenConf
+	taskController *aitaskctl.TaskController
+	CL             client.Client
 }
 type SignupRequest struct {
-	//Id       int    `json:"_id"`
 	Name     string `json:"userName" binding:"required"`
 	Role     string `json:"role" binding:"required"`
 	Password string `json:"passWord" binding:"required"`
 } //domain
 
-func NewSignupMgr(tokenConf *config.TokenConf, cl client.Client) *SignupMgr {
+func NewSignupMgr(taskController *aitaskctl.TaskController, tokenConf *config.TokenConf, cl client.Client) *SignupMgr {
 	return &SignupMgr{
-		UserDB:    user.NewDBService(),
-		QuotaDB:   quota.NewDBService(),
-		TokenConf: tokenConf,
-		CL:        cl,
+		UserDB:         user.NewDBService(),
+		QuotaDB:        quota.NewDBService(),
+		TokenConf:      tokenConf,
+		taskController: taskController,
+		CL:             cl,
 	}
 }
 
@@ -133,7 +129,8 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 	if err != nil {
 		logrus.Infof("quota create failed: %v", err)
 	}
-
+	// 通知 TaskController 有新 Quota
+	sc.taskController.AddUser(quota.UserName, quota)
 	accessToken, err := sc.UserDB.CreateAccessToken(&user, sc.TokenConf.AccessTokenSecret, sc.TokenConf.AccessTokenExpiryHour)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{

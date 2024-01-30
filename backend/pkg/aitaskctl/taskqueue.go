@@ -33,7 +33,6 @@ func (tq *TaskQueue) InitUserQueue(username string, taskList []models.AITask) {
 		}
 	}
 	tq.userQueues[username] = q
-
 }
 
 // AddTask 有新的task提交的时候，添加到队列中

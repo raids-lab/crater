@@ -31,7 +31,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	tokenConf := config.NewTokenConf()
 
 	loginMgr := handlers.NewLoginMgr(tokenConf)
-	signupMgr := handlers.NewSignupMgr(tokenConf, cl)
+	signupMgr := handlers.NewSignupMgr(aitaskCtrl, tokenConf, cl)
 	tokenMgr := handlers.NewRefreshTokenMgr(tokenConf)
 
 	loginMgr.RegisterRoute(publicRouter)
