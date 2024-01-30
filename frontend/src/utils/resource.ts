@@ -43,17 +43,29 @@ export const getAiResource = (resource: KubernetesResource): AiResource => {
 };
 
 export const getAiKResource = (resource: AiResource): KubernetesResource => {
-  // if resource.cpu is undefined, then cpu will be undefined
-  // if resource.cpu is null, then cpu will be null
-  const cpu = resource.cpu;
-  const gpu = resource.gpu;
-  const memory = resource.memory;
+  // Ensure that cpu, gpu, and memory are not less than 0
+  const cpu = resource.cpu && resource.cpu >= 0 ? resource.cpu : undefined;
+  const gpu = resource.gpu && resource.gpu >= 0 ? resource.gpu : undefined;
+  const memory =
+    resource.memory && parseInt(resource.memory) >= 0
+      ? resource.memory
+      : undefined;
 
-  return {
-    cpu,
-    "nvidia.com/gpu": gpu,
-    memory,
-  };
+  const k8sResource: KubernetesResource = {};
+
+  if (cpu !== undefined) {
+    k8sResource.cpu = cpu;
+  }
+
+  if (gpu !== undefined) {
+    k8sResource["nvidia.com/gpu"] = gpu;
+  }
+
+  if (memory !== undefined) {
+    k8sResource.memory = memory;
+  }
+
+  return k8sResource;
 };
 
 export const DlResourceSchema = z
