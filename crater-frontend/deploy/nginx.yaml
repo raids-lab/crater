@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: ai-portal-frontend
-          image: harbor.act.buaa.edu.cn/crater/web-frontend:v0.1.2
+          image: harbor.act.buaa.edu.cn/crater/web-frontend:v0.1.3
           ports:
             - containerPort: 80
 
