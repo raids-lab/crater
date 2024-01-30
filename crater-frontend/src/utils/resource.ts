@@ -1,4 +1,6 @@
+import { log } from "console";
 import { z } from "zod";
+import { logger } from "./loglevel";
 
 export interface KubernetesResource {
   cpu?: number | string; // 1
@@ -44,10 +46,13 @@ export const getAiResource = (resource: KubernetesResource): AiResource => {
 
 export const getAiKResource = (resource: AiResource): KubernetesResource => {
   // Ensure that cpu, gpu, and memory are not less than 0
-  const cpu = resource.cpu && resource.cpu >= 0 ? resource.cpu : undefined;
-  const gpu = resource.gpu && resource.gpu >= 0 ? resource.gpu : undefined;
+  logger.debug("Ai", resource);
+  const cpu =
+    resource.cpu !== undefined && resource.cpu > -1 ? resource.cpu : undefined;
+  const gpu =
+    resource.gpu !== undefined && resource.gpu > -1 ? resource.gpu : undefined;
   const memory =
-    resource.memory && parseInt(resource.memory) >= 0
+    resource.memory && parseInt(resource.memory) > -1
       ? resource.memory
       : undefined;
 
@@ -64,7 +69,7 @@ export const getAiKResource = (resource: AiResource): KubernetesResource => {
   if (memory !== undefined) {
     k8sResource.memory = memory;
   }
-
+  logger.debug(k8sResource);
   return k8sResource;
 };
 

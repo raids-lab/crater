@@ -253,7 +253,6 @@ export const Component = () => {
     onSuccess: (res) => {
       const jupyterPort = res.data.data.port;
       const jupyterToken = res.data.data.token;
-      toast.info("正在跳转至 Jupyter 页面");
       window.open(`http://192.168.5.60:${jupyterPort}?token=${jupyterToken}`);
     },
   });
@@ -341,7 +340,7 @@ export const Component = () => {
           }
           return (
             <Badge
-              className={cn("flex w-fit items-center px-1.5 py-1", {
+              className={cn("flex h-7 w-fit items-center px-1.5", {
                 "bg-purple-500 hover:bg-purple-400":
                   status.value === "Queueing",
                 "bg-slate-500 hover:bg-slate-400": status.value === "Created",
@@ -390,42 +389,35 @@ export const Component = () => {
         sortingFn: "datetime",
       },
       {
-        accessorKey: "finishAt",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("finishAt")}
-          />
-        ),
-        cell: ({ row }) => {
-          return <TableDate date={row.getValue("finishAt")}></TableDate>;
-        },
-        sortingFn: "datetime",
-      },
-      {
         id: "actions",
         enableHiding: false,
         cell: ({ row }) => {
           const taskInfo = row.original;
           return (
-            <div className="flex flex-row space-x-2">
+            <div className="flex flex-row space-x-1">
               <Button
-                size="icon"
-                variant="outline"
+                variant="ghost"
+                className="h-7 w-7 bg-sky-500 p-0 hover:bg-sky-400 disabled:bg-slate-400"
+                title="运行 Jupyter Lab"
                 onClick={() => {
-                  if (row.getValue("status") === "Running") {
+                  toast.info("即将跳转至 Jupyter 页面");
+                  setTimeout(() => {
                     getPortToken(taskInfo.id);
-                  }
+                  }, 500);
                 }}
                 disabled={row.getValue("status") !== "Running"}
               >
-                <PlayIcon />
+                <PlayIcon className="text-white dark:text-black" />
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <div>
-                    <Button size="icon" variant="outline">
-                      <StopIcon />
+                    <Button
+                      variant="ghost"
+                      className="h-7 w-7 bg-red-500 p-0 hover:bg-red-400"
+                      title="终止 Jupyter Lab"
+                    >
+                      <StopIcon className="text-white dark:text-black" />
                     </Button>
                   </div>
                 </AlertDialogTrigger>
@@ -433,7 +425,8 @@ export const Component = () => {
                   <AlertDialogHeader>
                     <AlertDialogTitle>删除任务</AlertDialogTitle>
                     <AlertDialogDescription>
-                      任务「{taskInfo?.title}」将不再可见，请谨慎操作。
+                      任务「{taskInfo?.title}
+                      」将停止，请确认已经保存好所需数据。
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

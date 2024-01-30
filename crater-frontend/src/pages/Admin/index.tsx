@@ -185,7 +185,7 @@ export const adminRoute: RouteObject = {
   children: [
     {
       index: true,
-      element: <Navigate to="user" replace={true} />,
+      element: <Navigate to="user/personal" replace={true} />,
     },
     ...sidebarItems.map((item) => {
       return (

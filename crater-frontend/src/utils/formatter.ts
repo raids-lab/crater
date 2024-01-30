@@ -10,8 +10,11 @@ export const getDateDiff = (dateString: string | undefined): string => {
   const now = new Date();
   const createdAt = new Date(dateString);
   const diff = now.getTime() - createdAt.getTime();
+
   let formatted = "";
-  if (diff > 1000 * 60 * 60 * 24 * 30) {
+  if (diff < 0) {
+    formatted = "刚刚";
+  } else if (diff > 1000 * 60 * 60 * 24 * 30) {
     const mouthDiff = now.getMonth() - createdAt.getMonth();
     if (mouthDiff > 0) {
       formatted = `${mouthDiff} 个月前`;
