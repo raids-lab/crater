@@ -27,15 +27,6 @@ export const apiAdminUserDelete = (userName: string) =>
     userName,
   } as IAdminUserDelete);
 
-// "/v1/admin/updateQuota"
-// {
-//   "userName": "zkr",
-//   "hardQuota": {
-//       "cpu": 40,
-//       "memory": "40Gi",
-//       "nvidia.com/gpu": 4
-//   }
-// }
 export interface IAdminUserUpdate {
   userName: string;
   hardQuota: KubernetesResource;

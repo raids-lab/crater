@@ -75,8 +75,8 @@ export function ProfileForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: "zkr",
-      password: "akjnakjn7878",
+      username: "",
+      password: "",
     },
   });
 

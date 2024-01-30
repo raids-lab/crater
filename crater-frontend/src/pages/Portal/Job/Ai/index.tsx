@@ -512,6 +512,7 @@ const AiJobHome = () => {
                 <AlertDialogFooter>
                   <AlertDialogCancel>取消</AlertDialogCancel>
                   <AlertDialogAction
+                    variant="destructive"
                     onClick={() => {
                       // check if browser support clipboard
                       deleteTask(taskInfo.id);
