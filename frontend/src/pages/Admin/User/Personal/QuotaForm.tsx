@@ -1,4 +1,3 @@
-import { useToast } from "@/components/ui/use-toast";
 import { apiAdminUserUpdateQuota } from "@/services/api/admin/user";
 import { getAiKResource, AiResource } from "@/utils/resource";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,6 +14,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   cpu: z.coerce.number().int().positive({ message: "CPU 核心数至少为 1" }),
@@ -32,7 +32,6 @@ interface QuotaFormProps {
 
 export const QuotaForm = ({ userName, closeSheet, quota }: QuotaFormProps) => {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   const { mutate: updateQuota } = useMutation({
     mutationFn: (values: FormSchema) =>
@@ -46,10 +45,7 @@ export const QuotaForm = ({ userName, closeSheet, quota }: QuotaFormProps) => {
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "userlist"] });
-      toast({
-        title: `更新成功`,
-        description: `用户「${userName}」配额已更新`,
-      });
+      toast.success(`用户「${userName}」配额已更新`);
       closeSheet();
     },
   });

@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
-import { useToast } from "@/components/ui/use-toast";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   apiJTaskCreate,
@@ -39,6 +39,7 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { useMemo } from "react";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   taskname: z
@@ -60,13 +61,11 @@ const formSchema = z.object({
   //workingDir: z.string(),
   shareDirs: z.array(
     z.object({
-      path: z.string(),
-      subPath: z.string().min(1, {
-        message: "subPath 不能为空",
+      path: z.string().min(1, {
+        message: "共享目录不能为空",
       }),
-      mountPath: z.string().min(1, {
-        message: "mountPath 不能为空",
-      }),
+      subPath: z.string(),
+      mountPath: z.string(),
     }),
   ),
 });
@@ -84,7 +83,6 @@ type MountDir = {
 
 export function NewTaskForm({ closeSheet }: TaskFormProps) {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   const convertShareDirs = (
     argsList: FormSchema["shareDirs"],
@@ -126,11 +124,12 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
         //command: values.command,
       }),
     onSuccess: async (_, { taskname }) => {
-      await queryClient.invalidateQueries({ queryKey: ["jupyter", "list"] });
-      toast({
-        title: `创建成功`,
-        description: `任务 ${taskname} 创建成功`,
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["jupyter", "list"] }),
+        queryClient.invalidateQueries({ queryKey: ["aitask", "quota"] }),
+        queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
+      ]);
+      toast.success(`任务 ${taskname} 创建成功`);
       closeSheet();
     },
   });
@@ -223,7 +222,6 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
   const onSubmit = (values: FormSchema) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
-    toast({ title: values.taskname });
     exportToJson();
     createTask(values);
   };

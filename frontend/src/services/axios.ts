@@ -68,7 +68,7 @@ instance.interceptors.response.use(
         window.location.href = "/portal";
       }
     }
-    showErrorToast("Error", error);
+    showErrorToast(error);
     return Promise.reject(error);
   },
 );

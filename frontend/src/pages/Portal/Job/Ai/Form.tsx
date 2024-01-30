@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
-import { useToast } from "@/components/ui/use-toast";
 import {
   Select,
   SelectContent,
@@ -43,6 +42,7 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { useMemo } from "react";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   taskname: z
@@ -89,7 +89,6 @@ type MountDir = {
 
 export function NewTaskForm({ closeSheet }: TaskFormProps) {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   const convertShareDirs = (
     argsList: FormSchema["shareDirs"],
@@ -133,10 +132,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
       }),
     onSuccess: async (_, { taskname }) => {
       await queryClient.invalidateQueries({ queryKey: ["aitask", "list"] });
-      toast({
-        title: `创建成功`,
-        description: `任务 ${taskname} 创建成功`,
-      });
+      toast.success(`任务 ${taskname} 创建成功`);
       closeSheet();
     },
   });
@@ -204,7 +200,6 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
   const onSubmit = (values: FormSchema) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
-    toast({ title: values.taskname });
     exportToJson();
     createTask(values);
   };

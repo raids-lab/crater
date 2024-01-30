@@ -42,7 +42,6 @@ import {
   apiAiTaskList,
   convertAiTask,
 } from "@/services/api/aiTask";
-import { useToast } from "@/components/ui/use-toast";
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
@@ -63,6 +62,7 @@ import { cn } from "@/lib/utils";
 import Status from "../../Overview/Status";
 import Quota from "../../Overview/Quota";
 import { REFETCH_INTERVAL } from "@/config/task";
+import { toast } from "sonner";
 
 type TaskInfo = {
   id: number;
@@ -231,7 +231,6 @@ const AiJobHome = () => {
   const [openSheet, setOpenSheet] = useState(false);
   const [data, setData] = useState<TaskInfo[]>([]);
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [showDeleted, setShowDeleted] = useState(false);
 
@@ -255,10 +254,7 @@ const AiJobHome = () => {
     mutationFn: (id: number) => apiAiTaskDelete(id),
     onSuccess: async () => {
       await refetchTaskList();
-      toast({
-        title: "删除成功",
-        description: "任务已删除",
-      });
+      toast.success("任务已删除");
     },
   });
 
