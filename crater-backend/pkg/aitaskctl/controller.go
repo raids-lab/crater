@@ -21,14 +21,14 @@ import (
 
 // TaskController 调度task
 type TaskController struct {
-	jobControl     *crclient.JobControl      // 创建AIJob的接口
-	quotaDB        quotadb.DBService         // 获取db中的quota
-	taskDB         taskdb.DBService          // 获取db中的task
-	taskQueue      *TaskQueue                // 队列信息
-	quotaInfos     sync.Map                  // quota缓存
-	jobStatusChan  <-chan util.JobStatusChan // 获取job的状态变更信息，同步到数据库
-	taskUpdateChan <-chan util.TaskUpdateChan
-	profiler       *profiler.Profiler
+	jobControl    *crclient.JobControl      // 创建AIJob的接口
+	quotaDB       quotadb.DBService         // 获取db中的quota
+	taskDB        taskdb.DBService          // 获取db中的task
+	taskQueue     *TaskQueue                // 队列信息
+	quotaInfos    sync.Map                  // quota缓存
+	jobStatusChan <-chan util.JobStatusChan // 获取job的状态变更信息，同步到数据库
+	// taskUpdateChan <-chan util.TaskUpdateChan
+	profiler *profiler.Profiler
 }
 
 // NewTaskController returns a new *TaskController
@@ -69,6 +69,17 @@ func (c *TaskController) Init() error {
 		c.taskQueue.InitUserQueue(quota.UserName, queueingList)
 	}
 	return nil
+}
+
+// AddUser adds a user with the specified username and quota to the TaskController.
+// It also initializes the user's task queue based on their quota.
+func (tc *TaskController) AddUser(username string, quota models.Quota) {
+	tc.AddOrUpdateQuotaInfo(quota.UserName, quota)
+	queueingList, err := tc.taskDB.ListByUserAndStatuses(quota.UserName, models.TaskQueueingStatuses)
+	if err != nil {
+		logrus.Errorf("list user:%v queueing tasks failed, err: %v", quota.UserName, err)
+	}
+	tc.taskQueue.InitUserQueue(quota.UserName, queueingList)
 }
 
 // Start method
