@@ -50,9 +50,9 @@ const formSchema = z.object({
       message: "任务名称最多包含40个字符",
     }),
   //taskType: z.string(),
-  cpu: z.coerce.number().int().positive({ message: "CPU 核心数至少为 1" }),
-  gpu: z.coerce.number().int().min(0),
-  memory: z.coerce.number().int().positive(),
+  cpu: z.coerce.number().int().min(-1),
+  gpu: z.coerce.number().int().min(-1),
+  memory: z.coerce.number().int().min(-1),
   // image: z.string().url(),
   image: z.string().min(1, {
     message: "任务镜像不能为空",
