@@ -11,9 +11,9 @@ const (
 
 var (
 	DefaultQuota = v1.ResourceList{
-		v1.ResourceCPU:                    resource.MustParse("40"),
-		v1.ResourceMemory:                 resource.MustParse("80Gi"),
-		v1.ResourceName("nvidia.com/gpu"): resource.MustParse("4"),
+		v1.ResourceCPU:                    resource.MustParse("2"),
+		v1.ResourceMemory:                 resource.MustParse("4Gi"),
+		v1.ResourceName("nvidia.com/gpu"): resource.MustParse("0"),
 	}
 )
 

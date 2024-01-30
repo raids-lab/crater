@@ -6,7 +6,6 @@ import (
 	"github.com/aisystem/ai-protal/pkg/config"
 	"github.com/aisystem/ai-protal/pkg/crclient"
 	"github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
 
 	"github.com/aisystem/ai-protal/pkg/db/quota"
 	"github.com/aisystem/ai-protal/pkg/db/user"
@@ -127,8 +126,8 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 		// UserID:    user.ID,
 		UserName:  user.UserName,
 		NameSpace: ns,
-		HardQuota: models.ResourceListToJSON(v1.ResourceList{}),
-		// HardQuota: models.ResourceListToJSON(models.DefaultQuota),
+		// HardQuota: models.ResourceListToJSON(v1.ResourceList{}),
+		HardQuota: models.ResourceListToJSON(models.DefaultQuota),
 	}
 	err = sc.QuotaDB.Create(&quota)
 	if err != nil {
