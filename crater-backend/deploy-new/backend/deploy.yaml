@@ -1,0 +1,130 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: crater-web-backend
+  namespace: crater
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crater-web-backend
+  namespace: crater
+  labels:
+    app: crater-web-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: crater-web-backend
+  template:
+    metadata:
+      labels:
+        app: crater-web-backend
+    spec:
+      containers:
+        - name: crater-web-backend
+          image: container:v1
+          imagePullPolicy: IfNotPresent
+          command:
+            - /controller
+            - --config-file=/etc/config/config.yaml
+            - --share-dir-file=/etc/config/share-dir.yaml
+            - --server-port=:8088
+            - --metrics-bind-address=:8080
+            - --health-probe-bind-address=:8081
+          volumeMounts:
+            - name: backend-conf
+              mountPath: /etc/config/config.yaml
+              subPath: config.yaml
+            - name: share-dir-conf
+              mountPath: /etc/config/share-dir.yaml
+              subPath: share-dir.yaml
+      serviceAccountName: crater-web-backend
+      volumes:
+        - name: backend-conf
+          configMap:
+            name: backend-config
+            items:
+              - key: config.yaml
+                path: config.yaml
+        - name: share-dir-conf
+          configMap:
+            name: share-dir
+            items:
+              - key: share-dir.yaml
+                path: share-dir.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: crater-web-backend-svc
+  namespace: crater
+spec:
+  selector:
+    app: crater-web-backend
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8088
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: crater-web-backend-cluster-role
+rules:
+  - apiGroups:
+      - "*"
+    resources:
+      - "*"
+    verbs:
+      - "*"
+  - apiGroups:
+      - apps
+      - extensions
+    resources:
+      - "*"
+    verbs:
+      - "*"
+  - apiGroups:
+      - policy
+    resources:
+      - poddisruptionbudgets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "storage.k8s.io"
+    resources:
+      - "*"
+    verbs:
+      - "*"
+  - apiGroups:
+      - "coordination.k8s.io"
+    resources:
+      - leases
+    verbs:
+      - create
+      - get
+      - list
+      - update
+  - apiGroups:
+      - "events.k8s.io"
+    resources:
+      - "*"
+    verbs:
+      - "*"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: crater-web-backend-cluster-role-binding
+subjects:
+  - kind: ServiceAccount
+    name: crater-web-backend
+    namespace: crater
+roleRef:
+  kind: ClusterRole
+  name: crater-web-backend-cluster-role
+  apiGroup: rbac.authorization.k8s.io
