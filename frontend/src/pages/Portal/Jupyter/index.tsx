@@ -456,6 +456,7 @@ const JupyterJobHome = () => {
                   <AlertDialogFooter>
                     <AlertDialogCancel>取消</AlertDialogCancel>
                     <AlertDialogAction
+                      variant="destructive"
                       onClick={() => {
                         // check if browser support clipboard
                         deleteJTask(taskInfo.id);

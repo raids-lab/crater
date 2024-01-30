@@ -270,6 +270,7 @@ const AiJobHome = () => {
                       // check if browser support clipboard
                       deleteTask(taskInfo.name);
                     }}
+                    variant="destructive"
                   >
                     删除
                   </AlertDialogAction>

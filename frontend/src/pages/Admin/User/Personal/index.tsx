@@ -344,6 +344,7 @@ export const PersonalUser = () => {
                   <AlertDialogFooter>
                     <AlertDialogCancel>取消</AlertDialogCancel>
                     <AlertDialogAction
+                      variant="destructive"
                       onClick={() => {
                         if (user.userName === currentUserName) {
                           showErrorToast(
