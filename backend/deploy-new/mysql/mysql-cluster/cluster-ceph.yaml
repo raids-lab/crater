@@ -1,0 +1,27 @@
+# Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+#
+# Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
+#
+# This sample creates a simple InnoDB Cluster. It's similar to sample-cluster.yaml
+# but also defines storage requirements for a PersistentVolumeClaim (PVC) set
+# as the data directory for MySQL Servers.
+# Additional options, like selecting a storage class, can be added.
+#
+apiVersion: mysql.oracle.com/v2
+kind: InnoDBCluster
+metadata:
+  name: mysql-cluster-ceph
+  namespace: crater
+spec:
+  secretName: crater-mysql-secret
+  instances: 3
+  router:
+    instances: 1
+  tlsUseSelfSigned: true
+  datadirVolumeClaimTemplate:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 2Gi
+    storageClassName: rook-ceph-block
