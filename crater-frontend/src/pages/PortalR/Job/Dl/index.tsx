@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/components/ui/use-toast";
+
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
@@ -53,6 +53,7 @@ import { NewDlTaskForm } from "./Form";
 import { Separator } from "@/components/ui/separator";
 import PodDetail from "./PodDetail";
 import { TableDate } from "@/components/custom/TableDate";
+import { toast } from "sonner";
 
 type TaskInfo = {
   id: number;
@@ -122,7 +123,6 @@ const AiJobHome = () => {
   const [openSheet, setOpenSheet] = useState(false);
   const [data, setData] = useState<TaskInfo[]>([]);
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   const { data: taskList, isLoading } = useQuery({
@@ -135,10 +135,7 @@ const AiJobHome = () => {
     mutationFn: (name: string) => apiDlTaskDelete(name),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["dltask", "list"] });
-      toast({
-        title: "删除成功",
-        description: "任务已删除",
-      });
+      toast.success("任务已删除");
     },
   });
 

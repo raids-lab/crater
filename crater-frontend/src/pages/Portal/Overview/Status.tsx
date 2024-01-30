@@ -100,18 +100,14 @@ const Status: FC = () => {
     };
   }, [stats, theme]);
 
-  if (isLoading) {
-    return <></>;
-  }
-
   return (
     <Card className="col-span-1">
       <CardHeader>
         <CardTitle>任务状态</CardTitle>
       </CardHeader>
       <CardContent>
-        {!stats || stats?.length === 0 ? (
-          <p className="text-muted-foreground">暂无作业数据</p>
+        {isLoading || !stats || stats?.length === 0 ? (
+          <p className="text-muted-foreground">暂无任务数据</p>
         ) : (
           <Chart {...chartConfig} />
         )}

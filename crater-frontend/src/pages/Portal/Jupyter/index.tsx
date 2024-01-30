@@ -37,7 +37,7 @@ import {
   convertJTask,
   apiJTaskGetPortToken,
 } from "@/services/api/jupyterTask";
-import { useToast } from "@/components/ui/use-toast";
+
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
@@ -50,14 +50,13 @@ import {
 } from "@radix-ui/react-icons";
 import { useSetRecoilState } from "recoil";
 import { globalBreadCrumb } from "@/utils/store";
-import { useNavigate, useRoutes } from "react-router-dom";
-//import AiJobDetail from "./Form";
 import { TableDate } from "@/components/custom/TableDate";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import Status from "../Overview/Status";
 import Quota from "../Overview/Quota";
 import { REFETCH_INTERVAL } from "@/config/task";
+import { toast } from "sonner";
 
 type JTaskInfo = {
   id: number;
@@ -212,13 +211,10 @@ const toolbarConfig: DataTableToolbarConfig = {
   ],
   getHeader: getHeader,
 };
-const JupyterJobHome = () => {
+export const Component = () => {
   const [openSheet, setOpenSheet] = useState(false);
   const [data, setData] = useState<JTaskInfo[]>([]);
   const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const [showDeleted, setShowDeleted] = useState(false);
 
   const {
     data: taskList,
@@ -231,49 +227,36 @@ const JupyterJobHome = () => {
     refetchInterval: REFETCH_INTERVAL,
   });
 
-  const refetchTaskList = async () =>
-    await queryClient.invalidateQueries({
-      queryKey: ["jupyter", "list"],
-    });
+  const refetchTaskList = async () => {
+    try {
+      // 并行发送所有异步请求
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["jupyter", "list"] }),
+        queryClient.invalidateQueries({ queryKey: ["aitask", "quota"] }),
+        queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
+      ]);
+    } catch (error) {
+      console.error("更新查询失败", error);
+    }
+  };
 
   const { mutate: deleteJTask } = useMutation({
     mutationFn: (id: number) => apiJTaskDelete(id),
     onSuccess: async () => {
       await refetchTaskList();
-      toast({
-        title: "删除成功",
-        description: "任务已删除",
-      });
+      toast.success("任务已删除");
     },
   });
 
-  const { mutate: JTaskGetPortToken } = useMutation({
+  const { mutate: getPortToken } = useMutation({
     mutationFn: (id: number) => apiJTaskGetPortToken(id),
-    onSuccess: (data) => {
-      const jupyterPort = data.data.data.port;
-      const jupyterToken = data.data.data.token;
-      toast({
-        title: "打开 Jupyter 页面",
-        description: "Jupyter 页面即将打开",
-      });
+    onSuccess: (res) => {
+      const jupyterPort = res.data.data.port;
+      const jupyterToken = res.data.data.token;
+      toast.info("正在跳转至 Jupyter 页面");
       window.open(`http://192.168.5.60:${jupyterPort}?token=${jupyterToken}`);
     },
   });
-
-  // const refetchPortToken = async () =>
-  //   await queryClient.invalidateQueries({
-  //     queryKey: ["jupyter", "list"],
-  //   });
-  // const { mutate: GetJTaskToken } = useMutation({
-  //   mutationFn: (id: number) => apiJTaskGetPortToken(id),
-  //   onSuccess: async () => {
-  //     await refetchTaskList();
-  //     toast({
-  //       title: "获取token成功",
-  //       description: "jupyter页面即将打开",
-  //     });
-  //   },
-  // });
 
   const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
   useEffect(() => {
@@ -431,7 +414,7 @@ const JupyterJobHome = () => {
                 variant="outline"
                 onClick={() => {
                   if (row.getValue("status") === "Running") {
-                    JTaskGetPortToken(taskInfo.id);
+                    getPortToken(taskInfo.id);
                   }
                 }}
                 disabled={row.getValue("status") !== "Running"}
@@ -472,14 +455,14 @@ const JupyterJobHome = () => {
         },
       },
     ],
-    [deleteJTask, navigate],
+    [deleteJTask, getPortToken],
   );
 
   useEffect(() => {
     if (isLoading) return;
     if (!taskList) return;
     const tableData: JTaskInfo[] = taskList
-      .filter((task) => (showDeleted ? task.isDeleted : !task.isDeleted))
+      .filter((task) => !task.isDeleted)
       .map((t) => {
         const task = convertJTask(t);
         return {
@@ -498,7 +481,7 @@ const JupyterJobHome = () => {
         };
       });
     setData(tableData);
-  }, [taskList, isLoading, showDeleted]);
+  }, [taskList, isLoading]);
 
   const updatedAt = useMemo(() => {
     return new Date(dataUpdatedAt).toLocaleString();
@@ -527,35 +510,10 @@ const JupyterJobHome = () => {
         </Sheet>
       </DataTable>
       <div className="flex flex-row items-center justify-start space-x-2">
-        <Button
-          className="h-8 min-w-fit"
-          variant="outline"
-          onClick={() => setShowDeleted((v) => !v)}
-        >
-          {showDeleted ? "显示当前任务" : "显示已删除任务"}
-        </Button>
-        <Button
-          className="h-8 min-w-fit"
-          variant="outline"
-          onClick={() => void refetchTaskList()}
-        >
-          刷新列表
-        </Button>
         <div className="pl-2 text-sm text-muted-foreground">
           数据更新于 {updatedAt}
         </div>
       </div>
     </div>
   );
-};
-
-export const Component = () => {
-  const routes = useRoutes([
-    {
-      index: true,
-      element: <JupyterJobHome />,
-    },
-  ]);
-
-  return <>{routes}</>;
 };

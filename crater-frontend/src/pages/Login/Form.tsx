@@ -15,8 +15,9 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import { globalLastView, globalUserInfo } from "@/utils/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUserLogin } from "@/services/api/auth";
-import { useToast } from "@/components/ui/use-toast";
+
 import LoadableButton from "@/components/custom/LoadableButton";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   username: z
@@ -41,7 +42,7 @@ export function ProfileForm() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const setUserState = useSetRecoilState(globalUserInfo);
-  const { toast } = useToast();
+
   const lastView = useRecoilValue(globalLastView);
 
   const { mutate: loginUser, status } = useMutation({
@@ -54,12 +55,9 @@ export function ProfileForm() {
         id: username,
         role: role,
       });
-      toast({
-        title: `登陆成功`,
-        description: `你好，${
-          role === "admin" ? "管理员" : "用户"
-        } ${username}`,
-      });
+      toast.success(
+        `你好，${role === "admin" ? "管理员" : "用户"} ${username}`,
+      );
       // navigate to /portal and clear all history
       const dashboard =
         lastView === "admin" && role === "admin"

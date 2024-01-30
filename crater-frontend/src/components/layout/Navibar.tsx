@@ -20,14 +20,13 @@ import {
 } from "@/utils/store";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { useToast } from "../ui/use-toast";
 import { useTheme } from "@/utils/theme";
 import { ChevronRightIcon } from "@radix-ui/react-icons";
 import { getBreadcrumbByPath } from "@/utils/title";
+import { toast } from "sonner";
 
 const Navibar: FC = () => {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const { resetAll } = useResetStore();
   const userInfo = useRecoilValue(globalUserInfo);
   const navigate = useNavigate();
@@ -153,9 +152,7 @@ const Navibar: FC = () => {
               setLastView(pathParts[0]);
               queryClient.clear();
               resetAll();
-              toast({
-                title: "已退出",
-              });
+              toast.success("已退出");
             }}
           >
             退出登录

@@ -64,7 +64,7 @@ export const convertJTask = (task: IJupyterTask): JupyterTask => {
     };
     return jTaskINfo;
   } catch (e) {
-    showErrorToast("任务信息解析失败", e);
+    showErrorToast(e);
     return task as unknown as JupyterTask;
   }
 };

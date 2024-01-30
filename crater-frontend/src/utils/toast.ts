@@ -1,44 +1,24 @@
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { IErrorResponse } from "@/services/types";
 import { isAxiosError } from "axios";
 
-export const showErrorToast = (title: string, error: unknown) => {
+export const showErrorToast = (error: unknown) => {
   if (isAxiosError(error)) {
     if (error.response?.data) {
       try {
         const errorResponse = error.response.data as IErrorResponse;
         if (errorResponse.error) {
-          toast({
-            title: title,
-            description: `${errorResponse.error}`,
-            variant: "destructive",
-          });
+          toast.error(`${errorResponse.error}`);
         } else {
-          toast({
-            title: title,
-            description: `${error.message}`,
-            variant: "destructive",
-          });
+          toast.error(`${error.message}`);
         }
       } catch (e) {
-        toast({
-          title: title,
-          description: `${error.message}`,
-          variant: "destructive",
-        });
+        toast.error(`${error.message}`);
       }
     } else {
-      toast({
-        title: title,
-        description: `${error.message}`,
-        variant: "destructive",
-      });
+      toast.error(`${error.message}`);
     }
   } else {
-    toast({
-      title: title,
-      description: `${(error as Error).message}`,
-      variant: "destructive",
-    });
+    toast.error((error as Error).message);
   }
 };

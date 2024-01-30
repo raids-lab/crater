@@ -41,7 +41,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { showErrorToast } from "@/utils/toast";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
@@ -114,7 +114,6 @@ const toolbarConfig: DataTableToolbarConfig = {
 export const PersonalUser = () => {
   const [data, setData] = useState<TUser[]>([]);
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const { id: currentUserName } = useRecoilValue(globalUserInfo);
 
   const { data: userList, isLoading } = useQuery({
@@ -127,10 +126,7 @@ export const PersonalUser = () => {
     mutationFn: (userName: string) => apiAdminUserDelete(userName),
     onSuccess: async (_, userName) => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "userlist"] });
-      toast({
-        title: `删除成功`,
-        description: `用户 ${userName} 已删除`,
-      });
+      toast.success(`用户 ${userName} 已删除`);
     },
   });
 
@@ -139,10 +135,7 @@ export const PersonalUser = () => {
       apiAdminUserUpdateRole(userName, role),
     onSuccess: async (_, variables) => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "userlist"] });
-      toast({
-        title: `更新成功`,
-        description: `用户 ${variables.userName} 权限已更新`,
-      });
+      toast.success(`用户 ${variables.userName} 权限已更新`);
     },
   });
 
@@ -348,7 +341,6 @@ export const PersonalUser = () => {
                       onClick={() => {
                         if (user.userName === currentUserName) {
                           showErrorToast(
-                            "删除失败",
                             new Error("无法删除自己，如需删除请换个用户登录"),
                           );
                         } else {

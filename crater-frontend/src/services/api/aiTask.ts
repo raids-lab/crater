@@ -122,7 +122,7 @@ export const convertAiTask = (task: IAiTask): AiTask => {
     };
     return aiTaskINfo;
   } catch (e) {
-    showErrorToast("任务信息解析失败", e);
+    showErrorToast(e);
     return task as unknown as AiTask;
   }
 };

@@ -16,7 +16,7 @@ import { globalUserInfo } from "@/utils/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUserSignup } from "@/services/api/auth";
 import LoadableButton from "@/components/custom/LoadableButton";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 const formSchema = z
   .object({
@@ -62,12 +62,9 @@ export function SignupForm() {
         id: username,
         role: role,
       });
-      toast({
-        title: `注册成功`,
-        description: `你好，${
-          role === "admin" ? "管理员" : "用户"
-        } ${username}`,
-      });
+      toast.success(
+        `你好，${role === "admin" ? "管理员" : "用户"} ${username}`,
+      );
       navigate("/portal");
     },
   });

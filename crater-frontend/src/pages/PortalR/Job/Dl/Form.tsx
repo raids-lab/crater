@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
-import { useToast } from "@/components/ui/use-toast";
+
 import {
   Select,
   SelectContent,
@@ -52,6 +52,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ProgressBar } from "@/components/custom/ProgressBar";
 import { PopoverClose } from "@radix-ui/react-popover";
 import { showErrorToast } from "@/utils/toast";
+import { toast } from "sonner";
 
 // {
 //   "name": "test-recommenddljob", // 任务名称，必填
@@ -128,7 +129,6 @@ interface TaskFormProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   const datasetInfo = useQuery({
     queryKey: ["recommend", "dataset", "list"],
@@ -199,10 +199,7 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
     },
     onSuccess: async (_, { name }) => {
       await queryClient.invalidateQueries({ queryKey: ["dltask", "list"] });
-      toast({
-        title: `创建成功`,
-        description: `任务 ${name} 创建成功`,
-      });
+      toast.success(`任务 ${name} 创建成功`);
       closeSheet();
     },
   });
@@ -413,7 +410,6 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
                                             )
                                         ) {
                                           showErrorToast(
-                                            "添加数据集失败",
                                             new Error(
                                               `数据集「${dataset.label}」已存在`,
                                             ),
@@ -531,7 +527,6 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
                                             .find((d) => d.name === task.value)
                                         ) {
                                           showErrorToast(
-                                            "添加关系失败",
                                             new Error(
                                               `与任务「${task.label}」的关系已存在`,
                                             ),
