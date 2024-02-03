@@ -1,4 +1,3 @@
-import { log } from "console";
 import { z } from "zod";
 import { logger } from "./loglevel";
 

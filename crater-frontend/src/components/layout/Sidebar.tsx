@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
   Accordion,
   AccordionContent,
@@ -8,11 +7,10 @@ import {
 } from "@/components/ui/accordion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RouteObject, useLocation, useNavigate } from "react-router-dom";
-import { Separator } from "../ui/separator";
 import { ScrollArea } from "../ui/scroll-area";
 import { useOnClickOutside } from "usehooks-ts";
 import { getTitleByPath } from "@/utils/title";
-import Logo from "@/assets/crater.svg";
+import CraterLogo from "../icon/CraterLogo";
 
 export type SidebarSubItem = {
   route: RouteObject;
@@ -20,14 +18,14 @@ export type SidebarSubItem = {
 
 export type SidebarItem = {
   path: string;
-  icon: React.ReactNode;
+  icon: React.ElementType;
   children: SidebarSubItem[];
   route?: RouteObject;
 };
 
 export type SidebarMenu = {
   path: string;
-  icon: React.ReactNode;
+  icon: React.ElementType;
   route: RouteObject;
 };
 
@@ -75,7 +73,7 @@ export function Sidebar({
     <div
       className={cn(
         "flex flex-col items-center justify-between pb-4",
-        "border-r bg-sidebar text-sidebar-foreground",
+        "bg-sidebar text-sidebar-foreground",
         "fixed top-0 z-20 md:sticky md:top-16 md:z-0 md:w-full",
         "min-h-full w-[240px]",
         ".3s transition-transform ease-in-out md:translate-x-0",
@@ -85,65 +83,58 @@ export function Sidebar({
     >
       {/* Logo */}
       <div className="flex h-14 w-full items-center justify-center pb-0 pt-3">
-        <img src={Logo} alt="logo" className="h-10 w-auto select-none pr-2" />
+        <CraterLogo className="h-10 w-auto select-none pr-2" />
       </div>
-      {/* <Separator className="bg-sidebar-item dark:bg-border" /> */}
       {/* Calculate of ScrollArea height: */}
       {/* 100vh - (40px * 2 + 56px + 48px) */}
       <ScrollArea className="mt-2 h-[calc(100vh_-_193px)] w-full">
         <Accordion
           type="multiple"
           // collapsible
-          className="w-full space-y-1 px-2 py-2"
+          className="w-full"
           value={accordion}
           onValueChange={setAccordion}
         >
           {sidebarItems.map((item) => {
             return item.children.length > 0 ? (
               <AccordionItem value={item.path} key={item.path}>
-                <AccordionTrigger>
-                  <div className="flex flex-row items-center justify-start">
-                    <div className="mr-3">{item.icon}</div>
+                <AccordionTrigger className="h-10">
+                  <div className="flex flex-row items-center justify-start px-3 text-base">
+                    <item.icon className="mr-3" />
                     {getTitleByPath([actived.view, item.path])}
                   </div>
                 </AccordionTrigger>
                 {item.children && item.children.length > 0 && (
                   <AccordionContent>
-                    <div className="space-y-1">
-                      {item.children?.map((subItem) => {
-                        const subItemPath = subItem.route.path?.replace(
-                          "/*",
-                          "",
-                        );
-                        return (
-                          <Button
-                            key={`${item.path}-${subItemPath}`}
-                            variant="colorable"
-                            className={cn(
-                              "w-full justify-start pl-11 font-normal hover:bg-primary/80",
-                              {
-                                "bg-sidebar-item":
-                                  item.path === actived.item &&
-                                  subItemPath === actived.subItem,
-                              },
-                            )}
-                            type="button"
-                            onClick={() => {
-                              const url = subItemPath
-                                ? `/${actived.view}/${item.path}/${subItemPath}`
-                                : `/${actived.view}/${item.path}`;
-                              navigate(url);
-                            }}
-                          >
-                            {getTitleByPath([
-                              actived.view,
-                              item.path,
-                              subItemPath || "",
-                            ])}
-                          </Button>
-                        );
-                      })}
-                    </div>
+                    {item.children?.map((subItem) => {
+                      const subItemPath = subItem.route.path?.replace("/*", "");
+                      return (
+                        <button
+                          key={`${item.path}-${subItemPath}`}
+                          className={cn(
+                            " flex h-10 w-full flex-row items-center justify-start rounded-none pl-14 text-base font-normal hover:bg-primary/20",
+                            {
+                              "bg-sidebar-item":
+                                item.path === actived.item &&
+                                subItemPath === actived.subItem,
+                            },
+                          )}
+                          type="button"
+                          onClick={() => {
+                            const url = subItemPath
+                              ? `/${actived.view}/${item.path}/${subItemPath}`
+                              : `/${actived.view}/${item.path}`;
+                            navigate(url);
+                          }}
+                        >
+                          {getTitleByPath([
+                            actived.view,
+                            item.path,
+                            subItemPath || "",
+                          ])}
+                        </button>
+                      );
+                    })}
                   </AccordionContent>
                 )}
               </AccordionItem>
@@ -151,15 +142,19 @@ export function Sidebar({
               <button
                 key={`sidebar-item-${item.path}`}
                 className={cn(
-                  "flex h-9 w-full flex-row items-center justify-start rounded-md px-4 text-base hover:bg-primary/80",
+                  "flex h-10 w-full flex-row items-center justify-start rounded-none",
+                  "px-7 text-base font-normal hover:bg-primary/20",
                   {
                     "bg-sidebar-item": item.path === actived.item,
                   },
                 )}
-                type="button"
                 onClick={() => navigate(`/${actived.view}/${item.path}`)}
               >
-                <div className="mr-3">{item.icon}</div>
+                <item.icon
+                  className={cn("mr-3", {
+                    "text-primary": item.path === actived.item,
+                  })}
+                />
                 {getTitleByPath([actived.view, item.path])}
               </button>
             );
@@ -167,27 +162,31 @@ export function Sidebar({
         </Accordion>
       </ScrollArea>
       <div className="w-full">
-        <Separator className="mb-4 bg-sidebar-item dark:bg-border" />
-        <div className="space-y-1 px-2">
+        {/* <Separator className="mb-4 bg-sidebar-item" /> */}
+        <div className="px-2">
           {sidebarMenus.map((item) => (
             <button
               key={`sidebar-menu-${item.path}`}
               type="button"
               onClick={() => navigate(`/${actived.view}/${item.path}`)}
               className={cn(
-                "flex h-9 w-full flex-row items-center justify-start rounded-md px-4 text-base hover:bg-primary/80",
+                "flex h-10 w-full flex-row items-center justify-start px-4 text-base hover:bg-primary/20",
                 {
                   "bg-sidebar-item": item.path === actived.item,
                 },
               )}
             >
-              <div className="mr-3">{item.icon}</div>
+              <item.icon
+                className={cn("mr-3", {
+                  "text-primary": item.path === actived.item,
+                })}
+              />
               {getTitleByPath([actived.view, item.path])}
             </button>
           ))}
         </div>
         <p
-          className="select-none pt-2 text-center text-sm font-light text-muted-foreground"
+          className="select-none pt-2 text-center text-base font-light text-muted-foreground"
           onDoubleClick={() => {
             if (actived.view === "portal") {
               navigate("/recommend");

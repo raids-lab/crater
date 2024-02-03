@@ -16,7 +16,7 @@ import Navibar from "@/components/layout/Navibar";
 const sidebarItems: SidebarItem[] = [
   {
     path: "overview",
-    icon: <WorkBenchIcon />,
+    icon: WorkBenchIcon,
     children: [],
     route: {
       path: "overview",
@@ -25,7 +25,7 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     path: "jupyter",
-    icon: <CodeOneIcon />,
+    icon: CodeOneIcon,
     children: [],
     route: {
       path: "jupyter",
@@ -34,7 +34,7 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     path: "job",
-    icon: <OverviewIcon />,
+    icon: OverviewIcon,
     children: [
       {
         route: {
@@ -46,7 +46,7 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     path: "image",
-    icon: <LightHouseIcon />,
+    icon: LightHouseIcon,
     children: [
       {
         route: {
@@ -64,7 +64,7 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     path: "data",
-    icon: <DatabaseIcon />,
+    icon: DatabaseIcon,
     children: [
       {
         route: {
@@ -91,7 +91,7 @@ const sidebarItems: SidebarItem[] = [
 const sidebarMenus: SidebarMenu[] = [
   {
     path: "docs",
-    icon: <FileTextIcon />,
+    icon: FileTextIcon,
     route: {
       path: "docs",
       lazy: () => import("./Docs"),
@@ -99,7 +99,7 @@ const sidebarMenus: SidebarMenu[] = [
   },
   {
     path: "feedback",
-    icon: <Pencil2Icon />,
+    icon: Pencil2Icon,
     route: {
       path: "feedback",
       lazy: () => import("./Feedback"),
@@ -109,6 +109,7 @@ const sidebarMenus: SidebarMenu[] = [
 
 const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
   const isAuthenticated = useAuth("user");
+  // const isAuthenticated = true;
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
@@ -125,10 +126,10 @@ const Layout = () => {
             "-translate-x-full": !showSidebar,
           })}
         />
-        <div className="grid w-full grid-rows-header">
+        <div className="grid w-full grid-rows-header px-6">
           <Navibar />
           <ScrollArea className="h-[calc(100vh_-_48px)] w-full">
-            <div className="px-6 py-6">
+            <div className="py-6">
               <Outlet />
             </div>
           </ScrollArea>
