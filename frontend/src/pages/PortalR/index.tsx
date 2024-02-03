@@ -15,7 +15,7 @@ import Navibar from "@/components/layout/Navibar";
 const sidebarItems: SidebarItem[] = [
   {
     path: "overview",
-    icon: <WorkBenchIcon />,
+    icon: WorkBenchIcon,
     children: [],
     route: {
       path: "overview",
@@ -24,7 +24,7 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     path: "job",
-    icon: <OverviewIcon />,
+    icon: OverviewIcon,
     children: [
       {
         route: {
@@ -36,7 +36,7 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     path: "image",
-    icon: <LightHouseIcon />,
+    icon: LightHouseIcon,
     children: [
       {
         route: {
@@ -54,7 +54,7 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     path: "data",
-    icon: <DatabaseIcon />,
+    icon: DatabaseIcon,
     children: [
       {
         route: {
@@ -75,7 +75,7 @@ const sidebarItems: SidebarItem[] = [
 const sidebarMenus: SidebarMenu[] = [
   {
     path: "docs",
-    icon: <FileTextIcon />,
+    icon: FileTextIcon,
     route: {
       path: "docs",
       lazy: () => import("../Portal/Docs"),
@@ -83,7 +83,7 @@ const sidebarMenus: SidebarMenu[] = [
   },
   {
     path: "feedback",
-    icon: <Pencil2Icon />,
+    icon: Pencil2Icon,
     route: {
       path: "feedback",
       lazy: () => import("../Portal/Feedback"),

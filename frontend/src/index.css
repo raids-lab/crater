@@ -3,15 +3,16 @@
 @tailwind utilities;
 
 @layer base {
+  /* https://www.figma.com/community/file/1284628698171304551/dashboard-dark-and-light-modes-color-variables */
   :root {
     --background: 0 0% 100%;
-    --foreground: 208.24 100% 3.33%;
+    --foreground: 235, 23%, 22%;
 
     --card: 0 0% 100%;
-    --card-foreground: 208.24 100% 3.33%;
+    --card-foreground: 235, 23%, 22%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 208.24 100% 3.33%;
+    --popover-foreground: 235, 23%, 22%;
 
     --primary: 208.26 100% 33.73%;
     --primary-foreground: 0 0% 100%;
@@ -23,7 +24,7 @@
     --muted-foreground: 0 0% 40%;
 
     --accent: 208.24 51.52% 93.53%;
-    --accent-foreground: 208.26 100% 33.73%;
+    --accent-foreground: 235, 23%, 22%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
@@ -36,17 +37,17 @@
 
     /* Custom */
     --dashboard: 210 21% 95%;
-    --sidebar: 217, 33%, 17%;
-    --sidebar-item: 215, 25%, 27%;
-    --sidebar-foreground: 0 0% 100%;
+    --sidebar: 0 0% 100%;
+    --sidebar-item: 210, 44%, 94%;
+    --sidebar-foreground: 235, 23%, 22%;
     --navibar: 0 0% 100%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 220, 15%, 12%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 220, 15%, 12%;
     --card-foreground: 210 40% 98%;
 
     --popover: 222.2 84% 4.9%;
@@ -72,11 +73,11 @@
     --ring: 224.3 76.3% 48%;
 
     /* Custom */
-    --dashboard: 222.2 84% 4.9%;
-    --sidebar: 222.2 84% 4.9%;
-    --sidebar-item: 217.2 32.6% 17.5%;
+    --dashboard: 210, 13%, 6%;
+    --sidebar: 220, 15%, 12%;
+    --sidebar-item: 219, 15%, 18%;
     --sidebar-foreground: 0 0% 100%;
-    --navibar: 217.2 32.6% 2.5%;
+    --navibar: 220, 15%, 12%;
   }
 }
 

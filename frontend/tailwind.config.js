@@ -87,7 +87,7 @@ module.exports = {
         sidebar: "220px auto", // for sidebar layout. adds grid-cols-sidebar class
       },
       gridTemplateRows: {
-        header: "48px auto", // for the navbar layout. adds grid-rows-header class
+        header: "56px auto", // for the navbar layout. adds grid-rows-header class
       },
     },
   },

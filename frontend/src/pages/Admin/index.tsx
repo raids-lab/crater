@@ -21,7 +21,7 @@ import { GroupUser } from "./User/Group";
 const sidebarItems: SidebarItem[] = [
   {
     path: "overview",
-    icon: <BarChartIcon />,
+    icon: BarChartIcon,
     children: [],
     route: {
       path: "overview",
@@ -29,7 +29,7 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     path: "user",
-    icon: <PersonIcon />,
+    icon: PersonIcon,
     children: [
       {
         route: {
@@ -47,7 +47,7 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     path: "job",
-    icon: <OverviewIcon />,
+    icon: OverviewIcon,
     children: [
       {
         route: {
@@ -68,7 +68,7 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     path: "image",
-    icon: <LightHouseIcon />,
+    icon: LightHouseIcon,
     children: [
       {
         route: {
@@ -79,7 +79,7 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     path: "data",
-    icon: <DatabaseIcon />,
+    icon: DatabaseIcon,
     children: [
       {
         route: {
@@ -93,7 +93,7 @@ const sidebarItems: SidebarItem[] = [
 const sidebarMenus: SidebarMenu[] = [
   {
     path: "docs",
-    icon: <FileTextIcon />,
+    icon: FileTextIcon,
     route: {
       path: "docs",
       lazy: () => import("./Docs"),
@@ -101,7 +101,7 @@ const sidebarMenus: SidebarMenu[] = [
   },
   {
     path: "feedback",
-    icon: <Pencil2Icon />,
+    icon: Pencil2Icon,
     route: {
       path: "feedback",
       lazy: () => import("./Feedback"),
