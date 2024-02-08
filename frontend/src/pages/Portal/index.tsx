@@ -9,7 +9,6 @@ import { FC, PropsWithChildren, Suspense, useState } from "react";
 import { Navigate, Outlet, RouteObject } from "react-router-dom";
 import { FileTextIcon, Pencil2Icon } from "@radix-ui/react-icons";
 import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import Navibar from "@/components/layout/Navibar";
 
@@ -128,11 +127,9 @@ const Layout = () => {
         />
         <div className="grid w-full grid-rows-header px-6">
           <Navibar />
-          <ScrollArea className="h-[calc(100vh_-_48px)] w-full">
-            <div className="py-6">
-              <Outlet />
-            </div>
-          </ScrollArea>
+          <div className="py-6">
+            <Outlet />
+          </div>
         </div>
       </div>
       {/* When screen size is smaller than md, show a float button to open and close sidebar */}
@@ -141,7 +138,7 @@ const Layout = () => {
         title="Sidebar Controller"
         variant={"default"}
         className={cn(
-          "fixed bottom-4 right-4 h-12 w-12 rounded-full backdrop-blur-md backdrop-filter",
+          "fixed bottom-4 left-4 h-12 w-12 rounded-full backdrop-blur-md backdrop-filter",
           ".3s translate-x-0 transition-transform ease-in-out md:hidden",
           {
             " translate-x-20": showSidebar,

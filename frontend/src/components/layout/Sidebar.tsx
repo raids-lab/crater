@@ -75,7 +75,7 @@ export function Sidebar({
         "flex flex-col items-center justify-between pb-4",
         "bg-sidebar text-sidebar-foreground",
         "fixed top-0 z-20 md:sticky md:top-16 md:z-0 md:w-full",
-        "min-h-full w-[240px]",
+        "min-h-full w-[200px]",
         ".3s transition-transform ease-in-out md:translate-x-0",
         className,
       )}
@@ -99,7 +99,7 @@ export function Sidebar({
             return item.children.length > 0 ? (
               <AccordionItem value={item.path} key={item.path}>
                 <AccordionTrigger className="h-10">
-                  <div className="flex flex-row items-center justify-start px-3 text-base">
+                  <div className="flex flex-row items-center justify-start px-3 text-sm">
                     <item.icon className="mr-3" />
                     {getTitleByPath([actived.view, item.path])}
                   </div>
@@ -112,7 +112,7 @@ export function Sidebar({
                         <button
                           key={`${item.path}-${subItemPath}`}
                           className={cn(
-                            " flex h-10 w-full flex-row items-center justify-start rounded-none pl-14 text-base font-normal hover:bg-primary/20",
+                            "  flex h-10 w-full flex-row items-center justify-start rounded-none pl-14 text-sm font-normal hover:bg-primary/20",
                             {
                               "bg-sidebar-item":
                                 item.path === actived.item &&
@@ -143,7 +143,7 @@ export function Sidebar({
                 key={`sidebar-item-${item.path}`}
                 className={cn(
                   "flex h-10 w-full flex-row items-center justify-start rounded-none",
-                  "px-7 text-base font-normal hover:bg-primary/20",
+                  "px-7 text-sm font-normal hover:bg-primary/20",
                   {
                     "bg-sidebar-item": item.path === actived.item,
                   },
@@ -170,7 +170,7 @@ export function Sidebar({
               type="button"
               onClick={() => navigate(`/${actived.view}/${item.path}`)}
               className={cn(
-                "flex h-10 w-full flex-row items-center justify-start px-4 text-base hover:bg-primary/20",
+                "flex h-10 w-full flex-row items-center justify-start px-4 text-sm hover:bg-primary/20",
                 {
                   "bg-sidebar-item": item.path === actived.item,
                 },
@@ -186,7 +186,7 @@ export function Sidebar({
           ))}
         </div>
         <p
-          className="select-none pt-2 text-center text-base font-light text-muted-foreground"
+          className="select-none pt-2 text-center text-sm font-light text-muted-foreground"
           onDoubleClick={() => {
             if (actived.view === "portal") {
               navigate("/recommend");

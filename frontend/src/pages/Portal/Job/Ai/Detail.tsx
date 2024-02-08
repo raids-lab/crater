@@ -53,86 +53,82 @@ const AiJobDetail: FC = () => {
   return (
     <div className="grid grid-flow-row-dense grid-cols-2 gap-4 md:grid-cols-5">
       {taskInfo && (
-        <div className="col-span-full space-y-4">
-          <h2 className="w-full text-base font-bold">任务详情</h2>
-          <Card>
-            <CardHeader className="p-3"></CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              {/* 包括字段有：taskName, id,nameSpace,status,slo,createdAt,startedAt,finishAt，duration，jct，image，jobName */}
-              <div className="col-span-full">
-                <span className="inline-block w-24 text-muted-foreground">
-                  任务名称：
-                </span>
-                <span className="font-mono">{taskInfo.taskName}</span>
-              </div>
-              <div className="col-span-full">
-                <span className="inline-block w-24 text-muted-foreground">
-                  任务 ID：
-                </span>
-                <span className="font-mono">{taskInfo.id}</span>
-              </div>
-              <div className="col-span-full">
-                <span className="inline-block w-24 text-muted-foreground">
-                  任务状态：
-                </span>
-                <span className="font-mono">{taskInfo.status}</span>
-              </div>
-              <div className="col-span-full">
-                <span className="inline-block w-24 text-muted-foreground">
-                  任务 SLO：
-                </span>
-                <span className="font-mono">{taskInfo.slo}</span>
-              </div>
-              <div className="col-span-full">
-                <span className="inline-block w-24 text-muted-foreground">
-                  创建时间：
-                </span>
-                {/* Date Format in YYYY-MM-DD HH:mm:ss */}
-                <span className="font-mono">{taskInfo.createdAt}</span>
-              </div>
-              <div className="col-span-full">
-                <span className="inline-block w-24 text-muted-foreground">
-                  开始时间：
-                </span>
-                <span className="font-mono">{taskInfo.startedAt}</span>
-              </div>
-              <div className="col-span-full">
-                <span className="inline-block w-24 text-muted-foreground">
-                  结束时间：
-                </span>
-                <span className="font-mono">{taskInfo.finishAt}</span>
-              </div>
-              <div className="col-span-full">
-                <span className="inline-block w-24 text-muted-foreground">
-                  持续时间：
-                </span>
-                <span className="font-mono">{taskInfo.duration}</span>
-              </div>
-              <div className="col-span-full">
-                <span className="inline-block w-24 text-muted-foreground">
-                  任务 JCT：
-                </span>
-                <span className="font-mono">{taskInfo.jct}</span>
-              </div>
-              <div className="col-span-full">
-                <span className="inline-block w-24 text-muted-foreground">
-                  任务镜像：
-                </span>
-                <span className="font-mono">{taskInfo.image}</span>
-              </div>
-              <div className="col-span-full">
-                <span className="inline-block w-24 text-muted-foreground">
-                  Job 名称：
-                </span>
-                <span className="font-mono">{taskInfo.jobName}</span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="col-span-full">
+          <CardHeader>任务详情</CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {/* 包括字段有：taskName, id,nameSpace,status,slo,createdAt,startedAt,finishAt，duration，jct，image，jobName */}
+            <div className="col-span-full">
+              <span className="inline-block w-24 text-muted-foreground">
+                任务名称：
+              </span>
+              <span className="font-mono">{taskInfo.taskName}</span>
+            </div>
+            <div className="col-span-full">
+              <span className="inline-block w-24 text-muted-foreground">
+                任务 ID：
+              </span>
+              <span className="font-mono">{taskInfo.id}</span>
+            </div>
+            <div className="col-span-full">
+              <span className="inline-block w-24 text-muted-foreground">
+                任务状态：
+              </span>
+              <span className="font-mono">{taskInfo.status}</span>
+            </div>
+            <div className="col-span-full">
+              <span className="inline-block w-24 text-muted-foreground">
+                任务 SLO：
+              </span>
+              <span className="font-mono">{taskInfo.slo}</span>
+            </div>
+            <div className="col-span-full">
+              <span className="inline-block w-24 text-muted-foreground">
+                创建时间：
+              </span>
+              {/* Date Format in YYYY-MM-DD HH:mm:ss */}
+              <span className="font-mono">{taskInfo.createdAt}</span>
+            </div>
+            <div className="col-span-full">
+              <span className="inline-block w-24 text-muted-foreground">
+                开始时间：
+              </span>
+              <span className="font-mono">{taskInfo.startedAt}</span>
+            </div>
+            <div className="col-span-full">
+              <span className="inline-block w-24 text-muted-foreground">
+                结束时间：
+              </span>
+              <span className="font-mono">{taskInfo.finishAt}</span>
+            </div>
+            <div className="col-span-full">
+              <span className="inline-block w-24 text-muted-foreground">
+                持续时间：
+              </span>
+              <span className="font-mono">{taskInfo.duration}</span>
+            </div>
+            <div className="col-span-full">
+              <span className="inline-block w-24 text-muted-foreground">
+                任务 JCT：
+              </span>
+              <span className="font-mono">{taskInfo.jct}</span>
+            </div>
+            <div className="col-span-full">
+              <span className="inline-block w-24 text-muted-foreground">
+                任务镜像：
+              </span>
+              <span className="font-mono">{taskInfo.image}</span>
+            </div>
+            <div className="col-span-full">
+              <span className="inline-block w-24 text-muted-foreground">
+                Job 名称：
+              </span>
+              <span className="font-mono">{taskInfo.jobName}</span>
+            </div>
+          </CardContent>
+        </Card>
       )}
       {taskInfo && taskInfo.profileStat && (
         <div className="col-span-full grid grid-cols-2 gap-4 md:grid-cols-5">
-          <h2 className="col-span-full pt-2 text-base font-bold">分析结果</h2>
           {/* //   pcie_tx_avg: 92.72305, // 展示数值 MB/s
               //   pcie_rx_avg: 717.1082, // 展示数值 MB/s
               //   cpu_usage_avg: 1.3134052, //展示数值
@@ -220,15 +216,12 @@ const AiJobDetail: FC = () => {
         </div>
       )}
       {taskLogs && (
-        <>
-          <h2 className="col-span-full pt-2 text-base font-bold">任务日志</h2>
-          <Card className="col-span-full">
-            <CardHeader className="p-3"></CardHeader>
-            <CardContent>
-              <pre className="whitespace-pre-wrap text-sm">{taskLogs[0]}</pre>
-            </CardContent>
-          </Card>
-        </>
+        <Card className="col-span-full">
+          <CardHeader>任务日志</CardHeader>
+          <CardContent>
+            <pre className="whitespace-pre-wrap text-sm">{taskLogs[0]}</pre>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

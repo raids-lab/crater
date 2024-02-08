@@ -2,16 +2,16 @@ import { Link } from "react-router-dom";
 import { ProfileForm } from "./Form";
 import { CardHeader, CardContent, Card } from "@/components/ui/card";
 
-import Logo2 from "@/assets/crater.svg";
+import CraterLogo from "@/components/icon/CraterLogo";
 
 export default function Login() {
   return (
-    <div className="relative grid h-screen w-screen bg-gradient-to-tr from-sidebar to-primary dark:from-black dark:to-secondary md:grid-cols-2 md:px-0">
+    <div className="relative grid h-screen w-screen bg-gradient-to-tr from-slate-800 to-primary dark:from-black dark:to-secondary md:grid-cols-2 md:px-0">
       <div
         className="absolute left-10 top-10 z-20 flex items-center text-lg font-medium"
         title="Switch signup and login"
       >
-        <img className="h-10 w-auto select-none" src={Logo2} alt="logo" />
+        <CraterLogo className="h-10 w-auto select-none text-white" />
       </div>
       <div className="absolute bottom-10 left-10 z-20">
         <blockquote className="space-y-2">
