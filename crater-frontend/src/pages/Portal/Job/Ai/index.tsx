@@ -232,7 +232,6 @@ const AiJobHome = () => {
   const [data, setData] = useState<TaskInfo[]>([]);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [showDeleted, setShowDeleted] = useState(false);
 
   const {
     data: taskList,
@@ -530,7 +529,7 @@ const AiJobHome = () => {
     if (isLoading) return;
     if (!taskList) return;
     const tableData: TaskInfo[] = taskList
-      .filter((task) => (showDeleted ? task.isDeleted : !task.isDeleted))
+      .filter((task) => !task.isDeleted)
       .map((t) => {
         const task = convertAiTask(t);
         return {
@@ -549,7 +548,7 @@ const AiJobHome = () => {
         };
       });
     setData(tableData);
-  }, [taskList, isLoading, showDeleted]);
+  }, [taskList, isLoading]);
 
   const updatedAt = useMemo(() => {
     return new Date(dataUpdatedAt).toLocaleString();
@@ -578,20 +577,6 @@ const AiJobHome = () => {
         </Sheet>
       </DataTable>
       <div className="flex flex-row items-center justify-start space-x-2">
-        <Button
-          className="h-8 min-w-fit"
-          variant="outline"
-          onClick={() => setShowDeleted((v) => !v)}
-        >
-          {showDeleted ? "显示当前任务" : "显示已删除任务"}
-        </Button>
-        <Button
-          className="h-8 min-w-fit"
-          variant="outline"
-          onClick={() => void refetchTaskList()}
-        >
-          刷新列表
-        </Button>
         <div className="pl-2 text-sm text-muted-foreground">
           数据更新于 {updatedAt}
         </div>

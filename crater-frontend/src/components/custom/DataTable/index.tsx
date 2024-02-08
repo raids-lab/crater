@@ -27,6 +27,7 @@ import {
 import { DataTablePagination } from "./DataTablePagination";
 import { DataTableToolbar, DataTableToolbarConfig } from "./DataTableToolbar";
 import { useLocalStorage } from "usehooks-ts";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 interface DataTableProps<TData, TValue>
   extends React.HTMLAttributes<HTMLDivElement> {
@@ -83,11 +84,13 @@ export function DataTable<TData, TValue>({
   });
 
   return (
-    <div className="space-y-4">
-      <DataTableToolbar table={table} config={toolbarConfig}>
-        {children}
-      </DataTableToolbar>
-      <div className="w-full rounded-md border bg-background shadow-sm">
+    <Card>
+      <CardHeader>
+        <DataTableToolbar table={table} config={toolbarConfig}>
+          {children}
+        </DataTableToolbar>
+      </CardHeader>
+      <CardContent>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -136,8 +139,8 @@ export function DataTable<TData, TValue>({
             )}
           </TableBody>
         </Table>
-      </div>
-      <DataTablePagination table={table} />
-    </div>
+        <DataTablePagination table={table} />
+      </CardContent>
+    </Card>
   );
 }
