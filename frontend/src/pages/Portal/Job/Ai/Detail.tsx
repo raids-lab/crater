@@ -9,7 +9,7 @@ import { useEffect, type FC } from "react";
 import { useParams } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
 import { ProgressBar } from "@/components/custom/ProgressBar";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SmallDataCard } from "@/components/custom/DataCard";
 
 // route format: /portal/job/ai/detail?id=xxx
@@ -51,10 +51,12 @@ const AiJobDetail: FC = () => {
   }
 
   return (
-    <div className="grid grid-flow-row-dense grid-cols-2 gap-4 md:grid-cols-5">
+    <div className="grid grid-flow-row-dense grid-cols-2 gap-6 md:grid-cols-5">
       {taskInfo && (
         <Card className="col-span-full">
-          <CardHeader>任务详情</CardHeader>
+          <CardHeader>
+            <CardTitle>任务详情</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-3 text-sm">
             {/* 包括字段有：taskName, id,nameSpace,status,slo,createdAt,startedAt,finishAt，duration，jct，image，jobName */}
             <div className="col-span-full">
@@ -217,9 +219,13 @@ const AiJobDetail: FC = () => {
       )}
       {taskLogs && (
         <Card className="col-span-full">
-          <CardHeader>任务日志</CardHeader>
+          <CardHeader>
+            <CardTitle>任务日志</CardTitle>
+          </CardHeader>
           <CardContent>
-            <pre className="whitespace-pre-wrap text-sm">{taskLogs[0]}</pre>
+            <pre className="whitespace-pre-wrap text-sm text-muted-foreground">
+              {taskLogs[0]}
+            </pre>
           </CardContent>
         </Card>
       )}

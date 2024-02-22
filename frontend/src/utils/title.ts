@@ -157,16 +157,12 @@ const pathDict: PathInfo[] = [
         title: "任务管理",
         children: [
           {
-            path: "default",
-            title: "通用任务",
+            path: "jupyter",
+            title: "Jupyter 任务",
           },
           {
             path: "ai",
             title: "AI 训练任务",
-          },
-          {
-            path: "dl",
-            title: "深度推荐训练任务",
           },
         ],
       },

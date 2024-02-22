@@ -51,7 +51,6 @@ import {
 import { useSetRecoilState } from "recoil";
 import { globalBreadCrumb } from "@/utils/store";
 import { TableDate } from "@/components/custom/TableDate";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import Status from "../Overview/Status";
 import Quota from "../Overview/Quota";
@@ -125,37 +124,37 @@ const statuses: {
 }[] = [
   {
     value: "Queueing",
-    label: "Queueing",
+    label: "检查配额",
     icon: ClockIcon,
   },
   {
     value: "Created",
-    label: "Created",
+    label: "已创建",
     icon: CircleIcon,
   },
   {
     value: "Pending",
-    label: "Pending",
+    label: "等待中",
     icon: ClockIcon,
   },
   {
     value: "Running",
-    label: "Running",
+    label: "运行中",
     icon: StopwatchIcon,
   },
   {
     value: "Failed",
-    label: "Failed",
+    label: "失败",
     icon: CrossCircledIcon,
   },
   {
     value: "Succeeded",
-    label: "Succeeded",
+    label: "成功",
     icon: CheckCircledIcon,
   },
   {
     value: "Preempted",
-    label: "Preempted",
+    label: "被抢占",
     icon: MinusCircledIcon,
   },
 ];
@@ -339,23 +338,23 @@ export const Component = () => {
             return null;
           }
           return (
-            <Badge
-              className={cn("flex h-7 w-fit items-center px-1.5", {
-                "bg-purple-500 hover:bg-purple-400":
-                  status.value === "Queueing",
-                "bg-slate-500 hover:bg-slate-400": status.value === "Created",
-                "bg-pink-500 hover:bg-pink-400": status.value === "Pending",
-                "bg-sky-500 hover:bg-sky-400": status.value === "Running",
-                "bg-red-500 hover:bg-red-400": status.value === "Failed",
-                "bg-emerald-500 hover:bg-emerald-400":
-                  status.value === "Succeeded",
-                "bg-orange-500 hover:bg-orange-400":
-                  status.value === "Preempted",
-              })}
-            >
-              {status.icon && <status.icon className="mr-[3px] h-4 w-4" />}
-              <span>{status.label}</span>
-            </Badge>
+            <div className="flex flex-row items-center justify-start">
+              <div
+                className={cn("flex h-3 w-3 rounded-full", {
+                  "bg-purple-500 hover:bg-purple-400":
+                    status.value === "Queueing",
+                  "bg-slate-500 hover:bg-slate-400": status.value === "Created",
+                  "bg-pink-500 hover:bg-pink-400": status.value === "Pending",
+                  "bg-sky-500 hover:bg-sky-400": status.value === "Running",
+                  "bg-red-500 hover:bg-red-400": status.value === "Failed",
+                  "bg-emerald-500 hover:bg-emerald-400":
+                    status.value === "Succeeded",
+                  "bg-orange-500 hover:bg-orange-400":
+                    status.value === "Preempted",
+                })}
+              ></div>
+              <div className="ml-1.5">{status.label}</div>
+            </div>
           );
         },
         filterFn: (row, id, value) => {
@@ -396,8 +395,8 @@ export const Component = () => {
           return (
             <div className="flex flex-row space-x-1">
               <Button
-                variant="ghost"
-                className="h-7 w-7 bg-sky-500 p-0 hover:bg-sky-400 disabled:bg-slate-400"
+                variant="outline"
+                className="h-8 w-8 p-0 hover:text-sky-700"
                 title="运行 Jupyter Lab"
                 onClick={() => {
                   toast.info("即将跳转至 Jupyter 页面");
@@ -407,17 +406,17 @@ export const Component = () => {
                 }}
                 disabled={row.getValue("status") !== "Running"}
               >
-                <PlayIcon className="text-white dark:text-black" />
+                <PlayIcon />
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <div>
                     <Button
-                      variant="ghost"
-                      className="h-7 w-7 bg-red-500 p-0 hover:bg-red-400"
+                      variant="outline"
+                      className="h-8 w-8 p-0 hover:text-red-700"
                       title="终止 Jupyter Lab"
                     >
-                      <StopIcon className="text-white dark:text-black" />
+                      <StopIcon />
                     </Button>
                   </div>
                 </AlertDialogTrigger>
