@@ -123,7 +123,12 @@ const Navibar: FC = () => {
           <DropdownMenuSeparator />
           {isAdminView ? (
             <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => navigate("/portal")}>
+              <DropdownMenuItem
+                onClick={() => {
+                  navigate("/portal");
+                  toast.success("切换至用户视图");
+                }}
+              >
                 切换为普通用户
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -131,15 +136,18 @@ const Navibar: FC = () => {
             <DropdownMenuGroup>
               {userInfo.role === "admin" && (
                 <DropdownMenuItem
-                  onClick={() => navigate("/admin/user/personal")}
+                  onClick={() => {
+                    navigate("/admin/user/personal");
+                    toast.success("切换至管理员视图");
+                  }}
                 >
                   切换为管理员
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem>个人空间</DropdownMenuItem>
+              <DropdownMenuItem disabled>个人空间</DropdownMenuItem>
             </DropdownMenuGroup>
           )}
-          <DropdownMenuItem>系统设置</DropdownMenuItem>
+          <DropdownMenuItem disabled>系统设置</DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           >

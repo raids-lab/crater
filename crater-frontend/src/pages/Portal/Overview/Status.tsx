@@ -94,7 +94,8 @@ const Status: FC = () => {
           },
         },
         stroke: {
-          colors: theme === "light" ? ["#fff"] : ["#000"],
+          colors: theme === "light" ? ["#fff"] : ["#1a1d23"],
+          // width: 0,
         },
       },
     };

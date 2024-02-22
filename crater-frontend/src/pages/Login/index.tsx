@@ -36,7 +36,7 @@ export default function Login() {
         </div>
       </div>
       <div className="flex items-center justify-center">
-        <Card className="w-full max-w-md shadow-2xl">
+        <Card className="w-full max-w-md shadow-2xl dark:border">
           <CardHeader>
             <h2 className="text-center text-2xl font-bold">用户登录</h2>
           </CardHeader>

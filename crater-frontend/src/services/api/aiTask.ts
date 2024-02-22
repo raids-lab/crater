@@ -25,7 +25,7 @@ export interface IAiTask {
   slo: number;
   status: string;
   jobName: string;
-  isDeleted: false;
+  isDeleted: boolean;
   profileStatus: number;
   profileStat: string;
   estimatedTime: number;
@@ -103,7 +103,7 @@ export interface AiTask {
   slo: number;
   status: string;
   jobName: string;
-  isDeleted: false;
+  isDeleted: boolean;
   profileStatus: number;
   profileStat?: ProfileStat;
   estimatedTime: number;

@@ -12,6 +12,7 @@ import { useOnClickOutside } from "usehooks-ts";
 import { getTitleByPath } from "@/utils/title";
 import CraterIcon from "../icon/CraterIcon";
 import CraterText from "../icon/CraterText";
+import { toast } from "sonner";
 
 export type SidebarSubItem = {
   route: RouteObject;
@@ -165,14 +166,14 @@ export function Sidebar({
       </ScrollArea>
       <div className="w-full">
         {/* <Separator className="mb-4 bg-sidebar-item" /> */}
-        <div className="px-2">
+        <div className="">
           {sidebarMenus.map((item) => (
             <button
               key={`sidebar-menu-${item.path}`}
               type="button"
               onClick={() => navigate(`/${actived.view}/${item.path}`)}
               className={cn(
-                "flex h-10 w-full flex-row items-center justify-start px-4 text-sm hover:bg-primary/20",
+                "flex h-10 w-full flex-row items-center justify-start px-6 text-sm hover:bg-primary/20",
                 {
                   "bg-sidebar-item": item.path === actived.item,
                 },
@@ -195,6 +196,7 @@ export function Sidebar({
             } else if (actived.view === "recommend") {
               navigate("/portal");
             }
+            toast.success("切换至另一视图");
           }}
         >
           v0.0.0

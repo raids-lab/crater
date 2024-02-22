@@ -17,6 +17,8 @@ import DatabaseIcon from "@/components/icon/DatabaseIcon";
 import LightHouseIcon from "@/components/icon/LightHouseIcon";
 import { PersonalUser } from "./User/Personal";
 import { GroupUser } from "./User/Group";
+import Jupyter from "./Job/Jupyter";
+import Training from "./Job/Training";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -51,17 +53,14 @@ const sidebarItems: SidebarItem[] = [
     children: [
       {
         route: {
-          path: "default",
+          path: "jupyter",
+          element: <Jupyter />,
         },
       },
       {
         route: {
           path: "ai",
-        },
-      },
-      {
-        route: {
-          path: "dl",
+          element: <Training />,
         },
       },
     ],

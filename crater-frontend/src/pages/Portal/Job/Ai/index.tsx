@@ -57,7 +57,6 @@ import { globalBreadCrumb } from "@/utils/store";
 import { useNavigate, useRoutes } from "react-router-dom";
 import AiJobDetail from "./Detail";
 import { TableDate } from "@/components/custom/TableDate";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import Status from "../../Overview/Status";
 import Quota from "../../Overview/Quota";
@@ -133,37 +132,37 @@ const statuses: {
 }[] = [
   {
     value: "Queueing",
-    label: "Queueing",
+    label: "检查配额",
     icon: ClockIcon,
   },
   {
     value: "Created",
-    label: "Created",
+    label: "已创建",
     icon: CircleIcon,
   },
   {
     value: "Pending",
-    label: "Pending",
+    label: "等待中",
     icon: ClockIcon,
   },
   {
     value: "Running",
-    label: "Running",
+    label: "运行中",
     icon: StopwatchIcon,
   },
   {
     value: "Failed",
-    label: "Failed",
+    label: "失败",
     icon: CrossCircledIcon,
   },
   {
     value: "Succeeded",
-    label: "Succeeded",
+    label: "成功",
     icon: CheckCircledIcon,
   },
   {
     value: "Preempted",
-    label: "Preempted",
+    label: "被抢占",
     icon: MinusCircledIcon,
   },
 ];
@@ -345,23 +344,23 @@ const AiJobHome = () => {
             return null;
           }
           return (
-            <Badge
-              className={cn("flex w-fit items-center px-1.5 py-1", {
-                "bg-purple-500 hover:bg-purple-400":
-                  status.value === "Queueing",
-                "bg-slate-500 hover:bg-slate-400": status.value === "Created",
-                "bg-pink-500 hover:bg-pink-400": status.value === "Pending",
-                "bg-sky-500 hover:bg-sky-400": status.value === "Running",
-                "bg-red-500 hover:bg-red-400": status.value === "Failed",
-                "bg-emerald-500 hover:bg-emerald-400":
-                  status.value === "Succeeded",
-                "bg-orange-500 hover:bg-orange-400":
-                  status.value === "Preempted",
-              })}
-            >
-              {status.icon && <status.icon className="mr-[3px] h-4 w-4" />}
-              <span>{status.label}</span>
-            </Badge>
+            <div className="flex flex-row items-center justify-start">
+              <div
+                className={cn("flex h-3 w-3 rounded-full", {
+                  "bg-purple-500 hover:bg-purple-400":
+                    status.value === "Queueing",
+                  "bg-slate-500 hover:bg-slate-400": status.value === "Created",
+                  "bg-pink-500 hover:bg-pink-400": status.value === "Pending",
+                  "bg-sky-500 hover:bg-sky-400": status.value === "Running",
+                  "bg-red-500 hover:bg-red-400": status.value === "Failed",
+                  "bg-emerald-500 hover:bg-emerald-400":
+                    status.value === "Succeeded",
+                  "bg-orange-500 hover:bg-orange-400":
+                    status.value === "Preempted",
+                })}
+              ></div>
+              <div className="ml-1.5">{status.label}</div>
+            </div>
           );
         },
         filterFn: (row, id, value) => {
