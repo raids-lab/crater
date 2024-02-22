@@ -11,6 +11,7 @@ import { FileTextIcon, Pencil2Icon } from "@radix-ui/react-icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import Navibar from "@/components/layout/Navibar";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -125,12 +126,15 @@ const Layout = () => {
             "-translate-x-full": !showSidebar,
           })}
         />
-        <div className="grid w-full grid-rows-header px-6">
-          <Navibar />
-          <div className="py-6">
-            <Outlet />
+        <ScrollArea className="h-screen w-screen md:w-[calc(100vw_-_200px)]">
+          <div className="grid w-full grid-rows-header px-6">
+            <Navibar />
+            <div className="py-6">
+              <Outlet />
+            </div>
           </div>
-        </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       </div>
       {/* When screen size is smaller than md, show a float button to open and close sidebar */}
       {/* See https://reacthustle.com/blog/next-js-tailwind-responsive-sidebar-layout*/}

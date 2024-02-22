@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { FC, PropsWithChildren, Suspense, useState } from "react";
 import { Navigate, Outlet, RouteObject } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import Navibar from "@/components/layout/Navibar";
 import {
@@ -127,13 +127,14 @@ const Layout = () => {
             "-translate-x-full": !showSidebar,
           })}
         />
-        <ScrollArea className="h-screen w-full overflow-y-hidden">
+        <ScrollArea className="h-screen w-screen md:w-[calc(100vw_-_200px)]">
           <div className="grid w-full grid-rows-header px-6">
             <Navibar />
             <div className="py-6">
               <Outlet />
             </div>
           </div>
+          <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </div>
       {/* When screen size is smaller than md, show a float button to open and close sidebar */}
