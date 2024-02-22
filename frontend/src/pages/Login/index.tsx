@@ -2,7 +2,8 @@ import { Link } from "react-router-dom";
 import { ProfileForm } from "./Form";
 import { CardHeader, CardContent, Card } from "@/components/ui/card";
 
-import CraterLogo from "@/components/icon/CraterLogo";
+import CraterIcon from "@/components/icon/CraterIcon";
+import CraterText from "@/components/icon/CraterText";
 
 export default function Login() {
   return (
@@ -11,7 +12,10 @@ export default function Login() {
         className="absolute left-10 top-10 z-20 flex items-center text-lg font-medium"
         title="Switch signup and login"
       >
-        <CraterLogo className="h-10 w-auto select-none text-white" />
+        <div className="flex h-14 w-full flex-row items-center justify-center text-white">
+          <CraterIcon className="mr-1 h-8 w-8" />
+          <CraterText className="h-4" />
+        </div>
       </div>
       <div className="absolute bottom-10 left-10 z-20">
         <blockquote className="space-y-2">

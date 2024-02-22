@@ -10,7 +10,8 @@ import { RouteObject, useLocation, useNavigate } from "react-router-dom";
 import { ScrollArea } from "../ui/scroll-area";
 import { useOnClickOutside } from "usehooks-ts";
 import { getTitleByPath } from "@/utils/title";
-import CraterLogo from "../icon/CraterLogo";
+import CraterIcon from "../icon/CraterIcon";
+import CraterText from "../icon/CraterText";
 
 export type SidebarSubItem = {
   route: RouteObject;
@@ -82,8 +83,9 @@ export function Sidebar({
       ref={ref}
     >
       {/* Logo */}
-      <div className="flex h-14 w-full items-center justify-center pb-0 pt-3">
-        <CraterLogo className="h-10 w-auto select-none pr-2" />
+      <div className="flex h-14 w-full flex-row items-center justify-center pb-0 pt-3">
+        <CraterIcon className="mr-1 h-8 w-8" />
+        <CraterText className="h-3.5" />
       </div>
       {/* Calculate of ScrollArea height: */}
       {/* 100vh - (40px * 2 + 56px + 48px) */}
