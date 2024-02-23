@@ -39,10 +39,13 @@ const router = createBrowserRouter([
 const queryClient = new QueryClient();
 
 async function enableMocking() {
-  // if (process.env.NODE_ENV !== "development") {
-  //   return;
-  // }
-  return;
+  // Enable mocking in development when VITE_USE_MSW is true
+  if (
+    process.env.NODE_ENV !== "development" ||
+    import.meta.env.VITE_USE_MSW !== "true"
+  ) {
+    return;
+  }
 
   const { worker } = await import("./mocks/browser");
 

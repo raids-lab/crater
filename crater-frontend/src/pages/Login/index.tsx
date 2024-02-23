@@ -13,7 +13,7 @@ export default function Login() {
         title="Switch signup and login"
       >
         <div className="flex h-14 w-full flex-row items-center justify-center text-white">
-          <CraterIcon className="mr-1 h-8 w-8" />
+          <CraterIcon className="mr-1.5 h-8 w-8" />
           <CraterText className="h-4" />
         </div>
       </div>
