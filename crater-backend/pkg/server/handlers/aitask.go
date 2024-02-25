@@ -203,6 +203,14 @@ func (mgr *AITaskMgr) Delete(c *gin.Context) {
 		return
 	}
 	username, _ := c.Get("username")
+	// check if user is authorized to delete the task
+	_, err = mgr.taskService.GetByUserAndID(username.(string), req.TaskID)
+	if err != nil {
+		msg := fmt.Sprintf("get task failed, err %v", err)
+		log.Error(msg)
+		resputil.WrapFailedResponse(c, msg, 50006)
+		return
+	}
 	mgr.NotifyTaskUpdate(req.TaskID, username.(string), util.DeleteTask)
 	if req.ForceDelete {
 		err = mgr.taskService.ForceDeleteByUserAndID(username.(string), req.TaskID)
@@ -264,12 +272,12 @@ func (mgr *AITaskMgr) GetQuota(c *gin.Context) {
 		HardUsed: quotaInfo.HardUsed,
 		SoftUsed: quotaInfo.SoftUsed,
 	}
-	log.Infof("get quota success, user: %v", username.(string))
+	// log.Infof("get quota success, user: %v", username.(string))
 	resputil.WrapSuccessResponse(c, resp)
 }
 
 func (mgr *AITaskMgr) GetTaskStats(c *gin.Context) {
-	log.Infof("Task Count Statistic, url: %s", c.Request.URL)
+	// log.Infof("Task Count Statistic, url: %s", c.Request.URL)
 	username, _ := c.Get("username")
 	taskCountList, err := mgr.taskService.GetUserTaskStatusCount(username.(string))
 	if err != nil {
