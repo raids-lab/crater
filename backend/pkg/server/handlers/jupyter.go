@@ -235,6 +235,14 @@ func (mgr *JupyterMgr) Delete(c *gin.Context) {
 		return
 	}
 	username, _ := c.Get("username")
+	// check if task.username is same as username
+	_, err = mgr.taskService.GetByUserAndID(username.(string), req.TaskID)
+	if err != nil {
+		msg := fmt.Sprintf("get task failed, err %v", err)
+		log.Error(msg)
+		resputil.WrapFailedResponse(c, msg, 50007)
+		return
+	}
 	mgr.NotifyTaskUpdate(req.TaskID, username.(string), util.DeleteTask)
 	if req.ForceDelete {
 		err = mgr.taskService.ForceDeleteByUserAndID(username.(string), req.TaskID)

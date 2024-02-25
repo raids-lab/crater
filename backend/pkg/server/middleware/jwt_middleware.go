@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -36,9 +35,7 @@ func JwtAuthMiddleware(secret string) gin.HandlerFunc {
 			}
 		}
 		authHeader := c.Request.Header.Get("Authorization")
-		fmt.Println(authHeader)
 		t := strings.Split(authHeader, " ")
-		fmt.Println(len(t))
 		if len(t) == 2 {
 			authToken := t[1]
 			authorized, err := util.IsAuthorized(authToken, secret)
