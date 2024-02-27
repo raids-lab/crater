@@ -1,32 +1,21 @@
 stages:
-  - install
   - build
 
 # 定义使用的镜像
-image: node:20
-
-# 安装依赖阶段
-install_dependencies:
-  stage: install
-  script:
-    - npm install -g pnpm
-    - pnpm install
-  only:
-    - main
-  cache:
-    paths:
-      - node_modules/
+image: node:21
 
 # 构建阶段
 build:
   stage: build
   script:
+    - npm install -g pnpm
+    - pnpm install
     - pnpm build
   only:
     - main
-  artifacts:
-    paths:
-      - dist/
   cache:
     paths:
       - node_modules/
+  artifacts:
+    paths:
+      - dist/
