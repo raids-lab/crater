@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
+import { TableDate } from "@/components/custom/TableDate";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -88,7 +89,7 @@ const statuses: {
   },
   {
     value: "Deleted",
-    label: "已删除",
+    label: "已停止",
     icon: StopIcon,
   },
 ];
@@ -118,6 +119,12 @@ const getHeader = (key: string): string => {
       return "创建用户";
     case "status":
       return "状态";
+    case "createdAt":
+      return "创建于";
+    case "startedAt":
+      return "开始于";
+    case "finishAt":
+      return "删除于";
     default:
       return key;
   }
@@ -129,6 +136,9 @@ type JTaskInfo = {
   isDeleted: string;
   userName: string;
   status: string;
+  createdAt: string;
+  startedAt: string;
+  finishAt: string;
   //finishAt: string;
   //gpus: string | number | undefined;
 };
@@ -190,7 +200,13 @@ const Jupyter: FC = () => {
           jobName: task.jobName,
           isDeleted: task.isDeleted === true ? "已删除" : "未删除",
           userName: task.userName,
-          status: task.isDeleted === true ? "Deleted" : task.status,
+          status:
+            task.isDeleted === true && task.status === "Running"
+              ? "Deleted"
+              : task.status,
+          createdAt: task.createdAt,
+          startedAt: task.startedAt,
+          finishAt: task.finishAt,
           //priority: task.slo ? "high" : "low",
           // profileStatus:
           //   // 分析状态：profileStatus = 1 或 2 都显示分析中，不需要等待分析这个选项了
@@ -316,6 +332,32 @@ const Jupyter: FC = () => {
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id));
         },
+      },
+      {
+        accessorKey: "createdAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("createdAt")}
+          />
+        ),
+        cell: ({ row }) => {
+          return <TableDate date={row.getValue("createdAt")}></TableDate>;
+        },
+        sortingFn: "datetime",
+      },
+      {
+        accessorKey: "startedAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("startedAt")}
+          />
+        ),
+        cell: ({ row }) => {
+          return <TableDate date={row.getValue("startedAt")}></TableDate>;
+        },
+        sortingFn: "datetime",
       },
       {
         id: "actions",
