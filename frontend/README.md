@@ -1,9 +1,6 @@
-<p align="center">
-<img src="./public/vite.svg" alt="Logo" width="200"/>
-</p>
-<h1 align="center">Crater</h1>
+# Crater Web Frontend
 
-[![Pipeline Status](https://gitlab.act.buaa.edu.cn/gpu-portal/gpu-portal-frontend/badges/main/pipeline.svg)](https://gitlab.act.buaa.edu.cn/gpu-portal/gpu-portal-frontend/-/commits/main)
+[![Pipeline Status](https://gitlab.act.buaa.edu.cn/raids/resource-scheduling/crater/web-frontend/badges/main/pipeline.svg)](https://gitlab.act.buaa.edu.cn/raids/resource-scheduling/crater/web-frontend/-/commits/main)
 [![Develop Version](https://img.shields.io/badge/Develop-0.1.0-orange)](http://192.168.5.60:8888/)
 [![Release Version](https://img.shields.io/badge/Release-0.1.0-blue)](http://192.168.5.60:32088/)
 
@@ -26,6 +23,16 @@ pnpm -v
 # 8.9.2
 ```
 
+## 2. 开发
+
+### 2.1 项目配置
+
+> 这一步非常重要！请您配置后再进行开发工作！
+
+如果您使用 Visual Studio Code 开发本项目，请参考 [Profiles in Visual Studio Code](https://code.visualstudio.com/docs/editor/profiles#_import)，导入 `.vscode/React.code-profile` 路径下的配置文件。配置文件中包含项目所需的基本插件和配置，导入后即可直接开发。
+
+如果您使用其他 IDE，则需要手动配置开发环境。您可以查看 `.vscode/React.code-profile` 文件内容，看看有哪些需要安装的插件或设置（如 Prettier, Eslint 等）。
+
 现在，您可以克隆本项目并在本地运行：
 
 ```bash
@@ -39,11 +46,7 @@ pnpm install
 pnpm dev
 ```
 
-## 2. 开发
-
-如果您使用 _Visual Studio Code_ 开发本项目，可参考 [Profiles in Visual Studio Code](https://code.visualstudio.com/docs/editor/profiles#_import)，导入 `.vscode/React.code-profile` 路径下的配置文件。配置文件中包含项目所需的基本插件和配置，导入后即可直接开发。
-
-如果您使用其他 IDE，则需要手动配置开发环境。
+### 2.2 主要技术栈
 
 本项目使用的主要技术栈如下：
 
@@ -68,6 +71,21 @@ pnpm dev
 - [Commitlint](https://commitlint.js.org/#/)：用于提交信息的代码检查工具。
 - [Commitizen](https://github.com/commitizen/cz-cli)：commitizen 命令行工具。
 - [Husky](https://typicode.github.io/husky/#/)：Git 钩子。
+
+### 2.3 Mock 接口
+
+当前端需要开发新功能，但后端相应接口还没有开发完成时，需要在前端模拟接口。项目使用了 MSW 工具。
+
+- [MSW](https://mswjs.io/)：an API mocking library that allows you to write client-agnostic mocks and reuse them across any frameworks, tools, and environments.
+
+要开启此功能，可以修改 `.env.development` ，设置 `VITE_USE_MSW=true`，请避免将此改动同时提交到代码中。 
+
+```bash
+VITE_API_BASE_URL="http://localhost:8099/"
+VITE_USE_MSW=false
+```
+
+之后，在 `src/mocks/handlers.ts` 中添加新的处理函数。
 
 ## 3. 部署
 
@@ -111,11 +129,20 @@ gpu-portal-frontend
 ├── public/          # 静态文件
 │
 ├── src/             # 项目根目录
-│   ├── assets/      # 图片、图标等
-│   ├── compoments/  # 通用组件
+│   ├── assets/      # 静态资源
+│   ├── compoments/  # 组件
+│   │   ├── custom/  # 自定义组件
+│   │   ├── icon/    # 图标组件
+│   │   ├── layout/  # 整体布局
+│   │   └── ui/      # Shadcn 生成组件
 │   ├── hooks/       # 通用 Hook
 │   ├── lib/         # 通用 Library
+│   ├── mocks/       # 后端接口模拟
 │   ├── pages/       # 页面
+│   │   ├── Admin/   # 管理员
+│   │   ├── Portal/  # AI Job
+│   │   ├── PortalR/ # Recommend DL Job
+│   │   └── ...
 │   ├── services/    # 后端 API
 │   ├── utils/       # 日志记录器、存储等
 │   ├── ...
@@ -128,4 +155,4 @@ gpu-portal-frontend
 
 ## 5. 未解决的问题
 
-1. 在深色模式下，使用浏览器的自动填充功能时，INPUT 背景变为白色。相关讨论请参见 [Tailwind autofill: prefix on form inputs not working](https://github.com/tailwindlabs/tailwindcss/discussions/8679)。
+1. 在深色模式下，使用浏览器的自动填充功能时，INPUT 背景变为白色。相关讨论：[Tailwind autofill: prefix on form inputs not working](https://github.com/tailwindlabs/tailwindcss/discussions/8679)。
