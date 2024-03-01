@@ -15,9 +15,9 @@ build_frontend:
   cache:
     paths:
       - node_modules/
-    artifacts:
-      paths:
-        - dist/
+  artifacts:
+    paths:
+      - dist/
 
 # 构建镜像并推送到仓库
 build_image:
