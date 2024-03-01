@@ -1,12 +1,11 @@
 stages:
-  - build
+  - build_frontend
+  - build_image
 
-# 定义使用的镜像
-image: node:21
-
-# 构建阶段
-build:
-  stage: build
+# 构建前端代码
+build_frontend:
+  stage: build_frontend
+  image: node:21
   script:
     - npm install -g pnpm
     - pnpm install
@@ -16,6 +15,26 @@ build:
   cache:
     paths:
       - node_modules/
-  artifacts:
-    paths:
-      - dist/
+    artifacts:
+      paths:
+        - dist/
+
+# 构建镜像并推送到仓库
+build_image:
+  stage: build_image
+  image:
+    name: harbor.act.buaa.edu.cn/crater/kaniko-executor:debug
+    entrypoint: [""]
+  script:
+    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"},\"$(echo -n $CI_DEPENDENCY_PROXY_SERVER | awk -F[:] '{print $1}')\":{\"auth\":\"$(printf "%s:%s" ${CI_DEPENDENCY_PROXY_USER} "${CI_DEPENDENCY_PROXY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+    - >-
+      /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
+      --destination "${CI_REGISTRY_IMAGE}:${CI_COMMIT_TAG}"
+  only:
+    - main
+  rules:
+    - if: $CI_COMMIT_TAG
+  dependencies:
+    - build_frontend
