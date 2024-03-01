@@ -1,6 +1,19 @@
 stages:
+  - test
   - build_frontend
   - build_image
+
+test_agent:
+  stage: test
+  image:
+    name: bitnami/kubectl:latest
+    entrypoint: [""]
+  script:
+    - kubectl config get-contexts
+    - kubectl config use-context path/to/agent/project:agent-name
+    - kubectl get pods
+  only:
+    - main
 
 # Build frontend and generate artifacts
 build_frontend:
