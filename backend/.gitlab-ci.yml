@@ -11,7 +11,6 @@ build_backend:
   stage: build_backend
   image: golang:1.21-alpine
   script:
-    - export GIN_MODE=release
     - go env -w GO111MODULE=on
     - go env -w GOPROXY=https://goproxy.cn,direct
     - go mod download

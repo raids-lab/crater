@@ -1,5 +1,6 @@
 FROM alpine AS runner
 WORKDIR /
+ENV GIN_MODE=release
 COPY ./bin/controller .
 COPY ./dbconf.yaml .
 
