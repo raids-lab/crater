@@ -10,7 +10,7 @@ test_agent:
     entrypoint: [""]
   script:
     - kubectl config get-contexts
-    - kubectl config use-context path/to/agent/project:agent-name
+    - kubectl config use-context raids/resource-scheduling/crater/web-frontend:crater-cluster
     - kubectl get pods
   only:
     - main
@@ -50,5 +50,7 @@ build_image:
       --context "${CI_PROJECT_DIR}"
       --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
       --destination "${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_TAG}"
+  rules:
+    - if: $CI_COMMIT_TAG
   dependencies:
     - build_frontend
