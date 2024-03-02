@@ -199,7 +199,7 @@ export function Sidebar({
             toast.success("切换至另一视图");
           }}
         >
-          v0.0.0
+          {import.meta.env.VITE_APP_VERSION}
         </p>
       </div>
     </div>

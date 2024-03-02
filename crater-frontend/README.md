@@ -1,14 +1,13 @@
 # Crater Web Frontend
 
 [![Pipeline Status](https://gitlab.act.buaa.edu.cn/raids/resource-scheduling/crater/web-frontend/badges/main/pipeline.svg)](https://gitlab.act.buaa.edu.cn/raids/resource-scheduling/crater/web-frontend/-/commits/main)
-[![Develop Version](https://img.shields.io/badge/Develop-0.1.0-orange)](http://192.168.5.60:8888/)
-[![Release Version](https://img.shields.io/badge/Release-0.1.0-blue)](http://192.168.5.60:32088/)
+[![Release Version](https://img.shields.io/badge/Release-0.1-blue)](https://crater.act.buaa.edu.cn/)
 
 Crater 是一个基于 Kubernetes 的 GPU 集群管理系统，提供了一站式的 GPU 集群管理解决方案。要了解更多信息，请访问 [GPU 集群管理与作业调度 Portal 设计和任务分解](https://docs.qq.com/doc/DWENFVWpzSW16TGFV)。
 
-## 1. 安装
+## 1. 环境准备
 
-在开始之前，请确保您的开发环境中已安装 Node.js 和 pnpm。如果尚未安装，请参考以下步骤：
+在开始之前，请确保您的开发环境中已安装 Node.js 和 pnpm。如果您参与的前端项目较多，建议您使用 [nvm](https://github.com/nvm-sh/nvm) 来管理 Node.js 版本。nvm 的安装与升级方法请参考 [nvm 官方文档](https://github.com/nvm-sh/nvm?tab=readme-ov-file#installing-and-updating)。否则，您可以直接安装 Node.js 和 pnpm：
 
 - Node.js: [Win / Mac](https://nodejs.org/en/download) | [Linux](https://github.com/nodesource/distributions/blob/master/README.md#installation-instructions)
 - Pnpm: `npm install -g pnpm@latest`
@@ -17,10 +16,10 @@ Crater 是一个基于 Kubernetes 的 GPU 集群管理系统，提供了一站�
 
 ```bash
 node -v
-# v20.8.1
+# v20.x.x
 
 pnpm -v
-# 8.9.2
+# 8.x.x
 ```
 
 ## 2. 开发
@@ -78,7 +77,7 @@ pnpm dev
 
 - [MSW](https://mswjs.io/)：an API mocking library that allows you to write client-agnostic mocks and reuse them across any frameworks, tools, and environments.
 
-要开启此功能，可以修改 `.env.development` ，设置 `VITE_USE_MSW=true`，请避免将此改动同时提交到代码中。 
+要开启此功能，可以修改 `.env.development` ，设置 `VITE_USE_MSW=true`，请避免将此改动同时提交到代码中。
 
 ```bash
 VITE_API_BASE_URL="http://localhost:8099/"
@@ -87,40 +86,24 @@ VITE_USE_MSW=false
 
 之后，在 `src/mocks/handlers.ts` 中添加新的处理函数。
 
+### 2.4 依赖管理
+
+本项目使用 pnpm 作为依赖管理工具，定期更新依赖是一个好习惯。
+
+- 可以使用 `pnpm outdated` 命令查看是否有新版本的依赖包。
+- 通过 `pnpm update` 命令，可以更新有小版本更新的依赖包。
+- 通过 `pnpm update --latest` 命令，将会更新所有依赖项到它们的最新版本（包括大版本更新）。这可能会导致依赖项之间的不兼容性问题，需要仔细评估。
+
 ## 3. 部署
 
-### 3.1 使用 Docker 部署
-
-为快速部署本项目，您可以使用基于 Docker 的 Nginx 托管。Nginx 配置模板位于 `deploy/nginx.conf`。参考以下命令：
+要部署到集群中时，只需打上相应的标签。
 
 ```bash
-pnpm build  # output /dist
-
-docker run -d -p 8888:80 \
--v /home/lyl/workspace/nginx.conf:/etc/nginx/nginx.conf \
--v /home/lyl/workspace/dist:/usr/share/nginx/html \
-nginx
+git tag v0.x.x
+git push origin --tag
 ```
 
-此命令启动一个带有 Nginx 的 Docker 容器，并将容器的端口 80 映射到主机的端口 8888。它还挂载了 Nginx 配置文件 nginx.conf 和位于 dist 目录中的应用程序构建文件，以便通过 `docker restart` 命令快速更新。
-
-确保将路径 `/home/lyl/workspace/nginx.conf` 和 `/home/lyl/workspace/dist`dist 替换为您的系统上实际的 Nginx 配置文件和应用程序构建文件所在的路径。
-
-一旦 Docker 容器运行，您应该能够通过在 web 浏览器中访问 `[host_ip]:8888` ，以查看部署的应用程序。
-
-### 3.2 使用 Kubernetes 部署
-
-确保 `make.sh` 具有可执行权限（使用 `chmod +x make.sh`）。
-
-- 使用 `./make.sh build "IMAGE_URL:VERSION"` 来在本地构建应用，然后构建并上传 Docker 镜像。
-- 使用 `./make.sh deploy "IMAGE_URL:VERSION"` 来部署到 Kubernetes。
-
-```bash
-bash make.sh build harbor.act.buaa.edu.cn/crater/web-frontend:v0.1.3
-bash make.sh deploy harbor.act.buaa.edu.cn/crater/web-frontend:v0.1.3
-```
-
-确保项目中有可运行的 pnpm 构建脚本，并且 dist 目录是构建输出的位置。脚本假设你有权限执行 Docker、kubectl 和 pnpm 命令。
+GitLab CI/CD 会根据标签进行部署。
 
 ## 4. 项目结构
 
