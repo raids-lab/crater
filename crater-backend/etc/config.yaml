@@ -2,7 +2,7 @@ enableProfiling: false
 # prometheusAPI: http://prometheus-k8s.kubesphere-monitoring-system
 prometheusAPI: http://***REMOVED***:31110
 profilingTimeout: 120
-dbHost: mycluster.jupyter
+dbHost: dbcluster.crater
 dbPort: 3306
 dbUser: root
 dbPassword: buaak8sportal@2023mysql
