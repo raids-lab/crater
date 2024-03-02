@@ -1,8 +1,8 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ai-portal-backend-ingress
-  namespace: ai-portal
+  name: crater-web-backend-ingress
+  namespace: crater
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /$2
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
@@ -20,6 +20,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: ai-portal-backend-svc
+                name: crater-web-backend-svc
                 port:
                   number: 80
