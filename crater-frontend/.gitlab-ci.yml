@@ -6,7 +6,7 @@ stages:
 test_agent:
   stage: test
   image:
-    name: bitnami/kubectl:latest
+    name: harbor.act.buaa.edu.cn/crater/bitnami-kubectl:240302
     entrypoint: [""]
   script:
     - kubectl config get-contexts
