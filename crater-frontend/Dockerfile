@@ -1,8 +1,8 @@
 # 使用 Nginx 稳定版的 Alpine 版本作为基础镜像
-FROM nginx:stable-alpine
+FROM harbor.act.buaa.edu.cn/crater/nginx:240302
 
 # 复制定制的 nginx 配置
-COPY ./deploy/k8s-nginx.conf /etc/nginx/nginx.conf
+COPY ./deploy/nginx.conf /etc/nginx/nginx.conf
 
 # 从本地复制构建好的 dist 目录
 COPY ./dist /usr/share/nginx/html
