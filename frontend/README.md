@@ -3,7 +3,11 @@
 [![Pipeline Status](https://gitlab.act.buaa.edu.cn/raids/resource-scheduling/crater/web-frontend/badges/main/pipeline.svg)](https://gitlab.act.buaa.edu.cn/raids/resource-scheduling/crater/web-frontend/-/commits/main)
 [![Release Version](https://img.shields.io/badge/Release-0.1-blue)](https://crater.act.buaa.edu.cn/)
 
-Crater 是一个基于 Kubernetes 的 GPU 集群管理系统，提供了一站式的 GPU 集群管理解决方案。要了解更多信息，请访问 [GPU 集群管理与作业调度 Portal 设计和任务分解](https://docs.qq.com/doc/DWENFVWpzSW16TGFV)。
+Crater 是一个基于 Kubernetes 的 GPU 集群管理系统，提供了一站式的 GPU 集群管理解决方案。
+
+- 网站访问：https://crater.act.buaa.edu.cn/
+- 需求分析：[GPU 集群管理与作业调度 Portal 设计和任务分解](https://docs.qq.com/doc/DWENFVWpzSW16TGFV)
+- 任务排期：[Crater Group Milestone](https://gitlab.act.buaa.edu.cn/groups/raids/resource-scheduling/crater/-/milestones)
 
 ## 1. 环境准备
 
@@ -32,7 +36,7 @@ pnpm -v
 
 如果您使用其他 IDE，则需要手动配置开发环境。您可以查看 `.vscode/React.code-profile` 文件内容，看看有哪些需要安装的插件或设置（如 Prettier, Eslint 等）。
 
-现在，您可以克隆本项目并在本地运行：
+设置好 IDE 后，您可以克隆本项目并在本地运行：
 
 ```bash
 git clone git@gitlab.act.buaa.edu.cn:raids/resource-scheduling/crater/web-frontend.git
@@ -96,14 +100,40 @@ VITE_USE_MSW=false
 
 ## 3. 部署
 
-要部署到集群中时，只需打上相应的标签。
+### 3.1 首次部署
+
+与部署相关的文件位于 `deploy/` 文件夹下。
+
+```bash
+deploy/
+├── ingress                   # Ingress-Nginx 相关
+│   ├── create-secret.sh      # 生成 TLS 保密字典的脚本
+│   └── frontend-ingress.yaml # 前端 Ingress 配置
+├── nginx.conf                # 用于 Dockerfile
+└── nginx.yaml                # 前端部署配置
+```
+
+### 3.2 GitLab CI/CD
+
+完成 `nginx.yaml`, `frontend-ingress.yaml` 的部署后，要更新代码变动到集群中时，只需打上相应的标签。
 
 ```bash
 git tag v0.x.x
 git push origin --tag
 ```
 
-GitLab CI/CD 会根据标签进行部署。
+使用命令行，或在 Gitlab 网页端操作，GitLab CI/CD 会根据标签自动部署。
+
+### 3.3 证书过期
+
+ACT 的 HTTPS 证书每 3 个月更新一次，在证书过期前，将新证书的 `*.zip` 文件拖入 `deploy/ingress` 文件夹下，运行脚本：
+
+```bash
+# 如果没有可执行权限
+chmod +x create-secret.sh
+# 更新 TLS 保密字典并推送到集群中
+bash create-secret.sh -tls {xxxxx.zip} -n crater crater-tls-secret
+```
 
 ## 4. 项目结构
 
