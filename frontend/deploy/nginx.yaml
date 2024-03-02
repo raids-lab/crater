@@ -2,23 +2,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ai-portal-frontend
-  namespace: ai-portal
+  name: crater-web-frontend
+  namespace: crater
   labels:
-    app: ai-portal-frontend
+    app: crater-web-frontend
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ai-portal-frontend
+      app: crater-web-frontend
   template:
     metadata:
       labels:
-        app: ai-portal-frontend
+        app: crater-web-frontend
     spec:
       containers:
-        - name: ai-portal-frontend
-          image: harbor.act.buaa.edu.cn/crater/web-frontend:v0.1.7
+        - name: crater-web-frontend-container
+          image: harbor.act.buaa.edu.cn/crater/web-frontend:v0.1.16
           ports:
             - containerPort: 80
 
@@ -27,11 +27,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: ai-portal-frontend-svc
-  namespace: ai-portal
+  name: crater-web-frontend-svc
+  namespace: crater
 spec:
   selector:
-    app: ai-portal-frontend
+    app: crater-web-frontend
   ports:
     - protocol: TCP
       port: 80
