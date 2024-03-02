@@ -1,3 +1,3 @@
 ci_access:
   groups:
-    - id: path/to/raids/resource-scheduling/crater
+    - id: raids/resource-scheduling/crater
