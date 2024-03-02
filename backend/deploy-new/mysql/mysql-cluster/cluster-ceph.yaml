@@ -10,7 +10,7 @@
 apiVersion: mysql.oracle.com/v2
 kind: InnoDBCluster
 metadata:
-  name: mysql-cluster-ceph
+  name: dbcluster
   namespace: crater
 spec:
   secretName: crater-mysql-secret
