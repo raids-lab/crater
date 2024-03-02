@@ -3,12 +3,14 @@ stages:
   - build_image
   - deploy
 
+variables:
+  HARBOR_REGISTRY_IMAGE: harbor.act.buaa.edu.cn/crater/web-frontend
+
 # Build frontend and generate artifacts
 build_frontend:
   stage: build_frontend
   image: harbor.act.buaa.edu.cn/crater/node:21
   script:
-    - echo "Building frontend..."
     - npm install -g pnpm
     - pnpm install
     - pnpm build
@@ -25,13 +27,10 @@ build_frontend:
 # Build Docker image and push to harbor registry
 build_image:
   stage: build_image
-  variables:
-    HARBOR_REGISTRY_IMAGE: harbor.act.buaa.edu.cn/crater/web-frontend
   image:
     name: harbor.act.buaa.edu.cn/crater/kaniko-executor:debug
     entrypoint: [""]
   script:
-    - echo "Building Docker image..."
     # Since GitLab container registry is not enabled, we need to set up harbor registry manually.
     - mkdir -p /kaniko/.docker
     - echo "{\"auths\":{\"${HARBOR_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${HARBOR_REGISTRY_USER}" "${HARBOR_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
@@ -52,7 +51,6 @@ deploy:
     name: harbor.act.buaa.edu.cn/crater/bitnami-kubectl:240302
     entrypoint: [""]
   script:
-    - echo "Deploying to Kubernetes cluster..."
     - kubectl set image deployment/crater-web-frontend crater-web-frontend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_TAG} -n crater
   rules:
     - if: $CI_COMMIT_TAG
