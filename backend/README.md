@@ -1,10 +1,14 @@
 <h1 align="center">Crater Web Backend</h1>
 
  [![Pipeline Status](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-backend/badges/main/pipeline.svg) ](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-backend/-/commits/main)
- [![Develop Version](https://img.shields.io/badge/Develop-0.1.0-orange) ](http://***REMOVED***:8888/)
- [![Release Version](https://img.shields.io/badge/Release-0.1.0-blue) ](http://***REMOVED***:32088/)
+ [![Release Version](https://img.shields.io/badge/Release-0.1.0-blue) ](https://crater.***REMOVED***/)
 
-Crater 是一个基于 Kubernetes 的 GPU 集群管理系统，提供了一站式的 GPU 集群管理解决方案。要了解更多信息，请访问 [GPU 集群管理与作业调度 Portal 设计和任务分解](***REMOVED***) 。
+Crater 是一个基于 Kubernetes 的 GPU 集群管理系统，提供了一站式的 GPU 集群管理解决方案。
+
+- 网站访问：https://crater.***REMOVED***/
+- 需求分析：[GPU 集群管理与作业调度 Portal 设计和任务分解](***REMOVED***)
+- 任务排期：[Crater Group Milestone](https://gitlab.***REMOVED***/groups/raids/resource-scheduling/crater/-/milestones)
+
 
 ## 1. 环境准备
 
@@ -87,7 +91,44 @@ go run main.go \
 
 ## 3. 部署
 
-(WIP)
+### 3.1 首次部署
+
+与部署相关的文件位于 deploy/ 文件夹下。
+
+```bash
+deploy/
+├── backend
+│   ├── crater-backend-ingress.yaml # 后端 Ingress
+│   ├── deploy.yaml                 # 部署后端到集群
+│   └── libs
+│       ├── backend-config.yaml     # 基本配置 ConfigMap
+│       └── share-dir.yaml          # 共享目录 ConfigMap
+└── mysql
+    ├── mysql-cluster
+    │   ├── cluster-ceph.yaml       # MySQL Cluster
+    │   ├── mysql-hack.yaml         # MySQL NodePort
+    │   └── secret.yaml             # MySQL Secret
+    └── mysql-operator
+        ├── deploy-crds.yaml
+        └── deploy-operator.yaml
+```
+
+### 3.2 GitLab CI/CD
+
+完成部署后，要更新代码变动到集群中时，只需打上相应的标签。
+
+```bash
+git tag v0.x.x
+git push origin --tag
+```
+
+使用命令行，或在 Gitlab 网页端操作，GitLab CI/CD 会根据标签自动部署。
+
+### 3.3 证书过期
+
+ACT 的 HTTPS 证书每 3 个月更新一次，证书更新方法见 Web Frontend 项目。
+
+
 
 ## 4. 项目结构
 
