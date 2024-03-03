@@ -1,7 +1,7 @@
 DB_USER: root
 DB_PASSWORD: buaak8sportal@2023mysql
 DB_NAME: ai_portal
-DB_HOST: dbcluster.crater
+DB_HOST: mycluster.jupyter
 DB_PORT: 3306
 DB_CHARSET: utf8mb4
 DB_CONN_TIMEOUT: 10
