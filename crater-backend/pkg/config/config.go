@@ -33,7 +33,7 @@ func NewConfig(configPath string) (*Config, error) {
 		// PrometheusAPI:       "http://prometheus-k8s.kubesphere-monitoring-system",
 		PrometheusAPI:       "http://***REMOVED***:31110/",
 		ProfilingTimeout:    120, // todo:
-		DBHost:              "dbcluster.crater",
+		DBHost:              "mycluster.jupyter",
 		DBPort:              "3306",
 		DBUser:              "root",
 		DBPassword:          "buaak8sportal@2023mysql",
