@@ -9,7 +9,7 @@ variables:
 # Build backend and generate artifacts
 build_backend:
   stage: build_backend
-  image: golang:1.21-alpine
+  image: ***REMOVED***/crater/golang:1.21-alpine
   script:
     - go env -w GO111MODULE=on
     - go env -w GOPROXY=https://goproxy.cn,direct
@@ -18,7 +18,7 @@ build_backend:
   artifacts:
     paths:
       - bin/controller
-    expire_in: 1 week
+    expire_in: 1 hour
   rules:
     - if: $CI_COMMIT_TAG
   cache:

@@ -1,5 +1,7 @@
-FROM alpine AS runner
+FROM ***REMOVED***/crater/alpine:240304
+
 WORKDIR /
+
 ENV GIN_MODE=release
 COPY ./bin/controller .
 COPY ./dbconf.yaml .
