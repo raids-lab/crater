@@ -364,7 +364,7 @@ const Jupyter: FC = () => {
         enableHiding: false,
         cell: ({ row }) => {
           const taskInfo = row.original;
-          if (row.getValue("status") === "Deleted") {
+          if (row.getValue("isDeleted") === true) {
             return (
               <div>
                 <Button
