@@ -108,12 +108,12 @@ func (c *TaskController) watchJobStatus(ctx context.Context) {
 	for {
 		select {
 		case status := <-c.jobStatusChan:
-			// logrus.Infof("get job status event, taskID: %v, newStatus: %v", status.TaskID, status.NewStatus)
 			// 更新task在db中的状态
 			task, err := c.updateTaskStatus(status.TaskID, status.NewStatus, status.Reason)
 			if err != nil {
 				logrus.Errorf("update task status failed, err: %v", err)
-				continue
+				logrus.Infof("get job status event, taskID: %v, newStatus: %v", status.TaskID, status.NewStatus)
+				// continue
 			}
 			// 更新quota，减去已经完成的作业的资源
 			if util.IsCompletedStatus(status.NewStatus) {

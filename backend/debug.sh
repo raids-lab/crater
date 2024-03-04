@@ -1,4 +1,5 @@
 #!/bin/bash
+export KUBECONFIG=${PWD}/kubeconfig
 go run main.go \
     --db-config-file ./debug-dbconf.yaml \
     --config-file ./etc/debug-config.yaml \
