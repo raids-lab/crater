@@ -254,13 +254,6 @@ const Training: FC = () => {
         cell: ({ row }) => <div>{row.getValue("taskName")}</div>,
       },
       {
-        accessorKey: "jobName",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("jobName")} />
-        ),
-        cell: ({ row }) => <div>{row.getValue("jobName")}</div>,
-      },
-      {
         accessorKey: "isDeleted",
         header: ({ column }) => (
           <DataTableColumnHeader
@@ -358,6 +351,19 @@ const Training: FC = () => {
         ),
         cell: ({ row }) => {
           return <TableDate date={row.getValue("startedAt")}></TableDate>;
+        },
+        sortingFn: "datetime",
+      },
+      {
+        accessorKey: "finishAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("finishAt")}
+          />
+        ),
+        cell: ({ row }) => {
+          return <TableDate date={row.getValue("finishAt")}></TableDate>;
         },
         sortingFn: "datetime",
       },
