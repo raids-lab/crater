@@ -59,7 +59,7 @@ enableMocking()
     ReactDOM.createRoot(document.getElementById("root")!).render(
       <React.StrictMode>
         <RecoilRoot>
-          <ThemeProvider defaultTheme="light" storageKey={VITE_UI_THEME_KEY}>
+          <ThemeProvider storageKey={VITE_UI_THEME_KEY}>
             <QueryClientProvider client={queryClient}>
               <RouterProvider router={router} />
               <Toaster richColors />

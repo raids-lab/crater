@@ -17,16 +17,17 @@ const pathDict: PathInfo[] = [
         titleNav: "GPU 集群管理系统",
       },
       {
-        path: "jupyter",
-        title: "Jupyter 管理",
-      },
-      {
         path: "job",
         title: "任务管理",
         children: [
           {
             path: "ai",
             title: "AI 训练任务",
+            hiddenNav: true,
+          },
+          {
+            path: "jupyter",
+            title: "Jupyter 任务",
             hiddenNav: true,
           },
         ],

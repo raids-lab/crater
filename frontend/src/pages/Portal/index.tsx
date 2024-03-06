@@ -1,7 +1,6 @@
 import { Sidebar, SidebarItem, SidebarMenu } from "@/components/layout/Sidebar";
 import DatabaseIcon from "@/components/icon/DatabaseIcon";
 import OverviewIcon from "@/components/icon/OverviewIcon";
-import CodeOneIcon from "@/components/icon/CodeOneIcon";
 import LightHouseIcon from "@/components/icon/LightHouseIcon";
 import WorkBenchIcon from "@/components/icon/WorkBenchIcon";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,15 +23,6 @@ const sidebarItems: SidebarItem[] = [
     },
   },
   {
-    path: "jupyter",
-    icon: CodeOneIcon,
-    children: [],
-    route: {
-      path: "jupyter",
-      lazy: () => import("./Jupyter"),
-    },
-  },
-  {
     path: "job",
     icon: OverviewIcon,
     children: [
@@ -40,6 +30,12 @@ const sidebarItems: SidebarItem[] = [
         route: {
           path: "ai/*",
           lazy: () => import("./Job/Ai"),
+        },
+      },
+      {
+        route: {
+          path: "jupyter",
+          lazy: () => import("./Job/Jupyter"),
         },
       },
     ],
@@ -185,7 +181,7 @@ export const portalRoute: RouteObject = {
   children: [
     {
       index: true,
-      element: <Navigate to="jupyter" replace />,
+      element: <Navigate to="job/jupyter" replace />,
     },
     ...sidebarItems.map((item) => {
       return (

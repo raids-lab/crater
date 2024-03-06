@@ -1,10 +1,4 @@
-import {
-  CircleIcon,
-  ClockIcon,
-  MinusCircledIcon,
-  PlayIcon,
-  StopIcon,
-} from "@radix-ui/react-icons";
+import { PlayIcon, StopIcon } from "@radix-ui/react-icons";
 import { ColumnDef } from "@tanstack/react-table";
 import {
   AlertDialog,
@@ -37,25 +31,18 @@ import {
   convertJTask,
   apiJTaskGetPortToken,
 } from "@/services/api/jupyterTask";
-
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
-import {
-  //ArrowDownIcon,
-  //ArrowUpIcon,
-  CheckCircledIcon,
-  CrossCircledIcon,
-  StopwatchIcon,
-} from "@radix-ui/react-icons";
 import { useSetRecoilState } from "recoil";
 import { globalBreadCrumb } from "@/utils/store";
 import { TableDate } from "@/components/custom/TableDate";
 import { cn } from "@/lib/utils";
-import Status from "../Overview/Status";
-import Quota from "../Overview/Quota";
+import Status from "../../Overview/Status";
+import Quota from "../../Overview/Quota";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { toast } from "sonner";
+import { getHeader, statuses } from "@/pages/Portal/Job/Ai/statuses";
 
 type JTaskInfo = {
   id: number;
@@ -68,134 +55,6 @@ type JTaskInfo = {
   gpus: string | number | undefined;
 };
 
-const getHeader = (key: string): string => {
-  switch (key) {
-    case "id":
-      return "序号";
-    case "title":
-      return "任务名称";
-    case "taskType":
-      return "类型";
-    case "gpus":
-      return "GPU";
-    case "status":
-      return "任务状态";
-    case "priority":
-      return "优先级";
-    case "profileStatus":
-      return "分析状态";
-    case "createdAt":
-      return "创建于";
-    case "startedAt":
-      return "开始于";
-    case "finishAt":
-      return "完成于";
-    default:
-      return key;
-  }
-};
-
-// const priorities = [
-//   {
-//     label: "高",
-//     value: "high",
-//     icon: ArrowUpIcon,
-//   },
-//   {
-//     label: "低",
-//     value: "low",
-//     icon: ArrowDownIcon,
-//   },
-// ];
-
-type StatusValue =
-  | "Queueing"
-  | "Created"
-  | "Pending"
-  | "Running"
-  | "Failed"
-  | "Succeeded"
-  | "Preempted";
-
-const statuses: {
-  value: StatusValue;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-}[] = [
-  {
-    value: "Queueing",
-    label: "检查配额",
-    icon: ClockIcon,
-  },
-  {
-    value: "Created",
-    label: "已创建",
-    icon: CircleIcon,
-  },
-  {
-    value: "Pending",
-    label: "等待中",
-    icon: ClockIcon,
-  },
-  {
-    value: "Running",
-    label: "运行中",
-    icon: StopwatchIcon,
-  },
-  {
-    value: "Failed",
-    label: "失败",
-    icon: CrossCircledIcon,
-  },
-  {
-    value: "Succeeded",
-    label: "成功",
-    icon: CheckCircledIcon,
-  },
-  {
-    value: "Preempted",
-    label: "被抢占",
-    icon: MinusCircledIcon,
-  },
-];
-
-// Profilingstatus
-// UnProfiled = 0 // 未分析
-// ProfileQueued = 1 // 等待分析
-// Profiling = 2 // 正在进行分析
-// ProfileFinish = 3 // 分析完成
-// ProfileFailed = 4 // 分析失败
-// const profilingStatuses = [
-//   {
-//     value: "0",
-//     label: "未分析",
-//     icon: ClockIcon,
-//   },
-//   // {
-//   //   value: "1",
-//   //   label: "等待分析",
-//   //   icon: ClockIcon,
-//   // },
-//   {
-//     value: "2",
-//     label: "分析中",
-//     icon: StopwatchIcon,
-//   },
-//   {
-//     value: "3",
-//     label: "分析完成",
-//     icon: CheckCircledIcon,
-//   },
-//   {
-//     value: "4",
-//     label: "分析失败",
-//     icon: CrossCircledIcon,
-//   },
-// ];
-// export interface IPortTokenResponse {
-//   port: number;
-//   token: string;
-// }
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
     placeholder: "搜索任务名称",
@@ -210,6 +69,7 @@ const toolbarConfig: DataTableToolbarConfig = {
   ],
   getHeader: getHeader,
 };
+
 export const Component = () => {
   const [openSheet, setOpenSheet] = useState(false);
   const [data, setData] = useState<JTaskInfo[]>([]);
@@ -276,7 +136,6 @@ export const Component = () => {
               table.toggleAllPageRowsSelected(!!value)
             }
             aria-label="Select all"
-            className="ml-2"
           />
         ),
         cell: ({ row }) => (
@@ -285,7 +144,6 @@ export const Component = () => {
               checked={row.getIsSelected()}
               onCheckedChange={(value) => row.toggleSelected(!!value)}
               aria-label="Select row"
-              className="ml-2"
             />
           </div>
         ),
@@ -344,7 +202,6 @@ export const Component = () => {
                   "bg-purple-500 hover:bg-purple-400":
                     status.value === "Queueing",
                   "bg-slate-500 hover:bg-slate-400": status.value === "Created",
-                  "bg-pink-500 hover:bg-pink-400": status.value === "Pending",
                   "bg-sky-500 hover:bg-sky-400": status.value === "Running",
                   "bg-red-500 hover:bg-red-400": status.value === "Failed",
                   "bg-emerald-500 hover:bg-emerald-400":

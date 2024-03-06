@@ -5,7 +5,7 @@
 @layer base {
   /* https://www.figma.com/community/file/1284628698171304551/dashboard-dark-and-light-modes-color-variables */
   :root {
-    --background: 0 0% 100%;
+    --background: 210 21% 95%;
     --foreground: 235, 23%, 22%;
 
     --card: 0 0% 100%;
@@ -44,7 +44,7 @@
   }
 
   .dark {
-    --background: 220, 15%, 12%;
+    --background: 210, 13%, 6%;
     --foreground: 210 40% 98%;
 
     --card: 220, 15%, 12%;

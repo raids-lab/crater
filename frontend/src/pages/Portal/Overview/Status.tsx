@@ -16,25 +16,16 @@ const Status: FC = () => {
   });
 
   const chartConfig = useMemo<ChartProps>(() => {
-    const labels = [
-      "Queueing",
-      "Created",
-      "Pending",
-      "Running",
-      "Failed",
-      "Succeeded",
-      "Preempted",
-    ];
+    const labels = ["检查中", "等待中", "运行中", "成功", "被抢占", "失败"];
     const colors = [
       "#9d59ef",
       "#677489",
-      "#da5597",
       "#4ba3e3",
-      "#dd524c",
       "#55b685",
       "#e87b35",
+      "#dd524c",
     ];
-    const series = [0, 0, 0, 0, 0, 0, 0];
+    const series = [0, 0, 0, 0, 0, 0];
     stats?.forEach((element) => {
       switch (element.Status) {
         case "Queueing":
@@ -43,20 +34,17 @@ const Status: FC = () => {
         case "Created":
           series[1] = element.Count;
           break;
-        case "Pending":
+        case "Running":
           series[2] = element.Count;
           break;
-        case "Running":
+        case "Succeeded":
           series[3] = element.Count;
           break;
-        case "Failed":
+        case "Preempted":
           series[4] = element.Count;
           break;
-        case "Succeeded":
+        case "Failed":
           series[5] = element.Count;
-          break;
-        case "Preempted":
-          series[6] = element.Count;
           break;
         default:
           break;
@@ -84,6 +72,7 @@ const Status: FC = () => {
         legend: {
           show: true,
           position: "right",
+          fontSize: "13px",
           labels: {
             colors: theme === "light" ? "#666666" : "#97a3b6",
           },

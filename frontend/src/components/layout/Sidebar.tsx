@@ -85,7 +85,7 @@ export function Sidebar({
     >
       {/* Logo */}
       <div className="flex h-14 w-full flex-row items-center justify-center pb-0 pt-3">
-        <CraterIcon className="mr-1 h-8 w-8" />
+        <CraterIcon className="mr-1 h-7 w-7" />
         <CraterText className="h-3.5" />
       </div>
       {/* Calculate of ScrollArea height: */}

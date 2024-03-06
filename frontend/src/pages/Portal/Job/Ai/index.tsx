@@ -1,9 +1,3 @@
-import {
-  CircleIcon,
-  ClockIcon,
-  DotsHorizontalIcon,
-  MinusCircledIcon,
-} from "@radix-ui/react-icons";
 import { ColumnDef } from "@tanstack/react-table";
 import {
   AlertDialog,
@@ -45,13 +39,7 @@ import {
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  CheckCircledIcon,
-  CrossCircledIcon,
-  StopwatchIcon,
-} from "@radix-ui/react-icons";
+import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { useSetRecoilState } from "recoil";
 import { globalBreadCrumb } from "@/utils/store";
 import { useNavigate, useRoutes } from "react-router-dom";
@@ -62,6 +50,7 @@ import Status from "../../Overview/Status";
 import Quota from "../../Overview/Quota";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { toast } from "sonner";
+import { getHeader, priorities, profilingStatuses, statuses } from "./statuses";
 
 type TaskInfo = {
   id: number;
@@ -75,131 +64,6 @@ type TaskInfo = {
   finishAt: string;
   gpus: string | number | undefined;
 };
-
-const getHeader = (key: string): string => {
-  switch (key) {
-    case "id":
-      return "序号";
-    case "title":
-      return "任务名称";
-    case "taskType":
-      return "类型";
-    case "gpus":
-      return "GPU";
-    case "status":
-      return "任务状态";
-    case "priority":
-      return "优先级";
-    case "profileStatus":
-      return "分析状态";
-    case "createdAt":
-      return "创建于";
-    case "startedAt":
-      return "开始于";
-    case "finishAt":
-      return "完成于";
-    default:
-      return key;
-  }
-};
-
-const priorities = [
-  {
-    label: "高",
-    value: "high",
-    icon: ArrowUpIcon,
-  },
-  {
-    label: "低",
-    value: "low",
-    icon: ArrowDownIcon,
-  },
-];
-
-type StatusValue =
-  | "Queueing"
-  | "Created"
-  | "Pending"
-  | "Running"
-  | "Failed"
-  | "Succeeded"
-  | "Preempted";
-
-const statuses: {
-  value: StatusValue;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-}[] = [
-  {
-    value: "Queueing",
-    label: "检查配额",
-    icon: ClockIcon,
-  },
-  {
-    value: "Created",
-    label: "已创建",
-    icon: CircleIcon,
-  },
-  {
-    value: "Pending",
-    label: "等待中",
-    icon: ClockIcon,
-  },
-  {
-    value: "Running",
-    label: "运行中",
-    icon: StopwatchIcon,
-  },
-  {
-    value: "Failed",
-    label: "失败",
-    icon: CrossCircledIcon,
-  },
-  {
-    value: "Succeeded",
-    label: "成功",
-    icon: CheckCircledIcon,
-  },
-  {
-    value: "Preempted",
-    label: "被抢占",
-    icon: MinusCircledIcon,
-  },
-];
-
-// Profilingstatus
-// UnProfiled = 0 // 未分析
-// ProfileQueued = 1 // 等待分析
-// Profiling = 2 // 正在进行分析
-// ProfileFinish = 3 // 分析完成
-// ProfileFailed = 4 // 分析失败
-const profilingStatuses = [
-  {
-    value: "0",
-    label: "未分析",
-    icon: ClockIcon,
-  },
-  // {
-  //   value: "1",
-  //   label: "等待分析",
-  //   icon: ClockIcon,
-  // },
-  {
-    value: "2",
-    label: "分析中",
-    icon: StopwatchIcon,
-  },
-  {
-    value: "3",
-    label: "分析完成",
-    icon: CheckCircledIcon,
-  },
-  {
-    value: "4",
-    label: "分析失败",
-    icon: CrossCircledIcon,
-  },
-];
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -243,10 +107,18 @@ const AiJobHome = () => {
     refetchInterval: REFETCH_INTERVAL,
   });
 
-  const refetchTaskList = async () =>
-    await queryClient.invalidateQueries({
-      queryKey: ["aitask", "list"],
-    });
+  const refetchTaskList = async () => {
+    try {
+      // 并行发送所有异步请求
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["aitask", "list"] }),
+        queryClient.invalidateQueries({ queryKey: ["aitask", "quota"] }),
+        queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
+      ]);
+    } catch (error) {
+      console.error("更新查询失败", error);
+    }
+  };
 
   const { mutate: deleteTask } = useMutation({
     mutationFn: (id: number) => apiAiTaskDelete(id),
@@ -276,7 +148,6 @@ const AiJobHome = () => {
               table.toggleAllPageRowsSelected(!!value)
             }
             aria-label="Select all"
-            className="ml-2"
           />
         ),
         cell: ({ row }) => (
@@ -284,7 +155,6 @@ const AiJobHome = () => {
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
             aria-label="Select row"
-            className="ml-2"
           />
         ),
         enableSorting: false,
@@ -350,7 +220,6 @@ const AiJobHome = () => {
                   "bg-purple-500 hover:bg-purple-400":
                     status.value === "Queueing",
                   "bg-slate-500 hover:bg-slate-400": status.value === "Created",
-                  "bg-pink-500 hover:bg-pink-400": status.value === "Pending",
                   "bg-sky-500 hover:bg-sky-400": status.value === "Running",
                   "bg-red-500 hover:bg-red-400": status.value === "Failed",
                   "bg-emerald-500 hover:bg-emerald-400":
@@ -555,7 +424,7 @@ const AiJobHome = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid gap-6 md:grid-cols-2">
         <Status />
         <Quota />
       </div>
