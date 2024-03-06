@@ -364,14 +364,14 @@ const Jupyter: FC = () => {
         enableHiding: false,
         cell: ({ row }) => {
           const taskInfo = row.original;
-          if (row.getValue("isDeleted") === true) {
+          if (row.getValue("isDeleted") === "已删除") {
             return (
               <div>
                 <Button
                   variant="outline"
                   className="h-8 w-8 p-0 hover:text-red-700"
                   title="终止 Jupyter Lab"
-                  disabled={row.getValue("status") === "Deleted"}
+                  disabled={row.getValue("isDeleted") === "已删除"}
                 >
                   <StopIcon />
                 </Button>
@@ -381,7 +381,7 @@ const Jupyter: FC = () => {
             return (
               <div
                 className="flex flex-row space-x-1"
-                aria-disabled={row.getValue("status") === "Deleted"}
+                aria-disabled={row.getValue("isDeleted") === "已删除"}
               >
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -390,7 +390,7 @@ const Jupyter: FC = () => {
                         variant="outline"
                         className="h-8 w-8 p-0 hover:text-red-700"
                         title="终止 Jupyter Lab"
-                        disabled={row.getValue("status") === "Deleted"}
+                        disabled={row.getValue("isDeleted") === "已删除"}
                       >
                         <StopIcon />
                       </Button>
