@@ -185,13 +185,14 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
     const json = JSON.stringify(currentValues, null, 2);
     console.log(json); // 或者可以保存到文件
     // 保存到 LocalStorage
-    localStorage.setItem("form", json);
+    localStorage.setItem("training_form_cache", json);
   };
 
   const loadFromJson = () => {
-    const json = localStorage.getItem("form");
+    const json = localStorage.getItem("training_form_cache");
     if (json) {
-      const data = JSON.parse(json) as FormSchema;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const data: FormSchema = JSON.parse(json);
       form.reset(data);
     }
   };
