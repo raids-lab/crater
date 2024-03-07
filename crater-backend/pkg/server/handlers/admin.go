@@ -54,30 +54,24 @@ func (mgr *AdminMgr) DeleteUser(c *gin.Context) {
 	log.Infof("User Delete, url: %s", c.Request.URL)
 	var req payload.DeleteUserReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		msg := fmt.Sprintf("validate parameters failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50008)
+		resputil.Error(c, fmt.Sprintf("validate parameters failed, err %v", err), 50008)
 		return
 	}
 	err := mgr.userService.DeleteByUserName(req.UserName)
 	if err != nil {
-		msg := fmt.Sprintf("delete user failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50009)
+		resputil.Error(c, fmt.Sprintf("delete user failed, err %v", err), 50009)
 		return
 	}
 	// TODO: delete resource
 	log.Infof("delete user success, username: %s", req.UserName)
-	resputil.WrapSuccessResponse(c, "")
+	resputil.Success(c, "")
 }
 
 func (mgr *AdminMgr) ListUser(c *gin.Context) {
 	log.Infof("User List, url: %s", c.Request.URL)
 	userQuotas, err := mgr.userService.ListAllUserQuotas()
 	if err != nil {
-		msg := fmt.Sprintf("list user failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50001)
+		resputil.Error(c, fmt.Sprintf("list user failed, err %v", err), 50001)
 		return
 	}
 
@@ -100,7 +94,7 @@ func (mgr *AdminMgr) ListUser(c *gin.Context) {
 	}
 
 	log.Infof("list users success, taskNum: %d", len(resp.Users))
-	resputil.WrapSuccessResponse(c, resp)
+	resputil.Success(c, resp)
 }
 
 func (mgr *AdminMgr) ListQuota(c *gin.Context) {
@@ -122,16 +116,14 @@ func (mgr *AdminMgr) ListQuota(c *gin.Context) {
 	}
 
 	log.Infof("list users success, taskNum: %d", len(resp.Quotas))
-	resputil.WrapSuccessResponse(c, resp)
+	resputil.Success(c, resp)
 }
 
 func (mgr *AdminMgr) GetUser(c *gin.Context) {
 	log.Infof("User Get, url: %s", c.Request.URL)
 	var req payload.GetUserReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		msg := fmt.Sprintf("validate get parameters failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50004)
+		resputil.Error(c, fmt.Sprintf("validate get parameters failed, err %v", err), 50004)
 		return
 	}
 	var user *models.User
@@ -142,9 +134,7 @@ func (mgr *AdminMgr) GetUser(c *gin.Context) {
 		user, err = mgr.userService.GetUserByID(req.UserID)
 	}
 	if err != nil {
-		msg := fmt.Sprintf("get user failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50001)
+		resputil.Error(c, fmt.Sprintf("get user failed, err %v", err), 50001)
 		return
 	}
 	resp := payload.GetUserResp{
@@ -155,23 +145,19 @@ func (mgr *AdminMgr) GetUser(c *gin.Context) {
 		UpdatedAt: user.UpdatedAt,
 	}
 	log.Infof("get user success, user: %s", resp.UserName)
-	resputil.WrapSuccessResponse(c, resp)
+	resputil.Success(c, resp)
 }
 
 func (mgr *AdminMgr) UpdateQuota(c *gin.Context) {
 	log.Infof("Quota Update, url: %s", c.Request.URL)
 	var req payload.UpdateQuotaReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		msg := fmt.Sprintf("validate update parameters failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50008)
+		resputil.Error(c, fmt.Sprintf("validate update parameters failed, err %v", err), 50008)
 		return
 	}
 	user, err := mgr.userService.GetByUserName(req.UserName)
 	if err != nil {
-		msg := fmt.Sprintf("get user failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50009)
+		resputil.Error(c, fmt.Sprintf("get user failed, err %v", err), 50009)
 		return
 	}
 	quota, err := mgr.quotaService.GetByUserName(req.UserName)
@@ -185,78 +171,64 @@ func (mgr *AdminMgr) UpdateQuota(c *gin.Context) {
 	quota.HardQuota = models.ResourceListToJSON(req.HardQuota)
 	err = mgr.quotaService.Update(quota)
 	if err != nil {
-		msg := fmt.Sprintf("update quota failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50010)
+		resputil.Error(c, fmt.Sprintf("update quota failed, err %v", err), 50010)
 		return
 	}
 	// notify taskController to update quota
 	mgr.taskController.AddOrUpdateQuotaInfo(quota.UserName, *quota)
 
 	log.Infof("update quota success, user: %s, quota:%v", req.UserName, req.HardQuota)
-	resputil.WrapSuccessResponse(c, "")
+	resputil.Success(c, "")
 }
 
 func (mgr *AdminMgr) UpdateRole(c *gin.Context) {
 	log.Infof("Role Update, url: %s", c.Request.URL)
 	var req payload.UpdateRoleReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		msg := fmt.Sprintf("validate update parameters failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50008)
+		resputil.Error(c, fmt.Sprintf("validate update parameters failed, err %v", err), 50008)
 		return
 	}
 
 	if req.Role == models.RoleAdmin || req.Role == models.RoleUser {
 		// do nothing
 	} else {
-		msg := fmt.Sprintf("role %s is not valid", req.Role)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50010)
+		resputil.Error(c, fmt.Sprintf("role %s is not valid", req.Role), 50010)
 		return
 	}
 	err := mgr.userService.UpdateRole(req.UserName, req.Role)
 	if err != nil {
-		msg := fmt.Sprintf("update user role failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50011)
+		resputil.Error(c, fmt.Sprintf("update user role failed, err %v", err), 50011)
 		return
 	}
 	log.Infof("update user role success, user: %s, role: %s", req.UserName, req.Role)
-	resputil.WrapSuccessResponse(c, "")
+	resputil.Success(c, "")
 }
 
 func (mgr *AdminMgr) ListTaskByTaskType(c *gin.Context) {
 	log.Infof("Task List, url: %s", c.Request.URL)
 	var req payload.ListTaskByTypeReq
 	if err := c.ShouldBindQuery(&req); err != nil {
-		msg := fmt.Sprintf("validate list parameters failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50002)
+		resputil.Error(c, fmt.Sprintf("validate list parameters failed, err %v", err), 50002)
 		return
 	}
 
 	taskModels, err := mgr.taskServcie.ListByTaskType(req.TaskType)
 	if err != nil {
-		msg := fmt.Sprintf("list task failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50003)
+		resputil.Error(c, fmt.Sprintf("list task failed, err %v", err), 50003)
 		return
 	}
 	resp := payload.ListTaskResp{
 		Tasks: taskModels,
 	}
 	// log.Infof("list task success, taskNum: %d", len(resp.Tasks))
-	resputil.WrapSuccessResponse(c, resp)
+	resputil.Success(c, resp)
 }
 
 func (mgr *AdminMgr) GetTaskStats(c *gin.Context) {
 	log.Infof("Task Count Statistic, url: %s", c.Request.URL)
 	taskCountList, err := mgr.taskServcie.GetTaskStatusCount()
 	if err != nil {
-		msg := fmt.Sprintf("get task count statistic failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50003)
+		resputil.Error(c, fmt.Sprintf("get task count statistic failed, err %v", err), 50003)
 		return
 	}
 	// var respCnt payload.AITaskCountStatistic
@@ -282,5 +254,5 @@ func (mgr *AdminMgr) GetTaskStats(c *gin.Context) {
 		TaskCount: taskCountList,
 	}
 	// log.Infof("list task success, taskNum: %d", len(resp.Tasks))
-	resputil.WrapSuccessResponse(c, resp)
+	resputil.Success(c, resp)
 }

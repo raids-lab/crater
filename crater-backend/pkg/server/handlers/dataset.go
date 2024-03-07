@@ -33,18 +33,18 @@ func (mgr *DataSetMgr) RegisterRoute(g *gin.RouterGroup) {
 func (mgr *DataSetMgr) List(c *gin.Context) {
 	userObject, exists := c.Get("x-user-object")
 	if !exists {
-		resputil.WrapFailedResponse(c, "user not exist", 400)
+		resputil.Error(c, "user not exist", 400)
 		return
 	}
 	user, ok := userObject.(*models.User)
 	if !ok {
-		resputil.WrapFailedResponse(c, "user object not exist", 400)
+		resputil.Error(c, "user object not exist", 400)
 		return
 	}
 	var datasetList []*recommenddljobapi.DataSet
 	var err error
 	if datasetList, err = mgr.datasetClient.ListDataSets(c, user.NameSpace); err != nil {
-		resputil.WrapFailedResponse(c, fmt.Sprintf("list dataset failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("list dataset failed, err:%v", err), 500)
 		return
 	}
 	ret := make(payload.ListDatasetResp, 0, len(datasetList))
@@ -61,29 +61,29 @@ func (mgr *DataSetMgr) List(c *gin.Context) {
 			},
 		})
 	}
-	resputil.WrapSuccessResponse(c, ret)
+	resputil.Success(c, ret)
 }
 
 func (mgr *DataSetMgr) Get(c *gin.Context) {
 	userObject, exists := c.Get("x-user-object")
 	if !exists {
-		resputil.WrapFailedResponse(c, "user not exist", 400)
+		resputil.Error(c, "user not exist", 400)
 		return
 	}
 	user, ok := userObject.(*models.User)
 	if !ok {
-		resputil.WrapFailedResponse(c, "user object not exist", 400)
+		resputil.Error(c, "user object not exist", 400)
 		return
 	}
 	req := &payload.GetDataSetReq{}
 	if err := c.ShouldBindQuery(req); err != nil {
-		resputil.WrapFailedResponse(c, fmt.Sprintf("bind request query failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), 500)
 		return
 	}
 	var dataset *recommenddljobapi.DataSet
 	var err error
 	if dataset, err = mgr.datasetClient.GetDataSet(c, req.Name, user.NameSpace); err != nil {
-		resputil.WrapFailedResponse(c, fmt.Sprintf("get dataset failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("get dataset failed, err:%v", err), 500)
 		return
 	}
 	ret := &payload.GetDatasetResp{
@@ -97,5 +97,5 @@ func (mgr *DataSetMgr) Get(c *gin.Context) {
 			Phase: string(dataset.Status.Phase),
 		},
 	}
-	resputil.WrapSuccessResponse(c, ret)
+	resputil.Success(c, ret)
 }

@@ -6,26 +6,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func WrapResponse(c *gin.Context, status bool, msg string, data interface{}, er_code int) {
-	if status {
-		c.JSON(http.StatusOK, gin.H{
-			"status": status,
-			"error":  msg,
-			"data":   data,
-		})
-	} else {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":    status,
-			"error":     msg,
-			"errorCode": er_code,
-		})
+func wrapResponse(c *gin.Context, msg string, data interface{}, code ErrorCode) {
+	httpCode := http.StatusOK
+	if code != OK {
+		httpCode = http.StatusInternalServerError
 	}
+	c.JSON(httpCode, gin.H{
+		"code": code,
+		"data": data,
+		"msg":  msg,
+	})
 }
 
-func WrapSuccessResponse(c *gin.Context, data interface{}) {
-	WrapResponse(c, true, "", data, 1)
+func Success(c *gin.Context, data interface{}) {
+	wrapResponse(c, "", data, OK)
 }
 
-func WrapFailedResponse(c *gin.Context, msg string, er_code int) {
-	WrapResponse(c, false, msg, nil, er_code)
+func Error(c *gin.Context, msg string, errorCode ErrorCode) {
+	wrapResponse(c, msg, nil, errorCode)
 }

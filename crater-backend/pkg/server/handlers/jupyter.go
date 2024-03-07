@@ -81,9 +81,7 @@ func (mgr *JupyterMgr) Create(c *gin.Context) {
 		for pvcName := range taskAttr.ShareDirs {
 			err := mgr.pvcClient.CheckOrCreateUserPvc(taskAttr.Namespace, pvcName)
 			if err != nil {
-				msg := fmt.Sprintf("get user pvc failed, err %v", err)
-				log.Error(msg)
-				resputil.WrapFailedResponse(c, msg, 50001)
+				resputil.Error(c, fmt.Sprintf("get user pvc failed, err %v", err), 50001)
 				return
 			}
 		}
@@ -92,9 +90,7 @@ func (mgr *JupyterMgr) Create(c *gin.Context) {
 	taskModel := models.FormatTaskAttrToModel(&taskAttr)
 	err := mgr.taskService.Create(taskModel)
 	if err != nil {
-		msg := fmt.Sprintf("create task failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50001)
+		resputil.Error(c, fmt.Sprintf("create task failed, err %v", err), 50001)
 		return
 	}
 	mgr.NotifyTaskUpdate(taskModel.ID, taskModel.UserName, util.CreateTask)
@@ -103,48 +99,40 @@ func (mgr *JupyterMgr) Create(c *gin.Context) {
 	resp := payload.CreateTaskResp{
 		TaskID: taskModel.ID,
 	}
-	resputil.WrapSuccessResponse(c, resp)
+	resputil.Success(c, resp)
 }
 
 func (mgr *JupyterMgr) List(c *gin.Context) {
 	// log.Infof("Task List, url: %s", c.Request.URL)
 	var req payload.ListTaskReq
 	if err := c.ShouldBindQuery(&req); err != nil {
-		msg := fmt.Sprintf("validate list parameters failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50002)
+		resputil.Error(c, fmt.Sprintf("validate list parameters failed, err %v", err), 50002)
 		return
 	}
 	username, _ := c.Get("username")
 	taskModels, err := mgr.taskService.ListByUserAndTaskType(username.(string), models.JupyterTask)
 	if err != nil {
-		msg := fmt.Sprintf("list task failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50003)
+		resputil.Error(c, fmt.Sprintf("list task failed, err %v", err), 50003)
 		return
 	}
 	resp := payload.ListTaskResp{
 		Tasks: taskModels,
 	}
 	// log.Infof("list task success, taskNum: %d", len(resp.Tasks))
-	resputil.WrapSuccessResponse(c, resp)
+	resputil.Success(c, resp)
 }
 
 func (mgr *JupyterMgr) GetToken(c *gin.Context) {
 	log.Infof("Task Token Get, url: %s", c.Request.URL)
 	var req payload.GetTaskReq
 	if err := c.ShouldBindQuery(&req); err != nil {
-		msg := fmt.Sprintf("validate get parameters failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50004)
+		resputil.Error(c, fmt.Sprintf("validate get parameters failed, err %v", err), 50004)
 		return
 	}
 	username, _ := c.Get("username")
 	taskModel, err := mgr.taskService.GetByUserAndID(username.(string), req.TaskID)
 	if err != nil {
-		msg := fmt.Sprintf("get task failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50005)
+		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), 50005)
 		return
 	}
 	if taskModel.Status != "Running" {
@@ -153,7 +141,7 @@ func (mgr *JupyterMgr) GetToken(c *gin.Context) {
 			Token: "",
 		}
 		log.Infof("task token not ready, taskID: %d", req.TaskID)
-		resputil.WrapSuccessResponse(c, resp)
+		resputil.Success(c, resp)
 		return
 	}
 	if taskModel.Token != "" {
@@ -162,16 +150,14 @@ func (mgr *JupyterMgr) GetToken(c *gin.Context) {
 			Token: taskModel.Token,
 		}
 		log.Infof("get task token success, taskID: %d", req.TaskID)
-		resputil.WrapSuccessResponse(c, resp)
+		resputil.Success(c, resp)
 		return
 	}
 
 	// get log
 	pods, err := mgr.logClient.GetPodsWithLabel(taskModel.Namespace, taskModel.JobName)
 	if err != nil {
-		msg := fmt.Sprintf("get task log failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50005)
+		resputil.Error(c, fmt.Sprintf("get task log failed, err %v", err), 50005)
 		return
 	}
 	var token string
@@ -179,9 +165,7 @@ func (mgr *JupyterMgr) GetToken(c *gin.Context) {
 	for _, pod := range pods {
 		podLog, err := mgr.logClient.GetPodLogs(pod)
 		if err != nil {
-			msg := fmt.Sprintf("get task log failed, err %v", err)
-			log.Error(msg)
-			resputil.WrapFailedResponse(c, msg, 50005)
+			resputil.Error(c, fmt.Sprintf("get task log failed, err %v", err), 50005)
 			return
 		}
 		matches := re.FindStringSubmatch(podLog)
@@ -194,25 +178,19 @@ func (mgr *JupyterMgr) GetToken(c *gin.Context) {
 	// Get service port
 	port, err := mgr.logClient.GetSvcPort(taskModel.Namespace, taskModel.JobName)
 	if err != nil {
-		msg := fmt.Sprintf("get task svc failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50005)
+		resputil.Error(c, fmt.Sprintf("get task svc failed, err %v", err), 50005)
 		return
 	}
 
 	// Save token to db
 	err = mgr.taskService.UpdateToken(taskModel.ID, token)
 	if err != nil {
-		msg := fmt.Sprintf("update task token failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50005)
+		resputil.Error(c, fmt.Sprintf("update task token failed, err %v", err), 50005)
 		return
 	}
 	err = mgr.taskService.UpdateNodePort(taskModel.ID, port)
 	if err != nil {
-		msg := fmt.Sprintf("update task node port failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50005)
+		resputil.Error(c, fmt.Sprintf("update task node port failed, err %v", err), 50005)
 		return
 	}
 
@@ -221,7 +199,7 @@ func (mgr *JupyterMgr) GetToken(c *gin.Context) {
 		Token: token,
 	}
 	log.Infof("get task token success, taskID: %d", req.TaskID)
-	resputil.WrapSuccessResponse(c, resp)
+	resputil.Success(c, resp)
 }
 
 func (mgr *JupyterMgr) Delete(c *gin.Context) {
@@ -229,18 +207,14 @@ func (mgr *JupyterMgr) Delete(c *gin.Context) {
 	var req payload.DeleteTaskReq
 	var err error
 	if err = c.ShouldBindJSON(&req); err != nil {
-		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50006)
+		resputil.Error(c, fmt.Sprintf("validate delete parameters failed, err %v", err), 50006)
 		return
 	}
 	username, _ := c.Get("username")
 	// check if task.username is same as username
 	_, err = mgr.taskService.GetByUserAndID(username.(string), req.TaskID)
 	if err != nil {
-		msg := fmt.Sprintf("get task failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50007)
+		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), 50007)
 		return
 	}
 	mgr.NotifyTaskUpdate(req.TaskID, username.(string), util.DeleteTask)
@@ -250,14 +224,12 @@ func (mgr *JupyterMgr) Delete(c *gin.Context) {
 		err = mgr.taskService.DeleteByUserAndID(username.(string), req.TaskID)
 	}
 	if err != nil {
-		msg := fmt.Sprintf("delete task failed, err %v", err)
-		log.Error(msg)
-		resputil.WrapFailedResponse(c, msg, 50007)
+		resputil.Error(c, fmt.Sprintf("delete task failed, err %v", err), 50007)
 		return
 	}
 
 	log.Infof("delete task success, taskID: %d", req.TaskID)
-	resputil.WrapSuccessResponse(c, "")
+	resputil.Success(c, "")
 }
 
 func (mgr *JupyterMgr) GetImages(c *gin.Context) {
@@ -268,5 +240,5 @@ func (mgr *JupyterMgr) GetImages(c *gin.Context) {
 	resp := payload.GetImagesResp{
 		Images: images,
 	}
-	resputil.WrapSuccessResponse(c, resp)
+	resputil.Success(c, resp)
 }

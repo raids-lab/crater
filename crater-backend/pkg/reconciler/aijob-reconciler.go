@@ -119,6 +119,7 @@ func getTaskIDFromAIJob(aijob *aijobapi.AIJob) string {
 }
 
 func (r *AIJobReconciler) notifyJobStatus(job *aijobapi.AIJob) {
+	// Not include Pending and Init status, treat them as Pending (not started)
 	if job.Status.Phase == aijobapi.Preempted || job.Status.Phase == aijobapi.Running ||
 		job.Status.Phase == aijobapi.Succeeded || job.Status.Phase == aijobapi.Failed { // 是否需要加Pending状态？
 		reason := ""
