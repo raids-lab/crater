@@ -19,5 +19,5 @@ func (mgr *ShareDirMgr) RegisterRoute(g *gin.RouterGroup) {
 
 func (mgr *ShareDirMgr) List(c *gin.Context) {
 	dirs := config.GetShareDirNames()
-	resputil.WrapSuccessResponse(c, dirs)
+	resputil.Success(c, dirs)
 }

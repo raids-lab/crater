@@ -40,17 +40,17 @@ func (mgr *RecommendDLJobMgr) RegisterRoute(g *gin.RouterGroup) {
 func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 	userObject, exists := c.Get("x-user-object")
 	if !exists {
-		resputil.WrapFailedResponse(c, "user not exist", 400)
+		resputil.Error(c, "user not exist", 400)
 		return
 	}
 	user, ok := userObject.(*models.User)
 	if !ok {
-		resputil.WrapFailedResponse(c, "user object not exist", 400)
+		resputil.Error(c, "user object not exist", 400)
 		return
 	}
 	req := &payload.CreateRecommendDLJobReq{}
 	if err := c.ShouldBindJSON(req); err != nil {
-		resputil.WrapFailedResponse(c, fmt.Sprintf("bind request body failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), 500)
 		return
 	}
 	job := &recommenddljobapi.RecommendDLJob{
@@ -90,7 +90,7 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 	}
 
 	if err := mgr.jobclient.CreateRecommendDLJob(c, job); err != nil {
-		resputil.WrapFailedResponse(c, fmt.Sprintf("create recommenddljob failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("create recommenddljob failed, err:%v", err), 500)
 		return
 	}
 	resp := payload.GetRecommendDLJobResp{
@@ -101,24 +101,24 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 			PodNames: job.Status.PodNames,
 		},
 	}
-	resputil.WrapSuccessResponse(c, resp)
+	resputil.Success(c, resp)
 }
 
 func (mgr *RecommendDLJobMgr) List(c *gin.Context) {
 	userObject, exists := c.Get("x-user-object")
 	if !exists {
-		resputil.WrapFailedResponse(c, "user not exist", 400)
+		resputil.Error(c, "user not exist", 400)
 		return
 	}
 	user, ok := userObject.(*models.User)
 	if !ok {
-		resputil.WrapFailedResponse(c, "user object not exist", 400)
+		resputil.Error(c, "user object not exist", 400)
 		return
 	}
 	var jobList []*recommenddljobapi.RecommendDLJob
 	var err error
 	if jobList, err = mgr.jobclient.ListRecommendDLJob(c, user.NameSpace); err != nil {
-		resputil.WrapFailedResponse(c, fmt.Sprintf("list recommenddljob failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("list recommenddljob failed, err:%v", err), 500)
 		return
 	}
 	ret := make(payload.ListRecommendDLJobResp, 0, len(jobList))
@@ -155,29 +155,29 @@ func (mgr *RecommendDLJobMgr) List(c *gin.Context) {
 		}
 		ret = append(ret, retJob)
 	}
-	resputil.WrapSuccessResponse(c, ret)
+	resputil.Success(c, ret)
 }
 
 func (mgr *RecommendDLJobMgr) GetByName(c *gin.Context) {
 	userObject, exists := c.Get("x-user-object")
 	if !exists {
-		resputil.WrapFailedResponse(c, "user not exist", 400)
+		resputil.Error(c, "user not exist", 400)
 		return
 	}
 	user, ok := userObject.(*models.User)
 	if !ok {
-		resputil.WrapFailedResponse(c, "user object not exist", 400)
+		resputil.Error(c, "user object not exist", 400)
 		return
 	}
 	req := &payload.GetRecommendDLJobReq{}
 	if err := c.ShouldBindQuery(req); err != nil {
-		resputil.WrapFailedResponse(c, fmt.Sprintf("bind request query failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), 500)
 		return
 	}
 	var job *recommenddljobapi.RecommendDLJob
 	var err error
 	if job, err = mgr.jobclient.GetRecommendDLJob(c, req.Name, user.NameSpace); err != nil {
-		resputil.WrapFailedResponse(c, fmt.Sprintf("get recommenddljob failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("get recommenddljob failed, err:%v", err), 500)
 		return
 	}
 	ret := payload.GetRecommendDLJobResp{
@@ -210,61 +210,61 @@ func (mgr *RecommendDLJobMgr) GetByName(c *gin.Context) {
 	for _, releationship := range job.Spec.RelationShips {
 		ret.Spec.RelationShips = append(ret.Spec.RelationShips, releationship.JobName)
 	}
-	resputil.WrapSuccessResponse(c, ret)
+	resputil.Success(c, ret)
 }
 
 func (mgr *RecommendDLJobMgr) GetPodsByName(c *gin.Context) {
 	userObject, exists := c.Get("x-user-object")
 	if !exists {
-		resputil.WrapFailedResponse(c, "user not exist", 400)
+		resputil.Error(c, "user not exist", 400)
 		return
 	}
 	user, ok := userObject.(*models.User)
 	if !ok {
-		resputil.WrapFailedResponse(c, "user object not exist", 400)
+		resputil.Error(c, "user object not exist", 400)
 		return
 	}
 	req := &payload.GetRecommendDLJobPodListReq{}
 	if err := c.ShouldBindQuery(req); err != nil {
-		resputil.WrapFailedResponse(c, fmt.Sprintf("bind request query failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), 500)
 		return
 	}
 	var podList []*corev1.Pod
 	var err error
 	if podList, err = mgr.jobclient.GetRecommendDLJobPodList(c, req.Name, user.NameSpace); err != nil {
-		resputil.WrapFailedResponse(c, fmt.Sprintf("get recommenddljob pods failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("get recommenddljob pods failed, err:%v", err), 500)
 		return
 	}
-	resputil.WrapSuccessResponse(c, podList)
+	resputil.Success(c, podList)
 }
 
 func (mgr *RecommendDLJobMgr) Delete(c *gin.Context) {
 	userObject, exists := c.Get("x-user-object")
 	if !exists {
-		resputil.WrapFailedResponse(c, "user not exist", 400)
+		resputil.Error(c, "user not exist", 400)
 		return
 	}
 	user, ok := userObject.(*models.User)
 	if !ok {
-		resputil.WrapFailedResponse(c, "user object not exist", 400)
+		resputil.Error(c, "user object not exist", 400)
 		return
 	}
 	req := &payload.DeleteRecommendDLJobReq{}
 	if err := c.ShouldBindJSON(req); err != nil {
-		resputil.WrapFailedResponse(c, fmt.Sprintf("bind request body failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), 500)
 		return
 	}
 	if err := mgr.jobclient.DeleteRecommendDLJob(c, req.Name, user.NameSpace); err != nil {
-		resputil.WrapFailedResponse(c, fmt.Sprintf("delete recommenddljob failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("delete recommenddljob failed, err:%v", err), 500)
 		return
 	}
-	resputil.WrapSuccessResponse(c, nil)
+	resputil.Success(c, nil)
 }
 
 func (mgr *RecommendDLJobMgr) AnalyzeResourceUsage(c *gin.Context) {
 	req := &payload.AnalyzeRecommendDLJobReq{}
 	if err := c.ShouldBindJSON(req); err != nil {
-		resputil.WrapFailedResponse(c, fmt.Sprintf("bind request body failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), 500)
 		return
 	}
 	if len(req.VocabularySize) != 0 {
@@ -294,14 +294,14 @@ func (mgr *RecommendDLJobMgr) AnalyzeResourceUsage(c *gin.Context) {
 		"params":                req.Params / 1e3,
 		"macs":                  req.Macs / 1e6,
 	}, nil, analyzeResp); err != nil {
-		resputil.WrapFailedResponse(c, fmt.Sprintf("request resource analyze failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("request resource analyze failed, err:%v", err), 500)
 		return
 	}
 	p100Mem := analyzeResp.Data["V100"].GPUMemoryMax
 	if p100Mem > 16 {
 		p100Mem = 16.01
 	}
-	resputil.WrapSuccessResponse(c, &payload.ResourceAnalyzeResponse{
+	resputil.Success(c, &payload.ResourceAnalyzeResponse{
 		"p100": payload.ResourceAnalyzeResult{
 			GPUUtilAvg:   analyzeResp.Data["P100"].GPUUtilAvg,
 			GPUMemoryMax: p100Mem,
