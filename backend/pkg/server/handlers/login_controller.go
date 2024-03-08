@@ -27,8 +27,9 @@ type LoginResponse struct {
 	Role         string `json:"role"`
 }
 type ErrorResponse struct {
-	Message string `json:"error"`
-	Code    int    `json:"errorCode"`
+	Message string      `json:"msg"`
+	Code    int         `json:"code"`
+	Data    interface{} `json:"data"`
 }
 
 func NewLoginMgr(tokenConf *config.TokenConf) *LoginMgr {
