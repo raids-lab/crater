@@ -10,6 +10,14 @@ import {
   // DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Button } from "../ui/button";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import {
@@ -21,7 +29,6 @@ import {
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/utils/theme";
-import { ChevronRightIcon } from "@radix-ui/react-icons";
 import { getBreadcrumbByPath } from "@/utils/title";
 import { toast } from "sonner";
 
@@ -66,36 +73,29 @@ const Navibar: FC = () => {
         className="flex items-center space-x-1 md:space-x-2"
         aria-label="Breadcrumb"
       >
-        {breadcrumb.map((item, index) => {
-          if (item.path) {
-            return (
-              <div className="inline-flex items-center" key={`item${index}`}>
-                {index !== 0 && (
-                  <ChevronRightIcon className="mr-1 text-muted-foreground md:mr-2" />
-                )}
-                <Link
-                  to={item.path}
-                  className="inline-flex select-none items-center text-sm font-medium text-muted-foreground hover:text-primary"
-                >
-                  {item.title}
-                </Link>
-              </div>
-            );
-          } else {
-            return (
-              <div key={`item${index}`}>
-                <div className="flex items-center">
+        <Breadcrumb>
+          <BreadcrumbList>
+            {breadcrumb.map((item, index) => {
+              return (
+                <>
                   {index !== 0 && (
-                    <ChevronRightIcon className="mr-1 text-muted-foreground md:mr-2" />
+                    <BreadcrumbSeparator key={`bread-separator-${index}`} />
                   )}
-                  <span className="select-none text-sm font-medium text-foreground">
-                    {item.title}
-                  </span>
-                </div>
-              </div>
-            );
-          }
-        })}
+                  <BreadcrumbItem key={`bread-item-${index}`}>
+                    {item.path && (
+                      <BreadcrumbLink asChild>
+                        <Link to={item.path}>{item.title}</Link>
+                      </BreadcrumbLink>
+                    )}
+                    {!item.path && (
+                      <BreadcrumbPage>{item.title}</BreadcrumbPage>
+                    )}
+                  </BreadcrumbItem>
+                </>
+              );
+            })}
+          </BreadcrumbList>
+        </Breadcrumb>
       </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
