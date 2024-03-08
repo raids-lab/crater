@@ -6,7 +6,6 @@ import (
 	recommenddljobapi "github.com/aisystem/ai-protal/pkg/apis/recommenddljob/v1"
 	"github.com/aisystem/ai-protal/pkg/crclient"
 	usersvc "github.com/aisystem/ai-protal/pkg/db/user"
-	"github.com/aisystem/ai-protal/pkg/models"
 	payload "github.com/aisystem/ai-protal/pkg/server/payload"
 	resputil "github.com/aisystem/ai-protal/pkg/server/response"
 	"github.com/gin-gonic/gin"
@@ -31,19 +30,10 @@ func (mgr *DataSetMgr) RegisterRoute(g *gin.RouterGroup) {
 }
 
 func (mgr *DataSetMgr) List(c *gin.Context) {
-	userObject, exists := c.Get("x-user-object")
-	if !exists {
-		resputil.Error(c, "user not exist", 400)
-		return
-	}
-	user, ok := userObject.(*models.User)
-	if !ok {
-		resputil.Error(c, "user object not exist", 400)
-		return
-	}
+	namespace, _ := c.Get("x-namespace")
 	var datasetList []*recommenddljobapi.DataSet
 	var err error
-	if datasetList, err = mgr.datasetClient.ListDataSets(c, user.NameSpace); err != nil {
+	if datasetList, err = mgr.datasetClient.ListDataSets(c, namespace.(string)); err != nil {
 		resputil.Error(c, fmt.Sprintf("list dataset failed, err:%v", err), 500)
 		return
 	}
@@ -65,16 +55,7 @@ func (mgr *DataSetMgr) List(c *gin.Context) {
 }
 
 func (mgr *DataSetMgr) Get(c *gin.Context) {
-	userObject, exists := c.Get("x-user-object")
-	if !exists {
-		resputil.Error(c, "user not exist", 400)
-		return
-	}
-	user, ok := userObject.(*models.User)
-	if !ok {
-		resputil.Error(c, "user object not exist", 400)
-		return
-	}
+	namespace, _ := c.Get("x-namespace")
 	req := &payload.GetDataSetReq{}
 	if err := c.ShouldBindQuery(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), 500)
@@ -82,7 +63,7 @@ func (mgr *DataSetMgr) Get(c *gin.Context) {
 	}
 	var dataset *recommenddljobapi.DataSet
 	var err error
-	if dataset, err = mgr.datasetClient.GetDataSet(c, req.Name, user.NameSpace); err != nil {
+	if dataset, err = mgr.datasetClient.GetDataSet(c, req.Name, namespace.(string)); err != nil {
 		resputil.Error(c, fmt.Sprintf("get dataset failed, err:%v", err), 500)
 		return
 	}

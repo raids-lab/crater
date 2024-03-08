@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/aisystem/ai-protal/pkg/db/user"
+	resputil "github.com/aisystem/ai-protal/pkg/server/response"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -26,11 +27,6 @@ type LoginResponse struct {
 	RefreshToken string `json:"refreshToken"`
 	Role         string `json:"role"`
 }
-type ErrorResponse struct {
-	Message string      `json:"msg"`
-	Code    int         `json:"code"`
-	Data    interface{} `json:"data"`
-}
 
 func NewLoginMgr(tokenConf *config.TokenConf) *LoginMgr {
 	return &LoginMgr{
@@ -48,45 +44,30 @@ func (lc *LoginMgr) Login(c *gin.Context) {
 
 	err := c.ShouldBind(&request)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Message: err.Error(),
-			Code:    40002,
-		})
+		resputil.HttpError(c, http.StatusBadRequest, err.Error(), 40002)
 		return
 	}
 
 	user, err := lc.LoginUsecase.GetByUserName(request.UserName)
 	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
-			Message: "User not found with the given name",
-			Code:    40401,
-		})
+		resputil.HttpError(c, http.StatusNotFound, "User not found with the given name", 40401)
 		return
 	}
 
 	if bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(request.Password)) != nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{
-			Message: "Invalid credentials",
-			Code:    40101,
-		})
+		resputil.HttpError(c, http.StatusUnauthorized, "Invalid credentials", 40101)
 		return
 	}
 
 	accessToken, err := lc.LoginUsecase.CreateAccessToken(user, lc.TokenConf.AccessTokenSecret, lc.TokenConf.AccessTokenExpiryHour)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Message: err.Error(),
-			Code:    50010,
-		})
+		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), 50010)
 		return
 	}
 
 	refreshToken, err := lc.LoginUsecase.CreateRefreshToken(user, lc.TokenConf.RefreshTokenSecret, lc.TokenConf.RefreshTokenExpiryHour)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Message: err.Error(),
-			Code:    50011,
-		})
+		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), 50011)
 		return
 	}
 

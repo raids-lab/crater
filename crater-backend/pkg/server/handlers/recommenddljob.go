@@ -6,7 +6,6 @@ import (
 	recommenddljobapi "github.com/aisystem/ai-protal/pkg/apis/recommenddljob/v1"
 	"github.com/aisystem/ai-protal/pkg/crclient"
 	usersvc "github.com/aisystem/ai-protal/pkg/db/user"
-	"github.com/aisystem/ai-protal/pkg/models"
 	"github.com/aisystem/ai-protal/pkg/server/payload"
 	resputil "github.com/aisystem/ai-protal/pkg/server/response"
 	"github.com/aisystem/ai-protal/pkg/util"
@@ -38,16 +37,8 @@ func (mgr *RecommendDLJobMgr) RegisterRoute(g *gin.RouterGroup) {
 }
 
 func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
-	userObject, exists := c.Get("x-user-object")
-	if !exists {
-		resputil.Error(c, "user not exist", 400)
-		return
-	}
-	user, ok := userObject.(*models.User)
-	if !ok {
-		resputil.Error(c, "user object not exist", 400)
-		return
-	}
+	username, _ := c.Get("x-user-name")
+	namespace, _ := c.Get("x-namespace")
 	req := &payload.CreateRecommendDLJobReq{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), 500)
@@ -56,7 +47,7 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 	job := &recommenddljobapi.RecommendDLJob{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      req.Name,
-			Namespace: user.NameSpace,
+			Namespace: namespace.(string),
 		},
 		Spec: recommenddljobapi.RecommendDLJobSpec{
 			Replicas:            req.Replicas,
@@ -64,7 +55,7 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 			DataSets:            make([]recommenddljobapi.DataSetRef, 0, len(req.DataSets)),
 			RelationShips:       make([]recommenddljobapi.DataRelationShip, 0, len(req.RelationShips)),
 			Template:            req.Template,
-			Username:            user.UserName,
+			Username:            username.(string),
 			Macs:                req.Macs,
 			Params:              req.Params,
 			BatchSize:           req.BatchSize,
@@ -80,7 +71,7 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 		job.Spec.RelationShips = append(job.Spec.RelationShips, recommenddljobapi.DataRelationShip{
 			Type:         recommenddljobapi.DataRelationShipType("input"),
 			JobName:      releationShip,
-			JobNamespace: user.NameSpace,
+			JobNamespace: namespace.(string),
 		})
 	}
 	for _, datasetName := range req.DataSets {
@@ -105,19 +96,16 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 }
 
 func (mgr *RecommendDLJobMgr) List(c *gin.Context) {
-	userObject, exists := c.Get("x-user-object")
-	if !exists {
-		resputil.Error(c, "user not exist", 400)
+	namespace, exists := c.Get("x-namespace")
+	if exists != true {
+		resputil.Error(c, "get namespace failed", 500)
 		return
-	}
-	user, ok := userObject.(*models.User)
-	if !ok {
-		resputil.Error(c, "user object not exist", 400)
-		return
+	} else {
+		resputil.Success(c, namespace)
 	}
 	var jobList []*recommenddljobapi.RecommendDLJob
 	var err error
-	if jobList, err = mgr.jobclient.ListRecommendDLJob(c, user.NameSpace); err != nil {
+	if jobList, err = mgr.jobclient.ListRecommendDLJob(c, namespace.(string)); err != nil {
 		resputil.Error(c, fmt.Sprintf("list recommenddljob failed, err:%v", err), 500)
 		return
 	}
@@ -159,16 +147,7 @@ func (mgr *RecommendDLJobMgr) List(c *gin.Context) {
 }
 
 func (mgr *RecommendDLJobMgr) GetByName(c *gin.Context) {
-	userObject, exists := c.Get("x-user-object")
-	if !exists {
-		resputil.Error(c, "user not exist", 400)
-		return
-	}
-	user, ok := userObject.(*models.User)
-	if !ok {
-		resputil.Error(c, "user object not exist", 400)
-		return
-	}
+	namespace, _ := c.Get("x-namespace")
 	req := &payload.GetRecommendDLJobReq{}
 	if err := c.ShouldBindQuery(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), 500)
@@ -176,7 +155,7 @@ func (mgr *RecommendDLJobMgr) GetByName(c *gin.Context) {
 	}
 	var job *recommenddljobapi.RecommendDLJob
 	var err error
-	if job, err = mgr.jobclient.GetRecommendDLJob(c, req.Name, user.NameSpace); err != nil {
+	if job, err = mgr.jobclient.GetRecommendDLJob(c, req.Name, namespace.(string)); err != nil {
 		resputil.Error(c, fmt.Sprintf("get recommenddljob failed, err:%v", err), 500)
 		return
 	}
@@ -214,16 +193,7 @@ func (mgr *RecommendDLJobMgr) GetByName(c *gin.Context) {
 }
 
 func (mgr *RecommendDLJobMgr) GetPodsByName(c *gin.Context) {
-	userObject, exists := c.Get("x-user-object")
-	if !exists {
-		resputil.Error(c, "user not exist", 400)
-		return
-	}
-	user, ok := userObject.(*models.User)
-	if !ok {
-		resputil.Error(c, "user object not exist", 400)
-		return
-	}
+	namespace, _ := c.Get("x-namespace")
 	req := &payload.GetRecommendDLJobPodListReq{}
 	if err := c.ShouldBindQuery(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), 500)
@@ -231,7 +201,7 @@ func (mgr *RecommendDLJobMgr) GetPodsByName(c *gin.Context) {
 	}
 	var podList []*corev1.Pod
 	var err error
-	if podList, err = mgr.jobclient.GetRecommendDLJobPodList(c, req.Name, user.NameSpace); err != nil {
+	if podList, err = mgr.jobclient.GetRecommendDLJobPodList(c, req.Name, namespace.(string)); err != nil {
 		resputil.Error(c, fmt.Sprintf("get recommenddljob pods failed, err:%v", err), 500)
 		return
 	}
@@ -239,22 +209,13 @@ func (mgr *RecommendDLJobMgr) GetPodsByName(c *gin.Context) {
 }
 
 func (mgr *RecommendDLJobMgr) Delete(c *gin.Context) {
-	userObject, exists := c.Get("x-user-object")
-	if !exists {
-		resputil.Error(c, "user not exist", 400)
-		return
-	}
-	user, ok := userObject.(*models.User)
-	if !ok {
-		resputil.Error(c, "user object not exist", 400)
-		return
-	}
+	namespace, _ := c.Get("x-namespace")
 	req := &payload.DeleteRecommendDLJobReq{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), 500)
 		return
 	}
-	if err := mgr.jobclient.DeleteRecommendDLJob(c, req.Name, user.NameSpace); err != nil {
+	if err := mgr.jobclient.DeleteRecommendDLJob(c, req.Name, namespace.(string)); err != nil {
 		resputil.Error(c, fmt.Sprintf("delete recommenddljob failed, err:%v", err), 500)
 		return
 	}

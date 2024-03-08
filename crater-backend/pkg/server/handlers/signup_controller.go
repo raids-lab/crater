@@ -6,11 +6,11 @@ import (
 	"github.com/aisystem/ai-protal/pkg/aitaskctl"
 	"github.com/aisystem/ai-protal/pkg/config"
 	"github.com/aisystem/ai-protal/pkg/crclient"
+	resputil "github.com/aisystem/ai-protal/pkg/server/response"
 	"github.com/sirupsen/logrus"
 
 	"github.com/aisystem/ai-protal/pkg/db/quota"
 	"github.com/aisystem/ai-protal/pkg/db/user"
-	"github.com/aisystem/ai-protal/pkg/domain"
 	"github.com/aisystem/ai-protal/pkg/models"
 
 	"github.com/gin-gonic/gin"
@@ -33,7 +33,13 @@ type SignupRequest struct {
 	Name     string `json:"userName" binding:"required"`
 	Role     string `json:"role" binding:"required"`
 	Password string `json:"passWord" binding:"required"`
-} //domain
+}
+
+type SignupResponse struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+	Role         string `json:"role"`
+}
 
 func NewSignupMgr(taskController *aitaskctl.TaskController, tokenConf *config.TokenConf, cl client.Client) *SignupMgr {
 	return &SignupMgr{
@@ -46,7 +52,6 @@ func NewSignupMgr(taskController *aitaskctl.TaskController, tokenConf *config.To
 }
 
 func (sc *SignupMgr) RegisterRoute(group *gin.RouterGroup) {
-	//ur := repository.NewUserRepository(db, domain.CollectionUser)
 	group.POST("/signup", sc.Signup)
 }
 
@@ -55,19 +60,13 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 
 	err := c.ShouldBind(&request)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Message: err.Error(),
-			Code:    40004,
-		})
+		resputil.HttpError(c, http.StatusBadRequest, err.Error(), 40004)
 		return
 	}
 
 	_, err = sc.UserDB.GetByUserName(request.Name) //GetUserByEmail(c, request.Email)
 	if err == nil {
-		c.JSON(http.StatusConflict, ErrorResponse{
-			Message: "User already exists with the given Name",
-			Code:    40901,
-		})
+		resputil.HttpError(c, http.StatusConflict, "User already exists with the given Name", 40901)
 		return
 	}
 
@@ -76,10 +75,7 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 		bcrypt.DefaultCost,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Message: err.Error(),
-			Code:    50014,
-		})
+		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), 50014)
 		return
 	}
 	if request.Role != "user" && request.Role != "admin" {
@@ -112,10 +108,7 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 
 	err = sc.UserDB.Create(&user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Message: err.Error(),
-			Code:    50016,
-		})
+		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), 50016)
 		return
 	}
 	quota := models.Quota{
@@ -133,23 +126,17 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 	sc.taskController.AddUser(quota.UserName, quota)
 	accessToken, err := sc.UserDB.CreateAccessToken(&user, sc.TokenConf.AccessTokenSecret, sc.TokenConf.AccessTokenExpiryHour)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Message: err.Error(),
-			Code:    50017,
-		})
+		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), 50017)
 		return
 	}
 
 	refreshToken, err := sc.UserDB.CreateRefreshToken(&user, sc.TokenConf.RefreshTokenSecret, sc.TokenConf.RefreshTokenExpiryHour)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Message: err.Error(),
-			Code:    50018,
-		})
+		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), 50018)
 		return
 	}
 
-	signupResponse := domain.SignupResponse{
+	signupResponse := SignupResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		Role:         user.Role,
