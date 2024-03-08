@@ -1,0 +1,38 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            // #!/bin/bash
+            // export KUBECONFIG=${PWD}/kubeconfig
+            // go run main.go \
+            //     --db-config-file ./debug-dbconf.yaml \
+            //     --config-file ./etc/debug-config.yaml \
+            //     --metrics-bind-address :8097 \
+            //     --health-probe-bind-address :8096 \
+            //     --server-port :8099
+            "name": "Debug Server",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/main.go",
+            "env": {
+                "KUBECONFIG": "${workspaceFolder}/kubeconfig"
+            },
+            "args": [
+                "--db-config-file",
+                "./debug-dbconf.yaml",
+                "--config-file",
+                "./etc/debug-config.yaml",
+                "--metrics-bind-address",
+                ":8097",
+                "--health-probe-bind-address",
+                ":8096",
+                "--server-port",
+                ":8099"
+            ]
+        },
+    ]
+}
