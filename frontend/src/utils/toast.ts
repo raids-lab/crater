@@ -7,8 +7,8 @@ export const showErrorToast = (error: unknown) => {
     if (error.response?.data) {
       try {
         const errorResponse = error.response.data as IErrorResponse;
-        if (errorResponse.error) {
-          toast.error(`${errorResponse.error}`);
+        if (errorResponse.msg) {
+          toast.error(`${errorResponse.msg}`);
         } else {
           toast.error(`${error.message}`);
         }
