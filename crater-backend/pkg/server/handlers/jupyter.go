@@ -61,11 +61,12 @@ func (mgr *JupyterMgr) Create(c *gin.Context) {
 		return
 	}
 	username, _ := c.Get("x-user-name")
+	namespace, _ := c.Get("x-namespace")
 
 	var taskAttr models.TaskAttr
 	taskAttr.TaskName = req.TaskName
 	taskAttr.UserName = username.(string)
-	taskAttr.Namespace = fmt.Sprintf("user-%s", username.(string))
+	taskAttr.Namespace = namespace.(string)
 	taskAttr.SLO = 1
 	taskAttr.TaskType = models.JupyterTask
 	taskAttr.Image = req.Image
