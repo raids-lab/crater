@@ -97,7 +97,7 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 
 func (mgr *RecommendDLJobMgr) List(c *gin.Context) {
 	namespace, exists := c.Get("x-namespace")
-	if exists != true {
+	if !exists {
 		resputil.Error(c, "get namespace failed", 500)
 		return
 	} else {

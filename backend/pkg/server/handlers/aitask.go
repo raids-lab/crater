@@ -66,7 +66,8 @@ func (mgr *AITaskMgr) Create(c *gin.Context) {
 	}
 	username, _ := c.Get("x-user-name")
 	req.UserName = username.(string)
-	req.Namespace = fmt.Sprintf("user-%s", username.(string))
+	namespace, _ := c.Get("x-namespace")
+	req.Namespace = namespace.(string)
 
 	if req.ShareDirs != nil && len(req.ShareDirs) > 0 {
 		for pvcName := range req.ShareDirs {
