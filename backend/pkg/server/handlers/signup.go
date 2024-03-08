@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"fmt"
-
 	"github.com/aisystem/ai-protal/pkg/aitaskctl"
 	"github.com/aisystem/ai-protal/pkg/config"
 	"github.com/aisystem/ai-protal/pkg/crclient"
@@ -64,6 +62,7 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 		return
 	}
 
+	// Bug(TODO): 无法区分用户未存在和查询错误（如数据库未连接）
 	_, err = sc.UserDB.GetByUserName(request.Name) //GetUserByEmail(c, request.Email)
 	if err == nil {
 		resputil.HttpError(c, http.StatusConflict, "User already exists with the given Name", 40901)
@@ -98,12 +97,11 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 
 		return
 	}
-	ns := fmt.Sprintf("user-%s", request.Name)
 	user := models.User{
 		UserName:  request.Name,
 		Role:      request.Role,
 		Password:  request.Password,
-		NameSpace: ns,
+		NameSpace: crclient.NameSpace,
 	}
 
 	err = sc.UserDB.Create(&user)
@@ -114,7 +112,7 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 	quota := models.Quota{
 		// UserID:    user.ID,
 		UserName:  user.UserName,
-		NameSpace: ns,
+		NameSpace: crclient.NameSpace,
 		// HardQuota: models.ResourceListToJSON(v1.ResourceList{}),
 		HardQuota: models.ResourceListToJSON(models.DefaultQuota),
 	}
