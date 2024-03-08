@@ -19,14 +19,14 @@ type Control struct {
 }
 
 const (
-	NameSpaceFormat = "user-%s"
-	UserHomePVC     = "home-%s-pvc"
-	DataPVCName     = "data-pvc"
+	NameSpace   = "crater-jobs"
+	UserHomePVC = "home-%s-pvc"
+	DataPVCName = "data-pvc"
 )
 
 // todo: add more volumes, args etc..
 func (c *Control) CreateUserNameSpace(username string) error {
-	ns := fmt.Sprintf(NameSpaceFormat, username)
+	ns := NameSpace
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ns,
@@ -43,8 +43,9 @@ func (c *Control) CreateUserNameSpace(username string) error {
 	}
 	return nil
 }
+
 func (c *Control) CreateUserHomePVC(username string) error {
-	namespace := fmt.Sprintf(NameSpaceFormat, username)
+	namespace := NameSpace
 	pvcname := fmt.Sprintf(UserHomePVC, username)
 
 	SCN := "rook-cephfs"
