@@ -25,17 +25,20 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 		b.R.Use(middleware.Cors())
 	}
 
+	pvcClient := crclient.PVCClient{Client: cl}
+	pvcClient.InitShareDir()
+
 	// timeout := time.Duration(Env.ContextTimeout) * time.Second
 	// public routers
 	publicRouter := b.R.Group("")
 	tokenConf := config.NewTokenConf()
 
-	loginMgr := handlers.NewLoginMgr(tokenConf)
-	signupMgr := handlers.NewSignupMgr(aitaskCtrl, tokenConf, cl)
+	authMgr := handlers.NewAuthMgr(aitaskCtrl, tokenConf, &pvcClient)
+	// signupMgr := handlers.NewSignupMgr(aitaskCtrl, tokenConf, &pvcClient, cl)
 	tokenMgr := handlers.NewRefreshTokenMgr(tokenConf)
 
-	loginMgr.RegisterRoute(publicRouter)
-	signupMgr.RegisterRoute(publicRouter)
+	authMgr.RegisterRoute(publicRouter)
+	// signupMgr.RegisterRoute(publicRouter)
 	tokenMgr.RegisterRoute(publicRouter)
 
 	// protected routers, need login
@@ -46,8 +49,6 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	shareDirMgr := handlers.NewShareDirMgr()
 	shareDirMgr.RegisterRoute(protectedRouter.Group("/sharedir"))
 
-	pvcClient := crclient.PVCClient{Client: cl}
-	pvcClient.InitShareDir()
 	logClient := crclient.LogClient{Client: cl, KubeClient: cs}
 
 	aitaskMgr := handlers.NewAITaskMgr(aitaskCtrl, &pvcClient, &logClient)

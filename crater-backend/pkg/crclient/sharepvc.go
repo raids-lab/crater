@@ -7,9 +7,21 @@ import (
 	"github.com/aisystem/ai-protal/pkg/config"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+type PVCClient struct {
+	client.Client
+}
+
+const (
+	NameSpace   = "crater-jobs"
+	UserHomePVC = "home-%s-pvc"
+	DataPVCName = "data-pvc"
 )
 
 type ShareDir struct {
@@ -18,22 +30,7 @@ type ShareDir struct {
 	pv        *corev1.PersistentVolume
 }
 
-type PVCClient struct {
-	client.Client
-}
-
 var shareDirs map[string]ShareDir = make(map[string]ShareDir)
-
-// var shareDirs map[string]ShareDir = map[string]ShareDir{
-// 	"dnn-train-data": {
-// 		Pvc:       "dnn-train-data",
-// 		Namespace: "user-wjh",
-// 	},
-// 	"jupyterhub-shared-volume": {
-// 		Pvc:       "jupyterhub-shared-volume",
-// 		Namespace: "jupyter",
-// 	},
-// }
 
 func (c *PVCClient) InitShareDir() error {
 	// c.Client.
@@ -57,22 +54,47 @@ func (c *PVCClient) InitShareDir() error {
 func (c *PVCClient) CheckOrCreateUserPvc(userNamespace, pvcName string) error {
 	_, err := c.GetPVC(pvcName, userNamespace)
 	if err == nil {
+		// pvc already exists
 		return nil
 	}
-	return c.createUserPVCFromShareDir(userNamespace, pvcName)
-}
-
-func (c *PVCClient) createUserPVCFromShareDir(userNamespace, pvcName string) error {
 	if _, ok := shareDirs[pvcName]; !ok {
 		logrus.Errorf("share dir not found: %s", pvcName)
 		return fmt.Errorf("share dir not found")
 	}
-	sharepv := shareDirs[pvcName].pv
+	return c.createUserPVCFromPV(shareDirs[pvcName].pv, userNamespace, pvcName)
+}
 
+// MigratePvcFromOldNamespace migrates a PVC (Persistent Volume Claim) from an old namespace to a new namespace.
+// It checks if the PVC already exists in the new namespace, and if it does, it returns nil.
+// If the PVC does not exist in the new namespace, it retrieves the related PV (Persistent Volume) from the new namespace and creates a new PVC in the new namespace using the PV.
+// Parameters:
+//   - oldNamespace: The old namespace from which the PVC is being migrated.
+//   - newNamespace: The new namespace to which the PVC is being migrated.
+//   - pvcName: The name of the PVC being migrated.
+//
+// Returns:
+//   - error: An error if any occurred during the migration process, or nil if the migration was successful.
+func (c *PVCClient) MigratePvcFromOldNamespace(oldNamespace, newNamespace, oldPvcName, newPvcName string) error {
+	_, err := c.GetPVC(newPvcName, newNamespace)
+	if err == nil {
+		// pvc already exists
+		return nil
+	}
+
+	pv, err := c.GetPVCRelatedPV(oldPvcName, oldNamespace)
+	if err != nil {
+		logrus.Errorf("get share dir pv failed: %v", err)
+		return err
+	}
+
+	return c.createUserPVCFromPV(pv, newNamespace, newPvcName)
+}
+
+func (c *PVCClient) createUserPVCFromPV(sharepv *corev1.PersistentVolume, newNamespace, newPvcName string) error {
 	volumeAttr := sharepv.Spec.CSI.VolumeAttributes
 	volumeAttr["staticVolume"] = "true"
 	volumeAttr["rootPath"] = volumeAttr["subvolumePath"]
-	volumeName := fmt.Sprintf("%s-%s", sharepv.Name, userNamespace)
+	volumeName := fmt.Sprintf("%s-%s", sharepv.Name, newNamespace)
 	newpv := &corev1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: volumeName,
@@ -86,7 +108,7 @@ func (c *PVCClient) createUserPVCFromShareDir(userNamespace, pvcName string) err
 			PersistentVolumeSource: corev1.PersistentVolumeSource{
 				CSI: &corev1.CSIPersistentVolumeSource{
 					Driver:           sharepv.Spec.CSI.Driver,
-					VolumeHandle:     fmt.Sprintf("%s-%s", sharepv.Spec.CSI.VolumeHandle, userNamespace),
+					VolumeHandle:     fmt.Sprintf("%s-%s", sharepv.Spec.CSI.VolumeHandle, newNamespace),
 					VolumeAttributes: volumeAttr,
 					NodeStageSecretRef: &corev1.SecretReference{
 						Name:      "rook-csi-cephfs-node-user",
@@ -98,8 +120,8 @@ func (c *PVCClient) createUserPVCFromShareDir(userNamespace, pvcName string) err
 	}
 	newpvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      pvcName,
-			Namespace: userNamespace,
+			Name:      newPvcName,
+			Namespace: newNamespace,
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
@@ -117,7 +139,7 @@ func (c *PVCClient) createUserPVCFromShareDir(userNamespace, pvcName string) err
 	if err := c.Client.Create(context.Background(), newpvc); err != nil {
 		return err
 	}
-	logrus.Infof("create user pvc from share dir success, pvc:%v, namespace:%v", pvcName, userNamespace)
+	logrus.Infof("create user pvc from share dir success, pvc:%v, namespace:%v", newPvcName, newNamespace)
 	return nil
 }
 
@@ -151,4 +173,38 @@ func (c *PVCClient) GetPVCRelatedPV(name, namespace string) (*corev1.PersistentV
 	}
 
 	return pv, nil
+}
+
+func (c *PVCClient) CreateUserHomePVC(username string) error {
+	namespace := NameSpace
+	pvcname := fmt.Sprintf(UserHomePVC, username)
+
+	SCN := "rook-cephfs"
+	pvc := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pvcname,
+			Namespace: namespace,
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				corev1.ReadWriteMany,
+			},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					"storage": resource.MustParse("50Gi"),
+				},
+			},
+			StorageClassName: &SCN,
+		},
+	}
+
+	err := c.Create(context.Background(), pvc)
+	if errors.IsAlreadyExists(err) {
+		logrus.Infof("pvc %s already exists", pvcname)
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("create pvc %s failed: %v", pvcname, err)
+	}
+	return nil
 }
