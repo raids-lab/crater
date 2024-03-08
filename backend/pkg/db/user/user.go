@@ -3,7 +3,6 @@ package user
 import (
 	db "github.com/aisystem/ai-protal/pkg/db/orm"
 	"github.com/aisystem/ai-protal/pkg/models"
-	"github.com/aisystem/ai-protal/pkg/util"
 )
 
 type DBService interface {
@@ -13,8 +12,6 @@ type DBService interface {
 	ListAllUserQuotas() ([]models.UserQuota, error)
 	DeleteByUserName(username string) error
 	GetByUserName(username string) (*models.User, error)
-	CreateAccessToken(user *models.User, secret string, expiry int) (accessToken string, err error)
-	CreateRefreshToken(user *models.User, secret string, expiry int) (refreshToken string, err error)
 	GetUserByID(id uint) (*models.User, error)
 }
 
@@ -61,11 +58,4 @@ func (s *service) GetByUserName(username string) (*models.User, error) {
 	var user models.User
 	err := db.Orm.Where("username=?", username).First(&user).Error
 	return &user, err
-}
-func (s *service) CreateAccessToken(user *models.User, secret string, expiry int) (accessToken string, err error) {
-	return util.CreateAccessToken(user, secret, expiry)
-}
-
-func (s *service) CreateRefreshToken(user *models.User, secret string, expiry int) (refreshToken string, err error) {
-	return util.CreateRefreshToken(user, secret, expiry)
 }

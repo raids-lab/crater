@@ -5,6 +5,7 @@ import (
 	"github.com/aisystem/ai-protal/pkg/config"
 	"github.com/aisystem/ai-protal/pkg/crclient"
 	resputil "github.com/aisystem/ai-protal/pkg/server/response"
+	"github.com/aisystem/ai-protal/pkg/util"
 	"github.com/sirupsen/logrus"
 
 	"github.com/aisystem/ai-protal/pkg/db/quota"
@@ -25,6 +26,7 @@ type SignupMgr struct {
 	QuotaDB        quota.DBService
 	TokenConf      *config.TokenConf
 	taskController *aitaskctl.TaskController
+	pvcClient      *crclient.PVCClient
 	CL             client.Client
 }
 type SignupRequest struct {
@@ -39,18 +41,20 @@ type SignupResponse struct {
 	Role         string `json:"role"`
 }
 
-func NewSignupMgr(taskController *aitaskctl.TaskController, tokenConf *config.TokenConf, cl client.Client) *SignupMgr {
+func NewSignupMgr(taskController *aitaskctl.TaskController, tokenConf *config.TokenConf, pvcClient *crclient.PVCClient, cl client.Client) *SignupMgr {
 	return &SignupMgr{
 		UserDB:         user.NewDBService(),
 		QuotaDB:        quota.NewDBService(),
 		TokenConf:      tokenConf,
 		taskController: taskController,
+		pvcClient:      pvcClient,
 		CL:             cl,
 	}
 }
 
 func (sc *SignupMgr) RegisterRoute(group *gin.RouterGroup) {
-	group.POST("/signup", sc.Signup)
+	// group.POST("/signup", sc.Signup)
+	// group.POST("/migrate", sc.Migrate)
 }
 
 func (sc *SignupMgr) Signup(c *gin.Context) {
@@ -85,10 +89,8 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 
 		return
 	}
-	ct := &crclient.Control{Client: sc.CL}
 	request.Password = string(encryptedPassword)
-	err = ct.CreateUserNameSpace(request.Name)
-	ct.CreateUserHomePVC(request.Name)
+	sc.pvcClient.CreateUserHomePVC(request.Name)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":     "namespace creating wrong",
@@ -122,13 +124,13 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 	}
 	// 通知 TaskController 有新 Quota
 	sc.taskController.AddUser(quota.UserName, quota)
-	accessToken, err := sc.UserDB.CreateAccessToken(&user, sc.TokenConf.AccessTokenSecret, sc.TokenConf.AccessTokenExpiryHour)
+	accessToken, err := util.CreateAccessToken(&user, sc.TokenConf.AccessTokenSecret, sc.TokenConf.AccessTokenExpiryHour)
 	if err != nil {
 		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), 50017)
 		return
 	}
 
-	refreshToken, err := sc.UserDB.CreateRefreshToken(&user, sc.TokenConf.RefreshTokenSecret, sc.TokenConf.RefreshTokenExpiryHour)
+	refreshToken, err := util.CreateRefreshToken(&user, sc.TokenConf.RefreshTokenSecret, sc.TokenConf.RefreshTokenExpiryHour)
 	if err != nil {
 		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), 50018)
 		return
