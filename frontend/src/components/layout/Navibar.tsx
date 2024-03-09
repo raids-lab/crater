@@ -1,4 +1,4 @@
-import { useMemo, type FC, useEffect } from "react";
+import { useMemo, type FC, useEffect, Fragment } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -77,7 +77,7 @@ const Navibar: FC = () => {
           <BreadcrumbList>
             {breadcrumb.map((item, index) => {
               return (
-                <>
+                <Fragment key={`bread-${index}`}>
                   {index !== 0 && (
                     <BreadcrumbSeparator key={`bread-separator-${index}`} />
                   )}
@@ -91,7 +91,7 @@ const Navibar: FC = () => {
                       <BreadcrumbPage>{item.title}</BreadcrumbPage>
                     )}
                   </BreadcrumbItem>
-                </>
+                </Fragment>
               );
             })}
           </BreadcrumbList>
