@@ -85,6 +85,7 @@ module.exports = {
       // custom
       gridTemplateColumns: {
         sidebar: "200px auto", // for sidebar layout. adds grid-cols-sidebar class
+        minibar: "56px auto", // for the navbar layout. adds grid-cols-minibar class
       },
       gridTemplateRows: {
         header: "56px auto", // for the navbar layout. adds grid-rows-header class

@@ -8,6 +8,7 @@ import { localStorageEffect } from "./utils";
 const USER_INFO_KEY = "user_info";
 const LAST_VIEW_KEY = "last_view";
 const BREAD_CRUMB_KEY = "bread_crumb";
+const SIDEBAR_MINISIZE_KEY = "sidebar_mini";
 
 export const ACCESS_TOKEN_KEY = "access_token";
 export const REFRESH_TOKEN_KEY = "refresh_token";
@@ -46,6 +47,12 @@ type BreadCrumbItem = {
 export const globalBreadCrumb = atom({
   key: BREAD_CRUMB_KEY,
   default: [] as BreadCrumbItem[],
+});
+
+export const globalSidebarMini = atom({
+  key: SIDEBAR_MINISIZE_KEY,
+  default: false,
+  effects_UNSTABLE: [localStorageEffect(SIDEBAR_MINISIZE_KEY)],
 });
 
 /**

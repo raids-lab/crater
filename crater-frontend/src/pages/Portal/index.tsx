@@ -4,13 +4,14 @@ import OverviewIcon from "@/components/icon/OverviewIcon";
 import LightHouseIcon from "@/components/icon/LightHouseIcon";
 import WorkBenchIcon from "@/components/icon/WorkBenchIcon";
 import { useAuth } from "@/hooks/useAuth";
-import { FC, PropsWithChildren, Suspense, useState } from "react";
+import { FC, PropsWithChildren, Suspense } from "react";
 import { Navigate, Outlet, RouteObject } from "react-router-dom";
 import { FileTextIcon, Pencil2Icon } from "@radix-ui/react-icons";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import Navibar from "@/components/layout/Navibar";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { useRecoilState } from "recoil";
+import { globalSidebarMini } from "@/utils/store";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -109,62 +110,52 @@ const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
-const Layout = () => {
-  const [showSidebar, setShowSidebar] = useState(false);
+export const DashboardLayout = ({
+  sidebarItems,
+  sidebarMenus,
+}: {
+  sidebarItems: SidebarItem[];
+  sidebarMenus: SidebarMenu[];
+}) => {
+  const [isMinimized, setIsMinimized] = useRecoilState(globalSidebarMini);
   return (
     <>
-      <div className="grid h-screen w-screen overflow-hidden bg-dashboard md:grid-cols-sidebar">
-        <Sidebar
-          sidebarItems={sidebarItems}
-          sidebarMenus={sidebarMenus}
-          closeSidebar={() => setShowSidebar(false)}
-          className={cn({
-            "-translate-x-full": !showSidebar,
+      <div className="relative h-screen w-screen overflow-hidden">
+        <div
+          className={cn("absolute bottom-0 left-0 top-0 z-10 w-[200px]", {
+            "w-14": isMinimized,
           })}
-        />
-        <ScrollArea className="h-screen w-screen md:w-[calc(100vw_-_200px)]">
-          <div className="grid w-full grid-rows-header px-6">
-            <Navibar />
-            <div className="py-6">
-              <Outlet />
-            </div>
-          </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
-      </div>
-      {/* When screen size is smaller than md, show a float button to open and close sidebar */}
-      {/* See https://reacthustle.com/blog/next-js-tailwind-responsive-sidebar-layout*/}
-      <Button
-        title="Sidebar Controller"
-        variant={"default"}
-        className={cn(
-          "fixed bottom-4 left-4 h-12 w-12 rounded-full backdrop-blur-md backdrop-filter",
-          ".3s translate-x-0 transition-transform ease-in-out md:hidden",
-          {
-            " translate-x-20": showSidebar,
-          },
-        )}
-        type="button"
-        onClick={() => {
-          setShowSidebar((prev) => !prev);
-        }}
-      >
-        <svg
-          className="h-6 w-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
         >
-          {/* Bar Icon */}
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M4 6h16M4 12h8m-8 6h16"
+          <Sidebar
+            sidebarItems={sidebarItems}
+            sidebarMenus={sidebarMenus}
+            isMinimized={isMinimized}
+            setIsMinimized={setIsMinimized}
           />
-        </svg>
-      </Button>
+        </div>
+        <div
+          className={cn(
+            "absolute bottom-0 right-0 top-0 w-[calc(100vw_-_200px)]",
+            {
+              "w-[calc(100vw_-_56px)]": isMinimized,
+            },
+          )}
+        >
+          <ScrollArea
+            className={cn("h-screen w-[calc(100vw_-_200px)]", {
+              "w-[calc(100vw_-_56px)]": isMinimized,
+            })}
+          >
+            <div className="grid w-full grid-rows-header px-6">
+              <Navibar />
+              <div className="py-6">
+                <Outlet />
+              </div>
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        </div>
+      </div>
     </>
   );
 };
@@ -174,7 +165,10 @@ export const portalRoute: RouteObject = {
   element: (
     <Suspense fallback={<h2>Loading...</h2>}>
       <AuthedRouter>
-        <Layout />
+        <DashboardLayout
+          sidebarItems={sidebarItems}
+          sidebarMenus={sidebarMenus}
+        />
       </AuthedRouter>
     </Suspense>
   ),

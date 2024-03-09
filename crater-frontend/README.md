@@ -169,3 +169,8 @@ gpu-portal-frontend
 ## 5. 未解决的问题
 
 1. 在深色模式下，使用浏览器的自动填充功能时，INPUT 背景变为白色。相关讨论：[Tailwind autofill: prefix on form inputs not working](https://github.com/tailwindlabs/tailwindcss/discussions/8679)。
+
+## 6. 界面设计参考
+
+- 总体设计：https://www.figma.com/community/file/1284628698171304551/dashboard-dark-and-light-modes-color-variables
+- 侧边栏：https://coderthemes.com/konrix/layouts/index.html
