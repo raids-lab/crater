@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: crater-jobs-ingress
+  namespace: crater-jobs
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - crater.***REMOVED***
+      secretName: crater-tls-secret
+  rules:
+    - host: crater.***REMOVED***
+      http:
+        paths:
+          # unreachable path for default backend
+          - path: /jupyter/unreachable
+            pathType: Prefix
+            backend:
+              service:
+                name: unreachable-service
+                port:
+                  number: 80

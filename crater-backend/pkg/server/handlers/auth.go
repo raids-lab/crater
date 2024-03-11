@@ -215,22 +215,22 @@ func (mgr *AuthMgr) Migrate(c *gin.Context) {
 		return
 	}
 
-	user, err := mgr.userService.GetByUserName(request.Name)
+	_, err = mgr.userService.GetByUserName(request.Name)
 	if err != nil {
 		resputil.HttpError(c, http.StatusConflict, "User does not exist with the given Name", 40901)
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(request.Password)); err != nil {
-		resputil.HttpError(c, http.StatusUnauthorized, "Password is incorrect", 40102)
-		return
-	}
+	// if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(request.Password)); err != nil {
+	// 	resputil.HttpError(c, http.StatusUnauthorized, "Password is incorrect", 40102)
+	// 	return
+	// }
 
-	_, err = mgr.userService.GetByUserName(request.NewName)
-	if err == nil {
-		resputil.HttpError(c, http.StatusConflict, "User already exists with the given Name", 40901)
-		return
-	}
+	// _, err = mgr.userService.GetByUserName(request.NewName)
+	// if err == nil {
+	// 	resputil.HttpError(c, http.StatusConflict, "User already exists with the given Name", 40901)
+	// 	return
+	// }
 
 	// migrate old pvc and pv from old namespace
 	oldNamespace := fmt.Sprintf("user-%s", request.Name)

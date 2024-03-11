@@ -16,6 +16,7 @@ import (
 	"github.com/aisystem/ai-protal/pkg/util"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -32,9 +33,9 @@ type TaskController struct {
 }
 
 // NewTaskController returns a new *TaskController
-func NewTaskController(client client.Client, statusChan <-chan util.JobStatusChan) *TaskController {
+func NewTaskController(client client.Client, cs kubernetes.Interface, statusChan <-chan util.JobStatusChan) *TaskController {
 	return &TaskController{
-		jobControl:    &crclient.JobControl{Client: client},
+		jobControl:    &crclient.JobControl{Client: client, KubeClient: cs},
 		quotaDB:       quotadb.NewDBService(),
 		taskDB:        taskdb.NewDBService(),
 		taskQueue:     NewTaskQueue(),
