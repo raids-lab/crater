@@ -34,8 +34,8 @@ import {
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
-import { useSetRecoilState } from "recoil";
-import { globalBreadCrumb } from "@/utils/store";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { globalBreadCrumb, globalUserInfo } from "@/utils/store";
 import { TableDate } from "@/components/custom/TableDate";
 import { cn } from "@/lib/utils";
 import Status from "../../Overview/Status";
@@ -74,6 +74,7 @@ export const Component = () => {
   const [openSheet, setOpenSheet] = useState(false);
   const [data, setData] = useState<JTaskInfo[]>([]);
   const queryClient = useQueryClient();
+  const userInfo = useRecoilValue(globalUserInfo);
 
   const {
     data: taskList,
@@ -109,10 +110,16 @@ export const Component = () => {
 
   const { mutate: getPortToken } = useMutation({
     mutationFn: (id: number) => apiJTaskGetPortToken(id),
-    onSuccess: (res) => {
+    onSuccess: (res, id) => {
       const jupyterPort = res.data.data.port;
       const jupyterToken = res.data.data.token;
-      window.open(`http://192.168.5.60:${jupyterPort}?token=${jupyterToken}`);
+      if (jupyterPort) {
+        window.open(`http://192.168.5.60:${jupyterPort}?token=${jupyterToken}`);
+      } else {
+        window.open(
+          `https://crater.act.buaa.edu.cn/jupyter/${userInfo.id}-${id}?token=${jupyterToken}`,
+        );
+      }
     },
   });
 

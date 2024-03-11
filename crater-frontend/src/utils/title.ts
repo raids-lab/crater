@@ -137,7 +137,7 @@ const pathDict: PathInfo[] = [
     children: [
       {
         path: "overview",
-        title: "资源监控",
+        title: "节点管理",
       },
       {
         path: "user",

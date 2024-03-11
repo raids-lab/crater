@@ -31,6 +31,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/utils/theme";
 import { getBreadcrumbByPath } from "@/utils/title";
 import { toast } from "sonner";
+import TeamSwitcher from "./TeamSwitcher";
 
 const Navibar: FC = () => {
   const queryClient = useQueryClient();
@@ -97,76 +98,86 @@ const Navibar: FC = () => {
           </BreadcrumbList>
         </Breadcrumb>
       </div>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-            <Avatar className="h-8 w-8">
-              {/* <AvatarImage src="/avatars/01.png" alt="@shadcn" /> */}
-              <AvatarFallback className="select-none">
-                {
-                  // Get first two char of userInfo.id and upper case
-                  userInfo.id.slice(0, 2).toUpperCase()
-                }
-              </AvatarFallback>
-            </Avatar>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-44" align="end" forceMount>
-          <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{userInfo.id}</p>
-              <p className="text-xs leading-none text-muted-foreground">
-                {userInfo.id}@act.buaa.edu.cn
-              </p>
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {isAdminView ? (
-            <DropdownMenuGroup>
-              <DropdownMenuItem
-                onClick={() => {
-                  navigate("/portal");
-                  toast.success("切换至用户视图");
-                }}
-              >
-                切换为普通用户
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-          ) : (
-            <DropdownMenuGroup>
-              {userInfo.role === "admin" && (
+      <div className="flex flex-row items-center justify-end space-x-4">
+        <TeamSwitcher />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+              <Avatar className="h-8 w-8">
+                {/* <AvatarImage src="/avatars/01.png" alt="@shadcn" /> */}
+                <AvatarFallback className="select-none">
+                  {
+                    // Get first two char of userInfo.id and upper case
+                    userInfo.id.slice(0, 2).toUpperCase()
+                  }
+                </AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            className="w-44"
+            align="end"
+            forceMount
+            sideOffset={6}
+          >
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">
+                  {userInfo.id}
+                </p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  {userInfo.id}@act.buaa.edu.cn
+                </p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {isAdminView ? (
+              <DropdownMenuGroup>
                 <DropdownMenuItem
                   onClick={() => {
-                    navigate("/admin/user/personal");
-                    toast.success("切换至管理员视图");
+                    navigate("/portal");
+                    toast.success("切换至用户视图");
                   }}
                 >
-                  切换为管理员
+                  切换为普通用户
                 </DropdownMenuItem>
-              )}
-              <DropdownMenuItem disabled>个人空间</DropdownMenuItem>
-            </DropdownMenuGroup>
-          )}
-          <DropdownMenuItem disabled>系统设置</DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          >
-            {theme === "light" ? "深色模式" : "浅色模式"}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="focus:bg-destructive focus:text-destructive-foreground"
-            onClick={() => {
-              setLastView(pathParts[0]);
-              queryClient.clear();
-              resetAll();
-              toast.success("已退出");
-            }}
-          >
-            退出登录
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+              </DropdownMenuGroup>
+            ) : (
+              <DropdownMenuGroup>
+                {userInfo.role === "admin" && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      navigate("/admin/user/personal");
+                      toast.success("切换至管理员视图");
+                    }}
+                  >
+                    切换为管理员
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem disabled>个人空间</DropdownMenuItem>
+              </DropdownMenuGroup>
+            )}
+            <DropdownMenuItem disabled>系统设置</DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            >
+              {theme === "light" ? "深色模式" : "浅色模式"}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="focus:bg-destructive focus:text-destructive-foreground"
+              onClick={() => {
+                setLastView(pathParts[0]);
+                queryClient.clear();
+                resetAll();
+                toast.success("已退出");
+              }}
+            >
+              退出登录
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 };
