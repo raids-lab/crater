@@ -130,7 +130,7 @@ export const DashboardLayout = ({
             sidebarItems={sidebarItems}
             sidebarMenus={sidebarMenus}
             isMinimized={isMinimized}
-            setIsMinimized={setIsMinimized}
+            toggleIsMinimized={() => setIsMinimized((prev) => !prev)}
           />
         </div>
         <div

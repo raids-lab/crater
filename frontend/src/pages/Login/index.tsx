@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { ProfileForm } from "./Form";
 import { CardHeader, CardContent, Card } from "@/components/ui/card";
 
@@ -31,7 +30,7 @@ export default function Login() {
           </h1>
           <p className="text-left text-xl text-slate-400 dark:text-muted-foreground">
             Crater 是一个基于 Kubernetes 的 GPU 集群管理平台，<br></br>
-            提供了一站式的 GPU 集群管理解决方案。
+            提供了一站式的多租户 GPU 集群管理解决方案。
           </p>
         </div>
       </div>
@@ -43,10 +42,11 @@ export default function Login() {
           <CardContent className="space-y-4">
             <ProfileForm />
             <p className="mt-4 px-2 text-center text-sm text-muted-foreground">
-              还没有账号？现在
+              {/* 还没有账号？现在
               <span className="ml-1 underline">
                 <Link to="/signup">注册</Link>
-              </span>
+              </span> */}
+              请使用 ACT 账号登录
             </p>
           </CardContent>
         </Card>

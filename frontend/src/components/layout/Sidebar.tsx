@@ -44,7 +44,7 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   sidebarItems: SidebarItem[];
   sidebarMenus: SidebarMenu[];
   isMinimized: boolean;
-  setIsMinimized: (isMinimized: boolean) => void;
+  toggleIsMinimized: () => void;
 }
 
 interface ActivedState {
@@ -58,7 +58,7 @@ export function Sidebar({
   sidebarItems,
   sidebarMenus,
   isMinimized,
-  setIsMinimized,
+  toggleIsMinimized,
 }: SidebarProps) {
   const [accordion, setAccordion] = useState<string>();
   const location = useLocation();
@@ -105,7 +105,10 @@ export function Sidebar({
       )}
     >
       {/* Logo */}
-      <div className="relative flex h-14 w-full flex-row items-center justify-center pb-0 pt-1">
+      <div
+        className="relative flex h-14 w-full flex-row items-center justify-center pb-0 pt-1"
+        onDoubleClick={toggleIsMinimized}
+      >
         <CraterIcon className={cn("h-7 w-7", { "mr-1": !isMinimized })} />
         <CraterText className={cn("h-3.5", { hidden: isMinimized })} />
         <div
@@ -120,7 +123,7 @@ export function Sidebar({
             size="icon"
             variant={"ghost"}
             className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 hover:bg-primary/15"
-            onClick={() => setIsMinimized(!isMinimized)}
+            onClick={toggleIsMinimized}
             title={isMinimized ? "展开边栏" : "收起边栏"}
           >
             <ChevronDownIcon
@@ -136,11 +139,11 @@ export function Sidebar({
       </div>
       {/* Calculate of ScrollArea height: */}
       {/* 100vh - (56px + 124px) */}
-      <ScrollArea className="mt-2 h-[calc(100vh_-_180px)] w-full px-2">
+      <ScrollArea className="h-[calc(100vh_-_180px)] w-full">
         <Accordion
           type="single"
           // collapsible
-          className="w-full space-y-1"
+          className="flex w-full flex-col items-center space-y-1 pt-2"
           value={accordion}
           onValueChange={setAccordion}
         >
@@ -153,12 +156,19 @@ export function Sidebar({
                   setActived={setActived}
                 />
               ) : (
-                <AccordionItem value={item.path} key={item.path}>
+                <AccordionItem
+                  value={item.path}
+                  key={item.path}
+                  className="w-[184px]"
+                >
                   <AccordionTrigger
-                    className={cn({
-                      "bg-primary/15 text-primary group-hover:bg-primary/15":
-                        item.path === actived.item,
-                    })}
+                    className={cn(
+                      "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                      {
+                        "bg-primary/15 text-primary group-hover:bg-primary/15":
+                          item.path === actived.item,
+                      },
+                    )}
                     onClick={() => {
                       if (accordion !== item.path) {
                         setActived((old) => ({
@@ -227,7 +237,7 @@ export function Sidebar({
           })}
         </Accordion>
       </ScrollArea>
-      <div className="w-full px-2">
+      <div className="flex w-full flex-col items-center">
         {/* <Separator className="mb-4 bg-sidebar-item" /> */}
         <div className="space-y-1">
           {sidebarMenus.map((item) => (
@@ -273,10 +283,10 @@ const SingleButton: React.FC<{
       key={key}
       type="button"
       className={cn(
-        "flex h-10 flex-row items-center rounded-md text-sm hover:bg-primary/5",
+        "flex h-10 flex-row items-center rounded-md text-sm hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
         {
           "bg-primary/15 text-primary hover:bg-primary/15": isActive,
-          "w-full justify-start px-7": !isMinimized,
+          "w-[184px] justify-start px-7": !isMinimized,
           "w-10 justify-center": isMinimized,
         },
       )}
@@ -324,7 +334,7 @@ const SidebarDropdownMenu: React.FC<DropdownMenuProps> = ({
         <button
           key={item.path}
           className={cn(
-            "flex h-10 w-10 flex-row items-center justify-center rounded-md text-sm transition-all hover:bg-primary/5",
+            "flex h-10 w-10 flex-row items-center justify-center rounded-md text-sm transition-all hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
             {
               "bg-primary/15 text-primary hover:bg-primary/15":
                 item.path === actived.item,
