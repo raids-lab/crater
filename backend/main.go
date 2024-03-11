@@ -137,6 +137,7 @@ func main() {
 
 	taskCtrl := aitaskctl.NewTaskController(
 		mgr.GetClient(),
+		clientset,
 		jobStatusChan,
 	)
 	if err := taskCtrl.Init(); err != nil {

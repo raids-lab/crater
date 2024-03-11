@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	aijobapi "github.com/aisystem/ai-protal/pkg/apis/aijob/v1alpha1"
@@ -18,6 +21,8 @@ import (
 
 type JobControl struct {
 	client.Client
+	KubeClient kubernetes.Interface
+	mu         sync.Mutex
 }
 
 func (c *JobControl) GetJobStatus(task *models.AITask) (aijobapi.JobPhase, error) {
@@ -54,6 +59,40 @@ func (c *JobControl) DeleteJobFromTask(task *models.AITask) error {
 			},
 		}
 		err = c.Delete(context.Background(), svc)
+		if err != nil {
+			err = fmt.Errorf("delete service %s failed: %v", task.JobName, err)
+			return err
+		}
+	}
+
+	// 此外，还需要删除 Ingress
+
+	// 添加锁
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	ingressClient := c.KubeClient.NetworkingV1().Ingresses(ns)
+
+	// Get the existing Ingress
+	ingress, err := ingressClient.Get(context.TODO(), "crater-jobs-ingress", metav1.GetOptions{})
+	if err != nil {
+		err = fmt.Errorf("get ingress failed: %v", err)
+		return err
+	}
+
+	// Remove the path from the first rule
+	for i, path := range ingress.Spec.Rules[0].HTTP.Paths {
+		if strings.Contains(path.Path, task.JobName) {
+			ingress.Spec.Rules[0].HTTP.Paths = append(ingress.Spec.Rules[0].HTTP.Paths[:i], ingress.Spec.Rules[0].HTTP.Paths[i+1:]...)
+			break
+		}
+	}
+
+	// Update the Ingress
+	_, err = ingressClient.Update(context.Background(), ingress, metav1.UpdateOptions{})
+	if err != nil {
+		err = fmt.Errorf("update ingress failed: %v", err)
+		return err
 	}
 
 	return err
@@ -160,7 +199,7 @@ func (c *JobControl) createJupyterJobFromTask(task *models.AITask) (jobname stri
 
 	// convert metadata to lower case
 	username := strings.ToLower(task.UserName)
-	jobname = fmt.Sprintf("jupyter-%s-singleuser-%d", username, task.ID)
+	jobname = fmt.Sprintf("%s-%d", username, task.ID)
 	jobname = strings.Replace(jobname, "_", "-", -1)
 	taskID := strconv.Itoa(int(task.ID))
 
@@ -215,7 +254,7 @@ func (c *JobControl) createJupyterJobFromTask(task *models.AITask) (jobname stri
 							Image:           task.Image,
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							Name:            "notebook",
-							Command:         []string{"/bin/bash", "-c", task.Command},
+							Command:         []string{"/bin/bash", "-c", fmt.Sprintf(task.Command, jobname)},
 							Env: []corev1.EnvVar{
 								{Name: "GRANT_SUDO", Value: "1"},
 								{Name: "CHOWN_HOME", Value: "1"},
@@ -269,15 +308,57 @@ func (c *JobControl) createJupyterJobFromTask(task *models.AITask) (jobname stri
 					Port:       80,
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromInt(8888),
-					NodePort:   0, // Kubernetes will allocate a port
+					// NodePort:   0, // Kubernetes will allocate a port
 				},
 			},
 			SessionAffinity: corev1.ServiceAffinityNone,
-			Type:            corev1.ServiceTypeNodePort,
+			Type:            corev1.ServiceTypeClusterIP,
 		},
 	}
 
 	err = c.Create(context.Background(), svc)
+	if err != nil {
+		err = fmt.Errorf("create service %s failed: %v", task.TaskName, err)
+		return
+	}
+
+	// 添加锁
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// 创建 Ingress，转发 Jupyter 端口
+	ingressClient := c.KubeClient.NetworkingV1().Ingresses(task.Namespace)
+
+	// Get the existing Ingress
+	ingress, err := ingressClient.Get(context.TODO(), "crater-jobs-ingress", metav1.GetOptions{})
+	if err != nil {
+		err = fmt.Errorf("get ingress failed: %v", err)
+		return
+	}
+
+	// Add a new path to the first rule
+	newPath := networkingv1.HTTPIngressPath{
+		Path:     fmt.Sprintf("/jupyter/%s", jobname),
+		PathType: func(s networkingv1.PathType) *networkingv1.PathType { return &s }(networkingv1.PathTypePrefix),
+		Backend: networkingv1.IngressBackend{
+			Service: &networkingv1.IngressServiceBackend{
+				Name: jobname,
+				Port: networkingv1.ServiceBackendPort{
+					Number: 80,
+				},
+			},
+		},
+	}
+
+	ingress.Spec.Rules[0].HTTP.Paths = append(ingress.Spec.Rules[0].HTTP.Paths, newPath)
+
+	// Update the Ingress
+	_, err = ingressClient.Update(context.Background(), ingress, metav1.UpdateOptions{})
+	if err != nil {
+		err = fmt.Errorf("update ingress failed: %v", err)
+		return
+	}
+
 	return
 }
 

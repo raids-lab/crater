@@ -71,7 +71,7 @@ func (mgr *JupyterMgr) Create(c *gin.Context) {
 	taskAttr.TaskType = models.JupyterTask
 	taskAttr.Image = req.Image
 	taskAttr.ResourceRequest = req.ResourceRequest
-	taskAttr.Command = "start.sh jupyter lab --allow-root"
+	taskAttr.Command = "start.sh jupyter lab --allow-root --NotebookApp.base_url=/jupyter/%s/"
 	taskAttr.WorkingDir = fmt.Sprintf("/home/%s", username.(string))
 	taskAttr.ShareDirs = req.ShareDirs
 
