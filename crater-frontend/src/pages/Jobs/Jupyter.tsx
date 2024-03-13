@@ -6,11 +6,30 @@ import { apiJTaskGetPortToken } from "@/services/api/jupyterTask";
 import { useRecoilValue } from "recoil";
 import { globalUserInfo } from "@/utils/store";
 import CraterIcon from "@/components/icon/CraterIcon";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { apiAiTaskGetLogs } from "@/services/api/aiTask";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const Jupyter: FC = () => {
   // get param from url
   const { id } = useParams();
   const userInfo = useRecoilValue(globalUserInfo);
+
+  const { data: taskLogs } = useQuery({
+    queryKey: ["jupyter", "tasklog", id],
+    queryFn: () => apiAiTaskGetLogs(parseInt(id ?? "")),
+    select: (res) => res.data.data.logs,
+    enabled: !!id,
+  });
 
   const jupyterInfo = useQuery({
     queryKey: ["jtask", id],
@@ -44,7 +63,37 @@ const Jupyter: FC = () => {
         src={url}
         className="absolute bottom-0 left-0 right-0 top-0 h-screen w-screen"
       />
-      <CraterIcon className="absolute bottom-10 right-4 h-10 w-10" />
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button
+            className="absolute bottom-10 right-4 h-10 w-10 rounded-full hover:bg-transparent"
+            size="icon"
+            variant={"ghost"}
+            title="Jupyter 日志"
+          >
+            <CraterIcon />
+          </Button>
+        </SheetTrigger>
+        {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
+        <SheetContent className="max-h-screen sm:max-w-3xl" side="left">
+          <SheetHeader>
+            <SheetTitle>Jupyter 日志</SheetTitle>
+            <SheetDescription></SheetDescription>
+          </SheetHeader>
+          {taskLogs && (
+            <Card className="bg-gray-100 text-muted-foreground dark:border dark:bg-transparent">
+              <ScrollArea className="h-[calc(100vh_-_80px)]">
+                <CardHeader className="py-3"></CardHeader>
+                <CardContent>
+                  <pre className="whitespace-pre-wrap text-sm">
+                    {taskLogs[0]}
+                  </pre>
+                </CardContent>
+              </ScrollArea>
+            </Card>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
