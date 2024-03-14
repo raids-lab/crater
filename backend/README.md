@@ -12,6 +12,8 @@ Crater 是一个基于 Kubernetes 的 GPU 集群管理系统，提供了一站�
 
 ## 1. 环境准备
 
+### 1.1 安装 Go 和 Kubectl
+
 在开始之前，请确保您的开发环境中已安装 Go 和 Kubectl。如果尚未安装，请参考以下步骤：
 
 - Go: [Download and install](https://go.dev/doc/install)
@@ -36,7 +38,11 @@ curl -LO https://dl.k8s.io/release/v1.22.1/bin/linux/amd64/kubectl
 sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 ```
 
-之后需要获取 K8s 集群的访问权限。申请通过后，集群管理员会提供 `user-xxx.kubeconfig` 文件，创建 `~/.kube` 目录，并将 `user-xxx.kubeconfig` 文件放置在该路径下，仍以 Ubuntu 系统为例：
+### 1.2 获取集群访问权限（非必须）
+
+> 目前 Crater Backend 直接使用位于项目根目录的 `/kubeconfig` 文件作为 Context，这种方式并不正规，但因此，您可以忽略这一步。
+
+之后（按正规开发流程）需要获取 K8s 集群的访问权限。申请通过后，集群管理员会提供 `user-xxx.kubeconfig` 文件，创建 `~/.kube` 目录，并将 `user-xxx.kubeconfig` 文件放置在该路径下，仍以 Ubuntu 系统为例：
 
 ```bash
 mkdir -p ~/.kube
@@ -57,6 +63,8 @@ kubectl version
 
 ## 2. 开发
 
+### 2.1 系统概况
+
 Crater 目前部署于 [K8s 小集群](https://gitlab.***REMOVED***/raids/resource-scheduling/gpu-cluster-portal/-/wikis/home) 中，在 Web Backend 下游，集群中还有以下组件：
 
 - [MySQL](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-backend/-/tree/main/deploy/mysql?ref_type=heads) ：Web Backend 所使用的数据库
@@ -65,10 +73,15 @@ Crater 目前部署于 [K8s 小集群](https://gitlab.***REMOVED***/raids/resour
   2. 监控 Pod 生命周期，将 Pod 的状态同步到 AI Job 里，反馈给  Web Backend
 - [AI Job Scheduler](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/aijob-scheduler) ：Crater 的调度层，实现了 Best Effort 作业抢占等机制
 
-为便于开发人员测试，目前将 MySQL 数据库的 3306 端口暴露到集群外的 30306 端口（见 `deploy/mysql/mysql-hack.yaml` ），使用 `./debug.sh` 脚本在本地 `8099` 端口运行：
+为便于开发人员测试，目前将 MySQL 数据库的 3306 端口暴露到集群外的 30306 端口（见 `deploy/mysql/mysql-hack.yaml` ）。
+
+### 2.2 本地开发
+
+如果您在使用 Linux 或 MacOS 系统，可使用 `./debug.sh` 脚本，在本地 `8099` 端口运行 Web 后端：
 
 ```bash
 #!/bin/bash
+export KUBECONFIG=${PWD}/kubeconfig
 go run main.go \
     --db-config-file ./debug-dbconf.yaml \
     --config-file ./etc/debug-config.yaml \
@@ -77,17 +90,28 @@ go run main.go \
     --server-port :8099
 ```
 
+如果您在使用 Windows 系统，上述脚本可能需要修改为适用于 Windows 的版本（等待一位好心人！）
+
+### 2.3 单步调试
+
+Crater Web Backend 已经为 VSCode 配置好了单步调试设置，通过点击 VSCode 左侧的 Run and Debug (Ctrl + Shift + D) 按钮，并点击 `Debug Server` 左侧的 Start Debugging (F5) 按钮，可以启动调试模式。此时，您可以在代码中添加断点，进行单步调试。
+
+### 2.4 如何测试接口
+
 完成新功能开发后，可以用 Postman 自测。可以在 Header 中添加 `X-Debug-Username` 指定用户名绕过登录认证，直接测试接口功能。
 
 ```json
 {
-  "X-Debug-Username": "lyl"
+  "X-Debug-Username": "username"
 }
 ```
 
-也可以在本地运行 [Web Frontend](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-frontend) 进行测试，在 `pkg/server/middleware/cors.go` 中，允许了来自 `http://localhost:5173` 的跨域请求。
+也可以在本地运行 [Web Frontend](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-frontend) 进行测试。
 
-合入 `main` 分支后，在 ***REMOVED*** 运行 `docker restart ai-portal-backend`，会启动 main 分支版本，暴露 8078 端口。
+由于调试时前后端不同域，在 `pkg/server/middleware/cors.go` 中，允许了来自 `http://localhost:5173` 的跨域请求。
+
+前端可能会有 `http://localhost:5173`, `http://127.0.0.1:5173` 这两种 URL，视操作系统的不同，前端 Vite 程序可能会引导至二者之一，建议您使用 `http://localhost:5173` 访问前端，避免跨域问题。
+
 
 ## 3. 部署
 
