@@ -229,7 +229,6 @@ const Training: FC = () => {
               table.toggleAllPageRowsSelected(!!value)
             }
             aria-label="Select all"
-            className="ml-2"
           />
         ),
         cell: ({ row }) => (
@@ -237,7 +236,6 @@ const Training: FC = () => {
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
             aria-label="Select row"
-            className="ml-2"
           />
         ),
         enableSorting: false,

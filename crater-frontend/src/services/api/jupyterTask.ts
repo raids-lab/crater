@@ -25,7 +25,7 @@ export interface IJupyterTask {
   //slo: number;
   status: string;
   jobName: string;
-  isDeleted: false;
+  isDeleted: boolean;
   estimatedTime: number;
   scheduleInfo: string;
 }
@@ -51,7 +51,7 @@ export interface JupyterTask {
   //slo: number;
   status: string;
   jobName: string;
-  isDeleted: false;
+  isDeleted: boolean;
   estimatedTime: number;
   scheduleInfo: string;
 }
