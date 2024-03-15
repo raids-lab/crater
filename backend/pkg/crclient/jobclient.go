@@ -49,6 +49,10 @@ func (c *JobControl) DeleteJobFromTask(task *models.AITask) error {
 		},
 	}
 	err := c.Delete(context.Background(), job)
+	if err != nil {
+		err = fmt.Errorf("delete job %s failed: %v", task.JobName, err)
+		return err
+	}
 
 	// 对于 Jupyter 类型，还需要删除 Service
 	if task.TaskType == models.JupyterTask {

@@ -25,7 +25,6 @@ func (mgr *AITaskMgr) RegisterRoute(g *gin.RouterGroup) {
 	g.GET("getLogs", mgr.GetLogs)
 	g.GET("getQuota", mgr.GetQuota)
 	g.GET("taskStats", mgr.GetTaskStats)
-
 }
 
 type AITaskMgr struct {
