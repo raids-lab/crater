@@ -37,11 +37,14 @@ const AiJobDetail: FC = () => {
     }
     setBreadcrumb([
       {
+        title: "任务管理",
+      },
+      {
         title: "AI 训练任务",
         path: "/portal/job/ai",
       },
       {
-        title: `任务「${taskInfo?.taskName}」详情`,
+        title: `任务详情`,
       },
     ]);
   }, [setBreadcrumb, taskInfo, isLoading]);

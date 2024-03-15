@@ -40,8 +40,6 @@ import { DataTable } from "@/components/custom/DataTable";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
-import { useSetRecoilState } from "recoil";
-import { globalBreadCrumb } from "@/utils/store";
 import { useNavigate, useRoutes } from "react-router-dom";
 import AiJobDetail from "./Detail";
 import { TableDate } from "@/components/custom/TableDate";
@@ -127,15 +125,6 @@ const AiJobHome = () => {
       toast.success("任务已删除");
     },
   });
-
-  const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
-  useEffect(() => {
-    setBreadcrumb([
-      {
-        title: "AI 训练任务",
-      },
-    ]);
-  }, [setBreadcrumb]);
 
   const columns = useMemo<ColumnDef<TaskInfo>[]>(
     () => [
