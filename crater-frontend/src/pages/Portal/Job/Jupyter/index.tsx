@@ -34,8 +34,6 @@ import {
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
-import { useSetRecoilState } from "recoil";
-import { globalBreadCrumb } from "@/utils/store";
 import { TableDate } from "@/components/custom/TableDate";
 import { cn } from "@/lib/utils";
 import Status from "../../Overview/Status";
@@ -119,15 +117,6 @@ export const Component = () => {
       }
     },
   });
-
-  const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
-  useEffect(() => {
-    setBreadcrumb([
-      {
-        title: "Jupyter 任务",
-      },
-    ]);
-  }, [setBreadcrumb]);
 
   const columns = useMemo<ColumnDef<JTaskInfo>[]>(
     () => [

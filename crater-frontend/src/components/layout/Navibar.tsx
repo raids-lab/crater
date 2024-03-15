@@ -32,6 +32,7 @@ import { useTheme } from "@/utils/theme";
 import { getBreadcrumbByPath } from "@/utils/title";
 import { toast } from "sonner";
 import TeamSwitcher from "./TeamSwitcher";
+import { cn } from "@/lib/utils";
 
 const Navibar: FC = () => {
   const queryClient = useQueryClient();
@@ -64,6 +65,9 @@ const Navibar: FC = () => {
           path: i !== titles.length - 1 ? url : undefined,
         });
       }
+      if (ans.length > 2) {
+        ans[ans.length - 2].path = undefined;
+      }
       setBreadcrumb(ans.slice(1));
     }
   }, [pathParts, setBreadcrumb]);
@@ -82,16 +86,27 @@ const Navibar: FC = () => {
                   {index !== 0 && (
                     <BreadcrumbSeparator key={`bread-separator-${index}`} />
                   )}
-                  <BreadcrumbItem key={`bread-item-${index}`}>
-                    {item.path && (
-                      <BreadcrumbLink asChild>
-                        <Link to={item.path}>{item.title}</Link>
-                      </BreadcrumbLink>
-                    )}
-                    {!item.path && (
-                      <BreadcrumbPage>{item.title}</BreadcrumbPage>
-                    )}
-                  </BreadcrumbItem>
+                  {index === 0 && (
+                    <BreadcrumbPage
+                      className={cn({
+                        "text-muted-foreground": breadcrumb.length > 1,
+                      })}
+                    >
+                      {item.title}
+                    </BreadcrumbPage>
+                  )}
+                  {index !== 0 && (
+                    <BreadcrumbItem key={`bread-item-${index}`}>
+                      {item.path && (
+                        <BreadcrumbLink asChild>
+                          <Link to={item.path}>{item.title}</Link>
+                        </BreadcrumbLink>
+                      )}
+                      {!item.path && (
+                        <BreadcrumbPage>{item.title}</BreadcrumbPage>
+                      )}
+                    </BreadcrumbItem>
+                  )}
                 </Fragment>
               );
             })}
