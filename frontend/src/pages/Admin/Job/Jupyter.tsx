@@ -30,12 +30,8 @@ import {
   CrossCircledIcon,
   StopwatchIcon,
   StopIcon,
-  // CheckIcon,
-  //Cross2Icon,
-  DotIcon,
-  DotFilledIcon,
 } from "@radix-ui/react-icons";
-import { apiJTaskDelete } from "@/services/api/jupyterTask";
+import { apiJTaskDelete, convertJTask } from "@/services/api/jupyterTask";
 
 type StatusValue =
   | "Queueing"
@@ -94,53 +90,34 @@ const statuses: {
   },
 ];
 
-const deleteStatuses = [
-  {
-    label: "已删除",
-    value: "已删除",
-    icon: DotFilledIcon,
-  },
-  {
-    label: "未删除",
-    value: "未删除",
-    icon: DotIcon,
-  },
-];
-
 const getHeader = (key: string): string => {
   switch (key) {
     case "taskName":
-      return "task 名称";
-    case "jobName":
-      return "job 名称";
-    case "isDeleted":
-      return "是否删除";
+      return "任务名称";
     case "userName":
-      return "创建用户";
+      return "用户";
     case "status":
       return "状态";
     case "createdAt":
       return "创建于";
     case "startedAt":
       return "开始于";
-    case "finishAt":
-      return "删除于";
+    case "gpus":
+      return "GPU";
     default:
       return key;
   }
 };
+
 type JTaskInfo = {
   id: number;
-  taskName: string;
-  jobName: string;
-  isDeleted: string;
   userName: string;
+  taskName: string;
+  gpus: string | number | undefined;
   status: string;
   createdAt: string;
   startedAt: string;
   finishAt: string;
-  //finishAt: string;
-  //gpus: string | number | undefined;
 };
 
 const Jupyter: FC = () => {
@@ -153,14 +130,14 @@ const Jupyter: FC = () => {
 
   const toolbarConfig: DataTableToolbarConfig = {
     filterInput: {
-      placeholder: "搜索任务名",
-      key: "taskName",
+      placeholder: "搜索用户名",
+      key: "userName",
     },
     filterOptions: [
       {
-        key: "isDeleted",
-        title: "删除状态",
-        option: deleteStatuses,
+        key: "status",
+        title: "状态",
+        option: statuses,
       },
     ],
     getHeader: getHeader,
@@ -192,14 +169,13 @@ const Jupyter: FC = () => {
     if (!taskList) return;
     const tableData: JTaskInfo[] = taskList
       //.filter((task) => !task.isDeleted)
-      .map((task) => {
-        //const task = convertJTask(t);
+      .map((t) => {
+        const task = convertJTask(t);
         return {
           id: task.id,
-          taskName: task.taskName,
-          jobName: task.jobName,
-          isDeleted: task.isDeleted === true ? "已删除" : "未删除",
           userName: task.userName,
+          taskName: task.taskName,
+          gpus: task.resourceRequest["nvidia.com/gpu"],
           status:
             task.isDeleted === true && task.status === "Running"
               ? "Deleted"
@@ -227,7 +203,6 @@ const Jupyter: FC = () => {
               table.toggleAllPageRowsSelected(!!value)
             }
             aria-label="Select all"
-            className="ml-2"
           />
         ),
         cell: ({ row }) => (
@@ -235,11 +210,20 @@ const Jupyter: FC = () => {
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
             aria-label="Select row"
-            className="ml-2"
           />
         ),
         enableSorting: false,
         enableHiding: false,
+      },
+      {
+        accessorKey: "userName",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("userName")}
+          />
+        ),
+        cell: ({ row }) => <div>{row.getValue("userName")}</div>,
       },
       {
         accessorKey: "taskName",
@@ -252,49 +236,11 @@ const Jupyter: FC = () => {
         cell: ({ row }) => <div>{row.getValue("taskName")}</div>,
       },
       {
-        accessorKey: "jobName",
+        accessorKey: "gpus",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("jobName")} />
+          <DataTableColumnHeader column={column} title={getHeader("gpus")} />
         ),
-        cell: ({ row }) => <div>{row.getValue("jobName")}</div>,
-      },
-      {
-        accessorKey: "isDeleted",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("isDeleted")}
-          />
-        ),
-        cell: ({ row }) => {
-          const deleteStatus = deleteStatuses.find(
-            (deleteStatus) => deleteStatus.value === row.getValue("isDeleted"),
-          );
-          if (!deleteStatus) {
-            return null;
-          }
-          return (
-            <div className="flex items-center">
-              {deleteStatus.icon && (
-                <deleteStatus.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-              )}
-              <span>{deleteStatus.value}</span>
-            </div>
-          );
-        },
-        filterFn: (row, id, value) => {
-          return (value as string[]).includes(row.getValue(id));
-        },
-      },
-      {
-        accessorKey: "userName",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("userName")}
-          />
-        ),
-        cell: ({ row }) => <div>{row.getValue("userName")}</div>,
+        cell: ({ row }) => <>{row.getValue("gpus")}</>,
       },
       {
         accessorKey: "status",

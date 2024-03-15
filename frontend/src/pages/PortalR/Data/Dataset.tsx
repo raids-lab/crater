@@ -62,7 +62,6 @@ export const Component: FC = () => {
               table.toggleAllPageRowsSelected(!!value)
             }
             aria-label="Select all"
-            className="ml-2"
           />
         ),
         cell: ({ row }) => (
