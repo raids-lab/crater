@@ -38,6 +38,7 @@ func NewAuthMgr(taskController *aitaskctl.TaskController, tokenConf *config.Toke
 func (mgr *AuthMgr) RegisterRoute(group *gin.RouterGroup) {
 	group.POST("/login", mgr.Login)
 	group.POST("/migrate", mgr.Migrate)
+	group.POST("/refresh", mgr.RefreshToken)
 }
 
 type LoginRequest struct {
@@ -221,17 +222,6 @@ func (mgr *AuthMgr) Migrate(c *gin.Context) {
 		return
 	}
 
-	// if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(request.Password)); err != nil {
-	// 	resputil.HttpError(c, http.StatusUnauthorized, "Password is incorrect", 40102)
-	// 	return
-	// }
-
-	// _, err = mgr.userService.GetByUserName(request.NewName)
-	// if err == nil {
-	// 	resputil.HttpError(c, http.StatusConflict, "User already exists with the given Name", 40901)
-	// 	return
-	// }
-
 	// migrate old pvc and pv from old namespace
 	oldNamespace := fmt.Sprintf("user-%s", request.Name)
 	oldPvcName := fmt.Sprintf(crclient.UserHomePVC, request.Name)
@@ -242,4 +232,48 @@ func (mgr *AuthMgr) Migrate(c *gin.Context) {
 		return
 	}
 	resputil.Success(c, nil)
+}
+
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refreshToken" binding:"required"`
+}
+
+type RefreshTokenResponse struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+}
+
+func (rtc *AuthMgr) RefreshToken(c *gin.Context) {
+	var request RefreshTokenRequest
+
+	err := c.ShouldBind(&request)
+	if err != nil {
+		resputil.HttpError(c, http.StatusBadRequest, err.Error(), 40003)
+		return
+	}
+
+	userinfo, err := util.CheckAndGetUser(request.RefreshToken, rtc.tokenConf.RefreshTokenSecret)
+	if err != nil {
+		resputil.HttpError(c, http.StatusUnauthorized, "User not found", 40102)
+		return
+	}
+
+	accessToken, err := util.CreateAccessToken(&userinfo, rtc.tokenConf.AccessTokenSecret, rtc.tokenConf.AccessTokenExpiryHour)
+	if err != nil {
+		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), 50012)
+		return
+	}
+
+	refreshToken, err := util.CreateRefreshToken(&userinfo, rtc.tokenConf.RefreshTokenSecret, rtc.tokenConf.RefreshTokenExpiryHour)
+	if err != nil {
+		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), 50013)
+		return
+	}
+
+	refreshTokenResponse := RefreshTokenResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}
+
+	c.JSON(http.StatusOK, refreshTokenResponse)
 }

@@ -20,49 +20,53 @@ type Backend struct {
 }
 
 func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl client.Client, cs kubernetes.Interface) {
-	// enable cors in debug mode
+	// Enable CORS for http://localhost:5173 in debug mode
 	if gin.Mode() == gin.DebugMode {
 		b.R.Use(middleware.Cors())
 	}
 
+	// Init Clients and Configs
 	pvcClient := crclient.PVCClient{Client: cl}
 	pvcClient.InitShareDir()
+	logClient := crclient.LogClient{Client: cl, KubeClient: cs}
 
-	// timeout := time.Duration(Env.ContextTimeout) * time.Second
-	// public routers
-	publicRouter := b.R.Group("")
 	tokenConf := config.NewTokenConf()
 
+	///////////////////////////////////////
+	//// Public routers, no need login ////
+	///////////////////////////////////////
+
+	publicRouter := b.R.Group("")
+
 	authMgr := handlers.NewAuthMgr(aitaskCtrl, tokenConf, &pvcClient)
-	// signupMgr := handlers.NewSignupMgr(aitaskCtrl, tokenConf, &pvcClient, cl)
-	tokenMgr := handlers.NewRefreshTokenMgr(tokenConf)
-
 	authMgr.RegisterRoute(publicRouter)
-	// signupMgr.RegisterRoute(publicRouter)
-	tokenMgr.RegisterRoute(publicRouter)
 
-	// protected routers, need login
+	///////////////////////////////////////
+	//// Protected routers, need login ////
+	///////////////////////////////////////
 
 	protectedRouter := b.R.Group(constants.APIPrefix)
 	protectedRouter.Use(middleware.JwtAuthMiddleware(tokenConf.AccessTokenSecret))
 
 	shareDirMgr := handlers.NewShareDirMgr()
-	shareDirMgr.RegisterRoute(protectedRouter.Group("/sharedir"))
-
-	logClient := crclient.LogClient{Client: cl, KubeClient: cs}
-
 	aitaskMgr := handlers.NewAITaskMgr(aitaskCtrl, &pvcClient, &logClient)
 	jupyterMgr := handlers.NewJupyterMgr(aitaskCtrl, &pvcClient, &logClient)
 	recommenddljobMgr := handlers.NewRecommendDLJobMgr(user.NewDBService(), cl)
 	datasetMgr := handlers.NewDataSetMgr(user.NewDBService(), cl)
 
+	shareDirMgr.RegisterRoute(protectedRouter.Group("/sharedir"))
 	aitaskMgr.RegisterRoute(protectedRouter.Group("/aitask"))
 	jupyterMgr.RegisterRoute(protectedRouter.Group("/jupyter"))
 	recommenddljobMgr.RegisterRoute(protectedRouter.Group("/recommenddljob"))
 	datasetMgr.RegisterRoute(protectedRouter.Group("/dataset"))
 
+	///////////////////////////////////////
+	//// Admin routers, need admin role ////
+	///////////////////////////////////////
+
 	adminRouter := b.R.Group(constants.APIPrefix + "/admin")
 	adminRouter.Use(middleware.JwtAuthMiddleware(tokenConf.AccessTokenSecret), middleware.AdminMiddleware())
+
 	adminMgr := handlers.NewAdminMgr(aitaskCtrl)
 	adminMgr.RegisterRoute(adminRouter)
 }
