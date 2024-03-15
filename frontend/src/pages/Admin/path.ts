@@ -5,8 +5,18 @@ export const adminPath: PathInfo = {
   title: "Admin",
   children: [
     {
-      path: "overview",
-      title: "节点管理",
+      path: "cluster",
+      title: "集群管理",
+      children: [
+        {
+          path: "node",
+          title: "计算节点",
+        },
+        {
+          path: "gpu",
+          title: "加速资源",
+        },
+      ],
     },
     {
       path: "user",

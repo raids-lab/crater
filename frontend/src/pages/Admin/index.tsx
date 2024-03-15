@@ -2,12 +2,7 @@ import { SidebarItem, SidebarMenu } from "@/components/layout/Sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { FC, PropsWithChildren, Suspense } from "react";
 import { Navigate, RouteObject } from "react-router-dom";
-import {
-  BarChartIcon,
-  FileTextIcon,
-  Pencil2Icon,
-  PersonIcon,
-} from "@radix-ui/react-icons";
+import { FileTextIcon, Pencil2Icon, PersonIcon } from "@radix-ui/react-icons";
 import OverviewIcon from "@/components/icon/OverviewIcon";
 import DatabaseIcon from "@/components/icon/DatabaseIcon";
 import LightHouseIcon from "@/components/icon/LightHouseIcon";
@@ -16,15 +11,26 @@ import { GroupUser } from "./User/Group";
 import Jupyter from "./Job/Jupyter";
 import Training from "./Job/Training";
 import { DashboardLayout } from "../Portal";
+import ServerIcon from "@/components/icon/ServerIcon";
 
 const sidebarItems: SidebarItem[] = [
   {
-    path: "overview",
-    icon: BarChartIcon,
-    children: [],
-    route: {
-      path: "overview",
-    },
+    path: "cluster",
+    icon: ServerIcon,
+    children: [
+      {
+        route: {
+          path: "node",
+          lazy: () => import("./Cluster/Node"),
+        },
+      },
+      {
+        route: {
+          path: "gpu",
+          lazy: () => import("./Cluster/Gpu"),
+        },
+      },
+    ],
   },
   {
     path: "user",
@@ -92,7 +98,6 @@ const sidebarMenus: SidebarMenu[] = [
     icon: FileTextIcon,
     route: {
       path: "docs",
-      lazy: () => import("./Docs"),
     },
   },
   {
@@ -100,7 +105,6 @@ const sidebarMenus: SidebarMenu[] = [
     icon: Pencil2Icon,
     route: {
       path: "feedback",
-      lazy: () => import("./Feedback"),
     },
   },
 ];
