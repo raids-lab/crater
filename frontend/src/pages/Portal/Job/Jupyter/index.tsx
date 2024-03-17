@@ -31,9 +31,9 @@ import {
   convertJTask,
   apiJTaskGetPortToken,
 } from "@/services/api/jupyterTask";
-import { DataTable } from "@/components/custom/DataTable";
-import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
+import { DataTable } from "@/components/custom/OldDataTable";
+import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
+import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
 import { TableDate } from "@/components/custom/TableDate";
 import { cn } from "@/lib/utils";
 import Status from "../../Overview/Status";

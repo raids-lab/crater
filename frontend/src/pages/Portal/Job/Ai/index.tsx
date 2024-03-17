@@ -36,9 +36,9 @@ import {
   apiAiTaskList,
   convertAiTask,
 } from "@/services/api/aiTask";
-import { DataTable } from "@/components/custom/DataTable";
-import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
+import { DataTable } from "@/components/custom/OldDataTable";
+import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
+import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { useNavigate, useRoutes } from "react-router-dom";
 import AiJobDetail from "./Detail";

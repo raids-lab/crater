@@ -5,11 +5,11 @@ import { useEffect, useMemo, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
+import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { DataTable } from "@/components/custom/DataTable";
-import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
+import { DataTable } from "@/components/custom/OldDataTable";
+import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
 import { TableDate } from "@/components/custom/TableDate";
 import {
   AlertDialog,
