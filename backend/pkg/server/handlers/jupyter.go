@@ -114,7 +114,7 @@ func (mgr *JupyterMgr) List(c *gin.Context) {
 		return
 	}
 	resp := payload.ListTaskResp{
-		Tasks: taskModels,
+		Rows: taskModels,
 	}
 	// log.Infof("list task success, taskNum: %d", len(resp.Tasks))
 	resputil.Success(c, resp)

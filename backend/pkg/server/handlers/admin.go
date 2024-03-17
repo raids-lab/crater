@@ -15,17 +15,34 @@ import (
 )
 
 func (mgr *AdminMgr) RegisterRoute(g *gin.RouterGroup) {
+	// g.GET("listUser", mgr.ListUser)
+	// g.GET("getUser", mgr.GetUser)
+	// g.GET("listQuota", mgr.ListQuota)
+	// g.GET("listByTaskType", mgr.ListTaskByTaskType)
+	// g.GET("taskStats", mgr.GetTaskStats)
+	// g.POST("updateQuota", mgr.UpdateQuota)
+	// g.POST("deleteUser", mgr.DeleteUser)
+	// g.POST("updateRole", mgr.UpdateRole)
 
-	// g.POST("createUser", mgr.CreateUser)
-	g.GET("listUser", mgr.ListUser)
-	g.GET("getUser", mgr.GetUser)
-	g.GET("listQuota", mgr.ListQuota)
-	g.GET("listByTaskType", mgr.ListTaskByTaskType)
-	g.GET("taskStats", mgr.GetTaskStats)
-	g.POST("updateQuota", mgr.UpdateQuota)
-	g.POST("deleteUser", mgr.DeleteUser)
-	g.POST("updateRole", mgr.UpdateRole)
+	users := g.Group("/users")
+	{
+		users.GET("", mgr.ListUser)
+		users.GET("/:name", mgr.GetUser)
+		users.PUT("/:name", mgr.UpdateRole)
+		users.DELETE("/:name", mgr.DeleteUser)
+	}
 
+	quotas := g.Group("/quotas")
+	{
+		quotas.GET("", mgr.ListQuota)
+		quotas.PUT("/:name", mgr.UpdateQuota)
+	}
+
+	tasks := g.Group("/tasks")
+	{
+		tasks.GET("", mgr.ListTaskByTaskType)
+		tasks.GET("/stats", mgr.GetTaskStats)
+	}
 }
 
 type AdminMgr struct {
@@ -52,18 +69,19 @@ func NewAdminMgr(taskController *aitaskctl.TaskController) *AdminMgr {
 
 func (mgr *AdminMgr) DeleteUser(c *gin.Context) {
 	log.Infof("User Delete, url: %s", c.Request.URL)
-	var req payload.DeleteUserReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate parameters failed, err %v", err), 50008)
-		return
-	}
-	err := mgr.userService.DeleteByUserName(req.UserName)
+	// var req payload.DeleteUserReq
+	// if err := c.ShouldBindJSON(&req); err != nil {
+	// 	resputil.Error(c, fmt.Sprintf("validate parameters failed, err %v", err), 50008)
+	// 	return
+	// }
+	name := c.Param("name")
+	err := mgr.userService.DeleteByUserName(name)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("delete user failed, err %v", err), 50009)
 		return
 	}
 	// TODO: delete resource
-	log.Infof("delete user success, username: %s", req.UserName)
+	log.Infof("delete user success, username: %s", name)
 	resputil.Success(c, "")
 }
 
@@ -120,23 +138,15 @@ func (mgr *AdminMgr) ListQuota(c *gin.Context) {
 }
 
 func (mgr *AdminMgr) GetUser(c *gin.Context) {
-	log.Infof("User Get, url: %s", c.Request.URL)
-	var req payload.GetUserReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate get parameters failed, err %v", err), 50004)
-		return
-	}
+	name := c.Param("name")
 	var user *models.User
 	var err error
-	if req.UserName != "" {
-		user, err = mgr.userService.GetByUserName(req.UserName)
-	} else {
-		user, err = mgr.userService.GetUserByID(req.UserID)
-	}
+	user, err = mgr.userService.GetByUserName(name)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get user failed, err %v", err), 50001)
 		return
 	}
+
 	resp := payload.GetUserResp{
 		UserID:    user.ID,
 		UserName:  user.UserName,
@@ -155,12 +165,13 @@ func (mgr *AdminMgr) UpdateQuota(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("validate update parameters failed, err %v", err), 50008)
 		return
 	}
-	user, err := mgr.userService.GetByUserName(req.UserName)
+	name := c.Param("name")
+	user, err := mgr.userService.GetByUserName(name)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get user failed, err %v", err), 50009)
 		return
 	}
-	quota, err := mgr.quotaService.GetByUserName(req.UserName)
+	quota, err := mgr.quotaService.GetByUserName(name)
 	if err != nil {
 		quota = &models.Quota{
 			// UserID:    user.ID,
@@ -177,7 +188,7 @@ func (mgr *AdminMgr) UpdateQuota(c *gin.Context) {
 	// notify taskController to update quota
 	mgr.taskController.AddOrUpdateQuotaInfo(quota.UserName, *quota)
 
-	log.Infof("update quota success, user: %s, quota:%v", req.UserName, req.HardQuota)
+	log.Infof("update quota success, user: %s, quota:%v", name, req.HardQuota)
 	resputil.Success(c, "")
 }
 
@@ -188,19 +199,19 @@ func (mgr *AdminMgr) UpdateRole(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("validate update parameters failed, err %v", err), 50008)
 		return
 	}
-
+	name := c.Param("name")
 	if req.Role == models.RoleAdmin || req.Role == models.RoleUser {
 		// do nothing
 	} else {
 		resputil.Error(c, fmt.Sprintf("role %s is not valid", req.Role), 50010)
 		return
 	}
-	err := mgr.userService.UpdateRole(req.UserName, req.Role)
+	err := mgr.userService.UpdateRole(name, req.Role)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("update user role failed, err %v", err), 50011)
 		return
 	}
-	log.Infof("update user role success, user: %s, role: %s", req.UserName, req.Role)
+	log.Infof("update user role success, user: %s, role: %s", name, req.Role)
 	resputil.Success(c, "")
 }
 
@@ -212,13 +223,14 @@ func (mgr *AdminMgr) ListTaskByTaskType(c *gin.Context) {
 		return
 	}
 
-	taskModels, err := mgr.taskServcie.ListByTaskType(req.TaskType)
+	taskModels, totalRows, err := mgr.taskServcie.ListByTaskType(req.TaskType, req.PageIndex, req.PageSize)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("list task failed, err %v", err), 50003)
 		return
 	}
 	resp := payload.ListTaskResp{
-		Tasks: taskModels,
+		Rows:     taskModels,
+		RowCount: totalRows,
 	}
 	// log.Infof("list task success, taskNum: %d", len(resp.Tasks))
 	resputil.Success(c, resp)

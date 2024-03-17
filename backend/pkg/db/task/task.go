@@ -15,7 +15,7 @@ type DBService interface {
 	DeleteByID(taskID uint) error
 	DeleteByUserAndID(userName string, taskID uint) error
 	ForceDeleteByUserAndID(userName string, taskID uint) error
-	ListByTaskType(taskType string) ([]models.AITask, error)
+	ListByTaskType(taskType string, page, pageSize int) ([]models.AITask, int64, error)
 	ListByUserAndStatuses(userName string, status []string) ([]models.AITask, error)
 	ListByUserAndTaskType(userName string, taskType string) ([]models.AITask, error)
 	GetByID(taskID uint) (*models.AITask, error)
@@ -97,10 +97,15 @@ func (s *service) ListByUserAndStatuses(userName string, statuses []string) ([]m
 	return tasks, err
 }
 
-func (s *service) ListByTaskType(taskType string) ([]models.AITask, error) {
+func (s *service) ListByTaskType(taskType string, page, pageSize int) ([]models.AITask, int64, error) {
+	var totalRows int64
 	var tasks []models.AITask
-	err := db.Orm.Where("task_type = ?", taskType).Find(&tasks).Error
-	return tasks, err
+
+	query := db.Orm.Model(&models.AITask{}).Where("task_type = ?", taskType)
+	query.Count(&totalRows)
+
+	err := query.Order("created_at desc").Offset((page) * pageSize).Limit(pageSize).Find(&tasks).Error
+	return tasks, totalRows, err
 }
 
 func (s *service) ListByUserAndTaskType(userName string, taskType string) ([]models.AITask, error) {
