@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/aisystem/ai-protal/pkg/aitaskctl"
+	"github.com/aisystem/ai-protal/pkg/crclient"
 	quotasvc "github.com/aisystem/ai-protal/pkg/db/quota"
 	tasksvc "github.com/aisystem/ai-protal/pkg/db/task"
 	usersvc "github.com/aisystem/ai-protal/pkg/db/user"
@@ -15,21 +16,12 @@ import (
 )
 
 func (mgr *AdminMgr) RegisterRoute(g *gin.RouterGroup) {
-	// g.GET("listUser", mgr.ListUser)
-	// g.GET("getUser", mgr.GetUser)
-	// g.GET("listQuota", mgr.ListQuota)
-	// g.GET("listByTaskType", mgr.ListTaskByTaskType)
-	// g.GET("taskStats", mgr.GetTaskStats)
-	// g.POST("updateQuota", mgr.UpdateQuota)
-	// g.POST("deleteUser", mgr.DeleteUser)
-	// g.POST("updateRole", mgr.UpdateRole)
-
 	users := g.Group("/users")
 	{
 		users.GET("", mgr.ListUser)
 		users.GET("/:name", mgr.GetUser)
-		users.PUT("/:name", mgr.UpdateRole)
 		users.DELETE("/:name", mgr.DeleteUser)
+		users.PUT("/:name/role", mgr.UpdateRole)
 	}
 
 	quotas := g.Group("/quotas")
@@ -43,6 +35,11 @@ func (mgr *AdminMgr) RegisterRoute(g *gin.RouterGroup) {
 		tasks.GET("", mgr.ListTaskByTaskType)
 		tasks.GET("/stats", mgr.GetTaskStats)
 	}
+
+	nodes := g.Group("/nodes")
+	{
+		nodes.GET("", mgr.ListNode)
+	}
 }
 
 type AdminMgr struct {
@@ -50,14 +47,16 @@ type AdminMgr struct {
 	userService    usersvc.DBService
 	taskServcie    tasksvc.DBService
 	taskController *aitaskctl.TaskController
+	nodeClient     *crclient.NodeClient
 }
 
-func NewAdminMgr(taskController *aitaskctl.TaskController) *AdminMgr {
+func NewAdminMgr(taskController *aitaskctl.TaskController, nodeClient *crclient.NodeClient) *AdminMgr {
 	return &AdminMgr{
 		quotaService:   quotasvc.NewDBService(),
 		userService:    usersvc.NewDBService(),
 		taskServcie:    tasksvc.NewDBService(),
 		taskController: taskController,
+		nodeClient:     nodeClient,
 	}
 }
 
@@ -266,5 +265,19 @@ func (mgr *AdminMgr) GetTaskStats(c *gin.Context) {
 		TaskCount: taskCountList,
 	}
 	// log.Infof("list task success, taskNum: %d", len(resp.Tasks))
+	resputil.Success(c, resp)
+}
+
+func (mgr *AdminMgr) ListNode(c *gin.Context) {
+	log.Infof("Node List, url: %s", c.Request.URL)
+	// get all k8s nodes by k8s client
+	nodes, err := mgr.nodeClient.ListNodes()
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("list nodes failed, err %v", err), 50003)
+		return
+	}
+	resp := payload.ListNodeResp{
+		Rows: nodes,
+	}
 	resputil.Success(c, resp)
 }

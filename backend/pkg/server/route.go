@@ -29,6 +29,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	pvcClient := crclient.PVCClient{Client: cl}
 	pvcClient.InitShareDir()
 	logClient := crclient.LogClient{Client: cl, KubeClient: cs}
+	nodeClient := crclient.NodeClient{Client: cl, KubeClient: cs}
 
 	tokenConf := config.NewTokenConf()
 
@@ -67,7 +68,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	adminRouter := b.R.Group(constants.APIPrefix + "/admin")
 	adminRouter.Use(middleware.JwtAuthMiddleware(tokenConf.AccessTokenSecret), middleware.AdminMiddleware())
 
-	adminMgr := handlers.NewAdminMgr(aitaskCtrl)
+	adminMgr := handlers.NewAdminMgr(aitaskCtrl, &nodeClient)
 	adminMgr.RegisterRoute(adminRouter)
 }
 
