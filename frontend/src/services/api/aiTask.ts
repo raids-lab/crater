@@ -163,7 +163,7 @@ export const apiAiTaskDelete = async (taskID: number) => {
 export const apiAiTaskList = () =>
   instance.get<
     IResponse<{
-      Tasks: IAiTask[];
+      rows: IAiTask[];
     }>
   >(VERSION + "/aitask/list");
 

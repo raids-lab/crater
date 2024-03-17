@@ -148,7 +148,7 @@ const Training: FC = () => {
   const { data: taskList, isLoading } = useQuery({
     queryKey: ["admin", "tasklist", "ai"],
     queryFn: () => apiAdminTaskListByType("training"),
-    select: (res) => res.data.data.Tasks,
+    select: (res) => res.data.data.rows,
   });
 
   const toolbarConfig: DataTableToolbarConfig = {
