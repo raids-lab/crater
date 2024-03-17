@@ -95,7 +95,7 @@ export function Sidebar({
     <div
       className={cn(
         "flex flex-col items-center justify-between",
-        "bg-sidebar text-sidebar-foreground",
+        "bg-card text-card-foreground",
         "min-h-full w-[200px]",
         // "transition-all duration-300 ease-in-out",
         className,
@@ -179,7 +179,7 @@ export function Sidebar({
                       }
                     }}
                   >
-                    <div className="flex flex-row items-center justify-start px-3 text-sm">
+                    <div className="flex flex-row items-center justify-start pl-3 text-sm">
                       <item.icon className="mr-3" />
                       {getTitleByPath([actived.view, item.path])}
                     </div>
@@ -195,8 +195,9 @@ export function Sidebar({
                           <button
                             key={`${item.path}-${subItemPath}`}
                             className={cn(
-                              "flex h-10 w-full flex-row items-center justify-start rounded-md",
-                              "pl-14 text-sm font-normal transition-all duration-200 hover:text-primary",
+                              "flex h-9 w-full flex-row items-center justify-start rounded-md",
+                              "mt-1 pl-14 text-sm font-normal transition-all duration-200 hover:text-primary",
+                              "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring",
                               {
                                 "text-primary":
                                   item.path === actived.item &&
@@ -238,7 +239,6 @@ export function Sidebar({
         </Accordion>
       </ScrollArea>
       <div className="flex w-full flex-col items-center">
-        {/* <Separator className="mb-4 bg-sidebar-item" /> */}
         <div className="space-y-1">
           {sidebarMenus.map((item) => (
             <SingleButton

@@ -51,17 +51,6 @@ module.exports = {
           foreground: "hsl(var(--card-foreground))",
         },
         // custom
-        dashboard: {
-          DEFAULT: "hsl(var(--dashboard))",
-        },
-        sidebar: {
-          DEFAULT: "hsl(var(--sidebar))",
-          item: "hsl(var(--sidebar-item))",
-          foreground: "hsl(var(--sidebar-foreground))",
-        },
-        navibar: {
-          DEFAULT: "hsl(var(--navibar))",
-        },
       },
       borderRadius: {
         lg: "calc(var(--radius) + 2px)",

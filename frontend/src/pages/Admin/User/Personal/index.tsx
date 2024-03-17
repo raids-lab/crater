@@ -208,19 +208,19 @@ export const PersonalUser = () => {
           return (
             <div className="flex items-center space-x-1">
               <Badge
-                className="rounded-sm bg-sidebar-item px-1 font-normal"
+                className="rounded-sm px-1 font-normal"
                 variant={"secondary"}
               >
                 {quota.hard.cpu} CPU
               </Badge>
               <Badge
-                className="rounded-sm bg-sidebar-item px-1 font-normal"
+                className="rounded-sm px-1 font-normal"
                 variant={"secondary"}
               >
                 {quota.hard.gpu} GPU
               </Badge>
               <Badge
-                className="rounded-sm bg-sidebar-item px-1 font-normal"
+                className="rounded-sm px-1 font-normal"
                 variant={"secondary"}
               >
                 {quota.hard.memoryNum || 0} {quota.hard.memoryUnit}
