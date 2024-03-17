@@ -1,10 +1,10 @@
-import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
+import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
 import { apiAiTaskShareDirList } from "@/services/api/aiTask";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, type FC } from "react";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import { DataTable } from "@/components/custom/DataTable";
+import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
+import { DataTable } from "@/components/custom/OldDataTable";
 import { Checkbox } from "@/components/ui/checkbox";
 
 type ShareDirInfo = {
