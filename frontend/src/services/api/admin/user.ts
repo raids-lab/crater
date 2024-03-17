@@ -33,7 +33,6 @@ export const apiAdminUserUpdateQuota = (data: IAdminUserUpdate) =>
   );
 
 export const apiAdminUserUpdateRole = (userName: string, role: string) =>
-  instance.put<IResponse<string>>(`${VERSION}/admin/users/${userName}`, {
-    userName,
+  instance.put<IResponse<string>>(`${VERSION}/admin/users/${userName}/role`, {
     role,
   });

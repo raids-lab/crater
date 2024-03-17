@@ -371,6 +371,12 @@ const Jupyter: FC = () => {
 
   return (
     <div className="space-y-6">
+      <Card className=" bg-destructive text-destructive-foreground">
+        <CardHeader className="py-3" />
+        <CardContent>
+          分页功能开发中，搜索、排序、筛选功能暂时不可用。
+        </CardContent>
+      </Card>
       <DataTable
         data={data}
         columns={columns}
@@ -380,13 +386,6 @@ const Jupyter: FC = () => {
         onPaginationChange={setPagination}
         rowCount={tasks?.rowCount || 0}
       ></DataTable>
-
-      <Card className=" bg-destructive text-destructive-foreground">
-        <CardHeader className="py-3" />
-        <CardContent>
-          分页功能开发中，搜索、排序、筛选功能暂时不可用。
-        </CardContent>
-      </Card>
     </div>
   );
 };

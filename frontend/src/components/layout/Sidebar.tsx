@@ -151,6 +151,7 @@ export function Sidebar({
             return item.children.length > 0 ? (
               isMinimized ? (
                 <SidebarDropdownMenu
+                  key={item.path}
                   item={item}
                   actived={actived}
                   setActived={setActived}
@@ -272,15 +273,13 @@ export function Sidebar({
 
 const SingleButton: React.FC<{
   title: string;
-  key: string;
   onClick: () => void;
   isActive: boolean;
   children: React.ReactNode;
   isMinimized?: boolean;
-}> = ({ title, key, onClick, isActive, children, isMinimized }) => {
+}> = ({ title, onClick, isActive, children, isMinimized }) => {
   return (
     <button
-      key={key}
       type="button"
       className={cn(
         "flex h-10 flex-row items-center rounded-md text-sm hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
