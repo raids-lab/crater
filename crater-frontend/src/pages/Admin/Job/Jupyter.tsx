@@ -2,14 +2,14 @@ import { apiAdminTaskListByType } from "@/services/api/admin/task";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { FC } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
+import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { DataTable } from "@/components/custom/OldDataTable";
-import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
+import { DataTable } from "@/components/custom/DataTable";
+import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { TableDate } from "@/components/custom/TableDate";
 import {
   AlertDialog,
@@ -32,6 +32,7 @@ import {
   StopIcon,
 } from "@radix-ui/react-icons";
 import { apiJTaskDelete, convertJTask } from "@/services/api/jupyterTask";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 type StatusValue =
   | "Queueing"
@@ -121,11 +122,26 @@ type JTaskInfo = {
 };
 
 const Jupyter: FC = () => {
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageSize: 10,
+    pageIndex: 0,
+  });
   const [data, setData] = useState<JTaskInfo[]>([]);
-  const { data: taskList, isLoading } = useQuery({
-    queryKey: ["admin", "tasklist"],
-    queryFn: () => apiAdminTaskListByType("jupyter"),
-    select: (res) => res.data.data.Tasks,
+  const { data: tasks, isLoading } = useQuery({
+    queryKey: [
+      "admin",
+      "tasklist",
+      "jupyter",
+      pagination.pageSize,
+      pagination.pageIndex,
+    ],
+    queryFn: () =>
+      apiAdminTaskListByType(
+        "jupyter",
+        pagination.pageSize,
+        pagination.pageIndex,
+      ),
+    select: (res) => res.data.data,
   });
 
   const toolbarConfig: DataTableToolbarConfig = {
@@ -166,8 +182,8 @@ const Jupyter: FC = () => {
   };
   useEffect(() => {
     if (isLoading) return;
-    if (!taskList) return;
-    const tableData: JTaskInfo[] = taskList
+    if (!tasks?.rows) return;
+    const tableData: JTaskInfo[] = tasks.rows
       //.filter((task) => !task.isDeleted)
       .map((t) => {
         const task = convertJTask(t);
@@ -190,7 +206,7 @@ const Jupyter: FC = () => {
         };
       });
     setData(tableData);
-  }, [taskList, isLoading]);
+  }, [tasks, isLoading]);
 
   const columns = useMemo<ColumnDef<JTaskInfo>[]>(
     () => [
@@ -310,63 +326,43 @@ const Jupyter: FC = () => {
         enableHiding: false,
         cell: ({ row }) => {
           const taskInfo = row.original;
-          if (row.getValue("isDeleted") === "已删除") {
-            return (
-              <div>
-                <Button
-                  variant="outline"
-                  className="h-8 w-8 p-0 hover:text-red-700"
-                  title="终止 Jupyter Lab"
-                  disabled={row.getValue("isDeleted") === "已删除"}
-                >
-                  <StopIcon />
-                </Button>
-              </div>
-            );
-          } else {
-            return (
-              <div
-                className="flex flex-row space-x-1"
-                aria-disabled={row.getValue("isDeleted") === "已删除"}
-              >
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <div>
-                      <Button
-                        variant="outline"
-                        className="h-8 w-8 p-0 hover:text-red-700"
-                        title="终止 Jupyter Lab"
-                        disabled={row.getValue("isDeleted") === "已删除"}
-                      >
-                        <StopIcon />
-                      </Button>
-                    </div>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>删除任务</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        任务「{taskInfo?.taskName}
-                        」将停止，请确认已经保存好所需数据。
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>取消</AlertDialogCancel>
-                      <AlertDialogAction
-                        variant="destructive"
-                        onClick={() => {
-                          // check if browser support clipboard
-                          deleteJTask(taskInfo.id);
-                        }}
-                      >
-                        删除
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            );
-          }
+          return (
+            <div className="flex flex-row space-x-1">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0 text-destructive hover:text-destructive disabled:text-muted-foreground"
+                    title="终止 Jupyter Lab"
+                    disabled={taskInfo.status !== "Running"}
+                  >
+                    <StopIcon />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>删除任务</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      任务「{taskInfo?.taskName}
+                      」将停止，请确认已经保存好所需数据。
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>取消</AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="destructive"
+                      onClick={() => {
+                        // check if browser support clipboard
+                        deleteJTask(taskInfo.id);
+                      }}
+                    >
+                      删除
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          );
         },
       },
     ],
@@ -374,12 +370,23 @@ const Jupyter: FC = () => {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <DataTable
         data={data}
         columns={columns}
         toolbarConfig={toolbarConfig}
+        loading={isLoading}
+        pagination={pagination}
+        onPaginationChange={setPagination}
+        rowCount={tasks?.rowCount || 0}
       ></DataTable>
+
+      <Card className=" bg-destructive text-destructive-foreground">
+        <CardHeader className="py-3" />
+        <CardContent>
+          分页功能开发中，搜索、排序、筛选功能暂时不可用。
+        </CardContent>
+      </Card>
     </div>
   );
 };

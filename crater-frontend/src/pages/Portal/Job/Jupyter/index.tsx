@@ -80,7 +80,7 @@ export const Component = () => {
   } = useQuery({
     queryKey: ["jupyter", "list"],
     queryFn: apiJTaskList,
-    select: (res) => res.data.data.Tasks,
+    select: (res) => res.data.data.rows,
     refetchInterval: REFETCH_INTERVAL,
   });
 

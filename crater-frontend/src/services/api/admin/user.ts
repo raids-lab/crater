@@ -16,16 +16,10 @@ export const apiAdminUserList = () =>
     IResponse<{
       Users: User[];
     }>
-  >(VERSION + "/admin/listUser");
-
-type IAdminUserDelete = {
-  userName: string;
-};
+  >(`${VERSION}/admin/users`);
 
 export const apiAdminUserDelete = (userName: string) =>
-  instance.post<IResponse<string>>(VERSION + "/admin/deleteUser", {
-    userName,
-  } as IAdminUserDelete);
+  instance.delete<IResponse<string>>(`${VERSION}/admin/users/${userName}`);
 
 export interface IAdminUserUpdate {
   userName: string;
@@ -33,10 +27,13 @@ export interface IAdminUserUpdate {
 }
 
 export const apiAdminUserUpdateQuota = (data: IAdminUserUpdate) =>
-  instance.post<IResponse<string>>(VERSION + "/admin/updateQuota", data);
+  instance.put<IResponse<string>>(
+    `${VERSION}/admin/quotas/${data.userName}`,
+    data,
+  );
 
 export const apiAdminUserUpdateRole = (userName: string, role: string) =>
-  instance.post<IResponse<string>>(VERSION + "/admin/updateRole", {
+  instance.put<IResponse<string>>(`${VERSION}/admin/users/${userName}`, {
     userName,
     role,
   });

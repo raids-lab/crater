@@ -101,7 +101,7 @@ const AiJobHome = () => {
   } = useQuery({
     queryKey: ["aitask", "list"],
     queryFn: apiAiTaskList,
-    select: (res) => res.data.data.Tasks,
+    select: (res) => res.data.data.rows,
     refetchInterval: REFETCH_INTERVAL,
   });
 

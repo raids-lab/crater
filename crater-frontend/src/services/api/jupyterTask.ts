@@ -101,7 +101,7 @@ export const apiJTaskDelete = async (taskID: number) => {
 export const apiJTaskList = () =>
   instance.get<
     IResponse<{
-      Tasks: IJupyterTask[];
+      rows: IJupyterTask[];
     }>
   >(VERSION + "/jupyter/list");
 
