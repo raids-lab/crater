@@ -3,6 +3,7 @@ package payload
 import (
 	"time"
 
+	"github.com/aisystem/ai-protal/pkg/crclient"
 	"github.com/aisystem/ai-protal/pkg/models"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,6 +16,10 @@ type CreateTaskResp struct {
 type ListTaskResp struct {
 	RowCount int64           `json:"rowCount"`
 	Rows     []models.AITask `json:"rows"`
+}
+
+type ListNodeResp struct {
+	Rows []crclient.NodeInfo `json:"rows"`
 }
 
 type GetTaskResp struct {

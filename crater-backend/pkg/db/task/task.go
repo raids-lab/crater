@@ -104,7 +104,11 @@ func (s *service) ListByTaskType(taskType string, page, pageSize int) ([]models.
 	query := db.Orm.Model(&models.AITask{}).Where("task_type = ?", taskType)
 	query.Count(&totalRows)
 
-	err := query.Order("created_at desc").Offset((page) * pageSize).Limit(pageSize).Find(&tasks).Error
+	query.Order("created_at DESC")
+	if pageSize > 0 {
+		query = query.Limit(pageSize).Offset(page * pageSize)
+	}
+	err := query.Find(&tasks).Error
 	return tasks, totalRows, err
 }
 
