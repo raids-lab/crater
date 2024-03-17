@@ -21,7 +21,9 @@ type ListTaskReq struct {
 }
 
 type ListTaskByTypeReq struct {
-	TaskType string `form:"taskType"`
+	PageSize  int    `form:"pageSize"`
+	PageIndex int    `form:"pageIndex"`
+	TaskType  string `form:"taskType"`
 }
 
 type GetTaskReq struct {
@@ -45,18 +47,15 @@ type GetImagesResp struct {
 // TODO: update task sequence
 
 type UpdateQuotaReq struct {
-	UserName  string          `json:"userName" binding:"required"`
 	HardQuota v1.ResourceList `json:"hardQuota" binding:"required"`
 }
 
 type UpdateRoleReq struct {
-	UserName string `json:"userName" binding:"required"`
-	Role     string `json:"role" binding:"required"`
+	Role string `json:"role" binding:"required"`
 }
 
 type DeleteUserReq struct {
-	UserName       string `json:"userName" binding:"required"`
-	DeleteResource bool   `json:"deleteResource"`
+	DeleteResource bool `json:"deleteResource"`
 }
 
 type GetUserReq struct {

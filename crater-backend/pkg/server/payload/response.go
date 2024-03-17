@@ -13,7 +13,8 @@ type CreateTaskResp struct {
 }
 
 type ListTaskResp struct {
-	Tasks []models.AITask
+	RowCount int64           `json:"rowCount"`
+	Rows     []models.AITask `json:"rows"`
 }
 
 type GetTaskResp struct {
