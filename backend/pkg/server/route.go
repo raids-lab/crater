@@ -19,7 +19,7 @@ type Backend struct {
 	R *gin.Engine
 }
 
-func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl client.Client, cs kubernetes.Interface) {
+func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl client.Client, cs *kubernetes.Clientset) {
 	// Enable CORS for http://localhost:5173 in debug mode
 	if gin.Mode() == gin.DebugMode {
 		b.R.Use(middleware.Cors())
@@ -72,7 +72,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	adminMgr.RegisterRoute(adminRouter)
 }
 
-func Register(aitaskCtrl *aitaskctl.TaskController, cl client.Client, cs kubernetes.Interface) (*Backend, error) {
+func Register(aitaskCtrl *aitaskctl.TaskController, cl client.Client, cs *kubernetes.Clientset) (*Backend, error) {
 	s := new(Backend)
 
 	s.R = gin.Default()

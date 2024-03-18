@@ -3,21 +3,41 @@ package crclient
 import (
 	"context"
 
+	"github.com/raids-lab/crater/pkg/server/payload"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type NodeClient struct {
 	client.Client
-	KubeClient kubernetes.Interface
+	KubeClient *kubernetes.Clientset
 }
 
-type NodeInfo struct {
-	IsReady     bool
-	Name        string
-	Capacity    corev1.ResourceList
-	Allocatable corev1.ResourceList
+func calculateAllocatedResources(node *corev1.Node, clientset *kubernetes.Clientset) corev1.ResourceList {
+	allocatedResources := make(corev1.ResourceList)
+	pods, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err.Error())
+	}
+
+	for _, pod := range pods.Items {
+		if pod.Spec.NodeName == node.Name {
+			for _, container := range pod.Spec.Containers {
+				for resource, quantity := range container.Resources.Requests {
+					if allocatedQuantity, found := allocatedResources[resource]; found {
+						allocatedQuantity.Add(quantity)
+						allocatedResources[resource] = allocatedQuantity
+					} else {
+						allocatedResources[resource] = quantity.DeepCopy()
+					}
+				}
+			}
+		}
+	}
+
+	return allocatedResources
 }
 
 // https://stackoverflow.com/questions/67630551/how-to-use-client-go-to-get-the-node-status
@@ -30,39 +50,39 @@ func isNodeReady(node corev1.Node) bool {
 	return false
 }
 
-// isWorkerNode 检查节点是否为 Worker 节点
-func isMasterNode(node corev1.Node) bool {
-	// 示例：假设 Worker 节点具有名为 "node-role.kubernetes.io/worker" 的标签
-	for key, value := range node.Labels {
-		if key == "node-role.kubernetes.io/master" && value == "true" {
-			return true
+// getNodeRole 获取节点角色
+func getNodeRole(node corev1.Node) string {
+	for key := range node.Labels {
+		if key == "node-role.kubernetes.io/master" {
+			return "master"
 		}
 	}
-	return false
+	return "worker"
 }
 
-// GetNodes 获取所有 Node 列表 (仅返回是否在线、节点名称、节点资源和已分配资源)
-func (nc *NodeClient) ListNodes() ([]NodeInfo, error) {
+// GetNodes 获取所有 Node 列表
+func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 	var nodes corev1.NodeList
 
 	err := nc.List(context.Background(), &nodes)
 	if err != nil {
 		return nil, err
 	}
-	var nodeInfoList []NodeInfo
-	for _, node := range nodes.Items {
-		// 如果节点不是 Worker 节点，则跳过
-		if isMasterNode(node) {
-			continue
+
+	nodeInfos := make([]payload.ClusterNodeInfo, len(nodes.Items))
+
+	// Loop through each node and print allocated resources
+	for i, node := range nodes.Items {
+		allocatedResources := calculateAllocatedResources(&node, nc.KubeClient)
+		nodeInfos[i] = payload.ClusterNodeInfo{
+			Name:     node.Name,
+			Role:     getNodeRole(node),
+			Labels:   node.Labels,
+			IsReady:  isNodeReady(node),
+			Capacity: node.Status.Capacity,
+			Alocated: allocatedResources,
 		}
-		nodeInfo := NodeInfo{
-			IsReady:     isNodeReady(node),
-			Name:        node.Name,
-			Capacity:    node.Status.Capacity,
-			Allocatable: node.Status.Allocatable,
-		}
-		nodeInfoList = append(nodeInfoList, nodeInfo)
 	}
 
-	return nodeInfoList, nil
+	return nodeInfos, nil
 }
