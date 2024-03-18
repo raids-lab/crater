@@ -284,6 +284,7 @@ const DlJobDetail: FC = () => {
           data={data}
           columns={columns}
           toolbarConfig={toolbarConfig}
+          loading={podInfo.isLoading || taskInfo.isLoading}
         />
       </div>
       <h2 className="col-span-full pt-2 text-base font-bold">任务数据</h2>

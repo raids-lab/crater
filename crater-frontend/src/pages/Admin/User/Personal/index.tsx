@@ -379,6 +379,7 @@ export const PersonalUser = () => {
         data={data}
         columns={columns}
         toolbarConfig={toolbarConfig}
+        loading={isLoading}
       ></DataTable>
     </div>
   );

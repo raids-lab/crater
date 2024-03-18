@@ -439,6 +439,7 @@ const Training: FC = () => {
         data={data}
         columns={columns}
         toolbarConfig={toolbarConfig}
+        loading={isLoading}
       ></DataTable>
     </div>
   );

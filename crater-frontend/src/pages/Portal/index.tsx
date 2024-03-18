@@ -5,13 +5,14 @@ import LightHouseIcon from "@/components/icon/LightHouseIcon";
 import WorkBenchIcon from "@/components/icon/WorkBenchIcon";
 import { useAuth } from "@/hooks/useAuth";
 import { FC, PropsWithChildren, Suspense } from "react";
-import { Navigate, Outlet, RouteObject } from "react-router-dom";
+import { Navigate, Outlet, RouteObject, useLocation } from "react-router-dom";
 import { FileTextIcon, Pencil2Icon } from "@radix-ui/react-icons";
 import { cn } from "@/lib/utils";
 import Navibar from "@/components/layout/Navibar";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useRecoilState } from "recoil";
 import { globalSidebarMini } from "@/utils/store";
+import { motion } from "framer-motion";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -118,6 +119,8 @@ export const DashboardLayout = ({
   sidebarMenus: SidebarMenu[];
 }) => {
   const [isMinimized, setIsMinimized] = useRecoilState(globalSidebarMini);
+  const { pathname } = useLocation();
+
   return (
     <>
       <div className="relative h-screen w-screen overflow-hidden">
@@ -149,7 +152,14 @@ export const DashboardLayout = ({
             <div className="grid w-full grid-rows-header px-6">
               <Navibar />
               <div className="py-6">
-                <Outlet />
+                <motion.div
+                  key={pathname}
+                  initial={{ opacity: 0, y: "3vh" }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ type: "spring", duration: 1.2 }}
+                >
+                  <Outlet />
+                </motion.div>
               </div>
             </div>
             <ScrollBar orientation="horizontal" />

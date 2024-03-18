@@ -140,7 +140,12 @@ export const Component: FC = () => {
 
   return (
     <div className="space-y-1 text-xl">
-      <DataTable data={data} columns={columns} toolbarConfig={toolbarConfig} />
+      <DataTable
+        data={data}
+        columns={columns}
+        toolbarConfig={toolbarConfig}
+        loading={datasetInfo.isLoading}
+      />
     </div>
   );
 };
