@@ -162,7 +162,7 @@ const Navibar: FC = () => {
                 {userInfo.role === "admin" && (
                   <DropdownMenuItem
                     onClick={() => {
-                      navigate("/admin/user/personal");
+                      navigate("/admin");
                       toast.success("切换至管理员视图");
                     }}
                   >
