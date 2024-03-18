@@ -128,7 +128,7 @@ func (c *PVCClient) createUserPVCFromPV(sharepv *corev1.PersistentVolume, newNam
 			VolumeName:       volumeName,
 			VolumeMode:       sharepv.Spec.VolumeMode,
 			StorageClassName: &sharepv.Spec.StorageClassName,
-			Resources: corev1.ResourceRequirements{
+			Resources: corev1.VolumeResourceRequirements{
 				Requests: sharepv.Spec.Capacity,
 			},
 		},
@@ -189,7 +189,7 @@ func (c *PVCClient) CreateUserHomePVC(username string) error {
 			AccessModes: []corev1.PersistentVolumeAccessMode{
 				corev1.ReadWriteMany,
 			},
-			Resources: corev1.ResourceRequirements{
+			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
 					"storage": resource.MustParse("50Gi"),
 				},
