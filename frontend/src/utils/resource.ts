@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { logger } from "./loglevel";
+import { showErrorToast } from "./toast";
 
 export interface KubernetesResource {
   cpu?: number | string; // 1
@@ -30,9 +31,21 @@ export const getAiResource = (resource: KubernetesResource): AiResource => {
     typeof resource["nvidia.com/gpu"] === "string"
       ? parseInt(resource["nvidia.com/gpu"])
       : resource["nvidia.com/gpu"] ?? 0;
-  const memory = resource.memory ?? "0Gi";
-  const memoryNum = parseInt(memory.replace("Gi", ""));
+  let memory = resource.memory ?? "0Gi";
+  let memoryNum = 0;
   const memoryUnit = "Gi";
+  // "Ki", "Mi", "Gi" => "Gi"
+  if (memory.includes("Ki")) {
+    memoryNum = parseInt(memory.replace("Ki", "")) / 1024 / 1024;
+    memory = `${memoryNum}Gi`;
+  } else if (memory.includes("Mi")) {
+    memoryNum = parseInt(memory.replace("Mi", "")) / 1024;
+    memory = `${memoryNum}Gi`;
+  } else if (memory.includes("Gi")) {
+    memoryNum = parseInt(memory.replace("Gi", ""));
+  } else {
+    showErrorToast(`Invalid memory unit ${memory}`);
+  }
 
   return {
     cpu,
