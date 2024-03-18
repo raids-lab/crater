@@ -39,6 +39,13 @@ spec:
             - name: share-dir-conf
               mountPath: /etc/config/share-dir.yaml
               subPath: share-dir.yaml
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
       serviceAccountName: crater-web-backend
       volumes:
         - name: backend-conf
