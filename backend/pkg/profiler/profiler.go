@@ -8,11 +8,11 @@ import (
 
 	"hash/fnv"
 
-	"github.com/aisystem/ai-protal/pkg/crclient"
-	tasksvc "github.com/aisystem/ai-protal/pkg/db/task"
-	"github.com/aisystem/ai-protal/pkg/models"
-	"github.com/aisystem/ai-protal/pkg/monitor"
-	"github.com/aisystem/ai-protal/pkg/util/queue"
+	"github.com/raids-lab/crater/pkg/crclient"
+	tasksvc "github.com/raids-lab/crater/pkg/db/task"
+	"github.com/raids-lab/crater/pkg/models"
+	"github.com/raids-lab/crater/pkg/monitor"
+	"github.com/raids-lab/crater/pkg/util/queue"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/manager"

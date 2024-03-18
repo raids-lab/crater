@@ -3,15 +3,15 @@ package handlers
 import (
 	"fmt"
 
-	"github.com/aisystem/ai-protal/pkg/aitaskctl"
-	"github.com/aisystem/ai-protal/pkg/crclient"
-	quotasvc "github.com/aisystem/ai-protal/pkg/db/quota"
-	tasksvc "github.com/aisystem/ai-protal/pkg/db/task"
-	usersvc "github.com/aisystem/ai-protal/pkg/db/user"
-	"github.com/aisystem/ai-protal/pkg/models"
-	payload "github.com/aisystem/ai-protal/pkg/server/payload"
-	resputil "github.com/aisystem/ai-protal/pkg/server/response"
 	"github.com/gin-gonic/gin"
+	"github.com/raids-lab/crater/pkg/aitaskctl"
+	"github.com/raids-lab/crater/pkg/crclient"
+	quotasvc "github.com/raids-lab/crater/pkg/db/quota"
+	tasksvc "github.com/raids-lab/crater/pkg/db/task"
+	usersvc "github.com/raids-lab/crater/pkg/db/user"
+	"github.com/raids-lab/crater/pkg/models"
+	payload "github.com/raids-lab/crater/pkg/server/payload"
+	resputil "github.com/raids-lab/crater/pkg/server/response"
 	log "github.com/sirupsen/logrus"
 )
 

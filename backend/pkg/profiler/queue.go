@@ -3,7 +3,7 @@ package profiler
 import (
 	"strconv"
 
-	"github.com/aisystem/ai-protal/pkg/models"
+	"github.com/raids-lab/crater/pkg/models"
 )
 
 // 默认key函数是taskID

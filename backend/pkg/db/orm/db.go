@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aisystem/ai-protal/pkg/config"
-	"github.com/aisystem/ai-protal/pkg/models"
+	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/models"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"

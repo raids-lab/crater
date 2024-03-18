@@ -3,7 +3,7 @@ package aitaskctl
 import (
 	"sync"
 
-	"github.com/aisystem/ai-protal/pkg/models"
+	"github.com/raids-lab/crater/pkg/models"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 )

@@ -3,7 +3,7 @@ package payload
 import (
 	"fmt"
 
-	"github.com/aisystem/ai-protal/pkg/models"
+	"github.com/raids-lab/crater/pkg/models"
 	v1 "k8s.io/api/core/v1"
 )
 

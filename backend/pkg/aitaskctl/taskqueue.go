@@ -3,7 +3,7 @@ package aitaskctl
 import (
 	"sync"
 
-	"github.com/aisystem/ai-protal/pkg/models"
+	"github.com/raids-lab/crater/pkg/models"
 )
 
 // TaskQueue 保存每个用户的队列

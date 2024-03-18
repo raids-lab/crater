@@ -5,11 +5,11 @@ import (
 	"strconv"
 	"strings"
 
-	usersvc "github.com/aisystem/ai-protal/pkg/db/user"
-	"github.com/aisystem/ai-protal/pkg/util"
+	usersvc "github.com/raids-lab/crater/pkg/db/user"
+	"github.com/raids-lab/crater/pkg/util"
 
-	resputil "github.com/aisystem/ai-protal/pkg/server/response"
 	"github.com/gin-gonic/gin"
+	resputil "github.com/raids-lab/crater/pkg/server/response"
 )
 
 var (

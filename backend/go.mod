@@ -1,4 +1,4 @@
-module github.com/aisystem/ai-protal
+module github.com/raids-lab/crater
 
 go 1.22.1
 

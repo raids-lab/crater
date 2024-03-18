@@ -3,14 +3,14 @@ package server
 import (
 	"net/http"
 
-	"github.com/aisystem/ai-protal/pkg/aitaskctl"
-	"github.com/aisystem/ai-protal/pkg/config"
-	"github.com/aisystem/ai-protal/pkg/constants"
-	"github.com/aisystem/ai-protal/pkg/crclient"
-	"github.com/aisystem/ai-protal/pkg/db/user"
-	"github.com/aisystem/ai-protal/pkg/server/handlers"
-	"github.com/aisystem/ai-protal/pkg/server/middleware"
 	"github.com/gin-gonic/gin"
+	"github.com/raids-lab/crater/pkg/aitaskctl"
+	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/constants"
+	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/raids-lab/crater/pkg/db/user"
+	"github.com/raids-lab/crater/pkg/server/handlers"
+	"github.com/raids-lab/crater/pkg/server/middleware"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

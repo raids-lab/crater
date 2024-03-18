@@ -2,7 +2,7 @@ domain: k8s.io
 layout:
 - go.kubebuilder.io/v3
 projectName: ai-protal
-repo: github.com/aisystem/ai-protal
+repo: github.com/raids-lab/crater
 resources:
 - api:
     crdVersion: v1
@@ -11,6 +11,6 @@ resources:
   domain: k8s.io
   group: aisystem
   kind: AIJob
-  path: github.com/aisystem/ai-protal/pkg/apis/aijob
+  path: github.com/raids-lab/crater/pkg/apis/aijob
   version: v1alpha1
 version: "3"

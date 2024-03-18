@@ -26,8 +26,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	aijobapi "github.com/aisystem/ai-protal/pkg/apis/aijob/v1alpha1"
-	util "github.com/aisystem/ai-protal/pkg/util"
+	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
+	util "github.com/raids-lab/crater/pkg/util"
 )
 
 // AIJobReconciler reconciles a AIJob object

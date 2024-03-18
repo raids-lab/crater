@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"github.com/aisystem/ai-protal/pkg/config"
-	resputil "github.com/aisystem/ai-protal/pkg/server/response"
 	"github.com/gin-gonic/gin"
+	"github.com/raids-lab/crater/pkg/config"
+	resputil "github.com/raids-lab/crater/pkg/server/response"
 )
 
 type ClusterMgr struct {

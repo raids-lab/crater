@@ -3,8 +3,8 @@ package payload
 import (
 	"time"
 
-	"github.com/aisystem/ai-protal/pkg/crclient"
-	"github.com/aisystem/ai-protal/pkg/models"
+	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/raids-lab/crater/pkg/models"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

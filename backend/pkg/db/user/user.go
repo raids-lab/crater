@@ -1,8 +1,8 @@
 package user
 
 import (
-	db "github.com/aisystem/ai-protal/pkg/db/orm"
-	"github.com/aisystem/ai-protal/pkg/models"
+	db "github.com/raids-lab/crater/pkg/db/orm"
+	"github.com/raids-lab/crater/pkg/models"
 )
 
 type DBService interface {

@@ -12,8 +12,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	aijobapi "github.com/aisystem/ai-protal/pkg/apis/aijob/v1alpha1"
-	"github.com/aisystem/ai-protal/pkg/models"
+	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
+	"github.com/raids-lab/crater/pkg/models"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"

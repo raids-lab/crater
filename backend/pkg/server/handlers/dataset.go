@@ -3,12 +3,12 @@ package handlers
 import (
 	"fmt"
 
-	recommenddljobapi "github.com/aisystem/ai-protal/pkg/apis/recommenddljob/v1"
-	"github.com/aisystem/ai-protal/pkg/crclient"
-	usersvc "github.com/aisystem/ai-protal/pkg/db/user"
-	payload "github.com/aisystem/ai-protal/pkg/server/payload"
-	resputil "github.com/aisystem/ai-protal/pkg/server/response"
 	"github.com/gin-gonic/gin"
+	recommenddljobapi "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
+	"github.com/raids-lab/crater/pkg/crclient"
+	usersvc "github.com/raids-lab/crater/pkg/db/user"
+	payload "github.com/raids-lab/crater/pkg/server/payload"
+	resputil "github.com/raids-lab/crater/pkg/server/response"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
