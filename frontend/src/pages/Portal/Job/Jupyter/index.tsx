@@ -335,7 +335,12 @@ export const Component = () => {
         <Status />
         <Quota />
       </div>
-      <DataTable data={data} columns={columns} toolbarConfig={toolbarConfig}>
+      <DataTable
+        data={data}
+        columns={columns}
+        toolbarConfig={toolbarConfig}
+        loading={isLoading}
+      >
         <Sheet open={openSheet} onOpenChange={setOpenSheet}>
           <SheetTrigger asChild>
             <Button className="h-8 min-w-fit">新建任务</Button>

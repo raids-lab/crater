@@ -79,6 +79,11 @@ export const Component: FC = () => {
   }, [shareDirsInfo.data]);
 
   return (
-    <DataTable data={data} columns={columns} toolbarConfig={toolbarConfig} />
+    <DataTable
+      data={data}
+      columns={columns}
+      toolbarConfig={toolbarConfig}
+      loading={shareDirsInfo.isLoading}
+    />
   );
 };
