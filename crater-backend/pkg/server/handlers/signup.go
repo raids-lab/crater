@@ -1,16 +1,16 @@
 package handlers
 
 import (
-	"github.com/aisystem/ai-protal/pkg/aitaskctl"
-	"github.com/aisystem/ai-protal/pkg/config"
-	"github.com/aisystem/ai-protal/pkg/crclient"
-	resputil "github.com/aisystem/ai-protal/pkg/server/response"
-	"github.com/aisystem/ai-protal/pkg/util"
+	"github.com/raids-lab/crater/pkg/aitaskctl"
+	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/crclient"
+	resputil "github.com/raids-lab/crater/pkg/server/response"
+	"github.com/raids-lab/crater/pkg/util"
 	"github.com/sirupsen/logrus"
 
-	"github.com/aisystem/ai-protal/pkg/db/quota"
-	"github.com/aisystem/ai-protal/pkg/db/user"
-	"github.com/aisystem/ai-protal/pkg/models"
+	"github.com/raids-lab/crater/pkg/db/quota"
+	"github.com/raids-lab/crater/pkg/db/user"
+	"github.com/raids-lab/crater/pkg/models"
 
 	"github.com/gin-gonic/gin"
 

@@ -3,8 +3,8 @@ package aitaskctl
 import (
 	"strconv"
 
-	"github.com/aisystem/ai-protal/pkg/models"
-	"github.com/aisystem/ai-protal/pkg/util/queue"
+	"github.com/raids-lab/crater/pkg/models"
+	"github.com/raids-lab/crater/pkg/util/queue"
 )
 
 // 每个用户自己的作业队列排序

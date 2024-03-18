@@ -3,7 +3,7 @@ package util
 import (
 	"time"
 
-	"github.com/aisystem/ai-protal/pkg/models"
+	"github.com/raids-lab/crater/pkg/models"
 
 	//"github.com/amitshekhariitbhu/go-backend-clean-architecture/domain"
 	jwt "github.com/golang-jwt/jwt/v5"
