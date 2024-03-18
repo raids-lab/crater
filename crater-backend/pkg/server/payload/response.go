@@ -3,7 +3,6 @@ package payload
 import (
 	"time"
 
-	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/models"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,8 +17,17 @@ type ListTaskResp struct {
 	Rows     []models.AITask `json:"rows"`
 }
 
+type ClusterNodeInfo struct {
+	Name     string            `json:"name"`
+	Role     string            `json:"role"`
+	Labels   map[string]string `json:"labels"`
+	IsReady  bool              `json:"isReady"`
+	Capacity v1.ResourceList   `json:"capacity"`
+	Alocated v1.ResourceList   `json:"allocated"`
+}
+
 type ListNodeResp struct {
-	Rows []crclient.NodeInfo `json:"rows"`
+	Rows []ClusterNodeInfo `json:"rows"`
 }
 
 type GetTaskResp struct {

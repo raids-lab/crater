@@ -91,14 +91,7 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 	}
 	request.Password = string(encryptedPassword)
 	sc.pvcClient.CreateUserHomePVC(request.Name)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":     "namespace creating wrong",
-			"errorCode": 50015,
-		})
 
-		return
-	}
 	user := models.User{
 		UserName:  request.Name,
 		Role:      request.Role,
