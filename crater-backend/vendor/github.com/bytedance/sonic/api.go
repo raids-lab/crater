@@ -68,11 +68,7 @@ type Config struct {
 
     // ValidateString indicates decoder and encoder to valid string values: decoder will return errors 
     // when unescaped control chars(\u0000-\u001f) in the string value of JSON.
-    ValidateString                bool
-
-    // NoValidateJSONMarshaler indicates that the encoder should not validate the output string
-    // after encoding the JSONMarshaler to JSON.
-    NoValidateJSONMarshaler       bool
+    ValidateString                    bool
 }
  
 var (
@@ -91,7 +87,6 @@ var (
     // ConfigFastest is the fastest config of APIs, aiming at speed.
     ConfigFastest = Config{
         NoQuoteTextMarshaler: true,
-        NoValidateJSONMarshaler: true,
     }.Froze()
 )
  
@@ -188,9 +183,4 @@ func Get(src []byte, path ...interface{}) (ast.Node, error) {
 // which can reduce unnecessary memory copy.
 func GetFromString(src string, path ...interface{}) (ast.Node, error) {
     return ast.NewSearcher(src).GetByPath(path...)
-}
-
-// Valid reports whether data is a valid JSON encoding.
-func Valid(data []byte) bool {
-    return ConfigDefault.Valid(data)
 }

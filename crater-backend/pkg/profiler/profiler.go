@@ -34,7 +34,7 @@ func NewProfiler(mgr manager.Manager, prometheusClient *monitor.PrometheusClient
 		taskQueue:        queue.New(keyFunc, fifoOrdering),
 		taskDB:           tasksvc.NewDBService(),
 		profilingTimeout: time.Duration(profileTimeout) * time.Second, //todo: configuraion
-		podControl:       &crclient.ProfilingPodControl{mgr.GetClient()},
+		podControl:       &crclient.ProfilingPodControl{Client: mgr.GetClient()},
 		prometheusClient: prometheusClient,
 		profileCache:     make(map[uint64]monitor.PodUtil),
 	}
@@ -100,12 +100,12 @@ func (p *Profiler) Start(ctx context.Context) {
 }
 
 func (p *Profiler) run(ctx context.Context) {
-	ticker := time.Tick(5 * time.Second)
+	ticker := time.NewTicker(5 * time.Second)
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker:
+		case <-ticker.C:
 
 			// create profiling pod
 			// todo: check resource free
@@ -158,7 +158,7 @@ func (p *Profiler) run(ctx context.Context) {
 				// todo:
 				// pod.Status.ContainerStatuses[0].State.Running.StartedAt?
 				// pod.Status.StartTime
-				if pod.Status.Phase == corev1.PodRunning && time.Now().Sub(pod.Status.StartTime.Time) < p.profilingTimeout {
+				if pod.Status.Phase == corev1.PodRunning && time.Since(pod.Status.StartTime.Time) < p.profilingTimeout {
 					// p.taskDB.UpdateProfilingStat(task.ID, models.ProfileFailed, "", "")
 					// todo: pod running-> update profiling stat
 					continue
