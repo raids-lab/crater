@@ -43,8 +43,10 @@ export const getAiResource = (resource: KubernetesResource): AiResource => {
     memory = `${memoryNum}Gi`;
   } else if (memory.includes("Gi")) {
     memoryNum = parseInt(memory.replace("Gi", ""));
-  } else {
-    showErrorToast(`Invalid memory unit ${memory}`);
+  } else if (memory !== "0") {
+    showErrorToast(
+      new Error(`Invalid memory ${memory} with unrecognized unit`),
+    );
   }
 
   return {

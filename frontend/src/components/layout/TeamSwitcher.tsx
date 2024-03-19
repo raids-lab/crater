@@ -6,7 +6,7 @@ import {
 } from "@radix-ui/react-icons";
 
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -41,32 +41,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const groups = [
-  {
-    label: "个人账户",
-    teams: [
-      {
-        label: "Zhang San",
-        value: "personal",
-      },
-    ],
-  },
-  {
-    label: "我的项目",
-    teams: [
-      {
-        label: "Serverless",
-        value: "acme-inc",
-      },
-      {
-        label: "GPU Sched",
-        value: "monsters",
-      },
-    ],
-  },
-];
+interface Project {
+  label: string;
+  value: string;
+}
 
-type Team = (typeof groups)[number]["teams"][number];
+interface ProjectGroup {
+  personal: Project;
+  teams: Project[];
+}
+[];
 
 type PopoverTriggerProps = React.ComponentPropsWithoutRef<
   typeof PopoverTrigger
@@ -74,13 +58,17 @@ type PopoverTriggerProps = React.ComponentPropsWithoutRef<
 
 interface TeamSwitcherProps extends PopoverTriggerProps {
   className?: string;
+  projects: ProjectGroup;
 }
 
-export default function TeamSwitcher({ className }: TeamSwitcherProps) {
+export default function TeamSwitcher({
+  className,
+  projects,
+}: TeamSwitcherProps) {
   const [open, setOpen] = React.useState(false);
   const [showNewTeamDialog, setShowNewTeamDialog] = React.useState(false);
-  const [selectedTeam, setSelectedTeam] = React.useState<Team>(
-    groups[0].teams[0],
+  const [selectedTeam, setSelectedTeam] = React.useState<Project>(
+    projects.personal,
   );
 
   return (
@@ -95,14 +83,11 @@ export default function TeamSwitcher({ className }: TeamSwitcherProps) {
             className={cn("justify-between md:w-[200px]", className)}
           >
             <Avatar className="mr-2 h-5 w-5">
-              <AvatarImage
-                src={`https://avatar.vercel.sh/${selectedTeam.value}.png`}
-                alt={selectedTeam.label}
-                className="grayscale"
-              />
-              <AvatarFallback>SC</AvatarFallback>
+              <AvatarFallback className="bg-primary text-primary-foreground">
+                {selectedTeam.label.slice(0, 1).toUpperCase()}
+              </AvatarFallback>
             </Avatar>
-            {selectedTeam.label}
+            <p className="capitalize">{selectedTeam.label}</p>
             <CaretSortIcon className="ml-auto h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
@@ -111,38 +96,63 @@ export default function TeamSwitcher({ className }: TeamSwitcherProps) {
             <CommandList>
               <CommandInput placeholder="查找项目" />
               <CommandEmpty>暂无数据</CommandEmpty>
-              {groups.map((group) => (
-                <CommandGroup key={group.label} heading={group.label}>
-                  {group.teams.map((team) => (
-                    <CommandItem
-                      key={team.value}
-                      onSelect={() => {
-                        setSelectedTeam(team);
-                        setOpen(false);
-                      }}
-                      className="text-sm"
-                    >
-                      <Avatar className="mr-2 h-5 w-5">
-                        <AvatarImage
-                          src={`https://avatar.vercel.sh/${team.value}.png`}
-                          alt={team.label}
-                          className="grayscale"
-                        />
-                        <AvatarFallback>SC</AvatarFallback>
-                      </Avatar>
-                      {team.label}
-                      <CheckIcon
-                        className={cn(
-                          "ml-auto h-4 w-4",
-                          selectedTeam.value === team.value
-                            ? "opacity-100"
-                            : "opacity-0",
-                        )}
-                      />
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              ))}
+              <CommandGroup heading={"个人账户"}>
+                <CommandItem
+                  key={projects.personal.value}
+                  onSelect={() => {
+                    setSelectedTeam(projects.personal);
+                    setOpen(false);
+                  }}
+                  className="text-sm"
+                >
+                  <Avatar className="mr-2 h-5 w-5">
+                    <AvatarFallback>
+                      {projects.personal.label.slice(0, 1).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <p className="capitalize">{projects.personal.label}</p>
+                  <CheckIcon
+                    className={cn(
+                      "ml-auto h-4 w-4",
+                      selectedTeam.value === projects.personal.value
+                        ? "opacity-100"
+                        : "opacity-0",
+                    )}
+                  />
+                </CommandItem>
+              </CommandGroup>
+              <CommandGroup heading={"参与项目"}>
+                {projects.teams.map((team) => (
+                  <CommandItem
+                    key={team.value}
+                    onSelect={() => {
+                      setSelectedTeam(team);
+                      setOpen(false);
+                    }}
+                    className="text-sm"
+                  >
+                    <Avatar className="mr-2 h-5 w-5">
+                      {/* <AvatarImage
+                        src={`https://avatar.vercel.sh/${team.value}.png`}
+                        alt={team.label}
+                        className="grayscale"
+                      /> */}
+                      <AvatarFallback>
+                        {team.label.slice(0, 1).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <p className="capitalize">{team.label}</p>
+                    <CheckIcon
+                      className={cn(
+                        "ml-auto h-4 w-4",
+                        selectedTeam.value === team.value
+                          ? "opacity-100"
+                          : "opacity-0",
+                      )}
+                    />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
             </CommandList>
             <CommandSeparator />
             <CommandList>
