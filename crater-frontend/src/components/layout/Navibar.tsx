@@ -53,6 +53,23 @@ const Navibar: FC = () => {
     return pathParts[0] === "admin";
   }, [pathParts]);
 
+  const groups = {
+    personal: {
+      label: userInfo.id,
+      value: "personal",
+    },
+    teams: [
+      {
+        label: "Serverless",
+        value: "acme-inc",
+      },
+      {
+        label: "GPU Sched",
+        value: "monsters",
+      },
+    ],
+  };
+
   useEffect(() => {
     const titles = getBreadcrumbByPath(pathParts);
     if (titles) {
@@ -114,7 +131,7 @@ const Navibar: FC = () => {
         </Breadcrumb>
       </div>
       <div className="flex flex-row items-center justify-end space-x-4">
-        <TeamSwitcher />
+        <TeamSwitcher projects={groups} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
