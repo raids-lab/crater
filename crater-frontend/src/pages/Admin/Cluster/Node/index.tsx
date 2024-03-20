@@ -203,7 +203,7 @@ const columns: ColumnDef<ClusterNodeInfo>[] = [
       return (
         <div className="flex gap-1 font-mono">
           {Object.keys(labels)
-            .filter((k) => k.includes("gpu"))
+            .filter((k) => k.includes("crater"))
             .map((key) => (
               <Badge
                 key={key}
