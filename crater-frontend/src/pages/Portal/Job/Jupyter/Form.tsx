@@ -131,6 +131,8 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
         //workingDir: values.workingDir,
         shareDirs: convertShareDirs(values.shareDirs),
         //command: values.command,
+        gpuModel: values.gpuModel === "default" ? "" : values.gpuModel,
+        schedulerName: values.schedulerName,
       }),
     onSuccess: async (_, { taskname }) => {
       await Promise.all([
