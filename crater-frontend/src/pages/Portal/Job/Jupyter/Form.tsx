@@ -40,6 +40,13 @@ import {
 } from "@/components/ui/command";
 import { useMemo } from "react";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const formSchema = z.object({
   taskname: z
@@ -54,6 +61,8 @@ const formSchema = z.object({
   cpu: z.coerce.number().int().min(-1),
   gpu: z.coerce.number().int().min(-1),
   memory: z.coerce.number().int().min(-1),
+  schedulerName: z.enum(["kube-gpu-colocate-scheduler", "volcano"]),
+  gpuModel: z.enum(["default", "v100", "p100", "t4", "2080ti"]),
   // image: z.string().url(),
   image: z.string().min(1, {
     message: "任务镜像不能为空",
@@ -519,6 +528,69 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
             添加共享目录
           </Button>
         </div>
+        <FormField
+          control={form.control}
+          name="schedulerName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                调度器<span className="ml-1 text-red-500">*</span>
+              </FormLabel>
+              <FormControl>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <SelectTrigger className="">
+                    <SelectValue placeholder="请选择" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="kube-gpu-colocate-scheduler">
+                      ACT Lucid
+                    </SelectItem>
+                    <SelectItem value="volcano">Huawei Volcano</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="gpuModel"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                GPU 类型<span className="ml-1 text-red-500">*</span>
+              </FormLabel>
+              <FormControl>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <SelectTrigger className="">
+                    <SelectValue placeholder="请选择" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">默认（不指定）</SelectItem>
+                    <SelectItem value="v100">
+                      NVIDIA-Tesla V100-SXM2-32GB
+                    </SelectItem>
+                    <SelectItem value="p100">
+                      NVIDIA-Tesla P100-PCIE-16GB
+                    </SelectItem>
+                    <SelectItem value="t4">NVIDIA-Tesla T4</SelectItem>
+                    <SelectItem value="2080ti">
+                      NVIDIA GeForce RTX 2080 Ti
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <div className="grid grid-cols-2 gap-3">
           <Button variant={"secondary"} onClick={loadFromJson} type="button">
             上次任务

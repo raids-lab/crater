@@ -1,4 +1,3 @@
-import * as React from "react";
 import {
   CaretSortIcon,
   CheckIcon,
@@ -40,6 +39,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useEffect, useState } from "react";
+import { useRecoilState } from "recoil";
+import { globalCurrentAccount } from "@/utils/store";
 
 interface Project {
   label: string;
@@ -65,11 +67,15 @@ export default function TeamSwitcher({
   className,
   projects,
 }: TeamSwitcherProps) {
-  const [open, setOpen] = React.useState(false);
-  const [showNewTeamDialog, setShowNewTeamDialog] = React.useState(false);
-  const [selectedTeam, setSelectedTeam] = React.useState<Project>(
-    projects.personal,
-  );
+  const [open, setOpen] = useState(false);
+  const [showNewTeamDialog, setShowNewTeamDialog] = useState(false);
+  const [selectedTeam, setSelectedTeam] = useRecoilState(globalCurrentAccount);
+
+  useEffect(() => {
+    if (!selectedTeam.value) {
+      setSelectedTeam(projects.personal);
+    }
+  }, [selectedTeam, setSelectedTeam, projects.personal]);
 
   return (
     <Dialog open={showNewTeamDialog} onOpenChange={setShowNewTeamDialog}>

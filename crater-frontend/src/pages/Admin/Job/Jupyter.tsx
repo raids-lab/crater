@@ -30,9 +30,10 @@ import {
   CrossCircledIcon,
   StopwatchIcon,
   StopIcon,
+  ExclamationTriangleIcon,
 } from "@radix-ui/react-icons";
 import { apiJTaskDelete, convertJTask } from "@/services/api/jupyterTask";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type StatusValue =
   | "Queueing"
@@ -371,12 +372,13 @@ const Jupyter: FC = () => {
 
   return (
     <div className="space-y-6">
-      <Card className=" bg-destructive text-destructive-foreground">
-        <CardHeader className="py-3" />
-        <CardContent>
+      <Alert variant="destructive">
+        <ExclamationTriangleIcon className="h-4 w-4" />
+        <AlertTitle>Warining</AlertTitle>
+        <AlertDescription>
           分页功能开发中，搜索、排序、筛选功能暂时不可用。
-        </CardContent>
-      </Card>
+        </AlertDescription>
+      </Alert>
       <DataTable
         data={data}
         columns={columns}
