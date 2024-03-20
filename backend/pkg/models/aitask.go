@@ -108,6 +108,8 @@ type JupyterTaskAttr struct {
 	Image           string                `json:"image" binding:"required"`
 	ResourceRequest v1.ResourceList       `json:"resourceRequest" binding:"required"`
 	ShareDirs       map[string][]DirMount `json:"shareDirs"`
+	GPUModel        string                `json:"gpuModel"`
+	SchedulerName   string                `json:"schedulerName"`
 }
 
 type TaskStatusCount struct {

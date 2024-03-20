@@ -74,6 +74,8 @@ func (mgr *JupyterMgr) Create(c *gin.Context) {
 	taskAttr.Command = "start.sh jupyter lab --allow-root --NotebookApp.base_url=/jupyter/%s/"
 	taskAttr.WorkingDir = fmt.Sprintf("/home/%s", username.(string))
 	taskAttr.ShareDirs = req.ShareDirs
+	taskAttr.SchedulerName = req.SchedulerName
+	taskAttr.GPUModel = req.GPUModel
 
 	if len(taskAttr.ShareDirs) > 0 {
 		for pvcName := range taskAttr.ShareDirs {
