@@ -30,14 +30,14 @@ const sidebarItems: SidebarItem[] = [
     children: [
       {
         route: {
-          path: "ai/*",
-          lazy: () => import("./Job/Ai"),
+          path: "jupyter",
+          lazy: () => import("./Job/Jupyter"),
         },
       },
       {
         route: {
-          path: "jupyter",
-          lazy: () => import("./Job/Jupyter"),
+          path: "ai/*",
+          lazy: () => import("./Job/Ai"),
         },
       },
     ],
@@ -68,12 +68,6 @@ const sidebarItems: SidebarItem[] = [
         route: {
           path: "share",
           lazy: () => import("./Data/Share"),
-        },
-      },
-      {
-        route: {
-          path: "code",
-          lazy: () => import("./Data/Code"),
         },
       },
       {

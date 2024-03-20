@@ -15,11 +15,11 @@ export const craterPath: PathInfo = {
       children: [
         {
           path: "ai",
-          title: "AI 训练任务",
+          title: "离线任务",
         },
         {
           path: "jupyter",
-          title: "Jupyter 任务",
+          title: "交互式任务",
         },
       ],
     },
@@ -43,15 +43,11 @@ export const craterPath: PathInfo = {
       children: [
         {
           path: "share",
-          title: "共享空间",
-        },
-        {
-          path: "code",
-          title: "代码",
+          title: "共享文件",
         },
         {
           path: "other",
-          title: "其他",
+          title: "我的文件",
         },
       ],
     },

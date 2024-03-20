@@ -54,6 +54,8 @@ const formSchema = z.object({
       message: "任务名称最多包含40个字符",
     }),
   taskType: z.string(),
+  schedulerName: z.enum(["kube-gpu-colocate-scheduler", "volcano"]),
+  gpuModel: z.enum(["default", "v100", "p100", "t4", "2080ti"]),
   cpu: z.coerce.number().int().positive({ message: "CPU 核心数至少为 1" }),
   gpu: z.coerce.number().int().min(0),
   memory: z.coerce.number().int().positive(),
@@ -129,6 +131,8 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
         workingDir: values.workingDir,
         shareDirs: convertShareDirs(values.shareDirs),
         command: values.command,
+        gpuModel: values.gpuModel === "default" ? "" : values.gpuModel,
+        schedulerName: values.schedulerName,
       }),
     onSuccess: async (_, { taskname }) => {
       await queryClient.invalidateQueries({ queryKey: ["aitask", "list"] });
@@ -478,6 +482,69 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                   <SelectContent>
                     <SelectItem value="high">高优先级</SelectItem>
                     <SelectItem value="low">低优先级</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="schedulerName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                调度器<span className="ml-1 text-red-500">*</span>
+              </FormLabel>
+              <FormControl>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <SelectTrigger className="">
+                    <SelectValue placeholder="请选择" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="kube-gpu-colocate-scheduler">
+                      ACT Lucid
+                    </SelectItem>
+                    <SelectItem value="volcano">Huawei Volcano</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="gpuModel"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                GPU 类型<span className="ml-1 text-red-500">*</span>
+              </FormLabel>
+              <FormControl>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <SelectTrigger className="">
+                    <SelectValue placeholder="请选择" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">默认（不指定）</SelectItem>
+                    <SelectItem value="v100">
+                      NVIDIA-Tesla V100-SXM2-32GB
+                    </SelectItem>
+                    <SelectItem value="p100">
+                      NVIDIA-Tesla P100-PCIE-16GB
+                    </SelectItem>
+                    <SelectItem value="t4">NVIDIA-Tesla T4</SelectItem>
+                    <SelectItem value="2080ti">
+                      NVIDIA GeForce RTX 2080 Ti
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </FormControl>

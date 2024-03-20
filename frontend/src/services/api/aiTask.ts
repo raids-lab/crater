@@ -140,6 +140,8 @@ export interface ITaskCreate {
     }[];
   };
   command: string;
+  gpuModel: string;
+  schedulerName: string;
 }
 
 export const apiAiTaskCreate = async (task: ITaskCreate) => {

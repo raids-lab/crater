@@ -38,11 +38,11 @@ export const adminPath: PathInfo = {
       children: [
         {
           path: "jupyter",
-          title: "Jupyter 任务",
+          title: "交互式任务",
         },
         {
           path: "ai",
-          title: "AI 训练任务",
+          title: "离线任务",
         },
       ],
     },
@@ -62,7 +62,7 @@ export const adminPath: PathInfo = {
       children: [
         {
           path: "dataset",
-          title: "公开数据集",
+          title: "系统文件",
         },
       ],
     },
