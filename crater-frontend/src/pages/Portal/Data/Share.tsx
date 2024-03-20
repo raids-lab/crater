@@ -1,89 +1,45 @@
-import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
-import { apiAiTaskShareDirList } from "@/services/api/aiTask";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, type FC } from "react";
-import { ColumnDef } from "@tanstack/react-table";
-import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
-import { DataTable } from "@/components/custom/OldDataTable";
-import { Checkbox } from "@/components/ui/checkbox";
+import type { FC } from "react";
 
-type ShareDirInfo = {
-  id: number;
-  name: string;
-};
-
-const getHeader = (key: string): string => {
-  switch (key) {
-    case "name":
-      return "共享空间名称";
-    default:
-      return key;
-  }
-};
-
-const toolbarConfig: DataTableToolbarConfig = {
-  filterInput: {
-    placeholder: "搜索共享空间名称",
-    key: "name",
-  },
-  filterOptions: [],
-  getHeader: getHeader,
-};
-
-const columns: ColumnDef<ShareDirInfo>[] = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={table.getIsAllPageRowsSelected()}
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <>
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      </>
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "name",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={getHeader("name")} />
-    ),
-    cell: ({ row }) => <div>{row.getValue("name")}</div>,
-  },
-];
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export const Component: FC = () => {
-  const shareDirsInfo = useQuery({
-    queryKey: ["aitask", "shareDirs"],
-    queryFn: () => apiAiTaskShareDirList(),
-    select: (res) => res.data.data,
-  });
+  // get param from url
 
-  const data: ShareDirInfo[] = useMemo(() => {
-    if (!shareDirsInfo.data) {
-      return [];
-    }
-    return shareDirsInfo.data.map((item, index) => ({
-      id: index,
-      name: item,
-    }));
-  }, [shareDirsInfo.data]);
+  // const userInfo = useRecoilValue(globalUserInfo);
+
+  // const url = useMemo(() => {
+  //   const user = userInfo.id;
+  //   if (user === "huangjx") {
+  //     return `http://192.168.5.67:32381`;
+  //   } else if (jupyterToken) {
+  //     return `https://crater.act.buaa.edu.cn/jupyter/${userInfo.id}-${id}?token=${jupyterToken}`;
+  //   } else {
+  //     return "";
+  //   }
+  // }, [userInfo]);
 
   return (
-    <DataTable
-      data={data}
-      columns={columns}
-      toolbarConfig={toolbarConfig}
-      loading={shareDirsInfo.isLoading}
-    />
+    <Card>
+      <CardHeader className="py-3"></CardHeader>
+      <CardContent
+        style={{
+          position: "relative",
+          height: "900px",
+          width: "1200px",
+        }}
+      >
+        <iframe
+          src={`http://192.168.5.67:32381/dufs/share`}
+          style={{
+            width: "1200px",
+            height: "1000px",
+            position: "absolute",
+            top: "1%",
+            left: "2%",
+          }}
+        />
+      </CardContent>
+    </Card>
   );
 };
+
