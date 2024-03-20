@@ -68,7 +68,7 @@ export const convertJTask = (task: IJupyterTask): JupyterTask => {
     return task as unknown as JupyterTask;
   }
 };
-export interface jTaskCreate {
+export interface IJupyterTaskCreate {
   taskName: string;
   taskType: string;
   resourceRequest: KubernetesResource;
@@ -78,9 +78,11 @@ export interface jTaskCreate {
       [key: string]: string;
     }[];
   };
+  gpuModel: string;
+  schedulerName: string;
 }
 
-export const apiJTaskCreate = async (task: jTaskCreate) => {
+export const apiJTaskCreate = async (task: IJupyterTaskCreate) => {
   const response = await instance.post<IResponse<string>>(
     VERSION + "/jupyter/create",
     task,
