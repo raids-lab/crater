@@ -73,8 +73,10 @@ type AITask struct {
 	ProfileStat     string     `gorm:"column:profile_stat;type:text" json:"profileStat"`
 	EsitmatedTime   uint       `gorm:"column:estimated_time;type:int" json:"estimatedTime"`
 	ScheduleInfo    string     `gorm:"column:schedule_info;type:text" json:"scheduleInfo"`
-	Token           string     `gorm:"column:token;type:text" json:"token"`
+	Token           string     `gorm:"column:token;type:varchar(128)" json:"token"`
 	NodePort        int32      `gorm:"column:node_port;type:int" json:"nodePort"`
+	SchedulerName   string     `gorm:"column:scheduler_name;type:varchar(128)" json:"schedulerName"`
+	GPUModel        string     `gorm:"column:gpu_model;type:varchar(128)" json:"gpuModel"`
 }
 
 // TaskAttr request
@@ -83,6 +85,8 @@ type TaskAttr struct {
 	UserName        string                //`json:"userName" binding:"required"`
 	SLO             uint                  `json:"slo"`
 	TaskType        string                `json:"taskType" binding:"required"`
+	GPUModel        string                `json:"gpuModel"`
+	SchedulerName   string                `json:"schedulerName"`
 	Image           string                `json:"image" binding:"required"`
 	ResourceRequest v1.ResourceList       `json:"resourceRequest" binding:"required"`
 	Command         string                `json:"command" binding:"required"`

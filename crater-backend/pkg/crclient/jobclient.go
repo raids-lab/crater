@@ -102,7 +102,7 @@ func (c *JobControl) DeleteJobFromTask(task *models.AITask) error {
 	return err
 }
 
-func (c *JobControl) createTrainingJobFromTask(task *models.AITask) (jobname string, err error) {
+func (c *JobControl) createTrainingJobFromTask(task *models.AITask, selector map[string]string) (jobname string, err error) {
 	resourceRequest, err := models.JSONToResourceList(task.ResourceRequest)
 	if err != nil {
 		err = fmt.Errorf("resource request is not valid: %v", err)
@@ -161,11 +161,10 @@ func (c *JobControl) createTrainingJobFromTask(task *models.AITask) (jobname str
 					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
+					SchedulerName:     task.SchedulerName,
 					PriorityClassName: priorityClassName,
 					RestartPolicy:     corev1.RestartPolicyNever,
-					NodeSelector: map[string]string{
-						"v100": "true", // todo: for test
-					},
+					NodeSelector:      selector,
 					Containers: []corev1.Container{
 						{
 							Image:   task.Image,
@@ -194,7 +193,7 @@ func (c *JobControl) createTrainingJobFromTask(task *models.AITask) (jobname str
 	return
 }
 
-func (c *JobControl) createJupyterJobFromTask(task *models.AITask) (jobname string, err error) {
+func (c *JobControl) createJupyterJobFromTask(task *models.AITask, selector map[string]string) (jobname string, err error) {
 	resourceRequest, err := models.JSONToResourceList(task.ResourceRequest)
 	if err != nil {
 		err = fmt.Errorf("resource request is not valid: %v", err)
@@ -248,11 +247,10 @@ func (c *JobControl) createJupyterJobFromTask(task *models.AITask) (jobname stri
 					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
+					SchedulerName:     task.SchedulerName,
 					PriorityClassName: priorityClassName,
 					RestartPolicy:     corev1.RestartPolicyNever,
-					// NodeSelector: map[string]string{
-					// 	"v100": "true", // todo: for test
-					// },
+					NodeSelector:      selector,
 					Containers: []corev1.Container{
 						{
 							Image:           task.Image,
@@ -368,10 +366,16 @@ func (c *JobControl) createJupyterJobFromTask(task *models.AITask) (jobname stri
 
 // task.TaskType 目前有两种类型：training 和 jupyter，如果是 jupyter，则同时创建随机的端口转发
 func (c *JobControl) CreateJobFromTask(task *models.AITask) (jobname string, err error) {
+	// analyze task node selector
+	matchExpressions := map[string]string{}
+	// get models array from task.GPUModels string
+	if task.GPUModel != "" {
+		matchExpressions["act.crater/model"] = task.GPUModel
+	}
 	if task.TaskType == models.TrainingTask {
-		return c.createTrainingJobFromTask(task)
+		return c.createTrainingJobFromTask(task, matchExpressions)
 	} else if task.TaskType == models.JupyterTask {
-		return c.createJupyterJobFromTask(task)
+		return c.createJupyterJobFromTask(task, matchExpressions)
 	} else {
 		err = fmt.Errorf("task type is not valid: %v", task.TaskType)
 		return
