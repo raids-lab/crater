@@ -19,27 +19,14 @@ export const Component: FC = () => {
   // }, [userInfo]);
 
   return (
-    <Card>
+    <Card className="h-[calc(100vh_-104px)] w-full">
       <CardHeader className="py-3"></CardHeader>
-      <CardContent
-        style={{
-          position: "relative",
-          height: "900px",
-          width: "1200px",
-        }}
-      >
+      <CardContent className="relative">
         <iframe
           src={`https://crater.act.buaa.edu.cn/dufs/share`}
-          style={{
-            width: "1200px",
-            height: "1000px",
-            position: "absolute",
-            top: "1%",
-            left: "2%",
-          }}
+          className="h-[calc(100vh_-152px)] w-full"
         />
       </CardContent>
     </Card>
   );
 };
-
