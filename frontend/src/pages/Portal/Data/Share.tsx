@@ -29,7 +29,7 @@ export const Component: FC = () => {
         }}
       >
         <iframe
-          src={`http://192.168.5.67:32381/dufs/share`}
+          src={`https://crater.act.buaa.edu.cn/dufs/share`}
           style={{
             width: "1200px",
             height: "1000px",
