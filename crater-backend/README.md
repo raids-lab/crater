@@ -14,6 +14,8 @@ Crater 是一个基于 Kubernetes 的 GPU 集群管理系统，提供了一站�
 
 ### 1.1 安装 Go 和 Kubectl
 
+> 您不需要在本地安装 MiniKube 或 K3s 集群
+
 在开始之前，请确保您的开发环境中已安装 Go 和 Kubectl。如果尚未安装，请参考以下步骤：
 
 - Go: [Download and install](https://go.dev/doc/install)
@@ -27,7 +29,7 @@ sudo apt-get install build-essential
 
 # install go
 rm -rf /usr/local/go
-wget -qO- https://go.dev/dl/go1.19.13.linux-amd64.tar.gz | sudo tar xz -C /usr/local
+wget -qO- https://go.dev/dl/go1.22.1.linux-amd64.tar.gz | sudo tar xz -C /usr/local
 
 # ~/.zshrc
 export PATH=$PATH:/usr/local/go/bin
@@ -38,11 +40,13 @@ curl -LO https://dl.k8s.io/release/v1.22.1/bin/linux/amd64/kubectl
 sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 ```
 
-### 1.2 获取集群访问权限（非必须）
+### ~~1.2 获取集群访问权限~~
 
 > 目前 Crater Backend 直接使用位于项目根目录的 `/kubeconfig` 文件作为 Context，这种方式并不正规，但因此，您可以忽略这一步。
+>
+> 请不要在 Crater 外，使用项目根目录的 `/kubeconfig` 文件连接到集群。
 
-之后（按正规开发流程）需要获取 K8s 集群的访问权限。申请通过后，集群管理员会提供 `user-xxx.kubeconfig` 文件，创建 `~/.kube` 目录，并将 `user-xxx.kubeconfig` 文件放置在该路径下，仍以 Ubuntu 系统为例：
+之后需要获取 K8s 集群的访问权限。申请通过后，集群管理员会提供 `user-xxx.kubeconfig` 文件，创建 `~/.kube` 目录，并将 `user-xxx.kubeconfig` 文件放置在该路径下，仍以 Ubuntu 系统为例：
 
 ```bash
 mkdir -p ~/.kube
@@ -50,11 +54,13 @@ mkdir -p ~/.kube
 cp ./${user-xxx.kubeconfig} ~/.kube/config
 ```
 
-检查 Go 和 Kubectl 是否安装成功，Kubectl 是否连接集群：
+### 1.3 环境检查
+
+检查 Go 和 Kubectl 是否安装成功，Kubectl 是否连接集群（如果您未进行 1.2，则 Kubectl 将仅显示 Client 版本，这是预期行为）：
 
 ```bash
 go version
-# v1.19.13
+# v1.22.1
 
 kubectl version
 # Client Version: version.Info{Major:"1", Minor:"22", GitVersion:"v1.22.1", ...}
@@ -76,6 +82,12 @@ Crater 目前部署于 [K8s 小集群](https://gitlab.***REMOVED***/raids/resour
 为便于开发人员测试，目前将 MySQL 数据库的 3306 端口暴露到集群外的 30306 端口（见 `deploy/mysql/mysql-hack.yaml` ）。
 
 ### 2.2 本地开发
+
+首先，您需要下载项目所使用的依赖：
+
+```bash
+go mod download
+```
 
 如果您在使用 Linux 或 MacOS 系统，可使用 `./debug.sh` 脚本，在本地 `8099` 端口运行 Web 后端：
 
@@ -102,7 +114,7 @@ Crater Web Backend 已经为 VSCode 配置好了单步调试设置，通过点�
 
 ```json
 {
-  "X-Debug-Username": "username"
+  "X-Debug-Username": "YOUR_USERNAME"
 }
 ```
 
@@ -143,7 +155,7 @@ deploy/
 
 ```bash
 git tag v0.x.x
-git push origin --tag
+git push origin v0.x.x
 ```
 
 使用命令行，或在 Gitlab 网页端操作，GitLab CI/CD 会根据标签自动部署。
@@ -156,7 +168,32 @@ ACT 的 HTTPS 证书每 3 个月更新一次，证书更新方法见 Web Fronten
 
 ## 4. 项目结构
 
-(WIP)
+> [Wiki 代码架构](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-backend/-/wikis/%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84)
+
+主要代码逻辑在pkg文件夹下：
+
+* apis：crd的定义。
+* control：提供接口，负责在集群创建具体的对象，例如pod、aijob等。
+* **controller**：负责同步各crd的状态
+  * job_controller.go：控制job的状态变化
+  * pod.go：监听pod的状态变化。
+  * quota_controller
+  * quota_info.go
+* db：数据库相关存储
+  * internal：db的底层操作
+  * task
+  * quota
+  * user
+* generated：k8s生成的clientset
+* models：数据模型
+  * aitask
+  * quota
+  * user
+* **server**：服务端接口和响应
+  * handlers：具体响应，操作数据库
+  * payload：外部请求接口的定义
+* **taskqueue**：维护用户的任务队列，检查什么时候应该调度作业
+* profiler：负责对任务进行profile
 
 ## 5. 其他
 
