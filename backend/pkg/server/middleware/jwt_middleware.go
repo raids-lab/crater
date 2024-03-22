@@ -41,6 +41,24 @@ func JwtAuthMiddleware(secret string) gin.HandlerFunc {
 				c.Abort()
 				return
 			}
+
+			// If request method is not GET, check user info from DB.
+			if c.Request.Method != "GET" {
+				user, err := userDB.GetByUserName(user.UserName)
+				if err != nil {
+					resputil.HttpError(c, http.StatusUnauthorized, "User not found", resputil.UserNotFound)
+					c.Abort()
+					return
+				}
+				c.Set("x-user-id", strconv.Itoa(int(user.ID)))
+				c.Set("x-user-name", user.UserName)
+				c.Set("x-user-role", user.Role)
+				c.Set("x-namespace", user.NameSpace)
+				c.Next()
+				return
+			}
+
+			// If request method is GET, use the user info from token.
 			c.Set("x-user-id", user.ID)
 			c.Set("x-user-name", user.UserName)
 			c.Set("x-user-role", user.Role)
@@ -48,6 +66,7 @@ func JwtAuthMiddleware(secret string) gin.HandlerFunc {
 			c.Next()
 			return
 		}
+
 		resputil.HttpError(c, http.StatusUnauthorized, "Not authorized", 40106)
 		c.Abort()
 	}
