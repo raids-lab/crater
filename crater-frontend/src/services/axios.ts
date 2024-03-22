@@ -1,6 +1,10 @@
 import axios, { AxiosRequestConfig, isAxiosError } from "axios";
 import { IErrorResponse, IRefresh, IRefreshResponse } from "./types";
-import { ERROR_NOT_ADMIN, ERROR_TOKEN_EXPIRED } from "./error_code";
+import {
+  ERROR_INVALID_ROLE,
+  ERROR_NOT_SPECIFIED,
+  ERROR_TOKEN_EXPIRED,
+} from "./error_code";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/utils/store";
 import { showErrorToast } from "@/utils/toast";
 
@@ -64,11 +68,13 @@ instance.interceptors.response.use(
         } catch (refreshError) {
           window.location.href = "/login";
         }
-      } else if (error.response?.data.code === ERROR_NOT_ADMIN) {
+      } else if (error.response?.data.code === ERROR_INVALID_ROLE) {
+        showErrorToast("暂无权限访问，将跳转到默认页面");
         window.location.href = "/portal";
+      } else if (error.response?.data.code === ERROR_NOT_SPECIFIED) {
+        showErrorToast(error);
       }
     }
-    showErrorToast(error);
     return Promise.reject(error);
   },
 );

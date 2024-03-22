@@ -339,7 +339,7 @@ export const PersonalUser = () => {
                       onClick={() => {
                         if (user.userName === currentUserName) {
                           showErrorToast(
-                            new Error("无法删除自己，如需删除请换个用户登录"),
+                            "无法删除自己，如需删除请换个用户登录",
                           );
                         } else {
                           deleteUser(user.userName);

@@ -18,6 +18,8 @@ export const showErrorToast = (error: unknown) => {
     } else {
       toast.error(`${error.message}`);
     }
+  } else if (typeof error === "string") {
+    toast.error(error);
   } else {
     toast.error((error as Error).message);
   }
