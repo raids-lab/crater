@@ -63,10 +63,10 @@ func (mgr *AITaskMgr) Create(c *gin.Context) {
 		resputil.HttpError(c, http.StatusBadRequest, msg, 40001)
 		return
 	}
-	username, _ := c.Get("x-user-name")
-	req.UserName = username.(string)
-	namespace, _ := c.Get("x-namespace")
-	req.Namespace = namespace.(string)
+
+	userContext, _ := util.GetUserFromGinContext(c)
+	req.UserName = userContext.UserName
+	req.Namespace = userContext.Namespace
 
 	if req.ShareDirs != nil && len(req.ShareDirs) > 0 {
 		for pvcName := range req.ShareDirs {
@@ -100,9 +100,9 @@ func (mgr *AITaskMgr) List(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("validate list parameters failed, err %v", err), 50002)
 		return
 	}
-	username, _ := c.Get("x-user-name")
-	// taskModels, err := mgr.taskService.ListByUserAndStatuses(username.(string), nil)
-	taskModels, err := mgr.taskService.ListByUserAndTaskType(username.(string), models.TrainingTask)
+
+	userContext, _ := util.GetUserFromGinContext(c)
+	taskModels, err := mgr.taskService.ListByUserAndTaskType(userContext.UserName, models.TrainingTask)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("list task failed, err %v", err), 50003)
 		return
@@ -121,8 +121,8 @@ func (mgr *AITaskMgr) Get(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("validate get parameters failed, err %v", err), 50004)
 		return
 	}
-	username, _ := c.Get("x-user-name")
-	taskModel, err := mgr.taskService.GetByUserAndID(username.(string), req.TaskID)
+	userContext, _ := util.GetUserFromGinContext(c)
+	taskModel, err := mgr.taskService.GetByUserAndID(userContext.UserName, req.TaskID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), 50005)
 		return
@@ -141,8 +141,8 @@ func (mgr *AITaskMgr) GetLogs(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("validate get parameters failed, err %v", err), 50004)
 		return
 	}
-	username, _ := c.Get("x-user-name")
-	taskModel, err := mgr.taskService.GetByUserAndID(username.(string), req.TaskID)
+	userContext, _ := util.GetUserFromGinContext(c)
+	taskModel, err := mgr.taskService.GetByUserAndID(userContext.UserName, req.TaskID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), 50005)
 		return
@@ -177,18 +177,18 @@ func (mgr *AITaskMgr) Delete(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("validate delete parameters failed, err %v", err), 50006)
 		return
 	}
-	username, _ := c.Get("x-user-name")
+	userContext, _ := util.GetUserFromGinContext(c)
 	// check if user is authorized to delete the task
-	_, err = mgr.taskService.GetByUserAndID(username.(string), req.TaskID)
+	_, err = mgr.taskService.GetByUserAndID(userContext.UserName, req.TaskID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), 50006)
 		return
 	}
-	mgr.NotifyTaskUpdate(req.TaskID, username.(string), util.DeleteTask)
+	mgr.NotifyTaskUpdate(req.TaskID, userContext.UserName, util.DeleteTask)
 	if req.ForceDelete {
-		err = mgr.taskService.ForceDeleteByUserAndID(username.(string), req.TaskID)
+		err = mgr.taskService.ForceDeleteByUserAndID(userContext.UserName, req.TaskID)
 	} else {
-		err = mgr.taskService.DeleteByUserAndID(username.(string), req.TaskID)
+		err = mgr.taskService.DeleteByUserAndID(userContext.UserName, req.TaskID)
 	}
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("delete task failed, err %v", err), 50007)
@@ -206,8 +206,8 @@ func (mgr *AITaskMgr) UpdateSLO(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("validate update parameters failed, err %v", err), 50008)
 		return
 	}
-	username, _ := c.Get("x-user-name")
-	task, err := mgr.taskService.GetByUserAndID(username.(string), req.TaskID)
+	userContext, _ := util.GetUserFromGinContext(c)
+	task, err := mgr.taskService.GetByUserAndID(userContext.UserName, req.TaskID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), 50009)
 		return
@@ -218,16 +218,16 @@ func (mgr *AITaskMgr) UpdateSLO(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("update task failed, err %v", err), 50009)
 		return
 	}
-	mgr.NotifyTaskUpdate(req.TaskID, username.(string), util.UpdateTask)
+	mgr.NotifyTaskUpdate(req.TaskID, userContext.UserName, util.UpdateTask)
 	log.Infof("update task success, taskID: %d", req.TaskID)
 	resputil.Success(c, "")
 }
 
 func (mgr *AITaskMgr) GetQuota(c *gin.Context) {
-	username, _ := c.Get("x-user-name")
-	quotaInfo := mgr.taskController.GetQuotaInfoSnapshotByUsername(username.(string))
+	userContext, _ := util.GetUserFromGinContext(c)
+	quotaInfo := mgr.taskController.GetQuotaInfoSnapshotByUsername(userContext.UserName)
 	if quotaInfo == nil {
-		resputil.Error(c, fmt.Sprintf("get user:%v quota failed", username.(string)), 50009)
+		resputil.Error(c, fmt.Sprintf("get user:%v quota failed", userContext.UserName), 50009)
 		return
 	}
 	resp := payload.GetQuotaResp{
@@ -241,8 +241,8 @@ func (mgr *AITaskMgr) GetQuota(c *gin.Context) {
 
 func (mgr *AITaskMgr) GetTaskStats(c *gin.Context) {
 	// log.Infof("Task Count Statistic, url: %s", c.Request.URL)
-	username, _ := c.Get("x-user-name")
-	taskCountList, err := mgr.taskService.GetUserTaskStatusCount(username.(string))
+	userContext, _ := util.GetUserFromGinContext(c)
+	taskCountList, err := mgr.taskService.GetUserTaskStatusCount(userContext.UserName)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task count statistic failed, err %v", err), 50003)
 		return

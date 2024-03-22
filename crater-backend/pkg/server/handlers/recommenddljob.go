@@ -37,8 +37,7 @@ func (mgr *RecommendDLJobMgr) RegisterRoute(g *gin.RouterGroup) {
 }
 
 func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
-	username, _ := c.Get("x-user-name")
-	namespace, _ := c.Get("x-namespace")
+	userContext, _ := util.GetUserFromGinContext(c)
 	req := &payload.CreateRecommendDLJobReq{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), 500)
@@ -47,7 +46,7 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 	job := &recommenddljobapi.RecommendDLJob{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      req.Name,
-			Namespace: namespace.(string),
+			Namespace: userContext.Namespace,
 		},
 		Spec: recommenddljobapi.RecommendDLJobSpec{
 			Replicas:            req.Replicas,
@@ -55,7 +54,7 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 			DataSets:            make([]recommenddljobapi.DataSetRef, 0, len(req.DataSets)),
 			RelationShips:       make([]recommenddljobapi.DataRelationShip, 0, len(req.RelationShips)),
 			Template:            req.Template,
-			Username:            username.(string),
+			Username:            userContext.UserName,
 			Macs:                req.Macs,
 			Params:              req.Params,
 			BatchSize:           req.BatchSize,
@@ -71,7 +70,7 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 		job.Spec.RelationShips = append(job.Spec.RelationShips, recommenddljobapi.DataRelationShip{
 			Type:         recommenddljobapi.DataRelationShipType("input"),
 			JobName:      releationShip,
-			JobNamespace: namespace.(string),
+			JobNamespace: userContext.Namespace,
 		})
 	}
 	for _, datasetName := range req.DataSets {
@@ -96,16 +95,15 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 }
 
 func (mgr *RecommendDLJobMgr) List(c *gin.Context) {
-	namespace, exists := c.Get("x-namespace")
-	if !exists {
+	userContext, err := util.GetUserFromGinContext(c)
+	if err != nil {
 		resputil.Error(c, "get namespace failed", 500)
 		return
 	} else {
-		resputil.Success(c, namespace)
+		resputil.Success(c, userContext.Namespace)
 	}
 	var jobList []*recommenddljobapi.RecommendDLJob
-	var err error
-	if jobList, err = mgr.jobclient.ListRecommendDLJob(c, namespace.(string)); err != nil {
+	if jobList, err = mgr.jobclient.ListRecommendDLJob(c, userContext.Namespace); err != nil {
 		resputil.Error(c, fmt.Sprintf("list recommenddljob failed, err:%v", err), 500)
 		return
 	}
@@ -147,7 +145,7 @@ func (mgr *RecommendDLJobMgr) List(c *gin.Context) {
 }
 
 func (mgr *RecommendDLJobMgr) GetByName(c *gin.Context) {
-	namespace, _ := c.Get("x-namespace")
+	userContext, _ := util.GetUserFromGinContext(c)
 	req := &payload.GetRecommendDLJobReq{}
 	if err := c.ShouldBindQuery(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), 500)
@@ -155,7 +153,7 @@ func (mgr *RecommendDLJobMgr) GetByName(c *gin.Context) {
 	}
 	var job *recommenddljobapi.RecommendDLJob
 	var err error
-	if job, err = mgr.jobclient.GetRecommendDLJob(c, req.Name, namespace.(string)); err != nil {
+	if job, err = mgr.jobclient.GetRecommendDLJob(c, req.Name, userContext.Namespace); err != nil {
 		resputil.Error(c, fmt.Sprintf("get recommenddljob failed, err:%v", err), 500)
 		return
 	}
@@ -193,7 +191,7 @@ func (mgr *RecommendDLJobMgr) GetByName(c *gin.Context) {
 }
 
 func (mgr *RecommendDLJobMgr) GetPodsByName(c *gin.Context) {
-	namespace, _ := c.Get("x-namespace")
+	userContext, _ := util.GetUserFromGinContext(c)
 	req := &payload.GetRecommendDLJobPodListReq{}
 	if err := c.ShouldBindQuery(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), 500)
@@ -201,7 +199,7 @@ func (mgr *RecommendDLJobMgr) GetPodsByName(c *gin.Context) {
 	}
 	var podList []*corev1.Pod
 	var err error
-	if podList, err = mgr.jobclient.GetRecommendDLJobPodList(c, req.Name, namespace.(string)); err != nil {
+	if podList, err = mgr.jobclient.GetRecommendDLJobPodList(c, req.Name, userContext.Namespace); err != nil {
 		resputil.Error(c, fmt.Sprintf("get recommenddljob pods failed, err:%v", err), 500)
 		return
 	}
@@ -209,13 +207,13 @@ func (mgr *RecommendDLJobMgr) GetPodsByName(c *gin.Context) {
 }
 
 func (mgr *RecommendDLJobMgr) Delete(c *gin.Context) {
-	namespace, _ := c.Get("x-namespace")
+	userContext, _ := util.GetUserFromGinContext(c)
 	req := &payload.DeleteRecommendDLJobReq{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), 500)
 		return
 	}
-	if err := mgr.jobclient.DeleteRecommendDLJob(c, req.Name, namespace.(string)); err != nil {
+	if err := mgr.jobclient.DeleteRecommendDLJob(c, req.Name, userContext.Namespace); err != nil {
 		resputil.Error(c, fmt.Sprintf("delete recommenddljob failed, err:%v", err), 500)
 		return
 	}

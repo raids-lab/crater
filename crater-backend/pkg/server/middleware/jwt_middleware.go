@@ -21,10 +21,10 @@ func JwtAuthMiddleware(secret string) gin.HandlerFunc {
 		if gin.Mode() == gin.DebugMode {
 			if username := c.Request.Header.Get("X-Debug-Username"); username != "" {
 				if user, err := userDB.GetByUserName(username); err == nil {
-					c.Set("x-user-id", strconv.Itoa(int(user.ID)))
-					c.Set("x-user-name", user.UserName)
-					c.Set("x-user-role", user.Role)
-					c.Set("x-namespace", user.NameSpace)
+					c.Set(util.UserIDKey, strconv.Itoa(int(user.ID)))
+					c.Set(util.UserNameKey, user.UserName)
+					c.Set(util.UserRoleKey, user.Role)
+					c.Set(util.NamespaceKey, user.NameSpace)
 					c.Next()
 					return
 				}
@@ -50,19 +50,19 @@ func JwtAuthMiddleware(secret string) gin.HandlerFunc {
 					c.Abort()
 					return
 				}
-				c.Set("x-user-id", strconv.Itoa(int(user.ID)))
-				c.Set("x-user-name", user.UserName)
-				c.Set("x-user-role", user.Role)
-				c.Set("x-namespace", user.NameSpace)
+				c.Set(util.UserIDKey, strconv.Itoa(int(user.ID)))
+				c.Set(util.UserNameKey, user.UserName)
+				c.Set(util.UserRoleKey, user.Role)
+				c.Set(util.NamespaceKey, user.NameSpace)
 				c.Next()
 				return
 			}
 
 			// If request method is GET, use the user info from token.
-			c.Set("x-user-id", user.ID)
-			c.Set("x-user-name", user.UserName)
-			c.Set("x-user-role", user.Role)
-			c.Set("x-namespace", user.NameSpace)
+			c.Set(util.UserIDKey, user.ID)
+			c.Set(util.UserNameKey, user.UserName)
+			c.Set(util.UserRoleKey, user.Role)
+			c.Set(util.NamespaceKey, user.NameSpace)
 			c.Next()
 			return
 		}
@@ -74,8 +74,8 @@ func JwtAuthMiddleware(secret string) gin.HandlerFunc {
 
 func AdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		role, _ := c.Get("x-user-role")
-		if role != "admin" {
+		userContext, _ := util.GetUserFromGinContext(c)
+		if userContext.UserRole != "admin" {
 			resputil.HttpError(c, http.StatusUnauthorized, "Not authorized", resputil.NotAdmin)
 			c.Abort()
 			return

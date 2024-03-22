@@ -9,6 +9,7 @@ import (
 	usersvc "github.com/raids-lab/crater/pkg/db/user"
 	payload "github.com/raids-lab/crater/pkg/server/payload"
 	resputil "github.com/raids-lab/crater/pkg/server/response"
+	"github.com/raids-lab/crater/pkg/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -30,10 +31,10 @@ func (mgr *DataSetMgr) RegisterRoute(g *gin.RouterGroup) {
 }
 
 func (mgr *DataSetMgr) List(c *gin.Context) {
-	namespace, _ := c.Get("x-namespace")
+	userContext, _ := util.GetUserFromGinContext(c)
 	var datasetList []*recommenddljobapi.DataSet
 	var err error
-	if datasetList, err = mgr.datasetClient.ListDataSets(c, namespace.(string)); err != nil {
+	if datasetList, err = mgr.datasetClient.ListDataSets(c, userContext.Namespace); err != nil {
 		resputil.Error(c, fmt.Sprintf("list dataset failed, err:%v", err), 500)
 		return
 	}
@@ -55,7 +56,7 @@ func (mgr *DataSetMgr) List(c *gin.Context) {
 }
 
 func (mgr *DataSetMgr) Get(c *gin.Context) {
-	namespace, _ := c.Get("x-namespace")
+	userContext, _ := util.GetUserFromGinContext(c)
 	req := &payload.GetDataSetReq{}
 	if err := c.ShouldBindQuery(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), 500)
@@ -63,7 +64,7 @@ func (mgr *DataSetMgr) Get(c *gin.Context) {
 	}
 	var dataset *recommenddljobapi.DataSet
 	var err error
-	if dataset, err = mgr.datasetClient.GetDataSet(c, req.Name, namespace.(string)); err != nil {
+	if dataset, err = mgr.datasetClient.GetDataSet(c, req.Name, userContext.Namespace); err != nil {
 		resputil.Error(c, fmt.Sprintf("get dataset failed, err:%v", err), 500)
 		return
 	}
