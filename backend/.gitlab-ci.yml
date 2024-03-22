@@ -12,15 +12,24 @@ lint:
   image: ***REMOVED***/crater/golangci-lint:v1.57.1
   stage: test
   script:
+    - mkdir -p .cache
+    - export GOPATH="$CI_PROJECT_DIR/.cache"
+    - go env -w GO111MODULE=on
+    - go env -w GOPROXY=https://goproxy.cn,direct
+    - go mod download
     # Write the code coverage report to gl-code-quality-report.json
     # and print linting issues to stdout in the format: path/to/file:line description
     # remove `--issues-exit-code 0` or set to non-zero to fail the job if linting issues are detected
-    - golangci-lint run --issues-exit-code 0 --print-issued-lines=false --out-format code-climate:gl-code-quality-report.json,line-number
+    - golangci-lint run --print-issued-lines=false --out-format code-climate:gl-code-quality-report.json,line-number
   artifacts:
     reports:
       codequality: gl-code-quality-report.json
     paths:
       - gl-code-quality-report.json
+    expire_in: 1 week
+  cache:
+    paths:
+      - .cache
 
 # Build backend and generate artifacts
 build_backend:
