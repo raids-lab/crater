@@ -7,4 +7,5 @@ const (
 
 	TokenExpired ErrorCode = 40105
 	NotAdmin     ErrorCode = 40107
+	UserNotFound ErrorCode = 40108
 )

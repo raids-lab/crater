@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -32,7 +32,7 @@ func PostJson(ctx context.Context, host, path string, body interface{}, header m
 		return fmt.Errorf("post failed, do request failed, err:%v", err)
 	}
 
-	respBody, err := ioutil.ReadAll(httpResp.Body)
+	respBody, err := io.ReadAll(httpResp.Body)
 	if err != nil {
 		return fmt.Errorf("post read body failed, err:%v", err)
 	}
