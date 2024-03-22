@@ -78,7 +78,7 @@ func LoggerForKey(key string) *log.Entry {
 	return log.WithFields(log.Fields{
 		// The key used by the workQueue should be namespace + "/" + name.
 		// Its more common in K8s to use a period to indicate namespace.name. So that's what we use.
-		"job": strings.Replace(key, "/", ".", -1),
+		"job": strings.ReplaceAll(key, "/", "."),
 	})
 }
 

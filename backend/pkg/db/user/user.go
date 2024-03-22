@@ -22,12 +22,12 @@ func NewDBService() DBService {
 }
 
 func (s *service) Create(user *models.User) error {
-	return db.Orm.Create(user).Error //db.Orm.Create(user).Error
+	return db.Orm.Create(user).Error // db.Orm.Create(user).Error
 }
 
 func (s *service) UpdateRole(userName string, role1 string) error {
 	var user models.User
-	return db.Orm.Where("username=?", userName).First(&user).Update("role", role1).Error //db.Orm.Save(user).Error
+	return db.Orm.Where("username=?", userName).First(&user).Update("role", role1).Error // db.Orm.Save(user).Error
 }
 
 func (s *service) ListAllUsers() ([]models.User, error) {

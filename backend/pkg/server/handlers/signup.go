@@ -17,7 +17,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	//"awesomeProject/pkg/models"
+	// "awesomeProject/pkg/models"
 	"net/http"
 )
 
@@ -67,7 +67,7 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 	}
 
 	// Bug(TODO): 无法区分用户未存在和查询错误（如数据库未连接）
-	_, err = sc.UserDB.GetByUserName(request.Name) //GetUserByEmail(c, request.Email)
+	_, err = sc.UserDB.GetByUserName(request.Name) // GetUserByEmail(c, request.Email)
 	if err == nil {
 		resputil.HttpError(c, http.StatusConflict, "User already exists with the given Name", 40901)
 		return

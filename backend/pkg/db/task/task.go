@@ -51,11 +51,12 @@ func (s *service) UpdateStatus(taskID uint, status string, reason string) error 
 	// 取前100
 	updateMap["status_reason"] = reason
 	t := time.Now()
-	if status == models.TaskCreatedStatus {
+	switch status {
+	case models.TaskCreatedStatus:
 		updateMap["admitted_at"] = &t
-	} else if status == models.TaskRunningStatus {
+	case models.TaskRunningStatus:
 		updateMap["started_at"] = &t
-	} else if status == models.TaskSucceededStatus || status == models.TaskFailedStatus {
+	case models.TaskSucceededStatus, models.TaskFailedStatus:
 		updateMap["finish_at"] = &t
 		if task.StartedAt != nil {
 			updateMap["duration"] = t.Sub(*task.StartedAt).Seconds()

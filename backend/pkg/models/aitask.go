@@ -82,7 +82,7 @@ type AITask struct {
 // TaskAttr request
 type TaskAttr struct {
 	TaskName        string                `json:"taskName" binding:"required"`
-	UserName        string                //`json:"userName" binding:"required"`
+	UserName        string                // `json:"userName" binding:"required"`
 	SLO             uint                  `json:"slo"`
 	TaskType        string                `json:"taskType" binding:"required"`
 	GPUModel        string                `json:"gpuModel"`

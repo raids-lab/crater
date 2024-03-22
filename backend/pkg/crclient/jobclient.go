@@ -112,7 +112,7 @@ func (c *JobControl) createTrainingJobFromTask(task *models.AITask, selector map
 	// convert metadata to lower case
 	taskName := strings.ToLower(task.TaskName)
 	jobname = fmt.Sprintf("%s-%d", taskName, task.ID)
-	jobname = strings.Replace(jobname, "_", "-", -1)
+	jobname = strings.ReplaceAll(jobname, "_", "-")
 	taskID := strconv.Itoa(int(task.ID))
 
 	// set labels and annotations
@@ -203,7 +203,7 @@ func (c *JobControl) createJupyterJobFromTask(task *models.AITask, selector map[
 	// convert metadata to lower case
 	username := strings.ToLower(task.UserName)
 	jobname = fmt.Sprintf("%s-%d", username, task.ID)
-	jobname = strings.Replace(jobname, "_", "-", -1)
+	jobname = strings.ReplaceAll(jobname, "_", "-")
 	taskID := strconv.Itoa(int(task.ID))
 
 	// set labels and annotations
@@ -372,11 +372,13 @@ func (c *JobControl) CreateJobFromTask(task *models.AITask) (jobname string, err
 	if task.GPUModel != "" {
 		matchExpressions["act.crater/model"] = task.GPUModel
 	}
-	if task.TaskType == models.TrainingTask {
+
+	switch task.TaskType {
+	case models.TrainingTask:
 		return c.createTrainingJobFromTask(task, matchExpressions)
-	} else if task.TaskType == models.JupyterTask {
+	case models.JupyterTask:
 		return c.createJupyterJobFromTask(task, matchExpressions)
-	} else {
+	default:
 		err = fmt.Errorf("task type is not valid: %v", task.TaskType)
 		return
 	}

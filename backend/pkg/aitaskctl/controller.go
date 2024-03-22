@@ -200,7 +200,7 @@ func (c *TaskController) TaskUpdated(event util.TaskUpdateChan) {
 // }
 
 func (c *TaskController) updateTaskStatus(taskID string, status string, reason string) (*models.AITask, error) {
-	//convert taskID to uint
+	// convert taskID to uint
 	tid, _ := strconv.ParseUint(taskID, 10, 64)
 
 	t, err := c.taskDB.GetByID(uint(tid))

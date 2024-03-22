@@ -64,7 +64,7 @@ type GetUserReq struct {
 }
 
 type CreateUserRequest struct {
-	//Id       int    `json:"_id"`
+	// Id       int    `json:"_id"`
 	Name     string `json:"userName" binding:"required"`
 	Role     string `json:"role" binding:"required"`
 	Password string `json:"passWord" binding:"required"`
