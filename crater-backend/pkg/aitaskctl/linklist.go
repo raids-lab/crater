@@ -64,14 +64,14 @@ func (e *ExecuteEngine) Init() {
 }
 
 // Submit a task to execute engine and get an unique ID back
-func (e *ExecuteEngine) SubmitTask(attr *TaskAttr) (UniqueID int32) {
-	UniqueID = e.UniqueID
+func (e *ExecuteEngine) SubmitTask(attr *TaskAttr) (uniqueID int32) {
+	uniqueID = e.UniqueID
 	e.UniqueID += 1
 
 	// construct new task
 	task := &InternalTask{
 		Attr: attr,
-		ID:   UniqueID,
+		ID:   uniqueID,
 	}
 	linkList := &LinkList{
 		Prev: nil,
@@ -89,7 +89,7 @@ func (e *ExecuteEngine) SubmitTask(attr *TaskAttr) (UniqueID int32) {
 	}
 
 	// record the mapping
-	e.ID2Task[UniqueID] = task
+	e.ID2Task[uniqueID] = task
 	return
 }
 

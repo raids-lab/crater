@@ -47,10 +47,8 @@ func CheckResourceListExceed(hard, used, requested v1.ResourceList) bool {
 	for k, usedValue := range usedCopy {
 		if hardValue, ok := hard[k]; !ok {
 			return true
-		} else {
-			if usedValue.Cmp(hardValue) > 0 {
-				return true
-			}
+		} else if usedValue.Cmp(hardValue) > 0 {
+			return true
 		}
 	}
 	return false

@@ -35,7 +35,7 @@ func (c *ProfilingPodControl) ListProflingPods() ([]corev1.Pod, error) {
 func (c *ProfilingPodControl) DeleteProfilePodFromTask(task *models.AITask) error {
 	podName := fmt.Sprintf("%s-%d-profiling", task.TaskName, task.ID)
 	podName = strings.ToLower(podName)
-	podName = strings.Replace(podName, "_", "-", -1)
+	podName = strings.ReplaceAll(podName, "_", "-")
 	ns := task.Namespace
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -64,7 +64,7 @@ func (c *ProfilingPodControl) CreateProfilePodFromTask(task *models.AITask) erro
 	}
 	podName := fmt.Sprintf("%s-%d-profiling", task.TaskName, task.ID)
 	podName = strings.ToLower(podName)
-	podName = strings.Replace(podName, "_", "-", -1)
+	podName = strings.ReplaceAll(podName, "_", "-")
 	taskID := strconv.Itoa(int(task.ID))
 	labels := map[string]string{
 		aijobapi.LabelKeyTaskID: taskID,

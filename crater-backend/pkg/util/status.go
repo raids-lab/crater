@@ -96,7 +96,8 @@ func setCondition(status *aijobapi.JobStatus, condition aijobapi.JobCondition) {
 
 	// Append the updated condition to the conditions
 	newConditions := filterOutCondition(status.Conditions, condition.Type)
-	status.Conditions = append(newConditions, condition)
+	newConditions = append(newConditions, condition)
+	status.Conditions = newConditions
 }
 
 // filterOutCondition returns a new slice of job conditions without conditions with the provided type.
