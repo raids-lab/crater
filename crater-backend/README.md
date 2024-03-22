@@ -83,6 +83,9 @@ Crater 目前部署于 [K8s 小集群](https://gitlab.***REMOVED***/raids/resour
 
 ### 2.2 本地开发
 
+- VSCode：可导入 `.vscode` 文件夹中的 Profile 设置文件
+- JetBrains：[JetBrain configuration](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-backend/-/wikis/JetBrain-configuration)
+
 首先，您需要下载项目所使用的依赖：
 
 ```bash
