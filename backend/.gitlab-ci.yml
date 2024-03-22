@@ -1,10 +1,26 @@
 stages:
+  - test
   - build_backend
   - build_image
   - deploy
 
 variables:
   HARBOR_REGISTRY_IMAGE: ***REMOVED***/crater/web-backend
+
+# https://docs.gitlab.com/ee/development/go_guide/#automatic-linting
+lint:
+  image: ***REMOVED***/crater/golangci-lint:v1.57.1
+  stage: test
+  script:
+    # Write the code coverage report to gl-code-quality-report.json
+    # and print linting issues to stdout in the format: path/to/file:line description
+    # remove `--issues-exit-code 0` or set to non-zero to fail the job if linting issues are detected
+    - golangci-lint run --issues-exit-code 0 --print-issued-lines=false --out-format code-climate:gl-code-quality-report.json,line-number
+  artifacts:
+    reports:
+      codequality: gl-code-quality-report.json
+    paths:
+      - gl-code-quality-report.json
 
 # Build backend and generate artifacts
 build_backend:
