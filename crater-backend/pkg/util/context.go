@@ -7,7 +7,6 @@ import (
 )
 
 const (
-	UserIDKey    = "x-user-id"
 	UserNameKey  = "x-user-name"
 	UserRoleKey  = "x-user-role"
 	NamespaceKey = "x-namespace"
@@ -15,7 +14,6 @@ const (
 
 // return type
 type UserContext struct {
-	UserID    string
 	UserName  string
 	UserRole  string
 	Namespace string
@@ -30,10 +28,6 @@ type UserContext struct {
 // If any of the keys are missing, an error is returned.
 // The function returns a UserContext struct containing the retrieved user information.
 func GetUserFromGinContext(ctx *gin.Context) (UserContext, error) {
-	userID, exists := ctx.Get(UserIDKey)
-	if !exists {
-		return UserContext{}, fmt.Errorf("user id not found in context")
-	}
 	userName, exists := ctx.Get(UserNameKey)
 	if !exists {
 		return UserContext{}, fmt.Errorf("user name not found in context")
@@ -47,7 +41,6 @@ func GetUserFromGinContext(ctx *gin.Context) (UserContext, error) {
 		return UserContext{}, fmt.Errorf("user role not found in context")
 	}
 	return UserContext{
-		UserID:    userID.(string),
 		UserName:  userName.(string),
 		UserRole:  userRole.(string),
 		Namespace: namespace.(string),

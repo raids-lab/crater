@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 
 	usersvc "github.com/raids-lab/crater/pkg/db/user"
@@ -21,7 +20,6 @@ func JwtAuthMiddleware(secret string) gin.HandlerFunc {
 		if gin.Mode() == gin.DebugMode {
 			if username := c.Request.Header.Get("X-Debug-Username"); username != "" {
 				if user, err := userDB.GetByUserName(username); err == nil {
-					c.Set(util.UserIDKey, strconv.Itoa(int(user.ID)))
 					c.Set(util.UserNameKey, user.UserName)
 					c.Set(util.UserRoleKey, user.Role)
 					c.Set(util.NamespaceKey, user.NameSpace)
@@ -50,7 +48,6 @@ func JwtAuthMiddleware(secret string) gin.HandlerFunc {
 					c.Abort()
 					return
 				}
-				c.Set(util.UserIDKey, strconv.Itoa(int(user.ID)))
 				c.Set(util.UserNameKey, user.UserName)
 				c.Set(util.UserRoleKey, user.Role)
 				c.Set(util.NamespaceKey, user.NameSpace)
@@ -59,7 +56,6 @@ func JwtAuthMiddleware(secret string) gin.HandlerFunc {
 			}
 
 			// If request method is GET, use the user info from token.
-			c.Set(util.UserIDKey, user.ID)
 			c.Set(util.UserNameKey, user.UserName)
 			c.Set(util.UserRoleKey, user.Role)
 			c.Set(util.NamespaceKey, user.NameSpace)
