@@ -60,7 +60,7 @@ func (mgr *AITaskMgr) Create(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
 		log.Error(msg)
-		resputil.HttpError(c, http.StatusBadRequest, msg, 40001)
+		resputil.HttpError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
 
@@ -72,7 +72,7 @@ func (mgr *AITaskMgr) Create(c *gin.Context) {
 		for pvcName := range req.ShareDirs {
 			err := mgr.pvcClient.CheckOrCreateUserPvc(req.Namespace, pvcName)
 			if err != nil {
-				resputil.Error(c, fmt.Sprintf("get user pvc failed, err %v", err), 50001)
+				resputil.Error(c, fmt.Sprintf("get user pvc failed, err %v", err), resputil.NotSpecified)
 				return
 			}
 		}
@@ -81,7 +81,7 @@ func (mgr *AITaskMgr) Create(c *gin.Context) {
 	taskModel := models.FormatTaskAttrToModel(&req.TaskAttr)
 	err := mgr.taskService.Create(taskModel)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("create task failed, err %v", err), 50001)
+		resputil.Error(c, fmt.Sprintf("create task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	mgr.NotifyTaskUpdate(taskModel.ID, taskModel.UserName, util.CreateTask)
@@ -97,14 +97,14 @@ func (mgr *AITaskMgr) List(c *gin.Context) {
 	// log.Infof("Task List, url: %s", c.Request.URL)
 	var req payload.ListTaskReq
 	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate list parameters failed, err %v", err), 50002)
+		resputil.Error(c, fmt.Sprintf("validate list parameters failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 
 	userContext, _ := util.GetUserFromGinContext(c)
 	taskModels, err := mgr.taskService.ListByUserAndTaskType(userContext.UserName, models.TrainingTask)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("list task failed, err %v", err), 50003)
+		resputil.Error(c, fmt.Sprintf("list task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	resp := payload.ListTaskResp{
@@ -118,13 +118,13 @@ func (mgr *AITaskMgr) Get(c *gin.Context) {
 	log.Infof("Task Get, url: %s", c.Request.URL)
 	var req payload.GetTaskReq
 	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate get parameters failed, err %v", err), 50004)
+		resputil.Error(c, fmt.Sprintf("validate get parameters failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	userContext, _ := util.GetUserFromGinContext(c)
 	taskModel, err := mgr.taskService.GetByUserAndID(userContext.UserName, req.TaskID)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), 50005)
+		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	resp := payload.GetTaskResp{
@@ -138,26 +138,26 @@ func (mgr *AITaskMgr) GetLogs(c *gin.Context) {
 	log.Infof("Task Get, url: %s", c.Request.URL)
 	var req payload.GetTaskReq
 	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate get parameters failed, err %v", err), 50004)
+		resputil.Error(c, fmt.Sprintf("validate get parameters failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	userContext, _ := util.GetUserFromGinContext(c)
 	taskModel, err := mgr.taskService.GetByUserAndID(userContext.UserName, req.TaskID)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), 50005)
+		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	// get log
 	pods, err := mgr.logClient.GetPodsWithLabel(taskModel.Namespace, taskModel.JobName)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("get task log failed, err %v", err), 50005)
+		resputil.Error(c, fmt.Sprintf("get task log failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	var logs []string
 	for _, pod := range pods {
 		podLog, err := mgr.logClient.GetPodLogs(pod)
 		if err != nil {
-			resputil.Error(c, fmt.Sprintf("get task log failed, err %v", err), 50005)
+			resputil.Error(c, fmt.Sprintf("get task log failed, err %v", err), resputil.NotSpecified)
 			return
 		}
 		logs = append(logs, podLog)
@@ -174,14 +174,14 @@ func (mgr *AITaskMgr) Delete(c *gin.Context) {
 	var req payload.DeleteTaskReq
 	var err error
 	if err = c.ShouldBindJSON(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate delete parameters failed, err %v", err), 50006)
+		resputil.Error(c, fmt.Sprintf("validate delete parameters failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	userContext, _ := util.GetUserFromGinContext(c)
 	// check if user is authorized to delete the task
 	_, err = mgr.taskService.GetByUserAndID(userContext.UserName, req.TaskID)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), 50006)
+		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	mgr.NotifyTaskUpdate(req.TaskID, userContext.UserName, util.DeleteTask)
@@ -191,7 +191,7 @@ func (mgr *AITaskMgr) Delete(c *gin.Context) {
 		err = mgr.taskService.DeleteByUserAndID(userContext.UserName, req.TaskID)
 	}
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("delete task failed, err %v", err), 50007)
+		resputil.Error(c, fmt.Sprintf("delete task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 
@@ -203,19 +203,19 @@ func (mgr *AITaskMgr) UpdateSLO(c *gin.Context) {
 	log.Infof("Task Update, url: %s", c.Request.URL)
 	var req payload.UpdateTaskSLOReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate update parameters failed, err %v", err), 50008)
+		resputil.Error(c, fmt.Sprintf("validate update parameters failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	userContext, _ := util.GetUserFromGinContext(c)
 	task, err := mgr.taskService.GetByUserAndID(userContext.UserName, req.TaskID)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), 50009)
+		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	task.SLO = req.SLO
 	err = mgr.taskService.Update(task)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("update task failed, err %v", err), 50009)
+		resputil.Error(c, fmt.Sprintf("update task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	mgr.NotifyTaskUpdate(req.TaskID, userContext.UserName, util.UpdateTask)
@@ -227,7 +227,7 @@ func (mgr *AITaskMgr) GetQuota(c *gin.Context) {
 	userContext, _ := util.GetUserFromGinContext(c)
 	quotaInfo := mgr.taskController.GetQuotaInfoSnapshotByUsername(userContext.UserName)
 	if quotaInfo == nil {
-		resputil.Error(c, fmt.Sprintf("get user:%v quota failed", userContext.UserName), 50009)
+		resputil.Error(c, fmt.Sprintf("get user:%v quota failed", userContext.UserName), resputil.NotSpecified)
 		return
 	}
 	resp := payload.GetQuotaResp{
@@ -244,7 +244,7 @@ func (mgr *AITaskMgr) GetTaskStats(c *gin.Context) {
 	userContext, _ := util.GetUserFromGinContext(c)
 	taskCountList, err := mgr.taskService.GetUserTaskStatusCount(userContext.UserName)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("get task count statistic failed, err %v", err), 50003)
+		resputil.Error(c, fmt.Sprintf("get task count statistic failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	// var respCnt payload.AITaskCountStatistic

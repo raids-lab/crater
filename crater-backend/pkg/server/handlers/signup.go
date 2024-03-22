@@ -62,14 +62,14 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 
 	err := c.ShouldBind(&request)
 	if err != nil {
-		resputil.HttpError(c, http.StatusBadRequest, err.Error(), 40004)
+		resputil.HttpError(c, http.StatusBadRequest, err.Error(), resputil.NotSpecified)
 		return
 	}
 
 	// Bug(TODO): 无法区分用户未存在和查询错误（如数据库未连接）
 	_, err = sc.UserDB.GetByUserName(request.Name) // GetUserByEmail(c, request.Email)
 	if err == nil {
-		resputil.HttpError(c, http.StatusConflict, "User already exists with the given Name", 40901)
+		resputil.HttpError(c, http.StatusConflict, "User already exists with the given Name", resputil.NotSpecified)
 		return
 	}
 
@@ -78,7 +78,7 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 		bcrypt.DefaultCost,
 	)
 	if err != nil {
-		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), 50014)
+		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
 		return
 	}
 	if request.Role != "user" && request.Role != "admin" {
@@ -101,7 +101,7 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 
 	err = sc.UserDB.Create(&user)
 	if err != nil {
-		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), 50016)
+		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
 		return
 	}
 	quota := models.Quota{
@@ -119,13 +119,13 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 	sc.taskController.AddUser(quota.UserName, quota)
 	accessToken, err := util.CreateAccessToken(&user, sc.TokenConf.AccessTokenSecret, sc.TokenConf.AccessTokenExpiryHour)
 	if err != nil {
-		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), 50017)
+		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
 		return
 	}
 
 	refreshToken, err := util.CreateRefreshToken(&user, sc.TokenConf.RefreshTokenSecret, sc.TokenConf.RefreshTokenExpiryHour)
 	if err != nil {
-		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), 50018)
+		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
 		return
 	}
 
