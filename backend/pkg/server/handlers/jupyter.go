@@ -60,19 +60,19 @@ func (mgr *JupyterMgr) Create(c *gin.Context) {
 		resputil.HttpError(c, http.StatusBadRequest, msg, 40001)
 		return
 	}
-	username, _ := c.Get("x-user-name")
-	namespace, _ := c.Get("x-namespace")
+
+	userContext, _ := util.GetUserFromGinContext(c)
 
 	var taskAttr models.TaskAttr
 	taskAttr.TaskName = req.TaskName
-	taskAttr.UserName = username.(string)
-	taskAttr.Namespace = namespace.(string)
+	taskAttr.UserName = userContext.UserName
+	taskAttr.Namespace = userContext.Namespace
 	taskAttr.SLO = 1
 	taskAttr.TaskType = models.JupyterTask
 	taskAttr.Image = req.Image
 	taskAttr.ResourceRequest = req.ResourceRequest
 	taskAttr.Command = "start.sh jupyter lab --allow-root --NotebookApp.base_url=/jupyter/%s/"
-	taskAttr.WorkingDir = fmt.Sprintf("/home/%s", username.(string))
+	taskAttr.WorkingDir = fmt.Sprintf("/home/%s", userContext.UserName)
 	taskAttr.ShareDirs = req.ShareDirs
 	taskAttr.SchedulerName = req.SchedulerName
 	taskAttr.GPUModel = req.GPUModel
@@ -109,8 +109,8 @@ func (mgr *JupyterMgr) List(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("validate list parameters failed, err %v", err), 50002)
 		return
 	}
-	username, _ := c.Get("x-user-name")
-	taskModels, err := mgr.taskService.ListByUserAndTaskType(username.(string), models.JupyterTask)
+	userContext, _ := util.GetUserFromGinContext(c)
+	taskModels, err := mgr.taskService.ListByUserAndTaskType(userContext.UserName, models.JupyterTask)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("list task failed, err %v", err), 50003)
 		return
@@ -129,8 +129,8 @@ func (mgr *JupyterMgr) GetToken(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("validate get parameters failed, err %v", err), 50004)
 		return
 	}
-	username, _ := c.Get("x-user-name")
-	taskModel, err := mgr.taskService.GetByUserAndID(username.(string), req.TaskID)
+	userContext, _ := util.GetUserFromGinContext(c)
+	taskModel, err := mgr.taskService.GetByUserAndID(userContext.UserName, req.TaskID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), 50005)
 		return
@@ -210,18 +210,18 @@ func (mgr *JupyterMgr) Delete(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("validate delete parameters failed, err %v", err), 50006)
 		return
 	}
-	username, _ := c.Get("x-user-name")
+	userContext, _ := util.GetUserFromGinContext(c)
 	// check if task.username is same as username
-	_, err = mgr.taskService.GetByUserAndID(username.(string), req.TaskID)
+	_, err = mgr.taskService.GetByUserAndID(userContext.UserName, req.TaskID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), 50007)
 		return
 	}
-	mgr.NotifyTaskUpdate(req.TaskID, username.(string), util.DeleteTask)
+	mgr.NotifyTaskUpdate(req.TaskID, userContext.UserName, util.DeleteTask)
 	if req.ForceDelete {
-		err = mgr.taskService.ForceDeleteByUserAndID(username.(string), req.TaskID)
+		err = mgr.taskService.ForceDeleteByUserAndID(userContext.UserName, req.TaskID)
 	} else {
-		err = mgr.taskService.DeleteByUserAndID(username.(string), req.TaskID)
+		err = mgr.taskService.DeleteByUserAndID(userContext.UserName, req.TaskID)
 	}
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("delete task failed, err %v", err), 50007)
