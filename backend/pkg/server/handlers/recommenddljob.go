@@ -40,7 +40,7 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 	userContext, _ := util.GetUserFromGinContext(c)
 	req := &payload.CreateRecommendDLJobReq{}
 	if err := c.ShouldBindJSON(req); err != nil {
-		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
 	job := &recommenddljobapi.RecommendDLJob{
@@ -80,7 +80,7 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 	}
 
 	if err := mgr.jobclient.CreateRecommendDLJob(c, job); err != nil {
-		resputil.Error(c, fmt.Sprintf("create recommenddljob failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("create recommenddljob failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
 	resp := payload.GetRecommendDLJobResp{
@@ -97,14 +97,14 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 func (mgr *RecommendDLJobMgr) List(c *gin.Context) {
 	userContext, err := util.GetUserFromGinContext(c)
 	if err != nil {
-		resputil.Error(c, "get namespace failed", 500)
+		resputil.Error(c, "get namespace failed", resputil.NotSpecified)
 		return
 	} else {
 		resputil.Success(c, userContext.Namespace)
 	}
 	var jobList []*recommenddljobapi.RecommendDLJob
 	if jobList, err = mgr.jobclient.ListRecommendDLJob(c, userContext.Namespace); err != nil {
-		resputil.Error(c, fmt.Sprintf("list recommenddljob failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("list recommenddljob failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
 	ret := make(payload.ListRecommendDLJobResp, 0, len(jobList))
@@ -148,13 +148,13 @@ func (mgr *RecommendDLJobMgr) GetByName(c *gin.Context) {
 	userContext, _ := util.GetUserFromGinContext(c)
 	req := &payload.GetRecommendDLJobReq{}
 	if err := c.ShouldBindQuery(req); err != nil {
-		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
 	var job *recommenddljobapi.RecommendDLJob
 	var err error
 	if job, err = mgr.jobclient.GetRecommendDLJob(c, req.Name, userContext.Namespace); err != nil {
-		resputil.Error(c, fmt.Sprintf("get recommenddljob failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("get recommenddljob failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
 	ret := payload.GetRecommendDLJobResp{
@@ -194,13 +194,13 @@ func (mgr *RecommendDLJobMgr) GetPodsByName(c *gin.Context) {
 	userContext, _ := util.GetUserFromGinContext(c)
 	req := &payload.GetRecommendDLJobPodListReq{}
 	if err := c.ShouldBindQuery(req); err != nil {
-		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
 	var podList []*corev1.Pod
 	var err error
 	if podList, err = mgr.jobclient.GetRecommendDLJobPodList(c, req.Name, userContext.Namespace); err != nil {
-		resputil.Error(c, fmt.Sprintf("get recommenddljob pods failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("get recommenddljob pods failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
 	resputil.Success(c, podList)
@@ -210,11 +210,11 @@ func (mgr *RecommendDLJobMgr) Delete(c *gin.Context) {
 	userContext, _ := util.GetUserFromGinContext(c)
 	req := &payload.DeleteRecommendDLJobReq{}
 	if err := c.ShouldBindJSON(req); err != nil {
-		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
 	if err := mgr.jobclient.DeleteRecommendDLJob(c, req.Name, userContext.Namespace); err != nil {
-		resputil.Error(c, fmt.Sprintf("delete recommenddljob failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("delete recommenddljob failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
 	resputil.Success(c, nil)
@@ -223,7 +223,7 @@ func (mgr *RecommendDLJobMgr) Delete(c *gin.Context) {
 func (mgr *RecommendDLJobMgr) AnalyzeResourceUsage(c *gin.Context) {
 	req := &payload.AnalyzeRecommendDLJobReq{}
 	if err := c.ShouldBindJSON(req); err != nil {
-		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
 	if len(req.VocabularySize) != 0 {
@@ -253,7 +253,7 @@ func (mgr *RecommendDLJobMgr) AnalyzeResourceUsage(c *gin.Context) {
 		"params":                req.Params / 1e3,
 		"macs":                  req.Macs / 1e6,
 	}, nil, analyzeResp); err != nil {
-		resputil.Error(c, fmt.Sprintf("request resource analyze failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("request resource analyze failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
 	p100Mem := analyzeResp.Data["V100"].GPUMemoryMax

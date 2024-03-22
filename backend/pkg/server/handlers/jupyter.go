@@ -57,7 +57,7 @@ func (mgr *JupyterMgr) Create(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
 		log.Error(msg)
-		resputil.HttpError(c, http.StatusBadRequest, msg, 40001)
+		resputil.HttpError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
 
@@ -81,7 +81,7 @@ func (mgr *JupyterMgr) Create(c *gin.Context) {
 		for pvcName := range taskAttr.ShareDirs {
 			err := mgr.pvcClient.CheckOrCreateUserPvc(taskAttr.Namespace, pvcName)
 			if err != nil {
-				resputil.Error(c, fmt.Sprintf("get user pvc failed, err %v", err), 50001)
+				resputil.Error(c, fmt.Sprintf("get user pvc failed, err %v", err), resputil.NotSpecified)
 				return
 			}
 		}
@@ -90,7 +90,7 @@ func (mgr *JupyterMgr) Create(c *gin.Context) {
 	taskModel := models.FormatTaskAttrToModel(&taskAttr)
 	err := mgr.taskService.Create(taskModel)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("create task failed, err %v", err), 50001)
+		resputil.Error(c, fmt.Sprintf("create task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	mgr.NotifyTaskUpdate(taskModel.ID, taskModel.UserName, util.CreateTask)
@@ -106,13 +106,13 @@ func (mgr *JupyterMgr) List(c *gin.Context) {
 	// log.Infof("Task List, url: %s", c.Request.URL)
 	var req payload.ListTaskReq
 	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate list parameters failed, err %v", err), 50002)
+		resputil.Error(c, fmt.Sprintf("validate list parameters failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	userContext, _ := util.GetUserFromGinContext(c)
 	taskModels, err := mgr.taskService.ListByUserAndTaskType(userContext.UserName, models.JupyterTask)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("list task failed, err %v", err), 50003)
+		resputil.Error(c, fmt.Sprintf("list task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	resp := payload.ListTaskResp{
@@ -126,13 +126,13 @@ func (mgr *JupyterMgr) GetToken(c *gin.Context) {
 	log.Infof("Task Token Get, url: %s", c.Request.URL)
 	var req payload.GetTaskReq
 	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate get parameters failed, err %v", err), 50004)
+		resputil.Error(c, fmt.Sprintf("validate get parameters failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	userContext, _ := util.GetUserFromGinContext(c)
 	taskModel, err := mgr.taskService.GetByUserAndID(userContext.UserName, req.TaskID)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), 50005)
+		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	if taskModel.Status != "Running" {
@@ -157,7 +157,7 @@ func (mgr *JupyterMgr) GetToken(c *gin.Context) {
 	// get log
 	pods, err := mgr.logClient.GetPodsWithLabel(taskModel.Namespace, taskModel.JobName)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("get task log failed, err %v", err), 50005)
+		resputil.Error(c, fmt.Sprintf("get task log failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	var token string
@@ -165,7 +165,7 @@ func (mgr *JupyterMgr) GetToken(c *gin.Context) {
 	for _, pod := range pods {
 		podLog, err := mgr.logClient.GetPodLogs(pod)
 		if err != nil {
-			resputil.Error(c, fmt.Sprintf("get task log failed, err %v", err), 50005)
+			resputil.Error(c, fmt.Sprintf("get task log failed, err %v", err), resputil.NotSpecified)
 			return
 		}
 		matches := re.FindStringSubmatch(podLog)
@@ -178,19 +178,19 @@ func (mgr *JupyterMgr) GetToken(c *gin.Context) {
 	// Get service port
 	port, err := mgr.logClient.GetSvcPort(taskModel.Namespace, taskModel.JobName)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("get task svc failed, err %v", err), 50005)
+		resputil.Error(c, fmt.Sprintf("get task svc failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 
 	// Save token to db
 	err = mgr.taskService.UpdateToken(taskModel.ID, token)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("update task token failed, err %v", err), 50005)
+		resputil.Error(c, fmt.Sprintf("update task token failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	err = mgr.taskService.UpdateNodePort(taskModel.ID, port)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("update task node port failed, err %v", err), 50005)
+		resputil.Error(c, fmt.Sprintf("update task node port failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 
@@ -207,14 +207,14 @@ func (mgr *JupyterMgr) Delete(c *gin.Context) {
 	var req payload.DeleteTaskReq
 	var err error
 	if err = c.ShouldBindJSON(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate delete parameters failed, err %v", err), 50006)
+		resputil.Error(c, fmt.Sprintf("validate delete parameters failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	userContext, _ := util.GetUserFromGinContext(c)
 	// check if task.username is same as username
 	_, err = mgr.taskService.GetByUserAndID(userContext.UserName, req.TaskID)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), 50007)
+		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	mgr.NotifyTaskUpdate(req.TaskID, userContext.UserName, util.DeleteTask)
@@ -224,7 +224,7 @@ func (mgr *JupyterMgr) Delete(c *gin.Context) {
 		err = mgr.taskService.DeleteByUserAndID(userContext.UserName, req.TaskID)
 	}
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("delete task failed, err %v", err), 50007)
+		resputil.Error(c, fmt.Sprintf("delete task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 

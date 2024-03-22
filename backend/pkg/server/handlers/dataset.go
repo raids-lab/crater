@@ -35,7 +35,7 @@ func (mgr *DataSetMgr) List(c *gin.Context) {
 	var datasetList []*recommenddljobapi.DataSet
 	var err error
 	if datasetList, err = mgr.datasetClient.ListDataSets(c, userContext.Namespace); err != nil {
-		resputil.Error(c, fmt.Sprintf("list dataset failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("list dataset failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
 	ret := make(payload.ListDatasetResp, 0, len(datasetList))
@@ -59,13 +59,13 @@ func (mgr *DataSetMgr) Get(c *gin.Context) {
 	userContext, _ := util.GetUserFromGinContext(c)
 	req := &payload.GetDataSetReq{}
 	if err := c.ShouldBindQuery(req); err != nil {
-		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
 	var dataset *recommenddljobapi.DataSet
 	var err error
 	if dataset, err = mgr.datasetClient.GetDataSet(c, req.Name, userContext.Namespace); err != nil {
-		resputil.Error(c, fmt.Sprintf("get dataset failed, err:%v", err), 500)
+		resputil.Error(c, fmt.Sprintf("get dataset failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
 	ret := &payload.GetDatasetResp{
