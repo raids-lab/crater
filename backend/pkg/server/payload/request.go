@@ -90,11 +90,12 @@ func (r *CreateRecommendDLJobReq) PreCheck() error {
 	if len(r.Template.Spec.Containers) == 0 {
 		return fmt.Errorf("empty containers")
 	}
-	for _, c := range r.Template.Spec.Containers {
-		if len(c.Name) == 0 {
+	for i := 0; i < len(r.Template.Spec.Containers); i++ {
+		c := r.Template.Spec.Containers[i]
+		if c.Name == "" {
 			return fmt.Errorf("empty container name")
 		}
-		if len(c.Image) == 0 {
+		if c.Image == "" {
 			return fmt.Errorf("empty image")
 		}
 	}

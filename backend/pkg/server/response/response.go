@@ -33,8 +33,8 @@ func Error(c *gin.Context, msg string, errorCode ErrorCode) {
 	wrapResponse(c, msg, nil, errorCode)
 }
 
-// HttpError sends an HTTP error response with the specified HTTP code, error message, and error code.
-func HttpError(c *gin.Context, httpCode int, msg string, errorCode ErrorCode) {
+// HTTPError sends an HTTP error response with the specified HTTP code, error message, and error code.
+func HTTPError(c *gin.Context, httpCode int, msg string, errorCode ErrorCode) {
 	c.JSON(httpCode, gin.H{
 		"code": errorCode,
 		"data": nil,

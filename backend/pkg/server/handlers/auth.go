@@ -57,14 +57,14 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 
 	err := c.ShouldBind(&request)
 	if err != nil {
-		resputil.HttpError(c, http.StatusBadRequest, err.Error(), resputil.NotSpecified)
+		resputil.HTTPError(c, http.StatusBadRequest, err.Error(), resputil.NotSpecified)
 		return
 	}
 
 	// ACT 认证
 	err = mgr.ACTAuthorization(request.UserName, request.Password)
 	if err != nil {
-		resputil.HttpError(c, http.StatusUnauthorized, "Invalid credentials", resputil.NotSpecified)
+		resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.NotSpecified)
 		return
 	}
 
@@ -81,20 +81,20 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		// 用户不存在，注册用户
 		user, err = mgr.signup(request.UserName)
 		if err != nil {
-			resputil.HttpError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
+			resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
 			return
 		}
 	}
 
 	accessToken, err := util.CreateAccessToken(user, mgr.tokenConf.AccessTokenSecret, mgr.tokenConf.AccessTokenExpiryHour)
 	if err != nil {
-		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
+		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
 		return
 	}
 
 	refreshToken, err := util.CreateRefreshToken(user, mgr.tokenConf.RefreshTokenSecret, mgr.tokenConf.RefreshTokenExpiryHour)
 	if err != nil {
-		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
+		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
 		return
 	}
 
@@ -212,13 +212,13 @@ func (mgr *AuthMgr) Migrate(c *gin.Context) {
 
 	err := c.ShouldBind(&request)
 	if err != nil {
-		resputil.HttpError(c, http.StatusBadRequest, err.Error(), resputil.NotSpecified)
+		resputil.HTTPError(c, http.StatusBadRequest, err.Error(), resputil.NotSpecified)
 		return
 	}
 
 	_, err = mgr.userService.GetByUserName(request.Name)
 	if err != nil {
-		resputil.HttpError(c, http.StatusConflict, "User does not exist with the given Name", resputil.NotSpecified)
+		resputil.HTTPError(c, http.StatusConflict, "User does not exist with the given Name", resputil.NotSpecified)
 		return
 	}
 
@@ -228,7 +228,7 @@ func (mgr *AuthMgr) Migrate(c *gin.Context) {
 	newPvcName := fmt.Sprintf(crclient.UserHomePVC, request.NewName)
 	err = mgr.pvcClient.MigratePvcFromOldNamespace(oldNamespace, crclient.NameSpace, oldPvcName, newPvcName)
 	if err != nil {
-		resputil.HttpError(c, http.StatusInternalServerError, "migrate old pvc and pv from old namespace wrong", resputil.NotSpecified)
+		resputil.HTTPError(c, http.StatusInternalServerError, "migrate old pvc and pv from old namespace wrong", resputil.NotSpecified)
 		return
 	}
 	resputil.Success(c, nil)
@@ -243,30 +243,30 @@ type RefreshTokenResponse struct {
 	RefreshToken string `json:"refreshToken"`
 }
 
-func (rtc *AuthMgr) RefreshToken(c *gin.Context) {
+func (mgr *AuthMgr) RefreshToken(c *gin.Context) {
 	var request RefreshTokenRequest
 
 	err := c.ShouldBind(&request)
 	if err != nil {
-		resputil.HttpError(c, http.StatusBadRequest, err.Error(), resputil.NotSpecified)
+		resputil.HTTPError(c, http.StatusBadRequest, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	userinfo, err := util.CheckAndGetUser(request.RefreshToken, rtc.tokenConf.RefreshTokenSecret)
+	userinfo, err := util.CheckAndGetUser(request.RefreshToken, mgr.tokenConf.RefreshTokenSecret)
 	if err != nil {
-		resputil.HttpError(c, http.StatusUnauthorized, "User not found", resputil.NotSpecified)
+		resputil.HTTPError(c, http.StatusUnauthorized, "User not found", resputil.NotSpecified)
 		return
 	}
 
-	accessToken, err := util.CreateAccessToken(&userinfo, rtc.tokenConf.AccessTokenSecret, rtc.tokenConf.AccessTokenExpiryHour)
+	accessToken, err := util.CreateAccessToken(&userinfo, mgr.tokenConf.AccessTokenSecret, mgr.tokenConf.AccessTokenExpiryHour)
 	if err != nil {
-		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
+		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	refreshToken, err := util.CreateRefreshToken(&userinfo, rtc.tokenConf.RefreshTokenSecret, rtc.tokenConf.RefreshTokenExpiryHour)
+	refreshToken, err := util.CreateRefreshToken(&userinfo, mgr.tokenConf.RefreshTokenSecret, mgr.tokenConf.RefreshTokenExpiryHour)
 	if err != nil {
-		resputil.HttpError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
+		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
 		return
 	}
 

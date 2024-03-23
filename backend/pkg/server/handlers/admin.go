@@ -15,6 +15,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type AdminMgr struct {
+	quotaService   quotasvc.DBService
+	userService    usersvc.DBService
+	taskServcie    tasksvc.DBService
+	taskController *aitaskctl.TaskController
+	nodeClient     *crclient.NodeClient
+}
+
 func (mgr *AdminMgr) RegisterRoute(g *gin.RouterGroup) {
 	users := g.Group("/users")
 	{
@@ -42,14 +50,6 @@ func (mgr *AdminMgr) RegisterRoute(g *gin.RouterGroup) {
 	}
 }
 
-type AdminMgr struct {
-	quotaService   quotasvc.DBService
-	userService    usersvc.DBService
-	taskServcie    tasksvc.DBService
-	taskController *aitaskctl.TaskController
-	nodeClient     *crclient.NodeClient
-}
-
 func NewAdminMgr(taskController *aitaskctl.TaskController, nodeClient *crclient.NodeClient) *AdminMgr {
 	return &AdminMgr{
 		quotaService:   quotasvc.NewDBService(),
@@ -60,19 +60,8 @@ func NewAdminMgr(taskController *aitaskctl.TaskController, nodeClient *crclient.
 	}
 }
 
-// func (mgr *AdminMgr) CreateUser(c *gin.Context) {
-// 	log.Infof("User Create, url: %s", c.Request.URL)
-
-// 	resputil.WrapSuccessResponse(c, "")
-// }
-
 func (mgr *AdminMgr) DeleteUser(c *gin.Context) {
 	log.Infof("User Delete, url: %s", c.Request.URL)
-	// var req payload.DeleteUserReq
-	// if err := c.ShouldBindJSON(&req); err != nil {
-	// 	resputil.Error(c, fmt.Sprintf("validate parameters failed, err %v", err), resputil.NotSpecified)
-	// 	return
-	// }
 	name := c.Param("name")
 	err := mgr.userService.DeleteByUserName(name)
 	if err != nil {

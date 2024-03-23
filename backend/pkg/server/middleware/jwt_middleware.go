@@ -32,7 +32,7 @@ func JwtAuthMiddleware(secret string) gin.HandlerFunc {
 		authHeader := c.Request.Header.Get("Authorization")
 		t := strings.Split(authHeader, " ")
 		if len(t) < 2 || t[0] != "Bearer" {
-			resputil.HttpError(c, http.StatusUnauthorized, "Invalid token", resputil.InvalidToken)
+			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid token", resputil.InvalidToken)
 			c.Abort()
 			return
 		}
@@ -40,7 +40,7 @@ func JwtAuthMiddleware(secret string) gin.HandlerFunc {
 		authToken := t[1]
 		user, err := util.CheckAndGetUser(authToken, secret)
 		if err != nil {
-			resputil.HttpError(c, http.StatusUnauthorized, err.Error(), resputil.TokenExpired)
+			resputil.HTTPError(c, http.StatusUnauthorized, err.Error(), resputil.TokenExpired)
 			c.Abort()
 			return
 		}
@@ -49,7 +49,7 @@ func JwtAuthMiddleware(secret string) gin.HandlerFunc {
 		if c.Request.Method != "GET" {
 			user, err := userDB.GetByUserName(user.UserName)
 			if err != nil {
-				resputil.HttpError(c, http.StatusUnauthorized, "User not found", resputil.UserNotFound)
+				resputil.HTTPError(c, http.StatusUnauthorized, "User not found", resputil.UserNotFound)
 				c.Abort()
 				return
 			}
@@ -72,7 +72,7 @@ func AdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userContext, _ := util.GetUserFromGinContext(c)
 		if userContext.UserRole != "admin" {
-			resputil.HttpError(c, http.StatusUnauthorized, "Not authorized", resputil.InvalidRole)
+			resputil.HTTPError(c, http.StatusUnauthorized, "Not authorized", resputil.InvalidRole)
 			c.Abort()
 			return
 		}

@@ -57,7 +57,7 @@ func (mgr *JupyterMgr) Create(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
 		log.Error(msg)
-		resputil.HttpError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
 
@@ -162,10 +162,11 @@ func (mgr *JupyterMgr) GetToken(c *gin.Context) {
 	}
 	var token string
 	re := regexp.MustCompile(`\?token=([a-zA-Z0-9]+)`)
-	for _, pod := range pods {
-		podLog, err := mgr.logClient.GetPodLogs(pod)
-		if err != nil {
-			resputil.Error(c, fmt.Sprintf("get task log failed, err %v", err), resputil.NotSpecified)
+	for i := range pods {
+		pod := &pods[i]
+		podLog, getPodLogsErr := mgr.logClient.GetPodLogs(*pod)
+		if getPodLogsErr != nil {
+			resputil.Error(c, fmt.Sprintf("get task log failed, err %v", getPodLogsErr), resputil.NotSpecified)
 			return
 		}
 		matches := re.FindStringSubmatch(podLog)
@@ -176,7 +177,11 @@ func (mgr *JupyterMgr) GetToken(c *gin.Context) {
 	}
 
 	// Get service port
-	port, err := mgr.logClient.GetSvcPort(taskModel.Namespace, taskModel.JobName)
+	port, getServicePortErr := mgr.logClient.GetSvcPort(taskModel.Namespace, taskModel.JobName)
+	if getServicePortErr != nil {
+		resputil.Error(c, fmt.Sprintf("get service port failed, err %v", getServicePortErr), resputil.NotSpecified)
+		return
+	}
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task svc failed, err %v", err), resputil.NotSpecified)
 		return

@@ -60,7 +60,7 @@ func (mgr *AITaskMgr) Create(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
 		log.Error(msg)
-		resputil.HttpError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
 
