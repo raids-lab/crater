@@ -109,6 +109,7 @@ func (mgr *RecommendDLJobMgr) List(c *gin.Context) {
 	}
 	ret := make(payload.ListRecommendDLJobResp, 0, len(jobList))
 	for _, job := range jobList {
+		//nolint:dupl // TODO: refactor
 		retJob := payload.GetRecommendDLJobResp{
 			ObjectMeta: job.ObjectMeta,
 			Spec: &payload.RecommendDLJobSpec{
@@ -157,6 +158,7 @@ func (mgr *RecommendDLJobMgr) GetByName(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("get recommenddljob failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
+	//nolint:dupl // TODO: refactor
 	ret := payload.GetRecommendDLJobResp{
 		ObjectMeta: job.ObjectMeta,
 		Spec: &payload.RecommendDLJobSpec{
@@ -257,6 +259,7 @@ func (mgr *RecommendDLJobMgr) AnalyzeResourceUsage(c *gin.Context) {
 		return
 	}
 	p100Mem := analyzeResp.Data["V100"].GPUMemoryMax
+	//nolint:gomnd // TODO: refactor
 	if p100Mem > 16 {
 		p100Mem = 16.01
 	}

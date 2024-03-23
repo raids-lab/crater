@@ -169,7 +169,7 @@ func (mgr *AuthMgr) signup(username string) (*models.User, error) {
 
 	user := models.User{
 		UserName:  username,
-		Password:  "", // TODO
+		Password:  "",
 		Role:      "user",
 		NameSpace: crclient.NameSpace,
 	}
@@ -191,7 +191,7 @@ func (mgr *AuthMgr) signup(username string) (*models.User, error) {
 	}
 
 	// 通知 TaskController 有新 Quota
-	mgr.taskController.AddUser(quota.UserName, quota)
+	mgr.taskController.AddUser(quota.UserName, &quota)
 	return &user, nil
 }
 

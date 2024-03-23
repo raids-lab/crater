@@ -33,7 +33,6 @@ type ShareDir struct {
 var shareDirs map[string]ShareDir = make(map[string]ShareDir)
 
 func (c *PVCClient) InitShareDir() error {
-	// c.Client.
 	shareDirList := config.GetShareDirs()
 	for _, shareDir := range shareDirList {
 		pv, err := c.GetPVCRelatedPV(shareDir.Pvc, shareDir.Namespace)
@@ -66,7 +65,8 @@ func (c *PVCClient) CheckOrCreateUserPvc(userNamespace, pvcName string) error {
 
 // MigratePvcFromOldNamespace migrates a PVC (Persistent Volume Claim) from an old namespace to a new namespace.
 // It checks if the PVC already exists in the new namespace, and if it does, it returns nil.
-// If the PVC does not exist in the new namespace, it retrieves the related PV (Persistent Volume) from the new namespace and creates a new PVC in the new namespace using the PV.
+// If the PVC does not exist in the new namespace, it retrieves the related PV (Persistent Volume)
+// from the new namespace and creates a new PVC in the new namespace using the PV.
 // Parameters:
 //   - oldNamespace: The old namespace from which the PVC is being migrated.
 //   - newNamespace: The new namespace to which the PVC is being migrated.

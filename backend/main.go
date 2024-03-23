@@ -124,7 +124,7 @@ func main() {
 	}
 
 	// 1. init db
-	if err := db.InitDB(*config); err != nil {
+	if err := db.InitDB(config); err != nil {
 		setupLog.Error(err, "unable to init db")
 		os.Exit(1)
 	}
