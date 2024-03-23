@@ -104,7 +104,6 @@ func (mgr *JupyterMgr) Create(c *gin.Context) {
 
 //nolint:dupl // TODO: refactor
 func (mgr *JupyterMgr) List(c *gin.Context) {
-	// log.Infof("Task List, url: %s", c.Request.URL)
 	var req payload.ListTaskReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate list parameters failed, err %v", err), resputil.NotSpecified)
@@ -119,7 +118,6 @@ func (mgr *JupyterMgr) List(c *gin.Context) {
 	resp := payload.ListTaskResp{
 		Rows: taskModels,
 	}
-	// log.Infof("list task success, taskNum: %d", len(resp.Tasks))
 	resputil.Success(c, resp)
 }
 

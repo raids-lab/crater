@@ -18,6 +18,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
+const (
+	tickerDuration = 5 * time.Second
+)
+
 type Profiler struct {
 	mutex            sync.Mutex
 	taskQueue        queue.Queue                   //
@@ -56,6 +60,7 @@ func (p *Profiler) checkAndGetCache(task *models.AITask) (monitor.PodUtil, bool)
 	return util, ok
 }
 
+//nolint:gocritic // Must copy the util object
 func (p *Profiler) storeProfileCache(task *models.AITask, util monitor.PodUtil) {
 	key := fmt.Sprintf("%s-%s", task.TaskType, task.Command)
 	cacheKey := hashString(key)
@@ -99,14 +104,14 @@ func (p *Profiler) Start(ctx context.Context) {
 	go p.run(ctx)
 }
 
+//nolint:gocyclo // todo: refactor
 func (p *Profiler) run(ctx context.Context) {
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(tickerDuration)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-
 			// create profiling pod
 			// todo: check resource free
 			// todo: check task status
@@ -134,10 +139,10 @@ func (p *Profiler) run(ctx context.Context) {
 			if err != nil {
 				logrus.Errorf("list profiling pods failed: %v", err)
 			}
-			for _, pod := range podList {
-
+			for i := range podList {
+				pod := &podList[i]
 				// get task
-				taskID, err := p.podControl.GetTaskIDFromPod(&pod)
+				taskID, err := p.podControl.GetTaskIDFromPod(pod)
 				if err != nil {
 					logrus.Error(err)
 					continue
@@ -147,9 +152,13 @@ func (p *Profiler) run(ctx context.Context) {
 				if pod.Status.Phase == corev1.PodPending {
 					util, ok := p.checkAndGetCache(task)
 					if ok {
-						logrus.Infof("profile cache hit, taskID:%v, taskName:%v, taskType:%v, command:%v", task.ID, task.TaskName, task.TaskType, task.Command)
+						logrus.Infof("profile cache hit, taskID:%v, taskName:%v, taskType:%v, command:%v",
+							task.ID, task.TaskName, task.TaskType, task.Command)
 						p.taskDB.UpdateProfilingStat(task.ID, models.ProfileFinish, monitor.PodUtilToJSON(util), "")
-						p.podControl.Delete(context.Background(), &pod)
+						err = p.podControl.Delete(context.Background(), pod)
+						if err != nil {
+							logrus.Errorf("delete profiling pod failed, taskID:%v, pod:%v/%v, err:%v", taskID, pod.Namespace, pod.Name, err)
+						}
 						continue
 					}
 
@@ -165,7 +174,7 @@ func (p *Profiler) run(ctx context.Context) {
 				}
 				if pod.Status.Phase == corev1.PodUnknown {
 					logrus.Errorf("profiling pod status unknow, pod: %v/%v", pod.Namespace, pod.Name)
-					p.podControl.Delete(context.Background(), &pod)
+					p.podControl.Delete(context.Background(), pod)
 					continue
 				}
 
@@ -186,7 +195,7 @@ func (p *Profiler) run(ctx context.Context) {
 					// todo: error handle
 					logrus.Infof("profile query pod util success, taskID:%v, pod:%v/%v, status:%v", taskID, pod.Namespace, pod.Name, jobStatus)
 				}
-				p.podControl.Delete(context.Background(), &pod)
+				p.podControl.Delete(context.Background(), pod)
 			}
 		}
 	}

@@ -9,17 +9,17 @@ import (
 	"net/http"
 )
 
-func PostJson(ctx context.Context, host, path string, body any, header map[string]string, resp any) (err error) {
+func PostJSON(ctx context.Context, host, path string, body any, header map[string]string, resp any) (err error) {
 	url := fmt.Sprintf("%s%s", host, path)
 
 	bodyBytes, err := json.Marshal(body)
 	if err != nil {
-		return fmt.Errorf("post failed, marshal body failed, err:%v", err)
+		return fmt.Errorf("post failed, marshal body failed, err:%w", err)
 	}
 
-	httpReq, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(bodyBytes))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(bodyBytes))
 	if err != nil {
-		return fmt.Errorf("post failed, new request failed, err:%v", err)
+		return fmt.Errorf("post failed, new request: %w", err)
 	}
 
 	httpReq.Header.Add("Content-Type", "application/json")
@@ -29,12 +29,13 @@ func PostJson(ctx context.Context, host, path string, body any, header map[strin
 
 	httpResp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
-		return fmt.Errorf("post failed, do request failed, err:%v", err)
+		return fmt.Errorf("post failed, do request: %w", err)
 	}
+	defer httpResp.Body.Close()
 
 	respBody, err := io.ReadAll(httpResp.Body)
 	if err != nil {
-		return fmt.Errorf("post read body failed, err:%v", err)
+		return fmt.Errorf("post read body:%w", err)
 	}
 
 	if httpResp.StatusCode != http.StatusOK {
@@ -42,7 +43,7 @@ func PostJson(ctx context.Context, host, path string, body any, header map[strin
 	}
 
 	if err = json.Unmarshal(respBody, resp); err != nil {
-		return fmt.Errorf("post unmarshal resp failed, err:%v", err)
+		return fmt.Errorf("post unmarshal resp: %w", err)
 	}
 
 	return nil

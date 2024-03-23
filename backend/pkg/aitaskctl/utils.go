@@ -19,10 +19,10 @@ func AddResourceList(a, b v1.ResourceList) v1.ResourceList {
 // SubResourceList subs b from a
 func SubResourceList(a, b v1.ResourceList) v1.ResourceList {
 	for k, v := range a {
-		v0 := v.DeepCopy()
-		if v1, ok := b[k]; ok {
-			v0.Sub(v1)
-			a[k] = v0
+		va := v.DeepCopy()
+		if vb, ok := b[k]; ok {
+			va.Sub(vb)
+			a[k] = va
 		}
 	}
 	return a

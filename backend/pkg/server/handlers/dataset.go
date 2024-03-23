@@ -18,10 +18,10 @@ type DataSetMgr struct {
 	datasetClient *crclient.DataSetClient
 }
 
-func NewDataSetMgr(userSvc usersvc.DBService, client client.Client) *DataSetMgr {
+func NewDataSetMgr(userSvc usersvc.DBService, crClient client.Client) *DataSetMgr {
 	return &DataSetMgr{
 		userService:   userSvc,
-		datasetClient: &crclient.DataSetClient{Client: client},
+		datasetClient: &crclient.DataSetClient{Client: crClient},
 	}
 }
 

@@ -18,17 +18,18 @@ type RecommendDLJobController struct {
 func (c *RecommendDLJobController) CreateRecommendDLJob(ctx context.Context, job *recommenddljobapi.RecommendDLJob) error {
 	err := c.Create(ctx, job)
 	if err != nil {
-		return fmt.Errorf("create job failed: %v", err)
+		return fmt.Errorf("create job: %w", err)
 	}
 	return nil
 }
 
-func (c *RecommendDLJobController) GetRecommendDLJob(ctx context.Context, name, namespace string) (job *recommenddljobapi.RecommendDLJob, err error) {
-	job = &recommenddljobapi.RecommendDLJob{}
-	if err = c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, job); err != nil {
+func (c *RecommendDLJobController) GetRecommendDLJob(ctx context.Context, name, namespace string) (
+	*recommenddljobapi.RecommendDLJob, error) {
+	job := &recommenddljobapi.RecommendDLJob{}
+	if err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, job); err != nil {
 		return nil, err
 	}
-	return
+	return job, nil
 }
 
 func (c *RecommendDLJobController) ListRecommendDLJob(ctx context.Context, namespace string) ([]*recommenddljobapi.RecommendDLJob, error) {
@@ -64,7 +65,8 @@ func (c *RecommendDLJobController) DeleteRecommendDLJob(ctx context.Context, nam
 	if err != nil {
 		return err
 	}
-	if err = c.Delete(ctx, job); err != nil {
+	err = c.Delete(ctx, job)
+	if err != nil {
 		return err
 	}
 	return nil

@@ -18,10 +18,33 @@ type QuotaInfo struct {
 	UsedTasks map[string]*models.AITask
 }
 
+type QuotaInfoSnapshot struct {
+	Name      string
+	Hard      v1.ResourceList
+	Soft      v1.ResourceList
+	HardUsed  v1.ResourceList
+	SoftUsed  v1.ResourceList
+	UsedTasks map[string]*models.AITask
+}
+
 // AddTask adds Running Job Quota
 func (info *QuotaInfo) AddTask(task *models.AITask) {
 	info.mu.Lock()
 	defer info.mu.Unlock()
+	key := keyFunc(task)
+	// 没有找到task的时候才添加quota
+	if _, ok := info.UsedTasks[key]; !ok {
+		info.UsedTasks[key] = task
+		resourceRequest, _ := models.JSONToResourceList(task.ResourceRequest)
+		if task.SLO == models.HighSLO {
+			AddResourceList(info.HardUsed, resourceRequest)
+		} else if task.SLO == models.LowSLO {
+			AddResourceList(info.SoftUsed, resourceRequest)
+		}
+	}
+}
+
+func (info *QuotaInfoSnapshot) AddTask(task *models.AITask) {
 	key := keyFunc(task)
 	// 没有找到task的时候才添加quota
 	if _, ok := info.UsedTasks[key]; !ok {
@@ -63,10 +86,18 @@ func (info *QuotaInfo) CheckHardQuotaExceed(task *models.AITask) bool {
 	return CheckResourceListExceed(info.Hard, info.HardUsed, resourcelist)
 }
 
-func (info *QuotaInfo) Snapshot() *QuotaInfo {
+func (info *QuotaInfoSnapshot) CheckHardQuotaExceed(task *models.AITask) bool {
+	if task.SLO == models.LowSLO {
+		return false
+	}
+	resourcelist, _ := models.JSONToResourceList(task.ResourceRequest)
+	return CheckResourceListExceed(info.Hard, info.HardUsed, resourcelist)
+}
+
+func (info *QuotaInfo) Snapshot() *QuotaInfoSnapshot {
 	info.mu.Lock()
 	defer info.mu.Unlock()
-	return &QuotaInfo{
+	return &QuotaInfoSnapshot{
 		Name:      info.Name,
 		Hard:      info.Hard.DeepCopy(),
 		Soft:      info.Soft.DeepCopy(),
@@ -91,7 +122,7 @@ func (c *TaskController) GetQuotaInfo(username string) *QuotaInfo {
 }
 
 // GetQuotaInfoSnapshotByUsername 获取某个用户的QuotaInfo的clone，对quota的增加减少不改变原数据
-func (c *TaskController) GetQuotaInfoSnapshotByUsername(username string) *QuotaInfo {
+func (c *TaskController) GetQuotaInfoSnapshotByUsername(username string) *QuotaInfoSnapshot {
 	if value, ok := c.quotaInfos.Load(username); ok {
 		return value.(*QuotaInfo).Snapshot()
 	} else {
@@ -100,8 +131,8 @@ func (c *TaskController) GetQuotaInfoSnapshotByUsername(username string) *QuotaI
 }
 
 // GetQuotaInfoSnapshotByUsername 获取某个用户的QuotaInfo的clone，对quota的增加减少不改变原数据
-func (c *TaskController) ListQuotaInfoSnapshot() []QuotaInfo {
-	quotaInfos := make([]QuotaInfo, 0)
+func (c *TaskController) ListQuotaInfoSnapshot() []QuotaInfoSnapshot {
+	quotaInfos := make([]QuotaInfoSnapshot, 0)
 	c.quotaInfos.Range(func(_, value any) bool {
 		info := value.(*QuotaInfo)
 		infoSnapShot := info.Snapshot()
@@ -151,7 +182,6 @@ func (c *TaskController) UpdateQuotaInfoHard(username string, hard v1.ResourceLi
 		defer info.mu.Unlock()
 		if !CmpResourceListSame(info.Hard, hard) {
 			info.Hard = hard.DeepCopy()
-			// info.Soft = dq.Spec.Soft.DeepCopy()
 		}
 	}
 }

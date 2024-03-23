@@ -103,7 +103,6 @@ func (r *AIJobReconciler) Update(e event.UpdateEvent) bool {
 	}
 	r.notifyJobStatus(job)
 	return false
-
 }
 
 func (r *AIJobReconciler) Delete(_ event.DeleteEvent) bool {

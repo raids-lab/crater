@@ -18,5 +18,4 @@ func fifoOrdering(a, b any) bool {
 	tA := a.(*models.AITask)
 	tB := b.(*models.AITask)
 	return tA.CreatedAt.After(tB.CreatedAt)
-	// return !tB.CreatedAt.Before(tA.CreatedAt)
 }
