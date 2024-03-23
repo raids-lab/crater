@@ -22,9 +22,11 @@ func calculateAllocatedResources(node *corev1.Node, clientset *kubernetes.Client
 		panic(err.Error())
 	}
 
-	for _, pod := range pods.Items {
+	for i := range pods.Items {
+		pod := &pods.Items[i]
 		if pod.Spec.NodeName == node.Name {
-			for _, container := range pod.Spec.Containers {
+			for j := range pod.Spec.Containers {
+				container := &pod.Spec.Containers[j]
 				for resource, quantity := range container.Resources.Requests {
 					if allocatedQuantity, found := allocatedResources[resource]; found {
 						allocatedQuantity.Add(quantity)
@@ -41,7 +43,7 @@ func calculateAllocatedResources(node *corev1.Node, clientset *kubernetes.Client
 }
 
 // https://stackoverflow.com/questions/67630551/how-to-use-client-go-to-get-the-node-status
-func isNodeReady(node corev1.Node) bool {
+func isNodeReady(node *corev1.Node) bool {
 	for _, condition := range node.Status.Conditions {
 		if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
 			return true
@@ -51,7 +53,7 @@ func isNodeReady(node corev1.Node) bool {
 }
 
 // getNodeRole 获取节点角色
-func getNodeRole(node corev1.Node) string {
+func getNodeRole(node *corev1.Node) string {
 	for key := range node.Labels {
 		if key == "node-role.kubernetes.io/master" {
 			return "master"
@@ -72,8 +74,9 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 	nodeInfos := make([]payload.ClusterNodeInfo, len(nodes.Items))
 
 	// Loop through each node and print allocated resources
-	for i, node := range nodes.Items {
-		allocatedResources := calculateAllocatedResources(&node, nc.KubeClient)
+	for i := range nodes.Items {
+		node := &nodes.Items[i]
+		allocatedResources := calculateAllocatedResources(node, nc.KubeClient)
 		nodeInfos[i] = payload.ClusterNodeInfo{
 			Name:     node.Name,
 			Role:     getNodeRole(node),

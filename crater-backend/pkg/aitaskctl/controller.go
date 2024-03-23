@@ -33,9 +33,9 @@ type TaskController struct {
 }
 
 // NewTaskController returns a new *TaskController
-func NewTaskController(client client.Client, cs kubernetes.Interface, statusChan <-chan util.JobStatusChan) *TaskController {
+func NewTaskController(crClient client.Client, cs kubernetes.Interface, statusChan <-chan util.JobStatusChan) *TaskController {
 	return &TaskController{
-		jobControl:    &crclient.JobControl{Client: client, KubeClient: cs},
+		jobControl:    &crclient.JobControl{Client: crClient, KubeClient: cs},
 		quotaDB:       quotadb.NewDBService(),
 		taskDB:        taskdb.NewDBService(),
 		taskQueue:     NewTaskQueue(),
@@ -45,8 +45,8 @@ func NewTaskController(client client.Client, cs kubernetes.Interface, statusChan
 	}
 }
 
-func (c *TaskController) SetProfiler(profiler *profiler.Profiler) {
-	c.profiler = profiler
+func (c *TaskController) SetProfiler(srcProfiler *profiler.Profiler) {
+	c.profiler = srcProfiler
 }
 
 // Init init taskQueue And quotaInfos
@@ -54,33 +54,32 @@ func (c *TaskController) Init() error {
 
 	// init quotas
 	quotas, err := c.quotaDB.ListAllQuotas()
-	// logrus.Info(quotas)
 	if err != nil {
 		logrus.Errorf("list all quotas failed, err: %v", err)
 	}
 	logrus.Infof("list all quotas success, len: %v", len(quotas))
-	for _, quota := range quotas {
+	for i := range quotas {
 		// 添加quota
-		c.AddOrUpdateQuotaInfo(quota.UserName, quota)
-		queueingList, err := c.taskDB.ListByUserAndStatuses(quota.UserName, models.TaskQueueingStatuses)
+		c.AddOrUpdateQuotaInfo(quotas[i].UserName, &quotas[i])
+		queueingList, err := c.taskDB.ListByUserAndStatuses(quotas[i].UserName, models.TaskQueueingStatuses)
 		if err != nil {
-			logrus.Errorf("list user:%v queueing tasks failed, err: %v", quota.UserName, err)
+			logrus.Errorf("list user:%v queueing tasks failed, err: %v", quotas[i].UserName, err)
 			continue
 		}
-		c.taskQueue.InitUserQueue(quota.UserName, queueingList)
+		c.taskQueue.InitUserQueue(quotas[i].UserName, queueingList)
 	}
 	return nil
 }
 
 // AddUser adds a user with the specified username and quota to the TaskController.
 // It also initializes the user's task queue based on their quota.
-func (tc *TaskController) AddUser(username string, quota models.Quota) {
-	tc.AddOrUpdateQuotaInfo(quota.UserName, quota)
-	queueingList, err := tc.taskDB.ListByUserAndStatuses(quota.UserName, models.TaskQueueingStatuses)
+func (c *TaskController) AddUser(_ string, quota *models.Quota) {
+	c.AddOrUpdateQuotaInfo(quota.UserName, quota)
+	queueingList, err := c.taskDB.ListByUserAndStatuses(quota.UserName, models.TaskQueueingStatuses)
 	if err != nil {
 		logrus.Errorf("list user:%v queueing tasks failed, err: %v", quota.UserName, err)
 	}
-	tc.taskQueue.InitUserQueue(quota.UserName, queueingList)
+	c.taskQueue.InitUserQueue(quota.UserName, queueingList)
 }
 
 // Start method
@@ -223,7 +222,7 @@ func (c *TaskController) schedule(ctx context.Context) {
 	// 等待调度的队列
 	candiates := make([]*models.AITask, 0)
 
-	// 1. gauranteed job schedule
+	// 1. guaranteed job schedule
 	for username, q := range c.taskQueue.userQueues {
 		// 1. 复制一份quota
 		// logrus.Infof(username, q.gauranteedQueue)
@@ -241,7 +240,8 @@ func (c *TaskController) schedule(ctx context.Context) {
 				quotaCopy.AddTask(task)
 				logrus.Infof("task quota check succeed,user %v task %v taskid %v", task.UserName, task.TaskName, task.ID)
 			} else {
-				logrus.Infof("task quota exceed, user %v task %v taskid %v, request:%v, used:%v, hard:%v", task.UserName, task.TaskName, task.ID, task.ResourceRequest, quotaCopy.HardUsed, quotaCopy.Hard)
+				logrus.Infof("task quota exceed, user %v task %v taskid %v, request:%v, used:%v, hard:%v",
+					task.UserName, task.TaskName, task.ID, task.ResourceRequest, quotaCopy.HardUsed, quotaCopy.Hard)
 				// break // bug: 如果先检查资源多的，可能后面的都调度不了？？
 			}
 		}
@@ -316,16 +316,21 @@ func (c *TaskController) admitTask(task *models.AITask) error {
 
 	jobname, err := c.jobControl.CreateJobFromTask(task)
 	if err != nil {
-		c.taskDB.UpdateStatus(task.ID, models.TaskFailedStatus, err.Error())
+		err = c.taskDB.UpdateStatus(task.ID, models.TaskFailedStatus, err.Error())
+		if err != nil {
+			return err
+		}
 		c.taskQueue.DeleteTask(task)
 		return err
 	}
 	// 更新task状态
-	if err = c.taskDB.UpdateStatus(task.ID, models.TaskCreatedStatus, "AIJob created"); err != nil {
+	err = c.taskDB.UpdateStatus(task.ID, models.TaskCreatedStatus, "AIJob created")
+	if err != nil {
 		return err
 	}
 	// 更新jobname
-	if err = c.taskDB.UpdateJobName(task.ID, jobname); err != nil {
+	err = c.taskDB.UpdateJobName(task.ID, jobname)
+	if err != nil {
 		return err
 	}
 

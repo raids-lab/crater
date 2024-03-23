@@ -22,7 +22,7 @@ func FormatTaskAttrToModel(task *TaskAttr) *AITask {
 
 // TODO: directly return AITask
 func FormatAITaskToAttr(model *AITask) *TaskAttr {
-	resourceJson, _ := JSONToResourceList(model.ResourceRequest)
+	resourceJSON, _ := JSONToResourceList(model.ResourceRequest)
 	return &TaskAttr{
 		ID:              model.ID,
 		TaskName:        model.TaskName,
@@ -30,7 +30,7 @@ func FormatAITaskToAttr(model *AITask) *TaskAttr {
 		Namespace:       model.Namespace,
 		TaskType:        model.TaskType,
 		Image:           model.Image,
-		ResourceRequest: resourceJson,
+		ResourceRequest: resourceJSON,
 		WorkingDir:      model.WorkingDir,
 		ShareDirs:       JSONStringToVolumes(model.ShareDirs),
 		Command:         model.Command,

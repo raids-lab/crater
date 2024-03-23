@@ -1,24 +1,20 @@
 package handlers
 
 import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
-	resputil "github.com/raids-lab/crater/pkg/server/response"
-	"github.com/raids-lab/crater/pkg/util"
-	"github.com/sirupsen/logrus"
-
 	"github.com/raids-lab/crater/pkg/db/quota"
 	"github.com/raids-lab/crater/pkg/db/user"
 	"github.com/raids-lab/crater/pkg/models"
-
-	"github.com/gin-gonic/gin"
-
+	resputil "github.com/raids-lab/crater/pkg/server/response"
+	"github.com/raids-lab/crater/pkg/util"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	// "awesomeProject/pkg/models"
-	"net/http"
 )
 
 type SignupMgr struct {
@@ -41,7 +37,8 @@ type SignupResponse struct {
 	Role         string `json:"role"`
 }
 
-func NewSignupMgr(taskController *aitaskctl.TaskController, tokenConf *config.TokenConf, pvcClient *crclient.PVCClient, cl client.Client) *SignupMgr {
+func NewSignupMgr(taskController *aitaskctl.TaskController, tokenConf *config.TokenConf,
+	pvcClient *crclient.PVCClient, cl client.Client) *SignupMgr {
 	return &SignupMgr{
 		UserDB:         user.NewDBService(),
 		QuotaDB:        quota.NewDBService(),
@@ -52,7 +49,7 @@ func NewSignupMgr(taskController *aitaskctl.TaskController, tokenConf *config.To
 	}
 }
 
-func (sc *SignupMgr) RegisterRoute(group *gin.RouterGroup) {
+func (sc *SignupMgr) RegisterRoute(_ *gin.RouterGroup) {
 	// group.POST("/signup", sc.Signup)
 	// group.POST("/migrate", sc.Migrate)
 }
@@ -90,40 +87,44 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 		return
 	}
 	request.Password = string(encryptedPassword)
-	sc.pvcClient.CreateUserHomePVC(request.Name)
+	err = sc.pvcClient.CreateUserHomePVC(request.Name)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
 
-	user := models.User{
+	userModel := models.User{
 		UserName:  request.Name,
 		Role:      request.Role,
 		Password:  request.Password,
 		NameSpace: crclient.NameSpace,
 	}
 
-	err = sc.UserDB.Create(&user)
+	err = sc.UserDB.Create(&userModel)
 	if err != nil {
 		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
 		return
 	}
-	quota := models.Quota{
+	userQuota := models.Quota{
 		// UserID:    user.ID,
-		UserName:  user.UserName,
+		UserName:  userModel.UserName,
 		NameSpace: crclient.NameSpace,
 		// HardQuota: models.ResourceListToJSON(v1.ResourceList{}),
 		HardQuota: models.ResourceListToJSON(models.DefaultQuota),
 	}
-	err = sc.QuotaDB.Create(&quota)
+	err = sc.QuotaDB.Create(&userQuota)
 	if err != nil {
 		logrus.Infof("quota create failed: %v", err)
 	}
 	// 通知 TaskController 有新 Quota
-	sc.taskController.AddUser(quota.UserName, quota)
-	accessToken, err := util.CreateAccessToken(&user, sc.TokenConf.AccessTokenSecret, sc.TokenConf.AccessTokenExpiryHour)
+	sc.taskController.AddUser(userQuota.UserName, &userQuota)
+	accessToken, err := util.CreateAccessToken(&userModel, sc.TokenConf.AccessTokenSecret, sc.TokenConf.AccessTokenExpiryHour)
 	if err != nil {
 		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	refreshToken, err := util.CreateRefreshToken(&user, sc.TokenConf.RefreshTokenSecret, sc.TokenConf.RefreshTokenExpiryHour)
+	refreshToken, err := util.CreateRefreshToken(&userModel, sc.TokenConf.RefreshTokenSecret, sc.TokenConf.RefreshTokenExpiryHour)
 	if err != nil {
 		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
 		return
@@ -132,7 +133,7 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 	signupResponse := SignupResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		Role:         user.Role,
+		Role:         userModel.Role,
 	}
 
 	c.JSON(http.StatusOK, signupResponse)

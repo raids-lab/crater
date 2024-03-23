@@ -9,7 +9,7 @@ import (
 )
 
 type QuotaInfo struct {
-	sync.RWMutex
+	mu        sync.RWMutex
 	Name      string
 	Hard      v1.ResourceList
 	Soft      v1.ResourceList
@@ -20,8 +20,8 @@ type QuotaInfo struct {
 
 // AddTask adds Running Job Quota
 func (info *QuotaInfo) AddTask(task *models.AITask) {
-	info.Lock()
-	defer info.Unlock()
+	info.mu.Lock()
+	defer info.mu.Unlock()
 	key := keyFunc(task)
 	// 没有找到task的时候才添加quota
 	if _, ok := info.UsedTasks[key]; !ok {
@@ -37,8 +37,8 @@ func (info *QuotaInfo) AddTask(task *models.AITask) {
 
 // DeleteTask deletes Completed or Deleted Job Quota
 func (info *QuotaInfo) DeleteTask(task *models.AITask) {
-	info.Lock()
-	defer info.Unlock()
+	info.mu.Lock()
+	defer info.mu.Unlock()
 	key := keyFunc(task)
 	// 找到quotainfo里的task时才删除quota
 	if task, ok := info.UsedTasks[key]; ok {
@@ -57,15 +57,15 @@ func (info *QuotaInfo) CheckHardQuotaExceed(task *models.AITask) bool {
 	if task.SLO == models.LowSLO {
 		return false
 	}
-	info.RLock()
-	defer info.RUnlock()
+	info.mu.Lock()
+	defer info.mu.Unlock()
 	resourcelist, _ := models.JSONToResourceList(task.ResourceRequest)
 	return CheckResourceListExceed(info.Hard, info.HardUsed, resourcelist)
 }
 
 func (info *QuotaInfo) Snapshot() *QuotaInfo {
-	info.RLock()
-	defer info.RUnlock()
+	info.mu.Lock()
+	defer info.mu.Unlock()
 	return &QuotaInfo{
 		Name:      info.Name,
 		Hard:      info.Hard.DeepCopy(),
@@ -85,7 +85,7 @@ func (c *TaskController) GetQuotaInfo(username string) *QuotaInfo {
 			logrus.Errorf("get quota from db failed, err: %v", err)
 			return nil
 		}
-		_, info := c.AddOrUpdateQuotaInfo(username, *quotadb)
+		_, info := c.AddOrUpdateQuotaInfo(username, quotadb)
 		return info
 	}
 }
@@ -102,7 +102,7 @@ func (c *TaskController) GetQuotaInfoSnapshotByUsername(username string) *QuotaI
 // GetQuotaInfoSnapshotByUsername 获取某个用户的QuotaInfo的clone，对quota的增加减少不改变原数据
 func (c *TaskController) ListQuotaInfoSnapshot() []QuotaInfo {
 	quotaInfos := make([]QuotaInfo, 0)
-	c.quotaInfos.Range(func(key, value any) bool {
+	c.quotaInfos.Range(func(_, value any) bool {
 		info := value.(*QuotaInfo)
 		infoSnapShot := info.Snapshot()
 		quotaInfos = append(quotaInfos, *infoSnapShot)
@@ -111,8 +111,7 @@ func (c *TaskController) ListQuotaInfoSnapshot() []QuotaInfo {
 	return quotaInfos
 }
 
-func (c *TaskController) AddOrUpdateQuotaInfo(name string, quota models.Quota) (added bool, quotaInfo *QuotaInfo) {
-
+func (c *TaskController) AddOrUpdateQuotaInfo(name string, quota *models.Quota) (added bool, quotaInfo *QuotaInfo) {
 	hardQuota, _ := models.JSONToResourceList(quota.HardQuota)
 	if _, ok := c.quotaInfos.Load(name); !ok {
 		quotaInfo := &QuotaInfo{
@@ -126,12 +125,13 @@ func (c *TaskController) AddOrUpdateQuotaInfo(name string, quota models.Quota) (
 
 		// todo: add db tasks
 		tasksRunning, err := c.taskDB.ListByUserAndStatuses(name, models.TaskOcupiedQuotaStatuses)
+		//nolint:staticcheck // TODO: remove this line after fixing the error
 		if err != nil {
 			// todo: handler err
 		}
 
-		for _, task := range tasksRunning {
-			quotaInfo.AddTask(&task)
+		for i := range tasksRunning {
+			quotaInfo.AddTask(&tasksRunning[i])
 		}
 
 		c.quotaInfos.Store(name, quotaInfo)
@@ -140,15 +140,15 @@ func (c *TaskController) AddOrUpdateQuotaInfo(name string, quota models.Quota) (
 		c.UpdateQuotaInfoHard(name, hardQuota)
 		added = false
 	}
-	return
+	return added, c.GetQuotaInfo(name)
 }
 
 // UpdateQuotaInfoHard updates QuotaInfo Hard
 func (c *TaskController) UpdateQuotaInfoHard(username string, hard v1.ResourceList) {
 	if value, ok := c.quotaInfos.Load(username); ok {
 		info := value.(*QuotaInfo)
-		info.Lock()
-		defer info.Unlock()
+		info.mu.Lock()
+		defer info.mu.Unlock()
 		if !CmpResourceListSame(info.Hard, hard) {
 			info.Hard = hard.DeepCopy()
 			// info.Soft = dq.Spec.Soft.DeepCopy()

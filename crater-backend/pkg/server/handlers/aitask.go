@@ -16,6 +16,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type AITaskMgr struct {
+	taskService tasksvc.DBService
+	userService usersvc.DBService
+	pvcClient   *crclient.PVCClient
+	logClient   *crclient.LogClient
+	// taskUpdateChan chan<- util.TaskUpdateChan
+	taskController *aitaskctl.TaskController
+}
+
 func (mgr *AITaskMgr) RegisterRoute(g *gin.RouterGroup) {
 	g.POST("create", mgr.Create)
 	g.POST("delete", mgr.Delete)
@@ -25,15 +34,6 @@ func (mgr *AITaskMgr) RegisterRoute(g *gin.RouterGroup) {
 	g.GET("getLogs", mgr.GetLogs)
 	g.GET("getQuota", mgr.GetQuota)
 	g.GET("taskStats", mgr.GetTaskStats)
-}
-
-type AITaskMgr struct {
-	taskService tasksvc.DBService
-	userService usersvc.DBService
-	pvcClient   *crclient.PVCClient
-	logClient   *crclient.LogClient
-	// taskUpdateChan chan<- util.TaskUpdateChan
-	taskController *aitaskctl.TaskController
 }
 
 func NewAITaskMgr(taskController *aitaskctl.TaskController, pvcClient *crclient.PVCClient, logClient *crclient.LogClient) *AITaskMgr {
@@ -93,6 +93,7 @@ func (mgr *AITaskMgr) Create(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
+//nolint:dupl // TODO: refactor aitask and jupyter handlers
 func (mgr *AITaskMgr) List(c *gin.Context) {
 	// log.Infof("Task List, url: %s", c.Request.URL)
 	var req payload.ListTaskReq
@@ -154,7 +155,8 @@ func (mgr *AITaskMgr) GetLogs(c *gin.Context) {
 		return
 	}
 	var logs []string
-	for _, pod := range pods {
+	for i := range pods {
+		pod := &pods[i]
 		podLog, err := mgr.logClient.GetPodLogs(pod)
 		if err != nil {
 			resputil.Error(c, fmt.Sprintf("get task log failed, err %v", err), resputil.NotSpecified)
@@ -169,6 +171,7 @@ func (mgr *AITaskMgr) GetLogs(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
+//nolint:dupl // TODO: refactor aitask and jupyter handlers
 func (mgr *AITaskMgr) Delete(c *gin.Context) {
 	log.Infof("Task Delete, url: %s", c.Request.URL)
 	var req payload.DeleteTaskReq

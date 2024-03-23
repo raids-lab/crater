@@ -25,9 +25,9 @@ func (s *service) Create(user *models.User) error {
 	return db.Orm.Create(user).Error // db.Orm.Create(user).Error
 }
 
-func (s *service) UpdateRole(userName string, role1 string) error {
+func (s *service) UpdateRole(userName, dst string) error {
 	var user models.User
-	return db.Orm.Where("username=?", userName).First(&user).Update("role", role1).Error // db.Orm.Save(user).Error
+	return db.Orm.Where("username=?", userName).First(&user).Update("role", dst).Error
 }
 
 func (s *service) ListAllUsers() ([]models.User, error) {
@@ -38,7 +38,8 @@ func (s *service) ListAllUsers() ([]models.User, error) {
 
 func (s *service) ListAllUserQuotas() ([]models.UserQuota, error) {
 	var userQuotas []models.UserQuota
-	err := db.Orm.Table("users").Select("users.*, quotas.*").Joins("left join quotas on users.username = quotas.username").Scan(&userQuotas).Error
+	err := db.Orm.Table("users").Select("users.*, quotas.*").Joins(
+		"left join quotas on users.username = quotas.username").Scan(&userQuotas).Error
 	if err != nil {
 		return nil, err
 	}

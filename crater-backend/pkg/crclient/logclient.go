@@ -31,7 +31,7 @@ func (lc *LogClient) GetPodsWithLabel(namespace string, jobName string) ([]corev
 }
 
 // GetPodLogs 获取指定 Pod 的日志
-func (lc *LogClient) GetPodLogs(pod corev1.Pod) (string, error) {
+func (lc *LogClient) GetPodLogs(pod *corev1.Pod) (string, error) {
 	logOpts := &corev1.PodLogOptions{}
 	req := lc.KubeClient.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, logOpts)
 

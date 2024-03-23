@@ -25,6 +25,10 @@ type JobControl struct {
 	mu         sync.Mutex
 }
 
+const (
+	jupyterPort = 8888
+)
+
 func (c *JobControl) GetJobStatus(task *models.AITask) (aijobapi.JobPhase, error) {
 	// todo: 存储jobname到数据库
 	ns := task.Namespace
@@ -40,7 +44,6 @@ func (c *JobControl) GetJobStatus(task *models.AITask) (aijobapi.JobPhase, error
 }
 
 func (c *JobControl) DeleteJobFromTask(task *models.AITask) error {
-
 	ns := task.Namespace
 	job := &aijobapi.AIJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -50,7 +53,7 @@ func (c *JobControl) DeleteJobFromTask(task *models.AITask) error {
 	}
 	err := c.Delete(context.Background(), job)
 	if err != nil {
-		err = fmt.Errorf("delete job %s failed: %v", task.JobName, err)
+		err = fmt.Errorf("delete job %s failed: %w", task.JobName, err)
 		return err
 	}
 
@@ -64,7 +67,7 @@ func (c *JobControl) DeleteJobFromTask(task *models.AITask) error {
 		}
 		err = c.Delete(context.Background(), svc)
 		if err != nil {
-			err = fmt.Errorf("delete service %s failed: %v", task.JobName, err)
+			err = fmt.Errorf("delete service %s: %w", task.JobName, err)
 			return err
 		}
 	}
@@ -80,7 +83,7 @@ func (c *JobControl) DeleteJobFromTask(task *models.AITask) error {
 	// Get the existing Ingress
 	ingress, err := ingressClient.Get(context.TODO(), "crater-jobs-ingress", metav1.GetOptions{})
 	if err != nil {
-		err = fmt.Errorf("get ingress failed: %v", err)
+		err = fmt.Errorf("get crater-jobs-ingress: %w", err)
 		return err
 	}
 
@@ -95,7 +98,7 @@ func (c *JobControl) DeleteJobFromTask(task *models.AITask) error {
 	// Update the Ingress
 	_, err = ingressClient.Update(context.Background(), ingress, metav1.UpdateOptions{})
 	if err != nil {
-		err = fmt.Errorf("update ingress failed: %v", err)
+		err = fmt.Errorf("update ingress: %w", err)
 		return err
 	}
 
@@ -105,8 +108,8 @@ func (c *JobControl) DeleteJobFromTask(task *models.AITask) error {
 func (c *JobControl) createTrainingJobFromTask(task *models.AITask, selector map[string]string) (jobname string, err error) {
 	resourceRequest, err := models.JSONToResourceList(task.ResourceRequest)
 	if err != nil {
-		err = fmt.Errorf("resource request is not valid: %v", err)
-		return
+		err = fmt.Errorf("resource request is not valid: %w", err)
+		return "", err
 	}
 
 	// convert metadata to lower case
@@ -141,8 +144,8 @@ func (c *JobControl) createTrainingJobFromTask(task *models.AITask, selector map
 
 	volumes, volumeMounts, err := GenVolumeAndMountsFromAITask(task)
 	if err != nil {
-		err = fmt.Errorf("gen volumes and mounts failed: %v", err)
-		return
+		err = fmt.Errorf("gen volumes and mounts: %w", err)
+		return "", err
 	}
 	job := &aijobapi.AIJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -187,17 +190,17 @@ func (c *JobControl) createTrainingJobFromTask(task *models.AITask, selector map
 	}
 	err = c.Create(context.Background(), job)
 	if err != nil {
-		err = fmt.Errorf("create job %s failed: %v", task.TaskName, err)
-		return
+		err = fmt.Errorf("create job %s: %w", task.TaskName, err)
+		return "", err
 	}
-	return
+	return jobname, nil
 }
 
 func (c *JobControl) createJupyterJobFromTask(task *models.AITask, selector map[string]string) (jobname string, err error) {
 	resourceRequest, err := models.JSONToResourceList(task.ResourceRequest)
 	if err != nil {
-		err = fmt.Errorf("resource request is not valid: %v", err)
-		return
+		err = fmt.Errorf("resource request is not valid: %w", err)
+		return "", err
 	}
 
 	// convert metadata to lower case
@@ -227,8 +230,8 @@ func (c *JobControl) createJupyterJobFromTask(task *models.AITask, selector map[
 
 	volumes, volumeMounts, err := GenVolumeAndMountsFromAITask(task)
 	if err != nil {
-		err = fmt.Errorf("gen volumes and mounts failed: %v", err)
-		return
+		err = fmt.Errorf("gen volumes and mounts: %w", err)
+		return "", err
 	}
 	job := &aijobapi.AIJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -290,8 +293,8 @@ func (c *JobControl) createJupyterJobFromTask(task *models.AITask, selector map[
 	}
 	err = c.Create(context.Background(), job)
 	if err != nil {
-		err = fmt.Errorf("create job %s failed: %v", task.TaskName, err)
-		return
+		err = fmt.Errorf("create job %s: %w", task.TaskName, err)
+		return "", err
 	}
 
 	// 创建 Service，转发 Jupyter 端口
@@ -309,7 +312,7 @@ func (c *JobControl) createJupyterJobFromTask(task *models.AITask, selector map[
 					Name:       jobname,
 					Port:       80,
 					Protocol:   corev1.ProtocolTCP,
-					TargetPort: intstr.FromInt(8888),
+					TargetPort: intstr.FromInt(jupyterPort),
 					// NodePort:   0, // Kubernetes will allocate a port
 				},
 			},
@@ -320,8 +323,8 @@ func (c *JobControl) createJupyterJobFromTask(task *models.AITask, selector map[
 
 	err = c.Create(context.Background(), svc)
 	if err != nil {
-		err = fmt.Errorf("create service %s failed: %v", task.TaskName, err)
-		return
+		err = fmt.Errorf("create service %s: %w", task.TaskName, err)
+		return "", err
 	}
 
 	// 添加锁
@@ -334,8 +337,8 @@ func (c *JobControl) createJupyterJobFromTask(task *models.AITask, selector map[
 	// Get the existing Ingress
 	ingress, err := ingressClient.Get(context.TODO(), "crater-jobs-ingress", metav1.GetOptions{})
 	if err != nil {
-		err = fmt.Errorf("get ingress failed: %v", err)
-		return
+		err = fmt.Errorf("get ingress: %w", err)
+		return "", err
 	}
 
 	// Add a new path to the first rule
@@ -357,11 +360,11 @@ func (c *JobControl) createJupyterJobFromTask(task *models.AITask, selector map[
 	// Update the Ingress
 	_, err = ingressClient.Update(context.Background(), ingress, metav1.UpdateOptions{})
 	if err != nil {
-		err = fmt.Errorf("update ingress failed: %v", err)
-		return
+		err = fmt.Errorf("update ingress: %w", err)
+		return "", err
 	}
 
-	return
+	return jobname, nil
 }
 
 // task.TaskType 目前有两种类型：training 和 jupyter，如果是 jupyter，则同时创建随机的端口转发
@@ -385,7 +388,6 @@ func (c *JobControl) CreateJobFromTask(task *models.AITask) (jobname string, err
 }
 
 func GenVolumeAndMountsFromAITask(task *models.AITask) ([]corev1.Volume, []corev1.VolumeMount, error) {
-
 	// set volumes
 	volumeMounts := []corev1.VolumeMount{
 		{
@@ -418,11 +420,10 @@ func GenVolumeAndMountsFromAITask(task *models.AITask) ([]corev1.Volume, []corev
 	if task.ShareDirs != "" {
 		taskShareDir := models.JSONStringToVolumes(task.ShareDirs)
 		if taskShareDir == nil {
-			logrus.Errorf("parse task share dir failed： %v", task.ShareDirs)
-			return nil, nil, fmt.Errorf("parse task share dir failed： %v", task.ShareDirs)
+			logrus.Errorf("parse task share dir: %v", task.ShareDirs)
+			return nil, nil, fmt.Errorf("parse task share dir: %v", task.ShareDirs)
 		}
 		for pvc, mounts := range taskShareDir {
-
 			volumes = append(volumes, corev1.Volume{
 				Name: pvc,
 				VolumeSource: corev1.VolumeSource{

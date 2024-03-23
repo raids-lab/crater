@@ -25,29 +25,21 @@ type AdminMgr struct {
 
 func (mgr *AdminMgr) RegisterRoute(g *gin.RouterGroup) {
 	users := g.Group("/users")
-	{
-		users.GET("", mgr.ListUser)
-		users.GET("/:name", mgr.GetUser)
-		users.DELETE("/:name", mgr.DeleteUser)
-		users.PUT("/:name/role", mgr.UpdateRole)
-	}
+	users.GET("", mgr.ListUser)
+	users.GET("/:name", mgr.GetUser)
+	users.DELETE("/:name", mgr.DeleteUser)
+	users.PUT("/:name/role", mgr.UpdateRole)
 
 	quotas := g.Group("/quotas")
-	{
-		quotas.GET("", mgr.ListQuota)
-		quotas.PUT("/:name", mgr.UpdateQuota)
-	}
+	quotas.GET("", mgr.ListQuota)
+	quotas.PUT("/:name", mgr.UpdateQuota)
 
 	tasks := g.Group("/tasks")
-	{
-		tasks.GET("", mgr.ListTaskByTaskType)
-		tasks.GET("/stats", mgr.GetTaskStats)
-	}
+	tasks.GET("", mgr.ListTaskByTaskType)
+	tasks.GET("/stats", mgr.GetTaskStats)
 
 	nodes := g.Group("/nodes")
-	{
-		nodes.GET("", mgr.ListNode)
-	}
+	nodes.GET("", mgr.ListNode)
 }
 
 func NewAdminMgr(taskController *aitaskctl.TaskController, nodeClient *crclient.NodeClient) *AdminMgr {
@@ -174,7 +166,7 @@ func (mgr *AdminMgr) UpdateQuota(c *gin.Context) {
 		return
 	}
 	// notify taskController to update quota
-	mgr.taskController.AddOrUpdateQuotaInfo(quota.UserName, *quota)
+	mgr.taskController.AddOrUpdateQuotaInfo(quota.UserName, quota)
 
 	log.Infof("update quota success, user: %s, quota:%v", name, req.HardQuota)
 	resputil.Success(c, "")

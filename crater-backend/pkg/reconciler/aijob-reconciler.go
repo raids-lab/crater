@@ -39,9 +39,9 @@ type AIJobReconciler struct {
 }
 
 // NewAIJobReconciler returns a new reconcile.Reconciler
-func NewAIJobReconciler(client client.Client, scheme *runtime.Scheme, statusChan chan<- util.JobStatusChan) *AIJobReconciler {
+func NewAIJobReconciler(crClient client.Client, scheme *runtime.Scheme, statusChan chan<- util.JobStatusChan) *AIJobReconciler {
 	return &AIJobReconciler{
-		Client:     client,
+		Client:     crClient,
 		Scheme:     scheme,
 		log:        ctrl.Log.WithName("aijob-reconciler"),
 		statusChan: statusChan,
@@ -63,7 +63,7 @@ func NewAIJobReconciler(client client.Client, scheme *runtime.Scheme, statusChan
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 
 // Reconcile 主要用于同步AIJob的状态到数据库中
-func (r *AIJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *AIJobReconciler) Reconcile(ctx context.Context, _ ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
 	// TODO(user): your logic here
@@ -106,11 +106,11 @@ func (r *AIJobReconciler) Update(e event.UpdateEvent) bool {
 
 }
 
-func (r *AIJobReconciler) Delete(e event.DeleteEvent) bool {
+func (r *AIJobReconciler) Delete(_ event.DeleteEvent) bool {
 	return false
 }
 
-func (r *AIJobReconciler) Generic(e event.GenericEvent) bool {
+func (r *AIJobReconciler) Generic(_ event.GenericEvent) bool {
 	return false
 }
 

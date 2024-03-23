@@ -27,7 +27,10 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 
 	// Init Clients and Configs
 	pvcClient := crclient.PVCClient{Client: cl}
-	pvcClient.InitShareDir()
+	err := pvcClient.InitShareDir()
+	if err != nil {
+		panic(err)
+	}
 	logClient := crclient.LogClient{Client: cl, KubeClient: cs}
 	nodeClient := crclient.NodeClient{Client: cl, KubeClient: cs}
 

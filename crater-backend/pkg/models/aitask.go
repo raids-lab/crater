@@ -19,7 +19,7 @@ const (
 	HighSLO = 1
 	LowSLO  = 0
 
-	PriorityClassGauranteed = "gpu-gauranteed"
+	PriorityClassGauranteed = "gpu-guaranteed"
 	PriorityClassBestEffort = "gpu-besteffort"
 
 	// TaskStatus

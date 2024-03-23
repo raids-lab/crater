@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestYamlConfig(t *testing.T) {
+func TestYamlConfig(_ *testing.T) {
 	// 请替换为你的 Prometheus API 地址
 	config, err := NewConfig("")
 	fmt.Println(config)

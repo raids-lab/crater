@@ -25,11 +25,12 @@ func (tq *TaskQueue) InitUserQueue(username string, taskList []models.AITask) {
 	tq.Lock()
 	defer tq.Unlock()
 	q := NewUserQueue(username)
-	for _, task := range taskList {
+	for i := range taskList {
+		task := &taskList[i]
 		if task.SLO == models.HighSLO {
-			q.gauranteedQueue.PushIfNotPresent(&task)
+			q.gauranteedQueue.PushIfNotPresent(task)
 		} else if task.SLO == models.LowSLO {
-			q.bestEffortQueue.PushIfNotPresent(&task)
+			q.bestEffortQueue.PushIfNotPresent(task)
 		}
 	}
 	tq.userQueues[username] = q
@@ -66,7 +67,7 @@ func (tq *TaskQueue) DeleteTask(task *models.AITask) {
 }
 
 // DeleteTaskByUserNameAndTaskID deletes task that is deleted
-func (tq *TaskQueue) DeleteTaskByUserNameAndTaskID(username string, taskid string) {
+func (tq *TaskQueue) DeleteTaskByUserNameAndTaskID(username, taskid string) {
 	tq.Lock()
 	defer tq.Unlock()
 	q, ok := tq.userQueues[username]

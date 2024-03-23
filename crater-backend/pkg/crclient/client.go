@@ -32,7 +32,7 @@ func (c *Control) CreateUserNameSpace(username string) error {
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("create namespace %s failed: %v", ns, err)
+		return fmt.Errorf("create namespace %s failed: %w", ns, err)
 	}
 	return nil
 }

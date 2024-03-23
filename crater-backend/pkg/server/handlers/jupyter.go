@@ -17,20 +17,20 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (mgr *JupyterMgr) RegisterRoute(g *gin.RouterGroup) {
-	g.POST("create", mgr.Create)
-	g.POST("delete", mgr.Delete)
-	g.GET("list", mgr.List)
-	g.GET("getToken", mgr.GetToken)
-	g.GET("getImages", mgr.GetImages)
-}
-
 type JupyterMgr struct {
 	taskService    tasksvc.DBService
 	userService    usersvc.DBService
 	pvcClient      *crclient.PVCClient
 	logClient      *crclient.LogClient
 	taskController *aitaskctl.TaskController
+}
+
+func (mgr *JupyterMgr) RegisterRoute(g *gin.RouterGroup) {
+	g.POST("create", mgr.Create)
+	g.POST("delete", mgr.Delete)
+	g.GET("list", mgr.List)
+	g.GET("getToken", mgr.GetToken)
+	g.GET("getImages", mgr.GetImages)
 }
 
 func NewJupyterMgr(taskController *aitaskctl.TaskController, pvcClient *crclient.PVCClient, logClient *crclient.LogClient) *JupyterMgr {
@@ -102,6 +102,7 @@ func (mgr *JupyterMgr) Create(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
+//nolint:dupl // TODO: refactor
 func (mgr *JupyterMgr) List(c *gin.Context) {
 	// log.Infof("Task List, url: %s", c.Request.URL)
 	var req payload.ListTaskReq
@@ -164,7 +165,7 @@ func (mgr *JupyterMgr) GetToken(c *gin.Context) {
 	re := regexp.MustCompile(`\?token=([a-zA-Z0-9]+)`)
 	for i := range pods {
 		pod := &pods[i]
-		podLog, getPodLogsErr := mgr.logClient.GetPodLogs(*pod)
+		podLog, getPodLogsErr := mgr.logClient.GetPodLogs(pod)
 		if getPodLogsErr != nil {
 			resputil.Error(c, fmt.Sprintf("get task log failed, err %v", getPodLogsErr), resputil.NotSpecified)
 			return
@@ -180,10 +181,6 @@ func (mgr *JupyterMgr) GetToken(c *gin.Context) {
 	port, getServicePortErr := mgr.logClient.GetSvcPort(taskModel.Namespace, taskModel.JobName)
 	if getServicePortErr != nil {
 		resputil.Error(c, fmt.Sprintf("get service port failed, err %v", getServicePortErr), resputil.NotSpecified)
-		return
-	}
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("get task svc failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 
@@ -207,6 +204,7 @@ func (mgr *JupyterMgr) GetToken(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
+//nolint:dupl // TODO: refactor
 func (mgr *JupyterMgr) Delete(c *gin.Context) {
 	log.Infof("Task Delete, url: %s", c.Request.URL)
 	var req payload.DeleteTaskReq

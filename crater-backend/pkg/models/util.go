@@ -56,7 +56,6 @@ func JSONToResourceList(str string) (v1.ResourceList, error) {
 		return nil, err
 	}
 	return res, nil
-
 }
 
 func ResourceListToJSON(rs v1.ResourceList) string {
