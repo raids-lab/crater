@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -48,7 +48,7 @@ func InitDB(dbConfig *config.Config) error {
 	sqlDB.SetMaxOpenConns(maxOpenConns)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
-	log.Info("mysql init success!")
+	logutils.Log.Info("mysql init success!")
 	return nil
 }
 
@@ -63,7 +63,7 @@ func InitMigration() error {
 	return nil
 }
 
-// todo: init db conf
+//nolint:gochecknoinits // todo: init db conf
 func init() {
 	viper.AddConfigPath("./conf")
 }

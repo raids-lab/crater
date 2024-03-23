@@ -11,10 +11,10 @@ import (
 	"github.com/raids-lab/crater/pkg/crclient"
 	quotadb "github.com/raids-lab/crater/pkg/db/quota"
 	taskdb "github.com/raids-lab/crater/pkg/db/task"
+	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
 	"github.com/raids-lab/crater/pkg/profiler"
 	"github.com/raids-lab/crater/pkg/util"
-	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -58,15 +58,15 @@ func (c *TaskController) Init() error {
 	// init quotas
 	quotas, err := c.quotaDB.ListAllQuotas()
 	if err != nil {
-		logrus.Errorf("list all quotas failed, err: %v", err)
+		logutils.Log.Errorf("list all quotas failed, err: %v", err)
 	}
-	logrus.Infof("list all quotas success, len: %v", len(quotas))
+	logutils.Log.Infof("list all quotas success, len: %v", len(quotas))
 	for i := range quotas {
 		// 添加quota
 		c.AddOrUpdateQuotaInfo(quotas[i].UserName, &quotas[i])
 		queueingList, err := c.taskDB.ListByUserAndStatuses(quotas[i].UserName, models.TaskQueueingStatuses)
 		if err != nil {
-			logrus.Errorf("list user:%v queueing tasks failed, err: %v", quotas[i].UserName, err)
+			logutils.Log.Errorf("list user:%v queueing tasks failed, err: %v", quotas[i].UserName, err)
 			continue
 		}
 		c.taskQueue.InitUserQueue(quotas[i].UserName, queueingList)
@@ -80,7 +80,7 @@ func (c *TaskController) AddUser(_ string, quota *models.Quota) {
 	c.AddOrUpdateQuotaInfo(quota.UserName, quota)
 	queueingList, err := c.taskDB.ListByUserAndStatuses(quota.UserName, models.TaskQueueingStatuses)
 	if err != nil {
-		logrus.Errorf("list user:%v queueing tasks failed, err: %v", quota.UserName, err)
+		logutils.Log.Errorf("list user:%v queueing tasks failed, err: %v", quota.UserName, err)
 	}
 	c.taskQueue.InitUserQueue(quota.UserName, queueingList)
 }
@@ -90,7 +90,7 @@ func (c *TaskController) Start(ctx context.Context) error {
 	// init share dirs
 	// err := c.jobControl.InitShareDir()
 	// if err != nil {
-	// 	logrus.Errorf("get share dirs failed, err: %v", err)
+	// 	logutils.Log.Errorf("get share dirs failed, err: %v", err)
 	// 	return err
 	// }
 	// 1. init 初始化task队列和quota信息，存在缓存里
@@ -114,8 +114,8 @@ func (c *TaskController) watchJobStatus(ctx context.Context) {
 			// 更新task在db中的状态
 			task, err := c.updateTaskStatus(status.TaskID, status.NewStatus, status.Reason)
 			if err != nil {
-				logrus.Errorf("update task status failed, err: %v", err)
-				logrus.Infof("get job status event, taskID: %v, newStatus: %v", status.TaskID, status.NewStatus)
+				logutils.Log.Errorf("update task status failed, err: %v", err)
+				logutils.Log.Infof("get job status event, taskID: %v, newStatus: %v", status.TaskID, status.NewStatus)
 				// continue
 			}
 			// 更新quota，减去已经完成的作业的资源
@@ -138,11 +138,11 @@ func (c *TaskController) watchJobStatus(ctx context.Context) {
 func (c *TaskController) TaskUpdated(event util.TaskUpdateChan) {
 	task, err := c.taskDB.GetByID(event.TaskID)
 	if err != nil {
-		logrus.Errorf("get task update event failed, err: %v", err)
+		logutils.Log.Errorf("get task update event failed, err: %v", err)
 		return
 	}
 	tidStr := strconv.FormatUint(uint64(event.TaskID), 10)
-	logrus.Infof("get task update event, taskID: %v, operation: %v", tidStr, event.Operation)
+	logutils.Log.Infof("get task update event, taskID: %v, operation: %v", tidStr, event.Operation)
 	switch event.Operation {
 	case util.CreateTask:
 		//
@@ -159,13 +159,13 @@ func (c *TaskController) TaskUpdated(event util.TaskUpdateChan) {
 		// delete aijob in cluster? todo:
 		err = c.jobControl.DeleteJobFromTask(task)
 		if err != nil {
-			logrus.Errorf("delete job from task failed, err: %v", err)
+			logutils.Log.Errorf("delete job from task failed, err: %v", err)
 		}
 		// delete from profiler
 		if c.profiler != nil && (task.ProfileStatus == models.ProfileQueued || task.ProfileStatus == models.Profiling) {
 			c.profiler.DeleteProfilePodFromTask(task.ID)
 		}
-		logrus.Infof("delete task in task controller, %d", event.TaskID)
+		logutils.Log.Infof("delete task in task controller, %d", event.TaskID)
 	}
 }
 
@@ -177,16 +177,16 @@ func (c *TaskController) TaskUpdated(event util.TaskUpdateChan) {
 // 			// 更新task在队列的状态
 // 			task, err := c.taskDB.GetByID(t.TaskID)
 // 			tidStr := strconv.FormatUint(uint64(t.TaskID), 10)
-// 			logrus.Infof("get task update event, taskID: %v, operation: %v", tidStr, t.Operation)
+// 			logutils.Log.Infof("get task update event, taskID: %v, operation: %v", tidStr, t.Operation)
 // 			// 1. delete的情况
 // 			if t.Operation == util.DeleteTask {
 // 				c.taskQueue.DeleteTaskByUserNameAndTaskID(t.UserName, tidStr)
 // 				// delete in cluster
 // 				err = c.jobControl.DeleteJobFromTask(task)
 // 				if err != nil {
-// 					logrus.Errorf("delete job from task failed, err: %v", err)
+// 					logutils.Log.Errorf("delete job from task failed, err: %v", err)
 // 				}
-// 				logrus.Infof("delete task in task controller, %d", t.TaskID)
+// 				logutils.Log.Infof("delete task in task controller, %d", t.TaskID)
 // 				continue
 // 			} else if t.Operation == util.CreateTask {
 // 				// 2. create
@@ -229,10 +229,10 @@ func (c *TaskController) schedule(_ context.Context) {
 	// 1. guaranteed job schedule
 	for username, q := range c.taskQueue.userQueues {
 		// 1. 复制一份quota
-		// logrus.Infof(username, q.gauranteedQueue)
+		// logutils.Log.Infof(username, q.gauranteedQueue)
 		quotaCopy := c.GetQuotaInfoSnapshotByUsername(username)
 		if quotaCopy == nil {
-			logrus.Errorf("quota not found, username: %v", username)
+			logutils.Log.Errorf("quota not found, username: %v", username)
 			continue
 		}
 		// 2. 从gauranteedQueue队列选出不超过quota的作业
@@ -242,9 +242,9 @@ func (c *TaskController) schedule(_ context.Context) {
 			if !quotaCopy.CheckHardQuotaExceed(task) {
 				candiates = append(candiates, task)
 				quotaCopy.AddTask(task)
-				logrus.Infof("task quota check succeed,user %v task %v taskid %v", task.UserName, task.TaskName, task.ID)
+				logutils.Log.Infof("task quota check succeed,user %v task %v taskid %v", task.UserName, task.TaskName, task.ID)
 			} else {
-				logrus.Infof("task quota exceed, user %v task %v taskid %v, request:%v, used:%v, hard:%v",
+				logutils.Log.Infof("task quota exceed, user %v task %v taskid %v, request:%v, used:%v, hard:%v",
 					task.UserName, task.TaskName, task.ID, task.ResourceRequest, quotaCopy.HardUsed, quotaCopy.Hard)
 				// bug: 如果先检查资源多的，可能后面的都调度不了？？
 			}
@@ -255,13 +255,13 @@ func (c *TaskController) schedule(_ context.Context) {
 	for _, q := range c.taskQueue.userQueues {
 		for _, t := range q.bestEffortQueue.List() {
 			task := t.(*models.AITask)
-			// logrus.Infof("user:%v, task: %v, task status:%v, profile status: %v", task.UserName, task.ID, task.Status, task.ProfileStatus)
+			// logutils.Log.Infof("user:%v, task: %v, task status:%v, profile status: %v", task.UserName, task.ID, task.Status, task.ProfileStatus)
 			// update profile status
 			if c.profiler != nil {
 				// todo: udpate profile status???
 				if task.Status == models.TaskQueueingStatus && task.ProfileStatus == models.UnProfiled {
 					c.profiler.SubmitProfileTask(task.ID)
-					logrus.Infof("submit profile task, user:%v taskID:%v, taskName:%v", task.UserName, task.ID, task.TaskName)
+					logutils.Log.Infof("submit profile task, user:%v taskID:%v, taskName:%v", task.UserName, task.ID, task.TaskName)
 					task.ProfileStatus = models.ProfileQueued
 				} else {
 					// todo: 优化 check profile status
@@ -281,7 +281,7 @@ func (c *TaskController) schedule(_ context.Context) {
 	for _, candidate := range candiates {
 		task, err := c.taskDB.GetByID(candidate.ID)
 		if err != nil {
-			logrus.Errorf("get task from db failed, err: %v", err)
+			logutils.Log.Errorf("get task from db failed, err: %v", err)
 			continue
 		}
 		// check profiling status
@@ -296,9 +296,9 @@ func (c *TaskController) schedule(_ context.Context) {
 		// submit AIJob
 		err = c.admitTask(task)
 		if err != nil {
-			logrus.Errorf("create job from task: %v", err)
+			logutils.Log.Errorf("create job from task: %v", err)
 		} else {
-			logrus.Infof("create job from task success, taskID: %v", task.ID)
+			logutils.Log.Infof("create job from task success, taskID: %v", task.ID)
 		}
 	}
 }

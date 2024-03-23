@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/sirupsen/logrus"
+	"github.com/raids-lab/crater/pkg/logutils"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,7 +29,7 @@ func (c *Control) CreateUserNameSpace(_ string) error {
 	err := c.Create(context.Background(), namespace)
 	// already exists
 	if errors.IsAlreadyExists(err) {
-		logrus.Infof("namespace %s already exists", ns)
+		logutils.Log.Infof("namespace %s already exists", ns)
 		return nil
 	}
 	if err != nil {

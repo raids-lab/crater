@@ -13,8 +13,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
+	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
-	"github.com/sirupsen/logrus"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -420,7 +421,7 @@ func GenVolumeAndMountsFromAITask(task *models.AITask) ([]corev1.Volume, []corev
 	if task.ShareDirs != "" {
 		taskShareDir := models.JSONStringToVolumes(task.ShareDirs)
 		if taskShareDir == nil {
-			logrus.Errorf("parse task share dir: %v", task.ShareDirs)
+			logutils.Log.Errorf("parse task share dir: %v", task.ShareDirs)
 			return nil, nil, fmt.Errorf("parse task share dir: %v", task.ShareDirs)
 		}
 		for pvc, mounts := range taskShareDir {

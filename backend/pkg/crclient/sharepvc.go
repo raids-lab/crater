@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/raids-lab/crater/pkg/config"
-	"github.com/sirupsen/logrus"
+	"github.com/raids-lab/crater/pkg/logutils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -37,7 +37,7 @@ func (c *PVCClient) InitShareDir() error {
 	for _, shareDir := range shareDirList {
 		pv, err := c.GetPVCRelatedPV(shareDir.Pvc, shareDir.Namespace)
 		if err != nil {
-			logrus.Errorf("get share dir pv failed: %v", err)
+			logutils.Log.Errorf("get share dir pv failed: %v", err)
 			return err
 		}
 		shareDirs[shareDir.Pvc] = ShareDir{
@@ -46,7 +46,7 @@ func (c *PVCClient) InitShareDir() error {
 			pv:        pv,
 		}
 	}
-	logrus.Infof("init share dirs success: %v", shareDirs)
+	logutils.Log.Infof("init share dirs success: %v", shareDirs)
 	return nil
 }
 
@@ -57,7 +57,7 @@ func (c *PVCClient) CheckOrCreateUserPvc(userNamespace, pvcName string) error {
 		return nil
 	}
 	if _, ok := shareDirs[pvcName]; !ok {
-		logrus.Errorf("share dir not found: %s", pvcName)
+		logutils.Log.Errorf("share dir not found: %s", pvcName)
 		return fmt.Errorf("share dir not found")
 	}
 	return c.createUserPVCFromPV(shareDirs[pvcName].pv, userNamespace, pvcName)
@@ -83,7 +83,7 @@ func (c *PVCClient) MigratePvcFromOldNamespace(oldNamespace, newNamespace, oldPv
 
 	pv, err := c.GetPVCRelatedPV(oldPvcName, oldNamespace)
 	if err != nil {
-		logrus.Errorf("get share dir pv failed: %v", err)
+		logutils.Log.Errorf("get share dir pv failed: %v", err)
 		return err
 	}
 
@@ -139,7 +139,7 @@ func (c *PVCClient) createUserPVCFromPV(sharepv *corev1.PersistentVolume, newNam
 	if err := c.Client.Create(context.Background(), newpvc); err != nil {
 		return err
 	}
-	logrus.Infof("create user pvc from share dir success, pvc:%v, namespace:%v", newPvcName, newNamespace)
+	logutils.Log.Infof("create user pvc from share dir success, pvc:%v, namespace:%v", newPvcName, newNamespace)
 	return nil
 }
 
@@ -167,7 +167,7 @@ func (c *PVCClient) GetPVCRelatedPV(name, namespace string) (*corev1.PersistentV
 	if pv.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimRetain {
 		pv.Spec.PersistentVolumeReclaimPolicy = corev1.PersistentVolumeReclaimRetain
 		if err := c.Update(context.Background(), pv); err != nil {
-			logrus.Errorf("update pv %s reclaimPolicy  failed: %v", name, err)
+			logutils.Log.Errorf("update pv %s reclaimPolicy  failed: %v", name, err)
 			return nil, err
 		}
 	}
@@ -200,7 +200,7 @@ func (c *PVCClient) CreateUserHomePVC(username string) error {
 
 	err := c.Create(context.Background(), pvc)
 	if errors.IsAlreadyExists(err) {
-		logrus.Infof("pvc %s already exists", pvcname)
+		logutils.Log.Infof("pvc %s already exists", pvcname)
 		return nil
 	}
 	if err != nil {

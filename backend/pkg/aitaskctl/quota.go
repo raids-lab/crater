@@ -3,8 +3,8 @@ package aitaskctl
 import (
 	"sync"
 
+	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
-	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -113,7 +113,7 @@ func (c *TaskController) GetQuotaInfo(username string) *QuotaInfo {
 	} else {
 		quotadb, err := c.quotaDB.GetByUserName(username)
 		if err != nil {
-			logrus.Errorf("get quota from db failed, err: %v", err)
+			logutils.Log.Errorf("get quota from db failed, err: %v", err)
 			return nil
 		}
 		_, info := c.AddOrUpdateQuotaInfo(username, quotadb)
