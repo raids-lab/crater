@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-func PostJson(ctx context.Context, host, path string, body interface{}, header map[string]string, resp interface{}) (err error) {
+func PostJson(ctx context.Context, host, path string, body any, header map[string]string, resp any) (err error) {
 	url := fmt.Sprintf("%s%s", host, path)
 
 	bodyBytes, err := json.Marshal(body)

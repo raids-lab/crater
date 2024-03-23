@@ -46,7 +46,7 @@ func (s *service) UpdateStatus(taskID uint, status string, reason string) error 
 	if task.Status == status {
 		return nil
 	}
-	updateMap := make(map[string]interface{})
+	updateMap := make(map[string]any)
 	updateMap["status"] = status
 	// 取前100
 	updateMap["status_reason"] = reason
@@ -132,7 +132,7 @@ func (s *service) GetByUserAndID(userName string, taskID uint) (*models.AITask, 
 }
 
 func (s *service) UpdateProfilingStat(taskID uint, profileStatus uint, stat string, status string) error {
-	updateMap := make(map[string]interface{})
+	updateMap := make(map[string]any)
 	updateMap["profile_status"] = profileStatus
 	if profileStatus == models.ProfileFinish {
 		updateMap["profile_stat"] = stat

@@ -23,20 +23,20 @@ import (
 	"testing"
 )
 
-func testHeapObjectKeyFunc(obj interface{}) string {
+func testHeapObjectKeyFunc(obj any) string {
 	return obj.(testHeapObject).name
 }
 
 type testHeapObject struct {
 	name string
-	val  interface{}
+	val  any
 }
 
-func mkHeapObj(name string, val interface{}) testHeapObject {
+func mkHeapObj(name string, val any) testHeapObject {
 	return testHeapObject{name: name, val: val}
 }
 
-func compareInts(val1 interface{}, val2 interface{}) bool {
+func compareInts(val1 any, val2 any) bool {
 	first := val1.(testHeapObject).val.(int)
 	second := val2.(testHeapObject).val.(int)
 	return first < second
