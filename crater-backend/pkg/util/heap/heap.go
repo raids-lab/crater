@@ -24,19 +24,19 @@ import (
 
 // lessFunc is a function that receives two items and returns true if the first
 // item should be placed before the second one when the list is sorted.
-type lessFunc func(a, b interface{}) bool
+type lessFunc func(a, b any) bool
 
 // KeyFunc is a function type to get the key from an object.
-type keyFunc func(obj interface{}) string
+type keyFunc func(obj any) string
 
 type heapItem struct {
-	obj   interface{}
+	obj   any
 	index int
 }
 
 type itemKeyValue struct {
 	key string
-	obj interface{}
+	obj any
 }
 
 // data is an internal struct that implements the standard heap interface
@@ -83,7 +83,7 @@ func (h *data) Swap(i, j int) {
 }
 
 // Push is supposed to be called by heap.Push only.
-func (h *data) Push(kv interface{}) {
+func (h *data) Push(kv any) {
 	keyValue := kv.(*itemKeyValue)
 	h.items[keyValue.key] = &heapItem{
 		obj:   keyValue.obj,
@@ -93,7 +93,7 @@ func (h *data) Push(kv interface{}) {
 }
 
 // Pop is supposed to be called by heap.Pop only.
-func (h *data) Pop() interface{} {
+func (h *data) Pop() any {
 	key := h.keys[len(h.keys)-1]
 	h.keys = h.keys[:len(h.keys)-1]
 	item, ok := h.items[key]
@@ -113,7 +113,7 @@ type Heap struct {
 
 // PushOrUpdate inserts an item to the queue.
 // The item will be updated if it already exists.
-func (h *Heap) PushOrUpdate(obj interface{}) {
+func (h *Heap) PushOrUpdate(obj any) {
 	key := h.data.keyFunc(obj)
 	if _, exists := h.data.items[key]; exists {
 		h.data.items[key].obj = obj
@@ -125,7 +125,7 @@ func (h *Heap) PushOrUpdate(obj interface{}) {
 
 // PushIfNotPresent inserts an item to the queue. If an item with
 // the key is present in the map, no changes is made to the item.
-func (h *Heap) PushIfNotPresent(obj interface{}) (added bool) {
+func (h *Heap) PushIfNotPresent(obj any) (added bool) {
 	key := h.data.keyFunc(obj)
 	if _, exists := h.data.items[key]; exists {
 		return false
@@ -145,18 +145,18 @@ func (h *Heap) Delete(key string) {
 }
 
 // Pop returns the head of the heap and removes it.
-func (h *Heap) Pop() interface{} {
+func (h *Heap) Pop() any {
 	return heap.Pop(&h.data)
 }
 
 // Get returns the requested item, exists, error.
-func (h *Heap) Get(obj interface{}) (item interface{}) {
+func (h *Heap) Get(obj any) (item any) {
 	key := h.data.keyFunc(obj)
 	return h.GetByKey(key)
 }
 
 // GetByKey returns the requested item, or sets exists=false.
-func (h *Heap) GetByKey(key string) interface{} {
+func (h *Heap) GetByKey(key string) any {
 	item, exists := h.data.items[key]
 	if !exists {
 		return nil
@@ -170,8 +170,8 @@ func (h *Heap) Len() int {
 }
 
 // List returns a list of all the items.
-func (h *Heap) List() []interface{} {
-	list := make([]interface{}, 0, h.Len())
+func (h *Heap) List() []any {
+	list := make([]any, 0, h.Len())
 	for _, item := range h.data.items {
 		list = append(list, item.obj)
 	}

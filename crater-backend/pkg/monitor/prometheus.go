@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	ApiURL = "YOUR_PROMETHEUS_API_URL"
+	PrometheusAPI = "YOUR_PROMETHEUS_API_URL"
 )
 
 type PodUtil struct {
@@ -65,9 +65,9 @@ type PrometheusClient struct {
 	v1api  v1.API
 }
 
-func NewPrometheusClient(apiUrl string) *PrometheusClient {
+func NewPrometheusClient(apiURL string) *PrometheusClient {
 	client, err := api.NewClient(api.Config{
-		Address: apiUrl,
+		Address: apiURL,
 	})
 	v1api := v1.NewAPI(client)
 	if err != nil {
@@ -79,7 +79,7 @@ func NewPrometheusClient(apiUrl string) *PrometheusClient {
 	}
 }
 
-func (p *PrometheusClient) QueryPodUtilMetric(namespace string, podname string) (PodUtil, error) {
+func (p *PrometheusClient) QueryPodUtilMetric(namespace, podname string) (PodUtil, error) {
 
 	podUtil := PodUtil{}
 	var err error

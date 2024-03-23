@@ -20,10 +20,10 @@ type RecommendDLJobMgr struct {
 	jobclient   *crclient.RecommendDLJobController
 }
 
-func NewRecommendDLJobMgr(userSvc usersvc.DBService, client client.Client) *RecommendDLJobMgr {
+func NewRecommendDLJobMgr(userSvc usersvc.DBService, crClient client.Client) *RecommendDLJobMgr {
 	return &RecommendDLJobMgr{
 		userService: userSvc,
-		jobclient:   &crclient.RecommendDLJobController{Client: client},
+		jobclient:   &crclient.RecommendDLJobController{Client: crClient},
 	}
 }
 
@@ -245,7 +245,7 @@ func (mgr *RecommendDLJobMgr) AnalyzeResourceUsage(c *gin.Context) {
 		req.EmbeddingTableCount = 0
 	}
 	analyzeResp := &payload.ResourceAnalyzeWebhookResponse{}
-	if err := util.PostJson(c, "http://***REMOVED***:30500", "/api/v1/task/analyze/end2end", map[string]interface{}{
+	if err := util.PostJson(c, "http://***REMOVED***:30500", "/api/v1/task/analyze/end2end", map[string]any{
 		"embedding_table_count": req.EmbeddingTableCount,
 		"embedding_dim_total":   req.EmbeddingDimTotal,
 		"embedding_size_total":  req.EmbeddingSizeTotal / 1e4,

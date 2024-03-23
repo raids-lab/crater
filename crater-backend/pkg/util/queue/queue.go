@@ -24,19 +24,19 @@ import (
 
 // lessFunc is a function that receives two items and returns true if the first
 // item should be placed before the second one when the list is sorted.
-type lessFunc func(a, b interface{}) bool
+type lessFunc func(a, b any) bool
 
 // KeyFunc is a function type to get the key from an object.
-type keyFunc func(obj interface{}) string
+type keyFunc func(obj any) string
 
 type queueItem struct {
-	obj   interface{}
+	obj   any
 	index int
 }
 
 type itemKeyValue struct {
 	key string
-	obj interface{}
+	obj any
 }
 
 // data is an internal struct that implements the standard heap interface
@@ -81,7 +81,7 @@ func (h *data) Len() int {
 }
 
 // Push is supposed to be called by heap.Push only.
-func (h *data) push(kv interface{}) {
+func (h *data) push(kv any) {
 	keyValue := kv.(*itemKeyValue)
 	h.items[keyValue.key] = &queueItem{
 		obj:   keyValue.obj,
@@ -91,7 +91,7 @@ func (h *data) push(kv interface{}) {
 }
 
 // Pop is supposed to be called by heap.Pop only.
-func (h *data) pop() interface{} {
+func (h *data) pop() any {
 	key := h.keys[len(h.keys)-1]
 	h.keys = h.keys[:len(h.keys)-1]
 	item, ok := h.items[key]
@@ -104,7 +104,7 @@ func (h *data) pop() interface{} {
 }
 
 // Pop is supposed to be called by heap.Pop only.
-func (h *data) top() interface{} {
+func (h *data) top() any {
 	key := h.keys[len(h.keys)-1]
 	h.keys = h.keys[:len(h.keys)-1]
 	item, ok := h.items[key]
@@ -115,7 +115,7 @@ func (h *data) top() interface{} {
 	return item.obj
 }
 
-func (h *data) delete(key string) interface{} {
+func (h *data) delete(key string) any {
 	item, ok := h.items[key]
 	if !ok {
 		return nil
@@ -140,7 +140,7 @@ type Queue struct {
 
 // PushOrUpdate inserts an item to the queue.
 // The item will be updated if it already exists.
-func (q *Queue) PushOrUpdate(obj interface{}) {
+func (q *Queue) PushOrUpdate(obj any) {
 	key := q.data.keyFunc(obj)
 	if _, exists := q.data.items[key]; exists {
 		q.data.items[key].obj = obj
@@ -151,7 +151,7 @@ func (q *Queue) PushOrUpdate(obj interface{}) {
 
 // PushIfNotPresent inserts an item to the queue. If an item with
 // the key is present in the map, no changes is made to the item.
-func (q *Queue) PushIfNotPresent(obj interface{}) (added bool) {
+func (q *Queue) PushIfNotPresent(obj any) (added bool) {
 	key := q.keyFunc(obj)
 	if _, exists := q.items[key]; exists {
 		return false
@@ -162,34 +162,33 @@ func (q *Queue) PushIfNotPresent(obj interface{}) (added bool) {
 }
 
 // DeleteByKey removes an item by key
-func (q *Queue) DeleteByKey(key string) interface{} {
+func (q *Queue) DeleteByKey(key string) any {
 	return q.delete(key)
 }
 
 // Delete removes an item by key
-func (q *Queue) Delete(obj interface{}) interface{} {
+func (q *Queue) Delete(obj any) any {
 	key := q.keyFunc(obj)
 	return q.delete(key)
 }
 
 // Pop returns the head of the heap and removes it.
-func (q *Queue) Pop() interface{} {
+func (q *Queue) Pop() any {
 	return q.pop()
 }
 
-// 
-func (q *Queue) Top() interface{} {
+func (q *Queue) Top() any {
 	return q.top()
 }
 
 // Get returns the requested item, exists, error.
-func (q *Queue) Get(obj interface{}) (item interface{}) {
+func (q *Queue) Get(obj any) (item any) {
 	key := q.keyFunc(obj)
 	return q.GetByKey(key)
 }
 
 // GetByKey returns the requested item, or sets exists=false.
-func (q *Queue) GetByKey(key string) interface{} {
+func (q *Queue) GetByKey(key string) any {
 	item, exists := q.items[key]
 	if !exists {
 		return nil
@@ -198,8 +197,8 @@ func (q *Queue) GetByKey(key string) interface{} {
 }
 
 // List returns a list of all the items.
-func (q *Queue) List() []interface{} {
-	list := make([]interface{}, 0, q.Len())
+func (q *Queue) List() []any {
+	list := make([]any, 0, q.Len())
 	for _, key := range q.keys {
 		list = append(list, q.items[key].obj)
 	}

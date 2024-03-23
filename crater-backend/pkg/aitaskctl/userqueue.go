@@ -9,7 +9,7 @@ import (
 
 // 每个用户自己的作业队列排序
 type queueBase struct {
-	queue.Queue // lessFunc func(a, b interface{}) bool
+	queue.Queue // lessFunc func(a, b any) bool
 }
 
 type userQueue struct {
@@ -32,13 +32,13 @@ func NewUserQueue(username string) *userQueue {
 }
 
 // 默认key函数是taskID
-func keyFunc(obj interface{}) string {
+func keyFunc(obj any) string {
 	t := obj.(*models.AITask)
 	return strconv.FormatUint(uint64(t.ID), 10)
 }
 
 // 按照提交时间顺序排队
-func fifoOrdering(a, b interface{}) bool {
+func fifoOrdering(a, b any) bool {
 	tA := a.(*models.AITask)
 	tB := b.(*models.AITask)
 	return tA.CreatedAt.After(tB.CreatedAt)
