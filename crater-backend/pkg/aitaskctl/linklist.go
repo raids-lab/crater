@@ -25,6 +25,8 @@ func (dst *LinkList) InsertBefore(src *LinkList) {
 }
 
 // Cut src out of LinkList
+//
+//nolint:stylecheck // This is a method of LinkList
 func (src *LinkList) CutOut() {
 	prev := src.Prev
 	if prev != nil {
@@ -94,7 +96,7 @@ func (e *ExecuteEngine) SubmitTask(attr *TaskAttr) (uniqueID int32) {
 }
 
 // Adjust srcID task before dstID task
-func (e *ExecuteEngine) AdjustTask(srcID int32, dstID int32) {
+func (e *ExecuteEngine) AdjustTask(srcID, dstID int32) {
 	// find internal task
 	srcTask := e.ID2Task[srcID]
 	dstTask := e.ID2Task[dstID]
