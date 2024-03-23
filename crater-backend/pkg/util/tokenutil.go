@@ -55,9 +55,9 @@ func CreateRefreshToken(user *models.User, secret string, expiry int) (refreshTo
 	return rt, err
 }
 
-func CheckAndGetUser(requestToken string, secret string) (models.User, error) {
+func CheckAndGetUser(requestToken, secret string) (models.User, error) {
 	claims := Claims{}
-	_, err := jwt.ParseWithClaims(requestToken, &claims, func(token *jwt.Token) (any, error) {
+	_, err := jwt.ParseWithClaims(requestToken, &claims, func(_ *jwt.Token) (any, error) {
 		return []byte(secret), nil
 	})
 	return models.User{

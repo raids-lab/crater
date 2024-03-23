@@ -129,7 +129,6 @@ func (h *data) delete(key string) any {
 
 	delete(h.items, key)
 	return item.obj
-
 }
 
 // Queue is a producer/consumer queue that implements a queue data structure.

@@ -1,7 +1,7 @@
 apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
 metadata:
-  name: gpu-gauranteed
+  name: gpu-guaranteed
 value: 1000000
 globalDefault: false
 description: "Used for high priority gpu pod"

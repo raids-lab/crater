@@ -35,7 +35,8 @@ func IsFailed(status aijobapi.JobStatus) bool {
 }
 
 // UpdateJobConditions adds to the jobStatus a new condition if needed, with the conditionType, reason, and message
-func UpdateJobConditionsAndStatus(jobStatus *aijobapi.JobStatus, phase aijobapi.JobPhase, conditionType aijobapi.JobConditionType, reason, message string) error {
+func UpdateJobConditionsAndStatus(jobStatus *aijobapi.JobStatus, phase aijobapi.JobPhase,
+	conditionType aijobapi.JobConditionType, reason, message string) error {
 	condition := newCondition(conditionType, reason, message)
 	setCondition(jobStatus, condition)
 	jobStatus.Phase = phase
@@ -76,6 +77,8 @@ func getCondition(status aijobapi.JobStatus, condType aijobapi.JobConditionType)
 // setCondition updates the job to include the provided condition.
 // If the condition that we are about to add already exists
 // and has the same status and reason then we are not going to update.
+//
+//nolint:gocritic // TODO: refactor this function
 func setCondition(status *aijobapi.JobStatus, condition aijobapi.JobCondition) {
 	// Do nothing if JobStatus have failed condition
 	if IsFailed(*status) {
@@ -104,13 +107,6 @@ func setCondition(status *aijobapi.JobStatus, condition aijobapi.JobCondition) {
 func filterOutCondition(conditions []aijobapi.JobCondition, condType aijobapi.JobConditionType) []aijobapi.JobCondition {
 	var newConditions []aijobapi.JobCondition
 	for _, c := range conditions {
-		// if condType == aijobapi.JobRestarting && c.Type == aijobapi.JobRunning{
-		// 	continue
-		// }
-		// if condType == aijobapi.JobRunning && c.Type == aijobapi.JobRestarting {
-		// 	continue
-		// }
-
 		if c.Type == condType {
 			continue
 		}

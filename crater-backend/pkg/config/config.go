@@ -29,8 +29,7 @@ type Config struct {
 func NewConfig(configPath string) (*Config, error) {
 	// 设置默认值
 	config := &Config{
-		EnableProfiling: true,
-		// PrometheusAPI:       "http://prometheus-k8s.kubesphere-monitoring-system",
+		EnableProfiling:     true,
 		PrometheusAPI:       "http://***REMOVED***:31110/",
 		ProfilingTimeout:    120, // todo:
 		DBHost:              "mycluster.jupyter",
@@ -45,8 +44,6 @@ func NewConfig(configPath string) (*Config, error) {
 		ProbeAddr:           ":8081",
 		MonitoringPort:      9443,
 	}
-	// data, _ := yaml.Marshal(config)
-	// os.WriteFile("config.yaml", data, 0644)
 	// 读取配置文件
 	if configPath == "" {
 		return config, nil

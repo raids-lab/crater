@@ -36,7 +36,7 @@ func mkHeapObj(name string, val any) testHeapObject {
 	return testHeapObject{name: name, val: val}
 }
 
-func compareInts(val1 any, val2 any) bool {
+func compareInts(val1, val2 any) bool {
 	first := val1.(testHeapObject).val.(int)
 	second := val2.(testHeapObject).val.(int)
 	return first < second
@@ -104,8 +104,8 @@ func TestHeap_PushIfNotPresent(t *testing.T) {
 	_ = h.PushIfNotPresent(mkHeapObj("zab", 30))
 	_ = h.PushIfNotPresent(mkHeapObj("foo", 13)) // This is not added.
 
-	if len := len(h.data.items); len != 4 {
-		t.Errorf("unexpected number of items: %d", len)
+	if length := len(h.data.items); length != 4 {
+		t.Errorf("unexpected number of items: %d", length)
 	}
 	if val := h.data.items["foo"].obj.(testHeapObject).val; val != 10 {
 		t.Errorf("unexpected value: %d", val)
@@ -139,8 +139,8 @@ func TestHeap_PushOrUpdate(t *testing.T) {
 	h.PushOrUpdate(mkHeapObj("foo", 1)) // This behaviors as update.
 	h.PushOrUpdate(mkHeapObj("zab", 8)) // This behaviors as add.
 
-	if len := len(h.data.items); len != 3 {
-		t.Errorf("unexpected number of items: %d", len)
+	if length := len(h.data.items); length != 3 {
+		t.Errorf("unexpected number of items: %d", length)
 	}
 	item := h.Pop()
 	if e, a := 1, item.(testHeapObject).val; a != e {
@@ -169,9 +169,9 @@ func TestHeap_Delete(t *testing.T) {
 	}
 	h.PushOrUpdate(mkHeapObj("zab", 30))
 	h.PushOrUpdate(mkHeapObj("faz", 30))
-	len := h.data.Len()
-	// Delete non-existing item.
-	if h.Delete("non-existent"); len != h.data.Len() {
+	length := h.data.Len()
+	h.Delete("non-existent")
+	if length != h.data.Len() {
 		t.Fatalf("Didn't expect any item removal")
 	}
 	// Delete tail.
@@ -276,8 +276,10 @@ func TestQueue_List(t *testing.T) {
 	}
 	for _, obj := range list {
 		heapObj := obj.(testHeapObject)
+		//nolint:gocritic // TODO: what is this?
 		// v, ok := items[heapObj.name]
 		t.Logf("%v:%v\n", heapObj.name, heapObj.val)
+		//nolint:gocritic // TODO: what is this?
 		// if !ok || v != heapObj.val {
 		// 	t.Errorf("unexpected item in the list: %v", heapObj)
 		// }

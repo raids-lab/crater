@@ -32,6 +32,10 @@ type TaskController struct {
 	profiler *profiler.Profiler
 }
 
+const (
+	scheduleInterval = 5 * time.Second
+)
+
 // NewTaskController returns a new *TaskController
 func NewTaskController(crClient client.Client, cs kubernetes.Interface, statusChan <-chan util.JobStatusChan) *TaskController {
 	return &TaskController{
@@ -51,7 +55,6 @@ func (c *TaskController) SetProfiler(srcProfiler *profiler.Profiler) {
 
 // Init init taskQueue And quotaInfos
 func (c *TaskController) Init() error {
-
 	// init quotas
 	quotas, err := c.quotaDB.ListAllQuotas()
 	if err != nil {
@@ -97,7 +100,7 @@ func (c *TaskController) Start(ctx context.Context) error {
 	// 3. 接收task变更信息
 	// go c.watchTaskUpdate(ctx)
 	// 4. schedule线程
-	go wait.UntilWithContext(ctx, c.schedule, time.Second*5)
+	go wait.UntilWithContext(ctx, c.schedule, scheduleInterval)
 	return nil
 }
 
@@ -198,7 +201,7 @@ func (c *TaskController) TaskUpdated(event util.TaskUpdateChan) {
 // 	}
 // }
 
-func (c *TaskController) updateTaskStatus(taskID string, status string, reason string) (*models.AITask, error) {
+func (c *TaskController) updateTaskStatus(taskID, status, reason string) (*models.AITask, error) {
 	// convert taskID to uint
 	tid, _ := strconv.ParseUint(taskID, 10, 64)
 
@@ -217,8 +220,9 @@ func (c *TaskController) updateTaskStatus(taskID string, status string, reason s
 }
 
 // schedule 简单功能：从用户队列中
-func (c *TaskController) schedule(ctx context.Context) {
-	// log := ctrl.LoggerFrom(ctx)
+//
+//nolint:gocyclo // TODO: figure out a better way to handle this
+func (c *TaskController) schedule(_ context.Context) {
 	// 等待调度的队列
 	candiates := make([]*models.AITask, 0)
 
@@ -242,7 +246,7 @@ func (c *TaskController) schedule(ctx context.Context) {
 			} else {
 				logrus.Infof("task quota exceed, user %v task %v taskid %v, request:%v, used:%v, hard:%v",
 					task.UserName, task.TaskName, task.ID, task.ResourceRequest, quotaCopy.HardUsed, quotaCopy.Hard)
-				// break // bug: 如果先检查资源多的，可能后面的都调度不了？？
+				// bug: 如果先检查资源多的，可能后面的都调度不了？？
 			}
 		}
 	}
@@ -284,6 +288,7 @@ func (c *TaskController) schedule(ctx context.Context) {
 		if task.ProfileStatus == models.Profiling || task.ProfileStatus == models.ProfileQueued {
 			continue
 		} else if task.ProfileStatus == models.ProfileFailed {
+			//nolint:gocritic // TODO: figure out a better way to handle this
 			// c.taskDB.UpdateStatus(task.ID, models.TaskFailedStatus, "task profile failed")
 			c.taskQueue.DeleteTask(task)
 			continue
@@ -291,13 +296,11 @@ func (c *TaskController) schedule(ctx context.Context) {
 		// submit AIJob
 		err = c.admitTask(task)
 		if err != nil {
-			logrus.Errorf("create job from task failed, err: %v", err)
+			logrus.Errorf("create job from task: %v", err)
 		} else {
 			logrus.Infof("create job from task success, taskID: %v", task.ID)
 		}
-
 	}
-
 }
 
 // admitTask 创建对应的aijob到集群中，更新task状态，更新quota

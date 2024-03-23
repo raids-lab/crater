@@ -95,7 +95,6 @@ func (mgr *AITaskMgr) Create(c *gin.Context) {
 
 //nolint:dupl // TODO: refactor aitask and jupyter handlers
 func (mgr *AITaskMgr) List(c *gin.Context) {
-	// log.Infof("Task List, url: %s", c.Request.URL)
 	var req payload.ListTaskReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate list parameters failed, err %v", err), resputil.NotSpecified)
@@ -111,7 +110,6 @@ func (mgr *AITaskMgr) List(c *gin.Context) {
 	resp := payload.ListTaskResp{
 		Rows: taskModels,
 	}
-	// log.Infof("list task success, taskNum: %d", len(resp.Tasks))
 	resputil.Success(c, resp)
 }
 
@@ -238,40 +236,18 @@ func (mgr *AITaskMgr) GetQuota(c *gin.Context) {
 		HardUsed: quotaInfo.HardUsed,
 		SoftUsed: quotaInfo.SoftUsed,
 	}
-	// log.Infof("get quota success, user: %v", username.(string))
 	resputil.Success(c, resp)
 }
 
 func (mgr *AITaskMgr) GetTaskStats(c *gin.Context) {
-	// log.Infof("Task Count Statistic, url: %s", c.Request.URL)
 	userContext, _ := util.GetUserFromGinContext(c)
 	taskCountList, err := mgr.taskService.GetUserTaskStatusCount(userContext.UserName)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task count statistic failed, err %v", err), resputil.NotSpecified)
 		return
 	}
-	// var respCnt payload.AITaskCountStatistic
-	// for _, taskCount := range taskCountList {
-	// 	switch taskCount.Status {
-	// 	case models.TaskQueueingStatus:
-	// 		respCnt.Queueing += taskCount.Count
-	// 	case models.TaskRunningStatus:
-	// 		respCnt.Running += taskCount.Count
-	// 	case models.TaskCreatedStatus:
-	// 		respCnt.Pending += taskCount.Count
-	// 	case models.TaskPendingStatus:
-	// 		respCnt.Pending += taskCount.Count
-	// 	case models.TaskPreemptedStatus:
-	// 		respCnt.Pending += taskCount.Count
-	// 	case models.TaskSucceededStatus:
-	// 		respCnt.Finished += taskCount.Count
-	// 	case models.TaskFailedStatus:
-	// 		respCnt.Finished += taskCount.Count
-	// 	}
-	// }
 	resp := payload.AITaskStatistic{
 		TaskCount: taskCountList,
 	}
-	// log.Infof("list task success, taskNum: %d", len(resp.Tasks))
 	resputil.Success(c, resp)
 }

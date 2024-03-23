@@ -26,7 +26,8 @@ func (c *DataSetClient) ListDataSets(ctx context.Context, namespace string) ([]*
 
 func (c *DataSetClient) GetDataSet(ctx context.Context, name, namespace string) (dataset *recommenddljobapi.DataSet, err error) {
 	dataset = &recommenddljobapi.DataSet{}
-	if err = c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, dataset); err != nil {
+	err = c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, dataset)
+	if err != nil {
 		return nil, err
 	}
 	return

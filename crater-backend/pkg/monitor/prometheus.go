@@ -42,6 +42,7 @@ type PodUtil struct {
 	CPUMemMax      float32 `json:"cpu_mem_max"`
 }
 
+//nolint:gocritic // TODO: remove no linter
 func PodUtilToJSON(podUtil PodUtil) string {
 	jsonBytes, err := json.Marshal(podUtil)
 	if err != nil {

@@ -57,10 +57,9 @@ func (c *ProfilingPodControl) GetTaskIDFromPod(pod *corev1.Pod) (uint, error) {
 }
 
 func (c *ProfilingPodControl) CreateProfilePodFromTask(task *models.AITask) error {
-
 	resourceRequest, err := models.JSONToResourceList(task.ResourceRequest)
 	if err != nil {
-		return fmt.Errorf("resource request is not valid: %v", err)
+		return fmt.Errorf("resource request is not valid: %w", err)
 	}
 	podName := fmt.Sprintf("%s-%d-profiling", task.TaskName, task.ID)
 	podName = strings.ToLower(podName)
@@ -75,7 +74,7 @@ func (c *ProfilingPodControl) CreateProfilePodFromTask(task *models.AITask) erro
 
 	volumes, volumeMounts, err := GenVolumeAndMountsFromAITask(task)
 	if err != nil {
-		return fmt.Errorf("gen volumes and mounts failed: %v", err)
+		return fmt.Errorf("gen volumes and mounts: %w", err)
 	}
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -119,7 +118,7 @@ func (c *ProfilingPodControl) CreateProfilePodFromTask(task *models.AITask) erro
 	}
 	err = c.Create(context.Background(), pod)
 	if err != nil {
-		return fmt.Errorf("create pod %s failed: %v", task.TaskName, err)
+		return fmt.Errorf("create pod %s failed: %w", task.TaskName, err)
 	}
 	return nil
 }

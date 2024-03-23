@@ -204,7 +204,7 @@ func (c *PVCClient) CreateUserHomePVC(username string) error {
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("create pvc %s failed: %v", pvcname, err)
+		return fmt.Errorf("create pvc %s: %w", pvcname, err)
 	}
 	return nil
 }

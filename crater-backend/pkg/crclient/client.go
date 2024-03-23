@@ -18,7 +18,7 @@ type Control struct {
 }
 
 // todo: add more volumes, args etc..
-func (c *Control) CreateUserNameSpace(username string) error {
+func (c *Control) CreateUserNameSpace(_ string) error {
 	ns := NameSpace
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{

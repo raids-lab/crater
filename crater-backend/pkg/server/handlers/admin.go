@@ -76,7 +76,8 @@ func (mgr *AdminMgr) ListUser(c *gin.Context) {
 	resp := payload.ListUserResp{
 		Users: make([]payload.GetUserResp, 0),
 	}
-	for _, userQuota := range userQuotas {
+	for i := range userQuotas {
+		userQuota := &userQuotas[i]
 		userResp := payload.GetUserResp{
 			UserID:    userQuota.User.ID,
 			UserName:  userQuota.User.UserName,
@@ -212,7 +213,6 @@ func (mgr *AdminMgr) ListTaskByTaskType(c *gin.Context) {
 		Rows:     taskModels,
 		RowCount: totalRows,
 	}
-	// log.Infof("list task success, taskNum: %d", len(resp.Tasks))
 	resputil.Success(c, resp)
 }
 
@@ -223,29 +223,9 @@ func (mgr *AdminMgr) GetTaskStats(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("get task count statistic failed, err %v", err), resputil.NotSpecified)
 		return
 	}
-	// var respCnt payload.AITaskCountStatistic
-	// for _, taskCount := range taskCountList {
-	// 	switch taskCount.Status {
-	// 	case models.TaskQueueingStatus:
-	// 		respCnt.Queueing += taskCount.Count
-	// 	case models.TaskRunningStatus:
-	// 		respCnt.Running += taskCount.Count
-	// 	case models.TaskCreatedStatus:
-	// 		respCnt.Pending += taskCount.Count
-	// 	case models.TaskPendingStatus:
-	// 		respCnt.Pending += taskCount.Count
-	// 	case models.TaskPreemptedStatus:
-	// 		respCnt.Pending += taskCount.Count
-	// 	case models.TaskSucceededStatus:
-	// 		respCnt.Finished += taskCount.Count
-	// 	case models.TaskFailedStatus:
-	// 		respCnt.Finished += taskCount.Count
-	// 	}
-	// }
 	resp := payload.AITaskStatistic{
 		TaskCount: taskCountList,
 	}
-	// log.Infof("list task success, taskNum: %d", len(resp.Tasks))
 	resputil.Success(c, resp)
 }
 

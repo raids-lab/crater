@@ -68,12 +68,6 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		return
 	}
 
-	// user, err := mgr.LoginUsecase.GetByUserName(request.UserName)
-	// if err != nil {
-	// 	resputil.HttpError(c, http.StatusNotFound, "User not found with the given name", resputil.NotSpecified)
-	// 	return
-	// }
-
 	// 查找数据库中是否存在用户
 	// BUG(TODO): 无法区分用户未存在和查询错误（如数据库未连接）
 	user, err := mgr.userService.GetByUserName(request.UserName)

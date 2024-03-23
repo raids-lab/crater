@@ -50,8 +50,6 @@ func NewSignupMgr(taskController *aitaskctl.TaskController, tokenConf *config.To
 }
 
 func (sc *SignupMgr) RegisterRoute(_ *gin.RouterGroup) {
-	// group.POST("/signup", sc.Signup)
-	// group.POST("/migrate", sc.Migrate)
 }
 
 func (sc *SignupMgr) Signup(c *gin.Context) {
@@ -64,7 +62,7 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 	}
 
 	// Bug(TODO): 无法区分用户未存在和查询错误（如数据库未连接）
-	_, err = sc.UserDB.GetByUserName(request.Name) // GetUserByEmail(c, request.Email)
+	_, err = sc.UserDB.GetByUserName(request.Name)
 	if err == nil {
 		resputil.HTTPError(c, http.StatusConflict, "User already exists with the given Name", resputil.NotSpecified)
 		return
