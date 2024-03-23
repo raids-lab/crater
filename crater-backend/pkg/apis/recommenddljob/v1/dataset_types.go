@@ -78,6 +78,7 @@ type DataSetList struct {
 	Items           []DataSet `json:"items"`
 }
 
+//nolint:gochecknoinits // This is required by kubebuilder.
 func init() {
 	SchemeBuilder.Register(&DataSet{}, &DataSetList{})
 }

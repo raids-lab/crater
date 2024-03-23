@@ -42,7 +42,6 @@ import (
 	"github.com/raids-lab/crater/pkg/reconciler"
 	"github.com/raids-lab/crater/pkg/server"
 	"github.com/raids-lab/crater/pkg/util"
-	"github.com/sirupsen/logrus"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
@@ -52,6 +51,7 @@ var (
 	setupLog = ctrl.Log.WithName("setup")
 )
 
+//nolint:gochecknoinits // todo: refactor
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(schedulerpluginsv1alpha1.AddToScheme(scheme))
@@ -80,6 +80,7 @@ func main() {
 	flag.StringVar(&leaderElectionID, "leader-election-id", ***REMOVED***, "The ID for leader election.")
 	flag.StringVar(&gangSchedulerName, "gang-scheduler-name", "", "Now Supporting volcano and scheduler-plugins."+
 		" Note: If you set another scheduler name, the training-operator assumes it's the scheduler-plugins.")
+	//nolint:gomnd // TODO: is this necessary?
 	flag.IntVar(&monitoringPort, "monitoring-port", 9443, "Endpoint port for displaying monitoring metrics. "+
 		"It can be set to \"0\" to disable the metrics serving.")
 	flag.IntVar(&controllerThreads, "controller-threads", 1, "Number of worker threads used by the controller.")
@@ -96,11 +97,12 @@ func main() {
 	flag.Parse()
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	config, err := config.NewConfig(configFile)
+	backendConfig, err := config.NewConfig(configFile)
 	if err != nil {
 		setupLog.Error(err, "unable to init config")
 		os.Exit(1)
 	}
+
 	// 0. create manager
 	cfg := ctrl.GetConfigOrDie()
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
@@ -124,11 +126,13 @@ func main() {
 	}
 
 	// 1. init db
-	if err := db.InitDB(config); err != nil {
+	err = db.InitDB(backendConfig)
+	if err != nil {
 		setupLog.Error(err, "unable to init db")
 		os.Exit(1)
 	}
-	if err := db.InitMigration(); err != nil {
+	err = db.InitMigration()
+	if err != nil {
 		setupLog.Error(err, "unable to init db migration")
 		os.Exit(1)
 	}
@@ -142,7 +146,8 @@ func main() {
 		clientset,
 		jobStatusChan,
 	)
-	if err := taskCtrl.Init(); err != nil {
+	err = taskCtrl.Init()
+	if err != nil {
 		setupLog.Error(err, "unable to set up task controller")
 		os.Exit(1)
 	}
@@ -155,13 +160,18 @@ func main() {
 		jobStatusChan,
 	)
 
-	jobReconciler.SetupWithManager(mgr)
+	err = jobReconciler.SetupWithManager(mgr)
+	if err != nil {
+		setupLog.Error(err, "unable to set up job controller")
+		os.Exit(1)
+	}
 	stopCh := ctrl.SetupSignalHandler()
 
 	// 4. start manager
 	setupLog.Info("starting manager")
 	go func() {
-		if err := mgr.Start(stopCh); err != nil {
+		startErr := mgr.Start(stopCh)
+		if startErr != nil {
 			setupLog.Error(err, "problem running manager")
 			os.Exit(1)
 		}
@@ -171,16 +181,20 @@ func main() {
 	setupLog.Info("cache sync success")
 
 	// profiler config
-	if config.EnableProfiling {
-		prometheusClient := monitor.NewPrometheusClient(config.PrometheusAPI)
-		profiler := profiler.NewProfiler(mgr, prometheusClient, config.ProfilingTimeout)
-		taskCtrl.SetProfiler(profiler)
+	if backendConfig.EnableProfiling {
+		prometheusClient := monitor.NewPrometheusClient(backendConfig.PrometheusAPI)
+		aijobProfiler := profiler.NewProfiler(mgr, prometheusClient, backendConfig.ProfilingTimeout)
+		taskCtrl.SetProfiler(aijobProfiler)
 		// todo: start profiling
-		profiler.Start(stopCh)
+		aijobProfiler.Start(stopCh)
 		setupLog.Info("enable profiling success")
 	}
 
-	taskCtrl.Start(stopCh)
+	err = taskCtrl.Start(stopCh)
+	if err != nil {
+		setupLog.Error(err, "unable to start task controller")
+		os.Exit(1)
+	}
 
 	// 5. start server
 	setupLog.Info("starting server")
@@ -202,16 +216,4 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
-
-}
-
-func init() {
-	logrus.SetFormatter(&logrus.TextFormatter{
-		TimestampFormat:           "2006-01-02 15:04:05",
-		ForceColors:               true,
-		EnvironmentOverrideColors: true,
-		FullTimestamp:             true,
-		// DisableLevelTruncation:    true,
-	})
-	logrus.SetReportCaller(true)
 }

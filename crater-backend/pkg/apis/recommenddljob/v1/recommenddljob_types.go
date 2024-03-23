@@ -167,6 +167,7 @@ type RecommendDLJobList struct {
 	Items           []RecommendDLJob `json:"items"`
 }
 
+//nolint:gochecknoinits // This is required by kubebuilder.
 func init() {
 	SchemeBuilder.Register(&RecommendDLJob{}, &RecommendDLJobList{})
 }

@@ -10,11 +10,11 @@ import (
 	"github.com/raids-lab/crater/pkg/crclient"
 	tasksvc "github.com/raids-lab/crater/pkg/db/task"
 	usersvc "github.com/raids-lab/crater/pkg/db/user"
+	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
 	payload "github.com/raids-lab/crater/pkg/server/payload"
 	resputil "github.com/raids-lab/crater/pkg/server/response"
 	"github.com/raids-lab/crater/pkg/util"
-	log "github.com/sirupsen/logrus"
 )
 
 type JupyterMgr struct {
@@ -52,11 +52,11 @@ func (mgr *JupyterMgr) NotifyTaskUpdate(taskID uint, userName string, op util.Ta
 }
 
 func (mgr *JupyterMgr) Create(c *gin.Context) {
-	log.Infof("Task Create, url: %s", c.Request.URL)
+	logutils.Log.Infof("Task Create, url: %s", c.Request.URL)
 	var req payload.CreateJupyterReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
-		log.Error(msg)
+		logutils.Log.Error(msg)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
@@ -95,7 +95,7 @@ func (mgr *JupyterMgr) Create(c *gin.Context) {
 	}
 	mgr.NotifyTaskUpdate(taskModel.ID, taskModel.UserName, util.CreateTask)
 
-	log.Infof("create task success, taskID: %d", taskModel.ID)
+	logutils.Log.Infof("create task success, taskID: %d", taskModel.ID)
 	resp := payload.CreateTaskResp{
 		TaskID: taskModel.ID,
 	}
@@ -122,7 +122,7 @@ func (mgr *JupyterMgr) List(c *gin.Context) {
 }
 
 func (mgr *JupyterMgr) GetToken(c *gin.Context) {
-	log.Infof("Task Token Get, url: %s", c.Request.URL)
+	logutils.Log.Infof("Task Token Get, url: %s", c.Request.URL)
 	var req payload.GetTaskReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate get parameters failed, err %v", err), resputil.NotSpecified)
@@ -139,7 +139,7 @@ func (mgr *JupyterMgr) GetToken(c *gin.Context) {
 			Port:  0,
 			Token: "",
 		}
-		log.Infof("task token not ready, taskID: %d", req.TaskID)
+		logutils.Log.Infof("task token not ready, taskID: %d", req.TaskID)
 		resputil.Success(c, resp)
 		return
 	}
@@ -148,7 +148,7 @@ func (mgr *JupyterMgr) GetToken(c *gin.Context) {
 			Port:  taskModel.NodePort,
 			Token: taskModel.Token,
 		}
-		log.Infof("get task token success, taskID: %d", req.TaskID)
+		logutils.Log.Infof("get task token success, taskID: %d", req.TaskID)
 		resputil.Success(c, resp)
 		return
 	}
@@ -198,13 +198,13 @@ func (mgr *JupyterMgr) GetToken(c *gin.Context) {
 		Port:  port,
 		Token: token,
 	}
-	log.Infof("get task token success, taskID: %d", req.TaskID)
+	logutils.Log.Infof("get task token success, taskID: %d", req.TaskID)
 	resputil.Success(c, resp)
 }
 
 //nolint:dupl // TODO: refactor
 func (mgr *JupyterMgr) Delete(c *gin.Context) {
-	log.Infof("Task Delete, url: %s", c.Request.URL)
+	logutils.Log.Infof("Task Delete, url: %s", c.Request.URL)
 	var req payload.DeleteTaskReq
 	var err error
 	if err = c.ShouldBindJSON(&req); err != nil {
@@ -229,7 +229,7 @@ func (mgr *JupyterMgr) Delete(c *gin.Context) {
 		return
 	}
 
-	log.Infof("delete task success, taskID: %d", req.TaskID)
+	logutils.Log.Infof("delete task success, taskID: %d", req.TaskID)
 	resputil.Success(c, "")
 }
 

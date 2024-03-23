@@ -151,6 +151,7 @@ type AIJobList struct {
 	Items           []AIJob `json:"items"`
 }
 
+//nolint:gochecknoinits // This is required by kubebuilder.
 func init() {
 	SchemeBuilder.Register(&AIJob{}, &AIJobList{})
 }

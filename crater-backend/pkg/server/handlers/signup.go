@@ -9,10 +9,10 @@ import (
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/db/quota"
 	"github.com/raids-lab/crater/pkg/db/user"
+	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
 	resputil "github.com/raids-lab/crater/pkg/server/response"
 	"github.com/raids-lab/crater/pkg/util"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -112,7 +112,7 @@ func (sc *SignupMgr) Signup(c *gin.Context) {
 	}
 	err = sc.QuotaDB.Create(&userQuota)
 	if err != nil {
-		logrus.Infof("quota create failed: %v", err)
+		logutils.Log.Infof("quota create failed: %v", err)
 	}
 	// 通知 TaskController 有新 Quota
 	sc.taskController.AddUser(userQuota.UserName, &userQuota)

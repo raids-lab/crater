@@ -9,10 +9,10 @@ import (
 	quotasvc "github.com/raids-lab/crater/pkg/db/quota"
 	tasksvc "github.com/raids-lab/crater/pkg/db/task"
 	usersvc "github.com/raids-lab/crater/pkg/db/user"
+	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
 	payload "github.com/raids-lab/crater/pkg/server/payload"
 	resputil "github.com/raids-lab/crater/pkg/server/response"
-	log "github.com/sirupsen/logrus"
 )
 
 type AdminMgr struct {
@@ -53,7 +53,7 @@ func NewAdminMgr(taskController *aitaskctl.TaskController, nodeClient *crclient.
 }
 
 func (mgr *AdminMgr) DeleteUser(c *gin.Context) {
-	log.Infof("User Delete, url: %s", c.Request.URL)
+	logutils.Log.Infof("User Delete, url: %s", c.Request.URL)
 	name := c.Param("name")
 	err := mgr.userService.DeleteByUserName(name)
 	if err != nil {
@@ -61,12 +61,14 @@ func (mgr *AdminMgr) DeleteUser(c *gin.Context) {
 		return
 	}
 	// TODO: delete resource
-	log.Infof("delete user success, username: %s", name)
+	logutils.Log.Infof("delete user success, username: %s", name)
 	resputil.Success(c, "")
 }
 
 func (mgr *AdminMgr) ListUser(c *gin.Context) {
-	log.Infof("User List, url: %s", c.Request.URL)
+	logutils.Log.WithFields(logutils.Fields{
+		"url": c.Request.URL,
+	}).Info("User List")
 	userQuotas, err := mgr.userService.ListAllUserQuotas()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("list user failed, err %v", err), resputil.NotSpecified)
@@ -92,12 +94,12 @@ func (mgr *AdminMgr) ListUser(c *gin.Context) {
 		resp.Users = append(resp.Users, userResp)
 	}
 
-	log.Infof("list users success, taskNum: %d", len(resp.Users))
+	logutils.Log.Infof("list users success, taskNum: %d", len(resp.Users))
 	resputil.Success(c, resp)
 }
 
 func (mgr *AdminMgr) ListQuota(c *gin.Context) {
-	log.Infof("Quota List, url: %s", c.Request.URL)
+	logutils.Log.Infof("Quota List, url: %s", c.Request.URL)
 	userQuotas := mgr.taskController.ListQuotaInfoSnapshot()
 
 	resp := payload.ListUserQuotaResp{
@@ -114,7 +116,7 @@ func (mgr *AdminMgr) ListQuota(c *gin.Context) {
 		resp.Quotas = append(resp.Quotas, r)
 	}
 
-	log.Infof("list users success, taskNum: %d", len(resp.Quotas))
+	logutils.Log.Infof("list users success, taskNum: %d", len(resp.Quotas))
 	resputil.Success(c, resp)
 }
 
@@ -135,12 +137,12 @@ func (mgr *AdminMgr) GetUser(c *gin.Context) {
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 	}
-	log.Infof("get user success, user: %s", resp.UserName)
+	logutils.Log.Infof("get user success, user: %s", resp.UserName)
 	resputil.Success(c, resp)
 }
 
 func (mgr *AdminMgr) UpdateQuota(c *gin.Context) {
-	log.Infof("Quota Update, url: %s", c.Request.URL)
+	logutils.Log.Infof("Quota Update, url: %s", c.Request.URL)
 	var req payload.UpdateQuotaReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate update parameters failed, err %v", err), resputil.NotSpecified)
@@ -169,12 +171,12 @@ func (mgr *AdminMgr) UpdateQuota(c *gin.Context) {
 	// notify taskController to update quota
 	mgr.taskController.AddOrUpdateQuotaInfo(quota.UserName, quota)
 
-	log.Infof("update quota success, user: %s, quota:%v", name, req.HardQuota)
+	logutils.Log.Infof("update quota success, user: %s, quota:%v", name, req.HardQuota)
 	resputil.Success(c, "")
 }
 
 func (mgr *AdminMgr) UpdateRole(c *gin.Context) {
-	log.Infof("Role Update, url: %s", c.Request.URL)
+	logutils.Log.Infof("Role Update, url: %s", c.Request.URL)
 	var req payload.UpdateRoleReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate update parameters failed, err %v", err), resputil.NotSpecified)
@@ -192,12 +194,12 @@ func (mgr *AdminMgr) UpdateRole(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("update user role failed, err %v", err), resputil.NotSpecified)
 		return
 	}
-	log.Infof("update user role success, user: %s, role: %s", name, req.Role)
+	logutils.Log.Infof("update user role success, user: %s, role: %s", name, req.Role)
 	resputil.Success(c, "")
 }
 
 func (mgr *AdminMgr) ListTaskByTaskType(c *gin.Context) {
-	log.Infof("Task List, url: %s", c.Request.URL)
+	logutils.Log.Infof("Task List, url: %s", c.Request.URL)
 	var req payload.ListTaskByTypeReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate list parameters failed, err %v", err), resputil.NotSpecified)
@@ -217,7 +219,7 @@ func (mgr *AdminMgr) ListTaskByTaskType(c *gin.Context) {
 }
 
 func (mgr *AdminMgr) GetTaskStats(c *gin.Context) {
-	log.Infof("Task Count Statistic, url: %s", c.Request.URL)
+	logutils.Log.Infof("Task Count Statistic, url: %s", c.Request.URL)
 	taskCountList, err := mgr.taskServcie.GetTaskStatusCount()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task count statistic failed, err %v", err), resputil.NotSpecified)
@@ -230,7 +232,7 @@ func (mgr *AdminMgr) GetTaskStats(c *gin.Context) {
 }
 
 func (mgr *AdminMgr) ListNode(c *gin.Context) {
-	log.Infof("Node List, url: %s", c.Request.URL)
+	logutils.Log.Infof("Node List, url: %s", c.Request.URL)
 	// get all k8s nodes by k8s client
 	nodes, err := mgr.nodeClient.ListNodes()
 	if err != nil {

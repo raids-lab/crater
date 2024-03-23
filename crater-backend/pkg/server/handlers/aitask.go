@@ -9,11 +9,11 @@ import (
 	"github.com/raids-lab/crater/pkg/crclient"
 	tasksvc "github.com/raids-lab/crater/pkg/db/task"
 	usersvc "github.com/raids-lab/crater/pkg/db/user"
+	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
 	payload "github.com/raids-lab/crater/pkg/server/payload"
 	resputil "github.com/raids-lab/crater/pkg/server/response"
 	"github.com/raids-lab/crater/pkg/util"
-	log "github.com/sirupsen/logrus"
 )
 
 type AITaskMgr struct {
@@ -55,11 +55,11 @@ func (mgr *AITaskMgr) NotifyTaskUpdate(taskID uint, userName string, op util.Tas
 }
 
 func (mgr *AITaskMgr) Create(c *gin.Context) {
-	log.Infof("Task Create, url: %s", c.Request.URL)
+	logutils.Log.Infof("Task Create, url: %s", c.Request.URL)
 	var req payload.CreateTaskReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
-		log.Error(msg)
+		logutils.Log.Error(msg)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
@@ -86,7 +86,7 @@ func (mgr *AITaskMgr) Create(c *gin.Context) {
 	}
 	mgr.NotifyTaskUpdate(taskModel.ID, taskModel.UserName, util.CreateTask)
 
-	log.Infof("create task success, taskID: %d", taskModel.ID)
+	logutils.Log.Infof("create task success, taskID: %d", taskModel.ID)
 	resp := payload.CreateTaskResp{
 		TaskID: taskModel.ID,
 	}
@@ -114,7 +114,7 @@ func (mgr *AITaskMgr) List(c *gin.Context) {
 }
 
 func (mgr *AITaskMgr) Get(c *gin.Context) {
-	log.Infof("Task Get, url: %s", c.Request.URL)
+	logutils.Log.Infof("Task Get, url: %s", c.Request.URL)
 	var req payload.GetTaskReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate get parameters failed, err %v", err), resputil.NotSpecified)
@@ -129,12 +129,12 @@ func (mgr *AITaskMgr) Get(c *gin.Context) {
 	resp := payload.GetTaskResp{
 		AITask: *taskModel,
 	}
-	log.Infof("get task success, taskID: %d", req.TaskID)
+	logutils.Log.Infof("get task success, taskID: %d", req.TaskID)
 	resputil.Success(c, resp)
 }
 
 func (mgr *AITaskMgr) GetLogs(c *gin.Context) {
-	log.Infof("Task Get, url: %s", c.Request.URL)
+	logutils.Log.Infof("Task Get, url: %s", c.Request.URL)
 	var req payload.GetTaskReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate get parameters failed, err %v", err), resputil.NotSpecified)
@@ -165,13 +165,13 @@ func (mgr *AITaskMgr) GetLogs(c *gin.Context) {
 	resp := payload.GetTaskLogResp{
 		Logs: logs,
 	}
-	log.Infof("get task success, taskID: %d", req.TaskID)
+	logutils.Log.Infof("get task success, taskID: %d", req.TaskID)
 	resputil.Success(c, resp)
 }
 
 //nolint:dupl // TODO: refactor aitask and jupyter handlers
 func (mgr *AITaskMgr) Delete(c *gin.Context) {
-	log.Infof("Task Delete, url: %s", c.Request.URL)
+	logutils.Log.Infof("Task Delete, url: %s", c.Request.URL)
 	var req payload.DeleteTaskReq
 	var err error
 	if err = c.ShouldBindJSON(&req); err != nil {
@@ -196,12 +196,12 @@ func (mgr *AITaskMgr) Delete(c *gin.Context) {
 		return
 	}
 
-	log.Infof("delete task success, taskID: %d", req.TaskID)
+	logutils.Log.Infof("delete task success, taskID: %d", req.TaskID)
 	resputil.Success(c, "")
 }
 
 func (mgr *AITaskMgr) UpdateSLO(c *gin.Context) {
-	log.Infof("Task Update, url: %s", c.Request.URL)
+	logutils.Log.Infof("Task Update, url: %s", c.Request.URL)
 	var req payload.UpdateTaskSLOReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate update parameters failed, err %v", err), resputil.NotSpecified)
@@ -220,7 +220,7 @@ func (mgr *AITaskMgr) UpdateSLO(c *gin.Context) {
 		return
 	}
 	mgr.NotifyTaskUpdate(req.TaskID, userContext.UserName, util.UpdateTask)
-	log.Infof("update task success, taskID: %d", req.TaskID)
+	logutils.Log.Infof("update task success, taskID: %d", req.TaskID)
 	resputil.Success(c, "")
 }
 

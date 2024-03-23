@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/raids-lab/crater/pkg/logutils"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -131,7 +131,7 @@ func JSONStringToVolumes(str string) map[string][]DirMount {
 	var volumes map[string][]DirMount
 	err := json.Unmarshal([]byte(str), &volumes)
 	if err != nil {
-		logrus.Errorf("JSONStringToVolumes error: %v", err)
+		logutils.Log.Errorf("JSONStringToVolumes error: %v", err)
 		return nil
 	}
 	return volumes

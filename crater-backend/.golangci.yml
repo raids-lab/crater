@@ -112,7 +112,7 @@ linters:
     - exportloopref
     - funlen
     - gocheckcompilerdirectives
-    # - gochecknoinits
+    - gochecknoinits
     - goconst
     - gocritic
     - gocyclo

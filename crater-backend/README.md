@@ -67,7 +67,7 @@ kubectl version
 # Server Version: version.Info{Major:"1", Minor:"22", GitVersion:"v1.22.1", ...}
 ```
 
-## 2. 开发
+## 2. 项目开发
 
 ### 2.1 系统概况
 
@@ -81,7 +81,33 @@ Crater 目前部署于 [K8s 小集群](https://gitlab.***REMOVED***/raids/resour
 
 为便于开发人员测试，目前将 MySQL 数据库的 3306 端口暴露到集群外的 30306 端口（见 `deploy/mysql/mysql-hack.yaml` ）。
 
-### 2.2 本地开发
+### 2.2 代码风格与 Lint
+
+> - 规范参考：[Go standards and style guidelines](https://docs.gitlab.com/ee/development/go_guide/)
+> - [如何安装 `golangci-lint`](https://golangci-lint.run/welcome/install/#local-installation)
+
+项目使用 `golangci-lint` 工具规范代码格式。安装后，你需要将 `GOPATH` 添加到系统变量中，才可以在命令行中使用 `golangci-lint` 工具。以 Linux 系统为例：
+
+```bash
+# 先查看你的 GOPATH 位置
+go env GOPATH
+# /Users/xxx/go
+
+# 在 .zshrc 或 .bashrc 的最后，加上这样一句话
+export PATH="/Users/xxx/go/bin:$PATH"
+```
+
+之后，在提交前，请在项目根目录运行如下命令，检查代码是否符合规范（有没有好心人教教怎么配 Git Hooks，这样就不用手动了）：
+
+```bash
+golangci-lint run
+```
+
+如果没有看到任何输出，恭喜您！
+
+提交到仓库后，Gitlab CI 将自动运行代码检查。
+
+### 2.3 本地开发
 
 - VSCode：可导入 `.vscode` 文件夹中的 Profile 设置文件
 - JetBrains：[JetBrain configuration](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-backend/-/wikis/JetBrain-configuration)
@@ -107,11 +133,11 @@ go run main.go \
 
 如果您在使用 Windows 系统，上述脚本可能需要修改为适用于 Windows 的版本（等待一位好心人！）
 
-### 2.3 单步调试
+### 2.4 单步调试
 
 Crater Web Backend 已经为 VSCode 配置好了单步调试设置，通过点击 VSCode 左侧的 Run and Debug (Ctrl + Shift + D) 按钮，并点击 `Debug Server` 左侧的 Start Debugging (F5) 按钮，可以启动调试模式。此时，您可以在代码中添加断点，进行单步调试。
 
-### 2.4 如何测试接口
+### 2.5 如何测试接口
 
 完成新功能开发后，可以用 Postman 自测。可以在 Header 中添加 `X-Debug-Username` 指定用户名绕过登录认证，直接测试接口功能。
 
@@ -126,7 +152,6 @@ Crater Web Backend 已经为 VSCode 配置好了单步调试设置，通过点�
 由于调试时前后端不同域，在 `pkg/server/middleware/cors.go` 中，允许了来自 `http://localhost:5173` 的跨域请求。
 
 前端可能会有 `http://localhost:5173`, `http://127.0.0.1:5173` 这两种 URL，视操作系统的不同，前端 Vite 程序可能会引导至二者之一，建议您使用 `http://localhost:5173` 访问前端，避免跨域问题。
-
 
 ## 3. 部署
 
