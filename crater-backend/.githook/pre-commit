@@ -1,0 +1,19 @@
+#!/bin/sh
+
+LINT_CMD="golangci-lint"
+if [ "$(uname)" = "Windows_NT" ]; then
+    LINT_CMD="golangci-lint.exe"
+fi
+
+if ! ($LINT_CMD --version); then
+    echo "No Golangci-lint detected!"
+    exit 1
+fi
+
+if ! ($LINT_CMD run); then
+    echo "Lint fail!"
+    exit 1
+fi
+
+echo "Lint success!"
+exit 0

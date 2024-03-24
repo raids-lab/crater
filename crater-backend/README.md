@@ -81,36 +81,10 @@ Crater 目前部署于 [K8s 小集群](https://gitlab.***REMOVED***/raids/resour
 
 为便于开发人员测试，目前将 MySQL 数据库的 3306 端口暴露到集群外的 30306 端口（见 `deploy/mysql/mysql-hack.yaml` ）。
 
-### 2.2 代码风格与 Lint
+### 2.2 本地开发
 
-> - 规范参考：[Go standards and style guidelines](https://docs.gitlab.com/ee/development/go_guide/)
-> - [如何安装 `golangci-lint`](https://golangci-lint.run/welcome/install/#local-installation)
-
-项目使用 `golangci-lint` 工具规范代码格式。安装后，你需要将 `GOPATH` 添加到系统变量中，才可以在命令行中使用 `golangci-lint` 工具。以 Linux 系统为例：
-
-```bash
-# 先查看你的 GOPATH 位置
-go env GOPATH
-# /Users/xxx/go
-
-# 在 .zshrc 或 .bashrc 的最后，加上这样一句话
-export PATH="/Users/xxx/go/bin:$PATH"
-```
-
-之后，在提交前，请在项目根目录运行如下命令，检查代码是否符合规范（有没有好心人教教怎么配 Git Hooks，这样就不用手动了）：
-
-```bash
-golangci-lint run
-```
-
-如果没有看到任何输出，恭喜您！
-
-提交到仓库后，Gitlab CI 将自动运行代码检查。
-
-### 2.3 本地开发
-
-- VSCode：可导入 `.vscode` 文件夹中的 Profile 设置文件
-- JetBrains：[JetBrain configuration](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-backend/-/wikis/JetBrain-configuration)
+- **VSCode**：可导入 `.vscode` 文件夹中的 Profile 设置
+- **JetBrains**：参考 WGZ 同学写的 [JetBrain configuration](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-backend/-/wikis/JetBrain-configuration)
 
 首先，您需要下载项目所使用的依赖：
 
@@ -124,14 +98,43 @@ go mod download
 #!/bin/bash
 export KUBECONFIG=${PWD}/kubeconfig
 go run main.go \
-    --db-config-file ./debug-dbconf.yaml \
     --config-file ./etc/debug-config.yaml \
-    --metrics-bind-address :8097 \
-    --health-probe-bind-address :8096 \
     --server-port :8099
 ```
 
 如果您在使用 Windows 系统，上述脚本可能需要修改为适用于 Windows 的版本（等待一位好心人！）
+
+### 2.3 代码风格与 Lint
+
+> - 规范参考：[Go standards and style guidelines](https://docs.gitlab.com/ee/development/go_guide/)
+> - [如何安装 `golangci-lint`](https://golangci-lint.run/welcome/install/#local-installation)
+
+项目使用 `golangci-lint` 工具规范代码格式。安装后，你需要将 `GOPATH` 添加到系统变量中，才可以在命令行中使用 `golangci-lint` 工具。以 Linux 系统为例：
+
+```bash
+# 打印 GOPATH 位置
+go env GOPATH
+# /Users/xxx/go
+
+# 在 .zshrc 或 .bashrc 的最后，更新系统变量
+export PATH="/Users/xxx/go/bin:$PATH"
+
+# 测试 `golangci-lint` 是否安装成功
+golangci-lint --version
+# golangci-lint has version 1.57.1 built with go1.22.1 from cd890db2 on 2024-03-20T16:34:34Z
+
+# 运行 Lint
+golangci-lint run
+```
+
+如果您不希望每次都手动运行，您也可以配置 Git Hooks，将位于项目根目录的 `.githook/pre-commit` 脚本复制到 `.git/` 文件夹下，并提供执行权限。以 Linux 系统为例：
+
+```bash
+cp .githook/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+如果没有看到任何输出，恭喜您！提交到仓库后，Gitlab CI 将自动运行代码检查。
 
 ### 2.4 单步调试
 
@@ -191,8 +194,6 @@ git push origin v0.x.x
 ### 3.3 证书过期
 
 ACT 的 HTTPS 证书每 3 个月更新一次，证书更新方法见 Web Frontend 项目。
-
-
 
 ## 4. 项目结构
 
