@@ -1,33 +1,32 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: ai-portal-backend
-  namespace: ai-portal
+  name: crater-web-backend
+  namespace: crater
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ai-portal-backend
-  namespace: ai-portal
+  name: crater-web-backend
+  namespace: crater
   labels:
-    app: ai-portal-backend
+    app: crater-web-backend
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ai-portal-backend
+      app: crater-web-backend
   template:
     metadata:
       labels:
-        app: ai-portal-backend
+        app: crater-web-backend
     spec:
       containers:
-        - name: ai-portal-backend
-          image: container:v1
+        - name: crater-web-backend-container
+          image: ***REMOVED***/crater/web-backend:v0.1.12
           imagePullPolicy: IfNotPresent
           command:
             - /controller
-            # - --db-config-file=/dbconf.yaml
             - --config-file=/etc/config/config.yaml
             - --share-dir-file=/etc/config/share-dir.yaml
             - --server-port=:8088
@@ -40,7 +39,14 @@ spec:
             - name: share-dir-conf
               mountPath: /etc/config/share-dir.yaml
               subPath: share-dir.yaml
-      serviceAccountName: ai-portal-backend
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+      serviceAccountName: crater-web-backend
       volumes:
         - name: backend-conf
           configMap:
@@ -58,22 +64,21 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: ai-portal-backend-svc
-  namespace: ai-portal
+  name: crater-web-backend-svc
+  namespace: crater
 spec:
   selector:
-    app: ai-portal-backend
-  type: NodePort
+    app: crater-web-backend
+  type: ClusterIP
   ports:
     - protocol: TCP
       port: 80
       targetPort: 8088
-      nodePort: 31088
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: ai-portal-backend-cluster-role
+  name: crater-web-backend-cluster-role
 rules:
   - apiGroups:
       - "*"
@@ -121,12 +126,12 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: ai-portal-backend-cluster-role-binding
+  name: crater-web-backend-cluster-role-binding
 subjects:
   - kind: ServiceAccount
-    name: ai-portal-backend
-    namespace: ai-portal
+    name: crater-web-backend
+    namespace: crater
 roleRef:
   kind: ClusterRole
-  name: ai-portal-backend-cluster-role
+  name: crater-web-backend-cluster-role
   apiGroup: rbac.authorization.k8s.io
