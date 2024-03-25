@@ -134,13 +134,11 @@ cp .githook/pre-commit .git/hooks/pre-commit
 chmod +x .git/hooks/pre-commit
 ```
 
-如果没有看到任何输出，恭喜您！
-
-在 Windows 系统下，您可能需要修改  `.githook/pre-commit` 脚本内容，如将脚本中 `golangci-lint` 替换为 `golangci-lint.exe`。（如果您完成了配置，请联系 LYL，更新这部分内容）
+在 Windows 系统下，您可能需要修改  `.githook/pre-commit` 脚本内容，如将脚本中 `golangci-lint` 替换为 `golangci-lint.exe`。（如果您完成了配置，请联系 LYL 补充文档）
 
 提交到仓库后，Gitlab CI 将自动运行代码检查，只允许通过 Lint 的代码合入主分支。
 
-此外，在传递错误信息时：
+此外，在代码中传递错误信息时：
 
 > > [Go standards and style guidelines](https://docs.gitlab.com/ee/development/go_guide/)
 >
@@ -250,6 +248,7 @@ ACT 的 HTTPS 证书每 3 个月更新一次，证书更新方法见 Web Fronten
 * **taskqueue**：维护用户的任务队列，检查什么时候应该调度作业
 * profiler：负责对任务进行profile
 
-## 5. 其他
+## 5. 开发注意事项
 
-- 旧文档位于 `docs/README.md`。
+1. 在编写 Gin API 时，Gin 会先在 JWT 验证中间件先检查 JWT Token 中包含的用户信息，并存入 Context 中。要获取该请求对应的用户信息，可通过 `util.GetUserFromGinContext` 获取
+2. 数据库 CURD 代码通过 Gorm Gen 生成，见 `cmd/gorm_gen` 内文档
