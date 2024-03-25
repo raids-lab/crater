@@ -1,0 +1,20 @@
+apiVersion: "acid.zalan.do/v1"
+kind: postgresql
+metadata:
+  name: postgres-cluster
+  namespace: crater
+spec:
+  dockerImage: ***REMOVED***/crater/spilo-16:3.2-p2
+  teamId: "crater"
+  volume:
+    size: 5Gi
+    storageClass: rook-ceph-block
+  numberOfInstances: 2
+  users:
+    backend: # database owner
+      - superuser
+      - createdb
+  databases:
+    crater: backend # dbname: owner
+  postgresql:
+    version: "16"
