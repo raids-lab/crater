@@ -39,6 +39,7 @@ import (
 	db "github.com/raids-lab/crater/pkg/db/orm"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/profiler"
+	"github.com/raids-lab/crater/pkg/query"
 	"github.com/raids-lab/crater/pkg/reconciler"
 	"github.com/raids-lab/crater/pkg/server"
 	"github.com/raids-lab/crater/pkg/util"
@@ -59,6 +60,7 @@ func init() {
 	utilruntime.Must(recommenddljob.AddToScheme(scheme))
 }
 
+//nolint:gocyclo // todo: remove old mysql init
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
@@ -136,6 +138,14 @@ func main() {
 		setupLog.Error(err, "unable to init db migration")
 		os.Exit(1)
 	}
+
+	err = query.InitDB(backendConfig)
+	if err != nil {
+		setupLog.Error(err, "unable to init query db")
+		os.Exit(1)
+	}
+
+	query.SetDefault(query.DB)
 
 	// 2. init task controller
 	// taskUpdateChan := make(chan util.TaskUpdateChan)

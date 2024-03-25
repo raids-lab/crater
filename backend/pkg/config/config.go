@@ -11,7 +11,7 @@ type Config struct {
 	EnableProfiling  bool   `yaml:"enableProfiling"`
 	PrometheusAPI    string `yaml:"prometheusAPI"`
 	ProfilingTimeout int    `yaml:"profilingTimeout"`
-	// todo: DB Settings
+	// DB Settings
 	DBHost              string `yaml:"dbHost"`
 	DBPort              string `yaml:"dbPort"`
 	DBUser              string `yaml:"dbUser"`
@@ -19,7 +19,7 @@ type Config struct {
 	DBName              string `yaml:"dbName"`
 	DBCharset           string `yaml:"dbCharset"`
 	DBConnectionTimeout int    `yaml:"dbConnTimeout"`
-	// todo: Port Settings
+	// Port Settings
 	ServerAddr     string `yaml:"serverAddr"`
 	MetricsAddr    string `yaml:"metricsAddr"`
 	ProbeAddr      string `yaml:"probeAddr"`
@@ -27,23 +27,7 @@ type Config struct {
 }
 
 func NewConfig(configPath string) (*Config, error) {
-	// 设置默认值
-	config := &Config{
-		EnableProfiling:     true,
-		PrometheusAPI:       "http://***REMOVED***:31110/",
-		ProfilingTimeout:    120, // todo:
-		DBHost:              "mycluster.jupyter",
-		DBPort:              "3306",
-		DBUser:              "root",
-		DBPassword:          "buaak8sportal@2023mysql",
-		DBConnectionTimeout: 10,
-		DBName:              "ai_portal",
-		DBCharset:           "utf8mb4",
-		ServerAddr:          ":8088",
-		MetricsAddr:         ":8080",
-		ProbeAddr:           ":8081",
-		MonitoringPort:      9443,
-	}
+	config := &Config{}
 	// 读取配置文件
 	if configPath == "" {
 		return config, nil
