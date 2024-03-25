@@ -14,30 +14,19 @@ Crater 是一个基于 Kubernetes 的 GPU 集群管理系统，提供了一站�
 
 ### 1.1 安装 Go 和 Kubectl
 
-> 您不需要在本地安装 MiniKube 或 K3s 集群
+> 您不需要在本地安装 MiniKube 或 Kind 集群，我们将使用 ACT 实验室的 GPU 小集群开发
 
-在开始之前，请确保您的开发环境中已安装 Go 和 Kubectl。如果尚未安装，请参考以下步骤：
+在开始之前，请确保您的开发环境中已安装 Go 和 Kubectl。如果尚未安装，请参考官方文档：
 
-- Go: [Download and install](https://go.dev/doc/install)
-- Kubectl: [Install Tools | Kubernetes](https://kubernetes.io/docs/tasks/tools/)
-
-以 Ubuntu 系统为例，使用如下命令安装匹配的版本：
+- Go v1.22.1: [Download and install](https://go.dev/doc/install)
+- Kubectl v1.22.1: [Install Tools | Kubernetes](https://kubernetes.io/docs/tasks/tools/)
 
 ```bash
-# build essential
+# Ubuntu 如果安装 Go 时报错，很可能是缺失 build-essential
 sudo apt-get install build-essential
 
-# install go
-rm -rf /usr/local/go
-wget -qO- https://go.dev/dl/go1.22.1.linux-amd64.tar.gz | sudo tar xz -C /usr/local
-
-# ~/.zshrc
-export PATH=$PATH:/usr/local/go/bin
-export GOPROXY=https://goproxy.cn
-
-# install kubectl
-curl -LO https://dl.k8s.io/release/v1.22.1/bin/linux/amd64/kubectl
-sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+# 设置 Go 中国源，否则无法拉取 Github 的包
+go env -w GOPROXY=https://goproxy.cn,direct
 ```
 
 ### ~~1.2 获取集群访问权限~~
@@ -56,7 +45,7 @@ cp ./${user-xxx.kubeconfig} ~/.kube/config
 
 ### 1.3 环境检查
 
-检查 Go 和 Kubectl 是否安装成功，Kubectl 是否连接集群（如果您未进行 1.2，则 Kubectl 将仅显示 Client 版本，这是预期行为）：
+检查 Go 和 Kubectl 是否安装成功，版本是否与项目推荐配置匹配，Kubectl 是否连接集群（如果您未进行 1.2，则 Kubectl 将仅显示 Client 版本，这是预期行为）：
 
 ```bash
 go version
@@ -79,20 +68,22 @@ Crater 目前部署于 [K8s 小集群](https://gitlab.***REMOVED***/raids/resour
   2. 监控 Pod 生命周期，将 Pod 的状态同步到 AI Job 里，反馈给  Web Backend
 - [AI Job Scheduler](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/aijob-scheduler) ：Crater 的调度层，实现了 Best Effort 作业抢占等机制
 
-为便于开发人员测试，目前将 MySQL 数据库的 3306 端口暴露到集群外的 30306 端口（见 `deploy/mysql/mysql-hack.yaml` ）。
+为便于开发人员测试，目前将 MySQL 数据库的 3306 端口暴露到集群外的 30306 端口（见 `deploy/mysql/mysql-hack.yaml` ），数据库的密码见 `etc/debug-config.yaml`。
 
 ### 2.2 本地开发
 
 - **VSCode**：可导入 `.vscode` 文件夹中的 Profile 设置
-- **JetBrains**：参考 WGZ 同学写的 [JetBrain configuration](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-backend/-/wikis/JetBrain-configuration)
+- **Goland**：[Wikis ｜ JetBrain configuration](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-backend/-/wikis/JetBrain-configuration)
 
-首先，您需要下载项目所使用的依赖：
+配置好 IDE 后，您需要下载项目所使用的依赖：
 
 ```bash
 go mod download
 ```
 
-如果您在使用 Linux 或 MacOS 系统，可使用 `./debug.sh` 脚本，在本地 `8099` 端口运行 Web 后端：
+#### 2.2.1 在命令行窗口运行后端
+
+如果您在使用 Linux 或 MacOS 系统，可使用 `./debug.sh` 脚本，在本地 `8099` 端口手动运行 Web 后端：
 
 ```bash
 #!/bin/bash
@@ -102,14 +93,21 @@ go run main.go \
     --server-port :8099
 ```
 
-如果您在使用 Windows 系统，上述脚本可能需要修改为适用于 Windows 的版本（等待一位好心人！）
+如果您在使用 Windows 系统，请继续阅读。
+
+#### 2.2.2 通过 IDE 运行后端
+
+- 如果您使用 VSCode，可通过 `Run` 选项卡下的 `Run without Debugging` (Ctrl + F5) 启动后端
+- 如果您在使用 Goland，请参考 [Wikis ｜ JetBrain configuration](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-backend/-/wikis/JetBrain-configuration) 进行配置
 
 ### 2.3 代码风格与 Lint
 
-> - 规范参考：[Go standards and style guidelines](https://docs.gitlab.com/ee/development/go_guide/)
-> - [如何安装 `golangci-lint`](https://golangci-lint.run/welcome/install/#local-installation)
+项目使用 `golangci-lint` 工具规范代码格式。
 
-项目使用 `golangci-lint` 工具规范代码格式。安装后，你需要将 `GOPATH` 添加到系统变量中，才可以在命令行中使用 `golangci-lint` 工具。以 Linux 系统为例：
+- [如何安装 `golangci-lint`](https://golangci-lint.run/welcome/install/#local-installation)
+- [将 `golangci-lint` 和 IDE 集成](https://golangci-lint.run/welcome/integrations/)
+
+安装后，您可能需要将 `GOPATH` 添加到系统变量中，才可以在命令行中使用 `golangci-lint` 工具。以 Linux 系统为例：
 
 ```bash
 # 打印 GOPATH 位置
@@ -127,20 +125,44 @@ golangci-lint --version
 golangci-lint run
 ```
 
-如果您不希望每次都手动运行，您也可以配置 Git Hooks，将位于项目根目录的 `.githook/pre-commit` 脚本复制到 `.git/` 文件夹下，并提供执行权限。以 Linux 系统为例：
+为了避免手动运行，建议您配置 Git Hooks，从而允许在每次 commit 之前，自动检查代码是否符合规范。将位于项目根目录的 `.githook/pre-commit` 脚本复制到 `.git/` 文件夹下，并提供执行权限。
+
+以 Linux 系统为例：
 
 ```bash
 cp .githook/pre-commit .git/hooks/pre-commit
 chmod +x .git/hooks/pre-commit
 ```
 
-如果没有看到任何输出，恭喜您！提交到仓库后，Gitlab CI 将自动运行代码检查。
+如果没有看到任何输出，恭喜您！
+
+在 Windows 系统下，您可能需要修改  `.githook/pre-commit` 脚本内容，如将脚本中 `golangci-lint` 替换为 `golangci-lint.exe`。（如果您完成了配置，请联系 LYL，更新这部分内容）
+
+提交到仓库后，Gitlab CI 将自动运行代码检查，只允许通过 Lint 的代码合入主分支。
+
+此外，在传递错误信息时：
+
+> > [Go standards and style guidelines](https://docs.gitlab.com/ee/development/go_guide/)
+>
+> A few things to keep in mind when adding context:
+>
+> 添加上下文时要记住以下几点：
+>
+> Don’t use words like failed, error, didn't. As it’s an error, the user already knows that something failed and this might lead to having strings like failed xx failed xx failed xx. Explain what failed instead.
+>
+> 不要使用 failed 、 error 、 didn't 等词语。由于这是一个错误，用户已经知道某些事情失败了，这可能会导致出现像 failed xx failed xx failed xx 这样的字符串。解释一下失败的原因。
+
+Lint 还不能检查错误信息的内容，因此您应该尽量遵守这一点。
 
 ### 2.4 单步调试
 
-Crater Web Backend 已经为 VSCode 配置好了单步调试设置，通过点击 VSCode 左侧的 Run and Debug (Ctrl + Shift + D) 按钮，并点击 `Debug Server` 左侧的 Start Debugging (F5) 按钮，可以启动调试模式。此时，您可以在代码中添加断点，进行单步调试。
+- **VSCode**: 通过 Start Debugging (F5) 的默认配置，可以启动调试模式。此时，您可以在代码中添加断点，进行单步调试
+- **Goland**: 应该更简单
+
 
 ### 2.5 如何测试接口
+
+#### 2.5.1 通过 Postman 等接口测试工具
 
 完成新功能开发后，可以用 Postman 自测。可以在 Header 中添加 `X-Debug-Username` 指定用户名绕过登录认证，直接测试接口功能。
 
@@ -149,6 +171,10 @@ Crater Web Backend 已经为 VSCode 配置好了单步调试设置，通过点�
   "X-Debug-Username": "YOUR_USERNAME"
 }
 ```
+
+用户名需为 Crater 数据库中已存在的用户。目前，Crater 已经接入 ACT 认证，您可以直接在线上版本登录，以激活用户。
+
+#### 2.5.2 通过本地运行前端
 
 也可以在本地运行 [Web Frontend](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-frontend) 进行测试。
 
@@ -180,22 +206,22 @@ deploy/
         └── deploy-operator.yaml
 ```
 
-### 3.2 GitLab CI/CD
+### 3.2 GitLab CI 自动部署
 
-完成部署后，要更新代码变动到集群中时，只需打上相应的标签。
+完成部署后，要更新代码变动到集群中时，只需打上相应的标签。使用命令行，或在 Gitlab 网页端操作，GitLab CI/CD 会根据标签自动部署。
 
 ```bash
 git tag v0.x.x
 git push origin v0.x.x
 ```
 
-使用命令行，或在 Gitlab 网页端操作，GitLab CI/CD 会根据标签自动部署。
+由于项目处于频繁更新期，我们可能会经常清理过时的标签，**请一定不要通过 `git push origin --tag` 的方式提交！这可能会上传本地存在但在远程仓库已被删除的标签！**
 
 ### 3.3 证书过期
 
 ACT 的 HTTPS 证书每 3 个月更新一次，证书更新方法见 Web Frontend 项目。
 
-## 4. 项目结构
+## 4. 项目结构（过时）
 
 > [Wiki 代码架构](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-backend/-/wikis/%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84)
 
