@@ -1,6 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import instance, { VERSION } from "@/services/axios";
 import {
   Form,
   FormControl,
@@ -13,8 +12,8 @@ import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { IResponse } from "@/services/types";
 import { Button } from "@/components/ui/button";
+import { apiImagepackCreate } from "@/services/api/imagepack";
 
 const formSchema = z.object({
   gitRepository: z.string().min(1, { message: "仓库地址不能为空" }),
@@ -33,31 +32,12 @@ interface TaskFormProps extends React.HTMLAttributes<HTMLDivElement> {
   closeSheet: () => void;
 }
 
-interface ImagePackCreate {
-  gitRepository: string;
-  accessToken: string;
-  registryServer: string;
-  registryUser: string;
-  registryPass: string;
-  registryProject: string;
-  imageName: string;
-  imageTag: string;
-}
-
-const imagepackCreate = async (task: ImagePackCreate) => {
-  const response = await instance.post<IResponse<string>>(
-    VERSION + "/image/create",
-    task,
-  );
-  return response.data;
-};
-
 export function NewTaskForm({ closeSheet }: TaskFormProps) {
   const queryClient = useQueryClient();
 
   const { mutate: createImagePack } = useMutation({
     mutationFn: (values: FormSchema) =>
-      imagepackCreate({
+      apiImagepackCreate({
         gitRepository: values.gitRepository,
         accessToken: values.accessToken,
         registryServer: values.registryServer,
