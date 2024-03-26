@@ -34,6 +34,7 @@ import (
 
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	aisystemv1alpha1 "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
+	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
 	recommenddljob "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
 	"github.com/raids-lab/crater/pkg/config"
 	db "github.com/raids-lab/crater/pkg/db/orm"
@@ -58,6 +59,7 @@ func init() {
 	utilruntime.Must(schedulerpluginsv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(aisystemv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(recommenddljob.AddToScheme(scheme))
+	utilruntime.Must(imagepackv1.AddToScheme(scheme))
 }
 
 //nolint:gocyclo // todo: remove old mysql init
