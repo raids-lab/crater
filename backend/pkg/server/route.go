@@ -8,6 +8,7 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/constants"
 	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/raids-lab/crater/pkg/db/imagepack"
 	"github.com/raids-lab/crater/pkg/db/user"
 	"github.com/raids-lab/crater/pkg/server/handlers"
 	"github.com/raids-lab/crater/pkg/server/middleware"
@@ -57,12 +58,14 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	jupyterMgr := handlers.NewJupyterMgr(aitaskCtrl, &pvcClient, &logClient)
 	recommenddljobMgr := handlers.NewRecommendDLJobMgr(user.NewDBService(), cl)
 	datasetMgr := handlers.NewDataSetMgr(user.NewDBService(), cl)
+	imagepackMgr := handlers.NewImagePackMgr(imagepack.NewDBService(), &logClient, &crclient.ImagePackController{Client: cl})
 
 	shareDirMgr.RegisterRoute(protectedRouter.Group("/sharedir"))
 	aitaskMgr.RegisterRoute(protectedRouter.Group("/aitask"))
 	jupyterMgr.RegisterRoute(protectedRouter.Group("/jupyter"))
 	recommenddljobMgr.RegisterRoute(protectedRouter.Group("/recommenddljob"))
 	datasetMgr.RegisterRoute(protectedRouter.Group("/dataset"))
+	imagepackMgr.RegisterRoute(protectedRouter.Group("/image"))
 
 	///////////////////////////////////////
 	//// Admin routers, need admin role ////
