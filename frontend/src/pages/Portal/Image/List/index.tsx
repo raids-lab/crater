@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-// import { statuses } from "../../Job/Ai/statuses";
 import { cn } from "@/lib/utils";
 import {
   CheckCircledIcon,
@@ -24,10 +23,10 @@ import {
   CrossCircledIcon,
   StopwatchIcon,
 } from "@radix-ui/react-icons";
-import instance, { VERSION } from "@/services/axios";
-import { IResponse } from "@/services/types";
+
 import { NewTaskForm } from "./Form";
 import { TableDate } from "@/components/custom/TableDate";
+import { apiImagePackList } from "@/services/api/imagepack";
 
 type ImagePackInfo = {
   id: number;
@@ -182,31 +181,19 @@ const columns: ColumnDef<ImagePackInfo>[] = [
   },
 ];
 
-type ImagePackInfoResponse = {
-  ID: number;
-  // name: string;
-  imagelink: string;
-  status: string;
-  createdAt: string;
-  nametag: string;
-};
-
-export const ImagePackList = () =>
-  instance.get<IResponse<ImagePackInfoResponse[]>>(VERSION + "/image/list");
-
 export const Component: FC = () => {
   const [openSheet, setOpenSheet] = useState(false);
   const imagePackInfo = useQuery({
     queryKey: ["imagelink", "status"],
-    queryFn: () => ImagePackList(),
+    queryFn: () => apiImagePackList(),
     select: (res) => res.data.data,
   });
   const data: ImagePackInfo[] = useMemo(() => {
     if (!imagePackInfo.data) {
       return [];
     }
-    return imagePackInfo.data.map((item, index) => ({
-      id: index,
+    return imagePackInfo.data.map((item) => ({
+      id: item.ID,
       link: item.imagelink,
       status: item.status,
       createdAt: item.createdAt,
@@ -220,7 +207,7 @@ export const Component: FC = () => {
         data={data}
         columns={columns}
         toolbarConfig={toolbarConfig}
-        loading={false}
+        loading={imagePackInfo.isLoading}
       >
         <Sheet open={openSheet} onOpenChange={setOpenSheet}>
           <SheetTrigger asChild>
