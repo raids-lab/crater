@@ -52,12 +52,12 @@ const sidebarItems: SidebarItem[] = [
           lazy: () => import("./Image/List"),
         },
       },
-      {
-        route: {
-          path: "make",
-          lazy: () => import("./Image/Make"),
-        },
-      },
+      // {
+      //   route: {
+      //     path: "make",
+      //     lazy: () => import("./Image/Make"),
+      //   },
+      // },
     ],
   },
   {
