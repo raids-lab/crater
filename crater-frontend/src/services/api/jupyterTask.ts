@@ -129,7 +129,7 @@ export const apiJTaskImageList = () =>
     IResponse<{
       images: string[];
     }>
-  >(VERSION + "/jupyter/getImages");
+  >(VERSION + "/image/available");
 
 export const apiJTaskGetPortToken = (taskID: number) =>
   instance.get<
