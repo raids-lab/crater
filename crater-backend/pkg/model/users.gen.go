@@ -6,19 +6,24 @@ package model
 
 import (
 	"time"
+
+	"gorm.io/gorm"
 )
 
 const TableNameUser = "users"
 
 // User mapped from table <users>
 type User struct {
-	ID        int64     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
-	CreatedAt time.Time `gorm:"column:created_at;not null" json:"created_at"`
-	UpdatedAt time.Time `gorm:"column:updated_at;not null" json:"updated_at"`
-	Username  string    `gorm:"column:username;not null" json:"username"`
-	Role      string    `gorm:"column:role;not null" json:"role"`
-	Password  string    `gorm:"column:password" json:"password"`
-	Namespace string    `gorm:"column:namespace;not null" json:"namespace"`
+	ID        int64          `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
+	CreatedAt time.Time      `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"column:updated_at" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at" json:"deleted_at"`
+	Name      string         `gorm:"column:name;not null;comment:用户名" json:"name"`                         // 用户名
+	Nickname  string         `gorm:"column:nickname;comment:昵称" json:"nickname"`                           // 昵称
+	Password  string         `gorm:"column:password;comment:密码" json:"password"`                           // 密码
+	Role      string         `gorm:"column:role;not null;comment:集群角色 (admin, user, guest)" json:"role"`   // 集群角色 (admin, user, guest)
+	Namespace string         `gorm:"column:namespace;not null;comment:命名空间" json:"namespace"`              // 命名空间
+	Status    string         `gorm:"column:status;not null;comment:用户状态 (active, inactive)" json:"status"` // 用户状态 (active, inactive)
 }
 
 // TableName User's table name

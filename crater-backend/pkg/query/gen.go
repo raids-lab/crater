@@ -16,49 +16,44 @@ import (
 )
 
 var (
-	Q         = new(Query)
-	AiTask    *aiTask
-	ImagePack *imagePack
-	Quota     *quota
-	User      *user
+	Q           = new(Query)
+	Project     *project
+	User        *user
+	UserProject *userProject
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
-	AiTask = &Q.AiTask
-	ImagePack = &Q.ImagePack
-	Quota = &Q.Quota
+	Project = &Q.Project
 	User = &Q.User
+	UserProject = &Q.UserProject
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:        db,
-		AiTask:    newAiTask(db, opts...),
-		ImagePack: newImagePack(db, opts...),
-		Quota:     newQuota(db, opts...),
-		User:      newUser(db, opts...),
+		db:          db,
+		Project:     newProject(db, opts...),
+		User:        newUser(db, opts...),
+		UserProject: newUserProject(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	AiTask    aiTask
-	ImagePack imagePack
-	Quota     quota
-	User      user
+	Project     project
+	User        user
+	UserProject userProject
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:        db,
-		AiTask:    q.AiTask.clone(db),
-		ImagePack: q.ImagePack.clone(db),
-		Quota:     q.Quota.clone(db),
-		User:      q.User.clone(db),
+		db:          db,
+		Project:     q.Project.clone(db),
+		User:        q.User.clone(db),
+		UserProject: q.UserProject.clone(db),
 	}
 }
 
@@ -72,27 +67,24 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:        db,
-		AiTask:    q.AiTask.replaceDB(db),
-		ImagePack: q.ImagePack.replaceDB(db),
-		Quota:     q.Quota.replaceDB(db),
-		User:      q.User.replaceDB(db),
+		db:          db,
+		Project:     q.Project.replaceDB(db),
+		User:        q.User.replaceDB(db),
+		UserProject: q.UserProject.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	AiTask    IAiTaskDo
-	ImagePack IImagePackDo
-	Quota     IQuotaDo
-	User      IUserDo
+	Project     IProjectDo
+	User        IUserDo
+	UserProject IUserProjectDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		AiTask:    q.AiTask.WithContext(ctx),
-		ImagePack: q.ImagePack.WithContext(ctx),
-		Quota:     q.Quota.WithContext(ctx),
-		User:      q.User.WithContext(ctx),
+		Project:     q.Project.WithContext(ctx),
+		User:        q.User.WithContext(ctx),
+		UserProject: q.UserProject.WithContext(ctx),
 	}
 }
 
