@@ -30,10 +30,13 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.ID = field.NewInt64(tableName, "id")
 	_user.CreatedAt = field.NewTime(tableName, "created_at")
 	_user.UpdatedAt = field.NewTime(tableName, "updated_at")
-	_user.Username = field.NewString(tableName, "username")
-	_user.Role = field.NewString(tableName, "role")
+	_user.DeletedAt = field.NewField(tableName, "deleted_at")
+	_user.Name = field.NewString(tableName, "name")
+	_user.Nickname = field.NewString(tableName, "nickname")
 	_user.Password = field.NewString(tableName, "password")
+	_user.Role = field.NewString(tableName, "role")
 	_user.Namespace = field.NewString(tableName, "namespace")
+	_user.Status = field.NewString(tableName, "status")
 
 	_user.fillFieldMap()
 
@@ -47,10 +50,13 @@ type user struct {
 	ID        field.Int64
 	CreatedAt field.Time
 	UpdatedAt field.Time
-	Username  field.String
-	Role      field.String
-	Password  field.String
-	Namespace field.String
+	DeletedAt field.Field
+	Name      field.String // 用户名
+	Nickname  field.String // 昵称
+	Password  field.String // 密码
+	Role      field.String // 集群角色 (admin, user, guest)
+	Namespace field.String // 命名空间
+	Status    field.String // 用户状态 (active, inactive)
 
 	fieldMap map[string]field.Expr
 }
@@ -70,10 +76,13 @@ func (u *user) updateTableName(table string) *user {
 	u.ID = field.NewInt64(table, "id")
 	u.CreatedAt = field.NewTime(table, "created_at")
 	u.UpdatedAt = field.NewTime(table, "updated_at")
-	u.Username = field.NewString(table, "username")
-	u.Role = field.NewString(table, "role")
+	u.DeletedAt = field.NewField(table, "deleted_at")
+	u.Name = field.NewString(table, "name")
+	u.Nickname = field.NewString(table, "nickname")
 	u.Password = field.NewString(table, "password")
+	u.Role = field.NewString(table, "role")
 	u.Namespace = field.NewString(table, "namespace")
+	u.Status = field.NewString(table, "status")
 
 	u.fillFieldMap()
 
@@ -90,14 +99,17 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 7)
+	u.fieldMap = make(map[string]field.Expr, 10)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
-	u.fieldMap["username"] = u.Username
-	u.fieldMap["role"] = u.Role
+	u.fieldMap["deleted_at"] = u.DeletedAt
+	u.fieldMap["name"] = u.Name
+	u.fieldMap["nickname"] = u.Nickname
 	u.fieldMap["password"] = u.Password
+	u.fieldMap["role"] = u.Role
 	u.fieldMap["namespace"] = u.Namespace
+	u.fieldMap["status"] = u.Status
 }
 
 func (u user) clone(db *gorm.DB) user {
