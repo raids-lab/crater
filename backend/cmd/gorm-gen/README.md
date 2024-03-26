@@ -4,5 +4,6 @@
 
 ```bash
 cd cmd/gorm-gen
-go run generate.go
+go run models/migrate.go
+go run curd/generate.go
 ```
