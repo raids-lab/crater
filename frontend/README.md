@@ -44,10 +44,16 @@ cd gpu-portal-frontend
 
 # 安装依赖
 pnpm install
-
-# 启动开发服务器
-pnpm dev
 ```
+
+开发模式下，将从 `.env.development` 文件中读取环境变量。该文件将被 Git 忽略，您需要创建该文件，并写入以下内容：
+
+```bash
+VITE_API_BASE_URL="http://localhost:8098/"  # 指定后端 API 地址
+VITE_USE_MSW=false      # true to use MSW, false to use real API
+```
+
+之后，您可以运行 `pnpm dev --port 5173`，启动开发服务器。
 
 ### 2.2 主要技术栈
 
@@ -81,14 +87,7 @@ pnpm dev
 
 - [MSW](https://mswjs.io/)：an API mocking library that allows you to write client-agnostic mocks and reuse them across any frameworks, tools, and environments.
 
-要开启此功能，可以修改 `.env.development` ，设置 `VITE_USE_MSW=true`，请避免将此改动同时提交到代码中。
-
-```bash
-VITE_API_BASE_URL="http://localhost:8099/"
-VITE_USE_MSW=false
-```
-
-之后，在 `src/mocks/handlers.ts` 中添加新的处理函数。
+要开启此功能，可以修改 `.env.development` ，设置 `VITE_USE_MSW=true`。之后，在 `src/mocks/handlers.ts` 中添加新的处理函数。
 
 ### 2.4 依赖管理
 
@@ -119,7 +118,7 @@ deploy/
 
 ```bash
 git tag v0.x.x
-git push origin --tag
+git push origin v0.x.x
 ```
 
 使用命令行，或在 Gitlab 网页端操作，GitLab CI/CD 会根据标签自动部署。
