@@ -4,6 +4,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/raids-lab/crater/pkg/model"
 	"gorm.io/driver/mysql"
 	"gorm.io/gen"
 	"gorm.io/gorm"
@@ -26,14 +27,14 @@ func main() {
 		// gen.WithoutContext：禁用WithContext模式
 		// gen.WithDefaultQuery：生成一个全局Query对象Q
 		// gen.WithQueryInterface：生成Query接口
-		Mode: gen.WithoutContext | gen.WithDefaultQuery | gen.WithQueryInterface,
+		Mode: gen.WithDefaultQuery | gen.WithQueryInterface,
 	})
 
 	// 通常复用项目中已有的SQL连接配置 db(*gorm.DB)
 	g.UseDB(ConnectDB(MySQLDSN))
 
 	// 从连接的数据库为所有表生成 Model 结构体和 CRUD 代码
-	g.ApplyBasic(g.GenerateAllTable()...)
+	g.ApplyBasic(model.Project{}, model.User{}, model.UserProject{})
 
 	// 执行并生成代码
 	g.Execute()

@@ -27,10 +27,12 @@ func newUserProject(db *gorm.DB, opts ...gen.DOOption) userProject {
 
 	tableName := _userProject.userProjectDo.TableName()
 	_userProject.ALL = field.NewAsterisk(tableName)
-	_userProject.UserID = field.NewInt64(tableName, "user_id")
-	_userProject.ProjectID = field.NewInt64(tableName, "project_id")
+	_userProject.ID = field.NewUint(tableName, "id")
 	_userProject.CreatedAt = field.NewTime(tableName, "created_at")
 	_userProject.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_userProject.DeletedAt = field.NewField(tableName, "deleted_at")
+	_userProject.UserID = field.NewUint(tableName, "user_id")
+	_userProject.ProjectID = field.NewUint(tableName, "project_id")
 	_userProject.Role = field.NewString(tableName, "role")
 	_userProject.Quota = field.NewString(tableName, "quota")
 
@@ -40,15 +42,17 @@ func newUserProject(db *gorm.DB, opts ...gen.DOOption) userProject {
 }
 
 type userProject struct {
-	userProjectDo
+	userProjectDo userProjectDo
 
 	ALL       field.Asterisk
-	UserID    field.Int64
-	ProjectID field.Int64
+	ID        field.Uint
 	CreatedAt field.Time
 	UpdatedAt field.Time
-	Role      field.String // 用户在项目中的角色 (admin, user)
-	Quota     field.String // 配额限制
+	DeletedAt field.Field
+	UserID    field.Uint
+	ProjectID field.Uint
+	Role      field.String
+	Quota     field.String
 
 	fieldMap map[string]field.Expr
 }
@@ -65,10 +69,12 @@ func (u userProject) As(alias string) *userProject {
 
 func (u *userProject) updateTableName(table string) *userProject {
 	u.ALL = field.NewAsterisk(table)
-	u.UserID = field.NewInt64(table, "user_id")
-	u.ProjectID = field.NewInt64(table, "project_id")
+	u.ID = field.NewUint(table, "id")
 	u.CreatedAt = field.NewTime(table, "created_at")
 	u.UpdatedAt = field.NewTime(table, "updated_at")
+	u.DeletedAt = field.NewField(table, "deleted_at")
+	u.UserID = field.NewUint(table, "user_id")
+	u.ProjectID = field.NewUint(table, "project_id")
 	u.Role = field.NewString(table, "role")
 	u.Quota = field.NewString(table, "quota")
 
@@ -76,6 +82,16 @@ func (u *userProject) updateTableName(table string) *userProject {
 
 	return u
 }
+
+func (u *userProject) WithContext(ctx context.Context) IUserProjectDo {
+	return u.userProjectDo.WithContext(ctx)
+}
+
+func (u userProject) TableName() string { return u.userProjectDo.TableName() }
+
+func (u userProject) Alias() string { return u.userProjectDo.Alias() }
+
+func (u userProject) Columns(cols ...field.Expr) gen.Columns { return u.userProjectDo.Columns(cols...) }
 
 func (u *userProject) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 	_f, ok := u.fieldMap[fieldName]
@@ -87,11 +103,13 @@ func (u *userProject) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *userProject) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 6)
-	u.fieldMap["user_id"] = u.UserID
-	u.fieldMap["project_id"] = u.ProjectID
+	u.fieldMap = make(map[string]field.Expr, 8)
+	u.fieldMap["id"] = u.ID
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
+	u.fieldMap["deleted_at"] = u.DeletedAt
+	u.fieldMap["user_id"] = u.UserID
+	u.fieldMap["project_id"] = u.ProjectID
 	u.fieldMap["role"] = u.Role
 	u.fieldMap["quota"] = u.Quota
 }

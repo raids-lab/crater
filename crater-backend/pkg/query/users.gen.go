@@ -27,7 +27,7 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 
 	tableName := _user.userDo.TableName()
 	_user.ALL = field.NewAsterisk(tableName)
-	_user.ID = field.NewInt64(tableName, "id")
+	_user.ID = field.NewUint(tableName, "id")
 	_user.CreatedAt = field.NewTime(tableName, "created_at")
 	_user.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_user.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -35,8 +35,13 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.Nickname = field.NewString(tableName, "nickname")
 	_user.Password = field.NewString(tableName, "password")
 	_user.Role = field.NewString(tableName, "role")
-	_user.Namespace = field.NewString(tableName, "namespace")
+	_user.NameSpace = field.NewString(tableName, "namespace")
 	_user.Status = field.NewString(tableName, "status")
+	_user.UserProjects = userHasManyUserProjects{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("UserProjects", "model.UserProject"),
+	}
 
 	_user.fillFieldMap()
 
@@ -44,19 +49,20 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 }
 
 type user struct {
-	userDo
+	userDo userDo
 
-	ALL       field.Asterisk
-	ID        field.Int64
-	CreatedAt field.Time
-	UpdatedAt field.Time
-	DeletedAt field.Field
-	Name      field.String // 用户名
-	Nickname  field.String // 昵称
-	Password  field.String // 密码
-	Role      field.String // 集群角色 (admin, user, guest)
-	Namespace field.String // 命名空间
-	Status    field.String // 用户状态 (active, inactive)
+	ALL          field.Asterisk
+	ID           field.Uint
+	CreatedAt    field.Time
+	UpdatedAt    field.Time
+	DeletedAt    field.Field
+	Name         field.String
+	Nickname     field.String
+	Password     field.String
+	Role         field.String
+	NameSpace    field.String
+	Status       field.String
+	UserProjects userHasManyUserProjects
 
 	fieldMap map[string]field.Expr
 }
@@ -73,7 +79,7 @@ func (u user) As(alias string) *user {
 
 func (u *user) updateTableName(table string) *user {
 	u.ALL = field.NewAsterisk(table)
-	u.ID = field.NewInt64(table, "id")
+	u.ID = field.NewUint(table, "id")
 	u.CreatedAt = field.NewTime(table, "created_at")
 	u.UpdatedAt = field.NewTime(table, "updated_at")
 	u.DeletedAt = field.NewField(table, "deleted_at")
@@ -81,13 +87,21 @@ func (u *user) updateTableName(table string) *user {
 	u.Nickname = field.NewString(table, "nickname")
 	u.Password = field.NewString(table, "password")
 	u.Role = field.NewString(table, "role")
-	u.Namespace = field.NewString(table, "namespace")
+	u.NameSpace = field.NewString(table, "namespace")
 	u.Status = field.NewString(table, "status")
 
 	u.fillFieldMap()
 
 	return u
 }
+
+func (u *user) WithContext(ctx context.Context) IUserDo { return u.userDo.WithContext(ctx) }
+
+func (u user) TableName() string { return u.userDo.TableName() }
+
+func (u user) Alias() string { return u.userDo.Alias() }
+
+func (u user) Columns(cols ...field.Expr) gen.Columns { return u.userDo.Columns(cols...) }
 
 func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 	_f, ok := u.fieldMap[fieldName]
@@ -99,7 +113,7 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 10)
+	u.fieldMap = make(map[string]field.Expr, 11)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
@@ -108,8 +122,9 @@ func (u *user) fillFieldMap() {
 	u.fieldMap["nickname"] = u.Nickname
 	u.fieldMap["password"] = u.Password
 	u.fieldMap["role"] = u.Role
-	u.fieldMap["namespace"] = u.Namespace
+	u.fieldMap["namespace"] = u.NameSpace
 	u.fieldMap["status"] = u.Status
+
 }
 
 func (u user) clone(db *gorm.DB) user {
@@ -120,6 +135,77 @@ func (u user) clone(db *gorm.DB) user {
 func (u user) replaceDB(db *gorm.DB) user {
 	u.userDo.ReplaceDB(db)
 	return u
+}
+
+type userHasManyUserProjects struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a userHasManyUserProjects) Where(conds ...field.Expr) *userHasManyUserProjects {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a userHasManyUserProjects) WithContext(ctx context.Context) *userHasManyUserProjects {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a userHasManyUserProjects) Session(session *gorm.Session) *userHasManyUserProjects {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a userHasManyUserProjects) Model(m *model.User) *userHasManyUserProjectsTx {
+	return &userHasManyUserProjectsTx{a.db.Model(m).Association(a.Name())}
+}
+
+type userHasManyUserProjectsTx struct{ tx *gorm.Association }
+
+func (a userHasManyUserProjectsTx) Find() (result []*model.UserProject, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a userHasManyUserProjectsTx) Append(values ...*model.UserProject) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a userHasManyUserProjectsTx) Replace(values ...*model.UserProject) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a userHasManyUserProjectsTx) Delete(values ...*model.UserProject) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a userHasManyUserProjectsTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a userHasManyUserProjectsTx) Count() int64 {
+	return a.tx.Count()
 }
 
 type userDo struct{ gen.DO }
