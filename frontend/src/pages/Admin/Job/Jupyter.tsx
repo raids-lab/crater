@@ -34,6 +34,7 @@ import {
 } from "@radix-ui/react-icons";
 import { apiJTaskDelete, convertJTask } from "@/services/api/jupyterTask";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { logger } from "@/utils/loglevel";
 
 type StatusValue =
   | "Queueing"
@@ -178,7 +179,7 @@ const Jupyter: FC = () => {
         queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
       ]);
     } catch (error) {
-      console.error("更新查询失败", error);
+      logger.error("更新查询失败", error);
     }
   };
   useEffect(() => {

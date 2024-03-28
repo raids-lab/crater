@@ -49,6 +49,7 @@ import Quota from "../../Overview/Quota";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { toast } from "sonner";
 import { getHeader, priorities, profilingStatuses, statuses } from "./statuses";
+import { logger } from "@/utils/loglevel";
 
 type TaskInfo = {
   id: number;
@@ -114,7 +115,7 @@ const AiJobHome = () => {
         queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
       ]);
     } catch (error) {
-      console.error("更新查询失败", error);
+      logger.error("更新查询失败", error);
     }
   };
 

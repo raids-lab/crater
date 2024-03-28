@@ -216,7 +216,6 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
 
   const exportToJson = () => {
     const json = JSON.stringify(currentValues, null, 2);
-    console.log(json); // 或者可以保存到文件
     // 保存到 LocalStorage
     localStorage.setItem("jupyter_form_cache", json);
   };
