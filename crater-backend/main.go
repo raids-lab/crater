@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+//nolint:funlen // todo: refactor
 package main
 
 import (
@@ -32,6 +33,8 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	schedulerpluginsv1alpha1 "sigs.k8s.io/scheduler-plugins/apis/scheduling/v1alpha1"
 
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	aisystemv1alpha1 "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
@@ -209,6 +212,17 @@ func main() {
 	}
 
 	// 5. start server
+	if gin.Mode() == gin.DebugMode {
+		err = godotenv.Load(".debug.env")
+		if err != nil {
+			panic(err.Error())
+		}
+		be := os.Getenv("CRATER_BE_PORT")
+		if be == "" {
+			panic("CRATER_BE_PORT is not set")
+		}
+		serverPort = ":" + be
+	}
 	setupLog.Info("starting server")
 	backend, err := server.Register(taskCtrl, mgr.GetClient(), clientset)
 	if err != nil {
