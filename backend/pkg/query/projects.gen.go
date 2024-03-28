@@ -27,15 +27,20 @@ func newProject(db *gorm.DB, opts ...gen.DOOption) project {
 
 	tableName := _project.projectDo.TableName()
 	_project.ALL = field.NewAsterisk(tableName)
-	_project.ID = field.NewInt64(tableName, "id")
+	_project.ID = field.NewUint(tableName, "id")
 	_project.CreatedAt = field.NewTime(tableName, "created_at")
 	_project.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_project.DeletedAt = field.NewField(tableName, "deleted_at")
 	_project.Name = field.NewString(tableName, "name")
 	_project.Description = field.NewString(tableName, "description")
-	_project.Namespace = field.NewString(tableName, "namespace")
+	_project.NameSpace = field.NewString(tableName, "namespace")
 	_project.Status = field.NewString(tableName, "status")
 	_project.Quota = field.NewString(tableName, "quota")
+	_project.UserProjects = projectHasManyUserProjects{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("UserProjects", "model.UserProject"),
+	}
 
 	_project.fillFieldMap()
 
@@ -43,18 +48,19 @@ func newProject(db *gorm.DB, opts ...gen.DOOption) project {
 }
 
 type project struct {
-	projectDo
+	projectDo projectDo
 
-	ALL         field.Asterisk
-	ID          field.Int64
-	CreatedAt   field.Time
-	UpdatedAt   field.Time
-	DeletedAt   field.Field
-	Name        field.String // 项目名
-	Description field.String // 项目描述
-	Namespace   field.String // 命名空间
-	Status      field.String // 项目状态 (active, inactive)
-	Quota       field.String // 配额信息
+	ALL          field.Asterisk
+	ID           field.Uint
+	CreatedAt    field.Time
+	UpdatedAt    field.Time
+	DeletedAt    field.Field
+	Name         field.String
+	Description  field.String
+	NameSpace    field.String
+	Status       field.String
+	Quota        field.String
+	UserProjects projectHasManyUserProjects
 
 	fieldMap map[string]field.Expr
 }
@@ -71,13 +77,13 @@ func (p project) As(alias string) *project {
 
 func (p *project) updateTableName(table string) *project {
 	p.ALL = field.NewAsterisk(table)
-	p.ID = field.NewInt64(table, "id")
+	p.ID = field.NewUint(table, "id")
 	p.CreatedAt = field.NewTime(table, "created_at")
 	p.UpdatedAt = field.NewTime(table, "updated_at")
 	p.DeletedAt = field.NewField(table, "deleted_at")
 	p.Name = field.NewString(table, "name")
 	p.Description = field.NewString(table, "description")
-	p.Namespace = field.NewString(table, "namespace")
+	p.NameSpace = field.NewString(table, "namespace")
 	p.Status = field.NewString(table, "status")
 	p.Quota = field.NewString(table, "quota")
 
@@ -85,6 +91,14 @@ func (p *project) updateTableName(table string) *project {
 
 	return p
 }
+
+func (p *project) WithContext(ctx context.Context) IProjectDo { return p.projectDo.WithContext(ctx) }
+
+func (p project) TableName() string { return p.projectDo.TableName() }
+
+func (p project) Alias() string { return p.projectDo.Alias() }
+
+func (p project) Columns(cols ...field.Expr) gen.Columns { return p.projectDo.Columns(cols...) }
 
 func (p *project) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 	_f, ok := p.fieldMap[fieldName]
@@ -96,16 +110,17 @@ func (p *project) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (p *project) fillFieldMap() {
-	p.fieldMap = make(map[string]field.Expr, 9)
+	p.fieldMap = make(map[string]field.Expr, 10)
 	p.fieldMap["id"] = p.ID
 	p.fieldMap["created_at"] = p.CreatedAt
 	p.fieldMap["updated_at"] = p.UpdatedAt
 	p.fieldMap["deleted_at"] = p.DeletedAt
 	p.fieldMap["name"] = p.Name
 	p.fieldMap["description"] = p.Description
-	p.fieldMap["namespace"] = p.Namespace
+	p.fieldMap["namespace"] = p.NameSpace
 	p.fieldMap["status"] = p.Status
 	p.fieldMap["quota"] = p.Quota
+
 }
 
 func (p project) clone(db *gorm.DB) project {
@@ -116,6 +131,77 @@ func (p project) clone(db *gorm.DB) project {
 func (p project) replaceDB(db *gorm.DB) project {
 	p.projectDo.ReplaceDB(db)
 	return p
+}
+
+type projectHasManyUserProjects struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a projectHasManyUserProjects) Where(conds ...field.Expr) *projectHasManyUserProjects {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a projectHasManyUserProjects) WithContext(ctx context.Context) *projectHasManyUserProjects {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a projectHasManyUserProjects) Session(session *gorm.Session) *projectHasManyUserProjects {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a projectHasManyUserProjects) Model(m *model.Project) *projectHasManyUserProjectsTx {
+	return &projectHasManyUserProjectsTx{a.db.Model(m).Association(a.Name())}
+}
+
+type projectHasManyUserProjectsTx struct{ tx *gorm.Association }
+
+func (a projectHasManyUserProjectsTx) Find() (result []*model.UserProject, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a projectHasManyUserProjectsTx) Append(values ...*model.UserProject) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a projectHasManyUserProjectsTx) Replace(values ...*model.UserProject) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a projectHasManyUserProjectsTx) Delete(values ...*model.UserProject) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a projectHasManyUserProjectsTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a projectHasManyUserProjectsTx) Count() int64 {
+	return a.tx.Count()
 }
 
 type projectDo struct{ gen.DO }
