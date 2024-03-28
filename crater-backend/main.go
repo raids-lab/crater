@@ -71,30 +71,17 @@ func main() {
 	var enableLeaderElection bool
 	var leaderElectionID string
 	var probeAddr string
-	var gangSchedulerName string
-	var monitoringPort int
-	var controllerThreads int
 	var serverPort string
-	var dbConfigFile string
 	var enableProfiling bool
 	var configFile string
-	var shareDirFile string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.StringVar(&leaderElectionID, "leader-election-id", ***REMOVED***, "The ID for leader election.")
-	flag.StringVar(&gangSchedulerName, "gang-scheduler-name", "", "Now Supporting volcano and scheduler-plugins."+
-		" Note: If you set another scheduler name, the training-operator assumes it's the scheduler-plugins.")
-	//nolint:gomnd // TODO: is this necessary?
-	flag.IntVar(&monitoringPort, "monitoring-port", 9443, "Endpoint port for displaying monitoring metrics. "+
-		"It can be set to \"0\" to disable the metrics serving.")
-	flag.IntVar(&controllerThreads, "controller-threads", 1, "Number of worker threads used by the controller.")
 	flag.StringVar(&serverPort, "server-port", ":8088", "The address the server endpoint binds to.")
-	flag.StringVar(&dbConfigFile, "db-config-file", "", "The db config file path.")
 	flag.StringVar(&configFile, "config-file", "", "server config file")
-	flag.StringVar(&shareDirFile, "share-dir-file", "", "share dir config file")
 	flag.BoolVar(&enableProfiling, "enable-profiling", false, "Enable profiling.")
 	opts := zap.Options{
 		Development:     true,
@@ -108,6 +95,28 @@ func main() {
 	if err != nil {
 		setupLog.Error(err, "unable to init config")
 		os.Exit(1)
+	}
+
+	if gin.Mode() == gin.DebugMode {
+		err = godotenv.Load(".debug.env")
+		if err != nil {
+			panic(err.Error())
+		}
+		be := os.Getenv("CRATER_BE_PORT")
+		if be == "" {
+			panic("CRATER_BE_PORT is not set")
+		}
+		ms := os.Getenv("CRATER_MS_PORT")
+		if ms == "" {
+			panic("CRATER_MS_PORT is not set")
+		}
+		hp := os.Getenv("CRATER_HP_PORT")
+		if hp == "" {
+			panic("CRATER_HP_PORT is not set")
+		}
+		probeAddr = ":" + hp
+		metricsAddr = ":" + ms
+		serverPort = ":" + be
 	}
 
 	// 0. create manager
@@ -212,17 +221,6 @@ func main() {
 	}
 
 	// 5. start server
-	if gin.Mode() == gin.DebugMode {
-		err = godotenv.Load(".debug.env")
-		if err != nil {
-			panic(err.Error())
-		}
-		be := os.Getenv("CRATER_BE_PORT")
-		if be == "" {
-			panic("CRATER_BE_PORT is not set")
-		}
-		serverPort = ":" + be
-	}
 	setupLog.Info("starting server")
 	backend, err := server.Register(taskCtrl, mgr.GetClient(), clientset)
 	if err != nil {
