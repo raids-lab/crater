@@ -16,7 +16,7 @@ import (
 
 	"gorm.io/plugin/dbresolver"
 
-	"github.com/raids-lab/crater/pkg/model"
+	"github.com/raids-lab/crater/dao/model"
 )
 
 func newUserProject(db *gorm.DB, opts ...gen.DOOption) userProject {

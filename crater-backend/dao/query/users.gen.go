@@ -16,7 +16,7 @@ import (
 
 	"gorm.io/plugin/dbresolver"
 
-	"github.com/raids-lab/crater/pkg/model"
+	"github.com/raids-lab/crater/dao/model"
 )
 
 func newUser(db *gorm.DB, opts ...gen.DOOption) user {
@@ -35,7 +35,6 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.Nickname = field.NewString(tableName, "nickname")
 	_user.Password = field.NewString(tableName, "password")
 	_user.Role = field.NewString(tableName, "role")
-	_user.NameSpace = field.NewString(tableName, "namespace")
 	_user.Status = field.NewString(tableName, "status")
 	_user.UserProjects = userHasManyUserProjects{
 		db: db.Session(&gorm.Session{}),
@@ -60,7 +59,6 @@ type user struct {
 	Nickname     field.String
 	Password     field.String
 	Role         field.String
-	NameSpace    field.String
 	Status       field.String
 	UserProjects userHasManyUserProjects
 
@@ -87,7 +85,6 @@ func (u *user) updateTableName(table string) *user {
 	u.Nickname = field.NewString(table, "nickname")
 	u.Password = field.NewString(table, "password")
 	u.Role = field.NewString(table, "role")
-	u.NameSpace = field.NewString(table, "namespace")
 	u.Status = field.NewString(table, "status")
 
 	u.fillFieldMap()
@@ -113,7 +110,7 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 11)
+	u.fieldMap = make(map[string]field.Expr, 10)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
@@ -122,7 +119,6 @@ func (u *user) fillFieldMap() {
 	u.fieldMap["nickname"] = u.Nickname
 	u.fieldMap["password"] = u.Password
 	u.fieldMap["role"] = u.Role
-	u.fieldMap["namespace"] = u.NameSpace
 	u.fieldMap["status"] = u.Status
 
 }

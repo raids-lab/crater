@@ -34,12 +34,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
 	db "github.com/raids-lab/crater/pkg/db/orm"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/profiler"
-	"github.com/raids-lab/crater/pkg/query"
 	"github.com/raids-lab/crater/pkg/reconciler"
 	"github.com/raids-lab/crater/pkg/server"
 	"github.com/raids-lab/crater/pkg/util"
@@ -130,7 +130,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = query.InitDB(backendConfig)
+	err = query.ConnectDB()
 	if err != nil {
 		setupLog.Error(err, "unable to init query db")
 		os.Exit(1)

@@ -5,9 +5,10 @@ type ErrorCode int
 const (
 	OK ErrorCode = 0
 
-	TokenExpired ErrorCode = 40101
-	UserNotFound ErrorCode = 40102
-	InvalidToken ErrorCode = 40103
+	InvalidRequest ErrorCode = 40001
+	TokenExpired   ErrorCode = 40101
+	UserNotFound   ErrorCode = 40102
+	InvalidToken   ErrorCode = 40103
 
 	InvalidRole ErrorCode = 40301
 

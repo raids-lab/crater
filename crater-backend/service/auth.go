@@ -1,0 +1,284 @@
+package handlers
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	ldap "github.com/go-ldap/ldap/v3"
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/pkg/aitaskctl"
+	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/raids-lab/crater/pkg/logutils"
+	"github.com/raids-lab/crater/pkg/models"
+	resputil "github.com/raids-lab/crater/pkg/server/response"
+	"github.com/raids-lab/crater/pkg/util"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
+)
+
+type AuthMgr struct {
+	tokenMgr       *util.TokenManager
+	taskController *aitaskctl.TaskController
+}
+
+func NewAuthMgr(taskController *aitaskctl.TaskController, tokenConf *config.TokenConf) *AuthMgr {
+	return &AuthMgr{
+		tokenMgr: util.NewTokenManager(
+			tokenConf.AccessTokenSecret,
+			tokenConf.AccessTokenExpiryHour,
+			tokenConf.RefreshTokenExpiryHour,
+		),
+		taskController: taskController,
+	}
+}
+
+func (mgr *AuthMgr) RegisterRoute(group *gin.RouterGroup) {
+	group.POST("/login", mgr.Login)
+	group.POST("/refresh", mgr.RefreshToken)
+}
+
+type LoginRequest struct {
+	Username string `json:"username" binding:"required"`
+	Password string `json:"passWord" binding:"required"`
+}
+
+type LoginResponse struct {
+	AccessToken  string            `json:"accessToken"`
+	RefreshToken string            `json:"refreshToken"`
+	Projects     []ProjectResponse `json:"projects"`
+	Context      util.JWTMessage   `json:"context"`
+}
+
+type ProjectResponse struct {
+	ID         uint   `json:"id"`
+	Name       string `json:"name"`
+	Role       string `json:"role"`
+	IsPersonal bool   `json:"isPersonal"`
+}
+
+func (mgr *AuthMgr) Login(c *gin.Context) {
+	var request LoginRequest
+	if err := c.ShouldBind(&request); err != nil {
+		resputil.HTTPError(c, http.StatusBadRequest, err.Error(), resputil.InvalidRequest)
+		return
+	}
+
+	l := logutils.Log.WithFields(logutils.Fields{
+		"username": request.Username,
+	})
+
+	// ACT Authentication
+	if err := mgr.ACTAuthorization(request.Username, request.Password); err != nil {
+		l.Error("Invalid credentials", err)
+		resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.NotSpecified)
+		return
+	}
+
+	// Check if the user exists
+	u := query.User
+	p := query.Project
+	up := query.UserProject
+	user, err := u.WithContext(context.Background()).Where(u.Name.Eq(request.Username)).First()
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// User not found, create a new user
+			user, err = mgr.createUserAndProject(c, request.Username)
+			if err != nil {
+				resputil.Error(c, err.Error(), resputil.NotSpecified)
+				return
+			}
+		} else {
+			// Other DB error
+			l.Error("DB error", err)
+			resputil.Error(c, err.Error(), resputil.NotSpecified)
+			return
+		}
+	}
+
+	// get all projects for the user
+	var projects []ProjectResponse
+	err = up.WithContext(c).Where(up.UserID.Eq(user.ID)).
+		Select(p.ID, p.Name, up.Role, p.IsPersonal).Join(p, p.ID.EqCol(up.ProjectID)).Scan(&projects)
+	if err != nil {
+		l.Error("DB error", err)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	// get personal project id for the user
+	var pID uint
+	var pRole string
+	for i := range projects {
+		if projects[i].IsPersonal {
+			pID = projects[i].ID
+			pRole = projects[i].Role
+			break
+		}
+	}
+
+	jwtMessage := util.JWTMessage{
+		UID:          user.ID,
+		PID:          pID,
+		PlatformRole: user.Role,
+		ProjectRole:  pRole,
+	}
+
+	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
+	if err != nil {
+		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	loginResponse := LoginResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		Projects:     projects,
+		Context:      jwtMessage,
+	}
+
+	resputil.Success(c, loginResponse)
+}
+
+func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.User, error) {
+	u := query.User
+	p := query.Project
+	up := query.UserProject
+	user := model.User{
+		Name:     name,
+		Nickname: nil,
+		Password: nil,
+		Role:     model.RoleUser,
+		Status:   model.StatusActive,
+	}
+	if err := u.WithContext(c).Create(&user); err != nil {
+		return nil, err
+	}
+	project := model.Project{
+		Name:        user.Name,
+		Description: nil,
+		NameSpace:   crclient.NameSpace,
+		Status:      model.StatusActive,
+		Quota:       model.ResourceListToJSON(model.DefaultQuota),
+		IsPersonal:  true,
+	}
+	if err := p.WithContext(c).Create(&project); err != nil {
+		return nil, err
+	}
+	userProject := model.UserProject{
+		UserID:    user.ID,
+		ProjectID: project.ID,
+		Role:      model.RoleAdmin,
+		Quota:     project.Quota,
+	}
+	if err := up.WithContext(c).Create(&userProject); err != nil {
+		return nil, err
+	}
+
+	// TODO: refactor
+	// Notify the task controller that a new user is created
+	quota := models.Quota{
+		UserName:  user.Name,
+		NameSpace: crclient.NameSpace,
+		HardQuota: models.ResourceListToJSON(models.DefaultQuota),
+	}
+	mgr.taskController.AddUser(quota.UserName, &quota)
+
+	return &user, nil
+}
+
+func (mgr *AuthMgr) NormalAuthorization(c *gin.Context, username, password string) error {
+	u := query.User
+	user, err := u.WithContext(c).Where(u.Name.Eq(username)).First()
+	if err != nil {
+		return fmt.Errorf("wrong username or password")
+	}
+
+	if bcrypt.CompareHashAndPassword([]byte(*user.Password), []byte(password)) != nil {
+		return fmt.Errorf("wrong username or password")
+	}
+	return nil
+}
+
+func (mgr *AuthMgr) ACTAuthorization(username, password string) error {
+	// ACT 管理员认证
+	l, err := ldap.Dial("tcp", "192.168.0.9:389")
+	if err != nil {
+		return err
+	}
+	err = l.Bind("***REMOVED***", "***REMOVED***")
+	if err != nil {
+		return err
+	}
+
+	// ACT 管理员搜索用户
+	searchRequest := ldap.NewSearchRequest(
+		"OU=Lab,OU=ACT,DC=lab,DC=act,DC=buaa,Dc=edu,DC=cn", // 搜索基准 DN
+		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+		fmt.Sprintf("(sAMAccountName=%s)", username), // 过滤条件
+		[]string{"dn"}, // 返回的属性列表
+		nil,
+	)
+
+	// 执行搜索请求
+	searchResult, err := l.Search(searchRequest)
+	if err != nil {
+		return err
+	}
+
+	if len(searchResult.Entries) != 1 {
+		return fmt.Errorf("user not found or too many entries returned")
+	}
+
+	// 用户存在，验证用户密码
+	if len(searchResult.Entries) == 1 {
+		userDN := searchResult.Entries[0].DN
+		err = l.Bind(userDN, password)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refreshToken" binding:"required"`
+}
+
+type RefreshTokenResponse struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+}
+
+func (mgr *AuthMgr) RefreshToken(c *gin.Context) {
+	var request RefreshTokenRequest
+
+	if err := c.ShouldBind(&request); err != nil {
+		resputil.HTTPError(c, http.StatusBadRequest, err.Error(), resputil.InvalidRequest)
+		return
+	}
+
+	chaims, err := mgr.tokenMgr.CheckToken(request.RefreshToken)
+	if err != nil {
+		resputil.HTTPError(c, http.StatusUnauthorized, "User not found", resputil.NotSpecified)
+		return
+	}
+
+	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&chaims)
+	if err != nil {
+		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	refreshTokenResponse := RefreshTokenResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}
+
+	resputil.Success(c, refreshTokenResponse)
+}

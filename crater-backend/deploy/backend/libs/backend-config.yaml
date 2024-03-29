@@ -8,7 +8,7 @@ data:
     enableProfiling: true
     prometheusAPI: http://***REMOVED***:31110
     profilingTimeout: 120
-    dbHost: mycluster.jupyter
+    dbHost: postgres-cluster.crater
     dbPort: 3306
     dbUser: root
     dbPassword: buaak8sportal@2023mysql
