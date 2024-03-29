@@ -14,31 +14,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-//nolint:funlen // todo: refactor
 package main
 
 import (
-	"flag"
 	"os"
+	"time"
 
+	aisystemv1alpha1 "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
+	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
+	recommenddljob "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
 	"go.uber.org/zap/zapcore"
-
 	"k8s.io/apimachinery/pkg/runtime"
-
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
-
-	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	schedulerpluginsv1alpha1 "sigs.k8s.io/scheduler-plugins/apis/scheduling/v1alpha1"
+
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
-	aisystemv1alpha1 "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
-	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
-	recommenddljob "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
 	"github.com/raids-lab/crater/pkg/config"
 	db "github.com/raids-lab/crater/pkg/db/orm"
 	"github.com/raids-lab/crater/pkg/monitor"
@@ -47,56 +43,30 @@ import (
 	"github.com/raids-lab/crater/pkg/reconciler"
 	"github.com/raids-lab/crater/pkg/server"
 	"github.com/raids-lab/crater/pkg/util"
+	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
-)
-
-//nolint:gochecknoinits // todo: refactor
-func init() {
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(schedulerpluginsv1alpha1.AddToScheme(scheme))
-	utilruntime.Must(aisystemv1alpha1.AddToScheme(scheme))
-	utilruntime.Must(recommenddljob.AddToScheme(scheme))
-	utilruntime.Must(imagepackv1.AddToScheme(scheme))
-}
-
 //nolint:gocyclo // todo: remove old mysql init
 func main() {
-	var metricsAddr string
-	var enableLeaderElection bool
-	var leaderElectionID string
-	var probeAddr string
-	var serverPort string
-	var enableProfiling bool
-	var configFile string
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
-		"Enable leader election for controller manager. "+
-			"Enabling this will ensure there is only one active controller manager.")
-	flag.StringVar(&leaderElectionID, "leader-election-id", ***REMOVED***, "The ID for leader election.")
-	flag.StringVar(&serverPort, "server-port", ":8088", "The address the server endpoint binds to.")
-	flag.StringVar(&configFile, "config-file", "", "server config file")
-	flag.BoolVar(&enableProfiling, "enable-profiling", false, "Enable profiling.")
+	// set global timezone
+	time.Local = time.UTC
+	// set ctrl inner logger
 	opts := zap.Options{
 		Development:     true,
 		StacktraceLevel: zapcore.DPanicLevel,
 	}
-	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-
-	backendConfig, err := config.NewConfig(configFile)
+	// create new ctrl logger with specific name
+	setupLog := ctrl.Log.WithName("setup")
+	// load backend config from file
+	backendConfig, err := config.InitConfig()
 	if err != nil {
 		setupLog.Error(err, "unable to init config")
 		os.Exit(1)
 	}
-
+	// variable changes in local development
 	if gin.Mode() == gin.DebugMode {
 		err = godotenv.Load(".debug.env")
 		if err != nil {
@@ -114,21 +84,28 @@ func main() {
 		if hp == "" {
 			panic("CRATER_HP_PORT is not set")
 		}
-		probeAddr = ":" + hp
-		metricsAddr = ":" + ms
-		serverPort = ":" + be
+		backendConfig.ProbeAddr = ":" + hp
+		backendConfig.MetricsAddr = ":" + ms
+		backendConfig.ServerAddr = ":" + be
 	}
 
 	// 0. create manager
+	scheme := runtime.NewScheme()
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(schedulerpluginsv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(aisystemv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(recommenddljob.AddToScheme(scheme))
+	utilruntime.Must(imagepackv1.AddToScheme(scheme))
+	// get k8s config via ./kubeconfig
 	cfg := ctrl.GetConfigOrDie()
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
-			BindAddress: metricsAddr,
+			BindAddress: backendConfig.MetricsAddr,
 		},
-		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       leaderElectionID,
+		HealthProbeBindAddress: backendConfig.ProbeAddr,
+		LeaderElection:         backendConfig.EnableLeaderElection,
+		LeaderElectionID:       backendConfig.LeaderElectionID,
 		// Namespace:              namespace,
 	})
 	if err != nil {
@@ -227,7 +204,7 @@ func main() {
 		setupLog.Error(err, "unable to set up server")
 		os.Exit(1)
 	}
-	if err := backend.R.Run(serverPort); err != nil {
+	if err := backend.R.Run(backendConfig.ServerAddr); err != nil {
 		setupLog.Error(err, "problem running server")
 		os.Exit(1)
 	}
