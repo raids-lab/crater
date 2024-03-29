@@ -40,8 +40,7 @@ export function ThemeProvider({
         .matches
         ? "dark"
         : "light";
-
-      root.classList.add(systemTheme);
+      setTheme(systemTheme);
       return;
     }
 
