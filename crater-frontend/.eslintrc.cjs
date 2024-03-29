@@ -21,6 +21,7 @@ module.exports = {
   plugins: ["react-refresh", "@tanstack/query"],
   rules: {
     "react-refresh/only-export-components": "off",
+    "no-console": "error",
   },
   settings: {
     react: {

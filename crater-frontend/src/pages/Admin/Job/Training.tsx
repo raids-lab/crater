@@ -36,6 +36,7 @@ import {
   DotFilledIcon,
 } from "@radix-ui/react-icons";
 import { apiAiTaskDelete } from "@/services/api/aiTask";
+import { logger } from "@/utils/loglevel";
 
 type StatusValue =
   | "Queueing"
@@ -186,7 +187,7 @@ const Training: FC = () => {
         queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
       ]);
     } catch (error) {
-      console.error("更新查询失败", error);
+      logger.error("更新查询失败", error);
     }
   };
   useEffect(() => {

@@ -23,7 +23,6 @@ import {
   CrossCircledIcon,
   StopwatchIcon,
 } from "@radix-ui/react-icons";
-
 import { NewTaskForm } from "./Form";
 import { TableDate } from "@/components/custom/TableDate";
 import { apiUserImagePackList } from "@/services/api/imagepack";

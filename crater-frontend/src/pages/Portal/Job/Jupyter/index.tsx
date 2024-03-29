@@ -41,6 +41,7 @@ import Quota from "../../Overview/Quota";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { toast } from "sonner";
 import { getHeader, statuses } from "@/pages/Portal/Job/Ai/statuses";
+import { logger } from "@/utils/loglevel";
 
 type JTaskInfo = {
   id: number;
@@ -93,7 +94,7 @@ export const Component = () => {
         queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
       ]);
     } catch (error) {
-      console.error("更新查询失败", error);
+      logger.error("更新查询失败", error);
     }
   };
 
