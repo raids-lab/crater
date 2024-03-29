@@ -1,79 +1,18 @@
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, type FC, useState } from "react";
+import { useMemo, type FC } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTable } from "@/components/custom/OldDataTable";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  CheckCircledIcon,
-  CircleIcon,
-  ClockIcon,
-  CrossCircledIcon,
-  StopwatchIcon,
-} from "@radix-ui/react-icons";
 
-import { NewTaskForm } from "./Form";
 import { TableDate } from "@/components/custom/TableDate";
-import { apiUserImagePackList } from "@/services/api/imagepack";
-
-type ImagePackInfo = {
-  id: number;
-  nametag: string;
-  link: string;
-  status: string;
-  createdAt: string;
-};
-
-type ImagePackStatusValue =
-  | "Initial"
-  | "Pending"
-  | "Running"
-  | "Finished"
-  | "Failed";
-
-const imagepack_statuses: {
-  value: ImagePackStatusValue;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-}[] = [
-  {
-    value: "Initial",
-    label: "检查中",
-    icon: CircleIcon,
-  },
-  {
-    value: "Pending",
-    label: "等待中",
-    icon: ClockIcon,
-  },
-  {
-    value: "Running",
-    label: "运行中",
-    icon: StopwatchIcon,
-  },
-  {
-    value: "Finished",
-    label: "成功",
-    icon: CheckCircledIcon,
-  },
-  {
-    value: "Failed",
-    label: "失败",
-    icon: CrossCircledIcon,
-  },
-];
+import {
+  apiUserImagePackList,
+  imagepack_statuses,
+  ImagePackInfo,
+} from "@/services/api/imagepack";
 
 const getHeader = (key: string): string => {
   switch (key) {
@@ -182,7 +121,6 @@ const columns: ColumnDef<ImagePackInfo>[] = [
 ];
 
 export const Component: FC = () => {
-  const [openSheet, setOpenSheet] = useState(false);
   const imagePackInfo = useQuery({
     queryKey: ["imagelink", "status"],
     queryFn: () => apiUserImagePackList(),
@@ -208,22 +146,7 @@ export const Component: FC = () => {
         columns={columns}
         toolbarConfig={toolbarConfig}
         loading={imagePackInfo.isLoading}
-      >
-        <Sheet open={openSheet} onOpenChange={setOpenSheet}>
-          <SheetTrigger asChild>
-            <Button className="h-8 min-w-fit">创建镜像</Button>
-          </SheetTrigger>
-          {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
-          <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
-            <SheetHeader>
-              <SheetTitle>创建镜像</SheetTitle>
-              <SheetDescription>创建一个新的训练任务镜像</SheetDescription>
-            </SheetHeader>
-            <Separator className="mt-4" />
-            <NewTaskForm closeSheet={() => setOpenSheet(false)} />
-          </SheetContent>
-        </Sheet>
-      </DataTable>
+      ></DataTable>
     </div>
   );
 };

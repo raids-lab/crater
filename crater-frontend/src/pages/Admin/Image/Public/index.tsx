@@ -16,64 +16,14 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  CheckCircledIcon,
-  CircleIcon,
-  ClockIcon,
-  CrossCircledIcon,
-  StopwatchIcon,
-} from "@radix-ui/react-icons";
 
 import { NewTaskForm } from "./Form";
 import { TableDate } from "@/components/custom/TableDate";
-import { apiUserImagePackList } from "@/services/api/imagepack";
-
-type ImagePackInfo = {
-  id: number;
-  nametag: string;
-  link: string;
-  status: string;
-  createdAt: string;
-};
-
-type ImagePackStatusValue =
-  | "Initial"
-  | "Pending"
-  | "Running"
-  | "Finished"
-  | "Failed";
-
-const imagepack_statuses: {
-  value: ImagePackStatusValue;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-}[] = [
-  {
-    value: "Initial",
-    label: "检查中",
-    icon: CircleIcon,
-  },
-  {
-    value: "Pending",
-    label: "等待中",
-    icon: ClockIcon,
-  },
-  {
-    value: "Running",
-    label: "运行中",
-    icon: StopwatchIcon,
-  },
-  {
-    value: "Finished",
-    label: "成功",
-    icon: CheckCircledIcon,
-  },
-  {
-    value: "Failed",
-    label: "失败",
-    icon: CrossCircledIcon,
-  },
-];
+import {
+  ImagePackInfo,
+  apiAdminPublicImagePackList,
+  imagepack_statuses,
+} from "@/services/api/imagepack";
 
 const getHeader = (key: string): string => {
   switch (key) {
@@ -185,7 +135,7 @@ export const Component: FC = () => {
   const [openSheet, setOpenSheet] = useState(false);
   const imagePackInfo = useQuery({
     queryKey: ["imagelink", "status"],
-    queryFn: () => apiUserImagePackList(),
+    queryFn: () => apiAdminPublicImagePackList(),
     select: (res) => res.data.data,
   });
   const data: ImagePackInfo[] = useMemo(() => {
