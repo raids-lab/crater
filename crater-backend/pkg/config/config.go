@@ -6,7 +6,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const configPath = "./etc/debug-config.yaml"
+
 type Config struct {
+	// Leader Election Settings
+	EnableLeaderElection bool `yaml:"enableLeaderElection"` // "Enable leader election for controller manager.
+	// Enabling this will ensure there is only one active controller manager."
+	LeaderElectionID string `yaml:"leaderElectionID"` // "The ID for leader election."
 	// Profiling Settings
 	EnableProfiling  bool   `yaml:"enableProfiling"`
 	PrometheusAPI    string `yaml:"prometheusAPI"`
@@ -20,19 +26,15 @@ type Config struct {
 	DBCharset           string `yaml:"dbCharset"`
 	DBConnectionTimeout int    `yaml:"dbConnTimeout"`
 	// Port Settings
-	ServerAddr     string `yaml:"serverAddr"`
-	MetricsAddr    string `yaml:"metricsAddr"`
-	ProbeAddr      string `yaml:"probeAddr"`
+	ServerAddr     string `yaml:"serverAddr"`  // "The address the server endpoint binds to."
+	MetricsAddr    string `yaml:"metricsAddr"` // "The address the metric endpoint binds to."
+	ProbeAddr      string `yaml:"probeAddr"`   // "The address the probe endpoint binds to."
 	MonitoringPort int    `yaml:"monitoringPort"`
 }
 
-func NewConfig(configPath string) (*Config, error) {
+func InitConfig() (*Config, error) {
 	config := &Config{}
 	// 读取配置文件
-	if configPath == "" {
-		return config, nil
-	}
-
 	err := readConfig(configPath, config)
 	if err != nil {
 		return nil, err

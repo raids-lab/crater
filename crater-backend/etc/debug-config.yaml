@@ -1,3 +1,5 @@
+enableLeaderElection: false
+leaderElectionID: ***REMOVED***
 enableProfiling: true
 prometheusAPI: ***REMOVED***
 profilingTimeout: 120
