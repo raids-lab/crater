@@ -64,7 +64,7 @@ export const imagepack_statuses: {
   },
 ];
 
-interface ImagePackCreate {
+export interface ImagePackCreate {
   gitRepository: string;
   accessToken: string;
   registryServer: string;
@@ -86,20 +86,12 @@ export const apiUserImagepackCreate = async (imagepack: ImagePackCreate) => {
 export const apiUserImagePackList = () =>
   instance.get<IResponse<ImagePackInfoResponse[]>>(VERSION + "/image/list");
 
-export const apiAdminImagepackCreate = async (imagepack: ImagePackCreate) => {
+export const apiUserImagePackDelete = async (id: number) => {
   const response = await instance.post<IResponse<string>>(
-    VERSION + "/admin/images/create",
-    imagepack,
+    VERSION + "/image/deleteid",
+    {
+      id,
+    },
   );
   return response.data;
 };
-
-export const apiAdminPublicImagePackList = () =>
-  instance.get<IResponse<ImagePackInfoResponse[]>>(
-    VERSION + "/admin/images/public",
-  );
-
-export const apiAdminPersonalImagePackList = () =>
-  instance.get<IResponse<ImagePackInfoResponse[]>>(
-    VERSION + "/admin/images/personal",
-  );

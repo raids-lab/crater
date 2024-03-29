@@ -13,7 +13,7 @@ import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { apiUserImagepackCreate } from "@/services/api/imagepack";
+import { apiAdminImagepackCreate } from "@/services/api/admin/imagepack";
 
 const formSchema = z.object({
   gitRepository: z.string().min(1, { message: "仓库地址不能为空" }),
@@ -37,7 +37,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
 
   const { mutate: createImagePack } = useMutation({
     mutationFn: (values: FormSchema) =>
-      apiUserImagepackCreate({
+      apiAdminImagepackCreate({
         gitRepository: values.gitRepository,
         accessToken: values.accessToken,
         registryServer: values.registryServer,
@@ -49,7 +49,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
       }),
     onSuccess: async (_, { imageName, imageTag }) => {
       await queryClient.invalidateQueries({
-        queryKey: ["imageName", "imageTag"],
+        queryKey: ["imagepack", "list"],
       });
       toast.success(`镜像 ${imageName}:${imageTag} 创建成功`);
       closeSheet();
@@ -65,7 +65,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
       registryServer: "",
       registryUser: "",
       registryPass: "",
-      registryProject: "",
+      registryProject: "crater-images",
       imageName: "",
       imageTag: "",
     },
@@ -110,70 +110,6 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                 <FormItem>
                   <FormLabel>
                     AccessToken<span className="ml-1 text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
-        <div>
-          <div className="grid grid-cols-3 gap-3">
-            <FormField
-              control={form.control}
-              name="registryServer"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    仓库地址<span className="ml-1 text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="registryUser"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    仓库账户<span className="ml-1 text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="registryPass"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    仓库密码<span className="ml-1 text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="registryProject"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    仓库项目<span className="ml-1 text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input {...field} />

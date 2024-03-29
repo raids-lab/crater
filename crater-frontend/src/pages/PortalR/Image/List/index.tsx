@@ -41,7 +41,8 @@ type ImagePackStatusValue =
   | "Pending"
   | "Running"
   | "Finished"
-  | "Failed";
+  | "Failed"
+  | "";
 
 const imagepack_statuses: {
   value: ImagePackStatusValue;
@@ -49,7 +50,7 @@ const imagepack_statuses: {
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
   {
-    value: "Initial",
+    value: "Initial" || "",
     label: "检查中",
     icon: CircleIcon,
   },
