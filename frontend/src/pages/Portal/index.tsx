@@ -66,7 +66,7 @@ const sidebarItems: SidebarItem[] = [
     children: [
       {
         route: {
-          path: "share",
+          path: "share/*",
           lazy: () => import("./Data/Share"),
         },
       },
