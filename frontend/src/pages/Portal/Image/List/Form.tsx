@@ -49,7 +49,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
       }),
     onSuccess: async (_, { imageName, imageTag }) => {
       await queryClient.invalidateQueries({
-        queryKey: ["imageName", "imageTag"],
+        queryKey: ["imagepack", "list"],
       });
       toast.success(`镜像 ${imageName}:${imageTag} 创建成功`);
       closeSheet();
