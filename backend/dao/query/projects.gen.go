@@ -16,7 +16,7 @@ import (
 
 	"gorm.io/plugin/dbresolver"
 
-	"github.com/raids-lab/crater/pkg/model"
+	"github.com/raids-lab/crater/dao/model"
 )
 
 func newProject(db *gorm.DB, opts ...gen.DOOption) project {
@@ -36,6 +36,7 @@ func newProject(db *gorm.DB, opts ...gen.DOOption) project {
 	_project.NameSpace = field.NewString(tableName, "namespace")
 	_project.Status = field.NewString(tableName, "status")
 	_project.Quota = field.NewString(tableName, "quota")
+	_project.IsPersonal = field.NewBool(tableName, "is_personal")
 	_project.UserProjects = projectHasManyUserProjects{
 		db: db.Session(&gorm.Session{}),
 
@@ -60,6 +61,7 @@ type project struct {
 	NameSpace    field.String
 	Status       field.String
 	Quota        field.String
+	IsPersonal   field.Bool
 	UserProjects projectHasManyUserProjects
 
 	fieldMap map[string]field.Expr
@@ -86,6 +88,7 @@ func (p *project) updateTableName(table string) *project {
 	p.NameSpace = field.NewString(table, "namespace")
 	p.Status = field.NewString(table, "status")
 	p.Quota = field.NewString(table, "quota")
+	p.IsPersonal = field.NewBool(table, "is_personal")
 
 	p.fillFieldMap()
 
@@ -110,7 +113,7 @@ func (p *project) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (p *project) fillFieldMap() {
-	p.fieldMap = make(map[string]field.Expr, 10)
+	p.fieldMap = make(map[string]field.Expr, 11)
 	p.fieldMap["id"] = p.ID
 	p.fieldMap["created_at"] = p.CreatedAt
 	p.fieldMap["updated_at"] = p.UpdatedAt
@@ -120,6 +123,7 @@ func (p *project) fillFieldMap() {
 	p.fieldMap["namespace"] = p.NameSpace
 	p.fieldMap["status"] = p.Status
 	p.fieldMap["quota"] = p.Quota
+	p.fieldMap["is_personal"] = p.IsPersonal
 
 }
 

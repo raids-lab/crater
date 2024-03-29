@@ -3,24 +3,31 @@ package main
 
 import (
 	"fmt"
+	"os"
 
-	"github.com/raids-lab/crater/pkg/model"
-	"gorm.io/driver/mysql"
+	"github.com/raids-lab/crater/dao/model"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-const MySQLDSN = "root:buaak8sportal@2023mysql@tcp(***REMOVED***:30306)/crater?charset=utf8mb4&parseTime=True"
-
-func ConnectDB(dsn string) *gorm.DB {
-	db, err := gorm.Open(mysql.Open(dsn))
+func ConnectDB() *gorm.DB {
+	// Connect to the database
+	password := os.Getenv("PGPASSWORD")
+	port := os.Getenv("PGPORT")
+	if password == "" || port == "" {
+		panic("Please read the README.md file to set the environment variable.")
+	}
+	dsnPattern := "host=localhost user=postgres password=%s dbname=crater port=%s sslmode=require TimeZone=Asia/Shanghai"
+	dsn := fmt.Sprintf(dsnPattern, password, port)
+	db, err := gorm.Open(postgres.Open(dsn))
 	if err != nil {
-		panic(fmt.Errorf("connect db fail: %w", err))
+		panic(fmt.Errorf("connect to postgres: %w", err))
 	}
 	return db
 }
 
 func main() {
-	db := ConnectDB(MySQLDSN)
+	db := ConnectDB()
 	if err := db.AutoMigrate(&model.Project{}, &model.User{}, &model.UserProject{}); err != nil {
 		panic(fmt.Errorf("auto migrate user fail: %w", err))
 	}
