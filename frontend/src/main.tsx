@@ -18,6 +18,7 @@ import { VITE_UI_THEME_KEY } from "./utils/store";
 import { adminRoute } from "./pages/Admin";
 import { recommendRoute } from "./pages/PortalR";
 import Jupyter from "./pages/Jobs/Jupyter";
+import { logger } from "./utils/loglevel";
 
 const router = createBrowserRouter([
   {
@@ -76,5 +77,5 @@ enableMocking()
     );
   })
   .catch((err) => {
-    console.error(err);
+    logger.error(err);
   });
