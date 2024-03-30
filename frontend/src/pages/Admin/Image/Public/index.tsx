@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 
 import { NewTaskForm } from "./Form";
 import { TableDate } from "@/components/custom/TableDate";
-import { ImagePackInfo, imagepack_statuses } from "@/services/api/imagepack";
+import { ImagePackInfo, imagepackStatuses } from "@/services/api/imagepack";
 import {
   apiAdminImagePackDelete,
   apiAdminImagePackList,
@@ -146,7 +146,7 @@ export const Component: FC = () => {
         <DataTableColumnHeader column={column} title={getHeader("status")} />
       ),
       cell: ({ row }) => {
-        const status = imagepack_statuses.find(
+        const status = imagepackStatuses.find(
           (status) => status.value === row.getValue("status"),
         );
         if (!status) {
