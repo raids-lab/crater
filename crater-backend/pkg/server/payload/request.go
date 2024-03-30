@@ -119,3 +119,22 @@ type DeleteRecommendDLJobReq struct {
 type GetDataSetReq struct {
 	Name string `form:"name" binding:"required"`
 }
+
+type ImagePackCreateRequest struct {
+	GitRepository   string `json:"gitRepository"`
+	AccessToken     string `json:"accessToken"`
+	RegistryServer  string `json:"registryServer"`
+	RegistryUser    string `json:"registryUser"`
+	RegistryPass    string `json:"registryPass"`
+	RegistryProject string `json:"registryProject"`
+	ImageName       string `json:"imageName"`
+	ImageTag        string `json:"imageTag"`
+}
+
+type ImagePackDeleteByNameRequest struct {
+	ImagePackName string `json:"imagepackname"`
+}
+
+type ImagePackDeleteByIDRequest struct {
+	ID uint `json:"id"`
+}
