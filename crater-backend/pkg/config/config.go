@@ -2,8 +2,10 @@ package config
 
 import (
 	"os"
+	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/raids-lab/crater/pkg/logutils"
 	"gopkg.in/yaml.v2"
 )
 
@@ -39,13 +41,30 @@ type Config struct {
 	MetricsAddr    string `yaml:"metricsAddr"` // "The address the metric endpoint binds to."
 	ProbeAddr      string `yaml:"probeAddr"`   // "The address the probe endpoint binds to."
 	MonitoringPort int    `yaml:"monitoringPort"`
+	// Workspace Settings
+	Workspace struct {
+		Namespace string `yaml:"namespace"`
+		PVCName   string `yaml:"pvcName"`
+	} `yaml:"workspace"`
+}
+
+var (
+	once   sync.Once
+	config *Config
+)
+
+func GetConfig() *Config {
+	once.Do(func() {
+		config = initConfig()
+	})
+	return config
 }
 
 // InitConfig initializes the configuration by reading the configuration file.
 // If the environment is set to debug, it reads the debug-config.yaml file.
 // Otherwise, it reads the config.yaml file from ConfigMap.
 // It returns a pointer to the Config struct and an error if any occurred.
-func InitConfig() (*Config, error) {
+func initConfig() *Config {
 	// 读取配置文件
 	config := &Config{}
 	var configPath string
@@ -57,9 +76,10 @@ func InitConfig() (*Config, error) {
 
 	err := readConfig(configPath, config)
 	if err != nil {
-		return nil, err
+		logutils.Log.Error("init config", err)
+		panic(err)
 	}
-	return config, nil
+	return config
 }
 
 func readConfig(filePath string, config *Config) error {
@@ -68,12 +88,10 @@ func readConfig(filePath string, config *Config) error {
 	if err != nil {
 		return err
 	}
-
 	// 解析 YAML 数据到结构体
 	err = yaml.Unmarshal(data, config)
 	if err != nil {
 		return err
 	}
-
 	return nil
 }

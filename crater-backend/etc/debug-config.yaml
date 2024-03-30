@@ -22,3 +22,6 @@ postgres:
   password: ***REMOVED***
   sslmode: require
   TimeZone: Asia/Shanghai
+workspace:
+  namespace: crater-workspace
+  pvcName: crater-storage
