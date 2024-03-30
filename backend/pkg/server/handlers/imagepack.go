@@ -23,25 +23,10 @@ type ImagePackMgr struct {
 	imagepackClient  *crclient.ImagePackController
 }
 
-type ImagePackCreateRequest struct {
-	GitRepository   string `json:"gitRepository"`
-	AccessToken     string `json:"accessToken"`
-	RegistryServer  string `json:"registryServer"`
-	RegistryUser    string `json:"registryUser"`
-	RegistryPass    string `json:"registryPass"`
-	RegistryProject string `json:"registryProject"`
-	ImageName       string `json:"imageName"`
-	ImageTag        string `json:"imageTag"`
-}
-
-type ImagePackDeleteRequest struct {
-	ImagePackName string `json:"imagepackname"`
-}
-
 func (mgr *ImagePackMgr) RegisterRoute(g *gin.RouterGroup) {
 	g.GET("/list", mgr.ListAll)
 	g.POST("/create", mgr.Create)
-	g.POST("/delete", mgr.Delete)
+	g.POST("/deleteid", mgr.DeleteByID)
 	g.GET("/available", mgr.ListAvailableImages)
 }
 
@@ -57,7 +42,7 @@ func NewImagePackMgr(
 
 func (mgr *ImagePackMgr) Create(c *gin.Context) {
 	logutils.Log.Infof("ImagePack Create, url: %s", c.Request.URL)
-	req := &ImagePackCreateRequest{}
+	req := &payload.ImagePackCreateRequest{}
 	userContext, _ := util.GetUserFromGinContext(c)
 	if err := c.ShouldBindJSON(req); err != nil {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
@@ -70,7 +55,7 @@ func (mgr *ImagePackMgr) Create(c *gin.Context) {
 	resputil.Success(c, "")
 }
 
-func (mgr *ImagePackMgr) requestDefaultValue(req *ImagePackCreateRequest) {
+func (mgr *ImagePackMgr) requestDefaultValue(req *payload.ImagePackCreateRequest) {
 	if req.RegistryServer == "" {
 		req.RegistryServer = "***REMOVED***"
 		req.RegistryUser = "***REMOVED***"
@@ -79,7 +64,7 @@ func (mgr *ImagePackMgr) requestDefaultValue(req *ImagePackCreateRequest) {
 	}
 }
 
-func (mgr *ImagePackMgr) createImagePack(ctx *gin.Context, req *ImagePackCreateRequest, userContext util.UserContext) {
+func (mgr *ImagePackMgr) createImagePack(ctx *gin.Context, req *payload.ImagePackCreateRequest, userContext util.UserContext) {
 	imagepackName := fmt.Sprintf("%s-%s", userContext.UserName, uuid.NewV4().String())
 	// create ImagePack CRD
 	imagepackCRD := &imagepackv1.ImagePack{
@@ -140,42 +125,17 @@ func (mgr *ImagePackMgr) updateImagePackStatus(ctx *gin.Context, userContext uti
 	imagepackCRD, err := mgr.imagepackClient.GetImagePack(ctx, imagepack.ImagePackName, userContext.Namespace)
 	if err != nil {
 		logutils.Log.Errorf("fetch imagepack CRD failed, err:%v", err)
+		return
 	}
 	logutils.Log.Infof("current stage:%s ----- new stage: %s", imagepack.Status, string(imagepackCRD.Status.Stage))
 	if err := mgr.imagepackService.UpdateStatusByEntity(imagepack, string(imagepackCRD.Status.Stage)); err != nil {
 		logutils.Log.Errorf("save imagepack status failed, err:%v status:%v", err, *imagepack)
 	}
-}
-
-func (mgr *ImagePackMgr) Delete(c *gin.Context) {
-	logutils.Log.Infof("ImagePack Delete, url: %s", c.Request.URL)
-	userContext, _ := util.GetUserFromGinContext(c)
-	imagePackDeleteRequest := &ImagePackDeleteRequest{}
-	if err := c.ShouldBindJSON(imagePackDeleteRequest); err != nil {
-		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
-		logutils.Log.Errorf(msg)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
-		return
-	}
-	logutils.Log.Infof("imagepackName %s", imagePackDeleteRequest.ImagePackName)
-	imagepackName := imagePackDeleteRequest.ImagePackName
-	if imagepackName == "default" {
-		resputil.Error(c, "please parse param imagepackName", resputil.NotSpecified)
-		return
-	}
-	flag := true
-	if err := mgr.imagepackClient.DeleteImagePack(c, imagepackName, userContext.Namespace); err != nil {
-		flag = false
-		logutils.Log.Errorf("delete imagepack CRD failed! err:%v", err)
-	}
-	if err := mgr.imagepackService.DeleteByName(imagepackName); err != nil {
-		flag = false
-		logutils.Log.Errorf("delete imagepack entity failed! err:%v", err)
-	}
-	if flag {
-		resputil.Success(c, "")
-	} else {
-		resputil.Error(c, "failed to find imagepack or entity", resputil.NotSpecified)
+	if imagepackCRD.Status.Stage == imagepackv1.PackJobFinished {
+		err := mgr.imagepackClient.DeleteImagePackByEntity(ctx, imagepackCRD)
+		if err != nil {
+			logutils.Log.Errorf("fetch imagepack CRD failed, err:%v", err)
+		}
 	}
 }
 
@@ -196,4 +156,27 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 
 	resp := payload.GetImagesResp{Images: imageLinks}
 	resputil.Success(c, resp)
+}
+
+func (mgr *ImagePackMgr) DeleteByID(c *gin.Context) {
+	userContext, _ := util.GetUserFromGinContext(c)
+	imagePackDeleteRequest := &payload.ImagePackDeleteByIDRequest{}
+	if err := c.ShouldBindJSON(imagePackDeleteRequest); err != nil {
+		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
+		logutils.Log.Errorf(msg)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		return
+	}
+	imagepackID := imagePackDeleteRequest.ID
+	if _, err := mgr.imagepackService.GetImagePack(imagepackID, userContext.UserName); err != nil {
+		logutils.Log.Errorf("image not exist or have no permission%v", err)
+		resputil.Error(c, "failed to find imagepack or entity", resputil.NotSpecified)
+		return
+	}
+	if err := mgr.imagepackService.DeleteByID(imagepackID); err != nil {
+		logutils.Log.Errorf("delete imagepack entity failed! err:%v", err)
+		resputil.Error(c, "failed to find imagepack or entity", resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, "")
 }

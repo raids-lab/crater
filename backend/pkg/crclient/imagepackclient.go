@@ -29,8 +29,13 @@ func (c *ImagePackController) GetImagePack(ctx context.Context, name, namespace 
 	return imagepack, nil
 }
 
-func (c *ImagePackController) DeleteImagePack(ctx context.Context, name, namespace string) error {
+func (c *ImagePackController) DeleteImagePackByName(ctx context.Context, name, namespace string) error {
 	imagepack, _ := c.GetImagePack(ctx, name, namespace)
+	err := c.Delete(ctx, imagepack)
+	return err
+}
+
+func (c *ImagePackController) DeleteImagePackByEntity(ctx context.Context, imagepack *imagepackv1.ImagePack) error {
 	err := c.Delete(ctx, imagepack)
 	return err
 }

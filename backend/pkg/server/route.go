@@ -34,7 +34,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	}
 	logClient := crclient.LogClient{Client: cl, KubeClient: cs}
 	nodeClient := crclient.NodeClient{Client: cl, KubeClient: cs}
-
+	imagepackClient := crclient.ImagePackController{Client: cl}
 	tokenConf := config.NewTokenConf()
 
 	///////////////////////////////////////
@@ -58,7 +58,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	jupyterMgr := handlers.NewJupyterMgr(aitaskCtrl, &pvcClient, &logClient)
 	recommenddljobMgr := handlers.NewRecommendDLJobMgr(user.NewDBService(), cl)
 	datasetMgr := handlers.NewDataSetMgr(user.NewDBService(), cl)
-	imagepackMgr := handlers.NewImagePackMgr(imagepack.NewDBService(), &logClient, &crclient.ImagePackController{Client: cl})
+	imagepackMgr := handlers.NewImagePackMgr(imagepack.NewDBService(), &logClient, &imagepackClient)
 
 	shareDirMgr.RegisterRoute(protectedRouter.Group("/sharedir"))
 	aitaskMgr.RegisterRoute(protectedRouter.Group("/aitask"))
@@ -74,7 +74,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	adminRouter := b.R.Group(constants.APIPrefix + "/admin")
 	adminRouter.Use(middleware.JwtAuthMiddleware(tokenConf.AccessTokenSecret), middleware.AdminMiddleware())
 
-	adminMgr := handlers.NewAdminMgr(aitaskCtrl, &nodeClient)
+	adminMgr := handlers.NewAdminMgr(aitaskCtrl, &nodeClient, &imagepackClient)
 	adminMgr.RegisterRoute(adminRouter)
 }
 
