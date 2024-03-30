@@ -61,14 +61,10 @@ func main() {
 	// create new ctrl logger with specific name
 	setupLog := ctrl.Log.WithName("setup")
 	// load backend config from file
-	backendConfig, err := config.InitConfig()
-	if err != nil {
-		setupLog.Error(err, "unable to init config")
-		os.Exit(1)
-	}
+	backendConfig := config.GetConfig()
 	// variable changes in local development
 	if gin.Mode() == gin.DebugMode {
-		err = godotenv.Load(".debug.env")
+		err := godotenv.Load(".debug.env")
 		if err != nil {
 			panic(err.Error())
 		}
@@ -130,7 +126,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = query.InitDB(backendConfig)
+	err = query.InitDB()
 	if err != nil {
 		setupLog.Error(err, "unable to init query db")
 		os.Exit(1)

@@ -184,7 +184,7 @@ func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.Us
 	project := model.Project{
 		Name:        user.Name,
 		Description: nil,
-		NameSpace:   crclient.NameSpace,
+		Namespace:   config.GetConfig().Workspace.Namespace,
 		Status:      model.StatusActive,
 		Quota:       model.ResourceListToJSON(model.DefaultQuota),
 		IsPersonal:  true,

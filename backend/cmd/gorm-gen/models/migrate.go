@@ -28,7 +28,13 @@ func ConnectDB() *gorm.DB {
 
 func main() {
 	db := ConnectDB()
-	if err := db.AutoMigrate(&model.Project{}, &model.User{}, &model.UserProject{}); err != nil {
+	if err := db.AutoMigrate(
+		&model.Project{},
+		&model.User{},
+		&model.UserProject{},
+		&model.Space{},
+		&model.ProjectSpace{},
+	); err != nil {
 		panic(fmt.Errorf("auto migrate user fail: %w", err))
 	}
 }
