@@ -16,16 +16,14 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { StopIcon } from "@radix-ui/react-icons";
+
 import { NewTaskForm } from "./Form";
 import { TableDate } from "@/components/custom/TableDate";
+import { ImagePackInfo, imagepackStatuses } from "@/services/api/imagepack";
 import {
-  apiUserImagePackDelete,
-  apiUserImagePackList,
-  imagepackStatuses,
-} from "@/services/api/imagepack";
-import { logger } from "@/utils/loglevel";
-import { toast } from "sonner";
+  apiAdminImagePackDelete,
+  apiAdminImagePackList,
+} from "@/services/api/admin/imagepack";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,14 +35,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
-type ImagePackInfo = {
-  id: number;
-  nametag: string;
-  link: string;
-  status: string;
-  createdAt: string;
-};
+import { StopIcon } from "@radix-ui/react-icons";
+import { toast } from "sonner";
+import { logger } from "@/utils/loglevel";
 
 const getHeader = (key: string): string => {
   switch (key) {
@@ -71,11 +64,11 @@ const toolbarConfig: DataTableToolbarConfig = {
 };
 
 export const Component: FC = () => {
-  const queryClient = useQueryClient();
   const [openSheet, setOpenSheet] = useState(false);
+  const queryClient = useQueryClient();
   const imagePackInfo = useQuery({
     queryKey: ["imagepack", "list"],
-    queryFn: () => apiUserImagePackList(),
+    queryFn: () => apiAdminImagePackList(1),
     select: (res) => res.data.data,
   });
   const data: ImagePackInfo[] = useMemo(() => {
@@ -90,6 +83,7 @@ export const Component: FC = () => {
       nametag: item.nametag,
     }));
   }, [imagePackInfo.data]);
+
   const refetchImagePackList = async () => {
     try {
       // 并行发送所有异步请求
@@ -100,8 +94,8 @@ export const Component: FC = () => {
       logger.error("更新查询失败", error);
     }
   };
-  const { mutate: deleteUserImagePack } = useMutation({
-    mutationFn: (id: number) => apiUserImagePackDelete(id),
+  const { mutate: deleteAdminImagePack } = useMutation({
+    mutationFn: (id: number) => apiAdminImagePackDelete(id),
     onSuccess: async () => {
       await refetchImagePackList();
       toast.success("镜像已删除");
@@ -221,7 +215,7 @@ export const Component: FC = () => {
                     variant="destructive"
                     onClick={() => {
                       // check if browser support clipboard
-                      deleteUserImagePack(imagepackInfo.id);
+                      deleteAdminImagePack(imagepackInfo.id);
                     }}
                   >
                     删除

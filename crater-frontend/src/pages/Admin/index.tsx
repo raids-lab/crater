@@ -74,7 +74,14 @@ const sidebarItems: SidebarItem[] = [
     children: [
       {
         route: {
-          path: "list",
+          path: "public",
+          lazy: () => import("./Image/Public"),
+        },
+      },
+      {
+        route: {
+          path: "personal",
+          lazy: () => import("./Image/Personal"),
         },
       },
     ],
