@@ -1,31 +1,15 @@
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, type FC, useState } from "react";
+import { useMemo, type FC } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTable } from "@/components/custom/OldDataTable";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { StopIcon } from "@radix-ui/react-icons";
-import { NewTaskForm } from "./Form";
-import { TableDate } from "@/components/custom/TableDate";
 import {
-  apiUserImagePackDelete,
-  apiUserImagePackList,
-  imagepackStatuses,
-} from "@/services/api/imagepack";
-import { logger } from "@/utils/loglevel";
-import { toast } from "sonner";
+  apiAdminImagePackDelete,
+  apiAdminImagePackList,
+} from "@/services/api/admin/imagepack";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,14 +21,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
-type ImagePackInfo = {
-  id: number;
-  nametag: string;
-  link: string;
-  status: string;
-  createdAt: string;
-};
+import { StopIcon } from "@radix-ui/react-icons";
+import { toast } from "sonner";
+import { logger } from "@/utils/loglevel";
+import { TableDate } from "@/components/custom/TableDate";
+import { imagepackStatuses, ImagePackInfo } from "@/services/api/imagepack";
+import { Button } from "@/components/ui/button";
 
 const getHeader = (key: string): string => {
   switch (key) {
@@ -72,10 +54,9 @@ const toolbarConfig: DataTableToolbarConfig = {
 
 export const Component: FC = () => {
   const queryClient = useQueryClient();
-  const [openSheet, setOpenSheet] = useState(false);
   const imagePackInfo = useQuery({
     queryKey: ["imagepack", "list"],
-    queryFn: () => apiUserImagePackList(),
+    queryFn: () => apiAdminImagePackList(0),
     select: (res) => res.data.data,
   });
   const data: ImagePackInfo[] = useMemo(() => {
@@ -100,14 +81,13 @@ export const Component: FC = () => {
       logger.error("更新查询失败", error);
     }
   };
-  const { mutate: deleteUserImagePack } = useMutation({
-    mutationFn: (id: number) => apiUserImagePackDelete(id),
+  const { mutate: deleteAdminImagePack } = useMutation({
+    mutationFn: (id: number) => apiAdminImagePackDelete(id),
     onSuccess: async () => {
       await refetchImagePackList();
       toast.success("镜像已删除");
     },
   });
-
   const columns: ColumnDef<ImagePackInfo>[] = [
     {
       id: "select",
@@ -221,7 +201,7 @@ export const Component: FC = () => {
                     variant="destructive"
                     onClick={() => {
                       // check if browser support clipboard
-                      deleteUserImagePack(imagepackInfo.id);
+                      deleteAdminImagePack(imagepackInfo.id);
                     }}
                   >
                     删除
@@ -242,22 +222,7 @@ export const Component: FC = () => {
         columns={columns}
         toolbarConfig={toolbarConfig}
         loading={imagePackInfo.isLoading}
-      >
-        <Sheet open={openSheet} onOpenChange={setOpenSheet}>
-          <SheetTrigger asChild>
-            <Button className="h-8 min-w-fit">创建镜像</Button>
-          </SheetTrigger>
-          {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
-          <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
-            <SheetHeader>
-              <SheetTitle>创建镜像</SheetTitle>
-              <SheetDescription>创建一个新的训练任务镜像</SheetDescription>
-            </SheetHeader>
-            <Separator className="mt-4" />
-            <NewTaskForm closeSheet={() => setOpenSheet(false)} />
-          </SheetContent>
-        </Sheet>
-      </DataTable>
+      ></DataTable>
     </div>
   );
 };
