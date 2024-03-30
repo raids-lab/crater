@@ -25,6 +25,16 @@ type Config struct {
 	DBName              string `yaml:"dbName"`
 	DBCharset           string `yaml:"dbCharset"`
 	DBConnectionTimeout int    `yaml:"dbConnTimeout"`
+	// New DB Settings
+	Postgres struct {
+		Host     string `yaml:"host"`
+		Port     string `yaml:"port"`
+		DBName   string `yaml:"dbname"`
+		User     string `yaml:"user"`
+		Password string `yaml:"password"`
+		SSLMode  string `yaml:"sslmode"`
+		TimeZone string `yaml:"TimeZone"`
+	} `yaml:"postgres"`
 	// Port Settings
 	ServerAddr     string `yaml:"serverAddr"`  // "The address the server endpoint binds to."
 	MetricsAddr    string `yaml:"metricsAddr"` // "The address the metric endpoint binds to."

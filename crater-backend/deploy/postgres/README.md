@@ -37,6 +37,15 @@ cd deploy/postgres
 kubectl apply -f cluster/minimal-postgres-manifest.yaml
 ```
 
+完成后，为 Master Pod 的 Service 添加选择器（这部分还需要读一下官方代码，为什么没有默认选择）：
+
+```yaml
+  selector:
+    application: spilo
+    cluster-name: postgres-cluster
+    spilo-role: master
+```
+
 ## Connect to DB
 
 - [Connect to PostgreSQL](https://postgres-operator.readthedocs.io/en/latest/user/#connect-to-postgresql)

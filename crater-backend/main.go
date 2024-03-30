@@ -130,7 +130,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = query.ConnectDB()
+	err = query.InitDB(backendConfig)
 	if err != nil {
 		setupLog.Error(err, "unable to init query db")
 		os.Exit(1)

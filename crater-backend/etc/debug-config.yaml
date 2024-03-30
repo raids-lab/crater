@@ -14,3 +14,11 @@ serverAddr: :8098
 metricsAddr: :8090
 probeAddr: :8091
 monitoringPort: 0
+postgres:
+  host: ***REMOVED***
+  port: 30432
+  dbname: crater
+  user: postgres
+  password: ***REMOVED***
+  sslmode: require
+  TimeZone: Asia/Shanghai
