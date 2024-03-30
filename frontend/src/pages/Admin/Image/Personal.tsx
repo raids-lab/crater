@@ -6,7 +6,10 @@ import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableCo
 import { DataTable } from "@/components/custom/OldDataTable";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { apiAdminImagePackDelete } from "@/services/api/admin/imagepack";
+import {
+  apiAdminImagePackDelete,
+  apiAdminImagePackList,
+} from "@/services/api/admin/imagepack";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,11 +25,7 @@ import { StopIcon } from "@radix-ui/react-icons";
 import { toast } from "sonner";
 import { logger } from "@/utils/loglevel";
 import { TableDate } from "@/components/custom/TableDate";
-import {
-  apiUserImagePackList,
-  imagepack_statuses,
-  ImagePackInfo,
-} from "@/services/api/imagepack";
+import { imagepack_statuses, ImagePackInfo } from "@/services/api/imagepack";
 import { Button } from "@/components/ui/button";
 
 const getHeader = (key: string): string => {
@@ -57,7 +56,7 @@ export const Component: FC = () => {
   const queryClient = useQueryClient();
   const imagePackInfo = useQuery({
     queryKey: ["imagepack", "list"],
-    queryFn: () => apiUserImagePackList(),
+    queryFn: () => apiAdminImagePackList(0),
     select: (res) => res.data.data,
   });
   const data: ImagePackInfo[] = useMemo(() => {

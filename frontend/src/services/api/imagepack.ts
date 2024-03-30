@@ -25,12 +25,13 @@ export type ImagePackInfo = {
   createdAt: string;
 };
 
-type ImagePackStatusValue =
+export type ImagePackStatusValue =
   | "Initial"
   | "Pending"
   | "Running"
   | "Finished"
-  | "Failed";
+  | "Failed"
+  | "";
 
 export const imagepack_statuses: {
   value: ImagePackStatusValue;

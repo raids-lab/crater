@@ -22,7 +22,7 @@ import { TableDate } from "@/components/custom/TableDate";
 import { ImagePackInfo, imagepack_statuses } from "@/services/api/imagepack";
 import {
   apiAdminImagePackDelete,
-  apiAdminPublicImagePackList,
+  apiAdminImagePackList,
 } from "@/services/api/admin/imagepack";
 import {
   AlertDialog,
@@ -68,7 +68,7 @@ export const Component: FC = () => {
   const queryClient = useQueryClient();
   const imagePackInfo = useQuery({
     queryKey: ["imagepack", "list"],
-    queryFn: () => apiAdminPublicImagePackList(),
+    queryFn: () => apiAdminImagePackList(1),
     select: (res) => res.data.data,
   });
   const data: ImagePackInfo[] = useMemo(() => {
