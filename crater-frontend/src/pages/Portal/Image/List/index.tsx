@@ -16,20 +16,13 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  CheckCircledIcon,
-  CircleIcon,
-  ClockIcon,
-  CrossCircledIcon,
-  StopIcon,
-  StopwatchIcon,
-} from "@radix-ui/react-icons";
+import { StopIcon } from "@radix-ui/react-icons";
 import { NewTaskForm } from "./Form";
 import { TableDate } from "@/components/custom/TableDate";
 import {
-  ImagePackStatusValue,
   apiUserImagePackDelete,
   apiUserImagePackList,
+  imagepackStatuses,
 } from "@/services/api/imagepack";
 import { logger } from "@/utils/loglevel";
 import { toast } from "sonner";
@@ -52,38 +45,6 @@ type ImagePackInfo = {
   status: string;
   createdAt: string;
 };
-
-const imagepack_statuses: {
-  value: ImagePackStatusValue;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-}[] = [
-  {
-    value: "Initial" || "",
-    label: "检查中",
-    icon: CircleIcon,
-  },
-  {
-    value: "Pending",
-    label: "等待中",
-    icon: ClockIcon,
-  },
-  {
-    value: "Running",
-    label: "运行中",
-    icon: StopwatchIcon,
-  },
-  {
-    value: "Finished",
-    label: "成功",
-    icon: CheckCircledIcon,
-  },
-  {
-    value: "Failed",
-    label: "失败",
-    icon: CrossCircledIcon,
-  },
-];
 
 const getHeader = (key: string): string => {
   switch (key) {
@@ -191,7 +152,7 @@ export const Component: FC = () => {
         <DataTableColumnHeader column={column} title={getHeader("status")} />
       ),
       cell: ({ row }) => {
-        const status = imagepack_statuses.find(
+        const status = imagepackStatuses.find(
           (status) => status.value === row.getValue("status"),
         );
         if (!status) {

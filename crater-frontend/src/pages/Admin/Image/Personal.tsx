@@ -25,7 +25,7 @@ import { StopIcon } from "@radix-ui/react-icons";
 import { toast } from "sonner";
 import { logger } from "@/utils/loglevel";
 import { TableDate } from "@/components/custom/TableDate";
-import { imagepack_statuses, ImagePackInfo } from "@/services/api/imagepack";
+import { imagepackStatuses, ImagePackInfo } from "@/services/api/imagepack";
 import { Button } from "@/components/ui/button";
 
 const getHeader = (key: string): string => {
@@ -132,7 +132,7 @@ export const Component: FC = () => {
         <DataTableColumnHeader column={column} title={getHeader("status")} />
       ),
       cell: ({ row }) => {
-        const status = imagepack_statuses.find(
+        const status = imagepackStatuses.find(
           (status) => status.value === row.getValue("status"),
         );
         if (!status) {

@@ -33,7 +33,7 @@ export type ImagePackStatusValue =
   | "Failed"
   | "";
 
-export const imagepack_statuses: {
+export const imagepackStatuses: {
   value: ImagePackStatusValue;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
