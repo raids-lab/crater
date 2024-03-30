@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
+	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
 	"github.com/raids-lab/crater/pkg/crclient"
+	imagepacksvc "github.com/raids-lab/crater/pkg/db/imagepack"
 	quotasvc "github.com/raids-lab/crater/pkg/db/quota"
 	tasksvc "github.com/raids-lab/crater/pkg/db/task"
 	usersvc "github.com/raids-lab/crater/pkg/db/user"
@@ -13,14 +16,19 @@ import (
 	"github.com/raids-lab/crater/pkg/models"
 	payload "github.com/raids-lab/crater/pkg/server/payload"
 	resputil "github.com/raids-lab/crater/pkg/server/response"
+	"github.com/raids-lab/crater/pkg/util"
+	uuid "github.com/satori/go.uuid"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type AdminMgr struct {
-	quotaService   quotasvc.DBService
-	userService    usersvc.DBService
-	taskServcie    tasksvc.DBService
-	taskController *aitaskctl.TaskController
-	nodeClient     *crclient.NodeClient
+	quotaService     quotasvc.DBService
+	userService      usersvc.DBService
+	taskServcie      tasksvc.DBService
+	imagepackService imagepacksvc.DBService
+	taskController   *aitaskctl.TaskController
+	nodeClient       *crclient.NodeClient
+	imagepackClient  *crclient.ImagePackController
 }
 
 func (mgr *AdminMgr) RegisterRoute(g *gin.RouterGroup) {
@@ -40,15 +48,24 @@ func (mgr *AdminMgr) RegisterRoute(g *gin.RouterGroup) {
 
 	nodes := g.Group("/nodes")
 	nodes.GET("", mgr.ListNode)
+
+	images := g.Group("/images")
+	images.POST("/create", mgr.CreateImages)
+	images.POST("/delete", mgr.DeleteByID)
+	images.GET("/list", mgr.ListImages)
 }
 
-func NewAdminMgr(taskController *aitaskctl.TaskController, nodeClient *crclient.NodeClient) *AdminMgr {
+func NewAdminMgr(
+	taskController *aitaskctl.TaskController, nodeClient *crclient.NodeClient, imagepackClient *crclient.ImagePackController,
+) *AdminMgr {
 	return &AdminMgr{
-		quotaService:   quotasvc.NewDBService(),
-		userService:    usersvc.NewDBService(),
-		taskServcie:    tasksvc.NewDBService(),
-		taskController: taskController,
-		nodeClient:     nodeClient,
+		quotaService:     quotasvc.NewDBService(),
+		userService:      usersvc.NewDBService(),
+		taskServcie:      tasksvc.NewDBService(),
+		imagepackService: imagepacksvc.NewDBService(),
+		taskController:   taskController,
+		nodeClient:       nodeClient,
+		imagepackClient:  imagepackClient,
 	}
 }
 
@@ -243,4 +260,133 @@ func (mgr *AdminMgr) ListNode(c *gin.Context) {
 		Rows: nodes,
 	}
 	resputil.Success(c, resp)
+}
+
+func (mgr *AdminMgr) CreateImages(c *gin.Context) {
+	logutils.Log.Infof("ImagePack Create, url: %s", c.Request.URL)
+	userContext, _ := util.GetUserFromGinContext(c)
+	req := &payload.ImagePackCreateRequest{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
+		logutils.Log.Errorf(msg)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		return
+	}
+	mgr.requestDefaultValue(req)
+	mgr.createImagePack(c, req, userContext)
+	resputil.Success(c, "")
+}
+
+func (mgr *AdminMgr) requestDefaultValue(req *payload.ImagePackCreateRequest) {
+	if req.RegistryServer == "" {
+		req.RegistryServer = "***REMOVED***"
+		req.RegistryUser = "***REMOVED***"
+		req.RegistryPass = "***REMOVED***"
+		req.RegistryProject = "crater-images"
+	}
+}
+
+func (mgr *AdminMgr) createImagePack(ctx *gin.Context, req *payload.ImagePackCreateRequest, userContext util.UserContext) {
+	imagepackName := fmt.Sprintf("%s-%s-%s", "admin", userContext.UserName, uuid.NewV4().String())
+	// create ImagePack CRD
+	imagepackCRD := &imagepackv1.ImagePack{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      imagepackName,
+			Namespace: userContext.Namespace,
+		},
+		Spec: imagepackv1.ImagePackSpec{
+			GitRepository:   req.GitRepository,
+			AccessToken:     req.AccessToken,
+			RegistryServer:  req.RegistryServer,
+			RegistryUser:    req.RegistryUser,
+			RegistryPass:    req.RegistryPass,
+			RegistryProject: req.RegistryProject,
+			UserName:        userContext.UserName,
+			ImageName:       req.ImageName,
+			ImageTag:        req.ImageTag,
+		},
+	}
+	if err := mgr.imagepackClient.CreateImagePack(ctx, imagepackCRD); err != nil {
+		logutils.Log.Errorf("create imagepack CRD failed, params: %+v err:%v", imagepackCRD, err)
+		return
+	}
+
+	// create ImagePack DataBase entity
+	imageLink := fmt.Sprintf("%s/%s/%s:%s", req.RegistryServer, req.RegistryProject, req.ImageName, req.ImageTag)
+
+	imagepackEntity := &models.ImagePack{
+		ImagePackName: imagepackName,
+		ImageLink:     imageLink,
+		UserName:      "admin",
+		NameSpace:     userContext.Namespace,
+		Status:        string(imagepackv1.PackJobInitial),
+		NameTag:       fmt.Sprintf("%s:%s", req.ImageName, req.ImageTag),
+	}
+	if err := mgr.imagepackService.Create(imagepackEntity); err != nil {
+		logutils.Log.Errorf("create imagepack entity failed, params: %+v", imagepackEntity)
+	}
+}
+
+func (mgr *AdminMgr) ListImages(c *gin.Context) {
+	listType := c.DefaultQuery("type", "0")
+	fmt.Println(listType)
+
+	var imagepacks []models.ImagePack
+	var err error
+	if listType == "0" {
+		imagepacks, err = mgr.imagepackService.ListAdminPersonal()
+	} else if listType == "1" {
+		imagepacks, err = mgr.imagepackService.ListAdminPublic()
+	} else {
+		logutils.Log.Errorf("list image type error, err:%v", err)
+		resputil.Error(c, "list image type error", resputil.NotSpecified)
+		return
+	}
+	if err != nil {
+		logutils.Log.Errorf("admin fetch personal or public imagepack failed, err:%v", err)
+		resputil.Error(c, "list image type error", resputil.NotSpecified)
+		return
+	}
+	for i := range imagepacks {
+		imagepack := &imagepacks[i]
+		if imagepack.Status != string(imagepackv1.PackJobFinished) && imagepack.Status != string(imagepackv1.PackJobFailed) {
+			mgr.updateImagePackStatus(c, imagepack, listType)
+		}
+	}
+	resputil.Success(c, imagepacks)
+}
+
+func (mgr *AdminMgr) updateImagePackStatus(ctx *gin.Context, imagepack *models.ImagePack, listType string) {
+	imagepackCRD, err := mgr.imagepackClient.GetImagePack(ctx, imagepack.ImagePackName, imagepack.NameSpace)
+	if err != nil {
+		logutils.Log.Errorf("fetch imagepack CRD failed, err:%v", err)
+		return
+	}
+	logutils.Log.Infof("current stage:%s ----- new stage: %s", imagepack.Status, string(imagepackCRD.Status.Stage))
+	if err := mgr.imagepackService.UpdateStatusByEntity(imagepack, string(imagepackCRD.Status.Stage)); err != nil {
+		logutils.Log.Errorf("save imagepack status failed, err:%v status:%v", err, *imagepack)
+	}
+	if imagepackCRD.Status.Stage == imagepackv1.PackJobFinished && listType == "1" {
+		err := mgr.imagepackClient.DeleteImagePackByEntity(ctx, imagepackCRD)
+		if err != nil {
+			logutils.Log.Errorf("fetch imagepack CRD failed, err:%v", err)
+		}
+	}
+}
+
+func (mgr *AdminMgr) DeleteByID(c *gin.Context) {
+	imagePackDeleteRequest := &payload.ImagePackDeleteByIDRequest{}
+	if err := c.ShouldBindJSON(imagePackDeleteRequest); err != nil {
+		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
+		logutils.Log.Errorf(msg)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		return
+	}
+	imagepackID := imagePackDeleteRequest.ID
+	if err := mgr.imagepackService.DeleteByID(imagepackID); err != nil {
+		logutils.Log.Errorf("delete imagepack entity failed! err:%v", err)
+		resputil.Error(c, "failed to find imagepack or entity", resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, "")
 }
