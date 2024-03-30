@@ -27,6 +27,7 @@ import {
 import { NewTaskForm } from "./Form";
 import { TableDate } from "@/components/custom/TableDate";
 import {
+  ImagePackStatusValue,
   apiUserImagePackDelete,
   apiUserImagePackList,
 } from "@/services/api/imagepack";
@@ -51,14 +52,6 @@ type ImagePackInfo = {
   status: string;
   createdAt: string;
 };
-
-type ImagePackStatusValue =
-  | "Initial"
-  | "Pending"
-  | "Running"
-  | "Finished"
-  | "Failed"
-  | "";
 
 const imagepack_statuses: {
   value: ImagePackStatusValue;

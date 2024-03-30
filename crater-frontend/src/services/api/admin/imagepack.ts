@@ -10,14 +10,14 @@ export const apiAdminImagepackCreate = async (imagepack: ImagePackCreate) => {
   return response.data;
 };
 
-export const apiAdminPublicImagePackList = () =>
+export const apiAdminImagePackList = (type: number) =>
   instance.get<IResponse<ImagePackInfoResponse[]>>(
-    VERSION + "/admin/images/public",
-  );
-
-export const apiAdminPersonalImagePackList = () =>
-  instance.get<IResponse<ImagePackInfoResponse[]>>(
-    VERSION + "/admin/images/personal",
+    VERSION + "/admin/images/list",
+    {
+      params: {
+        type,
+      },
+    },
   );
 
 export const apiAdminImagePackDelete = async (id: number) => {
