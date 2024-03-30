@@ -42,40 +42,62 @@ func (mgr *AuthMgr) RegisterRoute(group *gin.RouterGroup) {
 	group.POST("/refresh", mgr.RefreshToken)
 }
 
-type LoginRequest struct {
-	Username string `json:"username" binding:"required"`
-	Password string `json:"passWord" binding:"required"`
-}
+type (
+	LoginReq struct {
+		Username   string `json:"username" binding:"required"`   // 用户名
+		Password   string `json:"password" binding:"required"`   // 密码
+		AuthMethod string `json:"authMethod" binding:"required"` // 认证方式 [normal, act]
+	}
 
-type LoginResponse struct {
-	AccessToken  string            `json:"accessToken"`
-	RefreshToken string            `json:"refreshToken"`
-	Projects     []ProjectResponse `json:"projects"`
-	Context      util.JWTMessage   `json:"context"`
-}
+	LoginResp struct {
+		AccessToken  string          `json:"accessToken"`
+		RefreshToken string          `json:"refreshToken"`
+		Context      util.JWTMessage `json:"context"`
+		Projects     []ProjectResp   `json:"projects"`
+	}
 
-type ProjectResponse struct {
-	ID         uint   `json:"id"`
-	Name       string `json:"name"`
-	Role       string `json:"role"`
-	IsPersonal bool   `json:"isPersonal"`
-}
+	ProjectResp struct {
+		ID         uint   `json:"id"`
+		Name       string `json:"name"`
+		Role       string `json:"role"`
+		IsPersonal bool   `json:"isPersonal"`
+	}
+)
+
+const (
+	AuthMethodNormal = "normal"
+	AuthMethodACT    = "act"
+)
 
 func (mgr *AuthMgr) Login(c *gin.Context) {
-	var request LoginRequest
-	if err := c.ShouldBind(&request); err != nil {
+	var req LoginReq
+	if err := c.ShouldBind(&req); err != nil {
 		resputil.HTTPError(c, http.StatusBadRequest, err.Error(), resputil.InvalidRequest)
 		return
 	}
 
 	l := logutils.Log.WithFields(logutils.Fields{
-		"username": request.Username,
+		"username":   req.Username,
+		"authMethod": req.AuthMethod,
 	})
 
-	// ACT Authentication
-	if err := mgr.ACTAuthorization(request.Username, request.Password); err != nil {
-		l.Error("Invalid credentials", err)
-		resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.NotSpecified)
+	// Check if request auth method is valid
+	switch req.AuthMethod {
+	case AuthMethodACT:
+		if err := mgr.actAuth(req.Username, req.Password); err != nil {
+			l.Error("Invalid credentials", err)
+			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.NotSpecified)
+			return
+		}
+	case AuthMethodNormal:
+		if err := mgr.normalAuth(c, req.Username, req.Password); err != nil {
+			l.Error("Invalid credentials", err)
+			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.NotSpecified)
+			return
+		}
+	default:
+		l.Error("Invalid auth method", req.AuthMethod)
+		resputil.HTTPError(c, http.StatusBadRequest, "Invalid auth method", resputil.InvalidRequest)
 		return
 	}
 
@@ -83,25 +105,26 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 	u := query.User
 	p := query.Project
 	up := query.UserProject
-	user, err := u.WithContext(context.Background()).Where(u.Name.Eq(request.Username)).First()
+	user, err := u.WithContext(context.Background()).Where(u.Name.Eq(req.Username)).First()
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// User not found, create a new user
-			user, err = mgr.createUserAndProject(c, request.Username)
+			// User exists in the auth method but not in the database, create a new user
+			user, err = mgr.createUserAndProject(c, req.Username)
 			if err != nil {
-				resputil.Error(c, err.Error(), resputil.NotSpecified)
+				l.Error("create new user", err)
+				resputil.Error(c, "Create user failed", resputil.NotSpecified)
 				return
 			}
 		} else {
 			// Other DB error
-			l.Error("DB error", err)
+			l.Error(err)
 			resputil.Error(c, err.Error(), resputil.NotSpecified)
 			return
 		}
 	}
 
-	// get all projects for the user
-	var projects []ProjectResponse
+	// Get all projects for the user
+	var projects []ProjectResp
 	err = up.WithContext(c).Where(up.UserID.Eq(user.ID)).
 		Select(p.ID, p.Name, up.Role, p.IsPersonal).Join(p, p.ID.EqCol(up.ProjectID)).Scan(&projects)
 	if err != nil {
@@ -110,7 +133,8 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		return
 	}
 
-	// get personal project id for the user
+	// Get personal project id for the user (as the default project)
+	// Each user has a personal project (with the same name as the user)
 	var pID uint
 	var pRole string
 	for i := range projects {
@@ -121,29 +145,28 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		}
 	}
 
+	// Generate JWT tokens
 	jwtMessage := util.JWTMessage{
 		UID:          user.ID,
 		PID:          pID,
 		PlatformRole: user.Role,
 		ProjectRole:  pRole,
 	}
-
 	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
 	if err != nil {
 		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
 		return
 	}
-
-	loginResponse := LoginResponse{
+	loginResponse := LoginResp{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		Projects:     projects,
 		Context:      jwtMessage,
 	}
-
 	resputil.Success(c, loginResponse)
 }
 
+// createUserAndProject is called by Login and SingUp, create a new user and a personal project for the user
 func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.User, error) {
 	u := query.User
 	p := query.Project
@@ -191,7 +214,7 @@ func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.Us
 	return &user, nil
 }
 
-func (mgr *AuthMgr) NormalAuthorization(c *gin.Context, username, password string) error {
+func (mgr *AuthMgr) normalAuth(c *gin.Context, username, password string) error {
 	u := query.User
 	user, err := u.WithContext(c).Where(u.Name.Eq(username)).First()
 	if err != nil {
@@ -204,7 +227,7 @@ func (mgr *AuthMgr) NormalAuthorization(c *gin.Context, username, password strin
 	return nil
 }
 
-func (mgr *AuthMgr) ACTAuthorization(username, password string) error {
+func (mgr *AuthMgr) actAuth(username, password string) error {
 	// ACT 管理员认证
 	l, err := ldap.Dial("tcp", "192.168.0.9:389")
 	if err != nil {
@@ -246,17 +269,19 @@ func (mgr *AuthMgr) ACTAuthorization(username, password string) error {
 	return nil
 }
 
-type RefreshTokenRequest struct {
-	RefreshToken string `json:"refreshToken" binding:"required"`
-}
+type (
+	RefreshReq struct {
+		RefreshToken string `json:"refreshToken" binding:"required"`
+	}
 
-type RefreshTokenResponse struct {
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
-}
+	RefreshResp struct {
+		AccessToken  string `json:"accessToken"`
+		RefreshToken string `json:"refreshToken"`
+	}
+)
 
 func (mgr *AuthMgr) RefreshToken(c *gin.Context) {
-	var request RefreshTokenRequest
+	var request RefreshReq
 
 	if err := c.ShouldBind(&request); err != nil {
 		resputil.HTTPError(c, http.StatusBadRequest, err.Error(), resputil.InvalidRequest)
@@ -275,7 +300,7 @@ func (mgr *AuthMgr) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	refreshTokenResponse := RefreshTokenResponse{
+	refreshTokenResponse := RefreshResp{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}
