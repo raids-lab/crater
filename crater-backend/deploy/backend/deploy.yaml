@@ -23,22 +23,15 @@ spec:
     spec:
       containers:
         - name: crater-web-backend-container
-          image: ***REMOVED***/crater/web-backend:v0.1.12
+          image: mondaycha/web-backend:v0.2.19
           imagePullPolicy: IfNotPresent
           command:
             - /controller
             - --config-file=/etc/config/config.yaml
-            - --share-dir-file=/etc/config/share-dir.yaml
-            - --server-port=:8088
-            - --metrics-bind-address=:8080
-            - --health-probe-bind-address=:8081
           volumeMounts:
             - name: backend-conf
               mountPath: /etc/config/config.yaml
               subPath: config.yaml
-            - name: share-dir-conf
-              mountPath: /etc/config/share-dir.yaml
-              subPath: share-dir.yaml
           resources:
             limits:
               cpu: 100m
@@ -54,12 +47,6 @@ spec:
             items:
               - key: config.yaml
                 path: config.yaml
-        - name: share-dir-conf
-          configMap:
-            name: share-dir
-            items:
-              - key: share-dir.yaml
-                path: share-dir.yaml
 ---
 apiVersion: v1
 kind: Service

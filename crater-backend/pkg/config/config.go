@@ -3,10 +3,9 @@ package config
 import (
 	"os"
 
+	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v2"
 )
-
-const configPath = "./etc/debug-config.yaml"
 
 type Config struct {
 	// Leader Election Settings
@@ -42,9 +41,20 @@ type Config struct {
 	MonitoringPort int    `yaml:"monitoringPort"`
 }
 
+// InitConfig initializes the configuration by reading the configuration file.
+// If the environment is set to debug, it reads the debug-config.yaml file.
+// Otherwise, it reads the config.yaml file from ConfigMap.
+// It returns a pointer to the Config struct and an error if any occurred.
 func InitConfig() (*Config, error) {
-	config := &Config{}
 	// 读取配置文件
+	config := &Config{}
+	var configPath string
+	if gin.Mode() == gin.DebugMode {
+		configPath = "./etc/debug-config.yaml"
+	} else {
+		configPath = "/etc/config/config.yaml"
+	}
+
 	err := readConfig(configPath, config)
 	if err != nil {
 		return nil, err
