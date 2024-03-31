@@ -17,12 +17,12 @@ import { apiUserImagepackCreate } from "@/services/api/imagepack";
 import { Switch } from "@/components/ui/switch";
 
 const formSchema = z.object({
-  gitRepository: z.string().min(1, { message: "仓库地址不能为空" }),
-  accessToken: z.string().min(1, { message: "AccessToken不能为空" }),
-  registryServer: z.string(),
-  registryUser: z.string(),
-  registryPass: z.string(),
-  registryProject: z.string(),
+  gitRepository: z.string().url({ message: "仓库地址应为合法 URL" }),
+  accessToken: z.string().min(1, { message: "Access Token 不能为空" }),
+  registryServer: z.string().min(1, { message: "镜像仓库地址不能为空" }),
+  registryUser: z.string().min(1, { message: "镜像仓库账户不能为空" }),
+  registryPass: z.string().min(1, { message: "镜像仓库密码不能为空" }),
+  registryProject: z.string().min(1, { message: "镜像仓库项目不能为空" }),
   imageName: z.string().min(1, { message: "镜像名不能为空" }),
   imageTag: z.string().min(1, { message: "标签不能为空" }),
   needProfile: z.boolean().default(false),
@@ -89,50 +89,61 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
         onSubmit={form.handleSubmit(onSubmit)}
         className="mt-6 flex flex-col space-y-4"
       >
-        <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-3">
-            <FormField
-              control={form.control}
-              name="gitRepository"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    镜像仓库<span className="ml-1 text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  {/* <FormMessage>请输入仓库地址</FormMessage> */}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="accessToken"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    AccessToken<span className="ml-1 text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
+        <FormField
+          control={form.control}
+          name="gitRepository"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                Git 仓库地址<span className="ml-1 text-red-500">*</span>
+              </FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              {/* <FormMessage>请输入仓库地址</FormMessage> */}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="accessToken"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                Access Token<span className="ml-1 text-red-500">*</span>
+              </FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <FormField
               control={form.control}
               name="registryServer"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="col-span-2">
                   <FormLabel>
-                    仓库地址<span className="ml-1 text-red-500">*</span>
+                    镜像仓库地址<span className="ml-1 text-red-500">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="registryProject"
+              render={({ field }) => (
+                <FormItem className="col-span-2">
+                  <FormLabel>
+                    镜像仓库项目<span className="ml-1 text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input {...field} />
@@ -147,10 +158,14 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    仓库账户<span className="ml-1 text-red-500">*</span>
+                    镜像仓库账户<span className="ml-1 text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input
+                      autoComplete="dockerUsername"
+                      id="dockerUsername"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -162,10 +177,15 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    仓库密码<span className="ml-1 text-red-500">*</span>
+                    镜像仓库密码<span className="ml-1 text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input
+                      id="dockerPassword"
+                      type="password"
+                      autoComplete="dockerPassword"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -173,14 +193,29 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
             />
             <FormField
               control={form.control}
-              name="registryProject"
+              name="imageName"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    仓库项目<span className="ml-1 text-red-500">*</span>
+                    镜像名称<span className="ml-1 text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} className="font-mono" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="imageTag"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    镜像标签<span className="ml-1 text-red-500">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input {...field} className="font-mono" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -191,54 +226,26 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
         <div>
           <FormField
             control={form.control}
-            name="imageName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  镜像名<span className="ml-1 text-red-500">*</span>
-                </FormLabel>
-                <FormControl>
-                  <Input {...field} className="font-mono" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="imageTag"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>镜像标签</FormLabel>
-                <FormControl>
-                  <Input {...field} className="font-mono" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
             name="needProfile"
             render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <FormLabel className="text-base">是否需要Profile</FormLabel>
-                  {/* <FormDescription>
-                    Receive emails about new products, features, and more.
-                  </FormDescription> */}
+              <FormItem>
+                <FormLabel>更多设置</FormLabel>
+                <div className="flex w-full flex-row items-center justify-between rounded-md border p-4 shadow-sm">
+                  <div className="text-sm">启用 Profile 功能</div>
+                  <FormControl>
+                    <Switch
+                      name={field.name}
+                      id={field.name}
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
                 </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
               </FormItem>
             )}
           />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid">
           <Button type="submit">提交镜像</Button>
         </div>
       </form>
