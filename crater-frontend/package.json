@@ -50,6 +50,7 @@
     "tailwind-merge": "^2.2.2",
     "tailwindcss-animate": "^1.0.7",
     "usehooks-ts": "^3.0.1",
+    "webdav": "^5.5.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
