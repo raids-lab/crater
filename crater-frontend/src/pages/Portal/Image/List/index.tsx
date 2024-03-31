@@ -16,7 +16,6 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { StopIcon } from "@radix-ui/react-icons";
 import { NewTaskForm } from "./Form";
 import { TableDate } from "@/components/custom/TableDate";
 import {
@@ -37,6 +36,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Trash2 } from "lucide-react";
 
 type ImagePackInfo = {
   id: number;
@@ -203,7 +203,7 @@ export const Component: FC = () => {
                     className="h-8 w-8 p-0 hover:text-red-700"
                     title="删除镜像"
                   >
-                    <StopIcon />
+                    <Trash2 size={16} strokeWidth={2} />
                   </Button>
                 </div>
               </AlertDialogTrigger>

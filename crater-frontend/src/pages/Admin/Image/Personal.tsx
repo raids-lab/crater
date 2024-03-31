@@ -21,19 +21,47 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { StopIcon } from "@radix-ui/react-icons";
 import { toast } from "sonner";
 import { logger } from "@/utils/loglevel";
 import { TableDate } from "@/components/custom/TableDate";
-import { imagepackStatuses, ImagePackInfo } from "@/services/api/imagepack";
+import { imagepackStatuses } from "@/services/api/imagepack";
 import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+export type ImagePackInfo = {
+  id: number;
+  nametag: string;
+  link: string;
+  username: string;
+  status: string;
+  createdAt: string;
+  params: {
+    Convs: number;
+    Activations: number;
+    Denses: number;
+    Others: number;
+    GFLOPs: number;
+    BatchSize: number;
+    Params: number;
+    ModelSize: number;
+  };
+};
 
 const getHeader = (key: string): string => {
   switch (key) {
     case "nametag":
       return "名称";
     case "link":
-      return "链接";
+      return "镜像地址";
+    case "username":
+      return "提交者";
     case "status":
       return "状态";
     case "createdAt":
@@ -66,9 +94,11 @@ export const Component: FC = () => {
     return imagePackInfo.data.map((item) => ({
       id: item.ID,
       link: item.imagelink,
+      username: item.username,
       status: item.status,
       createdAt: item.createdAt,
       nametag: item.nametag,
+      params: item.params,
     }));
   }, [imagePackInfo.data]);
   const refetchImagePackList = async () => {
@@ -117,14 +147,62 @@ export const Component: FC = () => {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeader("nametag")} />
       ),
-      cell: ({ row }) => <div>{row.getValue("nametag")}</div>,
+      cell: ({ row }) => (
+        //     params: {
+        //       Convs: 0,
+        //       Activations: 0,
+        //       Denses: 0,
+        //       Others: 0,
+        //       GFLOPs: 0,
+        //       BatchSize: 0,
+        //       Params: 0,
+        //       ModelSize: 0,
+        //     },
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger>{row.getValue("nametag")}</TooltipTrigger>
+            <TooltipContent className="grid grid-cols-2 gap-1 p-4 font-mono">
+              <div className="col-span-2 pb-2 text-sm font-bold">
+                Profile 信息
+              </div>
+              <div>Convs: </div>
+              <div>{row.original.params.Convs}</div>
+              <div>Activations: </div>
+              <div>{row.original.params.Activations}</div>
+              <div>Denses: </div>
+              <div>{row.original.params.Denses}</div>
+              <div>Others: </div>
+              <div>{row.original.params.Others}</div>
+              <div>GFLOPs: </div>
+              <div>{row.original.params.GFLOPs.toFixed(2)}</div>
+              <div>BatchSize: </div>
+              <div>{row.original.params.BatchSize}</div>
+              <div>Params: </div>
+              <div>{row.original.params.Params}</div>
+              <div>ModelSize: </div>
+              <div>{row.original.params.ModelSize.toFixed(2)}</div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ),
     },
     {
       accessorKey: "link",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeader("link")} />
       ),
-      cell: ({ row }) => <div>{row.getValue("link")}</div>,
+      cell: ({ row }) => (
+        <Badge className="font-mono font-normal" variant="outline">
+          {row.getValue("link")}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "username",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeader("username")} />
+      ),
+      cell: ({ row }) => <div>{row.getValue("username")}</div>,
     },
     {
       accessorKey: "status",
@@ -183,7 +261,7 @@ export const Component: FC = () => {
                     className="h-8 w-8 p-0 hover:text-red-700"
                     title="删除镜像"
                   >
-                    <StopIcon />
+                    <Trash2 size={16} strokeWidth={2} />
                   </Button>
                 </div>
               </AlertDialogTrigger>
