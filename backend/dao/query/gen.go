@@ -16,44 +16,54 @@ import (
 )
 
 var (
-	Q           = new(Query)
-	Project     *project
-	User        *user
-	UserProject *userProject
+	Q            = new(Query)
+	Project      *project
+	ProjectSpace *projectSpace
+	Space        *space
+	User         *user
+	UserProject  *userProject
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
 	Project = &Q.Project
+	ProjectSpace = &Q.ProjectSpace
+	Space = &Q.Space
 	User = &Q.User
 	UserProject = &Q.UserProject
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:          db,
-		Project:     newProject(db, opts...),
-		User:        newUser(db, opts...),
-		UserProject: newUserProject(db, opts...),
+		db:           db,
+		Project:      newProject(db, opts...),
+		ProjectSpace: newProjectSpace(db, opts...),
+		Space:        newSpace(db, opts...),
+		User:         newUser(db, opts...),
+		UserProject:  newUserProject(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	Project     project
-	User        user
-	UserProject userProject
+	Project      project
+	ProjectSpace projectSpace
+	Space        space
+	User         user
+	UserProject  userProject
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:          db,
-		Project:     q.Project.clone(db),
-		User:        q.User.clone(db),
-		UserProject: q.UserProject.clone(db),
+		db:           db,
+		Project:      q.Project.clone(db),
+		ProjectSpace: q.ProjectSpace.clone(db),
+		Space:        q.Space.clone(db),
+		User:         q.User.clone(db),
+		UserProject:  q.UserProject.clone(db),
 	}
 }
 
@@ -67,24 +77,30 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:          db,
-		Project:     q.Project.replaceDB(db),
-		User:        q.User.replaceDB(db),
-		UserProject: q.UserProject.replaceDB(db),
+		db:           db,
+		Project:      q.Project.replaceDB(db),
+		ProjectSpace: q.ProjectSpace.replaceDB(db),
+		Space:        q.Space.replaceDB(db),
+		User:         q.User.replaceDB(db),
+		UserProject:  q.UserProject.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	Project     IProjectDo
-	User        IUserDo
-	UserProject IUserProjectDo
+	Project      IProjectDo
+	ProjectSpace IProjectSpaceDo
+	Space        ISpaceDo
+	User         IUserDo
+	UserProject  IUserProjectDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		Project:     q.Project.WithContext(ctx),
-		User:        q.User.WithContext(ctx),
-		UserProject: q.UserProject.WithContext(ctx),
+		Project:      q.Project.WithContext(ctx),
+		ProjectSpace: q.ProjectSpace.WithContext(ctx),
+		Space:        q.Space.WithContext(ctx),
+		User:         q.User.WithContext(ctx),
+		UserProject:  q.UserProject.WithContext(ctx),
 	}
 }
 
