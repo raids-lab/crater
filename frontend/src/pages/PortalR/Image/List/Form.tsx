@@ -24,6 +24,7 @@ const formSchema = z.object({
   registryProject: z.string(),
   imageName: z.string().min(1, { message: "镜像名不能为空" }),
   imageTag: z.string().min(1, { message: "标签不能为空" }),
+  needProfile: z.boolean().default(false),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -46,6 +47,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
         registryProject: values.registryProject,
         imageName: values.imageName,
         imageTag: values.imageTag,
+        needProfile: values.needProfile,
       }),
     onSuccess: async (_, { imageName, imageTag }) => {
       await queryClient.invalidateQueries({
