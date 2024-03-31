@@ -74,6 +74,7 @@ export interface ImagePackCreate {
   registryProject: string;
   imageName: string;
   imageTag: string;
+  needProfile: boolean;
 }
 
 export const apiUserImagepackCreate = async (imagepack: ImagePackCreate) => {
