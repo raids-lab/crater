@@ -34,7 +34,12 @@ func newUserProject(db *gorm.DB, opts ...gen.DOOption) userProject {
 	_userProject.UserID = field.NewUint(tableName, "user_id")
 	_userProject.ProjectID = field.NewUint(tableName, "project_id")
 	_userProject.Role = field.NewString(tableName, "role")
-	_userProject.Quota = field.NewString(tableName, "quota")
+	_userProject.CPU = field.NewInt(tableName, "cpu")
+	_userProject.Memory = field.NewInt(tableName, "memory")
+	_userProject.GPU = field.NewInt(tableName, "gpu")
+	_userProject.GPUMem = field.NewInt(tableName, "gpu_mem")
+	_userProject.Storage = field.NewInt(tableName, "storage")
+	_userProject.Access = field.NewString(tableName, "access")
 
 	_userProject.fillFieldMap()
 
@@ -52,7 +57,12 @@ type userProject struct {
 	UserID    field.Uint
 	ProjectID field.Uint
 	Role      field.String
-	Quota     field.String
+	CPU       field.Int
+	Memory    field.Int
+	GPU       field.Int
+	GPUMem    field.Int
+	Storage   field.Int
+	Access    field.String
 
 	fieldMap map[string]field.Expr
 }
@@ -76,7 +86,12 @@ func (u *userProject) updateTableName(table string) *userProject {
 	u.UserID = field.NewUint(table, "user_id")
 	u.ProjectID = field.NewUint(table, "project_id")
 	u.Role = field.NewString(table, "role")
-	u.Quota = field.NewString(table, "quota")
+	u.CPU = field.NewInt(table, "cpu")
+	u.Memory = field.NewInt(table, "memory")
+	u.GPU = field.NewInt(table, "gpu")
+	u.GPUMem = field.NewInt(table, "gpu_mem")
+	u.Storage = field.NewInt(table, "storage")
+	u.Access = field.NewString(table, "access")
 
 	u.fillFieldMap()
 
@@ -103,7 +118,7 @@ func (u *userProject) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *userProject) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 8)
+	u.fieldMap = make(map[string]field.Expr, 13)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
@@ -111,7 +126,12 @@ func (u *userProject) fillFieldMap() {
 	u.fieldMap["user_id"] = u.UserID
 	u.fieldMap["project_id"] = u.ProjectID
 	u.fieldMap["role"] = u.Role
-	u.fieldMap["quota"] = u.Quota
+	u.fieldMap["cpu"] = u.CPU
+	u.fieldMap["memory"] = u.Memory
+	u.fieldMap["gpu"] = u.GPU
+	u.fieldMap["gpu_mem"] = u.GPUMem
+	u.fieldMap["storage"] = u.Storage
+	u.fieldMap["access"] = u.Access
 }
 
 func (u userProject) clone(db *gorm.DB) userProject {

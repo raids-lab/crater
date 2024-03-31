@@ -35,7 +35,6 @@ func newProject(db *gorm.DB, opts ...gen.DOOption) project {
 	_project.Description = field.NewString(tableName, "description")
 	_project.Namespace = field.NewString(tableName, "namespace")
 	_project.Status = field.NewString(tableName, "status")
-	_project.Quota = field.NewString(tableName, "quota")
 	_project.IsPersonal = field.NewBool(tableName, "is_personal")
 	_project.Space = projectHasOneSpace{
 		db: db.Session(&gorm.Session{}),
@@ -77,7 +76,6 @@ type project struct {
 	Description field.String
 	Namespace   field.String
 	Status      field.String
-	Quota       field.String
 	IsPersonal  field.Bool
 	Space       projectHasOneSpace
 
@@ -108,7 +106,6 @@ func (p *project) updateTableName(table string) *project {
 	p.Description = field.NewString(table, "description")
 	p.Namespace = field.NewString(table, "namespace")
 	p.Status = field.NewString(table, "status")
-	p.Quota = field.NewString(table, "quota")
 	p.IsPersonal = field.NewBool(table, "is_personal")
 
 	p.fillFieldMap()
@@ -134,7 +131,7 @@ func (p *project) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (p *project) fillFieldMap() {
-	p.fieldMap = make(map[string]field.Expr, 13)
+	p.fieldMap = make(map[string]field.Expr, 12)
 	p.fieldMap["id"] = p.ID
 	p.fieldMap["created_at"] = p.CreatedAt
 	p.fieldMap["updated_at"] = p.UpdatedAt
@@ -143,7 +140,6 @@ func (p *project) fillFieldMap() {
 	p.fieldMap["description"] = p.Description
 	p.fieldMap["namespace"] = p.Namespace
 	p.fieldMap["status"] = p.Status
-	p.fieldMap["quota"] = p.Quota
 	p.fieldMap["is_personal"] = p.IsPersonal
 
 }

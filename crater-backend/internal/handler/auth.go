@@ -186,7 +186,6 @@ func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.Us
 		Description: nil,
 		Namespace:   config.GetConfig().Workspace.Namespace,
 		Status:      model.StatusActive,
-		Quota:       model.ResourceListToJSON(model.DefaultQuota),
 		IsPersonal:  true,
 	}
 	if err := p.WithContext(c).Create(&project); err != nil {
@@ -196,7 +195,6 @@ func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.Us
 		UserID:    user.ID,
 		ProjectID: project.ID,
 		Role:      model.RoleAdmin,
-		Quota:     project.Quota,
 	}
 	if err := up.WithContext(c).Create(&userProject); err != nil {
 		return nil, err
