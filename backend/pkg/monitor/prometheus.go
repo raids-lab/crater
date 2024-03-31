@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	PrometheusAPI = "YOUR_PROMETHEUS_API_URL"
+	PrometheusAPI = ***REMOVED***
 	queryTimeout  = 10 * time.Second
 )
 
@@ -140,4 +140,88 @@ func (p *PrometheusClient) queryMetric(expression string) (float32, error) {
 	}
 
 	return 0.0, fmt.Errorf("no data found for expression: %s", expression)
+}
+
+func (p *PrometheusClient) QueryMetricDemo(expression string) error {
+	// 构建查询参数
+
+	// 执行查询
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+	result, _, err := p.v1api.Query(ctx, expression, time.Now())
+	if err != nil {
+		return err
+	}
+
+	// 检查结果类型是否为向量
+	if result.Type() == model.ValVector {
+		vector := result.(model.Vector)
+		for _, sample := range vector {
+			metric := sample.Metric
+			value := sample.Value
+
+			// 提取metric中的标签和value中的值
+			uuid := metric["UUID"]
+			exportedPod := metric["exported_pod"]
+			gpuCount := metric["gpu_count"]
+			metricValue := float64(value)
+
+			// 打印提取的信息
+			fmt.Printf("UUID: %s, Pod: %s, GPU Count: %s, Value: %f\n", uuid, exportedPod, gpuCount, metricValue)
+		}
+		return nil
+	}
+
+	return fmt.Errorf("expected vector type result but got %s", result.Type())
+}
+
+// 公共的查询执行和结果验证逻辑
+func (p *PrometheusClient) queryVector(query string) (model.Vector, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+
+	result, _, err := p.v1api.Query(ctx, query, time.Now())
+	if err != nil {
+		return nil, err
+	}
+
+	if result.Type() != model.ValVector {
+		return nil, fmt.Errorf("expected vector type result but got %s", result.Type())
+	}
+
+	return result.(model.Vector), nil
+}
+
+// Float32MapQuery 使用 queryVector 函数并处理 float32 类型的映射
+func (p *PrometheusClient) Float32MapQuery(query, key string) (map[string]float32, error) {
+	vector, err := p.queryVector(query)
+	if err != nil {
+		return nil, err
+	}
+
+	cpuUsages := make(map[string]float32)
+	for _, sample := range vector {
+		instance := string(sample.Metric[model.LabelName(key)])
+		value := float32(sample.Value)
+		cpuUsages[instance] = value
+	}
+
+	return cpuUsages, nil
+}
+
+// IntMapQuery 使用 queryVector 函数并处理 int 类型的映射
+func (p *PrometheusClient) IntMapQuery(query, key string) (map[string]int, error) {
+	vector, err := p.queryVector(query)
+	if err != nil {
+		return nil, err
+	}
+
+	cpuUsages := make(map[string]int)
+	for _, sample := range vector {
+		instance := string(sample.Metric[model.LabelName(key)])
+		value := int(sample.Value)
+		cpuUsages[instance] = value
+	}
+
+	return cpuUsages, nil
 }
