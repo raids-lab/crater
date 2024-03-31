@@ -17,17 +17,50 @@ type ListTaskResp struct {
 	Rows     []models.AITask `json:"rows"`
 }
 
+type AllocatedInfo struct {
+	CPU string `json:"cpu"`
+	Mem string `json:"memory"`
+}
+
 type ClusterNodeInfo struct {
 	Name     string            `json:"name"`
 	Role     string            `json:"role"`
 	Labels   map[string]string `json:"labels"`
 	IsReady  bool              `json:"isReady"`
 	Capacity v1.ResourceList   `json:"capacity"`
-	Alocated v1.ResourceList   `json:"allocated"`
+	// Alocated v1.ResourceList   `json:"allocated"`
+	Allocated AllocatedInfo `json:"allocated"`
+}
+
+type Pod struct {
+	Name       string  `json:"name"`
+	CPU        float32 `json:"CPU"`
+	Mem        string  `json:"Mem"`
+	IP         string  `json:"IP"`
+	CreateTime string  `json:"createTime"`
+	Status     string  `json:"status"`
+}
+
+type ClusterNodePodInfo struct {
+	Name                    string `json:"name"`
+	Role                    string `json:"role"`
+	IsReady                 bool   `json:"isReady"`
+	Time                    string `json:"time"`
+	Address                 string `json:"address"`
+	Os                      string `json:"os"`
+	OsVersion               string `json:"osVersion"`
+	Arch                    string `json:"arch"`
+	KubeletVersion          string `json:"kubeletVersion"`
+	ContainerRuntimeVersion string `json:"containerRuntimeVersion"`
+	Pods                    []Pod  `json:"pods"`
 }
 
 type ListNodeResp struct {
 	Rows []ClusterNodeInfo `json:"rows"`
+}
+
+type ListNodePodResp struct {
+	Rows []ClusterNodePodInfo `json:"rows"`
 }
 
 type GetTaskResp struct {
