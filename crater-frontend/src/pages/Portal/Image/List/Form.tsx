@@ -14,6 +14,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { apiUserImagepackCreate } from "@/services/api/imagepack";
+import { Switch } from "@/components/ui/switch";
 
 const formSchema = z.object({
   gitRepository: z.string().min(1, { message: "仓库地址不能为空" }),
@@ -24,6 +25,7 @@ const formSchema = z.object({
   registryProject: z.string(),
   imageName: z.string().min(1, { message: "镜像名不能为空" }),
   imageTag: z.string().min(1, { message: "标签不能为空" }),
+  needProfile: z.boolean().default(false),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -46,6 +48,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
         registryProject: values.registryProject,
         imageName: values.imageName,
         imageTag: values.imageTag,
+        needProfile: values.needProfile,
       }),
     onSuccess: async (_, { imageName, imageTag }) => {
       await queryClient.invalidateQueries({
@@ -68,6 +71,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
       registryProject: "",
       imageName: "",
       imageTag: "",
+      needProfile: false,
     },
   });
 
@@ -210,6 +214,26 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                   <Input {...field} className="font-mono" />
                 </FormControl>
                 <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="needProfile"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <FormLabel className="text-base">是否需要Profile</FormLabel>
+                  {/* <FormDescription>
+                    Receive emails about new products, features, and more.
+                  </FormDescription> */}
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
               </FormItem>
             )}
           />
