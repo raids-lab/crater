@@ -15,6 +15,17 @@ export type ImagePackInfoResponse = {
   status: string;
   createdAt: string;
   nametag: string;
+  username: string;
+  params: {
+    Convs: number;
+    Activations: number;
+    Denses: number;
+    Others: number;
+    GFLOPs: number;
+    BatchSize: number;
+    Params: number;
+    ModelSize: number;
+  };
 };
 
 export type ImagePackInfo = {

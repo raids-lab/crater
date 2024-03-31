@@ -35,9 +35,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { StopIcon } from "@radix-ui/react-icons";
 import { toast } from "sonner";
 import { logger } from "@/utils/loglevel";
+import { Trash2 } from "lucide-react";
 
 const getHeader = (key: string): string => {
   switch (key) {
@@ -197,7 +197,7 @@ export const Component: FC = () => {
                     className="h-8 w-8 p-0 hover:text-red-700"
                     title="删除镜像"
                   >
-                    <StopIcon />
+                    <Trash2 size={16} strokeWidth={2} />
                   </Button>
                 </div>
               </AlertDialogTrigger>
