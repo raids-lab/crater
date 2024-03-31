@@ -3,7 +3,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/raids-lab/crater/dao/model"
 	"gorm.io/driver/postgres"
@@ -11,15 +10,10 @@ import (
 	"gorm.io/gorm"
 )
 
-func ConnectDB() *gorm.DB {
+func ConnectPostgres() *gorm.DB {
 	// Connect to the database
-	password := os.Getenv("PGPASSWORD")
-	port := os.Getenv("PGPORT")
-	if password == "" || port == "" {
-		panic("Please read the README.md file to set the environment variable.")
-	}
-	dsnPattern := "host=***REMOVED*** user=postgres password=%s dbname=crater port=%s sslmode=require TimeZone=Asia/Shanghai"
-	dsn := fmt.Sprintf(dsnPattern, password, port)
+	dsn := `host=***REMOVED*** user=postgres password=***REMOVED*** 
+		dbname=crater port=30432 sslmode=require TimeZone=Asia/Shanghai`
 	db, err := gorm.Open(postgres.Open(dsn))
 	if err != nil {
 		panic(fmt.Errorf("connect to postgres: %w", err))
@@ -38,7 +32,7 @@ func main() {
 	})
 
 	// 通常复用项目中已有的SQL连接配置 db(*gorm.DB)
-	g.UseDB(ConnectDB())
+	g.UseDB(ConnectPostgres())
 
 	// 从连接的数据库为所有表生成 Model 结构体和 CRUD 代码
 	g.ApplyBasic(
@@ -47,6 +41,8 @@ func main() {
 		model.UserProject{},
 		model.Space{},
 		model.ProjectSpace{},
+		model.Quota{},
+		model.AIJob{},
 	)
 
 	// 执行并生成代码

@@ -8,7 +8,6 @@ type Project struct {
 	Description  *string `gorm:"type:varchar(128);comment:项目描述"`
 	Namespace    string  `gorm:"column:namespace;type:varchar(128);comment:命名空间"`
 	Status       string  `gorm:"type:varchar(32);comment:项目状态 (active, inactive)"`
-	Quota        string  `gorm:"type:text;comment:配额信息"`
 	IsPersonal   bool    `gorm:"type:boolean;comment:是否为个人项目"`
 	UserProjects []UserProject
 	// Project has one space
