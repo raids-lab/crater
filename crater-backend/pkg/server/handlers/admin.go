@@ -48,6 +48,8 @@ func (mgr *AdminMgr) RegisterRoute(g *gin.RouterGroup) {
 
 	nodes := g.Group("/nodes")
 	nodes.GET("", mgr.ListNode)
+	nodes.GET("/pod", mgr.ListNodePod)
+	nodes.GET("/test", mgr.ListNodeTest)
 
 	images := g.Group("/images")
 	images.POST("/create", mgr.CreateImages)
@@ -389,4 +391,31 @@ func (mgr *AdminMgr) DeleteByID(c *gin.Context) {
 		return
 	}
 	resputil.Success(c, "")
+}
+
+func (mgr *AdminMgr) ListNodePod(c *gin.Context) {
+	logutils.Log.Infof("Node List, url: %s", c.Request.URL)
+	name := c.Query("name")
+	nodes, err := mgr.nodeClient.ListNodesPod(name)
+	// print name
+	fmt.Println(name)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("list nodes pods failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, nodes)
+}
+
+func (mgr *AdminMgr) ListNodeTest(c *gin.Context) {
+	logutils.Log.Infof("Node List, url: %s", c.Request.URL)
+	// get all k8s nodes by k8s client
+	nodes, err := mgr.nodeClient.ListNodesTest()
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("list nodes failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+	resp := payload.ListNodeResp{
+		Rows: nodes,
+	}
+	resputil.Success(c, resp)
 }
