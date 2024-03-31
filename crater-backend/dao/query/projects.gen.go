@@ -33,14 +33,31 @@ func newProject(db *gorm.DB, opts ...gen.DOOption) project {
 	_project.DeletedAt = field.NewField(tableName, "deleted_at")
 	_project.Name = field.NewString(tableName, "name")
 	_project.Description = field.NewString(tableName, "description")
-	_project.NameSpace = field.NewString(tableName, "namespace")
+	_project.Namespace = field.NewString(tableName, "namespace")
 	_project.Status = field.NewString(tableName, "status")
 	_project.Quota = field.NewString(tableName, "quota")
 	_project.IsPersonal = field.NewBool(tableName, "is_personal")
+	_project.Space = projectHasOneSpace{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Space", "model.Space"),
+		ProjectSpaces: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("Space.ProjectSpaces", "model.ProjectSpace"),
+		},
+	}
+
 	_project.UserProjects = projectHasManyUserProjects{
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("UserProjects", "model.UserProject"),
+	}
+
+	_project.ProjectSpaces = projectHasManyProjectSpaces{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("ProjectSpaces", "model.ProjectSpace"),
 	}
 
 	_project.fillFieldMap()
@@ -51,18 +68,22 @@ func newProject(db *gorm.DB, opts ...gen.DOOption) project {
 type project struct {
 	projectDo projectDo
 
-	ALL          field.Asterisk
-	ID           field.Uint
-	CreatedAt    field.Time
-	UpdatedAt    field.Time
-	DeletedAt    field.Field
-	Name         field.String
-	Description  field.String
-	NameSpace    field.String
-	Status       field.String
-	Quota        field.String
-	IsPersonal   field.Bool
+	ALL         field.Asterisk
+	ID          field.Uint
+	CreatedAt   field.Time
+	UpdatedAt   field.Time
+	DeletedAt   field.Field
+	Name        field.String
+	Description field.String
+	Namespace   field.String
+	Status      field.String
+	Quota       field.String
+	IsPersonal  field.Bool
+	Space       projectHasOneSpace
+
 	UserProjects projectHasManyUserProjects
+
+	ProjectSpaces projectHasManyProjectSpaces
 
 	fieldMap map[string]field.Expr
 }
@@ -85,7 +106,7 @@ func (p *project) updateTableName(table string) *project {
 	p.DeletedAt = field.NewField(table, "deleted_at")
 	p.Name = field.NewString(table, "name")
 	p.Description = field.NewString(table, "description")
-	p.NameSpace = field.NewString(table, "namespace")
+	p.Namespace = field.NewString(table, "namespace")
 	p.Status = field.NewString(table, "status")
 	p.Quota = field.NewString(table, "quota")
 	p.IsPersonal = field.NewBool(table, "is_personal")
@@ -113,14 +134,14 @@ func (p *project) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (p *project) fillFieldMap() {
-	p.fieldMap = make(map[string]field.Expr, 11)
+	p.fieldMap = make(map[string]field.Expr, 13)
 	p.fieldMap["id"] = p.ID
 	p.fieldMap["created_at"] = p.CreatedAt
 	p.fieldMap["updated_at"] = p.UpdatedAt
 	p.fieldMap["deleted_at"] = p.DeletedAt
 	p.fieldMap["name"] = p.Name
 	p.fieldMap["description"] = p.Description
-	p.fieldMap["namespace"] = p.NameSpace
+	p.fieldMap["namespace"] = p.Namespace
 	p.fieldMap["status"] = p.Status
 	p.fieldMap["quota"] = p.Quota
 	p.fieldMap["is_personal"] = p.IsPersonal
@@ -135,6 +156,81 @@ func (p project) clone(db *gorm.DB) project {
 func (p project) replaceDB(db *gorm.DB) project {
 	p.projectDo.ReplaceDB(db)
 	return p
+}
+
+type projectHasOneSpace struct {
+	db *gorm.DB
+
+	field.RelationField
+
+	ProjectSpaces struct {
+		field.RelationField
+	}
+}
+
+func (a projectHasOneSpace) Where(conds ...field.Expr) *projectHasOneSpace {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a projectHasOneSpace) WithContext(ctx context.Context) *projectHasOneSpace {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a projectHasOneSpace) Session(session *gorm.Session) *projectHasOneSpace {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a projectHasOneSpace) Model(m *model.Project) *projectHasOneSpaceTx {
+	return &projectHasOneSpaceTx{a.db.Model(m).Association(a.Name())}
+}
+
+type projectHasOneSpaceTx struct{ tx *gorm.Association }
+
+func (a projectHasOneSpaceTx) Find() (result *model.Space, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a projectHasOneSpaceTx) Append(values ...*model.Space) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a projectHasOneSpaceTx) Replace(values ...*model.Space) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a projectHasOneSpaceTx) Delete(values ...*model.Space) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a projectHasOneSpaceTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a projectHasOneSpaceTx) Count() int64 {
+	return a.tx.Count()
 }
 
 type projectHasManyUserProjects struct {
@@ -205,6 +301,77 @@ func (a projectHasManyUserProjectsTx) Clear() error {
 }
 
 func (a projectHasManyUserProjectsTx) Count() int64 {
+	return a.tx.Count()
+}
+
+type projectHasManyProjectSpaces struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a projectHasManyProjectSpaces) Where(conds ...field.Expr) *projectHasManyProjectSpaces {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a projectHasManyProjectSpaces) WithContext(ctx context.Context) *projectHasManyProjectSpaces {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a projectHasManyProjectSpaces) Session(session *gorm.Session) *projectHasManyProjectSpaces {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a projectHasManyProjectSpaces) Model(m *model.Project) *projectHasManyProjectSpacesTx {
+	return &projectHasManyProjectSpacesTx{a.db.Model(m).Association(a.Name())}
+}
+
+type projectHasManyProjectSpacesTx struct{ tx *gorm.Association }
+
+func (a projectHasManyProjectSpacesTx) Find() (result []*model.ProjectSpace, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a projectHasManyProjectSpacesTx) Append(values ...*model.ProjectSpace) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a projectHasManyProjectSpacesTx) Replace(values ...*model.ProjectSpace) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a projectHasManyProjectSpacesTx) Delete(values ...*model.ProjectSpace) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a projectHasManyProjectSpacesTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a projectHasManyProjectSpacesTx) Count() int64 {
 	return a.tx.Count()
 }
 

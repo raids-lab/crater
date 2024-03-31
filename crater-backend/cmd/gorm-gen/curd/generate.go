@@ -18,7 +18,7 @@ func ConnectDB() *gorm.DB {
 	if password == "" || port == "" {
 		panic("Please read the README.md file to set the environment variable.")
 	}
-	dsnPattern := "host=localhost user=postgres password=%s dbname=crater port=%s sslmode=require TimeZone=Asia/Shanghai"
+	dsnPattern := "host=***REMOVED*** user=postgres password=%s dbname=crater port=%s sslmode=require TimeZone=Asia/Shanghai"
 	dsn := fmt.Sprintf(dsnPattern, password, port)
 	db, err := gorm.Open(postgres.Open(dsn))
 	if err != nil {
@@ -41,7 +41,13 @@ func main() {
 	g.UseDB(ConnectDB())
 
 	// 从连接的数据库为所有表生成 Model 结构体和 CRUD 代码
-	g.ApplyBasic(model.Project{}, model.User{}, model.UserProject{})
+	g.ApplyBasic(
+		model.Project{},
+		model.User{},
+		model.UserProject{},
+		model.Space{},
+		model.ProjectSpace{},
+	)
 
 	// 执行并生成代码
 	g.Execute()
