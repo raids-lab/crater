@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: crater-website-container
-          image: harbor.act.buaa.edu.cn/crater/website:v0.0.6
+          image: harbor.act.buaa.edu.cn/crater/website:v0.1.0
           ports:
             - containerPort: 80
 
@@ -35,5 +35,5 @@ spec:
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 80
+      targetPort: 8888
   type: ClusterIP
