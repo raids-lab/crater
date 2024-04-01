@@ -25,3 +25,4 @@ postgres:
 workspace:
   namespace: crater-workspace
   pvcName: crater-storage
+  ingressName: crater-jobs-ingress

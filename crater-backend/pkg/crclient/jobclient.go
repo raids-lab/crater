@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
+	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
 
@@ -82,7 +83,7 @@ func (c *JobControl) DeleteJobFromTask(task *models.AITask) error {
 	ingressClient := c.KubeClient.NetworkingV1().Ingresses(ns)
 
 	// Get the existing Ingress
-	ingress, err := ingressClient.Get(context.TODO(), "crater-jobs-ingress", metav1.GetOptions{})
+	ingress, err := ingressClient.Get(context.TODO(), config.GetConfig().Workspace.IngressName, metav1.GetOptions{})
 	if err != nil {
 		err = fmt.Errorf("get crater-jobs-ingress: %w", err)
 		return err
@@ -336,7 +337,7 @@ func (c *JobControl) createJupyterJobFromTask(task *models.AITask, selector map[
 	ingressClient := c.KubeClient.NetworkingV1().Ingresses(task.Namespace)
 
 	// Get the existing Ingress
-	ingress, err := ingressClient.Get(context.TODO(), "crater-jobs-ingress", metav1.GetOptions{})
+	ingress, err := ingressClient.Get(context.TODO(), config.GetConfig().Workspace.IngressName, metav1.GetOptions{})
 	if err != nil {
 		err = fmt.Errorf("get ingress: %w", err)
 		return "", err
