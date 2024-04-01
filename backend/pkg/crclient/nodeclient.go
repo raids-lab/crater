@@ -40,15 +40,15 @@ func getNodeRole(node *corev1.Node) string {
 
 func calculateCPULoad(ratio float32, cpu int) string {
 	// 计算当前CPU使用量
-	loadScaleFactor := 10
-	load := int(ratio * float32(cpu) * float32(loadScaleFactor))
+	loadScaleFactor := 100
+	load := int(ratio * float32(cpu) / float32(loadScaleFactor))
 	// 将计算结果转换为字符串，并在末尾加上'm'
 	result := fmt.Sprintf("%dm", load)
 	return result
 }
 
 func FomatMemoryLoad(mem int) string {
-	mem_ := mem / 1024
+	mem_ := mem / 1024 / 1024
 	result := fmt.Sprintf("%dMi", mem_)
 	return result
 }
