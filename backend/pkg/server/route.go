@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	handler "github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/constants"
@@ -41,9 +42,13 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	//// Public routers, no need login ////
 	///////////////////////////////////////
 
-	publicRouter := b.R.Group("")
+	oldPublicRouter := b.R.Group("")
+	oldAuthMgr := handlers.NewAuthMgr(aitaskCtrl, tokenConf, &pvcClient)
+	oldAuthMgr.RegisterRoute(oldPublicRouter)
 
-	authMgr := handlers.NewAuthMgr(aitaskCtrl, tokenConf, &pvcClient)
+	// new public router
+	publicRouter := b.R.Group(constants.APIPrefixBeta)
+	authMgr := handler.NewAuthMgr(aitaskCtrl, tokenConf)
 	authMgr.RegisterRoute(publicRouter)
 
 	///////////////////////////////////////

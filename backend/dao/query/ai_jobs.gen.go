@@ -50,19 +50,6 @@ func newAIJob(db *gorm.DB, opts ...gen.DOOption) aIJob {
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("Project", "model.Project"),
-		Space: struct {
-			field.RelationField
-			ProjectSpaces struct {
-				field.RelationField
-			}
-		}{
-			RelationField: field.NewRelation("Project.Space", "model.Space"),
-			ProjectSpaces: struct {
-				field.RelationField
-			}{
-				RelationField: field.NewRelation("Project.Space.ProjectSpaces", "model.ProjectSpace"),
-			},
-		},
 		UserProjects: struct {
 			field.RelationField
 		}{
@@ -245,12 +232,6 @@ type aIJobBelongsToProject struct {
 
 	field.RelationField
 
-	Space struct {
-		field.RelationField
-		ProjectSpaces struct {
-			field.RelationField
-		}
-	}
 	UserProjects struct {
 		field.RelationField
 	}
