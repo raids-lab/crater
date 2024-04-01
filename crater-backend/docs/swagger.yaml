@@ -1,0 +1,141 @@
+definitions:
+  handlers.LoginReq:
+    properties:
+      auth:
+        description: 认证方式 [normal, act]
+        type: string
+      password:
+        description: 密码
+        type: string
+      username:
+        description: 用户名
+        type: string
+    required:
+    - auth
+    - password
+    - username
+    type: object
+  handlers.LoginResp:
+    properties:
+      accessToken:
+        type: string
+      context:
+        $ref: '#/definitions/handlers.PlatformContext'
+      projects:
+        items:
+          $ref: '#/definitions/handlers.ProjectResp'
+        type: array
+      refreshToken:
+        type: string
+    type: object
+  handlers.PlatformContext:
+    properties:
+      platformRole:
+        allOf:
+        - $ref: '#/definitions/model.Role'
+        description: User role of the platform
+      projectID:
+        description: Default Project ID
+        type: integer
+      projectRole:
+        allOf:
+        - $ref: '#/definitions/model.Role'
+        description: User role of the project
+    type: object
+  handlers.ProjectResp:
+    properties:
+      id:
+        type: integer
+      isPersonal:
+        type: boolean
+      name:
+        type: string
+      role:
+        $ref: '#/definitions/model.Role'
+    type: object
+  model.Role:
+    enum:
+    - 0
+    - 1
+    - 2
+    type: integer
+    x-enum-varnames:
+    - RoleAdmin
+    - RoleUser
+    - RoleGuest
+  response.ErrorCode:
+    enum:
+    - 0
+    - 40001
+    - 40101
+    - 40102
+    - 40103
+    - 40301
+    - 99999
+    type: integer
+    x-enum-varnames:
+    - OK
+    - InvalidRequest
+    - TokenExpired
+    - UserNotFound
+    - InvalidToken
+    - InvalidRole
+    - NotSpecified
+  response.Response-any:
+    properties:
+      code:
+        $ref: '#/definitions/response.ErrorCode'
+      data: {}
+      msg:
+        type: string
+    type: object
+  response.Response-handlers_LoginResp:
+    properties:
+      code:
+        $ref: '#/definitions/response.ErrorCode'
+      data:
+        $ref: '#/definitions/handlers.LoginResp'
+      msg:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: This is the API server for Crater, a Multi-tenant AI Model Training
+    Platform based on Kubernetes.
+  title: Crater API
+  version: 0.3.0
+paths:
+  /beta/login:
+    post:
+      consumes:
+      - application/json
+      description: 校验用户身份，生成 JWT Token，返回用户活跃的项目列表
+      parameters:
+      - description: 查询参数
+        in: body
+        name: data
+        schema:
+          $ref: '#/definitions/handlers.LoginReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 登录成功，返回 JWT Token 和项目列表
+          schema:
+            $ref: '#/definitions/response.Response-handlers_LoginResp'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "401":
+          description: 用户名或密码错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 数据库交互错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      summary: 用户登录
+      tags:
+      - auth
+swagger: "2.0"
