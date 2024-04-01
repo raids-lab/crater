@@ -15,6 +15,13 @@ spec:
     - host: crater.act.buaa.edu.cn
       http:
         paths:
+          - path: /website
+            pathType: Prefix
+            backend:
+              service:
+                name: crater-website-svc
+                port:
+                  number: 80
           - path: /
             pathType: Prefix
             backend:
