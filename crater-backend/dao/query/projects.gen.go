@@ -34,7 +34,7 @@ func newProject(db *gorm.DB, opts ...gen.DOOption) project {
 	_project.Name = field.NewString(tableName, "name")
 	_project.Description = field.NewString(tableName, "description")
 	_project.Namespace = field.NewString(tableName, "namespace")
-	_project.Status = field.NewString(tableName, "status")
+	_project.Status = field.NewUint8(tableName, "status")
 	_project.IsPersonal = field.NewBool(tableName, "is_personal")
 	_project.UserProjects = projectHasManyUserProjects{
 		db: db.Session(&gorm.Session{}),
@@ -64,7 +64,7 @@ type project struct {
 	Name         field.String
 	Description  field.String
 	Namespace    field.String
-	Status       field.String
+	Status       field.Uint8
 	IsPersonal   field.Bool
 	UserProjects projectHasManyUserProjects
 
@@ -92,7 +92,7 @@ func (p *project) updateTableName(table string) *project {
 	p.Name = field.NewString(table, "name")
 	p.Description = field.NewString(table, "description")
 	p.Namespace = field.NewString(table, "namespace")
-	p.Status = field.NewString(table, "status")
+	p.Status = field.NewUint8(table, "status")
 	p.IsPersonal = field.NewBool(table, "is_personal")
 
 	p.fillFieldMap()

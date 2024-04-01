@@ -3,6 +3,7 @@ package util
 import (
 	"time"
 
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/pkg/logutils"
 
 	// "github.com/amitshekhariitbhu/go-backend-clean-architecture/domain"
@@ -10,18 +11,18 @@ import (
 )
 
 type JWTClaims struct {
-	UID          uint   `json:"uid"`          // User ID
-	PID          uint   `json:"pid"`          // Project ID
-	PlatformRole string `json:"platformRole"` // User role of the platform
-	ProjectRole  string `json:"projectRole"`  // User role of the project
+	UID          uint       `json:"uid"`          // User ID
+	PID          uint       `json:"pid"`          // Project ID
+	PlatformRole model.Role `json:"platformRole"` // User role of the platform
+	ProjectRole  model.Role `json:"projectRole"`  // User role of the project
 	jwt.RegisteredClaims
 }
 
 type JWTMessage struct {
-	UID          uint   `json:"uid"`          // User ID
-	PID          uint   `json:"pid"`          // Project ID
-	PlatformRole string `json:"platformRole"` // User role of the platform
-	ProjectRole  string `json:"projectRole"`  // User role of the project
+	UID          uint       `json:"uid"`          // User ID
+	PID          uint       `json:"pid"`          // Project ID
+	PlatformRole model.Role `json:"platformRole"` // User role of the platform
+	ProjectRole  model.Role `json:"projectRole"`  // User role of the project
 }
 
 type TokenManager struct {

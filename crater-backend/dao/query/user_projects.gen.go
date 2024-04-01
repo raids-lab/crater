@@ -33,7 +33,7 @@ func newUserProject(db *gorm.DB, opts ...gen.DOOption) userProject {
 	_userProject.DeletedAt = field.NewField(tableName, "deleted_at")
 	_userProject.UserID = field.NewUint(tableName, "user_id")
 	_userProject.ProjectID = field.NewUint(tableName, "project_id")
-	_userProject.Role = field.NewString(tableName, "role")
+	_userProject.Role = field.NewUint8(tableName, "role")
 	_userProject.CPU = field.NewInt(tableName, "cpu")
 	_userProject.Memory = field.NewInt(tableName, "memory")
 	_userProject.GPU = field.NewInt(tableName, "gpu")
@@ -56,7 +56,7 @@ type userProject struct {
 	DeletedAt field.Field
 	UserID    field.Uint
 	ProjectID field.Uint
-	Role      field.String
+	Role      field.Uint8
 	CPU       field.Int
 	Memory    field.Int
 	GPU       field.Int
@@ -85,7 +85,7 @@ func (u *userProject) updateTableName(table string) *userProject {
 	u.DeletedAt = field.NewField(table, "deleted_at")
 	u.UserID = field.NewUint(table, "user_id")
 	u.ProjectID = field.NewUint(table, "project_id")
-	u.Role = field.NewString(table, "role")
+	u.Role = field.NewUint8(table, "role")
 	u.CPU = field.NewInt(table, "cpu")
 	u.Memory = field.NewInt(table, "memory")
 	u.GPU = field.NewInt(table, "gpu")

@@ -34,8 +34,8 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.Name = field.NewString(tableName, "name")
 	_user.Nickname = field.NewString(tableName, "nickname")
 	_user.Password = field.NewString(tableName, "password")
-	_user.Role = field.NewString(tableName, "role")
-	_user.Status = field.NewString(tableName, "status")
+	_user.Role = field.NewUint8(tableName, "role")
+	_user.Status = field.NewUint8(tableName, "status")
 	_user.UserProjects = userHasManyUserProjects{
 		db: db.Session(&gorm.Session{}),
 
@@ -58,8 +58,8 @@ type user struct {
 	Name         field.String
 	Nickname     field.String
 	Password     field.String
-	Role         field.String
-	Status       field.String
+	Role         field.Uint8
+	Status       field.Uint8
 	UserProjects userHasManyUserProjects
 
 	fieldMap map[string]field.Expr
@@ -84,8 +84,8 @@ func (u *user) updateTableName(table string) *user {
 	u.Name = field.NewString(table, "name")
 	u.Nickname = field.NewString(table, "nickname")
 	u.Password = field.NewString(table, "password")
-	u.Role = field.NewString(table, "role")
-	u.Status = field.NewString(table, "status")
+	u.Role = field.NewUint8(table, "role")
+	u.Status = field.NewUint8(table, "status")
 
 	u.fillFieldMap()
 
