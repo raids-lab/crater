@@ -203,18 +203,27 @@ export const Component: FC = () => {
 
   const refInput = useRef<HTMLInputElement>(null);
   const refInput2 = useRef<HTMLInputElement>(null);
+
+  const { mutate: upload } = useMutation({
+    mutationFn: (Files: File[]) => uploadFile(Files),
+    onSuccess: async () => {
+      await refetchRootList();
+      toast.success("文件已上传");
+    },
+  });
   const handleFileSelect = ({
     currentTarget: { files },
   }: React.ChangeEvent<HTMLInputElement>) => {
     if (files && files.length) {
       const Files = Array.from(files);
-      uploadFile(Files).catch((err) => {
-        logger.debug(err);
-      });
-      refetchRootList().catch((err) => {
-        logger.debug(err);
-      });
-      toast.success("文件已上传");
+      upload(Files);
+      // uploadFile(Files).catch((err) => {
+      //   logger.debug(err);
+      // });
+      // refetchRootList().catch((err) => {
+      //   logger.debug(err);
+      // });
+      // toast.success("文件已上传");
     }
   };
 
