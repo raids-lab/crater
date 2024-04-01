@@ -63,13 +63,14 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	jupyterMgr := handlers.NewJupyterMgr(aitaskCtrl, &pvcClient, &logClient)
 	recommenddljobMgr := handlers.NewRecommendDLJobMgr(user.NewDBService(), cl)
 	datasetMgr := handlers.NewDataSetMgr(user.NewDBService(), cl)
-	imagepackMgr := handlers.NewImagePackMgr(imagepack.NewDBService(), &logClient, &imagepackClient)
-
+	imagepackMgr := handlers.NewImagePackMgr(imagepack.NewDBService(), &logClient, &crclient.ImagePackController{Client: cl})
+	clusterMgr := handlers.NewClusterMgr()
 	shareDirMgr.RegisterRoute(protectedRouter.Group("/sharedir"))
 	aitaskMgr.RegisterRoute(protectedRouter.Group("/aitask"))
 	jupyterMgr.RegisterRoute(protectedRouter.Group("/jupyter"))
 	recommenddljobMgr.RegisterRoute(protectedRouter.Group("/recommenddljob"))
 	datasetMgr.RegisterRoute(protectedRouter.Group("/dataset"))
+	clusterMgr.RegisterRoute(protectedRouter.Group("/cluster"))
 	imagepackMgr.RegisterRoute(protectedRouter.Group("/image"))
 
 	///////////////////////////////////////

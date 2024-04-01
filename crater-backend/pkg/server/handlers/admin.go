@@ -3,11 +3,13 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
 	"github.com/raids-lab/crater/pkg/crclient"
+	gpusvc "github.com/raids-lab/crater/pkg/db/gpu"
 	imagepacksvc "github.com/raids-lab/crater/pkg/db/imagepack"
 	quotasvc "github.com/raids-lab/crater/pkg/db/quota"
 	tasksvc "github.com/raids-lab/crater/pkg/db/task"
@@ -25,9 +27,10 @@ type AdminMgr struct {
 	quotaService     quotasvc.DBService
 	userService      usersvc.DBService
 	taskServcie      tasksvc.DBService
-	imagepackService imagepacksvc.DBService
 	taskController   *aitaskctl.TaskController
 	nodeClient       *crclient.NodeClient
+	gpuClient        gpusvc.DBService
+	imagepackService imagepacksvc.DBService
 	imagepackClient  *crclient.ImagePackController
 }
 
@@ -48,6 +51,9 @@ func (mgr *AdminMgr) RegisterRoute(g *gin.RouterGroup) {
 
 	nodes := g.Group("/nodes")
 	nodes.GET("", mgr.ListNode)
+	nodes.POST("", mgr.CreateGPU)
+	nodes.PUT("/:id", mgr.UpdateGPU)
+	nodes.DELETE("/:id", mgr.DeleteGPU)
 	nodes.GET("/pod", mgr.ListNodePod)
 	nodes.GET("/test", mgr.ListNodeTest)
 
@@ -64,12 +70,95 @@ func NewAdminMgr(
 		quotaService:     quotasvc.NewDBService(),
 		userService:      usersvc.NewDBService(),
 		taskServcie:      tasksvc.NewDBService(),
-		imagepackService: imagepacksvc.NewDBService(),
+		gpuClient:        gpusvc.NewDBService(),
 		taskController:   taskController,
 		nodeClient:       nodeClient,
+		imagepackService: imagepacksvc.NewDBService(),
 		imagepackClient:  imagepackClient,
 	}
 }
+
+func (mgr *AdminMgr) CreateGPU(c *gin.Context) {
+	logutils.Log.Infof("GPU Create, url: %s", c.Request.URL)
+	var req payload.CreateGPUReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.Error(c, fmt.Sprintf("validate parameters failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+	gpu := &models.GPU{
+		GPUName:     req.GPUName,
+		GPUPriority: req.Priority,
+	}
+	if mgr == nil {
+		logutils.Log.Infof("mgr is nil")
+		return
+	}
+	if mgr.gpuClient == nil {
+		logutils.Log.Infof("mgr.gpuClient is nil")
+		return
+	}
+	err := mgr.gpuClient.Create(gpu)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("create gpu failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+	logutils.Log.Infof("create gpu success, gpu: %s", gpu.GPUName)
+	resputil.Success(c, "")
+}
+
+func (mgr *AdminMgr) UpdateGPU(c *gin.Context) {
+	logutils.Log.Infof("GPU Update, url: %s", c.Request.URL)
+	var req payload.UpdateGPUReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.Error(c, fmt.Sprintf("validate parameters failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+	id := c.Param("id")
+	idUint, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("parse id failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+
+	gpu, err := mgr.gpuClient.GetByID(uint(idUint))
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("get gpu failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+
+	gpu.GPUName = req.GPUName
+	gpu.GPUPriority = req.Priority
+	gpu.ID = uint(idUint)
+	err = mgr.gpuClient.Update(gpu)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("update gpu failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+	logutils.Log.Infof("update gpu success, gpu: %s", gpu.GPUName)
+	resputil.Success(c, gpu)
+}
+
+func (mgr *AdminMgr) DeleteGPU(c *gin.Context) {
+	logutils.Log.Infof("GPU Delete, url: %s", c.Request.URL)
+	id := c.Param("id")
+	idUint, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("parse id failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+	err = mgr.gpuClient.DeleteByID(uint(idUint))
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to delete GPU: %v", err), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, "GPU deleted successfully")
+}
+
+// func (mgr *AdminMgr) CreateUser(c *gin.Context) {
+// 	log.Infof("User Create, url: %s", c.Request.URL)
+
+// 	resputil.WrapSuccessResponse(c, "")
+// }
 
 func (mgr *AdminMgr) DeleteUser(c *gin.Context) {
 	logutils.Log.Infof("User Delete, url: %s", c.Request.URL)
