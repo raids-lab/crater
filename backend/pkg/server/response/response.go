@@ -6,6 +6,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Used by swagger to generate documentation
+type Response[T any] struct {
+	Code ErrorCode `json:"code"`
+	Data T         `json:"data"`
+	Msg  string    `json:"msg"`
+}
+
 // wrapResponse wraps the response data and sends it back to the client.
 // It takes in a Gin context, a message string, data any, and an ErrorCode.
 // The function sets the appropriate HTTP status code based on the ErrorCode.

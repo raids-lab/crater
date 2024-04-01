@@ -1,0 +1,208 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "This is the API server for Crater, a Multi-tenant AI Model Training Platform based on Kubernetes.",
+        "title": "Crater API",
+        "contact": {},
+        "version": "0.3.0"
+    },
+    "paths": {
+        "/beta/login": {
+            "post": {
+                "description": "校验用户身份，生成 JWT Token，返回用户活跃的项目列表",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "用户登录",
+                "parameters": [
+                    {
+                        "description": "查询参数",
+                        "name": "data",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.LoginReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "登录成功，返回 JWT Token 和项目列表",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-handlers_LoginResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "401": {
+                        "description": "用户名或密码错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "数据库交互错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "handlers.LoginReq": {
+            "type": "object",
+            "required": [
+                "auth",
+                "password",
+                "username"
+            ],
+            "properties": {
+                "auth": {
+                    "description": "认证方式 [normal, act]",
+                    "type": "string"
+                },
+                "password": {
+                    "description": "密码",
+                    "type": "string"
+                },
+                "username": {
+                    "description": "用户名",
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.LoginResp": {
+            "type": "object",
+            "properties": {
+                "accessToken": {
+                    "type": "string"
+                },
+                "context": {
+                    "$ref": "#/definitions/handlers.PlatformContext"
+                },
+                "projects": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.ProjectResp"
+                    }
+                },
+                "refreshToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.PlatformContext": {
+            "type": "object",
+            "properties": {
+                "platformRole": {
+                    "description": "User role of the platform",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Role"
+                        }
+                    ]
+                },
+                "projectID": {
+                    "description": "Default Project ID",
+                    "type": "integer"
+                },
+                "projectRole": {
+                    "description": "User role of the project",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Role"
+                        }
+                    ]
+                }
+            }
+        },
+        "handlers.ProjectResp": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "isPersonal": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "role": {
+                    "$ref": "#/definitions/model.Role"
+                }
+            }
+        },
+        "model.Role": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-varnames": [
+                "RoleAdmin",
+                "RoleUser",
+                "RoleGuest"
+            ]
+        },
+        "response.ErrorCode": {
+            "type": "integer",
+            "enum": [
+                0,
+                40001,
+                40101,
+                40102,
+                40103,
+                40301,
+                99999
+            ],
+            "x-enum-varnames": [
+                "OK",
+                "InvalidRequest",
+                "TokenExpired",
+                "UserNotFound",
+                "InvalidToken",
+                "InvalidRole",
+                "NotSpecified"
+            ]
+        },
+        "response.Response-any": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/response.ErrorCode"
+                },
+                "data": {},
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.Response-handlers_LoginResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/response.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/handlers.LoginResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

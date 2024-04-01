@@ -75,6 +75,18 @@ const (
 	AuthMethodACT    = "act"
 )
 
+// Login godoc
+// @Summary 用户登录
+// @Description 校验用户身份，生成 JWT Token，返回用户活跃的项目列表
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param data body LoginReq false "查询参数"
+// @Success 200 {object} resputil.Response[LoginResp] "登录成功，返回 JWT Token 和项目列表"
+// @Failure 400 {object} resputil.Response[any]	"请求参数错误"
+// @Failure 401 {object} resputil.Response[any]	"用户名或密码错误"
+// @Failure 500 {object} resputil.Response[any]	"数据库交互错误"
+// @Router /beta/login [post]
 func (mgr *AuthMgr) Login(c *gin.Context) {
 	var req LoginReq
 	if err := c.ShouldBind(&req); err != nil {

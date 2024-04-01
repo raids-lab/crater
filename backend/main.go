@@ -48,6 +48,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
+// @title Crater API
+// @version 0.3.0
+// @description This is the API server for Crater, a Multi-tenant AI Model Training Platform based on Kubernetes.
+//
 //nolint:gocyclo // todo: remove old mysql init
 func main() {
 	// set global timezone

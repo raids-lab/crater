@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	docs "github.com/raids-lab/crater/docs"
 	handler "github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
@@ -13,6 +14,8 @@ import (
 	"github.com/raids-lab/crater/pkg/db/user"
 	"github.com/raids-lab/crater/pkg/server/handlers"
 	"github.com/raids-lab/crater/pkg/server/middleware"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -95,5 +98,10 @@ func Register(aitaskCtrl *aitaskctl.TaskController, cl client.Client, cs *kubern
 		})
 	})
 	s.RegisterService(aitaskCtrl, cl, cs)
+
+	// todo: DisablingWrapHandler https://github.com/swaggo/gin-swagger/blob/master/swagger.go#L205
+	docs.SwaggerInfo.BasePath = "/"
+	s.R.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	return s, nil
 }
