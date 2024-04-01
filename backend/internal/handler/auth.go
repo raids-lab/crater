@@ -57,16 +57,16 @@ type (
 	}
 
 	ProjectResp struct {
-		ID         uint   `json:"id"`
-		Name       string `json:"name"`
-		Role       string `json:"role"`
-		IsPersonal bool   `json:"isPersonal"`
+		ID         uint       `json:"id"`
+		Name       string     `json:"name"`
+		Role       model.Role `json:"role"`
+		IsPersonal bool       `json:"isPersonal"`
 	}
 
 	PlatformContext struct {
-		PID          uint   `json:"pid"`          // Project ID
-		PlatformRole string `json:"platformRole"` // User role of the platform
-		ProjectRole  string `json:"projectRole"`
+		PID          uint       `json:"projectID"`    // Default Project ID
+		ProjectRole  model.Role `json:"projectRole"`  // User role of the project
+		PlatformRole model.Role `json:"platformRole"` // User role of the platform
 	}
 )
 
@@ -128,21 +128,32 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 			return
 		}
 	}
+	if user.Status != model.StatusActive {
+		l.Error("user is not active")
+		resputil.HTTPError(c, http.StatusUnauthorized, "User is not active", resputil.NotSpecified)
+		return
+	}
 
-	// Get all projects for the user
+	// Get all actived projects for the user
 	var projects []ProjectResp
 	err = up.WithContext(c).Where(up.UserID.Eq(user.ID)).
-		Select(p.ID, p.Name, up.Role, p.IsPersonal).Join(p, p.ID.EqCol(up.ProjectID)).Scan(&projects)
+		Select(p.ID, p.Name, up.Role, p.IsPersonal).Join(p, p.ID.EqCol(up.ProjectID)).
+		Where(p.Status.Eq(uint8(model.StatusActive))).Scan(&projects)
 	if err != nil {
 		l.Error("DB error", err)
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	if len(projects) == 0 {
+		l.Error("user has no active project")
+		resputil.HTTPError(c, http.StatusUnauthorized, "User has no active project", resputil.NotSpecified)
 		return
 	}
 
 	// Get personal project id for the user (as the default project)
 	// Each user has a personal project (with the same name as the user)
 	var pID uint
-	var pRole string
+	var pRole model.Role
 	for i := range projects {
 		if projects[i].IsPersonal {
 			pID = projects[i].ID

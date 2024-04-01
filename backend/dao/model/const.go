@@ -1,25 +1,28 @@
 package model
 
-import (
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-)
+// User role in platform and project
+type Role uint8
 
 const (
-	RoleAdmin = "admin"
-	RoleUser  = "user"
-	RoleGuest = "guest"
+	RoleAdmin Role = iota
+	RoleUser
+	RoleGuest
 )
+
+// Project and user status
+type Status uint8
 
 const (
-	StatusActive   = "active"
-	StatusInactive = "inactive"
+	StatusPending  Status = iota // Pending status, not yet activated
+	StatusActive                 // Active status
+	StatusInactive               // Inactive status
 )
 
-var (
-	DefaultQuota = v1.ResourceList{
-		v1.ResourceCPU:                    resource.MustParse("2"),
-		v1.ResourceMemory:                 resource.MustParse("4Gi"),
-		v1.ResourceName("nvidia.com/gpu"): resource.MustParse("0"),
-	}
+// Space access mode (read-write, read-only)
+type AccessMode uint8
+
+const (
+	AccessModeRW AccessMode = iota // Read-write mode
+	AccessModeRO                   // Read-only mode
+	AccessModeAO                   // Append-only mode
 )
