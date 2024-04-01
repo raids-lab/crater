@@ -7,6 +7,16 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
+type CreateGPUReq struct {
+	GPUName  string `json:"gpuName" binding:"required"`
+	Priority int    `json:"priority" binding:"required"`
+}
+
+type UpdateGPUReq struct {
+	GPUName  string `json:"gpuName" binding:"required"`
+	Priority int    `json:"priority" binding:"required"`
+}
+
 type CreateTaskReq struct {
 	models.TaskAttr
 }
