@@ -10,8 +10,6 @@ type Project struct {
 	Status       string  `gorm:"type:varchar(32);comment:项目状态 (active, inactive)"`
 	IsPersonal   bool    `gorm:"type:boolean;comment:是否为个人项目"`
 	UserProjects []UserProject
-	// Project has one space
-	Space Space
 	// Project can also associate with multiple spaces in RW or RO mode
 	ProjectSpaces []ProjectSpace
 }

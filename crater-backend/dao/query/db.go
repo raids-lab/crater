@@ -22,9 +22,10 @@ func InitDB() error {
 	user := dbConfig.Postgres.User
 	password := dbConfig.Postgres.Password
 	sslMode := dbConfig.Postgres.SSLMode
+	timeZone := dbConfig.Postgres.TimeZone
 
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
-		host, user, password, dbName, port, sslMode)
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=%s",
+		host, user, password, dbName, port, sslMode, timeZone)
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {

@@ -1,5 +1,6 @@
 package constants
 
 const (
-	APIPrefix = "v1"
+	APIPrefix     = "v1"
+	APIPrefixBeta = "beta"
 )

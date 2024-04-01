@@ -2,6 +2,13 @@ package model
 
 import "gorm.io/gorm"
 
+// Default Quota
+const (
+	DefaultCPU    = 2
+	DefaultMemory = 4
+	DefaultGPU    = 0
+)
+
 // Quota belongs to project, defines the resource quota of a project
 type Quota struct {
 	gorm.Model

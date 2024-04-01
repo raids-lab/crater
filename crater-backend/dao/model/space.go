@@ -9,6 +9,7 @@ type Space struct {
 	Path string `gorm:"uniqueIndex;type:varchar(256);not null;comment:数据空间根路径"`
 	// space must belongs to one project
 	ProjectID uint
+	Project   Project
 	// space can be associated with multiple projects in RW or RO mode
 	ProjectSpaces []ProjectSpace
 }
