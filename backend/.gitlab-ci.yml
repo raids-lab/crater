@@ -67,6 +67,8 @@ build_image:
       --context "${CI_PROJECT_DIR}"
       --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
       --destination "${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}"
+  only:
+    - main
   dependencies:
     - build_backend
 
@@ -79,5 +81,7 @@ deploy:
   script:
     - kubectl config use-context raids/resource-scheduling/crater/web-frontend:crater-cluster
     - kubectl set image deployment/crater-web-backend crater-web-backend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -n crater
+  only:
+    - main
   dependencies:
     - build_image
