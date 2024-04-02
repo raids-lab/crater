@@ -31,6 +31,7 @@ require (
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/chenzhuoyu/iasm v0.9.1 // indirect
+	github.com/gin-contrib/cors v1.7.1 // indirect
 	github.com/go-openapi/spec v0.21.0 // indirect
 	github.com/swaggo/files v1.0.1 // indirect
 	github.com/swaggo/gin-swagger v1.6.0 // indirect

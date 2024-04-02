@@ -1,4 +1,4 @@
-package handlers
+package handler
 
 import (
 	"errors"
@@ -26,7 +26,7 @@ type AuthMgr struct {
 	taskController *aitaskctl.TaskController
 }
 
-func NewAuthMgr(taskController *aitaskctl.TaskController, tokenConf *config.TokenConf) *AuthMgr {
+func NewAuthMgr(taskController *aitaskctl.TaskController, tokenConf *config.TokenConf) Handler {
 	return &AuthMgr{
 		tokenMgr: util.NewTokenManager(
 			tokenConf.AccessTokenSecret,
@@ -37,10 +37,14 @@ func NewAuthMgr(taskController *aitaskctl.TaskController, tokenConf *config.Toke
 	}
 }
 
-func (mgr *AuthMgr) RegisterRoute(group *gin.RouterGroup) {
+func (mgr *AuthMgr) RegisterPublic(group *gin.RouterGroup) {
 	group.POST("/login", mgr.Login)
 	group.POST("/refresh", mgr.RefreshToken)
 }
+
+func (mgr *AuthMgr) RegisterProtected(_ *gin.RouterGroup) {}
+
+func (mgr *AuthMgr) RegisterAdmin(_ *gin.RouterGroup) {}
 
 type (
 	LoginReq struct {
