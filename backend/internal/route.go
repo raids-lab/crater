@@ -57,6 +57,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 			url := "http://localhost:" + fe
 			corsConf := cors.DefaultConfig()
 			corsConf.AllowOrigins = []string{url}
+			corsConf.AllowCredentials = true
 			b.R.Use(cors.New(corsConf))
 		}
 	}
