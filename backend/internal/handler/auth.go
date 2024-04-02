@@ -10,13 +10,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/payload"
+	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
 	resputil "github.com/raids-lab/crater/pkg/server/response"
-	"github.com/raids-lab/crater/pkg/util"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -26,13 +27,9 @@ type AuthMgr struct {
 	taskController *aitaskctl.TaskController
 }
 
-func NewAuthMgr(taskController *aitaskctl.TaskController, tokenConf *config.TokenConf) Handler {
+func NewAuthMgr(taskController *aitaskctl.TaskController) Manager {
 	return &AuthMgr{
-		tokenMgr: util.NewTokenManager(
-			tokenConf.AccessTokenSecret,
-			tokenConf.AccessTokenExpiryHour,
-			tokenConf.RefreshTokenExpiryHour,
-		),
+		tokenMgr:       util.GetTokenMgr(),
 		taskController: taskController,
 	}
 }
@@ -54,17 +51,10 @@ type (
 	}
 
 	LoginResp struct {
-		AccessToken  string          `json:"accessToken"`
-		RefreshToken string          `json:"refreshToken"`
-		Context      PlatformContext `json:"context"`
-		Projects     []ProjectResp   `json:"projects"`
-	}
-
-	ProjectResp struct {
-		ID         uint       `json:"id"`
-		Name       string     `json:"name"`
-		Role       model.Role `json:"role"`
-		IsPersonal bool       `json:"isPersonal"`
+		AccessToken  string                `json:"accessToken"`
+		RefreshToken string                `json:"refreshToken"`
+		Context      PlatformContext       `json:"context"`
+		Projects     []payload.ProjectResp `json:"projects"`
 	}
 
 	PlatformContext struct {
@@ -82,7 +72,7 @@ const (
 // Login godoc
 // @Summary 用户登录
 // @Description 校验用户身份，生成 JWT Token，返回用户活跃的项目列表
-// @Tags auth
+// @Tags Auth
 // @Accept json
 // @Produce json
 // @Param data body LoginReq false "查询参数"
@@ -90,7 +80,7 @@ const (
 // @Failure 400 {object} resputil.Response[any]	"请求参数错误"
 // @Failure 401 {object} resputil.Response[any]	"用户名或密码错误"
 // @Failure 500 {object} resputil.Response[any]	"数据库交互错误"
-// @Router /beta/login [post]
+// @Router /login [post]
 func (mgr *AuthMgr) Login(c *gin.Context) {
 	var req LoginReq
 	if err := c.ShouldBind(&req); err != nil {
@@ -151,7 +141,7 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 	}
 
 	// Get all actived projects for the user
-	var projects []ProjectResp
+	var projects []payload.ProjectResp
 	err = up.WithContext(c).Where(up.UserID.Eq(user.ID)).
 		Select(p.ID, p.Name, up.Role, p.IsPersonal).Join(p, p.ID.EqCol(up.ProjectID)).
 		Where(p.Status.Eq(uint8(model.StatusActive))).Scan(&projects)
@@ -180,10 +170,12 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 
 	// Generate JWT tokens
 	jwtMessage := util.JWTMessage{
-		UID:          user.ID,
-		PID:          pID,
-		PlatformRole: user.Role,
+		UserID:       user.ID,
+		ProjectID:    pID,
 		ProjectRole:  pRole,
+		ClusterID:    1,
+		ClusterRole:  model.RoleUser,
+		PlatformRole: user.Role,
 	}
 	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
 	if err != nil {
@@ -252,6 +244,7 @@ func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.Us
 		ProjectID: project.ID,
 		Path:      folderPath,
 	}
+
 	if err := s.WithContext(c).Create(&space); err != nil {
 		return nil, err
 	}
