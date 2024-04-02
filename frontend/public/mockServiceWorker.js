@@ -8,8 +8,8 @@
  * - Please do NOT serve this file on production.
  */
 
-const PACKAGE_VERSION = "2.2.5";
-const INTEGRITY_CHECKSUM = "5db7e6e8385dc04e017ac4823e0e9b29";
+const PACKAGE_VERSION = "2.2.13";
+const INTEGRITY_CHECKSUM = "26357c79639bfa20d64c0efca2a87423";
 const IS_MOCKED_RESPONSE = Symbol("isMockedResponse");
 const activeClientIds = new Set();
 
@@ -206,13 +206,6 @@ async function getResponse(event, client, requestId) {
     return passthrough();
   }
 
-  // Bypass requests with the explicit bypass header.
-  // Such requests can be issued by "ctx.fetch()".
-  const mswIntention = request.headers.get("x-msw-intention");
-  if (["bypass", "passthrough"].includes(mswIntention)) {
-    return passthrough();
-  }
-
   // Notify the client that a request has been intercepted.
   const requestBuffer = await request.arrayBuffer();
   const clientMessage = await sendToClient(
@@ -244,7 +237,7 @@ async function getResponse(event, client, requestId) {
       return respondWithMock(clientMessage.data);
     }
 
-    case "MOCK_NOT_FOUND": {
+    case "PASSTHROUGH": {
       return passthrough();
     }
   }
