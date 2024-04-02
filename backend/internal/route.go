@@ -8,14 +8,10 @@ import (
 	"github.com/gin-gonic/gin"
 	docs "github.com/raids-lab/crater/docs"
 	"github.com/raids-lab/crater/internal/handler"
+	"github.com/raids-lab/crater/internal/middleware"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
-	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/constants"
 	"github.com/raids-lab/crater/pkg/crclient"
-	"github.com/raids-lab/crater/pkg/db/imagepack"
-	"github.com/raids-lab/crater/pkg/db/user"
-	"github.com/raids-lab/crater/pkg/server/handlers"
-	"github.com/raids-lab/crater/pkg/server/middleware"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"k8s.io/client-go/kubernetes"
@@ -42,7 +38,12 @@ func Register(aitaskCtrl *aitaskctl.TaskController, cl client.Client, cs *kubern
 
 	// Swagger
 	// todo: DisablingWrapHandler https://github.com/swaggo/gin-swagger/blob/master/swagger.go#L205
-	docs.SwaggerInfo.BasePath = "/"
+	if gin.Mode() == gin.DebugMode {
+		docs.SwaggerInfo.BasePath = "/"
+	} else {
+		docs.SwaggerInfo.BasePath = "/api"
+	}
+
 	s.R.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	return s
@@ -67,26 +68,16 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 		panic(err)
 	}
 	logClient := crclient.LogClient{Client: cl, KubeClient: cs}
-	nodeClient := crclient.NodeClient{Client: cl, KubeClient: cs}
-	imagepackClient := crclient.ImagePackController{Client: cl}
-	tokenConf := config.NewTokenConf()
 
 	// Init Handlers
-	authMgr := handler.NewAuthMgr(aitaskCtrl, tokenConf)
-	shareDirMgr := handlers.NewShareDirMgr()
-	aitaskMgr := handlers.NewAITaskMgr(aitaskCtrl, &pvcClient, &logClient)
-	jupyterMgr := handlers.NewJupyterMgr(aitaskCtrl, &pvcClient, &logClient)
-	recommenddljobMgr := handlers.NewRecommendDLJobMgr(user.NewDBService(), cl)
-	datasetMgr := handlers.NewDataSetMgr(user.NewDBService(), cl)
-	imagepackMgr := handlers.NewImagePackMgr(imagepack.NewDBService(), &logClient, &crclient.ImagePackController{Client: cl})
-	clusterMgr := handlers.NewClusterMgr()
-	adminMgr := handlers.NewAdminMgr(aitaskCtrl, &nodeClient, &imagepackClient)
+	authMgr := handler.NewAuthMgr(aitaskCtrl)
+	aijobMgr := handler.NewAIJobMgr(aitaskCtrl, &pvcClient, &logClient)
 
 	///////////////////////////////////////
 	//// Public routers, no need login ////
 	///////////////////////////////////////
 
-	publicRouter := b.R.Group(constants.APIPrefixBeta)
+	publicRouter := b.R.Group("")
 
 	authMgr.RegisterPublic(publicRouter)
 
@@ -95,22 +86,16 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	///////////////////////////////////////
 
 	protectedRouter := b.R.Group(constants.APIPrefix)
-	protectedRouter.Use(middleware.JwtAuthMiddleware(tokenConf.AccessTokenSecret))
+	protectedRouter.Use(middleware.AuthProtected())
 
-	shareDirMgr.RegisterRoute(protectedRouter.Group("/sharedir"))
-	aitaskMgr.RegisterRoute(protectedRouter.Group("/aitask"))
-	jupyterMgr.RegisterRoute(protectedRouter.Group("/jupyter"))
-	recommenddljobMgr.RegisterRoute(protectedRouter.Group("/recommenddljob"))
-	datasetMgr.RegisterRoute(protectedRouter.Group("/dataset"))
-	clusterMgr.RegisterRoute(protectedRouter.Group("/cluster"))
-	imagepackMgr.RegisterRoute(protectedRouter.Group("/image"))
+	aijobMgr.RegisterProtected(protectedRouter.Group("/aijobs"))
 
 	///////////////////////////////////////
 	//// Admin routers, need admin role ///
 	///////////////////////////////////////
 
 	adminRouter := b.R.Group(constants.APIPrefix + "/admin")
-	adminRouter.Use(middleware.JwtAuthMiddleware(tokenConf.AccessTokenSecret), middleware.AdminMiddleware())
+	adminRouter.Use(middleware.AuthProtected(), middleware.AuthAdmin())
 
-	adminMgr.RegisterRoute(adminRouter)
+	aijobMgr.RegisterAdmin(adminRouter.Group("/aijobs"))
 }

@@ -35,13 +35,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
 	db "github.com/raids-lab/crater/pkg/db/orm"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/profiler"
 	"github.com/raids-lab/crater/pkg/reconciler"
-	"github.com/raids-lab/crater/pkg/server"
 	"github.com/raids-lab/crater/pkg/util"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -199,11 +199,7 @@ func main() {
 
 	// 5. start server
 	setupLog.Info("starting server")
-	backend, err := server.Register(taskCtrl, mgr.GetClient(), clientset)
-	if err != nil {
-		setupLog.Error(err, "unable to set up server")
-		os.Exit(1)
-	}
+	backend := internal.Register(taskCtrl, mgr.GetClient(), clientset)
 	if err := backend.R.Run(backendConfig.ServerAddr); err != nil {
 		setupLog.Error(err, "problem running server")
 		os.Exit(1)
