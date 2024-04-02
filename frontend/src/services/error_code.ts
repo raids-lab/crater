@@ -4,6 +4,7 @@
 export type ErrorCode = number;
 
 export const OK: ErrorCode = 0;
+export const ERROR_INVALID_REQUEST: ErrorCode = 40001;
 export const ERROR_TOKEN_EXPIRED: ErrorCode = 40101;
 export const ERROR_USER_NOT_FOUND: ErrorCode = 40102;
 export const ERROR_INVALID_TOKEN: ErrorCode = 40103;

@@ -413,8 +413,8 @@ const AiJobHome = () => {
   }, [dataUpdatedAt]);
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-2">
+    <>
+      <div className="col-span-3 grid gap-6 md:grid-cols-2">
         <Status />
         <Quota />
       </div>
@@ -423,6 +423,7 @@ const AiJobHome = () => {
         columns={columns}
         toolbarConfig={toolbarConfig}
         loading={isLoading}
+        className="col-span-3"
       >
         <Sheet open={openSheet} onOpenChange={setOpenSheet}>
           <SheetTrigger asChild>
@@ -444,7 +445,7 @@ const AiJobHome = () => {
           数据更新于 {updatedAt}
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

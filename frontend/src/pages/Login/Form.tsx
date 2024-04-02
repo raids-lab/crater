@@ -47,7 +47,11 @@ export function ProfileForm() {
 
   const { mutate: loginUser, status } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
-      apiUserLogin({ username: values.username, password: values.password }),
+      apiUserLogin({
+        username: values.username,
+        password: values.password,
+        auth: "act",
+      }),
     onSuccess: async (data, { username }) => {
       await queryClient.invalidateQueries();
       const role = data.role === "admin" ? "admin" : "user";

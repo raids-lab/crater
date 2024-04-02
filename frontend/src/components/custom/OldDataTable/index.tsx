@@ -33,6 +33,7 @@ interface DataTableProps<TData, TValue>
   data: TData[];
   loading: boolean;
   toolbarConfig: DataTableToolbarConfig;
+  className?: string;
 }
 
 export function DataTable<TData, TValue>({
@@ -41,6 +42,7 @@ export function DataTable<TData, TValue>({
   toolbarConfig,
   loading,
   children,
+  className,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -81,7 +83,7 @@ export function DataTable<TData, TValue>({
   });
 
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader>
         <DataTableToolbar table={table} config={toolbarConfig}>
           {children}
