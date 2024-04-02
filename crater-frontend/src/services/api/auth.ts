@@ -16,6 +16,7 @@ export interface ISignup {
 export interface ILogin {
   username: string;
   password: string;
+  auth: string;
 }
 
 export interface IAuthResponse {

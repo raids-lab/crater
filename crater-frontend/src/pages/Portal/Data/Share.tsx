@@ -328,12 +328,14 @@ export const Component: FC = () => {
       toast.success("文件夹已创建");
     },
   });
+
   return (
     <DataTable
       data={data}
       columns={columns}
       toolbarConfig={toolbarConfig}
       loading={isLoading}
+      className="col-span-3"
     >
       {/* <div
             className="flex items-center space-x-1 md:space-x-2"
