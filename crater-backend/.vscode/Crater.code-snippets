@@ -25,7 +25,7 @@
 			"type ${TM_FILENAME_BASE}Mgr struct {",
 			"}",
 			"",
-			"func New${TM_FILENAME_BASE}Mgr() Handler {",
+			"func New${TM_FILENAME_BASE}Mgr() Manager {",
 			"  return &${TM_FILENAME_BASE}Mgr{}",
 			"}",
 			"",
