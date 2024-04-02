@@ -4,9 +4,9 @@ package model
 type Role uint8
 
 const (
-	RoleAdmin Role = iota
+	RoleGuest Role = iota
 	RoleUser
-	RoleGuest
+	RoleAdmin
 )
 
 // Project and user status

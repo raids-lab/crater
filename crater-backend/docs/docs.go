@@ -15,7 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/beta/login": {
+        "/login": {
             "post": {
                 "description": "校验用户身份，生成 JWT Token，返回用户活跃的项目列表",
                 "consumes": [
@@ -25,7 +25,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "auth"
+                    "Auth"
                 ],
                 "summary": "用户登录",
                 "parameters": [
@@ -34,7 +34,7 @@ const docTemplate = `{
                         "name": "data",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/handlers.LoginReq"
+                            "$ref": "#/definitions/handler.LoginReq"
                         }
                     }
                 ],
@@ -42,7 +42,7 @@ const docTemplate = `{
                     "200": {
                         "description": "登录成功，返回 JWT Token 和项目列表",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-handlers_LoginResp"
+                            "$ref": "#/definitions/response.Response-handler_LoginResp"
                         }
                     },
                     "400": {
@@ -65,10 +65,48 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/v1/aijobs/{id}": {
+            "delete": {
+                "description": "Delete an AI job by its unique identifier.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AIJob"
+                ],
+                "summary": "Delete an AIJob by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {Token}",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "AI job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
-        "handlers.LoginReq": {
+        "handler.LoginReq": {
             "type": "object",
             "required": [
                 "auth",
@@ -90,19 +128,19 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.LoginResp": {
+        "handler.LoginResp": {
             "type": "object",
             "properties": {
                 "accessToken": {
                     "type": "string"
                 },
                 "context": {
-                    "$ref": "#/definitions/handlers.PlatformContext"
+                    "$ref": "#/definitions/handler.PlatformContext"
                 },
                 "projects": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/handlers.ProjectResp"
+                        "$ref": "#/definitions/payload.ProjectResp"
                     }
                 },
                 "refreshToken": {
@@ -110,7 +148,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.PlatformContext": {
+        "handler.PlatformContext": {
             "type": "object",
             "properties": {
                 "platformRole": {
@@ -135,23 +173,6 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.ProjectResp": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "isPersonal": {
-                    "type": "boolean"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "role": {
-                    "$ref": "#/definitions/model.Role"
-                }
-            }
-        },
         "model.Role": {
             "type": "integer",
             "enum": [
@@ -160,10 +181,35 @@ const docTemplate = `{
                 2
             ],
             "x-enum-varnames": [
-                "RoleAdmin",
+                "RoleGuest",
                 "RoleUser",
-                "RoleGuest"
+                "RoleAdmin"
             ]
+        },
+        "payload.ProjectResp": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "项目ID",
+                    "type": "integer"
+                },
+                "isPersonal": {
+                    "description": "是否为个人项目",
+                    "type": "boolean"
+                },
+                "name": {
+                    "description": "项目名称",
+                    "type": "string"
+                },
+                "role": {
+                    "description": "用户在项目中的角色",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Role"
+                        }
+                    ]
+                }
+            }
         },
         "response.ErrorCode": {
             "type": "integer",
@@ -198,14 +244,14 @@ const docTemplate = `{
                 }
             }
         },
-        "response.Response-handlers_LoginResp": {
+        "response.Response-handler_LoginResp": {
             "type": "object",
             "properties": {
                 "code": {
                     "$ref": "#/definitions/response.ErrorCode"
                 },
                 "data": {
-                    "$ref": "#/definitions/handlers.LoginResp"
+                    "$ref": "#/definitions/handler.LoginResp"
                 },
                 "msg": {
                     "type": "string"
