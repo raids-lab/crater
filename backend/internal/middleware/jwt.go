@@ -31,7 +31,7 @@ func AuthProtected() gin.HandlerFunc {
 				// 获取用户的默认个人项目
 				var projects []payload.ProjectResp
 				err = up.WithContext(c).Where(up.UserID.Eq(user.ID)).
-					Select(p.ID, p.Name, up.Role, p.IsPersonal).Join(p, p.ID.EqCol(up.ProjectID)).
+					Select(p.ID, p.Name, up.Role, p.IsPersonal, p.Status).Join(p, p.ID.EqCol(up.ProjectID)).
 					Where(p.Status.Eq(uint8(model.StatusActive)), p.IsPersonal.Is(true)).Scan(&projects)
 				if err != nil {
 					logutils.Log.Error(err)
@@ -82,7 +82,7 @@ func AuthProtected() gin.HandlerFunc {
 			// 获取用户当前项目
 			var projects []payload.ProjectResp
 			err = up.WithContext(c).Where(up.UserID.Eq(user.ID)).
-				Select(p.ID, p.Name, up.Role, p.IsPersonal).Join(p, p.ID.EqCol(up.ProjectID)).
+				Select(p.ID, p.Name, up.Role, p.IsPersonal, p.Status).Join(p, p.ID.EqCol(up.ProjectID)).
 				Where(p.Status.Eq(uint8(model.StatusActive)), p.ID.Eq(token.ProjectID)).Scan(&projects)
 			if err != nil {
 				logutils.Log.Error(err)
