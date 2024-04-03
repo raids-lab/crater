@@ -140,19 +140,18 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		return
 	}
 
-	// Get all actived projects for the user
+	// Get all projects for the user
 	var projects []payload.ProjectResp
 	err = up.WithContext(c).Where(up.UserID.Eq(user.ID)).
-		Select(p.ID, p.Name, up.Role, p.IsPersonal).Join(p, p.ID.EqCol(up.ProjectID)).
-		Where(p.Status.Eq(uint8(model.StatusActive))).Scan(&projects)
+		Select(p.ID, p.Name, up.Role, p.IsPersonal, p.Status).Join(p, p.ID.EqCol(up.ProjectID)).Scan(&projects)
 	if err != nil {
 		l.Error("DB error", err)
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	if len(projects) == 0 {
-		l.Error("user has no active project")
-		resputil.HTTPError(c, http.StatusUnauthorized, "User has no active project", resputil.NotSpecified)
+		l.Error("user has no project")
+		resputil.HTTPError(c, http.StatusUnauthorized, "User has no project", resputil.NotSpecified)
 		return
 	}
 
@@ -253,8 +252,11 @@ func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.Us
 	quota := model.Quota{
 		ProjectID: project.ID,
 		CPU:       model.DefaultCPU,
-		Memory:    model.DefaultMemory,
+		CPUReq:    model.DefaultCPU,
+		Mem:       model.DefaultMemory,
+		MemReq:    model.DefaultMemory,
 		GPU:       model.DefaultGPU,
+		GPUReq:    model.DefaultGPU,
 	}
 	if err := q.WithContext(c).Create(&quota); err != nil {
 		return nil, err

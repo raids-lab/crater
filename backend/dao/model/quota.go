@@ -14,11 +14,28 @@ type Quota struct {
 	gorm.Model
 	ProjectID uint
 	Project   Project
-	// quota (cpu, memory, gpu, storage) for the project
-	CPU     int    `gorm:"type:int;not null;default:0;comment:CPU配额(核)"`
-	Memory  int    `gorm:"type:int;not null;default:0;comment:内存配额(Gi)"`
-	GPU     int    `gorm:"type:int;not null;default:0;comment:GPU配额(个)"`
-	GPUMem  int    `gorm:"type:int;not null;default:0;comment:GPU内存配额(Gi)"`
-	Storage int    `gorm:"type:int;not null;default:0;comment:存储配额(Gi)"`
-	Access  string `gorm:"type:varchar(512);comment:可访问的资源种类(V100,P100...)"`
+
+	// quota (job, node, cpu, memory, gpu, gpuMem, storage) for the project
+	// -1 means unlimited
+	JobReq int `gorm:"type:int;not null;default:-1;comment:可以提交的 Job 数量"`
+	Job    int `gorm:"type:int;not null;default:-1;comment:可以同时运行的 Job 数量"`
+
+	NodeReq int `gorm:"type:int;not null;default:-1;comment:可以提交的节点数量"`
+	Node    int `gorm:"type:int;not null;default:-1;comment:可以同时使用的节点数量"`
+
+	CPUReq int `gorm:"type:int;not null;default:0;comment:可以提交的 CPU 核心数量"`
+	CPU    int `gorm:"type:int;not null;default:0;comment:可以同时使用的 CPU 核心数量"`
+
+	GPUReq int `gorm:"type:int;not null;default:0;comment:可以提交的 GPU 数量"`
+	GPU    int `gorm:"type:int;not null;default:0;comment:可以同时使用的 GPU 数量"`
+
+	MemReq int `gorm:"type:int;not null;default:0;comment:可以提交的内存配额 (Gi)"`
+	Mem    int `gorm:"type:int;not null;default:0;comment:可以同时使用的内存配额 (Gi)"`
+
+	GPUMemReq int `gorm:"type:int;not null;default:-1;comment:可以提交的GPU内存配额 (Gi)"`
+	GPUMem    int `gorm:"type:int;not null;default:-1;comment:可以同时使用的GPU内存配额 (Gi)"`
+
+	Storage int `gorm:"type:int;not null;default:50;comment:存储配额 (Gi)"`
+
+	Extra *string `gorm:"comment:可访问的资源限制 (V100,P100...)"`
 }
