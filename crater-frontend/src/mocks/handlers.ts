@@ -34,6 +34,7 @@ export const handlers = [
               name: "project1",
               role: Role.Admin,
               isPersonal: true,
+              status: 1,
             },
           ],
         },

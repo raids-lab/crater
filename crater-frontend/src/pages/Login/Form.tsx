@@ -55,8 +55,9 @@ export function ProfileForm() {
     onSuccess: async (data, { username }) => {
       await queryClient.invalidateQueries();
       setUserState({
-        id: username,
-        role: data.context.platformRole,
+        name: username,
+        context: data.context,
+        projects: data.projects,
       });
       toast.success(
         `你好，${data.context.platformRole ? "管理员" : "用户"} ${username}`,

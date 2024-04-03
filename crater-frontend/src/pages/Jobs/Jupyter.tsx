@@ -3,8 +3,6 @@ import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiJTaskGetPortToken } from "@/services/api/jupyterTask";
-import { useRecoilValue } from "recoil";
-import { globalUserInfo } from "@/utils/store";
 import CraterIcon from "@/components/icon/CraterIcon";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +20,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 const Jupyter: FC = () => {
   // get param from url
   const { id } = useParams();
-  const userInfo = useRecoilValue(globalUserInfo);
 
   const { data: taskLogs } = useQuery({
     queryKey: ["jupyter", "tasklog", id],
@@ -39,23 +36,16 @@ const Jupyter: FC = () => {
   });
 
   const url = useMemo(() => {
-    //   if (jupyterPort) {
-    //     window.open(`http://192.168.5.60:${jupyterPort}?token=${jupyterToken}`);
-    //   } else {
-    //     window.open(
-    //       `https://crater.act.buaa.edu.cn/jupyter/${userInfo.id}-${id}?token=${jupyterToken}`,
-    //     );
-    //   }
     const jupyterPort = jupyterInfo.data?.port;
     const jupyterToken = jupyterInfo.data?.token;
     if (jupyterPort) {
       return `http://192.168.5.60:${jupyterPort}?token=${jupyterToken}`;
     } else if (jupyterToken) {
-      return `https://crater.act.buaa.edu.cn/jupyter/${userInfo.id}-${id}?token=${jupyterToken}`;
+      return `https://crater.act.buaa.edu.cn/jupyter/${id}?token=${jupyterToken}`;
     } else {
       return "";
     }
-  }, [jupyterInfo, id, userInfo]);
+  }, [jupyterInfo, id]);
 
   return (
     <div className="relative h-screen w-screen">

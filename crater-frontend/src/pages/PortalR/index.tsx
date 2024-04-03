@@ -7,8 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { FC, PropsWithChildren, Suspense } from "react";
 import { Navigate, RouteObject } from "react-router-dom";
 import { FileTextIcon, Pencil2Icon } from "@radix-ui/react-icons";
-import { DashboardLayout } from "../Portal";
 import { Role } from "@/services/api/auth";
+import DashboardLayout from "@/components/layout/Dashboard";
 
 const sidebarItems: SidebarItem[] = [
   {
