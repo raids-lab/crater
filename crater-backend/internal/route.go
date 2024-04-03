@@ -58,6 +58,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 			corsConf := cors.DefaultConfig()
 			corsConf.AllowOrigins = []string{url}
 			corsConf.AllowCredentials = true
+			corsConf.AllowHeaders = []string{"Authorization", "Origin", "Content-Length", "Content-Type"}
 			b.R.Use(cors.New(corsConf))
 		}
 	}
