@@ -8,6 +8,18 @@
   text-align: center;
   position: relative;
   overflow: hidden;
+  background-image: url("../../static/img/background.webp");
+  background-size: cover; /* 背景图尺寸 */
+  /* 高度为屏幕高度减去导航栏高度 */
+  height: calc(100vh - 60px);
+  background-position: center; /* 背景图位置 */
+}
+
+.heroTitle {
+  font-size: 18rem;
+  color: #fff;
+  margin-bottom: 1rem;
+  font-family: monospace;
 }
 
 @media screen and (max-width: 996px) {

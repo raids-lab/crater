@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: crater-website-container
-          image: harbor.act.buaa.edu.cn/crater/website:v0.1.1
+          image: harbor.act.buaa.edu.cn/crater/website:v0.1.2
           ports:
             - containerPort: 80
 
