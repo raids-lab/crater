@@ -35,6 +35,12 @@ func newAIJob(db *gorm.DB, opts ...gen.DOOption) aIJob {
 	_aIJob.UserID = field.NewUint(tableName, "user_id")
 	_aIJob.ProjectID = field.NewUint(tableName, "project_id")
 	_aIJob.TaskType = field.NewString(tableName, "task_type")
+	_aIJob.AdmittedAt = field.NewTime(tableName, "admitted_at")
+	_aIJob.StartedAt = field.NewTime(tableName, "started_at")
+	_aIJob.FinishAt = field.NewTime(tableName, "finish_at")
+	_aIJob.Status = field.NewUint8(tableName, "status")
+	_aIJob.ResourceRequest = field.NewString(tableName, "resource_request")
+	_aIJob.Extra = field.NewString(tableName, "extra")
 	_aIJob.User = aIJobBelongsToUser{
 		db: db.Session(&gorm.Session{}),
 
@@ -70,16 +76,22 @@ func newAIJob(db *gorm.DB, opts ...gen.DOOption) aIJob {
 type aIJob struct {
 	aIJobDo aIJobDo
 
-	ALL       field.Asterisk
-	ID        field.Uint
-	CreatedAt field.Time
-	UpdatedAt field.Time
-	DeletedAt field.Field
-	Name      field.String
-	UserID    field.Uint
-	ProjectID field.Uint
-	TaskType  field.String
-	User      aIJobBelongsToUser
+	ALL             field.Asterisk
+	ID              field.Uint
+	CreatedAt       field.Time
+	UpdatedAt       field.Time
+	DeletedAt       field.Field
+	Name            field.String
+	UserID          field.Uint
+	ProjectID       field.Uint
+	TaskType        field.String
+	AdmittedAt      field.Time
+	StartedAt       field.Time
+	FinishAt        field.Time
+	Status          field.Uint8
+	ResourceRequest field.String
+	Extra           field.String
+	User            aIJobBelongsToUser
 
 	Project aIJobBelongsToProject
 
@@ -106,6 +118,12 @@ func (a *aIJob) updateTableName(table string) *aIJob {
 	a.UserID = field.NewUint(table, "user_id")
 	a.ProjectID = field.NewUint(table, "project_id")
 	a.TaskType = field.NewString(table, "task_type")
+	a.AdmittedAt = field.NewTime(table, "admitted_at")
+	a.StartedAt = field.NewTime(table, "started_at")
+	a.FinishAt = field.NewTime(table, "finish_at")
+	a.Status = field.NewUint8(table, "status")
+	a.ResourceRequest = field.NewString(table, "resource_request")
+	a.Extra = field.NewString(table, "extra")
 
 	a.fillFieldMap()
 
@@ -130,7 +148,7 @@ func (a *aIJob) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (a *aIJob) fillFieldMap() {
-	a.fieldMap = make(map[string]field.Expr, 10)
+	a.fieldMap = make(map[string]field.Expr, 16)
 	a.fieldMap["id"] = a.ID
 	a.fieldMap["created_at"] = a.CreatedAt
 	a.fieldMap["updated_at"] = a.UpdatedAt
@@ -139,6 +157,12 @@ func (a *aIJob) fillFieldMap() {
 	a.fieldMap["user_id"] = a.UserID
 	a.fieldMap["project_id"] = a.ProjectID
 	a.fieldMap["task_type"] = a.TaskType
+	a.fieldMap["admitted_at"] = a.AdmittedAt
+	a.fieldMap["started_at"] = a.StartedAt
+	a.fieldMap["finish_at"] = a.FinishAt
+	a.fieldMap["status"] = a.Status
+	a.fieldMap["resource_request"] = a.ResourceRequest
+	a.fieldMap["extra"] = a.Extra
 
 }
 

@@ -252,8 +252,11 @@ func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.Us
 	quota := model.Quota{
 		ProjectID: project.ID,
 		CPU:       model.DefaultCPU,
-		Memory:    model.DefaultMemory,
+		CPUReq:    model.DefaultCPU,
+		Mem:       model.DefaultMemory,
+		MemReq:    model.DefaultMemory,
 		GPU:       model.DefaultGPU,
+		GPUReq:    model.DefaultGPU,
 	}
 	if err := q.WithContext(c).Create(&quota); err != nil {
 		return nil, err
