@@ -34,12 +34,20 @@ func newUserProject(db *gorm.DB, opts ...gen.DOOption) userProject {
 	_userProject.UserID = field.NewUint(tableName, "user_id")
 	_userProject.ProjectID = field.NewUint(tableName, "project_id")
 	_userProject.Role = field.NewUint8(tableName, "role")
+	_userProject.JobReq = field.NewInt(tableName, "job_req")
+	_userProject.Job = field.NewInt(tableName, "job")
+	_userProject.NodeReq = field.NewInt(tableName, "node_req")
+	_userProject.Node = field.NewInt(tableName, "node")
+	_userProject.CPUReq = field.NewInt(tableName, "cpu_req")
 	_userProject.CPU = field.NewInt(tableName, "cpu")
-	_userProject.Memory = field.NewInt(tableName, "memory")
+	_userProject.GPUReq = field.NewInt(tableName, "gpu_req")
 	_userProject.GPU = field.NewInt(tableName, "gpu")
+	_userProject.MemReq = field.NewInt(tableName, "mem_req")
+	_userProject.Mem = field.NewInt(tableName, "mem")
+	_userProject.GPUMemReq = field.NewInt(tableName, "gpu_mem_req")
 	_userProject.GPUMem = field.NewInt(tableName, "gpu_mem")
 	_userProject.Storage = field.NewInt(tableName, "storage")
-	_userProject.Access = field.NewString(tableName, "access")
+	_userProject.Extra = field.NewString(tableName, "extra")
 
 	_userProject.fillFieldMap()
 
@@ -57,12 +65,20 @@ type userProject struct {
 	UserID    field.Uint
 	ProjectID field.Uint
 	Role      field.Uint8
+	JobReq    field.Int
+	Job       field.Int
+	NodeReq   field.Int
+	Node      field.Int
+	CPUReq    field.Int
 	CPU       field.Int
-	Memory    field.Int
+	GPUReq    field.Int
 	GPU       field.Int
+	MemReq    field.Int
+	Mem       field.Int
+	GPUMemReq field.Int
 	GPUMem    field.Int
 	Storage   field.Int
-	Access    field.String
+	Extra     field.String
 
 	fieldMap map[string]field.Expr
 }
@@ -86,12 +102,20 @@ func (u *userProject) updateTableName(table string) *userProject {
 	u.UserID = field.NewUint(table, "user_id")
 	u.ProjectID = field.NewUint(table, "project_id")
 	u.Role = field.NewUint8(table, "role")
+	u.JobReq = field.NewInt(table, "job_req")
+	u.Job = field.NewInt(table, "job")
+	u.NodeReq = field.NewInt(table, "node_req")
+	u.Node = field.NewInt(table, "node")
+	u.CPUReq = field.NewInt(table, "cpu_req")
 	u.CPU = field.NewInt(table, "cpu")
-	u.Memory = field.NewInt(table, "memory")
+	u.GPUReq = field.NewInt(table, "gpu_req")
 	u.GPU = field.NewInt(table, "gpu")
+	u.MemReq = field.NewInt(table, "mem_req")
+	u.Mem = field.NewInt(table, "mem")
+	u.GPUMemReq = field.NewInt(table, "gpu_mem_req")
 	u.GPUMem = field.NewInt(table, "gpu_mem")
 	u.Storage = field.NewInt(table, "storage")
-	u.Access = field.NewString(table, "access")
+	u.Extra = field.NewString(table, "extra")
 
 	u.fillFieldMap()
 
@@ -118,7 +142,7 @@ func (u *userProject) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *userProject) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 13)
+	u.fieldMap = make(map[string]field.Expr, 21)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
@@ -126,12 +150,20 @@ func (u *userProject) fillFieldMap() {
 	u.fieldMap["user_id"] = u.UserID
 	u.fieldMap["project_id"] = u.ProjectID
 	u.fieldMap["role"] = u.Role
+	u.fieldMap["job_req"] = u.JobReq
+	u.fieldMap["job"] = u.Job
+	u.fieldMap["node_req"] = u.NodeReq
+	u.fieldMap["node"] = u.Node
+	u.fieldMap["cpu_req"] = u.CPUReq
 	u.fieldMap["cpu"] = u.CPU
-	u.fieldMap["memory"] = u.Memory
+	u.fieldMap["gpu_req"] = u.GPUReq
 	u.fieldMap["gpu"] = u.GPU
+	u.fieldMap["mem_req"] = u.MemReq
+	u.fieldMap["mem"] = u.Mem
+	u.fieldMap["gpu_mem_req"] = u.GPUMemReq
 	u.fieldMap["gpu_mem"] = u.GPUMem
 	u.fieldMap["storage"] = u.Storage
-	u.fieldMap["access"] = u.Access
+	u.fieldMap["extra"] = u.Extra
 }
 
 func (u userProject) clone(db *gorm.DB) userProject {

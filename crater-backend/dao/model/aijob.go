@@ -1,20 +1,25 @@
 package model
 
 import (
+	"time"
+
 	"gorm.io/gorm"
 )
 
 type AIJob struct {
 	gorm.Model
-	Name      string `gorm:"type:varchar(128);not null;comment:作业名称"`
-	UserID    uint
-	User      User
-	ProjectID uint
-	Project   Project
-	TaskType  string `gorm:"type:varchar(128);not null"`
-	// AdmittedAt      *time.Time  `gorm:"column:admitted_at" json:"admittedAt"`
-	// StartedAt       *time.Time  `gorm:"column:started_at" json:"startedAt"`
-	// FinishAt        *time.Time  `gorm:"column:finish_at" json:"finishAt"`
+	Name            string `gorm:"type:varchar(128);not null;comment:作业名称"`
+	UserID          uint
+	User            User
+	ProjectID       uint
+	Project         Project
+	TaskType        string     `gorm:"type:varchar(128);not null;comment:任务类型 (e.g. training, jupyter, recommend)"`
+	AdmittedAt      *time.Time `gorm:"comment:作业提交到集群中的时间 (通过配额检查后的时间)"`
+	StartedAt       *time.Time `gorm:"comment:作业开始运行的时间"`
+	FinishAt        *time.Time `gorm:"comment:作业结束 (成功或失败) 的时间"`
+	Status          JobStatus  `gorm:"not null;comment:作业状态"`
+	ResourceRequest string     `gorm:"not null;comment:资源请求 (分布式任务则从 Extra 中解析)"`
+	Extra           *string    `gorm:"comment:额外信息 (JSON格式)"`
 	// Duration        uint        `gorm:"column:duration;type:int;not null" json:"duration"`
 	// JCT             uint        `gorm:"column:jct;type:int;not null" json:"jct"`
 	// Image           string      `gorm:"column:image;type:text;not null" json:"image"`
@@ -24,7 +29,6 @@ type AIJob struct {
 	// Command         string      `gorm:"column:command;type:text" json:"command"`
 	// Args            string      `gorm:"column:args;type:text" json:"args"`
 	// SLO             uint        `gorm:"column:slo;type:int;not null" json:"slo"`
-	// Status          string      `gorm:"column:status;type:varchar(128)" json:"status"`
 	// StatusReason    string      `gorm:"column:status_reason;type:text" json:"statusReason"`
 	// JobName         string      `gorm:"column:jobname;type:varchar(128)" json:"jobName"`
 	// IsDeleted       bool        `gorm:"column:is_deleted;type:bool" json:"isDeleted"`
