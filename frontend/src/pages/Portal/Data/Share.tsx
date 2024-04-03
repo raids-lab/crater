@@ -1,7 +1,7 @@
 import type { FC } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { createClient } from "webdav";
-import { useState, useEffect, useMemo, useRef, Fragment } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { DataTable } from "@/components/custom/OldDataTable";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
@@ -15,9 +15,6 @@ import {
   DownloadIcon,
   UploadIcon,
   PlusIcon,
-  FileIcon,
-  ArchiveIcon,
-  HomeIcon,
   ArrowLeftIcon,
 } from "@radix-ui/react-icons";
 import {
@@ -30,17 +27,11 @@ import {
   DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  //BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { logger } from "@/utils/loglevel";
+import { File, Folder } from "lucide-react";
+import { useSetRecoilState } from "recoil";
+import { globalBreadCrumb } from "@/utils/store";
 //import { saveAs } from "file-saver";
 //import { cn } from "@/lib/utils";
 
@@ -55,41 +46,74 @@ type FileStat = {
   //props?: DAVResultResponseProps;
 };
 
-export const Component: FC = () => {
-  const location = useLocation();
-  const path = location.pathname.replace("/portal/data/share", "");
-  //const little_path = location.pathname.replace("/portal/data/share", "/share");
-  const parts = path.split("/");
-  const generatedArray = parts.map((part, index) => {
-    const title = index === 0 ? "home" : part;
-    const path1 = `/portal/data/share${parts.slice(0, index + 1).join("/")}`;
+const client = createClient("https://crater.act.buaa.edu.cn/dufs/share", {
+  username: "",
+  password: "",
+});
 
-    return { title, path1 };
-  });
-  const backpath = `/portal/data/share${parts.slice(0, parts.length - 1).join("/")}`;
+export const Component: FC = () => {
+  const { pathname } = useLocation();
   const navigate = useNavigate();
-  const client = createClient("https://crater.act.buaa.edu.cn/dufs/share", {
-    username: "",
-    password: "",
-  });
   const [data, setData] = useState<FileStat[]>([]);
   const [dirName, setDirName] = useState<string>("");
-  const contents = async () => await client.getDirectoryContents(`${path}`);
+  const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
+
+  const path = useMemo(
+    () => pathname.replace(/^\/portal\/data\/share/, ""),
+    [pathname],
+  );
+
+  useEffect(() => {
+    const pathParts = pathname.split("/").filter(Boolean);
+    const breadcrumb = pathParts.map((value, index) => {
+      if (index == 0 && value == "portal") {
+        return {
+          title: "Portal",
+        };
+      } else if (index == 1 && value == "data") {
+        return {
+          title: "数据管理",
+          path: "/portal/data",
+        };
+      } else if (index == 2 && value == "share") {
+        return {
+          title: "共享文件",
+          path: "/portal/data/share",
+        };
+      }
+      return {
+        title: value,
+        path: `/${pathParts.slice(0, index + 1).join("/")}`,
+      };
+    });
+    // 删除第一个元素
+    breadcrumb.shift();
+    // 将最后一个元素的 path 设置为 undefined
+    if (breadcrumb.length > 1) {
+      breadcrumb[breadcrumb.length - 1].path = undefined;
+    }
+    setBreadcrumb(breadcrumb);
+  }, [pathname, setBreadcrumb]);
+
+  const backpath = useMemo(() => {
+    // pathname is /xxx/xxx/xxx/aaa
+    // backpath is /xxx/xxx/xxx
+    return pathname.replace(/\/[^/]+$/, "");
+  }, [pathname]);
 
   const {
     data: rootList,
     isLoading,
     //dataUpdatedAt,
   } = useQuery({
-    queryKey: ["root", "list"],
-    queryFn: contents,
+    queryKey: ["data", "share", path],
+    queryFn: () => client.getDirectoryContents(`${path}`),
     select: (res) => res,
   });
 
   useEffect(() => {
     if (isLoading) return;
     if (!rootList) return;
-    //async () => await client.createDirectory("/dnn-train-data/ceshi");
     const tableData: FileStat[] = (rootList as Array<FileStat>)
       .map((r) => {
         return {
@@ -124,22 +148,11 @@ export const Component: FC = () => {
         cell: ({ row }) => {
           if (row.original.type == "directory") {
             return (
-              <ArchiveIcon
-                style={{
-                  transform: "scale(1.4)",
-                  color: "rgb(204, 153, 0)",
-                }}
-              />
+              <Folder className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
               // </div>
             );
           } else {
-            return (
-              <FileIcon
-                style={{
-                  transform: "scale(1.4)",
-                }}
-              />
-            );
+            return <File className="h-5 w-5 text-muted-foreground" />;
           }
         },
         enableSorting: false,
@@ -232,7 +245,7 @@ export const Component: FC = () => {
         },
       },
     ],
-    [client, navigate],
+    [navigate],
   );
 
   const getHeader = (key: string): string => {
@@ -262,32 +275,17 @@ export const Component: FC = () => {
   const { mutate: upload } = useMutation({
     mutationFn: (Files: File[]) => uploadFile(Files),
     onSuccess: () => {
-      //await refetchRootList();
       toast.success("文件已上传");
+      void queryClient.invalidateQueries({ queryKey: ["data", "share", path] });
     },
   });
+
   const handleFileSelect = ({
     currentTarget: { files },
   }: React.ChangeEvent<HTMLInputElement>) => {
     if (files && files.length) {
       const Files = Array.from(files);
       upload(Files);
-      //上传文件2s后更新目录
-      setTimeout(() => {
-        queryClient
-          .invalidateQueries({ queryKey: ["root", "list"] })
-          .catch((err) => {
-            logger.debug(err);
-          });
-      }, 1000);
-
-      // uploadFile(Files).catch((err) => {
-      //   logger.debug(err);
-      // });
-      // refetchRootList().catch((err) => {
-      //   logger.debug(err);
-      // });
-      // toast.success("文件已上传");
     }
   };
 
@@ -308,13 +306,6 @@ export const Component: FC = () => {
     setDirName(e.target.value);
   };
   const queryClient = useQueryClient();
-  const refetchRootList = async () => {
-    try {
-      await queryClient.invalidateQueries({ queryKey: ["root", "list"] });
-    } catch (error) {
-      logger.debug("更新目录失败", error);
-    }
-  };
   const clientCreateDir = async () => {
     //console.log("dirName:" + dirName);
     if (dirName != "") {
@@ -323,8 +314,8 @@ export const Component: FC = () => {
   };
   const { mutate: CreateDir } = useMutation({
     mutationFn: () => clientCreateDir(),
-    onSuccess: async () => {
-      await refetchRootList();
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["data", "share", path] });
       toast.success("文件夹已创建");
     },
   });
@@ -337,82 +328,22 @@ export const Component: FC = () => {
       loading={isLoading}
       className="col-span-3"
     >
-      {/* <div
-            className="flex items-center space-x-1 md:space-x-2"
-            aria-label="Breadcrumb"
-          > */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          {generatedArray.map((item, index) => {
-            return (
-              <Fragment key={`bread-${index}`}>
-                {/* {index !== 0 && (
-                      <BreadcrumbSeparator key={`bread-separator-${index}`} />
-                    )} */}
-                {index !== 0 && "/"}
-                {index === 0 && (
-                  <BreadcrumbItem key={`bread-item-${index}`}>
-                    {item.path1 && (
-                      <BreadcrumbLink asChild>
-                        <Link to={item.path1}>
-                          <div
-                            style={{
-                              color: "rgb(65, 105, 225)",
-                              transform: "scale(1.3)",
-                              //backgroundColor: "red",
-                            }}
-                          >
-                            <span style={{ color: "red" }}>
-                              <HomeIcon
-                                style={{
-                                  color: "black",
-                                  transform: "scale(1.15)",
-                                  //fill: "red",
-                                  //backgroundColor: "red",
-                                }}
-                              ></HomeIcon>
-                            </span>
-                          </div>
-                        </Link>
-                      </BreadcrumbLink>
-                    )}
-                    {!item.path1 && (
-                      <BreadcrumbPage>{item.title}</BreadcrumbPage>
-                    )}
-                  </BreadcrumbItem>
-                )}
-                {index !== 0 && (
-                  <BreadcrumbItem key={`bread-item-${index}`}>
-                    {item.path1 && (
-                      <BreadcrumbLink asChild>
-                        <Link to={item.path1}>{item.title}</Link>
-                      </BreadcrumbLink>
-                    )}
-                    {!item.path1 && (
-                      <BreadcrumbPage>{item.title}</BreadcrumbPage>
-                    )}
-                  </BreadcrumbItem>
-                )}
-              </Fragment>
-            );
-          })}
-        </BreadcrumbList>
-      </Breadcrumb>
-
-      {/* </div> */}
-      <div style={{ marginLeft: "70px" }}></div>
       <Button
-        className="h-8 w-8 p-0 hover:text-sky-700"
+        variant="outline"
+        size="icon"
         onClick={() => navigate(backpath)}
+        className="h-8 w-8"
+        disabled={pathname === "/portal/data/share"}
       >
-        <ArrowLeftIcon></ArrowLeftIcon>
+        <ArrowLeftIcon />
       </Button>
       <Button
         onClick={() => {
           refInput.current?.click();
         }}
+        size="icon"
         variant="outline"
-        className="h-8 w-8 p-0 hover:text-sky-700"
+        className="h-8 w-8 p-0"
       >
         <UploadIcon />
       </Button>
@@ -425,7 +356,7 @@ export const Component: FC = () => {
       />
       <Dialog>
         <DialogTrigger asChild>
-          <Button variant="outline" className="h-8 w-8 p-0 hover:text-sky-700">
+          <Button variant="outline" className="h-8 w-8" size="icon">
             <PlusIcon />
           </Button>
         </DialogTrigger>
