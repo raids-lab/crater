@@ -12,6 +12,7 @@ import Jupyter from "./Job/Jupyter";
 import Training from "./Job/Training";
 import { DashboardLayout } from "../Portal";
 import ServerIcon from "@/components/icon/ServerIcon";
+import { Role } from "@/services/api/auth";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -117,7 +118,7 @@ const sidebarMenus: SidebarMenu[] = [
 ];
 
 const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
-  const isAuthenticated = useAuth("admin");
+  const isAuthenticated = useAuth(Role.Admin);
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 

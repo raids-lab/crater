@@ -30,6 +30,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 import CraterIcon from "@/components/icon/CraterIcon";
 import CraterText from "@/components/icon/CraterText";
+import { Role } from "@/services/api/auth";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -62,20 +63,11 @@ const sidebarItems: SidebarItem[] = [
   {
     path: "image",
     icon: LightHouseIcon,
-    children: [
-      {
-        route: {
-          path: "list",
-          lazy: () => import("./Image/List"),
-        },
-      },
-      // {
-      //   route: {
-      //     path: "make",
-      //     lazy: () => import("./Image/Make"),
-      //   },
-      // },
-    ],
+    children: [],
+    route: {
+      path: "list",
+      lazy: () => import("./Image/List"),
+    },
   },
   {
     path: "data",
@@ -117,7 +109,7 @@ const sidebarMenus: SidebarMenu[] = [
 ];
 
 const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
-  const isAuthenticated = useAuth("user");
+  const isAuthenticated = useAuth(Role.User);
   // const isAuthenticated = true;
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };

@@ -57,15 +57,16 @@ export function SignupForm() {
       }),
     onSuccess: async (data, { username }) => {
       await queryClient.invalidateQueries();
-      const role = data.role === "admin" ? "admin" : "user";
       setUserState({
         id: username,
-        role: role,
+        role: data.context.platformRole,
       });
       toast.success(
-        `你好，${role === "admin" ? "管理员" : "用户"} ${username}`,
+        `你好，${data.context.platformRole ? "管理员" : "用户"} ${username}`,
       );
-      navigate("/portal");
+      // navigate to /portal and clear all history
+      const dashboard = "/portal";
+      navigate(dashboard, { replace: true });
     },
   });
 
