@@ -110,7 +110,7 @@ export function Sidebar({
                 >
                   <AccordionTrigger
                     className={cn(
-                      "h-9 rounded-md px-4 hover:text-primary hover:no-underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&>svg]:hover:text-primary",
+                      "h-9 rounded-md px-4 font-normal hover:text-primary hover:no-underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&>svg]:hover:text-primary",
                       {
                         "bg-primary/15 text-primary hover:bg-primary/15 [&>svg]:text-primary":
                           item.path === actived.item,

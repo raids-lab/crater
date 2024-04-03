@@ -19,10 +19,33 @@ export interface ILogin {
   auth: string;
 }
 
+// const (
+// 	RoleGuest Role = iota
+// 	RoleUser
+// 	RoleAdmin
+// )
+export enum Role {
+  Guest,
+  User,
+  Admin,
+}
+
+export interface ProjectBasic {
+  id: number;
+  name: string;
+  role: Role;
+  isPersonal: boolean;
+}
+
 export interface IAuthResponse {
   accessToken: string;
   refreshToken: string;
-  role: string;
+  context: {
+    projectID: number;
+    projectRole: Role;
+    platformRole: Role;
+  };
+  projects: ProjectBasic[];
 }
 
 export const apiUserSignup = async (user: ISignup) => {

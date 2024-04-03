@@ -33,6 +33,7 @@ import { toast } from "sonner";
 import TeamSwitcher from "./TeamSwitcher";
 import { cn } from "@/lib/utils";
 import { UserRound } from "lucide-react";
+import { Role } from "@/services/api/auth";
 
 export const NavBreadcrumb = ({ className }: { className: string }) => {
   const location = useLocation();
@@ -173,7 +174,7 @@ export const UserDropdownMenu: FC = () => {
           </DropdownMenuGroup>
         ) : (
           <DropdownMenuGroup>
-            {userInfo.role === "admin" && (
+            {userInfo.role === Role.Admin && (
               <DropdownMenuItem
                 onClick={() => {
                   navigate("/admin");

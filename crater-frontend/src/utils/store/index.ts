@@ -1,6 +1,7 @@
 import { atom, useResetRecoilState } from "recoil";
 import { UserInfo } from "@/hooks/useAuth";
 import { localStorageEffect } from "./utils";
+import { Role } from "@/services/api/auth";
 
 /**
  * LocalStorage and Recoil Keys
@@ -22,7 +23,7 @@ export const globalUserInfo = atom({
   key: USER_INFO_KEY,
   default: {
     id: "",
-    role: "viewer",
+    role: Role.Guest,
   } as UserInfo,
   effects: [localStorageEffect(USER_INFO_KEY)],
 });
