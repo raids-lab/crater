@@ -32,12 +32,20 @@ func newQuota(db *gorm.DB, opts ...gen.DOOption) quota {
 	_quota.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_quota.DeletedAt = field.NewField(tableName, "deleted_at")
 	_quota.ProjectID = field.NewUint(tableName, "project_id")
+	_quota.JobReq = field.NewInt(tableName, "job_req")
+	_quota.Job = field.NewInt(tableName, "job")
+	_quota.NodeReq = field.NewInt(tableName, "node_req")
+	_quota.Node = field.NewInt(tableName, "node")
+	_quota.CPUReq = field.NewInt(tableName, "cpu_req")
 	_quota.CPU = field.NewInt(tableName, "cpu")
-	_quota.Memory = field.NewInt(tableName, "memory")
+	_quota.GPUReq = field.NewInt(tableName, "gpu_req")
 	_quota.GPU = field.NewInt(tableName, "gpu")
+	_quota.MemReq = field.NewInt(tableName, "mem_req")
+	_quota.Mem = field.NewInt(tableName, "mem")
+	_quota.GPUMemReq = field.NewInt(tableName, "gpu_mem_req")
 	_quota.GPUMem = field.NewInt(tableName, "gpu_mem")
 	_quota.Storage = field.NewInt(tableName, "storage")
-	_quota.Access = field.NewString(tableName, "access")
+	_quota.Extra = field.NewString(tableName, "extra")
 	_quota.Project = quotaBelongsToProject{
 		db: db.Session(&gorm.Session{}),
 
@@ -68,12 +76,20 @@ type quota struct {
 	UpdatedAt field.Time
 	DeletedAt field.Field
 	ProjectID field.Uint
+	JobReq    field.Int
+	Job       field.Int
+	NodeReq   field.Int
+	Node      field.Int
+	CPUReq    field.Int
 	CPU       field.Int
-	Memory    field.Int
+	GPUReq    field.Int
 	GPU       field.Int
+	MemReq    field.Int
+	Mem       field.Int
+	GPUMemReq field.Int
 	GPUMem    field.Int
 	Storage   field.Int
-	Access    field.String
+	Extra     field.String
 	Project   quotaBelongsToProject
 
 	fieldMap map[string]field.Expr
@@ -96,12 +112,20 @@ func (q *quota) updateTableName(table string) *quota {
 	q.UpdatedAt = field.NewTime(table, "updated_at")
 	q.DeletedAt = field.NewField(table, "deleted_at")
 	q.ProjectID = field.NewUint(table, "project_id")
+	q.JobReq = field.NewInt(table, "job_req")
+	q.Job = field.NewInt(table, "job")
+	q.NodeReq = field.NewInt(table, "node_req")
+	q.Node = field.NewInt(table, "node")
+	q.CPUReq = field.NewInt(table, "cpu_req")
 	q.CPU = field.NewInt(table, "cpu")
-	q.Memory = field.NewInt(table, "memory")
+	q.GPUReq = field.NewInt(table, "gpu_req")
 	q.GPU = field.NewInt(table, "gpu")
+	q.MemReq = field.NewInt(table, "mem_req")
+	q.Mem = field.NewInt(table, "mem")
+	q.GPUMemReq = field.NewInt(table, "gpu_mem_req")
 	q.GPUMem = field.NewInt(table, "gpu_mem")
 	q.Storage = field.NewInt(table, "storage")
-	q.Access = field.NewString(table, "access")
+	q.Extra = field.NewString(table, "extra")
 
 	q.fillFieldMap()
 
@@ -126,18 +150,26 @@ func (q *quota) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (q *quota) fillFieldMap() {
-	q.fieldMap = make(map[string]field.Expr, 12)
+	q.fieldMap = make(map[string]field.Expr, 20)
 	q.fieldMap["id"] = q.ID
 	q.fieldMap["created_at"] = q.CreatedAt
 	q.fieldMap["updated_at"] = q.UpdatedAt
 	q.fieldMap["deleted_at"] = q.DeletedAt
 	q.fieldMap["project_id"] = q.ProjectID
+	q.fieldMap["job_req"] = q.JobReq
+	q.fieldMap["job"] = q.Job
+	q.fieldMap["node_req"] = q.NodeReq
+	q.fieldMap["node"] = q.Node
+	q.fieldMap["cpu_req"] = q.CPUReq
 	q.fieldMap["cpu"] = q.CPU
-	q.fieldMap["memory"] = q.Memory
+	q.fieldMap["gpu_req"] = q.GPUReq
 	q.fieldMap["gpu"] = q.GPU
+	q.fieldMap["mem_req"] = q.MemReq
+	q.fieldMap["mem"] = q.Mem
+	q.fieldMap["gpu_mem_req"] = q.GPUMemReq
 	q.fieldMap["gpu_mem"] = q.GPUMem
 	q.fieldMap["storage"] = q.Storage
-	q.fieldMap["access"] = q.Access
+	q.fieldMap["extra"] = q.Extra
 
 }
 
