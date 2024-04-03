@@ -9,6 +9,7 @@ import {
   DataTableFacetedFilter,
   DataTableFacetedFilterOption,
 } from "./DataTableFacetedFilter";
+import { Search } from "lucide-react";
 
 export interface DataTableToolbarConfig {
   filterInput: {
@@ -40,16 +41,22 @@ export function DataTableToolbar<TData>({
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center space-x-2">
         {children}
-        <Input
-          placeholder={filterInput.placeholder}
-          value={
-            (table.getColumn(filterInput.key)?.getFilterValue() as string) ?? ""
-          }
-          onChange={(event) =>
-            table.getColumn(filterInput.key)?.setFilterValue(event.target.value)
-          }
-          className="h-8 w-[150px] lg:w-[250px]"
-        />
+        <div className="relative ml-auto h-8 flex-1 md:grow-0">
+          <Search className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={filterInput.placeholder}
+            value={
+              (table.getColumn(filterInput.key)?.getFilterValue() as string) ??
+              ""
+            }
+            onChange={(event) =>
+              table
+                .getColumn(filterInput.key)
+                ?.setFilterValue(event.target.value)
+            }
+            className="h-8 w-[150px] bg-background pl-8 lg:w-[250px]"
+          />
+        </div>
         {filterOptions.map(
           (filterOption) =>
             table.getColumn(filterOption.key) && (

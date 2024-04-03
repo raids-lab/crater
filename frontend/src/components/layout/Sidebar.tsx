@@ -47,11 +47,7 @@ interface ActivedState {
   subItem: string;
 }
 
-export function Sidebar({
-  className,
-  sidebarItems,
-  sidebarMenus,
-}: SidebarProps) {
+export function Sidebar({ sidebarItems, sidebarMenus }: SidebarProps) {
   const [accordion, setAccordion] = useState<string>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -84,8 +80,11 @@ export function Sidebar({
   }, [actived, setAccordion]);
 
   return (
-    <div className={className}>
-      <ScrollArea className="h-[calc(100vh_-_180px)] w-full">
+    <>
+      <ScrollArea
+        // 5 + 5 + 7 + 3 = 20
+        className="h-[calc(100vh_-_192px)] w-full"
+      >
         <Accordion
           type="single"
           // collapsible
@@ -97,7 +96,6 @@ export function Sidebar({
             return item.children.length > 0 ? (
               <Fragment key={item.path}>
                 <SidebarDropdownMenu
-                  key={item.path}
                   item={item}
                   actived={actived}
                   setActived={setActived}
@@ -105,7 +103,6 @@ export function Sidebar({
                 />
                 <AccordionItem
                   value={item.path}
-                  key={item.path}
                   className="hidden w-44 border-0 xl:block"
                 >
                   <AccordionTrigger
@@ -211,7 +208,7 @@ export function Sidebar({
           {import.meta.env.VITE_APP_VERSION}
         </p>
       </div>
-    </div>
+    </>
   );
 }
 

@@ -1,4 +1,4 @@
-import { useMemo, type FC, useEffect, Fragment } from "react";
+import { useMemo, type FC } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,118 +9,15 @@ import {
   // DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { Button } from "../ui/button";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
-import {
-  globalBreadCrumb,
-  globalLastView,
-  globalUserInfo,
-  useResetStore,
-} from "@/utils/store";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { globalLastView, globalUserInfo, useResetStore } from "@/utils/store";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/utils/theme";
-import { getBreadcrumbByPath } from "@/utils/title";
 import { toast } from "sonner";
-import TeamSwitcher from "./TeamSwitcher";
-import { cn } from "@/lib/utils";
 import { UserRound } from "lucide-react";
 import { Role } from "@/services/api/auth";
-
-export const NavBreadcrumb = ({ className }: { className: string }) => {
-  const location = useLocation();
-  const pathParts = useMemo(() => {
-    const pathParts = location.pathname.split("/").filter(Boolean);
-    return pathParts;
-  }, [location]);
-  const [breadcrumb, setBreadcrumb] = useRecoilState(globalBreadCrumb);
-  useEffect(() => {
-    const titles = getBreadcrumbByPath(pathParts);
-    if (titles) {
-      let url = "";
-      const ans = [];
-      for (let i = 0; i < titles.length; i++) {
-        url += `/${titles[i].path}`;
-        ans.push({
-          title: titles[i].title,
-          path: i !== titles.length - 1 ? url : undefined,
-        });
-      }
-      if (ans.length > 2) {
-        ans[ans.length - 2].path = undefined;
-      }
-      setBreadcrumb(ans.slice(1));
-    }
-  }, [pathParts, setBreadcrumb]);
-
-  return (
-    <Breadcrumb className={className}>
-      <BreadcrumbList>
-        {breadcrumb.map((item, index) => {
-          return (
-            <Fragment key={`bread-${index}`}>
-              {index !== 0 && (
-                <BreadcrumbSeparator key={`bread-separator-${index}`} />
-              )}
-              {index === 0 && (
-                <BreadcrumbPage
-                  className={cn({
-                    "text-muted-foreground": breadcrumb.length > 1,
-                  })}
-                >
-                  {item.title}
-                </BreadcrumbPage>
-              )}
-              {index !== 0 && (
-                <BreadcrumbItem key={`bread-item-${index}`}>
-                  {item.path && (
-                    <BreadcrumbLink asChild>
-                      <Link to={item.path}>{item.title}</Link>
-                    </BreadcrumbLink>
-                  )}
-                  {!item.path && <BreadcrumbPage>{item.title}</BreadcrumbPage>}
-                </BreadcrumbItem>
-              )}
-            </Fragment>
-          );
-        })}
-      </BreadcrumbList>
-    </Breadcrumb>
-  );
-};
-
-export const ProjectSelector = ({ className }: { className: string }) => {
-  const groups = {
-    personal: {
-      label: "Liyilong",
-      value: "personal",
-    },
-    teams: [
-      {
-        label: "Serverless",
-        value: "acme-inc",
-      },
-      {
-        label: "GPU Sched",
-        value: "monsters",
-      },
-    ],
-  };
-
-  return (
-    <div className={className}>
-      <TeamSwitcher projects={groups} />
-    </div>
-  );
-};
 
 export const UserDropdownMenu: FC = () => {
   const queryClient = useQueryClient();
@@ -154,9 +51,9 @@ export const UserDropdownMenu: FC = () => {
       <DropdownMenuContent className="w-44" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{userInfo.id}</p>
+            <p className="text-sm font-medium leading-none">{userInfo.name}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              {userInfo.id}@act.buaa.edu.cn
+              {userInfo.name}@act.buaa.edu.cn
             </p>
           </div>
         </DropdownMenuLabel>
@@ -174,7 +71,7 @@ export const UserDropdownMenu: FC = () => {
           </DropdownMenuGroup>
         ) : (
           <DropdownMenuGroup>
-            {userInfo.role === Role.Admin && (
+            {userInfo.context.platformRole === Role.Admin && (
               <DropdownMenuItem
                 onClick={() => {
                   navigate("/admin");

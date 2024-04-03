@@ -10,9 +10,9 @@ import { PersonalUser } from "./User/Personal";
 import { GroupUser } from "./User/Group";
 import Jupyter from "./Job/Jupyter";
 import Training from "./Job/Training";
-import { DashboardLayout } from "../Portal";
 import ServerIcon from "@/components/icon/ServerIcon";
 import { Role } from "@/services/api/auth";
+import DashboardLayout from "@/components/layout/Dashboard";
 
 const sidebarItems: SidebarItem[] = [
   {

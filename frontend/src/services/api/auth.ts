@@ -1,5 +1,6 @@
 import instance from "../axios";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/utils/store";
+import { IResponse } from "../types";
 
 /**
  * Signup
@@ -30,21 +31,35 @@ export enum Role {
   Admin,
 }
 
+// const (
+// 	StatusPending  Status = iota // Pending status, not yet activated
+// 	StatusActive                 // Active status
+// 	StatusInactive               // Inactive status
+// )
+export enum ProjectStatus {
+  Pending,
+  Active,
+  Inactive,
+}
+
 export interface ProjectBasic {
   id: number;
   name: string;
   role: Role;
   isPersonal: boolean;
+  status: ProjectStatus;
+}
+
+export interface UserContext {
+  projectID: number;
+  projectRole: Role;
+  platformRole: Role;
 }
 
 export interface IAuthResponse {
   accessToken: string;
   refreshToken: string;
-  context: {
-    projectID: number;
-    projectRole: Role;
-    platformRole: Role;
-  };
+  context: UserContext;
   projects: ProjectBasic[];
 }
 
@@ -57,9 +72,9 @@ export const apiUserSignup = async (user: ISignup) => {
 };
 
 export const apiUserLogin = async (user: ILogin) => {
-  const response = await instance.post<IAuthResponse>("login", user);
-  const { accessToken, refreshToken } = response.data;
+  const response = await instance.post<IResponse<IAuthResponse>>("login", user);
+  const { accessToken, refreshToken } = response.data.data;
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-  return response.data;
+  return response.data.data;
 };

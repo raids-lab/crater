@@ -114,7 +114,7 @@ const toolbarConfig: DataTableToolbarConfig = {
 export const PersonalUser = () => {
   const [data, setData] = useState<TUser[]>([]);
   const queryClient = useQueryClient();
-  const { id: currentUserName } = useRecoilValue(globalUserInfo);
+  const { name: currentUserName } = useRecoilValue(globalUserInfo);
 
   const { data: userList, isLoading } = useQuery({
     queryKey: ["admin", "userlist"],
