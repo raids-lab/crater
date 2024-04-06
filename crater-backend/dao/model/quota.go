@@ -3,11 +3,32 @@ package model
 import "gorm.io/gorm"
 
 // Default Quota
+// TODO: Make it configurable
 const (
-	DefaultCPU    = 2
-	DefaultMemory = 4
-	DefaultGPU    = 0
+	defaultCPU     = 2  // 2 cores
+	defaultMemory  = 4  // 4 Gi
+	defaultGPU     = 0  // 0 GPU
+	defaultStorage = 50 // 50 Gi
 )
+
+// Since quota is not constant, we need to define a function to return the copied default quota
+func DefaultQuota() Quota {
+	return Quota{
+		JobReq:    -1,
+		Job:       -1,
+		NodeReq:   -1,
+		Node:      -1,
+		CPUReq:    defaultCPU,
+		CPU:       defaultCPU,
+		GPUReq:    defaultGPU,
+		GPU:       defaultGPU,
+		MemReq:    defaultMemory,
+		Mem:       defaultMemory,
+		GPUMemReq: -1,
+		GPUMem:    -1,
+		Storage:   defaultStorage,
+	}
+}
 
 // Quota belongs to project, defines the resource quota of a project
 type Quota struct {
