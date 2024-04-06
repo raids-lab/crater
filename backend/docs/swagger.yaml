@@ -42,6 +42,40 @@ definitions:
         - $ref: '#/definitions/model.Role'
         description: User role of the project
     type: object
+  handler.ProjectCreateReq:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      quota:
+        $ref: '#/definitions/handler.QuotaReq'
+    required:
+    - description
+    - name
+    - quota
+    type: object
+  handler.ProjectCreateResp:
+    properties:
+      id:
+        type: integer
+    type: object
+  handler.QuotaReq:
+    properties:
+      cpu:
+        type: integer
+      gpu:
+        type: integer
+      memory:
+        type: integer
+      storage:
+        type: integer
+    required:
+    - cpu
+    - gpu
+    - memory
+    - storage
+    type: object
   model.Role:
     enum:
     - 0
@@ -52,6 +86,20 @@ definitions:
     - RoleGuest
     - RoleUser
     - RoleAdmin
+  model.Status:
+    enum:
+    - 0
+    - 1
+    - 2
+    type: integer
+    x-enum-comments:
+      StatusActive: Active status
+      StatusInactive: Inactive status
+      StatusPending: Pending status, not yet activated
+    x-enum-varnames:
+    - StatusPending
+    - StatusActive
+    - StatusInactive
   payload.ProjectResp:
     properties:
       id:
@@ -67,6 +115,10 @@ definitions:
         allOf:
         - $ref: '#/definitions/model.Role'
         description: 用户在项目中的角色
+      status:
+        allOf:
+        - $ref: '#/definitions/model.Status'
+        description: 项目状态
     type: object
   response.ErrorCode:
     enum:
@@ -100,6 +152,15 @@ definitions:
         $ref: '#/definitions/response.ErrorCode'
       data:
         $ref: '#/definitions/handler.LoginResp'
+      msg:
+        type: string
+    type: object
+  response.Response-handler_ProjectCreateResp:
+    properties:
+      code:
+        $ref: '#/definitions/response.ErrorCode'
+      data:
+        $ref: '#/definitions/handler.ProjectCreateResp'
       msg:
         type: string
     type: object
@@ -149,10 +210,6 @@ paths:
       - application/json
       description: Delete an AI job by its unique identifier.
       parameters:
-      - description: Bearer {Token}
-        in: header
-        name: Authorization
-        type: string
       - description: AI job ID
         in: path
         name: id
@@ -165,7 +222,47 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
       summary: Delete an AIJob by ID
       tags:
       - AIJob
+  /v1/projects:
+    post:
+      consumes:
+      - application/json
+      description: 从请求中获取项目名称、描述和配额，以当前用户为管理员，创建一个团队项目
+      parameters:
+      - description: 项目信息
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/handler.ProjectCreateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功创建项目，返回项目ID
+          schema:
+            $ref: '#/definitions/response.Response-handler_ProjectCreateResp'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 项目创建失败，返回错误信息
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 创建团队项目
+      tags:
+      - Project
+securityDefinitions:
+  Bearer:
+    description: 访问 /login 并获取 TOKEN 后，填入 'Bearer ${TOKEN}' 以访问受保护的接口
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"
