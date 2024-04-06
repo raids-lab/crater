@@ -100,8 +100,6 @@ func AuthProtected() gin.HandlerFunc {
 				c.Abort()
 				return
 			}
-			c.Next()
-			return
 		}
 
 		// If request method is GET, use the user info from token.
