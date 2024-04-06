@@ -39,8 +39,8 @@ type TokenManager struct {
 }
 
 const (
-	DefaultClusterID   = 0
-	DefaultClusterRole = model.RoleGuest
+	DefaultClusterID   uint = 0
+	DefaultClusterRole      = model.RoleGuest
 )
 
 var (
