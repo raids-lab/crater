@@ -24,9 +24,13 @@ import {
 import { toast } from "sonner";
 import { logger } from "@/utils/loglevel";
 import { TableDate } from "@/components/custom/TableDate";
-import { imagepackStatuses } from "@/services/api/imagepack";
+import {
+  ImagePackInfo,
+  getHeader,
+  imagepackStatuses,
+} from "@/services/api/imagepack";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash2, UserRoundMinus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
@@ -34,42 +38,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-export type ImagePackInfo = {
-  id: number;
-  nametag: string;
-  link: string;
-  username: string;
-  status: string;
-  createdAt: string;
-  params: {
-    Convs: number;
-    Activations: number;
-    Denses: number;
-    Others: number;
-    GFLOPs: number;
-    BatchSize: number;
-    Params: number;
-    ModelSize: number;
-  };
-};
-
-const getHeader = (key: string): string => {
-  switch (key) {
-    case "nametag":
-      return "名称";
-    case "link":
-      return "镜像地址";
-    case "username":
-      return "提交者";
-    case "status":
-      return "状态";
-    case "createdAt":
-      return "创建时间";
-    default:
-      return key;
-  }
-};
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -284,6 +252,45 @@ export const Component: FC = () => {
                   >
                     删除
                   </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <div>
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0 hover:text-blue-700"
+                    title="profile数据"
+                  >
+                    <UserRoundMinus size={16} strokeWidth={2} />
+                  </Button>
+                </div>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Profile参数</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    <div className="grid grid-cols-2 gap-1 p-4 font-mono text-lg">
+                      <div>Convs: {imagepackInfo?.params.Convs}</div>
+                      <div>
+                        Activations: {imagepackInfo?.params.Activations}
+                      </div>
+                      <div>Denses: {imagepackInfo?.params.Denses}</div>
+                      <div>Others: {imagepackInfo?.params.Others}</div>
+                      <div>
+                        GFLOPs: {imagepackInfo?.params.GFLOPs.toFixed(2)}
+                      </div>
+                      <div>BatchSize: {imagepackInfo?.params.BatchSize}</div>
+                      <div>Params: {imagepackInfo?.params.Params}</div>
+                      <div>
+                        ModelSize: {imagepackInfo?.params.ModelSize.toFixed(2)}
+                      </div>
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>关闭</AlertDialogCancel>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
