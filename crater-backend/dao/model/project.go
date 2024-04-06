@@ -16,7 +16,6 @@ type Project struct {
 
 type ProjectSpace struct {
 	gorm.Model
-	ProjectID uint       `gorm:"primaryKey"`
-	SpaceID   uint       `gorm:"primaryKey"`
-	Mode      AccessMode `gorm:"not null;comment:项目空间的访问模式 (rw, ro, ao)"`
+	ProjectID uint `gorm:"primaryKey"`
+	SpaceID   uint `gorm:"primaryKey"`
 }
