@@ -32,8 +32,36 @@ export type ImagePackInfo = {
   id: number;
   nametag: string;
   link: string;
+  username: string;
   status: string;
   createdAt: string;
+  params: {
+    Convs: number;
+    Activations: number;
+    Denses: number;
+    Others: number;
+    GFLOPs: number;
+    BatchSize: number;
+    Params: number;
+    ModelSize: number;
+  };
+};
+
+export const getHeader = (key: string): string => {
+  switch (key) {
+    case "nametag":
+      return "名称";
+    case "link":
+      return "镜像地址";
+    case "username":
+      return "提交者";
+    case "status":
+      return "状态";
+    case "createdAt":
+      return "创建时间";
+    default:
+      return key;
+  }
 };
 
 export type ImagePackStatusValue =
