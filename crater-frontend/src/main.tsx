@@ -19,6 +19,7 @@ import { adminRoute } from "./pages/Admin";
 import { recommendRoute } from "./pages/PortalR";
 import Jupyter from "./pages/Jobs/Jupyter";
 import { logger } from "./utils/loglevel";
+import Website from "./pages/Website";
 
 const router = createBrowserRouter([
   {
@@ -35,6 +36,14 @@ const router = createBrowserRouter([
   {
     path: "/job/jupyter/:id",
     element: <Jupyter />,
+  },
+  {
+    path: "/",
+    element: <Navigate to="/website" replace />,
+  },
+  {
+    path: "/website",
+    element: <Website />,
   },
   {
     path: "*",

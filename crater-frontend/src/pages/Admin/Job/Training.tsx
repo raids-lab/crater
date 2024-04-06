@@ -435,14 +435,12 @@ const Training: FC = () => {
   );
 
   return (
-    <div className="space-y-4">
-      <DataTable
-        data={data}
-        columns={columns}
-        toolbarConfig={toolbarConfig}
-        loading={isLoading}
-      ></DataTable>
-    </div>
+    <DataTable
+      data={data}
+      columns={columns}
+      toolbarConfig={toolbarConfig}
+      loading={isLoading}
+    />
   );
 };
 

@@ -38,7 +38,7 @@ export function DataTableToolbar<TData>({
 
   return (
     <div className="flex items-center justify-between">
-      <div className="flex flex-1 items-center space-x-2">
+      <div className="flex flex-row items-center space-x-2">
         {children}
         <Input
           placeholder={filterInput.placeholder}
