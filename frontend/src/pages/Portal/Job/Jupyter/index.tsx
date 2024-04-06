@@ -331,8 +331,8 @@ export const Component = () => {
   }, [dataUpdatedAt]);
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-6">
+    <>
+      <div className="col-span-3 grid grid-cols-2 gap-6">
         <Status />
         <Quota />
       </div>
@@ -341,6 +341,7 @@ export const Component = () => {
         columns={columns}
         toolbarConfig={toolbarConfig}
         loading={isLoading}
+        className="col-span-3"
       >
         <Sheet open={openSheet} onOpenChange={setOpenSheet}>
           <SheetTrigger asChild>
@@ -362,6 +363,6 @@ export const Component = () => {
           数据更新于 {updatedAt}
         </div>
       </div>
-    </div>
+    </>
   );
 };

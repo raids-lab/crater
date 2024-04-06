@@ -10,8 +10,9 @@ import { PersonalUser } from "./User/Personal";
 import { GroupUser } from "./User/Group";
 import Jupyter from "./Job/Jupyter";
 import Training from "./Job/Training";
-import { DashboardLayout } from "../Portal";
 import ServerIcon from "@/components/icon/ServerIcon";
+import { Role } from "@/services/api/auth";
+import DashboardLayout from "@/components/layout/Dashboard";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -20,7 +21,7 @@ const sidebarItems: SidebarItem[] = [
     children: [
       {
         route: {
-          path: "node",
+          path: "node/*",
           lazy: () => import("./Cluster/Node"),
         },
       },
@@ -117,7 +118,7 @@ const sidebarMenus: SidebarMenu[] = [
 ];
 
 const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
-  const isAuthenticated = useAuth("admin");
+  const isAuthenticated = useAuth(Role.Admin);
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 

@@ -114,7 +114,7 @@ const toolbarConfig: DataTableToolbarConfig = {
 export const PersonalUser = () => {
   const [data, setData] = useState<TUser[]>([]);
   const queryClient = useQueryClient();
-  const { id: currentUserName } = useRecoilValue(globalUserInfo);
+  const { name: currentUserName } = useRecoilValue(globalUserInfo);
 
   const { data: userList, isLoading } = useQuery({
     queryKey: ["admin", "userlist"],
@@ -374,13 +374,11 @@ export const PersonalUser = () => {
   }, [userList, isLoading]);
 
   return (
-    <div className="space-y-4">
-      <DataTable
-        data={data}
-        columns={columns}
-        toolbarConfig={toolbarConfig}
-        loading={isLoading}
-      ></DataTable>
-    </div>
+    <DataTable
+      data={data}
+      columns={columns}
+      toolbarConfig={toolbarConfig}
+      loading={isLoading}
+    />
   );
 };

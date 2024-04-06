@@ -1,6 +1,7 @@
 import { atom, useResetRecoilState } from "recoil";
 import { UserInfo } from "@/hooks/useAuth";
 import { localStorageEffect } from "./utils";
+import { Role } from "@/services/api/auth";
 
 /**
  * LocalStorage and Recoil Keys
@@ -18,12 +19,20 @@ export const VITE_UI_THEME_KEY = "vite_ui_theme";
 /**
  * User States
  */
+
+const defaultUserContext: UserInfo = {
+  name: "",
+  context: {
+    projectID: 0,
+    projectRole: Role.Guest,
+    platformRole: Role.Guest,
+  },
+  projects: [],
+};
+
 export const globalUserInfo = atom({
   key: USER_INFO_KEY,
-  default: {
-    id: "",
-    role: "viewer",
-  } as UserInfo,
+  default: defaultUserContext,
   effects: [localStorageEffect(USER_INFO_KEY)],
 });
 
@@ -60,7 +69,7 @@ export const globalCurrentAccount = atom({
   key: CURRENT_ACCOUNT_KEY,
   default: {
     label: "",
-    value: "",
+    id: 0,
   },
   effects_UNSTABLE: [localStorageEffect(CURRENT_ACCOUNT_KEY)],
 });

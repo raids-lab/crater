@@ -5,15 +5,11 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import React, { useEffect, useState } from "react";
+import React, { Fragment, useEffect, useState } from "react";
 import { RouteObject, useLocation, useNavigate } from "react-router-dom";
 import { ScrollArea } from "../ui/scroll-area";
 import { getTitleByPath } from "@/utils/title";
-import CraterIcon from "../icon/CraterIcon";
-import CraterText from "../icon/CraterText";
 import { toast } from "sonner";
-import { ChevronDownIcon } from "@radix-ui/react-icons";
-import { Button } from "../ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,8 +39,6 @@ export type SidebarMenu = {
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   sidebarItems: SidebarItem[];
   sidebarMenus: SidebarMenu[];
-  isMinimized: boolean;
-  toggleIsMinimized: () => void;
 }
 
 interface ActivedState {
@@ -53,13 +47,7 @@ interface ActivedState {
   subItem: string;
 }
 
-export function Sidebar({
-  className,
-  sidebarItems,
-  sidebarMenus,
-  isMinimized,
-  toggleIsMinimized,
-}: SidebarProps) {
+export function Sidebar({ sidebarItems, sidebarMenus }: SidebarProps) {
   const [accordion, setAccordion] = useState<string>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -92,54 +80,11 @@ export function Sidebar({
   }, [actived, setAccordion]);
 
   return (
-    <div
-      className={cn(
-        "flex flex-col items-center justify-between",
-        "bg-card text-card-foreground",
-        "min-h-full w-[200px]",
-        // "transition-all duration-300 ease-in-out",
-        className,
-        {
-          "w-14": isMinimized,
-        },
-      )}
-    >
-      {/* Logo */}
-      <div
-        className="relative flex h-14 w-full flex-row items-center justify-center pb-0 pt-1"
-        onDoubleClick={toggleIsMinimized}
+    <>
+      <ScrollArea
+        // 5 + 5 + 7 + 3 = 20
+        className="h-[calc(100vh_-_192px)] w-full"
       >
-        <CraterIcon className={cn("h-7 w-7", { "mr-1": !isMinimized })} />
-        <CraterText className={cn("h-3.5", { hidden: isMinimized })} />
-        <div
-          className={cn(
-            "absolute right-0 z-10 flex h-8 w-8 translate-x-5 items-center justify-center rounded-full bg-background",
-            {
-              "translate-x-5": isMinimized,
-            },
-          )}
-        >
-          <Button
-            size="icon"
-            variant={"ghost"}
-            className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 hover:bg-primary/15"
-            onClick={toggleIsMinimized}
-            title={isMinimized ? "展开边栏" : "收起边栏"}
-          >
-            <ChevronDownIcon
-              className={cn(
-                "h-4 w-4 rotate-90 text-primary transition-transform duration-200",
-                {
-                  "-rotate-90": isMinimized,
-                },
-              )}
-            />
-          </Button>
-        </div>
-      </div>
-      {/* Calculate of ScrollArea height: */}
-      {/* 100vh - (56px + 124px) */}
-      <ScrollArea className="h-[calc(100vh_-_180px)] w-full">
         <Accordion
           type="single"
           // collapsible
@@ -149,24 +94,22 @@ export function Sidebar({
         >
           {sidebarItems.map((item) => {
             return item.children.length > 0 ? (
-              isMinimized ? (
+              <Fragment key={item.path}>
                 <SidebarDropdownMenu
-                  key={item.path}
                   item={item}
                   actived={actived}
                   setActived={setActived}
+                  className="flex xl:hidden"
                 />
-              ) : (
                 <AccordionItem
                   value={item.path}
-                  key={item.path}
-                  className="w-[184px]"
+                  className="hidden w-44 border-0 xl:block"
                 >
                   <AccordionTrigger
                     className={cn(
-                      "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                      "h-9 rounded-md px-4 font-normal hover:text-primary hover:no-underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&>svg]:hover:text-primary",
                       {
-                        "bg-primary/15 text-primary group-hover:bg-primary/15":
+                        "bg-primary/15 text-primary hover:bg-primary/15 [&>svg]:text-primary":
                           item.path === actived.item,
                       },
                     )}
@@ -186,7 +129,7 @@ export function Sidebar({
                     </div>
                   </AccordionTrigger>
                   {item.children && item.children.length > 0 && (
-                    <AccordionContent>
+                    <AccordionContent className="pb-0">
                       {item.children?.map((subItem) => {
                         const subItemPath = subItem.route.path?.replace(
                           "/*",
@@ -224,14 +167,13 @@ export function Sidebar({
                     </AccordionContent>
                   )}
                 </AccordionItem>
-              )
+              </Fragment>
             ) : (
               <SingleButton
                 key={`sidebar-item-${item.path}`}
                 title={getTitleByPath([actived.view, item.path])}
                 onClick={() => navigate(`/${actived.view}/${item.path}`)}
                 isActive={item.path === actived.item}
-                isMinimized={isMinimized}
               >
                 <item.icon />
               </SingleButton>
@@ -247,14 +189,13 @@ export function Sidebar({
               title={getTitleByPath([actived.view, item.path])}
               onClick={() => navigate(`/${actived.view}/${item.path}`)}
               isActive={item.path === actived.item}
-              isMinimized={isMinimized}
             >
               <item.icon />
             </SingleButton>
           ))}
         </div>
         <p
-          className="h-10 select-none pt-1 text-center text-xs font-light text-muted-foreground"
+          className="h-9 select-none pt-1 text-center text-xs font-light text-muted-foreground"
           onDoubleClick={() => {
             if (actived.view === "portal") {
               navigate("/recommend");
@@ -267,7 +208,7 @@ export function Sidebar({
           {import.meta.env.VITE_APP_VERSION}
         </p>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -276,23 +217,22 @@ const SingleButton: React.FC<{
   onClick: () => void;
   isActive: boolean;
   children: React.ReactNode;
-  isMinimized?: boolean;
-}> = ({ title, onClick, isActive, children, isMinimized }) => {
+}> = ({ title, onClick, isActive, children }) => {
   return (
     <button
       type="button"
       className={cn(
-        "flex h-10 flex-row items-center rounded-md text-sm hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        "flex h-9 flex-row items-center rounded-md text-sm hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        "xl:w-44 xl:justify-start xl:pl-7",
+        "w-9 justify-center",
         {
           "bg-primary/15 text-primary hover:bg-primary/15": isActive,
-          "w-[184px] justify-start px-7": !isMinimized,
-          "w-10 justify-center": isMinimized,
         },
       )}
       onClick={onClick}
     >
       {children}
-      <p className={cn("ml-3", { hidden: isMinimized })}>{title}</p>
+      <p className="hidden xl:ml-3 xl:block">{title}</p>
     </button>
   );
 };
@@ -301,12 +241,14 @@ interface DropdownMenuProps {
   item: SidebarItem;
   actived: ActivedState;
   setActived: (value: React.SetStateAction<ActivedState>) => void;
+  className?: string;
 }
 
 const SidebarDropdownMenu: React.FC<DropdownMenuProps> = ({
   item,
   actived,
   setActived,
+  className,
 }) => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -333,11 +275,12 @@ const SidebarDropdownMenu: React.FC<DropdownMenuProps> = ({
         <button
           key={item.path}
           className={cn(
-            "flex h-10 w-10 flex-row items-center justify-center rounded-md text-sm transition-all hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+            "flex h-9 w-9 flex-row items-center justify-center rounded-md text-sm transition-all hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
             {
               "bg-primary/15 text-primary hover:bg-primary/15":
                 item.path === actived.item,
             },
+            className,
           )}
         >
           <item.icon />

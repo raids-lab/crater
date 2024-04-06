@@ -14,7 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { globalLastView, globalUserInfo } from "@/utils/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiUserLogin } from "@/services/api/auth";
+import { Role, apiUserLogin } from "@/services/api/auth";
 
 import LoadableButton from "@/components/custom/LoadableButton";
 import { toast } from "sonner";
@@ -47,20 +47,24 @@ export function ProfileForm() {
 
   const { mutate: loginUser, status } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
-      apiUserLogin({ username: values.username, password: values.password }),
+      apiUserLogin({
+        username: values.username,
+        password: values.password,
+        auth: "act",
+      }),
     onSuccess: async (data, { username }) => {
       await queryClient.invalidateQueries();
-      const role = data.role === "admin" ? "admin" : "user";
       setUserState({
-        id: username,
-        role: role,
+        name: username,
+        context: data.context,
+        projects: data.projects,
       });
       toast.success(
-        `你好，${role === "admin" ? "管理员" : "用户"} ${username}`,
+        `你好，${data.context.platformRole ? "管理员" : "用户"} ${username}`,
       );
       // navigate to /portal and clear all history
       const dashboard =
-        lastView === "admin" && role === "admin"
+        lastView === "admin" && data.context.platformRole === Role.Admin
           ? "/admin"
           : lastView === "recommend"
             ? "/recommend"

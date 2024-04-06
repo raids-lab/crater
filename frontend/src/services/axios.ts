@@ -1,6 +1,7 @@
 import axios, { AxiosRequestConfig, isAxiosError } from "axios";
 import { IErrorResponse, IRefresh, IRefreshResponse } from "./types";
 import {
+  ERROR_INVALID_REQUEST,
   ERROR_INVALID_ROLE,
   ERROR_NOT_SPECIFIED,
   ERROR_TOKEN_EXPIRED,
@@ -73,7 +74,11 @@ instance.interceptors.response.use(
         window.location.href = "/portal";
       } else if (error.response?.data.code === ERROR_NOT_SPECIFIED) {
         showErrorToast(error);
+      } else if (error.response?.data.code === ERROR_INVALID_REQUEST) {
+        showErrorToast(`请求参数有误`);
       }
+    } else {
+      showErrorToast(error);
     }
     return Promise.reject(error);
   },

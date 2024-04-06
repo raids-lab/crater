@@ -1,42 +1,4 @@
-# Read Go ErrorCode File from the given path, and generate the corresponding TypeScript ErrorCode File
-#
-# Go ErrorCode File Format:
-# ```go
-# package response
-
-# type ErrorCode int
-
-# const (
-#     OK ErrorCode = 0
-
-#     TokenExpired ErrorCode = 40101
-#     UserNotFound ErrorCode = 40102
-#     InvalidToken ErrorCode = 40103
-
-#     InvalidRole ErrorCode = 40301
-
-#     // Indicates laziness of the developer
-#     // Frontend will directly print the message without any translation
-#     NotSpecified ErrorCode = 99999
-# )
-# ```
-# 
-# TypeScript ErrorCode File Format:
-# ```typescript
-# // Error Code from server
-# // def type of error code as number
-# export type ErrorCode = number;
-
-# export const OK: ErrorCode = 0;
-
-# export const ERROR_TOKEN_EXPIRED: ErrorCode = 40101;
-# export const ERROR_USER_NOT_FOUND: ErrorCode = 40102;
-# export const ERROR_INVALID_TOKEN: ErrorCode = 40103;
-# 
-# export const ERROR_INVALID_ROLE: ErrorCode = 40301;
-# 
-# export const ERROR_NOT_SPECIFIED: ErrorCode = 99999;
-# ```
+# python3 ./src/services/generator.py ../web-backend/pkg/server/response/code.go ./src/services/error_code.ts
 
 import os
 import re
@@ -50,7 +12,7 @@ def generate_ts_error_code_file(go_error_code_file_path: str, ts_error_code_file
 
     # Parse Go ErrorCode File
     # match 'NotSpecified ErrorCode = 99999', get $1 as 'NotSpecified', $2 as '99999'
-    go_error_code_pattern = re.compile(r'(\w+) ErrorCode = (\d+)')
+    go_error_code_pattern = re.compile(r'(\w+)\s+ErrorCode\s+=\s+(\d+)')
     go_error_code_matches = go_error_code_pattern.findall(go_error_code_file_content)
 
     # Generate TypeScript ErrorCode File
