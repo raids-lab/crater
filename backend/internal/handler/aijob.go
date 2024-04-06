@@ -44,7 +44,7 @@ func (mgr *AIJobMgr) RegisterAdmin(g *gin.RouterGroup) {
 // @Tags AIJob
 // @Accept json
 // @Produce json
-// @Param Authorization header string false "Bearer {Token}"
+// @Security Bearer
 // @Param id path int true "AI job ID"
 // @Success 200 {object} resputil.Response[any]
 // @Router /v1/aijobs/{id} [delete]
