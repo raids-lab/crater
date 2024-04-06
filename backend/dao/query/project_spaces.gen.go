@@ -33,7 +33,6 @@ func newProjectSpace(db *gorm.DB, opts ...gen.DOOption) projectSpace {
 	_projectSpace.DeletedAt = field.NewField(tableName, "deleted_at")
 	_projectSpace.ProjectID = field.NewUint(tableName, "project_id")
 	_projectSpace.SpaceID = field.NewUint(tableName, "space_id")
-	_projectSpace.Mode = field.NewUint8(tableName, "mode")
 
 	_projectSpace.fillFieldMap()
 
@@ -50,7 +49,6 @@ type projectSpace struct {
 	DeletedAt field.Field
 	ProjectID field.Uint
 	SpaceID   field.Uint
-	Mode      field.Uint8
 
 	fieldMap map[string]field.Expr
 }
@@ -73,7 +71,6 @@ func (p *projectSpace) updateTableName(table string) *projectSpace {
 	p.DeletedAt = field.NewField(table, "deleted_at")
 	p.ProjectID = field.NewUint(table, "project_id")
 	p.SpaceID = field.NewUint(table, "space_id")
-	p.Mode = field.NewUint8(table, "mode")
 
 	p.fillFieldMap()
 
@@ -102,14 +99,13 @@ func (p *projectSpace) GetFieldByName(fieldName string) (field.OrderExpr, bool) 
 }
 
 func (p *projectSpace) fillFieldMap() {
-	p.fieldMap = make(map[string]field.Expr, 7)
+	p.fieldMap = make(map[string]field.Expr, 6)
 	p.fieldMap["id"] = p.ID
 	p.fieldMap["created_at"] = p.CreatedAt
 	p.fieldMap["updated_at"] = p.UpdatedAt
 	p.fieldMap["deleted_at"] = p.DeletedAt
 	p.fieldMap["project_id"] = p.ProjectID
 	p.fieldMap["space_id"] = p.SpaceID
-	p.fieldMap["mode"] = p.Mode
 }
 
 func (p projectSpace) clone(db *gorm.DB) projectSpace {

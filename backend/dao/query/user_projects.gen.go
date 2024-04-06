@@ -34,6 +34,7 @@ func newUserProject(db *gorm.DB, opts ...gen.DOOption) userProject {
 	_userProject.UserID = field.NewUint(tableName, "user_id")
 	_userProject.ProjectID = field.NewUint(tableName, "project_id")
 	_userProject.Role = field.NewUint8(tableName, "role")
+	_userProject.AccessMode = field.NewUint8(tableName, "access_mode")
 	_userProject.JobReq = field.NewInt(tableName, "job_req")
 	_userProject.Job = field.NewInt(tableName, "job")
 	_userProject.NodeReq = field.NewInt(tableName, "node_req")
@@ -57,28 +58,29 @@ func newUserProject(db *gorm.DB, opts ...gen.DOOption) userProject {
 type userProject struct {
 	userProjectDo userProjectDo
 
-	ALL       field.Asterisk
-	ID        field.Uint
-	CreatedAt field.Time
-	UpdatedAt field.Time
-	DeletedAt field.Field
-	UserID    field.Uint
-	ProjectID field.Uint
-	Role      field.Uint8
-	JobReq    field.Int
-	Job       field.Int
-	NodeReq   field.Int
-	Node      field.Int
-	CPUReq    field.Int
-	CPU       field.Int
-	GPUReq    field.Int
-	GPU       field.Int
-	MemReq    field.Int
-	Mem       field.Int
-	GPUMemReq field.Int
-	GPUMem    field.Int
-	Storage   field.Int
-	Extra     field.String
+	ALL        field.Asterisk
+	ID         field.Uint
+	CreatedAt  field.Time
+	UpdatedAt  field.Time
+	DeletedAt  field.Field
+	UserID     field.Uint
+	ProjectID  field.Uint
+	Role       field.Uint8
+	AccessMode field.Uint8
+	JobReq     field.Int
+	Job        field.Int
+	NodeReq    field.Int
+	Node       field.Int
+	CPUReq     field.Int
+	CPU        field.Int
+	GPUReq     field.Int
+	GPU        field.Int
+	MemReq     field.Int
+	Mem        field.Int
+	GPUMemReq  field.Int
+	GPUMem     field.Int
+	Storage    field.Int
+	Extra      field.String
 
 	fieldMap map[string]field.Expr
 }
@@ -102,6 +104,7 @@ func (u *userProject) updateTableName(table string) *userProject {
 	u.UserID = field.NewUint(table, "user_id")
 	u.ProjectID = field.NewUint(table, "project_id")
 	u.Role = field.NewUint8(table, "role")
+	u.AccessMode = field.NewUint8(table, "access_mode")
 	u.JobReq = field.NewInt(table, "job_req")
 	u.Job = field.NewInt(table, "job")
 	u.NodeReq = field.NewInt(table, "node_req")
@@ -142,7 +145,7 @@ func (u *userProject) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *userProject) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 21)
+	u.fieldMap = make(map[string]field.Expr, 22)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
@@ -150,6 +153,7 @@ func (u *userProject) fillFieldMap() {
 	u.fieldMap["user_id"] = u.UserID
 	u.fieldMap["project_id"] = u.ProjectID
 	u.fieldMap["role"] = u.Role
+	u.fieldMap["access_mode"] = u.AccessMode
 	u.fieldMap["job_req"] = u.JobReq
 	u.fieldMap["job"] = u.Job
 	u.fieldMap["node_req"] = u.NodeReq
