@@ -111,8 +111,8 @@ func AuthProtected() gin.HandlerFunc {
 func AuthAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token, _ := util.GetToken(c)
-		if token.ClusterRole != model.RoleAdmin {
-			resputil.HTTPError(c, http.StatusUnauthorized, "Not authorized", resputil.InvalidRole)
+		if token.PlatformRole != model.RoleAdmin {
+			resputil.HTTPError(c, http.StatusUnauthorized, "Not Admin", resputil.InvalidRole)
 			c.Abort()
 			return
 		}
