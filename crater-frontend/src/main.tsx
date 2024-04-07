@@ -39,7 +39,12 @@ const router = createBrowserRouter([
   },
   {
     path: "/",
-    element: <Navigate to="/website" replace />,
+    element: (
+      <Navigate
+        to={process.env.NODE_ENV === "development" ? "/portal" : "/website"}
+        replace
+      />
+    ),
   },
   {
     path: "/website",
