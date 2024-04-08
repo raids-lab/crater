@@ -46,3 +46,5 @@ const (
 	JobFailed              // 作业中的一个或多个 Pod 失败
 	JobPreempted           // 作业中的一个或多个 Pod 被抢占
 )
+
+//go:generate stringer -type=Role,Status,AccessMode,JobStatus -output=const_string.go
