@@ -68,6 +68,11 @@ const docTemplate = `{
         },
         "/v1/aijobs/{id}": {
             "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
                 "description": "Delete an AI job by its unique identifier.",
                 "consumes": [
                     "application/json"
@@ -81,12 +86,6 @@ const docTemplate = `{
                 "summary": "Delete an AIJob by ID",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Bearer {Token}",
-                        "name": "Authorization",
-                        "in": "header"
-                    },
-                    {
                         "type": "integer",
                         "description": "AI job ID",
                         "name": "id",
@@ -97,6 +96,57 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/projects": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "从请求中获取项目名称、描述和配额，以当前用户为管理员，创建一个团队项目",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "创建团队项目",
+                "parameters": [
+                    {
+                        "description": "项目信息",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.ProjectCreateReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功创建项目，返回项目ID",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-handler_ProjectCreateResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "项目创建失败，返回错误信息",
                         "schema": {
                             "$ref": "#/definitions/response.Response-any"
                         }
@@ -173,6 +223,56 @@ const docTemplate = `{
                 }
             }
         },
+        "handler.ProjectCreateReq": {
+            "type": "object",
+            "required": [
+                "description",
+                "name",
+                "quota"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "quota": {
+                    "$ref": "#/definitions/handler.QuotaReq"
+                }
+            }
+        },
+        "handler.ProjectCreateResp": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handler.QuotaReq": {
+            "type": "object",
+            "required": [
+                "cpu",
+                "gpu",
+                "memory",
+                "storage"
+            ],
+            "properties": {
+                "cpu": {
+                    "type": "integer"
+                },
+                "gpu": {
+                    "type": "integer"
+                },
+                "memory": {
+                    "type": "integer"
+                },
+                "storage": {
+                    "type": "integer"
+                }
+            }
+        },
         "model.Role": {
             "type": "integer",
             "enum": [
@@ -184,6 +284,24 @@ const docTemplate = `{
                 "RoleGuest",
                 "RoleUser",
                 "RoleAdmin"
+            ]
+        },
+        "model.Status": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-comments": {
+                "StatusActive": "Active status",
+                "StatusInactive": "Inactive status",
+                "StatusPending": "Pending status, not yet activated"
+            },
+            "x-enum-varnames": [
+                "StatusPending",
+                "StatusActive",
+                "StatusInactive"
             ]
         },
         "payload.ProjectResp": {
@@ -206,6 +324,14 @@ const docTemplate = `{
                     "allOf": [
                         {
                             "$ref": "#/definitions/model.Role"
+                        }
+                    ]
+                },
+                "status": {
+                    "description": "项目状态",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Status"
                         }
                     ]
                 }
@@ -257,6 +383,28 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "response.Response-handler_ProjectCreateResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/response.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/handler.ProjectCreateResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "Bearer": {
+            "description": "访问 /login 并获取 TOKEN 后，填入 'Bearer ${TOKEN}' 以访问受保护的接口",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`
