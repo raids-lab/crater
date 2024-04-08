@@ -28,15 +28,6 @@ export const handlers = [
             projectRole: Role.Admin,
             platformRole: mockUser.role,
           },
-          projects: [
-            {
-              id: 1,
-              name: "project1",
-              role: Role.Admin,
-              isPersonal: true,
-              status: 1,
-            },
-          ],
         },
         { status: 200 },
       );
