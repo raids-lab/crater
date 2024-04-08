@@ -74,6 +74,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	// Init Handlers
 	authMgr := handler.NewAuthMgr(aitaskCtrl)
 	aijobMgr := handler.NewAIJobMgr(aitaskCtrl, &pvcClient, &logClient)
+	projectMgr := handler.NewProjectMgr()
 
 	///////////////////////////////////////
 	//// Public routers, no need login ////
@@ -90,7 +91,9 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	protectedRouter := b.R.Group(constants.APIPrefix)
 	protectedRouter.Use(middleware.AuthProtected())
 
+	authMgr.RegisterProtected(protectedRouter.Group("/switch"))
 	aijobMgr.RegisterProtected(protectedRouter.Group("/aijobs"))
+	projectMgr.RegisterProtected(protectedRouter.Group("/projects"))
 
 	///////////////////////////////////////
 	//// Admin routers, need admin role ///
@@ -100,4 +103,5 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	adminRouter.Use(middleware.AuthProtected(), middleware.AuthAdmin())
 
 	aijobMgr.RegisterAdmin(adminRouter.Group("/aijobs"))
+	projectMgr.RegisterAdmin(adminRouter.Group("/projects"))
 }
