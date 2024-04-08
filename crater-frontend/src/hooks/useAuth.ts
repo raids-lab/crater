@@ -1,4 +1,4 @@
-import { ProjectBasic, Role, UserContext } from "@/services/api/auth";
+import { Role, UserContext } from "@/services/api/auth";
 import { globalUserInfo } from "@/utils/store";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
@@ -6,7 +6,6 @@ import { useRecoilValue } from "recoil";
 export interface UserInfo {
   name: string; // unique username
   context: UserContext; // user context
-  projects: ProjectBasic[]; // user projects
 }
 
 /**

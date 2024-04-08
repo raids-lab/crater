@@ -27,7 +27,6 @@ const defaultUserContext: UserInfo = {
     projectRole: Role.Guest,
     platformRole: Role.Guest,
   },
-  projects: [],
 };
 
 export const globalUserInfo = atom({
