@@ -34,12 +34,14 @@ func NewAuthMgr(taskController *aitaskctl.TaskController) Manager {
 	}
 }
 
-func (mgr *AuthMgr) RegisterPublic(group *gin.RouterGroup) {
-	group.POST("/login", mgr.Login)
-	group.POST("/refresh", mgr.RefreshToken)
+func (mgr *AuthMgr) RegisterPublic(g *gin.RouterGroup) {
+	g.POST("/login", mgr.Login)
+	g.POST("/refresh", mgr.RefreshToken)
 }
 
-func (mgr *AuthMgr) RegisterProtected(_ *gin.RouterGroup) {}
+func (mgr *AuthMgr) RegisterProtected(g *gin.RouterGroup) {
+	g.POST("", mgr.SwitchProject) // 切换项目
+}
 
 func (mgr *AuthMgr) RegisterAdmin(_ *gin.RouterGroup) {}
 
@@ -51,10 +53,9 @@ type (
 	}
 
 	LoginResp struct {
-		AccessToken  string                `json:"accessToken"`
-		RefreshToken string                `json:"refreshToken"`
-		Context      PlatformContext       `json:"context"`
-		Projects     []payload.ProjectResp `json:"projects"`
+		AccessToken  string          `json:"accessToken"`
+		RefreshToken string          `json:"refreshToken"`
+		Context      PlatformContext `json:"context"`
 	}
 
 	PlatformContext struct {
@@ -71,12 +72,12 @@ const (
 
 // Login godoc
 // @Summary 用户登录
-// @Description 校验用户身份，生成 JWT Token，返回用户活跃的项目列表
+// @Description 校验用户身份，生成包含当前用户和项目的 JWT Token
 // @Tags Auth
 // @Accept json
 // @Produce json
 // @Param data body LoginReq false "查询参数"
-// @Success 200 {object} resputil.Response[LoginResp] "登录成功，返回 JWT Token 和项目列表"
+// @Success 200 {object} resputil.Response[LoginResp] "登录成功，返回 JWT Token 和默认个人项目"
 // @Failure 400 {object} resputil.Response[any]	"请求参数错误"
 // @Failure 401 {object} resputil.Response[any]	"用户名或密码错误"
 // @Failure 500 {object} resputil.Response[any]	"数据库交互错误"
@@ -84,7 +85,7 @@ const (
 func (mgr *AuthMgr) Login(c *gin.Context) {
 	var req LoginReq
 	if err := c.ShouldBind(&req); err != nil {
-		resputil.HTTPError(c, http.StatusBadRequest, err.Error(), resputil.InvalidRequest)
+		resputil.BadRequestError(c, err.Error())
 		return
 	}
 
@@ -140,38 +141,29 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		return
 	}
 
-	// Get all projects for the user
+	// Get personal project for the user
 	var projects []payload.ProjectResp
-	err = up.WithContext(c).Where(up.UserID.Eq(user.ID)).
+	err = up.WithContext(c).Where(up.UserID.Eq(user.ID), p.IsPersonal.Is(true)).
 		Select(p.ID, p.Name, up.Role, p.IsPersonal, p.Status).Join(p, p.ID.EqCol(up.ProjectID)).Scan(&projects)
 	if err != nil {
 		l.Error("DB error", err)
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
-	if len(projects) == 0 {
-		l.Error("user has no project")
+	if len(projects) != 1 {
+		l.Error("user has no personal project or too many personal projects")
 		resputil.HTTPError(c, http.StatusUnauthorized, "User has no project", resputil.NotSpecified)
 		return
 	}
 
 	// Get personal project id for the user (as the default project)
 	// Each user has a personal project (with the same name as the user)
-	var pID uint
-	var pRole model.Role
-	for i := range projects {
-		if projects[i].IsPersonal {
-			pID = projects[i].ID
-			pRole = projects[i].Role
-			break
-		}
-	}
 
 	// Generate JWT tokens
 	jwtMessage := util.JWTMessage{
 		UserID:       user.ID,
-		ProjectID:    pID,
-		ProjectRole:  pRole,
+		ProjectID:    projects[0].ID,
+		ProjectRole:  projects[0].Role,
 		ClusterID:    1,
 		ClusterRole:  model.RoleUser,
 		PlatformRole: user.Role,
@@ -184,11 +176,10 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 	loginResponse := LoginResp{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		Projects:     projects,
 		Context: PlatformContext{
-			PID:          pID,
+			PID:          projects[0].ID,
+			ProjectRole:  projects[0].Role,
 			PlatformRole: user.Role,
-			ProjectRole:  pRole,
 		},
 	}
 	resputil.Success(c, loginResponse)
@@ -196,82 +187,84 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 
 // createUserAndProject is called by Login and SingUp, create a new user and a personal project for the user
 func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.User, error) {
-	u := query.User
-	p := query.Project
-	up := query.UserProject
-	s := query.Space
-	q := query.Quota
+	db := query.Use(query.DB)
 
-	// Create a new user with non-admin role and active status
-	user := model.User{
-		Name:     name,
-		Nickname: nil,
-		Password: nil,
-		Role:     model.RoleUser,
-		Status:   model.StatusActive,
-	}
-	if err := u.WithContext(c).Create(&user); err != nil {
-		return nil, err
-	}
+	err := db.Transaction(func(tx *query.Query) error {
+		u := tx.User
+		p := tx.Project
+		up := tx.UserProject
+		s := tx.Space
+		q := tx.Quota
 
-	// Create a personal project for the user
-	project := model.Project{
-		Name:        user.Name,
-		Description: nil,
-		Namespace:   config.GetConfig().Workspace.Namespace,
-		Status:      model.StatusActive,
-		IsPersonal:  true,
-	}
-	if err := p.WithContext(c).Create(&project); err != nil {
-		return nil, err
-	}
+		// Create a new user with non-admin role and active status
+		user := model.User{
+			Name:     name,
+			Nickname: nil,
+			Password: nil,
+			Role:     model.RoleAdmin, // todo: change to model.RoleUser
+			Status:   model.StatusActive,
+		}
+		if err := u.WithContext(c).Create(&user); err != nil {
+			return err
+		}
 
-	// Create a user-project relationship without quota limit
-	userProject := model.UserProject{
-		UserID:    user.ID,
-		ProjectID: project.ID,
-		Role:      model.RoleAdmin,
-	}
-	if err := up.WithContext(c).Create(&userProject); err != nil {
-		return nil, err
-	}
+		// Create a personal project for the user
+		project := model.Project{
+			Name:        user.Name,
+			Description: nil,
+			Namespace:   config.GetConfig().Workspace.Namespace,
+			Status:      model.StatusActive,
+			IsPersonal:  true,
+		}
+		if err := p.WithContext(c).Create(&project); err != nil {
+			return err
+		}
 
-	// Create a space for the project, folder path is generated by uuid
-	uuidStr := uuid.New().String()
-	folderPath := fmt.Sprintf("/%s-%d", uuidStr[:8], project.ID)
-	space := model.Space{
-		ProjectID: project.ID,
-		Path:      folderPath,
-	}
+		// Create a user-project relationship without quota limit
+		userProject := model.UserProject{
+			UserID:    user.ID,
+			ProjectID: project.ID,
+			Role:      model.RoleAdmin,
+		}
+		if err := up.WithContext(c).Create(&userProject); err != nil {
+			return err
+		}
 
-	if err := s.WithContext(c).Create(&space); err != nil {
-		return nil, err
-	}
+		// Create a space for the project, folder path is generated by uuid
+		uuidStr := uuid.New().String()
+		folderPath := fmt.Sprintf("/%s-%d", uuidStr[:8], project.ID)
+		space := model.Space{
+			ProjectID: project.ID,
+			Path:      folderPath,
+		}
+		if err := s.WithContext(c).Create(&space); err != nil {
+			return err
+		}
 
-	// Create a quota for the personal project
-	quota := model.Quota{
-		ProjectID: project.ID,
-		CPU:       model.DefaultCPU,
-		CPUReq:    model.DefaultCPU,
-		Mem:       model.DefaultMemory,
-		MemReq:    model.DefaultMemory,
-		GPU:       model.DefaultGPU,
-		GPUReq:    model.DefaultGPU,
-	}
-	if err := q.WithContext(c).Create(&quota); err != nil {
+		// Create a quota for the personal project
+		quota := model.DefaultQuota()
+		quota.ProjectID = project.ID
+		if err := q.WithContext(c).Create(&quota); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 
 	// TODO: refactor
 	// Notify the task controller that a new user is created
 	oldQuota := models.Quota{
-		UserName:  user.Name,
+		UserName:  name,
 		NameSpace: crclient.NameSpace,
 		HardQuota: models.ResourceListToJSON(models.DefaultQuota),
 	}
 	mgr.taskController.AddUser(oldQuota.UserName, &oldQuota)
 
-	return &user, nil
+	user, err := query.User.WithContext(c).Where(query.User.Name.Eq(name)).First()
+	return user, err
 }
 
 func (mgr *AuthMgr) normalAuth(c *gin.Context, username, password string) error {
@@ -336,7 +329,7 @@ func (mgr *AuthMgr) actAuth(username, password string) error {
 
 type (
 	RefreshReq struct {
-		RefreshToken string `json:"refreshToken" binding:"required"`
+		RefreshToken string `json:"refreshToken" binding:"required"` // 不需要添加 `Bearer ` 前缀
 	}
 
 	RefreshResp struct {
@@ -349,7 +342,7 @@ func (mgr *AuthMgr) RefreshToken(c *gin.Context) {
 	var request RefreshReq
 
 	if err := c.ShouldBind(&request); err != nil {
-		resputil.HTTPError(c, http.StatusBadRequest, err.Error(), resputil.InvalidRequest)
+		resputil.BadRequestError(c, err.Error())
 		return
 	}
 
@@ -371,4 +364,74 @@ func (mgr *AuthMgr) RefreshToken(c *gin.Context) {
 	}
 
 	resputil.Success(c, refreshTokenResponse)
+}
+
+type SwitchProjectReq struct {
+	ProjectID uint `json:"id" binding:"required"`
+}
+
+// SwitchProject godoc
+// @Summary 类似登录，切换项目并返回新的 JWT Token
+// @Description 读取body中的项目ID，生成新的 JWT Token
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param project_id body SwitchProjectReq true "项目ID"
+// @Success 200 {object} resputil.Response[LoginResp] "用户上下文"
+// @Failure 400 {object} resputil.Response[any] "请求参数错误"
+// @Failure 500 {object} resputil.Response[any] "其他错误"
+// @Router /v1/switch [post]
+func (mgr *AuthMgr) SwitchProject(c *gin.Context) {
+	var req SwitchProjectReq
+	if err := c.ShouldBind(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	token, _ := util.GetToken(c)
+
+	// Check if the dist project exists
+	up := query.UserProject
+	p := query.Project
+
+	var projects []payload.ProjectResp
+	err := up.WithContext(c).Where(up.UserID.Eq(token.UserID), up.ProjectID.Eq(req.ProjectID), p.Status.Eq(uint8(model.StatusActive))).
+		Select(p.ID, p.Name, up.Role, p.IsPersonal, p.Status).Join(p, p.ID.EqCol(up.ProjectID)).Scan(&projects)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	if len(projects) != 1 {
+		resputil.HTTPError(c, http.StatusUnauthorized, "User has no project", resputil.NotSpecified)
+		return
+	}
+
+	// Get personal project id for the user (as the default project)
+	// Each user has a personal project (with the same name as the user)
+
+	// Generate JWT tokens
+	jwtMessage := util.JWTMessage{
+		UserID:       token.UserID,
+		ProjectID:    projects[0].ID,
+		ProjectRole:  projects[0].Role,
+		ClusterID:    1,
+		ClusterRole:  model.RoleUser,
+		PlatformRole: token.PlatformRole,
+	}
+	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
+	if err != nil {
+		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
+		return
+	}
+	loginResponse := LoginResp{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		Context: PlatformContext{
+			PID:          projects[0].ID,
+			ProjectRole:  projects[0].Role,
+			PlatformRole: token.PlatformRole,
+		},
+	}
+	resputil.Success(c, loginResponse)
 }

@@ -48,3 +48,8 @@ func HTTPError(c *gin.Context, httpCode int, msg string, errorCode ErrorCode) {
 		"msg":  msg,
 	})
 }
+
+// 用于 Gin ShouldBindJSON、ShouldBindQuery 等绑定参数失败时返回错误
+func BadRequestError(c *gin.Context, msg string) {
+	HTTPError(c, http.StatusBadRequest, msg, InvalidRequest)
+}
