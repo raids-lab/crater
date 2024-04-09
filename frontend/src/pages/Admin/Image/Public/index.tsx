@@ -16,7 +16,6 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
 import { NewTaskForm } from "./Form";
 import { TableDate } from "@/components/custom/TableDate";
 import { ImagePackInfo, imagepackStatuses } from "@/services/api/imagepack";
@@ -34,7 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from "@/components/ui-custom/alert-dialog";
 import { StopIcon } from "@radix-ui/react-icons";
 import { toast } from "sonner";
 import { logger } from "@/utils/loglevel";
