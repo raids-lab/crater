@@ -6,6 +6,7 @@ commitlint.config.cjs
 
 # Shadcn UI
 /src/components/ui/*
+/src/components/ui-custom/*
 
 # Mock Service Worker
 /public/mockServiceWorker.js
