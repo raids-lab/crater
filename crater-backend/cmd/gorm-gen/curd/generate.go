@@ -43,6 +43,7 @@ func main() {
 		model.ProjectSpace{},
 		model.Quota{},
 		model.AIJob{},
+		model.Label{},
 	)
 
 	// 执行并生成代码

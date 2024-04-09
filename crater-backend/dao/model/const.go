@@ -47,4 +47,11 @@ const (
 	JobPreempted           // 作业中的一个或多个 Pod 被抢占
 )
 
+type WorkerType uint8
+
+const (
+	_      WorkerType = iota
+	Nvidia            // Nvidia GPU worker
+)
+
 //go:generate stringer -type=Role,Status,AccessMode,JobStatus -output=const_string.go
