@@ -152,7 +152,7 @@ const Training: FC = () => {
     select: (res) => res.data.data.rows,
   });
 
-  const toolbarConfig: DataTableToolbarConfig = {
+  const toolbarConfig: DataTableToolbarConfig<string> = {
     filterInput: {
       placeholder: "搜索任务名",
       key: "taskName",

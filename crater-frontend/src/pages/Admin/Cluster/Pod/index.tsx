@@ -120,7 +120,7 @@ interface ClusterPodInfo {
   address: string;
 }
 
-const toolbarConfig: DataTableToolbarConfig = {
+const toolbarConfig: DataTableToolbarConfig<string> = {
   filterInput: {
     placeholder: "搜索容器组名称",
     key: "name",
