@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/login": {
             "post": {
-                "description": "校验用户身份，生成 JWT Token，返回用户活跃的项目列表",
+                "description": "校验用户身份，生成包含当前用户和项目的 JWT Token",
                 "consumes": [
                     "application/json"
                 ],
@@ -40,7 +40,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "登录成功，返回 JWT Token 和项目列表",
+                        "description": "登录成功，返回 JWT Token 和默认个人项目",
                         "schema": {
                             "$ref": "#/definitions/response.Response-handler_LoginResp"
                         }
@@ -59,6 +59,301 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "数据库交互错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/projects": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取所有项目的摘要信息，支持筛选条件、分页和排序",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "获取所有项目",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "筛选、排序参数",
+                        "name": "is_personal",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "name_like",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "x-enum-varnames": [
+                            "Asc",
+                            "Desc"
+                        ],
+                        "name": "order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "order_col",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "分页参数",
+                        "name": "page_index",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "name": "page_size",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Status is a uint8 type",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "项目列表",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-handler_ListAllResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/users": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "列出用户信息（包含私人配额）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "列出用户信息",
+                "responses": {
+                    "200": {
+                        "description": "成功获取用户信息",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-array_handler_UserResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/users/{name}": {
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "删除用户",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "删除用户",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "username",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "删除成功",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/users/{name}/quotas": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "更新配额",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "更新配额",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "username",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新quota",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.UpdateQuotaReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功更新配额",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/users/{name}/role": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "更新角色",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "更新角色",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "username",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "role",
+                        "name": "role",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.UpdateRoleReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "更新角色成功",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
                         "schema": {
                             "$ref": "#/definitions/response.Response-any"
                         }
@@ -104,6 +399,44 @@ const docTemplate = `{
             }
         },
         "/v1/projects": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "连接用户项目表和项目表，获取用户的所有项目的摘要信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "获取用户的所有项目",
+                "responses": {
+                    "200": {
+                        "description": "成功返回值描述",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-array_payload_ProjectResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -153,9 +486,63 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/v1/switch": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "读取body中的项目ID，生成新的 JWT Token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "类似登录，切换项目并返回新的 JWT Token",
+                "parameters": [
+                    {
+                        "description": "项目ID",
+                        "name": "project_id",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.SwitchProjectReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "用户上下文",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-handler_LoginResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "handler.ListAllResp": {
+            "type": "object"
+        },
         "handler.LoginReq": {
             "type": "object",
             "required": [
@@ -186,12 +573,6 @@ const docTemplate = `{
                 },
                 "context": {
                     "$ref": "#/definitions/handler.PlatformContext"
-                },
-                "projects": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/payload.ProjectResp"
-                    }
                 },
                 "refreshToken": {
                     "type": "string"
@@ -273,14 +654,123 @@ const docTemplate = `{
                 }
             }
         },
+        "handler.SwitchProjectReq": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handler.UpdateQuotaReq": {
+            "type": "object",
+            "properties": {
+                "cpu": {
+                    "type": "integer"
+                },
+                "cpuReq": {
+                    "type": "integer"
+                },
+                "extra": {
+                    "type": "string"
+                },
+                "gpu": {
+                    "type": "integer"
+                },
+                "gpuMem": {
+                    "type": "integer"
+                },
+                "gpuMemReq": {
+                    "type": "integer"
+                },
+                "gpuReq": {
+                    "type": "integer"
+                },
+                "job": {
+                    "type": "integer"
+                },
+                "jobReq": {
+                    "type": "integer"
+                },
+                "mem": {
+                    "type": "integer"
+                },
+                "memReq": {
+                    "type": "integer"
+                },
+                "node": {
+                    "type": "integer"
+                },
+                "nodeReq": {
+                    "type": "integer"
+                },
+                "storage": {
+                    "description": "使用指针解决参数不能为0的问题",
+                    "type": "integer"
+                }
+            }
+        },
+        "handler.UpdateRoleReq": {
+            "type": "object",
+            "required": [
+                "role"
+            ],
+            "properties": {
+                "role": {
+                    "$ref": "#/definitions/model.Role"
+                }
+            }
+        },
+        "handler.UserResp": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "用户ID",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "用户名称",
+                    "type": "string"
+                },
+                "quota": {
+                    "description": "ProjectID uint         ` + "`" + `json:\"projectID\"` + "`" + ` // 私人项目ID\n私人Quota，包含Job、Node等",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/payload.Quota"
+                        }
+                    ]
+                },
+                "role": {
+                    "description": "用户角色",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Role"
+                        }
+                    ]
+                },
+                "status": {
+                    "description": "用户状态",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Status"
+                        }
+                    ]
+                }
+            }
+        },
         "model.Role": {
             "type": "integer",
             "enum": [
                 0,
                 1,
-                2
+                2,
+                3
             ],
             "x-enum-varnames": [
+                "_",
                 "RoleGuest",
                 "RoleUser",
                 "RoleAdmin"
@@ -291,7 +781,8 @@ const docTemplate = `{
             "enum": [
                 0,
                 1,
-                2
+                2,
+                3
             ],
             "x-enum-comments": {
                 "StatusActive": "Active status",
@@ -299,9 +790,21 @@ const docTemplate = `{
                 "StatusPending": "Pending status, not yet activated"
             },
             "x-enum-varnames": [
+                "_",
                 "StatusPending",
                 "StatusActive",
                 "StatusInactive"
+            ]
+        },
+        "payload.Order": {
+            "type": "string",
+            "enum": [
+                "asc",
+                "desc"
+            ],
+            "x-enum-varnames": [
+                "Asc",
+                "Desc"
             ]
         },
         "payload.ProjectResp": {
@@ -334,6 +837,53 @@ const docTemplate = `{
                             "$ref": "#/definitions/model.Status"
                         }
                     ]
+                }
+            }
+        },
+        "payload.Quota": {
+            "type": "object",
+            "properties": {
+                "cpu": {
+                    "type": "integer"
+                },
+                "cpuReq": {
+                    "type": "integer"
+                },
+                "extra": {
+                    "type": "string"
+                },
+                "gpu": {
+                    "type": "integer"
+                },
+                "gpuMem": {
+                    "type": "integer"
+                },
+                "gpuMemReq": {
+                    "type": "integer"
+                },
+                "gpuReq": {
+                    "type": "integer"
+                },
+                "job": {
+                    "type": "integer"
+                },
+                "jobReq": {
+                    "type": "integer"
+                },
+                "mem": {
+                    "type": "integer"
+                },
+                "memReq": {
+                    "type": "integer"
+                },
+                "node": {
+                    "type": "integer"
+                },
+                "nodeReq": {
+                    "type": "integer"
+                },
+                "storage": {
+                    "type": "integer"
                 }
             }
         },
@@ -370,6 +920,54 @@ const docTemplate = `{
                 }
             }
         },
+        "response.Response-array_handler_UserResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/response.ErrorCode"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handler.UserResp"
+                    }
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.Response-array_payload_ProjectResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/response.ErrorCode"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/payload.ProjectResp"
+                    }
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.Response-handler_ListAllResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/response.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/handler.ListAllResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "response.Response-handler_LoginResp": {
             "type": "object",
             "properties": {
@@ -392,6 +990,20 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/handler.ProjectCreateResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.Response-string": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/response.ErrorCode"
+                },
+                "data": {
+                    "type": "string"
                 },
                 "msg": {
                     "type": "string"
