@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/payload"
+	"github.com/raids-lab/crater/internal/util"
 	resputil "github.com/raids-lab/crater/pkg/server/response"
 )
 
@@ -26,12 +27,14 @@ func (mgr *ContextMgr) RegisterProtected(g *gin.RouterGroup) {
 func (mgr *ContextMgr) RegisterAdmin(_ *gin.RouterGroup) {}
 
 func (mgr *ContextMgr) GetQuota(c *gin.Context) {
-	userID := c.GetUint("x-user-id")
-	projectID := c.GetUint("x-project-id")
-
+	token, err := util.GetToken(c)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("get token failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
 	up := query.UserProject
 	var quota payload.Quota
-	err := up.WithContext(c).Where(up.ProjectID.Eq(projectID), up.UserID.Eq(userID)).Select(up.ALL).Scan(&quota)
+	err = up.WithContext(c).Where(up.ProjectID.Eq(token.ProjectID), up.UserID.Eq(token.UserID)).Select(up.ALL).Scan(&quota)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("find quota failed, detail: %v", err), resputil.NotSpecified)
 		return

@@ -74,6 +74,10 @@ type UpdateRoleReq struct {
 	Role model.Role `json:"role" binding:"required"`
 }
 
+type UserNameReq struct {
+	Name string `uri:"name" binding:"required"`
+}
+
 // DeleteUser godoc
 // @Summary 删除用户
 // @Description 删除用户
@@ -155,7 +159,7 @@ func (mgr *UserMgr) ListUser(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param name path string true "username"
+// @Param name path UserNameReq true "username"
 // @Param data body UpdateQuotaReq true "更新quota"
 // @Success 200 {object} resputil.Response[string] "成功更新配额"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
@@ -163,11 +167,16 @@ func (mgr *UserMgr) ListUser(c *gin.Context) {
 // @Router /v1/admin/users/{name}/quotas [put]
 func (mgr *UserMgr) UpdateQuota(c *gin.Context) {
 	var req UpdateQuotaReq
+	var nameReq UserNameReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate update parameters failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
-	name := c.Param("name")
+	if err := c.ShouldBindUri(&nameReq); err != nil {
+		resputil.Error(c, fmt.Sprintf("validate update parameters failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+	name := nameReq.Name
 	p := query.Project
 	u := query.User
 	up := query.UserProject
@@ -228,19 +237,24 @@ func (mgr *UserMgr) UpdateQuota(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param name path string true "username"
-// @Param role body UpdateRoleReq true "role"
+// @Param name path UserNameReq true "username"
+// @Param data body UpdateRoleReq true "role"
 // @Success 200 {object} resputil.Response[string] "更新角色成功"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/admin/users/{name}/role [put]
 func (mgr *UserMgr) UpdateRole(c *gin.Context) {
 	var req UpdateRoleReq
+	var nameReq UserNameReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate update parameters failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
-	name := c.Param("name")
+	if err := c.ShouldBindUri(&nameReq); err != nil {
+		resputil.Error(c, fmt.Sprintf("validate update parameters failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+	name := nameReq.Name
 	if req.Role < 1 || req.Role > 3 {
 		resputil.Error(c, fmt.Sprintf("role value exceeds the allowed range 1-3,detail: Role is %s,out of range", req.Role),
 			resputil.NotSpecified)
