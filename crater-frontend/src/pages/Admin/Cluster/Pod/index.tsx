@@ -1,6 +1,6 @@
 import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, type FC } from "react";
+import { useEffect, useMemo, type FC } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
 import { DataTable } from "@/components/custom/OldDataTable";
@@ -27,9 +27,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
-
-import { CheckIcon } from "@radix-ui/react-icons";
-
 import {
   Card,
   CardContent,
@@ -39,9 +36,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Link, useParams } from "react-router-dom";
+import { Undo2 } from "lucide-react";
+import { useSetRecoilState } from "recoil";
+import { globalBreadCrumb } from "@/utils/store";
 
 type CardDemoProps = React.ComponentProps<typeof Card> & {
-  nodeInfo: {
+  nodeInfo?: {
     name: string;
     address: string;
     role: string;
@@ -57,7 +57,7 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
   return (
     <Card className={className} {...props}>
       <CardHeader>
-        <CardTitle>{nodeInfo.name}</CardTitle>
+        <CardTitle>{nodeInfo?.name}</CardTitle>
         <CardDescription>节点详细信息</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -65,44 +65,46 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
           <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
             <p className="text-xs text-gray-500">IP地址:</p>
             <p className="ml-2 text-sm font-medium text-black">
-              {nodeInfo.address}
+              {nodeInfo?.address}
             </p>
           </div>
           <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
             <p className="text-xs text-gray-500">节点角色:</p>
             <p className="ml-2 text-sm font-medium text-black">
-              {nodeInfo.role}
+              {nodeInfo?.role}
             </p>
           </div>
           <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
             <p className="text-xs text-gray-500">操作系统类型:</p>
-            <p className="ml-2 text-sm font-medium text-black">{nodeInfo.os}</p>
+            <p className="ml-2 text-sm font-medium text-black">
+              {nodeInfo?.os}
+            </p>
           </div>
           <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
             <p className="text-xs text-gray-500">系统架构:</p>
             <p className="ml-2 text-sm font-medium text-black">
-              {nodeInfo.arch}
+              {nodeInfo?.arch}
             </p>
           </div>
           <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
             <p className="text-xs text-gray-500">Kubelet版本:</p>
             <p className="ml-2 text-sm font-medium text-black">
-              {nodeInfo.kubeletVersion}
+              {nodeInfo?.kubeletVersion}
             </p>
           </div>
           <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
             <p className="text-xs text-gray-500">容器运行时版本:</p>
             <p className="ml-2 text-sm font-medium text-black">
-              {nodeInfo.containerRuntimeVersion}
+              {nodeInfo?.containerRuntimeVersion}
             </p>
           </div>
         </div>
       </CardContent>
       <CardFooter className="flex justify-center">
-        <div className="w-full max-w-xs">
+        <div className="w-full">
           <Link to="/admin/cluster/node" className="w-full">
             <Button className="w-full">
-              <CheckIcon className="mr-2 h-4 w-4" /> 返回集群节点列表
+              <Undo2 className="mr-2 h-4 w-4" /> 返回集群节点列表
             </Button>
           </Link>
         </div>
@@ -242,14 +244,35 @@ export const PodStatusDetail: FC = () => {
     queryKey: ["admin", "nodes", nodeName],
     queryFn: () => apiGetAdminNodeDetail(`${nodeName}`),
     select: (res) => res.data.data,
+    enabled: !!nodeName,
   });
+  const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
+
+  // 修改 BreadCrumb
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+    setBreadcrumb([
+      {
+        title: "集群管理",
+      },
+      {
+        title: "计算节点",
+        path: "/admin/cluster/node",
+      },
+      {
+        title: `${nodeName}`,
+      },
+    ]);
+  }, [setBreadcrumb, nodeName, isLoading]);
 
   // 处理 podsList 变量
   const podsInfo: ClusterPodInfo[] = useMemo(() => {
     if (isLoading || !nodeInfo) {
       return [];
     }
-    return nodeInfo.pods
+    return nodeInfo?.pods
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((x) => {
         return {
@@ -262,11 +285,11 @@ export const PodStatusDetail: FC = () => {
   }, [isLoading, nodeInfo]);
 
   return (
-    <div className="flex flex-row gap-4">
-      <div className="w-1/4 flex-none">
-        {nodeInfo !== undefined && <CardDemo nodeInfo={nodeInfo} />}
+    <div className="col-span-3 grid gap-8 md:grid-cols-4">
+      <div className="flex-none">
+        <CardDemo nodeInfo={nodeInfo} />
       </div>
-      <div className="flex-grow">
+      <div className="md:col-span-3">
         <DataTable
           data={podsInfo}
           columns={columns}
