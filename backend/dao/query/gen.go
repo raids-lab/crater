@@ -18,6 +18,7 @@ import (
 var (
 	Q            = new(Query)
 	AIJob        *aIJob
+	Label        *label
 	Project      *project
 	ProjectSpace *projectSpace
 	Quota        *quota
@@ -29,6 +30,7 @@ var (
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
 	AIJob = &Q.AIJob
+	Label = &Q.Label
 	Project = &Q.Project
 	ProjectSpace = &Q.ProjectSpace
 	Quota = &Q.Quota
@@ -41,6 +43,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:           db,
 		AIJob:        newAIJob(db, opts...),
+		Label:        newLabel(db, opts...),
 		Project:      newProject(db, opts...),
 		ProjectSpace: newProjectSpace(db, opts...),
 		Quota:        newQuota(db, opts...),
@@ -54,6 +57,7 @@ type Query struct {
 	db *gorm.DB
 
 	AIJob        aIJob
+	Label        label
 	Project      project
 	ProjectSpace projectSpace
 	Quota        quota
@@ -68,6 +72,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:           db,
 		AIJob:        q.AIJob.clone(db),
+		Label:        q.Label.clone(db),
 		Project:      q.Project.clone(db),
 		ProjectSpace: q.ProjectSpace.clone(db),
 		Quota:        q.Quota.clone(db),
@@ -89,6 +94,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:           db,
 		AIJob:        q.AIJob.replaceDB(db),
+		Label:        q.Label.replaceDB(db),
 		Project:      q.Project.replaceDB(db),
 		ProjectSpace: q.ProjectSpace.replaceDB(db),
 		Quota:        q.Quota.replaceDB(db),
@@ -100,6 +106,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 
 type queryCtx struct {
 	AIJob        IAIJobDo
+	Label        ILabelDo
 	Project      IProjectDo
 	ProjectSpace IProjectSpaceDo
 	Quota        IQuotaDo
@@ -111,6 +118,7 @@ type queryCtx struct {
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
 		AIJob:        q.AIJob.WithContext(ctx),
+		Label:        q.Label.WithContext(ctx),
 		Project:      q.Project.WithContext(ctx),
 		ProjectSpace: q.ProjectSpace.WithContext(ctx),
 		Quota:        q.Quota.WithContext(ctx),

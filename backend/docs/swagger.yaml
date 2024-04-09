@@ -1,4 +1,15 @@
 definitions:
+  handler.CreateJobReq:
+    properties:
+      extra:
+        type: string
+      name:
+        type: string
+      resourceRequest:
+        type: string
+      taskType:
+        type: string
+    type: object
   handler.ListAllResp:
     type: object
   handler.LoginReq:
@@ -110,7 +121,6 @@ definitions:
       nodeReq:
         type: integer
       storage:
-        description: 使用指针解决参数不能为0的问题
         type: integer
     type: object
   handler.UpdateRoleReq:
@@ -119,6 +129,14 @@ definitions:
         $ref: '#/definitions/model.Role'
     required:
     - role
+    type: object
+  handler.UpdateTaskReq:
+    properties:
+      slo:
+        description: change the slo of the job
+        type: integer
+    required:
+    - slo
     type: object
   handler.UserResp:
     properties:
@@ -131,9 +149,7 @@ definitions:
       quota:
         allOf:
         - $ref: '#/definitions/payload.Quota'
-        description: |-
-          ProjectID uint         `json:"projectID"` // 私人项目ID
-          私人Quota，包含Job、Node等
+        description: 私人Quota，包含Job、Node等
       role:
         allOf:
         - $ref: '#/definitions/model.Role'
@@ -171,6 +187,33 @@ definitions:
     - StatusPending
     - StatusActive
     - StatusInactive
+  payload.ClusterNodePodInfo:
+    properties:
+      address:
+        type: string
+      arch:
+        type: string
+      containerRuntimeVersion:
+        type: string
+      isReady:
+        type: boolean
+      kubeletVersion:
+        type: string
+      name:
+        type: string
+      os:
+        type: string
+      osVersion:
+        type: string
+      pods:
+        items:
+          $ref: '#/definitions/payload.Pod'
+        type: array
+      role:
+        type: string
+      time:
+        type: string
+    type: object
   payload.Order:
     enum:
     - asc
@@ -179,6 +222,21 @@ definitions:
     x-enum-varnames:
     - Asc
     - Desc
+  payload.Pod:
+    properties:
+      CPU:
+        type: number
+      IP:
+        type: string
+      Mem:
+        type: string
+      createTime:
+        type: string
+      name:
+        type: string
+      status:
+        type: string
+    type: object
   payload.ProjectResp:
     properties:
       id:
@@ -305,6 +363,15 @@ definitions:
       msg:
         type: string
     type: object
+  response.Response-payload_ClusterNodePodInfo:
+    properties:
+      code:
+        $ref: '#/definitions/response.ErrorCode'
+      data:
+        $ref: '#/definitions/payload.ClusterNodePodInfo'
+      msg:
+        type: string
+    type: object
   response.Response-string:
     properties:
       code:
@@ -354,6 +421,132 @@ paths:
       summary: 用户登录
       tags:
       - Auth
+  /v1/admin/aijobs/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an AI job by its unique identifier.
+      parameters:
+      - description: AI job ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: Delete an AIJob by ID
+      tags:
+      - AIJob
+    get:
+      consumes:
+      - application/json
+      description: 检查用户id获取指定id的job
+      parameters:
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回任务结构体
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 用户获取指定任务
+      tags:
+      - AIJob
+  /v1/admin/aijobs/stats:
+    get:
+      consumes:
+      - application/json
+      description: 数据库查表count group后返回
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 状态统计列表
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 管理员获取各类任务状态统计情况
+      tags:
+      - AIJob
+  /v1/admin/aijobs/type:
+    get:
+      consumes:
+      - application/json
+      description: 查询某类型的全部任务
+      parameters:
+      - description: 分页参数
+        in: query
+        name: page_index
+        required: true
+        type: integer
+      - in: query
+        name: page_size
+        required: true
+        type: integer
+      - description: 筛选、排序参数
+        in: query
+        name: taskType
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 总数和jobs数组
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 管理员获取指定类型任务列表
+      tags:
+      - AIJob
   /v1/admin/projects:
     get:
       consumes:
@@ -474,8 +667,7 @@ paths:
       - application/json
       description: 更新配额
       parameters:
-      - description: username
-        in: path
+      - in: path
         name: name
         required: true
         type: string
@@ -511,14 +703,13 @@ paths:
       - application/json
       description: 更新角色
       parameters:
-      - description: username
-        in: path
+      - in: path
         name: name
         required: true
         type: string
       - description: role
         in: body
-        name: role
+        name: data
         required: true
         schema:
           $ref: '#/definitions/handler.UpdateRoleReq'
@@ -542,6 +733,38 @@ paths:
       summary: 更新角色
       tags:
       - User
+  /v1/aijobs:
+    post:
+      consumes:
+      - application/json
+      description: 创建任务并获取任务id.
+      parameters:
+      - description: 任务结构体
+        in: body
+        name: CreateJobReq
+        required: true
+        schema:
+          $ref: '#/definitions/handler.CreateJobReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 创建任务
+      tags:
+      - AIJob
   /v1/aijobs/{id}:
     delete:
       consumes:
@@ -560,11 +783,293 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/response.Response-any'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
       security:
       - Bearer: []
       summary: Delete an AIJob by ID
       tags:
       - AIJob
+    get:
+      consumes:
+      - application/json
+      description: 检查用户id获取指定id的job
+      parameters:
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回任务结构体
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 用户获取指定任务
+      tags:
+      - AIJob
+  /v1/aijobs/getLogs/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 通过指定任务id查询对应pod获取日志
+      parameters:
+      - description: 任务id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 日志信息
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 获取任务日志
+      tags:
+      - AIJob
+  /v1/aijobs/getQuota:
+    get:
+      consumes:
+      - application/json
+      description: 目前只查了数据库确认用户情况，实际直接从sync map获取
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 用户quota描述结构体
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 获取用户当前配额
+      tags:
+      - AIJob
+  /v1/aijobs/getToken/{id}:
+    get:
+      consumes:
+      - application/json
+      description: get token from db or pods logs
+      parameters:
+      - description: jupyter对应任务id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 端口和token结构体
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: get token for access jupyter lab
+      tags:
+      - AIJob
+  /v1/aijobs/jobStats:
+    get:
+      consumes:
+      - application/json
+      description: 数据库查表count group后返回
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 状态统计列表
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 获取用户各类任务状态统计情况
+      tags:
+      - AIJob
+  /v1/aijobs/listByStatus:
+    get:
+      consumes:
+      - application/json
+      description: 根据任务状态和分页要求查询用户下的任务
+      parameters:
+      - description: 分页参数
+        in: query
+        name: page_index
+        required: true
+        type: integer
+      - in: query
+        name: page_size
+        required: true
+        type: integer
+      - description: 筛选、排序参数
+        in: query
+        name: status
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 总数和任务数组
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 用户查询任务列表
+      tags:
+      - AIJob
+  /v1/aijobs/updateSLO/{id}:
+    post:
+      consumes:
+      - application/json
+      description: 根据传入的id和字段值更新任务slo
+      parameters:
+      - description: 任务id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 任务slo
+        in: body
+        name: slo
+        required: true
+        schema:
+          $ref: '#/definitions/handler.UpdateTaskReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: "null"
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 更新任务slo
+      tags:
+      - AIJob
+  /v1/nodes:
+    get:
+      consumes:
+      - application/json
+      description: kubectl + prometheus获取节点基本信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回值描述，注意这里返回Json字符串，swagger无法准确解析
+          schema:
+            $ref: '#/definitions/response.Response-string'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 获取节点基本信息
+      tags:
+      - Node
+  /v1/nodes/{name}/pod/:
+    get:
+      consumes:
+      - application/json
+      description: kubectl + prometheus获取节点Pod信息
+      parameters:
+      - description: 节点名称
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回值描述
+          schema:
+            $ref: '#/definitions/response.Response-payload_ClusterNodePodInfo'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 获取节点Pod信息
+      tags:
+      - Node
   /v1/projects:
     get:
       consumes:
