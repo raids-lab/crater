@@ -12,7 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import Signup from "./pages/Signup";
 import { portalRoute } from "./pages/Portal";
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui-custom/sonner";
 import { ThemeProvider } from "./utils/theme";
 import { VITE_UI_THEME_KEY } from "./utils/store";
 import { adminRoute } from "./pages/Admin";

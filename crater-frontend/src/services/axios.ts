@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig, isAxiosError } from "axios";
-import { IErrorResponse, IRefresh, IRefreshResponse } from "./types";
+import { IErrorResponse, IRefresh, IRefreshResponse, IResponse } from "./types";
 import {
   ERROR_INVALID_REQUEST,
   ERROR_INVALID_ROLE,
@@ -27,8 +27,11 @@ const refreshTokenFn = async (): Promise<string> => {
   const data: IRefresh = {
     refreshToken: localStorage.getItem(REFRESH_TOKEN_KEY) || "",
   };
-  const response = await instance.post<IRefreshResponse>("/refresh", data);
-  const { accessToken, refreshToken } = response.data;
+  const response = await instance.post<IResponse<IRefreshResponse>>(
+    "/refresh",
+    data,
+  );
+  const { accessToken, refreshToken } = response.data.data;
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
   return accessToken;
