@@ -14,6 +14,11 @@ type NodeMgr struct {
 	nodeClient *crclient.NodeClient
 }
 
+// 接收 URI 中的参数
+type NodePodRequest struct {
+	Name string `uri:"name" binding:"required"`
+}
+
 func NewNodeMgr(nodeClient *crclient.NodeClient) Manager {
 	return &NodeMgr{
 		nodeClient: nodeClient,
@@ -28,7 +33,7 @@ func (mgr *NodeMgr) RegisterProtected(g *gin.RouterGroup) {
 
 func (mgr *NodeMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.ListNode)
-	g.GET("/pod/:name", mgr.ListNodePod)
+	g.GET("/:name/pod", mgr.ListNodePod)
 }
 
 // ListNode godoc
@@ -41,7 +46,7 @@ func (mgr *NodeMgr) RegisterAdmin(g *gin.RouterGroup) {
 // @Success 200 {object} resputil.Response[string] "成功返回值描述，注意这里返回Json字符串，swagger无法准确解析"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /nodes [get]
+// @Router /v1/nodes [get]
 func (mgr *NodeMgr) ListNode(c *gin.Context) {
 	logutils.Log.Infof("Node List, url: %s", c.Request.URL)
 	nodes, err := mgr.nodeClient.ListNodes()
@@ -66,17 +71,19 @@ func (mgr *NodeMgr) ListNode(c *gin.Context) {
 // @Success 200 {object} resputil.Response[payload.ClusterNodePodInfo] "成功返回值描述"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /nodes/pod/{name} [get]
+// @Router /v1/nodes/{name}/pod/ [get]
 func (mgr *NodeMgr) ListNodePod(c *gin.Context) {
-	logutils.Log.Infof("Node List, url: %s", c.Request.URL)
-	name := c.Param("name")
-	if name == "" {
-		resputil.Error(c, "name is empty", resputil.NotSpecified)
+	var req NodePodRequest
+	if err := c.ShouldBindUri(&req); err != nil {
+		logutils.Log.Infof("Bind URI failed, err: %v", err)
+		resputil.Error(c, "Invalid request parameter", resputil.NotSpecified)
 		return
 	}
-	nodes, err := mgr.nodeClient.ListNodesPod(name)
+
+	logutils.Log.Infof("Node List Pod, name: %s", req.Name)
+	nodes, err := mgr.nodeClient.ListNodesPod(req.Name)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("list nodes pods failed, err %v", err), resputil.NotSpecified)
+		resputil.Error(c, fmt.Sprintf("List nodes pods failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 	resputil.Success(c, nodes)
