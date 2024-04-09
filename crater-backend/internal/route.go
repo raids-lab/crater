@@ -96,6 +96,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	authMgr.RegisterProtected(protectedRouter.Group("/switch"))
 	aijobMgr.RegisterProtected(protectedRouter.Group("/aijobs"))
 	projectMgr.RegisterProtected(protectedRouter.Group("/projects"))
+	nodeMgr.RegisterProtected(protectedRouter.Group("/nodes"))
 
 	///////////////////////////////////////
 	//// Admin routers, need admin role ///
