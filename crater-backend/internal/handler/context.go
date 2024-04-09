@@ -26,13 +26,12 @@ func (mgr *ContextMgr) RegisterProtected(g *gin.RouterGroup) {
 func (mgr *ContextMgr) RegisterAdmin(_ *gin.RouterGroup) {}
 
 func (mgr *ContextMgr) GetQuota(c *gin.Context) {
-
-	user_id := c.GetUint("x-user-id")
-	project_id := c.GetUint("x-project-id")
+	userID := c.GetUint("x-user-id")
+	projectID := c.GetUint("x-project-id")
 
 	up := query.UserProject
 	var quota payload.Quota
-	err := up.WithContext(c).Where(up.ProjectID.Eq(project_id), up.UserID.Eq(user_id)).Select(up.ALL).Scan(&quota)
+	err := up.WithContext(c).Where(up.ProjectID.Eq(projectID), up.UserID.Eq(userID)).Select(up.ALL).Scan(&quota)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("find quota failed, detail: %v", err), resputil.NotSpecified)
 		return

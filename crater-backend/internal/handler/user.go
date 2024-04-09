@@ -17,6 +17,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
+type UserMgr struct {
+	taskController *aitaskctl.TaskController
+}
+
 func NewUserMgr(taskController *aitaskctl.TaskController) Manager {
 	return &UserMgr{
 		taskController: taskController,
@@ -34,16 +38,11 @@ func (mgr *UserMgr) RegisterAdmin(users *gin.RouterGroup) {
 	users.PUT("/:name/quotas", mgr.UpdateQuota)
 }
 
-type UserMgr struct {
-	taskController *aitaskctl.TaskController
-}
-
 type UserResp struct {
 	ID     uint         `json:"id"`     // 用户ID
 	Name   string       `json:"name"`   // 用户名称
 	Role   model.Role   `json:"role"`   // 用户角色
 	Status model.Status `json:"status"` // 用户状态
-	//ProjectID uint         `json:"projectID"` // 私人项目ID
 	// 私人Quota，包含Job、Node等
 	Quota payload.Quota `json:"quota"`
 }
@@ -67,7 +66,7 @@ type UpdateQuotaReq struct {
 	GPUMemReq *int `json:"gpuMemReq"`
 	GPUMem    *int `json:"gpuMem"`
 
-	Storage *int    `json:"storage"` //使用指针解决参数不能为0的问题
+	Storage *int    `json:"storage"`
 	Extra   *string `json:"extra"`
 }
 
@@ -117,7 +116,7 @@ func (mgr *UserMgr) ListUser(c *gin.Context) {
 	p := query.Project
 	up := query.UserProject
 	q := query.Quota
-	//var users []UserResp
+
 	userProjects, err := up.WithContext(c).Join(p, p.ID.EqCol(up.ProjectID), p.IsPersonal.Is(true)).Join(u, u.ID.EqCol(up.UserID)).
 		Select(u.ID, u.Name, u.Role, u.Status, up.ALL).Find()
 	if err != nil {
@@ -183,7 +182,7 @@ func (mgr *UserMgr) UpdateQuota(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("get userProject failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
-	_, err = q.WithContext(c).Where(q.ProjectID.Eq(userProject.ProjectID)).Updates(map[string]interface{}{
+	_, err = q.WithContext(c).Where(q.ProjectID.Eq(userProject.ProjectID)).Updates(map[string]any{
 		"job_req":     *req.JobReq,
 		"job":         *req.Job,
 		"node_req":    *req.NodeReq,
@@ -243,7 +242,8 @@ func (mgr *UserMgr) UpdateRole(c *gin.Context) {
 	}
 	name := c.Param("name")
 	if req.Role < 1 || req.Role > 3 {
-		resputil.Error(c, fmt.Sprintf("role value exceeds the allowed range 1-3,detail: Role is %s,out of range", req.Role), resputil.NotSpecified)
+		resputil.Error(c, fmt.Sprintf("role value exceeds the allowed range 1-3,detail: Role is %s,out of range", req.Role),
+			resputil.NotSpecified)
 		return
 	}
 	u := query.User
