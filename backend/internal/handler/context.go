@@ -36,11 +36,19 @@ func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 	var quota payload.Quota
 	err = up.WithContext(c).Where(up.ProjectID.Eq(token.ProjectID), up.UserID.Eq(token.UserID)).Select(up.ALL).Scan(&quota)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("find quota failed, detail: %v", err), resputil.NotSpecified)
+		resputil.Error(c, fmt.Sprintf("find quota of user in project failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
+	q := query.Quota
+	var quotaInProject payload.Quota
+	err = q.WithContext(c).Where(q.ProjectID.Eq(token.ProjectID)).Select(q.ALL).Scan(&quotaInProject)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("find quota of project failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+	newQuota := QuotaLimitOrNot(&quota, &quotaInProject)
 
-	resputil.Success(c, quota)
+	resputil.Success(c, *newQuota)
 
 	// 获取当前用户当前项目的Quota
 }
@@ -84,22 +92,3 @@ func QuotaLimitOrNot(quota, quotaInProject *payload.Quota) *payload.Quota {
 	}
 	return quota
 }
-
-// func QuotaLimitOrNot1(quota *payload.Quota, quotaInProject payload.Quota) payload.Quota {
-// 	const nolimit = -1
-// 	quotaValue := reflect.ValueOf(&quota).Elem()
-// 	projectValue := reflect.ValueOf(&quotaInProject).Elem()
-
-// 	for i := 0; i < quotaValue.NumField(); i++ {
-// 		field := quotaValue.Field(i)
-// 		projectField := projectValue.Field(i)
-// 		fieldType := quotaValue.Type().Field(i)
-// 		if fieldType.Name == "Storage" || fieldType.Name == "Extra" {
-// 			continue
-// 		}
-// 		if field.Int() == nolimit {
-// 			field.SetInt(projectField.Int())
-// 		}
-// 	}
-// 	return quota
-// }
