@@ -75,6 +75,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	// Init Handlers
 	authMgr := handler.NewAuthMgr(aitaskCtrl)
 	aijobMgr := handler.NewAIJobMgr(aitaskCtrl, &pvcClient, &logClient)
+	labelMgr := handler.NewLabelMgr()
 	projectMgr := handler.NewProjectMgr()
 	nodeMgr := handler.NewNodeMgr(&nodeClient)
 	userMgr := handler.NewUserMgr(aitaskCtrl)
@@ -96,6 +97,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 
 	authMgr.RegisterProtected(protectedRouter.Group("/switch"))
 	aijobMgr.RegisterProtected(protectedRouter.Group("/aijobs"))
+	labelMgr.RegisterProtected(protectedRouter.Group("/labels"))
 	projectMgr.RegisterProtected(protectedRouter.Group("/projects"))
 	nodeMgr.RegisterProtected(protectedRouter.Group("/nodes"))
 
@@ -107,6 +109,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	adminRouter.Use(middleware.AuthProtected(), middleware.AuthAdmin())
 
 	aijobMgr.RegisterAdmin(adminRouter.Group("/aijobs"))
+	labelMgr.RegisterAdmin(adminRouter.Group("/labels"))
 	projectMgr.RegisterAdmin(adminRouter.Group("/projects"))
 	nodeMgr.RegisterAdmin(adminRouter.Group("/nodes"))
 	userMgr.RegisterAdmin(adminRouter.Group("/users"))
