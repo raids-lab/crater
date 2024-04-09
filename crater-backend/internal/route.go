@@ -77,6 +77,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	aijobMgr := handler.NewAIJobMgr(aitaskCtrl, &pvcClient, &logClient)
 	projectMgr := handler.NewProjectMgr()
 	nodeMgr := handler.NewNodeMgr(&nodeClient)
+	userMgr := handler.NewUserMgr(aitaskCtrl)
 
 	///////////////////////////////////////
 	//// Public routers, no need login ////
@@ -108,4 +109,5 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	aijobMgr.RegisterAdmin(adminRouter.Group("/aijobs"))
 	projectMgr.RegisterAdmin(adminRouter.Group("/projects"))
 	nodeMgr.RegisterAdmin(adminRouter.Group("/nodes"))
+	userMgr.RegisterAdmin(adminRouter.Group("/users"))
 }
