@@ -260,7 +260,7 @@ export const Component: FC = () => {
         return key;
     }
   };
-  const toolbarConfig: DataTableToolbarConfig = {
+  const toolbarConfig: DataTableToolbarConfig<string> = {
     filterInput: {
       placeholder: "搜索名称",
       key: "basename",
