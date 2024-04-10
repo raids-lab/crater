@@ -42,8 +42,6 @@ export const apiGetAdminNodes = () =>
   >(VERSION + "/admin/nodes");
 
 export const apiGetAdminNodeDetail = (name: string) =>
-  instance.get<IResponse<IClusterNodeDetail>>(VERSION + "/admin/nodes/pod", {
-    params: {
-      name,
-    },
-  });
+  instance.get<IResponse<IClusterNodeDetail>>(
+    VERSION + `/admin/nodes/${name}/pod`,
+  );

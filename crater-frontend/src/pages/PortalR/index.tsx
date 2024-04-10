@@ -7,7 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { FC, PropsWithChildren, Suspense } from "react";
 import { Navigate, RouteObject } from "react-router-dom";
 import { FileTextIcon, Pencil2Icon } from "@radix-ui/react-icons";
-import { DashboardLayout } from "../Portal";
+import { Role } from "@/services/api/auth";
+import DashboardLayout from "@/components/layout/Dashboard";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -89,7 +90,7 @@ const sidebarMenus: SidebarMenu[] = [
 ];
 
 const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
-  const isAuthenticated = useAuth("user");
+  const isAuthenticated = useAuth(Role.User);
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 

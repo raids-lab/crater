@@ -9,8 +9,9 @@ import {
   DataTableFacetedFilter,
   DataTableFacetedFilterOption,
 } from "./DataTableFacetedFilter";
+import { Search } from "lucide-react";
 
-export interface DataTableToolbarConfig {
+export interface DataTableToolbarConfig<TFilter> {
   filterInput: {
     placeholder: string;
     key: string;
@@ -18,38 +19,47 @@ export interface DataTableToolbarConfig {
   filterOptions: {
     key: string;
     title: string;
-    option: DataTableFacetedFilterOption[];
+    option: DataTableFacetedFilterOption<TFilter>[];
   }[];
   getHeader: (key: string) => string;
 }
 
-interface DataTableToolbarProps<TData>
+interface DataTableToolbarProps<TData, TFilter>
   extends React.HTMLAttributes<HTMLDivElement> {
   table: Table<TData>;
-  config: DataTableToolbarConfig;
+  config: DataTableToolbarConfig<TFilter>;
 }
 
-export function DataTableToolbar<TData>({
+export function DataTableToolbar<
+  TData,
+  TFilter extends string | number | bigint,
+>({
   table,
   config: { filterInput, filterOptions, getHeader },
   children,
-}: DataTableToolbarProps<TData>) {
+}: DataTableToolbarProps<TData, TFilter>) {
   const isFiltered = table.getState().columnFilters.length > 0;
 
   return (
     <div className="flex items-center justify-between">
-      <div className="flex flex-1 items-center space-x-2">
+      <div className="flex flex-row items-center space-x-2">
         {children}
-        <Input
-          placeholder={filterInput.placeholder}
-          value={
-            (table.getColumn(filterInput.key)?.getFilterValue() as string) ?? ""
-          }
-          onChange={(event) =>
-            table.getColumn(filterInput.key)?.setFilterValue(event.target.value)
-          }
-          className="h-8 w-[150px] lg:w-[250px]"
-        />
+        <div className="relative ml-auto h-8 flex-1 md:grow-0">
+          <Search className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={filterInput.placeholder}
+            value={
+              (table.getColumn(filterInput.key)?.getFilterValue() as string) ??
+              ""
+            }
+            onChange={(event) =>
+              table
+                .getColumn(filterInput.key)
+                ?.setFilterValue(event.target.value)
+            }
+            className="h-8 w-[150px] bg-background pl-8 lg:w-[250px]"
+          />
+        </div>
         {filterOptions.map(
           (filterOption) =>
             table.getColumn(filterOption.key) && (

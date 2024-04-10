@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from "@/components/ui-custom/alert-dialog";
 import {
   CircleIcon,
   ClockIcon,
@@ -372,8 +372,8 @@ const Jupyter: FC = () => {
   );
 
   return (
-    <div className="space-y-6">
-      <Alert variant="destructive">
+    <>
+      <Alert variant="destructive" className="col-span-3">
         <ExclamationTriangleIcon className="h-4 w-4" />
         <AlertTitle>Warining</AlertTitle>
         <AlertDescription>
@@ -389,7 +389,7 @@ const Jupyter: FC = () => {
         onPaginationChange={setPagination}
         rowCount={tasks?.rowCount || 0}
       ></DataTable>
-    </div>
+    </>
   );
 };
 

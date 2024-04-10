@@ -1,6 +1,7 @@
 import axios, { AxiosRequestConfig, isAxiosError } from "axios";
-import { IErrorResponse, IRefresh, IRefreshResponse } from "./types";
+import { IErrorResponse, IRefresh, IRefreshResponse, IResponse } from "./types";
 import {
+  ERROR_INVALID_REQUEST,
   ERROR_INVALID_ROLE,
   ERROR_NOT_SPECIFIED,
   ERROR_TOKEN_EXPIRED,
@@ -26,8 +27,11 @@ const refreshTokenFn = async (): Promise<string> => {
   const data: IRefresh = {
     refreshToken: localStorage.getItem(REFRESH_TOKEN_KEY) || "",
   };
-  const response = await instance.post<IRefreshResponse>("/refresh", data);
-  const { accessToken, refreshToken } = response.data;
+  const response = await instance.post<IResponse<IRefreshResponse>>(
+    "/refresh",
+    data,
+  );
+  const { accessToken, refreshToken } = response.data.data;
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
   return accessToken;
@@ -73,7 +77,11 @@ instance.interceptors.response.use(
         window.location.href = "/portal";
       } else if (error.response?.data.code === ERROR_NOT_SPECIFIED) {
         showErrorToast(error);
+      } else if (error.response?.data.code === ERROR_INVALID_REQUEST) {
+        showErrorToast(`请求参数有误`);
       }
+    } else {
+      showErrorToast(error);
     }
     return Promise.reject(error);
   },

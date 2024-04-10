@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from "@/components/ui-custom/alert-dialog";
 import {
   CircleIcon,
   ClockIcon,
@@ -152,7 +152,7 @@ const Training: FC = () => {
     select: (res) => res.data.data.rows,
   });
 
-  const toolbarConfig: DataTableToolbarConfig = {
+  const toolbarConfig: DataTableToolbarConfig<string> = {
     filterInput: {
       placeholder: "搜索任务名",
       key: "taskName",
@@ -435,14 +435,12 @@ const Training: FC = () => {
   );
 
   return (
-    <div className="space-y-4">
-      <DataTable
-        data={data}
-        columns={columns}
-        toolbarConfig={toolbarConfig}
-        loading={isLoading}
-      ></DataTable>
-    </div>
+    <DataTable
+      data={data}
+      columns={columns}
+      toolbarConfig={toolbarConfig}
+      loading={isLoading}
+    />
   );
 };
 

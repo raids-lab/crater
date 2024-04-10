@@ -1,5 +1,4 @@
 import type { FC } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useNavigate, useLocation } from "react-router-dom";
 import { createClient } from "webdav";
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -10,12 +9,13 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { TableDate } from "@/components/custom/TableDate";
+import { FileSizeComponent } from "@/components/custom/FileSize";
 import {
   DownloadIcon,
   UploadIcon,
   PlusIcon,
-  FileIcon,
-  ArchiveIcon,
+  ArrowLeftIcon,
 } from "@radix-ui/react-icons";
 import {
   Dialog,
@@ -29,7 +29,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { logger } from "@/utils/loglevel";
+import { File, Folder } from "lucide-react";
+import { useSetRecoilState } from "recoil";
+import { globalBreadCrumb } from "@/utils/store";
+//import { saveAs } from "file-saver";
+//import { cn } from "@/lib/utils";
 
 type FileStat = {
   filename: string;
@@ -42,43 +46,95 @@ type FileStat = {
   //props?: DAVResultResponseProps;
 };
 
+const client = createClient("https://crater.act.buaa.edu.cn/dufs/share", {
+  username: "",
+  password: "",
+});
+
 export const Component: FC = () => {
-  const location = useLocation();
-  const path = location.pathname.replace("/portal/data/share", "");
+  const { pathname } = useLocation();
   const navigate = useNavigate();
-  const client = createClient("https://crater.act.buaa.edu.cn/dufs/share", {
-    username: "",
-    password: "",
-  });
   const [data, setData] = useState<FileStat[]>([]);
   const [dirName, setDirName] = useState<string>("");
-  const contents = async () => await client.getDirectoryContents(`${path}`);
+  const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
+
+  const path = useMemo(
+    () => pathname.replace(/^\/portal\/data\/share/, ""),
+    [pathname],
+  );
+
+  useEffect(() => {
+    const pathParts = pathname.split("/").filter(Boolean);
+    const breadcrumb = pathParts.map((value, index) => {
+      if (index == 0 && value == "portal") {
+        return {
+          title: "Portal",
+        };
+      } else if (index == 1 && value == "data") {
+        return {
+          title: "数据管理",
+          path: "/portal/data",
+        };
+      } else if (index == 2 && value == "share") {
+        return {
+          title: "共享文件",
+          path: "/portal/data/share",
+        };
+      }
+      return {
+        title: value,
+        path: `/${pathParts.slice(0, index + 1).join("/")}`,
+      };
+    });
+    // 删除第一个元素
+    breadcrumb.shift();
+    // 将最后一个元素的 path 设置为 undefined
+    if (breadcrumb.length > 1) {
+      breadcrumb[breadcrumb.length - 1].path = undefined;
+    }
+    setBreadcrumb(breadcrumb);
+  }, [pathname, setBreadcrumb]);
+
+  const backpath = useMemo(() => {
+    // pathname is /xxx/xxx/xxx/aaa
+    // backpath is /xxx/xxx/xxx
+    return pathname.replace(/\/[^/]+$/, "");
+  }, [pathname]);
 
   const {
     data: rootList,
     isLoading,
     //dataUpdatedAt,
   } = useQuery({
-    queryKey: ["root", "list"],
-    queryFn: contents,
+    queryKey: ["data", "share", path],
+    queryFn: () => client.getDirectoryContents(`${path}`),
     select: (res) => res,
   });
 
   useEffect(() => {
     if (isLoading) return;
     if (!rootList) return;
-    //async () => await client.createDirectory("/dnn-train-data/ceshi");
-    const tableData: FileStat[] = (rootList as Array<FileStat>).map((r) => {
-      return {
-        filename: r.filename,
-        basename: r.basename,
-        lastmod: r.lastmod,
-        size: r.size,
-        type: r.type,
-        etag: r.etag,
-        mime: r.mime,
-      };
-    });
+    const tableData: FileStat[] = (rootList as Array<FileStat>)
+      .map((r) => {
+        return {
+          filename: r.filename,
+          basename: r.basename,
+          lastmod: r.lastmod,
+          size: r.size,
+          type: r.type,
+          etag: r.etag,
+          mime: r.mime,
+        };
+      })
+      .sort((a, b) => {
+        if (a.type === "directory" && b.type === "file") {
+          return -1; // a在b之前
+        } else if (a.type === "file" && b.type === "directory") {
+          return 1; // a在b之后
+        } else {
+          return a.basename.localeCompare(b.basename);
+        }
+      });
     setData(tableData);
   }, [rootList, isLoading]);
 
@@ -87,16 +143,16 @@ export const Component: FC = () => {
       {
         id: "type",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={"type"} />
+          <DataTableColumnHeader column={column} title={"类型"} />
         ),
         cell: ({ row }) => {
           if (row.original.type == "directory") {
             return (
-              <ArchiveIcon />
+              <Folder className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
               // </div>
             );
           } else {
-            return <FileIcon />;
+            return <File className="h-5 w-5 text-muted-foreground" />;
           }
         },
         enableSorting: false,
@@ -135,14 +191,18 @@ export const Component: FC = () => {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("lastmod")} />
         ),
-        cell: ({ row }) => <>{row.getValue("lastmod")}</>,
+        cell: ({ row }) => {
+          return <TableDate date={row.getValue("lastmod")}></TableDate>;
+        },
+        //sortingFn: "datetime",
+        enableSorting: false,
       },
       {
         accessorKey: "size",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("size")} />
         ),
-        cell: ({ row }) => <>{row.getValue("size")}</>,
+        cell: ({ row }) => <FileSizeComponent size={row.getValue("size")} />,
       },
       {
         id: "actions",
@@ -157,15 +217,23 @@ export const Component: FC = () => {
                   title="下载文件"
                   onClick={() => {
                     const link = client.getFileDownloadLink(
-                      row.original.filename,
+                      `${row.original.filename}`,
                     );
-                    const a = document.createElement("a");
-                    a.style.display = "none";
-                    a.href = `/lib/attach/macth/download?fileUrl=${link}`;
-                    a.download = row.original.basename || "";
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.appendChild(a);
+                    const o = new XMLHttpRequest();
+                    o.open("GET", link);
+                    o.responseType = "blob";
+                    o.onload = function () {
+                      const content = o.response as string;
+                      const a = document.createElement("a");
+                      a.style.display = "none";
+                      a.download = row.original.basename || "";
+                      const blob = new Blob([content]);
+                      a.href = URL.createObjectURL(blob);
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                    };
+                    o.send();
                     toast.info("下载该文件");
                   }}
                 >
@@ -177,7 +245,7 @@ export const Component: FC = () => {
         },
       },
     ],
-    [client, navigate],
+    [navigate],
   );
 
   const getHeader = (key: string): string => {
@@ -192,7 +260,7 @@ export const Component: FC = () => {
         return key;
     }
   };
-  const toolbarConfig: DataTableToolbarConfig = {
+  const toolbarConfig: DataTableToolbarConfig<string> = {
     filterInput: {
       placeholder: "搜索名称",
       key: "basename",
@@ -203,18 +271,21 @@ export const Component: FC = () => {
 
   const refInput = useRef<HTMLInputElement>(null);
   const refInput2 = useRef<HTMLInputElement>(null);
+
+  const { mutate: upload } = useMutation({
+    mutationFn: (Files: File[]) => uploadFile(Files),
+    onSuccess: () => {
+      toast.success("文件已上传");
+      void queryClient.invalidateQueries({ queryKey: ["data", "share", path] });
+    },
+  });
+
   const handleFileSelect = ({
     currentTarget: { files },
   }: React.ChangeEvent<HTMLInputElement>) => {
     if (files && files.length) {
       const Files = Array.from(files);
-      uploadFile(Files).catch((err) => {
-        logger.debug(err);
-      });
-      refetchRootList().catch((err) => {
-        logger.debug(err);
-      });
-      toast.success("文件已上传");
+      upload(Files);
     }
   };
 
@@ -235,13 +306,6 @@ export const Component: FC = () => {
     setDirName(e.target.value);
   };
   const queryClient = useQueryClient();
-  const refetchRootList = async () => {
-    try {
-      await queryClient.invalidateQueries({ queryKey: ["root", "list"] });
-    } catch (error) {
-      logger.debug("更新目录失败", error);
-    }
-  };
   const clientCreateDir = async () => {
     //console.log("dirName:" + dirName);
     if (dirName != "") {
@@ -250,77 +314,81 @@ export const Component: FC = () => {
   };
   const { mutate: CreateDir } = useMutation({
     mutationFn: () => clientCreateDir(),
-    onSuccess: async () => {
-      await refetchRootList();
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["data", "share", path] });
       toast.success("文件夹已创建");
     },
   });
+
   return (
-    <Card className="h-[calc(100vh_-104px)] w-full">
-      <CardHeader className="py-3"></CardHeader>
-      <CardContent className="relative">
-        <DataTable
-          data={data}
-          columns={columns}
-          toolbarConfig={toolbarConfig}
-          loading={isLoading}
-        >
-          <Button
-            onClick={() => {
-              refInput.current?.click();
-            }}
-            variant="outline"
-            className="h-8 w-8 p-0 hover:text-sky-700"
-          >
-            <UploadIcon />
+    <DataTable
+      data={data}
+      columns={columns}
+      toolbarConfig={toolbarConfig}
+      loading={isLoading}
+      className="col-span-3"
+    >
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => navigate(backpath)}
+        className="h-8 w-8"
+        disabled={pathname === "/portal/data/share"}
+      >
+        <ArrowLeftIcon />
+      </Button>
+      <Button
+        onClick={() => {
+          refInput.current?.click();
+        }}
+        size="icon"
+        variant="outline"
+        className="h-8 w-8 p-0"
+      >
+        <UploadIcon />
+      </Button>
+      <input
+        type="file"
+        ref={refInput}
+        style={{ display: "none" }}
+        multiple={true}
+        onChange={handleFileSelect}
+      />
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button variant="outline" className="h-8 w-8" size="icon">
+            <PlusIcon />
           </Button>
-          <input
-            type="file"
-            ref={refInput}
-            style={{ display: "none" }}
-            multiple={true}
-            onChange={handleFileSelect}
-          />
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button
-                variant="outline"
-                className="h-8 w-8 p-0 hover:text-sky-700"
-              >
-                <PlusIcon />
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>创建新文件夹</DialogTitle>
+            <DialogDescription>输入文件夹名</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                名称
+              </Label>
+              <Input
+                id="name"
+                type="text"
+                defaultValue=""
+                className="col-span-3"
+                ref={refInput2}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+          <DialogClose>
+            <DialogFooter>
+              <Button type="submit" onClick={() => CreateDir()}>
+                创建文件夹
               </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>创建新文件夹</DialogTitle>
-                <DialogDescription>输入文件夹名</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
-                    名称
-                  </Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    defaultValue=""
-                    className="col-span-3"
-                    ref={refInput2}
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
-              <DialogClose>
-                <DialogFooter>
-                  <Button type="submit" onClick={() => CreateDir()}>
-                    创建文件夹
-                  </Button>
-                </DialogFooter>
-              </DialogClose>
-            </DialogContent>
-          </Dialog>
-        </DataTable>
-      </CardContent>
-    </Card>
+            </DialogFooter>
+          </DialogClose>
+        </DialogContent>
+      </Dialog>
+    </DataTable>
   );
 };

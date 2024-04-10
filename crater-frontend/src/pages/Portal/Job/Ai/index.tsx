@@ -9,7 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from "@/components/ui-custom/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -45,7 +45,7 @@ import AiJobDetail from "./Detail";
 import { TableDate } from "@/components/custom/TableDate";
 import { cn } from "@/lib/utils";
 import Status from "../../Overview/Status";
-import Quota from "../../Overview/Quota";
+import Quota from "../Jupyter/Quota";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { toast } from "sonner";
 import { getHeader, priorities, profilingStatuses, statuses } from "./statuses";
@@ -64,7 +64,7 @@ type TaskInfo = {
   gpus: string | number | undefined;
 };
 
-const toolbarConfig: DataTableToolbarConfig = {
+const toolbarConfig: DataTableToolbarConfig<string> = {
   filterInput: {
     placeholder: "搜索任务名称",
     key: "title",
@@ -413,8 +413,8 @@ const AiJobHome = () => {
   }, [dataUpdatedAt]);
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-2">
+    <>
+      <div className="col-span-3 grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
         <Status />
         <Quota />
       </div>
@@ -423,6 +423,7 @@ const AiJobHome = () => {
         columns={columns}
         toolbarConfig={toolbarConfig}
         loading={isLoading}
+        className="col-span-3"
       >
         <Sheet open={openSheet} onOpenChange={setOpenSheet}>
           <SheetTrigger asChild>
@@ -444,7 +445,7 @@ const AiJobHome = () => {
           数据更新于 {updatedAt}
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

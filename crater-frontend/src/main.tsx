@@ -12,13 +12,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import Signup from "./pages/Signup";
 import { portalRoute } from "./pages/Portal";
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui-custom/sonner";
 import { ThemeProvider } from "./utils/theme";
 import { VITE_UI_THEME_KEY } from "./utils/store";
 import { adminRoute } from "./pages/Admin";
 import { recommendRoute } from "./pages/PortalR";
 import Jupyter from "./pages/Jobs/Jupyter";
 import { logger } from "./utils/loglevel";
+import Website from "./pages/Website";
 
 const router = createBrowserRouter([
   {
@@ -35,6 +36,19 @@ const router = createBrowserRouter([
   {
     path: "/job/jupyter/:id",
     element: <Jupyter />,
+  },
+  {
+    path: "/",
+    element: (
+      <Navigate
+        to={process.env.NODE_ENV === "development" ? "/portal" : "/website"}
+        replace
+      />
+    ),
+  },
+  {
+    path: "/website",
+    element: <Website />,
   },
   {
     path: "*",
