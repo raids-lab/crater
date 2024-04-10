@@ -26,3 +26,4 @@ Dockerfile.cross
 *~
 .cache
 .debug.env
+__debug_*
