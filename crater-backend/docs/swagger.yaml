@@ -170,7 +170,7 @@ definitions:
         type: string
       quota:
         allOf:
-        - $ref: '#/definitions/payload.Quota'
+        - $ref: '#/definitions/model.EmbeddedQuota'
         description: 私人Quota，包含Job、Node等
       role:
         allOf:
@@ -180,6 +180,37 @@ definitions:
         allOf:
         - $ref: '#/definitions/model.Status'
         description: 用户状态
+    type: object
+  model.EmbeddedQuota:
+    properties:
+      cpu:
+        type: integer
+      cpuReq:
+        type: integer
+      extra:
+        type: string
+      gpu:
+        type: integer
+      gpuMem:
+        type: integer
+      gpuMemReq:
+        type: integer
+      gpuReq:
+        type: integer
+      job:
+        type: integer
+      jobReq:
+        type: integer
+      mem:
+        type: integer
+      memReq:
+        type: integer
+      node:
+        type: integer
+      nodeReq:
+        type: integer
+      storage:
+        type: integer
     type: object
   model.Label:
     properties:
@@ -304,37 +335,6 @@ definitions:
         - $ref: '#/definitions/model.Status'
         description: 项目状态
     type: object
-  payload.Quota:
-    properties:
-      cpu:
-        type: integer
-      cpuReq:
-        type: integer
-      extra:
-        type: string
-      gpu:
-        type: integer
-      gpuMem:
-        type: integer
-      gpuMemReq:
-        type: integer
-      gpuReq:
-        type: integer
-      job:
-        type: integer
-      jobReq:
-        type: integer
-      mem:
-        type: integer
-      memReq:
-        type: integer
-      node:
-        type: integer
-      nodeReq:
-        type: integer
-      storage:
-        type: integer
-    type: object
   response.ErrorCode:
     enum:
     - 0
@@ -418,6 +418,15 @@ definitions:
         $ref: '#/definitions/response.ErrorCode'
       data:
         $ref: '#/definitions/handler.ProjectCreateResp'
+      msg:
+        type: string
+    type: object
+  response.Response-model_EmbeddedQuota:
+    properties:
+      code:
+        $ref: '#/definitions/response.ErrorCode'
+      data:
+        $ref: '#/definitions/model.EmbeddedQuota'
       msg:
         type: string
     type: object
@@ -1170,6 +1179,31 @@ paths:
       summary: 更新任务slo
       tags:
       - AIJob
+  /v1/context/quota:
+    get:
+      consumes:
+      - application/json
+      description: 如果 UserProject 表没有对 Quota 进行限制，则返回项目的 Quota
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 配额信息
+          schema:
+            $ref: '#/definitions/response.Response-model_EmbeddedQuota'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 获取当前用户当前项目的Quota
+      tags:
+      - Context
   /v1/labels:
     get:
       consumes:

@@ -201,9 +201,10 @@ func (mgr *ProjectMgr) CreateTeamProject(c *gin.Context) {
 
 		// Create a user-project relationship without quota limit
 		userProject := model.UserProject{
-			UserID:    token.UserID,
-			ProjectID: project.ID,
-			Role:      model.RoleAdmin, // Set the user as the admin
+			UserID:        token.UserID,
+			ProjectID:     project.ID,
+			Role:          model.RoleAdmin, // Set the user as the admin
+			EmbeddedQuota: model.QuotaUnlimited,
 		}
 		if err := up.WithContext(c).Create(&userProject); err != nil {
 			return err
@@ -221,8 +222,10 @@ func (mgr *ProjectMgr) CreateTeamProject(c *gin.Context) {
 		}
 
 		// Create a quota for the personal project
-		quota := model.DefaultQuota()
-		quota.ProjectID = project.ID
+		quota := model.Quota{
+			ProjectID:     project.ID,
+			EmbeddedQuota: model.QuotaDefault,
+		}
 		quota.CPUReq = *req.Quota.CPU
 		quota.CPU = *req.Quota.CPU
 		quota.MemReq = *req.Quota.Memory
