@@ -9,7 +9,7 @@ import { getDateDiff } from "@/utils/formatter";
 export const TableDate = ({ date }: { date: string }) => {
   const createdAt = new Date(date);
   return (
-    <TooltipProvider>
+    <TooltipProvider delayDuration={10}>
       <Tooltip>
         <TooltipTrigger>{getDateDiff(date)}</TooltipTrigger>
         <TooltipContent>

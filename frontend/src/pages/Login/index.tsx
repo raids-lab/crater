@@ -1,5 +1,11 @@
 import { ProfileForm } from "./Form";
-import { CardHeader, CardContent, Card } from "@/components/ui/card";
+import {
+  CardHeader,
+  CardContent,
+  Card,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 
 import CraterIcon from "@/components/icon/CraterIcon";
 import CraterText from "@/components/icon/CraterText";
@@ -37,17 +43,12 @@ export default function Login() {
       <div className="flex items-center justify-center">
         <Card className="w-full max-w-md shadow-2xl dark:border">
           <CardHeader>
-            <h2 className="text-center text-2xl font-bold">用户登录</h2>
+            <CardTitle className="pb-1 text-2xl font-bold">用户登录</CardTitle>
+            <CardDescription>请使用 ACT 账号登录</CardDescription>
           </CardHeader>
+
           <CardContent className="space-y-4">
             <ProfileForm />
-            <p className="mt-4 px-2 text-center text-sm text-muted-foreground">
-              {/* 还没有账号？现在
-              <span className="ml-1 underline">
-                <Link to="/signup">注册</Link>
-              </span> */}
-              请使用 ACT 账号登录
-            </p>
           </CardContent>
         </Card>
       </div>

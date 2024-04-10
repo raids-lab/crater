@@ -1,18 +1,14 @@
-import { Sidebar, SidebarItem, SidebarMenu } from "@/components/layout/Sidebar";
+import { SidebarItem, SidebarMenu } from "@/components/layout/Sidebar";
 import DatabaseIcon from "@/components/icon/DatabaseIcon";
 import OverviewIcon from "@/components/icon/OverviewIcon";
 import LightHouseIcon from "@/components/icon/LightHouseIcon";
 import WorkBenchIcon from "@/components/icon/WorkBenchIcon";
 import { useAuth } from "@/hooks/useAuth";
 import { FC, PropsWithChildren, Suspense } from "react";
-import { Navigate, Outlet, RouteObject, useLocation } from "react-router-dom";
+import { Navigate, RouteObject } from "react-router-dom";
 import { FileTextIcon, Pencil2Icon } from "@radix-ui/react-icons";
-import { cn } from "@/lib/utils";
-import Navibar from "@/components/layout/Navibar";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { useRecoilState } from "recoil";
-import { globalSidebarMini } from "@/utils/store";
-import { motion } from "framer-motion";
+import { Role } from "@/services/api/auth";
+import DashboardLayout from "@/components/layout/Dashboard";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -45,20 +41,11 @@ const sidebarItems: SidebarItem[] = [
   {
     path: "image",
     icon: LightHouseIcon,
-    children: [
-      {
-        route: {
-          path: "list",
-          lazy: () => import("./Image/List"),
-        },
-      },
-      // {
-      //   route: {
-      //     path: "make",
-      //     lazy: () => import("./Image/Make"),
-      //   },
-      // },
-    ],
+    children: [],
+    route: {
+      path: "image",
+      lazy: () => import("./Image/List"),
+    },
   },
   {
     path: "data",
@@ -100,68 +87,9 @@ const sidebarMenus: SidebarMenu[] = [
 ];
 
 const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
-  const isAuthenticated = useAuth("user");
+  const isAuthenticated = useAuth(Role.User);
   // const isAuthenticated = true;
   return isAuthenticated ? children : <Navigate to="/login" replace />;
-};
-
-export const DashboardLayout = ({
-  sidebarItems,
-  sidebarMenus,
-}: {
-  sidebarItems: SidebarItem[];
-  sidebarMenus: SidebarMenu[];
-}) => {
-  const [isMinimized, setIsMinimized] = useRecoilState(globalSidebarMini);
-  const { pathname } = useLocation();
-
-  return (
-    <>
-      <div className="relative h-screen w-screen overflow-hidden">
-        <div
-          className={cn("absolute bottom-0 left-0 top-0 z-10 w-[200px]", {
-            "w-14": isMinimized,
-          })}
-        >
-          <Sidebar
-            sidebarItems={sidebarItems}
-            sidebarMenus={sidebarMenus}
-            isMinimized={isMinimized}
-            toggleIsMinimized={() => setIsMinimized((prev) => !prev)}
-          />
-        </div>
-        <div
-          className={cn(
-            "absolute bottom-0 right-0 top-0 w-[calc(100vw_-_200px)]",
-            {
-              "w-[calc(100vw_-_56px)]": isMinimized,
-            },
-          )}
-        >
-          <ScrollArea
-            className={cn("h-screen w-[calc(100vw_-_200px)]", {
-              "w-[calc(100vw_-_56px)]": isMinimized,
-            })}
-          >
-            <div className="grid w-full grid-rows-header px-6">
-              <Navibar />
-              <div className="py-6">
-                <motion.div
-                  key={pathname}
-                  initial={{ opacity: 0, y: "3vh" }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ type: "spring", duration: 1.2 }}
-                >
-                  <Outlet />
-                </motion.div>
-              </div>
-            </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        </div>
-      </div>
-    </>
-  );
 };
 
 export const portalRoute: RouteObject = {

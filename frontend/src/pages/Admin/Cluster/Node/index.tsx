@@ -47,7 +47,7 @@ interface ClusterNodeInfo {
   labels: Record<string, string>;
 }
 
-const toolbarConfig: DataTableToolbarConfig = {
+const toolbarConfig: DataTableToolbarConfig<string> = {
   filterInput: {
     placeholder: "搜索节点名称",
     key: "name",
@@ -56,7 +56,7 @@ const toolbarConfig: DataTableToolbarConfig = {
   getHeader: (x) => x,
 };
 
-const UsageCell: FC<{ value: ResourceInfo }> = ({ value }) => {
+export const UsageCell: FC<{ value: ResourceInfo }> = ({ value }) => {
   if (value.description === "") {
     return <div />;
   }
