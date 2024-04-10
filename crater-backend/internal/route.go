@@ -69,11 +69,12 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	if err != nil {
 		panic(err)
 	}
+	httpClient := http.Client{}
 	logClient := crclient.LogClient{Client: cl, KubeClient: cs}
 	nodeClient := crclient.NodeClient{Client: cl, KubeClient: cs}
 
 	// Init Handlers
-	authMgr := handler.NewAuthMgr(aitaskCtrl)
+	authMgr := handler.NewAuthMgr(aitaskCtrl, &httpClient)
 	aijobMgr := handler.NewAIJobMgr(aitaskCtrl, &pvcClient, &logClient)
 	labelMgr := handler.NewLabelMgr()
 	projectMgr := handler.NewProjectMgr()
