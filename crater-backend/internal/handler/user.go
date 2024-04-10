@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/internal/payload"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
@@ -44,7 +43,7 @@ type UserResp struct {
 	Role   model.Role   `json:"role"`   // 用户角色
 	Status model.Status `json:"status"` // 用户状态
 	// 私人Quota，包含Job、Node等
-	Quota payload.Quota `json:"quota"`
+	Quota model.EmbeddedQuota `json:"quota"`
 }
 
 type UpdateQuotaReq struct {
@@ -141,7 +140,7 @@ func (mgr *UserMgr) ListUser(c *gin.Context) {
 			Role:   user.Role,
 			Status: user.Status, // 用户状态
 		}
-		var quota payload.Quota
+		var quota model.EmbeddedQuota
 		err = q.WithContext(c).Where(q.ProjectID.Eq(userProject.ProjectID)).Select(q.ALL).Scan(&quota)
 		if err == nil {
 			userResp.Quota = quota

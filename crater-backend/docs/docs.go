@@ -1156,6 +1156,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/context/quota": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "如果 UserProject 表没有对 Quota 进行限制，则返回项目的 Quota",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Context"
+                ],
+                "summary": "获取当前用户当前项目的Quota",
+                "responses": {
+                    "200": {
+                        "description": "配额信息",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-model_EmbeddedQuota"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/labels": {
             "get": {
                 "security": [
@@ -1686,7 +1726,7 @@ const docTemplate = `{
                     "description": "私人Quota，包含Job、Node等",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/payload.Quota"
+                            "$ref": "#/definitions/model.EmbeddedQuota"
                         }
                     ]
                 },
@@ -1705,6 +1745,53 @@ const docTemplate = `{
                             "$ref": "#/definitions/model.Status"
                         }
                     ]
+                }
+            }
+        },
+        "model.EmbeddedQuota": {
+            "type": "object",
+            "properties": {
+                "cpu": {
+                    "type": "integer"
+                },
+                "cpuReq": {
+                    "type": "integer"
+                },
+                "extra": {
+                    "type": "string"
+                },
+                "gpu": {
+                    "type": "integer"
+                },
+                "gpuMem": {
+                    "type": "integer"
+                },
+                "gpuMemReq": {
+                    "type": "integer"
+                },
+                "gpuReq": {
+                    "type": "integer"
+                },
+                "job": {
+                    "type": "integer"
+                },
+                "jobReq": {
+                    "type": "integer"
+                },
+                "mem": {
+                    "type": "integer"
+                },
+                "memReq": {
+                    "type": "integer"
+                },
+                "node": {
+                    "type": "integer"
+                },
+                "nodeReq": {
+                    "type": "integer"
+                },
+                "storage": {
+                    "type": "integer"
                 }
             }
         },
@@ -1888,53 +1975,6 @@ const docTemplate = `{
                 }
             }
         },
-        "payload.Quota": {
-            "type": "object",
-            "properties": {
-                "cpu": {
-                    "type": "integer"
-                },
-                "cpuReq": {
-                    "type": "integer"
-                },
-                "extra": {
-                    "type": "string"
-                },
-                "gpu": {
-                    "type": "integer"
-                },
-                "gpuMem": {
-                    "type": "integer"
-                },
-                "gpuMemReq": {
-                    "type": "integer"
-                },
-                "gpuReq": {
-                    "type": "integer"
-                },
-                "job": {
-                    "type": "integer"
-                },
-                "jobReq": {
-                    "type": "integer"
-                },
-                "mem": {
-                    "type": "integer"
-                },
-                "memReq": {
-                    "type": "integer"
-                },
-                "node": {
-                    "type": "integer"
-                },
-                "nodeReq": {
-                    "type": "integer"
-                },
-                "storage": {
-                    "type": "integer"
-                }
-            }
-        },
         "response.ErrorCode": {
             "type": "integer",
             "enum": [
@@ -2055,6 +2095,20 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/handler.ProjectCreateResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.Response-model_EmbeddedQuota": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/response.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/model.EmbeddedQuota"
                 },
                 "msg": {
                     "type": "string"

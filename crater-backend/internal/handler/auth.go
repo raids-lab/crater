@@ -40,7 +40,7 @@ func (mgr *AuthMgr) RegisterPublic(g *gin.RouterGroup) {
 }
 
 func (mgr *AuthMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.POST("", mgr.SwitchProject) // 切换项目
+	g.POST("", mgr.SwitchProject) // 切换项目 /switch
 }
 
 func (mgr *AuthMgr) RegisterAdmin(_ *gin.RouterGroup) {}
@@ -222,9 +222,11 @@ func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.Us
 
 		// Create a user-project relationship without quota limit
 		userProject := model.UserProject{
-			UserID:    user.ID,
-			ProjectID: project.ID,
-			Role:      model.RoleAdmin,
+			UserID:        user.ID,
+			ProjectID:     project.ID,
+			Role:          model.RoleAdmin,
+			AccessMode:    model.AccessModeRW,
+			EmbeddedQuota: model.QuotaUnlimited,
 		}
 		if err := up.WithContext(c).Create(&userProject); err != nil {
 			return err
@@ -242,8 +244,10 @@ func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.Us
 		}
 
 		// Create a quota for the personal project
-		quota := model.DefaultQuota()
-		quota.ProjectID = project.ID
+		quota := model.Quota{
+			ProjectID:     project.ID,
+			EmbeddedQuota: model.QuotaDefault,
+		}
 		if err := q.WithContext(c).Create(&quota); err != nil {
 			return err
 		}
