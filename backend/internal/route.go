@@ -69,16 +69,18 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	if err != nil {
 		panic(err)
 	}
+	httpClient := http.Client{}
 	logClient := crclient.LogClient{Client: cl, KubeClient: cs}
 	nodeClient := crclient.NodeClient{Client: cl, KubeClient: cs}
 
 	// Init Handlers
-	authMgr := handler.NewAuthMgr(aitaskCtrl)
+	authMgr := handler.NewAuthMgr(aitaskCtrl, &httpClient)
 	aijobMgr := handler.NewAIJobMgr(aitaskCtrl, &pvcClient, &logClient)
 	labelMgr := handler.NewLabelMgr()
 	projectMgr := handler.NewProjectMgr()
 	nodeMgr := handler.NewNodeMgr(&nodeClient)
 	userMgr := handler.NewUserMgr(aitaskCtrl)
+	contextMgr := handler.NewContextMgr()
 
 	///////////////////////////////////////
 	//// Public routers, no need login ////
@@ -100,6 +102,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	labelMgr.RegisterProtected(protectedRouter.Group("/labels"))
 	projectMgr.RegisterProtected(protectedRouter.Group("/projects"))
 	nodeMgr.RegisterProtected(protectedRouter.Group("/nodes"))
+	contextMgr.RegisterProtected(protectedRouter.Group("/context"))
 
 	///////////////////////////////////////
 	//// Admin routers, need admin role ///
