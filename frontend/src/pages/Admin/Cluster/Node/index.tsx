@@ -56,7 +56,7 @@ const toolbarConfig: DataTableToolbarConfig<string> = {
   getHeader: (x) => x,
 };
 
-const UsageCell: FC<{ value: ResourceInfo }> = ({ value }) => {
+export const UsageCell: FC<{ value: ResourceInfo }> = ({ value }) => {
   if (value.description === "") {
     return <div />;
   }
