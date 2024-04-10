@@ -6,6 +6,7 @@ import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTabl
 import { DataTable } from "@/components/custom/OldDataTable";
 import { Checkbox } from "@/components/ui/checkbox";
 import { apiGetAdminNodeDetail } from "@/services/api/admin/cluster";
+import { TableDate } from "@/components/custom/TableDate";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -46,6 +47,7 @@ type CardDemoProps = React.ComponentProps<typeof Card> & {
     address: string;
     role: string;
     os: string;
+    osVersion: string;
     arch: string;
     kubeletVersion: string;
     containerRuntimeVersion: string;
@@ -78,6 +80,12 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
             <p className="text-xs text-gray-500">操作系统类型:</p>
             <p className="ml-2 text-sm font-medium text-black">
               {nodeInfo?.os}
+            </p>
+          </div>
+          <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
+            <p className="text-xs text-gray-500">操作系统版本:</p>
+            <p className="ml-2 text-sm font-medium text-black">
+              {nodeInfo?.osVersion}
             </p>
           </div>
           <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
@@ -115,7 +123,7 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
 
 interface ClusterPodInfo {
   name: string;
-  isReady: string;
+  status: string;
   time: string;
   address: string;
 }
@@ -160,7 +168,7 @@ const columns: ColumnDef<ClusterPodInfo>[] = [
     enableSorting: false,
   },
   {
-    accessorKey: "isReady",
+    accessorKey: "status",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title={"状态"} />
     ),
@@ -168,13 +176,13 @@ const columns: ColumnDef<ClusterPodInfo>[] = [
       <div className="flex flex-row items-center justify-start">
         <div
           className={cn("flex h-3 w-3 rounded-full", {
-            "bg-red-500 hover:bg-red-400": !row.getValue("isReady"),
+            "bg-red-500 hover:bg-red-400": row.getValue("status") !== "Running",
             "bg-emerald-500 hover:bg-emerald-400":
-              row.getValue("isReady") === true,
+              row.getValue("status") === "Running",
           })}
         ></div>
         <div className="ml-1.5">
-          {row.getValue("isReady") === true ? "运行中" : "异常"}
+          {row.getValue("status") === "Running" ? "运行中" : "异常"}
         </div>
       </div>
     ),
@@ -184,7 +192,9 @@ const columns: ColumnDef<ClusterPodInfo>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title={"创建时间"} />
     ),
-    cell: ({ row }) => <div className="font-mono">{row.getValue("time")}</div>,
+    cell: ({ row }) => {
+      return <TableDate date={row.getValue("time")}></TableDate>;
+    },
     enableSorting: false,
   },
   {
@@ -277,7 +287,7 @@ export const PodStatusDetail: FC = () => {
       .map((x) => {
         return {
           name: x.name,
-          isReady: x.status,
+          status: x.status,
           time: x.createTime,
           address: x.IP,
         };
