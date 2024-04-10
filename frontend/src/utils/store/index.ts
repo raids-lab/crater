@@ -69,6 +69,7 @@ export const globalCurrentAccount = atom({
   default: {
     label: "",
     id: 0,
+    role: Role.Guest,
   },
   effects_UNSTABLE: [localStorageEffect(CURRENT_ACCOUNT_KEY)],
 });

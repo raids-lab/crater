@@ -54,7 +54,7 @@ import FormLabelMust from "@/components/custom/FormLabelMust";
 import { Textarea } from "@/components/ui/textarea";
 import { apiProjectCreate, apiProjectList } from "@/services/api/project";
 import LoadableButton from "@/components/custom/LoadableButton";
-import { apiProjectSwitch } from "@/services/api/auth";
+import { Role, apiProjectSwitch } from "@/services/api/auth";
 
 const formSchema = z.object({
   name: z
@@ -91,6 +91,7 @@ interface Project {
   label: string;
   id: number;
   enabled: boolean;
+  role: Role;
 }
 
 interface ProjectGroup {
@@ -145,6 +146,7 @@ export default function ProjectSwitcher({ className }: ProjectSwitcherProps) {
       setSelectedTeam(project);
       setOpen(false);
       toast.success(`已切换至项目 ${project.label}`);
+      void queryClient.invalidateQueries();
     },
   });
 
@@ -176,6 +178,7 @@ export default function ProjectSwitcher({ className }: ProjectSwitcherProps) {
           label: personal?.name ?? "",
           id: personal?.id ?? 0,
           enabled: true,
+          role: personal?.role ?? Role.Guest,
         },
       ],
       team:
@@ -186,6 +189,7 @@ export default function ProjectSwitcher({ className }: ProjectSwitcherProps) {
             label: project.name,
             id: project.id,
             enabled: project.status === ProjectStatus.Active,
+            role: project.role,
           })) ?? [],
     };
   }, [projects]);

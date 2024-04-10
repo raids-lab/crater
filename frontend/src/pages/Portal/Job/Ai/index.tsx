@@ -45,7 +45,7 @@ import AiJobDetail from "./Detail";
 import { TableDate } from "@/components/custom/TableDate";
 import { cn } from "@/lib/utils";
 import Status from "../../Overview/Status";
-import Quota from "../../Overview/Quota";
+import Quota from "../Jupyter/Quota";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { toast } from "sonner";
 import { getHeader, priorities, profilingStatuses, statuses } from "./statuses";
@@ -414,7 +414,7 @@ const AiJobHome = () => {
 
   return (
     <>
-      <div className="col-span-3 grid gap-6 md:grid-cols-2">
+      <div className="col-span-3 grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
         <Status />
         <Quota />
       </div>

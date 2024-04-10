@@ -234,5 +234,5 @@ export const apiAiTaskShareDirList = () =>
 // ]
 export const apiAiTaskStats = () =>
   instance.get<IResponse<{ taskCount: { Status: string; Count: number }[] }>>(
-    VERSION + "/aitask/taskStats",
+    VERSION + "/aijobs/jobStats",
   );
