@@ -80,8 +80,8 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	projectMgr := handler.NewProjectMgr(aitaskCtrl)
 	nodeMgr := handler.NewNodeMgr(&nodeClient)
 	userMgr := handler.NewUserMgr()
+	imagepackMgr := handler.NewImagePackMgr(&logClient, &crclient.ImagePackController{Client: cl})
 	contextMgr := handler.NewContextMgr()
-
 	///////////////////////////////////////
 	//// Public routers, no need login ////
 	///////////////////////////////////////
@@ -102,8 +102,8 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	labelMgr.RegisterProtected(protectedRouter.Group("/labels"))
 	projectMgr.RegisterProtected(protectedRouter.Group("/projects"))
 	nodeMgr.RegisterProtected(protectedRouter.Group("/nodes"))
+	imagepackMgr.RegisterProtected(protectedRouter.Group("/images"))
 	contextMgr.RegisterProtected(protectedRouter.Group("/context"))
-
 	///////////////////////////////////////
 	//// Admin routers, need admin role ///
 	///////////////////////////////////////
@@ -116,4 +116,5 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	projectMgr.RegisterAdmin(adminRouter.Group("/projects"))
 	nodeMgr.RegisterAdmin(adminRouter.Group("/nodes"))
 	userMgr.RegisterAdmin(adminRouter.Group("/users"))
+	imagepackMgr.RegisterAdmin(adminRouter.Group("/images"))
 }
