@@ -201,7 +201,6 @@ func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.Us
 		p := tx.Project
 		up := tx.UserProject
 		s := tx.Space
-		q := tx.Quota
 
 		// Create a new user with non-admin role and active status
 		user := model.User{
@@ -217,11 +216,12 @@ func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.Us
 		userID = user.ID
 		// Create a personal project for the user
 		project := model.Project{
-			Name:        user.Name,
-			Description: nil,
-			Namespace:   config.GetConfig().Workspace.Namespace,
-			Status:      model.StatusActive,
-			IsPersonal:  true,
+			Name:          user.Name,
+			Description:   nil,
+			Namespace:     config.GetConfig().Workspace.Namespace,
+			Status:        model.StatusActive,
+			IsPersonal:    true,
+			EmbeddedQuota: model.QuotaDefault,
 		}
 		if err := p.WithContext(c).Create(&project); err != nil {
 			return err
@@ -250,14 +250,6 @@ func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.Us
 			return err
 		}
 		path = folderPath
-		// Create a quota for the personal project
-		quota := model.Quota{
-			ProjectID:     project.ID,
-			EmbeddedQuota: model.QuotaDefault,
-		}
-		if err := q.WithContext(c).Create(&quota); err != nil {
-			return err
-		}
 
 		return nil
 	})

@@ -62,7 +62,6 @@ func main() {
 			&model.User{},
 			&model.UserProject{},
 			&model.ProjectSpace{},
-			&model.Quota{},
 			&model.AIJob{},
 			&model.Image{},
 			&model.Label{},
@@ -90,14 +89,6 @@ func main() {
 			ProjectID: p0.ID,
 		}
 		res = tx.Create(&s0)
-		if res.Error != nil {
-			return res.Error
-		}
-
-		q0 := model.Quota{
-			ProjectID: p0.ID,
-		}
-		res = tx.Create(&q0)
 		if res.Error != nil {
 			return res.Error
 		}
