@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+
 	"github.com/raids-lab/crater/pkg/logutils"
 	resputil "github.com/raids-lab/crater/pkg/server/response"
 )
@@ -32,7 +33,7 @@ type UserResp struct {
 	Name   string       `json:"name"`   // 用户名称
 	Role   model.Role   `json:"role"`   // 用户角色
 	Status model.Status `json:"status"` // 用户状态
-	// 私人Quota，包含Job、Node等
+
 }
 
 type UpdateRoleReq struct {
