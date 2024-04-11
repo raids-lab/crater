@@ -64,6 +64,7 @@ func main() {
 			&model.ProjectSpace{},
 			&model.Quota{},
 			&model.AIJob{},
+			&model.Image{},
 			&model.Label{},
 		)
 		if err != nil {
