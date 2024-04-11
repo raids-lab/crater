@@ -194,16 +194,24 @@ func (mgr *ProjectMgr) CreateTeamProject(c *gin.Context) {
 		p := tx.Project
 		up := tx.UserProject
 		s := tx.Space
-		q := tx.Quota
 
 		// Create a project
+		quota := model.QuotaDefault
+		quota.CPUReq = *req.Quota.CPU
+		quota.CPU = *req.Quota.CPU
+		quota.MemReq = *req.Quota.Memory
+		quota.Mem = *req.Quota.Memory
+		quota.GPUReq = *req.Quota.GPU
+		quota.GPU = *req.Quota.GPU
+		quota.Storage = *req.Quota.Storage
+
 		project := model.Project{
-			Name:        req.Name,
-			Description: &req.Description,
-			Namespace:   config.GetConfig().Workspace.Namespace,
-			// Status:      model.StatusPending, // wait for the admin to approve
-			Status:     model.StatusActive, // todo: change to pending
-			IsPersonal: false,
+			Name:          req.Name,
+			Description:   &req.Description,
+			Namespace:     config.GetConfig().Workspace.Namespace,
+			Status:        model.StatusActive, // todo: change to pending
+			IsPersonal:    false,
+			EmbeddedQuota: quota,
 		}
 		if err := p.WithContext(c).Create(&project); err != nil {
 			return err
@@ -228,22 +236,6 @@ func (mgr *ProjectMgr) CreateTeamProject(c *gin.Context) {
 			Path:      folderPath,
 		}
 		if err := s.WithContext(c).Create(&space); err != nil {
-			return err
-		}
-
-		// Create a quota for the personal project
-		quota := model.Quota{
-			ProjectID:     project.ID,
-			EmbeddedQuota: model.QuotaDefault,
-		}
-		quota.CPUReq = *req.Quota.CPU
-		quota.CPU = *req.Quota.CPU
-		quota.MemReq = *req.Quota.Memory
-		quota.Mem = *req.Quota.Memory
-		quota.GPUReq = *req.Quota.GPU
-		quota.GPU = *req.Quota.GPU
-		quota.Storage = *req.Quota.Storage
-		if err := q.WithContext(c).Create(&quota); err != nil {
 			return err
 		}
 
