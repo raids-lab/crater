@@ -3,6 +3,7 @@ package payload
 import (
 	"fmt"
 
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/pkg/models"
 	v1 "k8s.io/api/core/v1"
 )
@@ -131,20 +132,23 @@ type GetDataSetReq struct {
 }
 
 type ImagePackCreateRequest struct {
-	GitRepository   string `json:"gitRepository"`
-	AccessToken     string `json:"accessToken"`
-	RegistryServer  string `json:"registryServer"`
-	RegistryUser    string `json:"registryUser"`
-	RegistryPass    string `json:"registryPass"`
-	RegistryProject string `json:"registryProject"`
-	ImageName       string `json:"imageName"`
-	ImageTag        string `json:"imageTag"`
-}
-
-type ImagePackDeleteByNameRequest struct {
-	ImagePackName string `json:"imagepackname"`
+	GitRepository   string              `json:"gitRepository"`
+	AccessToken     string              `json:"accessToken"`
+	RegistryServer  string              `json:"registryServer"`
+	RegistryUser    string              `json:"registryUser"`
+	RegistryPass    string              `json:"registryPass"`
+	RegistryProject string              `json:"registryProject"`
+	ImageName       string              `json:"imageName"`
+	ImageTag        string              `json:"imageTag"`
+	NeedProfile     bool                `json:"needProfile"`
+	TaskType        model.ImageTaskType `json:"taskType"`
 }
 
 type ImagePackDeleteByIDRequest struct {
 	ID uint `json:"id"`
+}
+
+type ImagePackParamsUpdateRequest struct {
+	ImagePackName string                   `json:"imagepackname"`
+	Data          model.ImageProfileParams `json:"data"`
 }
