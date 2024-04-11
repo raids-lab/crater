@@ -282,7 +282,7 @@ type ProjectNameReq struct {
 // UpdateQuota godoc
 // @Summary 更新配额
 // @Description 更新配额
-// @Tags User
+// @Tags Project
 // @Accept json
 // @Produce json
 // @Security Bearer
