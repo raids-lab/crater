@@ -685,6 +685,63 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/projects/{name}/quotas": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "更新配额",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "更新配额",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新quota",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.UpdateQuotaReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功更新配额",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/users": {
             "get": {
                 "security": [
@@ -755,63 +812,6 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "删除成功",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-string"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "其他错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/admin/users/{name}/quotas": {
-            "put": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "更新配额",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "User"
-                ],
-                "summary": "更新配额",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "name": "name",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "更新quota",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.UpdateQuotaReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "成功更新配额",
                         "schema": {
                             "$ref": "#/definitions/response.Response-string"
                         }
@@ -1645,17 +1645,51 @@ const docTemplate = `{
     "definitions": {
         "handler.CreateJobReq": {
             "type": "object",
+            "required": [
+                "command",
+                "image",
+                "resourceRequest",
+                "taskName",
+                "taskType"
+            ],
             "properties": {
-                "extra": {
+                "command": {
                     "type": "string"
                 },
-                "name": {
+                "gpuModel": {
+                    "type": "string"
+                },
+                "image": {
                     "type": "string"
                 },
                 "resourceRequest": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "schedulerName": {
+                    "type": "string"
+                },
+                "shareDirs": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/definitions/handler.DirMount"
+                        }
+                    }
+                },
+                "slo": {
+                    "type": "integer"
+                },
+                "taskName": {
                     "type": "string"
                 },
                 "taskType": {
+                    "type": "string"
+                },
+                "workingDir": {
                     "type": "string"
                 }
             }
@@ -1676,6 +1710,20 @@ const docTemplate = `{
                 },
                 "type": {
                     "$ref": "#/definitions/model.WorkerType"
+                }
+            }
+        },
+        "handler.DirMount": {
+            "type": "object",
+            "properties": {
+                "mountPath": {
+                    "type": "string"
+                },
+                "subPath": {
+                    "type": "string"
+                },
+                "volume": {
+                    "type": "string"
                 }
             }
         },
@@ -1944,14 +1992,6 @@ const docTemplate = `{
                 "name": {
                     "description": "用户名称",
                     "type": "string"
-                },
-                "quota": {
-                    "description": "私人Quota，包含Job、Node等",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.EmbeddedQuota"
-                        }
-                    ]
                 },
                 "role": {
                     "description": "用户角色",

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -17,6 +18,7 @@ import (
 	resputil "github.com/raids-lab/crater/pkg/server/response"
 	utils "github.com/raids-lab/crater/pkg/util"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 type AIJobMgr struct {
@@ -68,12 +70,45 @@ func (mgr *AIJobMgr) rolePermit(token *util.ReqContext, job *model.AIJob) bool {
 	return ok
 }
 
+// FromCustomResourceList converts CustomResourceList to v1.ResourceList
+func FromCustomResourceList(crl map[string]string) (v1.ResourceList, error) {
+	rl := v1.ResourceList{}
+	for k, v := range crl {
+		quantity, err := resource.ParseQuantity(v)
+		if err != nil {
+			return nil, err
+		}
+		rl[v1.ResourceName(k)] = quantity
+	}
+	return rl, nil
+}
+
+// ToCustomResourceList converts v1.ResourceList to CustomResourceList
+func ToCustomResourceList(rl v1.ResourceList) map[string]string {
+	crl := map[string]string{}
+	for k, v := range rl {
+		crl[string(k)] = v.String()
+	}
+	return crl
+}
+
 type (
+	DirMount struct {
+		Volume    string `json:"volume"`
+		MountPath string `json:"mountPath"`
+		SubPath   string `json:"subPath"`
+	}
 	CreateJobReq struct {
-		Name            string
-		TaskType        string
-		ResourceRequest string
-		Extra           *string
+		Name            string                `json:"taskName" binding:"required"`
+		SLO             uint                  `json:"slo"`
+		TaskType        string                `json:"taskType" binding:"required"`
+		ResourceRequest map[string]string     `json:"resourceRequest" binding:"required"`
+		Image           string                `json:"image" binding:"required"`
+		WorkingDir      string                `json:"workingDir"`
+		ShareDirs       map[string][]DirMount `json:"shareDirs"`
+		Command         string                `json:"command" binding:"required"`
+		GPUModel        string                `json:"gpuModel"`
+		SchedulerName   string                `json:"schedulerName"`
 	}
 	CreateTaskResp struct {
 		TaskID uint
@@ -83,12 +118,9 @@ type (
 func ParseCustomizeTask(req *CreateJobReq) error {
 	switch req.TaskType {
 	case models.JupyterTask:
-		jsonMap := models.JSONStringToMap(*req.Extra)
-		jsonMap["SLO"] = "1"
-		jsonMap["Command"] = "start.sh jupyter lab --allow-root --NotebookApp.base_url=/jupyter/%s/"
-		jsonMap["WorkingDir"] = "/home/%s"
-		ret := models.MapToJSONString(jsonMap)
-		req.Extra = &ret
+		req.SLO = 1
+		req.Command = "start.sh jupyter lab --allow-root --NotebookApp.base_url=/jupyter/%s/"
+		req.WorkingDir = "/home/%s"
 	case models.TrainingTask:
 		return nil
 	default:
@@ -96,6 +128,14 @@ func ParseCustomizeTask(req *CreateJobReq) error {
 	}
 
 	return nil
+}
+
+func StructToJSONString(m any) (string, error) {
+	jsonBytes, err := json.Marshal(m)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonBytes), nil
 }
 
 // 用户创建任务 godoc
@@ -126,18 +166,45 @@ func (mgr *AIJobMgr) Create(c *gin.Context) {
 		return
 	}
 
+	var reqStr, shareDirsStr string
+	var err error
+
+	reqStr, err = StructToJSONString(req.ResourceRequest)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("parse job attributes failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+
+	shareDirsStr, err = StructToJSONString(req.ShareDirs)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("parse job attributes failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+
+	jsonMap := map[string]string{
+		"SLO":           fmt.Sprint(req.SLO),
+		"Image":         req.Image,
+		"WorkingDir":    req.WorkingDir,
+		"ShareDirs":     shareDirsStr,
+		"Command":       req.Command,
+		"GPUModel":      req.GPUModel,
+		"SchedulerName": req.SchedulerName,
+	}
+
+	extraStr := models.MapToJSONString(jsonMap)
+
 	job := model.AIJob{
 		Name:            req.Name,
 		UserID:          token.UserID,
 		ProjectID:       token.ProjectID,
 		TaskType:        req.TaskType,
 		Status:          model.JobInitial,
-		ResourceRequest: req.ResourceRequest,
-		Extra:           req.Extra,
+		ResourceRequest: reqStr,
+		Extra:           &extraStr,
 	}
 
 	jobQueryModel := query.AIJob
-	err := jobQueryModel.WithContext(c).Create(&job)
+	err = jobQueryModel.WithContext(c).Create(&job)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("create job failed, err %v", err), resputil.NotSpecified)
 		return

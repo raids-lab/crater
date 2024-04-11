@@ -1,14 +1,38 @@
 definitions:
   handler.CreateJobReq:
     properties:
-      extra:
+      command:
         type: string
-      name:
+      gpuModel:
+        type: string
+      image:
         type: string
       resourceRequest:
+        additionalProperties:
+          type: string
+        type: object
+      schedulerName:
+        type: string
+      shareDirs:
+        additionalProperties:
+          items:
+            $ref: '#/definitions/handler.DirMount'
+          type: array
+        type: object
+      slo:
+        type: integer
+      taskName:
         type: string
       taskType:
         type: string
+      workingDir:
+        type: string
+    required:
+    - command
+    - image
+    - resourceRequest
+    - taskName
+    - taskType
     type: object
   handler.CreateLabelReq:
     properties:
@@ -22,6 +46,15 @@ definitions:
     - name
     - priority
     - type
+    type: object
+  handler.DirMount:
+    properties:
+      mountPath:
+        type: string
+      subPath:
+        type: string
+      volume:
+        type: string
     type: object
   handler.ImagePackCreateRequest:
     properties:
@@ -198,10 +231,6 @@ definitions:
       name:
         description: 用户名称
         type: string
-      quota:
-        allOf:
-        - $ref: '#/definitions/model.EmbeddedQuota'
-        description: 私人Quota，包含Job、Node等
       role:
         allOf:
         - $ref: '#/definitions/model.Role'
@@ -946,6 +975,42 @@ paths:
       summary: 获取所有项目
       tags:
       - Project
+  /v1/admin/projects/{name}/quotas:
+    put:
+      consumes:
+      - application/json
+      description: 更新配额
+      parameters:
+      - in: path
+        name: name
+        required: true
+        type: string
+      - description: 更新quota
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/handler.UpdateQuotaReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功更新配额
+          schema:
+            $ref: '#/definitions/response.Response-string'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 更新配额
+      tags:
+      - User
   /v1/admin/users:
     get:
       consumes:
@@ -1000,42 +1065,6 @@ paths:
       security:
       - Bearer: []
       summary: 删除用户
-      tags:
-      - User
-  /v1/admin/users/{name}/quotas:
-    put:
-      consumes:
-      - application/json
-      description: 更新配额
-      parameters:
-      - in: path
-        name: name
-        required: true
-        type: string
-      - description: 更新quota
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/handler.UpdateQuotaReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 成功更新配额
-          schema:
-            $ref: '#/definitions/response.Response-string'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "500":
-          description: 其他错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-      security:
-      - Bearer: []
-      summary: 更新配额
       tags:
       - User
   /v1/admin/users/{name}/role:
