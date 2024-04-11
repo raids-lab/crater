@@ -10,6 +10,19 @@ definitions:
       taskType:
         type: string
     type: object
+  handler.CreateLabelReq:
+    properties:
+      name:
+        type: string
+      priority:
+        type: integer
+      type:
+        $ref: '#/definitions/model.WorkerType'
+    required:
+    - name
+    - priority
+    - type
+    type: object
   handler.ListAllResp:
     type: object
   handler.LoginReq:
@@ -92,6 +105,15 @@ definitions:
     required:
     - id
     type: object
+  handler.UpdateLabelReq:
+    properties:
+      name:
+        type: string
+      priority:
+        type: integer
+      type:
+        $ref: '#/definitions/model.WorkerType'
+    type: object
   handler.UpdateQuotaReq:
     properties:
       cpu:
@@ -148,7 +170,7 @@ definitions:
         type: string
       quota:
         allOf:
-        - $ref: '#/definitions/payload.Quota'
+        - $ref: '#/definitions/model.EmbeddedQuota'
         description: 私人Quota，包含Job、Node等
       role:
         allOf:
@@ -158,6 +180,52 @@ definitions:
         allOf:
         - $ref: '#/definitions/model.Status'
         description: 用户状态
+    type: object
+  model.EmbeddedQuota:
+    properties:
+      cpu:
+        type: integer
+      cpuReq:
+        type: integer
+      extra:
+        type: string
+      gpu:
+        type: integer
+      gpuMem:
+        type: integer
+      gpuMemReq:
+        type: integer
+      gpuReq:
+        type: integer
+      job:
+        type: integer
+      jobReq:
+        type: integer
+      mem:
+        type: integer
+      memReq:
+        type: integer
+      node:
+        type: integer
+      nodeReq:
+        type: integer
+      storage:
+        type: integer
+    type: object
+  model.Label:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      priority:
+        type: integer
+      type:
+        $ref: '#/definitions/model.WorkerType'
+      updatedAt:
+        type: string
     type: object
   model.Role:
     enum:
@@ -187,6 +255,16 @@ definitions:
     - StatusPending
     - StatusActive
     - StatusInactive
+  model.WorkerType:
+    enum:
+    - 0
+    - 1
+    type: integer
+    x-enum-comments:
+      Nvidia: Nvidia GPU worker
+    x-enum-varnames:
+    - _
+    - Nvidia
   payload.ClusterNodePodInfo:
     properties:
       address:
@@ -257,37 +335,6 @@ definitions:
         - $ref: '#/definitions/model.Status'
         description: 项目状态
     type: object
-  payload.Quota:
-    properties:
-      cpu:
-        type: integer
-      cpuReq:
-        type: integer
-      extra:
-        type: string
-      gpu:
-        type: integer
-      gpuMem:
-        type: integer
-      gpuMemReq:
-        type: integer
-      gpuReq:
-        type: integer
-      job:
-        type: integer
-      jobReq:
-        type: integer
-      mem:
-        type: integer
-      memReq:
-        type: integer
-      node:
-        type: integer
-      nodeReq:
-        type: integer
-      storage:
-        type: integer
-    type: object
   response.ErrorCode:
     enum:
     - 0
@@ -321,6 +368,17 @@ definitions:
       data:
         items:
           $ref: '#/definitions/handler.UserResp'
+        type: array
+      msg:
+        type: string
+    type: object
+  response.Response-array_model_Label:
+    properties:
+      code:
+        $ref: '#/definitions/response.ErrorCode'
+      data:
+        items:
+          $ref: '#/definitions/model.Label'
         type: array
       msg:
         type: string
@@ -360,6 +418,15 @@ definitions:
         $ref: '#/definitions/response.ErrorCode'
       data:
         $ref: '#/definitions/handler.ProjectCreateResp'
+      msg:
+        type: string
+    type: object
+  response.Response-model_EmbeddedQuota:
+    properties:
+      code:
+        $ref: '#/definitions/response.ErrorCode'
+      data:
+        $ref: '#/definitions/model.EmbeddedQuota'
       msg:
         type: string
     type: object
@@ -547,6 +614,103 @@ paths:
       summary: 管理员获取指定类型任务列表
       tags:
       - AIJob
+  /v1/admin/labels:
+    post:
+      consumes:
+      - application/json
+      description: 创建标签
+      parameters:
+      - description: 创建标签
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/handler.CreateLabelReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回
+          schema:
+            $ref: '#/definitions/response.Response-array_model_Label'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 创建标签
+      tags:
+      - label
+  /v1/admin/labels/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 根据ID删除标签
+      parameters:
+      - in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回
+          schema:
+            $ref: '#/definitions/response.Response-string'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 删除标签
+      tags:
+      - label
+    put:
+      consumes:
+      - application/json
+      description: 更新标签
+      parameters:
+      - in: path
+        name: id
+        required: true
+        type: integer
+      - description: 更新标签
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/handler.UpdateLabelReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回
+          schema:
+            $ref: '#/definitions/response.Response-string'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 更新标签
+      tags:
+      - label
   /v1/admin/projects:
     get:
       consumes:
@@ -1015,6 +1179,56 @@ paths:
       summary: 更新任务slo
       tags:
       - AIJob
+  /v1/context/quota:
+    get:
+      consumes:
+      - application/json
+      description: 如果 UserProject 表没有对 Quota 进行限制，则返回项目的 Quota
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 配额信息
+          schema:
+            $ref: '#/definitions/response.Response-model_EmbeddedQuota'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 获取当前用户当前项目的Quota
+      tags:
+      - Context
+  /v1/labels:
+    get:
+      consumes:
+      - application/json
+      description: show all labels, decs by priority
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response-array_model_Label'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: list labels
+      tags:
+      - label
   /v1/nodes:
     get:
       consumes:

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	ldap "github.com/go-ldap/ldap/v3"
@@ -23,12 +25,14 @@ import (
 )
 
 type AuthMgr struct {
+	client         *http.Client
 	tokenMgr       *util.TokenManager
 	taskController *aitaskctl.TaskController
 }
 
-func NewAuthMgr(taskController *aitaskctl.TaskController) Manager {
+func NewAuthMgr(taskController *aitaskctl.TaskController, client *http.Client) Manager {
 	return &AuthMgr{
+		client:         client,
 		tokenMgr:       util.GetTokenMgr(),
 		taskController: taskController,
 	}
@@ -40,7 +44,7 @@ func (mgr *AuthMgr) RegisterPublic(g *gin.RouterGroup) {
 }
 
 func (mgr *AuthMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.POST("", mgr.SwitchProject) // 切换项目
+	g.POST("", mgr.SwitchProject) // 切换项目 /switch
 }
 
 func (mgr *AuthMgr) RegisterAdmin(_ *gin.RouterGroup) {}
@@ -189,6 +193,9 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.User, error) {
 	db := query.Use(query.DB)
 
+	var path string
+	var userID, projectID uint
+
 	err := db.Transaction(func(tx *query.Query) error {
 		u := tx.User
 		p := tx.Project
@@ -207,7 +214,7 @@ func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.Us
 		if err := u.WithContext(c).Create(&user); err != nil {
 			return err
 		}
-
+		userID = user.ID
 		// Create a personal project for the user
 		project := model.Project{
 			Name:        user.Name,
@@ -219,12 +226,14 @@ func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.Us
 		if err := p.WithContext(c).Create(&project); err != nil {
 			return err
 		}
-
+		projectID = project.ID
 		// Create a user-project relationship without quota limit
 		userProject := model.UserProject{
-			UserID:    user.ID,
-			ProjectID: project.ID,
-			Role:      model.RoleAdmin,
+			UserID:        user.ID,
+			ProjectID:     project.ID,
+			Role:          model.RoleAdmin,
+			AccessMode:    model.AccessModeRW,
+			EmbeddedQuota: model.QuotaUnlimited,
 		}
 		if err := up.WithContext(c).Create(&userProject); err != nil {
 			return err
@@ -240,10 +249,12 @@ func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.Us
 		if err := s.WithContext(c).Create(&space); err != nil {
 			return err
 		}
-
+		path = folderPath
 		// Create a quota for the personal project
-		quota := model.DefaultQuota()
-		quota.ProjectID = project.ID
+		quota := model.Quota{
+			ProjectID:     project.ID,
+			EmbeddedQuota: model.QuotaDefault,
+		}
 		if err := q.WithContext(c).Create(&quota); err != nil {
 			return err
 		}
@@ -253,7 +264,10 @@ func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.Us
 	if err != nil {
 		return nil, err
 	}
-
+	err = mgr.createPersonalDir(c, path, userID, projectID)
+	if err != nil {
+		return nil, err
+	}
 	// TODO: refactor
 	// Notify the task controller that a new user is created
 	oldQuota := models.Quota{
@@ -265,6 +279,31 @@ func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.Us
 
 	user, err := query.User.WithContext(c).Where(query.User.Name.Eq(name)).First()
 	return user, err
+}
+
+func (mgr *AuthMgr) createPersonalDir(c *gin.Context, path string, userid, projectid uint) error {
+	client := mgr.client
+	params := url.Values{}
+	params.Set("userid", strconv.FormatUint(uint64(userid), 10))
+	params.Set("projectid", strconv.FormatUint(uint64(projectid), 10))
+	baseurl := "http://192.168.5.81:30320/files"
+	uRL := fmt.Sprintf("%s?%s", baseurl+path, params.Encode())
+	// 创建请求
+	req, err := http.NewRequestWithContext(c.Request.Context(), "MKCOL", uRL, http.NoBody)
+	if err != nil {
+		return fmt.Errorf("can't create request:%s", err.Error())
+	}
+
+	// 发送请求
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("can't send request %s", err.Error())
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+	return nil
 }
 
 func (mgr *AuthMgr) normalAuth(c *gin.Context, username, password string) error {
