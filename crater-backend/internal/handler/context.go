@@ -51,12 +51,13 @@ func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("find quota of user in project failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
-	q := query.Quota
+	p := query.Project
 
 	var quotaInProject model.EmbeddedQuota
-	err = q.WithContext(c).Where(q.ProjectID.Eq(token.ProjectID)).Select(q.ALL).Scan(&quotaInProject)
+	err = p.WithContext(c).Where(p.ID.Eq(token.ProjectID)).Select(p.ALL).Scan(&quotaInProject)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("find quota of project failed, detail: %v", err), resputil.NotSpecified)
+
 		return
 	}
 
