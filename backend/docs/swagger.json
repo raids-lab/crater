@@ -7,6 +7,183 @@
         "version": "0.3.0"
     },
     "paths": {
+        "/image/available": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "用projectID来过滤已完成的镜像",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "用户在运行作业时选择镜像需要调用此接口，来获取可以用的镜像",
+                "responses": {}
+            }
+        },
+        "/image/create": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取参数，生成变量，调用接口",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "创建ImagePack CRD和数据库entity",
+                "parameters": [
+                    {
+                        "description": "创建ImagePack",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.ImagePackCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/image/delete": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "根据ID更新ImagePack的状态为Deleted，起到删除的功能",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "根据ID删除ImagePack",
+                "parameters": [
+                    {
+                        "description": "删除镜像的ID",
+                        "name": "ID",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/image/get": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取imagepackname，搜索到imagepack",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "获取imagepack的详细信息，主要用于调试",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "获取ImagePack的name",
+                        "name": "imagepackname",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/image/list": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "如果userRole为user，则返回该用户所有的镜像；否则根据GET参数type来决定搜索私有or公共镜像",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "用户和管理员获取相关镜像的功能",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "管理员获取镜像的类型",
+                        "name": "type",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/image/params": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "接受参数，序列化为string，更新imagepack相应字段",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "用于更新镜像的Profile参数",
+                "parameters": [
+                    {
+                        "description": "更新ImagePack的name",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.ImagePackParamsUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/login": {
             "post": {
                 "description": "校验用户身份，生成包含当前用户和项目的 JWT Token",
@@ -500,6 +677,63 @@
                 }
             }
         },
+        "/v1/admin/projects/{name}/quotas": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "更新配额",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "更新配额",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新quota",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.UpdateQuotaReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功更新配额",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/users": {
             "get": {
                 "security": [
@@ -570,63 +804,6 @@
                 "responses": {
                     "200": {
                         "description": "删除成功",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-string"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "其他错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/admin/users/{name}/quotas": {
-            "put": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "更新配额",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "User"
-                ],
-                "summary": "更新配额",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "name": "name",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "更新quota",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.UpdateQuotaReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "成功更新配额",
                         "schema": {
                             "$ref": "#/definitions/response.Response-string"
                         }
@@ -1542,6 +1719,52 @@
                 }
             }
         },
+        "handler.ImagePackCreateRequest": {
+            "type": "object",
+            "properties": {
+                "accessToken": {
+                    "type": "string"
+                },
+                "gitRepository": {
+                    "type": "string"
+                },
+                "imageName": {
+                    "type": "string"
+                },
+                "imageTag": {
+                    "type": "string"
+                },
+                "needProfile": {
+                    "type": "boolean"
+                },
+                "registryPass": {
+                    "type": "string"
+                },
+                "registryProject": {
+                    "type": "string"
+                },
+                "registryServer": {
+                    "type": "string"
+                },
+                "registryUser": {
+                    "type": "string"
+                },
+                "taskType": {
+                    "$ref": "#/definitions/model.ImageTaskType"
+                }
+            }
+        },
+        "handler.ImagePackParamsUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/model.ImageProfileParams"
+                },
+                "imagepackname": {
+                    "type": "string"
+                }
+            }
+        },
         "handler.ListAllResp": {
             "type": "object"
         },
@@ -1762,14 +1985,6 @@
                     "description": "用户名称",
                     "type": "string"
                 },
-                "quota": {
-                    "description": "私人Quota，包含Job、Node等",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.EmbeddedQuota"
-                        }
-                    ]
-                },
                 "role": {
                     "description": "用户角色",
                     "allOf": [
@@ -1834,6 +2049,58 @@
                     "type": "integer"
                 }
             }
+        },
+        "model.ImageProfileParams": {
+            "type": "object",
+            "properties": {
+                "Activations": {
+                    "type": "integer"
+                },
+                "BatchSize": {
+                    "type": "integer"
+                },
+                "Convs": {
+                    "type": "integer"
+                },
+                "Denses": {
+                    "type": "integer"
+                },
+                "GFLOPs": {
+                    "type": "number"
+                },
+                "GPUMemUsage": {
+                    "type": "number"
+                },
+                "GPUUtil": {
+                    "type": "number"
+                },
+                "ModelSize": {
+                    "type": "number"
+                },
+                "Others": {
+                    "type": "integer"
+                },
+                "Params": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.ImageTaskType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-comments": {
+                "JupyterTask": "Jupyter交互式任务",
+                "OffLineTask": "离线任务"
+            },
+            "x-enum-varnames": [
+                "_",
+                "OffLineTask",
+                "JupyterTask"
+            ]
         },
         "model.Label": {
             "type": "object",

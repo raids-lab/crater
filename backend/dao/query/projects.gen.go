@@ -36,6 +36,20 @@ func newProject(db *gorm.DB, opts ...gen.DOOption) project {
 	_project.Namespace = field.NewString(tableName, "namespace")
 	_project.Status = field.NewUint8(tableName, "status")
 	_project.IsPersonal = field.NewBool(tableName, "is_personal")
+	_project.JobReq = field.NewInt(tableName, "job_req")
+	_project.Job = field.NewInt(tableName, "job")
+	_project.NodeReq = field.NewInt(tableName, "node_req")
+	_project.Node = field.NewInt(tableName, "node")
+	_project.CPUReq = field.NewInt(tableName, "cpu_req")
+	_project.CPU = field.NewInt(tableName, "cpu")
+	_project.GPUReq = field.NewInt(tableName, "gpu_req")
+	_project.GPU = field.NewInt(tableName, "gpu")
+	_project.MemReq = field.NewInt(tableName, "mem_req")
+	_project.Mem = field.NewInt(tableName, "mem")
+	_project.GPUMemReq = field.NewInt(tableName, "gpu_mem_req")
+	_project.GPUMem = field.NewInt(tableName, "gpu_mem")
+	_project.Storage = field.NewInt(tableName, "storage")
+	_project.Extra = field.NewString(tableName, "extra")
 	_project.UserProjects = projectHasManyUserProjects{
 		db: db.Session(&gorm.Session{}),
 
@@ -66,6 +80,20 @@ type project struct {
 	Namespace    field.String
 	Status       field.Uint8
 	IsPersonal   field.Bool
+	JobReq       field.Int
+	Job          field.Int
+	NodeReq      field.Int
+	Node         field.Int
+	CPUReq       field.Int
+	CPU          field.Int
+	GPUReq       field.Int
+	GPU          field.Int
+	MemReq       field.Int
+	Mem          field.Int
+	GPUMemReq    field.Int
+	GPUMem       field.Int
+	Storage      field.Int
+	Extra        field.String
 	UserProjects projectHasManyUserProjects
 
 	ProjectSpaces projectHasManyProjectSpaces
@@ -94,6 +122,20 @@ func (p *project) updateTableName(table string) *project {
 	p.Namespace = field.NewString(table, "namespace")
 	p.Status = field.NewUint8(table, "status")
 	p.IsPersonal = field.NewBool(table, "is_personal")
+	p.JobReq = field.NewInt(table, "job_req")
+	p.Job = field.NewInt(table, "job")
+	p.NodeReq = field.NewInt(table, "node_req")
+	p.Node = field.NewInt(table, "node")
+	p.CPUReq = field.NewInt(table, "cpu_req")
+	p.CPU = field.NewInt(table, "cpu")
+	p.GPUReq = field.NewInt(table, "gpu_req")
+	p.GPU = field.NewInt(table, "gpu")
+	p.MemReq = field.NewInt(table, "mem_req")
+	p.Mem = field.NewInt(table, "mem")
+	p.GPUMemReq = field.NewInt(table, "gpu_mem_req")
+	p.GPUMem = field.NewInt(table, "gpu_mem")
+	p.Storage = field.NewInt(table, "storage")
+	p.Extra = field.NewString(table, "extra")
 
 	p.fillFieldMap()
 
@@ -118,7 +160,7 @@ func (p *project) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (p *project) fillFieldMap() {
-	p.fieldMap = make(map[string]field.Expr, 11)
+	p.fieldMap = make(map[string]field.Expr, 25)
 	p.fieldMap["id"] = p.ID
 	p.fieldMap["created_at"] = p.CreatedAt
 	p.fieldMap["updated_at"] = p.UpdatedAt
@@ -128,6 +170,20 @@ func (p *project) fillFieldMap() {
 	p.fieldMap["namespace"] = p.Namespace
 	p.fieldMap["status"] = p.Status
 	p.fieldMap["is_personal"] = p.IsPersonal
+	p.fieldMap["job_req"] = p.JobReq
+	p.fieldMap["job"] = p.Job
+	p.fieldMap["node_req"] = p.NodeReq
+	p.fieldMap["node"] = p.Node
+	p.fieldMap["cpu_req"] = p.CPUReq
+	p.fieldMap["cpu"] = p.CPU
+	p.fieldMap["gpu_req"] = p.GPUReq
+	p.fieldMap["gpu"] = p.GPU
+	p.fieldMap["mem_req"] = p.MemReq
+	p.fieldMap["mem"] = p.Mem
+	p.fieldMap["gpu_mem_req"] = p.GPUMemReq
+	p.fieldMap["gpu_mem"] = p.GPUMem
+	p.fieldMap["storage"] = p.Storage
+	p.fieldMap["extra"] = p.Extra
 
 }
 
