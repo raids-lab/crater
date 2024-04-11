@@ -191,3 +191,7 @@ type ResourceAnalyzeWebhookResponse struct {
 	Data map[string]ResourceAnalyzeWebhookData `json:"data"`
 	Msg  string                                `json:"msg"`
 }
+
+// type ImagePackGetByNameResponse struct {
+// 	ImagePack models.ImagePack `json:"imagepack"`
+// }

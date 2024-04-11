@@ -49,7 +49,7 @@ type ImagePackSpec struct {
 	RegistryProject string `json:"registryProject"`
 	ImageName       string `json:"imageName"`
 	ImageTag        string `json:"imageTag"`
-
+	NeedProfile     bool   `json:"needProfile"`
 	// Template v1.PodTemplateSpec `json:"template,omitempty"`
 }
 
@@ -85,7 +85,7 @@ type ImagePackList struct {
 	Items           []ImagePack `json:"items"`
 }
 
-//nolint:gochecknoinits // imagepack type define no need to check code style
+//nolint:gochecknoinits // This is required by kubebuilder.
 func init() {
 	SchemeBuilder.Register(&ImagePack{}, &ImagePackList{})
 }
