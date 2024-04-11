@@ -116,7 +116,7 @@ func (mgr *ImagePackMgr) requestDefaultValue(req *ImagePackCreateRequest) {
 
 func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateRequest, token util.ReqContext) {
 	userQuery := query.User
-	imagepackQuery := query.ImagePack
+	imagepackQuery := query.Image
 	user, err := userQuery.WithContext(c).Where(userQuery.ID.Eq(token.UserID)).First()
 	if err != nil {
 		logutils.Log.Errorf("fetch user failed, params: %+v err:%v", req, err)
@@ -180,7 +180,7 @@ func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateReq
 // @Param type query int true "管理员获取镜像的类型"
 // @Router /image/list [GET]
 func (mgr *ImagePackMgr) ListAll(c *gin.Context) {
-	imagepackQuery := query.ImagePack
+	imagepackQuery := query.Image
 	token, _ := util.GetToken(c)
 	var imagepacks []*model.Image
 	var err error
@@ -225,7 +225,7 @@ func (mgr *ImagePackMgr) ListAll(c *gin.Context) {
 }
 
 func (mgr *ImagePackMgr) updateImagePackStatus(c *gin.Context, imagepack *model.Image) {
-	imagepackQuery := query.ImagePack
+	imagepackQuery := query.Image
 	imagepackCRD, err := mgr.imagepackClient.GetImagePack(c, imagepack.ImagePackName, UserNameSpace)
 	if err != nil {
 		logutils.Log.Errorf("fetch imagepack CRD failed, err:%v", err)
@@ -257,7 +257,7 @@ func (mgr *ImagePackMgr) updateImagePackStatus(c *gin.Context, imagepack *model.
 // @Router /image/available [GET]
 func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	token, _ := util.GetToken(c)
-	imagepackQuery := query.ImagePack
+	imagepackQuery := query.Image
 	imagepacks, err := imagepackQuery.WithContext(c).Where(
 		imagepackQuery.ProjectID.Eq(token.ProjectID),
 	).Where(
@@ -290,7 +290,7 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 // @Router /image/delete [POST]
 func (mgr *ImagePackMgr) DeleteByID(c *gin.Context) {
 	token, _ := util.GetToken(c)
-	imagepackQuery := query.ImagePack
+	imagepackQuery := query.Image
 	imagePackDeleteRequest := &ImagePackDeleteByIDRequest{}
 	if err := c.ShouldBindJSON(imagePackDeleteRequest); err != nil {
 		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
@@ -329,7 +329,7 @@ func (mgr *ImagePackMgr) DeleteByID(c *gin.Context) {
 // @Router /image/params [post]
 func (mgr *ImagePackMgr) UpdateParams(c *gin.Context) {
 	imagePackParamsUpdateRequest := &ImagePackParamsUpdateRequest{}
-	imagepackQuery := query.ImagePack
+	imagepackQuery := query.Image
 	if err := c.ShouldBindJSON(imagePackParamsUpdateRequest); err != nil {
 		msg := fmt.Sprintf("validate update parameters failed, err %v", err)
 		logutils.Log.Errorf(msg)
@@ -360,7 +360,7 @@ func (mgr *ImagePackMgr) UpdateParams(c *gin.Context) {
 // @Param imagepackname query string true "获取ImagePack的name"
 // @Router /image/get [GET]
 func (mgr *ImagePackMgr) GetImagePack(c *gin.Context) {
-	imagepackQuery := query.ImagePack
+	imagepackQuery := query.Image
 	imagePackName := c.DefaultQuery("imagepackname", "")
 	imagepack, err := imagepackQuery.WithContext(c).Where(
 		imagepackQuery.ImagePackName.Eq(imagePackName),

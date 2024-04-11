@@ -41,7 +41,6 @@ func main() {
 		model.UserProject{},
 		model.Space{},
 		model.ProjectSpace{},
-		model.Quota{},
 		model.AIJob{},
 		model.Image{},
 		model.Label{},

@@ -1,7 +1,5 @@
 package model
 
-import "gorm.io/gorm"
-
 // Default Quota
 // TODO: Make it configurable
 const (
@@ -72,12 +70,4 @@ type EmbeddedQuota struct {
 	Storage int `gorm:"type:int;not null;comment:存储配额 (Gi)" json:"storage"`
 
 	Extra *string `gorm:"comment:可访问的资源限制 (V100,P100...)" json:"extra"`
-}
-
-// Quota belongs to project, defines the resource quota of a project
-type Quota struct {
-	gorm.Model
-	ProjectID     uint
-	Project       Project
-	EmbeddedQuota `gorm:"embedded"`
 }
