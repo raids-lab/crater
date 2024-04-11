@@ -7,7 +7,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { apiContextQuota } from "@/services/api/context";
 import { useQuery } from "@tanstack/react-query";
-import { CpuIcon, CylinderIcon, MemoryStickIcon } from "lucide-react";
+import { CpuIcon, HardDriveIcon, MemoryStickIcon } from "lucide-react";
 import { useMemo } from "react";
 
 const Quota = () => {
@@ -54,7 +54,7 @@ const Quota = () => {
         soft: `${quota.memReq}`,
       },
       {
-        icon: CylinderIcon,
+        icon: HardDriveIcon,
         resource: "存储",
         progress: {
           width: (quota.storage / quota.storage) * 100,
