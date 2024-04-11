@@ -2,17 +2,23 @@ import { SidebarItem, SidebarMenu } from "@/components/layout/Sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { FC, PropsWithChildren, Suspense } from "react";
 import { Navigate, RouteObject } from "react-router-dom";
-import { FileTextIcon, Pencil2Icon, PersonIcon } from "@radix-ui/react-icons";
+import {
+  FileTextIcon,
+  ArchiveIcon,
+  Pencil2Icon,
+  PersonIcon,
+} from "@radix-ui/react-icons";
 import OverviewIcon from "@/components/icon/OverviewIcon";
 import DatabaseIcon from "@/components/icon/DatabaseIcon";
 import LightHouseIcon from "@/components/icon/LightHouseIcon";
-import { PersonalUser } from "./User/Personal";
-import { GroupUser } from "./User/Group";
+import { PersonalProject } from "./Project/Personal";
+import { GroupUser } from "./Project/Group";
 import Jupyter from "./Job/Jupyter";
 import Training from "./Job/Training";
 import ServerIcon from "@/components/icon/ServerIcon";
 import { Role } from "@/services/api/auth";
 import DashboardLayout from "@/components/layout/Dashboard";
+import { User } from "./User";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -34,22 +40,31 @@ const sidebarItems: SidebarItem[] = [
     ],
   },
   {
-    path: "user",
-    icon: PersonIcon,
+    path: "project",
+    icon: ArchiveIcon,
     children: [
       {
         route: {
           path: "personal",
-          element: <PersonalUser />,
+          element: <PersonalProject />,
         },
       },
       {
         route: {
-          path: "group",
+          path: "team",
           element: <GroupUser />,
         },
       },
     ],
+  },
+  {
+    path: "user",
+    icon: PersonIcon,
+    children: [],
+    route: {
+      path: "user",
+      element: <User />,
+    },
   },
   {
     path: "job",

@@ -1,6 +1,5 @@
 import {
   DotsHorizontalIcon,
-  Pencil2Icon,
   StarFilledIcon,
   StarIcon,
 } from "@radix-ui/react-icons";
@@ -16,13 +15,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -46,21 +38,20 @@ import { DataTable } from "@/components/custom/OldDataTable";
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
 import {
-  Quota,
   apiAdminUserDelete,
   apiAdminUserList,
   apiAdminUserUpdateRole,
 } from "@/services/api/admin/user";
 import { useRecoilValue } from "recoil";
 import { globalUserInfo } from "@/utils/store";
-import { Badge } from "@/components/ui/badge";
 import { Role } from "@/services/api/auth";
+import { ProjectStatus } from "@/services/api/project";
 
 interface TUser {
   id: number;
   name: string;
   role: Role;
-  quota: Quota;
+  status: ProjectStatus;
 }
 
 const getHeader = (key: string): string => {
@@ -69,8 +60,8 @@ const getHeader = (key: string): string => {
       return "用户名";
     case "role":
       return "权限";
-    case "quota":
-      return "配额";
+    case "status":
+      return "状态";
     default:
       return key;
   }
@@ -85,6 +76,19 @@ const roles = [
   {
     label: "普通用户",
     value: Role.User,
+    icon: StarIcon,
+  },
+];
+
+const statuses = [
+  {
+    label: "已激活",
+    value: ProjectStatus.Active,
+    icon: StarFilledIcon,
+  },
+  {
+    label: "未激活",
+    value: ProjectStatus.Inactive,
     icon: StarIcon,
   },
 ];
@@ -104,7 +108,7 @@ const toolbarConfig: DataTableToolbarConfig<Role> = {
   getHeader: getHeader,
 };
 
-export const PersonalUser = () => {
+export const User = () => {
   const [data, setData] = useState<TUser[]>([]);
   const queryClient = useQueryClient();
   const { name: currentUserName } = useRecoilValue(globalUserInfo);
@@ -188,41 +192,28 @@ export const PersonalUser = () => {
         },
       },
       {
-        id: "quota",
-        accessorFn: (row) => row.quota,
+        accessorKey: "status",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("quota")} />
+          <DataTableColumnHeader column={column} title={getHeader("status")} />
         ),
         cell: ({ row }) => {
-          const { quota } = row.original;
+          const status = statuses.find(
+            (status) => status.value === row.getValue("status"),
+          );
+          if (!status) {
+            return null;
+          }
           return (
-            <div className="flex items-center space-x-1">
-              <Badge
-                className="rounded-sm px-1 font-normal"
-                variant={"secondary"}
-              >
-                {quota.cpu} CPU
-              </Badge>
-              <Badge
-                className="rounded-sm px-1 font-normal"
-                variant={"secondary"}
-              >
-                {quota.gpu} GPU
-              </Badge>
-              <Badge
-                className="rounded-sm px-1 font-normal"
-                variant={"secondary"}
-              >
-                {quota.mem || 0} GB
-              </Badge>
+            <div className="flex items-center">
+              {status.icon && (
+                <status.icon className="mr-2 h-4 w-4 text-muted-foreground" />
+              )}
+              <span>{status.label}</span>
             </div>
           );
         },
-        // issue: https://github.com/TanStack/table/issues/4591
-        sortingFn: (rowA, rowB) => {
-          const a = rowA.original.quota.cpu || 0;
-          const b = rowB.original.quota.cpu || 0;
-          return a - b;
+        filterFn: (row, id, value) => {
+          return (value as string[]).includes(row.getValue(id));
         },
       },
       {
@@ -230,32 +221,8 @@ export const PersonalUser = () => {
         enableHiding: false,
         cell: ({ row }) => {
           const user = row.original;
-          // eslint-disable-next-line react-hooks/rules-of-hooks
-          const [openQuotaDialog, setOpenQuotaDialog] = useState(false);
-
           return (
             <div>
-              <Dialog open={openQuotaDialog} onOpenChange={setOpenQuotaDialog}>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="h-8 w-8 p-0"
-                    title="配额管理"
-                  >
-                    <Pencil2Icon className="h-4 w-4" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle className="mb-2">修改配额</DialogTitle>
-                    {/* <QuotaForm
-                      closeSheet={() => setOpenQuotaDialog(false)}
-                      userName={user.name}
-                      quota={user.quota.hard}
-                    /> */}
-                  </DialogHeader>
-                </DialogContent>
-              </Dialog>
               <AlertDialog>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -337,7 +304,7 @@ export const PersonalUser = () => {
       id: user.id,
       name: user.name,
       role: user.role,
-      quota: user.quota,
+      status: user.status,
     }));
     setData(tableData);
   }, [userList, isLoading]);

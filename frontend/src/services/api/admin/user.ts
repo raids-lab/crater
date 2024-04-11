@@ -26,7 +26,6 @@ export interface User {
   name: string;
   role: Role;
   status: ProjectStatus;
-  quota: Quota;
 }
 
 export const apiAdminUserList = () =>
