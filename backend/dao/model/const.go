@@ -47,6 +47,14 @@ const (
 	JobPreempted           // 作业中的一个或多个 Pod 被抢占
 )
 
+type ImageTaskType uint8
+
+const (
+	_           ImageTaskType = iota
+	OffLineTask               // 离线任务
+	JupyterTask               // Jupyter交互式任务
+)
+
 type WorkerType uint8
 
 const (
@@ -54,4 +62,4 @@ const (
 	Nvidia            // Nvidia GPU worker
 )
 
-//go:generate stringer -type=Role,Status,AccessMode,JobStatus -output=const_string.go
+//go:generate stringer -type=Role,Status,AccessMode,JobStatus,ImageTaskType -output=const_string.go

@@ -18,6 +18,7 @@ import (
 var (
 	Q            = new(Query)
 	AIJob        *aIJob
+	ImagePack    *imagePack
 	Label        *label
 	Project      *project
 	ProjectSpace *projectSpace
@@ -30,6 +31,7 @@ var (
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
 	AIJob = &Q.AIJob
+	ImagePack = &Q.ImagePack
 	Label = &Q.Label
 	Project = &Q.Project
 	ProjectSpace = &Q.ProjectSpace
@@ -43,6 +45,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:           db,
 		AIJob:        newAIJob(db, opts...),
+		ImagePack:    newImagePack(db, opts...),
 		Label:        newLabel(db, opts...),
 		Project:      newProject(db, opts...),
 		ProjectSpace: newProjectSpace(db, opts...),
@@ -57,6 +60,7 @@ type Query struct {
 	db *gorm.DB
 
 	AIJob        aIJob
+	ImagePack    imagePack
 	Label        label
 	Project      project
 	ProjectSpace projectSpace
@@ -72,6 +76,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:           db,
 		AIJob:        q.AIJob.clone(db),
+		ImagePack:    q.ImagePack.clone(db),
 		Label:        q.Label.clone(db),
 		Project:      q.Project.clone(db),
 		ProjectSpace: q.ProjectSpace.clone(db),
@@ -94,6 +99,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:           db,
 		AIJob:        q.AIJob.replaceDB(db),
+		ImagePack:    q.ImagePack.replaceDB(db),
 		Label:        q.Label.replaceDB(db),
 		Project:      q.Project.replaceDB(db),
 		ProjectSpace: q.ProjectSpace.replaceDB(db),
@@ -106,6 +112,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 
 type queryCtx struct {
 	AIJob        IAIJobDo
+	ImagePack    IImagePackDo
 	Label        ILabelDo
 	Project      IProjectDo
 	ProjectSpace IProjectSpaceDo
@@ -118,6 +125,7 @@ type queryCtx struct {
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
 		AIJob:        q.AIJob.WithContext(ctx),
+		ImagePack:    q.ImagePack.WithContext(ctx),
 		Label:        q.Label.WithContext(ctx),
 		Project:      q.Project.WithContext(ctx),
 		ProjectSpace: q.ProjectSpace.WithContext(ctx),
