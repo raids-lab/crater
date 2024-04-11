@@ -1,14 +1,38 @@
 definitions:
   handler.CreateJobReq:
     properties:
-      extra:
+      command:
         type: string
-      name:
+      gpuModel:
+        type: string
+      image:
         type: string
       resourceRequest:
+        additionalProperties:
+          type: string
+        type: object
+      schedulerName:
+        type: string
+      shareDirs:
+        additionalProperties:
+          items:
+            $ref: '#/definitions/handler.DirMount'
+          type: array
+        type: object
+      slo:
+        type: integer
+      taskName:
         type: string
       taskType:
         type: string
+      workingDir:
+        type: string
+    required:
+    - command
+    - image
+    - resourceRequest
+    - taskName
+    - taskType
     type: object
   handler.CreateLabelReq:
     properties:
@@ -22,6 +46,15 @@ definitions:
     - name
     - priority
     - type
+    type: object
+  handler.DirMount:
+    properties:
+      mountPath:
+        type: string
+      subPath:
+        type: string
+      volume:
+        type: string
     type: object
   handler.ListAllResp:
     type: object

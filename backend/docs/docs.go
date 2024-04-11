@@ -1468,17 +1468,51 @@ const docTemplate = `{
     "definitions": {
         "handler.CreateJobReq": {
             "type": "object",
+            "required": [
+                "command",
+                "image",
+                "resourceRequest",
+                "taskName",
+                "taskType"
+            ],
             "properties": {
-                "extra": {
+                "command": {
                     "type": "string"
                 },
-                "name": {
+                "gpuModel": {
+                    "type": "string"
+                },
+                "image": {
                     "type": "string"
                 },
                 "resourceRequest": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "schedulerName": {
+                    "type": "string"
+                },
+                "shareDirs": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/definitions/handler.DirMount"
+                        }
+                    }
+                },
+                "slo": {
+                    "type": "integer"
+                },
+                "taskName": {
                     "type": "string"
                 },
                 "taskType": {
+                    "type": "string"
+                },
+                "workingDir": {
                     "type": "string"
                 }
             }
@@ -1499,6 +1533,20 @@ const docTemplate = `{
                 },
                 "type": {
                     "$ref": "#/definitions/model.WorkerType"
+                }
+            }
+        },
+        "handler.DirMount": {
+            "type": "object",
+            "properties": {
+                "mountPath": {
+                    "type": "string"
+                },
+                "subPath": {
+                    "type": "string"
+                },
+                "volume": {
+                    "type": "string"
                 }
             }
         },
