@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -28,6 +29,7 @@ func (mgr *ImagePackMgr) RegisterRoute(g *gin.RouterGroup) {
 	g.POST("/create", mgr.Create)
 	g.POST("/deleteid", mgr.DeleteByID)
 	g.GET("/available", mgr.ListAvailableImages)
+	g.POST("/params", mgr.UpdateParams)
 }
 
 func NewImagePackMgr(
@@ -41,7 +43,6 @@ func NewImagePackMgr(
 }
 
 func (mgr *ImagePackMgr) Create(c *gin.Context) {
-	logutils.Log.Infof("ImagePack Create, url: %s", c.Request.URL)
 	req := &payload.ImagePackCreateRequest{}
 	userContext, _ := util.GetUserFromGinContext(c)
 	if err := c.ShouldBindJSON(req); err != nil {
@@ -50,6 +51,7 @@ func (mgr *ImagePackMgr) Create(c *gin.Context) {
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
+	logutils.Log.Infof("create params: %+v", req)
 	mgr.requestDefaultValue(req)
 	mgr.createImagePack(c, req, userContext)
 	resputil.Success(c, "")
@@ -82,6 +84,7 @@ func (mgr *ImagePackMgr) createImagePack(ctx *gin.Context, req *payload.ImagePac
 			UserName:        userContext.UserName,
 			ImageName:       req.ImageName,
 			ImageTag:        req.ImageTag,
+			NeedProfile:     req.NeedProfile,
 		},
 	}
 	if err := mgr.imagepackClient.CreateImagePack(ctx, imagepackCRD); err != nil {
@@ -95,10 +98,12 @@ func (mgr *ImagePackMgr) createImagePack(ctx *gin.Context, req *payload.ImagePac
 	imagepackEntity := &models.ImagePack{
 		ImagePackName: imagepackName,
 		ImageLink:     imageLink,
-		UserName:      userContext.UserName,
+		CreaterName:   userContext.UserName,
 		NameSpace:     userContext.Namespace,
 		Status:        string(imagepackv1.PackJobInitial),
 		NameTag:       fmt.Sprintf("%s:%s", req.ImageName, req.ImageTag),
+		Params:        models.ImagePackParams{},
+		NeedProfile:   req.NeedProfile,
 	}
 	if err := mgr.imagepackService.Create(imagepackEntity); err != nil {
 		logutils.Log.Errorf("create imagepack entity failed, params: %+v", imagepackEntity)
@@ -137,6 +142,7 @@ func (mgr *ImagePackMgr) updateImagePackStatus(ctx *gin.Context, userContext uti
 			logutils.Log.Errorf("fetch imagepack CRD failed, err:%v", err)
 		}
 	}
+	resputil.Success(ctx, "")
 }
 
 func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
@@ -168,7 +174,7 @@ func (mgr *ImagePackMgr) DeleteByID(c *gin.Context) {
 		return
 	}
 	imagepackID := imagePackDeleteRequest.ID
-	if _, err := mgr.imagepackService.GetImagePack(imagepackID, userContext.UserName); err != nil {
+	if _, err := mgr.imagepackService.GetImagePackByID(imagepackID, userContext.UserName); err != nil {
 		logutils.Log.Errorf("image not exist or have no permission%v", err)
 		resputil.Error(c, "failed to find imagepack or entity", resputil.NotSpecified)
 		return
@@ -178,5 +184,21 @@ func (mgr *ImagePackMgr) DeleteByID(c *gin.Context) {
 		resputil.Error(c, "failed to find imagepack or entity", resputil.NotSpecified)
 		return
 	}
+	resputil.Success(c, "")
+}
+
+func (mgr *ImagePackMgr) UpdateParams(c *gin.Context) {
+	imagePackParamsUpdateRequest := &payload.ImagePackParamsUpdateRequest{}
+	if err := c.ShouldBindJSON(imagePackParamsUpdateRequest); err != nil {
+		msg := fmt.Sprintf("validate update parameters failed, err %v", err)
+		logutils.Log.Errorf(msg)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		return
+	}
+	logutils.Log.Infof("UpdateParams's input request body: %+v", imagePackParamsUpdateRequest)
+	imagepackname := imagePackParamsUpdateRequest.ImagePackName
+	data, _ := json.Marshal(imagePackParamsUpdateRequest.Data)
+	params := string(data)
+	_ = mgr.imagepackService.UpdateParamsByImagePackName(imagepackname, params)
 	resputil.Success(c, "")
 }

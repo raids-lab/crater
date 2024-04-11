@@ -56,6 +56,36 @@ definitions:
       volume:
         type: string
     type: object
+  handler.ImagePackCreateRequest:
+    properties:
+      accessToken:
+        type: string
+      gitRepository:
+        type: string
+      imageName:
+        type: string
+      imageTag:
+        type: string
+      needProfile:
+        type: boolean
+      registryPass:
+        type: string
+      registryProject:
+        type: string
+      registryServer:
+        type: string
+      registryUser:
+        type: string
+      taskType:
+        $ref: '#/definitions/model.ImageTaskType'
+    type: object
+  handler.ImagePackParamsUpdateRequest:
+    properties:
+      data:
+        $ref: '#/definitions/model.ImageProfileParams'
+      imagepackname:
+        type: string
+    type: object
   handler.ListAllResp:
     type: object
   handler.LoginReq:
@@ -201,10 +231,6 @@ definitions:
       name:
         description: 用户名称
         type: string
-      quota:
-        allOf:
-        - $ref: '#/definitions/model.EmbeddedQuota'
-        description: 私人Quota，包含Job、Node等
       role:
         allOf:
         - $ref: '#/definitions/model.Role'
@@ -245,6 +271,42 @@ definitions:
       storage:
         type: integer
     type: object
+  model.ImageProfileParams:
+    properties:
+      Activations:
+        type: integer
+      BatchSize:
+        type: integer
+      Convs:
+        type: integer
+      Denses:
+        type: integer
+      GFLOPs:
+        type: number
+      GPUMemUsage:
+        type: number
+      GPUUtil:
+        type: number
+      ModelSize:
+        type: number
+      Others:
+        type: integer
+      Params:
+        type: integer
+    type: object
+  model.ImageTaskType:
+    enum:
+    - 0
+    - 1
+    - 2
+    type: integer
+    x-enum-comments:
+      JupyterTask: Jupyter交互式任务
+      OffLineTask: 离线任务
+    x-enum-varnames:
+    - _
+    - OffLineTask
+    - JupyterTask
   model.Label:
     properties:
       createdAt:
@@ -488,6 +550,117 @@ info:
   title: Crater API
   version: 0.3.0
 paths:
+  /image/available:
+    get:
+      consumes:
+      - application/json
+      description: 用projectID来过滤已完成的镜像
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - Bearer: []
+      summary: 用户在运行作业时选择镜像需要调用此接口，来获取可以用的镜像
+      tags:
+      - ImagePack
+  /image/create:
+    post:
+      consumes:
+      - application/json
+      description: 获取参数，生成变量，调用接口
+      parameters:
+      - description: 创建ImagePack
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/handler.ImagePackCreateRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - Bearer: []
+      summary: 创建ImagePack CRD和数据库entity
+      tags:
+      - ImagePack
+  /image/delete:
+    post:
+      consumes:
+      - application/json
+      description: 根据ID更新ImagePack的状态为Deleted，起到删除的功能
+      parameters:
+      - description: 删除镜像的ID
+        in: body
+        name: ID
+        required: true
+        schema:
+          type: integer
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - Bearer: []
+      summary: 根据ID删除ImagePack
+      tags:
+      - ImagePack
+  /image/get:
+    get:
+      consumes:
+      - application/json
+      description: 获取imagepackname，搜索到imagepack
+      parameters:
+      - description: 获取ImagePack的name
+        in: query
+        name: imagepackname
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - Bearer: []
+      summary: 获取imagepack的详细信息，主要用于调试
+      tags:
+      - ImagePack
+  /image/list:
+    get:
+      consumes:
+      - application/json
+      description: 如果userRole为user，则返回该用户所有的镜像；否则根据GET参数type来决定搜索私有or公共镜像
+      parameters:
+      - description: 管理员获取镜像的类型
+        in: query
+        name: type
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - Bearer: []
+      summary: 用户和管理员获取相关镜像的功能
+      tags:
+      - ImagePack
+  /image/params:
+    post:
+      consumes:
+      - application/json
+      description: 接受参数，序列化为string，更新imagepack相应字段
+      parameters:
+      - description: 更新ImagePack的name
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/handler.ImagePackParamsUpdateRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - Bearer: []
+      summary: 用于更新镜像的Profile参数
+      tags:
+      - ImagePack
   /login:
     post:
       consumes:
@@ -802,6 +975,42 @@ paths:
       summary: 获取所有项目
       tags:
       - Project
+  /v1/admin/projects/{name}/quotas:
+    put:
+      consumes:
+      - application/json
+      description: 更新配额
+      parameters:
+      - in: path
+        name: name
+        required: true
+        type: string
+      - description: 更新quota
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/handler.UpdateQuotaReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功更新配额
+          schema:
+            $ref: '#/definitions/response.Response-string'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/response.Response-any'
+      security:
+      - Bearer: []
+      summary: 更新配额
+      tags:
+      - User
   /v1/admin/users:
     get:
       consumes:
@@ -856,42 +1065,6 @@ paths:
       security:
       - Bearer: []
       summary: 删除用户
-      tags:
-      - User
-  /v1/admin/users/{name}/quotas:
-    put:
-      consumes:
-      - application/json
-      description: 更新配额
-      parameters:
-      - in: path
-        name: name
-        required: true
-        type: string
-      - description: 更新quota
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/handler.UpdateQuotaReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 成功更新配额
-          schema:
-            $ref: '#/definitions/response.Response-string'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "500":
-          description: 其他错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-      security:
-      - Bearer: []
-      summary: 更新配额
       tags:
       - User
   /v1/admin/users/{name}/role:
