@@ -77,9 +77,9 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	authMgr := handler.NewAuthMgr(aitaskCtrl, &httpClient)
 	aijobMgr := handler.NewAIJobMgr(aitaskCtrl, &pvcClient, &logClient)
 	labelMgr := handler.NewLabelMgr()
-	projectMgr := handler.NewProjectMgr()
+	projectMgr := handler.NewProjectMgr(aitaskCtrl)
 	nodeMgr := handler.NewNodeMgr(&nodeClient)
-	userMgr := handler.NewUserMgr(aitaskCtrl)
+	userMgr := handler.NewUserMgr()
 	imagepackMgr := handler.NewImagePackMgr(&logClient, &crclient.ImagePackController{Client: cl})
 	contextMgr := handler.NewContextMgr()
 	///////////////////////////////////////
