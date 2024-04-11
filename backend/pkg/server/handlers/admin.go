@@ -395,6 +395,7 @@ func (mgr *AdminMgr) createImagePack(ctx *gin.Context, req *payload.ImagePackCre
 			UserName:        userContext.UserName,
 			ImageName:       req.ImageName,
 			ImageTag:        req.ImageTag,
+			NeedProfile:     req.NeedProfile,
 		},
 	}
 	if err := mgr.imagepackClient.CreateImagePack(ctx, imagepackCRD); err != nil {
@@ -408,10 +409,12 @@ func (mgr *AdminMgr) createImagePack(ctx *gin.Context, req *payload.ImagePackCre
 	imagepackEntity := &models.ImagePack{
 		ImagePackName: imagepackName,
 		ImageLink:     imageLink,
-		UserName:      "admin",
+		CreaterName:   "admin",
 		NameSpace:     userContext.Namespace,
 		Status:        string(imagepackv1.PackJobInitial),
 		NameTag:       fmt.Sprintf("%s:%s", req.ImageName, req.ImageTag),
+		Params:        models.ImagePackParams{},
+		NeedProfile:   req.NeedProfile,
 	}
 	if err := mgr.imagepackService.Create(imagepackEntity); err != nil {
 		logutils.Log.Errorf("create imagepack entity failed, params: %+v", imagepackEntity)
