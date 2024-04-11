@@ -264,6 +264,160 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/labels": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "创建标签",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "label"
+                ],
+                "summary": "创建标签",
+                "parameters": [
+                    {
+                        "description": "创建标签",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.CreateLabelReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-array_model_Label"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/labels/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "更新标签",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "label"
+                ],
+                "summary": "更新标签",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新标签",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.UpdateLabelReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "根据ID删除标签",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "label"
+                ],
+                "summary": "删除标签",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/projects": {
             "get": {
                 "security": [
@@ -1002,6 +1156,86 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/context/quota": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "如果 UserProject 表没有对 Quota 进行限制，则返回项目的 Quota",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Context"
+                ],
+                "summary": "获取当前用户当前项目的Quota",
+                "responses": {
+                    "200": {
+                        "description": "配额信息",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-model_EmbeddedQuota"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/labels": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "show all labels, decs by priority",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "label"
+                ],
+                "summary": "list labels",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-array_model_Label"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/nodes": {
             "get": {
                 "security": [
@@ -1249,6 +1483,25 @@ const docTemplate = `{
                 }
             }
         },
+        "handler.CreateLabelReq": {
+            "type": "object",
+            "required": [
+                "name",
+                "priority",
+                "type"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "type": {
+                    "$ref": "#/definitions/model.WorkerType"
+                }
+            }
+        },
         "handler.ListAllResp": {
             "type": "object"
         },
@@ -1374,6 +1627,20 @@ const docTemplate = `{
                 }
             }
         },
+        "handler.UpdateLabelReq": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "type": {
+                    "$ref": "#/definitions/model.WorkerType"
+                }
+            }
+        },
         "handler.UpdateQuotaReq": {
             "type": "object",
             "properties": {
@@ -1459,7 +1726,7 @@ const docTemplate = `{
                     "description": "私人Quota，包含Job、Node等",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/payload.Quota"
+                            "$ref": "#/definitions/model.EmbeddedQuota"
                         }
                     ]
                 },
@@ -1478,6 +1745,76 @@ const docTemplate = `{
                             "$ref": "#/definitions/model.Status"
                         }
                     ]
+                }
+            }
+        },
+        "model.EmbeddedQuota": {
+            "type": "object",
+            "properties": {
+                "cpu": {
+                    "type": "integer"
+                },
+                "cpuReq": {
+                    "type": "integer"
+                },
+                "extra": {
+                    "type": "string"
+                },
+                "gpu": {
+                    "type": "integer"
+                },
+                "gpuMem": {
+                    "type": "integer"
+                },
+                "gpuMemReq": {
+                    "type": "integer"
+                },
+                "gpuReq": {
+                    "type": "integer"
+                },
+                "job": {
+                    "type": "integer"
+                },
+                "jobReq": {
+                    "type": "integer"
+                },
+                "mem": {
+                    "type": "integer"
+                },
+                "memReq": {
+                    "type": "integer"
+                },
+                "node": {
+                    "type": "integer"
+                },
+                "nodeReq": {
+                    "type": "integer"
+                },
+                "storage": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.Label": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "type": {
+                    "$ref": "#/definitions/model.WorkerType"
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
             }
         },
@@ -1514,6 +1851,20 @@ const docTemplate = `{
                 "StatusPending",
                 "StatusActive",
                 "StatusInactive"
+            ]
+        },
+        "model.WorkerType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1
+            ],
+            "x-enum-comments": {
+                "Nvidia": "Nvidia GPU worker"
+            },
+            "x-enum-varnames": [
+                "_",
+                "Nvidia"
             ]
         },
         "payload.ClusterNodePodInfo": {
@@ -1624,53 +1975,6 @@ const docTemplate = `{
                 }
             }
         },
-        "payload.Quota": {
-            "type": "object",
-            "properties": {
-                "cpu": {
-                    "type": "integer"
-                },
-                "cpuReq": {
-                    "type": "integer"
-                },
-                "extra": {
-                    "type": "string"
-                },
-                "gpu": {
-                    "type": "integer"
-                },
-                "gpuMem": {
-                    "type": "integer"
-                },
-                "gpuMemReq": {
-                    "type": "integer"
-                },
-                "gpuReq": {
-                    "type": "integer"
-                },
-                "job": {
-                    "type": "integer"
-                },
-                "jobReq": {
-                    "type": "integer"
-                },
-                "mem": {
-                    "type": "integer"
-                },
-                "memReq": {
-                    "type": "integer"
-                },
-                "node": {
-                    "type": "integer"
-                },
-                "nodeReq": {
-                    "type": "integer"
-                },
-                "storage": {
-                    "type": "integer"
-                }
-            }
-        },
         "response.ErrorCode": {
             "type": "integer",
             "enum": [
@@ -1714,6 +2018,23 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/handler.UserResp"
+                    }
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.Response-array_model_Label": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/response.ErrorCode"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Label"
                     }
                 },
                 "msg": {
@@ -1774,6 +2095,20 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/handler.ProjectCreateResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.Response-model_EmbeddedQuota": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/response.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/model.EmbeddedQuota"
                 },
                 "msg": {
                     "type": "string"
