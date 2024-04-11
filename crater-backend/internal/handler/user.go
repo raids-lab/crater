@@ -25,7 +25,6 @@ func (mgr *UserMgr) RegisterAdmin(users *gin.RouterGroup) {
 	users.GET("", mgr.ListUser)
 	users.DELETE("/:name", mgr.DeleteUser)
 	users.PUT("/:name/role", mgr.UpdateRole)
-
 }
 
 type UserResp struct {

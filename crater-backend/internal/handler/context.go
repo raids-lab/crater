@@ -84,5 +84,4 @@ func getUserQuota(quota, quotaInProject *model.EmbeddedQuota) *model.EmbeddedQuo
 	}
 
 	return quota
-
 }
