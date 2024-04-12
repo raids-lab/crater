@@ -59,7 +59,7 @@ export function SignupForm() {
       await queryClient.invalidateQueries();
       setUserState({
         name: username,
-        context: data.context,
+        platformRole: data.context.platformRole,
       });
       toast.success(
         `你好，${data.context.platformRole ? "管理员" : "用户"} ${username}`,
