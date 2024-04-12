@@ -80,3 +80,15 @@ func (p *PrometheusClient) QueryPodMemory(podName string) int {
 	}
 	return sum
 }
+
+func (p *PrometheusClient) QueryPodGPU() []PodGPUAllocate {
+	apiURL := PrometheusAPI
+	client := NewPrometheusClient(apiURL)
+	expression := "kube_pod_container_resource_requests{namespace=\"crater-jobs\", resource=\"nvidia_com_gpu\"}"
+	data, err := client.PodGPU(expression)
+	if err != nil {
+		log.Fatalf("queryMetric error: %v", err)
+		return nil
+	}
+	return data
+}

@@ -20,6 +20,7 @@ type ListTaskResp struct {
 type AllocatedInfo struct {
 	CPU string `json:"cpu"`
 	Mem string `json:"memory"`
+	GPU string `json:"nvidia.com/gpu"`
 }
 
 type ClusterNodeInfo struct {
