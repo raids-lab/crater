@@ -27,8 +27,9 @@ func TestQueryPodUtilMetric2(t *testing.T) {
 
 	// print url
 	fmt.Println(apiURL)
-	expression := "kube_gpu_scheduler_pod_bind_gpu"
-	err := client.QueryMetricDemo(expression)
+	expression := "kube_pod_container_resource_requests{namespace=\"crater-jobs\", resource=\"nvidia_com_gpu\"}"
+	data, err := client.PodGPU(expression)
+	fmt.Printf("data: %+v\n", data)
 	if err != nil {
 		log.Fatalf("queryMetric error: %v", err)
 		t.Errorf("Error querying PodUtilMetric: %v", err)
