@@ -73,15 +73,13 @@ func (mgr *ProjectMgr) ListAllForUser(c *gin.Context) { // Check if the user exi
 
 type (
 	ListAllReq struct {
-		// 分页参数
-		PageIndex *int `form:"page_index" binding:"required"`
-		PageSize  *int `form:"page_size" binding:"required"`
-		// 筛选、排序参数
-		IsPersonal *bool          `form:"is_personal"`
-		Status     *uint8         `form:"status"` // Status is a uint8 type
-		NameLike   *string        `form:"name_like"`
-		OrderCol   *string        `form:"order_col"`
-		Order      *payload.Order `form:"order"`
+		PageIndex  *int           `form:"pageIndex" binding:"required"` // 第几页（从0开始）
+		PageSize   *int           `form:"pageSize" binding:"required"`  // 每页大小
+		IsPersonal *bool          `form:"isPersonal"`                   // 是否为个人项目
+		Status     *uint8         `form:"status"`                       // 项目状态（pending, active, inactive）
+		NameLike   *string        `form:"nameLike"`                     // 部分匹配项目名称
+		OrderCol   *string        `form:"orderCol"`                     // 排序字段
+		Order      *payload.Order `form:"order"`                        // 排序方式（升序、降序）
 	}
 
 	// Swagger 不支持范型嵌套，定义别名
@@ -140,7 +138,7 @@ func (mgr *ProjectMgr) ListAllForAdmin(c *gin.Context) {
 		return
 	}
 
-	resp := ListAllResp{Projects: projects, Count: count}
+	resp := ListAllResp{Rows: projects, Count: count}
 
 	resputil.Success(c, resp)
 }
