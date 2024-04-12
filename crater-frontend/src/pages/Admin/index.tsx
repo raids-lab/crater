@@ -11,7 +11,7 @@ import {
 import OverviewIcon from "@/components/icon/OverviewIcon";
 import DatabaseIcon from "@/components/icon/DatabaseIcon";
 import LightHouseIcon from "@/components/icon/LightHouseIcon";
-import { PersonalProject } from "./Project/Personal";
+import PersonalProject from "./Project/Personal";
 import { GroupUser } from "./Project/Group";
 import Jupyter from "./Job/Jupyter";
 import Training from "./Job/Training";

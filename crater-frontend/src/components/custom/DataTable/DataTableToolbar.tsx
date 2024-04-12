@@ -9,12 +9,10 @@ import {
   DataTableFacetedFilter,
   DataTableFacetedFilterOption,
 } from "./DataTableFacetedFilter";
+import { Search } from "lucide-react";
 
 export interface DataTableToolbarConfig {
-  filterInput: {
-    placeholder: string;
-    key: string;
-  };
+  searchKey: string;
   filterOptions: {
     key: string;
     title: string;
@@ -31,7 +29,7 @@ interface DataTableToolbarProps<TData>
 
 export function DataTableToolbar<TData>({
   table,
-  config: { filterInput, filterOptions, getHeader },
+  config: { searchKey, filterOptions, getHeader },
   children,
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0;
@@ -40,16 +38,19 @@ export function DataTableToolbar<TData>({
     <div className="flex items-center justify-between">
       <div className="flex flex-row items-center space-x-2">
         {children}
-        <Input
-          placeholder={filterInput.placeholder}
-          value={
-            (table.getColumn(filterInput.key)?.getFilterValue() as string) ?? ""
-          }
-          onChange={(event) =>
-            table.getColumn(filterInput.key)?.setFilterValue(event.target.value)
-          }
-          className="h-8 w-[150px] lg:w-[250px]"
-        />
+        <div className="relative ml-auto h-8 flex-1 md:grow-0">
+          <Search className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={"查找" + getHeader(searchKey)}
+            value={
+              (table.getColumn(searchKey)?.getFilterValue() as string) ?? ""
+            }
+            onChange={(event) =>
+              table.getColumn(searchKey)?.setFilterValue(event.target.value)
+            }
+            className="h-8 w-[150px] bg-background pl-8 lg:w-[250px]"
+          />
+        </div>
         {filterOptions.map(
           (filterOption) =>
             table.getColumn(filterOption.key) && (
@@ -73,6 +74,53 @@ export function DataTableToolbar<TData>({
             <Cross2Icon className="h-4 w-4" />
           </Button>
         )}
+      </div>
+      <DataTableViewOptions table={table} getHeader={getHeader} />
+    </div>
+  );
+}
+
+export function DataTableToolbarRight<TData>({
+  table,
+  config: { searchKey, filterOptions, getHeader },
+}: DataTableToolbarProps<TData>) {
+  const isFiltered = table.getState().columnFilters.length > 0;
+
+  return (
+    <div className="flex flex-row items-center justify-end gap-2">
+      {isFiltered && (
+        <Button
+          variant="outline"
+          size="icon"
+          title="Clear filters"
+          type="button"
+          onClick={() => table.resetColumnFilters()}
+          className="h-7 w-7 border-dashed"
+        >
+          <Cross2Icon className="h-4 w-4" />
+        </Button>
+      )}
+      {filterOptions.map(
+        (filterOption) =>
+          table.getColumn(filterOption.key) && (
+            <DataTableFacetedFilter
+              key={filterOption.key}
+              column={table.getColumn(filterOption.key)}
+              title={filterOption.title}
+              options={filterOption.option}
+            />
+          ),
+      )}
+      <div className="relative ml-auto h-8">
+        <Search className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder={"查找" + getHeader(searchKey)}
+          value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
+          onChange={(event) =>
+            table.getColumn(searchKey)?.setFilterValue(event.target.value)
+          }
+          className="h-8 w-[150px] bg-background pl-8 lg:w-[250px]"
+        />
       </div>
       <DataTableViewOptions table={table} getHeader={getHeader} />
     </div>

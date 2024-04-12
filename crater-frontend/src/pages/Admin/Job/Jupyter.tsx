@@ -147,10 +147,7 @@ const Jupyter: FC = () => {
   });
 
   const toolbarConfig: DataTableToolbarConfig = {
-    filterInput: {
-      placeholder: "搜索用户名",
-      key: "userName",
-    },
+    searchKey: "userName",
     filterOptions: [
       {
         key: "status",
