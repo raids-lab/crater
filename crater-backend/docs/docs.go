@@ -616,13 +616,14 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "boolean",
-                        "description": "筛选、排序参数",
-                        "name": "is_personal",
+                        "description": "是否为个人项目",
+                        "name": "isPersonal",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "name": "name_like",
+                        "description": "部分匹配项目名称",
+                        "name": "nameLike",
                         "in": "query"
                     },
                     {
@@ -635,30 +636,33 @@ const docTemplate = `{
                             "Asc",
                             "Desc"
                         ],
+                        "description": "排序方式（升序、降序）",
                         "name": "order",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "name": "order_col",
+                        "description": "排序字段",
+                        "name": "orderCol",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "分页参数",
-                        "name": "page_index",
+                        "description": "第几页（从0开始）",
+                        "name": "pageIndex",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "integer",
-                        "name": "page_size",
+                        "description": "每页大小",
+                        "name": "pageSize",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "integer",
-                        "description": "Status is a uint8 type",
+                        "description": "项目状态（pending, active, inactive）",
                         "name": "status",
                         "in": "query"
                     }
@@ -700,7 +704,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "User"
+                    "Project"
                 ],
                 "summary": "更新配额",
                 "parameters": [

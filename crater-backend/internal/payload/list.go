@@ -18,7 +18,7 @@ type (
 		PageSize  *int `form:"page_size" binding:"required"`
 	}
 	ListResp[T any] struct {
-		Projects []T   `json:"rows"`
-		Count    int64 `json:"count"`
+		Rows  []T   `json:"rows"`
+		Count int64 `json:"count"`
 	}
 )
