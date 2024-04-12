@@ -1,8 +1,8 @@
-import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
+import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, type FC } from "react";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
+import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
 import { DataTable } from "@/components/custom/OldDataTable";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -43,7 +43,7 @@ const getHeader = (key: string): string => {
   }
 };
 
-const toolbarConfig: DataTableToolbarConfig = {
+const toolbarConfig: DataTableToolbarConfig<string> = {
   filterInput: {
     placeholder: "搜索镜像",
     key: "link",
