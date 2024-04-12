@@ -225,3 +225,45 @@ func (p *PrometheusClient) IntMapQuery(query, key string) (map[string]int, error
 
 	return cpuUsages, nil
 }
+
+func (p *PrometheusClient) PodGPU(expression string) ([]PodGPUAllocate, error) {
+	// 构建查询参数
+
+	// 执行查询
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+	result, _, err := p.v1api.Query(ctx, expression, time.Now())
+	if err != nil {
+		return nil, err
+	}
+
+	// 定义返回的结构体
+	var podGPUAllocates []PodGPUAllocate
+
+	// 检查结果类型是否为向量
+	if result.Type() == model.ValVector {
+		vector := result.(model.Vector)
+		for _, sample := range vector {
+			metric := sample.Metric
+			value := sample.Value
+
+			// 提取metric中的标签和value中的值
+			node := metric["node"]
+			instance := metric["instance"]
+			pod := metric["pod"]
+			Value := int(value)
+
+			podGPUAllocateData := PodGPUAllocate{
+				Node:     string(node),
+				Instance: string(instance),
+				Pod:      string(pod),
+				GPUCount: Value,
+			}
+			podGPUAllocates = append(podGPUAllocates, podGPUAllocateData)
+		}
+
+		return podGPUAllocates, nil
+	}
+
+	return nil, fmt.Errorf("expected vector type result but got %s", result.Type())
+}

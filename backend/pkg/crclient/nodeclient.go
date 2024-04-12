@@ -53,9 +53,20 @@ func FomatMemoryLoad(mem int) string {
 	return result
 }
 
+func getNodeGPUCount(podGPUAllocate []monitor.PodGPUAllocate, nodeName string) int {
+	count := 0
+	for _, podGPU := range podGPUAllocate {
+		if podGPU.Node == nodeName {
+			count += podGPU.GPUCount
+		}
+	}
+	return count
+}
+
 // GetNodes 获取所有 Node 列表
 func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 	var nodes corev1.NodeList
+	PodGPUAllocate := nc.PromeClient.QueryPodGPU()
 
 	err := nc.List(context.Background(), &nodes)
 	if err != nil {
@@ -72,6 +83,7 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 		allocatedInfo := payload.AllocatedInfo{
 			CPU: calculateCPULoad(CPUMap[node.Name], int(node.Status.Capacity.Cpu().MilliValue())),
 			Mem: FomatMemoryLoad(MemMap[node.Name]),
+			GPU: fmt.Sprintf("%d", getNodeGPUCount(PodGPUAllocate, node.Name)),
 		}
 
 		nodeInfos[i] = payload.ClusterNodeInfo{
@@ -122,7 +134,6 @@ func (nc *NodeClient) ListNodesPod(name string) (payload.ClusterNodePodInfo, err
 		if err != nil {
 			return payload.ClusterNodePodInfo{}, err
 		}
-		fmt.Print(podList.Items)
 
 		// 遍历当前节点的Pods，收集所需信息
 		for i := range podList.Items {
