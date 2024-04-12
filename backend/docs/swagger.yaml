@@ -923,14 +923,16 @@ paths:
       - application/json
       description: 获取所有项目的摘要信息，支持筛选条件、分页和排序
       parameters:
-      - description: 筛选、排序参数
+      - description: 是否为个人项目
         in: query
-        name: is_personal
+        name: isPersonal
         type: boolean
-      - in: query
-        name: name_like
+      - description: 部分匹配项目名称
+        in: query
+        name: nameLike
         type: string
-      - enum:
+      - description: 排序方式（升序、降序）
+        enum:
         - asc
         - desc
         in: query
@@ -939,19 +941,21 @@ paths:
         x-enum-varnames:
         - Asc
         - Desc
-      - in: query
-        name: order_col
-        type: string
-      - description: 分页参数
+      - description: 排序字段
         in: query
-        name: page_index
+        name: orderCol
+        type: string
+      - description: 第几页（从0开始）
+        in: query
+        name: pageIndex
         required: true
         type: integer
-      - in: query
-        name: page_size
+      - description: 每页大小
+        in: query
+        name: pageSize
         required: true
         type: integer
-      - description: Status is a uint8 type
+      - description: 项目状态（pending, active, inactive）
         in: query
         name: status
         type: integer
@@ -1010,7 +1014,7 @@ paths:
       - Bearer: []
       summary: 更新配额
       tags:
-      - User
+      - Project
   /v1/admin/users:
     get:
       consumes:
