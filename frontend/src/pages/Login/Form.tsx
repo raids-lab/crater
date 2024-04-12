@@ -12,12 +12,18 @@ import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useRecoilValue, useSetRecoilState } from "recoil";
-import { globalLastView, globalUserInfo } from "@/utils/store";
+import {
+  globalLastView,
+  globalProject,
+  globalUserInfo,
+  useResetStore,
+} from "@/utils/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Role, apiUserLogin } from "@/services/api/auth";
 
 import LoadableButton from "@/components/custom/LoadableButton";
 import { toast } from "sonner";
+import { ProjectStatus } from "@/services/api/project";
 
 const formSchema = z.object({
   username: z
@@ -42,6 +48,8 @@ export function ProfileForm() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const setUserState = useSetRecoilState(globalUserInfo);
+  const setProject = useSetRecoilState(globalProject);
+  const { resetAll } = useResetStore();
 
   const lastView = useRecoilValue(globalLastView);
 
@@ -56,7 +64,14 @@ export function ProfileForm() {
       await queryClient.invalidateQueries();
       setUserState({
         name: username,
-        context: data.context,
+        platformRole: data.context.platformRole,
+      });
+      setProject({
+        id: data.context.projectID,
+        name: username,
+        role: data.context.projectRole,
+        status: ProjectStatus.Active,
+        isPersonal: true,
       });
       toast.success(
         `你好，${data.context.platformRole ? "管理员" : "用户"} ${username}`,
@@ -86,6 +101,7 @@ export function ProfileForm() {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
     if (status !== "pending") {
+      resetAll();
       loginUser(values);
     }
   };

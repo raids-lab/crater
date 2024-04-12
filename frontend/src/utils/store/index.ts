@@ -2,6 +2,7 @@ import { atom, useResetRecoilState } from "recoil";
 import { UserInfo } from "@/hooks/useAuth";
 import { localStorageEffect } from "./utils";
 import { Role } from "@/services/api/auth";
+import { ProjectBasic, ProjectStatus } from "@/services/api/project";
 
 /**
  * LocalStorage and Recoil Keys
@@ -22,11 +23,7 @@ export const VITE_UI_THEME_KEY = "vite_ui_theme";
 
 const defaultUserContext: UserInfo = {
   name: "",
-  context: {
-    projectID: 0,
-    projectRole: Role.Guest,
-    platformRole: Role.Guest,
-  },
+  platformRole: Role.Guest,
 };
 
 export const globalUserInfo = atom({
@@ -64,13 +61,15 @@ export const globalSidebarMini = atom({
   effects_UNSTABLE: [localStorageEffect(SIDEBAR_MINISIZE_KEY)],
 });
 
-export const globalCurrentAccount = atom({
+export const globalProject = atom({
   key: CURRENT_ACCOUNT_KEY,
   default: {
-    label: "",
     id: 0,
+    name: "",
     role: Role.Guest,
-  },
+    isPersonal: true,
+    status: ProjectStatus.Inactive,
+  } as ProjectBasic,
   effects_UNSTABLE: [localStorageEffect(CURRENT_ACCOUNT_KEY)],
 });
 
@@ -81,17 +80,16 @@ export const useResetStore = () => {
   const resetUserInfo = useResetRecoilState(globalUserInfo);
   const resetBreadCrumb = useResetRecoilState(globalBreadCrumb);
   const resetSidebarMini = useResetRecoilState(globalSidebarMini);
-  const resetCurrentAccount = useResetRecoilState(globalCurrentAccount);
+  const resetProject = useResetRecoilState(globalProject);
 
   const resetAll = () => {
     // Recoil
     resetUserInfo();
     resetBreadCrumb();
     resetSidebarMini();
-    resetCurrentAccount();
+    resetProject();
     // LocalStorage
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    window.localStorage.clear();
   };
 
   return { resetAll };

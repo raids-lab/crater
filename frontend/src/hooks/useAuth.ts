@@ -1,11 +1,11 @@
-import { Role, UserContext } from "@/services/api/auth";
+import { Role } from "@/services/api/auth";
 import { globalUserInfo } from "@/utils/store";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 
 export interface UserInfo {
   name: string; // unique username
-  context: UserContext; // user context
+  platformRole: Role;
 }
 
 /**
@@ -15,8 +15,7 @@ export interface UserInfo {
  * @returns A boolean indicating whether the user is authenticated and has the required role.
  */
 export function useAuth(requireRole: Role) {
-  const { context } = useRecoilValue(globalUserInfo);
-  const role = context.platformRole;
+  const { platformRole: role } = useRecoilValue(globalUserInfo);
   const isAuthenticated = useMemo(() => {
     switch (requireRole) {
       case Role.Admin:

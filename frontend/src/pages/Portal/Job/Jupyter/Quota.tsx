@@ -74,7 +74,7 @@ const Quota = () => {
           <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
             <CardDescription className="flex flex-row items-center justify-start">
               <q.icon className="mr-1.5 h-4 w-4" />
-              <p>{q.resource}</p>
+              {q.resource}
             </CardDescription>
             <p className="m-0 font-mono text-2xl font-bold leading-none">
               {q.usage}

@@ -32,9 +32,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useEffect, useMemo, useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
-import { globalCurrentAccount, globalLastView } from "@/utils/store";
-import { ProjectStatus } from "@/services/api/project";
+import { useRecoilState } from "recoil";
+import { globalProject } from "@/utils/store";
+import { ProjectBasic, ProjectStatus } from "@/services/api/project";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -54,7 +54,8 @@ import FormLabelMust from "@/components/custom/FormLabelMust";
 import { Textarea } from "@/components/ui/textarea";
 import { apiProjectCreate, apiProjectList } from "@/services/api/project";
 import LoadableButton from "@/components/custom/LoadableButton";
-import { Role, apiProjectSwitch } from "@/services/api/auth";
+import { apiProjectSwitch } from "@/services/api/auth";
+import { useLocation } from "react-router-dom";
 
 const formSchema = z.object({
   name: z
@@ -87,16 +88,9 @@ const formSchema = z.object({
   }),
 });
 
-interface Project {
-  label: string;
-  id: number;
-  enabled: boolean;
-  role: Role;
-}
-
 interface ProjectGroup {
-  personal: Project[];
-  team: Project[];
+  personal: ProjectBasic[];
+  team: ProjectBasic[];
 }
 
 type PopoverTriggerProps = React.ComponentPropsWithoutRef<
@@ -110,9 +104,14 @@ interface ProjectSwitcherProps extends PopoverTriggerProps {
 export default function ProjectSwitcher({ className }: ProjectSwitcherProps) {
   const [open, setOpen] = useState(false);
   const [showNewTeamDialog, setShowNewTeamDialog] = useState(false);
-  const [selectedTeam, setSelectedTeam] = useRecoilState(globalCurrentAccount);
+  const [selectedProject, setSelectedProject] = useRecoilState(globalProject);
   const queryClient = useQueryClient();
-  const lastView = useRecoilValue(globalLastView);
+  const location = useLocation();
+
+  const isAdminView = useMemo(() => {
+    const pathParts = location.pathname.split("/").filter(Boolean);
+    return pathParts[0] === "admin";
+  }, [location]);
 
   const { data: projects } = useQuery({
     queryKey: ["user", "projects"],
@@ -141,11 +140,11 @@ export default function ProjectSwitcher({ className }: ProjectSwitcherProps) {
   });
 
   const { mutate: switchProject } = useMutation({
-    mutationFn: (project: Project) => apiProjectSwitch(project.id),
+    mutationFn: (project: ProjectBasic) => apiProjectSwitch(project.id),
     onSuccess: (_, project) => {
-      setSelectedTeam(project);
+      setSelectedProject(project);
       setOpen(false);
-      toast.success(`已切换至项目 ${project.label}`);
+      toast.success(`已切换至项目 ${project.name}`);
       void queryClient.invalidateQueries();
     },
   });
@@ -171,34 +170,21 @@ export default function ProjectSwitcher({ className }: ProjectSwitcherProps) {
   };
 
   const projectGroup: ProjectGroup = useMemo(() => {
-    const personal = projects?.find((project) => project.isPersonal === true);
     return {
-      personal: [
-        {
-          label: personal?.name ?? "",
-          id: personal?.id ?? 0,
-          enabled: true,
-          role: personal?.role ?? Role.Guest,
-        },
-      ],
+      personal:
+        projects?.filter((project) => project.isPersonal === true) ?? [],
       team:
         projects
           ?.filter((project) => project.isPersonal === false)
-          .sort((a, b) => b.status - a.status)
-          .map((project) => ({
-            label: project.name,
-            id: project.id,
-            enabled: project.status === ProjectStatus.Active,
-            role: project.role,
-          })) ?? [],
+          .sort((a, b) => b.status - a.status) ?? [],
     };
   }, [projects]);
 
   useEffect(() => {
-    if (!selectedTeam.id) {
-      setSelectedTeam(projectGroup.personal[0]);
+    if (!selectedProject.id) {
+      setSelectedProject(projectGroup.personal[0]);
     }
-  }, [selectedTeam, setSelectedTeam, projectGroup.personal]);
+  }, [selectedProject, setSelectedProject, projectGroup.personal]);
 
   return (
     <div className={className}>
@@ -211,14 +197,14 @@ export default function ProjectSwitcher({ className }: ProjectSwitcherProps) {
               aria-expanded={open}
               aria-label="Select a project"
               className="w-full justify-between rounded-lg bg-background md:w-[240px]"
-              disabled={lastView === "admin"}
+              disabled={isAdminView}
             >
               <Avatar className="mr-2 h-5 w-5">
                 <AvatarFallback className="bg-primary font-normal text-primary-foreground">
-                  {selectedTeam.label.slice(0, 1).toUpperCase()}
+                  {selectedProject.name.slice(0, 1).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <p className="capitalize">{selectedTeam.label}</p>
+              <p className="capitalize">{selectedProject.name}</p>
               <CaretSortIcon className="ml-auto h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
@@ -245,14 +231,14 @@ export default function ProjectSwitcher({ className }: ProjectSwitcherProps) {
                       >
                         <Avatar className="mr-2 h-5 w-5">
                           <AvatarFallback className="bg-primary/15">
-                            {team.label.slice(0, 1).toUpperCase()}
+                            {team.name.slice(0, 1).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <p className="capitalize">{team.label}</p>
+                        <p className="capitalize">{team.name}</p>
                         <CheckIcon
                           className={cn(
                             "ml-auto h-4 w-4",
-                            selectedTeam.id === team.id
+                            selectedProject.id === team.id
                               ? "opacity-100"
                               : "opacity-0",
                           )}
@@ -270,18 +256,18 @@ export default function ProjectSwitcher({ className }: ProjectSwitcherProps) {
                           switchProject(team);
                         }}
                         className="text-sm"
-                        disabled={!team.enabled}
+                        disabled={team.status !== ProjectStatus.Active}
                       >
                         <Avatar className="mr-2 h-5 w-5">
                           <AvatarFallback className="bg-primary/15">
-                            {team.label.slice(0, 1).toUpperCase()}
+                            {team.name.slice(0, 1).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <p className="capitalize">{team.label}</p>
+                        <p className="capitalize">{team.name}</p>
                         <CheckIcon
                           className={cn(
                             "ml-auto h-4 w-4",
-                            selectedTeam.id === team.id
+                            selectedProject.id === team.id
                               ? "opacity-100"
                               : "opacity-0",
                           )}

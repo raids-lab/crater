@@ -72,7 +72,7 @@ export const UserDropdownMenu: FC = () => {
           </DropdownMenuGroup>
         ) : (
           <DropdownMenuGroup>
-            {userInfo.context.platformRole === Role.Admin && (
+            {userInfo.platformRole === Role.Admin && (
               <DropdownMenuItem
                 onClick={() => {
                   setLastView("admin");
