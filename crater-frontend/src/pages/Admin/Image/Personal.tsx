@@ -21,27 +21,23 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
-import { StopIcon } from "@radix-ui/react-icons";
 import { toast } from "sonner";
 import { logger } from "@/utils/loglevel";
 import { TableDate } from "@/components/custom/TableDate";
-import { imagepackStatuses, ImagePackInfo } from "@/services/api/imagepack";
+import {
+  ImagePackInfo,
+  getHeader,
+  imagepackStatuses,
+} from "@/services/api/imagepack";
 import { Button } from "@/components/ui/button";
-
-const getHeader = (key: string): string => {
-  switch (key) {
-    case "nametag":
-      return "名称";
-    case "link":
-      return "链接";
-    case "status":
-      return "状态";
-    case "createdAt":
-      return "创建时间";
-    default:
-      return key;
-  }
-};
+import { Trash2, UserRoundMinus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const toolbarConfig: DataTableToolbarConfig<string> = {
   filterInput: {
@@ -66,9 +62,11 @@ export const Component: FC = () => {
     return imagePackInfo.data.map((item) => ({
       id: item.ID,
       link: item.imagelink,
+      username: item.creatername,
       status: item.status,
       createdAt: item.createdAt,
       nametag: item.nametag,
+      params: item.params,
     }));
   }, [imagePackInfo.data]);
   const refetchImagePackList = async () => {
@@ -117,14 +115,62 @@ export const Component: FC = () => {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeader("nametag")} />
       ),
-      cell: ({ row }) => <div>{row.getValue("nametag")}</div>,
+      cell: ({ row }) => (
+        //     params: {
+        //       Convs: 0,
+        //       Activations: 0,
+        //       Denses: 0,
+        //       Others: 0,
+        //       GFLOPs: 0,
+        //       BatchSize: 0,
+        //       Params: 0,
+        //       ModelSize: 0,
+        //     },
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger>{row.getValue("nametag")}</TooltipTrigger>
+            <TooltipContent className="grid grid-cols-2 gap-1 p-4 font-mono">
+              <div className="col-span-2 pb-2 text-sm font-bold">
+                Profile 信息
+              </div>
+              <div>Convs: </div>
+              <div>{row.original.params.Convs}</div>
+              <div>Activations: </div>
+              <div>{row.original.params.Activations}</div>
+              <div>Denses: </div>
+              <div>{row.original.params.Denses}</div>
+              <div>Others: </div>
+              <div>{row.original.params.Others}</div>
+              <div>GFLOPs: </div>
+              <div>{row.original.params.GFLOPs.toFixed(2)}</div>
+              <div>BatchSize: </div>
+              <div>{row.original.params.BatchSize}</div>
+              <div>Params: </div>
+              <div>{row.original.params.Params}</div>
+              <div>ModelSize: </div>
+              <div>{row.original.params.ModelSize.toFixed(2)}</div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ),
     },
     {
       accessorKey: "link",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeader("link")} />
       ),
-      cell: ({ row }) => <div>{row.getValue("link")}</div>,
+      cell: ({ row }) => (
+        <Badge className="font-mono font-normal" variant="outline">
+          {row.getValue("link")}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "username",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeader("username")} />
+      ),
+      cell: ({ row }) => <div>{row.getValue("username")}</div>,
     },
     {
       accessorKey: "status",
@@ -183,7 +229,7 @@ export const Component: FC = () => {
                     className="h-8 w-8 p-0 hover:text-red-700"
                     title="删除镜像"
                   >
-                    <StopIcon />
+                    <Trash2 size={16} strokeWidth={2} />
                   </Button>
                 </div>
               </AlertDialogTrigger>
@@ -209,6 +255,45 @@ export const Component: FC = () => {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <div>
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0 hover:text-blue-700"
+                    title="profile数据"
+                  >
+                    <UserRoundMinus size={16} strokeWidth={2} />
+                  </Button>
+                </div>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Profile参数</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    <div className="grid grid-cols-2 gap-1 p-4 font-mono text-lg">
+                      <div>Convs: {imagepackInfo?.params.Convs}</div>
+                      <div>
+                        Activations: {imagepackInfo?.params.Activations}
+                      </div>
+                      <div>Denses: {imagepackInfo?.params.Denses}</div>
+                      <div>Others: {imagepackInfo?.params.Others}</div>
+                      <div>
+                        GFLOPs: {imagepackInfo?.params.GFLOPs.toFixed(2)}
+                      </div>
+                      <div>BatchSize: {imagepackInfo?.params.BatchSize}</div>
+                      <div>Params: {imagepackInfo?.params.Params}</div>
+                      <div>
+                        ModelSize: {imagepackInfo?.params.ModelSize.toFixed(2)}
+                      </div>
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>关闭</AlertDialogCancel>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         );
       },
@@ -216,13 +301,11 @@ export const Component: FC = () => {
   ];
 
   return (
-    <div className="space-y-1 text-xl">
-      <DataTable
-        data={data}
-        columns={columns}
-        toolbarConfig={toolbarConfig}
-        loading={imagePackInfo.isLoading}
-      ></DataTable>
-    </div>
+    <DataTable
+      data={data}
+      columns={columns}
+      toolbarConfig={toolbarConfig}
+      loading={imagePackInfo.isLoading}
+    ></DataTable>
   );
 };
