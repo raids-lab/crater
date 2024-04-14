@@ -129,7 +129,7 @@ export const apiJTaskImageList = () =>
     IResponse<{
       images: string[];
     }>
-  >(VERSION + "/image/available");
+  >(VERSION + "/images/available");
 
 export const apiJTaskGetPortToken = (taskID: number) =>
   instance.get<
