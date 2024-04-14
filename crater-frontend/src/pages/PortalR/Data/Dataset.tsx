@@ -34,7 +34,7 @@ const getHeader = (key: string): string => {
   }
 };
 
-const toolbarConfig: DataTableToolbarConfig = {
+const toolbarConfig: DataTableToolbarConfig<string> = {
   filterInput: {
     placeholder: "搜索数据集名称",
     key: "name",

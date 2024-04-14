@@ -27,7 +27,6 @@ const defaultUserContext: UserInfo = {
     projectRole: Role.Guest,
     platformRole: Role.Guest,
   },
-  projects: [],
 };
 
 export const globalUserInfo = atom({
@@ -70,6 +69,7 @@ export const globalCurrentAccount = atom({
   default: {
     label: "",
     id: 0,
+    role: Role.Guest,
   },
   effects_UNSTABLE: [localStorageEffect(CURRENT_ACCOUNT_KEY)],
 });

@@ -28,29 +28,31 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-interface DataTableProps<TData, TValue>
+interface DataTableProps<TData, TValue, TFilter>
   extends React.HTMLAttributes<HTMLDivElement> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   loading: boolean;
-  toolbarConfig: DataTableToolbarConfig;
+  toolbarConfig: DataTableToolbarConfig<TFilter>;
   className?: string;
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<
+  TData,
+  TValue,
+  TFilter extends string | number | bigint,
+>({
   columns,
   data,
   toolbarConfig,
   loading,
   children,
   className,
-}: DataTableProps<TData, TValue>) {
+}: DataTableProps<TData, TValue, TFilter>) {
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "createdAt", desc: true },
-  ]);
+  const [sorting, setSorting] = useState<SortingState>([]);
   const [pagination, setPagination] = useLocalStorage<PaginationState>(
     "pagination",
     {

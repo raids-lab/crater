@@ -30,7 +30,16 @@ if [ -z "$zip_file" ] || [ -z "$namespace" ] || [ -z "$secret_name" ]; then
 fi
 
 # Unzip the file to act.buaa.edu.cn
-unzip -o "$zip_file"
+# if the filename ends with .zip
+# if the filename ends with .tgz
+if [[ "$zip_file" == *.zip ]]; then
+    unzip -o "$zip_file"
+elif [[ "$zip_file" == *.tgz ]]; then
+    tar -xzf "$zip_file"
+else
+    echo "Error: Invalid file format. Please provide a zip or tgz file."
+    exit 1
+fi
 
 # Check if necessary files are present
 if [ ! -f "act.buaa.edu.cn/act.buaa.edu.cn.key" ] || [ ! -f "act.buaa.edu.cn/fullchain.cer" ]; then
@@ -39,6 +48,7 @@ if [ ! -f "act.buaa.edu.cn/act.buaa.edu.cn.key" ] || [ ! -f "act.buaa.edu.cn/ful
 fi
 
 # Create the Kubernetes secret in yaml format
+kubectl delete secret -n "$namespace" "$secret_name"
 kubectl create secret tls "$secret_name" --key act.buaa.edu.cn/act.buaa.edu.cn.key --cert act.buaa.edu.cn/fullchain.cer -n "$namespace"
 
 # Check if secret creation was successful

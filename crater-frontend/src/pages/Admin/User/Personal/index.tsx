@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from "@/components/ui-custom/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -46,29 +46,22 @@ import { DataTable } from "@/components/custom/OldDataTable";
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
 import {
+  Quota,
   apiAdminUserDelete,
   apiAdminUserList,
   apiAdminUserUpdateRole,
 } from "@/services/api/admin/user";
-import { z } from "zod";
 import { useRecoilValue } from "recoil";
 import { globalUserInfo } from "@/utils/store";
-import { AiResourceSchema, getAiResource } from "@/utils/resource";
 import { Badge } from "@/components/ui/badge";
-import { QuotaForm } from "./QuotaForm";
+import { Role } from "@/services/api/auth";
 
-const QuotaSchema = z.object({
-  hard: AiResourceSchema,
-});
-
-const TUserSchema = z.object({
-  id: z.number(),
-  userName: z.string(),
-  role: z.string(),
-  quota: QuotaSchema,
-});
-
-type TUser = z.infer<typeof TUserSchema>;
+interface TUser {
+  id: number;
+  name: string;
+  role: Role;
+  quota: Quota;
+}
 
 const getHeader = (key: string): string => {
   switch (key) {
@@ -86,20 +79,20 @@ const getHeader = (key: string): string => {
 const roles = [
   {
     label: "管理员",
-    value: "admin",
+    value: Role.Admin,
     icon: StarFilledIcon,
   },
   {
     label: "普通用户",
-    value: "user",
+    value: Role.User,
     icon: StarIcon,
   },
 ];
 
-const toolbarConfig: DataTableToolbarConfig = {
+const toolbarConfig: DataTableToolbarConfig<Role> = {
   filterInput: {
     placeholder: "搜索用户名",
-    key: "userName",
+    key: "name",
   },
   filterOptions: [
     {
@@ -119,7 +112,7 @@ export const PersonalUser = () => {
   const { data: userList, isLoading } = useQuery({
     queryKey: ["admin", "userlist"],
     queryFn: apiAdminUserList,
-    select: (res) => res.data.data.Users,
+    select: (res) => res.data.data,
   });
 
   const { mutate: deleteUser } = useMutation({
@@ -131,7 +124,7 @@ export const PersonalUser = () => {
   });
 
   const { mutate: updateRole } = useMutation({
-    mutationFn: ({ userName, role }: { userName: string; role: string }) =>
+    mutationFn: ({ userName, role }: { userName: string; role: Role }) =>
       apiAdminUserUpdateRole(userName, role),
     onSuccess: async (_, variables) => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "userlist"] });
@@ -163,14 +156,11 @@ export const PersonalUser = () => {
         enableHiding: false,
       },
       {
-        accessorKey: "userName",
+        accessorKey: "name",
         header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("userName")}
-          />
+          <DataTableColumnHeader column={column} title={getHeader("name")} />
         ),
-        cell: ({ row }) => <div>{row.getValue("userName")}</div>,
+        cell: ({ row }) => <div>{row.getValue("name")}</div>,
       },
       {
         accessorKey: "role",
@@ -211,46 +201,27 @@ export const PersonalUser = () => {
                 className="rounded-sm px-1 font-normal"
                 variant={"secondary"}
               >
-                {quota.hard.cpu} CPU
+                {quota.cpu} CPU
               </Badge>
               <Badge
                 className="rounded-sm px-1 font-normal"
                 variant={"secondary"}
               >
-                {quota.hard.gpu} GPU
+                {quota.gpu} GPU
               </Badge>
               <Badge
                 className="rounded-sm px-1 font-normal"
                 variant={"secondary"}
               >
-                {quota.hard.memoryNum || 0} {quota.hard.memoryUnit}
+                {quota.mem || 0} GB
               </Badge>
             </div>
           );
         },
         // issue: https://github.com/TanStack/table/issues/4591
         sortingFn: (rowA, rowB) => {
-          const a = rowA.original.quota.hard.cpu || 0;
-          const b = rowB.original.quota.hard.cpu || 0;
-          if (a === b) {
-            const a = rowA.original.quota.hard.gpu || 0;
-            const b = rowB.original.quota.hard.gpu || 0;
-            if (a === b) {
-              const a = rowA.original.quota.hard.memoryNum || 0;
-              const b = rowB.original.quota.hard.memoryNum || 0;
-              if (a === b) {
-                return 0;
-              }
-              if (b === 0) return 1;
-              if (a === 0) return -1;
-              return a - b;
-            }
-            if (b === 0) return 1;
-            if (a === 0) return -1;
-            return a - b;
-          }
-          if (b === 0) return 1;
-          if (a === 0) return -1;
+          const a = rowA.original.quota.cpu || 0;
+          const b = rowB.original.quota.cpu || 0;
           return a - b;
         },
       },
@@ -277,11 +248,11 @@ export const PersonalUser = () => {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle className="mb-2">修改配额</DialogTitle>
-                    <QuotaForm
+                    {/* <QuotaForm
                       closeSheet={() => setOpenQuotaDialog(false)}
-                      userName={user.userName}
+                      userName={user.name}
                       quota={user.quota.hard}
-                    />
+                    /> */}
                   </DialogHeader>
                 </DialogContent>
               </Dialog>
@@ -301,14 +272,14 @@ export const PersonalUser = () => {
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger>权限</DropdownMenuSubTrigger>
                       <DropdownMenuSubContent>
-                        <DropdownMenuRadioGroup value={user.role}>
+                        <DropdownMenuRadioGroup value={`${user.role}`}>
                           {roles.map((role) => (
                             <DropdownMenuRadioItem
                               key={role.value}
-                              value={role.value}
+                              value={`${role.value}`}
                               onClick={() =>
                                 updateRole({
-                                  userName: user.userName,
+                                  userName: user.name,
                                   role: role.value,
                                 })
                               }
@@ -329,7 +300,7 @@ export const PersonalUser = () => {
                   <AlertDialogHeader>
                     <AlertDialogTitle>删除用户</AlertDialogTitle>
                     <AlertDialogDescription>
-                      用户「{user?.userName}」将被删除，请谨慎操作。
+                      用户「{user?.name}」将被删除，请谨慎操作。
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -337,12 +308,12 @@ export const PersonalUser = () => {
                     <AlertDialogAction
                       variant="destructive"
                       onClick={() => {
-                        if (user.userName === currentUserName) {
+                        if (user.name === currentUserName) {
                           showErrorToast(
                             "无法删除自己，如需删除请换个用户登录",
                           );
                         } else {
-                          deleteUser(user.userName);
+                          deleteUser(user.name);
                         }
                       }}
                     >
@@ -363,12 +334,10 @@ export const PersonalUser = () => {
     if (isLoading) return;
     if (!userList) return;
     const tableData: TUser[] = userList.map((user) => ({
-      id: user.userID,
-      userName: user.userName,
+      id: user.id,
+      name: user.name,
       role: user.role,
-      quota: {
-        hard: getAiResource(user.quotaHard),
-      },
+      quota: user.quota,
     }));
     setData(tableData);
   }, [userList, isLoading]);
