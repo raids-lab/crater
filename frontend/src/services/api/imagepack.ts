@@ -15,7 +15,7 @@ export type ImagePackInfoResponse = {
   status: string;
   createdAt: string;
   nametag: string;
-  username: string;
+  creatername: string;
   params: {
     Convs: number;
     Activations: number;
@@ -118,18 +118,18 @@ export interface ImagePackCreate {
 
 export const apiUserImagepackCreate = async (imagepack: ImagePackCreate) => {
   const response = await instance.post<IResponse<string>>(
-    VERSION + "/image/create",
+    VERSION + "/images/create",
     imagepack,
   );
   return response.data;
 };
 
 export const apiUserImagePackList = () =>
-  instance.get<IResponse<ImagePackInfoResponse[]>>(VERSION + "/image/list");
+  instance.get<IResponse<ImagePackInfoResponse[]>>(VERSION + "/images/list");
 
 export const apiUserImagePackDelete = async (id: number) => {
   const response = await instance.post<IResponse<string>>(
-    VERSION + "/image/deleteid",
+    VERSION + "/images/delete",
     {
       id,
     },

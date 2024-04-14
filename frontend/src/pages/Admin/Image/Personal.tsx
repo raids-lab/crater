@@ -62,7 +62,7 @@ export const Component: FC = () => {
     return imagePackInfo.data.map((item) => ({
       id: item.ID,
       link: item.imagelink,
-      username: item.username,
+      username: item.creatername,
       status: item.status,
       createdAt: item.createdAt,
       nametag: item.nametag,
@@ -301,13 +301,11 @@ export const Component: FC = () => {
   ];
 
   return (
-    <div className="space-y-1 text-xl">
-      <DataTable
-        data={data}
-        columns={columns}
-        toolbarConfig={toolbarConfig}
-        loading={imagePackInfo.isLoading}
-      ></DataTable>
-    </div>
+    <DataTable
+      data={data}
+      columns={columns}
+      toolbarConfig={toolbarConfig}
+      loading={imagePackInfo.isLoading}
+    ></DataTable>
   );
 };
