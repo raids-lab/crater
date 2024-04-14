@@ -76,7 +76,7 @@ const statuses = [
   },
 ];
 
-const toolbarConfig: DataTableToolbarConfig = {
+const toolbarConfig: DataTableToolbarConfig<string> = {
   filterInput: {
     placeholder: "搜索 Pod 名称",
     key: "name",

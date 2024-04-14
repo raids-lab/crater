@@ -122,6 +122,7 @@ const DashboardLayout = ({
               />
             </div> */}
           <ProjectSwitcher className="relative ml-auto flex-1 md:grow-0" />
+
           <UserDropdownMenu />
         </header>
         <motion.div

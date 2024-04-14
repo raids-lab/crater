@@ -11,7 +11,7 @@ import {
 } from "./DataTableFacetedFilter";
 import { Search } from "lucide-react";
 
-export interface DataTableToolbarConfig {
+export interface DataTableToolbarConfig<TFilter> {
   filterInput: {
     placeholder: string;
     key: string;
@@ -19,22 +19,25 @@ export interface DataTableToolbarConfig {
   filterOptions: {
     key: string;
     title: string;
-    option: DataTableFacetedFilterOption[];
+    option: DataTableFacetedFilterOption<TFilter>[];
   }[];
   getHeader: (key: string) => string;
 }
 
-interface DataTableToolbarProps<TData>
+interface DataTableToolbarProps<TData, TFilter>
   extends React.HTMLAttributes<HTMLDivElement> {
   table: Table<TData>;
-  config: DataTableToolbarConfig;
+  config: DataTableToolbarConfig<TFilter>;
 }
 
-export function DataTableToolbar<TData>({
+export function DataTableToolbar<
+  TData,
+  TFilter extends string | number | bigint,
+>({
   table,
   config: { filterInput, filterOptions, getHeader },
   children,
-}: DataTableToolbarProps<TData>) {
+}: DataTableToolbarProps<TData, TFilter>) {
   const isFiltered = table.getState().columnFilters.length > 0;
 
   return (

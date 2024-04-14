@@ -15,14 +15,53 @@ export type ImagePackInfoResponse = {
   status: string;
   createdAt: string;
   nametag: string;
+  creatername: string;
+  params: {
+    Convs: number;
+    Activations: number;
+    Denses: number;
+    Others: number;
+    GFLOPs: number;
+    BatchSize: number;
+    Params: number;
+    ModelSize: number;
+  };
 };
 
 export type ImagePackInfo = {
   id: number;
   nametag: string;
   link: string;
+  username: string;
   status: string;
   createdAt: string;
+  params: {
+    Convs: number;
+    Activations: number;
+    Denses: number;
+    Others: number;
+    GFLOPs: number;
+    BatchSize: number;
+    Params: number;
+    ModelSize: number;
+  };
+};
+
+export const getHeader = (key: string): string => {
+  switch (key) {
+    case "nametag":
+      return "名称";
+    case "link":
+      return "镜像地址";
+    case "username":
+      return "提交者";
+    case "status":
+      return "状态";
+    case "createdAt":
+      return "创建时间";
+    default:
+      return key;
+  }
 };
 
 export type ImagePackStatusValue =
@@ -74,22 +113,23 @@ export interface ImagePackCreate {
   registryProject: string;
   imageName: string;
   imageTag: string;
+  needProfile: boolean;
 }
 
 export const apiUserImagepackCreate = async (imagepack: ImagePackCreate) => {
   const response = await instance.post<IResponse<string>>(
-    VERSION + "/image/create",
+    VERSION + "/images/create",
     imagepack,
   );
   return response.data;
 };
 
 export const apiUserImagePackList = () =>
-  instance.get<IResponse<ImagePackInfoResponse[]>>(VERSION + "/image/list");
+  instance.get<IResponse<ImagePackInfoResponse[]>>(VERSION + "/images/list");
 
 export const apiUserImagePackDelete = async (id: number) => {
   const response = await instance.post<IResponse<string>>(
-    VERSION + "/image/deleteid",
+    VERSION + "/images/delete",
     {
       id,
     },

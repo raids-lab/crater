@@ -62,6 +62,7 @@ export const UserDropdownMenu: FC = () => {
           <DropdownMenuGroup>
             <DropdownMenuItem
               onClick={() => {
+                setLastView("portal");
                 navigate("/portal");
                 toast.success("切换至用户视图");
               }}
@@ -74,6 +75,7 @@ export const UserDropdownMenu: FC = () => {
             {userInfo.context.platformRole === Role.Admin && (
               <DropdownMenuItem
                 onClick={() => {
+                  setLastView("admin");
                   navigate("/admin");
                   toast.success("切换至管理员视图");
                 }}

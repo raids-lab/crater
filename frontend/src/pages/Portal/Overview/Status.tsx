@@ -91,7 +91,7 @@ const Status: FC = () => {
   }, [stats, theme]);
 
   return (
-    <Card className="col-span-1">
+    <Card className="col-span-1 md:col-span-2">
       <CardHeader>
         <CardTitle>任务状态</CardTitle>
       </CardHeader>

@@ -1,4 +1,4 @@
-import instance from "../axios";
+import instance, { VERSION } from "../axios";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/utils/store";
 import { IResponse } from "../types";
 
@@ -26,28 +26,9 @@ export interface ILogin {
 // 	RoleAdmin
 // )
 export enum Role {
-  Guest,
+  Guest = 1,
   User,
   Admin,
-}
-
-// const (
-// 	StatusPending  Status = iota // Pending status, not yet activated
-// 	StatusActive                 // Active status
-// 	StatusInactive               // Inactive status
-// )
-export enum ProjectStatus {
-  Pending,
-  Active,
-  Inactive,
-}
-
-export interface ProjectBasic {
-  id: number;
-  name: string;
-  role: Role;
-  isPersonal: boolean;
-  status: ProjectStatus;
 }
 
 export interface UserContext {
@@ -60,7 +41,6 @@ export interface IAuthResponse {
   accessToken: string;
   refreshToken: string;
   context: UserContext;
-  projects: ProjectBasic[];
 }
 
 export const apiUserSignup = async (user: ISignup) => {
@@ -73,6 +53,19 @@ export const apiUserSignup = async (user: ISignup) => {
 
 export const apiUserLogin = async (user: ILogin) => {
   const response = await instance.post<IResponse<IAuthResponse>>("login", user);
+  const { accessToken, refreshToken } = response.data.data;
+  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  return response.data.data;
+};
+
+export const apiProjectSwitch = async (id: number) => {
+  const response = await instance.post<IResponse<IAuthResponse>>(
+    VERSION + "/switch",
+    {
+      id,
+    },
+  );
   const { accessToken, refreshToken } = response.data.data;
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);

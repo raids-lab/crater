@@ -10,7 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from "@/components/ui-custom/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -37,11 +37,11 @@ import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTab
 import { TableDate } from "@/components/custom/TableDate";
 import { cn } from "@/lib/utils";
 import Status from "../../Overview/Status";
-import Quota from "../../Overview/Quota";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { toast } from "sonner";
 import { getHeader, statuses } from "@/pages/Portal/Job/Ai/statuses";
 import { logger } from "@/utils/loglevel";
+import Quota from "./Quota";
 
 type JTaskInfo = {
   id: number;
@@ -54,7 +54,7 @@ type JTaskInfo = {
   gpus: string | number | undefined;
 };
 
-const toolbarConfig: DataTableToolbarConfig = {
+const toolbarConfig: DataTableToolbarConfig<string> = {
   filterInput: {
     placeholder: "搜索任务名称",
     key: "title",
@@ -332,7 +332,7 @@ export const Component = () => {
 
   return (
     <>
-      <div className="col-span-3 grid grid-cols-2 gap-6">
+      <div className="col-span-3 grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
         <Status />
         <Quota />
       </div>
