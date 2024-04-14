@@ -1644,6 +1644,46 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/v1/token/verify": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "读取header的auth进行鉴权",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Token"
+                ],
+                "summary": "通过token鉴权",
+                "responses": {
+                    "200": {
+                        "description": "Token 鉴权",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-handler_TokenReq"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1730,6 +1770,21 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "handler.FilePermission": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3
+            ],
+            "x-enum-varnames": [
+                "_",
+                "NotAllowed",
+                "ReadOnly",
+                "ReadWrite"
+            ]
         },
         "handler.ImagePackCreateRequest": {
             "type": "object",
@@ -1898,6 +1953,20 @@ const docTemplate = `{
             ],
             "properties": {
                 "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handler.TokenReq": {
+            "type": "object",
+            "properties": {
+                "permission": {
+                    "$ref": "#/definitions/handler.FilePermission"
+                },
+                "rootPath": {
+                    "type": "string"
+                },
+                "userId": {
                     "type": "integer"
                 }
             }
@@ -2414,6 +2483,20 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/handler.ProjectCreateResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.Response-handler_TokenReq": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/response.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/handler.TokenReq"
                 },
                 "msg": {
                     "type": "string"

@@ -82,6 +82,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	userMgr := handler.NewUserMgr()
 	imagepackMgr := handler.NewImagePackMgr(&logClient, &crclient.ImagePackController{Client: cl})
 	contextMgr := handler.NewContextMgr()
+	jwttokenMgr := handler.NewJWTTokenMgr()
 	///////////////////////////////////////
 	//// Public routers, no need login ////
 	///////////////////////////////////////
@@ -104,6 +105,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	nodeMgr.RegisterProtected(protectedRouter.Group("/nodes"))
 	imagepackMgr.RegisterProtected(protectedRouter.Group("/images"))
 	contextMgr.RegisterProtected(protectedRouter.Group("/context"))
+	jwttokenMgr.RegisterProtected(protectedRouter.Group("/storage"))
 	///////////////////////////////////////
 	//// Admin routers, need admin role ///
 	///////////////////////////////////////
