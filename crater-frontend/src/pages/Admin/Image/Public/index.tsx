@@ -73,7 +73,7 @@ export const Component: FC = () => {
     return imagePackInfo.data.map((item) => ({
       id: item.ID,
       link: item.imagelink,
-      username: item.username,
+      username: item.creatername,
       status: item.status,
       createdAt: item.createdAt,
       nametag: item.nametag,
@@ -314,28 +314,26 @@ export const Component: FC = () => {
   ];
 
   return (
-    <div className="space-y-1 text-xl">
-      <DataTable
-        data={data}
-        columns={columns}
-        toolbarConfig={toolbarConfig}
-        loading={imagePackInfo.isLoading}
-      >
-        <Sheet open={openSheet} onOpenChange={setOpenSheet}>
-          <SheetTrigger asChild>
-            <Button className="h-8 min-w-fit">创建镜像</Button>
-          </SheetTrigger>
-          {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
-          <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
-            <SheetHeader>
-              <SheetTitle>创建镜像</SheetTitle>
-              <SheetDescription>创建一个新的训练任务镜像</SheetDescription>
-            </SheetHeader>
-            <Separator className="mt-4" />
-            <NewTaskForm closeSheet={() => setOpenSheet(false)} />
-          </SheetContent>
-        </Sheet>
-      </DataTable>
-    </div>
+    <DataTable
+      data={data}
+      columns={columns}
+      toolbarConfig={toolbarConfig}
+      loading={imagePackInfo.isLoading}
+    >
+      <Sheet open={openSheet} onOpenChange={setOpenSheet}>
+        <SheetTrigger asChild>
+          <Button className="h-8 min-w-fit">创建镜像</Button>
+        </SheetTrigger>
+        {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
+        <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
+          <SheetHeader>
+            <SheetTitle>创建镜像</SheetTitle>
+            <SheetDescription>创建一个新的训练任务镜像</SheetDescription>
+          </SheetHeader>
+          <Separator className="mt-4" />
+          <NewTaskForm closeSheet={() => setOpenSheet(false)} />
+        </SheetContent>
+      </Sheet>
+    </DataTable>
   );
 };
