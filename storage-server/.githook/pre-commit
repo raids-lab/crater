@@ -1,0 +1,13 @@
+#!/bin/sh
+if ! (golangci-lint --version); then
+    echo "No Golangci-lint detected!"
+    exit 1
+fi
+
+if ! (golangci-lint run --fix); then
+    echo "Lint fail!"
+    exit 1
+fi
+
+echo "Lint success!"
+exit 0
