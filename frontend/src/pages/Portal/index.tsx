@@ -6,7 +6,7 @@ import WorkBenchIcon from "@/components/icon/WorkBenchIcon";
 import { useAuth } from "@/hooks/useAuth";
 import { FC, PropsWithChildren, Suspense } from "react";
 import { Navigate, RouteObject } from "react-router-dom";
-import { FileTextIcon, Pencil2Icon } from "@radix-ui/react-icons";
+import { ArchiveIcon, FileTextIcon, Pencil2Icon } from "@radix-ui/react-icons";
 import { Role } from "@/services/api/auth";
 import DashboardLayout from "@/components/layout/Dashboard";
 
@@ -61,6 +61,22 @@ const sidebarItems: SidebarItem[] = [
         route: {
           path: "other",
           lazy: () => import("./Data/Other"),
+        },
+      },
+    ],
+  },
+  {
+    path: "project",
+    icon: ArchiveIcon,
+    children: [
+      {
+        route: {
+          path: "member",
+        },
+      },
+      {
+        route: {
+          path: "config",
         },
       },
     ],

@@ -101,8 +101,8 @@ function TableWithTabs<TData, TValue>({
         <div className="flex flex-row items-center justify-between gap-2">
           <div>
             <TabsList>
-              <TabsTrigger value="active">活跃</TabsTrigger>
               <TabsTrigger value="pending">待审批</TabsTrigger>
+              <TabsTrigger value="active">活跃中</TabsTrigger>
               <TabsTrigger value="inactive">已停用</TabsTrigger>
             </TabsList>
           </div>
@@ -208,14 +208,13 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
         cell: ({ row }) => {
           const quota = row.getValue<Project["quota"]>("quota");
           return (
-            <div className="grid grid-cols-3 rounded-md border p-3 text-xs">
-              <div>节点: {quota.node}</div>
-              <div>任务: {quota.job}</div>
+            <div className="grid grid-cols-3 rounded-md border p-3 text-xs md:grid-cols-6">
+              <div>节点: {quota.node === -1 ? "~" : quota.node}</div>
+              <div>任务: {quota.job === -1 ? "~" : quota.job}</div>
               <div>CPU: {quota.cpu}</div>
-              <div>内存: {quota.mem}</div>
               <div>GPU: {quota.gpu}</div>
-              <div>存储: {quota.storage}</div>
-              <div>备注: {quota.extra}</div>
+              <div>内存: {quota.mem}GB</div>
+              <div>存储: {quota.storage}GB</div>
             </div>
           );
         },
