@@ -1,28 +1,29 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"webdav/model"
-	"webdav/orm"
+	"net/http"
 )
 
 func main() {
-	db := orm.DB()
-	var uuu []model.User
-	db.Model(&model.User{}).Find(&uuu).Limit(1)
-	fmt.Println(uuu[0].ID)
-	fmt.Println(uuu[0].Name)
-	fmt.Println(uuu[0].Model)
-	fmt.Println(uuu[0].Nickname)
-	for _, db_user := range uuu {
-		if db_user.Role == model.RoleAdmin {
-			fmt.Printf("role %d is admin\n", db_user.ID)
-		} else if db_user.Role == model.RoleGuest {
-			fmt.Printf("role %d is Guest\n", db_user.ID)
-		} else if db_user.Role == model.RoleUser {
-			fmt.Printf("role %d  is User\n", db_user.ID)
-		}
+
+	client := http.Client{}
+	baseurl := "http://localhost:8086/v1/storage/verify"
+	req, err := http.NewRequestWithContext(context.Background(), "GET", baseurl, http.NoBody)
+	if err != nil {
+		fmt.Println("can't create request")
+		return
 	}
+	req.Header.Set("Authorization", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOjgsInBpZCI6OSwicHJvIjozLCJjaWQiOjEsImNybyI6MiwicGxmIjozLCJleHAiOjE3MTI5MTQwOTh9.YmkatSfYnfvaLOjiBExtqsMft-kf0MGoXFdjn5mHv8M")
+	req.Header.Set("Content-Type", "application/json")
+	// 发送请求
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("body:", resp.Body)
+		return
+	}
+	defer resp.Body.Close()
 
 	// var bbb []model.Project
 	// db.Model(&model.Project{}).First(&bbb)

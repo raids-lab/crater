@@ -26,10 +26,10 @@ func main() {
 		r.Handle(m, "/files", service.WebDav)
 		r.Handle(m, "/files/*path", service.WebDav)
 	}
-	r.Handle("POST", "/files/shareddir", service.GetSharedProjectDir)
-	r.Handle("POST", "/files/mydir", service.GetMyDir)
-	r.Handle("POST", "/files/sharedfile", service.GetFile)
-	r.Handle("GET", "/testtoken", service.Testtoken)
+	r.Handle("POST", "/api/ss/shareddir", service.GetSharedProjectDir)
+	r.Handle("POST", "/api/ss/mydir", service.GetMyDir)
+	r.Handle("POST", "/api/ss/file/*path", service.GetFile)
+	r.Handle("GET", "/api/ss/testtoken", service.Testtoken)
 	err := r.Run(":7320")
 	if err != nil {
 		log.Fatal(err)

@@ -2,10 +2,13 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"webdav/model"
 	"webdav/orm"
@@ -19,6 +22,9 @@ import (
 var fs *webdav.Handler
 var fsLock sync.Mutex
 
+var httpClient *http.Client
+var hCLock sync.Mutex
+
 type Filereq struct {
 	Userid    *int   `json:"userid" binding:"required"`
 	Projectid *int   `json:"projectid"`
@@ -26,8 +32,11 @@ type Filereq struct {
 }
 
 type File struct {
-	Name  string `json:"name"`
-	IsDir bool   `json:"isdir"`
+	Name       string `json:"name"`
+	Size       int64  `json:"size"`
+	IsDir      bool   `json:"isdir"`
+	ModifyTime string `json:"modifytime"`
+	Sys        any    `json:"sys"`
 }
 
 func checkfs() {
@@ -35,7 +44,7 @@ func checkfs() {
 		fsLock.Lock()
 		if fs == nil {
 			fs = &webdav.Handler{
-				Prefix:     "/files",
+				Prefix:     "/api/ss",
 				FileSystem: webdav.Dir("/crater"),
 				LockSystem: webdav.NewMemLS(),
 				Logger: func(h *http.Request, e error) {
@@ -45,16 +54,21 @@ func checkfs() {
 				},
 			}
 		}
+		fsLock.Unlock()
+	}
+}
+
+func checkclient() {
+	if httpClient == nil {
+		hCLock.Lock()
+		if httpClient == nil {
+			httpClient = &http.Client{}
+		}
+		hCLock.Unlock()
 	}
 }
 
 func CheckFilePermission(user_id uint, project_id uint) model.FilePermission {
-	// pathPart := strings.FieldsFunc(path, func(s rune) bool { return s == '/' })
-	// realpath := strings.TrimPrefix(path, "/files")
-	// if len(pathPart) <= 1 || pathPart[0] != "files" {
-	// 	fmt.Println("CheckFilePermission path too short ", path)
-	// 	return NotAllowed
-	// }
 	db := orm.DB()
 	var UserPro model.UserProject
 	err := db.Model(&model.UserProject{}).Where("user_id = ? AND project_id = ?", user_id, project_id).First(&UserPro).Error
@@ -73,7 +87,29 @@ func CheckFilePermission(user_id uint, project_id uint) model.FilePermission {
 	return model.NotAllowed
 }
 
-func ListMyProject(user_id int) []string {
+func CheckJWTToken(c *gin.Context) (model.TokenResp, error) {
+	checkclient()
+	url := "http://crater.act.buaa.edu.cn/api/v1/storage/verify"
+	req, err := http.NewRequestWithContext(c.Request.Context(), "GET", url, http.NoBody)
+	if err != nil {
+		return model.TokenResp{}, fmt.Errorf("can't create request")
+	}
+	req.Header.Set("Authorization", c.GetHeader("Authorization"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return model.TokenResp{}, fmt.Errorf("can't get resp:" + resp.Status)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	var tokenResp model.TokenResp
+	if err := json.Unmarshal([]byte(string(body)), &tokenResp); err != nil {
+		return model.TokenResp{}, fmt.Errorf("returned json error")
+	}
+	defer resp.Body.Close()
+	return tokenResp, nil
+}
+
+func ListMySharedProject(user_id uint) []string {
 	db := orm.DB()
 	var UserPro []model.UserProject
 	err := db.Model(&model.UserProject{}).Where("user_id = ?", user_id).Find(&UserPro).Error
@@ -93,7 +129,7 @@ func ListMyProject(user_id int) []string {
 	return projetcname
 }
 
-func GetMyProject(user_id int) model.Project {
+func GetMyProject(user_id uint) model.Project {
 	db := orm.DB()
 	var UserPro []model.UserProject
 	err := db.Model(&model.UserProject{}).Where("user_id = ?", user_id).Find(&UserPro).Error
@@ -152,15 +188,15 @@ func containsString(slice []string, s string) bool {
 
 func GetSharedProjectDir(c *gin.Context) {
 	checkfs()
-	var req Filereq
-	if err := c.ShouldBind(&req); err != nil {
+	jwttoken, err := CheckJWTToken(c)
+	if err != nil || jwttoken.Code != 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"data": nil,
-			"msg":  err.Error(),
+			"msg":  jwttoken.Msg,
 		})
 		return
 	}
-	myproject := ListMyProject(*req.Userid)
+	myproject := ListMySharedProject(jwttoken.Data.UserId)
 	if myproject != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"data": myproject,
@@ -176,25 +212,16 @@ func GetSharedProjectDir(c *gin.Context) {
 
 func GetMyDir(c *gin.Context) {
 	checkfs()
-	var req Filereq
-	if err := c.ShouldBind(&req); err != nil {
+	jwttoken, err := CheckJWTToken(c)
+	if err != nil || jwttoken.Code != 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"data": nil,
-			"msg":  err.Error(),
+			"msg":  jwttoken.Msg,
 		})
 		return
 	}
-	myproject := GetMyProject(*req.Userid)
-	if myproject.ID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"data": nil,
-			"msg":  "user has no personal project",
-		})
-		return
-	}
-	rootpath := GetSpaceByProjectID(myproject.ID)
-	path := rootpath + req.Path
-	data, err := handleDirList(fs.FileSystem, c.Writer, c.Request, true, path)
+	path := jwttoken.Data.RootPath
+	data, err := handleDirList(fs.FileSystem, c.Writer, path)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"data": nil,
@@ -202,8 +229,6 @@ func GetMyDir(c *gin.Context) {
 		})
 		return
 	}
-	// v, _ := json.Marshal(data)
-	// jsonStr := string(v) // 结构体转为json对象
 	c.JSON(http.StatusOK, gin.H{
 		"data": data,
 		"msg":  "",
@@ -212,22 +237,22 @@ func GetMyDir(c *gin.Context) {
 
 func GetFile(c *gin.Context) {
 	checkfs()
-	var req Filereq
-	if err := c.ShouldBind(&req); err != nil || *req.Projectid == 0 {
+	jwttoken, err := CheckJWTToken(c)
+	if err != nil || jwttoken.Code != 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"data": nil,
-			"msg":  err.Error(),
+			"msg":  jwttoken.Msg,
 		})
 		return
 	}
-	rootpath := GetSpaceByProjectID(uint(*req.Projectid))
-	path := rootpath + req.Path
-	permission := CheckFilePermission(uint(*req.Userid), uint(*req.Projectid))
-	if permission == model.NotAllowed {
+	rootpath := jwttoken.Data.RootPath
+	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/file")
+	path := rootpath + param
+	if jwttoken.Data.Permission == model.NotAllowed {
 		c.String(http.StatusUnauthorized, "Unauthorized 1")
 		return
 	}
-	data, err := handleDirList(fs.FileSystem, c.Writer, c.Request, false, path)
+	data, err := handleDirList(fs.FileSystem, c.Writer, path)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"data": nil,
@@ -241,15 +266,8 @@ func GetFile(c *gin.Context) {
 	})
 }
 
-func handleDirList(fs webdav.FileSystem, w http.ResponseWriter, req *http.Request, ispersonal bool, path string) ([]File, error) {
+func handleDirList(fs webdav.FileSystem, w http.ResponseWriter, path string) ([]File, error) {
 	ctx := context.Background()
-	// if ispersonal {
-	// 	req.URL.Path = strings.TrimPrefix(req.URL.Path, "/files/mydir")
-	// 	req.URL.Path = path + req.URL.Path
-	// } else {
-	// 	req.URL.Path = strings.TrimPrefix(req.URL.Path, "/files/sharedfile")
-	// 	req.URL.Path = path + req.URL.Path
-	// }
 	f, err := fs.OpenFile(ctx, path, os.O_RDONLY, 0)
 	if err != nil {
 		return nil, err
@@ -265,44 +283,26 @@ func handleDirList(fs webdav.FileSystem, w http.ResponseWriter, req *http.Reques
 		log.Print(w, "Error reading directory", http.StatusInternalServerError)
 		return nil, err
 	}
-	// w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// fmt.Fprintf(w, "<pre>\n")
 	var tmp File
 	for _, d := range dirs {
 		tmp.Name = d.Name()
-
-		if d.IsDir() {
-			tmp.IsDir = true
-		} else {
-			tmp.IsDir = false
-		}
-
+		tmp.ModifyTime = d.ModTime().String()
+		tmp.Size = d.Size()
+		tmp.IsDir = d.IsDir()
+		tmp.Sys = d.Sys()
 		files = append(files, tmp)
-
-		// fmt.Fprintf(w, "<a href=\"%s\">%s</a>\n", tmp.name, tmp.name)
 	}
-	// fmt.Fprintf(w, "</pre>\n")
 	return files, nil
 }
 
 func Testtoken(c *gin.Context) {
-	userID, ok := c.Get("x-user-id")
-	if !ok {
+	jwttoken, err := CheckJWTToken(c)
+	if err != nil {
 		c.JSON(400, gin.H{
-			"msg": "user id not found",
+			"data": jwttoken,
+			"msg":  err.Error(),
 		})
-		return
 	}
-
-	projectID, ok := c.Get("x-project-id")
-	if !ok {
-		c.JSON(400, gin.H{
-			"msg": "project id not found",
-		})
-		return
-	}
-	c.JSON(200, gin.H{
-		"userid":    userID,
-		"projectid": projectID,
-	})
+	fmt.Println(c.Request.URL.Path)
+	fmt.Println(jwttoken)
 }

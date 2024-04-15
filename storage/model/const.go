@@ -46,12 +46,18 @@ const (
 type FilePermission int
 
 const (
-	NotAllowed FilePermission = 1
+	_ FilePermission = iota
+	NotAllowed
 	ReadOnly
 	ReadWrite
 )
 
-type File struct {
-	Name  string `json:"name"`
-	IsDir bool   `json:"isdir"`
+type TokenResp struct {
+	Code int `json:"code"`
+	Data struct {
+		UserId     uint           `json:"userId"`
+		RootPath   string         `json:"rootPath"`
+		Permission FilePermission `json:"permission"`
+	} `json:"data"`
+	Msg string `json:"msg"`
 }
