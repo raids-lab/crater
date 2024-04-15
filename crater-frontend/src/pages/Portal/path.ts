@@ -52,6 +52,20 @@ export const craterPath: PathInfo = {
       ],
     },
     {
+      path: "project",
+      title: "项目管理",
+      children: [
+        {
+          path: "member",
+          title: "项目成员",
+        },
+        {
+          path: "config",
+          title: "项目配置",
+        },
+      ],
+    },
+    {
       path: "docs",
       title: "使用文档",
     },

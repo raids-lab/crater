@@ -12,9 +12,12 @@ import { UserDropdownMenu } from "@/components/layout/UserDropdownMenu";
 import { useMemo, useState } from "react";
 import SidebarSheet from "./SidebarSheet";
 import { PanelLeft } from "lucide-react";
+import { useRecoilValue } from "recoil";
+import { globalProject } from "@/utils/store";
+import { Role } from "@/services/api/auth";
 
 const DashboardLayout = ({
-  sidebarItems,
+  sidebarItems: items,
   sidebarMenus,
 }: {
   sidebarItems: SidebarItem[];
@@ -22,6 +25,7 @@ const DashboardLayout = ({
 }) => {
   const { pathname: rawPath } = useLocation();
   const [open, setOpen] = useState(false);
+  const currentProject = useRecoilValue(globalProject);
 
   // 特殊规则，网盘路由切换时，不启用过渡动画
   const motionKey = useMemo(() => {
@@ -31,6 +35,14 @@ const DashboardLayout = ({
     }
     return rawPath;
   }, [rawPath]);
+
+  // 特殊规则，个人项目或者非管理员角色，隐藏项目管理菜单
+  const sidebarItems = useMemo(() => {
+    if (currentProject.isPersonal || currentProject.role !== Role.Admin) {
+      return items.filter((item) => item.path !== "project");
+    }
+    return items;
+  }, [items, currentProject]);
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
