@@ -3,45 +3,51 @@ package aitaskctl
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sort"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
-	quotadb "github.com/raids-lab/crater/pkg/db/quota"
-	taskdb "github.com/raids-lab/crater/pkg/db/task"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
 	"github.com/raids-lab/crater/pkg/profiler"
 	"github.com/raids-lab/crater/pkg/util"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // TaskController 调度task
-type TaskController struct {
-	jobControl    *crclient.JobControl      // 创建AIJob的接口
-	quotaDB       quotadb.DBService         // 获取db中的quota
-	taskDB        taskdb.DBService          // 获取db中的task
-	taskQueue     *TaskQueue                // 队列信息
-	quotaInfos    sync.Map                  // quota缓存
-	jobStatusChan <-chan util.JobStatusChan // 获取job的状态变更信息，同步到数据库
-	// taskUpdateChan <-chan util.TaskUpdateChan
-	profiler *profiler.Profiler
-}
+type (
+	TaskController struct {
+		jobControl    *crclient.JobControl      // 创建AIJob的接口
+		taskQueue     *TaskQueue                // 队列信息
+		quotaInfos    sync.Map                  // quota缓存
+		jobStatusChan <-chan util.JobStatusChan // 获取job的状态变更信息，同步到数据库
+		// taskUpdateChan <-chan util.TaskUpdateChan
+		profiler *profiler.Profiler
+	}
+)
 
 const (
 	scheduleInterval = 5 * time.Second
+)
+
+var (
+	taskNameSpace = config.GetConfig().Workspace.Namespace
 )
 
 // NewTaskController returns a new *TaskController
 func NewTaskController(crClient client.Client, cs kubernetes.Interface, statusChan <-chan util.JobStatusChan) *TaskController {
 	return &TaskController{
 		jobControl:    &crclient.JobControl{Client: crClient, KubeClient: cs},
-		quotaDB:       quotadb.NewDBService(),
-		taskDB:        taskdb.NewDBService(),
 		taskQueue:     NewTaskQueue(),
 		quotaInfos:    sync.Map{},
 		jobStatusChan: statusChan,
@@ -53,18 +59,214 @@ func (c *TaskController) SetProfiler(srcProfiler *profiler.Profiler) {
 	c.profiler = srcProfiler
 }
 
+func (c *TaskController) ParseUserquotas(userquotas []model.UserProject) ([]*models.Quota, error) {
+	var quotas []*models.Quota
+	for i := range userquotas {
+		quota := &models.Quota{}
+		quota.UserName = fmt.Sprintf("%d-%d", userquotas[i].UserID, userquotas[i].ProjectID)
+		resourceList := v1.ResourceList{
+			v1.ResourceCPU:                    resource.MustParse(fmt.Sprint(userquotas[i].CPUReq)),
+			v1.ResourceMemory:                 resource.MustParse(fmt.Sprint(userquotas[i].MemReq)),
+			v1.ResourceName("nvidia.com/gpu"): resource.MustParse(fmt.Sprint(userquotas[i].GPUReq)),
+		}
+		quota.HardQuota = model.ResourceListToJSON(resourceList)
+		quotas = append(quotas, quota)
+	}
+	return quotas, nil
+}
+
+func (c *TaskController) ConvertJobStatusToTaskStatus(jobStatus model.JobStatus) string {
+	switch jobStatus {
+	case model.JobInitial, model.JobCreated:
+		return models.TaskQueueingStatus
+	case model.JobRunning:
+		return models.TaskRunningStatus
+	case model.JobSucceeded:
+		return models.TaskSucceededStatus
+	case model.JobFailed:
+		return models.TaskFailedStatus
+	case model.JobPreempted:
+		return models.TaskPreemptedStatus
+	default:
+		return "" // Unknown or not applicable status
+	}
+}
+
+func (c *TaskController) ConvertTaskStatusToJobStatus(taskStatus string) model.JobStatus {
+	switch taskStatus {
+	case models.TaskQueueingStatus:
+		return model.JobCreated // Assuming JobCreated as the reverse for TaskQueueingStatus
+	case models.TaskRunningStatus:
+		return model.JobRunning
+	case models.TaskSucceededStatus:
+		return model.JobSucceeded
+	case models.TaskFailedStatus:
+		return model.JobFailed
+	case models.TaskPreemptedStatus:
+		return model.JobPreempted
+	default:
+		return 0 // Assuming 0 as the default unknown JobStatus
+	}
+}
+
+func (c *TaskController) ParseTask(aijobs []*model.AIJob) ([]models.AITask, error) {
+	var tasks []models.AITask
+	// not for request
+	for i := range aijobs {
+		task := &models.TaskAttr{}
+		task.ID = aijobs[i].ID
+		task.Namespace = taskNameSpace
+		task.TaskName = aijobs[i].Name
+		task.Status = c.ConvertJobStatusToTaskStatus(aijobs[i].Status)
+		task.UserName = fmt.Sprintf("%d-%d", aijobs[i].UserID, aijobs[i].ProjectID)
+		task.TaskType = aijobs[i].TaskType
+		resourceRequst, err := model.JSONToResourceList(aijobs[i].ResourceRequest)
+		if err != nil {
+			return nil, err
+		}
+		task.ResourceRequest = resourceRequst
+		extraMap := model.JSONStringToMap(*aijobs[i].Extra)
+		slo, err := strconv.ParseUint(extraMap["SLO"], 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		task.SLO = uint(slo)
+		task.Image = extraMap["Image"]
+		task.WorkingDir = extraMap["WorkingDir"]
+		task.ShareDirs = models.JSONStringToVolumes(extraMap["ShareDirs"])
+		task.Command = extraMap["Command"]
+		task.GPUModel = extraMap["GPUModel"]
+		task.SchedulerName = extraMap["SchedulerName"]
+		tasks = append(tasks, *models.FormatTaskAttrToModel(task))
+	}
+	return tasks, nil
+}
+
+func (c *TaskController) ListByUserAndStatuses(userName string, statuses []string) ([]models.AITask, error) {
+	var tasks []models.AITask
+	var aijobs []*model.AIJob
+	var err error
+	var uid, pid uint
+	fmt.Sscanf(userName, "%d-%d", uid, pid)
+	jobQueryModel := query.AIJob
+	exec := jobQueryModel.WithContext(context.Background())
+	exec = exec.Where(jobQueryModel.UserID.Eq(uid), jobQueryModel.ProjectID.Eq(pid))
+	if len(statuses) == 0 {
+		aijobs, err = exec.Find()
+		if err != nil {
+			logutils.Log.Errorf("list user:%v tasks failed, err: %v", userName, err)
+			return nil, err
+		}
+		tasks, err = c.ParseTask(aijobs)
+	} else {
+		for i := range statuses {
+			exec.Where(jobQueryModel.Status.In(uint8(c.ConvertTaskStatusToJobStatus(statuses[i]))))
+		}
+		aijobs, err = exec.Find()
+		if err != nil {
+			logutils.Log.Errorf("list user:%v tasks failed, err: %v", userName, err)
+			return nil, err
+		}
+		tasks, err = c.ParseTask(aijobs)
+	}
+	return tasks, err
+}
+
+func (c *TaskController) UpdateStatus(taskID uint, status string) error {
+	jobQueryModel := query.AIJob
+	aijob, err := jobQueryModel.WithContext(context.Background()).Where(jobQueryModel.ID.Eq(taskID)).First()
+	if err != nil {
+		logutils.Log.Errorf("get task update failed, err: %v", err)
+		return err
+	}
+
+	jobStat := c.ConvertTaskStatusToJobStatus(status)
+	if aijob.Status == jobStat {
+		return nil
+	}
+
+	updateMap := make(map[string]any)
+	updateMap["status"] = jobStat
+
+	t := time.Now()
+	switch status {
+	case models.TaskCreatedStatus:
+		updateMap["admitted_at"] = &t
+	case models.TaskRunningStatus:
+		updateMap["started_at"] = &t
+	case models.TaskSucceededStatus, models.TaskFailedStatus:
+		updateMap["finish_at"] = &t
+	}
+	_, err = jobQueryModel.WithContext(context.Background()).Where(jobQueryModel.ID.Eq(taskID)).Updates(updateMap)
+	return err
+}
+
+func (c *TaskController) GetByID(taskID uint) (*models.AITask, error) {
+	jobQueryModel := query.AIJob
+	aijob, err := jobQueryModel.WithContext(context.Background()).Where(jobQueryModel.ID.Eq(taskID)).First()
+	if err != nil {
+		logutils.Log.Errorf("get task update event failed, err: %v", err)
+		return nil, err
+	}
+	tasks, err := c.ParseTask([]*model.AIJob{aijob})
+	if err != nil {
+		logutils.Log.Errorf("get task update event failed, err: %v", err)
+		return nil, err
+	}
+	task := &tasks[0]
+	return task, err
+}
+
+func getUserQuota(quota, quotaInProject *model.EmbeddedQuota) {
+	quotaValue := reflect.ValueOf(quota).Elem()
+	projectValue := reflect.ValueOf(quotaInProject).Elem()
+
+	for i := 0; i < quotaValue.NumField(); i++ {
+		field := quotaValue.Field(i)
+		if field.Interface() == model.Unlimited {
+			// 对于 Unlimited 的字段，使用项目的对应字段
+			field.Set(projectValue.Field(i))
+		} else if field.Type() == reflect.TypeOf((*string)(nil)) {
+			// 对于指针类型的字段，如果为 nil，使用项目的对应字段
+			field.Set(projectValue.Field(i))
+		}
+	}
+}
+
+func (c *TaskController) ListAllQuotas() ([]*models.Quota, error) {
+	var userQuotas []model.UserProject
+	projectQueryModel := query.Project
+	projects, err := projectQueryModel.WithContext(context.Background()).Find()
+	if err != nil {
+		logutils.Log.Errorf("list all quotas failed, err: %v", err)
+		return nil, err
+	}
+	for i := range projects {
+		userQuotas = projects[i].UserProjects
+		for j := range userQuotas {
+			getUserQuota(&userQuotas[j].EmbeddedQuota, &projects[i].EmbeddedQuota)
+		}
+	}
+	quotas, err := c.ParseUserquotas(userQuotas)
+	if err != nil {
+		logutils.Log.Errorf("list all quotas failed, err: %v", err)
+		return nil, err
+	}
+	return quotas, nil
+}
+
 // Init init taskQueue And quotaInfos
 func (c *TaskController) Init() error {
 	// init quotas
-	quotas, err := c.quotaDB.ListAllQuotas()
+	quotas, err := c.ListAllQuotas()
 	if err != nil {
 		logutils.Log.Errorf("list all quotas failed, err: %v", err)
 	}
 	logutils.Log.Infof("list all quotas success, len: %v", len(quotas))
 	for i := range quotas {
 		// 添加quota
-		c.AddOrUpdateQuotaInfo(quotas[i].UserName, &quotas[i])
-		queueingList, err := c.taskDB.ListByUserAndStatuses(quotas[i].UserName, models.TaskQueueingStatuses)
+		c.AddOrUpdateQuotaInfo(quotas[i].UserName, quotas[i])
+		queueingList, err := c.ListByUserAndStatuses(quotas[i].UserName, models.TaskQueueingStatuses)
 		if err != nil {
 			logutils.Log.Errorf("list user:%v queueing tasks failed, err: %v", quotas[i].UserName, err)
 			continue
@@ -78,7 +280,7 @@ func (c *TaskController) Init() error {
 // It also initializes the user's task queue based on their quota.
 func (c *TaskController) AddUser(_ string, quota *models.Quota) {
 	c.AddOrUpdateQuotaInfo(quota.UserName, quota)
-	queueingList, err := c.taskDB.ListByUserAndStatuses(quota.UserName, models.TaskQueueingStatuses)
+	queueingList, err := c.ListByUserAndStatuses(quota.UserName, models.TaskQueueingStatuses)
 	if err != nil {
 		logutils.Log.Errorf("list user:%v queueing tasks failed, err: %v", quota.UserName, err)
 	}
@@ -112,11 +314,11 @@ func (c *TaskController) watchJobStatus(ctx context.Context) {
 		select {
 		case status := <-c.jobStatusChan:
 			// 更新task在db中的状态
-			task, err := c.updateTaskStatus(status.TaskID, status.NewStatus, status.Reason)
+			task, err := c.updateTaskStatus(status.TaskID, status.NewStatus)
 			if err != nil {
 				logutils.Log.Errorf("update task status failed, err: %v", err)
 				logutils.Log.Infof("get job status event, taskID: %v, newStatus: %v", status.TaskID, status.NewStatus)
-				// continue
+				break
 			}
 			// 更新quota，减去已经完成的作业的资源
 			if util.IsCompletedStatus(status.NewStatus) {
@@ -136,7 +338,7 @@ func (c *TaskController) watchJobStatus(ctx context.Context) {
 
 // hook: receive task updated event from server events
 func (c *TaskController) TaskUpdated(event util.TaskUpdateChan) {
-	task, err := c.taskDB.GetByID(event.TaskID)
+	task, err := c.GetByID(event.TaskID)
 	if err != nil {
 		logutils.Log.Errorf("get task update event failed, err: %v", err)
 		return
@@ -201,19 +403,22 @@ func (c *TaskController) TaskUpdated(event util.TaskUpdateChan) {
 // 	}
 // }
 
-func (c *TaskController) updateTaskStatus(taskID, status, reason string) (*models.AITask, error) {
+func (c *TaskController) updateTaskStatus(taskID, status string) (*models.AITask, error) {
 	// convert taskID to uint
 	tid, _ := strconv.ParseUint(taskID, 10, 64)
 
-	t, err := c.taskDB.GetByID(uint(tid))
+	t, err := c.GetByID(uint(tid))
 	if err != nil {
+		logutils.Log.Errorf("get task update failed, err: %v", err)
 		return nil, err
 	}
 	if t.Status != status {
-		err = c.taskDB.UpdateStatus(uint(tid), status, reason)
+		err = c.UpdateStatus(uint(tid), status)
 		if err != nil {
+			logutils.Log.Errorf("get task update failed, err: %v", err)
 			return nil, err
 		}
+		return nil, err
 	}
 	t.Status = status
 	return t, nil
@@ -279,7 +484,7 @@ func (c *TaskController) schedule(_ context.Context) {
 		return candiates[i].CreatedAt.Before(candiates[j].CreatedAt)
 	})
 	for _, candidate := range candiates {
-		task, err := c.taskDB.GetByID(candidate.ID)
+		task, err := c.GetByID(candidate.ID)
 		if err != nil {
 			logutils.Log.Errorf("get task from db failed, err: %v", err)
 			continue
@@ -319,7 +524,7 @@ func (c *TaskController) admitTask(task *models.AITask) error {
 
 	jobname, err := c.jobControl.CreateJobFromTask(task)
 	if err != nil {
-		err = c.taskDB.UpdateStatus(task.ID, models.TaskFailedStatus, err.Error())
+		err = c.UpdateStatus(task.ID, models.TaskFailedStatus)
 		if err != nil {
 			return err
 		}
@@ -327,13 +532,15 @@ func (c *TaskController) admitTask(task *models.AITask) error {
 		return err
 	}
 	// 更新task状态
-	err = c.taskDB.UpdateStatus(task.ID, models.TaskCreatedStatus, "AIJob created")
+	err = c.UpdateStatus(task.ID, models.TaskCreatedStatus)
 	if err != nil {
 		return err
 	}
 	// 更新jobname
-	err = c.taskDB.UpdateJobName(task.ID, jobname)
+	jobQueryModel := query.AIJob
+	_, err = jobQueryModel.WithContext(context.Background()).Where(jobQueryModel.ID.Eq(task.ID)).Update(jobQueryModel.Name, jobname)
 	if err != nil {
+		logutils.Log.Errorf("admit task update failed, err: %v", err)
 		return err
 	}
 

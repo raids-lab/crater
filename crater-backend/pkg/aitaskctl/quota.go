@@ -1,8 +1,12 @@
 package aitaskctl
 
 import (
+	"context"
+	"fmt"
 	"sync"
 
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
 	v1 "k8s.io/api/core/v1"
@@ -111,11 +115,23 @@ func (c *TaskController) GetQuotaInfo(username string) *QuotaInfo {
 	if value, ok := c.quotaInfos.Load(username); ok {
 		return value.(*QuotaInfo)
 	} else {
-		quotadb, err := c.quotaDB.GetByUserName(username)
+		var uid, pid uint
+		fmt.Sscanf(username, "%d-%d", uid, pid)
+		UserProjectQueryModel := query.UserProject
+		exec := UserProjectQueryModel.WithContext(context.Background())
+		exec = exec.Where(UserProjectQueryModel.UserID.Eq(uid))
+		exec = exec.Where(UserProjectQueryModel.ProjectID.Eq(pid))
+		exec = exec.Where(UserProjectQueryModel.DeletedAt.Eq(nil))
+		userquotas, err := exec.First()
+		if err != nil {
+			logutils.Log.Errorf("list all quotas failed, err: %v", err)
+		}
+		quotas, err := c.ParseUserquotas([]model.UserProject{*userquotas})
 		if err != nil {
 			logutils.Log.Errorf("get quota from db failed, err: %v", err)
 			return nil
 		}
+		quotadb := quotas[0]
 		_, info := c.AddOrUpdateQuotaInfo(username, quotadb)
 		return info
 	}
@@ -155,10 +171,9 @@ func (c *TaskController) AddOrUpdateQuotaInfo(name string, quota *models.Quota) 
 		}
 
 		// todo: add db tasks
-		tasksRunning, err := c.taskDB.ListByUserAndStatuses(name, models.TaskOcupiedQuotaStatuses)
-		//nolint:staticcheck // TODO: remove this line after fixing the error
+		tasksRunning, err := c.ListByUserAndStatuses(name, models.TaskOcupiedQuotaStatuses)
 		if err != nil {
-			// todo: handler err
+			return false, nil
 		}
 
 		for i := range tasksRunning {
