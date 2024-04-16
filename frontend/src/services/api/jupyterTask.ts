@@ -2,6 +2,7 @@ import { KubernetesResource } from "@/utils/resource";
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
 import { showErrorToast } from "@/utils/toast";
+import { JobStatus } from "@/pages/Portal/Job/Ai/statuses";
 
 export interface IJupyterTask {
   ID: number;
@@ -21,7 +22,7 @@ export interface IJupyterTask {
   //command: string;
   //args: string;
   //slo: number;
-  status: number;
+  status: JobStatus;
   jobName: string;
   isDeleted: boolean;
   estimatedTime: number;
@@ -30,8 +31,6 @@ export interface IJupyterTask {
 export interface JupyterTask {
   id: number;
   taskName: string;
-  userName: string;
-  namespace: string;
   taskType: string;
   createdAt: string;
   updatedAt: string;
@@ -47,7 +46,7 @@ export interface JupyterTask {
   //command: string;
   //args: string;
   //slo: number;
-  status: string;
+  status: number;
   jobName: string;
   isDeleted: boolean;
   estimatedTime: number;
