@@ -49,6 +49,15 @@ export const priorities = [
   },
 ];
 
+export enum JobStatus {
+  Initial = 1,
+  Created,
+  Running,
+  Succeeded,
+  Failed,
+  Preempted,
+}
+
 export type StatusValue =
   | "Queueing"
   | "Created"
@@ -73,11 +82,6 @@ export const statuses: {
     label: "等待中",
     icon: ClockIcon,
   },
-  //   {
-  //     value: "Pending",
-  //     label: "等待中",
-  //     icon: ClockIcon,
-  //   },
   {
     value: "Running",
     label: "运行中",
@@ -99,6 +103,23 @@ export const statuses: {
     icon: CrossCircledIcon,
   },
 ];
+
+export function getStatusValue(status: JobStatus): string {
+  switch (status) {
+    case JobStatus.Initial:
+      return "Created";
+    case JobStatus.Created:
+      return "Created";
+    case JobStatus.Running:
+      return "Running";
+    case JobStatus.Succeeded:
+      return "Succeeded";
+    case JobStatus.Failed:
+      return "Failed";
+    case JobStatus.Preempted:
+      return "Preempted";
+  }
+}
 
 // Profilingstatus
 // UnProfiled = 0 // 未分析

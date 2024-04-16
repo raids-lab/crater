@@ -32,7 +32,7 @@ import {
   StopIcon,
   ExclamationTriangleIcon,
 } from "@radix-ui/react-icons";
-import { apiJTaskDelete, convertJTask } from "@/services/api/jupyterTask";
+import { apiJTaskDelete } from "@/services/api/jupyterTask";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { logger } from "@/utils/loglevel";
 
@@ -184,13 +184,12 @@ const Jupyter: FC = () => {
     if (!tasks?.rows) return;
     const tableData: JTaskInfo[] = tasks.rows
       //.filter((task) => !task.isDeleted)
-      .map((t) => {
-        const task = convertJTask(t);
+      .map((task) => {
         return {
           id: task.id,
           userName: task.userName,
           taskName: task.taskName,
-          gpus: task.resourceRequest["nvidia.com/gpu"],
+          gpus: 0,
           status:
             task.isDeleted === true && task.status === "Running"
               ? "Deleted"

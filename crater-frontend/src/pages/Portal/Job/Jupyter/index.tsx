@@ -27,7 +27,6 @@ import { Separator } from "@/components/ui/separator";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   apiJTaskDelete,
-  convertJTask,
   apiJTaskGetPortToken,
   apiJupyterJobList,
 } from "@/services/api/jupyterTask";
@@ -39,7 +38,11 @@ import { cn } from "@/lib/utils";
 import Status from "../../Overview/Status";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { toast } from "sonner";
-import { getHeader, statuses } from "@/pages/Portal/Job/Ai/statuses";
+import {
+  getHeader,
+  getStatusValue,
+  statuses,
+} from "@/pages/Portal/Job/Ai/statuses";
 import { logger } from "@/utils/loglevel";
 import Quota from "./Quota";
 
@@ -306,13 +309,12 @@ export const Component = () => {
     if (!taskList) return;
     const tableData: JTaskInfo[] = taskList
       .filter((task) => !task.isDeleted)
-      .map((t) => {
-        const task = convertJTask(t);
+      .map((task) => {
         return {
-          id: task.id,
-          title: task.taskName,
+          id: task.ID,
+          title: task.name,
           taskType: task.taskType,
-          status: task.status,
+          status: getStatusValue(task.status),
           //priority: task.slo ? "high" : "low",
           // profileStatus:
           //   // 分析状态：profileStatus = 1 或 2 都显示分析中，不需要等待分析这个选项了
@@ -320,7 +322,7 @@ export const Component = () => {
           createdAt: task.createdAt,
           startedAt: task.startedAt,
           finishAt: task.finishAt,
-          gpus: task.resourceRequest["nvidia.com/gpu"],
+          gpus: 0,
         };
       });
     setData(tableData);
