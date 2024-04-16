@@ -15,7 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/image/available": {
+        "/images/available": {
             "get": {
                 "security": [
                     {
@@ -36,7 +36,7 @@ const docTemplate = `{
                 "responses": {}
             }
         },
-        "/image/create": {
+        "/images/create": {
             "post": {
                 "security": [
                     {
@@ -68,7 +68,7 @@ const docTemplate = `{
                 "responses": {}
             }
         },
-        "/image/delete": {
+        "/images/delete": {
             "post": {
                 "security": [
                     {
@@ -100,7 +100,7 @@ const docTemplate = `{
                 "responses": {}
             }
         },
-        "/image/get": {
+        "/images/get": {
             "get": {
                 "security": [
                     {
@@ -130,14 +130,14 @@ const docTemplate = `{
                 "responses": {}
             }
         },
-        "/image/list": {
+        "/images/list": {
             "get": {
                 "security": [
                     {
                         "Bearer": []
                     }
                 ],
-                "description": "如果userRole为user，则返回该用户所有的镜像；否则根据GET参数type来决定搜索私有or公共镜像",
+                "description": "根据GET参数type来决定搜索私有or公共镜像",
                 "consumes": [
                     "application/json"
                 ],
@@ -147,7 +147,7 @@ const docTemplate = `{
                 "tags": [
                     "ImagePack"
                 ],
-                "summary": "用户和管理员获取相关镜像的功能",
+                "summary": "管理员获取相关镜像的功能",
                 "parameters": [
                     {
                         "type": "integer",
@@ -160,7 +160,7 @@ const docTemplate = `{
                 "responses": {}
             }
         },
-        "/image/params": {
+        "/images/params": {
             "post": {
                 "security": [
                     {
