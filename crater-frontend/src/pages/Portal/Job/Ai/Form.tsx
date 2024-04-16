@@ -41,8 +41,10 @@ import {
   CommandInput,
   CommandItem,
 } from "@/components/ui/command";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { FileSelect } from "@/components/custom/FileSelect";
 
 const formSchema = z.object({
   taskname: z
@@ -206,6 +208,12 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
     // ✅ This will be type-safe and validated.
     exportToJson();
     createTask(values);
+  };
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const handleDialogClose = () => {
+    setIsDialogOpen(false); // 设置状态为false以关闭对话框
   };
 
   return (
@@ -446,6 +454,19 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
           >
             添加共享目录
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setIsDialogOpen(true)} // 点击按钮打开对话框
+            className="mx-5"
+          >
+            选择目录
+          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="h-[60vh] w-[90vw] max-w-screen-sm">
+              <FileSelect onClose={handleDialogClose} />
+            </DialogContent>
+          </Dialog>
         </div>
         <FormField
           control={form.control}
