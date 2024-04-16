@@ -32,30 +32,6 @@ export interface IAiTask {
   scheduleInfo: string;
 }
 
-// profileStat: {
-//   gpu_util_avg: 0.97, //上限1
-//   gpu_util_max: 0.98, //上限1
-//   gpu_util_std: 0.0031622776,
-//   sm_util_avg: 0.7899093, //上限1
-//   sm_util_max: 0.798531, //上限1
-//   sm_util_std: 0.0085214125,
-//   sm_occupancy_avg: 0.24534787, //上限1
-//   sm_occupancy_max: 0.250931,
-//   sm_occupancy_std: 0.0044290754,
-//   dram_util_avg: 0.24091028, //上限1
-//   dram_util_max: 0.247308,
-//   dram_util_std: 0.0039772647,
-//   mem_copy_util_avg: 0.3405, //上限1
-//   mem_copy_util_max: 0.35,
-//   mem_copy_util_std: 0.0028431204,
-//   pcie_tx_avg: 92.72305, // 展示数值 MB/s
-//   pcie_tx_max: 109.68077,
-//   pcie_rx_avg: 717.1082, // 展示数值 MB/s
-//   pcie_rx_max: 900995800,
-//   cpu_usage_avg: 1.3134052, //展示数值
-//   gpu_mem_max: 10007, //展示单位MB，上限是32768
-//   cpu_mem_max: 7325.039, // 展示单位MB，不用进度条
-// };
 interface ProfileStat {
   gpu_util_avg: number; //上限1
   gpu_util_max: number; //上限1
@@ -146,28 +122,35 @@ export interface ITaskCreate {
 
 export const apiAiTaskCreate = async (task: ITaskCreate) => {
   const response = await instance.post<IResponse<string>>(
-    VERSION + "/aitask/create",
+    VERSION + "/aijobs",
     task,
   );
   return response.data;
 };
 
 export const apiAiTaskDelete = async (taskID: number) => {
-  const response = await instance.post<IResponse<string>>(
-    VERSION + "/aitask/delete",
-    {
-      taskID,
-    },
+  const response = await instance.delete<IResponse<string>>(
+    VERSION + "/aijobs/" + taskID,
   );
   return response.data;
 };
 
-export const apiAiTaskList = () =>
+export const apiAiJobList = (
+  taskType: string,
+  pageSize: number,
+  pageIndex: number,
+) =>
   instance.get<
     IResponse<{
       rows: IAiTask[];
     }>
-  >(VERSION + "/aitask/list");
+  >(VERSION + "/aijobs", {
+    params: {
+      taskType,
+      pageSize,
+      pageIndex,
+    },
+  });
 
 export const apiAiTaskQuota = () =>
   instance.get<

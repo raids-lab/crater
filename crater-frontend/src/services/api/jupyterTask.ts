@@ -4,10 +4,8 @@ import { IResponse } from "../types";
 import { showErrorToast } from "@/utils/toast";
 
 export interface IJupyterTask {
-  id: number;
-  taskName: string;
-  userName: string;
-  namespace: string;
+  ID: number;
+  name: string;
   taskType: string;
   createdAt: string;
   updatedAt: string;
@@ -23,7 +21,7 @@ export interface IJupyterTask {
   //command: string;
   //args: string;
   //slo: number;
-  status: string;
+  status: number;
   jobName: string;
   isDeleted: boolean;
   estimatedTime: number;
@@ -60,6 +58,9 @@ export const convertJTask = (task: IJupyterTask): JupyterTask => {
   try {
     const jTaskINfo: JupyterTask = {
       ...task,
+      id: task.ID,
+      taskName: task.name,
+      taskType: task.taskType,
       resourceRequest: JSON.parse(task.resourceRequest) as KubernetesResource,
     };
     return jTaskINfo;
@@ -70,21 +71,24 @@ export const convertJTask = (task: IJupyterTask): JupyterTask => {
 };
 export interface IJupyterTaskCreate {
   taskName: string;
+  slo: number;
   taskType: string;
   resourceRequest: KubernetesResource;
   image: string;
+  workingDir: string;
   shareDirs: {
     [key: string]: {
       [key: string]: string;
     }[];
   };
+  command: string;
   gpuModel: string;
   schedulerName: string;
 }
 
 export const apiJTaskCreate = async (task: IJupyterTaskCreate) => {
   const response = await instance.post<IResponse<string>>(
-    VERSION + "/jupyter/create",
+    VERSION + "/aijobs",
     task,
   );
   return response.data;
@@ -100,12 +104,22 @@ export const apiJTaskDelete = async (taskID: number) => {
   return response.data;
 };
 
-export const apiJTaskList = () =>
+export const apiJupyterJobList = (
+  taskType: string,
+  pageSize: number,
+  pageIndex: number,
+) =>
   instance.get<
     IResponse<{
       rows: IJupyterTask[];
     }>
-  >(VERSION + "/jupyter/list");
+  >(VERSION + "/aijobs", {
+    params: {
+      taskType,
+      pageSize,
+      pageIndex,
+    },
+  });
 
 export const apiJTaskQuota = () =>
   instance.get<
