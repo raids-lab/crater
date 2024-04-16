@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	ldap "github.com/go-ldap/ldap/v3"
@@ -275,17 +273,26 @@ func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.Us
 
 func (mgr *AuthMgr) createPersonalDir(c *gin.Context, path string, userid, projectid uint) error {
 	client := mgr.client
-	params := url.Values{}
-	params.Set("userid", strconv.FormatUint(uint64(userid), 10))
-	params.Set("projectid", strconv.FormatUint(uint64(projectid), 10))
-	baseurl := "http://192.168.5.81:30320/files"
-	uRL := fmt.Sprintf("%s?%s", baseurl+path, params.Encode())
+	jwtMessage := util.JWTMessage{
+		UserID:       userid,
+		ProjectID:    projectid,
+		ProjectRole:  model.RoleAdmin,
+		ClusterID:    1,
+		ClusterRole:  model.RoleUser,
+		PlatformRole: model.RoleUser,
+	}
+	accessToken, _, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
+	if err != nil {
+		return errors.New("create token err:" + err.Error())
+	}
+	baseurl := "http://crater.***REMOVED***/api/ss"
+	uRL := baseurl + path
 	// 创建请求
 	req, err := http.NewRequestWithContext(c.Request.Context(), "MKCOL", uRL, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("can't create request:%s", err.Error())
 	}
-
+	req.Header.Set("Authorization", "Bearer "+accessToken)
 	// 发送请求
 	resp, err := client.Do(req)
 	if err != nil {
