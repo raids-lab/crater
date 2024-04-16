@@ -7,7 +7,7 @@
         "version": "0.3.0"
     },
     "paths": {
-        "/image/available": {
+        "/images/available": {
             "get": {
                 "security": [
                     {
@@ -28,7 +28,7 @@
                 "responses": {}
             }
         },
-        "/image/create": {
+        "/images/create": {
             "post": {
                 "security": [
                     {
@@ -60,7 +60,7 @@
                 "responses": {}
             }
         },
-        "/image/delete": {
+        "/images/delete": {
             "post": {
                 "security": [
                     {
@@ -92,7 +92,7 @@
                 "responses": {}
             }
         },
-        "/image/get": {
+        "/images/get": {
             "get": {
                 "security": [
                     {
@@ -122,14 +122,14 @@
                 "responses": {}
             }
         },
-        "/image/list": {
+        "/images/list": {
             "get": {
                 "security": [
                     {
                         "Bearer": []
                     }
                 ],
-                "description": "如果userRole为user，则返回该用户所有的镜像；否则根据GET参数type来决定搜索私有or公共镜像",
+                "description": "根据GET参数type来决定搜索私有or公共镜像",
                 "consumes": [
                     "application/json"
                 ],
@@ -139,7 +139,7 @@
                 "tags": [
                     "ImagePack"
                 ],
-                "summary": "用户和管理员获取相关镜像的功能",
+                "summary": "管理员获取相关镜像的功能",
                 "parameters": [
                     {
                         "type": "integer",
@@ -152,7 +152,7 @@
                 "responses": {}
             }
         },
-        "/image/params": {
+        "/images/params": {
             "post": {
                 "security": [
                     {
