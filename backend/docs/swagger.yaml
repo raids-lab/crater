@@ -580,7 +580,7 @@ info:
   title: Crater API
   version: 0.3.0
 paths:
-  /image/available:
+  /images/available:
     get:
       consumes:
       - application/json
@@ -593,7 +593,7 @@ paths:
       summary: 用户在运行作业时选择镜像需要调用此接口，来获取可以用的镜像
       tags:
       - ImagePack
-  /image/create:
+  /images/create:
     post:
       consumes:
       - application/json
@@ -613,7 +613,7 @@ paths:
       summary: 创建ImagePack CRD和数据库entity
       tags:
       - ImagePack
-  /image/delete:
+  /images/delete:
     post:
       consumes:
       - application/json
@@ -633,7 +633,7 @@ paths:
       summary: 根据ID删除ImagePack
       tags:
       - ImagePack
-  /image/get:
+  /images/get:
     get:
       consumes:
       - application/json
@@ -652,11 +652,11 @@ paths:
       summary: 获取imagepack的详细信息，主要用于调试
       tags:
       - ImagePack
-  /image/list:
+  /images/list:
     get:
       consumes:
       - application/json
-      description: 如果userRole为user，则返回该用户所有的镜像；否则根据GET参数type来决定搜索私有or公共镜像
+      description: 根据GET参数type来决定搜索私有or公共镜像
       parameters:
       - description: 管理员获取镜像的类型
         in: query
@@ -668,10 +668,10 @@ paths:
       responses: {}
       security:
       - Bearer: []
-      summary: 用户和管理员获取相关镜像的功能
+      summary: 管理员获取相关镜像的功能
       tags:
       - ImagePack
-  /image/params:
+  /images/params:
     post:
       consumes:
       - application/json
