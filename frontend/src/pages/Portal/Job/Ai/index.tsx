@@ -33,7 +33,7 @@ import { Separator } from "@/components/ui/separator";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   apiAiTaskDelete,
-  apiAiTaskList,
+  apiAiJobList,
   convertAiTask,
 } from "@/services/api/aiTask";
 import { DataTable } from "@/components/custom/OldDataTable";
@@ -101,7 +101,7 @@ const AiJobHome = () => {
     dataUpdatedAt,
   } = useQuery({
     queryKey: ["aitask", "list"],
-    queryFn: apiAiTaskList,
+    queryFn: () => apiAiJobList("training", 100, 0),
     select: (res) => res.data.data.rows,
     refetchInterval: REFETCH_INTERVAL,
   });

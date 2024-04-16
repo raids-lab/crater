@@ -198,7 +198,7 @@ const Training: FC = () => {
       .map((task) => {
         //const task = convertJTask(t);
         return {
-          id: task.id,
+          id: task.ID,
           taskName: task.taskName,
           jobName: task.jobName,
           isDeleted: task.isDeleted === true ? "已删除" : "未删除",

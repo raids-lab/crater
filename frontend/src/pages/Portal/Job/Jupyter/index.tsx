@@ -27,9 +27,9 @@ import { Separator } from "@/components/ui/separator";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   apiJTaskDelete,
-  apiJTaskList,
   convertJTask,
   apiJTaskGetPortToken,
+  apiJupyterJobList,
 } from "@/services/api/jupyterTask";
 import { DataTable } from "@/components/custom/OldDataTable";
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
@@ -80,7 +80,7 @@ export const Component = () => {
     dataUpdatedAt,
   } = useQuery({
     queryKey: ["jupyter", "list"],
-    queryFn: apiJTaskList,
+    queryFn: () => apiJupyterJobList("jupyter", 100, 0),
     select: (res) => res.data.data.rows,
     refetchInterval: REFETCH_INTERVAL,
   });

@@ -121,6 +121,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
     mutationFn: (values: FormSchema) =>
       apiJTaskCreate({
         taskName: values.taskname,
+        slo: 1,
         taskType: "jupyter",
         resourceRequest: getAiKResource({
           gpu: values.gpu,
@@ -128,9 +129,9 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
           cpu: values.cpu,
         }),
         image: values.image,
-        //workingDir: values.workingDir,
+        workingDir: "",
         shareDirs: convertShareDirs(values.shareDirs),
-        //command: values.command,
+        command: "start.sh jupyter lab --allow-root",
         gpuModel: values.gpuModel === "default" ? "" : values.gpuModel,
         schedulerName: values.schedulerName,
       }),
