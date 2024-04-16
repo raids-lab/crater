@@ -1,36 +1,35 @@
 package main
 
 import (
-	"context"
 	"fmt"
+	"io"
 	"net/http"
 )
 
 func main() {
-
 	client := http.Client{}
-	baseurl := "http://localhost:8086/v1/storage/verify"
-	req, err := http.NewRequestWithContext(context.Background(), "GET", baseurl, http.NoBody)
+	baseurl := "http://crater.act.buaa.edu.cn/api/ss/mydir"
+	req, err := http.NewRequest("POST", baseurl, http.NoBody)
 	if err != nil {
 		fmt.Println("can't create request")
 		return
 	}
-	req.Header.Set("Authorization", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOjgsInBpZCI6OSwicHJvIjozLCJjaWQiOjEsImNybyI6MiwicGxmIjozLCJleHAiOjE3MTI5MTQwOTh9.YmkatSfYnfvaLOjiBExtqsMft-kf0MGoXFdjn5mHv8M")
-	req.Header.Set("Content-Type", "application/json")
+	pathss := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOjgsInBpZCI6OSwicHJvIjozLCJjaWQiOjEsImNybyI6MiwicGxmIjozLCJleHAiOjE3MTMyNjk3Mzl9.nkA0yOVh1IdZ1ek2NMelCAQ_3764_YwXQ6Ik4e-LXr4"
+	req.Header.Set("Authorization", "Bearer "+pathss)
+
+	req.Header.Set("accept", "application/json")
 	// 发送请求
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println("body:", resp.Body)
+		fmt.Println("err:", err)
 		return
 	}
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Println(string(body))
+	// var tokenResp TokenResp
+	// if err := json.Unmarshal([]byte(string(body)), &tokenResp); err != nil {
+	// 	fmt.Println("541223")
+	// }
+	// fmt.Println(tokenResp.Code, tokenResp.Data.UserId)
 	defer resp.Body.Close()
-
-	// var bbb []model.Project
-	// db.Model(&model.Project{}).First(&bbb)
-	// fmt.Println(bbb[0].ID)
-	// fmt.Println(bbb[0].Name)
-	// fmt.Println(bbb[0].Status)
-	// fmt.Println(bbb[0].ProjectSpaces)
-	// service.CheckFilePermission("liyilong", "/files/project1/")
-
 }

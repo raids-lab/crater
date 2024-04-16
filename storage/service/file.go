@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"webdav/model"
@@ -159,21 +158,25 @@ func GetSpaceByProjectID(pid uint) string {
 
 func WebDav(c *gin.Context) {
 	checkfs()
+	jwttoken, err := CheckJWTToken(c)
+	if err != nil || jwttoken.Code != 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"data": nil,
+			"msg":  jwttoken.Msg,
+		})
+		return
+	}
 
-	proj_id, _ := strconv.Atoi(c.Query("projectid"))
-	user_id, _ := strconv.Atoi(c.Query("userid"))
-
-	permission := CheckFilePermission(uint(user_id), uint(proj_id))
-	if permission == model.NotAllowed {
+	if jwttoken.Data.Permission == model.NotAllowed {
 		c.String(http.StatusUnauthorized, "Unauthorized 1")
 		return
 	}
 	rwMethods := []string{"PROPPATCH", "MKCOL", "PUT", "MOVE", "LOCK", "UNLOCK"}
-	if permission == model.ReadOnly && containsString(rwMethods, c.Request.Method) {
+	if jwttoken.Data.Permission == model.ReadOnly && containsString(rwMethods, c.Request.Method) {
 		c.String(http.StatusUnauthorized, "Unauthorized 2")
 		return
 	}
-	http.StripPrefix("/files", fs)
+	http.StripPrefix("/api/ss", fs)
 	fs.ServeHTTP(c.Writer, c.Request)
 }
 
