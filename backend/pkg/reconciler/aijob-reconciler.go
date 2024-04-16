@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
+	"github.com/raids-lab/crater/pkg/config"
 	util "github.com/raids-lab/crater/pkg/util"
 )
 
@@ -121,6 +122,9 @@ func (r *AIJobReconciler) notifyJobStatus(job *aijobapi.AIJob) {
 	// Not include Pending and Init status, treat them as Pending (not started)
 	if job.Status.Phase == aijobapi.Preempted || job.Status.Phase == aijobapi.Running ||
 		job.Status.Phase == aijobapi.Succeeded || job.Status.Phase == aijobapi.Failed { // 是否需要加Pending状态？
+		if job.Namespace != config.GetConfig().Workspace.Namespace {
+			return
+		}
 		reason := ""
 		if job.Status.Conditions != nil && len(job.Status.Conditions) > 0 {
 			reason = job.Status.Conditions[len(job.Status.Conditions)-1].Message

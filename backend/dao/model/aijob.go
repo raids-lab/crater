@@ -8,18 +8,18 @@ import (
 
 type AIJob struct {
 	gorm.Model
-	Name            string `gorm:"type:varchar(128);not null;comment:作业名称"`
+	Name            string `gorm:"type:varchar(128);not null;comment:作业名称" json:"name"`
 	UserID          uint
 	User            User
 	ProjectID       uint
 	Project         Project
-	TaskType        string     `gorm:"type:varchar(128);not null;comment:任务类型 (e.g. training, jupyter, recommend)"`
-	AdmittedAt      *time.Time `gorm:"comment:作业提交到集群中的时间 (通过配额检查后的时间)"`
-	StartedAt       *time.Time `gorm:"comment:作业开始运行的时间"`
-	FinishAt        *time.Time `gorm:"comment:作业结束 (成功或失败) 的时间"`
-	Status          JobStatus  `gorm:"not null;comment:作业状态"`
-	ResourceRequest string     `gorm:"not null;comment:资源请求 (分布式任务则从 Extra 中解析)"`
-	Extra           *string    `gorm:"comment:额外信息 (JSON格式)"`
+	TaskType        string     `gorm:"type:varchar(128);not null;comment:任务类型 (e.g. training, jupyter, recommend)" json:"taskType"`
+	AdmittedAt      *time.Time `gorm:"comment:作业提交到集群中的时间 (通过配额检查后的时间)" json:"admittedAt"`
+	StartedAt       *time.Time `gorm:"comment:作业开始运行的时间" json:"startedAt"`
+	FinishAt        *time.Time `gorm:"comment:作业结束 (成功或失败) 的时间" json:"finishAt"`
+	Status          JobStatus  `gorm:"not null;comment:作业状态" json:"status"`
+	ResourceRequest string     `gorm:"not null;comment:资源请求 (分布式任务则从 Extra 中解析)" json:"resourceRequest"`
+	Extra           *string    `gorm:"comment:额外信息 (JSON格式)" json:"extra"`
 	// Duration        uint        `gorm:"column:duration;type:int;not null" json:"duration"`
 	// JCT             uint        `gorm:"column:jct;type:int;not null" json:"jct"`
 	// Image           string      `gorm:"column:image;type:text;not null" json:"image"`

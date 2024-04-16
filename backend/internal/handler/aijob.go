@@ -9,12 +9,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/payload"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
-	payload "github.com/raids-lab/crater/pkg/server/payload"
 	resputil "github.com/raids-lab/crater/pkg/server/response"
 	utils "github.com/raids-lab/crater/pkg/util"
 	v1 "k8s.io/api/core/v1"
@@ -38,8 +38,8 @@ func NewAIJobMgr(taskController *aitaskctl.TaskController, pvcClient *crclient.P
 func (mgr *AIJobMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *AIJobMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.POST("/", mgr.Create)
-	g.GET("/listByStatus", mgr.ListByStatus)
+	g.POST("", mgr.Create)
+	g.GET("", mgr.ListByType)
 	g.GET("/getQuota", mgr.GetQuota) // should be split
 	g.GET("/jobStats", mgr.GetJobStats)
 	g.DELETE("/:id", mgr.Delete)
@@ -102,7 +102,7 @@ type (
 		Name            string                `json:"taskName" binding:"required"`
 		SLO             uint                  `json:"slo"`
 		TaskType        string                `json:"taskType" binding:"required"`
-		ResourceRequest map[string]string     `json:"resourceRequest" binding:"required"`
+		ResourceRequest map[string]any        `json:"resourceRequest" binding:"required"`
 		Image           string                `json:"image" binding:"required"`
 		WorkingDir      string                `json:"workingDir"`
 		ShareDirs       map[string][]DirMount `json:"shareDirs"`
@@ -136,6 +136,10 @@ func StructToJSONString(m any) (string, error) {
 		return "", err
 	}
 	return string(jsonBytes), nil
+}
+
+type CreateResp struct {
+	TaskID uint
 }
 
 // 用户创建任务 godoc
@@ -212,7 +216,7 @@ func (mgr *AIJobMgr) Create(c *gin.Context) {
 	mgr.notifyTaskUpdate(job.ID, job.User.Name, utils.CreateTask)
 
 	logutils.Log.Infof("create job success, taskID: %d", job.ID)
-	resp := payload.CreateTaskResp{
+	resp := CreateResp{
 		TaskID: job.ID,
 	}
 	resputil.Success(c, resp)
@@ -220,16 +224,11 @@ func (mgr *AIJobMgr) Create(c *gin.Context) {
 
 type (
 	ListTaskReq struct {
-		// 分页参数
-		PageIndex *int `form:"page_index" binding:"required"`
-		PageSize  int  `form:"page_size" binding:"required"`
-		// 筛选、排序参数
-		Status uint8 `form:"status" binding:"required"`
+		PageIndex *int   `form:"pageIndex" binding:"required"`
+		PageSize  int    `form:"pageSize" binding:"required"`
+		TaskType  string `form:"taskType" binding:"required"`
 	}
-	ListTaskResp struct {
-		RowCount int64          `json:"rowCount"`
-		Jobs     []*model.AIJob `json:"jobs"`
-	}
+	ListTaskResp = payload.ListResp[*model.AIJob]
 )
 
 // 用户查询任务列表 godoc
@@ -243,8 +242,8 @@ type (
 // @Success 200 {object} resputil.Response[any] "总数和任务数组"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/aijobs/listByStatus [get]
-func (mgr *AIJobMgr) ListByStatus(c *gin.Context) {
+// @Router /v1/aijobs [get]
+func (mgr *AIJobMgr) ListByType(c *gin.Context) {
 	var req ListTaskReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate list parameters failed, err %v", err), resputil.NotSpecified)
@@ -256,7 +255,7 @@ func (mgr *AIJobMgr) ListByStatus(c *gin.Context) {
 	jobQueryModel := query.AIJob
 	jobQueryExec := jobQueryModel.WithContext(c)
 
-	jobQueryExec = jobQueryExec.Where(jobQueryModel.UserID.Eq(token.UserID), jobQueryModel.Status.Eq(req.Status))
+	jobQueryExec = jobQueryExec.Where(jobQueryModel.UserID.Eq(token.UserID), jobQueryModel.TaskType.Eq(req.TaskType))
 
 	jobs, count, err := jobQueryExec.FindByPage((*req.PageIndex)*req.PageSize, req.PageSize)
 	if err != nil {
@@ -264,8 +263,8 @@ func (mgr *AIJobMgr) ListByStatus(c *gin.Context) {
 		return
 	}
 	resp := ListTaskResp{
-		RowCount: count,
-		Jobs:     jobs,
+		Count: count,
+		Rows:  jobs,
 	}
 	resputil.Success(c, resp)
 }
@@ -376,6 +375,10 @@ func (mgr *AIJobMgr) notifyTaskUpdate(taskID uint, userName string, op utils.Tas
 	})
 }
 
+type GetLogResp struct {
+	Logs []string `json:"logs"`
+}
+
 // 获取任务日志 godoc
 // @Summary 获取任务日志
 // @Description 通过指定任务id查询对应pod获取日志
@@ -419,7 +422,7 @@ func (mgr *AIJobMgr) GetLogs(c *gin.Context) {
 		}
 		logs = append(logs, podLog)
 	}
-	resp := payload.GetTaskLogResp{
+	resp := GetLogResp{
 		Logs: logs,
 	}
 	logutils.Log.Infof("get job logs success, jobID: %d", job.ID)
@@ -719,8 +722,8 @@ func (mgr *AIJobMgr) ListTaskByTaskType(c *gin.Context) {
 		return
 	}
 	resp := ListTaskResp{
-		RowCount: count,
-		Jobs:     jobs,
+		Count: count,
+		Rows:  jobs,
 	}
 	resputil.Success(c, resp)
 }
