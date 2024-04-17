@@ -3,7 +3,7 @@ package main
 import (
 	"webdav/service"
 
-	log "github.com/sirupsen/logrus"
+	"webdav/logutils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -32,6 +32,6 @@ func main() {
 	r.Handle("POST", "/api/ss/testtoken", service.Testtoken)
 	err := r.Run(":7320")
 	if err != nil {
-		log.Fatal(err)
+		logutils.Log.Fatal(err)
 	}
 }
