@@ -9,20 +9,18 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"webdav/logutils"
 	"webdav/model"
 	"webdav/orm"
-
-	log "github.com/sirupsen/logrus"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/net/webdav"
 )
 
 var fs *webdav.Handler
-var fsLock sync.Mutex
-
+var fsonce sync.Once
+var clientonce sync.Once
 var httpClient *http.Client
-var hCLock sync.Mutex
 
 type Filereq struct {
 	Userid    *int   `json:"userid" binding:"required"`
@@ -39,38 +37,25 @@ type File struct {
 }
 
 func checkfs() {
-	if fs == nil {
-		fsLock.Lock()
-		if fs == nil {
-			fs = &webdav.Handler{
-				Prefix:     "/api/ss",
-				FileSystem: webdav.Dir("/crater"),
-				LockSystem: webdav.NewMemLS(),
-				Logger: func(h *http.Request, e error) {
-					if e != nil {
-						log.Error(e)
-					}
-				},
-			}
+	fsonce.Do(func() {
+		fs = &webdav.Handler{
+			Prefix:     "/api/ss",
+			FileSystem: webdav.Dir("/crater"),
+			LockSystem: webdav.NewMemLS(),
 		}
-		fsLock.Unlock()
-	}
+	})
 }
 
 func checkclient() {
-	if httpClient == nil {
-		hCLock.Lock()
-		if httpClient == nil {
-			httpClient = &http.Client{}
-		}
-		hCLock.Unlock()
-	}
+	clientonce.Do(func() {
+		httpClient = &http.Client{}
+	})
 }
 
-func CheckFilePermission(user_id uint, project_id uint) model.FilePermission {
+func CheckFilePermission(userID, projectID uint) model.FilePermission {
 	db := orm.DB()
 	var UserPro model.UserProject
-	err := db.Model(&model.UserProject{}).Where("user_id = ? AND project_id = ?", user_id, project_id).First(&UserPro).Error
+	err := db.Model(&model.UserProject{}).Where("user_id = ? AND project_id = ?", userID, projectID).First(&UserPro).Error
 	if err != nil || UserPro.ID == 0 {
 		fmt.Println("user has no this project, ", err)
 		return model.NotAllowed
@@ -97,7 +82,7 @@ func CheckJWTToken(c *gin.Context) (model.TokenResp, error) {
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return model.TokenResp{}, fmt.Errorf("can't get resp:" + resp.Status)
+		return model.TokenResp{}, fmt.Errorf("can't get resp")
 	}
 	body, _ := io.ReadAll(resp.Body)
 	var tokenResp model.TokenResp
@@ -108,19 +93,19 @@ func CheckJWTToken(c *gin.Context) (model.TokenResp, error) {
 	return tokenResp, nil
 }
 
-func ListMySharedProject(user_id uint) []string {
+func ListMySharedProject(userID uint) []string {
 	db := orm.DB()
 	var UserPro []model.UserProject
-	err := db.Model(&model.UserProject{}).Where("user_id = ?", user_id).Find(&UserPro).Error
+	err := db.Model(&model.UserProject{}).Where("user_id = ?", userID).Find(&UserPro).Error
 	if err != nil {
 		fmt.Println("user has no project, ", err)
 		return nil
 	}
 	var projetcname []string
 	projetcname = nil
-	for _, up := range UserPro {
+	for i := range UserPro {
 		var project model.Project
-		err := db.Model(&model.Project{}).Where("id = ? AND is_personal = ?", up.ProjectID, false).Find(&project).Error
+		err := db.Model(&model.Project{}).Where("id = ? AND is_personal = ?", UserPro[i].ProjectID, false).Find(&project).Error
 		if err == nil && project.ID != 0 {
 			projetcname = append(projetcname, project.Name)
 		}
@@ -128,17 +113,17 @@ func ListMySharedProject(user_id uint) []string {
 	return projetcname
 }
 
-func GetMyProject(user_id uint) model.Project {
+func GetMyProject(userID uint) model.Project {
 	db := orm.DB()
 	var UserPro []model.UserProject
-	err := db.Model(&model.UserProject{}).Where("user_id = ?", user_id).Find(&UserPro).Error
+	err := db.Model(&model.UserProject{}).Where("user_id = ?", userID).Find(&UserPro).Error
 	if err != nil || UserPro[0].ID == 0 {
 		fmt.Println("user has no project, ", err)
 		return model.Project{}
 	}
-	for _, up := range UserPro {
+	for i := range UserPro {
 		var project model.Project
-		err := db.Model(&model.Project{}).Where("id = ? AND is_personal = ?", up.ProjectID, true).First(&project).Error
+		err := db.Model(&model.Project{}).Where("id = ? AND is_personal = ?", UserPro[i].ProjectID, true).First(&project).Error
 		if err == nil && project.ID != 0 {
 			return project
 		}
@@ -199,7 +184,7 @@ func GetSharedProjectDir(c *gin.Context) {
 		})
 		return
 	}
-	myproject := ListMySharedProject(jwttoken.Data.UserId)
+	myproject := ListMySharedProject(jwttoken.Data.UserID)
 	if myproject != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"data": myproject,
@@ -278,12 +263,12 @@ func handleDirList(fs webdav.FileSystem, w http.ResponseWriter, path string) ([]
 	var files []File
 	defer f.Close()
 	if fi, _ := f.Stat(); fi != nil && !fi.IsDir() {
-		log.Print("cann't read a empty dir")
+		logutils.Log.Info("cann't read a empty dir")
 		return nil, nil
 	}
 	dirs, err := f.Readdir(-1)
 	if err != nil {
-		log.Print(w, "Error reading directory", http.StatusInternalServerError)
+		logutils.Log.Info(w, "Error reading directory", http.StatusInternalServerError)
 		return nil, err
 	}
 	var tmp File
@@ -301,7 +286,7 @@ func handleDirList(fs webdav.FileSystem, w http.ResponseWriter, path string) ([]
 func Testtoken(c *gin.Context) {
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
-		c.JSON(400, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"data": jwttoken,
 			"msg":  err.Error(),
 		})
