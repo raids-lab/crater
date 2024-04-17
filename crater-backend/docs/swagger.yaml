@@ -16,7 +16,7 @@ definitions:
       shareDirs:
         additionalProperties:
           items:
-            $ref: '#/definitions/handler.DirMount'
+            $ref: "#/definitions/handler.DirMount"
           type: array
         type: object
       slo:
@@ -28,11 +28,11 @@ definitions:
       workingDir:
         type: string
     required:
-    - command
-    - image
-    - resourceRequest
-    - taskName
-    - taskType
+      - command
+      - image
+      - resourceRequest
+      - taskName
+      - taskType
     type: object
   handler.CreateLabelReq:
     properties:
@@ -41,11 +41,11 @@ definitions:
       priority:
         type: integer
       type:
-        $ref: '#/definitions/model.WorkerType'
+        $ref: "#/definitions/model.WorkerType"
     required:
-    - name
-    - priority
-    - type
+      - name
+      - priority
+      - type
     type: object
   handler.DirMount:
     properties:
@@ -58,16 +58,16 @@ definitions:
     type: object
   handler.FilePermission:
     enum:
-    - 0
-    - 1
-    - 2
-    - 3
+      - 0
+      - 1
+      - 2
+      - 3
     type: integer
     x-enum-varnames:
-    - _
-    - NotAllowed
-    - ReadOnly
-    - ReadWrite
+      - _
+      - NotAllowed
+      - ReadOnly
+      - ReadWrite
   handler.ImagePackCreateRequest:
     properties:
       accessToken:
@@ -89,12 +89,12 @@ definitions:
       registryUser:
         type: string
       taskType:
-        $ref: '#/definitions/model.ImageTaskType'
+        $ref: "#/definitions/model.ImageTaskType"
     type: object
   handler.ImagePackParamsUpdateRequest:
     properties:
       data:
-        $ref: '#/definitions/model.ImageProfileParams'
+        $ref: "#/definitions/model.ImageProfileParams"
       imagepackname:
         type: string
     type: object
@@ -112,16 +112,16 @@ definitions:
         description: 用户名
         type: string
     required:
-    - auth
-    - password
-    - username
+      - auth
+      - password
+      - username
     type: object
   handler.LoginResp:
     properties:
       accessToken:
         type: string
       context:
-        $ref: '#/definitions/handler.PlatformContext'
+        $ref: "#/definitions/handler.PlatformContext"
       refreshToken:
         type: string
     type: object
@@ -129,14 +129,14 @@ definitions:
     properties:
       platformRole:
         allOf:
-        - $ref: '#/definitions/model.Role'
+          - $ref: "#/definitions/model.Role"
         description: User role of the platform
       projectID:
         description: Default Project ID
         type: integer
       projectRole:
         allOf:
-        - $ref: '#/definitions/model.Role'
+          - $ref: "#/definitions/model.Role"
         description: User role of the project
     type: object
   handler.ProjectCreateReq:
@@ -146,11 +146,11 @@ definitions:
       name:
         type: string
       quota:
-        $ref: '#/definitions/handler.QuotaReq'
+        $ref: "#/definitions/handler.QuotaReq"
     required:
-    - description
-    - name
-    - quota
+      - description
+      - name
+      - quota
     type: object
   handler.ProjectCreateResp:
     properties:
@@ -168,22 +168,22 @@ definitions:
       storage:
         type: integer
     required:
-    - cpu
-    - gpu
-    - memory
-    - storage
+      - cpu
+      - gpu
+      - memory
+      - storage
     type: object
   handler.SwitchProjectReq:
     properties:
       id:
         type: integer
     required:
-    - id
+      - id
     type: object
   handler.TokenReq:
     properties:
       permission:
-        $ref: '#/definitions/handler.FilePermission'
+        $ref: "#/definitions/handler.FilePermission"
       rootPath:
         type: string
       userId:
@@ -196,7 +196,7 @@ definitions:
       priority:
         type: integer
       type:
-        $ref: '#/definitions/model.WorkerType'
+        $ref: "#/definitions/model.WorkerType"
     type: object
   handler.UpdateQuotaReq:
     properties:
@@ -232,9 +232,9 @@ definitions:
   handler.UpdateRoleReq:
     properties:
       role:
-        $ref: '#/definitions/model.Role'
+        $ref: "#/definitions/model.Role"
     required:
-    - role
+      - role
     type: object
   handler.UpdateTaskReq:
     properties:
@@ -242,7 +242,7 @@ definitions:
         description: change the slo of the job
         type: integer
     required:
-    - slo
+      - slo
     type: object
   handler.UserResp:
     properties:
@@ -254,11 +254,11 @@ definitions:
         type: string
       role:
         allOf:
-        - $ref: '#/definitions/model.Role'
+          - $ref: "#/definitions/model.Role"
         description: 用户角色
       status:
         allOf:
-        - $ref: '#/definitions/model.Status'
+          - $ref: "#/definitions/model.Status"
         description: 用户状态
     type: object
   model.EmbeddedQuota:
@@ -317,17 +317,17 @@ definitions:
     type: object
   model.ImageTaskType:
     enum:
-    - 0
-    - 1
-    - 2
+      - 0
+      - 1
+      - 2
     type: integer
     x-enum-comments:
       JupyterTask: Jupyter交互式任务
       OffLineTask: 离线任务
     x-enum-varnames:
-    - _
-    - OffLineTask
-    - JupyterTask
+      - _
+      - OffLineTask
+      - JupyterTask
   model.Label:
     properties:
       createdAt:
@@ -339,48 +339,48 @@ definitions:
       priority:
         type: integer
       type:
-        $ref: '#/definitions/model.WorkerType'
+        $ref: "#/definitions/model.WorkerType"
       updatedAt:
         type: string
     type: object
   model.Role:
     enum:
-    - 0
-    - 1
-    - 2
-    - 3
+      - 0
+      - 1
+      - 2
+      - 3
     type: integer
     x-enum-varnames:
-    - _
-    - RoleGuest
-    - RoleUser
-    - RoleAdmin
+      - _
+      - RoleGuest
+      - RoleUser
+      - RoleAdmin
   model.Status:
     enum:
-    - 0
-    - 1
-    - 2
-    - 3
+      - 0
+      - 1
+      - 2
+      - 3
     type: integer
     x-enum-comments:
       StatusActive: Active status
       StatusInactive: Inactive status
       StatusPending: Pending status, not yet activated
     x-enum-varnames:
-    - _
-    - StatusPending
-    - StatusActive
-    - StatusInactive
+      - _
+      - StatusPending
+      - StatusActive
+      - StatusInactive
   model.WorkerType:
     enum:
-    - 0
-    - 1
+      - 0
+      - 1
     type: integer
     x-enum-comments:
       Nvidia: Nvidia GPU worker
     x-enum-varnames:
-    - _
-    - Nvidia
+      - _
+      - Nvidia
   payload.ClusterNodePodInfo:
     properties:
       address:
@@ -401,7 +401,7 @@ definitions:
         type: string
       pods:
         items:
-          $ref: '#/definitions/payload.Pod'
+          $ref: "#/definitions/payload.Pod"
         type: array
       role:
         type: string
@@ -410,12 +410,12 @@ definitions:
     type: object
   payload.Order:
     enum:
-    - asc
-    - desc
+      - asc
+      - desc
     type: string
     x-enum-varnames:
-    - Asc
-    - Desc
+      - Asc
+      - Desc
   payload.Pod:
     properties:
       CPU:
@@ -444,35 +444,35 @@ definitions:
         type: string
       role:
         allOf:
-        - $ref: '#/definitions/model.Role'
+          - $ref: "#/definitions/model.Role"
         description: 用户在项目中的角色
       status:
         allOf:
-        - $ref: '#/definitions/model.Status'
+          - $ref: "#/definitions/model.Status"
         description: 项目状态
     type: object
   response.ErrorCode:
     enum:
-    - 0
-    - 40001
-    - 40101
-    - 40102
-    - 40103
-    - 40301
-    - 99999
+      - 0
+      - 40001
+      - 40101
+      - 40102
+      - 40103
+      - 40301
+      - 99999
     type: integer
     x-enum-varnames:
-    - OK
-    - InvalidRequest
-    - TokenExpired
-    - UserNotFound
-    - InvalidToken
-    - InvalidRole
-    - NotSpecified
+      - OK
+      - InvalidRequest
+      - TokenExpired
+      - UserNotFound
+      - InvalidToken
+      - InvalidRole
+      - NotSpecified
   response.Response-any:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: "#/definitions/response.ErrorCode"
       data: {}
       msg:
         type: string
@@ -480,10 +480,10 @@ definitions:
   response.Response-array_handler_UserResp:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: "#/definitions/response.ErrorCode"
       data:
         items:
-          $ref: '#/definitions/handler.UserResp'
+          $ref: "#/definitions/handler.UserResp"
         type: array
       msg:
         type: string
@@ -491,10 +491,10 @@ definitions:
   response.Response-array_model_Label:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: "#/definitions/response.ErrorCode"
       data:
         items:
-          $ref: '#/definitions/model.Label'
+          $ref: "#/definitions/model.Label"
         type: array
       msg:
         type: string
@@ -502,10 +502,10 @@ definitions:
   response.Response-array_payload_ProjectResp:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: "#/definitions/response.ErrorCode"
       data:
         items:
-          $ref: '#/definitions/payload.ProjectResp'
+          $ref: "#/definitions/payload.ProjectResp"
         type: array
       msg:
         type: string
@@ -513,61 +513,61 @@ definitions:
   response.Response-handler_ListAllResp:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: "#/definitions/response.ErrorCode"
       data:
-        $ref: '#/definitions/handler.ListAllResp'
+        $ref: "#/definitions/handler.ListAllResp"
       msg:
         type: string
     type: object
   response.Response-handler_LoginResp:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: "#/definitions/response.ErrorCode"
       data:
-        $ref: '#/definitions/handler.LoginResp'
+        $ref: "#/definitions/handler.LoginResp"
       msg:
         type: string
     type: object
   response.Response-handler_ProjectCreateResp:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: "#/definitions/response.ErrorCode"
       data:
-        $ref: '#/definitions/handler.ProjectCreateResp'
+        $ref: "#/definitions/handler.ProjectCreateResp"
       msg:
         type: string
     type: object
   response.Response-handler_TokenReq:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: "#/definitions/response.ErrorCode"
       data:
-        $ref: '#/definitions/handler.TokenReq'
+        $ref: "#/definitions/handler.TokenReq"
       msg:
         type: string
     type: object
   response.Response-model_EmbeddedQuota:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: "#/definitions/response.ErrorCode"
       data:
-        $ref: '#/definitions/model.EmbeddedQuota'
+        $ref: "#/definitions/model.EmbeddedQuota"
       msg:
         type: string
     type: object
   response.Response-payload_ClusterNodePodInfo:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: "#/definitions/response.ErrorCode"
       data:
-        $ref: '#/definitions/payload.ClusterNodePodInfo'
+        $ref: "#/definitions/payload.ClusterNodePodInfo"
       msg:
         type: string
     type: object
   response.Response-string:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: "#/definitions/response.ErrorCode"
       data:
         type: string
       msg:
@@ -575,7 +575,8 @@ definitions:
     type: object
 info:
   contact: {}
-  description: This is the API server for Crater, a Multi-tenant AI Model Training
+  description:
+    This is the API server for Crater, a Multi-tenant AI Model Training
     Platform based on Kubernetes.
   title: Crater API
   version: 0.3.0
@@ -583,1060 +584,1060 @@ paths:
   /images/available:
     get:
       consumes:
-      - application/json
+        - application/json
       description: 用projectID来过滤已完成的镜像
       produces:
-      - application/json
+        - application/json
       responses: {}
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 用户在运行作业时选择镜像需要调用此接口，来获取可以用的镜像
       tags:
-      - ImagePack
+        - ImagePack
   /images/create:
     post:
       consumes:
-      - application/json
+        - application/json
       description: 获取参数，生成变量，调用接口
       parameters:
-      - description: 创建ImagePack
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/handler.ImagePackCreateRequest'
+        - description: 创建ImagePack
+          in: body
+          name: data
+          required: true
+          schema:
+            $ref: "#/definitions/handler.ImagePackCreateRequest"
       produces:
-      - application/json
+        - application/json
       responses: {}
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 创建ImagePack CRD和数据库entity
       tags:
-      - ImagePack
+        - ImagePack
   /images/delete:
     post:
       consumes:
-      - application/json
+        - application/json
       description: 根据ID更新ImagePack的状态为Deleted，起到删除的功能
       parameters:
-      - description: 删除镜像的ID
-        in: body
-        name: ID
-        required: true
-        schema:
-          type: integer
+        - description: 删除镜像的ID
+          in: body
+          name: ID
+          required: true
+          schema:
+            type: integer
       produces:
-      - application/json
+        - application/json
       responses: {}
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 根据ID删除ImagePack
       tags:
-      - ImagePack
+        - ImagePack
   /images/get:
     get:
       consumes:
-      - application/json
+        - application/json
       description: 获取imagepackname，搜索到imagepack
       parameters:
-      - description: 获取ImagePack的name
-        in: query
-        name: imagepackname
-        required: true
-        type: string
+        - description: 获取ImagePack的name
+          in: query
+          name: imagepackname
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses: {}
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 获取imagepack的详细信息，主要用于调试
       tags:
-      - ImagePack
+        - ImagePack
   /images/list:
     get:
       consumes:
-      - application/json
+        - application/json
       description: 根据GET参数type来决定搜索私有or公共镜像
       parameters:
-      - description: 管理员获取镜像的类型
-        in: query
-        name: type
-        required: true
-        type: integer
+        - description: 管理员获取镜像的类型
+          in: query
+          name: type
+          required: true
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses: {}
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 管理员获取相关镜像的功能
       tags:
-      - ImagePack
+        - ImagePack
   /images/params:
     post:
       consumes:
-      - application/json
+        - application/json
       description: 接受参数，序列化为string，更新imagepack相应字段
       parameters:
-      - description: 更新ImagePack的name
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/handler.ImagePackParamsUpdateRequest'
+        - description: 更新ImagePack的name
+          in: body
+          name: data
+          required: true
+          schema:
+            $ref: "#/definitions/handler.ImagePackParamsUpdateRequest"
       produces:
-      - application/json
+        - application/json
       responses: {}
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 用于更新镜像的Profile参数
       tags:
-      - ImagePack
+        - ImagePack
   /login:
     post:
       consumes:
-      - application/json
+        - application/json
       description: 校验用户身份，生成包含当前用户和项目的 JWT Token
       parameters:
-      - description: 查询参数
-        in: body
-        name: data
-        schema:
-          $ref: '#/definitions/handler.LoginReq'
+        - description: 查询参数
+          in: body
+          name: data
+          schema:
+            $ref: "#/definitions/handler.LoginReq"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 登录成功，返回 JWT Token 和默认个人项目
           schema:
-            $ref: '#/definitions/response.Response-handler_LoginResp'
+            $ref: "#/definitions/response.Response-handler_LoginResp"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "401":
           description: 用户名或密码错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 数据库交互错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       summary: 用户登录
       tags:
-      - Auth
+        - Auth
   /v1/admin/aijobs/{id}:
     delete:
       consumes:
-      - application/json
+        - application/json
       description: Delete an AI job by its unique identifier.
       parameters:
-      - description: AI job ID
-        in: path
-        name: id
-        required: true
-        type: integer
+        - description: AI job ID
+          in: path
+          name: id
+          required: true
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: Delete an AIJob by ID
       tags:
-      - AIJob
+        - AIJob
     get:
       consumes:
-      - application/json
+        - application/json
       description: 检查用户id获取指定id的job
       parameters:
-      - description: job id
-        in: path
-        name: id
-        required: true
-        type: integer
+        - description: job id
+          in: path
+          name: id
+          required: true
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 返回任务结构体
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 用户获取指定任务
       tags:
-      - AIJob
+        - AIJob
   /v1/admin/aijobs/stats:
     get:
       consumes:
-      - application/json
+        - application/json
       description: 数据库查表count group后返回
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 状态统计列表
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 管理员获取各类任务状态统计情况
       tags:
-      - AIJob
+        - AIJob
   /v1/admin/aijobs/type:
     get:
       consumes:
-      - application/json
+        - application/json
       description: 查询某类型的全部任务
       parameters:
-      - description: 分页参数
-        in: query
-        name: page_index
-        required: true
-        type: integer
-      - in: query
-        name: page_size
-        required: true
-        type: integer
-      - description: 筛选、排序参数
-        in: query
-        name: taskType
-        required: true
-        type: string
+        - description: 分页参数
+          in: query
+          name: page_index
+          required: true
+          type: integer
+        - in: query
+          name: page_size
+          required: true
+          type: integer
+        - description: 筛选、排序参数
+          in: query
+          name: taskType
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 总数和jobs数组
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 管理员获取指定类型任务列表
       tags:
-      - AIJob
+        - AIJob
   /v1/admin/labels:
     post:
       consumes:
-      - application/json
+        - application/json
       description: 创建标签
       parameters:
-      - description: 创建标签
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/handler.CreateLabelReq'
+        - description: 创建标签
+          in: body
+          name: data
+          required: true
+          schema:
+            $ref: "#/definitions/handler.CreateLabelReq"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 成功返回
           schema:
-            $ref: '#/definitions/response.Response-array_model_Label'
+            $ref: "#/definitions/response.Response-array_model_Label"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 创建标签
       tags:
-      - label
+        - label
   /v1/admin/labels/{id}:
     delete:
       consumes:
-      - application/json
+        - application/json
       description: 根据ID删除标签
       parameters:
-      - in: path
-        name: id
-        required: true
-        type: integer
+        - in: path
+          name: id
+          required: true
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 成功返回
           schema:
-            $ref: '#/definitions/response.Response-string'
+            $ref: "#/definitions/response.Response-string"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 删除标签
       tags:
-      - label
+        - label
     put:
       consumes:
-      - application/json
+        - application/json
       description: 更新标签
       parameters:
-      - in: path
-        name: id
-        required: true
-        type: integer
-      - description: 更新标签
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/handler.UpdateLabelReq'
+        - in: path
+          name: id
+          required: true
+          type: integer
+        - description: 更新标签
+          in: body
+          name: data
+          required: true
+          schema:
+            $ref: "#/definitions/handler.UpdateLabelReq"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 成功返回
           schema:
-            $ref: '#/definitions/response.Response-string'
+            $ref: "#/definitions/response.Response-string"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 更新标签
       tags:
-      - label
+        - label
   /v1/admin/projects:
     get:
       consumes:
-      - application/json
+        - application/json
       description: 获取所有项目的摘要信息，支持筛选条件、分页和排序
       parameters:
-      - description: 是否为个人项目
-        in: query
-        name: isPersonal
-        type: boolean
-      - description: 部分匹配项目名称
-        in: query
-        name: nameLike
-        type: string
-      - description: 排序方式（升序、降序）
-        enum:
-        - asc
-        - desc
-        in: query
-        name: order
-        type: string
-        x-enum-varnames:
-        - Asc
-        - Desc
-      - description: 排序字段
-        in: query
-        name: orderCol
-        type: string
-      - description: 第几页（从0开始）
-        in: query
-        name: pageIndex
-        required: true
-        type: integer
-      - description: 每页大小
-        in: query
-        name: pageSize
-        required: true
-        type: integer
-      - description: 项目状态（pending, active, inactive）
-        in: query
-        name: status
-        type: integer
+        - description: 是否为个人项目
+          in: query
+          name: isPersonal
+          type: boolean
+        - description: 部分匹配项目名称
+          in: query
+          name: nameLike
+          type: string
+        - description: 排序方式（升序、降序）
+          enum:
+            - asc
+            - desc
+          in: query
+          name: order
+          type: string
+          x-enum-varnames:
+            - Asc
+            - Desc
+        - description: 排序字段
+          in: query
+          name: orderCol
+          type: string
+        - description: 第几页（从0开始）
+          in: query
+          name: pageIndex
+          required: true
+          type: integer
+        - description: 每页大小
+          in: query
+          name: pageSize
+          required: true
+          type: integer
+        - description: 项目状态（pending, active, inactive）
+          in: query
+          name: status
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 项目列表
           schema:
-            $ref: '#/definitions/response.Response-handler_ListAllResp'
+            $ref: "#/definitions/response.Response-handler_ListAllResp"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 获取所有项目
       tags:
-      - Project
+        - Project
   /v1/admin/projects/{name}/quotas:
     put:
       consumes:
-      - application/json
+        - application/json
       description: 更新配额
       parameters:
-      - in: path
-        name: name
-        required: true
-        type: string
-      - description: 更新quota
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/handler.UpdateQuotaReq'
+        - in: path
+          name: name
+          required: true
+          type: string
+        - description: 更新quota
+          in: body
+          name: data
+          required: true
+          schema:
+            $ref: "#/definitions/handler.UpdateQuotaReq"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 成功更新配额
           schema:
-            $ref: '#/definitions/response.Response-string'
+            $ref: "#/definitions/response.Response-string"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 更新配额
       tags:
-      - Project
+        - Project
   /v1/admin/users:
     get:
       consumes:
-      - application/json
+        - application/json
       description: 列出用户信息（包含私人配额）
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 成功获取用户信息
           schema:
-            $ref: '#/definitions/response.Response-array_handler_UserResp'
+            $ref: "#/definitions/response.Response-array_handler_UserResp"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 列出用户信息
       tags:
-      - User
+        - User
   /v1/admin/users/{name}:
     delete:
       consumes:
-      - application/json
+        - application/json
       description: 删除用户
       parameters:
-      - description: username
-        in: path
-        name: name
-        required: true
-        type: string
+        - description: username
+          in: path
+          name: name
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 删除成功
           schema:
-            $ref: '#/definitions/response.Response-string'
+            $ref: "#/definitions/response.Response-string"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 删除用户
       tags:
-      - User
+        - User
   /v1/admin/users/{name}/role:
     put:
       consumes:
-      - application/json
+        - application/json
       description: 更新角色
       parameters:
-      - in: path
-        name: name
-        required: true
-        type: string
-      - description: role
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/handler.UpdateRoleReq'
+        - in: path
+          name: name
+          required: true
+          type: string
+        - description: role
+          in: body
+          name: data
+          required: true
+          schema:
+            $ref: "#/definitions/handler.UpdateRoleReq"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 更新角色成功
           schema:
-            $ref: '#/definitions/response.Response-string'
+            $ref: "#/definitions/response.Response-string"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 更新角色
       tags:
-      - User
+        - User
   /v1/aijobs:
     post:
       consumes:
-      - application/json
+        - application/json
       description: 创建任务并获取任务id.
       parameters:
-      - description: 任务结构体
-        in: body
-        name: CreateJobReq
-        required: true
-        schema:
-          $ref: '#/definitions/handler.CreateJobReq'
+        - description: 任务结构体
+          in: body
+          name: CreateJobReq
+          required: true
+          schema:
+            $ref: "#/definitions/handler.CreateJobReq"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 创建任务
       tags:
-      - AIJob
+        - AIJob
   /v1/aijobs/{id}:
     delete:
       consumes:
-      - application/json
+        - application/json
       description: Delete an AI job by its unique identifier.
       parameters:
-      - description: AI job ID
-        in: path
-        name: id
-        required: true
-        type: integer
+        - description: AI job ID
+          in: path
+          name: id
+          required: true
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: Delete an AIJob by ID
       tags:
-      - AIJob
+        - AIJob
     get:
       consumes:
-      - application/json
+        - application/json
       description: 检查用户id获取指定id的job
       parameters:
-      - description: job id
-        in: path
-        name: id
-        required: true
-        type: integer
+        - description: job id
+          in: path
+          name: id
+          required: true
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 返回任务结构体
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 用户获取指定任务
       tags:
-      - AIJob
+        - AIJob
   /v1/aijobs/getLogs/{id}:
     get:
       consumes:
-      - application/json
+        - application/json
       description: 通过指定任务id查询对应pod获取日志
       parameters:
-      - description: 任务id
-        in: path
-        name: id
-        required: true
-        type: integer
+        - description: 任务id
+          in: path
+          name: id
+          required: true
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 日志信息
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 获取任务日志
       tags:
-      - AIJob
+        - AIJob
   /v1/aijobs/getQuota:
     get:
       consumes:
-      - application/json
+        - application/json
       description: 目前只查了数据库确认用户情况，实际直接从sync map获取
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 用户quota描述结构体
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 获取用户当前配额
       tags:
-      - AIJob
+        - AIJob
   /v1/aijobs/getToken/{id}:
     get:
       consumes:
-      - application/json
+        - application/json
       description: get token from db or pods logs
       parameters:
-      - description: jupyter对应任务id
-        in: path
-        name: id
-        required: true
-        type: integer
+        - description: jupyter对应任务id
+          in: path
+          name: id
+          required: true
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 端口和token结构体
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: get token for access jupyter lab
       tags:
-      - AIJob
+        - AIJob
   /v1/aijobs/jobStats:
     get:
       consumes:
-      - application/json
+        - application/json
       description: 数据库查表count group后返回
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 状态统计列表
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 获取用户各类任务状态统计情况
       tags:
-      - AIJob
+        - AIJob
   /v1/aijobs/listByStatus:
     get:
       consumes:
-      - application/json
+        - application/json
       description: 根据任务状态和分页要求查询用户下的任务
       parameters:
-      - description: 分页参数
-        in: query
-        name: page_index
-        required: true
-        type: integer
-      - in: query
-        name: page_size
-        required: true
-        type: integer
-      - description: 筛选、排序参数
-        in: query
-        name: status
-        required: true
-        type: integer
+        - description: 分页参数
+          in: query
+          name: page_index
+          required: true
+          type: integer
+        - in: query
+          name: page_size
+          required: true
+          type: integer
+        - description: 筛选、排序参数
+          in: query
+          name: status
+          required: true
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 总数和任务数组
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 用户查询任务列表
       tags:
-      - AIJob
+        - AIJob
   /v1/aijobs/updateSLO/{id}:
     post:
       consumes:
-      - application/json
+        - application/json
       description: 根据传入的id和字段值更新任务slo
       parameters:
-      - description: 任务id
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: 任务slo
-        in: body
-        name: slo
-        required: true
-        schema:
-          $ref: '#/definitions/handler.UpdateTaskReq'
+        - description: 任务id
+          in: path
+          name: id
+          required: true
+          type: integer
+        - description: 任务slo
+          in: body
+          name: slo
+          required: true
+          schema:
+            $ref: "#/definitions/handler.UpdateTaskReq"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: "null"
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 更新任务slo
       tags:
-      - AIJob
+        - AIJob
   /v1/context/quota:
     get:
       consumes:
-      - application/json
+        - application/json
       description: 如果 UserProject 表没有对 Quota 进行限制，则返回项目的 Quota
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 配额信息
           schema:
-            $ref: '#/definitions/response.Response-model_EmbeddedQuota'
+            $ref: "#/definitions/response.Response-model_EmbeddedQuota"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 获取当前用户当前项目的Quota
       tags:
-      - Context
+        - Context
   /v1/labels:
     get:
       consumes:
-      - application/json
+        - application/json
       description: show all labels, decs by priority
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/response.Response-array_model_Label'
+            $ref: "#/definitions/response.Response-array_model_Label"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: list labels
       tags:
-      - label
+        - label
   /v1/nodes:
     get:
       consumes:
-      - application/json
+        - application/json
       description: kubectl + prometheus获取节点基本信息
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 成功返回值描述，注意这里返回Json字符串，swagger无法准确解析
           schema:
-            $ref: '#/definitions/response.Response-string'
+            $ref: "#/definitions/response.Response-string"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 获取节点基本信息
       tags:
-      - Node
+        - Node
   /v1/nodes/{name}/pod/:
     get:
       consumes:
-      - application/json
+        - application/json
       description: kubectl + prometheus获取节点Pod信息
       parameters:
-      - description: 节点名称
-        in: query
-        name: name
-        type: string
+        - description: 节点名称
+          in: query
+          name: name
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 成功返回值描述
           schema:
-            $ref: '#/definitions/response.Response-payload_ClusterNodePodInfo'
+            $ref: "#/definitions/response.Response-payload_ClusterNodePodInfo"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 获取节点Pod信息
       tags:
-      - Node
+        - Node
   /v1/projects:
     get:
       consumes:
-      - application/json
+        - application/json
       description: 连接用户项目表和项目表，获取用户的所有项目的摘要信息
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 成功返回值描述
           schema:
-            $ref: '#/definitions/response.Response-array_payload_ProjectResp'
+            $ref: "#/definitions/response.Response-array_payload_ProjectResp"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 获取用户的所有项目
       tags:
-      - Project
+        - Project
     post:
       consumes:
-      - application/json
+        - application/json
       description: 从请求中获取项目名称、描述和配额，以当前用户为管理员，创建一个团队项目
       parameters:
-      - description: 项目信息
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/handler.ProjectCreateReq'
+        - description: 项目信息
+          in: body
+          name: data
+          required: true
+          schema:
+            $ref: "#/definitions/handler.ProjectCreateReq"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 成功创建项目，返回项目ID
           schema:
-            $ref: '#/definitions/response.Response-handler_ProjectCreateResp'
+            $ref: "#/definitions/response.Response-handler_ProjectCreateResp"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 项目创建失败，返回错误信息
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 创建团队项目
       tags:
-      - Project
+        - Project
   /v1/switch:
     post:
       consumes:
-      - application/json
+        - application/json
       description: 读取body中的项目ID，生成新的 JWT Token
       parameters:
-      - description: 项目ID
-        in: body
-        name: project_id
-        required: true
-        schema:
-          $ref: '#/definitions/handler.SwitchProjectReq'
+        - description: 项目ID
+          in: body
+          name: project_id
+          required: true
+          schema:
+            $ref: "#/definitions/handler.SwitchProjectReq"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: 用户上下文
           schema:
-            $ref: '#/definitions/response.Response-handler_LoginResp'
+            $ref: "#/definitions/response.Response-handler_LoginResp"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 类似登录，切换项目并返回新的 JWT Token
       tags:
-      - Auth
+        - Auth
   /v1/token/verify:
     get:
       consumes:
-      - application/json
+        - application/json
       description: 读取header的auth进行鉴权
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Token 鉴权
           schema:
-            $ref: '#/definitions/response.Response-handler_TokenReq'
+            $ref: "#/definitions/response.Response-handler_TokenReq"
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: "#/definitions/response.Response-any"
       security:
-      - Bearer: []
+        - Bearer: []
       summary: 通过token鉴权
       tags:
-      - Token
+        - Token
 securityDefinitions:
   Bearer:
     description: 访问 /login 并获取 TOKEN 后，填入 'Bearer ${TOKEN}' 以访问受保护的接口
