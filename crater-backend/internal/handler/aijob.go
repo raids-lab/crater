@@ -213,7 +213,7 @@ func (mgr *AIJobMgr) Create(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("create job failed, err %v", err), resputil.NotSpecified)
 		return
 	}
-	mgr.notifyTaskUpdate(job.ID, job.User.Name, utils.CreateTask)
+	mgr.notifyTaskUpdate(job.ID, fmt.Sprintf("%d-%d", job.UserID, job.ProjectID), utils.CreateTask)
 
 	logutils.Log.Infof("create job success, taskID: %d", job.ID)
 	resp := CreateResp{
@@ -355,7 +355,7 @@ func (mgr *AIJobMgr) Delete(c *gin.Context) {
 	}
 
 	// 通知任务控制器，删除任务
-	mgr.notifyTaskUpdate(id, job.User.Name, utils.DeleteTask)
+	mgr.notifyTaskUpdate(id, fmt.Sprintf("%d-%d", job.UserID, job.ProjectID), utils.DeleteTask)
 
 	// 从数据库中删除任务
 	_, err = a.WithContext(c).Delete(job)
@@ -490,7 +490,7 @@ func (mgr *AIJobMgr) UpdateSLO(c *gin.Context) {
 		return
 	}
 
-	mgr.notifyTaskUpdate(job.ID, job.User.Name, utils.UpdateTask)
+	mgr.notifyTaskUpdate(job.ID, fmt.Sprintf("%d-%d", job.UserID, job.ProjectID), utils.UpdateTask)
 	logutils.Log.Infof("update job success, taskID: %d", job.ID)
 	resputil.Success(c, ret)
 }
