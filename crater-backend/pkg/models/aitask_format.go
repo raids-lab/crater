@@ -2,6 +2,7 @@ package models
 
 func FormatTaskAttrToModel(task *TaskAttr) *AITask {
 	return &AITask{
+		ID:              task.ID,
 		TaskName:        task.TaskName,
 		UserName:        task.UserName,
 		Namespace:       task.Namespace,
@@ -13,7 +14,7 @@ func FormatTaskAttrToModel(task *TaskAttr) *AITask {
 		Command:         task.Command,
 		Args:            MapToJSONString(task.Args),
 		SLO:             task.SLO,
-		Status:          TaskQueueingStatus,
+		Status:          task.Status,
 		EsitmatedTime:   task.EsitmatedTime,
 		SchedulerName:   task.SchedulerName,
 		GPUModel:        task.GPUModel,
