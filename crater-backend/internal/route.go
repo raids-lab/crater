@@ -72,6 +72,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	httpClient := http.Client{}
 	logClient := crclient.LogClient{Client: cl, KubeClient: cs}
 	nodeClient := crclient.NodeClient{Client: cl, KubeClient: cs}
+	harborClient := crclient.NewHarborClient()
 
 	// Init Handlers
 	authMgr := handler.NewAuthMgr(aitaskCtrl, &httpClient)
@@ -80,7 +81,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	projectMgr := handler.NewProjectMgr(aitaskCtrl)
 	nodeMgr := handler.NewNodeMgr(&nodeClient)
 	userMgr := handler.NewUserMgr()
-	imagepackMgr := handler.NewImagePackMgr(&logClient, &crclient.ImagePackController{Client: cl})
+	imagepackMgr := handler.NewImagePackMgr(&logClient, &crclient.ImagePackController{Client: cl}, &harborClient)
 	contextMgr := handler.NewContextMgr()
 	jwttokenMgr := handler.NewJWTTokenMgr()
 	///////////////////////////////////////
