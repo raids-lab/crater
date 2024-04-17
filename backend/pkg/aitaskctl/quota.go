@@ -126,7 +126,7 @@ func (c *TaskController) GetQuotaInfo(username string) *QuotaInfo {
 		if err != nil {
 			logutils.Log.Errorf("list all quotas failed, err: %v", err)
 		}
-		quotas, err := c.ParseUserquotas([]model.UserProject{*userquotas})
+		quotas, err := c.ParseUserquotas([]*model.UserProject{userquotas})
 		if err != nil {
 			logutils.Log.Errorf("get quota from db failed, err: %v", err)
 			return nil

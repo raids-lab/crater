@@ -59,14 +59,14 @@ func (c *TaskController) SetProfiler(srcProfiler *profiler.Profiler) {
 	c.profiler = srcProfiler
 }
 
-func (c *TaskController) ParseUserquotas(userquotas []model.UserProject) ([]*models.Quota, error) {
+func (c *TaskController) ParseUserquotas(userquotas []*model.UserProject) ([]*models.Quota, error) {
 	var quotas []*models.Quota
 	for i := range userquotas {
 		quota := &models.Quota{}
 		quota.UserName = fmt.Sprintf("%d-%d", userquotas[i].UserID, userquotas[i].ProjectID)
 		resourceList := v1.ResourceList{
 			v1.ResourceCPU:                    resource.MustParse(fmt.Sprint(userquotas[i].CPUReq)),
-			v1.ResourceMemory:                 resource.MustParse(fmt.Sprint(userquotas[i].MemReq)),
+			v1.ResourceMemory:                 resource.MustParse(fmt.Sprintf("%dGi", userquotas[i].MemReq)),
 			v1.ResourceName("nvidia.com/gpu"): resource.MustParse(fmt.Sprint(userquotas[i].GPUReq)),
 		}
 		quota.HardQuota = model.ResourceListToJSON(resourceList)
@@ -234,25 +234,32 @@ func getUserQuota(quota, quotaInProject *model.EmbeddedQuota) {
 }
 
 func (c *TaskController) ListAllQuotas() ([]*models.Quota, error) {
-	var userQuotas []model.UserProject
+	var ret []*models.Quota
 	projectQueryModel := query.Project
+	upQueryModel := query.UserProject
 	projects, err := projectQueryModel.WithContext(context.Background()).Find()
 	if err != nil {
 		logutils.Log.Errorf("list all quotas failed, err: %v", err)
 		return nil, err
 	}
 	for i := range projects {
-		userQuotas = projects[i].UserProjects
+		userQuotas, err := upQueryModel.WithContext(context.Background()).Where(upQueryModel.ProjectID.Eq(projects[i].ID)).Find()
+		if err != nil {
+			logutils.Log.Errorf("list all quotas failed, err: %v", err)
+			return nil, err
+		}
 		for j := range userQuotas {
 			getUserQuota(&userQuotas[j].EmbeddedQuota, &projects[i].EmbeddedQuota)
 		}
+		quotas, err := c.ParseUserquotas(userQuotas)
+		if err != nil {
+			logutils.Log.Errorf("list all quotas failed, err: %v", err)
+			return nil, err
+		}
+		ret = append(ret, quotas...)
 	}
-	quotas, err := c.ParseUserquotas(userQuotas)
-	if err != nil {
-		logutils.Log.Errorf("list all quotas failed, err: %v", err)
-		return nil, err
-	}
-	return quotas, nil
+
+	return ret, nil
 }
 
 // Init init taskQueue And quotaInfos
