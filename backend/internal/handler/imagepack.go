@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -59,9 +60,10 @@ type (
 )
 
 const (
-	UserNameSpace     = "crater-jobs"
-	AdminUserName     = "admin"
-	PublicProjectID   = 1
+	UserNameSpace   = "crater-jobs"
+	AdminUserName   = "admin"
+	PublicProjectID = 1
+
 	ImagePackInitial  = string(imagepackv1.PackJobInitial)
 	ImagePackPending  = string(imagepackv1.PackJobPending)
 	ImagePackRunning  = string(imagepackv1.PackJobRunning)
@@ -73,6 +75,7 @@ const (
 type ImagePackMgr struct {
 	logClient       *crclient.LogClient
 	imagepackClient *crclient.ImagePackController
+	harborClient    *crclient.HarborClient
 }
 
 func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
@@ -91,11 +94,14 @@ func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
 }
 
 func NewImagePackMgr(
-	logClient *crclient.LogClient, imagepackClient *crclient.ImagePackController,
+	logClient *crclient.LogClient,
+	imagepackClient *crclient.ImagePackController,
+	harborClient *crclient.HarborClient,
 ) *ImagePackMgr {
 	return &ImagePackMgr{
 		logClient:       logClient,
 		imagepackClient: imagepackClient,
+		harborClient:    harborClient,
 	}
 }
 
@@ -149,10 +155,10 @@ func (mgr *ImagePackMgr) AdminCreate(c *gin.Context) {
 
 func (mgr *ImagePackMgr) requestDefaultValue(req *ImagePackCreateRequest) {
 	if req.RegistryServer == "" {
-		req.RegistryServer = "***REMOVED***"
-		req.RegistryUser = "***REMOVED***"
-		req.RegistryPass = "***REMOVED***"
-		req.RegistryProject = "crater-images"
+		req.RegistryServer = mgr.harborClient.RegistryServer
+		req.RegistryUser = mgr.harborClient.RegistryUser
+		req.RegistryPass = mgr.harborClient.RegistryPass
+		req.RegistryProject = mgr.harborClient.RegistryProject
 	}
 }
 
@@ -317,9 +323,9 @@ func (mgr *ImagePackMgr) updateImagePackStatus(c *gin.Context, imagepack *model.
 	}
 	logutils.Log.Infof("current stage:%s ----- new stage: %s", imagepack.Status, string(imagepackCRD.Status.Stage))
 
-	if _, err := imagepackQuery.WithContext(c).Where(
-		imagepackQuery.ID.Eq(imagepack.ID),
-	).Update(imagepackQuery.Status, string(imagepackCRD.Status.Stage)); err != nil {
+	if _, err := imagepackQuery.WithContext(c).
+		Where(imagepackQuery.ID.Eq(imagepack.ID)).
+		Update(imagepackQuery.Status, string(imagepackCRD.Status.Stage)); err != nil {
 		logutils.Log.Errorf("save imagepack status failed, err:%v status:%v", err, *imagepack)
 	}
 	if imagepackCRD.Status.Stage == imagepackv1.PackJobFinished {
@@ -342,11 +348,10 @@ func (mgr *ImagePackMgr) updateImagePackStatus(c *gin.Context, imagepack *model.
 func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	token, _ := util.GetToken(c)
 	imagepackQuery := query.Image
-	imagepacks, err := imagepackQuery.WithContext(c).Where(
-		imagepackQuery.ProjectID.Eq(token.ProjectID),
-	).Where(
-		imagepackQuery.Status.Eq(ImagePackFinished),
-	).Find()
+	imagepacks, err := imagepackQuery.WithContext(c).
+		Where(imagepackQuery.ProjectID.Eq(token.ProjectID)).
+		Where(imagepackQuery.Status.Eq(ImagePackFinished)).
+		Find()
 	if err != nil {
 		logutils.Log.Errorf("fetch available imagepack failed, err:%v", err)
 		resputil.Error(c, "fetch available imagepack failed", resputil.NotSpecified)
@@ -375,29 +380,34 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 func (mgr *ImagePackMgr) DeleteByID(c *gin.Context) {
 	token, _ := util.GetToken(c)
 	imagepackQuery := query.Image
+	var err error
 	imagePackDeleteRequest := &ImagePackDeleteByIDRequest{}
-	if err := c.ShouldBindJSON(imagePackDeleteRequest); err != nil {
+	if err = c.ShouldBindJSON(imagePackDeleteRequest); err != nil {
 		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
 		logutils.Log.Errorf(msg)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
 	imagepackID := imagePackDeleteRequest.ID
-	if _, err := imagepackQuery.WithContext(c).Where(
-		imagepackQuery.ID.Eq(imagepackID),
-	).Where(
-		imagepackQuery.ProjectID.Eq(token.ProjectID),
-	).First(); err != nil {
-		logutils.Log.Errorf("image not exist or have no permission%v", err)
+	var imagepack *model.Image
+	if imagepack, err = imagepackQuery.WithContext(c).
+		Where(imagepackQuery.ID.Eq(imagepackID)).
+		Where(imagepackQuery.ProjectID.Eq(token.ProjectID)).First(); err != nil {
+		logutils.Log.Errorf("image not exist or have no permission%+v", err)
 		resputil.Error(c, "failed to find imagepack or entity", resputil.NotSpecified)
 		return
 	}
-	if _, err := imagepackQuery.WithContext(c).Where(
-		imagepackQuery.ID.Eq(token.ProjectID),
-	).Update(imagepackQuery.Status, ImagePackDeleted); err != nil {
+	if _, err = imagepackQuery.WithContext(c).
+		Where(imagepackQuery.ID.Eq(token.ProjectID)).
+		Update(imagepackQuery.Status, ImagePackDeleted); err != nil {
 		logutils.Log.Errorf("delete imagepack entity failed! err:%v", err)
 		resputil.Error(c, "failed to find imagepack or entity", resputil.NotSpecified)
 		return
+	}
+	logutils.Log.Info(mgr.harborClient.GetPing(c))
+	name, tag := strings.Split(imagepack.NameTag, ":")[0], strings.Split(imagepack.NameTag, ":")[1]
+	if err = mgr.harborClient.DeleteArtifact(c, mgr.harborClient.RegistryProject, name, tag); err != nil {
+		logutils.Log.Errorf("delete imagepack artifact failed! err:%+v", err)
 	}
 	resputil.Success(c, "")
 }
