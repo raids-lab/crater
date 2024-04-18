@@ -34,6 +34,14 @@ export interface IClusterNodeDetail {
   pods: IClusterPodInfo[];
 }
 
+// GPU 信息接口定义
+export interface IClusterNodeGPU {
+  name: string;
+  haveGPU: boolean;
+  gpuCount: number;
+  gpuUtil: Record<string, number>;
+}
+
 export const apiGetAdminNodes = () =>
   instance.get<
     IResponse<{
@@ -44,4 +52,10 @@ export const apiGetAdminNodes = () =>
 export const apiGetAdminNodeDetail = (name: string) =>
   instance.get<IResponse<IClusterNodeDetail>>(
     VERSION + `/admin/nodes/${name}/pod`,
+  );
+
+// 获取节点的 GPU 详情
+export const apiGetAdminNodeGPU = (name: string) =>
+  instance.get<IResponse<IClusterNodeGPU>>(
+    VERSION + `/admin/nodes/${name}/gpu`,
   );
