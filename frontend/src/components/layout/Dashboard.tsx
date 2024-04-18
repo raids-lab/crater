@@ -36,13 +36,16 @@ const DashboardLayout = ({
     return rawPath;
   }, [rawPath]);
 
-  // 特殊规则，个人项目或者非管理员角色，隐藏项目管理菜单
+  // 特殊规则，portal 个人项目或者非管理员角色，隐藏项目管理菜单
   const sidebarItems = useMemo(() => {
-    if (currentProject.isPersonal || currentProject.role !== Role.Admin) {
+    if (
+      rawPath.startsWith("/portal") &&
+      (currentProject?.isPersonal || currentProject?.role !== Role.Admin)
+    ) {
       return items.filter((item) => item.path !== "project");
     }
     return items;
-  }, [items, currentProject]);
+  }, [items, currentProject, rawPath]);
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
