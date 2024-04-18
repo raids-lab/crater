@@ -7,18 +7,17 @@ import (
 	"strings"
 	"sync"
 
-	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
+	"github.com/raids-lab/crater/dao/query"
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
-
+	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type JobControl struct {
@@ -391,10 +390,41 @@ func (c *JobControl) CreateJobFromTask(task *models.AITask) (jobname string, err
 
 func GenVolumeAndMountsFromAITask(task *models.AITask) ([]corev1.Volume, []corev1.VolumeMount, error) {
 	// set volumes
+	// task.UserName is in format of "userid-projectid"
+	splited := strings.Split(task.UserName, "-")
+	if len(splited) != 2 {
+		return nil, nil, fmt.Errorf("user name is not valid: %v", task.UserName)
+	}
+	// string to uint
+	uid, err := strconv.ParseUint(splited[0], 10, 64)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parse user id: %v", splited[0])
+	}
+
+	// get username
+	u := query.User
+	user, err := u.WithContext(context.Background()).Where(u.ID.Eq(uint(uid))).First()
+	if err != nil {
+		return nil, nil, fmt.Errorf("get user: %w", err)
+	}
+
+	p := query.Project
+	project, err := p.WithContext(context.Background()).Where(p.Name.Eq(user.Name), p.IsPersonal.Is(true)).First()
+	if err != nil {
+		return nil, nil, fmt.Errorf("get project: %w", err)
+	}
+	s := query.Space
+	space, err := s.WithContext(context.Background()).Where(s.ProjectID.Eq(project.ID)).First()
+	if err != nil {
+		return nil, nil, fmt.Errorf("get space: %w", err)
+	}
+	// trim leading '/' from space.Path
+	spacePath := strings.TrimLeft(space.Path, "/")
 	volumeMounts := []corev1.VolumeMount{
 		{
-			Name:      "user-volume",
+			Name:      "personal-volume",
 			MountPath: "/home/" + task.UserName,
+			SubPath:   spacePath,
 		},
 		{
 			Name:      "cache-volume",
@@ -403,10 +433,10 @@ func GenVolumeAndMountsFromAITask(task *models.AITask) ([]corev1.Volume, []corev
 	}
 	volumes := []corev1.Volume{
 		{
-			Name: "user-volume",
+			Name: "personal-volume",
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: fmt.Sprintf(UserHomePVC, task.UserName),
+					ClaimName: config.GetConfig().Workspace.PVCName,
 				},
 			},
 		},
