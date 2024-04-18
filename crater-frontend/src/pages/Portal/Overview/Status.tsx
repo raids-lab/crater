@@ -5,6 +5,7 @@ import { useMemo, type FC } from "react";
 import Chart, { Props as ChartProps } from "react-apexcharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { REFETCH_INTERVAL } from "@/config/task";
+import { JobStatus } from "../Job/Ai/statuses";
 
 const Status: FC = () => {
   const { theme } = useTheme();
@@ -28,22 +29,22 @@ const Status: FC = () => {
     const series = [0, 0, 0, 0, 0, 0];
     stats?.forEach((element) => {
       switch (element.Status) {
-        case "Queueing":
+        case JobStatus.Initial:
           series[0] = element.Count;
           break;
-        case "Created":
+        case JobStatus.Created:
           series[1] = element.Count;
           break;
-        case "Running":
+        case JobStatus.Running:
           series[2] = element.Count;
           break;
-        case "Succeeded":
+        case JobStatus.Succeeded:
           series[3] = element.Count;
           break;
-        case "Preempted":
+        case JobStatus.Preempted:
           series[4] = element.Count;
           break;
-        case "Failed":
+        case JobStatus.Failed:
           series[5] = element.Count;
           break;
         default:
