@@ -6,6 +6,7 @@ import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTabl
 import { DataTable } from "@/components/custom/OldDataTable";
 import { Checkbox } from "@/components/ui/checkbox";
 import { apiGetAdminNodeDetail } from "@/services/api/admin/cluster";
+import { apiGetAdminNodeGPU } from "@/services/api/admin/cluster";
 import { TableDate } from "@/components/custom/TableDate";
 import { cn } from "@/lib/utils";
 import {
@@ -117,6 +118,60 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
           </Link>
         </div>
       </CardFooter>
+    </Card>
+  );
+}
+
+export function GPUDetails({ nodeName }: { nodeName: string }) {
+  // const nodeName = nodeInfo.name; // Now properly typed as string
+
+  const {
+    data: gpuInfo,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["admin", "nodes", nodeName, "gpu"],
+    queryFn: () => apiGetAdminNodeGPU(nodeName),
+    select: (res) => res.data.data,
+    enabled: !!nodeName,
+  });
+
+  if (isLoading)
+    return (
+      <Card>
+        <CardContent>Loading GPU details...</CardContent>
+      </Card>
+    );
+  if (error)
+    return (
+      <Card>
+        <CardContent>Error fetching GPU details.</CardContent>
+      </Card>
+    );
+  if (!gpuInfo || !gpuInfo.haveGPU) return null; // 如果没有 GPU 数据或节点不包含 GPU，不显示组件
+
+  return (
+    <Card className="mt-4">
+      <CardHeader>
+        <CardTitle>节点GPU情况</CardTitle>
+        <CardDescription>显示节点的 GPU 数量和利用率</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="mb-2 flex justify-between">
+          <p className="text-xs text-gray-500">GPU 数量:</p>
+          <p className="text-sm font-medium text-black">{gpuInfo.gpuCount}</p>
+        </div>
+        {Object.entries(gpuInfo.gpuUtil).map(([id, util]) => (
+          <div className="mb-2 flex justify-between" key={id}>
+            <p className="text-xs text-gray-500">GPU {id} 利用率:</p>
+            <p
+              className={`text-sm font-medium ${util > 0 ? "text-green-500" : "text-black"}`}
+            >
+              {util}%
+            </p>
+          </div>
+        ))}
+      </CardContent>
     </Card>
   );
 }
@@ -298,6 +353,7 @@ export const PodStatusDetail: FC = () => {
     <div className="col-span-3 grid gap-8 md:grid-cols-4">
       <div className="flex-none">
         <CardDemo nodeInfo={nodeInfo} />
+        {nodeName && <GPUDetails nodeName={nodeName} />}
       </div>
       <div className="md:col-span-3">
         <DataTable
