@@ -30,7 +30,6 @@ import {
   PaginationContent,
   PaginationItem,
 } from "@/components/ui/pagination";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import {
   ChevronLeft,
@@ -259,41 +258,23 @@ export const Component: FC = () => {
               <Button>Create New Task</Button>
             </CardFooter>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>This Week</CardDescription>
-              <CardTitle className="text-4xl">$1329</CardTitle>
+          <Card className="sm:col-span-2">
+            <CardHeader className="pb-3">
+              <CardTitle>快速开始</CardTitle>
+              <CardDescription className="text-balance leading-relaxed">
+                在 Crater 启动 Jupyter Lab、打包训练镜像、
+                启动深度学习训练任务等。
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="text-xs text-muted-foreground">
-                +25% from last week
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Progress value={25} aria-label="25% increase" />
-            </CardFooter>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>This Month</CardDescription>
-              <CardTitle className="text-3xl">$5,329</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-xs text-muted-foreground">
-                +10% from last month
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Progress value={12} aria-label="12% increase" />
-            </CardFooter>
+            <CardFooter></CardFooter>
           </Card>
         </div>
         <Tabs defaultValue="week">
           <div className="flex items-center">
             <TabsList>
-              <TabsTrigger value="week">Week</TabsTrigger>
-              <TabsTrigger value="month">Month</TabsTrigger>
-              <TabsTrigger value="year">Year</TabsTrigger>
+              <TabsTrigger value="week">今日</TabsTrigger>
+              <TabsTrigger value="month">本周</TabsTrigger>
+              <TabsTrigger value="year">本月</TabsTrigger>
             </TabsList>
             <div className="ml-auto flex items-center gap-2">
               <DropdownMenu>
@@ -311,10 +292,12 @@ export const Component: FC = () => {
                   <DropdownMenuLabel>Filter by</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuCheckboxItem checked>
-                    Fulfilled
+                    Running
                   </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem>Declined</DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem>Refunded</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem>Successed</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem>
+                    Traininged
+                  </DropdownMenuCheckboxItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button size="sm" variant="outline" className="h-7 gap-1 text-sm">
@@ -326,26 +309,24 @@ export const Component: FC = () => {
           <TabsContent value="week">
             <Card>
               <CardHeader className="px-7">
-                <CardTitle>Orders</CardTitle>
-                <CardDescription>
-                  Recent orders from your store.
-                </CardDescription>
+                <CardTitle>集群作业</CardTitle>
+                <CardDescription>提交的作业数量和状态统计</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Customer</TableHead>
+                      <TableHead>作业</TableHead>
                       <TableHead className="hidden sm:table-cell">
-                        Type
+                        类型
                       </TableHead>
                       <TableHead className="hidden sm:table-cell">
-                        Status
+                        状态
                       </TableHead>
                       <TableHead className="hidden md:table-cell">
-                        Date
+                        提交时间
                       </TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-right">JCT</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -357,17 +338,17 @@ export const Component: FC = () => {
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        Sale
+                        Jupyter
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <Badge className="text-xs" variant="secondary">
-                          Fulfilled
+                          Running
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        2023-06-23
+                        2024-04-23
                       </TableCell>
-                      <TableCell className="text-right">$250.00</TableCell>
+                      <TableCell className="text-right">250.00</TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell>
@@ -377,17 +358,17 @@ export const Component: FC = () => {
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        Refund
+                        Training
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <Badge className="text-xs" variant="outline">
-                          Declined
+                          Successed
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        2023-06-24
+                        2024-04-24
                       </TableCell>
-                      <TableCell className="text-right">$150.00</TableCell>
+                      <TableCell className="text-right">150.00</TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell>
@@ -397,17 +378,17 @@ export const Component: FC = () => {
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        Subscription
+                        Training
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <Badge className="text-xs" variant="secondary">
-                          Fulfilled
+                          Running
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        2023-06-25
+                        2024-04-25
                       </TableCell>
-                      <TableCell className="text-right">$350.00</TableCell>
+                      <TableCell className="text-right">350.00</TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell>
@@ -417,17 +398,17 @@ export const Component: FC = () => {
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        Sale
+                        Jupyter
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <Badge className="text-xs" variant="secondary">
-                          Fulfilled
+                          Running
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        2023-06-26
+                        2024-04-26
                       </TableCell>
-                      <TableCell className="text-right">$450.00</TableCell>
+                      <TableCell className="text-right">450.00</TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell>
@@ -437,17 +418,17 @@ export const Component: FC = () => {
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        Sale
+                        Jupyter
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <Badge className="text-xs" variant="secondary">
-                          Fulfilled
+                          Running
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        2023-06-23
+                        2024-04-23
                       </TableCell>
-                      <TableCell className="text-right">$250.00</TableCell>
+                      <TableCell className="text-right">250.00</TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell>
@@ -457,17 +438,17 @@ export const Component: FC = () => {
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        Sale
+                        Jupyter
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <Badge className="text-xs" variant="secondary">
-                          Fulfilled
+                          Running
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        2023-06-23
+                        2024-04-23
                       </TableCell>
-                      <TableCell className="text-right">$250.00</TableCell>
+                      <TableCell className="text-right">250.00</TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell>
@@ -477,17 +458,17 @@ export const Component: FC = () => {
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        Refund
+                        Training
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <Badge className="text-xs" variant="outline">
-                          Declined
+                          Successed
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        2023-06-24
+                        2024-04-24
                       </TableCell>
-                      <TableCell className="text-right">$150.00</TableCell>
+                      <TableCell className="text-right">150.00</TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell>
@@ -497,17 +478,17 @@ export const Component: FC = () => {
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        Sale
+                        Jupyter
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <Badge className="text-xs" variant="secondary">
-                          Fulfilled
+                          Running
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        2023-06-26
+                        2024-04-26
                       </TableCell>
-                      <TableCell className="text-right">$450.00</TableCell>
+                      <TableCell className="text-right">450.00</TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>

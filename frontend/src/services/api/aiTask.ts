@@ -2,6 +2,7 @@ import { KubernetesResource } from "@/utils/resource";
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
 import { showErrorToast } from "@/utils/toast";
+import { JobStatus } from "@/pages/Portal/Job/Ai/statuses";
 
 export interface IAiTask {
   id: number;
@@ -216,6 +217,6 @@ export const apiAiTaskShareDirList = () =>
 //   }
 // ]
 export const apiAiTaskStats = () =>
-  instance.get<IResponse<{ taskCount: { Status: string; Count: number }[] }>>(
-    VERSION + "/aijobs/jobStats",
-  );
+  instance.get<
+    IResponse<{ taskCount: { Status: JobStatus; Count: number }[] }>
+  >(VERSION + "/aijobs/jobStats");

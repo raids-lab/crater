@@ -150,8 +150,4 @@ export const apiJTaskGetPortToken = (taskID: number) =>
       port: number;
       token: string;
     }>
-  >(VERSION + "/jupyter/getToken", {
-    params: {
-      taskID,
-    },
-  });
+  >(VERSION + `/aijobs/getToken/${taskID}`);
