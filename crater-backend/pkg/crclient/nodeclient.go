@@ -156,6 +156,55 @@ func (nc *NodeClient) ListNodesPod(name string) (payload.ClusterNodePodInfo, err
 	return payload.ClusterNodePodInfo{}, fmt.Errorf("node %s not found", name)
 }
 
+func (nc *NodeClient) GetNodeGPUInfo(name string) (payload.GPUInfo, error) {
+	var nodes corev1.NodeList
+
+	err := nc.List(context.Background(), &nodes)
+	if err != nil {
+		return payload.GPUInfo{}, err
+	}
+
+	// 初始化返回值
+	gpuInfo := payload.GPUInfo{
+		Name:     name,
+		HaveGPU:  false,
+		GPUCount: 0,
+		GPUUtil:  make(map[string]float32),
+	}
+
+	// 首先查询当前节点是否有GPU
+	for i := range nodes.Items {
+		node := &nodes.Items[i]
+		if node.Name != name {
+			continue
+		}
+		if _, ok := node.Status.Capacity["nvidia.com/gpu"]; ok {
+			gpuInfo.HaveGPU = true
+			gpuValue := node.Status.Capacity["nvidia.com/gpu"]
+			gpuInfo.GPUCount = int(gpuValue.Value())
+			GPUCheckTag := 10
+			if gpuInfo.GPUCount > GPUCheckTag {
+				gpuInfo.GPUCount /= GPUCheckTag
+			}
+			for i := 0; i < gpuInfo.GPUCount; i++ {
+				gpuInfo.GPUUtil[fmt.Sprintf("%d", i)] = 0
+			}
+			break
+		}
+	}
+
+	// 使用PrometheusClient查询当前节点上的GPU使用率
+	gpuUtilMap := nc.PromeClient.QueryNodeGPUUtil()
+	for i := 0; i < len(gpuUtilMap); i++ {
+		gpuUtil := &gpuUtilMap[i]
+		if gpuUtil.Hostname == name {
+			gpuInfo.GPUUtil[gpuUtil.Gpu] = gpuUtil.Util
+		}
+	}
+
+	return gpuInfo, nil
+}
+
 func (nc *NodeClient) ListNodesTest() ([]payload.ClusterNodeInfo, error) {
 	var nodes corev1.NodeList
 

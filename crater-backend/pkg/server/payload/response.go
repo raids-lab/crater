@@ -64,6 +64,13 @@ type ListNodePodResp struct {
 	Rows []ClusterNodePodInfo `json:"rows"`
 }
 
+type GPUInfo struct {
+	Name     string             `json:"name"`
+	HaveGPU  bool               `json:"haveGPU"`
+	GPUCount int                `json:"gpuCount"`
+	GPUUtil  map[string]float32 `json:"gpuUtil"`
+}
+
 type GetTaskResp struct {
 	models.AITask
 }

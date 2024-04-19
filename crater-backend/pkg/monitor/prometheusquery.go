@@ -48,7 +48,6 @@ func (p *PrometheusClient) QueryNodeAllocatedMemory() map[string]int {
 }
 
 func (p *PrometheusClient) QueryPodCPURatio(podName string) float32 {
-	fmt.Printf("Querying CPU usage for pod %q\n", podName)
 	apiURL := PrometheusAPI
 	client := NewPrometheusClient(apiURL)
 	query := fmt.Sprintf("sum(rate(container_cpu_usage_seconds_total{pod=%q}[5m]))", podName)
@@ -65,7 +64,6 @@ func (p *PrometheusClient) QueryPodCPURatio(podName string) float32 {
 }
 
 func (p *PrometheusClient) QueryPodMemory(podName string) int {
-	fmt.Printf("Querying CPU usage for pod %q\n", podName)
 	apiURL := PrometheusAPI
 	client := NewPrometheusClient(apiURL)
 	query := fmt.Sprintf("container_memory_usage_bytes{pod=%q}", podName)
@@ -86,6 +84,18 @@ func (p *PrometheusClient) QueryPodGPU() []PodGPUAllocate {
 	client := NewPrometheusClient(apiURL)
 	expression := "kube_pod_container_resource_requests{namespace=\"crater-jobs\", resource=\"nvidia_com_gpu\"}"
 	data, err := client.PodGPU(expression)
+	if err != nil {
+		log.Fatalf("queryMetric error: %v", err)
+		return nil
+	}
+	return data
+}
+
+func (p *PrometheusClient) QueryNodeGPUUtil() []NodeGPUUtil {
+	apiURL := PrometheusAPI
+	client := NewPrometheusClient(apiURL)
+	expression := "DCGM_FI_DEV_GPU_UTIL"
+	data, err := client.GetNodeGPUUtil(expression)
 	if err != nil {
 		log.Fatalf("queryMetric error: %v", err)
 		return nil

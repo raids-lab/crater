@@ -20,15 +20,15 @@ func TestQueryPodUtilMetric(t *testing.T) {
 	fmt.Printf("PodUtilMetric: %+v\n", podUtil)
 }
 
-func TestQueryPodUtilMetric2(t *testing.T) {
+func TestQueryPodUtilMetric3(t *testing.T) {
 	// 请替换为你的 Prometheus API 地址
 	apiURL := ***REMOVED***
 	client := NewPrometheusClient(apiURL)
 
 	// print url
 	fmt.Println(apiURL)
-	expression := "kube_pod_container_resource_requests{namespace=\"crater-jobs\", resource=\"nvidia_com_gpu\"}"
-	data, err := client.PodGPU(expression)
+	expression := "DCGM_FI_DEV_GPU_UTIL"
+	data, err := client.GetNodeGPUUtil(expression)
 	fmt.Printf("data: %+v\n", data)
 	if err != nil {
 		log.Fatalf("queryMetric error: %v", err)
