@@ -34,6 +34,7 @@ func (mgr *NodeMgr) RegisterProtected(g *gin.RouterGroup) {
 func (mgr *NodeMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.ListNode)
 	g.GET("/:name/pod", mgr.ListNodePod)
+	g.GET("/:name/gpu", mgr.ListNodeGPUUtil)
 }
 
 // ListNode godoc
@@ -87,4 +88,31 @@ func (mgr *NodeMgr) ListNodePod(c *gin.Context) {
 		return
 	}
 	resputil.Success(c, nodes)
+}
+
+// ListNodeGPUUtil godoc
+// @Summary 获取GPU各节点的利用率
+// @Description 查询prometheus获取GPU各节点的利用率
+// @Tags Node
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param name query string false "节点名称"
+// @Success 200 {object} resputil.Response[payload.GPUInfo] "成功返回值描述"
+// @Failure 400 {object} resputil.Response[any] "请求参数错误"
+// @Failure 500 {object} resputil.Response[any] "其他错误"
+// @Router /v1/nodes/{name}/gpu/ [get]
+func (mgr *NodeMgr) ListNodeGPUUtil(c *gin.Context) {
+	var req NodePodRequest
+	if err := c.ShouldBindUri(&req); err != nil {
+		return
+	}
+
+	logutils.Log.Infof("List Node GPU Util, name: %s", req.Name)
+	gpuInfo, err := mgr.nodeClient.GetNodeGPUInfo(req.Name)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("Get nodes GPU failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, gpuInfo)
 }

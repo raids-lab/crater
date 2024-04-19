@@ -227,8 +227,6 @@ func (p *PrometheusClient) IntMapQuery(query, key string) (map[string]int, error
 }
 
 func (p *PrometheusClient) PodGPU(expression string) ([]PodGPUAllocate, error) {
-	// 构建查询参数
-
 	// 执行查询
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
@@ -263,6 +261,63 @@ func (p *PrometheusClient) PodGPU(expression string) ([]PodGPUAllocate, error) {
 		}
 
 		return podGPUAllocates, nil
+	}
+
+	return nil, fmt.Errorf("expected vector type result but got %s", result.Type())
+}
+
+func (p *PrometheusClient) GetNodeGPUUtil(expression string) ([]NodeGPUUtil, error) {
+	// 执行查询
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+	result, _, err := p.v1api.Query(ctx, expression, time.Now())
+	if err != nil {
+		return nil, err
+	}
+
+	// 定义返回的结构体
+	var nodeGPUUtils []NodeGPUUtil
+
+	// 检查结果类型是否为向量
+	if result.Type() == model.ValVector {
+		vector := result.(model.Vector)
+		for _, sample := range vector {
+			metric := sample.Metric
+
+			// 提取metric中的标签和value中的值
+			hostname := metric["Hostname"]
+			uuid := metric["UUID"]
+			container := metric["container"]
+			device := metric["device"]
+			endpoint := metric["endpoint"]
+			gpu := metric["gpu"]
+			instance := metric["instance"]
+			job := metric["job"]
+			modelName := metric["modelName"]
+			namespace := metric["namespace"]
+			pod := metric["pod"]
+			service := metric["service"]
+			util := float32(sample.Value)
+
+			nodeGPUUtilData := NodeGPUUtil{
+				Hostname:  string(hostname),
+				UUID:      string(uuid),
+				Container: string(container),
+				Device:    string(device),
+				Endpoint:  string(endpoint),
+				Gpu:       string(gpu),
+				Instance:  string(instance),
+				Job:       string(job),
+				ModelName: string(modelName),
+				Namespace: string(namespace),
+				Pod:       string(pod),
+				Service:   string(service),
+				Util:      util,
+			}
+			nodeGPUUtils = append(nodeGPUUtils, nodeGPUUtilData)
+		}
+
+		return nodeGPUUtils, nil
 	}
 
 	return nil, fmt.Errorf("expected vector type result but got %s", result.Type())
