@@ -95,7 +95,7 @@ func (c *TaskController) ConvertJobStatusToTaskStatus(jobStatus model.JobStatus)
 func (c *TaskController) ConvertTaskStatusToJobStatus(taskStatus string) model.JobStatus {
 	switch taskStatus {
 	case models.TaskQueueingStatus:
-		return model.JobCreated // Assuming JobCreated as the reverse for TaskQueueingStatus
+		return model.JobInitial // Assuming JobCreated as the reverse for TaskQueueingStatus
 	case models.TaskRunningStatus:
 		return model.JobRunning
 	case models.TaskSucceededStatus:
