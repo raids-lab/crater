@@ -84,6 +84,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	imagepackMgr := handler.NewImagePackMgr(&logClient, &crclient.ImagePackController{Client: cl}, &harborClient)
 	contextMgr := handler.NewContextMgr()
 	jwttokenMgr := handler.NewJWTTokenMgr()
+	recommenddljobMgr := handler.NewRecommendDLJobMgr(cl)
 	///////////////////////////////////////
 	//// Public routers, no need login ////
 	///////////////////////////////////////
@@ -107,6 +108,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	imagepackMgr.RegisterProtected(protectedRouter.Group("/images"))
 	contextMgr.RegisterProtected(protectedRouter.Group("/context"))
 	jwttokenMgr.RegisterProtected(protectedRouter.Group("/storage"))
+	recommenddljobMgr.RegisterProtected(protectedRouter.Group("/recommenddljob"))
 	///////////////////////////////////////
 	//// Admin routers, need admin role ///
 	///////////////////////////////////////
@@ -120,4 +122,5 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	nodeMgr.RegisterAdmin(adminRouter.Group("/nodes"))
 	userMgr.RegisterAdmin(adminRouter.Group("/users"))
 	imagepackMgr.RegisterAdmin(adminRouter.Group("/images"))
+	recommenddljobMgr.RegisterAdmin(protectedRouter.Group("/recommenddljob"))
 }
