@@ -4,26 +4,27 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/internal/util"
 	recommenddljobapi "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
+	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
-	usersvc "github.com/raids-lab/crater/pkg/db/user"
-	"github.com/raids-lab/crater/pkg/server/payload"
 	resputil "github.com/raids-lab/crater/pkg/server/response"
-	"github.com/raids-lab/crater/pkg/util"
+	utils "github.com/raids-lab/crater/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+var dlNamespace = config.GetConfig().Workspace.Namespace
+
 type RecommendDLJobMgr struct {
-	userService usersvc.DBService
-	jobclient   *crclient.RecommendDLJobController
+	jobclient *crclient.RecommendDLJobController
 }
 
-func NewRecommendDLJobMgr(userSvc usersvc.DBService, crClient client.Client) *RecommendDLJobMgr {
+func NewRecommendDLJobMgr(crClient client.Client) *RecommendDLJobMgr {
 	return &RecommendDLJobMgr{
-		userService: userSvc,
-		jobclient:   &crclient.RecommendDLJobController{Client: crClient},
+		jobclient: &crclient.RecommendDLJobController{Client: crClient},
 	}
 }
 
@@ -38,11 +39,69 @@ func (mgr *RecommendDLJobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.POST("/analyze", mgr.AnalyzeResourceUsage)
 }
 
-func (mgr *RecommendDLJobMgr) RegisterAdmin(_ *gin.RouterGroup) {}
+func (mgr *RecommendDLJobMgr) RegisterAdmin(g *gin.RouterGroup) {
+	g.POST("/create", mgr.Create)
+	g.POST("/delete", mgr.Delete)
+	g.GET("/list", mgr.List)
+	g.GET("/info", mgr.GetByName)
+	g.GET("/pods", mgr.GetPodsByName)
+	g.POST("/analyze", mgr.AnalyzeResourceUsage)
+}
+
+func (mgr *RecommendDLJobMgr) rolePermit(token *util.ReqContext, reqName string) bool {
+	var uid, pid uint
+	if num, err := fmt.Sscanf("%d-%d", reqName, uid, pid); err != nil || num != 2 {
+		return false
+	}
+	ok := false
+	if token.PlatformRole == model.RoleAdmin {
+		ok = true
+	} else if pid == token.ProjectID {
+		if token.ProjectRole == model.RoleAdmin {
+			ok = true
+		} else if token.UserID == uid {
+			ok = true
+		}
+	}
+	return ok
+}
+
+type (
+	RecommendDLJobSpec struct {
+		Replicas            int32                  `json:"replicas"`
+		RunningType         string                 `json:"runningType"`
+		DataSets            []string               `json:"datasets"`
+		RelationShips       []string               `json:"relationShips"`
+		Template            corev1.PodTemplateSpec `json:"template"`
+		Username            string                 `json:"username"`
+		Macs                int64                  `json:"macs"`
+		Params              int64                  `json:"params"`
+		BatchSize           int                    `json:"batchSize"`
+		EmbeddingSizeTotal  int64                  `json:"embeddingSizeTotal"`
+		EmbeddingDimTotal   int                    `json:"embeddingDimTotal"`
+		EmbeddingTableCount int                    `json:"embeddingTableCount"`
+		VocabularySize      []int                  `json:"vocabularySize"`
+		EmbeddingDim        []int                  `json:"embeddingDim"`
+		InputTensor         []int                  `json:"inputTensor"`
+	}
+	CreateRecommendDLJobReq struct {
+		Name string `json:"name" binding:"required"`
+		RecommendDLJobSpec
+	}
+	RecommendDLJobStatus struct {
+		Phase    string   `json:"phase"`
+		PodNames []string `json:"podNames"`
+	}
+	GetRecommendDLJobResp struct {
+		v1.ObjectMeta
+		Spec   *RecommendDLJobSpec   `json:"spec"`
+		Status *RecommendDLJobStatus `json:"status"`
+	}
+)
 
 func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
-	userContext, _ := util.GetUserFromGinContext(c)
-	req := &payload.CreateRecommendDLJobReq{}
+	token, _ := util.GetToken(c)
+	req := &CreateRecommendDLJobReq{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), resputil.NotSpecified)
 		return
@@ -50,7 +109,7 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 	job := &recommenddljobapi.RecommendDLJob{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      req.Name,
-			Namespace: userContext.Namespace,
+			Namespace: dlNamespace,
 		},
 		Spec: recommenddljobapi.RecommendDLJobSpec{
 			Replicas:            req.Replicas,
@@ -58,7 +117,7 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 			DataSets:            make([]recommenddljobapi.DataSetRef, 0, len(req.DataSets)),
 			RelationShips:       make([]recommenddljobapi.DataRelationShip, 0, len(req.RelationShips)),
 			Template:            req.Template,
-			Username:            userContext.UserName,
+			Username:            fmt.Sprintf("%d-%d", token.UserID, token.ProjectID),
 			Macs:                req.Macs,
 			Params:              req.Params,
 			BatchSize:           req.BatchSize,
@@ -74,7 +133,7 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 		job.Spec.RelationShips = append(job.Spec.RelationShips, recommenddljobapi.DataRelationShip{
 			Type:         recommenddljobapi.DataRelationShipType("input"),
 			JobName:      releationShip,
-			JobNamespace: userContext.Namespace,
+			JobNamespace: dlNamespace,
 		})
 	}
 	for _, datasetName := range req.DataSets {
@@ -87,10 +146,10 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("create recommenddljob failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
-	resp := payload.GetRecommendDLJobResp{
+	resp := GetRecommendDLJobResp{
 		ObjectMeta: job.ObjectMeta,
 		Spec:       &req.RecommendDLJobSpec,
-		Status: &payload.RecommendDLJobStatus{
+		Status: &RecommendDLJobStatus{
 			Phase:    string(job.Status.Phase),
 			PodNames: job.Status.PodNames,
 		},
@@ -98,25 +157,32 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
+type (
+	ListRecommendDLJobResp []GetRecommendDLJobResp
+)
+
 func (mgr *RecommendDLJobMgr) List(c *gin.Context) {
-	userContext, err := util.GetUserFromGinContext(c)
+	token, err := util.GetToken(c)
 	if err != nil {
 		resputil.Error(c, "get namespace failed", resputil.NotSpecified)
 		return
 	} else {
-		resputil.Success(c, userContext.Namespace)
+		resputil.Success(c, dlNamespace)
 	}
 	var jobList []*recommenddljobapi.RecommendDLJob
-	if jobList, err = mgr.jobclient.ListRecommendDLJob(c, userContext.Namespace); err != nil {
+	if jobList, err = mgr.jobclient.ListRecommendDLJob(c, dlNamespace); err != nil {
 		resputil.Error(c, fmt.Sprintf("list recommenddljob failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
-	ret := make(payload.ListRecommendDLJobResp, 0, len(jobList))
+	ret := make(ListRecommendDLJobResp, 0, len(jobList))
 	for _, job := range jobList {
+		if !mgr.rolePermit(&token, job.Spec.Username) {
+			continue
+		}
 		//nolint:dupl // TODO: refactor
-		retJob := payload.GetRecommendDLJobResp{
+		retJob := GetRecommendDLJobResp{
 			ObjectMeta: job.ObjectMeta,
-			Spec: &payload.RecommendDLJobSpec{
+			Spec: &RecommendDLJobSpec{
 				Replicas:            job.Spec.Replicas,
 				RunningType:         string(job.Spec.RunningType),
 				DataSets:            make([]string, 0, len(job.Spec.DataSets)),
@@ -133,7 +199,7 @@ func (mgr *RecommendDLJobMgr) List(c *gin.Context) {
 				EmbeddingDim:        job.Spec.EmbeddingDim,
 				InputTensor:         job.Spec.InputTensor,
 			},
-			Status: &payload.RecommendDLJobStatus{
+			Status: &RecommendDLJobStatus{
 				Phase:    string(job.Status.Phase),
 				PodNames: job.Status.PodNames,
 			},
@@ -149,23 +215,31 @@ func (mgr *RecommendDLJobMgr) List(c *gin.Context) {
 	resputil.Success(c, ret)
 }
 
+type GetRecommendDLJobReq struct {
+	Name string `form:"name" binding:"required"`
+}
+
 func (mgr *RecommendDLJobMgr) GetByName(c *gin.Context) {
-	userContext, _ := util.GetUserFromGinContext(c)
-	req := &payload.GetRecommendDLJobReq{}
+	token, _ := util.GetToken(c)
+	req := &GetRecommendDLJobReq{}
 	if err := c.ShouldBindQuery(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
 	var job *recommenddljobapi.RecommendDLJob
 	var err error
-	if job, err = mgr.jobclient.GetRecommendDLJob(c, req.Name, userContext.Namespace); err != nil {
+	if job, err = mgr.jobclient.GetRecommendDLJob(c, req.Name, dlNamespace); err != nil {
 		resputil.Error(c, fmt.Sprintf("get recommenddljob failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
+	if !mgr.rolePermit(&token, job.Spec.Username) {
+		resputil.Error(c, "get recommenddljob failed, err: access deny", resputil.NotSpecified)
+		return
+	}
 	//nolint:dupl // TODO: refactor
-	ret := payload.GetRecommendDLJobResp{
+	ret := GetRecommendDLJobResp{
 		ObjectMeta: job.ObjectMeta,
-		Spec: &payload.RecommendDLJobSpec{
+		Spec: &RecommendDLJobSpec{
 			Replicas:            job.Spec.Replicas,
 			RunningType:         string(job.Spec.RunningType),
 			DataSets:            make([]string, 0, len(job.Spec.DataSets)),
@@ -182,7 +256,7 @@ func (mgr *RecommendDLJobMgr) GetByName(c *gin.Context) {
 			EmbeddingDim:        job.Spec.EmbeddingDim,
 			InputTensor:         job.Spec.InputTensor,
 		},
-		Status: &payload.RecommendDLJobStatus{
+		Status: &RecommendDLJobStatus{
 			Phase:    string(job.Status.Phase),
 			PodNames: job.Status.PodNames,
 		},
@@ -196,38 +270,93 @@ func (mgr *RecommendDLJobMgr) GetByName(c *gin.Context) {
 	resputil.Success(c, ret)
 }
 
+type GetRecommendDLJobPodListReq struct {
+	Name string `form:"name" binding:"required"`
+}
+
 func (mgr *RecommendDLJobMgr) GetPodsByName(c *gin.Context) {
-	userContext, _ := util.GetUserFromGinContext(c)
-	req := &payload.GetRecommendDLJobPodListReq{}
+	token, _ := util.GetToken(c)
+	req := &GetRecommendDLJobPodListReq{}
 	if err := c.ShouldBindQuery(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
-	var podList []*corev1.Pod
+	var job *recommenddljobapi.RecommendDLJob
 	var err error
-	if podList, err = mgr.jobclient.GetRecommendDLJobPodList(c, req.Name, userContext.Namespace); err != nil {
+	if job, err = mgr.jobclient.GetRecommendDLJob(c, req.Name, dlNamespace); err != nil {
+		resputil.Error(c, fmt.Sprintf("get recommenddljob failed, err:%v", err), resputil.NotSpecified)
+		return
+	}
+	if !mgr.rolePermit(&token, job.Spec.Username) {
+		resputil.Error(c, "get recommenddljob pods failed, err: access deny", resputil.NotSpecified)
+		return
+	}
+	var podList []*corev1.Pod
+	if podList, err = mgr.jobclient.GetRecommendDLJobPodList(c, req.Name, dlNamespace); err != nil {
 		resputil.Error(c, fmt.Sprintf("get recommenddljob pods failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
 	resputil.Success(c, podList)
 }
 
+type DeleteRecommendDLJobReq struct {
+	Name string `form:"name" binding:"required"`
+}
+
 func (mgr *RecommendDLJobMgr) Delete(c *gin.Context) {
-	userContext, _ := util.GetUserFromGinContext(c)
-	req := &payload.DeleteRecommendDLJobReq{}
+	token, _ := util.GetToken(c)
+	req := &DeleteRecommendDLJobReq{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
-	if err := mgr.jobclient.DeleteRecommendDLJob(c, req.Name, userContext.Namespace); err != nil {
+	var job *recommenddljobapi.RecommendDLJob
+	var err error
+	if job, err = mgr.jobclient.GetRecommendDLJob(c, req.Name, dlNamespace); err != nil {
+		resputil.Error(c, fmt.Sprintf("delete recommenddljob failed, err:%v", err), resputil.NotSpecified)
+		return
+	}
+	if !mgr.rolePermit(&token, job.Spec.Username) {
+		resputil.Error(c, "get recommenddljob pods failed, err: access deny", resputil.NotSpecified)
+		return
+	}
+	if err := mgr.jobclient.DeleteRecommendDLJob(c, req.Name, dlNamespace); err != nil {
 		resputil.Error(c, fmt.Sprintf("delete recommenddljob failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
 	resputil.Success(c, nil)
 }
 
+type (
+	AnalyzeRecommendDLJobReq struct {
+		RecommendDLJobSpec
+	}
+	ResourceAnalyzeResult struct {
+		GPUUtilAvg     float32 `json:"gpuUtilAvg"`
+		GPUMemoryMax   float32 `json:"gpuMemoryMaxGB"`
+		SMActiveAvg    float32 `json:"smActiveAvg"`
+		SMOccupancyAvg float32 `json:"smOccupancyAvg"`
+		FP32ActiveAvg  float32 `json:"fp32ActiveAvg"`
+		DramActiveAvg  float32 `json:"dramActiveAvg"`
+	}
+	ResourceAnalyzeResponse    map[string]ResourceAnalyzeResult
+	ResourceAnalyzeWebhookData struct {
+		GPUUtilAvg     float32 `json:"gpu_util_avg"`
+		GPUMemoryMax   float32 `json:"mem_usage"`
+		SMActiveAvg    float32 `json:"sm_active_avg,omitempty"`
+		SMOccupancyAvg float32 `json:"sm_occupied_avg,omitempty"`
+		FP32ActiveAvg  float32 `json:"fp32_active_avg,omitempty"`
+		DramActiveAvg  float32 `json:"dram_active_avg,omitempty"`
+	}
+	ResourceAnalyzeWebhookResponse struct {
+		Code int                                   `json:"code"`
+		Data map[string]ResourceAnalyzeWebhookData `json:"data"`
+		Msg  string                                `json:"msg"`
+	}
+)
+
 func (mgr *RecommendDLJobMgr) AnalyzeResourceUsage(c *gin.Context) {
-	req := &payload.AnalyzeRecommendDLJobReq{}
+	req := &AnalyzeRecommendDLJobReq{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), resputil.NotSpecified)
 		return
@@ -250,8 +379,8 @@ func (mgr *RecommendDLJobMgr) AnalyzeResourceUsage(c *gin.Context) {
 		req.EmbeddingDimTotal = 0
 		req.EmbeddingTableCount = 0
 	}
-	analyzeResp := &payload.ResourceAnalyzeWebhookResponse{}
-	if err := util.PostJSON(c, "http://***REMOVED***:30500", "/api/v1/task/analyze/end2end", map[string]any{
+	analyzeResp := &ResourceAnalyzeWebhookResponse{}
+	if err := utils.PostJSON(c, "http://***REMOVED***:30500", "/api/v1/task/analyze/end2end", map[string]any{
 		"embedding_table_count": req.EmbeddingTableCount,
 		"embedding_dim_total":   req.EmbeddingDimTotal,
 		"embedding_size_total":  req.EmbeddingSizeTotal / 1e4,
@@ -267,12 +396,12 @@ func (mgr *RecommendDLJobMgr) AnalyzeResourceUsage(c *gin.Context) {
 	if p100Mem > 16 {
 		p100Mem = 16.01
 	}
-	resputil.Success(c, &payload.ResourceAnalyzeResponse{
-		"p100": payload.ResourceAnalyzeResult{
+	resputil.Success(c, ResourceAnalyzeResponse{
+		"p100": ResourceAnalyzeResult{
 			GPUUtilAvg:   analyzeResp.Data["P100"].GPUUtilAvg,
 			GPUMemoryMax: p100Mem,
 		},
-		"v100": payload.ResourceAnalyzeResult{
+		"v100": ResourceAnalyzeResult{
 			GPUUtilAvg:     analyzeResp.Data["V100"].GPUUtilAvg,
 			GPUMemoryMax:   analyzeResp.Data["V100"].GPUMemoryMax,
 			SMActiveAvg:    analyzeResp.Data["V100"].SMActiveAvg,
