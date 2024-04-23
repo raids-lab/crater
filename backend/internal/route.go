@@ -122,5 +122,5 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	nodeMgr.RegisterAdmin(adminRouter.Group("/nodes"))
 	userMgr.RegisterAdmin(adminRouter.Group("/users"))
 	imagepackMgr.RegisterAdmin(adminRouter.Group("/images"))
-	recommenddljobMgr.RegisterAdmin(protectedRouter.Group("/recommenddljob"))
+	recommenddljobMgr.RegisterAdmin(adminRouter.Group("/recommenddljob"))
 }
