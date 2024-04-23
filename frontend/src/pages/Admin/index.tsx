@@ -33,8 +33,8 @@ const sidebarItems: SidebarItem[] = [
       },
       {
         route: {
-          path: "gpu",
-          lazy: () => import("./Cluster/Gpu"),
+          path: "label",
+          lazy: () => import("./Cluster/Label"),
         },
       },
     ],
