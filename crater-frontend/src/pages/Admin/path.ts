@@ -13,8 +13,8 @@ export const adminPath: PathInfo = {
           title: "计算节点",
         },
         {
-          path: "gpu",
-          title: "加速资源",
+          path: "label",
+          title: "标签管理",
         },
       ],
     },
