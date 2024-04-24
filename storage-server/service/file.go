@@ -38,6 +38,8 @@ type File struct {
 	Sys        any    `json:"sys"`
 }
 
+const defaultFolderPerm = 0755
+
 func checkfs() {
 	fsonce.Do(func() {
 		fs = &webdav.Handler{
@@ -107,7 +109,7 @@ func ListMyProject(userID uint) []string {
 	spacepath = nil
 	for i := range UserPro {
 		var space model.Space
-		err := db.Model(&model.Space{}).Where("project_id = ?", UserPro[i].ProjectID).First(&space).Error
+		err = db.Model(&model.Space{}).Where("project_id = ?", UserPro[i].ProjectID).First(&space).Error
 		if err == nil && space.ID != 0 {
 			spacepath = append(spacepath, space.Path)
 		}
@@ -200,8 +202,12 @@ func Download(c *gin.Context) {
 	}
 	defer f.Close()
 	c.Header("Content-Type", "application/octet-stream")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", c.Request.URL.Path))
-	io.Copy(c.Writer, f)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%q\"", c.Request.URL.Path))
+	_, err = io.Copy(c.Writer, f)
+	if err != nil {
+		response.Error(c, "can't download file", response.NotSpecified)
+		return
+	}
 }
 
 func containsString(slice []string, s string) bool {
@@ -281,7 +287,7 @@ func GetFile(c *gin.Context) {
 		fmt.Println("userid:", jwttoken.Data.UserID)
 		paths := ListMyProject(jwttoken.Data.UserID)
 		fmt.Println(paths)
-		data, err := GetFileByPaths(paths, c)
+		data, err = GetFileByPaths(paths, c)
 		if err != nil {
 			response.Error(c, "no project or porject has no dir", response.NotSpecified)
 			return
@@ -341,7 +347,10 @@ func CheckFilesExist(c *gin.Context) {
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				fmt.Println("create dir:", p)
-				fs.FileSystem.Mkdir(c.Request.Context(), p, 0755)
+				err = fs.FileSystem.Mkdir(c.Request.Context(), p, os.FileMode(defaultFolderPerm))
+				if err != nil {
+					response.Error(c, fmt.Sprintf("can't create dir:%s", p), response.NotSpecified)
+				}
 			}
 		}
 	}
