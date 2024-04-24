@@ -14,13 +14,12 @@ export const getDateDiff = (dateString: string | undefined): string => {
   let formatted = "";
   if (diff < 0) {
     formatted = "刚刚";
+  } else if (diff > 1000 * 60 * 60 * 24 * 30 * 12) {
+    const yearDiff = Math.floor(diff / (1000 * 60 * 60 * 24 * 30 * 12));
+    formatted = `${yearDiff} 年前`;
   } else if (diff > 1000 * 60 * 60 * 24 * 30) {
-    const mouthDiff = now.getMonth() - createdAt.getMonth();
-    if (mouthDiff > 0) {
-      formatted = `${mouthDiff} 个月前`;
-    } else {
-      formatted = `${Math.floor(diff / (1000 * 60 * 60 * 24))} 天前`;
-    }
+    const monthDiff = Math.floor(diff / (1000 * 60 * 60 * 24 * 30));
+    formatted = `${monthDiff} 个月前`;
   } else if (diff > 1000 * 60 * 60 * 24) {
     formatted = `${Math.floor(diff / (1000 * 60 * 60 * 24))} 天前`;
   } else if (diff > 1000 * 60 * 60) {
