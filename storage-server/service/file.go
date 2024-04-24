@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"webdav/logutils"
 	"webdav/model"
 	"webdav/orm"
+	"webdav/response"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/net/webdav"
@@ -93,7 +95,7 @@ func CheckJWTToken(c *gin.Context) (model.TokenResp, error) {
 	return tokenResp, nil
 }
 
-func ListMySharedProject(userID uint) []string {
+func ListMyProject(userID uint) []string {
 	db := orm.DB()
 	var UserPro []model.UserProject
 	err := db.Model(&model.UserProject{}).Where("user_id = ?", userID).Find(&UserPro).Error
@@ -101,16 +103,21 @@ func ListMySharedProject(userID uint) []string {
 		fmt.Println("user has no project, ", err)
 		return nil
 	}
-	var projetcname []string
-	projetcname = nil
+	var spacepath []string
+	spacepath = nil
 	for i := range UserPro {
-		var project model.Project
-		err := db.Model(&model.Project{}).Where("id = ? AND is_personal = ?", UserPro[i].ProjectID, false).Find(&project).Error
-		if err == nil && project.ID != 0 {
-			projetcname = append(projetcname, project.Name)
+		var space model.Space
+		err := db.Model(&model.Space{}).Where("project_id = ?", UserPro[i].ProjectID).First(&space).Error
+		if err == nil && space.ID != 0 {
+			spacepath = append(spacepath, space.Path)
 		}
 	}
-	return projetcname
+	var tmp model.Space
+	err = db.Model(&model.Space{}).Where("project_id= 1").First(&tmp).Error
+	if err == nil && tmp.ID != 0 {
+		spacepath = append(spacepath, tmp.Path)
+	}
+	return spacepath
 }
 
 func GetMyProject(userID uint) model.Project {
@@ -142,13 +149,11 @@ func GetSpaceByProjectID(pid uint) string {
 }
 
 func WebDav(c *gin.Context) {
+	AlloweOption(c)
 	checkfs()
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil || jwttoken.Code != 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"data": nil,
-			"msg":  jwttoken.Msg,
-		})
+		response.Error(c, jwttoken.Msg, response.NotSpecified)
 		return
 	}
 
@@ -165,6 +170,40 @@ func WebDav(c *gin.Context) {
 	fs.ServeHTTP(c.Writer, c.Request)
 }
 
+func AlloweOption(c *gin.Context) {
+	c.Header("Content-Type", "application/json")
+	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("Access-Control-Allow-Credentials", "true")
+	c.Header("Access-Control-Allow-Headers", "*")
+	c.Header("Access-Control-Allow-Methods", "*")
+}
+
+func Download(c *gin.Context) {
+	AlloweOption(c)
+	checkfs()
+	jwttoken, err := CheckJWTToken(c)
+	if err != nil || jwttoken.Code != 0 {
+		response.Error(c, jwttoken.Msg, response.NotSpecified)
+		return
+	}
+
+	if jwttoken.Data.Permission == model.NotAllowed {
+		c.String(http.StatusUnauthorized, "Unauthorized 1")
+		return
+	}
+	path := strings.TrimPrefix(c.Request.URL.Path, "api/ss/download/")
+	fmt.Println(path)
+	f, err := fs.FileSystem.OpenFile(c.Request.Context(), path, os.O_RDWR, 0)
+	if err != nil {
+		response.BadRequestError(c, "can't find file")
+		return
+	}
+	defer f.Close()
+	c.Header("Content-Type", "application/octet-stream")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", c.Request.URL.Path))
+	io.Copy(c.Writer, f)
+}
+
 func containsString(slice []string, s string) bool {
 	for _, item := range slice {
 		if item == s {
@@ -174,84 +213,88 @@ func containsString(slice []string, s string) bool {
 	return false
 }
 
-func GetSharedProjectDir(c *gin.Context) {
+func GetMyProjectDir(c *gin.Context) {
+	AlloweOption(c)
 	checkfs()
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil || jwttoken.Code != 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"data": nil,
-			"msg":  jwttoken.Msg,
-		})
+		response.Error(c, jwttoken.Msg, response.NotSpecified)
 		return
 	}
-	myproject := ListMySharedProject(jwttoken.Data.UserID)
-	if myproject != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"data": myproject,
-			"msg":  "",
-		})
-	} else {
-		c.JSON(http.StatusOK, gin.H{
-			"data": myproject,
-			"msg":  "no shared project",
-		})
-	}
+	myproject := ListMyProject(jwttoken.Data.UserID)
+	response.Success(c, myproject)
 }
 
 func GetMyDir(c *gin.Context) {
+	AlloweOption(c)
 	checkfs()
+	var data []File
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil || jwttoken.Code != 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"data": nil,
-			"msg":  jwttoken.Msg,
-		})
+		response.Error(c, jwttoken.Msg, response.NotSpecified)
 		return
 	}
 	path := jwttoken.Data.RootPath
-	data, err := handleDirList(fs.FileSystem, c.Writer, path)
+	data, err = handleDirList(fs.FileSystem, c.Writer, path)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"data": nil,
-			"msg":  err,
-		})
+		response.BadRequestError(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"data": data,
-		"msg":  "",
-	})
+	response.Success(c, data)
+}
+
+func GetFileByPaths(paths []string, c *gin.Context) ([]File, error) {
+	var data []File
+	data = nil
+	for _, p := range paths {
+		fi, err := fs.FileSystem.Stat(c.Request.Context(), p)
+		if err != nil {
+			fmt.Println("cann't find file:", err)
+			return nil, err
+		}
+		var tmp File
+		tmp.IsDir = fi.IsDir()
+		tmp.ModifyTime = fi.ModTime().String()
+		tmp.Name = fi.Name()
+		tmp.Size = fi.Size()
+		tmp.Sys = fi.Sys()
+		data = append(data, tmp)
+	}
+	return data, nil
 }
 
 func GetFile(c *gin.Context) {
+	AlloweOption(c)
 	checkfs()
+	var data []File
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil || jwttoken.Code != 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"data": nil,
-			"msg":  jwttoken.Msg,
-		})
+		response.Error(c, jwttoken.Msg, response.NotSpecified)
 		return
 	}
-	rootpath := jwttoken.Data.RootPath
 	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/file")
-	path := rootpath + param
 	if jwttoken.Data.Permission == model.NotAllowed {
 		c.String(http.StatusUnauthorized, "Unauthorized 1")
 		return
 	}
-	data, err := handleDirList(fs.FileSystem, c.Writer, path)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"data": nil,
-			"msg":  err,
-		})
-		return
+	if param == "" || param == "/" {
+		fmt.Println("userid:", jwttoken.Data.UserID)
+		paths := ListMyProject(jwttoken.Data.UserID)
+		fmt.Println(paths)
+		data, err := GetFileByPaths(paths, c)
+		if err != nil {
+			response.Error(c, "no project or porject has no dir", response.NotSpecified)
+			return
+		}
+		response.Success(c, data)
+	} else {
+		data, err = handleDirList(fs.FileSystem, c.Writer, param)
+		if err != nil {
+			response.Error(c, err.Error(), response.NotSpecified)
+			return
+		}
+		response.Success(c, data)
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"data": data,
-		"msg":  "",
-	})
 }
 
 func handleDirList(fs webdav.FileSystem, w http.ResponseWriter, path string) ([]File, error) {
@@ -263,8 +306,8 @@ func handleDirList(fs webdav.FileSystem, w http.ResponseWriter, path string) ([]
 	var files []File
 	defer f.Close()
 	if fi, _ := f.Stat(); fi != nil && !fi.IsDir() {
-		logutils.Log.Info("cann't read a empty dir")
-		return nil, nil
+		logutils.Log.Info("cann't read a empty file")
+		return files, nil
 	}
 	dirs, err := f.Readdir(-1)
 	if err != nil {
@@ -283,14 +326,23 @@ func handleDirList(fs webdav.FileSystem, w http.ResponseWriter, path string) ([]
 	return files, nil
 }
 
-func Testtoken(c *gin.Context) {
-	jwttoken, err := CheckJWTToken(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"data": jwttoken,
-			"msg":  err.Error(),
-		})
+type SpacePaths struct {
+	Paths []string `json:"paths"`
+}
+
+func CheckFilesExist(c *gin.Context) {
+	checkfs()
+	var paths SpacePaths
+	if err := c.ShouldBind(&paths); err != nil {
+		response.BadRequestError(c, err.Error())
 	}
-	fmt.Println(c.Request.URL.Path)
-	fmt.Println(jwttoken)
+	for _, p := range paths.Paths {
+		_, err := fs.FileSystem.Stat(c.Request.Context(), p)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				fmt.Println("create dir:", p)
+				fs.FileSystem.Mkdir(c.Request.Context(), p, 0755)
+			}
+		}
+	}
 }
