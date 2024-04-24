@@ -1,0 +1,195 @@
+# This configuration file is not a recommendation.
+#
+# We intentionally use a limited set of linters.
+# This configuration file is used with different version of golangci-lint to avoid regressions:
+# the linters can change between version,
+# their configuration may be not compatible or their reports can be different,
+# and this can break some of our tests.
+# Also, some linters are not relevant for the project (e.g. linters related to SQL).
+#
+# We have specific constraints, so we use a specific configuration.
+#
+# See the file `.golangci.reference.yml` to have a list of all available configuration options.
+
+linters-settings:
+  depguard:
+    rules:
+      logger:
+        deny:
+          # logging is allowed only by logutils.Log,
+          - pkg: "github.com/pkg/errors"
+            desc: Should be replaced by standard lib errors package.
+          - pkg: "github.com/instana/testify"
+            desc: It's a fork of github.com/stretchr/testify.
+        files:
+          # logrus is allowed to use only in logutils package.
+          - "!**/pkg/logutils/**.go"
+  dupl:
+    threshold: 100
+  funlen:
+    lines: -1 # the number of lines (code + empty lines) is not a right metric and leads to code without empty line or one-liner.
+    statements: 100
+  goconst:
+    min-len: 2
+    min-occurrences: 3
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+  gocyclo:
+    min-complexity: 15
+  godox:
+    keywords:
+      - FIXME
+  gofmt:
+    rewrite-rules:
+      - pattern: "interface{}"
+        replacement: "any"
+  goimports:
+    local-prefixes: github.com/golangci/golangci-lint
+  gomnd:
+    # don't include the "operation" and "assign"
+    checks:
+      - argument
+      - case
+      - condition
+      - return
+    ignored-numbers:
+      - "0"
+      - "1"
+      - "2"
+      - "3"
+    ignored-functions:
+      - strings.SplitN
+  govet:
+    settings:
+      printf:
+        funcs:
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Infof
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
+    enable:
+      - nilness
+      - shadow
+  errorlint:
+    asserts: false
+  lll:
+    line-length: 140
+  misspell:
+    locale: US
+    ignore-words:
+      - "importas" # linter name
+  nolintlint:
+    allow-unused: false # report any unused nolint directives
+    require-explanation: true # require an explanation for nolint directives
+    require-specific: true # require nolint directives to be specific about which linter is being skipped
+  revive:
+    rules:
+      - name: unexported-return
+        disabled: true
+      - name: unused-parameter
+
+linters:
+  disable-all: true
+  enable:
+    - bodyclose
+    - depguard
+    - dogsled
+    - dupl
+    - errcheck
+    - errorlint
+    - exportloopref
+    - funlen
+    - gocheckcompilerdirectives
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - gocyclo
+    - godox
+    - gofmt
+    - goimports
+    - gomnd
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - nakedret
+    - noctx
+    - nolintlint
+    - revive
+    - staticcheck
+    - stylecheck
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+
+  # This list of linters is not a recommendation (same thing for all this configuration file).
+  # We intentionally use a limited set of linters.
+  # See the comment on top of this file.
+
+issues:
+  # Excluding configuration per-path, per-linter, per-text and per-source
+  exclude-rules:
+    - path: (.+)_test\.go
+      linters:
+        - dupl
+        - gomnd
+        - lll
+
+    - path: pkg/golinters
+      linters:
+        - dupl
+
+    - path: pkg/golinters/errcheck.go
+      linters: [staticcheck]
+      text: "SA1019: errCfg.Exclude is deprecated: use ExcludeFunctions instead"
+    - path: pkg/commands/run.go
+      linters: [staticcheck]
+      text: "SA1019: lsc.Errcheck.Exclude is deprecated: use ExcludeFunctions instead"
+    - path: pkg/commands/run.go
+      linters: [staticcheck]
+      text: "SA1019: c.cfg.Run.ShowStats is deprecated: use Output.ShowStats instead."
+    - path: pkg/golinters/govet.go
+      text: "SA1019: cfg.CheckShadowing is deprecated: the linter should be enabled inside `Enable`."
+    - path: pkg/commands/config.go
+      text: "SA1019: cfg.Run.UseDefaultSkipDirs is deprecated: use Issues.UseDefaultExcludeDirs instead."
+
+    - path: pkg/golinters/godot.go
+      linters: [staticcheck]
+      text: "SA1019: settings.CheckAll is deprecated: use `Scope` instead"
+
+    - path: pkg/golinters/gofumpt.go
+      linters: [staticcheck]
+      text: "SA1019: settings.LangVersion is deprecated: use the global `run.go` instead."
+    - path: pkg/golinters/staticcheck_common.go
+      linters: [staticcheck]
+      text: "SA1019: settings.GoVersion is deprecated: use the global `run.go` instead."
+    - path: pkg/lint/lintersdb/manager.go
+      linters: [staticcheck]
+      text: "SA1019: (.+).(GoVersion|LangVersion) is deprecated: use the global `run.go` instead."
+
+    - path: pkg/golinters/unused.go
+      linters: [gocritic]
+      text: "rangeValCopy: each iteration copies 160 bytes \\(consider pointers or indexing\\)"
+
+  exclude-dirs:
+    - test/testdata_etc # test files
+    - internal/cache # extracted from Go code
+    - internal/renameio # extracted from Go code
+    - internal/robustio # extracted from Go code
+
+run:
+  timeout: 5m
