@@ -57,12 +57,6 @@ const sidebarItems: SidebarItem[] = [
           lazy: () => import("./Data/Share"),
         },
       },
-      {
-        route: {
-          path: "other",
-          lazy: () => import("./Data/Other"),
-        },
-      },
     ],
   },
   {

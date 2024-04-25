@@ -32,35 +32,44 @@ import { Label } from "@/components/ui/label";
 import { File, Folder } from "lucide-react";
 import { useSetRecoilState } from "recoil";
 import { globalBreadCrumb } from "@/utils/store";
+import {
+  Fileresp,
+  apiGetFiles,
+  apiMkdir,
+  apiUploadFile,
+} from "@/services/api/file";
+import { ACCESS_TOKEN_KEY } from "@/utils/store";
+import { showErrorToast } from "@/utils/toast";
+
 //import { saveAs } from "file-saver";
 //import { cn } from "@/lib/utils";
 
-type FileStat = {
-  filename: string;
-  basename: string;
-  lastmod: string;
-  size: number;
-  type: "file" | "directory";
-  etag: string | null;
-  mime?: string;
-  //props?: DAVResultResponseProps;
-};
+// type FileStat = {
+//   filename: string;
+//   basename: string;
+//   lastmod: string;
+//   size: number;
+//   type: "file" | "directory";
+//   etag: string | null;
+//   mime?: string;
+//   //props?: DAVResultResponseProps;
+// };
 
-const client = createClient("https://crater.act.buaa.edu.cn/dufs/share", {
+const client = createClient("https://crater.act.buaa.edu.cn/api/ss", {
   username: "",
   password: "",
 });
-
+client.getFileContents;
 export const Component: FC = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const [data, setData] = useState<FileStat[]>([]);
+  // const [data, setData] = useState<Fileresp[]>([]);
   const [dirName, setDirName] = useState<string>("");
+  const [filepath, setFilepath] = useState<string>("");
   const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
-
   const path = useMemo(
-    () => pathname.replace(/^\/portal\/data\/share/, ""),
-    [pathname],
+    () => filepath.replace(/^\/portal\/data\/share/, ""),
+    [filepath],
   );
 
   useEffect(() => {
@@ -77,7 +86,7 @@ export const Component: FC = () => {
         };
       } else if (index == 2 && value == "share") {
         return {
-          title: "共享文件",
+          title: "项目文件",
           path: "/portal/data/share",
         };
       }
@@ -101,44 +110,67 @@ export const Component: FC = () => {
     return pathname.replace(/\/[^/]+$/, "");
   }, [pathname]);
 
-  const {
-    data: rootList,
-    isLoading,
-    //dataUpdatedAt,
-  } = useQuery({
-    queryKey: ["data", "share", path],
-    queryFn: () => client.getDirectoryContents(`${path}`),
-    select: (res) => res,
-  });
+  const backfilepath = useMemo(() => {
+    return filepath.replace(/\/[^/]+$/, "");
+  }, [filepath]);
 
-  useEffect(() => {
-    if (isLoading) return;
-    if (!rootList) return;
-    const tableData: FileStat[] = (rootList as Array<FileStat>)
+  const { data: rootList, isLoading } = useQuery({
+    queryKey: ["data", "share", path],
+    queryFn: () => apiGetFiles(`${path}`),
+    select: (res) => res.data.data,
+  });
+  const data: Fileresp[] = useMemo(() => {
+    if (!rootList) {
+      return [];
+    }
+    return rootList
       .map((r) => {
         return {
+          name: r.name,
+          modifytime: r.modifytime,
           filename: r.filename,
-          basename: r.basename,
-          lastmod: r.lastmod,
+          isdir: r.isdir,
           size: r.size,
-          type: r.type,
-          etag: r.etag,
-          mime: r.mime,
+          sys: r.sys,
         };
       })
       .sort((a, b) => {
-        if (a.type === "directory" && b.type === "file") {
+        if (a.isdir && !b.isdir) {
           return -1; // a在b之前
-        } else if (a.type === "file" && b.type === "directory") {
+        } else if (!a.isdir && b.isdir) {
           return 1; // a在b之后
         } else {
-          return a.basename.localeCompare(b.basename);
+          return a.name.localeCompare(b.name);
         }
       });
-    setData(tableData);
-  }, [rootList, isLoading]);
+  }, [rootList]);
 
-  const columns = useMemo<ColumnDef<FileStat>[]>(
+  // useEffect(() => {
+  //   if (isLoading) return;
+  //   if (!rootList) return;
+  //   const tableData: Fileresp[] = rootList
+  //     .map((r) => {
+  //       return {
+  //         name: r.name,
+  //         modifytime: r.modifytime,
+  //         isdir: r.isdir,
+  //         size: r.size,
+  //         sys: r.sys,
+  //       };
+  //     })
+  //     .sort((a, b) => {
+  //       if (a.isdir && !b.isdir) {
+  //         return -1; // a在b之前
+  //       } else if (!a.isdir && b.isdir) {
+  //         return 1; // a在b之后
+  //       } else {
+  //         return a.name.localeCompare(b.name);
+  //       }
+  //     });
+  //   setData(tableData);
+  // }, [rootList, isLoading]);
+
+  const columns = useMemo<ColumnDef<Fileresp>[]>(
     () => [
       {
         id: "type",
@@ -146,7 +178,7 @@ export const Component: FC = () => {
           <DataTableColumnHeader column={column} title={"类型"} />
         ),
         cell: ({ row }) => {
-          if (row.original.type == "directory") {
+          if (row.original.isdir) {
             return (
               <Folder className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
               // </div>
@@ -158,41 +190,44 @@ export const Component: FC = () => {
         enableSorting: false,
         enableHiding: false,
       },
-
       {
-        accessorKey: "basename",
+        accessorKey: "filename",
         header: ({ column }) => (
           <DataTableColumnHeader
             column={column}
-            title={getHeader("basename")}
+            title={getHeader("filename")}
           />
         ),
         cell: ({ row }) => {
-          if (row.original.type == "directory") {
+          if (row.original.isdir) {
             return (
               <Button
-                onClick={() =>
-                  navigate(`/portal/data/share` + row.original.filename)
-                }
+                onClick={() => {
+                  setFilepath(filepath + "/" + row.original.name);
+                  navigate(pathname + "/" + row.original.filename);
+                }}
                 variant={"link"}
                 className="h-8 px-0 text-left font-normal text-secondary-foreground"
               >
-                {row.getValue("basename")}
+                {row.getValue("filename")}
               </Button>
             );
           } else {
-            return <>{row.getValue("basename")}</>;
+            return <>{row.getValue("filename")}</>;
           }
         },
         enableSorting: false,
       },
       {
-        accessorKey: "lastmod",
+        accessorKey: "modifytime",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("lastmod")} />
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("modifytime")}
+          />
         ),
         cell: ({ row }) => {
-          return <TableDate date={row.getValue("lastmod")}></TableDate>;
+          return <TableDate date={row.getValue("modifytime")}></TableDate>;
         },
         //sortingFn: "datetime",
         enableSorting: false,
@@ -202,13 +237,19 @@ export const Component: FC = () => {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("size")} />
         ),
-        cell: ({ row }) => <FileSizeComponent size={row.getValue("size")} />,
+        cell: ({ row }) => {
+          if (row.original.isdir) {
+            return <FileSizeComponent size={0} />;
+          } else {
+            return <FileSizeComponent size={row.getValue("size")} />;
+          }
+        },
       },
       {
         id: "actions",
         enableHiding: false,
         cell: ({ row }) => {
-          if (row.original.type == "file") {
+          if (!row.original.isdir) {
             return (
               <div className="flex flex-row space-x-1">
                 <Button
@@ -217,24 +258,31 @@ export const Component: FC = () => {
                   title="下载文件"
                   onClick={() => {
                     const link = client.getFileDownloadLink(
-                      `${row.original.filename}`,
+                      `download${path}/${row.original.name}`,
                     );
                     const o = new XMLHttpRequest();
                     o.open("GET", link);
                     o.responseType = "blob";
+                    const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+                    o.setRequestHeader("Authorization", "Bearer " + token);
                     o.onload = function () {
-                      const content = o.response as string;
-                      const a = document.createElement("a");
-                      a.style.display = "none";
-                      a.download = row.original.basename || "";
-                      const blob = new Blob([content]);
-                      a.href = URL.createObjectURL(blob);
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
+                      if (o.status == 200) {
+                        const content = o.response as string;
+                        const a = document.createElement("a");
+                        a.style.display = "none";
+                        a.download = row.original.name || "";
+                        const blob = new Blob([content]);
+                        a.href = URL.createObjectURL(blob);
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        toast.success("下载文件成功！");
+                      } else {
+                        toast.error("下载失败：" + o.statusText);
+                      }
                     };
                     o.send();
-                    toast.info("下载该文件");
+                    toast.info("正在下载该文件");
                   }}
                 >
                   <DownloadIcon />
@@ -245,14 +293,14 @@ export const Component: FC = () => {
         },
       },
     ],
-    [navigate],
+    [navigate, path, pathname, filepath],
   );
 
   const getHeader = (key: string): string => {
     switch (key) {
-      case "basename":
+      case "filename":
         return "文件名";
-      case "lastmod":
+      case "modifytime":
         return "更新于";
       case "size":
         return "文件大小";
@@ -263,7 +311,7 @@ export const Component: FC = () => {
   const toolbarConfig: DataTableToolbarConfig<string> = {
     filterInput: {
       placeholder: "搜索名称",
-      key: "basename",
+      key: "filename",
     },
     filterOptions: [],
     getHeader: getHeader,
@@ -295,9 +343,13 @@ export const Component: FC = () => {
       const filename = file.name.split("/").pop();
       if (filename === undefined) return null;
       const filedataBuffer = await file.arrayBuffer();
-      await client.putFileContents(`${path}/` + filename, filedataBuffer, {
-        overwrite: false,
-      });
+      await apiUploadFile(`${path}/` + filename, filedataBuffer)
+        .then(() => {
+          toast.success("文件已下载");
+        })
+        .catch((error) => {
+          showErrorToast(error);
+        });
     }
     return null;
   };
@@ -306,17 +358,23 @@ export const Component: FC = () => {
     setDirName(e.target.value);
   };
   const queryClient = useQueryClient();
-  const clientCreateDir = async () => {
+
+  const clientCreateDir = async (path: string) => {
     //console.log("dirName:" + dirName);
     if (dirName != "") {
-      await client.createDirectory(`${path}/` + dirName);
+      await apiMkdir(`${path}/${dirName}`)
+        .then(() => {
+          toast.success("文件夹已创建");
+        })
+        .catch((error) => {
+          showErrorToast(error);
+        });
     }
   };
   const { mutate: CreateDir } = useMutation({
-    mutationFn: () => clientCreateDir(),
+    mutationFn: () => clientCreateDir(path),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["data", "share", path] });
-      toast.success("文件夹已创建");
     },
   });
 
@@ -331,7 +389,10 @@ export const Component: FC = () => {
       <Button
         variant="outline"
         size="icon"
-        onClick={() => navigate(backpath)}
+        onClick={() => {
+          setFilepath(backfilepath);
+          navigate(backpath);
+        }}
         className="h-8 w-8"
         disabled={pathname === "/portal/data/share"}
       >
@@ -344,6 +405,7 @@ export const Component: FC = () => {
         size="icon"
         variant="outline"
         className="h-8 w-8 p-0"
+        disabled={pathname === "/portal/data/share"}
       >
         <UploadIcon />
       </Button>
@@ -356,7 +418,12 @@ export const Component: FC = () => {
       />
       <Dialog>
         <DialogTrigger asChild>
-          <Button variant="outline" className="h-8 w-8" size="icon">
+          <Button
+            variant="outline"
+            className="h-8 w-8"
+            size="icon"
+            disabled={pathname === "/portal/data/share"}
+          >
             <PlusIcon />
           </Button>
         </DialogTrigger>
