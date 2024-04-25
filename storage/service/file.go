@@ -140,30 +140,6 @@ func ListMyProjects(userID uint) []Files {
 	}
 	return data
 }
-func ListMyProject(userID uint) []string {
-	db := orm.DB()
-	var UserPro []model.UserProject
-	err := db.Model(&model.UserProject{}).Where("user_id = ?", userID).Find(&UserPro).Error
-	if err != nil {
-		fmt.Println("user has no project, ", err)
-		return nil
-	}
-	var spacepath []string
-	spacepath = nil
-	for i := range UserPro {
-		var space model.Space
-		err = db.Model(&model.Space{}).Where("project_id = ?", UserPro[i].ProjectID).First(&space).Error
-		if err == nil && space.ID != 0 {
-			spacepath = append(spacepath, space.Path)
-		}
-	}
-	var tmp model.Space
-	err = db.Model(&model.Space{}).Where("project_id= 1").First(&tmp).Error
-	if err == nil && tmp.ID != 0 {
-		spacepath = append(spacepath, tmp.Path)
-	}
-	return spacepath
-}
 
 func GetMyProject(userID uint) model.Project {
 	db := orm.DB()
@@ -265,18 +241,6 @@ func containsString(slice []string, s string) bool {
 		}
 	}
 	return false
-}
-
-func GetMyProjectDir(c *gin.Context) {
-	AlloweOption(c)
-	checkfs()
-	jwttoken, err := CheckJWTToken(c)
-	if err != nil || jwttoken.Code != 0 {
-		response.Error(c, jwttoken.Msg, response.NotSpecified)
-		return
-	}
-	myproject := ListMyProject(jwttoken.Data.UserID)
-	response.Success(c, myproject)
 }
 
 func GetMyDir(c *gin.Context) {
