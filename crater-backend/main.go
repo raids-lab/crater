@@ -38,7 +38,6 @@ import (
 	"github.com/raids-lab/crater/internal"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
-	db "github.com/raids-lab/crater/pkg/db/orm"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/profiler"
 	"github.com/raids-lab/crater/pkg/reconciler"
@@ -123,17 +122,6 @@ func main() {
 	}
 
 	// 1. init db
-	err = db.InitDB(backendConfig)
-	if err != nil {
-		setupLog.Error(err, "unable to init db")
-		os.Exit(1)
-	}
-	err = db.InitMigration()
-	if err != nil {
-		setupLog.Error(err, "unable to init db migration")
-		os.Exit(1)
-	}
-
 	err = query.InitDB()
 	if err != nil {
 		setupLog.Error(err, "unable to init query db")
