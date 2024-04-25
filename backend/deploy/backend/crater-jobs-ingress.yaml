@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: crater-jobs-ingress
-  namespace: crater-jobs
+  namespace: crater-workspace
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
