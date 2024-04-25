@@ -111,14 +111,8 @@ export const Component = () => {
 
   const { mutate: getPortToken } = useMutation({
     mutationFn: (id: number) => apiJTaskGetPortToken(id),
-    onSuccess: (res, id) => {
-      const jupyterPort = res.data.data.port;
-      const jupyterToken = res.data.data.token;
-      if (jupyterPort) {
-        window.open(`http://192.168.5.60:${jupyterPort}?token=${jupyterToken}`);
-      } else {
-        window.open(`/job/jupyter/${id}`);
-      }
+    onSuccess: (_, id) => {
+      window.open(`/job/jupyter/${id}`);
     },
   });
 

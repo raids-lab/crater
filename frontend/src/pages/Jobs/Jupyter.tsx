@@ -36,16 +36,12 @@ const Jupyter: FC = () => {
   });
 
   const url = useMemo(() => {
-    const jupyterPort = jupyterInfo.data?.port;
-    const jupyterToken = jupyterInfo.data?.token;
-    if (jupyterPort) {
-      return `http://192.168.5.60:${jupyterPort}?token=${jupyterToken}`;
-    } else if (jupyterToken) {
-      return `https://crater.act.buaa.edu.cn/jupyter/${id}?token=${jupyterToken}`;
+    if (jupyterInfo.data) {
+      return `https://crater.act.buaa.edu.cn/jupyter/${jupyterInfo.data.name}?token=${jupyterInfo.data.token}`;
     } else {
       return "";
     }
-  }, [jupyterInfo, id]);
+  }, [jupyterInfo]);
 
   return (
     <div className="relative h-screen w-screen">

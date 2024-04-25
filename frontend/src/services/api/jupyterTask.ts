@@ -144,7 +144,7 @@ export const apiJTaskImageList = () =>
 export const apiJTaskGetPortToken = (taskID: number) =>
   instance.get<
     IResponse<{
-      port: number;
+      name: string;
       token: string;
     }>
   >(VERSION + `/aijobs/getToken/${taskID}`);
