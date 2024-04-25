@@ -94,11 +94,8 @@ export const apiJTaskCreate = async (task: IJupyterTaskCreate) => {
 };
 
 export const apiJTaskDelete = async (taskID: number) => {
-  const response = await instance.post<IResponse<string>>(
-    VERSION + "/jupyter/delete",
-    {
-      taskID,
-    },
+  const response = await instance.delete<IResponse<string>>(
+    `${VERSION}/aijobs/${taskID}`,
   );
   return response.data;
 };
