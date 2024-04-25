@@ -47,6 +47,20 @@ type Config struct {
 		PVCName     string `yaml:"pvcName"`
 		IngressName string `yaml:"ingressName"`
 	} `yaml:"workspace"`
+	ACT struct {
+		Image struct {
+			RegistryServer  string `yaml:"registryServer"`
+			RegistryUser    string `yaml:"registryUser"`
+			RegistryPass    string `yaml:"registryPass"`
+			RegistryProject string `yaml:"registryProject"`
+		} `yaml:"image"`
+		Auth struct {
+			UserName string `yaml:"userName"`
+			Password string `yaml:"password"`
+			Address  string `yaml:"address"`
+			SearchDN string `yaml:"searchDN"`
+		} `yaml:"auth"`
+	} `yaml:"act"`
 }
 
 var (

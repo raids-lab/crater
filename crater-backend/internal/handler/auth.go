@@ -324,19 +324,20 @@ func (mgr *AuthMgr) normalAuth(c *gin.Context, username, password string) error 
 }
 
 func (mgr *AuthMgr) actAuth(username, password string) error {
+	authConfig := config.GetConfig()
 	// ACT 管理员认证
-	l, err := ldap.Dial("tcp", "192.168.0.9:389")
+	l, err := ldap.Dial("tcp", authConfig.ACT.Auth.Address)
 	if err != nil {
 		return err
 	}
-	err = l.Bind("***REMOVED***", "***REMOVED***")
+	err = l.Bind(authConfig.ACT.Auth.UserName, authConfig.ACT.Auth.Password)
 	if err != nil {
 		return err
 	}
 
 	// ACT 管理员搜索用户
 	searchRequest := ldap.NewSearchRequest(
-		"OU=Lab,OU=ACT,DC=lab,DC=act,DC=buaa,Dc=edu,DC=cn", // 搜索基准 DN
+		authConfig.ACT.Auth.SearchDN, // 搜索基准 DN
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
 		fmt.Sprintf("(sAMAccountName=%s)", username), // 过滤条件
 		[]string{"dn"}, // 返回的属性列表
