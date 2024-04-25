@@ -11,12 +11,10 @@ import (
 func main() {
 	r := gin.Default()
 	methods := []string{
-		"HEAD",
 		"DELETE",
 		"PUT",
 		"MKCOL",
-		"LOCK",
-		"UNLOCK",
+		"MOVE", "COPY",
 		"PROPFIND",
 		"PROPPATCH",
 	}
@@ -29,8 +27,8 @@ func main() {
 	r.Handle("OPTIONS", "/api/ss", service.AlloweOption)
 	r.Handle("OPTIONS", "/api/ss/*path", service.AlloweOption)
 	r.Handle("GET", "/api/ss/mydir", service.GetMyDir)
-	r.Handle("GET", "/api/ss/file", service.GetFile)
-	r.Handle("GET", "/api/ss/file/*path", service.GetFile)
+	r.Handle("GET", "/api/ss/files", service.GetFiles)
+	r.Handle("GET", "/api/ss/files/*path", service.GetFiles)
 	r.Handle("GET", "/api/ss/download/*path", service.Download)
 	r.Handle("POST", "/api/ss/checkspace", service.CheckFilesExist)
 	err := r.Run(":7320")
