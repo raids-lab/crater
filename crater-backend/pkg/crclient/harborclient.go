@@ -4,15 +4,16 @@ import (
 	"fmt"
 
 	haborapiv2 "github.com/mittwald/goharbor-client/v5/apiv2"
+	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
 )
 
-const (
-	RegistryServer  = "***REMOVED***"
-	RegistryUser    = "***REMOVED***"
-	RegistryPass    = "***REMOVED***" //nolint:gosec // 暂时硬编码这四个参数
-	RegistryProject = "crater-images"
-)
+// const (
+// 	RegistryServer  = "***REMOVED***"
+// 	RegistryUser    = "***REMOVED***"
+// 	RegistryPass    = "***REMOVED***" //nolint:gosec // 暂时硬编码这四个参数
+// 	RegistryProject = "crater-images"
+// )
 
 type AuthInfo struct {
 	RegistryServer  string
@@ -27,16 +28,17 @@ type HarborClient struct {
 }
 
 func NewHarborClient() HarborClient {
-	HarborAPIServer := fmt.Sprintf("https://%s/api/", RegistryServer)
-	restClient, err := haborapiv2.NewRESTClientForHost(HarborAPIServer, RegistryUser, RegistryPass, nil)
+	harborConfig := config.GetConfig().ACT.Image
+	HarborAPIServer := fmt.Sprintf("https://%s/api/", harborConfig.RegistryServer)
+	restClient, err := haborapiv2.NewRESTClientForHost(HarborAPIServer, harborConfig.RegistryUser, harborConfig.RegistryPass, nil)
 	if err != nil {
 		logutils.Log.Errorf("establish harbor client failed, err: %+v", err)
 	}
 	authInfo := AuthInfo{
-		RegistryServer:  RegistryServer,
-		RegistryUser:    RegistryUser,
-		RegistryPass:    RegistryPass,
-		RegistryProject: RegistryProject,
+		RegistryServer:  harborConfig.RegistryServer,
+		RegistryUser:    harborConfig.RegistryUser,
+		RegistryPass:    harborConfig.RegistryPass,
+		RegistryProject: harborConfig.RegistryProject,
 	}
 	return HarborClient{*restClient, authInfo}
 }
