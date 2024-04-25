@@ -43,11 +43,7 @@ export const craterPath: PathInfo = {
       children: [
         {
           path: "share",
-          title: "共享文件",
-        },
-        {
-          path: "other",
-          title: "我的文件",
+          title: "项目文件",
         },
       ],
     },
