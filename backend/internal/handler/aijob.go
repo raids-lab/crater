@@ -579,8 +579,8 @@ func (mgr *AIJobMgr) GetJobStats(c *gin.Context) {
 }
 
 type GetTokenResp struct {
-	Port  string `json:"port"`
-	Token string `json:"token"`
+	Name  string `json:"name"`  // 任务名称
+	Token string `json:"token"` // jupyter token
 }
 
 // GetToken godoc
@@ -613,7 +613,7 @@ func (mgr *AIJobMgr) GetToken(c *gin.Context) {
 	}
 	if job.Status != model.JobRunning {
 		resp := GetTokenResp{
-			Port:  "0",
+			Name:  job.Name,
 			Token: "",
 		}
 		logutils.Log.Infof("job token not ready, taskID: %d", id)
@@ -625,7 +625,7 @@ func (mgr *AIJobMgr) GetToken(c *gin.Context) {
 
 	if jsonMap["Token"] != "" {
 		resp := GetTokenResp{
-			Port:  jsonMap["NodePort"],
+			Name:  job.Name,
 			Token: jsonMap["Token"],
 		}
 		logutils.Log.Infof("get job token success, taskID: %d", id)
@@ -655,15 +655,7 @@ func (mgr *AIJobMgr) GetToken(c *gin.Context) {
 		}
 	}
 
-	// Get service port
-	port, getServicePortErr := mgr.logClient.GetSvcPort(job.Project.Namespace, job.Name)
-	if getServicePortErr != nil {
-		resputil.Error(c, fmt.Sprintf("get service port failed, err %v", getServicePortErr), resputil.NotSpecified)
-		return
-	}
-
 	// Save token to db
-	jsonMap["NodePort"] = fmt.Sprint(port)
 	jsonMap["Token"] = token
 
 	extraStr := model.MapToJSONString(jsonMap)
@@ -673,7 +665,7 @@ func (mgr *AIJobMgr) GetToken(c *gin.Context) {
 	}
 
 	resp := GetTokenResp{
-		Port:  fmt.Sprint(port),
+		Name:  job.Name,
 		Token: token,
 	}
 	logutils.Log.Infof("get job token success, taskID: %d", id)
