@@ -27,7 +27,8 @@ type JobControl struct {
 }
 
 const (
-	jupyterPort = 8888
+	jupyterPort   = 8888
+	ServicePrefix = "svc-"
 )
 
 func (c *JobControl) GetJobStatus(task *models.AITask) (aijobapi.JobPhase, error) {
@@ -62,7 +63,7 @@ func (c *JobControl) DeleteJobFromTask(task *models.AITask) error {
 	if task.TaskType == models.JupyterTask {
 		svc := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      task.JobName,
+				Name:      ServicePrefix + task.JobName,
 				Namespace: ns,
 			},
 		}
@@ -301,7 +302,7 @@ func (c *JobControl) createJupyterJobFromTask(task *models.AITask, selector map[
 	// 创建 Service，转发 Jupyter 端口
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      jobname,
+			Name:      ServicePrefix + jobname,
 			Namespace: task.Namespace,
 		},
 		Spec: corev1.ServiceSpec{
@@ -348,7 +349,7 @@ func (c *JobControl) createJupyterJobFromTask(task *models.AITask, selector map[
 		PathType: func(s networkingv1.PathType) *networkingv1.PathType { return &s }(networkingv1.PathTypePrefix),
 		Backend: networkingv1.IngressBackend{
 			Service: &networkingv1.IngressServiceBackend{
-				Name: jobname,
+				Name: ServicePrefix + jobname,
 				Port: networkingv1.ServiceBackendPort{
 					Number: 80,
 				},
