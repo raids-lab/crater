@@ -1,7 +1,7 @@
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
 
-export interface Quota {
+interface Quota {
   jobReq: number;
   job: number;
   nodeReq: number;
