@@ -48,9 +48,16 @@ func calculateCPULoad(ratio float32, cpu int) string {
 }
 
 func FomatMemoryLoad(mem int) string {
-	mem_ := mem / 1024 / 1024
-	result := fmt.Sprintf("%dMi", mem_)
-	return result
+	trans := 1024
+	mem_ := mem / trans
+	if mem_ < trans {
+		result := fmt.Sprintf("%dKi", mem_)
+		return result
+	} else {
+		mem_ /= trans
+		result := fmt.Sprintf("%dMi", mem_)
+		return result
+	}
 }
 
 func getNodeGPUCount(podGPUAllocate []monitor.PodGPUAllocate, nodeName string) int {
@@ -183,7 +190,7 @@ func (nc *NodeClient) GetNodeGPUInfo(name string) (payload.GPUInfo, error) {
 			gpuValue := node.Status.Capacity["nvidia.com/gpu"]
 			gpuInfo.GPUCount = int(gpuValue.Value())
 			GPUCheckTag := 10
-			if gpuInfo.GPUCount > GPUCheckTag {
+			if gpuInfo.GPUCount >= GPUCheckTag {
 				gpuInfo.GPUCount /= GPUCheckTag
 			}
 			for i := 0; i < gpuInfo.GPUCount; i++ {
