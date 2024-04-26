@@ -59,22 +59,30 @@ const client = createClient("https://crater.act.buaa.edu.cn/api/ss", {
   username: "",
   password: "",
 });
+
 client.getFileContents;
 export const Component: FC = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   // const [data, setData] = useState<Fileresp[]>([]);
   const [dirName, setDirName] = useState<string>("");
-  const [filepath, setFilepath] = useState<string>("");
+  // const [filepath, setFilepath] = useState<string>("");
   const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
   const path = useMemo(
-    () => filepath.replace(/^\/portal\/data\/share/, ""),
-    [filepath],
+    () => pathname.replace(/^\/portal\/data\/share/, ""),
+    [pathname],
   );
+
+  const { data: spaces } = useQuery({
+    queryKey: ["data", "share"],
+    queryFn: () => apiGetFiles(""),
+    select: (res) => res.data.data,
+  });
 
   useEffect(() => {
     const pathParts = pathname.split("/").filter(Boolean);
     const breadcrumb = pathParts.map((value, index) => {
+      value = decodeURIComponent(value);
       if (index == 0 && value == "portal") {
         return {
           title: "Portal",
@@ -89,6 +97,11 @@ export const Component: FC = () => {
           title: "项目文件",
           path: "/portal/data/share",
         };
+      } else if (index == 3) {
+        return {
+          title: spaces?.find((p) => p.name === value)?.filename ?? value,
+          path: `/portal/data/share/${value}`,
+        };
       }
       return {
         title: value,
@@ -102,7 +115,7 @@ export const Component: FC = () => {
       breadcrumb[breadcrumb.length - 1].path = undefined;
     }
     setBreadcrumb(breadcrumb);
-  }, [pathname, setBreadcrumb]);
+  }, [pathname, setBreadcrumb, spaces]);
 
   const backpath = useMemo(() => {
     // pathname is /xxx/xxx/xxx/aaa
@@ -110,15 +123,16 @@ export const Component: FC = () => {
     return pathname.replace(/\/[^/]+$/, "");
   }, [pathname]);
 
-  const backfilepath = useMemo(() => {
-    return filepath.replace(/\/[^/]+$/, "");
-  }, [filepath]);
+  // const backfilepath = useMemo(() => {
+  //   return filepath.replace(/\/[^/]+$/, "");
+  // }, [filepath]);
 
   const { data: rootList, isLoading } = useQuery({
     queryKey: ["data", "share", path],
     queryFn: () => apiGetFiles(`${path}`),
     select: (res) => res.data.data,
   });
+
   const data: Fileresp[] = useMemo(() => {
     if (!rootList) {
       return [];
@@ -144,31 +158,6 @@ export const Component: FC = () => {
         }
       });
   }, [rootList]);
-
-  // useEffect(() => {
-  //   if (isLoading) return;
-  //   if (!rootList) return;
-  //   const tableData: Fileresp[] = rootList
-  //     .map((r) => {
-  //       return {
-  //         name: r.name,
-  //         modifytime: r.modifytime,
-  //         isdir: r.isdir,
-  //         size: r.size,
-  //         sys: r.sys,
-  //       };
-  //     })
-  //     .sort((a, b) => {
-  //       if (a.isdir && !b.isdir) {
-  //         return -1; // a在b之前
-  //       } else if (!a.isdir && b.isdir) {
-  //         return 1; // a在b之后
-  //       } else {
-  //         return a.name.localeCompare(b.name);
-  //       }
-  //     });
-  //   setData(tableData);
-  // }, [rootList, isLoading]);
 
   const columns = useMemo<ColumnDef<Fileresp>[]>(
     () => [
@@ -203,8 +192,8 @@ export const Component: FC = () => {
             return (
               <Button
                 onClick={() => {
-                  setFilepath(filepath + "/" + row.original.name);
-                  navigate(pathname + "/" + row.original.filename);
+                  // setFilepath(filepath + "/" + row.original.name);
+                  navigate(pathname + "/" + row.original.name);
                 }}
                 variant={"link"}
                 className="h-8 px-0 text-left font-normal text-secondary-foreground"
@@ -293,7 +282,7 @@ export const Component: FC = () => {
         },
       },
     ],
-    [navigate, path, pathname, filepath],
+    [navigate, path, pathname],
   );
 
   const getHeader = (key: string): string => {
@@ -390,7 +379,7 @@ export const Component: FC = () => {
         variant="outline"
         size="icon"
         onClick={() => {
-          setFilepath(backfilepath);
+          // setFilepath(backfilepath);
           navigate(backpath);
         }}
         className="h-8 w-8"
