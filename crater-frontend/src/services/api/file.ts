@@ -3,7 +3,7 @@ import { IResponse } from "@/services/types";
 
 export interface Fileresp {
   name: string;
-  filename: string; //创建的项目名称存在这里
+  filename: string; //
   size: number;
   isdir: boolean;
   modifytime: string;
