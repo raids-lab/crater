@@ -134,6 +134,7 @@ export function GPUDetails({ nodeName }: { nodeName: string }) {
     queryFn: () => apiGetAdminNodeGPU(nodeName),
     select: (res) => res.data.data,
     enabled: !!nodeName,
+    refetchInterval: 1000,
   });
 
   if (isLoading)
