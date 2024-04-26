@@ -134,6 +134,7 @@ export function GPUDetails({ nodeName }: { nodeName: string }) {
     queryFn: () => apiGetAdminNodeGPU(nodeName),
     select: (res) => res.data.data,
     enabled: !!nodeName,
+    refetchInterval: 1000,
   });
 
   if (isLoading)
@@ -262,6 +263,30 @@ const columns: ColumnDef<ClusterPodInfo>[] = [
     ),
     enableSorting: false,
   },
+  {
+    accessorKey: "cpu",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={"CPU分配"} />
+    ),
+    cell: ({ row }) => {
+      const cpuValue = row.getValue("cpu");
+      return (
+        <div className="font-mono">
+          {typeof cpuValue === "number" ? cpuValue.toFixed(3) : "N/A"}
+        </div>
+      );
+    },
+  },
+
+  {
+    accessorKey: "memory",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={"内存分配"} />
+    ),
+    cell: ({ row }) => (
+      <div className="font-mono">{row.getValue("memory")}</div>
+    ),
+  },
 
   {
     id: "actions",
@@ -345,6 +370,8 @@ export const PodStatusDetail: FC = () => {
           status: x.status,
           time: x.createTime,
           address: x.IP,
+          cpu: x.CPU,
+          memory: x.Mem,
         };
       });
   }, [isLoading, nodeInfo]);
