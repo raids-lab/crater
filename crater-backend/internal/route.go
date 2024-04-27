@@ -85,6 +85,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	contextMgr := handler.NewContextMgr()
 	jwttokenMgr := handler.NewJWTTokenMgr()
 	recommenddljobMgr := handler.NewRecommendDLJobMgr(cl)
+	volcanoMgr := handler.NewVolcanojobMgr(cl)
 	///////////////////////////////////////
 	//// Public routers, no need login ////
 	///////////////////////////////////////
@@ -109,6 +110,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	contextMgr.RegisterProtected(protectedRouter.Group("/context"))
 	jwttokenMgr.RegisterProtected(protectedRouter.Group("/storage"))
 	recommenddljobMgr.RegisterProtected(protectedRouter.Group("/recommenddljob"))
+	volcanoMgr.RegisterProtected(protectedRouter.Group("/volcano"))
 	///////////////////////////////////////
 	//// Admin routers, need admin role ///
 	///////////////////////////////////////
