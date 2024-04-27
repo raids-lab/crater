@@ -28,6 +28,8 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	schedulerpluginsv1alpha1 "sigs.k8s.io/scheduler-plugins/apis/scheduling/v1alpha1"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
+	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -99,6 +101,9 @@ func main() {
 	utilruntime.Must(aisystemv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(recommenddljob.AddToScheme(scheme))
 	utilruntime.Must(imagepackv1.AddToScheme(scheme))
+	utilruntime.Must(scheduling.AddToScheme(scheme))
+	utilruntime.Must(batch.AddToScheme(scheme))
+
 	// get k8s config via ./kubeconfig
 	cfg := ctrl.GetConfigOrDie()
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{

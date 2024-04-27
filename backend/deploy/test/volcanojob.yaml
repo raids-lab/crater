@@ -1,0 +1,72 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: jupyter-lyl-test
+  namespace: crater-workspace
+  labels:
+    aisystem.github.com/taskid: "71"
+spec:
+  minAvailable: 1
+  schedulerName: volcano
+  plugins:
+    env: []
+    svc: []
+  policies:
+    - event: PodEvicted
+      action: RestartJob
+  tasks:
+    - replicas: 1
+      name: ps
+      template:
+        spec:
+          volumes:
+            - name: personal-volume
+              persistentVolumeClaim:
+                claimName: crater-storage
+            - name: cache-volume
+              emptyDir:
+                medium: Memory
+          containers:
+            - name: notebook
+              image: "jupyter/base-notebook:ubuntu-22.04"
+              command:
+                - /bin/bash
+                - "-c"
+                - >-
+                  start.sh jupyter lab --allow-root
+                  --NotebookApp.base_url=/jupyter/21-23-72/
+              workingDir: /home/liyilong
+              ports:
+                - containerPort: 8888
+                  name: notebook-port
+                  protocol: TCP
+              env:
+                - name: GRANT_SUDO
+                  value: "1"
+                - name: CHOWN_HOME
+                  value: "1"
+                - name: NB_UID
+                  value: "1005"
+                - name: NB_USER
+                  value: liyilong
+              resources:
+                limits:
+                  cpu: "1"
+                  memory: 8Gi
+                  nvidia.com/gpu: "1"
+                requests:
+                  cpu: "1"
+                  memory: 8Gi
+                  nvidia.com/gpu: "1"
+              volumeMounts:
+                - name: personal-volume
+                  mountPath: /home/liyilong
+                  subPath: 299475e1-23
+                - name: cache-volume
+                  mountPath: /dev/shm
+              imagePullPolicy: IfNotPresent
+              securityContext:
+                runAsUser: 0
+                runAsGroup: 0
+                allowPrivilegeEscalation: true
+          restartPolicy: Never
