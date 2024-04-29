@@ -893,6 +893,64 @@ const docTemplate = `{
             }
         },
         "/v1/aijobs": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "根据任务状态和分页要求查询用户下的任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AIJob"
+                ],
+                "summary": "用户查询任务列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "name": "pageIndex",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "name": "pageSize",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "taskType",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "总数和任务数组",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -1102,68 +1160,6 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "状态统计列表",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "其他错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/aijobs/listByStatus": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "根据任务状态和分页要求查询用户下的任务",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "AIJob"
-                ],
-                "summary": "用户查询任务列表",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "分页参数",
-                        "name": "page_index",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "name": "page_size",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "筛选、排序参数",
-                        "name": "status",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "总数和任务数组",
                         "schema": {
                             "$ref": "#/definitions/response.Response-any"
                         }
@@ -1457,6 +1453,54 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/nodes/{name}/gpu/": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "查询prometheus获取GPU各节点的利用率",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Node"
+                ],
+                "summary": "获取GPU各节点的利用率",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "节点名称",
+                        "name": "name",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回值描述",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-payload_GPUInfo"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/nodes/{name}/pod/": {
             "get": {
                 "security": [
@@ -1708,9 +1752,7 @@ const docTemplate = `{
                 },
                 "resourceRequest": {
                     "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
+                    "additionalProperties": {}
                 },
                 "schedulerName": {
                     "type": "string"
@@ -2296,6 +2338,26 @@ const docTemplate = `{
                 }
             }
         },
+        "payload.GPUInfo": {
+            "type": "object",
+            "properties": {
+                "gpuCount": {
+                    "type": "integer"
+                },
+                "gpuUtil": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    }
+                },
+                "haveGPU": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "payload.Order": {
             "type": "string",
             "enum": [
@@ -2525,6 +2587,20 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/payload.ClusterNodePodInfo"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.Response-payload_GPUInfo": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/response.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/payload.GPUInfo"
                 },
                 "msg": {
                     "type": "string"
