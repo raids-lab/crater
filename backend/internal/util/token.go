@@ -17,8 +17,6 @@ type (
 		UserID       uint       `json:"uid"` // User ID
 		ProjectID    uint       `json:"pid"` // Project ID
 		ProjectRole  model.Role `json:"pro"` // User role of the project
-		ClusterID    uint       `json:"cid"` // Cluster ID
-		ClusterRole  model.Role `json:"cro"` // User role of the cluster
 		PlatformRole model.Role `json:"plf"` // User role of the platform
 		jwt.RegisteredClaims
 	}
@@ -26,8 +24,6 @@ type (
 		UserID       uint       `json:"uid"` // User ID
 		ProjectID    uint       `json:"pid"` // Project ID
 		ProjectRole  model.Role `json:"pro"` // User role of the project
-		ClusterID    uint       `json:"cid"` // Cluster ID
-		ClusterRole  model.Role `json:"cro"` // User role of the cluster
 		PlatformRole model.Role `json:"plf"` // User role of the platform
 	}
 )
@@ -37,11 +33,6 @@ type TokenManager struct {
 	accessTokenTTL  int
 	refreshTokenTTL int
 }
-
-const (
-	DefaultClusterID   uint = 0
-	DefaultClusterRole      = model.RoleGuest
-)
 
 var (
 	once     sync.Once
@@ -73,8 +64,6 @@ func (tm *TokenManager) createToken(msg *JWTMessage, ttl int) (string, error) {
 	claims := &JWTClaims{
 		UserID:       msg.UserID,
 		ProjectID:    msg.ProjectID,
-		ClusterID:    msg.ClusterID,
-		ClusterRole:  msg.ClusterRole,
 		ProjectRole:  msg.ProjectRole,
 		PlatformRole: msg.PlatformRole,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -111,8 +100,6 @@ func (tm *TokenManager) CheckToken(requestToken string) (JWTMessage, error) {
 		UserID:       claims.UserID,
 		ProjectID:    claims.ProjectID,
 		ProjectRole:  claims.ProjectRole,
-		ClusterID:    claims.ClusterID,
-		ClusterRole:  claims.ClusterRole,
 		PlatformRole: claims.PlatformRole,
 	}, err
 }

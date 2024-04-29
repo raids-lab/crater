@@ -166,8 +166,6 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		UserID:       user.ID,
 		ProjectID:    projects[0].ID,
 		ProjectRole:  projects[0].Role,
-		ClusterID:    1,
-		ClusterRole:  model.RoleUser,
 		PlatformRole: user.Role,
 	}
 	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
@@ -277,8 +275,6 @@ func (mgr *AuthMgr) createPersonalDir(c *gin.Context, path string, userid, proje
 		UserID:       userid,
 		ProjectID:    projectid,
 		ProjectRole:  model.RoleAdmin,
-		ClusterID:    1,
-		ClusterRole:  model.RoleUser,
 		PlatformRole: model.RoleUser,
 	}
 	accessToken, _, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
@@ -454,8 +450,6 @@ func (mgr *AuthMgr) SwitchProject(c *gin.Context) {
 		UserID:       token.UserID,
 		ProjectID:    projects[0].ID,
 		ProjectRole:  projects[0].Role,
-		ClusterID:    1,
-		ClusterRole:  model.RoleUser,
 		PlatformRole: token.PlatformRole,
 	}
 	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
