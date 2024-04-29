@@ -12,8 +12,6 @@ const (
 	UserIDKey       = "x-user-id"
 	ProjectIDKey    = "x-project-id"
 	ProjectRoleKey  = "x-project-role"
-	ClusterIDKey    = "x-cluster-id"
-	ClusterRoleKey  = "x-cluster-role"
 	PlatformRoleKey = "x-platform-role"
 )
 
@@ -21,8 +19,6 @@ type ReqContext struct {
 	UserID       uint
 	ProjectID    uint
 	ProjectRole  model.Role
-	ClusterID    uint
-	ClusterRole  model.Role
 	PlatformRole model.Role
 }
 
@@ -37,9 +33,6 @@ func SetJWTContext(
 	c.Set(ProjectIDKey, projectID)
 	c.Set(ProjectRoleKey, projectRole)
 	c.Set(PlatformRoleKey, platformRole)
-	// todo: support multiple clusters
-	c.Set(ClusterIDKey, DefaultClusterID)
-	c.Set(ClusterRoleKey, DefaultClusterRole)
 }
 
 func GetToken(ctx *gin.Context) (ReqContext, error) {
@@ -58,16 +51,6 @@ func GetToken(ctx *gin.Context) (ReqContext, error) {
 		return ReqContext{}, fmt.Errorf("project role not found")
 	}
 
-	clusterID, ok := ctx.Get(ClusterIDKey)
-	if !ok {
-		return ReqContext{}, fmt.Errorf("cluster id not found")
-	}
-
-	clusterRole, ok := ctx.Get(ClusterRoleKey)
-	if !ok {
-		return ReqContext{}, fmt.Errorf("cluster role not found")
-	}
-
 	platformRole, ok := ctx.Get(PlatformRoleKey)
 	if !ok {
 		return ReqContext{}, fmt.Errorf("platform role not found")
@@ -77,8 +60,6 @@ func GetToken(ctx *gin.Context) (ReqContext, error) {
 		UserID:       userID.(uint),
 		ProjectID:    projectID.(uint),
 		ProjectRole:  projectRole.(model.Role),
-		ClusterID:    clusterID.(uint),
-		ClusterRole:  clusterRole.(model.Role),
 		PlatformRole: platformRole.(model.Role),
 	}, nil
 }
