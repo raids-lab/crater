@@ -1,9 +1,10 @@
 // Form in dialog: https://github.com/shadcn-ui/ui/issues/709
 // Zod Number: https://github.com/shadcn-ui/ui/issues/421
-
+import { globalUserInfo } from "@/utils/store";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-
+import { useRecoilValue } from "recoil";
+import { FileSelectDialog } from "@/components/custom/FileSelectDialog";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -17,13 +18,10 @@ import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  apiJTaskCreate,
-  apiJTaskShareDirList,
-  apiJTaskImageList,
-} from "@/services/api/jupyterTask";
+import { apiJTaskCreate, apiJTaskImageList } from "@/services/api/jupyterTask";
 import { cn } from "@/lib/utils";
 import { CaretSortIcon, CheckIcon, Cross1Icon } from "@radix-ui/react-icons";
+import { apiGetFiles } from "@/services/api/file";
 import { getAiKResource } from "@/utils/resource";
 import {
   Popover,
@@ -70,10 +68,9 @@ const formSchema = z.object({
   //workingDir: z.string(),
   shareDirs: z.array(
     z.object({
-      path: z.string().min(1, {
-        message: "共享目录不能为空",
+      subPath: z.string().min(1, {
+        message: "项目路径不能为空",
       }),
-      subPath: z.string(),
       mountPath: z.string(),
     }),
   ),
@@ -92,28 +89,27 @@ type MountDir = {
 
 export function NewTaskForm({ closeSheet }: TaskFormProps) {
   const queryClient = useQueryClient();
+  const { name: currentUserName } = useRecoilValue(globalUserInfo);
+  const { data: spaces } = useQuery({
+    queryKey: ["data", "share"],
+    queryFn: () => apiGetFiles(""),
+    select: (res) => res.data.data,
+  });
+  const convertShareDirs = (argsList: FormSchema["shareDirs"]): MountDir[] => {
+    const argsDict: MountDir[] = [];
+    argsList.forEach((dir) => {
+      const parts = dir.subPath.split("/");
+      const leavePath = dir.subPath.replace(`/${parts[1]}`, ""); //只会替换第一次出现
 
-  const convertShareDirs = (
-    argsList: FormSchema["shareDirs"],
-  ): { [key: string]: MountDir[] } => {
-    const argsDict: { [key: string]: MountDir[] } = {};
-    argsList
-      .filter((dir) => dir.path.length > 0)
-      .forEach((dir) => {
-        if (!argsDict[dir.path]) {
-          argsDict[dir.path] = [];
-        }
-        argsDict[dir.path].push(
-          dir.subPath
-            ? {
-                mountPath: dir.mountPath,
-                subPath: dir.subPath,
-              }
-            : {
-                mountPath: dir.mountPath,
-              },
-        );
+      const top =
+        spaces?.find((p) => p.filename === parts[1])?.name ?? parts[1];
+
+      const truePath = "/" + top + leavePath;
+      argsDict.push({
+        mountPath: dir.mountPath,
+        subPath: truePath,
       });
+    });
     return argsDict;
   };
 
@@ -162,22 +158,6 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
     }));
   }, [imagesInfo.data]);
 
-  const shareDirsInfo = useQuery({
-    queryKey: ["jupyter", "shareDirs"],
-    queryFn: apiJTaskShareDirList,
-    select: (res) => res.data.data,
-  });
-
-  const shareDirList = useMemo(() => {
-    if (!shareDirsInfo.data) {
-      return [];
-    }
-    return shareDirsInfo.data.map((item) => ({
-      value: item,
-      label: item,
-    }));
-  }, [shareDirsInfo.data]);
-
   // 1. Define your form.
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
@@ -189,7 +169,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
       memory: 8,
       image: "",
       //workingDir: "",
-      shareDirs: [{ subPath: "", mountPath: "" }],
+      shareDirs: [{ subPath: "", mountPath: `/home/${currentUserName}` }],
       //command: "",
       //priority: undefined,
     },
@@ -412,98 +392,37 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                         共享目录
                       </FormLabel>
                       <FormControl>
-                        <div className="flex flex-row space-x-2">
-                          <Popover modal={true}>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  role="combobox"
-                                  className={cn(
-                                    "w-full justify-between text-ellipsis whitespace-nowrap",
-                                    !field.value && "text-muted-foreground",
-                                  )}
-                                >
-                                  {field.value.path
-                                    ? shareDirList.find(
-                                        (dataset) =>
-                                          dataset.value === field.value.path,
-                                      )?.label
-                                    : "选择目录"}
-                                  <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              className="p-0"
-                              style={{
-                                maxHeight:
-                                  "var(--radix-popover-content-available-height)",
+                        <div className=" grid grid-cols-2 rounded-lg border-2">
+                          <div className="flex flex-row ">
+                            <p className="w-[5px] "></p>
+                            <p className="mt-2 w-[80px] font-mono text-base">
+                              项目路径:
+                            </p>
+                            <FileSelectDialog
+                              handleSubpathInfo={(info: string) => {
+                                field.value.subPath = info;
                               }}
-                            >
-                              <Command>
-                                <CommandInput
-                                  placeholder="查找目录"
-                                  className="h-9"
-                                />
-                                <CommandEmpty>未找到匹配的数据集</CommandEmpty>
-                                <CommandGroup>
-                                  {shareDirList.map((shareDir) => (
-                                    <CommandItem
-                                      value={shareDir.label}
-                                      key={shareDir.value}
-                                      onSelect={() => {
-                                        field.onChange({
-                                          ...field.value,
-                                          path: shareDir.value,
-                                        });
-                                      }}
-                                    >
-                                      <PopoverClose
-                                        key={shareDir.value}
-                                        className="flex w-full flex-row items-center justify-between font-mono"
-                                      >
-                                        {shareDir.label}
-                                        <CheckIcon
-                                          className={cn(
-                                            "ml-auto h-4 w-4",
-                                            shareDir.value === field.value.path
-                                              ? "opacity-100"
-                                              : "opacity-0",
-                                          )}
-                                        />
-                                      </PopoverClose>
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
-                          <Input
-                            id={`input.args.${index}.subPath`}
-                            className="font-mono"
-                            placeholder="Sub Path"
-                            value={field.value.subPath}
-                            onChange={(event) =>
-                              field.onChange({
-                                ...field.value,
-                                subPath: event.target.value,
-                              })
-                            }
-                          />
-                          <Input
-                            id={`input.args.${index}.mountPath`}
-                            className="font-mono"
-                            placeholder="Mount Path"
-                            value={field.value.mountPath}
-                            onChange={(event) =>
-                              field.onChange({
-                                ...field.value,
-                                mountPath: event.target.value,
-                              })
-                            }
-                          />
-                          <div>
+                              index={index}
+                            ></FileSelectDialog>
+                          </div>
+                          <div className="col-span-2 flex flex-row ">
+                            <p className="w-[5px] "></p>
+                            <p className="mt-2 w-[80px] font-mono text-base">
+                              挂载路径:
+                            </p>
+                            <Input
+                              id={`input.args.${index}.mountPath`}
+                              className="w-[580px] font-mono"
+                              placeholder="Mount Path"
+                              value={field.value.mountPath}
+                              onChange={(event) =>
+                                field.onChange({
+                                  ...field.value,
+                                  mountPath: event.target.value,
+                                })
+                              }
+                            />
+                            <p className="w-[5px] "></p>
                             <Button
                               size="icon"
                               variant="outline"
@@ -524,7 +443,10 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
             type="button"
             variant="outline"
             onClick={() =>
-              shareDirsAppend({ path: "", subPath: "", mountPath: "" })
+              shareDirsAppend({
+                subPath: "",
+                mountPath: `/home/${currentUserName}`,
+              })
             }
           >
             添加共享目录
