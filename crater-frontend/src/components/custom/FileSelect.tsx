@@ -1,62 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { logger } from "@/utils/loglevel";
 import { SVGProps, useState } from "react";
-
-// 模拟API数据，根据路径获取子目录
-const mockApiResponse: DirectoryItem[] = [
-  {
-    name: "Icon1",
-  },
-  {
-    name: "Icon2",
-  },
-  {
-    name: "Icon3",
-  },
-];
-//   "src/components/pages": [
-//     {
-//       name: "pages",
-//       children: [
-//         { name: "Home.jsx" },
-//         { name: "Profile.jsx" },
-//         { name: "Dashboard.jsx" },
-//       ],
-//     },
-//   ],
-//   "src/components/hooks": [
-//     {
-//       name: "hooks",
-//     },
-//   ],
-//   "src/components/style": [
-//     {
-//       name: "style",
-//     },
-//   ],
-//   "src/components/Icons": [
-//     {
-//       name: "Icons",
-//       children: [
-//         { name: "ChevronRightIcon.jsx" },
-//         { name: "FolderIcon.jsx" },
-//         { name: "RefreshCwIcon.jsx" },
-//       ],
-//     },
-//   ],
-// };
-
-// 模拟API，获取子目录
-const fetchChildren = (): Promise<DirectoryItem[]> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(mockApiResponse);
-    }, 500); // 模拟网络延迟
-  });
-};
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiGetFiles } from "@/services/api/file";
+import { useEffect, useMemo } from "react";
 
 interface DirectoryItem {
   name: string;
+  filename: string;
   children?: DirectoryItem[]; // 可选属性，存在于文件夹中
 }
 
@@ -64,9 +14,11 @@ type PathChangeHandler = (path: string) => void;
 
 interface DirectoryProps {
   name: string;
+  filename: string;
   path: string;
   onPathChange: PathChangeHandler;
   selectedPath: string;
+  //top: { [key: string]: string }[];
 }
 
 function LoadingIndicator() {
@@ -101,6 +53,7 @@ function LoadingIndicator() {
 
 function Directory({
   name,
+  filename,
   path = "",
   onPathChange,
   selectedPath,
@@ -111,46 +64,68 @@ function Directory({
   );
   const [isLoading, setIsLoading] = useState(false);
 
-  const directoryPath = path ? `${path}/${name}` : name;
+  const [directoryPath, truePath, isSelected] = useMemo(() => {
+    const directoryPath = path ? `${path}/${filename}` : `/${filename}`;
+    const parts = directoryPath.split("/");
+    const leavePath = directoryPath.replace(`/${parts[1]}`, ""); //只会替换第一次出现
+    const truePath = "/" + name + leavePath;
+    const isSelected = directoryPath === selectedPath;
+    return [directoryPath, truePath, isSelected];
+  }, [filename, path, name, selectedPath]);
 
-  const isSelected = directoryPath === selectedPath;
+  const { mutate: getDirectoryList } = useMutation({
+    mutationFn: (truePath: string) => apiGetFiles(truePath),
+    onSuccess: (fileList) => {
+      if (fileList.data.data !== null) {
+        const childDirectories: DirectoryItem[] = fileList.data.data
+          .filter((file) => file.isdir)
+          .map((file) => {
+            return {
+              name: file.name,
+              filename: file.filename,
+            };
+          });
+        setIsLoading(false);
+        onPathChange(directoryPath);
+        setChildren(childDirectories);
+      } else {
+        setIsLoading(false);
+        onPathChange(directoryPath);
+        setChildren(undefined);
+      }
+    },
+  });
 
   const toggleOpen = () => {
     setIsOpen(!isOpen);
     if (!children && !isOpen) {
       setIsLoading(true);
-      fetchChildren()
-        .then((children) => {
-          setChildren(children);
-          setIsLoading(false);
-          onPathChange(directoryPath);
-        })
-        .catch((e) => logger.debug(e));
+      getDirectoryList(truePath);
     }
   };
 
   return (
     <div>
       <Button
-        className={`w-full justify-start text-left ${isSelected ? "bg-blue-50" : ""}`}
+        className={` left-0 w-[500px]  justify-start px-1 py-2.5 text-left ${isSelected ? "bg-blue-50" : ""}`}
         variant="ghost"
         onClick={toggleOpen}
       >
-        {children !== undefined && (
-          <ChevronRightIcon
-            className={`mr-2 h-4 w-4 opacity-50 ${isOpen ? "rotate-90" : ""}`}
-          />
-        )}
-        <FolderIcon className="mr-2 h-4 w-4 opacity-50" />
-        {name}
+        <ChevronRightIcon
+          className={`mr-2 h-4 w-4 opacity-50 ${isOpen ? "rotate-90" : ""}`}
+        />
+
+        <FolderIcon className="mr-2 h-4 w-4 text-sky-600 opacity-50" />
+        {filename}
       </Button>
       {isLoading && <LoadingIndicator />} {/* 使用自定义LoadingIndicator组件 */}
       {isOpen && children && (
         <div className="pl-4">
           {children.map((child, index) => (
             <Directory
+              filename={child.filename}
               key={index}
-              name={child.name}
+              name={name}
               path={directoryPath}
               onPathChange={onPathChange}
               selectedPath={selectedPath}
@@ -165,57 +140,88 @@ function Directory({
 // TaskFormProps扩充HTMLDivElement属性，增加onClose函数
 interface FileSelectProps extends React.HTMLAttributes<HTMLDivElement> {
   onClose: () => void;
+  handleSubpathInfo: (info: string) => void;
+  handleSubpath: (info: string) => void;
 }
 
 // 修改FileSelect组件初始化File数组为顶层目录
-export function FileSelect({ onClose }: FileSelectProps) {
+export function FileSelect({
+  onClose,
+  handleSubpathInfo,
+  handleSubpath,
+}: FileSelectProps) {
   const [selectedPath, setSelectedPath] = useState("");
+
+  const [topLevelDirectorieList, setTopLevelDirectorieList] = useState<
+    DirectoryItem[] | undefined
+  >(undefined);
+
+  // const [top, setTop] = useState<{ [key: string]: string }[]>([]);
 
   const handleRefreshClick = () => {
     setSelectedPath("");
   };
 
-  // 顶层目录数据，仅包含第一层目录
-  const topLevelDirectories = [
-    { name: ".gitignore" },
-    { name: ".vscode" },
-    { name: "src" },
-    { name: "public" },
-    { name: "config" },
-    { name: "package.json" },
-    { name: "README.md" },
-    { name: "deploy" },
-    { name: ".env" },
-    { name: ".env.development" },
-    { name: ".env.production" },
-  ];
+  const { data: FileList, isLoading } = useQuery({
+    queryKey: ["directory", "list"],
+    queryFn: () => apiGetFiles("/"),
+    select: (res) => res.data.data,
+  });
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!FileList) return;
+    const topLevelDirectories: DirectoryItem[] = FileList.map((file) => {
+      return {
+        name: file.name,
+        filename: file.filename,
+      };
+    });
+
+    setTopLevelDirectorieList(topLevelDirectories);
+  }, [FileList, isLoading]);
 
   return (
-    <div className="flex h-[400px] flex-col">
+    <div className=" left-0  flex h-[410px] w-[590px] max-w-screen-sm flex-col">
       {/* ...保留FileSelect组件的其他部分代码 */}
-      <div className="flex items-center gap-2.5 border-b px-4 py-2.5">
+      <div className="bg-slate-150 left-0 flex h-[50px] w-full items-center gap-2.5 rounded-lg border-2 px-1 py-2.5">
         <ChevronRightIcon className="h-4 w-4" />
-        <div className="flex-1">{selectedPath || ""}</div>
+        <div className="flex-1 ">{selectedPath || ""}</div>
         <Button aria-label="Refresh" size="icon" onClick={handleRefreshClick}>
           <RefreshCwIcon className="h-4 w-4" />
         </Button>
       </div>
-      <div className="flex-1 overflow-auto">
+      <div className="w-[590px] flex-1 overflow-auto">
         <div>
-          {topLevelDirectories.map((item, index) => (
-            <Directory
-              key={index}
-              name={item.name}
-              path=""
-              onPathChange={setSelectedPath}
-              selectedPath={selectedPath} // 将 selectedPath 传递给 Directory 组件
-            />
-          ))}
+          {topLevelDirectorieList &&
+            topLevelDirectorieList.map((item, index) => (
+              <Directory
+                key={index}
+                name={item.name}
+                filename={item.filename}
+                path=""
+                onPathChange={setSelectedPath}
+                selectedPath={selectedPath} // 将 selectedPath 传递给 Directory 组件
+              />
+            ))}
         </div>
       </div>
       {/* ...其余代码 */}
       <div className="flex justify-end p-4">
-        <Button onClick={onClose}>确认选择</Button> {/* 使用传入的 onClose */}
+        <Button
+          onClick={
+            () => {
+              onClose();
+              handleSubpathInfo(selectedPath);
+              handleSubpath(selectedPath);
+            }
+
+            //handleSubpathInfo(selectedPath);
+          }
+        >
+          确认选择
+        </Button>{" "}
+        {/* 使用传入的 onClose */}
       </div>
     </div>
   );
