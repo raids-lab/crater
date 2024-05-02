@@ -63,6 +63,7 @@ const (
 	UserNameSpace   = "crater-jobs"
 	AdminUserName   = "admin"
 	PublicProjectID = 1
+	ProjectTODO     = 0
 
 	ImagePackInitial  = string(imagepackv1.PackJobInitial)
 	ImagePackPending  = string(imagepackv1.PackJobPending)
@@ -116,7 +117,7 @@ func NewImagePackMgr(
 // @Router /images/create [post]
 func (mgr *ImagePackMgr) UserCreate(c *gin.Context) {
 	req := &ImagePackCreateRequest{}
-	token, _ := util.GetToken(c)
+	token := util.GetToken(c)
 	if err := c.ShouldBindJSON(req); err != nil {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
 		logutils.Log.Errorf(msg)
@@ -125,7 +126,7 @@ func (mgr *ImagePackMgr) UserCreate(c *gin.Context) {
 	}
 	logutils.Log.Infof("create params: %+v", req)
 	mgr.requestDefaultValue(req)
-	mgr.createImagePack(c, req, token, token.ProjectID)
+	mgr.createImagePack(c, req, token, ProjectTODO)
 	resputil.Success(c, "")
 }
 
@@ -140,7 +141,7 @@ func (mgr *ImagePackMgr) UserCreate(c *gin.Context) {
 // @Router /images/create [post]
 func (mgr *ImagePackMgr) AdminCreate(c *gin.Context) {
 	req := &ImagePackCreateRequest{}
-	token, _ := util.GetToken(c)
+	token := util.GetToken(c)
 	if err := c.ShouldBindJSON(req); err != nil {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
 		logutils.Log.Errorf(msg)
@@ -162,7 +163,7 @@ func (mgr *ImagePackMgr) requestDefaultValue(req *ImagePackCreateRequest) {
 	}
 }
 
-func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateRequest, token util.ReqContext, projectID uint) {
+func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateRequest, token util.JWTMessage, projectID uint) {
 	userQuery := query.User
 	user, err := userQuery.WithContext(c).Where(userQuery.ID.Eq(token.UserID)).First()
 	if err != nil {
@@ -170,7 +171,7 @@ func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateReq
 		return
 	}
 	projectQuery := query.Project
-	project, err := projectQuery.WithContext(c).Where(projectQuery.ID.Eq(token.ProjectID)).First()
+	project, err := projectQuery.WithContext(c).Where(projectQuery.ID.Eq(ProjectTODO)).First()
 	if err != nil {
 		logutils.Log.Errorf("fetch project failed, params: %+v err:%v", req, err)
 		return
@@ -232,10 +233,9 @@ func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateReq
 // @Router /images/list [GET]
 func (mgr *ImagePackMgr) UserListAll(c *gin.Context) {
 	imagepackQuery := query.Image
-	token, _ := util.GetToken(c)
 	var imagepacks []*model.Image
 	var err error
-	imagepacks, err = imagepackQuery.WithContext(c).Where(imagepackQuery.ProjectID.Eq(token.ProjectID)).Find()
+	imagepacks, err = imagepackQuery.WithContext(c).Where(imagepackQuery.ProjectID.Eq(ProjectTODO)).Find()
 	if err != nil {
 		logutils.Log.Errorf("fetch imagepacks entity failed, err:%v", err)
 	}
@@ -346,10 +346,9 @@ func (mgr *ImagePackMgr) updateImagePackStatus(c *gin.Context, imagepack *model.
 // @Security Bearer
 // @Router /images/available [GET]
 func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
-	token, _ := util.GetToken(c)
 	imagepackQuery := query.Image
 	imagepacks, err := imagepackQuery.WithContext(c).
-		Where(imagepackQuery.ProjectID.Eq(token.ProjectID)).
+		Where(imagepackQuery.ProjectID.Eq(ProjectTODO)).
 		Where(imagepackQuery.Status.Eq(ImagePackFinished)).
 		Find()
 	if err != nil {
@@ -378,7 +377,6 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 // @Param ID body uint true "删除镜像的ID"
 // @Router /images/delete [POST]
 func (mgr *ImagePackMgr) DeleteByID(c *gin.Context) {
-	token, _ := util.GetToken(c)
 	imagepackQuery := query.Image
 	var err error
 	imagePackDeleteRequest := &ImagePackDeleteByIDRequest{}
@@ -392,13 +390,13 @@ func (mgr *ImagePackMgr) DeleteByID(c *gin.Context) {
 	var imagepack *model.Image
 	if imagepack, err = imagepackQuery.WithContext(c).
 		Where(imagepackQuery.ID.Eq(imagepackID)).
-		Where(imagepackQuery.ProjectID.Eq(token.ProjectID)).First(); err != nil {
+		Where(imagepackQuery.ProjectID.Eq(ProjectTODO)).First(); err != nil {
 		logutils.Log.Errorf("image not exist or have no permission%+v", err)
 		resputil.Error(c, "failed to find imagepack or entity", resputil.NotSpecified)
 		return
 	}
 	if _, err = imagepackQuery.WithContext(c).
-		Where(imagepackQuery.ID.Eq(token.ProjectID)).
+		Where(imagepackQuery.ID.Eq(ProjectTODO)).
 		Update(imagepackQuery.Status, ImagePackDeleted); err != nil {
 		logutils.Log.Errorf("delete imagepack entity failed! err:%v", err)
 		resputil.Error(c, "failed to find imagepack or entity", resputil.NotSpecified)

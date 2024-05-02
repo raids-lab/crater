@@ -54,7 +54,7 @@ func (mgr *ProjectMgr) RegisterAdmin(g *gin.RouterGroup) {
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/projects [get]
 func (mgr *ProjectMgr) ListAllForUser(c *gin.Context) { // Check if the user exists
-	token, _ := util.GetToken(c)
+	token := util.GetToken(c)
 
 	p := query.Project
 	up := query.UserProject
@@ -175,7 +175,7 @@ type (
 // @Failure 500 {object} resputil.Response[any]	"项目创建失败，返回错误信息"
 // @Router /v1/projects [post]
 func (mgr *ProjectMgr) CreateTeamProject(c *gin.Context) {
-	token, _ := util.GetToken(c)
+	token := util.GetToken(c)
 
 	var req ProjectCreateReq
 	if err := c.ShouldBindJSON(&req); err != nil {

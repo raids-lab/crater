@@ -27,8 +27,8 @@
 			"// @Security Bearer",
 			"// @Param ${5:参数名} ${6:参数类型 (query、body、path)} ${7:数据类型(string、int, uint, uint32, uint64、float32、bool、file、自定义结构体)} ${8:是否必填(true、false)} \"${9:参数描述}\"",
 			"// @Success 200 {object} resputil.Response[${10:返回值类型}] \"${11:成功返回值描述}\"",
-			"// @Failure 400 {object} resputil.Response[any] \"请求参数错误\"",
-			"// @Failure 500 {object} resputil.Response[any] \"其他错误\"",
+			"// @Failure 400 {object} resputil.Response[any] \"Request parameter error\"",
+			"// @Failure 500 {object} resputil.Response[any] \"Other errors\"",
 			"// @Router ${13:路由地址，路由变量用大括号括起来} [${14:HTTP方法 get/post/put/delete}]"
 		],
 		"description": "快速生成 Swagger 注释，使用 TAB 键切换光标位置"

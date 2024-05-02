@@ -48,20 +48,15 @@ func (mgr *RecommendDLJobMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.POST("/analyze", mgr.AnalyzeResourceUsage)
 }
 
-func (mgr *RecommendDLJobMgr) rolePermit(token *util.ReqContext, reqName string) bool {
+func (mgr *RecommendDLJobMgr) rolePermit(token *util.JWTMessage, reqName string) bool {
+	// TODO: 适配新的 Queue 机制，这先改成不报错的形式了
 	var uid, pid uint
 	if num, err := fmt.Sscanf("%d-%d", reqName, uid, pid); err != nil || num != 2 {
 		return false
 	}
 	ok := false
-	if token.PlatformRole == model.RoleAdmin {
+	if token.RolePlatform == model.RoleAdmin {
 		ok = true
-	} else if pid == token.ProjectID {
-		if token.ProjectRole == model.RoleAdmin {
-			ok = true
-		} else if token.UserID == uid {
-			ok = true
-		}
 	}
 	return ok
 }
@@ -100,7 +95,7 @@ type (
 )
 
 func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
-	token, _ := util.GetToken(c)
+	token := util.GetToken(c)
 	req := &CreateRecommendDLJobReq{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), resputil.NotSpecified)
@@ -117,7 +112,7 @@ func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
 			DataSets:            make([]recommenddljobapi.DataSetRef, 0, len(req.DataSets)),
 			RelationShips:       make([]recommenddljobapi.DataRelationShip, 0, len(req.RelationShips)),
 			Template:            req.Template,
-			Username:            fmt.Sprintf("%d-%d", token.UserID, token.ProjectID),
+			Username:            token.Username,
 			Macs:                req.Macs,
 			Params:              req.Params,
 			BatchSize:           req.BatchSize,
@@ -162,15 +157,10 @@ type (
 )
 
 func (mgr *RecommendDLJobMgr) List(c *gin.Context) {
-	token, err := util.GetToken(c)
+	token := util.GetToken(c)
+
+	jobList, err := mgr.jobclient.ListRecommendDLJob(c, dlNamespace)
 	if err != nil {
-		resputil.Error(c, "get namespace failed", resputil.NotSpecified)
-		return
-	} else {
-		resputil.Success(c, dlNamespace)
-	}
-	var jobList []*recommenddljobapi.RecommendDLJob
-	if jobList, err = mgr.jobclient.ListRecommendDLJob(c, dlNamespace); err != nil {
 		resputil.Error(c, fmt.Sprintf("list recommenddljob failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
@@ -220,7 +210,7 @@ type GetRecommendDLJobReq struct {
 }
 
 func (mgr *RecommendDLJobMgr) GetByName(c *gin.Context) {
-	token, _ := util.GetToken(c)
+	token := util.GetToken(c)
 	req := &GetRecommendDLJobReq{}
 	if err := c.ShouldBindQuery(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), resputil.NotSpecified)
@@ -275,7 +265,7 @@ type GetRecommendDLJobPodListReq struct {
 }
 
 func (mgr *RecommendDLJobMgr) GetPodsByName(c *gin.Context) {
-	token, _ := util.GetToken(c)
+	token := util.GetToken(c)
 	req := &GetRecommendDLJobPodListReq{}
 	if err := c.ShouldBindQuery(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), resputil.NotSpecified)
@@ -304,7 +294,7 @@ type DeleteRecommendDLJobReq struct {
 }
 
 func (mgr *RecommendDLJobMgr) Delete(c *gin.Context) {
-	token, _ := util.GetToken(c)
+	token := util.GetToken(c)
 	req := &DeleteRecommendDLJobReq{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), resputil.NotSpecified)

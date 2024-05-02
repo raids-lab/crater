@@ -44,6 +44,8 @@ func main() {
 		model.AIJob{},
 		model.Image{},
 		model.Label{},
+		model.Queue{},
+		model.UserQueue{},
 	)
 
 	// 执行并生成代码
