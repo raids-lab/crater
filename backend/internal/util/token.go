@@ -14,17 +14,21 @@ import (
 
 type (
 	JWTClaims struct {
-		UserID       uint       `json:"uid"` // User ID
-		ProjectID    uint       `json:"pid"` // Project ID
-		ProjectRole  model.Role `json:"pro"` // User role of the project
-		PlatformRole model.Role `json:"plf"` // User role of the platform
+		UserID       uint       `json:"ui"`
+		QueueID      uint       `json:"qi"`
+		Username     string     `json:"un"`
+		QueueName    string     `json:"qn"`
+		RoleQueue    model.Role `json:"rq"`
+		RolePlatform model.Role `json:"rp"`
 		jwt.RegisteredClaims
 	}
 	JWTMessage struct {
-		UserID       uint       `json:"uid"` // User ID
-		ProjectID    uint       `json:"pid"` // Project ID
-		ProjectRole  model.Role `json:"pro"` // User role of the project
-		PlatformRole model.Role `json:"plf"` // User role of the platform
+		UserID       uint       `json:"userID"`       // User ID
+		QueueID      uint       `json:"queueID"`      // Queue ID
+		Username     string     `json:"username"`     // Username
+		QueueName    string     `json:"queueName"`    // Queue name
+		RoleQueue    model.Role `json:"roleQueue"`    // Role in queue (e.g. user, admin)
+		RolePlatform model.Role `json:"rolePlatform"` // Role in platform (e.g. guest, user, admin)
 	}
 )
 
@@ -63,9 +67,11 @@ func (tm *TokenManager) createToken(msg *JWTMessage, ttl int) (string, error) {
 
 	claims := &JWTClaims{
 		UserID:       msg.UserID,
-		ProjectID:    msg.ProjectID,
-		ProjectRole:  msg.ProjectRole,
-		PlatformRole: msg.PlatformRole,
+		QueueID:      msg.QueueID,
+		Username:     msg.Username,
+		QueueName:    msg.QueueName,
+		RoleQueue:    msg.RoleQueue,
+		RolePlatform: msg.RolePlatform,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 		},
@@ -98,8 +104,10 @@ func (tm *TokenManager) CheckToken(requestToken string) (JWTMessage, error) {
 	})
 	return JWTMessage{
 		UserID:       claims.UserID,
-		ProjectID:    claims.ProjectID,
-		ProjectRole:  claims.ProjectRole,
-		PlatformRole: claims.PlatformRole,
+		QueueID:      claims.QueueID,
+		Username:     claims.Username,
+		QueueName:    claims.QueueName,
+		RoleQueue:    claims.RoleQueue,
+		RolePlatform: claims.RolePlatform,
 	}, err
 }

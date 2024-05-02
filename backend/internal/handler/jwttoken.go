@@ -47,23 +47,23 @@ const (
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router  /v1/token/verify [get]
 func (mgr *JWTTokenMgr) VerifyToken(c *gin.Context) {
-	token, _ := util.GetToken(c)
-	up := query.UserProject
-	userpro, err := up.WithContext(c).Where(up.UserID.Eq(token.UserID), up.ProjectID.Eq(token.ProjectID)).First()
+	token := util.GetToken(c)
+	uq := query.UserQueue
+	q := query.Queue
+	userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID), uq.QueueID.Eq(token.QueueID)).First()
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
-	s := query.Space
-	space, err := s.WithContext(c).Where(s.ProjectID.Eq(token.ProjectID)).First()
+	queue, err := q.WithContext(c).Where(q.ID.Eq(token.QueueID)).First()
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	data := TokenReq{
 		UserID:     token.UserID,
-		Permission: FilePermission(userpro.Role),
-		RootPath:   space.Path,
+		Permission: FilePermission(userQueue.Role),
+		RootPath:   queue.Space,
 	}
 	resputil.Success(c, data)
 }

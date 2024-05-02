@@ -243,204 +243,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/admin/aijobs/stats": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "数据库查表count group后返回",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "AIJob"
-                ],
-                "summary": "管理员获取各类任务状态统计情况",
-                "responses": {
-                    "200": {
-                        "description": "状态统计列表",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "其他错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/admin/aijobs/type": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "查询某类型的全部任务",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "AIJob"
-                ],
-                "summary": "管理员获取指定类型任务列表",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "分页参数",
-                        "name": "page_index",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "name": "page_size",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "筛选、排序参数",
-                        "name": "taskType",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "总数和jobs数组",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "其他错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/admin/aijobs/{id}": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "检查用户id获取指定id的job",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "AIJob"
-                ],
-                "summary": "用户获取指定任务",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "job id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "返回任务结构体",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "其他错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Delete an AI job by its unique identifier.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "AIJob"
-                ],
-                "summary": "Delete an AIJob by ID",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "AI job ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "其他错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    }
-                }
-            }
-        },
         "/v1/admin/labels": {
             "post": {
                 "security": [
@@ -892,455 +694,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/aijobs": {
+        "/v1/context/info": {
             "get": {
                 "security": [
                     {
                         "Bearer": []
                     }
                 ],
-                "description": "根据任务状态和分页要求查询用户下的任务",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "AIJob"
-                ],
-                "summary": "用户查询任务列表",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "name": "pageIndex",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "name": "pageSize",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "name": "taskType",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "总数和任务数组",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "其他错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "创建任务并获取任务id.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "AIJob"
-                ],
-                "summary": "创建任务",
-                "parameters": [
-                    {
-                        "description": "任务结构体",
-                        "name": "CreateJobReq",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.CreateJobReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "其他错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/aijobs/getLogs/{id}": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "通过指定任务id查询对应pod获取日志",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "AIJob"
-                ],
-                "summary": "获取任务日志",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "任务id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "日志信息",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "其他错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/aijobs/getQuota": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "目前只查了数据库确认用户情况，实际直接从sync map获取",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "AIJob"
-                ],
-                "summary": "获取用户当前配额",
-                "responses": {
-                    "200": {
-                        "description": "用户quota描述结构体",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "其他错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/aijobs/getToken/{id}": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "get token from db or pods logs",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "AIJob"
-                ],
-                "summary": "get token for access jupyter lab",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "jupyter对应任务id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "端口和token结构体",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "其他错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/aijobs/jobStats": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "数据库查表count group后返回",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "AIJob"
-                ],
-                "summary": "获取用户各类任务状态统计情况",
-                "responses": {
-                    "200": {
-                        "description": "状态统计列表",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "其他错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/aijobs/updateSLO/{id}": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "根据传入的id和字段值更新任务slo",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "AIJob"
-                ],
-                "summary": "更新任务slo",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "任务id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "任务slo",
-                        "name": "slo",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.UpdateTaskReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "null",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "其他错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/aijobs/{id}": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "检查用户id获取指定id的job",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "AIJob"
-                ],
-                "summary": "用户获取指定任务",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "job id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "返回任务结构体",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "其他错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Delete an AI job by its unique identifier.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "AIJob"
-                ],
-                "summary": "Delete an AIJob by ID",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "AI job ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "其他错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response-any"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/context/quota": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "如果 UserProject 表没有对 Quota 进行限制，则返回项目的 Quota",
+                "description": "Get user information from the database",
                 "consumes": [
                     "application/json"
                 ],
@@ -1350,22 +711,62 @@ const docTemplate = `{
                 "tags": [
                     "Context"
                 ],
-                "summary": "获取当前用户当前项目的Quota",
+                "summary": "Get user information",
                 "responses": {
                     "200": {
-                        "description": "配额信息",
+                        "description": "user information",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-model_EmbeddedQuota"
+                            "$ref": "#/definitions/response.Response-handler_UserInfoResp"
                         }
                     },
                     "400": {
-                        "description": "请求参数错误",
+                        "description": "Request parameter error",
                         "schema": {
                             "$ref": "#/definitions/response.Response-any"
                         }
                     },
                     "500": {
-                        "description": "其他错误",
+                        "description": "other errors",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/context/queue": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "query the queue information by client-go",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Context"
+                ],
+                "summary": "Get the queue information",
+                "responses": {
+                    "200": {
+                        "description": "Volcano Queue",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "other errors",
                         "schema": {
                             "$ref": "#/definitions/response.Response-any"
                         }
@@ -1663,7 +1064,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.SwitchProjectReq"
+                            "$ref": "#/definitions/handler.SwitchQueueReq"
                         }
                     }
                 ],
@@ -1731,55 +1132,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "handler.CreateJobReq": {
-            "type": "object",
-            "required": [
-                "command",
-                "image",
-                "resourceRequest",
-                "taskName",
-                "taskType"
-            ],
-            "properties": {
-                "command": {
-                    "type": "string"
-                },
-                "gpuModel": {
-                    "type": "string"
-                },
-                "image": {
-                    "type": "string"
-                },
-                "resourceRequest": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "schedulerName": {
-                    "type": "string"
-                },
-                "shareDirs": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/definitions/handler.DirMount"
-                        }
-                    }
-                },
-                "slo": {
-                    "type": "integer"
-                },
-                "taskName": {
-                    "type": "string"
-                },
-                "taskType": {
-                    "type": "string"
-                },
-                "workingDir": {
-                    "type": "string"
-                }
-            }
-        },
         "handler.CreateLabelReq": {
             "type": "object",
             "required": [
@@ -1796,20 +1148,6 @@ const docTemplate = `{
                 },
                 "type": {
                     "$ref": "#/definitions/model.WorkerType"
-                }
-            }
-        },
-        "handler.DirMount": {
-            "type": "object",
-            "properties": {
-                "mountPath": {
-                    "type": "string"
-                },
-                "subPath": {
-                    "type": "string"
-                },
-                "volume": {
-                    "type": "string"
                 }
             }
         },
@@ -1906,35 +1244,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "context": {
-                    "$ref": "#/definitions/handler.PlatformContext"
+                    "$ref": "#/definitions/handler.UserContext"
                 },
                 "refreshToken": {
                     "type": "string"
-                }
-            }
-        },
-        "handler.PlatformContext": {
-            "type": "object",
-            "properties": {
-                "platformRole": {
-                    "description": "User role of the platform",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.Role"
-                        }
-                    ]
-                },
-                "projectID": {
-                    "description": "Default Project ID",
-                    "type": "integer"
-                },
-                "projectRole": {
-                    "description": "User role of the project",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.Role"
-                        }
-                    ]
                 }
             }
         },
@@ -1988,14 +1301,14 @@ const docTemplate = `{
                 }
             }
         },
-        "handler.SwitchProjectReq": {
+        "handler.SwitchQueueReq": {
             "type": "object",
             "required": [
-                "id"
+                "queue"
             ],
             "properties": {
-                "id": {
-                    "type": "integer"
+                "queue": {
+                    "type": "string"
                 }
             }
         },
@@ -2085,15 +1398,45 @@ const docTemplate = `{
                 }
             }
         },
-        "handler.UpdateTaskReq": {
+        "handler.UserContext": {
             "type": "object",
-            "required": [
-                "slo"
-            ],
             "properties": {
-                "slo": {
-                    "description": "change the slo of the job",
-                    "type": "integer"
+                "queue": {
+                    "description": "Current Queue Name",
+                    "type": "string"
+                },
+                "rolePlatform": {
+                    "description": "User role of the platform",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Role"
+                        }
+                    ]
+                },
+                "roleQueue": {
+                    "description": "User role of the queue",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Role"
+                        }
+                    ]
+                }
+            }
+        },
+        "handler.UserInfoResp": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "nickname": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
                 }
             }
         },
@@ -2123,53 +1466,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/model.Status"
                         }
                     ]
-                }
-            }
-        },
-        "model.EmbeddedQuota": {
-            "type": "object",
-            "properties": {
-                "cpu": {
-                    "type": "integer"
-                },
-                "cpuReq": {
-                    "type": "integer"
-                },
-                "extra": {
-                    "type": "string"
-                },
-                "gpu": {
-                    "type": "integer"
-                },
-                "gpuMem": {
-                    "type": "integer"
-                },
-                "gpuMemReq": {
-                    "type": "integer"
-                },
-                "gpuReq": {
-                    "type": "integer"
-                },
-                "job": {
-                    "type": "integer"
-                },
-                "jobReq": {
-                    "type": "integer"
-                },
-                "mem": {
-                    "type": "integer"
-                },
-                "memReq": {
-                    "type": "integer"
-                },
-                "node": {
-                    "type": "integer"
-                },
-                "nodeReq": {
-                    "type": "integer"
-                },
-                "storage": {
-                    "type": "integer"
                 }
             }
         },
@@ -2565,14 +1861,14 @@ const docTemplate = `{
                 }
             }
         },
-        "response.Response-model_EmbeddedQuota": {
+        "response.Response-handler_UserInfoResp": {
             "type": "object",
             "properties": {
                 "code": {
                     "$ref": "#/definitions/response.ErrorCode"
                 },
                 "data": {
-                    "$ref": "#/definitions/model.EmbeddedQuota"
+                    "$ref": "#/definitions/handler.UserInfoResp"
                 },
                 "msg": {
                     "type": "string"
