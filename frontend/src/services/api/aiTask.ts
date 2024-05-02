@@ -112,10 +112,9 @@ export interface ITaskCreate {
   image: string;
   workingDir: string;
   shareDirs: {
-    [key: string]: {
-      [key: string]: string;
-    }[];
-  };
+    [key: string]: string;
+  }[];
+
   command: string;
   gpuModel: string;
   schedulerName: string;
