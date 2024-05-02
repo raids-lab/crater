@@ -1,76 +1,49 @@
 package util
 
 import (
-	"fmt"
-	"strconv"
-
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/model"
 )
 
 const (
-	UserIDKey       = "x-user-id"
-	ProjectIDKey    = "x-project-id"
-	ProjectRoleKey  = "x-project-role"
-	PlatformRoleKey = "x-platform-role"
+	UserIDKey   = "x-user-id"
+	UsernameKey = "x-user-name"
+
+	QueueIDKey   = "x-queue-id"
+	QueueNameKey = "x-queue-name"
+
+	RoleQueueKey    = "x-role-queue"
+	RolePlatformKey = "x-role-platform"
 )
 
-type ReqContext struct {
-	UserID       uint
-	ProjectID    uint
-	ProjectRole  model.Role
-	PlatformRole model.Role
-}
+const (
+	QueueNameNull = ""
+	QueueIDNull   = 0
+)
 
 func SetJWTContext(
 	c *gin.Context,
-	userID uint,
-	projectID uint,
-	projectRole model.Role,
-	platformRole model.Role,
+	msg JWTMessage,
 ) {
-	c.Set(UserIDKey, userID)
-	c.Set(ProjectIDKey, projectID)
-	c.Set(ProjectRoleKey, projectRole)
-	c.Set(PlatformRoleKey, platformRole)
+	c.Set(UserIDKey, msg.UserID)
+	c.Set(UsernameKey, msg.Username)
+
+	c.Set(QueueIDKey, msg.QueueID)
+	c.Set(QueueNameKey, msg.QueueName)
+
+	c.Set(RoleQueueKey, msg.RoleQueue)
+	c.Set(RolePlatformKey, msg.RolePlatform)
 }
 
-func GetToken(ctx *gin.Context) (ReqContext, error) {
-	userID, ok := ctx.Get(UserIDKey)
-	if !ok {
-		return ReqContext{}, fmt.Errorf("user id not found")
-	}
+func GetToken(ctx *gin.Context) JWTMessage {
+	var msg JWTMessage
+	msg.UserID = ctx.GetUint(UserIDKey)
+	msg.Username = ctx.GetString(UsernameKey)
 
-	projectID, ok := ctx.Get(ProjectIDKey)
-	if !ok {
-		return ReqContext{}, fmt.Errorf("project id not found")
-	}
+	msg.QueueID = ctx.GetUint(QueueIDKey)
+	msg.QueueName = ctx.GetString(QueueNameKey)
 
-	projectRole, ok := ctx.Get(ProjectRoleKey)
-	if !ok {
-		return ReqContext{}, fmt.Errorf("project role not found")
-	}
-
-	platformRole, ok := ctx.Get(PlatformRoleKey)
-	if !ok {
-		return ReqContext{}, fmt.Errorf("platform role not found")
-	}
-
-	return ReqContext{
-		UserID:       userID.(uint),
-		ProjectID:    projectID.(uint),
-		ProjectRole:  projectRole.(model.Role),
-		PlatformRole: platformRole.(model.Role),
-	}, nil
-}
-
-// 当需要通过 Restful API 传递数据库 ID 时，使用此函数解析参数.
-// 例如：`/aijobs/1`，解析出的 ID 为 uint 类型的 `1`.
-func GetParamID(c *gin.Context, key string) (uint, error) {
-	param := c.Param(key)
-	paramUint, err := strconv.ParseUint(param, 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("parse %s to uint: %w", key, err)
-	}
-	return uint(paramUint), nil
+	msg.RoleQueue = model.Role(ctx.GetInt(RoleQueueKey))
+	msg.RolePlatform = model.Role(ctx.GetInt(RolePlatformKey))
+	return msg
 }

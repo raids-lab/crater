@@ -50,6 +50,11 @@ func newImage(db *gorm.DB, opts ...gen.DOOption) image {
 		}{
 			RelationField: field.NewRelation("User.UserProjects", "model.UserProject"),
 		},
+		UserQueues: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("User.UserQueues", "model.UserQueue"),
+		},
 	}
 
 	_image.Project = imageBelongsToProject{
@@ -182,6 +187,9 @@ type imageBelongsToUser struct {
 	field.RelationField
 
 	UserProjects struct {
+		field.RelationField
+	}
+	UserQueues struct {
 		field.RelationField
 	}
 }
