@@ -10,15 +10,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/internal/payload"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
-	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/logutils"
-	"github.com/raids-lab/crater/pkg/models"
 	resputil "github.com/raids-lab/crater/pkg/server/response"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -55,15 +53,15 @@ type (
 	}
 
 	LoginResp struct {
-		AccessToken  string          `json:"accessToken"`
-		RefreshToken string          `json:"refreshToken"`
-		Context      PlatformContext `json:"context"`
+		AccessToken  string      `json:"accessToken"`
+		RefreshToken string      `json:"refreshToken"`
+		Context      UserContext `json:"context"`
 	}
 
-	PlatformContext struct {
-		PID          uint       `json:"projectID"`    // Default Project ID
-		ProjectRole  model.Role `json:"projectRole"`  // User role of the project
-		PlatformRole model.Role `json:"platformRole"` // User role of the platform
+	UserContext struct {
+		Queue        string     `json:"queue"`        // Current Queue Name
+		RoleQueue    model.Role `json:"roleQueue"`    // User role of the queue
+		RolePlatform model.Role `json:"rolePlatform"` // User role of the platform
 	}
 )
 
@@ -118,13 +116,11 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 
 	// Check if the user exists
 	u := query.User
-	p := query.Project
-	up := query.UserProject
 	user, err := u.WithContext(c).Where(u.Name.Eq(req.Username)).First()
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// User exists in the auth method but not in the database, create a new user
-			user, err = mgr.createUserAndProject(c, req.Username)
+			user, err = mgr.createUser(c, req.Username)
 			if err != nil {
 				l.Error("create new user", err)
 				resputil.Error(c, "Create user failed", resputil.NotSpecified)
@@ -143,30 +139,14 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		return
 	}
 
-	// Get personal project for the user
-	var projects []payload.ProjectResp
-	err = up.WithContext(c).Where(up.UserID.Eq(user.ID), p.IsPersonal.Is(true)).
-		Select(p.ID, p.Name, up.Role, p.IsPersonal, p.Status).Join(p, p.ID.EqCol(up.ProjectID)).Scan(&projects)
-	if err != nil {
-		l.Error("DB error", err)
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-	if len(projects) != 1 {
-		l.Error("user has no personal project or too many personal projects")
-		resputil.HTTPError(c, http.StatusUnauthorized, "User has no project", resputil.NotSpecified)
-		return
-	}
-
-	// Get personal project id for the user (as the default project)
-	// Each user has a personal project (with the same name as the user)
-
 	// Generate JWT tokens
 	jwtMessage := util.JWTMessage{
 		UserID:       user.ID,
-		ProjectID:    projects[0].ID,
-		ProjectRole:  projects[0].Role,
-		PlatformRole: user.Role,
+		Username:     user.Name,
+		QueueID:      util.QueueIDNull,
+		QueueName:    util.QueueNameNull,
+		RoleQueue:    model.RoleGuest,
+		RolePlatform: user.Role,
 	}
 	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
 	if err != nil {
@@ -176,113 +156,52 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 	loginResponse := LoginResp{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		Context: PlatformContext{
-			PID:          projects[0].ID,
-			ProjectRole:  projects[0].Role,
-			PlatformRole: user.Role,
+		Context: UserContext{
+			Queue:        util.QueueNameNull,
+			RoleQueue:    model.RoleGuest,
+			RolePlatform: user.Role,
 		},
 	}
 	resputil.Success(c, loginResponse)
 }
 
-// createUserAndProject is called by Login and SingUp, create a new user and a personal project for the user
-func (mgr *AuthMgr) createUserAndProject(c *gin.Context, name string) (*model.User, error) {
-	db := query.Use(query.DB)
-
-	var path string
-	var userID, projectID uint
-
-	err := db.Transaction(func(tx *query.Query) error {
-		u := tx.User
-		p := tx.Project
-		up := tx.UserProject
-		s := tx.Space
-
-		// Create a new user with non-admin role and active status
-		user := model.User{
-			Name:     name,
-			Nickname: nil,
-			Password: nil,
-			Role:     model.RoleAdmin, // todo: change to model.RoleUser
-			Status:   model.StatusActive,
-		}
-		if err := u.WithContext(c).Create(&user); err != nil {
-			return err
-		}
-		userID = user.ID
-		// Create a personal project for the user
-		project := model.Project{
-			Name:          user.Name,
-			Description:   nil,
-			Namespace:     config.GetConfig().Workspace.Namespace,
-			Status:        model.StatusActive,
-			IsPersonal:    true,
-			EmbeddedQuota: model.QuotaDefault,
-		}
-		if err := p.WithContext(c).Create(&project); err != nil {
-			return err
-		}
-		projectID = project.ID
-		// Create a user-project relationship without quota limit
-		userProject := model.UserProject{
-			UserID:        user.ID,
-			ProjectID:     project.ID,
-			Role:          model.RoleAdmin,
-			AccessMode:    model.AccessModeRW,
-			EmbeddedQuota: model.QuotaUnlimited,
-		}
-		if err := up.WithContext(c).Create(&userProject); err != nil {
-			return err
-		}
-
-		// Create a space for the project, folder path is generated by uuid
-		uuidStr := uuid.New().String()
-		folderPath := fmt.Sprintf("/%s-%d", uuidStr[:8], project.ID)
-		space := model.Space{
-			ProjectID: project.ID,
-			Path:      folderPath,
-		}
-		if err := s.WithContext(c).Create(&space); err != nil {
-			return err
-		}
-		path = folderPath
-
-		return nil
-	})
-	if err != nil {
+// createUser is called when the user is not found in the database
+func (mgr *AuthMgr) createUser(c *gin.Context, name string) (*model.User, error) {
+	u := query.User
+	user := model.User{
+		Name:     name,
+		Nickname: name,
+		Password: nil,
+		Role:     model.RoleAdmin, // todo: change to model.RoleUser
+		Status:   model.StatusActive,
+		Space:    fmt.Sprintf("u-%s", uuid.New().String()[:8]),
+		Attributes: datatypes.NewJSONType(model.UserAttribute{
+			Email: name + "@***REMOVED***",
+		}),
+	}
+	if err := u.WithContext(c).Create(&user); err != nil {
 		return nil, err
 	}
-	err = mgr.createPersonalDir(c, path, userID, projectID)
-	if err != nil {
-		return nil, err
-	}
-	// TODO: refactor
-	// Notify the task controller that a new user is created
-	oldQuota := models.Quota{
-		UserName:  name,
-		NameSpace: crclient.NameSpace,
-		HardQuota: models.ResourceListToJSON(models.DefaultQuota),
-	}
-	mgr.taskController.AddUser(oldQuota.UserName, &oldQuota)
 
-	user, err := query.User.WithContext(c).Where(query.User.Name.Eq(name)).First()
-	return user, err
+	return &user, nil
 }
 
-func (mgr *AuthMgr) createPersonalDir(c *gin.Context, path string, userid, projectid uint) error {
+func (mgr *AuthMgr) CreatePersonalDir(c *gin.Context, user *model.User) error {
 	client := mgr.client
 	jwtMessage := util.JWTMessage{
-		UserID:       userid,
-		ProjectID:    projectid,
-		ProjectRole:  model.RoleAdmin,
-		PlatformRole: model.RoleUser,
+		UserID:       user.ID,
+		Username:     user.Name,
+		QueueID:      util.QueueIDNull,
+		QueueName:    util.QueueNameNull,
+		RoleQueue:    model.RoleGuest,
+		RolePlatform: user.Role,
 	}
 	accessToken, _, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
 	if err != nil {
 		return errors.New("create token err:" + err.Error())
 	}
-	baseurl := "http://crater.***REMOVED***/api/ss"
-	uRL := baseurl + path
+	baseurl := "http://crater.***REMOVED***/api/ss/"
+	uRL := baseurl + user.Space
 	// 创建请求
 	req, err := http.NewRequestWithContext(c.Request.Context(), "MKCOL", uRL, http.NoBody)
 	if err != nil {
@@ -401,8 +320,8 @@ func (mgr *AuthMgr) RefreshToken(c *gin.Context) {
 	resputil.Success(c, refreshTokenResponse)
 }
 
-type SwitchProjectReq struct {
-	ProjectID uint `json:"id" binding:"required"`
+type SwitchQueueReq struct {
+	Queue string `json:"queue" binding:"required"`
 }
 
 // SwitchProject godoc
@@ -412,45 +331,43 @@ type SwitchProjectReq struct {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param project_id body SwitchProjectReq true "项目ID"
+// @Param project_id body SwitchQueueReq true "项目ID"
 // @Success 200 {object} resputil.Response[LoginResp] "用户上下文"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/switch [post]
 func (mgr *AuthMgr) SwitchProject(c *gin.Context) {
-	var req SwitchProjectReq
+	var req SwitchQueueReq
 	if err := c.ShouldBind(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
-
-	token, _ := util.GetToken(c)
-
-	// Check if the dist project exists
-	up := query.UserProject
-	p := query.Project
-
-	var projects []payload.ProjectResp
-	err := up.WithContext(c).Where(up.UserID.Eq(token.UserID), up.ProjectID.Eq(req.ProjectID), p.Status.Eq(uint8(model.StatusActive))).
-		Select(p.ID, p.Name, up.Role, p.IsPersonal, p.Status).Join(p, p.ID.EqCol(up.ProjectID)).Scan(&projects)
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+	if req.Queue == util.QueueNameNull {
+		resputil.Error(c, "Queue not specified", resputil.NotSpecified)
 		return
 	}
-	if len(projects) != 1 {
-		resputil.HTTPError(c, http.StatusUnauthorized, "User has no project", resputil.NotSpecified)
+
+	token := util.GetToken(c)
+
+	// Check queue
+	uq := query.UserQueue
+	userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID), uq.QueueID.Eq(token.QueueID)).First()
+	if err != nil {
+		resputil.Error(c, "Queue not found", resputil.NotSpecified)
 		return
 	}
 
 	// Get personal project id for the user (as the default project)
 	// Each user has a personal project (with the same name as the user)
 
-	// Generate JWT tokens
+	// Generate new JWT tokens
 	jwtMessage := util.JWTMessage{
 		UserID:       token.UserID,
-		ProjectID:    projects[0].ID,
-		ProjectRole:  projects[0].Role,
-		PlatformRole: token.PlatformRole,
+		Username:     token.Username,
+		QueueID:      userQueue.QueueID,
+		QueueName:    req.Queue,
+		RoleQueue:    userQueue.Role,
+		RolePlatform: token.RolePlatform,
 	}
 	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
 	if err != nil {
@@ -460,10 +377,10 @@ func (mgr *AuthMgr) SwitchProject(c *gin.Context) {
 	loginResponse := LoginResp{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		Context: PlatformContext{
-			PID:          projects[0].ID,
-			ProjectRole:  projects[0].Role,
-			PlatformRole: token.PlatformRole,
+		Context: UserContext{
+			Queue:        req.Queue,
+			RoleQueue:    userQueue.Role,
+			RolePlatform: token.RolePlatform,
 		},
 	}
 	resputil.Success(c, loginResponse)

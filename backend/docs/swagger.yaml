@@ -1,38 +1,4 @@
 definitions:
-  handler.CreateJobReq:
-    properties:
-      command:
-        type: string
-      gpuModel:
-        type: string
-      image:
-        type: string
-      resourceRequest:
-        additionalProperties: {}
-        type: object
-      schedulerName:
-        type: string
-      shareDirs:
-        additionalProperties:
-          items:
-            $ref: '#/definitions/handler.DirMount'
-          type: array
-        type: object
-      slo:
-        type: integer
-      taskName:
-        type: string
-      taskType:
-        type: string
-      workingDir:
-        type: string
-    required:
-    - command
-    - image
-    - resourceRequest
-    - taskName
-    - taskType
-    type: object
   handler.CreateLabelReq:
     properties:
       name:
@@ -45,15 +11,6 @@ definitions:
     - name
     - priority
     - type
-    type: object
-  handler.DirMount:
-    properties:
-      mountPath:
-        type: string
-      subPath:
-        type: string
-      volume:
-        type: string
     type: object
   handler.FilePermission:
     enum:
@@ -120,23 +77,9 @@ definitions:
       accessToken:
         type: string
       context:
-        $ref: '#/definitions/handler.PlatformContext'
+        $ref: '#/definitions/handler.UserContext'
       refreshToken:
         type: string
-    type: object
-  handler.PlatformContext:
-    properties:
-      platformRole:
-        allOf:
-        - $ref: '#/definitions/model.Role'
-        description: User role of the platform
-      projectID:
-        description: Default Project ID
-        type: integer
-      projectRole:
-        allOf:
-        - $ref: '#/definitions/model.Role'
-        description: User role of the project
     type: object
   handler.ProjectCreateReq:
     properties:
@@ -172,12 +115,12 @@ definitions:
     - memory
     - storage
     type: object
-  handler.SwitchProjectReq:
+  handler.SwitchQueueReq:
     properties:
-      id:
-        type: integer
+      queue:
+        type: string
     required:
-    - id
+    - queue
     type: object
   handler.TokenReq:
     properties:
@@ -235,13 +178,30 @@ definitions:
     required:
     - role
     type: object
-  handler.UpdateTaskReq:
+  handler.UserContext:
     properties:
-      slo:
-        description: change the slo of the job
-        type: integer
-    required:
-    - slo
+      queue:
+        description: Current Queue Name
+        type: string
+      rolePlatform:
+        allOf:
+        - $ref: '#/definitions/model.Role'
+        description: User role of the platform
+      roleQueue:
+        allOf:
+        - $ref: '#/definitions/model.Role'
+        description: User role of the queue
+    type: object
+  handler.UserInfoResp:
+    properties:
+      avatar:
+        type: string
+      email:
+        type: string
+      nickname:
+        type: string
+      phone:
+        type: string
     type: object
   handler.UserResp:
     properties:
@@ -259,37 +219,6 @@ definitions:
         allOf:
         - $ref: '#/definitions/model.Status'
         description: 用户状态
-    type: object
-  model.EmbeddedQuota:
-    properties:
-      cpu:
-        type: integer
-      cpuReq:
-        type: integer
-      extra:
-        type: string
-      gpu:
-        type: integer
-      gpuMem:
-        type: integer
-      gpuMemReq:
-        type: integer
-      gpuReq:
-        type: integer
-      job:
-        type: integer
-      jobReq:
-        type: integer
-      mem:
-        type: integer
-      memReq:
-        type: integer
-      node:
-        type: integer
-      nodeReq:
-        type: integer
-      storage:
-        type: integer
     type: object
   model.ImageProfileParams:
     properties:
@@ -558,12 +487,12 @@ definitions:
       msg:
         type: string
     type: object
-  response.Response-model_EmbeddedQuota:
+  response.Response-handler_UserInfoResp:
     properties:
       code:
         $ref: '#/definitions/response.ErrorCode'
       data:
-        $ref: '#/definitions/model.EmbeddedQuota'
+        $ref: '#/definitions/handler.UserInfoResp'
       msg:
         type: string
     type: object
@@ -745,132 +674,6 @@ paths:
       summary: 用户登录
       tags:
       - Auth
-  /v1/admin/aijobs/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete an AI job by its unique identifier.
-      parameters:
-      - description: AI job ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "500":
-          description: 其他错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-      security:
-      - Bearer: []
-      summary: Delete an AIJob by ID
-      tags:
-      - AIJob
-    get:
-      consumes:
-      - application/json
-      description: 检查用户id获取指定id的job
-      parameters:
-      - description: job id
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 返回任务结构体
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "500":
-          description: 其他错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-      security:
-      - Bearer: []
-      summary: 用户获取指定任务
-      tags:
-      - AIJob
-  /v1/admin/aijobs/stats:
-    get:
-      consumes:
-      - application/json
-      description: 数据库查表count group后返回
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 状态统计列表
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "500":
-          description: 其他错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-      security:
-      - Bearer: []
-      summary: 管理员获取各类任务状态统计情况
-      tags:
-      - AIJob
-  /v1/admin/aijobs/type:
-    get:
-      consumes:
-      - application/json
-      description: 查询某类型的全部任务
-      parameters:
-      - description: 分页参数
-        in: query
-        name: page_index
-        required: true
-        type: integer
-      - in: query
-        name: page_size
-        required: true
-        type: integer
-      - description: 筛选、排序参数
-        in: query
-        name: taskType
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 总数和jobs数组
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "500":
-          description: 其他错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-      security:
-      - Bearer: []
-      summary: 管理员获取指定类型任务列表
-      tags:
-      - AIJob
   /v1/admin/labels:
     post:
       consumes:
@@ -1158,308 +961,54 @@ paths:
       summary: 更新角色
       tags:
       - User
-  /v1/aijobs:
+  /v1/context/info:
     get:
       consumes:
       - application/json
-      description: 根据任务状态和分页要求查询用户下的任务
-      parameters:
-      - in: query
-        name: pageIndex
-        required: true
-        type: integer
-      - in: query
-        name: pageSize
-        required: true
-        type: integer
-      - in: query
-        name: taskType
-        required: true
-        type: string
+      description: Get user information from the database
       produces:
       - application/json
       responses:
         "200":
-          description: 总数和任务数组
+          description: user information
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/response.Response-handler_UserInfoResp'
         "400":
-          description: 请求参数错误
+          description: Request parameter error
           schema:
             $ref: '#/definitions/response.Response-any'
         "500":
-          description: 其他错误
+          description: other errors
           schema:
             $ref: '#/definitions/response.Response-any'
       security:
       - Bearer: []
-      summary: 用户查询任务列表
+      summary: Get user information
       tags:
-      - AIJob
-    post:
-      consumes:
-      - application/json
-      description: 创建任务并获取任务id.
-      parameters:
-      - description: 任务结构体
-        in: body
-        name: CreateJobReq
-        required: true
-        schema:
-          $ref: '#/definitions/handler.CreateJobReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "500":
-          description: 其他错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-      security:
-      - Bearer: []
-      summary: 创建任务
-      tags:
-      - AIJob
-  /v1/aijobs/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete an AI job by its unique identifier.
-      parameters:
-      - description: AI job ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "500":
-          description: 其他错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-      security:
-      - Bearer: []
-      summary: Delete an AIJob by ID
-      tags:
-      - AIJob
+      - Context
+  /v1/context/queue:
     get:
       consumes:
       - application/json
-      description: 检查用户id获取指定id的job
-      parameters:
-      - description: job id
-        in: path
-        name: id
-        required: true
-        type: integer
+      description: query the queue information by client-go
       produces:
       - application/json
       responses:
         "200":
-          description: 返回任务结构体
+          description: Volcano Queue
           schema:
             $ref: '#/definitions/response.Response-any'
         "400":
-          description: 请求参数错误
+          description: Request parameter error
           schema:
             $ref: '#/definitions/response.Response-any'
         "500":
-          description: 其他错误
+          description: other errors
           schema:
             $ref: '#/definitions/response.Response-any'
       security:
       - Bearer: []
-      summary: 用户获取指定任务
-      tags:
-      - AIJob
-  /v1/aijobs/getLogs/{id}:
-    get:
-      consumes:
-      - application/json
-      description: 通过指定任务id查询对应pod获取日志
-      parameters:
-      - description: 任务id
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 日志信息
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "500":
-          description: 其他错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-      security:
-      - Bearer: []
-      summary: 获取任务日志
-      tags:
-      - AIJob
-  /v1/aijobs/getQuota:
-    get:
-      consumes:
-      - application/json
-      description: 目前只查了数据库确认用户情况，实际直接从sync map获取
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 用户quota描述结构体
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "500":
-          description: 其他错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-      security:
-      - Bearer: []
-      summary: 获取用户当前配额
-      tags:
-      - AIJob
-  /v1/aijobs/getToken/{id}:
-    get:
-      consumes:
-      - application/json
-      description: get token from db or pods logs
-      parameters:
-      - description: jupyter对应任务id
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 端口和token结构体
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "500":
-          description: 其他错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-      security:
-      - Bearer: []
-      summary: get token for access jupyter lab
-      tags:
-      - AIJob
-  /v1/aijobs/jobStats:
-    get:
-      consumes:
-      - application/json
-      description: 数据库查表count group后返回
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 状态统计列表
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "500":
-          description: 其他错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-      security:
-      - Bearer: []
-      summary: 获取用户各类任务状态统计情况
-      tags:
-      - AIJob
-  /v1/aijobs/updateSLO/{id}:
-    post:
-      consumes:
-      - application/json
-      description: 根据传入的id和字段值更新任务slo
-      parameters:
-      - description: 任务id
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: 任务slo
-        in: body
-        name: slo
-        required: true
-        schema:
-          $ref: '#/definitions/handler.UpdateTaskReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: "null"
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "500":
-          description: 其他错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-      security:
-      - Bearer: []
-      summary: 更新任务slo
-      tags:
-      - AIJob
-  /v1/context/quota:
-    get:
-      consumes:
-      - application/json
-      description: 如果 UserProject 表没有对 Quota 进行限制，则返回项目的 Quota
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 配额信息
-          schema:
-            $ref: '#/definitions/response.Response-model_EmbeddedQuota'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-        "500":
-          description: 其他错误
-          schema:
-            $ref: '#/definitions/response.Response-any'
-      security:
-      - Bearer: []
-      summary: 获取当前用户当前项目的Quota
+      summary: Get the queue information
       tags:
       - Context
   /v1/labels:
@@ -1639,7 +1188,7 @@ paths:
         name: project_id
         required: true
         schema:
-          $ref: '#/definitions/handler.SwitchProjectReq'
+          $ref: '#/definitions/handler.SwitchQueueReq'
       produces:
       - application/json
       responses:

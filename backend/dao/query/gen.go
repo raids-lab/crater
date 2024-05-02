@@ -22,9 +22,11 @@ var (
 	Label        *label
 	Project      *project
 	ProjectSpace *projectSpace
+	Queue        *queue
 	Space        *space
 	User         *user
 	UserProject  *userProject
+	UserQueue    *userQueue
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
@@ -34,9 +36,11 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	Label = &Q.Label
 	Project = &Q.Project
 	ProjectSpace = &Q.ProjectSpace
+	Queue = &Q.Queue
 	Space = &Q.Space
 	User = &Q.User
 	UserProject = &Q.UserProject
+	UserQueue = &Q.UserQueue
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
@@ -47,9 +51,11 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		Label:        newLabel(db, opts...),
 		Project:      newProject(db, opts...),
 		ProjectSpace: newProjectSpace(db, opts...),
+		Queue:        newQueue(db, opts...),
 		Space:        newSpace(db, opts...),
 		User:         newUser(db, opts...),
 		UserProject:  newUserProject(db, opts...),
+		UserQueue:    newUserQueue(db, opts...),
 	}
 }
 
@@ -61,9 +67,11 @@ type Query struct {
 	Label        label
 	Project      project
 	ProjectSpace projectSpace
+	Queue        queue
 	Space        space
 	User         user
 	UserProject  userProject
+	UserQueue    userQueue
 }
 
 func (q *Query) Available() bool { return q.db != nil }
@@ -76,9 +84,11 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		Label:        q.Label.clone(db),
 		Project:      q.Project.clone(db),
 		ProjectSpace: q.ProjectSpace.clone(db),
+		Queue:        q.Queue.clone(db),
 		Space:        q.Space.clone(db),
 		User:         q.User.clone(db),
 		UserProject:  q.UserProject.clone(db),
+		UserQueue:    q.UserQueue.clone(db),
 	}
 }
 
@@ -98,9 +108,11 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		Label:        q.Label.replaceDB(db),
 		Project:      q.Project.replaceDB(db),
 		ProjectSpace: q.ProjectSpace.replaceDB(db),
+		Queue:        q.Queue.replaceDB(db),
 		Space:        q.Space.replaceDB(db),
 		User:         q.User.replaceDB(db),
 		UserProject:  q.UserProject.replaceDB(db),
+		UserQueue:    q.UserQueue.replaceDB(db),
 	}
 }
 
@@ -110,9 +122,11 @@ type queryCtx struct {
 	Label        ILabelDo
 	Project      IProjectDo
 	ProjectSpace IProjectSpaceDo
+	Queue        IQueueDo
 	Space        ISpaceDo
 	User         IUserDo
 	UserProject  IUserProjectDo
+	UserQueue    IUserQueueDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
@@ -122,9 +136,11 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		Label:        q.Label.WithContext(ctx),
 		Project:      q.Project.WithContext(ctx),
 		ProjectSpace: q.ProjectSpace.WithContext(ctx),
+		Queue:        q.Queue.WithContext(ctx),
 		Space:        q.Space.WithContext(ctx),
 		User:         q.User.WithContext(ctx),
 		UserProject:  q.UserProject.WithContext(ctx),
+		UserQueue:    q.UserQueue.WithContext(ctx),
 	}
 }
 

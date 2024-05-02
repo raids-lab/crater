@@ -76,13 +76,12 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 
 	// Init Handlers
 	authMgr := handler.NewAuthMgr(aitaskCtrl, &httpClient)
-	aijobMgr := handler.NewAIJobMgr(aitaskCtrl, &pvcClient, &logClient)
 	labelMgr := handler.NewLabelMgr()
 	projectMgr := handler.NewProjectMgr(aitaskCtrl)
 	nodeMgr := handler.NewNodeMgr(&nodeClient)
 	userMgr := handler.NewUserMgr()
 	imagepackMgr := handler.NewImagePackMgr(&logClient, &crclient.ImagePackController{Client: cl}, &harborClient)
-	contextMgr := handler.NewContextMgr()
+	contextMgr := handler.NewContextMgr(cl)
 	jwttokenMgr := handler.NewJWTTokenMgr()
 	recommenddljobMgr := handler.NewRecommendDLJobMgr(cl)
 	volcanoMgr := handler.NewVolcanojobMgr(cl)
@@ -102,7 +101,6 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	protectedRouter.Use(middleware.AuthProtected())
 
 	authMgr.RegisterProtected(protectedRouter.Group("/switch"))
-	aijobMgr.RegisterProtected(protectedRouter.Group("/aijobs"))
 	labelMgr.RegisterProtected(protectedRouter.Group("/labels"))
 	projectMgr.RegisterProtected(protectedRouter.Group("/projects"))
 	nodeMgr.RegisterProtected(protectedRouter.Group("/nodes"))
@@ -118,7 +116,6 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	adminRouter := b.R.Group(constants.APIPrefix + "/admin")
 	adminRouter.Use(middleware.AuthProtected(), middleware.AuthAdmin())
 
-	aijobMgr.RegisterAdmin(adminRouter.Group("/aijobs"))
 	labelMgr.RegisterAdmin(adminRouter.Group("/labels"))
 	projectMgr.RegisterAdmin(adminRouter.Group("/projects"))
 	nodeMgr.RegisterAdmin(adminRouter.Group("/nodes"))

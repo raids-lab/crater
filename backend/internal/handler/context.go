@@ -1,88 +1,99 @@
 package handler
 
 import (
-	"fmt"
-	"reflect"
-
 	"github.com/gin-gonic/gin"
-	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/config"
 	resputil "github.com/raids-lab/crater/pkg/server/response"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 )
 
-// 管理当前的上下文（用户+项目）
 type ContextMgr struct {
+	client.Client
 }
 
-func NewContextMgr() Manager {
-	return &ContextMgr{}
+func NewContextMgr(cl client.Client) Manager {
+	return &ContextMgr{
+		Client: cl,
+	}
 }
 
 func (mgr *ContextMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *ContextMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.GET("/quota", mgr.GetQuota)
+	g.GET("/queue", mgr.GetQueue)
+	g.GET("/info", mgr.GetUserInfo)
 }
 
 func (mgr *ContextMgr) RegisterAdmin(_ *gin.RouterGroup) {}
 
-// GetQuota godoc
-// @Summary 获取当前用户当前项目的Quota
-// @Description 如果 UserProject 表没有对 Quota 进行限制，则返回项目的 Quota
+// GetQueue godoc
+// @Summary Get the queue information
+// @Description query the queue information by client-go
 // @Tags Context
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Success 200 {object} resputil.Response[model.EmbeddedQuota] "配额信息"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/context/quota [get]
-func (mgr *ContextMgr) GetQuota(c *gin.Context) {
-	token, err := util.GetToken(c)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("get token failed, detail: %v", err), resputil.NotSpecified)
-		return
-	}
-	up := query.UserProject
-	var quota model.EmbeddedQuota
-	err = up.WithContext(c).Where(up.ProjectID.Eq(token.ProjectID), up.UserID.Eq(token.UserID)).Select(up.ALL).Scan(&quota)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("find quota of user in project failed, detail: %v", err), resputil.NotSpecified)
-		return
-	}
-	p := query.Project
-
-	var quotaInProject model.EmbeddedQuota
-	err = p.WithContext(c).Where(p.ID.Eq(token.ProjectID)).Select(p.ALL).Scan(&quotaInProject)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("find quota of project failed, detail: %v", err), resputil.NotSpecified)
-
+// @Success 200 {object} resputil.Response[any] "Volcano Queue"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "other errors"
+// @Router /v1/context/queue [get]
+func (mgr *ContextMgr) GetQueue(c *gin.Context) {
+	token := util.GetToken(c)
+	if token.QueueName == util.QueueNameNull {
+		resputil.Error(c, "Queue not specified", resputil.NotSpecified)
 		return
 	}
 
-	newQuota := getUserQuota(&quota, &quotaInProject)
+	queue := scheduling.Queue{}
+	err := mgr.Get(c, types.NamespacedName{Name: token.QueueName, Namespace: config.GetConfig().Workspace.Namespace}, &queue)
+	if err != nil {
+		resputil.Error(c, "Queue not found", resputil.NotSpecified)
+		return
+	}
 
-	resputil.Success(c, *newQuota)
+	resputil.Success(c, queue)
 }
 
-// 获取用户的配额
-// 如果用户在项目中有配额限制，则返回用户在项目中的配额
-// 否则返回项目的配额
-func getUserQuota(quota, quotaInProject *model.EmbeddedQuota) *model.EmbeddedQuota {
-	quotaValue := reflect.ValueOf(quota).Elem()
-	projectValue := reflect.ValueOf(quotaInProject).Elem()
+type (
+	UserInfoResp struct {
+		Nickname string `json:"nickname"`
+		Email    string `json:"email"`
+		Avatar   string `json:"avatar"`
+		Phone    string `json:"phone"`
+	}
+)
 
-	for i := 0; i < quotaValue.NumField(); i++ {
-		field := quotaValue.Field(i)
-		if field.Interface() == model.Unlimited {
-			// 对于 Unlimited 的字段，使用项目的对应字段
-			field.Set(projectValue.Field(i))
-		} else if field.Type() == reflect.TypeOf((*string)(nil)) {
-			// 对于指针类型的字段，如果为 nil，使用项目的对应字段
-			field.Set(projectValue.Field(i))
-		}
+// GetUserInfo godoc
+// @Summary Get user information
+// @Description Get user information from the database
+// @Tags Context
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} resputil.Response[UserInfoResp] "user information"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/context/info [get]
+func (mgr *ContextMgr) GetUserInfo(c *gin.Context) {
+	token := util.GetToken(c)
+	u := query.User
+	user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
+	if err != nil {
+		resputil.Error(c, "User not found", resputil.UserNotFound)
+		return
 	}
 
-	return quota
+	userAttr := user.Attributes.Data()
+	info := UserInfoResp{
+		Nickname: user.Nickname,
+		Email:    userAttr.Email,
+		Avatar:   userAttr.Avatar,
+		Phone:    userAttr.Phone,
+	}
+
+	resputil.Success(c, info)
 }
