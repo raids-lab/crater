@@ -32,7 +32,13 @@ func newQueue(db *gorm.DB, opts ...gen.DOOption) queue {
 	_queue.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_queue.DeletedAt = field.NewField(tableName, "deleted_at")
 	_queue.Name = field.NewString(tableName, "name")
+	_queue.Nickname = field.NewString(tableName, "nickname")
 	_queue.Space = field.NewString(tableName, "space")
+	_queue.UserQueues = queueHasManyUserQueues{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("UserQueues", "model.UserQueue"),
+	}
 
 	_queue.fillFieldMap()
 
@@ -42,13 +48,15 @@ func newQueue(db *gorm.DB, opts ...gen.DOOption) queue {
 type queue struct {
 	queueDo queueDo
 
-	ALL       field.Asterisk
-	ID        field.Uint
-	CreatedAt field.Time
-	UpdatedAt field.Time
-	DeletedAt field.Field
-	Name      field.String
-	Space     field.String
+	ALL        field.Asterisk
+	ID         field.Uint
+	CreatedAt  field.Time
+	UpdatedAt  field.Time
+	DeletedAt  field.Field
+	Name       field.String
+	Nickname   field.String
+	Space      field.String
+	UserQueues queueHasManyUserQueues
 
 	fieldMap map[string]field.Expr
 }
@@ -70,6 +78,7 @@ func (q *queue) updateTableName(table string) *queue {
 	q.UpdatedAt = field.NewTime(table, "updated_at")
 	q.DeletedAt = field.NewField(table, "deleted_at")
 	q.Name = field.NewString(table, "name")
+	q.Nickname = field.NewString(table, "nickname")
 	q.Space = field.NewString(table, "space")
 
 	q.fillFieldMap()
@@ -95,13 +104,15 @@ func (q *queue) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (q *queue) fillFieldMap() {
-	q.fieldMap = make(map[string]field.Expr, 6)
+	q.fieldMap = make(map[string]field.Expr, 8)
 	q.fieldMap["id"] = q.ID
 	q.fieldMap["created_at"] = q.CreatedAt
 	q.fieldMap["updated_at"] = q.UpdatedAt
 	q.fieldMap["deleted_at"] = q.DeletedAt
 	q.fieldMap["name"] = q.Name
+	q.fieldMap["nickname"] = q.Nickname
 	q.fieldMap["space"] = q.Space
+
 }
 
 func (q queue) clone(db *gorm.DB) queue {
@@ -112,6 +123,77 @@ func (q queue) clone(db *gorm.DB) queue {
 func (q queue) replaceDB(db *gorm.DB) queue {
 	q.queueDo.ReplaceDB(db)
 	return q
+}
+
+type queueHasManyUserQueues struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a queueHasManyUserQueues) Where(conds ...field.Expr) *queueHasManyUserQueues {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a queueHasManyUserQueues) WithContext(ctx context.Context) *queueHasManyUserQueues {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a queueHasManyUserQueues) Session(session *gorm.Session) *queueHasManyUserQueues {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a queueHasManyUserQueues) Model(m *model.Queue) *queueHasManyUserQueuesTx {
+	return &queueHasManyUserQueuesTx{a.db.Model(m).Association(a.Name())}
+}
+
+type queueHasManyUserQueuesTx struct{ tx *gorm.Association }
+
+func (a queueHasManyUserQueuesTx) Find() (result []*model.UserQueue, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a queueHasManyUserQueuesTx) Append(values ...*model.UserQueue) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a queueHasManyUserQueuesTx) Replace(values ...*model.UserQueue) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a queueHasManyUserQueuesTx) Delete(values ...*model.UserQueue) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a queueHasManyUserQueuesTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a queueHasManyUserQueuesTx) Count() int64 {
+	return a.tx.Count()
 }
 
 type queueDo struct{ gen.DO }

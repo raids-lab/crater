@@ -54,6 +54,13 @@ definitions:
       imagepackname:
         type: string
     type: object
+  handler.JobIngressResp:
+    properties:
+      baseURL:
+        type: string
+      token:
+        type: string
+    type: object
   handler.ListAllResp:
     type: object
   handler.LoginReq:
@@ -203,6 +210,17 @@ definitions:
       phone:
         type: string
     type: object
+  handler.UserQueueResp:
+    properties:
+      access:
+        $ref: '#/definitions/model.AccessMode'
+      id:
+        type: string
+      name:
+        type: string
+      role:
+        $ref: '#/definitions/model.Role'
+    type: object
   handler.UserResp:
     properties:
       id:
@@ -220,6 +238,22 @@ definitions:
         - $ref: '#/definitions/model.Status'
         description: 用户状态
     type: object
+  model.AccessMode:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    type: integer
+    x-enum-comments:
+      AccessModeAO: Append-only mode
+      AccessModeRO: Read-only mode
+      AccessModeRW: Read-write mode
+    x-enum-varnames:
+    - _
+    - AccessModeRO
+    - AccessModeRW
+    - AccessModeAO
   model.ImageProfileParams:
     properties:
       Activations:
@@ -392,7 +426,7 @@ definitions:
         - $ref: '#/definitions/model.Status'
         description: 项目状态
     type: object
-  response.ErrorCode:
+  resputil.ErrorCode:
     enum:
     - 0
     - 40001
@@ -400,6 +434,7 @@ definitions:
     - 40102
     - 40103
     - 40301
+    - 40401
     - 99999
     type: integer
     x-enum-varnames:
@@ -409,19 +444,31 @@ definitions:
     - UserNotFound
     - InvalidToken
     - InvalidRole
+    - QueueNotFound
     - NotSpecified
-  response.Response-any:
+  resputil.Response-any:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: '#/definitions/resputil.ErrorCode'
       data: {}
       msg:
         type: string
     type: object
-  response.Response-array_handler_UserResp:
+  resputil.Response-array_handler_UserQueueResp:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: '#/definitions/resputil.ErrorCode'
+      data:
+        items:
+          $ref: '#/definitions/handler.UserQueueResp'
+        type: array
+      msg:
+        type: string
+    type: object
+  resputil.Response-array_handler_UserResp:
+    properties:
+      code:
+        $ref: '#/definitions/resputil.ErrorCode'
       data:
         items:
           $ref: '#/definitions/handler.UserResp'
@@ -429,10 +476,10 @@ definitions:
       msg:
         type: string
     type: object
-  response.Response-array_model_Label:
+  resputil.Response-array_model_Label:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: '#/definitions/resputil.ErrorCode'
       data:
         items:
           $ref: '#/definitions/model.Label'
@@ -440,10 +487,10 @@ definitions:
       msg:
         type: string
     type: object
-  response.Response-array_payload_ProjectResp:
+  resputil.Response-array_payload_ProjectResp:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: '#/definitions/resputil.ErrorCode'
       data:
         items:
           $ref: '#/definitions/payload.ProjectResp'
@@ -451,73 +498,82 @@ definitions:
       msg:
         type: string
     type: object
-  response.Response-handler_ListAllResp:
+  resputil.Response-handler_JobIngressResp:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: '#/definitions/resputil.ErrorCode'
+      data:
+        $ref: '#/definitions/handler.JobIngressResp'
+      msg:
+        type: string
+    type: object
+  resputil.Response-handler_ListAllResp:
+    properties:
+      code:
+        $ref: '#/definitions/resputil.ErrorCode'
       data:
         $ref: '#/definitions/handler.ListAllResp'
       msg:
         type: string
     type: object
-  response.Response-handler_LoginResp:
+  resputil.Response-handler_LoginResp:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: '#/definitions/resputil.ErrorCode'
       data:
         $ref: '#/definitions/handler.LoginResp'
       msg:
         type: string
     type: object
-  response.Response-handler_ProjectCreateResp:
+  resputil.Response-handler_ProjectCreateResp:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: '#/definitions/resputil.ErrorCode'
       data:
         $ref: '#/definitions/handler.ProjectCreateResp'
       msg:
         type: string
     type: object
-  response.Response-handler_TokenReq:
+  resputil.Response-handler_TokenReq:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: '#/definitions/resputil.ErrorCode'
       data:
         $ref: '#/definitions/handler.TokenReq'
       msg:
         type: string
     type: object
-  response.Response-handler_UserInfoResp:
+  resputil.Response-handler_UserInfoResp:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: '#/definitions/resputil.ErrorCode'
       data:
         $ref: '#/definitions/handler.UserInfoResp'
       msg:
         type: string
     type: object
-  response.Response-payload_ClusterNodePodInfo:
+  resputil.Response-payload_ClusterNodePodInfo:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: '#/definitions/resputil.ErrorCode'
       data:
         $ref: '#/definitions/payload.ClusterNodePodInfo'
       msg:
         type: string
     type: object
-  response.Response-payload_GPUInfo:
+  resputil.Response-payload_GPUInfo:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: '#/definitions/resputil.ErrorCode'
       data:
         $ref: '#/definitions/payload.GPUInfo'
       msg:
         type: string
     type: object
-  response.Response-string:
+  resputil.Response-string:
     properties:
       code:
-        $ref: '#/definitions/response.ErrorCode'
+        $ref: '#/definitions/resputil.ErrorCode'
       data:
         type: string
       msg:
@@ -658,19 +714,19 @@ paths:
         "200":
           description: 登录成功，返回 JWT Token 和默认个人项目
           schema:
-            $ref: '#/definitions/response.Response-handler_LoginResp'
+            $ref: '#/definitions/resputil.Response-handler_LoginResp'
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "401":
           description: 用户名或密码错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "500":
           description: 数据库交互错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
       summary: 用户登录
       tags:
       - Auth
@@ -692,15 +748,15 @@ paths:
         "200":
           description: 成功返回
           schema:
-            $ref: '#/definitions/response.Response-array_model_Label'
+            $ref: '#/definitions/resputil.Response-array_model_Label'
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
       security:
       - Bearer: []
       summary: 创建标签
@@ -722,15 +778,15 @@ paths:
         "200":
           description: 成功返回
           schema:
-            $ref: '#/definitions/response.Response-string'
+            $ref: '#/definitions/resputil.Response-string'
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
       security:
       - Bearer: []
       summary: 删除标签
@@ -757,15 +813,15 @@ paths:
         "200":
           description: 成功返回
           schema:
-            $ref: '#/definitions/response.Response-string'
+            $ref: '#/definitions/resputil.Response-string'
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
       security:
       - Bearer: []
       summary: 更新标签
@@ -819,15 +875,15 @@ paths:
         "200":
           description: 项目列表
           schema:
-            $ref: '#/definitions/response.Response-handler_ListAllResp'
+            $ref: '#/definitions/resputil.Response-handler_ListAllResp'
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
       security:
       - Bearer: []
       summary: 获取所有项目
@@ -855,20 +911,45 @@ paths:
         "200":
           description: 成功更新配额
           schema:
-            $ref: '#/definitions/response.Response-string'
+            $ref: '#/definitions/resputil.Response-string'
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
       security:
       - Bearer: []
       summary: 更新配额
       tags:
       - Project
+  /v1/admin/queues:
+    get:
+      consumes:
+      - application/json
+      description: list all queues by client-go
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Volcano queue list
+          schema:
+            $ref: '#/definitions/resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: list all queues
+      tags:
+      - Queue
   /v1/admin/users:
     get:
       consumes:
@@ -880,15 +961,15 @@ paths:
         "200":
           description: 成功获取用户信息
           schema:
-            $ref: '#/definitions/response.Response-array_handler_UserResp'
+            $ref: '#/definitions/resputil.Response-array_handler_UserResp'
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
       security:
       - Bearer: []
       summary: 列出用户信息
@@ -911,15 +992,15 @@ paths:
         "200":
           description: 删除成功
           schema:
-            $ref: '#/definitions/response.Response-string'
+            $ref: '#/definitions/resputil.Response-string'
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
       security:
       - Bearer: []
       summary: 删除用户
@@ -947,15 +1028,15 @@ paths:
         "200":
           description: 更新角色成功
           schema:
-            $ref: '#/definitions/response.Response-string'
+            $ref: '#/definitions/resputil.Response-string'
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
       security:
       - Bearer: []
       summary: 更新角色
@@ -972,15 +1053,15 @@ paths:
         "200":
           description: user information
           schema:
-            $ref: '#/definitions/response.Response-handler_UserInfoResp'
+            $ref: '#/definitions/resputil.Response-handler_UserInfoResp'
         "400":
           description: Request parameter error
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "500":
-          description: other errors
+          description: Other errors
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
       security:
       - Bearer: []
       summary: Get user information
@@ -995,17 +1076,17 @@ paths:
       - application/json
       responses:
         "200":
-          description: Volcano Queue
+          description: Volcano Queue Quota
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "400":
           description: Request parameter error
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "500":
           description: other errors
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
       security:
       - Bearer: []
       summary: Get the queue information
@@ -1022,15 +1103,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/response.Response-array_model_Label'
+            $ref: '#/definitions/resputil.Response-array_model_Label'
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
       security:
       - Bearer: []
       summary: list labels
@@ -1047,15 +1128,15 @@ paths:
         "200":
           description: 成功返回值描述，注意这里返回Json字符串，swagger无法准确解析
           schema:
-            $ref: '#/definitions/response.Response-string'
+            $ref: '#/definitions/resputil.Response-string'
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
       security:
       - Bearer: []
       summary: 获取节点基本信息
@@ -1077,15 +1158,15 @@ paths:
         "200":
           description: 成功返回值描述
           schema:
-            $ref: '#/definitions/response.Response-payload_GPUInfo'
+            $ref: '#/definitions/resputil.Response-payload_GPUInfo'
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
       security:
       - Bearer: []
       summary: 获取GPU各节点的利用率
@@ -1107,15 +1188,15 @@ paths:
         "200":
           description: 成功返回值描述
           schema:
-            $ref: '#/definitions/response.Response-payload_ClusterNodePodInfo'
+            $ref: '#/definitions/resputil.Response-payload_ClusterNodePodInfo'
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
       security:
       - Bearer: []
       summary: 获取节点Pod信息
@@ -1132,15 +1213,15 @@ paths:
         "200":
           description: 成功返回值描述
           schema:
-            $ref: '#/definitions/response.Response-array_payload_ProjectResp'
+            $ref: '#/definitions/resputil.Response-array_payload_ProjectResp'
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
       security:
       - Bearer: []
       summary: 获取用户的所有项目
@@ -1163,20 +1244,45 @@ paths:
         "200":
           description: 成功创建项目，返回项目ID
           schema:
-            $ref: '#/definitions/response.Response-handler_ProjectCreateResp'
+            $ref: '#/definitions/resputil.Response-handler_ProjectCreateResp'
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "500":
           description: 项目创建失败，返回错误信息
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
       security:
       - Bearer: []
       summary: 创建团队项目
       tags:
       - Project
+  /v1/queues:
+    get:
+      consumes:
+      - application/json
+      description: list user queues by user id
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User queue list
+          schema:
+            $ref: '#/definitions/resputil.Response-array_handler_UserQueueResp'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: list user queues
+      tags:
+      - Queue
   /v1/switch:
     post:
       consumes:
@@ -1195,15 +1301,15 @@ paths:
         "200":
           description: 用户上下文
           schema:
-            $ref: '#/definitions/response.Response-handler_LoginResp'
+            $ref: '#/definitions/resputil.Response-handler_LoginResp'
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
       security:
       - Bearer: []
       summary: 类似登录，切换项目并返回新的 JWT Token
@@ -1220,20 +1326,107 @@ paths:
         "200":
           description: Token 鉴权
           schema:
-            $ref: '#/definitions/response.Response-handler_TokenReq'
+            $ref: '#/definitions/resputil.Response-handler_TokenReq'
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
         "500":
           description: 其他错误
           schema:
-            $ref: '#/definitions/response.Response-any'
+            $ref: '#/definitions/resputil.Response-any'
       security:
       - Bearer: []
       summary: 通过token鉴权
       tags:
       - Token
+  /v1/vcjobs:
+    get:
+      consumes:
+      - application/json
+      description: Get the jobs of the user by client-go
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Volcano Job List
+          schema:
+            $ref: '#/definitions/resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get the jobs of the user
+      tags:
+      - VolcanoJob
+  /v1/vcjobs/{name}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete the job by client-go
+      parameters:
+      - description: Job Name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Delete the job
+      tags:
+      - VolcanoJob
+  /v1/vcjobs/{name}/token:
+    get:
+      consumes:
+      - application/json
+      description: Get the token of the job by logs
+      parameters:
+      - description: Job Name
+        in: path
+        name: jobName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/resputil.Response-handler_JobIngressResp'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get the ingress base url and jupyter token of the job
+      tags:
+      - VolcanoJob
 securityDefinitions:
   Bearer:
     description: 访问 /login 并获取 TOKEN 后，填入 'Bearer ${TOKEN}' 以访问受保护的接口

@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/server/payload"
-	resputil "github.com/raids-lab/crater/pkg/server/response"
 )
 
 type NodeMgr struct {

@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
-	resputil "github.com/raids-lab/crater/pkg/server/response"
+	"github.com/raids-lab/crater/internal/resputil"
 )
 
 type LabelMgr struct {

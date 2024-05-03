@@ -9,7 +9,7 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 
 	"github.com/gin-gonic/gin"
-	resputil "github.com/raids-lab/crater/pkg/server/response"
+	"github.com/raids-lab/crater/internal/resputil"
 )
 
 func AuthProtected() gin.HandlerFunc {
@@ -50,8 +50,8 @@ func AuthProtected() gin.HandlerFunc {
 
 			// check queue role
 			if token.QueueName == util.QueueNameNull {
-				resputil.HTTPError(c, http.StatusUnauthorized, "Queue not specified", resputil.InvalidRole)
-				c.Abort()
+				util.SetJWTContext(c, token)
+				c.Next()
 				return
 			}
 
