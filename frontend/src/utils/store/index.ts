@@ -1,8 +1,8 @@
 import { atom, useResetRecoilState } from "recoil";
 import { UserInfo } from "@/hooks/useAuth";
 import { localStorageEffect } from "./utils";
-import { Role } from "@/services/api/auth";
-import { ProjectBasic, ProjectStatus } from "@/services/api/project";
+import { AccessMode, Role } from "@/services/api/auth";
+import { QueueBasic } from "@/services/api/queue";
 
 /**
  * LocalStorage and Recoil Keys
@@ -61,15 +61,14 @@ export const globalSidebarMini = atom({
   effects_UNSTABLE: [localStorageEffect(SIDEBAR_MINISIZE_KEY)],
 });
 
-export const globalProject = atom({
+export const globalAccount = atom({
   key: CURRENT_ACCOUNT_KEY,
   default: {
-    id: 0,
+    id: "",
     name: "",
     role: Role.Guest,
-    isPersonal: true,
-    status: ProjectStatus.Inactive,
-  } as ProjectBasic,
+    access: AccessMode.ReadOnly,
+  } as QueueBasic,
   effects_UNSTABLE: [localStorageEffect(CURRENT_ACCOUNT_KEY)],
 });
 
@@ -80,7 +79,7 @@ export const useResetStore = () => {
   const resetUserInfo = useResetRecoilState(globalUserInfo);
   const resetBreadCrumb = useResetRecoilState(globalBreadCrumb);
   const resetSidebarMini = useResetRecoilState(globalSidebarMini);
-  const resetProject = useResetRecoilState(globalProject);
+  const resetProject = useResetRecoilState(globalAccount);
 
   const resetAll = () => {
     // Recoil
@@ -89,7 +88,7 @@ export const useResetStore = () => {
     resetSidebarMini();
     resetProject();
     // LocalStorage
-    window.localStorage.clear();
+    // window.localStorage.clear();
   };
 
   return { resetAll };

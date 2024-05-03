@@ -26,9 +26,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  apiJTaskDelete,
-  apiJTaskGetPortToken,
-  apiJupyterJobList,
+  IJupyterResp,
+  apiJupyterDelete,
+  apiJupyterTokenGet,
+  apiJupyterList,
 } from "@/services/api/jupyterTask";
 import { DataTable } from "@/components/custom/OldDataTable";
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
@@ -38,29 +39,16 @@ import { cn } from "@/lib/utils";
 import Status from "../../Overview/Status";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { toast } from "sonner";
-import {
-  getHeader,
-  getStatusValue,
-  statuses,
-} from "@/pages/Portal/Job/Ai/statuses";
+import { getHeader, statuses } from "@/pages/Portal/Job/Ai/statuses";
 import { logger } from "@/utils/loglevel";
 import Quota from "./Quota";
 
-type JTaskInfo = {
-  id: number;
-  title: string;
-  taskType: string;
-  status: string;
-  createdAt: string;
-  startedAt: string;
-  finishAt: string;
-  gpus: string | number | undefined;
-};
+interface JTaskInfo extends IJupyterResp {}
 
 const toolbarConfig: DataTableToolbarConfig<string> = {
   filterInput: {
     placeholder: "搜索任务名称",
-    key: "title",
+    key: "name",
   },
   filterOptions: [
     {
@@ -83,8 +71,8 @@ export const Component = () => {
     dataUpdatedAt,
   } = useQuery({
     queryKey: ["jupyter", "list"],
-    queryFn: () => apiJupyterJobList("jupyter", 100, 0),
-    select: (res) => res.data.data.rows,
+    queryFn: () => apiJupyterList(),
+    select: (res) => res.data.data,
     refetchInterval: REFETCH_INTERVAL,
   });
 
@@ -102,7 +90,7 @@ export const Component = () => {
   };
 
   const { mutate: deleteJTask } = useMutation({
-    mutationFn: (id: number) => apiJTaskDelete(id),
+    mutationFn: (jobName: string) => apiJupyterDelete(jobName),
     onSuccess: async () => {
       await refetchTaskList();
       toast.success("任务已删除");
@@ -110,9 +98,9 @@ export const Component = () => {
   });
 
   const { mutate: getPortToken } = useMutation({
-    mutationFn: (id: number) => apiJTaskGetPortToken(id),
-    onSuccess: (_, id) => {
-      window.open(`/job/jupyter/${id}`);
+    mutationFn: (jobName: string) => apiJupyterTokenGet(jobName),
+    onSuccess: (_, jobName) => {
+      window.open(`/job/jupyter/${jobName}`);
     },
   });
 
@@ -141,38 +129,12 @@ export const Component = () => {
         enableSorting: false,
         enableHiding: false,
       },
-
       {
-        accessorKey: "id",
+        accessorKey: "name",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("id")} />
+          <DataTableColumnHeader column={column} title={getHeader("name")} />
         ),
-        cell: ({ row }) => <>{row.getValue("id")}</>,
-        enableSorting: false,
-      },
-      {
-        accessorKey: "title",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("title")} />
-        ),
-        cell: ({ row }) => <>{row.getValue("title")}</>,
-      },
-      // {
-      //   accessorKey: "taskType",
-      //   header: ({ column }) => (
-      //     <DataTableColumnHeader
-      //       column={column}
-      //       title={getHeader("taskType")}
-      //     />
-      //   ),
-      //   cell: ({ row }) => <>{row.getValue("taskType")}</>,
-      // },
-      {
-        accessorKey: "gpus",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("gpus")} />
-        ),
-        cell: ({ row }) => <>{row.getValue("gpus")}</>,
+        cell: ({ row }) => <>{row.getValue("name")}</>,
       },
       {
         accessorKey: "status",
@@ -249,7 +211,7 @@ export const Component = () => {
                 onClick={() => {
                   toast.info("即将跳转至 Jupyter 页面");
                   setTimeout(() => {
-                    getPortToken(taskInfo.id);
+                    getPortToken(taskInfo.jobName);
                   }, 500);
                 }}
                 disabled={row.getValue("status") !== "Running"}
@@ -272,7 +234,7 @@ export const Component = () => {
                   <AlertDialogHeader>
                     <AlertDialogTitle>删除任务</AlertDialogTitle>
                     <AlertDialogDescription>
-                      任务「{taskInfo?.title}
+                      任务「{taskInfo?.name}
                       」将停止，请确认已经保存好所需数据。
                     </AlertDialogDescription>
                   </AlertDialogHeader>
@@ -282,7 +244,7 @@ export const Component = () => {
                       variant="destructive"
                       onClick={() => {
                         // check if browser support clipboard
-                        deleteJTask(taskInfo.id);
+                        deleteJTask(taskInfo.jobName);
                       }}
                     >
                       删除
@@ -301,24 +263,7 @@ export const Component = () => {
   useEffect(() => {
     if (isLoading) return;
     if (!taskList) return;
-    const tableData: JTaskInfo[] = taskList
-      .filter((task) => !task.isDeleted)
-      .map((task) => {
-        return {
-          id: task.ID,
-          title: task.name,
-          taskType: task.taskType,
-          status: getStatusValue(task.status),
-          //priority: task.slo ? "high" : "low",
-          // profileStatus:
-          //   // 分析状态：profileStatus = 1 或 2 都显示分析中，不需要等待分析这个选项了
-          //   task.profileStatus === 1 ? "2" : task.profileStatus.toString(),
-          createdAt: task.createdAt,
-          startedAt: task.startedAt,
-          finishAt: task.finishAt,
-          gpus: 0,
-        };
-      });
+    const tableData = taskList;
     setData(tableData);
   }, [taskList, isLoading]);
 

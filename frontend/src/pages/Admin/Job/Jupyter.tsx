@@ -32,7 +32,7 @@ import {
   StopIcon,
   ExclamationTriangleIcon,
 } from "@radix-ui/react-icons";
-import { apiJTaskDelete } from "@/services/api/jupyterTask";
+import { apiJupyterDelete } from "@/services/api/jupyterTask";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { logger } from "@/utils/loglevel";
 
@@ -159,7 +159,7 @@ const Jupyter: FC = () => {
   };
 
   const { mutate: deleteJTask } = useMutation({
-    mutationFn: (id: number) => apiJTaskDelete(id),
+    mutationFn: (id: number) => apiJupyterDelete(id),
     onSuccess: async () => {
       await refetchTaskList();
       toast.success("任务已删除");

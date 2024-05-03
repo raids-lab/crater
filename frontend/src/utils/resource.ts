@@ -20,17 +20,28 @@ export const AiResourceSchema = z
 
 export type AiResource = z.infer<typeof AiResourceSchema>;
 
-export const getAiResource = (resource: KubernetesResource): AiResource => {
+export const getAiResource = (resource?: KubernetesResource): AiResource => {
   // if resource.cpu is string, parse to int
   // if resource.cpu is number, keep it
-  const cpu =
-    typeof resource.cpu === "string"
+  if (!resource) {
+    return {
+      cpu: 0,
+      gpu: 0,
+      memory: "0Gi",
+      memoryNum: 0,
+      memoryUnit: "Gi",
+    };
+  }
+  const cpu = resource.cpu
+    ? typeof resource.cpu === "string"
       ? parseInt(resource.cpu)
-      : resource.cpu ?? 0;
-  const gpu =
-    typeof resource["nvidia.com/gpu"] === "string"
+      : resource.cpu ?? 0
+    : 0;
+  const gpu = resource["nvidia.com/gpu"]
+    ? typeof resource["nvidia.com/gpu"] === "string"
       ? parseInt(resource["nvidia.com/gpu"])
-      : resource["nvidia.com/gpu"] ?? 0;
+      : resource["nvidia.com/gpu"] ?? 0
+    : 0;
   let memory = resource.memory ?? "0Gi";
   let memoryNum = 0;
   const memoryUnit = "Gi";

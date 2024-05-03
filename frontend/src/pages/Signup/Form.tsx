@@ -59,10 +59,10 @@ export function SignupForm() {
       await queryClient.invalidateQueries();
       setUserState({
         name: username,
-        platformRole: data.context.platformRole,
+        platformRole: data.context.rolePlatform,
       });
       toast.success(
-        `你好，${data.context.platformRole ? "管理员" : "用户"} ${username}`,
+        `你好，${data.context.rolePlatform ? "管理员" : "用户"} ${username}`,
       );
       // navigate to /portal and clear all history
       const dashboard = "/portal";

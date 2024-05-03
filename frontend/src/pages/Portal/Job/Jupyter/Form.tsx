@@ -18,7 +18,10 @@ import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiJTaskCreate, apiJTaskImageList } from "@/services/api/jupyterTask";
+import {
+  apiJupyterCreate,
+  apiJTaskImageList,
+} from "@/services/api/jupyterTask";
 import { cn } from "@/lib/utils";
 import { CaretSortIcon, CheckIcon, Cross1Icon } from "@radix-ui/react-icons";
 import { apiGetFiles } from "@/services/api/file";
@@ -84,7 +87,7 @@ interface TaskFormProps extends React.HTMLAttributes<HTMLDivElement> {
 
 type MountDir = {
   mountPath: string;
-  subPath?: string;
+  subPath: string;
 };
 
 export function NewTaskForm({ closeSheet }: TaskFormProps) {
@@ -115,21 +118,16 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
 
   const { mutate: createTask } = useMutation({
     mutationFn: (values: FormSchema) =>
-      apiJTaskCreate({
-        taskName: values.taskname,
-        slo: 1,
-        taskType: "jupyter",
-        resourceRequest: getAiKResource({
+      apiJupyterCreate({
+        name: values.taskname,
+        resource: getAiKResource({
           gpu: values.gpu,
           memory: `${values.memory}Gi`,
           cpu: values.cpu,
         }),
         image: values.image,
-        workingDir: "",
-        shareDirs: convertShareDirs(values.shareDirs),
-        command: "start.sh jupyter lab --allow-root",
-        gpuModel: values.gpuModel === "default" ? "" : values.gpuModel,
-        schedulerName: values.schedulerName,
+        volumeMounts: convertShareDirs(values.shareDirs),
+        nodeSelector: {},
       }),
     onSuccess: async (_, { taskname }) => {
       await Promise.all([

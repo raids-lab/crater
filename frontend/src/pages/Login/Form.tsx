@@ -14,16 +14,15 @@ import { useNavigate } from "react-router-dom";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import {
   globalLastView,
-  globalProject,
+  globalAccount,
   globalUserInfo,
   useResetStore,
 } from "@/utils/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Role, apiUserLogin } from "@/services/api/auth";
+import { AccessMode, Role, apiUserLogin } from "@/services/api/auth";
 
 import LoadableButton from "@/components/custom/LoadableButton";
 import { toast } from "sonner";
-import { ProjectStatus } from "@/services/api/project";
 
 const formSchema = z.object({
   username: z
@@ -48,7 +47,7 @@ export function ProfileForm() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const setUserState = useSetRecoilState(globalUserInfo);
-  const setProject = useSetRecoilState(globalProject);
+  const setAccount = useSetRecoilState(globalAccount);
   const { resetAll } = useResetStore();
 
   const lastView = useRecoilValue(globalLastView);
@@ -64,21 +63,23 @@ export function ProfileForm() {
       await queryClient.invalidateQueries();
       setUserState({
         name: username,
-        platformRole: data.context.platformRole,
+        platformRole: data.context.rolePlatform,
       });
-      setProject({
-        id: data.context.projectID,
-        name: username,
-        role: data.context.projectRole,
-        status: ProjectStatus.Active,
-        isPersonal: true,
+      setAccount({
+        id: data.context.queue,
+        name: data.context.queue,
+        role: data.context.roleQueue,
+        access:
+          data.context.roleQueue === Role.Admin
+            ? AccessMode.ReadWrite
+            : AccessMode.ReadOnly,
       });
       toast.success(
-        `你好，${data.context.platformRole ? "管理员" : "用户"} ${username}`,
+        `你好，${data.context.rolePlatform ? "管理员" : "用户"} ${username}`,
       );
       // navigate to /portal and clear all history
       const dashboard =
-        lastView === "admin" && data.context.platformRole === Role.Admin
+        lastView === "admin" && data.context.rolePlatform === Role.Admin
           ? "/admin"
           : lastView === "recommend"
             ? "/recommend"
