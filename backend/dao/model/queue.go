@@ -2,10 +2,17 @@ package model
 
 import "gorm.io/gorm"
 
+const (
+	DefaultQueueID = 1
+)
+
 type Queue struct {
 	gorm.Model
-	Name  string `gorm:"uniqueIndex;type:varchar(48);not null;comment:队列名称 (对应 Volcano Queue CRD)"`
-	Space string `gorm:"uniqueIndex;type:varchar(512);not null;comment:队列空间标识"`
+	Name     string `gorm:"uniqueIndex;type:varchar(32);not null;comment:队列名称 (对应 Volcano Queue CRD)"`
+	Nickname string `gorm:"type:varchar(128);not null;comment:队列别名 (用于显示)"`
+	Space    string `gorm:"uniqueIndex;type:varchar(512);not null;comment:队列空间绝对路径"`
+
+	UserQueues []UserQueue
 }
 
 type UserQueue struct {

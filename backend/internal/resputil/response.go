@@ -1,4 +1,4 @@
-package response
+package resputil
 
 import (
 	"net/http"
@@ -8,9 +8,9 @@ import (
 
 // Used by swagger to generate documentation
 type Response[T any] struct {
-	Code ErrorCode `json:"code"`
-	Data T         `json:"data"`
-	Msg  string    `json:"msg"`
+	Code    ErrorCode `json:"code"`
+	Data    T         `json:"data"`
+	Message string    `json:"msg"`
 }
 
 // wrapResponse wraps the response data and sends it back to the client.

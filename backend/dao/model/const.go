@@ -30,8 +30,8 @@ type AccessMode uint8
 const (
 	_            AccessMode = iota
 	AccessModeRO            // Read-only mode
-	AccessModeAO            // Append-only mode
 	AccessModeRW            // Read-write mode
+	AccessModeAO            // Append-only mode
 )
 
 // Job status

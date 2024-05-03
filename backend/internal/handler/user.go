@@ -7,8 +7,8 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 
+	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/pkg/logutils"
-	resputil "github.com/raids-lab/crater/pkg/server/response"
 )
 
 type UserMgr struct {
@@ -82,34 +82,14 @@ func (mgr *UserMgr) DeleteUser(c *gin.Context) {
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/admin/users [get]
 func (mgr *UserMgr) ListUser(c *gin.Context) {
+	var users []UserResp
 	u := query.User
-	p := query.Project
-	up := query.UserProject
-
-	userProjects, err := up.WithContext(c).Join(p, p.ID.EqCol(up.ProjectID), p.IsPersonal.Is(true)).Join(u, u.ID.EqCol(up.UserID)).
-		Select(u.ID, u.Name, u.Role, u.Status, up.ALL).Find()
+	err := u.WithContext(c).Select(u.ID, u.Name, u.Role, u.Status).Scan(&users)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("list user failed, detail: %v", err), resputil.NotSpecified)
+		resputil.Error(c, fmt.Sprintf("list users failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
-	users := make([]UserResp, 0)
-	for i := range userProjects {
-		userProject := userProjects[i]
-		user, err := u.WithContext(c).Where(u.ID.Eq(userProject.UserID)).First()
-		if err != nil {
-			resputil.Error(c, fmt.Sprintf("find user failed, detail: %v", err), resputil.NotSpecified)
-			return
-		}
-		userResp := UserResp{
-			ID:     user.ID,
-			Name:   user.Name,
-			Role:   user.Role,
-			Status: user.Status, // 用户状态
-		}
-
-		users = append(users, userResp)
-	}
-	logutils.Log.Infof("list users success, taskNum: %d", len(users))
+	logutils.Log.Infof("list users success, count: %d", len(users))
 	resputil.Success(c, users)
 }
 

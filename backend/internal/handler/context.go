@@ -3,9 +3,10 @@ package handler
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
-	resputil "github.com/raids-lab/crater/pkg/server/response"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
@@ -30,6 +31,13 @@ func (mgr *ContextMgr) RegisterProtected(g *gin.RouterGroup) {
 
 func (mgr *ContextMgr) RegisterAdmin(_ *gin.RouterGroup) {}
 
+type (
+	QuotaResp struct {
+		Capability v1.ResourceList `json:"capability"`
+		Allocated  v1.ResourceList `json:"allocated"`
+	}
+)
+
 // GetQueue godoc
 // @Summary Get the queue information
 // @Description query the queue information by client-go
@@ -37,25 +45,25 @@ func (mgr *ContextMgr) RegisterAdmin(_ *gin.RouterGroup) {}
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Success 200 {object} resputil.Response[any] "Volcano Queue"
+// @Success 200 {object} resputil.Response[any] "Volcano Queue Quota"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "other errors"
 // @Router /v1/context/queue [get]
 func (mgr *ContextMgr) GetQueue(c *gin.Context) {
 	token := util.GetToken(c)
 	if token.QueueName == util.QueueNameNull {
-		resputil.Error(c, "Queue not specified", resputil.NotSpecified)
+		resputil.Error(c, "Queue not specified", resputil.QueueNotFound)
 		return
 	}
 
 	queue := scheduling.Queue{}
 	err := mgr.Get(c, types.NamespacedName{Name: token.QueueName, Namespace: config.GetConfig().Workspace.Namespace}, &queue)
 	if err != nil {
-		resputil.Error(c, "Queue not found", resputil.NotSpecified)
+		resputil.Error(c, "Queue not found", resputil.QueueNotFound)
 		return
 	}
 
-	resputil.Success(c, queue)
+	resputil.Success(c, QuotaResp{Capability: queue.Spec.Capability, Allocated: queue.Status.Allocated})
 }
 
 type (
