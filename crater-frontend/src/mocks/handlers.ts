@@ -27,9 +27,9 @@ export const handlers = [
             accessToken: mockUser.accessToken,
             refreshToken: mockUser.refreshToken,
             context: {
-              projectID: 1,
-              projectRole: Role.Admin,
-              platformRole: mockUser.role,
+              queue: "",
+              roleQueue: Role.Admin,
+              rolePlatform: mockUser.role,
             },
           },
           code: 0,

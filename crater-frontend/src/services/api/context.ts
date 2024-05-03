@@ -1,22 +1,24 @@
+import { KubernetesResource } from "@/utils/resource";
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
 
-interface Quota {
-  jobReq: number;
-  job: number;
-  nodeReq: number;
-  node: number;
-  cpuReq: number;
-  cpu: number;
-  gpuReq: number;
-  gpu: number;
-  memReq: number;
-  mem: number;
-  gpuMemReq: number;
-  gpuMem: number;
-  storage: number;
-  extra: string | null;
+export interface Quota {
+  capability: KubernetesResource;
+  allocated: KubernetesResource;
 }
 
+export const DefaultQuota: Quota = {
+  capability: {
+    cpu: 0,
+    memory: "0",
+    "nvidia.com/gpu": 0,
+  },
+  allocated: {
+    cpu: 0,
+    memory: "0",
+    "nvidia.com/gpu": 0,
+  },
+};
+
 export const apiContextQuota = () =>
-  instance.get<IResponse<Quota>>(VERSION + "/context/quota");
+  instance.get<IResponse<Quota>>(VERSION + "/context/queue");

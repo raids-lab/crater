@@ -31,10 +31,15 @@ export enum Role {
   Admin,
 }
 
+export enum AccessMode {
+  ReadOnly = 1,
+  ReadWrite,
+}
+
 export interface UserContext {
-  projectID: number;
-  projectRole: Role;
-  platformRole: Role;
+  queue: string;
+  roleQueue: Role;
+  rolePlatform: Role;
 }
 
 export interface IAuthResponse {
@@ -59,15 +64,17 @@ export const apiUserLogin = async (user: ILogin) => {
   return response.data.data;
 };
 
-export const apiProjectSwitch = async (id: number) => {
+export const apiQueueSwitch = async (queue: string) => {
   const response = await instance.post<IResponse<IAuthResponse>>(
     VERSION + "/switch",
     {
-      id,
+      queue,
     },
   );
-  const { accessToken, refreshToken } = response.data.data;
-  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  if (response.status === 200) {
+    const { accessToken, refreshToken } = response.data.data;
+    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  }
   return response.data.data;
 };

@@ -13,7 +13,7 @@ import { useMemo, useState } from "react";
 import SidebarSheet from "./SidebarSheet";
 import { PanelLeft } from "lucide-react";
 import { useRecoilValue } from "recoil";
-import { globalProject } from "@/utils/store";
+import { globalAccount } from "@/utils/store";
 import { Role } from "@/services/api/auth";
 
 const DashboardLayout = ({
@@ -25,7 +25,7 @@ const DashboardLayout = ({
 }) => {
   const { pathname: rawPath } = useLocation();
   const [open, setOpen] = useState(false);
-  const currentProject = useRecoilValue(globalProject);
+  const currentAccount = useRecoilValue(globalAccount);
 
   // 特殊规则，网盘路由切换时，不启用过渡动画
   const motionKey = useMemo(() => {
@@ -38,14 +38,11 @@ const DashboardLayout = ({
 
   // 特殊规则，portal 个人项目或者非管理员角色，隐藏项目管理菜单
   const sidebarItems = useMemo(() => {
-    if (
-      rawPath.startsWith("/portal") &&
-      (currentProject?.isPersonal || currentProject?.role !== Role.Admin)
-    ) {
+    if (rawPath.startsWith("/portal") && currentAccount?.role !== Role.Admin) {
       return items.filter((item) => item.path !== "project");
     }
     return items;
-  }, [items, currentProject, rawPath]);
+  }, [items, currentAccount, rawPath]);
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">

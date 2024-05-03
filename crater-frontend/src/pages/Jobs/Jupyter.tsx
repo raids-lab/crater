@@ -2,7 +2,7 @@ import type { FC } from "react";
 import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { apiJTaskGetPortToken } from "@/services/api/jupyterTask";
+import { apiJupyterTokenGet } from "@/services/api/jupyterTask";
 import CraterIcon from "@/components/icon/CraterIcon";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,15 +29,15 @@ const Jupyter: FC = () => {
   });
 
   const jupyterInfo = useQuery({
-    queryKey: ["jtask", id],
-    queryFn: () => apiJTaskGetPortToken(parseInt(id ?? "0")),
+    queryKey: ["jupyter", id],
+    queryFn: () => apiJupyterTokenGet(id ?? "0"),
     select: (res) => res.data.data,
     enabled: !!id,
   });
 
   const url = useMemo(() => {
     if (jupyterInfo.data) {
-      return `https://crater.act.buaa.edu.cn/jupyter/${jupyterInfo.data.name}?token=${jupyterInfo.data.token}`;
+      return `https://crater.act.buaa.edu.cn/jupyter/${jupyterInfo.data.baseURL}?token=${jupyterInfo.data.token}`;
     } else {
       return "";
     }

@@ -13,7 +13,7 @@ export const getHeader = (key: string): string => {
   switch (key) {
     case "id":
       return "序号";
-    case "title":
+    case "name":
       return "任务名称";
     case "taskType":
       return "类型";
@@ -103,23 +103,6 @@ export const statuses: {
     icon: CrossCircledIcon,
   },
 ];
-
-export function getStatusValue(status: JobStatus): string {
-  switch (status) {
-    case JobStatus.Initial:
-      return "Created";
-    case JobStatus.Created:
-      return "Created";
-    case JobStatus.Running:
-      return "Running";
-    case JobStatus.Succeeded:
-      return "Succeeded";
-    case JobStatus.Failed:
-      return "Failed";
-    case JobStatus.Preempted:
-      return "Preempted";
-  }
-}
 
 // Profilingstatus
 // UnProfiled = 0 // 未分析
