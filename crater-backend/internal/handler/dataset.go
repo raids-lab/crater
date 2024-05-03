@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/raids-lab/crater/internal/resputil"
 	recommenddljobapi "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
 	"github.com/raids-lab/crater/pkg/crclient"
 	usersvc "github.com/raids-lab/crater/pkg/db/user"
 	payload "github.com/raids-lab/crater/pkg/server/payload"
-	resputil "github.com/raids-lab/crater/pkg/server/response"
 	"github.com/raids-lab/crater/pkg/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

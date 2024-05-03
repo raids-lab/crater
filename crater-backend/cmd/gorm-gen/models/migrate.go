@@ -65,30 +65,20 @@ func main() {
 			&model.AIJob{},
 			&model.Image{},
 			&model.Label{},
+			&model.Queue{},
+			&model.UserQueue{},
 		)
 		if err != nil {
 			return err
 		}
-		// all other constraints, indexes, etc...
-		// 创建默认项目和对应的空间
-		descrption := "集群级别的默认项目，不会显示在用户可访问的项目列表中"
-		p0 := model.Project{
-			Name:        "default",
-			Description: &descrption,
-			Namespace:   "",
-			Status:      model.StatusActive,
-			IsPersonal:  false,
-		}
-		res := tx.Create(&p0)
-		if res.Error != nil {
-			return res.Error
+
+		queue := model.Queue{
+			Name:     "default",
+			Nickname: "公共队列",
+			Space:    "/public",
 		}
 
-		s0 := model.Space{
-			Path:      "/public",
-			ProjectID: p0.ID,
-		}
-		res = tx.Create(&s0)
+		res := tx.Create(&queue)
 		if res.Error != nil {
 			return res.Error
 		}

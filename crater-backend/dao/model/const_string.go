@@ -49,11 +49,11 @@ func _() {
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
 	_ = x[AccessModeRO-1]
-	_ = x[AccessModeAO-2]
-	_ = x[AccessModeRW-3]
+	_ = x[AccessModeRW-2]
+	_ = x[AccessModeAO-3]
 }
 
-const _AccessMode_name = "AccessModeROAccessModeAOAccessModeRW"
+const _AccessMode_name = "AccessModeROAccessModeRWAccessModeAO"
 
 var _AccessMode_index = [...]uint8{0, 12, 24, 36}
 

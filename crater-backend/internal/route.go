@@ -49,7 +49,7 @@ func Register(aitaskCtrl *aitaskctl.TaskController, cl client.Client, cs *kubern
 	return s
 }
 
-func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl client.Client, cs *kubernetes.Clientset) {
+func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cr client.Client, cs *kubernetes.Clientset) {
 	// Enable CORS for http://localhost:XXXX in debug mode
 	if gin.Mode() == gin.DebugMode {
 		fe := os.Getenv("CRATER_FE_PORT")
@@ -64,14 +64,14 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	}
 
 	// Init Clients and Configs
-	pvcClient := crclient.PVCClient{Client: cl}
+	pvcClient := crclient.PVCClient{Client: cr}
 	err := pvcClient.InitShareDir()
 	if err != nil {
 		panic(err)
 	}
 	httpClient := http.Client{}
-	logClient := crclient.LogClient{Client: cl, KubeClient: cs}
-	nodeClient := crclient.NodeClient{Client: cl, KubeClient: cs}
+	logClient := crclient.LogClient{Client: cr, KubeClient: cs}
+	nodeClient := crclient.NodeClient{Client: cr, KubeClient: cs}
 	harborClient := crclient.NewHarborClient()
 
 	// Init Handlers
@@ -80,11 +80,12 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	projectMgr := handler.NewProjectMgr(aitaskCtrl)
 	nodeMgr := handler.NewNodeMgr(&nodeClient)
 	userMgr := handler.NewUserMgr()
-	imagepackMgr := handler.NewImagePackMgr(&logClient, &crclient.ImagePackController{Client: cl}, &harborClient)
-	contextMgr := handler.NewContextMgr(cl)
+	imagepackMgr := handler.NewImagePackMgr(&logClient, &crclient.ImagePackController{Client: cr}, &harborClient)
+	contextMgr := handler.NewContextMgr(cr)
 	jwttokenMgr := handler.NewJWTTokenMgr()
-	recommenddljobMgr := handler.NewRecommendDLJobMgr(cl)
-	volcanoMgr := handler.NewVolcanojobMgr(cl)
+	recommenddljobMgr := handler.NewRecommendDLJobMgr(cr)
+	volcanoMgr := handler.NewVolcanojobMgr(cr, cs)
+	queueMgr := handler.NewQueueMgr(cr)
 	///////////////////////////////////////
 	//// Public routers, no need login ////
 	///////////////////////////////////////
@@ -102,13 +103,15 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 
 	authMgr.RegisterProtected(protectedRouter.Group("/switch"))
 	labelMgr.RegisterProtected(protectedRouter.Group("/labels"))
+	queueMgr.RegisterProtected(protectedRouter.Group("/accounts"))
 	projectMgr.RegisterProtected(protectedRouter.Group("/projects"))
 	nodeMgr.RegisterProtected(protectedRouter.Group("/nodes"))
 	imagepackMgr.RegisterProtected(protectedRouter.Group("/images"))
 	contextMgr.RegisterProtected(protectedRouter.Group("/context"))
 	jwttokenMgr.RegisterProtected(protectedRouter.Group("/storage"))
 	recommenddljobMgr.RegisterProtected(protectedRouter.Group("/recommenddljob"))
-	volcanoMgr.RegisterProtected(protectedRouter.Group("/volcano"))
+	volcanoMgr.RegisterProtected(protectedRouter.Group("/vcjobs"))
+
 	///////////////////////////////////////
 	//// Admin routers, need admin role ///
 	///////////////////////////////////////
@@ -122,4 +125,5 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cl clien
 	userMgr.RegisterAdmin(adminRouter.Group("/users"))
 	imagepackMgr.RegisterAdmin(adminRouter.Group("/images"))
 	recommenddljobMgr.RegisterAdmin(adminRouter.Group("/recommenddljob"))
+	queueMgr.RegisterAdmin(adminRouter.Group("/queues"))
 }
