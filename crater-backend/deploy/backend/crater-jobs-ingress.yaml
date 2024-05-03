@@ -5,6 +5,7 @@ metadata:
   namespace: crater-workspace
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: 20480m
 spec:
   ingressClassName: nginx
   tls:

@@ -43,7 +43,10 @@ func GetToken(ctx *gin.Context) JWTMessage {
 	msg.QueueID = ctx.GetUint(QueueIDKey)
 	msg.QueueName = ctx.GetString(QueueNameKey)
 
-	msg.RoleQueue = model.Role(ctx.GetInt(RoleQueueKey))
-	msg.RolePlatform = model.Role(ctx.GetInt(RolePlatformKey))
+	roleQueue, _ := ctx.Get(RoleQueueKey)
+	msg.RoleQueue = roleQueue.(model.Role)
+
+	rolePlatform, _ := ctx.Get(RolePlatformKey)
+	msg.RolePlatform = rolePlatform.(model.Role)
 	return msg
 }

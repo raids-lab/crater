@@ -219,25 +219,25 @@ const docTemplate = `{
                     "200": {
                         "description": "登录成功，返回 JWT Token 和默认个人项目",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-handler_LoginResp"
+                            "$ref": "#/definitions/resputil.Response-handler_LoginResp"
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "401": {
                         "description": "用户名或密码错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "500": {
                         "description": "数据库交互错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     }
                 }
@@ -276,19 +276,19 @@ const docTemplate = `{
                     "200": {
                         "description": "成功返回",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-array_model_Label"
+                            "$ref": "#/definitions/resputil.Response-array_model_Label"
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "500": {
                         "description": "其他错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     }
                 }
@@ -333,19 +333,19 @@ const docTemplate = `{
                     "200": {
                         "description": "成功返回",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-string"
+                            "$ref": "#/definitions/resputil.Response-string"
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "500": {
                         "description": "其他错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     }
                 }
@@ -379,19 +379,19 @@ const docTemplate = `{
                     "200": {
                         "description": "成功返回",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-string"
+                            "$ref": "#/definitions/resputil.Response-string"
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "500": {
                         "description": "其他错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     }
                 }
@@ -473,19 +473,19 @@ const docTemplate = `{
                     "200": {
                         "description": "项目列表",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-handler_ListAllResp"
+                            "$ref": "#/definitions/resputil.Response-handler_ListAllResp"
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "500": {
                         "description": "其他错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     }
                 }
@@ -530,19 +530,59 @@ const docTemplate = `{
                     "200": {
                         "description": "成功更新配额",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-string"
+                            "$ref": "#/definitions/resputil.Response-string"
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "500": {
                         "description": "其他错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/queues": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "list all queues by client-go",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Queue"
+                ],
+                "summary": "list all queues",
+                "responses": {
+                    "200": {
+                        "description": "Volcano queue list",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     }
                 }
@@ -570,19 +610,19 @@ const docTemplate = `{
                     "200": {
                         "description": "成功获取用户信息",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-array_handler_UserResp"
+                            "$ref": "#/definitions/resputil.Response-array_handler_UserResp"
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "500": {
                         "description": "其他错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     }
                 }
@@ -619,19 +659,19 @@ const docTemplate = `{
                     "200": {
                         "description": "删除成功",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-string"
+                            "$ref": "#/definitions/resputil.Response-string"
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "500": {
                         "description": "其他错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     }
                 }
@@ -676,19 +716,19 @@ const docTemplate = `{
                     "200": {
                         "description": "更新角色成功",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-string"
+                            "$ref": "#/definitions/resputil.Response-string"
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "500": {
                         "description": "其他错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     }
                 }
@@ -716,19 +756,19 @@ const docTemplate = `{
                     "200": {
                         "description": "user information",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-handler_UserInfoResp"
+                            "$ref": "#/definitions/resputil.Response-handler_UserInfoResp"
                         }
                     },
                     "400": {
                         "description": "Request parameter error",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "500": {
-                        "description": "other errors",
+                        "description": "Other errors",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     }
                 }
@@ -754,21 +794,21 @@ const docTemplate = `{
                 "summary": "Get the queue information",
                 "responses": {
                     "200": {
-                        "description": "Volcano Queue",
+                        "description": "Volcano Queue Quota",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "400": {
                         "description": "Request parameter error",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "500": {
                         "description": "other errors",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     }
                 }
@@ -796,19 +836,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-array_model_Label"
+                            "$ref": "#/definitions/resputil.Response-array_model_Label"
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "500": {
                         "description": "其他错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     }
                 }
@@ -836,19 +876,19 @@ const docTemplate = `{
                     "200": {
                         "description": "成功返回值描述，注意这里返回Json字符串，swagger无法准确解析",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-string"
+                            "$ref": "#/definitions/resputil.Response-string"
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "500": {
                         "description": "其他错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     }
                 }
@@ -884,19 +924,19 @@ const docTemplate = `{
                     "200": {
                         "description": "成功返回值描述",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-payload_GPUInfo"
+                            "$ref": "#/definitions/resputil.Response-payload_GPUInfo"
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "500": {
                         "description": "其他错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     }
                 }
@@ -932,19 +972,19 @@ const docTemplate = `{
                     "200": {
                         "description": "成功返回值描述",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-payload_ClusterNodePodInfo"
+                            "$ref": "#/definitions/resputil.Response-payload_ClusterNodePodInfo"
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "500": {
                         "description": "其他错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     }
                 }
@@ -972,19 +1012,19 @@ const docTemplate = `{
                     "200": {
                         "description": "成功返回值描述",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-array_payload_ProjectResp"
+                            "$ref": "#/definitions/resputil.Response-array_payload_ProjectResp"
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "500": {
                         "description": "其他错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     }
                 }
@@ -1021,19 +1061,59 @@ const docTemplate = `{
                     "200": {
                         "description": "成功创建项目，返回项目ID",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-handler_ProjectCreateResp"
+                            "$ref": "#/definitions/resputil.Response-handler_ProjectCreateResp"
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "500": {
                         "description": "项目创建失败，返回错误信息",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/queues": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "list user queues by user id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Queue"
+                ],
+                "summary": "list user queues",
+                "responses": {
+                    "200": {
+                        "description": "User queue list",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-array_handler_UserQueueResp"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     }
                 }
@@ -1072,19 +1152,19 @@ const docTemplate = `{
                     "200": {
                         "description": "用户上下文",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-handler_LoginResp"
+                            "$ref": "#/definitions/resputil.Response-handler_LoginResp"
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "500": {
                         "description": "其他错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     }
                 }
@@ -1112,19 +1192,157 @@ const docTemplate = `{
                     "200": {
                         "description": "Token 鉴权",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-handler_TokenReq"
+                            "$ref": "#/definitions/resputil.Response-handler_TokenReq"
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "500": {
                         "description": "其他错误",
                         "schema": {
-                            "$ref": "#/definitions/response.Response-any"
+                            "$ref": "#/definitions/resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/vcjobs": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Get the jobs of the user by client-go",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VolcanoJob"
+                ],
+                "summary": "Get the jobs of the user",
+                "responses": {
+                    "200": {
+                        "description": "Volcano Job List",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/vcjobs/{name}": {
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Delete the job by client-go",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VolcanoJob"
+                ],
+                "summary": "Delete the job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job Name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/vcjobs/{name}/token": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Get the token of the job by logs",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VolcanoJob"
+                ],
+                "summary": "Get the ingress base url and jupyter token of the job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job Name",
+                        "name": "jobName",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-handler_JobIngressResp"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     }
                 }
@@ -1208,6 +1426,17 @@ const docTemplate = `{
                     "$ref": "#/definitions/model.ImageProfileParams"
                 },
                 "imagepackname": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.JobIngressResp": {
+            "type": "object",
+            "properties": {
+                "baseURL": {
+                    "type": "string"
+                },
+                "token": {
                     "type": "string"
                 }
             }
@@ -1440,6 +1669,23 @@ const docTemplate = `{
                 }
             }
         },
+        "handler.UserQueueResp": {
+            "type": "object",
+            "properties": {
+                "access": {
+                    "$ref": "#/definitions/model.AccessMode"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "role": {
+                    "$ref": "#/definitions/model.Role"
+                }
+            }
+        },
         "handler.UserResp": {
             "type": "object",
             "properties": {
@@ -1468,6 +1714,26 @@ const docTemplate = `{
                     ]
                 }
             }
+        },
+        "model.AccessMode": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3
+            ],
+            "x-enum-comments": {
+                "AccessModeAO": "Append-only mode",
+                "AccessModeRO": "Read-only mode",
+                "AccessModeRW": "Read-write mode"
+            },
+            "x-enum-varnames": [
+                "_",
+                "AccessModeRO",
+                "AccessModeRW",
+                "AccessModeAO"
+            ]
         },
         "model.ImageProfileParams": {
             "type": "object",
@@ -1721,7 +1987,7 @@ const docTemplate = `{
                 }
             }
         },
-        "response.ErrorCode": {
+        "resputil.ErrorCode": {
             "type": "integer",
             "enum": [
                 0,
@@ -1730,6 +1996,7 @@ const docTemplate = `{
                 40102,
                 40103,
                 40301,
+                40401,
                 99999
             ],
             "x-enum-varnames": [
@@ -1739,14 +2006,15 @@ const docTemplate = `{
                 "UserNotFound",
                 "InvalidToken",
                 "InvalidRole",
+                "QueueNotFound",
                 "NotSpecified"
             ]
         },
-        "response.Response-any": {
+        "resputil.Response-any": {
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/response.ErrorCode"
+                    "$ref": "#/definitions/resputil.ErrorCode"
                 },
                 "data": {},
                 "msg": {
@@ -1754,11 +2022,28 @@ const docTemplate = `{
                 }
             }
         },
-        "response.Response-array_handler_UserResp": {
+        "resputil.Response-array_handler_UserQueueResp": {
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/response.ErrorCode"
+                    "$ref": "#/definitions/resputil.ErrorCode"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handler.UserQueueResp"
+                    }
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "resputil.Response-array_handler_UserResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/resputil.ErrorCode"
                 },
                 "data": {
                     "type": "array",
@@ -1771,11 +2056,11 @@ const docTemplate = `{
                 }
             }
         },
-        "response.Response-array_model_Label": {
+        "resputil.Response-array_model_Label": {
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/response.ErrorCode"
+                    "$ref": "#/definitions/resputil.ErrorCode"
                 },
                 "data": {
                     "type": "array",
@@ -1788,11 +2073,11 @@ const docTemplate = `{
                 }
             }
         },
-        "response.Response-array_payload_ProjectResp": {
+        "resputil.Response-array_payload_ProjectResp": {
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/response.ErrorCode"
+                    "$ref": "#/definitions/resputil.ErrorCode"
                 },
                 "data": {
                     "type": "array",
@@ -1805,11 +2090,25 @@ const docTemplate = `{
                 }
             }
         },
-        "response.Response-handler_ListAllResp": {
+        "resputil.Response-handler_JobIngressResp": {
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/response.ErrorCode"
+                    "$ref": "#/definitions/resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/handler.JobIngressResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "resputil.Response-handler_ListAllResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/resputil.ErrorCode"
                 },
                 "data": {
                     "$ref": "#/definitions/handler.ListAllResp"
@@ -1819,11 +2118,11 @@ const docTemplate = `{
                 }
             }
         },
-        "response.Response-handler_LoginResp": {
+        "resputil.Response-handler_LoginResp": {
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/response.ErrorCode"
+                    "$ref": "#/definitions/resputil.ErrorCode"
                 },
                 "data": {
                     "$ref": "#/definitions/handler.LoginResp"
@@ -1833,11 +2132,11 @@ const docTemplate = `{
                 }
             }
         },
-        "response.Response-handler_ProjectCreateResp": {
+        "resputil.Response-handler_ProjectCreateResp": {
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/response.ErrorCode"
+                    "$ref": "#/definitions/resputil.ErrorCode"
                 },
                 "data": {
                     "$ref": "#/definitions/handler.ProjectCreateResp"
@@ -1847,11 +2146,11 @@ const docTemplate = `{
                 }
             }
         },
-        "response.Response-handler_TokenReq": {
+        "resputil.Response-handler_TokenReq": {
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/response.ErrorCode"
+                    "$ref": "#/definitions/resputil.ErrorCode"
                 },
                 "data": {
                     "$ref": "#/definitions/handler.TokenReq"
@@ -1861,11 +2160,11 @@ const docTemplate = `{
                 }
             }
         },
-        "response.Response-handler_UserInfoResp": {
+        "resputil.Response-handler_UserInfoResp": {
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/response.ErrorCode"
+                    "$ref": "#/definitions/resputil.ErrorCode"
                 },
                 "data": {
                     "$ref": "#/definitions/handler.UserInfoResp"
@@ -1875,11 +2174,11 @@ const docTemplate = `{
                 }
             }
         },
-        "response.Response-payload_ClusterNodePodInfo": {
+        "resputil.Response-payload_ClusterNodePodInfo": {
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/response.ErrorCode"
+                    "$ref": "#/definitions/resputil.ErrorCode"
                 },
                 "data": {
                     "$ref": "#/definitions/payload.ClusterNodePodInfo"
@@ -1889,11 +2188,11 @@ const docTemplate = `{
                 }
             }
         },
-        "response.Response-payload_GPUInfo": {
+        "resputil.Response-payload_GPUInfo": {
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/response.ErrorCode"
+                    "$ref": "#/definitions/resputil.ErrorCode"
                 },
                 "data": {
                     "$ref": "#/definitions/payload.GPUInfo"
@@ -1903,11 +2202,11 @@ const docTemplate = `{
                 }
             }
         },
-        "response.Response-string": {
+        "resputil.Response-string": {
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/response.ErrorCode"
+                    "$ref": "#/definitions/resputil.ErrorCode"
                 },
                 "data": {
                     "type": "string"

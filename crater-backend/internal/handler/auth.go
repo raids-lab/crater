@@ -10,11 +10,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
-	resputil "github.com/raids-lab/crater/pkg/server/response"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -180,6 +180,20 @@ func (mgr *AuthMgr) createUser(c *gin.Context, name string) (*model.User, error)
 		}),
 	}
 	if err := u.WithContext(c).Create(&user); err != nil {
+		return nil, err
+	}
+
+	// TODO: Create personal directory
+
+	// TODO: disable auto link to default queue in the future
+	uq := query.UserQueue
+	userQueue := model.UserQueue{
+		UserID:     user.ID,
+		QueueID:    model.DefaultQueueID,
+		Role:       model.RoleUser,
+		AccessMode: model.AccessModeRW,
+	}
+	if err := uq.WithContext(c).Create(&userQueue); err != nil {
 		return nil, err
 	}
 
@@ -350,8 +364,16 @@ func (mgr *AuthMgr) SwitchProject(c *gin.Context) {
 	token := util.GetToken(c)
 
 	// Check queue
+	q := query.Queue
 	uq := query.UserQueue
-	userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID), uq.QueueID.Eq(token.QueueID)).First()
+
+	queue, err := q.WithContext(c).Where(q.Name.Eq(req.Queue)).First()
+	if err != nil {
+		resputil.Error(c, "Queue not found", resputil.NotSpecified)
+		return
+	}
+
+	userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID), uq.QueueID.Eq(queue.ID)).First()
 	if err != nil {
 		resputil.Error(c, "Queue not found", resputil.NotSpecified)
 		return

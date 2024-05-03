@@ -11,12 +11,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/logutils"
 	payload "github.com/raids-lab/crater/pkg/server/payload"
-	resputil "github.com/raids-lab/crater/pkg/server/response"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -361,7 +361,7 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	}
 
 	// manually add public imagelink
-	imageLinks = append(imageLinks, "jupyter/base-notebook:ubuntu-22.04")
+	imageLinks = append(imageLinks, "***REMOVED***/crater-workspace/jupyter-base-notebook:ubuntu-22.04")
 
 	resp := payload.GetImagesResp{Images: imageLinks}
 	resputil.Success(c, resp)

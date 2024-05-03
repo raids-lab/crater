@@ -1,4 +1,4 @@
-package response
+package resputil
 
 type ErrorCode int
 
@@ -11,6 +11,9 @@ const (
 	InvalidToken   ErrorCode = 40103
 
 	InvalidRole ErrorCode = 40301
+
+	// When request do not contain required queue
+	QueueNotFound ErrorCode = 40401
 
 	// Indicates laziness of the developer
 	// Frontend will directly print the message without any translation
