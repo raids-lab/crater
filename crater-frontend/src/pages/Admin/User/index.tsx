@@ -70,12 +70,12 @@ const getHeader = (key: string): string => {
 const roles = [
   {
     label: "管理员",
-    value: Role.Admin,
+    value: Role.Admin.toString(),
     icon: StarFilledIcon,
   },
   {
     label: "普通用户",
-    value: Role.User,
+    value: Role.User.toString(),
     icon: StarIcon,
   },
 ];
@@ -93,7 +93,7 @@ const statuses = [
   },
 ];
 
-const toolbarConfig: DataTableToolbarConfig<Role> = {
+const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
     placeholder: "搜索用户名",
     key: "name",
@@ -247,7 +247,7 @@ export const User = () => {
                               onClick={() =>
                                 updateRole({
                                   userName: user.name,
-                                  role: role.value,
+                                  role: parseInt(role.value),
                                 })
                               }
                             >

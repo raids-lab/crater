@@ -64,7 +64,7 @@ type TaskInfo = {
   gpus: string | number | undefined;
 };
 
-const toolbarConfig: DataTableToolbarConfig<string> = {
+const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
     placeholder: "搜索任务名称",
     key: "title",

@@ -297,7 +297,7 @@ export const Component: FC = () => {
         return key;
     }
   };
-  const toolbarConfig: DataTableToolbarConfig<string> = {
+  const toolbarConfig: DataTableToolbarConfig = {
     filterInput: {
       placeholder: "搜索名称",
       key: "filename",
