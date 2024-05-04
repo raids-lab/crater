@@ -159,7 +159,7 @@ const Jupyter: FC = () => {
   };
 
   const { mutate: deleteJTask } = useMutation({
-    mutationFn: (id: number) => apiJupyterDelete(id),
+    mutationFn: (id: string) => apiJupyterDelete(id),
     onSuccess: async () => {
       await refetchTaskList();
       toast.success("任务已删除");
@@ -351,7 +351,7 @@ const Jupyter: FC = () => {
                       variant="destructive"
                       onClick={() => {
                         // check if browser support clipboard
-                        deleteJTask(taskInfo.id);
+                        deleteJTask(taskInfo.taskName);
                       }}
                     >
                       删除
