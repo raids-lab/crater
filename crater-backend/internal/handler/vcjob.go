@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 
@@ -517,10 +518,10 @@ func (mgr *VolcanojobMgr) GetJobs(c *gin.Context) {
 	for i := range jobs.Items {
 		job := &jobs.Items[i]
 		conditions := job.Status.Conditions
-		var running batch.JobCondition
+		var runningTimestamp metav1.Time
 		for _, condition := range conditions {
 			if condition.Status == batch.Running {
-				running = condition
+				runningTimestamp = *condition.LastTransitionTime
 				break
 			}
 		}
@@ -530,9 +531,14 @@ func (mgr *VolcanojobMgr) GetJobs(c *gin.Context) {
 			Queue:             job.Spec.Queue,
 			Status:            job.Status.State.Phase,
 			CreationTimestamp: job.CreationTimestamp,
-			RunningTimestamp:  *running.LastTransitionTime,
+			RunningTimestamp:  runningTimestamp,
 		}
 	}
+
+	// sort jobs by creation time in descending order
+	sort.Slice(jobList, func(i, j int) bool {
+		return jobList[i].CreationTimestamp.After(jobList[j].CreationTimestamp.Time)
+	})
 
 	resputil.Success(c, jobList)
 }
