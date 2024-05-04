@@ -32,6 +32,7 @@ data:
     workspace:
       namespace: crater-workspace
       pvcName: crater-storage
+      ingressName: crater-jobs-ingress
     act:
       image:
         registryServer: ***REMOVED***
@@ -41,5 +42,5 @@ data:
       auth:
         userName: ***REMOVED***
         password: ***REMOVED***
-        address: 192.168.0.9:389
+        address: ***REMOVED***
         searchDN: OU=Lab,OU=ACT,DC=lab,DC=act,DC=buaa,Dc=edu,DC=cn

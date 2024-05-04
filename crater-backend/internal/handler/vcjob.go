@@ -44,6 +44,7 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.POST("/jupyter", mgr.CreateJupyterJob)
 	g.GET("", mgr.GetJobs)
 	g.GET("/:name/token", mgr.GetJobIngress)
+	g.GET("/:name/log", mgr.GetJobLog)
 	g.DELETE("/:name", mgr.DeleteJob)
 }
 
@@ -387,6 +388,22 @@ func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
 	resputil.Success(c, nil)
 }
 
+func (mgr *VolcanojobMgr) getPodLog(c *gin.Context, namespace, podName string) (*bytes.Buffer, error) {
+	logOptions := &v1.PodLogOptions{}
+	logReq := mgr.kubeClient.CoreV1().Pods(namespace).GetLogs(podName, logOptions)
+	logs, err := logReq.Stream(c)
+	if err != nil {
+		return nil, err
+	}
+	defer logs.Close()
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(logs)
+	if err != nil {
+		return nil, err
+	}
+	return buf, nil
+}
+
 // GetJobIngress godoc
 // @Summary Get the ingress base url and jupyter token of the job
 // @Description Get the token of the job by logs
@@ -443,23 +460,13 @@ func (mgr *VolcanojobMgr) GetJobIngress(c *gin.Context) {
 		break
 	}
 
-	logOptions := &v1.PodLogOptions{}
-	logReq := mgr.kubeClient.CoreV1().Pods(namespace).GetLogs(podName, logOptions)
-	logs, err := logReq.Stream(context.TODO())
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-	defer logs.Close()
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(logs)
+	buf, err := mgr.getPodLog(c, namespace, podName)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	re := regexp.MustCompile(`\?token=([a-zA-Z0-9]+)`)
-	podLog := buf.String()
-	matches := re.FindStringSubmatch(podLog)
+	matches := re.FindStringSubmatch(buf.String())
 	if len(matches) >= 2 {
 		jupyterToken = matches[1]
 	} else {
@@ -480,6 +487,44 @@ func (mgr *VolcanojobMgr) GetJobIngress(c *gin.Context) {
 	}
 
 	resputil.Success(c, JobIngressResp{BaseURL: baseURL, Token: jupyterToken})
+}
+
+// GetJobLog godoc
+func (mgr *VolcanojobMgr) GetJobLog(c *gin.Context) {
+	var req JobActionReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	token := util.GetToken(c)
+	job := &batch.Job{}
+	namespace := config.GetConfig().Workspace.Namespace
+	if err := mgr.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	if job.Labels[LabelKeyTaskUser] != token.Username {
+		resputil.Error(c, "Job not found", resputil.NotSpecified)
+		return
+	}
+
+	// Get the logs of the job pod
+	var podName string
+	for i := range job.Spec.Tasks {
+		task := &job.Spec.Tasks[i]
+		podName = fmt.Sprintf("%s-%s-0", job.Name, task.Name)
+		break
+	}
+
+	buf, err := mgr.getPodLog(c, namespace, podName)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, buf.String())
 }
 
 type (
