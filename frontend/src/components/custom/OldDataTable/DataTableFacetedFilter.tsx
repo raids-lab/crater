@@ -22,33 +22,25 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { ListFilter } from "lucide-react";
 
-export interface DataTableFacetedFilterOption<TFilter> {
+export interface DataTableFacetedFilterOption {
   label: string;
-  value: TFilter;
+  value: string;
   icon?: React.ComponentType<{ className?: string }>;
 }
 
-interface DataTableFacetedFilterProps<
-  TData,
-  TValue,
-  TFilter extends string | number | bigint,
-> {
+interface DataTableFacetedFilterProps<TData, TValue> {
   column?: Column<TData, TValue>;
   title?: string;
-  options: DataTableFacetedFilterOption<TFilter>[];
+  options: DataTableFacetedFilterOption[];
 }
 
-export function DataTableFacetedFilter<
-  TData,
-  TValue,
-  TFilter extends string | number | bigint,
->({
+export function DataTableFacetedFilter<TData, TValue>({
   column,
   title,
   options,
-}: DataTableFacetedFilterProps<TData, TValue, TFilter>) {
+}: DataTableFacetedFilterProps<TData, TValue>) {
   const facets = column?.getFacetedUniqueValues();
-  const selectedValues = new Set(column?.getFilterValue() as TFilter[]);
+  const selectedValues = new Set(column?.getFilterValue() as string[]);
 
   return (
     <Popover>

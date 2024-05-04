@@ -242,6 +242,8 @@ export const Component: FC = () => {
     getPaginationRowModel: getPaginationRowModel(),
   });
 
+  const updatedAt = new Date(query.dataUpdatedAt).toLocaleString();
+
   return (
     <>
       <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
@@ -532,7 +534,7 @@ export const Component: FC = () => {
           </CardContent>
           <CardFooter className="flex flex-row items-center border-t bg-muted/50 px-6 py-3">
             <div className="text-xs text-muted-foreground">
-              更新于 <time dateTime="2023-11-23">{query.dataUpdatedAt}</time>
+              更新于 <time dateTime="2023-11-23">{updatedAt}</time>
             </div>
             <Pagination className="ml-auto mr-0 w-auto">
               <PaginationContent>

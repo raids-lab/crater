@@ -30,22 +30,23 @@ import {
   apiJupyterDelete,
   apiJupyterTokenGet,
   apiJupyterList,
+  JobPhase,
 } from "@/services/api/jupyterTask";
 import { DataTable } from "@/components/custom/OldDataTable";
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
 import { TableDate } from "@/components/custom/TableDate";
-import { cn } from "@/lib/utils";
 import Status from "../../Overview/Status";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { toast } from "sonner";
-import { getHeader, statuses } from "@/pages/Portal/Job/Ai/statuses";
+import { getHeader } from "@/pages/Portal/Job/Ai/statuses";
 import { logger } from "@/utils/loglevel";
 import Quota from "./Quota";
+import JobPhaseLabel, { jobPhases } from "@/components/custom/JobPhase";
 
 interface JTaskInfo extends IJupyterResp {}
 
-const toolbarConfig: DataTableToolbarConfig<string> = {
+const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
     placeholder: "搜索任务名称",
     key: "name",
@@ -54,7 +55,7 @@ const toolbarConfig: DataTableToolbarConfig<string> = {
     {
       key: "status",
       title: "任务状态",
-      option: statuses,
+      option: jobPhases,
     },
   ],
   getHeader: getHeader,
@@ -142,30 +143,7 @@ export const Component = () => {
           <DataTableColumnHeader column={column} title={getHeader("status")} />
         ),
         cell: ({ row }) => {
-          const status = statuses.find(
-            (status) => status.value === row.getValue("status"),
-          );
-          if (!status) {
-            return null;
-          }
-          return (
-            <div className="flex flex-row items-center justify-start">
-              <div
-                className={cn("flex h-3 w-3 rounded-full", {
-                  "bg-purple-500 hover:bg-purple-400":
-                    status.value === "Queueing",
-                  "bg-slate-500 hover:bg-slate-400": status.value === "Created",
-                  "bg-sky-500 hover:bg-sky-400": status.value === "Running",
-                  "bg-red-500 hover:bg-red-400": status.value === "Failed",
-                  "bg-emerald-500 hover:bg-emerald-400":
-                    status.value === "Succeeded",
-                  "bg-orange-500 hover:bg-orange-400":
-                    status.value === "Preempted",
-                })}
-              ></div>
-              <div className="ml-1.5">{status.label}</div>
-            </div>
-          );
+          return <JobPhaseLabel jobPhase={row.getValue<JobPhase>("status")} />;
         },
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id));
@@ -267,9 +245,7 @@ export const Component = () => {
     setData(tableData);
   }, [taskList, isLoading]);
 
-  const updatedAt = useMemo(() => {
-    return new Date(dataUpdatedAt).toLocaleString();
-  }, [dataUpdatedAt]);
+  const updatedAt = new Date(dataUpdatedAt).toLocaleString();
 
   return (
     <>

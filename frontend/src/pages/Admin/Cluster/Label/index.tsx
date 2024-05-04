@@ -68,7 +68,7 @@ export const getTypeText = (type: LabelType): string => {
   }
 };
 
-const toolbarConfig: DataTableToolbarConfig<string> = {
+const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
     placeholder: "搜索标签名称",
     key: "Name",

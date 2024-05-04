@@ -47,7 +47,7 @@ interface ClusterNodeInfo {
   labels: Record<string, string>;
 }
 
-const toolbarConfig: DataTableToolbarConfig<string> = {
+const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
     placeholder: "搜索节点名称",
     key: "name",

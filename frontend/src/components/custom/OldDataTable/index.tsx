@@ -28,27 +28,23 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-interface DataTableProps<TData, TValue, TFilter>
+interface DataTableProps<TData, TValue>
   extends React.HTMLAttributes<HTMLDivElement> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   loading: boolean;
-  toolbarConfig: DataTableToolbarConfig<TFilter>;
+  toolbarConfig: DataTableToolbarConfig;
   className?: string;
 }
 
-export function DataTable<
-  TData,
-  TValue,
-  TFilter extends string | number | bigint,
->({
+export function DataTable<TData, TValue>({
   columns,
   data,
   toolbarConfig,
   loading,
   children,
   className,
-}: DataTableProps<TData, TValue, TFilter>) {
+}: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);

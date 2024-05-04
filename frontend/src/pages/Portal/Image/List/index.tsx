@@ -47,7 +47,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-const toolbarConfig: DataTableToolbarConfig<string> = {
+const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
     placeholder: "搜索镜像",
     key: "link",

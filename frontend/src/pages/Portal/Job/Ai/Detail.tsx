@@ -1,6 +1,6 @@
 import {
   apiAiTaskGet,
-  apiAiTaskGetLogs,
+  apiJobGetLog,
   convertAiTask,
 } from "@/services/api/aiTask";
 import { globalBreadCrumb } from "@/utils/store";
@@ -26,8 +26,8 @@ const AiJobDetail: FC = () => {
 
   const { data: taskLogs, isLoading: isLoadingLogs } = useQuery({
     queryKey: ["aitask", "tasklog", taskID],
-    queryFn: () => apiAiTaskGetLogs(parseInt(taskID ?? "")),
-    select: (res) => res.data.data.logs,
+    queryFn: () => apiJobGetLog(taskID ?? ""),
+    select: (res) => res.data.data,
     enabled: !!taskID,
   });
 
@@ -249,7 +249,7 @@ const AiJobDetail: FC = () => {
           </CardHeader>
           <CardContent>
             <pre className="whitespace-pre-wrap text-sm text-muted-foreground">
-              {taskLogs[0]}
+              {taskLogs}
             </pre>
           </CardContent>
         </Card>

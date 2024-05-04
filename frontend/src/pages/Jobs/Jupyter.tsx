@@ -1,5 +1,5 @@
 import type { FC } from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiJupyterTokenGet } from "@/services/api/jupyterTask";
@@ -14,7 +14,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { apiAiTaskGetLogs } from "@/services/api/aiTask";
+import { apiJobGetLog } from "@/services/api/aiTask";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const Jupyter: FC = () => {
@@ -23,8 +23,8 @@ const Jupyter: FC = () => {
 
   const { data: taskLogs } = useQuery({
     queryKey: ["jupyter", "tasklog", id],
-    queryFn: () => apiAiTaskGetLogs(parseInt(id ?? "")),
-    select: (res) => res.data.data.logs,
+    queryFn: () => apiJobGetLog(id ?? ""),
+    select: (res) => res.data.data,
     enabled: !!id,
   });
 
@@ -43,9 +43,26 @@ const Jupyter: FC = () => {
     }
   }, [jupyterInfo]);
 
+  // set jupyter notebook icon as current page icon
+  // icon url: `https://crater.act.buaa.edu.cn/jupyter/${jupyterInfo.data.baseURL}/static/favicons/favicon.ico`
+  // set title to jupyter base url
+  useEffect(() => {
+    if (jupyterInfo.data?.baseURL) {
+      const link = document.querySelector(
+        "link[rel='website icon']",
+      ) as HTMLLinkElement;
+      if (link) {
+        link.href = `https://crater.act.buaa.edu.cn/jupyter/${jupyterInfo.data.baseURL}/static/favicons/favicon.ico`;
+        link.type = "image/x-icon";
+      }
+      document.title = jupyterInfo.data.baseURL;
+    }
+  }, [jupyterInfo]);
+
   return (
     <div className="relative h-screen w-screen">
       <iframe
+        title="jupyter notebook"
         src={url}
         className="absolute bottom-0 left-0 right-0 top-0 h-screen w-screen"
       />
@@ -71,9 +88,7 @@ const Jupyter: FC = () => {
               <ScrollArea className="h-[calc(100vh_-_80px)]">
                 <CardHeader className="py-3"></CardHeader>
                 <CardContent>
-                  <pre className="whitespace-pre-wrap text-sm">
-                    {taskLogs[0]}
-                  </pre>
+                  <pre className="whitespace-pre-wrap text-sm">{taskLogs}</pre>
                 </CardContent>
               </ScrollArea>
             </Card>
