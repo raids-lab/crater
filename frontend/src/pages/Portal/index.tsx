@@ -26,7 +26,7 @@ const sidebarItems: SidebarItem[] = [
     children: [
       {
         route: {
-          path: "jupyter",
+          path: "jupyter/*",
           lazy: () => import("./Job/Jupyter"),
         },
       },

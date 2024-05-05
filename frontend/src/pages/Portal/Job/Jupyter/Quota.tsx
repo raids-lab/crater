@@ -62,7 +62,7 @@ const Quota = () => {
       },
       {
         icon: HardDriveIcon,
-        resource: "个人存储",
+        resource: "存储",
         progress: {
           width: (10 / 50) * 100,
           label: `${10}/${50}`,
@@ -80,7 +80,9 @@ const Quota = () => {
         <Card key={i} className="flex flex-col items-stretch justify-between">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
             <CardDescription className="flex flex-row items-center justify-start">
-              <q.icon className="mr-1.5 h-4 w-4" />
+              <div className="mr-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-primary/10">
+                <q.icon className="h-4 w-4 text-primary" />
+              </div>
               {q.resource}
             </CardDescription>
             <p className="m-0 font-mono text-2xl font-bold leading-none">

@@ -45,7 +45,7 @@ export const globalLastView = atom({
 /**
  * Navigation BreadCrumb
  */
-type BreadCrumbItem = {
+export type BreadCrumbItem = {
   title: string;
   path?: string;
 };

@@ -1,4 +1,4 @@
-import { Cross2Icon } from "@radix-ui/react-icons";
+import { Cross2Icon, MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import { Table } from "@tanstack/react-table";
 
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,6 @@ import {
   DataTableFacetedFilter,
   DataTableFacetedFilterOption,
 } from "./DataTableFacetedFilter";
-import { Search } from "lucide-react";
 
 export interface DataTableToolbarConfig {
   filterInput: {
@@ -42,7 +41,7 @@ export function DataTableToolbar<TData>({
       <div className="flex flex-row items-center space-x-2">
         {children}
         <div className="relative ml-auto h-8 flex-1 md:grow-0">
-          <Search className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+          <MagnifyingGlassIcon className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder={filterInput.placeholder}
             value={

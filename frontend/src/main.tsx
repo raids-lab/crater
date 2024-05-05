@@ -17,7 +17,7 @@ import { ThemeProvider } from "./utils/theme";
 import { VITE_UI_THEME_KEY } from "./utils/store";
 import { adminRoute } from "./pages/Admin";
 import { recommendRoute } from "./pages/PortalR";
-import Jupyter from "./pages/Jobs/Jupyter";
+import Jupyter from "./pages/Job/Jupyter";
 import { logger } from "./utils/loglevel";
 import Website from "./pages/Website";
 

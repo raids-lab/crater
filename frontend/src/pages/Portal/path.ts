@@ -20,6 +20,12 @@ export const craterPath: PathInfo = {
         {
           path: "jupyter",
           title: "交互式任务",
+          children: [
+            {
+              path: "new",
+              title: "新建任务",
+            },
+          ],
         },
       ],
     },
