@@ -174,16 +174,6 @@ const AiJobHome = () => {
           </Button>
         ),
       },
-      // {
-      //   accessorKey: "taskType",
-      //   header: ({ column }) => (
-      //     <DataTableColumnHeader
-      //       column={column}
-      //       title={getHeader("taskType")}
-      //     />
-      //   ),
-      //   cell: ({ row }) => <>{row.getValue("taskType")}</>,
-      // },
       {
         accessorKey: "gpus",
         header: ({ column }) => (

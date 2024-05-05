@@ -1,4 +1,4 @@
-import { useMemo, useEffect, Fragment } from "react";
+import { Fragment } from "react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -7,37 +7,15 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { useRecoilState } from "recoil";
+import { useRecoilValue } from "recoil";
 import { globalBreadCrumb } from "@/utils/store";
-import { Link, useLocation } from "react-router-dom";
-import { getBreadcrumbByPath } from "@/utils/title";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
 
 export const NavBreadcrumb = ({ className }: { className: string }) => {
-  const location = useLocation();
-  const pathParts = useMemo(() => {
-    const pathParts = location.pathname.split("/").filter(Boolean);
-    return pathParts;
-  }, [location]);
-  const [breadcrumb, setBreadcrumb] = useRecoilState(globalBreadCrumb);
-  useEffect(() => {
-    const titles = getBreadcrumbByPath(pathParts);
-    if (titles) {
-      let url = "";
-      const ans = [];
-      for (let i = 0; i < titles.length; i++) {
-        url += `/${titles[i].path}`;
-        ans.push({
-          title: titles[i].title,
-          path: i !== titles.length - 1 ? url : undefined,
-        });
-      }
-      if (ans.length > 2) {
-        ans[ans.length - 2].path = undefined;
-      }
-      setBreadcrumb(ans.slice(1));
-    }
-  }, [pathParts, setBreadcrumb]);
+  useBreadcrumb();
+  const breadcrumb = useRecoilValue(globalBreadCrumb);
 
   return (
     <Breadcrumb className={className}>
@@ -59,12 +37,13 @@ export const NavBreadcrumb = ({ className }: { className: string }) => {
               )}
               {index !== 0 && (
                 <BreadcrumbItem key={`bread-item-${index}`}>
-                  {item.path && (
+                  {item.path && index !== breadcrumb.length - 1 ? (
                     <BreadcrumbLink asChild>
                       <Link to={item.path}>{item.title}</Link>
                     </BreadcrumbLink>
+                  ) : (
+                    <BreadcrumbPage>{item.title}</BreadcrumbPage>
                   )}
-                  {!item.path && <BreadcrumbPage>{item.title}</BreadcrumbPage>}
                 </BreadcrumbItem>
               )}
             </Fragment>

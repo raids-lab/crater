@@ -26,7 +26,7 @@ export const getBreadcrumbByPath = (
       result.push({ title: item.titleNav ?? item.title, path: item.path });
       currentPath = item.children || [];
     } else {
-      return null;
+      break;
     }
   }
   return result;

@@ -39,8 +39,7 @@ import {
 } from "@/components/ui/card";
 import { Link, useParams } from "react-router-dom";
 import { Undo2 } from "lucide-react";
-import { useSetRecoilState } from "recoil";
-import { globalBreadCrumb } from "@/utils/store";
+import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
 
 type CardDemoProps = React.ComponentProps<typeof Card> & {
   nodeInfo?: {
@@ -336,26 +335,13 @@ export const PodStatusDetail: FC = () => {
     select: (res) => res.data.data,
     enabled: !!nodeName,
   });
-  const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
+
+  const setBreadcrumb = useBreadcrumb();
 
   // 修改 BreadCrumb
   useEffect(() => {
-    if (isLoading) {
-      return;
-    }
-    setBreadcrumb([
-      {
-        title: "集群管理",
-      },
-      {
-        title: "计算节点",
-        path: "/admin/cluster/node",
-      },
-      {
-        title: `${nodeName}`,
-      },
-    ]);
-  }, [setBreadcrumb, nodeName, isLoading]);
+    setBreadcrumb([{ title: nodeName ?? "" }]);
+  }, [setBreadcrumb, nodeName]);
 
   // 处理 podsList 变量
   const podsInfo: ClusterPodInfo[] = useMemo(() => {

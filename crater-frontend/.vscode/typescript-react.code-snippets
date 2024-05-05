@@ -18,30 +18,21 @@
   "New Function Component": {
     "prefix": "nfc",
     "body": [
-      "import type { FC } from \"react\";",
-      "import { useState, useEffect } from \"react\";",
-      "import log from \"@/utils/loglevel\";",
-      "import clsx from \"clsx\";",
-      "",
-      "const $TM_FILENAME_BASE: FC = () => {",
-      "  return (",
-      "   $1",
-      "  );",
+      "const $TM_FILENAME_BASE = () => {",
+      "  return <>$TM_FILENAME_BASE</>;",
       "};",
       "",
-      "export default $TM_FILENAME_BASE;"
+      "export default $TM_FILENAME_BASE;",
     ],
-    "description": "Create A New React Function Component with Necessary Imports"
+    "description": "Create A New React Function Component",
   },
   "New Dashboard Component": {
     "prefix": "ndc",
     "body": [
-      "import type { FC } from \"react\";",
-      "",
-      "export const Component: FC = () => {",
+      "export const Component = () => {",
       "  return <>$TM_FILENAME_BASE</>;",
-      "};"
+      "};",
     ],
-    "description": ""
-  }
+    "description": "Create A New React Function Component for lazy loading",
+  },
 }
