@@ -354,6 +354,7 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	if err != nil {
 		logutils.Log.Errorf("fetch available imagepack failed, err:%v", err)
 		resputil.Error(c, "fetch available imagepack failed", resputil.NotSpecified)
+		return
 	}
 	imageLinks := make([]string, len(imagepacks))
 	for i := range imagepacks {
