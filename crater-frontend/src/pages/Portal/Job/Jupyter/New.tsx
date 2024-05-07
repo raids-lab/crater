@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
-
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   apiJupyterCreate,
@@ -58,6 +57,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ChevronLeftIcon } from "lucide-react";
+import FormLabelMust from "@/components/custom/FormLabelMust";
 
 const formSchema = z.object({
   taskname: z
@@ -68,25 +68,31 @@ const formSchema = z.object({
     .max(40, {
       message: "任务名称最多包含40个字符",
     }),
-  //taskType: z.string(),
-  cpu: z.coerce.number().int().min(-1),
-  gpu: z.coerce.number().int().min(-1),
-  memory: z.coerce.number().int().min(-1),
-  schedulerName: z.enum(["kube-gpu-colocate-scheduler", "volcano"]),
-  gpuModel: z.enum(["default", "v100", "p100", "t4", "2080ti"]),
-  // image: z.string().url(),
+  cpu: z.number().int().min(0, {
+    message: "暂不支持解除 CPU 配额上限",
+  }),
+  gpu: z.number().int().min(0, {
+    message: "指定的 GPU 卡数不能小于 0",
+  }),
+  memory: z.number().int().min(0, {
+    message: "暂不支持解除内存配额上限",
+  }),
   image: z.string().min(1, {
     message: "任务镜像不能为空",
   }),
-  //workingDir: z.string(),
   shareDirs: z.array(
     z.object({
       subPath: z.string().min(1, {
-        message: "项目路径不能为空",
+        message: "挂载源不能为空",
       }),
-      mountPath: z.string(),
+      mountPath: z.string().min(1, {
+        message: "挂载到容器中的路径不能为空",
+      }),
     }),
   ),
+  gpuModel: z.enum(["default", "v100", "p100", "t4", "2080ti"], {
+    required_error: "请选择节点 GPU 类型",
+  }),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -168,15 +174,11 @@ const JupyterNew = () => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       taskname: "",
-      //taskType: "",
       cpu: 1,
       gpu: 0,
-      memory: 8,
+      memory: 2,
       image: "",
-      //workingDir: "",
       shareDirs: [],
-      //command: "",
-      //priority: undefined,
     },
   });
 
@@ -224,13 +226,6 @@ const JupyterNew = () => {
   };
   return (
     <>
-      {/* <Alert className="md:col-span-3" variant={"destructive"}>
-        <AlertDescription>
-          参考
-          https://openpai.readthedocs.io/zh-cn/latest/manual/cluster-user/how-to-debug-jobs.html
-          , 然后共享文件选择那部分，以及其他需要经常用的，抽象成单独的组件。
-        </AlertDescription>
-      </Alert> */}
       <Form {...form}>
         <form
           // eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -276,7 +271,8 @@ const JupyterNew = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          任务名<span className="ml-1 text-red-500">*</span>
+                          任务名
+                          <FormLabelMust />
                         </FormLabel>
                         <FormControl>
                           <Input {...field} />
@@ -293,13 +289,17 @@ const JupyterNew = () => {
                   <FormField
                     control={form.control}
                     name="cpu"
-                    render={({ field }) => (
+                    render={() => (
                       <FormItem>
                         <FormLabel>
-                          CPU<span className="ml-1 text-red-500">*</span>
+                          CPU (核数)
+                          <FormLabelMust />
                         </FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input
+                            type="number"
+                            {...form.register("cpu", { valueAsNumber: true })}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -308,13 +308,17 @@ const JupyterNew = () => {
                   <FormField
                     control={form.control}
                     name="gpu"
-                    render={({ field }) => (
+                    render={() => (
                       <FormItem>
                         <FormLabel>
-                          GPU<span className="ml-1 text-red-500">*</span>
+                          GPU (卡数)
+                          <FormLabelMust />
                         </FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input
+                            type="number"
+                            {...form.register("gpu", { valueAsNumber: true })}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -323,13 +327,21 @@ const JupyterNew = () => {
                   <FormField
                     control={form.control}
                     name="memory"
-                    render={({ field }) => (
+                    render={() => (
                       <FormItem>
                         <FormLabel>
-                          内存 (GB)<span className="ml-1 text-red-500">*</span>
+                          内存 (GB)
+                          <FormLabelMust />
                         </FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <FormControl>
+                            <Input
+                              type="number"
+                              {...form.register("memory", {
+                                valueAsNumber: true,
+                              })}
+                            />
+                          </FormControl>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -348,7 +360,8 @@ const JupyterNew = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          镜像地址<span className="ml-1 text-red-500">*</span>
+                          镜像地址
+                          <FormLabelMust />
                         </FormLabel>
                         <FormControl>
                           {/* <div className="flex flex-row space-x-2"> */}
@@ -417,6 +430,7 @@ const JupyterNew = () => {
                             </PopoverContent>
                           </Popover>
                         </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -461,6 +475,7 @@ const JupyterNew = () => {
                                     })
                                   }
                                 />
+                                <FormMessage />
                               </div>
                             </FormControl>
                           </FormItem>
@@ -490,12 +505,13 @@ const JupyterNew = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      GPU 类型<span className="ml-1 text-red-500">*</span>
+                      GPU 类型
+                      <FormLabelMust />
                     </FormLabel>
                     <FormControl>
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value}
                       >
                         <SelectTrigger className="">
                           <SelectValue placeholder="请选择" />
