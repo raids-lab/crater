@@ -258,7 +258,7 @@ export const JupyterOverview = () => {
         loading={isLoading}
         className="col-span-3"
       >
-        <Button onClick={() => navigate("new")} className="h-8 px-3">
+        <Button onClick={() => navigate("new")} className="h-8">
           <PlusCircledIcon className="mr-1.5 h-4 w-4" />
           新建任务
         </Button>

@@ -6,10 +6,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { useNavigate } from "react-router-dom";
-import { globalUserInfo } from "@/utils/store";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useRecoilValue } from "recoil";
 import { FileSelectDialog } from "@/components/custom/FileSelectDialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +27,12 @@ import {
   apiJTaskImageList,
 } from "@/services/api/jupyterTask";
 import { cn } from "@/lib/utils";
-import { CaretSortIcon, CheckIcon, Cross1Icon } from "@radix-ui/react-icons";
+import {
+  CaretSortIcon,
+  CheckIcon,
+  Cross2Icon,
+  PlusCircledIcon,
+} from "@radix-ui/react-icons";
 import { apiGetFiles } from "@/services/api/file";
 import { getAiKResource } from "@/utils/resource";
 import {
@@ -96,12 +99,12 @@ type MountDir = {
 const JupyterNew = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { name: currentUserName } = useRecoilValue(globalUserInfo);
   const { data: spaces } = useQuery({
     queryKey: ["data", "share"],
     queryFn: () => apiGetFiles(""),
     select: (res) => res.data.data,
   });
+
   const convertShareDirs = (argsList: FormSchema["shareDirs"]): MountDir[] => {
     const argsDict: MountDir[] = [];
     argsList.forEach((dir) => {
@@ -171,7 +174,7 @@ const JupyterNew = () => {
       memory: 8,
       image: "",
       //workingDir: "",
-      shareDirs: [{ subPath: "", mountPath: `/home/${currentUserName}` }],
+      shareDirs: [],
       //command: "",
       //priority: undefined,
     },
@@ -430,48 +433,34 @@ const JupyterNew = () => {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className={cn(index !== 0 && "sr-only")}>
-                              共享目录
+                              文件挂载
                             </FormLabel>
                             <FormControl>
-                              <div className=" grid grid-cols-2 rounded-lg border-2">
-                                <div className="flex flex-row ">
-                                  <p className="w-[5px] "></p>
-                                  <p className="mt-2 w-[80px] font-mono text-base">
-                                    项目路径:
-                                  </p>
-                                  <FileSelectDialog
-                                    handleSubpathInfo={(info: string) => {
-                                      field.value.subPath = info;
-                                    }}
-                                    index={index}
-                                  ></FileSelectDialog>
-                                </div>
-                                <div className="col-span-2 flex flex-row ">
-                                  <p className="w-[5px] "></p>
-                                  <p className="mt-2 w-[80px] font-mono text-base">
-                                    挂载路径:
-                                  </p>
-                                  <Input
-                                    id={`input.args.${index}.mountPath`}
-                                    className="w-[580px] font-mono"
-                                    placeholder="Mount Path"
-                                    value={field.value.mountPath}
-                                    onChange={(event) =>
-                                      field.onChange({
-                                        ...field.value,
-                                        mountPath: event.target.value,
-                                      })
-                                    }
-                                  />
-                                  <p className="w-[5px] "></p>
-                                  <Button
-                                    size="icon"
-                                    variant="outline"
-                                    onClick={() => shareDirsRemove(index)}
-                                  >
-                                    <Cross1Icon className="h-3 w-3" />
-                                  </Button>
-                                </div>
+                              <div className="relative flex flex-col gap-2 rounded-md border border-input p-4 shadow-sm">
+                                <button
+                                  onClick={() => shareDirsRemove(index)}
+                                  className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+                                >
+                                  <Cross2Icon className="h-4 w-4" />
+                                  <span className="sr-only">Close</span>
+                                </button>
+                                <FileSelectDialog
+                                  handleSubpathInfo={(info: string) => {
+                                    field.value.subPath = info;
+                                  }}
+                                />
+                                <Input
+                                  id={`input.args.${index}.mountPath`}
+                                  className="w-full font-mono "
+                                  placeholder="Mount Path"
+                                  value={field.value.mountPath}
+                                  onChange={(event) =>
+                                    field.onChange({
+                                      ...field.value,
+                                      mountPath: event.target.value,
+                                    })
+                                  }
+                                />
                               </div>
                             </FormControl>
                           </FormItem>
@@ -483,46 +472,18 @@ const JupyterNew = () => {
                 <Button
                   type="button"
                   variant="outline"
+                  className="w-full"
                   onClick={() =>
                     shareDirsAppend({
                       subPath: "",
-                      mountPath: `/home/${currentUserName}`,
+                      mountPath: "",
                     })
                   }
                 >
-                  添加共享目录
+                  <PlusCircledIcon className="mr-1.5 h-4 w-4" />
+                  添加需要挂载的文件
                 </Button>
               </div>
-              <FormField
-                control={form.control}
-                name="schedulerName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      调度器<span className="ml-1 text-red-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <SelectTrigger className="">
-                          <SelectValue placeholder="请选择" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="kube-gpu-colocate-scheduler">
-                            ACT Lucid
-                          </SelectItem>
-                          <SelectItem value="volcano">
-                            Huawei Volcano
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={form.control}
                 name="gpuModel"
@@ -572,7 +533,10 @@ const JupyterNew = () => {
             ].map((s, i) => (
               <Card key={i}>
                 <Accordion type="single" collapsible>
-                  <AccordionItem value="item-1" className="px-6 py-3">
+                  <AccordionItem
+                    value="item-1"
+                    className="border-b-0 px-6 py-3"
+                  >
                     <AccordionTrigger className="font-semibold leading-none tracking-tight hover:no-underline">
                       {s}
                     </AccordionTrigger>

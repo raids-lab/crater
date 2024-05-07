@@ -209,15 +209,11 @@ export function FileSelect({
       {/* ...其余代码 */}
       <div className="flex justify-end p-4">
         <Button
-          onClick={
-            () => {
-              onClose();
-              handleSubpathInfo(selectedPath);
-              handleSubpath(selectedPath);
-            }
-
-            //handleSubpathInfo(selectedPath);
-          }
+          onClick={() => {
+            onClose();
+            handleSubpathInfo(selectedPath);
+            handleSubpath(selectedPath);
+          }}
         >
           确认选择
         </Button>{" "}
