@@ -328,7 +328,6 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                               handleSubpathInfo={(info: string) => {
                                 field.value.subPath = info;
                               }}
-                              index={index}
                             ></FileSelectDialog>
                           </div>
                           <div className="col-span-2 flex flex-row ">
