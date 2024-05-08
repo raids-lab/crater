@@ -12,6 +12,7 @@ import (
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/constants"
 	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/raids-lab/crater/pkg/monitor"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"k8s.io/client-go/kubernetes"
@@ -22,7 +23,7 @@ type Backend struct {
 	R *gin.Engine
 }
 
-func Register(aitaskCtrl *aitaskctl.TaskController, cl client.Client, cs *kubernetes.Clientset) *Backend {
+func Register(aitaskCtrl *aitaskctl.TaskController, cl client.Client, cs *kubernetes.Clientset, pc *monitor.PrometheusClient) *Backend {
 	s := new(Backend)
 	s.R = gin.Default()
 
@@ -34,7 +35,7 @@ func Register(aitaskCtrl *aitaskctl.TaskController, cl client.Client, cs *kubern
 	})
 
 	// Register custom routes
-	s.RegisterService(aitaskCtrl, cl, cs)
+	s.RegisterService(aitaskCtrl, cl, cs, pc)
 
 	// Swagger
 	// todo: DisablingWrapHandler https://github.com/swaggo/gin-swagger/blob/master/swagger.go#L205
@@ -49,7 +50,12 @@ func Register(aitaskCtrl *aitaskctl.TaskController, cl client.Client, cs *kubern
 	return s
 }
 
-func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cr client.Client, cs *kubernetes.Clientset) {
+func (b *Backend) RegisterService(
+	aitaskCtrl *aitaskctl.TaskController,
+	cr client.Client,
+	cs *kubernetes.Clientset,
+	pc *monitor.PrometheusClient,
+) {
 	// Enable CORS for http://localhost:XXXX in debug mode
 	if gin.Mode() == gin.DebugMode {
 		fe := os.Getenv("CRATER_FE_PORT")
@@ -71,7 +77,7 @@ func (b *Backend) RegisterService(aitaskCtrl *aitaskctl.TaskController, cr clien
 	}
 	httpClient := http.Client{}
 	logClient := crclient.LogClient{Client: cr, KubeClient: cs}
-	nodeClient := crclient.NodeClient{Client: cr, KubeClient: cs}
+	nodeClient := crclient.NodeClient{Client: cr, KubeClient: cs, PromeClient: pc}
 	harborClient := crclient.NewHarborClient()
 
 	// Init Handlers
