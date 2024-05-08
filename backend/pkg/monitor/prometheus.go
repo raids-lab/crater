@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
+	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 const (
@@ -74,6 +75,7 @@ func NewPrometheusClient(apiURL string) *PrometheusClient {
 	})
 	v1api := v1.NewAPI(client)
 	if err != nil {
+		logutils.Log.Errorf("failed to create Prometheus client: %v", err)
 		panic(err)
 	}
 	return &PrometheusClient{
