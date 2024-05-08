@@ -1,9 +1,8 @@
 import instance from "../axios";
 import { IResponse } from "@/services/types";
 
-export interface Fileresp {
+export interface FileResp {
   name: string;
-  filename: string; //
   size: number;
   isdir: boolean;
   modifytime: string;
@@ -11,7 +10,7 @@ export interface Fileresp {
 }
 
 export const apiGetFiles = (path: string) =>
-  instance.get<IResponse<Fileresp[]>>(`ss/files${path}`);
+  instance.get<IResponse<FileResp[]>>(`ss/files${path}`);
 
 export const apiMkdir = async (path: string) => {
   await instance.request({

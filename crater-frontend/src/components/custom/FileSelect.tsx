@@ -6,7 +6,6 @@ import { useEffect, useMemo } from "react";
 
 interface DirectoryItem {
   name: string;
-  filename: string;
   children?: DirectoryItem[]; // 可选属性，存在于文件夹中
 }
 
@@ -14,7 +13,6 @@ type PathChangeHandler = (path: string) => void;
 
 interface DirectoryProps {
   name: string;
-  filename: string;
   path: string;
   onPathChange: PathChangeHandler;
   selectedPath: string;
@@ -53,7 +51,6 @@ function LoadingIndicator() {
 
 function Directory({
   name,
-  filename,
   path = "",
   onPathChange,
   selectedPath,
@@ -65,13 +62,14 @@ function Directory({
   const [isLoading, setIsLoading] = useState(false);
 
   const [directoryPath, truePath, isSelected] = useMemo(() => {
-    const directoryPath = path ? `${path}/${filename}` : `/${filename}`;
-    const parts = directoryPath.split("/");
-    const leavePath = directoryPath.replace(`/${parts[1]}`, ""); //只会替换第一次出现
-    const truePath = "/" + name + leavePath;
+    const directoryPath = path ? `${path}/${name}` : `/${name}`;
+    // const parts = directoryPath.split("/");
+    // const leavePath = directoryPath.replace(`/${parts[1]}`, ""); //只会替换第一次出现
+    // const truePath = "/" + name + leavePath;
+    const truePath = directoryPath;
     const isSelected = directoryPath === selectedPath;
     return [directoryPath, truePath, isSelected];
-  }, [filename, path, name, selectedPath]);
+  }, [path, name, selectedPath]);
 
   const { mutate: getDirectoryList } = useMutation({
     mutationFn: (truePath: string) => apiGetFiles(truePath),
@@ -82,7 +80,6 @@ function Directory({
           .map((file) => {
             return {
               name: file.name,
-              filename: file.filename,
             };
           });
         setIsLoading(false);
@@ -116,16 +113,15 @@ function Directory({
         />
 
         <FolderIcon className="mr-2 h-4 w-4 text-sky-600 opacity-50" />
-        {filename}
+        {name}
       </Button>
       {isLoading && <LoadingIndicator />} {/* 使用自定义LoadingIndicator组件 */}
       {isOpen && children && (
         <div className="pl-4">
           {children.map((child, index) => (
             <Directory
-              filename={child.filename}
               key={index}
-              name={name}
+              name={child.name}
               path={directoryPath}
               onPathChange={onPathChange}
               selectedPath={selectedPath}
@@ -174,7 +170,6 @@ export function FileSelect({
     const topLevelDirectories: DirectoryItem[] = FileList.map((file) => {
       return {
         name: file.name,
-        filename: file.filename,
       };
     });
 
@@ -198,7 +193,6 @@ export function FileSelect({
               <Directory
                 key={index}
                 name={item.name}
-                filename={item.filename}
                 path=""
                 onPathChange={setSelectedPath}
                 selectedPath={selectedPath} // 将 selectedPath 传递给 Directory 组件
