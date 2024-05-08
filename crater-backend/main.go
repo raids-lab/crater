@@ -196,7 +196,8 @@ func main() {
 
 	// 5. start server
 	setupLog.Info("starting server")
-	backend := internal.Register(taskCtrl, mgr.GetClient(), clientset)
+	prometheusClient := monitor.NewPrometheusClient(backendConfig.PrometheusAPI)
+	backend := internal.Register(taskCtrl, mgr.GetClient(), clientset, prometheusClient)
 	if err := backend.R.Run(backendConfig.ServerAddr); err != nil {
 		setupLog.Error(err, "problem running server")
 		os.Exit(1)

@@ -2,58 +2,45 @@ package monitor
 
 import (
 	"fmt"
-	"log"
+
+	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 func (p *PrometheusClient) QueryNodeCPUUsageRatio() map[string]float32 {
-	apiURL := PrometheusAPI
-	client := NewPrometheusClient(apiURL)
 	query := `100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)`
-	data, err := client.Float32MapQuery(query, "instance")
-	// print result
-	// fmt.Println(data)
+	data, err := p.Float32MapQuery(query, "instance")
 	if err != nil {
-		log.Fatalf("queryMetric error: %v", err)
+		logutils.Log.Errorf("QueryNodeCPUUsageRatio error: %v", err)
 		return nil
 	}
 	return data
 }
 
 func (p *PrometheusClient) QueryNodeMemoryUsageRatio() map[string]float32 {
-	apiURL := PrometheusAPI
-	client := NewPrometheusClient(apiURL)
 	query := "(1 - (avg by (instance) (node_memory_MemAvailable_bytes) / avg by (instance) (node_memory_MemTotal_bytes))) * 100"
-	data, err := client.Float32MapQuery(query, "instance")
-	// print result
-	// fmt.Println(data)
+	data, err := p.Float32MapQuery(query, "instance")
 	if err != nil {
-		log.Fatalf("queryMetric error: %v", err)
+		logutils.Log.Errorf("QueryNodeMemoryUsageRatio error: %v", err)
 		return nil
 	}
 	return data
 }
 
 func (p *PrometheusClient) QueryNodeAllocatedMemory() map[string]int {
-	apiURL := PrometheusAPI
-	client := NewPrometheusClient(apiURL)
 	query := "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes"
-	data, err := client.IntMapQuery(query, "instance")
-	// print result
-	// fmt.Println(data)
+	data, err := p.IntMapQuery(query, "instance")
 	if err != nil {
-		log.Fatalf("queryMetric error: %v", err)
+		logutils.Log.Errorf("QueryNodeAllocatedMemory error: %v", err)
 		return nil
 	}
 	return data
 }
 
 func (p *PrometheusClient) QueryPodCPURatio(podName string) float32 {
-	apiURL := PrometheusAPI
-	client := NewPrometheusClient(apiURL)
 	query := fmt.Sprintf("sum(rate(container_cpu_usage_seconds_total{pod=%q}[5m]))", podName)
-	data, err := client.Float32MapQuery(query, "")
+	data, err := p.Float32MapQuery(query, "")
 	if err != nil {
-		log.Fatalf("queryMetric error: %v", err)
+		logutils.Log.Errorf("QueryPodCPURatio error: %v", err)
 		return 0.0
 	}
 	var sum float32
@@ -64,12 +51,10 @@ func (p *PrometheusClient) QueryPodCPURatio(podName string) float32 {
 }
 
 func (p *PrometheusClient) QueryPodMemory(podName string) int {
-	apiURL := PrometheusAPI
-	client := NewPrometheusClient(apiURL)
 	query := fmt.Sprintf("container_memory_usage_bytes{pod=%q}", podName)
-	data, err := client.IntMapQuery(query, "")
+	data, err := p.IntMapQuery(query, "")
 	if err != nil {
-		log.Fatalf("queryMetric error: %v", err)
+		logutils.Log.Errorf("QueryPodMemory error: %v", err)
 		return 0
 	}
 	var sum int
@@ -80,24 +65,20 @@ func (p *PrometheusClient) QueryPodMemory(podName string) int {
 }
 
 func (p *PrometheusClient) QueryPodGPU() []PodGPUAllocate {
-	apiURL := PrometheusAPI
-	client := NewPrometheusClient(apiURL)
 	expression := "kube_pod_container_resource_requests{namespace=\"crater-jobs\", resource=\"nvidia_com_gpu\"}"
-	data, err := client.PodGPU(expression)
+	data, err := p.PodGPU(expression)
 	if err != nil {
-		log.Fatalf("queryMetric error: %v", err)
+		logutils.Log.Errorf("QueryPodGPU error: %v", err)
 		return nil
 	}
 	return data
 }
 
 func (p *PrometheusClient) QueryNodeGPUUtil() []NodeGPUUtil {
-	apiURL := PrometheusAPI
-	client := NewPrometheusClient(apiURL)
 	expression := "DCGM_FI_DEV_GPU_UTIL"
-	data, err := client.GetNodeGPUUtil(expression)
+	data, err := p.GetNodeGPUUtil(expression)
 	if err != nil {
-		log.Fatalf("queryMetric error: %v", err)
+		logutils.Log.Errorf("QueryNodeGPUUtil error: %v", err)
 		return nil
 	}
 	return data
