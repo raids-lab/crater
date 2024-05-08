@@ -32,7 +32,7 @@ import {
   Cross2Icon,
   PlusCircledIcon,
 } from "@radix-ui/react-icons";
-import { apiGetFiles } from "@/services/api/file";
+// import { apiGetFiles } from "@/services/api/file";
 import { getAiKResource } from "@/utils/resource";
 import {
   Popover,
@@ -105,22 +105,23 @@ type MountDir = {
 const JupyterNew = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: spaces } = useQuery({
-    queryKey: ["data", "share"],
-    queryFn: () => apiGetFiles(""),
-    select: (res) => res.data.data,
-  });
+  // const { data: spaces } = useQuery({
+  //   queryKey: ["data", "share"],
+  //   queryFn: () => apiGetFiles(""),
+  //   select: (res) => res.data.data,
+  // });
 
   const convertShareDirs = (argsList: FormSchema["shareDirs"]): MountDir[] => {
     const argsDict: MountDir[] = [];
     argsList.forEach((dir) => {
-      const parts = dir.subPath.split("/");
-      const leavePath = dir.subPath.replace(`/${parts[1]}`, ""); //只会替换第一次出现
+      // const parts = dir.subPath.split("/");
+      // const leavePath = dir.subPath.replace(`/${parts[1]}`, ""); //只会替换第一次出现
 
-      const top =
-        spaces?.find((p) => p.filename === parts[1])?.name ?? parts[1];
+      // const top = parts[1];
+      // spaces?.find((p) => p.filename === parts[1])?.name ?? parts[1];
 
-      const truePath = "/" + top + leavePath;
+      // const truePath = "/" + top + leavePath;
+      const truePath = dir.subPath;
       argsDict.push({
         mountPath: dir.mountPath,
         subPath: truePath,

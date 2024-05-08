@@ -16,7 +16,7 @@ export const handlers = [
         username: "Huangjx",
         password: "",
         accessToken:
-          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOjIzLCJwaWQiOjMwLCJwcm8iOjMsImNpZCI6MSwiY3JvIjoyLCJwbGYiOjMsImV4cCI6MTcxNDI5MDYxMX0.U1fICk_BtHAXYrRfxAR126ruzeKy_IcUk2AKdeo7lfA",
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aSI6NiwicWkiOjAsInVuIjoiZ2FuaGFvIiwicW4iOiIiLCJycSI6MSwicnAiOjMsImV4cCI6MTcxNTE1NDI2OH0.UUr-S1WJjtpw8Mgqo1OTbSjuckLaJ-OCAdLxQEaLyGQ",
         refreshToken: "",
         role: Role.Admin,
       };

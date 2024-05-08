@@ -23,13 +23,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiAiTaskCreate } from "@/services/api/aiTask";
 import { cn } from "@/lib/utils";
 import { Cross1Icon } from "@radix-ui/react-icons";
 import { getAiKResource } from "@/utils/resource";
 import { Textarea } from "@/components/ui/textarea";
-import { apiGetFiles } from "@/services/api/file";
+// import { apiGetFiles } from "@/services/api/file";
 import { toast } from "sonner";
 import { FileSelectDialog } from "@/components/custom/FileSelectDialog";
 
@@ -82,21 +82,22 @@ type MountDir = {
 export function NewTaskForm({ closeSheet }: TaskFormProps) {
   const queryClient = useQueryClient();
   const { name: currentUserName } = useRecoilValue(globalUserInfo);
-  const { data: spaces } = useQuery({
-    queryKey: ["data", "share"],
-    queryFn: () => apiGetFiles(""),
-    select: (res) => res.data.data,
-  });
+  // const { data: spaces } = useQuery({
+  //   queryKey: ["data", "share"],
+  //   queryFn: () => apiGetFiles(""),
+  //   select: (res) => res.data.data,
+  // });
   const convertShareDirs = (argsList: FormSchema["shareDirs"]): MountDir[] => {
     const argsDict: MountDir[] = [];
     argsList.forEach((dir) => {
-      const parts = dir.subPath.split("/");
-      const leavePath = dir.subPath.replace(`/${parts[1]}`, ""); //只会替换第一次出现
+      // const parts = dir.subPath.split("/");
+      // const leavePath = dir.subPath.replace(`/${parts[1]}`, ""); //只会替换第一次出现
 
-      const top =
-        spaces?.find((p) => p.filename === parts[1])?.name ?? parts[1];
+      // const top =parts[1]
+      //   spaces?.find((p) => p.filename === parts[1])?.name ?? parts[1];
 
-      const truePath = "/" + top + leavePath;
+      // const truePath = "/" + top + leavePath;
+      const truePath = dir.subPath;
       argsDict.push({
         mountPath: dir.mountPath,
         subPath: truePath,
@@ -326,7 +327,11 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                             </p>
                             <FileSelectDialog
                               handleSubpathInfo={(info: string) => {
-                                field.value.subPath = info;
+                                if (info.startsWith("/")) {
+                                  field.value.subPath = info.substring(1);
+                                } else {
+                                  field.value.subPath = info;
+                                }
                               }}
                             ></FileSelectDialog>
                           </div>

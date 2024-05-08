@@ -1,6 +1,5 @@
 import type { FC } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { createClient } from "webdav";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { DataTable } from "@/components/custom/OldDataTable";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
@@ -33,7 +32,7 @@ import { File, Folder } from "lucide-react";
 import { useSetRecoilState } from "recoil";
 import { globalBreadCrumb } from "@/utils/store";
 import {
-  Fileresp,
+  FileResp,
   apiGetFiles,
   apiMkdir,
   apiUploadFile,
@@ -41,43 +40,21 @@ import {
 import { ACCESS_TOKEN_KEY } from "@/utils/store";
 import { showErrorToast } from "@/utils/toast";
 
-//import { saveAs } from "file-saver";
-//import { cn } from "@/lib/utils";
-
-// type FileStat = {
-//   filename: string;
-//   basename: string;
-//   lastmod: string;
-//   size: number;
-//   type: "file" | "directory";
-//   etag: string | null;
-//   mime?: string;
-//   //props?: DAVResultResponseProps;
-// };
-
-const client = createClient("https://crater.act.buaa.edu.cn/api/ss", {
-  username: "",
-  password: "",
-});
-
-client.getFileContents;
 export const Component: FC = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  // const [data, setData] = useState<Fileresp[]>([]);
   const [dirName, setDirName] = useState<string>("");
-  // const [filepath, setFilepath] = useState<string>("");
   const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
   const path = useMemo(
     () => pathname.replace(/^\/portal\/data\/share/, ""),
     [pathname],
   );
 
-  const { data: spaces } = useQuery({
-    queryKey: ["data", "share"],
-    queryFn: () => apiGetFiles(""),
-    select: (res) => res.data.data,
-  });
+  // const { data: spaces } = useQuery({
+  //   queryKey: ["data", "share"],
+  //   queryFn: () => apiGetFiles(""),
+  //   select: (res) => res.data.data,
+  // });
 
   useEffect(() => {
     const pathParts = pathname.split("/").filter(Boolean);
@@ -97,12 +74,13 @@ export const Component: FC = () => {
           title: "项目文件",
           path: "/portal/data/share",
         };
-      } else if (index == 3) {
-        return {
-          title: spaces?.find((p) => p.name === value)?.filename ?? value,
-          path: `/portal/data/share/${value}`,
-        };
       }
+      //  else if (index == 3) {
+      //   return {
+      //     title: spaces?.find((p) => p.name === value)?.filename ?? value,
+      //     path: `/portal/data/share/${value}`,
+      //   };
+      // }
       return {
         title: value,
         path: `/${pathParts.slice(0, index + 1).join("/")}`,
@@ -115,7 +93,7 @@ export const Component: FC = () => {
       breadcrumb[breadcrumb.length - 1].path = undefined;
     }
     setBreadcrumb(breadcrumb);
-  }, [pathname, setBreadcrumb, spaces]);
+  }, [pathname, setBreadcrumb]);
 
   const backpath = useMemo(() => {
     // pathname is /xxx/xxx/xxx/aaa
@@ -123,17 +101,13 @@ export const Component: FC = () => {
     return pathname.replace(/\/[^/]+$/, "");
   }, [pathname]);
 
-  // const backfilepath = useMemo(() => {
-  //   return filepath.replace(/\/[^/]+$/, "");
-  // }, [filepath]);
-
   const { data: rootList, isLoading } = useQuery({
     queryKey: ["data", "share", path],
     queryFn: () => apiGetFiles(`${path}`),
     select: (res) => res.data.data,
   });
 
-  const data: Fileresp[] = useMemo(() => {
+  const data: FileResp[] = useMemo(() => {
     if (!rootList) {
       return [];
     }
@@ -142,7 +116,6 @@ export const Component: FC = () => {
         return {
           name: r.name,
           modifytime: r.modifytime,
-          filename: r.filename,
           isdir: r.isdir,
           size: r.size,
           sys: r.sys,
@@ -159,7 +132,7 @@ export const Component: FC = () => {
       });
   }, [rootList]);
 
-  const columns = useMemo<ColumnDef<Fileresp>[]>(
+  const columns = useMemo<ColumnDef<FileResp>[]>(
     () => [
       {
         id: "type",
@@ -180,12 +153,9 @@ export const Component: FC = () => {
         enableHiding: false,
       },
       {
-        accessorKey: "filename",
+        accessorKey: "name",
         header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("filename")}
-          />
+          <DataTableColumnHeader column={column} title={getHeader("name")} />
         ),
         cell: ({ row }) => {
           if (row.original.isdir) {
@@ -198,11 +168,11 @@ export const Component: FC = () => {
                 variant={"link"}
                 className="h-8 px-0 text-left font-normal text-secondary-foreground"
               >
-                {row.getValue("filename")}
+                {row.getValue("name")}
               </Button>
             );
           } else {
-            return <>{row.getValue("filename")}</>;
+            return <>{row.getValue("name")}</>;
           }
         },
         enableSorting: false,
@@ -246,9 +216,7 @@ export const Component: FC = () => {
                   className="h-8 w-8 p-0 hover:text-sky-700"
                   title="下载文件"
                   onClick={() => {
-                    const link = client.getFileDownloadLink(
-                      `download${path}/${row.original.name}`,
-                    );
+                    const link = `https://crater.act.buaa.edu.cn/api/ss/download${path}/${row.original.name}`;
                     const o = new XMLHttpRequest();
                     o.open("GET", link);
                     o.responseType = "blob";
@@ -287,7 +255,7 @@ export const Component: FC = () => {
 
   const getHeader = (key: string): string => {
     switch (key) {
-      case "filename":
+      case "name":
         return "文件名";
       case "modifytime":
         return "更新于";
@@ -300,7 +268,7 @@ export const Component: FC = () => {
   const toolbarConfig: DataTableToolbarConfig = {
     filterInput: {
       placeholder: "搜索名称",
-      key: "filename",
+      key: "name",
     },
     filterOptions: [],
     getHeader: getHeader,
