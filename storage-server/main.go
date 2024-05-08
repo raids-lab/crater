@@ -26,7 +26,6 @@ func main() {
 
 	r.Handle("OPTIONS", "/api/ss", service.AlloweOption)
 	r.Handle("OPTIONS", "/api/ss/*path", service.AlloweOption)
-	r.Handle("GET", "/api/ss/mydir", service.GetMyDir)
 	r.Handle("GET", "/api/ss/files", service.GetFiles)
 	r.Handle("GET", "/api/ss/files/*path", service.GetFiles)
 	r.Handle("GET", "/api/ss/download/*path", service.Download)
