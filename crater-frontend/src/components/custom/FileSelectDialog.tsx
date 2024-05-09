@@ -1,24 +1,36 @@
+// https://github.com/shadcn-ui/ui/issues/355
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FileSelect } from "@/components/custom/FileSelect";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DialogTrigger } from "@radix-ui/react-dialog";
-
-interface DialogProps extends React.HTMLAttributes<HTMLDivElement> {
-  handleSubpathInfo: (info: string) => void;
-}
+import { Tree, TreeDataItem } from "@/components/custom/LazyFileTree";
+import { FileDigit, Folder } from "lucide-react";
+import { toast } from "sonner";
 
 // 修改FileSelect组件初始化File数组为顶层目录
-export function FileSelectDialog({ handleSubpathInfo }: DialogProps) {
+export const FileSelectDialog = ({
+  setSubPath,
+}: {
+  setSubPath: (path: string) => void;
+}) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [subpath, setSubpath] = useState("");
-  const handleSubpath = (info: string) => {
-    setSubpath(info);
+  const [content, setContent] = useState<TreeDataItem | undefined>();
+
+  const handleSelect = () => {
+    if (content) {
+      setSubPath(content.id);
+      toast.info(`选择了${content.id}`);
+      setIsDialogOpen(false);
+    } else {
+      toast.warning("请选择一个文件或文件夹");
+    }
   };
 
   return (
@@ -26,20 +38,33 @@ export function FileSelectDialog({ handleSubpathInfo }: DialogProps) {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
           <Button type="button" variant="outline">
-            {subpath === "" ? "选择目录" : subpath}
+            {!isDialogOpen && content ? content.name : "选择目录"}
           </Button>
         </DialogTrigger>
-        <DialogContent className="h-[67vh] w-[90vw] max-w-screen-sm">
-          <DialogHeader className="h-[10px] w-[90vw] max-w-screen-sm">
-            <DialogTitle>选择项目文件夹</DialogTitle>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>选择挂载数据</DialogTitle>
+            <DialogDescription>支持选择单个文件或文件夹</DialogDescription>
           </DialogHeader>
-          <FileSelect
-            onClose={() => setIsDialogOpen(false)}
-            handleSubpathInfo={handleSubpathInfo}
-            handleSubpath={handleSubpath}
-          />
+          <div className="flex flex-col gap-4">
+            <div className="relative flex h-80 flex-col gap-2 rounded-md border border-input shadow-sm">
+              <Tree
+                className="h-full w-full flex-shrink-0"
+                onSelectChange={(item) => {
+                  setContent(item);
+                }}
+                folderIcon={Folder}
+                itemIcon={FileDigit}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:justify-end sm:space-x-0">
+            <Button type="button" className="w-full" onClick={handleSelect}>
+              确认选择 {content?.name}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   );
-}
+};

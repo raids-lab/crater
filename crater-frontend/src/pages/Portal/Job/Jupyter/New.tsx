@@ -460,9 +460,12 @@ const JupyterNew = () => {
                                   <span className="sr-only">Close</span>
                                 </button>
                                 <FileSelectDialog
-                                  handleSubpathInfo={(info: string) => {
-                                    field.value.subPath = info;
-                                  }}
+                                  setSubPath={(path) =>
+                                    field.onChange({
+                                      ...field.value,
+                                      subPath: path,
+                                    })
+                                  }
                                 />
                                 <Input
                                   id={`input.args.${index}.mountPath`}

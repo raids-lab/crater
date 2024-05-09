@@ -326,14 +326,13 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                               项目路径:
                             </p>
                             <FileSelectDialog
-                              handleSubpathInfo={(info: string) => {
-                                if (info.startsWith("/")) {
-                                  field.value.subPath = info.substring(1);
-                                } else {
-                                  field.value.subPath = info;
-                                }
-                              }}
-                            ></FileSelectDialog>
+                              setSubPath={(path) =>
+                                field.onChange({
+                                  ...field.value,
+                                  subPath: path,
+                                })
+                              }
+                            />
                           </div>
                           <div className="col-span-2 flex flex-row ">
                             <p className="w-[5px] "></p>
