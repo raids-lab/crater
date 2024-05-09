@@ -32,7 +32,7 @@ import { File, Folder } from "lucide-react";
 import { useSetRecoilState } from "recoil";
 import { globalBreadCrumb } from "@/utils/store";
 import {
-  FileResp,
+  FileItem,
   apiGetFiles,
   apiMkdir,
   apiUploadFile,
@@ -107,7 +107,7 @@ export const Component: FC = () => {
     select: (res) => res.data.data,
   });
 
-  const data: FileResp[] = useMemo(() => {
+  const data: FileItem[] = useMemo(() => {
     if (!rootList) {
       return [];
     }
@@ -132,7 +132,7 @@ export const Component: FC = () => {
       });
   }, [rootList]);
 
-  const columns = useMemo<ColumnDef<FileResp>[]>(
+  const columns = useMemo<ColumnDef<FileItem>[]>(
     () => [
       {
         id: "type",
