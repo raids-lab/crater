@@ -223,16 +223,16 @@ const NodeHome = () => {
       cell: ({ row }) => {
         const labels = row.original.labels;
         return (
-          <div className="flex gap-1 font-mono">
+          <div className="flex flex-col items-start justify-center gap-1 font-mono">
             {Object.keys(labels)
-              .filter((k) => k.includes("crater"))
+              .filter((k) => k.includes("nvidia.com/gpu.product"))
               .map((key) => (
                 <Badge
                   key={key}
                   className="text-xs font-normal"
                   variant={"outline"}
                 >
-                  {key}:{labels[key]}
+                  {labels[key]}
                 </Badge>
               ))}
           </div>
