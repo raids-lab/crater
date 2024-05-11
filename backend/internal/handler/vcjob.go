@@ -15,6 +15,7 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/samber/lo"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -157,6 +158,46 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		AnnotationKeyTaskName: req.Name,
 	}
 
+	podSpec := v1.PodSpec{
+		NodeSelector: req.NodeSelector,
+		Volumes:      volumes,
+		Containers: []v1.Container{
+			{
+				Name:    "jupyter-notebook",
+				Image:   req.Image,
+				Command: []string{"/bin/bash", "-c", command},
+				Resources: v1.ResourceRequirements{
+					Limits:   req.Resource,
+					Requests: req.Resource,
+				},
+				WorkingDir: fmt.Sprintf("/home/%s", token.Username),
+
+				Env: []v1.EnvVar{
+					{Name: "GRANT_SUDO", Value: "1"},
+					{Name: "CHOWN_HOME", Value: "1"},
+					{Name: "NB_UID", Value: "1001"},
+					{Name: "NB_USER", Value: token.Username},
+				},
+				Ports: []v1.ContainerPort{
+					{ContainerPort: JupyterPort, Name: "notebook-port", Protocol: v1.ProtocolTCP},
+				},
+				SecurityContext: &v1.SecurityContext{
+					AllowPrivilegeEscalation: lo.ToPtr(true),
+					RunAsUser:                lo.ToPtr(int64(0)),
+					RunAsGroup:               lo.ToPtr(int64(0)),
+				},
+				TerminationMessagePath:   "/dev/termination-log",
+				TerminationMessagePolicy: v1.TerminationMessageReadFile,
+				VolumeMounts:             volumeMounts,
+			},
+		},
+	}
+
+	// Check if the user has requested nvidia gpu resource
+	if util.HasNVIDIAGPUResource(req.Resource) {
+		podSpec.RuntimeClassName = lo.ToPtr(util.NVIDIARuntimeClass)
+	}
+
 	// create volcano job
 	job := batch.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -183,40 +224,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 							Labels:      labels,
 							Annotations: annotations,
 						},
-						Spec: v1.PodSpec{
-							NodeSelector: req.NodeSelector,
-							Volumes:      volumes,
-							Containers: []v1.Container{
-								{
-									Name:    "jupyter-notebook",
-									Image:   req.Image,
-									Command: []string{"/bin/bash", "-c", command},
-									Resources: v1.ResourceRequirements{
-										Limits:   req.Resource,
-										Requests: req.Resource,
-									},
-									WorkingDir: fmt.Sprintf("/home/%s", token.Username),
-
-									Env: []v1.EnvVar{
-										{Name: "GRANT_SUDO", Value: "1"},
-										{Name: "CHOWN_HOME", Value: "1"},
-										{Name: "NB_UID", Value: "1001"},
-										{Name: "NB_USER", Value: token.Username},
-									},
-									Ports: []v1.ContainerPort{
-										{ContainerPort: JupyterPort, Name: "notebook-port", Protocol: v1.ProtocolTCP},
-									},
-									SecurityContext: &v1.SecurityContext{
-										AllowPrivilegeEscalation: func(b bool) *bool { return &b }(true),
-										RunAsUser:                func(i int64) *int64 { return &i }(0),
-										RunAsGroup:               func(i int64) *int64 { return &i }(0),
-									},
-									TerminationMessagePath:   "/dev/termination-log",
-									TerminationMessagePolicy: v1.TerminationMessageReadFile,
-									VolumeMounts:             volumeMounts,
-								},
-							},
-						},
+						Spec: podSpec,
 					},
 				},
 			},
