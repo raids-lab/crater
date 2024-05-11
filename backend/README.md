@@ -29,18 +29,14 @@ sudo apt-get install build-essential
 go env -w GOPROXY=https://goproxy.cn,direct
 ```
 
-### ~~1.2 获取集群访问权限~~
+### 1.2 获取集群访问权限
 
-> 目前 Crater Backend 直接使用位于项目根目录的 `/kubeconfig` 文件作为 Context，这种方式并不正规，但因此，您可以忽略这一步。
->
-> 请不要在 Crater 外，使用项目根目录的 `/kubeconfig` 文件连接到集群。
-
-之后需要获取 K8s 集群的访问权限。申请通过后，集群管理员会提供 `user-xxx.kubeconfig` 文件，创建 `~/.kube` 目录，并将 `user-xxx.kubeconfig` 文件放置在该路径下，仍以 Ubuntu 系统为例：
+之后需要获取 K8s 集群的访问权限。申请通过后，集群管理员会提供 `kubeconfig.yaml` 文件，创建 `~/.kube` 目录，并将 `kubeconfig.yaml` 文件重命名后放置在该路径下，仍以 Ubuntu 系统为例：
 
 ```bash
 mkdir -p ~/.kube
 # Kubectl 默认配置文件路径位于 `~/.kube/config`
-cp ./${user-xxx.kubeconfig} ~/.kube/config
+cp ./${kubeconfig.yaml} ~/.kube/config
 ```
 
 ### 1.3 环境检查
@@ -49,11 +45,12 @@ cp ./${user-xxx.kubeconfig} ~/.kube/config
 
 ```bash
 go version
-# v1.22.1
+# go version go1.22.1 linux/amd64
 
 kubectl version
-# Client Version: version.Info{Major:"1", Minor:"22", GitVersion:"v1.22.1", ...}
-# Server Version: version.Info{Major:"1", Minor:"22", GitVersion:"v1.22.1", ...}
+# Client Version: version.Info{Major:"1", Minor:"26", GitVersion:"v1.26.9", GitCommit:"d1483fdf7a0578c83523bc1e2212a606a44fd71d", GitTreeState:"clean", BuildDate:"2023-09-13T11:32:41Z", GoVersion:"go1.20.8", Compiler:"gc", Platform:"linux/amd64"}
+# Kustomize Version: v4.5.7
+# Server Version: version.Info{Major:"1", Minor:"26", GitVersion:"v1.26.9", GitCommit:"d1483fdf7a0578c83523bc1e2212a606a44fd71d", GitTreeState:"clean", BuildDate:"2023-09-13T11:25:26Z", GoVersion:"go1.20.8", Compiler:"gc", Platform:"linux/amd64"}
 ```
 
 ## 2. 项目开发
@@ -160,21 +157,9 @@ Lint 还不能检查错误信息的内容，因此您应该尽量遵守这一点
 
 ### 2.5 如何测试接口
 
-#### 2.5.1 通过 Postman 等接口测试工具
+#### 2.5.1 通过本地运行前端
 
-完成新功能开发后，可以用 Postman 自测。可以在 Header 中添加 `X-Debug-Username` 指定用户名绕过登录认证，直接测试接口功能。
-
-```json
-{
-  "X-Debug-Username": "YOUR_USERNAME"
-}
-```
-
-用户名需为 Crater 数据库中已存在的用户。目前，Crater 已经接入 ACT 认证，您可以直接在线上版本登录，以激活用户。
-
-#### 2.5.2 通过本地运行前端
-
-也可以在本地运行 [Web Frontend](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-frontend) 进行测试。
+可以在本地运行 [Web Frontend](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-frontend) 进行测试。
 
 由于调试时前后端不同域，在 `pkg/server/middleware/cors.go` 中，允许了来自 `http://localhost:5173` 的跨域请求。
 
