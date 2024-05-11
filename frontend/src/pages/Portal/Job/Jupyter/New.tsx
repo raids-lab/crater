@@ -56,7 +56,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeftIcon } from "lucide-react";
+import { ChevronLeftIcon, FileDown, FileUp } from "lucide-react";
 import FormLabelMust from "@/components/custom/FormLabelMust";
 
 const formSchema = z.object({
@@ -105,22 +105,10 @@ type MountDir = {
 const JupyterNew = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  // const { data: spaces } = useQuery({
-  //   queryKey: ["data", "share"],
-  //   queryFn: () => apiGetFiles(""),
-  //   select: (res) => res.data.data,
-  // });
 
   const convertShareDirs = (argsList: FormSchema["shareDirs"]): MountDir[] => {
     const argsDict: MountDir[] = [];
     argsList.forEach((dir) => {
-      // const parts = dir.subPath.split("/");
-      // const leavePath = dir.subPath.replace(`/${parts[1]}`, ""); //只会替换第一次出现
-
-      // const top = parts[1];
-      // spaces?.find((p) => p.filename === parts[1])?.name ?? parts[1];
-
-      // const truePath = "/" + top + leavePath;
       const truePath = dir.subPath;
       argsDict.push({
         mountPath: dir.mountPath,
@@ -249,17 +237,23 @@ const JupyterNew = () => {
               </h1>
             </div>
             <div className="flex flex-row gap-3">
-              <Button variant={"secondary"} type="button">
-                导出配置
-              </Button>
               <Button
-                variant={"secondary"}
+                variant="outline"
                 onClick={loadFromJson}
                 type="button"
+                className="h-8"
               >
+                <FileDown className="-ml-0.5 mr-1.5 h-4 w-4" />
                 导入配置
               </Button>
-              <Button type="submit">提交任务</Button>
+              <Button variant="outline" type="button" className="h-8">
+                <FileUp className="-ml-0.5 mr-1.5 h-4 w-4" />
+                导出配置
+              </Button>
+              <Button type="submit" className="h-8">
+                <PlusCircledIcon className="-ml-0.5 mr-1.5 h-4 w-4" />
+                提交任务
+              </Button>
             </div>
           </div>
           <Card className="lg:col-span-2">
@@ -349,94 +343,124 @@ const JupyterNew = () => {
                     )}
                   />
                 </div>
-                {/* <FormDescription className="mt-2">
-            请选择需要分配的机器配置
-          </FormDescription> */}
               </div>
-              <div className="space-y-2">
-                <div>
-                  <FormField
-                    control={form.control}
-                    name={`image`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          镜像地址
-                          <FormLabelMust />
-                        </FormLabel>
-                        <FormControl>
-                          {/* <div className="flex flex-row space-x-2"> */}
-                          <Popover modal={true}>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  role="combobox"
-                                  className={cn(
-                                    "w-full justify-between text-ellipsis whitespace-nowrap",
-                                    !field.value && "text-muted-foreground",
-                                  )}
-                                >
-                                  {field.value
-                                    ? imageList.find(
-                                        (dataset) =>
-                                          dataset.value === field.value,
-                                      )?.label
-                                    : "选择镜像"}
-                                  <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              className="p-0"
-                              style={{
-                                width: "var(--radix-popover-trigger-width)",
-                                maxHeight:
-                                  "var(--radix-popover-content-available-height)",
-                              }}
+              <FormField
+                control={form.control}
+                name="gpuModel"
+                render={({ field }) => (
+                  <FormItem hidden={currentValues.gpu == 0}>
+                    <FormLabel>
+                      GPU 类型
+                      <FormLabelMust />
+                    </FormLabel>
+                    <FormControl>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <SelectTrigger className="">
+                          <SelectValue placeholder="请选择" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="default">
+                            默认（不指定）
+                          </SelectItem>
+                          <SelectItem value="v100">
+                            NVIDIA-Tesla V100-SXM2-32GB
+                          </SelectItem>
+                          <SelectItem value="p100">
+                            NVIDIA-Tesla P100-PCIE-16GB
+                          </SelectItem>
+                          <SelectItem value="t4">NVIDIA-Tesla T4</SelectItem>
+                          <SelectItem value="2080ti">
+                            NVIDIA GeForce RTX 2080 Ti
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name={`image`}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      镜像地址
+                      <FormLabelMust />
+                    </FormLabel>
+                    <FormControl>
+                      {/* <div className="flex flex-row space-x-2"> */}
+                      <Popover modal={true}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className={cn(
+                                "w-full justify-between text-ellipsis whitespace-nowrap",
+                                !field.value && "text-muted-foreground",
+                              )}
                             >
-                              <Command>
-                                <CommandInput
-                                  placeholder="查找镜像"
-                                  className="h-9"
-                                />
-                                <CommandEmpty>未找到匹配的镜像</CommandEmpty>
-                                <CommandGroup>
-                                  {imageList.map((image) => (
-                                    <CommandItem
-                                      value={image.label}
-                                      key={image.value}
-                                      onSelect={() => {
-                                        field.onChange(image.value);
-                                      }}
-                                    >
-                                      <PopoverClose
-                                        key={image.value}
-                                        className="flex w-full flex-row items-center justify-between font-mono"
-                                      >
-                                        {image.label}
-                                        <CheckIcon
-                                          className={cn(
-                                            "ml-auto h-4 w-4",
-                                            image.value === field.value
-                                              ? "opacity-100"
-                                              : "opacity-0",
-                                          )}
-                                        />
-                                      </PopoverClose>
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
+                              {field.value
+                                ? imageList.find(
+                                    (dataset) => dataset.value === field.value,
+                                  )?.label
+                                : "选择镜像"}
+                              <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="p-0"
+                          style={{
+                            width: "var(--radix-popover-trigger-width)",
+                            maxHeight:
+                              "var(--radix-popover-content-available-height)",
+                          }}
+                        >
+                          <Command>
+                            <CommandInput
+                              placeholder="查找镜像"
+                              className="h-9"
+                            />
+                            <CommandEmpty>未找到匹配的镜像</CommandEmpty>
+                            <CommandGroup>
+                              {imageList.map((image) => (
+                                <CommandItem
+                                  value={image.label}
+                                  key={image.value}
+                                  onSelect={() => {
+                                    field.onChange(image.value);
+                                  }}
+                                >
+                                  <PopoverClose
+                                    key={image.value}
+                                    className="flex w-full flex-row items-center justify-between font-mono"
+                                  >
+                                    {image.label}
+                                    <CheckIcon
+                                      className={cn(
+                                        "ml-auto h-4 w-4",
+                                        image.value === field.value
+                                          ? "opacity-100"
+                                          : "opacity-0",
+                                      )}
+                                    />
+                                  </PopoverClose>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <div className="space-y-2">
                 {shareDirsFields.length > 0 && (
                   <div>
@@ -499,48 +523,10 @@ const JupyterNew = () => {
                     })
                   }
                 >
-                  <PlusCircledIcon className="mr-1.5 h-4 w-4" />
+                  <PlusCircledIcon className="-ml-0.5 mr-1.5 h-4 w-4" />
                   添加需要挂载的文件
                 </Button>
               </div>
-              <FormField
-                control={form.control}
-                name="gpuModel"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      GPU 类型
-                      <FormLabelMust />
-                    </FormLabel>
-                    <FormControl>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <SelectTrigger className="">
-                          <SelectValue placeholder="请选择" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="default">
-                            默认（不指定）
-                          </SelectItem>
-                          <SelectItem value="v100">
-                            NVIDIA-Tesla V100-SXM2-32GB
-                          </SelectItem>
-                          <SelectItem value="p100">
-                            NVIDIA-Tesla P100-PCIE-16GB
-                          </SelectItem>
-                          <SelectItem value="t4">NVIDIA-Tesla T4</SelectItem>
-                          <SelectItem value="2080ti">
-                            NVIDIA GeForce RTX 2080 Ti
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </CardContent>
           </Card>
           <div className="flex flex-col gap-4">
