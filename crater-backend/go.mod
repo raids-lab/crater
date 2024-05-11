@@ -14,6 +14,7 @@ require (
 	github.com/mittwald/goharbor-client/v5 v5.6.0
 	github.com/prometheus/client_golang v1.19.0
 	github.com/prometheus/common v0.53.0
+	github.com/samber/lo v1.39.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.18.2
 	github.com/swaggo/files v1.0.1
