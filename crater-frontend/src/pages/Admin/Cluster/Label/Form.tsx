@@ -8,6 +8,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -23,9 +30,9 @@ interface UpdateTaskFormProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const formSchema = z.object({
-  id: z.number().int().positive(),
+  id: z.number().int(),
   name: z.string(),
-  priority: z.number().int().positive(),
+  priority: z.number().int().positive({ message: "必须是正整数" }),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -65,13 +72,17 @@ export function UpdateLabelForm({ closeSheet, current }: UpdateTaskFormProps) {
   };
 
   return (
-    <Form {...form}>
-      <form
-        // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        onSubmit={form.handleSubmit(onUpdateSubmit)}
-        className="mt-6 flex flex-col space-y-4"
-      >
-        <div className="grid gap-3">
+    <DialogContent className="sm:max-w-[425px]">
+      <DialogHeader>
+        <DialogTitle>编辑标签</DialogTitle>
+        <DialogDescription>{current.label} 的详细信息</DialogDescription>
+      </DialogHeader>
+      <Form {...form}>
+        <form
+          // eslint-disable-next-line @typescript-eslint/no-misused-promises
+          onSubmit={form.handleSubmit(onUpdateSubmit)}
+          className="grid gap-4"
+        >
           <FormField
             control={form.control}
             name="name"
@@ -82,9 +93,7 @@ export function UpdateLabelForm({ closeSheet, current }: UpdateTaskFormProps) {
                   <FormLabelMust />
                 </FormLabel>
                 <Input {...field} />
-                <FormDescription>
-                  用于提交任务时，选择节点类型时使用
-                </FormDescription>
+                <FormDescription>用于提交任务时，选择节点类型</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -109,14 +118,14 @@ export function UpdateLabelForm({ closeSheet, current }: UpdateTaskFormProps) {
               </FormItem>
             )}
           />
-          <div className="grid w-full grid-cols-2 gap-2">
+          <DialogFooter className="grid grid-cols-2">
             <Button onClick={closeDialog} variant={"secondary"}>
               取消
             </Button>
             <Button type="submit">提交</Button>
-          </div>
-        </div>
-      </form>
-    </Form>
+          </DialogFooter>
+        </form>
+      </Form>
+    </DialogContent>
   );
 }
