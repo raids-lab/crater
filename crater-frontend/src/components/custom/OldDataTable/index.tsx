@@ -82,7 +82,7 @@ export function DataTable<TData, TValue>({
   });
 
   return (
-    <div className={cn("col-span-3 flex flex-col gap-2", className)}>
+    <div className={cn("flex flex-col gap-2 lg:col-span-3", className)}>
       <DataTableToolbar table={table} config={toolbarConfig}>
         {children}
       </DataTableToolbar>
