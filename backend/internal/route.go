@@ -52,8 +52,8 @@ func Register(aitaskCtrl *aitaskctl.TaskController, cl client.Client, cs *kubern
 
 func (b *Backend) RegisterService(
 	aitaskCtrl *aitaskctl.TaskController,
-	cr client.Client,
-	cs *kubernetes.Clientset,
+	cl client.Client,
+	kc *kubernetes.Clientset,
 	pc *monitor.PrometheusClient,
 ) {
 	// Enable CORS for http://localhost:XXXX in debug mode
@@ -70,28 +70,28 @@ func (b *Backend) RegisterService(
 	}
 
 	// Init Clients and Configs
-	pvcClient := crclient.PVCClient{Client: cr}
+	pvcClient := crclient.PVCClient{Client: cl}
 	err := pvcClient.InitShareDir()
 	if err != nil {
 		panic(err)
 	}
 	httpClient := http.Client{}
-	logClient := crclient.LogClient{Client: cr, KubeClient: cs}
-	nodeClient := crclient.NodeClient{Client: cr, KubeClient: cs, PromeClient: pc}
+	logClient := crclient.LogClient{Client: cl, KubeClient: kc}
+	nodeClient := crclient.NodeClient{Client: cl, KubeClient: kc, PrometheusClient: pc}
 	harborClient := crclient.NewHarborClient()
 
 	// Init Handlers
 	authMgr := handler.NewAuthMgr(aitaskCtrl, &httpClient)
-	labelMgr := handler.NewLabelMgr()
+	labelMgr := handler.NewLabelMgr(kc)
 	projectMgr := handler.NewProjectMgr(aitaskCtrl)
 	nodeMgr := handler.NewNodeMgr(&nodeClient)
 	userMgr := handler.NewUserMgr()
-	imagepackMgr := handler.NewImagePackMgr(&logClient, &crclient.ImagePackController{Client: cr}, &harborClient)
-	contextMgr := handler.NewContextMgr(cr)
+	imagepackMgr := handler.NewImagePackMgr(&logClient, &crclient.ImagePackController{Client: cl}, &harborClient)
+	contextMgr := handler.NewContextMgr(cl)
 	jwttokenMgr := handler.NewJWTTokenMgr()
-	recommenddljobMgr := handler.NewRecommendDLJobMgr(cr)
-	volcanoMgr := handler.NewVolcanojobMgr(cr, cs)
-	queueMgr := handler.NewQueueMgr(cr)
+	recommenddljobMgr := handler.NewRecommendDLJobMgr(cl)
+	volcanoMgr := handler.NewVolcanojobMgr(cl, kc)
+	queueMgr := handler.NewQueueMgr(cl)
 	///////////////////////////////////////
 	//// Public routers, no need login ////
 	///////////////////////////////////////
