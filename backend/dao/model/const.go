@@ -58,8 +58,9 @@ const (
 type WorkerType uint8
 
 const (
-	_      WorkerType = iota
-	Nvidia            // Nvidia GPU worker
+	_       WorkerType = iota
+	Nvidia             // Nvidia GPU worker
+	Unknown            // Unknown worker
 )
 
-//go:generate stringer -type=Role,Status,AccessMode,JobStatus,ImageTaskType -output=const_string.go
+//go:generate stringer -type=Role,Status,AccessMode,JobStatus,ImageTaskType,WorkerType -output=const_string.go

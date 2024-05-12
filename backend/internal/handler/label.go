@@ -217,7 +217,7 @@ func (mgr *LabelMgr) SyncNvidiaLabels(c *gin.Context) {
 		labelCounts[gpuProduct]++
 	}
 
-	// 向数据库中插入标签，如果标签已存在则更新其数量
+	// 如果标签已存在则更新其数量，否则创建新标签
 	l := query.Label
 	for label, count := range labelCounts {
 		info, err := l.WithContext(c).Where(l.Label.Eq(label)).Update(l.Count, count)
@@ -226,7 +226,13 @@ func (mgr *LabelMgr) SyncNvidiaLabels(c *gin.Context) {
 			return
 		}
 		if info.RowsAffected == 0 {
-			err := l.WithContext(c).Create(&model.Label{Label: label, Count: count, Type: model.Nvidia})
+			var newLabel model.Label
+			if label == "" {
+				newLabel = model.Label{Label: "", Count: count, Type: model.Unknown}
+			} else {
+				newLabel = model.Label{Label: label, Name: label, Count: count, Type: model.Nvidia, Priority: 1}
+			}
+			err := l.WithContext(c).Create(&newLabel)
 			if err != nil {
 				resputil.Error(c, fmt.Sprintf("failed to create label: %v", err), resputil.NotSpecified)
 				return

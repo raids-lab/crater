@@ -357,24 +357,8 @@ func (mgr *ImagePackMgr) updateImagePackStatus(c *gin.Context, imagepack *model.
 // @Security Bearer
 // @Router /images/available [GET]
 func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
-	token := util.GetToken(c)
-	imagepackQuery := query.Image
-	imagepacks, err := imagepackQuery.WithContext(c).
-		Where(imagepackQuery.QueueID.Eq(token.QueueID)).
-		Where(imagepackQuery.Status.Eq(ImagePackFinished)).
-		Find()
-	if err != nil {
-		logutils.Log.Errorf("fetch available imagepack failed, err:%v", err)
-		resputil.Error(c, "fetch available imagepack failed", resputil.NotSpecified)
-		return
-	}
-	imageLinks := make([]string, len(imagepacks))
-	for i := range imagepacks {
-		imageLinks[i] = imagepacks[i].ImageLink
-	}
-
 	// manually add public imagelink
-	imageLinks = append(imageLinks, "***REMOVED***/crater-workspace/jupyter-base-notebook:ubuntu-22.04")
+	imageLinks := []string{"***REMOVED***/crater-workspace/jupyter-base-notebook:ubuntu-22.04"}
 
 	resp := payload.GetImagesResp{Images: imageLinks}
 	resputil.Success(c, resp)
