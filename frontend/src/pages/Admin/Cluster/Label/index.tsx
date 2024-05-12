@@ -2,67 +2,51 @@ import { DataTable } from "@/components/custom/OldDataTable";
 import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
 import {
-  apiNodeLabelsDelete,
+  LabelInfo,
+  LabelType,
   apiNodeLabelsList,
+  apiNodeLabelsNvidiaSync,
 } from "@/services/api/nodelabel";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { IResponse } from "@/services/types";
 import { ColumnDef } from "@tanstack/react-table";
 import { useMemo, type FC, useState } from "react";
-import { Separator } from "@/components/ui/separator";
-import { NewLabelForm, UpdateLabelForm } from "./Form.tsx";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import {
   AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { DotsHorizontalIcon } from "@radix-ui/react-icons";
+import { DotsHorizontalIcon, UpdateIcon } from "@radix-ui/react-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-
-interface LabelInfo {
-  ID: number;
-  Name: string;
-  Priority: number;
-  Type: string;
-}
-
-export enum LabelType {
-  GPU = 1,
-}
-// const handleUpdateLabel = (
-//   id: number,
-//   name: string,
-//   priority: number,
-//   type: string,
-// ) => {
-//   void apiNodeLabelsUpdate(id, name, priority, type).then((response) => {
-//     logger.debug("update label response", response);
-//   });
-// };
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card.tsx";
+import { UpdateLabelForm } from "./Form";
+import { Badge } from "@/components/ui/badge";
+import { MyResponsivePieCanvas } from "./LabelPie";
 
 export const getTypeText = (type: LabelType): string => {
   switch (type) {
-    case LabelType.GPU:
-      return "GPU";
+    case LabelType.NVIDIA:
+      return "NVIDIA";
     default:
       return "Unknown";
   }
@@ -71,26 +55,124 @@ export const getTypeText = (type: LabelType): string => {
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
     placeholder: "搜索标签名称",
-    key: "Name",
+    key: "label",
   },
   filterOptions: [],
   getHeader: (x) => x,
 };
 
+const columns: ColumnDef<LabelInfo>[] = [
+  {
+    accessorKey: "label",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={"标签"} />
+    ),
+    cell: ({ row }) => {
+      const text = row.getValue<string>("label");
+      if (text === "") {
+        return <></>;
+      }
+      return (
+        <Badge className="font-mono font-normal" variant="outline">
+          {text}
+        </Badge>
+      );
+    },
+  },
+  {
+    accessorKey: "name",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={"别名"} />
+    ),
+    cell: ({ row }) => <div>{row.getValue("name")}</div>,
+  },
+  {
+    accessorKey: "type",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={"类型"} />
+    ),
+    cell: ({ row }) => {
+      return (
+        <Badge
+          className="font-mono"
+          variant={
+            row.getValue("type") === LabelType.NVIDIA
+              ? "secondary"
+              : "destructive"
+          }
+        >
+          {getTypeText(row.getValue("type"))}
+        </Badge>
+      );
+    },
+  },
+  {
+    accessorKey: "count",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={"节点数"} />
+    ),
+    cell: ({ row }) => <div>{row.getValue("count")}</div>,
+  },
+  {
+    accessorKey: "priority",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={"优先级"} />
+    ),
+    cell: ({ row }) => <div>{row.getValue("priority")}</div>,
+  },
+  // 添加删除键和更新键
+  {
+    id: "actions",
+    enableHiding: false,
+    cell: ({ row }) => {
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      const [openSheet, setOpenSheet] = useState(false);
+      return (
+        <AlertDialog open={openSheet} onOpenChange={setOpenSheet}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">操作</span>
+                <DotsHorizontalIcon className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>操作</DropdownMenuLabel>
+              <AlertDialogTrigger asChild>
+                <DropdownMenuItem>编辑标签</DropdownMenuItem>
+              </AlertDialogTrigger>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>编辑标签</AlertDialogTitle>
+              <UpdateLabelForm
+                current={row.original}
+                closeSheet={() => {
+                  setOpenSheet(false);
+                }}
+              />
+            </AlertDialogHeader>
+          </AlertDialogContent>
+        </AlertDialog>
+      );
+    },
+  },
+];
+
 export const Component: FC = () => {
   const queryClient = useQueryClient();
-  const [openSheet, setOpenSheet] = useState(false);
   const query = useQuery({
     queryKey: ["label", "list"],
     queryFn: apiNodeLabelsList,
-    select: (res: IResponse<LabelInfo[]>) => res.data,
+    select: (res) => res.data.data,
   });
 
-  const { mutate: handleDeleteLabel } = useMutation({
-    mutationFn: (id: number) => apiNodeLabelsDelete(id),
+  const { mutate: syncNvidiaLabel } = useMutation({
+    mutationFn: apiNodeLabelsNvidiaSync,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["label", "list"] });
-      toast.success("标签已删除");
+      toast.success("标签已同步");
     },
   });
 
@@ -98,114 +180,62 @@ export const Component: FC = () => {
     if (!query.data) {
       return [];
     }
-    return query.data;
+    return query.data.sort((a, b) => b.label.localeCompare(a.label));
   }, [query.data]);
-
-  const columns = useMemo<ColumnDef<LabelInfo>[]>(
-    () => [
-      {
-        accessorKey: "Name",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={"名称"} />
-        ),
-        cell: ({ row }) => <div>{row.getValue("Name")}</div>,
-      },
-      {
-        accessorKey: "Priority",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={"优先级"} />
-        ),
-        cell: ({ row }) => <div>{row.getValue("Priority")}</div>,
-      },
-      {
-        accessorKey: "Type",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={"类型"} />
-        ),
-        cell: ({ row }) => <div>{getTypeText(row.getValue("Type"))}</div>,
-      },
-      // 添加删除键和更新键
-      {
-        id: "actions",
-        enableHiding: false,
-        cell: ({ row }) => {
-          const labelId = row.original.ID;
-          const labelName = row.getValue<string>("Name");
-          const nowLabelPriority = row.getValue<number>("Priority");
-          const nowLabelType = row.getValue<LabelType>("Type");
-          // eslint-disable-next-line react-hooks/rules-of-hooks
-          const [openSheet, setOpenSheet] = useState(false);
-          return (
-            <AlertDialog open={openSheet} onOpenChange={setOpenSheet}>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-8 w-8 p-0">
-                    <span className="sr-only">操作</span>
-                    <DotsHorizontalIcon className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <AlertDialogTrigger asChild>
-                    <DropdownMenuItem>编辑标签</DropdownMenuItem>
-                  </AlertDialogTrigger>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      void handleDeleteLabel(labelId);
-                    }}
-                  >
-                    删除标签
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>编辑标签</AlertDialogTitle>
-                  <UpdateLabelForm
-                    labelId={labelId}
-                    nowLabelName={labelName}
-                    nowLabelPriority={nowLabelPriority}
-                    nowLabelType={nowLabelType}
-                    closeSheet={() => {
-                      setOpenSheet(false);
-                    }}
-                  />
-                </AlertDialogHeader>
-              </AlertDialogContent>
-            </AlertDialog>
-          );
-        },
-      },
-    ],
-    [handleDeleteLabel],
-  );
 
   return (
     <>
-      {query.isLoading && <p>Loading...</p>}
-      {!query.isLoading && data.length === 0 && <p>No data available</p>}
-      {!query.isLoading && data.length > 0 && (
-        <DataTable
-          columns={columns}
-          data={data}
-          loading={query.isLoading}
-          toolbarConfig={toolbarConfig}
-        >
-          <Sheet open={openSheet} onOpenChange={setOpenSheet}>
-            <SheetTrigger asChild>
-              <Button className="h-8 min-w-fit">新建标签</Button>
-            </SheetTrigger>
-            {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
-            <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
-              <SheetHeader>
-                <SheetTitle>新建标签</SheetTitle>
-                <SheetDescription>创建一个新的标签</SheetDescription>
-              </SheetHeader>
-              <Separator className="mt-4" />
-              <NewLabelForm closeSheet={() => setOpenSheet(false)} />
-            </SheetContent>
-          </Sheet>
-        </DataTable>
-      )}
+      <div className="grid gap-4 lg:col-span-3 lg:grid-cols-2 lg:gap-6">
+        <Card className="col-span-1">
+          <CardHeader>
+            <CardTitle>关于节点类型</CardTitle>
+            <CardDescription className=" leading-6">
+              部署 Nvidia GPU Operator 后，
+              <span className="rounded-md border px-1 py-0.5 font-mono">
+                nvidia.com/gpu.product
+              </span>{" "}
+              标签将被添加到节点上， 用于标识节点的 GPU 类型。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button className=" h-8 min-w-fit">
+                  <UpdateIcon className="mr-1.5 h-4 w-4" />
+                  同步 GPU 标签
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>同步标签</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    确认要通过{" "}
+                    <span className="rounded-md border px-1 py-0.5 font-mono">
+                      nvidia.com/gpu.product
+                    </span>{" "}
+                    更新类型信息吗？
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => syncNvidiaLabel()}>
+                    确认
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardContent>
+        </Card>
+        <Card className="h-52 p-6">
+          <MyResponsivePieCanvas />
+        </Card>
+      </div>
+      <DataTable
+        columns={columns}
+        data={data}
+        loading={query.isLoading}
+        toolbarConfig={toolbarConfig}
+      ></DataTable>
     </>
   );
 };

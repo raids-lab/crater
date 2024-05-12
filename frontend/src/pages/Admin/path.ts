@@ -10,11 +10,11 @@ export const adminPath: PathInfo = {
       children: [
         {
           path: "node",
-          title: "计算节点",
+          title: "节点信息",
         },
         {
           path: "label",
-          title: "标签管理",
+          title: "节点类型",
         },
       ],
     },
