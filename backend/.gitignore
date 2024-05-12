@@ -27,3 +27,6 @@ Dockerfile.cross
 .cache
 .debug.env
 __debug_*
+
+# Kubernetes Config
+kubeconfig
