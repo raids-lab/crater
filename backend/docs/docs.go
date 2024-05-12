@@ -22,7 +22,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "用projectID来过滤已完成的镜像",
+                "description": "用queueID来过滤已完成的镜像",
                 "consumes": [
                     "application/json"
                 ],
@@ -153,6 +153,36 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "管理员获取镜像的类型",
                         "name": "type",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/images/log": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取imagepackname，搜索到imagepack",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "获取imagepack的日志信息，展示在镜像详情页",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "获取ImagePack的name",
+                        "name": "imagepackname",
                         "in": "query",
                         "required": true
                     }
@@ -1388,6 +1418,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "accessToken": {
+                    "type": "string"
+                },
+                "alias": {
+                    "type": "string"
+                },
+                "description": {
                     "type": "string"
                 },
                 "gitRepository": {
