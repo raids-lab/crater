@@ -32,7 +32,7 @@ func newImage(db *gorm.DB, opts ...gen.DOOption) image {
 	_image.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_image.DeletedAt = field.NewField(tableName, "deleted_at")
 	_image.UserID = field.NewUint(tableName, "user_id")
-	_image.ProjectID = field.NewUint(tableName, "project_id")
+	_image.QueueID = field.NewUint(tableName, "queue_id")
 	_image.ImagePackName = field.NewString(tableName, "imagepackname")
 	_image.ImageLink = field.NewString(tableName, "imagelink")
 	_image.NameSpace = field.NewString(tableName, "namespace")
@@ -41,6 +41,9 @@ func newImage(db *gorm.DB, opts ...gen.DOOption) image {
 	_image.Params = field.NewField(tableName, "params")
 	_image.NeedProfile = field.NewBool(tableName, "needprofile")
 	_image.TaskType = field.NewUint8(tableName, "tasktype")
+	_image.Alias_ = field.NewString(tableName, "alias")
+	_image.Description = field.NewString(tableName, "description")
+	_image.CreatorName = field.NewString(tableName, "creatorname")
 	_image.User = imageBelongsToUser{
 		db: db.Session(&gorm.Session{}),
 
@@ -57,19 +60,14 @@ func newImage(db *gorm.DB, opts ...gen.DOOption) image {
 		},
 	}
 
-	_image.Project = imageBelongsToProject{
+	_image.Queue = imageBelongsToQueue{
 		db: db.Session(&gorm.Session{}),
 
-		RelationField: field.NewRelation("Project", "model.Project"),
-		UserProjects: struct {
+		RelationField: field.NewRelation("Queue", "model.Queue"),
+		UserQueues: struct {
 			field.RelationField
 		}{
-			RelationField: field.NewRelation("Project.UserProjects", "model.UserProject"),
-		},
-		ProjectSpaces: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("Project.ProjectSpaces", "model.ProjectSpace"),
+			RelationField: field.NewRelation("Queue.UserQueues", "model.UserQueue"),
 		},
 	}
 
@@ -87,7 +85,7 @@ type image struct {
 	UpdatedAt     field.Time
 	DeletedAt     field.Field
 	UserID        field.Uint
-	ProjectID     field.Uint
+	QueueID       field.Uint
 	ImagePackName field.String
 	ImageLink     field.String
 	NameSpace     field.String
@@ -96,9 +94,12 @@ type image struct {
 	Params        field.Field
 	NeedProfile   field.Bool
 	TaskType      field.Uint8
+	Alias_        field.String
+	Description   field.String
+	CreatorName   field.String
 	User          imageBelongsToUser
 
-	Project imageBelongsToProject
+	Queue imageBelongsToQueue
 
 	fieldMap map[string]field.Expr
 }
@@ -120,7 +121,7 @@ func (i *image) updateTableName(table string) *image {
 	i.UpdatedAt = field.NewTime(table, "updated_at")
 	i.DeletedAt = field.NewField(table, "deleted_at")
 	i.UserID = field.NewUint(table, "user_id")
-	i.ProjectID = field.NewUint(table, "project_id")
+	i.QueueID = field.NewUint(table, "queue_id")
 	i.ImagePackName = field.NewString(table, "imagepackname")
 	i.ImageLink = field.NewString(table, "imagelink")
 	i.NameSpace = field.NewString(table, "namespace")
@@ -129,6 +130,9 @@ func (i *image) updateTableName(table string) *image {
 	i.Params = field.NewField(table, "params")
 	i.NeedProfile = field.NewBool(table, "needprofile")
 	i.TaskType = field.NewUint8(table, "tasktype")
+	i.Alias_ = field.NewString(table, "alias")
+	i.Description = field.NewString(table, "description")
+	i.CreatorName = field.NewString(table, "creatorname")
 
 	i.fillFieldMap()
 
@@ -153,13 +157,13 @@ func (i *image) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (i *image) fillFieldMap() {
-	i.fieldMap = make(map[string]field.Expr, 16)
+	i.fieldMap = make(map[string]field.Expr, 19)
 	i.fieldMap["id"] = i.ID
 	i.fieldMap["created_at"] = i.CreatedAt
 	i.fieldMap["updated_at"] = i.UpdatedAt
 	i.fieldMap["deleted_at"] = i.DeletedAt
 	i.fieldMap["user_id"] = i.UserID
-	i.fieldMap["project_id"] = i.ProjectID
+	i.fieldMap["queue_id"] = i.QueueID
 	i.fieldMap["imagepackname"] = i.ImagePackName
 	i.fieldMap["imagelink"] = i.ImageLink
 	i.fieldMap["namespace"] = i.NameSpace
@@ -168,6 +172,9 @@ func (i *image) fillFieldMap() {
 	i.fieldMap["params"] = i.Params
 	i.fieldMap["needprofile"] = i.NeedProfile
 	i.fieldMap["tasktype"] = i.TaskType
+	i.fieldMap["alias"] = i.Alias_
+	i.fieldMap["description"] = i.Description
+	i.fieldMap["creatorname"] = i.CreatorName
 
 }
 
@@ -259,20 +266,17 @@ func (a imageBelongsToUserTx) Count() int64 {
 	return a.tx.Count()
 }
 
-type imageBelongsToProject struct {
+type imageBelongsToQueue struct {
 	db *gorm.DB
 
 	field.RelationField
 
-	UserProjects struct {
-		field.RelationField
-	}
-	ProjectSpaces struct {
+	UserQueues struct {
 		field.RelationField
 	}
 }
 
-func (a imageBelongsToProject) Where(conds ...field.Expr) *imageBelongsToProject {
+func (a imageBelongsToQueue) Where(conds ...field.Expr) *imageBelongsToQueue {
 	if len(conds) == 0 {
 		return &a
 	}
@@ -285,27 +289,27 @@ func (a imageBelongsToProject) Where(conds ...field.Expr) *imageBelongsToProject
 	return &a
 }
 
-func (a imageBelongsToProject) WithContext(ctx context.Context) *imageBelongsToProject {
+func (a imageBelongsToQueue) WithContext(ctx context.Context) *imageBelongsToQueue {
 	a.db = a.db.WithContext(ctx)
 	return &a
 }
 
-func (a imageBelongsToProject) Session(session *gorm.Session) *imageBelongsToProject {
+func (a imageBelongsToQueue) Session(session *gorm.Session) *imageBelongsToQueue {
 	a.db = a.db.Session(session)
 	return &a
 }
 
-func (a imageBelongsToProject) Model(m *model.Image) *imageBelongsToProjectTx {
-	return &imageBelongsToProjectTx{a.db.Model(m).Association(a.Name())}
+func (a imageBelongsToQueue) Model(m *model.Image) *imageBelongsToQueueTx {
+	return &imageBelongsToQueueTx{a.db.Model(m).Association(a.Name())}
 }
 
-type imageBelongsToProjectTx struct{ tx *gorm.Association }
+type imageBelongsToQueueTx struct{ tx *gorm.Association }
 
-func (a imageBelongsToProjectTx) Find() (result *model.Project, err error) {
+func (a imageBelongsToQueueTx) Find() (result *model.Queue, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a imageBelongsToProjectTx) Append(values ...*model.Project) (err error) {
+func (a imageBelongsToQueueTx) Append(values ...*model.Queue) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -313,7 +317,7 @@ func (a imageBelongsToProjectTx) Append(values ...*model.Project) (err error) {
 	return a.tx.Append(targetValues...)
 }
 
-func (a imageBelongsToProjectTx) Replace(values ...*model.Project) (err error) {
+func (a imageBelongsToQueueTx) Replace(values ...*model.Queue) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -321,7 +325,7 @@ func (a imageBelongsToProjectTx) Replace(values ...*model.Project) (err error) {
 	return a.tx.Replace(targetValues...)
 }
 
-func (a imageBelongsToProjectTx) Delete(values ...*model.Project) (err error) {
+func (a imageBelongsToQueueTx) Delete(values ...*model.Queue) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -329,11 +333,11 @@ func (a imageBelongsToProjectTx) Delete(values ...*model.Project) (err error) {
 	return a.tx.Delete(targetValues...)
 }
 
-func (a imageBelongsToProjectTx) Clear() error {
+func (a imageBelongsToQueueTx) Clear() error {
 	return a.tx.Clear()
 }
 
-func (a imageBelongsToProjectTx) Count() int64 {
+func (a imageBelongsToQueueTx) Count() int64 {
 	return a.tx.Count()
 }
 
