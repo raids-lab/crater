@@ -348,9 +348,11 @@ const JupyterNew = () => {
                 control={form.control}
                 name="gpuModel"
                 render={({ field }) => (
-                  <FormItem hidden={currentValues.gpu == 0}>
+                  <FormItem
+                  // hidden={currentValues.gpu == 0}
+                  >
                     <FormLabel>
-                      GPU 类型
+                      节点类型
                       <FormLabelMust />
                     </FormLabel>
                     <FormControl>
@@ -358,8 +360,13 @@ const JupyterNew = () => {
                         onValueChange={field.onChange}
                         value={field.value}
                       >
-                        <SelectTrigger className="">
-                          <SelectValue placeholder="请选择" />
+                        <SelectTrigger
+                          className={cn(
+                            "px-4",
+                            !field.value && "text-muted-foreground",
+                          )}
+                        >
+                          <SelectValue placeholder="选择节点类型" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="default">

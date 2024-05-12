@@ -42,6 +42,7 @@ import {
 import { UpdateLabelForm } from "./Form";
 import { Badge } from "@/components/ui/badge";
 import { MyResponsivePieCanvas } from "./LabelPie";
+import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 
 export const getTypeText = (type: LabelType): string => {
   switch (type) {
@@ -84,7 +85,17 @@ const columns: ColumnDef<LabelInfo>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title={"别名"} />
     ),
-    cell: ({ row }) => <div>{row.getValue("name")}</div>,
+    cell: ({ row }) => {
+      const text = row.getValue<string>("name");
+      if (text === "") {
+        return <></>;
+      }
+      return (
+        <Badge className="font-mono font-normal" variant="outline">
+          {text}
+        </Badge>
+      );
+    },
   },
   {
     accessorKey: "type",
@@ -111,14 +122,16 @@ const columns: ColumnDef<LabelInfo>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title={"节点数"} />
     ),
-    cell: ({ row }) => <div>{row.getValue("count")}</div>,
+    cell: ({ row }) => <div className="font-mono">{row.getValue("count")}</div>,
   },
   {
     accessorKey: "priority",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title={"优先级"} />
     ),
-    cell: ({ row }) => <div>{row.getValue("priority")}</div>,
+    cell: ({ row }) => (
+      <div className="font-mono">{row.getValue("priority")}</div>
+    ),
   },
   // 添加删除键和更新键
   {
@@ -128,7 +141,7 @@ const columns: ColumnDef<LabelInfo>[] = [
       // eslint-disable-next-line react-hooks/rules-of-hooks
       const [openSheet, setOpenSheet] = useState(false);
       return (
-        <AlertDialog open={openSheet} onOpenChange={setOpenSheet}>
+        <Dialog open={openSheet} onOpenChange={setOpenSheet}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
@@ -138,23 +151,18 @@ const columns: ColumnDef<LabelInfo>[] = [
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>操作</DropdownMenuLabel>
-              <AlertDialogTrigger asChild>
+              <DialogTrigger asChild>
                 <DropdownMenuItem>编辑标签</DropdownMenuItem>
-              </AlertDialogTrigger>
+              </DialogTrigger>
             </DropdownMenuContent>
           </DropdownMenu>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>编辑标签</AlertDialogTitle>
-              <UpdateLabelForm
-                current={row.original}
-                closeSheet={() => {
-                  setOpenSheet(false);
-                }}
-              />
-            </AlertDialogHeader>
-          </AlertDialogContent>
-        </AlertDialog>
+          <UpdateLabelForm
+            current={row.original}
+            closeSheet={() => {
+              setOpenSheet(false);
+            }}
+          />
+        </Dialog>
       );
     },
   },
@@ -186,9 +194,9 @@ export const Component: FC = () => {
   return (
     <>
       <div className="grid gap-4 lg:col-span-3 lg:grid-cols-2 lg:gap-6">
-        <Card className="col-span-1">
+        <Card className="col-span-1 flex flex-col justify-between">
           <CardHeader>
-            <CardTitle>关于节点类型</CardTitle>
+            <CardTitle>节点类型</CardTitle>
             <CardDescription className=" leading-6">
               部署 Nvidia GPU Operator 后，
               <span className="rounded-md border px-1 py-0.5 font-mono">
@@ -202,7 +210,7 @@ export const Component: FC = () => {
               <AlertDialogTrigger asChild>
                 <Button className=" h-8 min-w-fit">
                   <UpdateIcon className="mr-1.5 h-4 w-4" />
-                  同步 GPU 标签
+                  同步 Nvidia 节点
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
