@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -50,4 +51,12 @@ func (c *ImagePackController) ListImagePack(ctx context.Context, namespace strin
 		ret = append(ret, &imagePackList.Items[i])
 	}
 	return ret, nil
+}
+
+func (c *ImagePackController) GetImagePackPod(ctx context.Context, name, namespace string) (*corev1.Pod, error) {
+	kanikoPod := &corev1.Pod{}
+	if err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, kanikoPod); err != nil {
+		return nil, err
+	}
+	return kanikoPod, nil
 }
