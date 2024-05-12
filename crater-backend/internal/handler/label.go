@@ -7,9 +7,32 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 type LabelMgr struct {
+	KubeClient kubernetes.Interface
+}
+
+func NewLabelMgr(kc kubernetes.Interface) Manager {
+	return &LabelMgr{
+		KubeClient: kc,
+	}
+}
+
+func (mgr *LabelMgr) RegisterPublic(_ *gin.RouterGroup) {
+}
+
+func (mgr *LabelMgr) RegisterProtected(g *gin.RouterGroup) {
+	g.GET("", mgr.ListLabels)
+}
+
+func (mgr *LabelMgr) RegisterAdmin(g *gin.RouterGroup) {
+	g.POST("", mgr.CreateLabel)
+	g.POST("/sync/nvidia", mgr.SyncNvidiaLabels)
+	g.PUT("/:id", mgr.UpdateLabel)
+	g.DELETE("/:id", mgr.DeleteLabel)
 }
 
 type (
@@ -28,26 +51,18 @@ type (
 		Type     model.WorkerType `json:"type"`
 	}
 	DeleteLabelID struct {
-		ID int `uri:"id" binding:"required"`
+		ID uint `uri:"id" binding:"required"`
+	}
+
+	LabelResp struct {
+		ID       uint             `json:"id"`
+		Label    string           `json:"label"`
+		Name     string           `json:"name"`
+		Type     model.WorkerType `json:"type"`
+		Count    int              `json:"count"`
+		Priority int              `json:"priority"`
 	}
 )
-
-func NewLabelMgr() Manager {
-	return &LabelMgr{}
-}
-
-func (mgr *LabelMgr) RegisterPublic(_ *gin.RouterGroup) {
-}
-
-func (mgr *LabelMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.GET("", mgr.ListLabels)
-}
-
-func (mgr *LabelMgr) RegisterAdmin(g *gin.RouterGroup) {
-	g.POST("", mgr.CreateLabel)
-	g.PUT("/:id", mgr.UpdateLabel)
-	g.DELETE("/:id", mgr.DeleteLabel)
-}
 
 // ListLabels godoc
 // @Summary list labels
@@ -62,7 +77,9 @@ func (mgr *LabelMgr) RegisterAdmin(g *gin.RouterGroup) {
 // @Router /v1/labels [get]
 func (mgr *LabelMgr) ListLabels(c *gin.Context) {
 	label := query.Label
-	labels, err := label.WithContext(c).Select(label.ID, label.Name, label.Priority, label.Type).Order(label.Priority.Desc()).Find()
+	var labels []LabelResp
+	err := label.WithContext(c).Select(label.ID, label.Label, label.Name, label.Type, label.Count, label.Priority).
+		Order(label.Priority.Desc()).Scan(&labels)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("failed to list labels: %v", err), resputil.NotSpecified)
 		return
@@ -171,10 +188,51 @@ func (mgr *LabelMgr) DeleteLabel(c *gin.Context) {
 		return
 	}
 
-	label := query.Label
-	if _, err := label.WithContext(c).Delete(&model.Label{ID: uint(req.ID)}); err != nil {
+	l := query.Label
+	if _, err := l.WithContext(c).Where(l.ID.Eq(req.ID)).Delete(); err != nil {
 		resputil.Error(c, fmt.Sprintf("failed to delete label: %v", err), resputil.NotSpecified)
 		return
 	}
 	resputil.Success(c, nil)
+}
+
+func (mgr *LabelMgr) SyncNvidiaLabels(c *gin.Context) {
+	nodes, err := mgr.KubeClient.CoreV1().Nodes().List(c, metav1.ListOptions{})
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to list nodes: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	// 创建一个 map 用来存储标签值和出现次数
+	labelCounts := make(map[string]int)
+
+	// 遍历每个节点
+	for i := range nodes.Items {
+		node := &nodes.Items[i]
+		// 获取节点的标签
+		labels := node.GetLabels()
+		// 获取节点的 "nvidia.com/gpu.product" 标签的值
+		gpuProduct := labels["nvidia.com/gpu.product"]
+		// 将标签值及其出现次数记录到 map 中
+		labelCounts[gpuProduct]++
+	}
+
+	// 向数据库中插入标签，如果标签已存在则更新其数量
+	l := query.Label
+	for label, count := range labelCounts {
+		info, err := l.WithContext(c).Where(l.Label.Eq(label)).Update(l.Count, count)
+		if err != nil {
+			resputil.Error(c, fmt.Sprintf("failed to update label: %v", err), resputil.NotSpecified)
+			return
+		}
+		if info.RowsAffected == 0 {
+			err := l.WithContext(c).Create(&model.Label{Label: label, Count: count, Type: model.Nvidia})
+			if err != nil {
+				resputil.Error(c, fmt.Sprintf("failed to create label: %v", err), resputil.NotSpecified)
+				return
+			}
+		}
+	}
+
+	resputil.Success(c, labelCounts)
 }

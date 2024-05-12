@@ -14,8 +14,8 @@ import (
 
 type NodeClient struct {
 	client.Client
-	KubeClient  *kubernetes.Clientset
-	PromeClient *monitor.PrometheusClient
+	KubeClient       *kubernetes.Clientset
+	PrometheusClient *monitor.PrometheusClient
 }
 
 // https://stackoverflow.com/questions/67630551/how-to-use-client-go-to-get-the-node-status
@@ -73,7 +73,7 @@ func getNodeGPUCount(podGPUAllocate []monitor.PodGPUAllocate, nodeName string) i
 // GetNodes 获取所有 Node 列表
 func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 	var nodes corev1.NodeList
-	PodGPUAllocate := nc.PromeClient.QueryPodGPU()
+	PodGPUAllocate := nc.PrometheusClient.QueryPodGPU()
 
 	err := nc.List(context.Background(), &nodes)
 	if err != nil {
@@ -81,8 +81,8 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 	}
 
 	nodeInfos := make([]payload.ClusterNodeInfo, len(nodes.Items))
-	CPUMap := nc.PromeClient.QueryNodeCPUUsageRatio()
-	MemMap := nc.PromeClient.QueryNodeAllocatedMemory()
+	CPUMap := nc.PrometheusClient.QueryNodeCPUUsageRatio()
+	MemMap := nc.PrometheusClient.QueryNodeAllocatedMemory()
 
 	// Loop through each node and print allocated resources
 	for i := range nodes.Items {
@@ -150,8 +150,8 @@ func (nc *NodeClient) ListNodesPod(name string) (payload.ClusterNodePodInfo, err
 				IP:         pod.Status.PodIP,
 				CreateTime: pod.CreationTimestamp.String(),
 				Status:     string(pod.Status.Phase),
-				CPU:        nc.PromeClient.QueryPodCPURatio(pod.Name),
-				Mem:        FomatMemoryLoad(nc.PromeClient.QueryPodMemory(pod.Name)),
+				CPU:        nc.PrometheusClient.QueryPodCPURatio(pod.Name),
+				Mem:        FomatMemoryLoad(nc.PrometheusClient.QueryPodMemory(pod.Name)),
 			}
 
 			nodeInfo.Pods = append(nodeInfo.Pods, podInfo)
@@ -201,7 +201,7 @@ func (nc *NodeClient) GetNodeGPUInfo(name string) (payload.GPUInfo, error) {
 	}
 
 	// 使用PrometheusClient查询当前节点上的GPU使用率
-	gpuUtilMap := nc.PromeClient.QueryNodeGPUUtil()
+	gpuUtilMap := nc.PrometheusClient.QueryNodeGPUUtil()
 	for i := 0; i < len(gpuUtilMap); i++ {
 		gpuUtil := &gpuUtilMap[i]
 		if gpuUtil.Hostname == name {
