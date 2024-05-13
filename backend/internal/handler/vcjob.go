@@ -74,11 +74,11 @@ type (
 	}
 
 	CreateJupyterReq struct {
-		Name         string            `json:"name"`
-		Resource     v1.ResourceList   `json:"resource"`
-		Image        string            `json:"image"`
-		VolumeMounts []VolumeMount     `json:"volumeMounts"`
-		NodeSelector map[string]string `json:"nodeSelector"`
+		Name         string          `json:"name"`
+		Resource     v1.ResourceList `json:"resource"`
+		Image        string          `json:"image"`
+		VolumeMounts []VolumeMount   `json:"volumeMounts"`
+		Products     []string        `json:"products"`
 	}
 )
 
@@ -148,6 +148,28 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		}
 	}
 
+	// Node Affinity
+	var affinity *v1.Affinity
+	if len(req.Products) > 0 {
+		affinity = lo.ToPtr(v1.Affinity{
+			NodeAffinity: lo.ToPtr(v1.NodeAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: lo.ToPtr(v1.NodeSelector{
+					NodeSelectorTerms: []v1.NodeSelectorTerm{
+						{
+							MatchExpressions: []v1.NodeSelectorRequirement{
+								{
+									Key:      "nvidia.com/gpu.product",
+									Operator: v1.NodeSelectorOpIn,
+									Values:   req.Products,
+								},
+							},
+						},
+					},
+				}),
+			}),
+		})
+	}
+
 	namespace := config.GetConfig().Workspace.Namespace
 	labels := map[string]string{
 		LabelKeyTaskType: "jupyter",
@@ -159,8 +181,8 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	}
 
 	podSpec := v1.PodSpec{
-		NodeSelector: req.NodeSelector,
-		Volumes:      volumes,
+		Affinity: affinity,
+		Volumes:  volumes,
 		Containers: []v1.Container{
 			{
 				Name:    "jupyter-notebook",
