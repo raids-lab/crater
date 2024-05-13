@@ -1,4 +1,4 @@
-import { useMemo, type FC, useState } from "react";
+import { useMemo, type FC, useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -30,7 +30,6 @@ import {
   PaginationContent,
   PaginationItem,
 } from "@/components/ui/pagination";
-import { Badge } from "@/components/ui/badge";
 import {
   ChevronLeft,
   ChevronRight,
@@ -53,7 +52,10 @@ import {
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
 import { UsageCell } from "@/pages/Admin/Cluster/Node";
 import { getAiResource } from "@/utils/resource";
-
+import { statuses, getHeader, VolcanoJobInfo } from "@/pages/Admin/Job/Volcano";
+import { TableDate } from "@/components/custom/TableDate";
+import { cn } from "@/lib/utils";
+import { apiAdminTaskListByType } from "@/services/api/admin/task";
 interface ResourceInfo {
   percent: number;
   description: string;
@@ -65,14 +67,14 @@ interface ClusterNodeInfo {
   memory: ResourceInfo;
   gpu: ResourceInfo;
 }
-
-const NodeHome = ({
+type info = ClusterNodeInfo | VolcanoJobInfo;
+const NodeHome = <T extends info>({
   columns,
   table,
   isLoading,
 }: {
-  columns: ColumnDef<ClusterNodeInfo>[];
-  table: TableType<ClusterNodeInfo>;
+  columns: ColumnDef<T>[];
+  table: TableType<T>;
   isLoading: boolean;
 }) => {
   return (
@@ -186,6 +188,92 @@ const columns: ColumnDef<ClusterNodeInfo>[] = [
   },
 ];
 
+const jobColumns: ColumnDef<VolcanoJobInfo>[] = [
+  {
+    accessorKey: "jobName",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={getHeader("jobName")} />
+    ),
+    cell: ({ row }) => <div>{row.getValue("jobName")}</div>,
+  },
+  {
+    accessorKey: "jobType",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={getHeader("jobType")} />
+    ),
+    cell: ({ row }) => <div>{row.getValue("jobType")}</div>,
+  },
+  {
+    accessorKey: "userName",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={getHeader("userName")} />
+    ),
+    cell: ({ row }) => <div>{row.getValue("userName")}</div>,
+  },
+  {
+    accessorKey: "queue",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={getHeader("queue")} />
+    ),
+    cell: ({ row }) => <div>{row.getValue("queue")}</div>,
+  },
+  {
+    accessorKey: "status",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={getHeader("status")} />
+    ),
+    cell: ({ row }) => {
+      const status = statuses.find(
+        (status) => status.value === row.getValue("status"),
+      );
+      if (!status) {
+        return null;
+      }
+      return (
+        <div className="flex flex-row items-center justify-start">
+          <div
+            className={cn("flex h-3 w-3 rounded-full", {
+              "bg-purple-500 hover:bg-purple-400": status.value === "Queueing",
+              "bg-slate-500 hover:bg-slate-400": status.value === "Created",
+              "bg-pink-500 hover:bg-pink-400": status.value === "Pending",
+              "bg-sky-500 hover:bg-sky-400": status.value === "Running",
+              "bg-red-500 hover:bg-red-400": status.value === "Failed",
+              "bg-emerald-500 hover:bg-emerald-400":
+                status.value === "Succeeded",
+              "bg-orange-500 hover:bg-orange-400": status.value === "Preempted",
+              "bg-rose-500 hover:bg-rose-200": status.value === "Deleted",
+            })}
+          ></div>
+          <div className="ml-1.5">{status.label}</div>
+        </div>
+      );
+    },
+    filterFn: (row, id, value) => {
+      return (value as string[]).includes(row.getValue(id));
+    },
+  },
+  {
+    accessorKey: "createdAt",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={getHeader("createdAt")} />
+    ),
+    cell: ({ row }) => {
+      return <TableDate date={row.getValue("createdAt")}></TableDate>;
+    },
+    sortingFn: "datetime",
+  },
+  {
+    accessorKey: "startedAt",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={getHeader("startedAt")} />
+    ),
+    cell: ({ row }) => {
+      return <TableDate date={row.getValue("startedAt")}></TableDate>;
+    },
+    sortingFn: "datetime",
+  },
+];
+
 export const Component: FC = () => {
   const query = useQuery({
     queryKey: ["overview", "nodes"],
@@ -231,9 +319,55 @@ export const Component: FC = () => {
       });
   }, [query.data]);
 
+  const [jobData, setJobData] = useState<VolcanoJobInfo[]>([]);
+
+  const { data: jobList, isLoading } = useQuery({
+    queryKey: ["admin", "tasklist", "volcanoJob"],
+    queryFn: () => apiAdminTaskListByType(),
+    select: (res) => res.data.data,
+  });
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!jobList) return;
+    const tableData: VolcanoJobInfo[] = jobList
+      .filter((job) => !job.isDeleted)
+      .map((job) => {
+        //const task = convertJTask(t);
+        return {
+          name: job.name,
+          jobName: job.jobName,
+          jobType: job.jobType,
+          userName: job.userName,
+          queue: job.queue,
+          status:
+            job.isDeleted === true && job.status === "Running"
+              ? "Deleted"
+              : job.status,
+          createdAt: job.createdAt,
+          startedAt: job.startedAt,
+          deletedAt: job.deletedAt,
+        };
+      })
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+    setJobData(tableData);
+  }, [jobList, isLoading]);
+
   const table = useReactTable({
     data,
     columns,
+    state: {
+      pagination,
+    },
+    getCoreRowModel: getCoreRowModel(),
+    onPaginationChange: setPagination,
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  const jobTable = useReactTable({
+    data: jobData,
+    columns: jobColumns,
     state: {
       pagination,
     },
@@ -315,185 +449,11 @@ export const Component: FC = () => {
                 <CardDescription>提交的作业数量和状态统计</CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>作业</TableHead>
-                      <TableHead className="hidden sm:table-cell">
-                        类型
-                      </TableHead>
-                      <TableHead className="hidden sm:table-cell">
-                        状态
-                      </TableHead>
-                      <TableHead className="hidden md:table-cell">
-                        提交时间
-                      </TableHead>
-                      <TableHead className="text-right">JCT</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow className="bg-accent">
-                      <TableCell>
-                        <div className="font-medium">Liam Johnson</div>
-                        <div className="hidden text-sm text-muted-foreground md:inline">
-                          liam@example.com
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        Jupyter
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <Badge className="text-xs" variant="secondary">
-                          Running
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        2024-04-23
-                      </TableCell>
-                      <TableCell className="text-right">250.00</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>
-                        <div className="font-medium">Olivia Smith</div>
-                        <div className="hidden text-sm text-muted-foreground md:inline">
-                          olivia@example.com
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        Training
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <Badge className="text-xs" variant="outline">
-                          Successed
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        2024-04-24
-                      </TableCell>
-                      <TableCell className="text-right">150.00</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>
-                        <div className="font-medium">Noah Williams</div>
-                        <div className="hidden text-sm text-muted-foreground md:inline">
-                          noah@example.com
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        Training
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <Badge className="text-xs" variant="secondary">
-                          Running
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        2024-04-25
-                      </TableCell>
-                      <TableCell className="text-right">350.00</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>
-                        <div className="font-medium">Emma Brown</div>
-                        <div className="hidden text-sm text-muted-foreground md:inline">
-                          emma@example.com
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        Jupyter
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <Badge className="text-xs" variant="secondary">
-                          Running
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        2024-04-26
-                      </TableCell>
-                      <TableCell className="text-right">450.00</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>
-                        <div className="font-medium">Liam Johnson</div>
-                        <div className="hidden text-sm text-muted-foreground md:inline">
-                          liam@example.com
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        Jupyter
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <Badge className="text-xs" variant="secondary">
-                          Running
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        2024-04-23
-                      </TableCell>
-                      <TableCell className="text-right">250.00</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>
-                        <div className="font-medium">Liam Johnson</div>
-                        <div className="hidden text-sm text-muted-foreground md:inline">
-                          liam@example.com
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        Jupyter
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <Badge className="text-xs" variant="secondary">
-                          Running
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        2024-04-23
-                      </TableCell>
-                      <TableCell className="text-right">250.00</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>
-                        <div className="font-medium">Olivia Smith</div>
-                        <div className="hidden text-sm text-muted-foreground md:inline">
-                          olivia@example.com
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        Training
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <Badge className="text-xs" variant="outline">
-                          Successed
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        2024-04-24
-                      </TableCell>
-                      <TableCell className="text-right">150.00</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>
-                        <div className="font-medium">Emma Brown</div>
-                        <div className="hidden text-sm text-muted-foreground md:inline">
-                          emma@example.com
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        Jupyter
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <Badge className="text-xs" variant="secondary">
-                          Running
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        2024-04-26
-                      </TableCell>
-                      <TableCell className="text-right">450.00</TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
+                <NodeHome
+                  table={jobTable}
+                  columns={jobColumns}
+                  isLoading={isLoading}
+                />
               </CardContent>
             </Card>
           </TabsContent>

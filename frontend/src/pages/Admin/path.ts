@@ -41,12 +41,8 @@ export const adminPath: PathInfo = {
       title: "任务管理",
       children: [
         {
-          path: "jupyter",
-          title: "交互式任务",
-        },
-        {
-          path: "ai",
-          title: "离线任务",
+          path: "volcano",
+          title: "volcano 任务",
         },
       ],
     },
