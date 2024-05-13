@@ -37,7 +37,7 @@ export interface IJupyterCreate {
   resource: KubernetesResource;
   image: string;
   volumeMounts: VolumeMount[];
-  nodeSelector: Record<string, string>;
+  products: string[];
 }
 
 export const apiJupyterCreate = async (task: IJupyterCreate) => {
