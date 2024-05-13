@@ -26,38 +26,13 @@ import {
   apiJTaskImageList,
 } from "@/services/api/jupyterTask";
 import { cn } from "@/lib/utils";
-import {
-  CaretSortIcon,
-  CheckIcon,
-  Cross2Icon,
-  PlusCircledIcon,
-} from "@radix-ui/react-icons";
-// import { apiGetFiles } from "@/services/api/file";
+import { Cross2Icon, PlusCircledIcon } from "@radix-ui/react-icons";
 import { getAiKResource } from "@/utils/resource";
-import {
-  Popover,
-  PopoverClose,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui-custom/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-} from "@/components/ui/command";
-import { useMemo } from "react";
 import { toast } from "sonner";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ChevronLeftIcon, FileDown, FileUp } from "lucide-react";
 import FormLabelMust from "@/components/custom/FormLabelMust";
+import Combobox from "@/components/form/Combobox";
+import { apiNodeLabelsList } from "@/services/api/nodelabel";
 
 const formSchema = z.object({
   taskname: z
@@ -90,8 +65,8 @@ const formSchema = z.object({
       }),
     }),
   ),
-  gpuModel: z.enum(["default", "v100", "p100", "t4", "2080ti"], {
-    required_error: "请选择节点 GPU 类型",
+  gpuModel: z.string().min(1, {
+    message: "请选择节点 GPU 类型",
   }),
 });
 
@@ -129,7 +104,10 @@ const JupyterNew = () => {
         }),
         image: values.image,
         volumeMounts: convertShareDirs(values.shareDirs),
-        nodeSelector: {},
+        products:
+          values.gpuModel !== "default"
+            ? labelsInfo.data?.dict.get(values.gpuModel) ?? []
+            : [],
       }),
     onSuccess: async (_, { taskname }) => {
       await Promise.all([
@@ -145,18 +123,51 @@ const JupyterNew = () => {
   const imagesInfo = useQuery({
     queryKey: ["jupyter", "images"],
     queryFn: apiJTaskImageList,
-    select: (res) => res.data.data.images,
+    select: (res) => {
+      return res.data.data.images.map((item) => ({
+        value: item,
+        label: item,
+      }));
+    },
   });
 
-  const imageList = useMemo(() => {
-    if (!imagesInfo.data) {
-      return [];
-    }
-    return imagesInfo.data.map((item) => ({
-      value: item,
-      label: item,
-    }));
-  }, [imagesInfo.data]);
+  const labelsInfo = useQuery({
+    queryKey: ["label", "list"],
+    queryFn: apiNodeLabelsList,
+    select: (res) => {
+      const items = res.data.data.sort((a, b) => {
+        // make name is empty string to be the first
+        if (a.name === "") {
+          return -1;
+        }
+        if (b.name === "") {
+          return 1;
+        }
+        return b.priority - a.priority;
+      });
+      // create a map, key is item.name, value is [item.label]
+      const dict = new Map<string, string[]>();
+      const list = new Array<{
+        value: string;
+        label: string;
+      }>();
+      items.forEach((item) => {
+        if (dict.has(item.name)) {
+          dict.get(item.name)?.push(item.label);
+        } else {
+          dict.set(item.name, [item.label]);
+          list.push({
+            value: item.name === "" ? "default" : item.name,
+            label: item.name === "" ? "默认 (不指定类型)" : item.name,
+          });
+        }
+      });
+      return {
+        dict,
+        list,
+      };
+    },
+  });
 
   // 1. Define your form.
   const form = useForm<FormSchema>({
@@ -182,15 +193,6 @@ const JupyterNew = () => {
     control: form.control,
   });
 
-  // const {
-  //   fields: imagesFields,
-  //   append: imagesAppend,
-  //   remove: imagesRemove,
-  // } = useFieldArray<FormSchema>({
-  //   name: "image",
-  //   control: form.control,
-  // });
-
   const exportToJson = () => {
     const json = JSON.stringify(currentValues, null, 2);
     // 保存到 LocalStorage
@@ -213,6 +215,7 @@ const JupyterNew = () => {
     exportToJson();
     createTask(values);
   };
+
   return (
     <>
       <Form {...form}>
@@ -356,34 +359,12 @@ const JupyterNew = () => {
                       <FormLabelMust />
                     </FormLabel>
                     <FormControl>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <SelectTrigger
-                          className={cn(
-                            "px-4",
-                            !field.value && "text-muted-foreground",
-                          )}
-                        >
-                          <SelectValue placeholder="选择节点类型" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="default">
-                            默认（不指定）
-                          </SelectItem>
-                          <SelectItem value="v100">
-                            NVIDIA-Tesla V100-SXM2-32GB
-                          </SelectItem>
-                          <SelectItem value="p100">
-                            NVIDIA-Tesla P100-PCIE-16GB
-                          </SelectItem>
-                          <SelectItem value="t4">NVIDIA-Tesla T4</SelectItem>
-                          <SelectItem value="2080ti">
-                            NVIDIA GeForce RTX 2080 Ti
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Combobox
+                        items={labelsInfo.data?.list ?? []}
+                        current={field.value}
+                        handleSelect={(value) => field.onChange(value)}
+                        formTitle="节点类型"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -399,70 +380,12 @@ const JupyterNew = () => {
                       <FormLabelMust />
                     </FormLabel>
                     <FormControl>
-                      {/* <div className="flex flex-row space-x-2"> */}
-                      <Popover modal={true}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              className={cn(
-                                "w-full justify-between text-ellipsis whitespace-nowrap",
-                                !field.value && "text-muted-foreground",
-                              )}
-                            >
-                              {field.value
-                                ? imageList.find(
-                                    (dataset) => dataset.value === field.value,
-                                  )?.label
-                                : "选择镜像"}
-                              <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent
-                          className="p-0"
-                          style={{
-                            width: "var(--radix-popover-trigger-width)",
-                            maxHeight:
-                              "var(--radix-popover-content-available-height)",
-                          }}
-                        >
-                          <Command>
-                            <CommandInput
-                              placeholder="查找镜像"
-                              className="h-9"
-                            />
-                            <CommandEmpty>未找到匹配的镜像</CommandEmpty>
-                            <CommandGroup>
-                              {imageList.map((image) => (
-                                <CommandItem
-                                  value={image.label}
-                                  key={image.value}
-                                  onSelect={() => {
-                                    field.onChange(image.value);
-                                  }}
-                                >
-                                  <PopoverClose
-                                    key={image.value}
-                                    className="flex w-full flex-row items-center justify-between font-mono"
-                                  >
-                                    {image.label}
-                                    <CheckIcon
-                                      className={cn(
-                                        "ml-auto h-4 w-4",
-                                        image.value === field.value
-                                          ? "opacity-100"
-                                          : "opacity-0",
-                                      )}
-                                    />
-                                  </PopoverClose>
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                      <Combobox
+                        items={imagesInfo.data ?? []}
+                        current={field.value}
+                        handleSelect={(value) => field.onChange(value)}
+                        formTitle="镜像"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
