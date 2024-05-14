@@ -14,6 +14,9 @@ const (
 
 	RoleQueueKey    = "x-role-queue"
 	RolePlatformKey = "x-role-platform"
+
+	AccessModeKey       = "x-access-mode"
+	PublicAccessModeKey = "x-public-access-mode"
 )
 
 const (
@@ -33,6 +36,8 @@ func SetJWTContext(
 
 	c.Set(RoleQueueKey, msg.RoleQueue)
 	c.Set(RolePlatformKey, msg.RolePlatform)
+	c.Set(AccessModeKey, msg.AccessMode)
+	c.Set(PublicAccessModeKey, msg.PublicAccessMode)
 }
 
 func GetToken(ctx *gin.Context) JWTMessage {
@@ -48,5 +53,9 @@ func GetToken(ctx *gin.Context) JWTMessage {
 
 	rolePlatform, _ := ctx.Get(RolePlatformKey)
 	msg.RolePlatform = rolePlatform.(model.Role)
+	accessModeKey, _ := ctx.Get(AccessModeKey)
+	msg.AccessMode = accessModeKey.(model.AccessMode)
+	publicAcessModeKey, _ := ctx.Get(PublicAccessModeKey)
+	msg.PublicAccessMode = publicAcessModeKey.(model.AccessMode)
 	return msg
 }

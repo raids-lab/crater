@@ -47,7 +47,7 @@ func (mgr *AuthMgr) RegisterAdmin(_ *gin.RouterGroup) {}
 
 type (
 	LoginReq struct {
-		Username   string `json:"username" binding:"required"` // 用户�?
+		Username   string `json:"username" binding:"required"` // 用户名
 		Password   string `json:"password" binding:"required"` // 密码
 		AuthMethod string `json:"auth" binding:"required"`     // 认证方式 [normal, act]
 	}
@@ -72,15 +72,15 @@ const (
 
 // Login godoc
 // @Summary 用户登录
-// @Description 校验用户身份，生成包含当前用户和项目�? JWT Token
+// @Description 校验用户身份，生成包含当前用户和项目的 JWT Token
 // @Tags Auth
 // @Accept json
 // @Produce json
 // @Param data body LoginReq false "查询参数"
-// @Success 200 {object} resputil.Response[LoginResp] "登录成功，返�? JWT Token 和默认个人项�?"
+// @Success 200 {object} resputil.Response[LoginResp] "登录成功，返回 JWT Token 和默认个人项目"
 // @Failure 400 {object} resputil.Response[any]	"请求参数错误"
 // @Failure 401 {object} resputil.Response[any]	"用户名或密码错误"
-// @Failure 500 {object} resputil.Response[any]	"数据库交互错�?"
+// @Failure 500 {object} resputil.Response[any]	"数据库交互错误"
 // @Router /login [post]
 func (mgr *AuthMgr) Login(c *gin.Context) {
 	var req LoginReq
@@ -138,15 +138,22 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		resputil.HTTPError(c, http.StatusUnauthorized, "User is not active", resputil.NotSpecified)
 		return
 	}
-
+	uq := query.UserQueue
+	uesrqueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID), uq.QueueID.Eq(model.DefaultQueueID)).First()
+	if err != nil {
+		l.Error("user has not public queue", err)
+		resputil.Error(c, "Can't get public queue", resputil.NotSpecified)
+	}
 	// Generate JWT tokens
 	jwtMessage := util.JWTMessage{
-		UserID:       user.ID,
-		Username:     user.Name,
-		QueueID:      util.QueueIDNull,
-		QueueName:    util.QueueNameNull,
-		RoleQueue:    model.RoleGuest,
-		RolePlatform: user.Role,
+		UserID:           user.ID,
+		Username:         user.Name,
+		QueueID:          util.QueueIDNull,
+		QueueName:        util.QueueNameNull,
+		RoleQueue:        model.RoleGuest,
+		AccessMode:       model.AccessModeRW,
+		PublicAccessMode: uesrqueue.AccessMode,
+		RolePlatform:     user.Role,
 	}
 	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
 	if err != nil {
@@ -203,12 +210,14 @@ func (mgr *AuthMgr) createUser(c *gin.Context, name string) (*model.User, error)
 func (mgr *AuthMgr) CreatePersonalDir(c *gin.Context, user *model.User) error {
 	client := mgr.client
 	jwtMessage := util.JWTMessage{
-		UserID:       user.ID,
-		Username:     user.Name,
-		QueueID:      util.QueueIDNull,
-		QueueName:    util.QueueNameNull,
-		RoleQueue:    model.RoleGuest,
-		RolePlatform: user.Role,
+		UserID:           user.ID,
+		Username:         user.Name,
+		QueueID:          util.QueueIDNull,
+		QueueName:        util.QueueNameNull,
+		RoleQueue:        model.RoleGuest,
+		RolePlatform:     user.Role,
+		AccessMode:       model.AccessModeRW,
+		PublicAccessMode: model.AccessModeRO,
 	}
 	accessToken, _, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
 	if err != nil {
@@ -222,7 +231,7 @@ func (mgr *AuthMgr) CreatePersonalDir(c *gin.Context, user *model.User) error {
 		return fmt.Errorf("can't create request:%s", err.Error())
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
-	// 发�?�请�?
+	// 发送请求
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("can't send request %s", err.Error())
@@ -254,7 +263,7 @@ func (mgr *AuthMgr) normalAuth(c *gin.Context, username, password string) error 
 
 func (mgr *AuthMgr) actAuth(username, password string) error {
 	authConfig := config.GetConfig()
-	// ACT 管理员认�?
+	// ACT 管理员认证
 	l, err := ldap.DialURL(authConfig.ACT.Auth.Address)
 	if err != nil {
 		return err
@@ -264,12 +273,12 @@ func (mgr *AuthMgr) actAuth(username, password string) error {
 		return err
 	}
 
-	// ACT 管理员搜索用�?
+	// ACT 管理员搜索用户
 	searchRequest := ldap.NewSearchRequest(
 		authConfig.ACT.Auth.SearchDN, // 搜索基准 DN
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
 		fmt.Sprintf("(sAMAccountName=%s)", username), // 过滤条件
-		[]string{"dn"}, // 返回的属性列�?
+		[]string{"dn"}, // 返回的属性列表
 		nil,
 	)
 
@@ -283,7 +292,7 @@ func (mgr *AuthMgr) actAuth(username, password string) error {
 		return fmt.Errorf("user not found or too many entries returned")
 	}
 
-	// 用户存在，验证用户密�?
+	// 用户存在，验证用户密码
 	if len(searchResult.Entries) == 1 {
 		userDN := searchResult.Entries[0].DN
 		err = l.Bind(userDN, password)
@@ -297,7 +306,7 @@ func (mgr *AuthMgr) actAuth(username, password string) error {
 
 type (
 	RefreshReq struct {
-		RefreshToken string `json:"refreshToken" binding:"required"` // 不需要添�? `Bearer ` 前缀
+		RefreshToken string `json:"refreshToken" binding:"required"` // 不需要添加 `Bearer ` 前缀
 	}
 
 	RefreshResp struct {
@@ -340,13 +349,13 @@ type SwitchQueueReq struct {
 
 // SwitchProject godoc
 // @Summary 类似登录，切换项目并返回新的 JWT Token
-// @Description 读取body中的项目ID，生成新�? JWT Token
+// @Description 读取body中的项目ID，生成新的 JWT Token
 // @Tags Auth
 // @Accept json
 // @Produce json
 // @Security Bearer
 // @Param project_id body SwitchQueueReq true "项目ID"
-// @Success 200 {object} resputil.Response[LoginResp] "用户上下�?"
+// @Success 200 {object} resputil.Response[LoginResp] "用户上下文"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/switch [post]
@@ -378,18 +387,23 @@ func (mgr *AuthMgr) SwitchProject(c *gin.Context) {
 		resputil.Error(c, "Queue not found", resputil.NotSpecified)
 		return
 	}
-
+	userPublicQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID), uq.QueueID.Eq(model.DefaultQueueID)).First()
+	if err != nil {
+		resputil.Error(c, "Public Queue not found", resputil.NotSpecified)
+	}
 	// Get personal project id for the user (as the default project)
 	// Each user has a personal project (with the same name as the user)
 
 	// Generate new JWT tokens
 	jwtMessage := util.JWTMessage{
-		UserID:       token.UserID,
-		Username:     token.Username,
-		QueueID:      userQueue.QueueID,
-		QueueName:    req.Queue,
-		RoleQueue:    userQueue.Role,
-		RolePlatform: token.RolePlatform,
+		UserID:           token.UserID,
+		Username:         token.Username,
+		QueueID:          userQueue.QueueID,
+		QueueName:        req.Queue,
+		RoleQueue:        userQueue.Role,
+		RolePlatform:     token.RolePlatform,
+		AccessMode:       userQueue.AccessMode,
+		PublicAccessMode: userPublicQueue.AccessMode,
 	}
 	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
 	if err != nil {
