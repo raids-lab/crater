@@ -1068,6 +1068,31 @@ paths:
       summary: 更新角色
       tags:
       - User
+  /v1/admin/vcjobs:
+    get:
+      consumes:
+      - application/json
+      description: Get all jobs  by client-go
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: admin get Volcano Job List
+          schema:
+            $ref: '#/definitions/resputil.Response-any'
+        "400":
+          description: admin Request parameter error
+          schema:
+            $ref: '#/definitions/resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get all of the jobs
+      tags:
+      - VolcanoJob
   /v1/context/info:
     get:
       consumes:
