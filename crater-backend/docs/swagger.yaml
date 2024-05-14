@@ -65,6 +65,21 @@ definitions:
       token:
         type: string
     type: object
+  handler.LabelResp:
+    properties:
+      count:
+        type: integer
+      id:
+        type: integer
+      label:
+        type: string
+      name:
+        type: string
+      priority:
+        type: integer
+      type:
+        $ref: '#/definitions/model.WorkerType'
+    type: object
   handler.ListAllResp:
     type: object
   handler.LoginReq:
@@ -294,21 +309,6 @@ definitions:
     - _
     - OffLineTask
     - JupyterTask
-  model.Label:
-    properties:
-      createdAt:
-        type: string
-      id:
-        type: integer
-      name:
-        type: string
-      priority:
-        type: integer
-      type:
-        $ref: '#/definitions/model.WorkerType'
-      updatedAt:
-        type: string
-    type: object
   model.Role:
     enum:
     - 0
@@ -341,12 +341,15 @@ definitions:
     enum:
     - 0
     - 1
+    - 2
     type: integer
     x-enum-comments:
       Nvidia: Nvidia GPU worker
+      Unknown: Unknown worker
     x-enum-varnames:
     - _
     - Nvidia
+    - Unknown
   payload.ClusterNodePodInfo:
     properties:
       address:
@@ -458,6 +461,17 @@ definitions:
       msg:
         type: string
     type: object
+  resputil.Response-array_handler_LabelResp:
+    properties:
+      code:
+        $ref: '#/definitions/resputil.ErrorCode'
+      data:
+        items:
+          $ref: '#/definitions/handler.LabelResp'
+        type: array
+      msg:
+        type: string
+    type: object
   resputil.Response-array_handler_UserQueueResp:
     properties:
       code:
@@ -476,17 +490,6 @@ definitions:
       data:
         items:
           $ref: '#/definitions/handler.UserResp'
-        type: array
-      msg:
-        type: string
-    type: object
-  resputil.Response-array_model_Label:
-    properties:
-      code:
-        $ref: '#/definitions/resputil.ErrorCode'
-      data:
-        items:
-          $ref: '#/definitions/model.Label'
         type: array
       msg:
         type: string
@@ -771,7 +774,7 @@ paths:
         "200":
           description: 成功返回
           schema:
-            $ref: '#/definitions/resputil.Response-array_model_Label'
+            $ref: '#/definitions/resputil.Response-any'
         "400":
           description: 请求参数错误
           schema:
@@ -1126,7 +1129,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/resputil.Response-array_model_Label'
+            $ref: '#/definitions/resputil.Response-array_handler_LabelResp'
         "400":
           description: 请求参数错误
           schema:
@@ -1419,6 +1422,37 @@ paths:
       summary: Delete the job
       tags:
       - VolcanoJob
+  /v1/vcjobs/{name}/detail:
+    get:
+      consumes:
+      - application/json
+      description: 调用k8s get crd
+      parameters:
+      - description: vcjob-name
+        in: query
+        name: jobname
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 任务描述
+          schema:
+            $ref: '#/definitions/resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 获取jupyter详情
+      tags:
+      - vcjob-jupyter
   /v1/vcjobs/{name}/token:
     get:
       consumes:
