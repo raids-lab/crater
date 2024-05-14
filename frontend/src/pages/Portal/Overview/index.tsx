@@ -55,7 +55,7 @@ import { getAiResource } from "@/utils/resource";
 import { statuses, getHeader, VolcanoJobInfo } from "@/pages/Admin/Job/Volcano";
 import { TableDate } from "@/components/custom/TableDate";
 import { cn } from "@/lib/utils";
-import { apiAdminTaskListByType } from "@/services/api/admin/task";
+import { apiTaskListByType } from "@/services/api/admin/task";
 interface ResourceInfo {
   percent: number;
   description: string;
@@ -323,7 +323,7 @@ export const Component: FC = () => {
 
   const { data: jobList, isLoading } = useQuery({
     queryKey: ["admin", "tasklist", "volcanoJob"],
-    queryFn: () => apiAdminTaskListByType(),
+    queryFn: () => apiTaskListByType(),
     select: (res) => res.data.data,
   });
 
@@ -331,7 +331,6 @@ export const Component: FC = () => {
     if (isLoading) return;
     if (!jobList) return;
     const tableData: VolcanoJobInfo[] = jobList
-      .filter((job) => !job.isDeleted)
       .map((job) => {
         //const task = convertJTask(t);
         return {
@@ -340,13 +339,9 @@ export const Component: FC = () => {
           jobType: job.jobType,
           userName: job.userName,
           queue: job.queue,
-          status:
-            job.isDeleted === true && job.status === "Running"
-              ? "Deleted"
-              : job.status,
+          status: job.status,
           createdAt: job.createdAt,
           startedAt: job.startedAt,
-          deletedAt: job.deletedAt,
         };
       })
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
