@@ -10,8 +10,9 @@ export interface IVolcanoJobInfo {
   status: string;
   createdAt: string;
   startedAt: string;
-  deletedAt: string;
-  isDeleted: boolean;
 }
 export const apiAdminTaskListByType = () =>
   instance.get<IResponse<IVolcanoJobInfo[]>>(VERSION + "/admin/vcjobs");
+
+export const apiTaskListByType = () =>
+  instance.get<IResponse<IVolcanoJobInfo[]>>(VERSION + "/vcjobs/all");

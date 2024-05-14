@@ -121,8 +121,6 @@ export const getHeader = (key: string): string => {
       return "创建于";
     case "startedAt":
       return "开始于";
-    case "deletedAt":
-      return "删除于";
     default:
       return key;
   }
@@ -136,7 +134,6 @@ export interface VolcanoJobInfo {
   status: string;
   createdAt: string;
   startedAt: string;
-  deletedAt: string;
 }
 const Volcano: FC = () => {
   const [data, setData] = useState<VolcanoJobInfo[]>([]);
@@ -160,22 +157,6 @@ const Volcano: FC = () => {
     ],
     getHeader: getHeader,
   };
-
-  // const queryClient = useQueryClient();
-  // const refetchTaskList = async () => {
-  //   try {
-  //     // 并行发送所有异步请求
-  //     await Promise.all([
-  //       queryClient.invalidateQueries({
-  //         queryKey: ["admin", "tasklist", "ai"],
-  //       }),
-  //       queryClient.invalidateQueries({ queryKey: ["aitask", "quota"] }),
-  //       queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
-  //     ]);
-  //   } catch (error) {
-  //     logger.error("更新查询失败", error);
-  //   }
-  // };
   useEffect(() => {
     if (isLoading) return;
     if (!taskList) return;
@@ -189,17 +170,9 @@ const Volcano: FC = () => {
           jobType: task.jobType,
           userName: task.userName,
           queue: task.queue,
-          status:
-            task.isDeleted === true && task.status === "Running"
-              ? "Deleted"
-              : task.status,
+          status: task.status,
           createdAt: task.createdAt,
           startedAt: task.startedAt,
-          deletedAt: task.deletedAt,
-          //priority: task.slo ? "high" : "low",
-          // profileStatus:
-          //   // 分析状态：profileStatus = 1 或 2 都显示分析中，不需要等待分析这个选项了
-          //   task.profileStatus === 1 ? "2" : task.profileStatus.toString(),
         };
       });
     setData(tableData);
@@ -319,19 +292,6 @@ const Volcano: FC = () => {
         ),
         cell: ({ row }) => {
           return <TableDate date={row.getValue("startedAt")}></TableDate>;
-        },
-        sortingFn: "datetime",
-      },
-      {
-        accessorKey: "deletedAt",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("deletedAt")}
-          />
-        ),
-        cell: ({ row }) => {
-          return <TableDate date={row.getValue("deletedAt")}></TableDate>;
         },
         sortingFn: "datetime",
       },
