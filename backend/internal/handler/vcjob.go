@@ -52,9 +52,12 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.DELETE("/:name", mgr.DeleteJob)
 	g.GET("/:name/detail", mgr.GetJobDetail)
 	g.GET("/:name/yaml", mgr.GetJobYaml)
+	g.GET("all", mgr.GetAllJobs)
 }
 
-func (mgr *VolcanojobMgr) RegisterAdmin(_ *gin.RouterGroup) {}
+func (mgr *VolcanojobMgr) RegisterAdmin(g *gin.RouterGroup) {
+	g.GET("", mgr.GetAllJobs)
+}
 
 const (
 	VolcanoSchedulerName = "volcano"
@@ -574,6 +577,8 @@ type (
 	JobResp struct {
 		Name              string         `json:"name"`
 		JobName           string         `json:"jobName"`
+		UserName          string         `json:"userName"`
+		JobType           string         `json:"jobType"`
 		Queue             string         `json:"queue"`
 		Status            batch.JobPhase `json:"status"`
 		CreationTimestamp metav1.Time    `json:"createdAt"`
@@ -602,6 +607,35 @@ func (mgr *VolcanojobMgr) GetJobs(c *gin.Context) {
 		return
 	}
 
+	jobList := JobsToJobList(jobs)
+
+	resputil.Success(c, jobList)
+}
+
+// GetAllJobs godoc
+// @Summary Get all of the jobs
+// @Description Get all jobs  by client-go
+// @Tags VolcanoJob
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} resputil.Response[any] "admin get Volcano Job List"
+// @Failure 400 {object} resputil.Response[any] "admin Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/vcjobs/all [get]
+func (mgr *VolcanojobMgr) GetAllJobs(c *gin.Context) {
+	jobs := &batch.JobList{}
+	if err := mgr.List(c, jobs, client.MatchingLabels{}); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	jobList := JobsToJobList(jobs)
+
+	resputil.Success(c, jobList)
+}
+
+func JobsToJobList(jobs *batch.JobList) []JobResp {
 	jobList := make([]JobResp, len(jobs.Items))
 	for i := range jobs.Items {
 		job := &jobs.Items[i]
@@ -616,19 +650,18 @@ func (mgr *VolcanojobMgr) GetJobs(c *gin.Context) {
 		jobList[i] = JobResp{
 			Name:              job.Annotations[AnnotationKeyTaskName],
 			JobName:           job.Name,
+			UserName:          job.Labels[LabelKeyTaskUser],
+			JobType:           job.Labels[LabelKeyTaskType],
 			Queue:             job.Spec.Queue,
 			Status:            job.Status.State.Phase,
 			CreationTimestamp: job.CreationTimestamp,
 			RunningTimestamp:  runningTimestamp,
 		}
 	}
-
-	// sort jobs by creation time in descending order
 	sort.Slice(jobList, func(i, j int) bool {
 		return jobList[i].CreationTimestamp.After(jobList[j].CreationTimestamp.Time)
 	})
-
-	resputil.Success(c, jobList)
+	return jobList
 }
 
 type (
