@@ -27,6 +27,28 @@ export interface IJupyterResp {
   startedAt: string;
 }
 
+export interface PodDetail {
+  name: string;
+  nodename: string;
+  ip: string;
+  port: string;
+  resource: string;
+  status: string;
+}
+export interface IJupyterDetail {
+  name: string;
+  namespace: string;
+  username: string;
+  jobName: string;
+  retry: string;
+  queue: string;
+  status: JobPhase;
+  createdAt: string;
+  startedAt: string;
+  runtime: string;
+  podDetails: PodDetail[];
+}
+
 export interface VolumeMount {
   subPath: string;
   mountPath: string;
@@ -54,6 +76,17 @@ export const apiJupyterDelete = async (jobName: string) => {
   );
   return response.data;
 };
+
+export const apiJupyterGetDetail = (jobName: string) =>
+  instance.get<IResponse<IJupyterDetail>>(
+    `${VERSION}/vcjobs/${jobName}/detail`,
+  );
+
+export const apiJupyterLog = (jobName: string) =>
+  instance.get<IResponse<string>>(VERSION + `/vcjobs/${jobName}/log`);
+
+export const apiJupyterYaml = (jobName: string) =>
+  instance.get<IResponse<string>>(VERSION + `/vcjobs/${jobName}/yaml`);
 
 export const apiJTaskShareDirList = () =>
   instance.get<IResponse<string[]>>(VERSION + "/sharedir/list");
