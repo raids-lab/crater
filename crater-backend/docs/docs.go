@@ -764,6 +764,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/vcjobs": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Get all jobs  by client-go",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VolcanoJob"
+                ],
+                "summary": "Get all of the jobs",
+                "responses": {
+                    "200": {
+                        "description": "admin get Volcano Job List",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "admin Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/context/info": {
             "get": {
                 "security": [

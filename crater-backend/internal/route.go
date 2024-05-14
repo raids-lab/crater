@@ -132,4 +132,5 @@ func (b *Backend) RegisterService(
 	imagepackMgr.RegisterAdmin(adminRouter.Group("/images"))
 	recommenddljobMgr.RegisterAdmin(adminRouter.Group("/recommenddljob"))
 	queueMgr.RegisterAdmin(adminRouter.Group("/queues"))
+	volcanoMgr.RegisterAdmin(adminRouter.Group("/vcjobs"))
 }
