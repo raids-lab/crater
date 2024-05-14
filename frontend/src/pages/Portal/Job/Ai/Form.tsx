@@ -326,10 +326,10 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                               项目路径:
                             </p>
                             <FileSelectDialog
-                              setSubPath={(path) =>
+                              handleSubmit={(item) =>
                                 field.onChange({
                                   ...field.value,
-                                  subPath: path,
+                                  subPath: item.id,
                                 })
                               }
                             />

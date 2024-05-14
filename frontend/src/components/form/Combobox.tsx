@@ -47,7 +47,7 @@ const Combobox = ({
             role="combobox"
             aria-expanded={open}
             className={cn(
-              "w-full justify-between text-ellipsis whitespace-nowrap font-normal",
+              "w-full justify-between text-ellipsis whitespace-nowrap  px-3 font-normal",
               !current && "text-muted-foreground",
               className,
             )}

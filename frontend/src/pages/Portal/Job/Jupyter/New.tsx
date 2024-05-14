@@ -1,10 +1,5 @@
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { CardTitle } from "@/components/ui-custom/card";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -18,6 +13,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -26,13 +22,20 @@ import {
   apiJTaskImageList,
 } from "@/services/api/jupyterTask";
 import { cn } from "@/lib/utils";
-import { Cross2Icon, PlusCircledIcon } from "@radix-ui/react-icons";
+import { Cross2Icon } from "@radix-ui/react-icons";
 import { getAiKResource } from "@/utils/resource";
 import { toast } from "sonner";
-import { ChevronLeftIcon, FileDown, FileUp } from "lucide-react";
+import {
+  ChevronLeftIcon,
+  CircleArrowDown,
+  CircleArrowUp,
+  CirclePlus,
+} from "lucide-react";
 import FormLabelMust from "@/components/custom/FormLabelMust";
 import Combobox from "@/components/form/Combobox";
 import { apiNodeLabelsList } from "@/services/api/nodelabel";
+import AccordionCard from "@/components/custom/AccordionCard";
+import { Separator } from "@/components/ui/separator";
 
 const formSchema = z.object({
   taskname: z
@@ -246,21 +249,24 @@ const JupyterNew = () => {
                 type="button"
                 className="h-8"
               >
-                <FileDown className="-ml-0.5 mr-1.5 h-4 w-4" />
+                <CircleArrowDown className="-ml-0.5 mr-1.5 h-4 w-4" />
                 导入配置
               </Button>
               <Button variant="outline" type="button" className="h-8">
-                <FileUp className="-ml-0.5 mr-1.5 h-4 w-4" />
+                <CircleArrowUp className="-ml-0.5 mr-1.5 h-4 w-4" />
                 导出配置
               </Button>
               <Button type="submit" className="h-8">
-                <PlusCircledIcon className="-ml-0.5 mr-1.5 h-4 w-4" />
+                <CirclePlus className="-ml-0.5 mr-1.5 h-4 w-4" />
                 提交任务
               </Button>
             </div>
           </div>
           <Card className="lg:col-span-2">
-            <CardContent className="space-y-4 p-6">
+            <CardHeader>
+              <CardTitle>基本设置</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4">
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-3">
                   <FormField
@@ -391,60 +397,92 @@ const JupyterNew = () => {
                   </FormItem>
                 )}
               />
-              <div className="space-y-2">
-                {shareDirsFields.length > 0 && (
-                  <div>
-                    {shareDirsFields.map((field, index) => (
-                      <FormField
-                        control={form.control}
-                        key={field.id}
-                        name={`shareDirs.${index}`}
-                        render={({ field }) => (
+            </CardContent>
+          </Card>
+          <div className="flex flex-col gap-4">
+            <AccordionCard cardTitle="系统变量">TODO</AccordionCard>
+            <AccordionCard cardTitle="数据挂载">
+              <div className="mt-3 space-y-5">
+                {shareDirsFields.map((field, index) => (
+                  <div key={field.id}>
+                    <Separator
+                      className={cn("mb-5", index === 0 && "sr-only")}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`shareDirs.${index}`}
+                      render={({ field }) => (
+                        <div className="space-y-5">
+                          <FormItem className="relative">
+                            <FormLabel>
+                              挂载源 {index + 1}
+                              <FormLabelMust />
+                            </FormLabel>
+                            <button
+                              onClick={() => shareDirsRemove(index)}
+                              className="absolute -top-1.5 right-0 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+                            >
+                              <Cross2Icon className="h-4 w-4" />
+                              <span className="sr-only">Close</span>
+                            </button>
+                            <FormControl>
+                              <Tabs defaultValue="file" className="w-full">
+                                <TabsList className="grid w-full grid-cols-2">
+                                  <TabsTrigger value="file">
+                                    文件系统
+                                  </TabsTrigger>
+                                  <TabsTrigger value="dataset">
+                                    数据集
+                                  </TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="file">
+                                  <FileSelectDialog
+                                    value={field.value.subPath.split("/").pop()}
+                                    handleSubmit={(item) =>
+                                      field.onChange({
+                                        ...field.value,
+                                        subPath: item.id,
+                                        mountPath: `/mnt/${item.name}`,
+                                      })
+                                    }
+                                  />
+                                </TabsContent>
+                                <TabsContent value="dataset">
+                                  <Input disabled />
+                                </TabsContent>
+                              </Tabs>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
                           <FormItem>
-                            <FormLabel className={cn(index !== 0 && "sr-only")}>
-                              文件挂载
+                            <FormLabel>
+                              挂载点 {index + 1}
+                              <FormLabelMust />
                             </FormLabel>
                             <FormControl>
-                              <div className="relative flex flex-col gap-2 rounded-md border border-input p-4 shadow-sm">
-                                <button
-                                  onClick={() => shareDirsRemove(index)}
-                                  className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
-                                >
-                                  <Cross2Icon className="h-4 w-4" />
-                                  <span className="sr-only">Close</span>
-                                </button>
-                                <FileSelectDialog
-                                  setSubPath={(path) =>
-                                    field.onChange({
-                                      ...field.value,
-                                      subPath: path,
-                                    })
-                                  }
-                                />
-                                <Input
-                                  id={`input.args.${index}.mountPath`}
-                                  className="w-full font-mono "
-                                  placeholder="Mount Path"
-                                  value={field.value.mountPath}
-                                  onChange={(event) =>
-                                    field.onChange({
-                                      ...field.value,
-                                      mountPath: event.target.value,
-                                    })
-                                  }
-                                />
-                                <FormMessage />
-                              </div>
+                              <Input
+                                id={`input.args.${index}.mountPath`}
+                                className="w-full font-mono "
+                                placeholder="Mount Path"
+                                value={field.value.mountPath}
+                                onChange={(event) =>
+                                  field.onChange({
+                                    ...field.value,
+                                    mountPath: event.target.value,
+                                  })
+                                }
+                              />
                             </FormControl>
+                            <FormMessage />
                           </FormItem>
-                        )}
-                      />
-                    ))}
+                        </div>
+                      )}
+                    />
                   </div>
-                )}
+                ))}
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   className="w-full"
                   onClick={() =>
                     shareDirsAppend({
@@ -453,36 +491,11 @@ const JupyterNew = () => {
                     })
                   }
                 >
-                  <PlusCircledIcon className="-ml-0.5 mr-1.5 h-4 w-4" />
+                  <CirclePlus className="-ml-0.5 mr-1.5 h-4 w-4" />
                   添加需要挂载的文件
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-          <div className="flex flex-col gap-4">
-            {[
-              "Parameters",
-              "Secrets",
-              "Environment Variables",
-              "Data",
-              "Tools",
-            ].map((s, i) => (
-              <Card key={i}>
-                <Accordion type="single" collapsible>
-                  <AccordionItem
-                    value="item-1"
-                    className="border-b-0 px-6 py-3"
-                  >
-                    <AccordionTrigger className="font-semibold leading-none tracking-tight hover:no-underline">
-                      {s}
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      Yes. It adheres to the WAI-ARIA design pattern.
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              </Card>
-            ))}
+            </AccordionCard>
           </div>
         </form>
       </Form>

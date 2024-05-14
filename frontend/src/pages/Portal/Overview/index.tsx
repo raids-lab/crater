@@ -502,10 +502,8 @@ export const Component: FC = () => {
       <div>
         <Card className="overflow-hidden">
           <CardHeader className="flex flex-row items-start bg-muted/50">
-            <div className="grid gap-0.5">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                集群资源
-              </CardTitle>
+            <div className="grid gap-1.5">
+              <CardTitle>集群资源</CardTitle>
               <CardDescription>查看各节点的资源使用情况</CardDescription>
             </div>
             <div className="ml-auto flex items-center gap-1">
