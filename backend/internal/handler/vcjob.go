@@ -8,14 +8,17 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/samber/lo"
+	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,6 +50,8 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/:name/token", mgr.GetJobIngress)
 	g.GET("/:name/log", mgr.GetJobLog)
 	g.DELETE("/:name", mgr.DeleteJob)
+	g.GET("/:name/detail", mgr.GetJobDetail)
+	g.GET("/:name/yaml", mgr.GetJobYaml)
 }
 
 func (mgr *VolcanojobMgr) RegisterAdmin(_ *gin.RouterGroup) {}
@@ -418,6 +423,14 @@ func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
 	resputil.Success(c, nil)
 }
 
+func (mgr *VolcanojobMgr) getPod(c *gin.Context, namespace, podName string) (*v1.Pod, error) {
+	pod, err := mgr.kubeClient.CoreV1().Pods(namespace).Get(c, podName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return pod, nil
+}
+
 func (mgr *VolcanojobMgr) getPodLog(c *gin.Context, namespace, podName string) (*bytes.Buffer, error) {
 	logOptions := &v1.PodLogOptions{}
 	logReq := mgr.kubeClient.CoreV1().Pods(namespace).GetLogs(podName, logOptions)
@@ -616,4 +629,168 @@ func (mgr *VolcanojobMgr) GetJobs(c *gin.Context) {
 	})
 
 	resputil.Success(c, jobList)
+}
+
+type (
+	JobDetailResp struct {
+		Name              string         `json:"name"`
+		Namespace         string         `json:"namespace"`
+		Username          string         `json:"username"`
+		JobName           string         `json:"jobName"`
+		Retry             string         `json:"retry"`
+		Queue             string         `json:"queue"`
+		Status            batch.JobPhase `json:"status"`
+		CreationTimestamp metav1.Time    `json:"createdAt"`
+		RunningTimestamp  metav1.Time    `json:"startedAt"`
+		Duration          string         `json:"runtime"`
+		PodDetails        []PodDetail    `json:"podDetails"`
+	}
+
+	PodDetail struct {
+		Name     string      `json:"name"`
+		NodeName string      `json:"nodename"`
+		IP       string      `json:"ip"`
+		Port     string      `json:"port"`
+		Resource string      `json:"resource"`
+		Status   v1.PodPhase `json:"status"`
+	}
+)
+
+// GetJobDetail godoc
+// @Summary 获取jupyter详情
+// @Description 调用k8s get crd
+// @Tags vcjob-jupyter
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param jobname query string true "vcjob-name"
+// @Success 200 {object} resputil.Response[any] "任务描述"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/vcjobs/{name}/detail [get]
+func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
+	var req JobActionReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	token := util.GetToken(c)
+	job := &batch.Job{}
+	namespace := config.GetConfig().Workspace.Namespace
+	if err := mgr.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	if job.Labels[LabelKeyTaskUser] != token.Username {
+		resputil.Error(c, "Job not found", resputil.NotSpecified)
+		return
+	}
+
+	var jobDetail JobDetailResp
+	conditions := job.Status.Conditions
+	var runningTimestamp metav1.Time
+	for _, condition := range conditions {
+		if condition.Status == batch.Running {
+			runningTimestamp = *condition.LastTransitionTime
+			break
+		}
+	}
+
+	retryAmount := 0
+	for _, condition := range conditions {
+		if condition.Status == batch.Restarting {
+			retryAmount += 1
+		}
+	}
+
+	var podName string
+	PodDetails := []PodDetail{}
+	for i := range job.Spec.Tasks {
+		task := &job.Spec.Tasks[i]
+		podName = fmt.Sprintf("%s-%s-0", job.Name, task.Name)
+		pod, err := mgr.getPod(c, namespace, podName)
+		if err != nil {
+			continue
+		}
+		// assume one pod running one container
+		if pod.Status.Phase == v1.PodRunning {
+			portStr := ""
+			for _, port := range pod.Spec.Containers[0].Ports {
+				portStr += fmt.Sprintf("%s:%d,", port.Name, port.ContainerPort)
+			}
+			portStr = portStr[:len(portStr)-1]
+			podDetail := PodDetail{
+				Name:     pod.Name,
+				NodeName: pod.Spec.NodeName,
+				IP:       pod.Status.PodIP,
+				Port:     portStr,
+				Resource: model.ResourceListToJSON(pod.Spec.Containers[0].Resources.Requests),
+				Status:   pod.Status.Phase,
+			}
+			PodDetails = append(PodDetails, podDetail)
+		} else {
+			podDetail := PodDetail{
+				Name:   pod.Name,
+				Status: pod.Status.Phase,
+			}
+			PodDetails = append(PodDetails, podDetail)
+		}
+	}
+
+	jobDetail = JobDetailResp{
+		Name:              job.Annotations[AnnotationKeyTaskName],
+		JobName:           job.Name,
+		Username:          job.Labels[LabelKeyTaskUser],
+		Namespace:         namespace,
+		Queue:             job.Spec.Queue,
+		Status:            job.Status.State.Phase,
+		CreationTimestamp: job.CreationTimestamp,
+		RunningTimestamp:  runningTimestamp,
+		Duration:          fmt.Sprintf("%.0fs", time.Since(runningTimestamp.Time).Seconds()),
+		Retry:             fmt.Sprintf("%d", retryAmount),
+		PodDetails:        PodDetails,
+	}
+	resputil.Success(c, jobDetail)
+}
+
+// GetJobYaml godoc
+// @Summary 获取vcjob Yaml详情
+// @Description 调用k8s get crd
+// @Tags vcjob-jupyter
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param jobname query string true "vcjob-name"
+// @Success 200 {object} resputil.Response[any] "任务yaml"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/vcjobs/{name}/yaml [get]
+func (mgr *VolcanojobMgr) GetJobYaml(c *gin.Context) {
+	var req JobActionReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	token := util.GetToken(c)
+	job := &batch.Job{}
+	namespace := config.GetConfig().Workspace.Namespace
+	if err := mgr.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	if job.Labels[LabelKeyTaskUser] != token.Username {
+		resputil.Error(c, "Job not found", resputil.NotSpecified)
+		return
+	}
+
+	JobYaml, err := yaml.Marshal(job)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, string(JobYaml))
 }

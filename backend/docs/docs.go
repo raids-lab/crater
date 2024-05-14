@@ -306,7 +306,7 @@ const docTemplate = `{
                     "200": {
                         "description": "成功返回",
                         "schema": {
-                            "$ref": "#/definitions/resputil.Response-array_model_Label"
+                            "$ref": "#/definitions/resputil.Response-any"
                         }
                     },
                     "400": {
@@ -866,7 +866,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/resputil.Response-array_model_Label"
+                            "$ref": "#/definitions/resputil.Response-array_handler_LabelResp"
                         }
                     },
                     "400": {
@@ -1329,6 +1329,55 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/vcjobs/{name}/detail": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "调用k8s get crd",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vcjob-jupyter"
+                ],
+                "summary": "获取jupyter详情",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "vcjob-name",
+                        "name": "jobname",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "任务描述",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/vcjobs/{name}/token": {
             "get": {
                 "security": [
@@ -1474,6 +1523,29 @@ const docTemplate = `{
                 },
                 "token": {
                     "type": "string"
+                }
+            }
+        },
+        "handler.LabelResp": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "type": {
+                    "$ref": "#/definitions/model.WorkerType"
                 }
             }
         },
@@ -1823,29 +1895,6 @@ const docTemplate = `{
                 "JupyterTask"
             ]
         },
-        "model.Label": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "priority": {
-                    "type": "integer"
-                },
-                "type": {
-                    "$ref": "#/definitions/model.WorkerType"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
         "model.Role": {
             "type": "integer",
             "enum": [
@@ -1885,14 +1934,17 @@ const docTemplate = `{
             "type": "integer",
             "enum": [
                 0,
-                1
+                1,
+                2
             ],
             "x-enum-comments": {
-                "Nvidia": "Nvidia GPU worker"
+                "Nvidia": "Nvidia GPU worker",
+                "Unknown": "Unknown worker"
             },
             "x-enum-varnames": [
                 "_",
-                "Nvidia"
+                "Nvidia",
+                "Unknown"
             ]
         },
         "payload.ClusterNodePodInfo": {
@@ -2058,6 +2110,23 @@ const docTemplate = `{
                 }
             }
         },
+        "resputil.Response-array_handler_LabelResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/resputil.ErrorCode"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handler.LabelResp"
+                    }
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "resputil.Response-array_handler_UserQueueResp": {
             "type": "object",
             "properties": {
@@ -2085,23 +2154,6 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/handler.UserResp"
-                    }
-                },
-                "msg": {
-                    "type": "string"
-                }
-            }
-        },
-        "resputil.Response-array_model_Label": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "$ref": "#/definitions/resputil.ErrorCode"
-                },
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.Label"
                     }
                 },
                 "msg": {
