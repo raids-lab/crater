@@ -48,14 +48,15 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[AccessModeRO-1]
-	_ = x[AccessModeRW-2]
-	_ = x[AccessModeAO-3]
+	_ = x[AccessModeNA-1]
+	_ = x[AccessModeRO-2]
+	_ = x[AccessModeRW-3]
+	_ = x[AccessModeAO-4]
 }
 
-const _AccessMode_name = "AccessModeROAccessModeRWAccessModeAO"
+const _AccessMode_name = "AccessModeNAAccessModeROAccessModeRWAccessModeAO"
 
-var _AccessMode_index = [...]uint8{0, 12, 24, 36}
+var _AccessMode_index = [...]uint8{0, 12, 24, 36, 48}
 
 func (i AccessMode) String() string {
 	i -= 1
