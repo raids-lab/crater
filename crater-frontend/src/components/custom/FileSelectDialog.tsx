@@ -11,21 +11,24 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DialogTrigger } from "@radix-ui/react-dialog";
 import { Tree, TreeDataItem } from "@/components/custom/LazyFileTree";
-import { FileDigit, Folder } from "lucide-react";
+import { ChevronsUpDown, FileDigit, Folder } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 // 修改FileSelect组件初始化File数组为顶层目录
 export const FileSelectDialog = ({
-  setSubPath,
+  value,
+  handleSubmit,
 }: {
-  setSubPath: (path: string) => void;
+  value?: string;
+  handleSubmit: (path: TreeDataItem) => void;
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [content, setContent] = useState<TreeDataItem | undefined>();
 
   const handleSelect = () => {
     if (content) {
-      setSubPath(content.id);
+      handleSubmit(content);
       toast.info(`选择了${content.id}`);
       setIsDialogOpen(false);
     } else {
@@ -37,8 +40,16 @@ export const FileSelectDialog = ({
     <div>
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
-          <Button type="button" variant="outline">
-            {!isDialogOpen && content ? content.name : "选择目录"}
+          <Button
+            variant="outline"
+            role="file-select"
+            className={cn(
+              "w-full justify-between text-ellipsis whitespace-nowrap pl-3 pr-4 font-normal",
+              !value && "text-muted-foreground",
+            )}
+          >
+            {!isDialogOpen && value ? value : "选择文件或文件夹"}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </DialogTrigger>
         <DialogContent>
