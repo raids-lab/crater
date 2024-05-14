@@ -13,12 +13,11 @@ import DatabaseIcon from "@/components/icon/DatabaseIcon";
 import LightHouseIcon from "@/components/icon/LightHouseIcon";
 import PersonalProject from "./Project/Personal";
 import { GroupUser } from "./Project/Group";
-import Jupyter from "./Job/Jupyter";
-import Training from "./Job/Training";
 import ServerIcon from "@/components/icon/ServerIcon";
 import { Role } from "@/services/api/auth";
 import DashboardLayout from "@/components/layout/Dashboard";
 import { User } from "./User";
+import Volcano from "./Job/Volcano";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -72,14 +71,8 @@ const sidebarItems: SidebarItem[] = [
     children: [
       {
         route: {
-          path: "jupyter",
-          element: <Jupyter />,
-        },
-      },
-      {
-        route: {
-          path: "ai",
-          element: <Training />,
+          path: "volcano",
+          element: <Volcano />,
         },
       },
     ],

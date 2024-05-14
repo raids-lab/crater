@@ -1,5 +1,5 @@
 import { apiAdminTaskListByType } from "@/services/api/admin/task";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import type { FC } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 import { DataTable } from "@/components/custom/OldDataTable";
 import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
 import { TableDate } from "@/components/custom/TableDate";
@@ -35,10 +34,8 @@ import {
   DotIcon,
   DotFilledIcon,
 } from "@radix-ui/react-icons";
-import { apiAiTaskDelete } from "@/services/api/aiTask";
-import { logger } from "@/utils/loglevel";
 
-type StatusValue =
+export type StatusValue =
   | "Queueing"
   | "Created"
   | "Pending"
@@ -48,7 +45,7 @@ type StatusValue =
   | "Preempted"
   | "Deleted";
 
-const statuses: {
+export const statuses: {
   value: StatusValue;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -108,14 +105,14 @@ const deleteStatuses = [
   },
 ];
 
-const getHeader = (key: string): string => {
+export const getHeader = (key: string): string => {
   switch (key) {
-    case "taskName":
-      return "task 名称";
     case "jobName":
       return "job 名称";
-    case "isDeleted":
-      return "是否删除";
+    case "jobType":
+      return "job 类型";
+    case "queue":
+      return "队列";
     case "userName":
       return "创建用户";
     case "status":
@@ -124,32 +121,29 @@ const getHeader = (key: string): string => {
       return "创建于";
     case "startedAt":
       return "开始于";
-    case "finishAt":
+    case "deletedAt":
       return "删除于";
     default:
       return key;
   }
 };
-type JTaskInfo = {
-  id: number;
-  taskName: string;
+export interface VolcanoJobInfo {
+  name: string;
   jobName: string;
-  isDeleted: string;
   userName: string;
+  jobType: string;
+  queue: string;
   status: string;
   createdAt: string;
   startedAt: string;
-  finishAt: string;
-  //finishAt: string;
-  //gpus: string | number | undefined;
-};
-
-const Training: FC = () => {
-  const [data, setData] = useState<JTaskInfo[]>([]);
+  deletedAt: string;
+}
+const Volcano: FC = () => {
+  const [data, setData] = useState<VolcanoJobInfo[]>([]);
   const { data: taskList, isLoading } = useQuery({
-    queryKey: ["admin", "tasklist", "ai"],
-    queryFn: () => apiAdminTaskListByType("training"),
-    select: (res) => res.data.data.rows,
+    queryKey: ["admin", "tasklist", "volcanoJob"],
+    queryFn: () => apiAdminTaskListByType(),
+    select: (res) => res.data.data,
   });
 
   const toolbarConfig: DataTableToolbarConfig = {
@@ -167,49 +161,41 @@ const Training: FC = () => {
     getHeader: getHeader,
   };
 
-  const { mutate: deleteTask } = useMutation({
-    mutationFn: (id: number) => apiAiTaskDelete(id),
-    onSuccess: async () => {
-      await refetchTaskList();
-      toast.success("任务已删除");
-    },
-  });
-
-  const queryClient = useQueryClient();
-  const refetchTaskList = async () => {
-    try {
-      // 并行发送所有异步请求
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ["admin", "tasklist", "ai"],
-        }),
-        queryClient.invalidateQueries({ queryKey: ["aitask", "quota"] }),
-        queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
-      ]);
-    } catch (error) {
-      logger.error("更新查询失败", error);
-    }
-  };
+  // const queryClient = useQueryClient();
+  // const refetchTaskList = async () => {
+  //   try {
+  //     // 并行发送所有异步请求
+  //     await Promise.all([
+  //       queryClient.invalidateQueries({
+  //         queryKey: ["admin", "tasklist", "ai"],
+  //       }),
+  //       queryClient.invalidateQueries({ queryKey: ["aitask", "quota"] }),
+  //       queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
+  //     ]);
+  //   } catch (error) {
+  //     logger.error("更新查询失败", error);
+  //   }
+  // };
   useEffect(() => {
     if (isLoading) return;
     if (!taskList) return;
-    const tableData: JTaskInfo[] = taskList
+    const tableData: VolcanoJobInfo[] = taskList
       //.filter((task) => !task.isDeleted)
       .map((task) => {
         //const task = convertJTask(t);
         return {
-          id: task.id,
-          taskName: task.taskName,
+          name: task.name,
           jobName: task.jobName,
-          isDeleted: task.isDeleted === true ? "已删除" : "未删除",
+          jobType: task.jobType,
           userName: task.userName,
+          queue: task.queue,
           status:
             task.isDeleted === true && task.status === "Running"
               ? "Deleted"
               : task.status,
           createdAt: task.createdAt,
           startedAt: task.startedAt,
-          finishAt: task.finishAt,
+          deletedAt: task.deletedAt,
           //priority: task.slo ? "high" : "low",
           // profileStatus:
           //   // 分析状态：profileStatus = 1 或 2 都显示分析中，不需要等待分析这个选项了
@@ -219,7 +205,7 @@ const Training: FC = () => {
     setData(tableData);
   }, [taskList, isLoading]);
 
-  const columns = useMemo<ColumnDef<JTaskInfo>[]>(
+  const columns = useMemo<ColumnDef<VolcanoJobInfo>[]>(
     () => [
       {
         id: "select",
@@ -243,42 +229,18 @@ const Training: FC = () => {
         enableHiding: false,
       },
       {
-        accessorKey: "taskName",
+        accessorKey: "jobName",
         header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("taskName")}
-          />
+          <DataTableColumnHeader column={column} title={getHeader("jobName")} />
         ),
-        cell: ({ row }) => <div>{row.getValue("taskName")}</div>,
+        cell: ({ row }) => <div>{row.getValue("jobName")}</div>,
       },
       {
-        accessorKey: "isDeleted",
+        accessorKey: "jobType",
         header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("isDeleted")}
-          />
+          <DataTableColumnHeader column={column} title={getHeader("jobType")} />
         ),
-        cell: ({ row }) => {
-          const deleteStatus = deleteStatuses.find(
-            (deleteStatus) => deleteStatus.value === row.getValue("isDeleted"),
-          );
-          if (!deleteStatus) {
-            return null;
-          }
-          return (
-            <div className="flex items-center">
-              {deleteStatus.icon && (
-                <deleteStatus.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-              )}
-              <span>{deleteStatus.value}</span>
-            </div>
-          );
-        },
-        filterFn: (row, id, value) => {
-          return (value as string[]).includes(row.getValue(id));
-        },
+        cell: ({ row }) => <div>{row.getValue("jobType")}</div>,
       },
       {
         accessorKey: "userName",
@@ -289,6 +251,13 @@ const Training: FC = () => {
           />
         ),
         cell: ({ row }) => <div>{row.getValue("userName")}</div>,
+      },
+      {
+        accessorKey: "queue",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("queue")} />
+        ),
+        cell: ({ row }) => <div>{row.getValue("queue")}</div>,
       },
       {
         accessorKey: "status",
@@ -354,15 +323,15 @@ const Training: FC = () => {
         sortingFn: "datetime",
       },
       {
-        accessorKey: "finishAt",
+        accessorKey: "deletedAt",
         header: ({ column }) => (
           <DataTableColumnHeader
             column={column}
-            title={getHeader("finishAt")}
+            title={getHeader("deletedAt")}
           />
         ),
         cell: ({ row }) => {
-          return <TableDate date={row.getValue("finishAt")}></TableDate>;
+          return <TableDate date={row.getValue("deletedAt")}></TableDate>;
         },
         sortingFn: "datetime",
       },
@@ -407,7 +376,7 @@ const Training: FC = () => {
                     <AlertDialogHeader>
                       <AlertDialogTitle>删除任务</AlertDialogTitle>
                       <AlertDialogDescription>
-                        任务「{taskInfo?.taskName}
+                        任务「{taskInfo?.jobName}
                         」将停止，请确认已经保存好所需数据。
                       </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -417,7 +386,6 @@ const Training: FC = () => {
                         variant="destructive"
                         onClick={() => {
                           // check if browser support clipboard
-                          deleteTask(taskInfo.id);
                         }}
                       >
                         删除
@@ -431,7 +399,7 @@ const Training: FC = () => {
         },
       },
     ],
-    [deleteTask],
+    [],
   );
 
   return (
@@ -444,4 +412,4 @@ const Training: FC = () => {
   );
 };
 
-export default Training;
+export default Volcano;
