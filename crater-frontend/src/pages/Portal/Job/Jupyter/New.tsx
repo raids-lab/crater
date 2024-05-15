@@ -36,6 +36,8 @@ import Combobox from "@/components/form/Combobox";
 import { apiNodeLabelsList } from "@/services/api/nodelabel";
 import AccordionCard from "@/components/custom/AccordionCard";
 import { Separator } from "@/components/ui/separator";
+import { exportToJson, importFromJson } from "@/utils/form";
+import { useState } from "react";
 
 const formSchema = z.object({
   taskname: z
@@ -63,9 +65,17 @@ const formSchema = z.object({
       subPath: z.string().min(1, {
         message: "挂载源不能为空",
       }),
-      mountPath: z.string().min(1, {
-        message: "挂载到容器中的路径不能为空",
-      }),
+      mountPath: z
+        .string()
+        .min(1, {
+          message: "挂载到容器中的路径不能为空",
+        })
+        .refine((value) => !value.includes(".."), {
+          message: '路径不可包含 ".."',
+        })
+        .refine((value) => value !== "/", {
+          message: '路径不能是 "/"',
+        }),
     }),
   ),
   gpuModel: z.string().min(1, {
@@ -80,7 +90,10 @@ type MountDir = {
   subPath: string;
 };
 
+const DataMount = "数据挂载";
+
 const JupyterNew = () => {
+  const [dataMountOpen, setDataMountOpen] = useState<string>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -196,26 +209,10 @@ const JupyterNew = () => {
     control: form.control,
   });
 
-  const exportToJson = () => {
-    const json = JSON.stringify(currentValues, null, 2);
-    // 保存到 LocalStorage
-    localStorage.setItem("jupyter_form_cache", json);
-  };
-
-  const loadFromJson = () => {
-    const json = localStorage.getItem("jupyter_form_cache");
-    if (json) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const data: FormSchema = JSON.parse(json);
-      form.reset(data);
-    }
-  };
-
   // 2. Define a submit handler.
   const onSubmit = (values: FormSchema) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
-    exportToJson();
     createTask(values);
   };
 
@@ -245,14 +242,47 @@ const JupyterNew = () => {
             <div className="flex flex-row gap-3">
               <Button
                 variant="outline"
-                onClick={loadFromJson}
                 type="button"
-                className="h-8"
+                className="relative h-8 cursor-pointer"
               >
+                <Input
+                  onChange={(e) => {
+                    importFromJson<FormSchema>(e.target.files?.[0])
+                      .then((data) => {
+                        form.reset(data);
+                        if (currentValues.shareDirs?.length > 0) {
+                          setDataMountOpen(DataMount);
+                        }
+                      })
+                      .catch(() => {
+                        toast.error(`解析错误，导入配置失败`);
+                      });
+                  }}
+                  type="file"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                />
                 <CircleArrowDown className="-ml-0.5 mr-1.5 h-4 w-4" />
                 导入配置
               </Button>
-              <Button variant="outline" type="button" className="h-8">
+              <Button
+                variant="outline"
+                type="button"
+                className="h-8"
+                onClick={() => {
+                  form
+                    .trigger()
+                    .then((isValid) => {
+                      isValid &&
+                        exportToJson(
+                          currentValues,
+                          currentValues.taskname + ".json",
+                        );
+                    })
+                    .catch((error) => {
+                      toast.error((error as Error).message);
+                    });
+                }}
+              >
                 <CircleArrowUp className="-ml-0.5 mr-1.5 h-4 w-4" />
                 导出配置
               </Button>
@@ -401,7 +431,11 @@ const JupyterNew = () => {
           </Card>
           <div className="flex flex-col gap-4">
             <AccordionCard cardTitle="系统变量">TODO</AccordionCard>
-            <AccordionCard cardTitle="数据挂载">
+            <AccordionCard
+              cardTitle={DataMount}
+              value={dataMountOpen}
+              setValue={setDataMountOpen}
+            >
               <div className="mt-3 space-y-5">
                 {shareDirsFields.map((field, index) => (
                   <div key={field.id}>
@@ -492,7 +526,7 @@ const JupyterNew = () => {
                   }
                 >
                   <CirclePlus className="-ml-0.5 mr-1.5 h-4 w-4" />
-                  添加需要挂载的文件
+                  添加挂载数据
                 </Button>
               </div>
             </AccordionCard>
