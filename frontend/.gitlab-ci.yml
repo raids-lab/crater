@@ -12,13 +12,13 @@ build_frontend:
   stage: build_frontend
   image: harbor.act.buaa.edu.cn/crater/node:21
   script:
-    - sed -i "s/VITE_APP_VERSION=\".*\"/VITE_APP_VERSION=\"${CI_COMMIT_TAG}\"/" .env
+    - sed -i "s/VITE_APP_VERSION=\".*\"/VITE_APP_VERSION=\"${CI_COMMIT_SHORT_SHA}\"/" .env
     - npm install -g pnpm
     - pnpm config set registry https://registry.npmmirror.com
     - pnpm install
     - pnpm build
-  rules:
-    - if: $CI_COMMIT_TAG
+  only:
+    - main
   cache:
     paths:
       - node_modules/
@@ -41,9 +41,9 @@ build_image:
       /kaniko/executor
       --context "${CI_PROJECT_DIR}"
       --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
-      --destination "${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_TAG}"
-  rules:
-    - if: $CI_COMMIT_TAG
+      --destination "${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}"
+  only:
+    - main
   dependencies:
     - build_frontend
 
@@ -55,8 +55,8 @@ deploy:
     entrypoint: [""]
   script:
     - kubectl config use-context raids/resource-scheduling/crater/web-frontend:crater-cluster
-    - kubectl set image deployment/crater-web-frontend crater-web-frontend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_TAG} -n crater
-  rules:
-    - if: $CI_COMMIT_TAG
+    - kubectl set image deployment/crater-web-frontend crater-web-frontend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -n crater
+  only:
+    - main
   dependencies:
     - build_image
