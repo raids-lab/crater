@@ -9,5 +9,11 @@ if ! (golangci-lint run --fix); then
     exit 1
 fi
 
+# generate swagger
+if ! (swag init); then
+    echo "Swagger generation fail!"
+    exit 1
+fi
+
 echo "Lint success!"
 exit 0
