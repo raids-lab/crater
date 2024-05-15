@@ -71,7 +71,7 @@ type (
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Success 200 {object} resputil.Response[[]model.Label]
+// @Success 200 {object} resputil.Response[any]
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/labels [get]
@@ -95,7 +95,7 @@ func (mgr *LabelMgr) ListLabels(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param data body CreateLabelReq true "创建标签"
-// @Success 200 {object} resputil.Response[[]model.Label] "成功返回"
+// @Success 200 {object} resputil.Response[any] "成功返回"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/admin/labels [post]
