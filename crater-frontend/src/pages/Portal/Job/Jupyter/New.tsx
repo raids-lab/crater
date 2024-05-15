@@ -250,7 +250,7 @@ const JupyterNew = () => {
                     importFromJson<FormSchema>(e.target.files?.[0])
                       .then((data) => {
                         form.reset(data);
-                        if (currentValues.shareDirs?.length > 0) {
+                        if (data.shareDirs.length > 0) {
                           setDataMountOpen(DataMount);
                         }
                       })
