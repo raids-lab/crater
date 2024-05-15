@@ -49,7 +49,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
@@ -61,6 +60,9 @@ import {
   apiJupyterLog,
   apiJupyterYaml,
 } from "@/services/api/jupyterTask";
+interface Resource {
+  [key: string]: string;
+}
 
 const JupyterDetail = () => {
   const initial: IJupyterDetail = {
@@ -94,6 +96,13 @@ const JupyterDetail = () => {
     setRefetchInterval(intervalMs);
   };
 
+  const { mutate: fetchDetail } = useMutation({
+    mutationFn: (jobName: string) => apiJupyterGetDetail(jobName),
+    onSuccess: (res) => {
+      setData(res.data.data);
+    },
+  });
+
   const [showLog, setShowLog] = useState(false);
   const [showYaml, setShowYaml] = useState(false);
   const [isFetchingLogs, setFetchingLogs] = useState(false);
@@ -105,8 +114,7 @@ const JupyterDetail = () => {
     mutationFn: apiJupyterLog,
     onSuccess: (res) => {
       setLogs(res.data.data);
-      setShowLog(true);
-      setFetchingLogs(true);
+      setFetchingLogs(false);
     },
   });
 
@@ -114,18 +122,17 @@ const JupyterDetail = () => {
     mutationFn: apiJupyterYaml,
     onSuccess: (res) => {
       setYaml(res.data.data);
-      setShowYaml(true);
-      setFetchingYaml(true);
+      setFetchingYaml(false);
     },
   });
 
   const handleFetchLogs = (jobName: string) => {
-    setFetchingLogs(false);
+    setFetchingLogs(true);
     fetchLogs(jobName);
   };
 
   const handleFetchYaml = (jobName: string) => {
-    setFetchingYaml(false);
+    setFetchingYaml(true);
     fetchYaml(jobName);
   };
 
@@ -133,7 +140,7 @@ const JupyterDetail = () => {
   const { mutate: deleteJTask } = useMutation({
     mutationFn: (jobName: string) => apiJupyterDelete(jobName),
     onSuccess: () => {
-      navigate("");
+      navigate("/jupyter");
       toast.success("任务已删除");
     },
   });
@@ -145,6 +152,13 @@ const JupyterDetail = () => {
     },
   });
 
+  const handleResourceData = (resourceJson: string): Resource => {
+    try {
+      return JSON.parse(resourceJson) as Resource;
+    } catch (error) {
+      return {};
+    }
+  };
   useEffect(() => {
     setBreadcrumb([{ title: "任务详情" }]);
   }, [setBreadcrumb]);
@@ -155,6 +169,15 @@ const JupyterDetail = () => {
     }
   }, [taskList, isLoading, taskList?.runtime]);
 
+  useEffect(() => {
+    if (isFetchingLogs) {
+      setLogs("Loading...");
+    }
+    if (isFetchingYaml) {
+      setYaml("Loading...");
+    }
+  }, [isFetchingLogs, isFetchingYaml]);
+
   return (
     <>
       <Card className="col-span-3">
@@ -163,7 +186,6 @@ const JupyterDetail = () => {
             <h1 className="text-xl font-semibold capitalize text-foreground">
               {data.name}
             </h1>
-            <InfoCircledIcon className="h-4 w-4 text-gray-500" />
           </div>
           <div className="flex items-center gap-2">
             <Select onValueChange={(value) => handleIntervalChange(value)}>
@@ -176,14 +198,21 @@ const JupyterDetail = () => {
                 <SelectItem value="20">Update Every 20s</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" size="icon">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => fetchDetail(jobName)}
+            >
               <RefreshCcwIcon className="h-3.5 w-3.5" />
             </Button>
           </div>
         </CardContent>
         <Separator />
-        <CardContent className="flex flex-col gap-4 p-6">
-          <div className="grid grid-cols-6 gap-4">
+        <CardContent className="flex flex-col gap-4 p-7">
+          <div
+            className="grid grid-cols-7 gap-12"
+            style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
+          >
             <div>
               <TooltipProvider>
                 <Tooltip>
@@ -248,6 +277,18 @@ const JupyterDetail = () => {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
+                    <Button variant="outline">{data.status}</Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Status</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
                     <Button variant="outline">{data.retry}</Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -275,7 +316,8 @@ const JupyterDetail = () => {
                   </DialogHeader>
                   <Textarea
                     className="h-72 rounded-md border"
-                    placeholder={isFetchingYaml ? yaml : "Loading..."}
+                    value={yaml}
+                    disabled
                   />
                   <DialogFooter>
                     <Button type="submit" onClick={() => setShowYaml(false)}>
@@ -376,18 +418,32 @@ const JupyterDetail = () => {
                   <TableCell>{pod.nodename || "---"}</TableCell>
                   <TableCell>{pod.ip || "---"}</TableCell>
                   <TableCell>{pod.port || "---"}</TableCell>
-                  <TableCell>{pod.resource || "---"}</TableCell>
+                  <TableCell>
+                    {pod.resource &&
+                      Object.entries(handleResourceData(pod.resource)).map(
+                        ([key, value]) => (
+                          <Badge
+                            key={key}
+                            variant="secondary"
+                            className="gap-2 font-medium"
+                          >
+                            {" "}
+                            {key}: {String(value)}{" "}
+                          </Badge>
+                        ),
+                      )}
+                  </TableCell>
                   <TableCell>{pod.status || "---"}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Dialog open={showLog} onOpenChange={setShowLog}>
                         <DialogTrigger asChild>
-                          <Badge
+                          <Button
                             variant="default"
                             onClick={() => handleFetchLogs(jobName)}
                           >
                             Stdout/Stderr
-                          </Badge>
+                          </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[800px]">
                           <DialogHeader>
@@ -395,7 +451,8 @@ const JupyterDetail = () => {
                           </DialogHeader>
                           <Textarea
                             className="h-72 rounded-md border"
-                            placeholder={isFetchingLogs ? logs : "Loading..."}
+                            value={logs}
+                            disabled
                           />
                           <DialogFooter>
                             <Button
