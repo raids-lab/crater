@@ -6,7 +6,7 @@ import { Role } from "@/services/api/auth";
 import DashboardLayout from "@/components/layout/Dashboard";
 import {
   ArchiveIcon,
-  BarChart3Icon,
+  BarChartBigIcon,
   BriefcaseIcon,
   ContainerIcon,
   DatabaseIcon,
@@ -18,7 +18,7 @@ import {
 const sidebarItems: SidebarItem[] = [
   {
     path: "overview",
-    icon: BarChart3Icon,
+    icon: BarChartBigIcon,
     children: [],
     route: {
       path: "overview",

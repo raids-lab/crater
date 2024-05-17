@@ -1,5 +1,6 @@
 import { JobPhase } from "@/services/api/jupyterTask";
 import { cn } from "@/lib/utils";
+import { Badge } from "../ui/badge";
 
 export const jobPhases = [
   {
@@ -54,57 +55,57 @@ export const getJobPhaseLabel = (
     case JobPhase.Pending:
       return {
         label: "等待中",
-        color: "bg-purple-500 hover:bg-purple-400",
+        color: "text-purple-500 border-purple-500 bg-purple-500/10",
       };
     case JobPhase.Aborting:
       return {
         label: "即将中止",
-        color: "bg-pink-500 hover:bg-pink-400",
+        color: "text-pink-500 border-pink-500 bg-pink-500/10",
       };
     case JobPhase.Aborted:
       return {
         label: "已中止",
-        color: "bg-pink-500 hover:bg-pink-400",
+        color: "text-pink-500 border-pink-500 bg-pink-500/10",
       };
     case JobPhase.Running:
       return {
         label: "运行中",
-        color: "bg-sky-500 hover:bg-sky-400",
+        color: "text-blue-500 border-blue-500 bg-blue-500/10",
       };
     case JobPhase.Restarting:
       return {
         label: "重启中",
-        color: "bg-rose-500 hover:bg-rose-200",
+        color: "text-rose-500 border-rose-500 bg-rose-500/10",
       };
     case JobPhase.Completing:
       return {
         label: "即将完成",
-        color: "bg-emerald-500 hover:bg-emerald-400",
+        color: "text-emerald-500 border-emerald-500 bg-emerald-500/10",
       };
     case JobPhase.Completed:
       return {
         label: "已完成",
-        color: "bg-emerald-500 hover:bg-emerald-400",
+        color: "text-emerald-500 border-emerald-500 bg-emerald-500/10",
       };
     case JobPhase.Terminating:
       return {
         label: "即将终止",
-        color: "bg-orange-500 hover:bg-orange-400",
+        color: "text-orange-500 border-orange-500 bg-orange-500/10",
       };
     case JobPhase.Terminated:
       return {
         label: "已终止",
-        color: "bg-orange-500 hover:bg-orange-400",
+        color: "text-orange-500 border-orange-500 bg-orange-500/10",
       };
     case JobPhase.Failed:
       return {
         label: "失败",
-        color: "bg-red-500 hover:bg-red-400",
+        color: "text-red-500 border-red-500 bg-red-500/10",
       };
     default:
       return {
         label: "未知",
-        color: "bg-slate-500 hover:bg-slate-400",
+        color: "text-slate-500 border-slate-500 bg-slate-500/10",
       };
   }
 };
@@ -113,10 +114,9 @@ const JobPhaseLabel = ({ jobPhase }: { jobPhase: JobPhase }) => {
   const data = getJobPhaseLabel(jobPhase);
 
   return (
-    <div className="flex flex-row items-center justify-start">
-      <div className={cn("flex h-2.5 w-2.5 rounded-full", data.color)}></div>
-      <div className="ml-1.5">{data.label}</div>
-    </div>
+    <Badge className={cn("", data.color)} variant="outline">
+      <div className="">{data.label}</div>
+    </Badge>
   );
 };
 

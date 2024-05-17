@@ -44,12 +44,18 @@ import { useNavigate, useRoutes } from "react-router-dom";
 import AiJobDetail from "./Detail";
 import { TableDate } from "@/components/custom/TableDate";
 import { cn } from "@/lib/utils";
-import Status from "../../Overview/Status";
 import Quota from "../Jupyter/Quota";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { toast } from "sonner";
 import { getHeader, priorities, profilingStatuses, statuses } from "./statuses";
 import { logger } from "@/utils/loglevel";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+} from "@/components/ui/card";
+import { CardTitle } from "@/components/ui-custom/card";
 
 type TaskInfo = {
   id: number;
@@ -405,7 +411,32 @@ const AiJobHome = () => {
   return (
     <>
       <div className="col-span-3 grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
-        <Status />
+        <Card className="flex flex-col justify-between lg:col-span-2">
+          <CardHeader>
+            <CardTitle>批处理作业</CardTitle>
+            <CardDescription className="text-balance pt-2 leading-relaxed">
+              指无须人工干预而执行系列程序的作业，包含单机作业、Pytorch
+              分布式训练作业、 Tensorflow 分布式训练作业、Ray 分布式训练作业、
+              OpenMPI 分布式计算作业等。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Sheet open={openSheet} onOpenChange={setOpenSheet}>
+              <SheetTrigger asChild>
+                <Button>创建批处理作业</Button>
+              </SheetTrigger>
+              {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
+              <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
+                <SheetHeader>
+                  <SheetTitle>新建作业</SheetTitle>
+                  <SheetDescription>创建一个新的 AI 训练作业</SheetDescription>
+                </SheetHeader>
+                <Separator className="mt-4" />
+                <NewTaskForm closeSheet={() => setOpenSheet(false)} />
+              </SheetContent>
+            </Sheet>
+          </CardContent>
+        </Card>
         <Quota />
       </div>
       <DataTable
@@ -414,22 +445,7 @@ const AiJobHome = () => {
         toolbarConfig={toolbarConfig}
         loading={isLoading}
         className="col-span-3"
-      >
-        <Sheet open={openSheet} onOpenChange={setOpenSheet}>
-          <SheetTrigger asChild>
-            <Button className="h-8 min-w-fit">新建作业</Button>
-          </SheetTrigger>
-          {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
-          <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
-            <SheetHeader>
-              <SheetTitle>新建作业</SheetTitle>
-              <SheetDescription>创建一个新的 AI 训练作业</SheetDescription>
-            </SheetHeader>
-            <Separator className="mt-4" />
-            <NewTaskForm closeSheet={() => setOpenSheet(false)} />
-          </SheetContent>
-        </Sheet>
-      </DataTable>
+      ></DataTable>
       <div className="flex flex-row items-center justify-start space-x-2">
         <div className="pl-2 text-sm text-muted-foreground">
           数据更新于 {updatedAt}
