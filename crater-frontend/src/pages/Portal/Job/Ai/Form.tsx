@@ -37,10 +37,10 @@ const formSchema = z.object({
   taskname: z
     .string()
     .min(1, {
-      message: "任务名称不能为空",
+      message: "作业名称不能为空",
     })
     .max(40, {
-      message: "任务名称最多包含40个字符",
+      message: "作业名称最多包含40个字符",
     }),
   taskType: z.string(),
   schedulerName: z.enum(["kube-gpu-colocate-scheduler", "volcano"]),
@@ -60,11 +60,11 @@ const formSchema = z.object({
     }),
   ),
   command: z.string().min(1, {
-    message: "任务名称不能为空",
+    message: "作业名称不能为空",
   }),
   priority: z.enum(["low", "high"], {
     invalid_type_error: "Select a priority",
-    required_error: "请选择任务优先级",
+    required_error: "请选择作业优先级",
   }),
 });
 
@@ -126,7 +126,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
       }),
     onSuccess: async (_, { taskname }) => {
       await queryClient.invalidateQueries({ queryKey: ["aitask", "list"] });
-      toast.success(`任务 ${taskname} 创建成功`);
+      toast.success(`作业 ${taskname} 创建成功`);
       closeSheet();
     },
   });
@@ -213,12 +213,12 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    任务名<span className="ml-1 text-red-500">*</span>
+                    作业名<span className="ml-1 text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
-                  {/* <FormMessage>请输入任务名称</FormMessage> */}
+                  {/* <FormMessage>请输入作业名称</FormMessage> */}
                   <FormMessage />
                 </FormItem>
               )}
@@ -402,7 +402,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                任务优先级<span className="ml-1 text-red-500">*</span>
+                作业优先级<span className="ml-1 text-red-500">*</span>
               </FormLabel>
               <FormControl>
                 <Select
@@ -487,9 +487,9 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
         />
         <div className="grid grid-cols-2 gap-3">
           <Button variant={"secondary"} onClick={loadFromJson} type="button">
-            上次任务
+            上次作业
           </Button>
-          <Button type="submit">提交任务</Button>
+          <Button type="submit">提交作业</Button>
         </div>
       </form>
     </Form>

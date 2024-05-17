@@ -43,10 +43,10 @@ const formSchema = z.object({
   taskname: z
     .string()
     .min(1, {
-      message: "任务名称不能为空",
+      message: "作业名称不能为空",
     })
     .max(40, {
-      message: "任务名称最多包含40个字符",
+      message: "作业名称最多包含40个字符",
     }),
   cpu: z.number().int().min(0, {
     message: "暂不支持解除 CPU 配额上限",
@@ -58,7 +58,7 @@ const formSchema = z.object({
     message: "暂不支持解除内存配额上限",
   }),
   image: z.string().min(1, {
-    message: "任务镜像不能为空",
+    message: "作业镜像不能为空",
   }),
   shareDirs: z.array(
     z.object({
@@ -131,7 +131,7 @@ const JupyterNew = () => {
         queryClient.invalidateQueries({ queryKey: ["aitask", "quota"] }),
         queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
       ]);
-      toast.success(`任务 ${taskname} 创建成功`);
+      toast.success(`作业 ${taskname} 创建成功`);
       navigate("/portal/job/jupyter");
     },
   });
@@ -288,7 +288,7 @@ const JupyterNew = () => {
               </Button>
               <Button type="submit" className="h-8">
                 <CirclePlus className="-ml-0.5 mr-1.5 h-4 w-4" />
-                提交任务
+                提交作业
               </Button>
             </div>
           </div>
@@ -305,13 +305,13 @@ const JupyterNew = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          任务名
+                          作业名
                           <FormLabelMust />
                         </FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
-                        {/* <FormMessage>请输入任务名称</FormMessage> */}
+                        {/* <FormMessage>请输入作业名称</FormMessage> */}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -430,7 +430,7 @@ const JupyterNew = () => {
             </CardContent>
           </Card>
           <div className="flex flex-col gap-4">
-            <AccordionCard cardTitle="系统变量">TODO</AccordionCard>
+            <AccordionCard cardTitle="环境变量">TODO</AccordionCard>
             <AccordionCard
               cardTitle={DataMount}
               value={dataMountOpen}

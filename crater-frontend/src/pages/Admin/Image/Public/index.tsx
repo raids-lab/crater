@@ -329,7 +329,7 @@ export const Component: FC = () => {
         <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
           <SheetHeader>
             <SheetTitle>创建镜像</SheetTitle>
-            <SheetDescription>创建一个新的训练任务镜像</SheetDescription>
+            <SheetDescription>创建一个新的训练作业镜像</SheetDescription>
           </SheetHeader>
           <Separator className="mt-4" />
           <NewTaskForm closeSheet={() => setOpenSheet(false)} />

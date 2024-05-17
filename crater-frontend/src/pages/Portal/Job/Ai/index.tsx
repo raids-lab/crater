@@ -66,13 +66,13 @@ type TaskInfo = {
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
-    placeholder: "搜索任务名称",
+    placeholder: "搜索作业名称",
     key: "title",
   },
   filterOptions: [
     {
       key: "status",
-      title: "任务状态",
+      title: "作业状态",
       option: statuses,
     },
     {
@@ -123,7 +123,7 @@ const AiJobHome = () => {
     mutationFn: (id: number) => apiAiTaskDelete(id),
     onSuccess: async () => {
       await refetchTaskList();
-      toast.success("任务已删除");
+      toast.success("作业已删除");
     },
   });
 
@@ -347,9 +347,9 @@ const AiJobHome = () => {
               </DropdownMenu>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>删除任务</AlertDialogTitle>
+                  <AlertDialogTitle>删除作业</AlertDialogTitle>
                   <AlertDialogDescription>
-                    任务「{taskInfo?.title}」将不再可见，请谨慎操作。
+                    作业「{taskInfo?.title}」将不再可见，请谨慎操作。
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -417,13 +417,13 @@ const AiJobHome = () => {
       >
         <Sheet open={openSheet} onOpenChange={setOpenSheet}>
           <SheetTrigger asChild>
-            <Button className="h-8 min-w-fit">新建任务</Button>
+            <Button className="h-8 min-w-fit">新建作业</Button>
           </SheetTrigger>
           {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
           <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
             <SheetHeader>
-              <SheetTitle>新建任务</SheetTitle>
-              <SheetDescription>创建一个新的 AI 训练任务</SheetDescription>
+              <SheetTitle>新建作业</SheetTitle>
+              <SheetDescription>创建一个新的 AI 训练作业</SheetDescription>
             </SheetHeader>
             <Separator className="mt-4" />
             <NewTaskForm closeSheet={() => setOpenSheet(false)} />

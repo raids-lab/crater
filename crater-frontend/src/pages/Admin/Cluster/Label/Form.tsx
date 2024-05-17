@@ -93,7 +93,7 @@ export function UpdateLabelForm({ closeSheet, current }: UpdateTaskFormProps) {
                   <FormLabelMust />
                 </FormLabel>
                 <Input {...field} />
-                <FormDescription>用于提交任务时，选择节点类型</FormDescription>
+                <FormDescription>用于提交作业时，选择节点类型</FormDescription>
                 <FormMessage />
               </FormItem>
             )}

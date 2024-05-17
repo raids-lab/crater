@@ -210,7 +210,7 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
           return (
             <div className="grid grid-cols-3 rounded-md border p-3 text-xs md:grid-cols-6">
               <div>节点: {quota.node === -1 ? "~" : quota.node}</div>
-              <div>任务: {quota.job === -1 ? "~" : quota.job}</div>
+              <div>作业: {quota.job === -1 ? "~" : quota.job}</div>
               <div>CPU: {quota.cpu}</div>
               <div>GPU: {quota.gpu}</div>
               <div>内存: {quota.mem}GB</div>

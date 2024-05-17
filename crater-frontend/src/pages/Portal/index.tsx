@@ -1,19 +1,24 @@
 import { SidebarItem, SidebarMenu } from "@/components/layout/Sidebar";
-import DatabaseIcon from "@/components/icon/DatabaseIcon";
-import OverviewIcon from "@/components/icon/OverviewIcon";
-import LightHouseIcon from "@/components/icon/LightHouseIcon";
-import WorkBenchIcon from "@/components/icon/WorkBenchIcon";
 import { useAuth } from "@/hooks/useAuth";
-import { FC, PropsWithChildren, Suspense } from "react";
+import { FC, PropsWithChildren } from "react";
 import { Navigate, RouteObject } from "react-router-dom";
-import { ArchiveIcon, FileTextIcon, Pencil2Icon } from "@radix-ui/react-icons";
 import { Role } from "@/services/api/auth";
 import DashboardLayout from "@/components/layout/Dashboard";
+import {
+  ArchiveIcon,
+  BarChart3Icon,
+  BriefcaseIcon,
+  ContainerIcon,
+  DatabaseIcon,
+  FileTextIcon,
+  FlaskConicalIcon,
+  MessageSquareMoreIcon,
+} from "lucide-react";
 
 const sidebarItems: SidebarItem[] = [
   {
     path: "overview",
-    icon: WorkBenchIcon,
+    icon: BarChart3Icon,
     children: [],
     route: {
       path: "overview",
@@ -22,25 +27,41 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     path: "job",
-    icon: OverviewIcon,
+    icon: FlaskConicalIcon,
     children: [
-      {
-        route: {
-          path: "jupyter/*",
-          lazy: () => import("./Job/Jupyter"),
-        },
-      },
       {
         route: {
           path: "ai/*",
           lazy: () => import("./Job/Ai"),
         },
       },
+      {
+        route: {
+          path: "jupyter/*",
+          lazy: () => import("./Job/Jupyter"),
+        },
+      },
+    ],
+  },
+  {
+    path: "service",
+    icon: BriefcaseIcon,
+    children: [
+      {
+        route: {
+          path: "microservice/*",
+        },
+      },
+      {
+        route: {
+          path: "serverless/*",
+        },
+      },
     ],
   },
   {
     path: "image",
-    icon: LightHouseIcon,
+    icon: ContainerIcon,
     children: [],
     route: {
       path: "image",
@@ -53,8 +74,13 @@ const sidebarItems: SidebarItem[] = [
     children: [
       {
         route: {
-          path: "share/*",
+          path: "filesystem/*",
           lazy: () => import("./Data/Share"),
+        },
+      },
+      {
+        route: {
+          path: "dataset",
         },
       },
     ],
@@ -88,7 +114,7 @@ const sidebarMenus: SidebarMenu[] = [
   },
   {
     path: "feedback",
-    icon: Pencil2Icon,
+    icon: MessageSquareMoreIcon,
     route: {
       path: "feedback",
       lazy: () => import("./Feedback"),
@@ -105,14 +131,12 @@ const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
 export const portalRoute: RouteObject = {
   path: "/portal",
   element: (
-    <Suspense fallback={<h2>Loading...</h2>}>
-      <AuthedRouter>
-        <DashboardLayout
-          sidebarItems={sidebarItems}
-          sidebarMenus={sidebarMenus}
-        />
-      </AuthedRouter>
-    </Suspense>
+    <AuthedRouter>
+      <DashboardLayout
+        sidebarItems={sidebarItems}
+        sidebarMenus={sidebarMenus}
+      />
+    </AuthedRouter>
   ),
   children: [
     {

@@ -14,13 +14,13 @@ export const getHeader = (key: string): string => {
     case "id":
       return "序号";
     case "name":
-      return "任务名称";
+      return "作业名称";
     case "taskType":
       return "类型";
     case "gpus":
       return "GPU";
     case "status":
-      return "任务状态";
+      return "作业状态";
     case "priority":
       return "优先级";
     case "profileStatus":

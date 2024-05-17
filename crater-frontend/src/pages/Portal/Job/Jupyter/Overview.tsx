@@ -39,13 +39,13 @@ interface JTaskInfo extends IJupyterResp {}
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
-    placeholder: "搜索任务名称",
+    placeholder: "搜索作业名称",
     key: "name",
   },
   filterOptions: [
     {
       key: "status",
-      title: "任务状态",
+      title: "作业状态",
       option: jobPhases,
     },
   ],
@@ -85,7 +85,7 @@ export const JupyterOverview = () => {
     mutationFn: (jobName: string) => apiJupyterDelete(jobName),
     onSuccess: async () => {
       await refetchTaskList();
-      toast.success("任务已删除");
+      toast.success("作业已删除");
     },
   });
 
@@ -208,9 +208,9 @@ export const JupyterOverview = () => {
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>删除任务</AlertDialogTitle>
+                    <AlertDialogTitle>删除作业</AlertDialogTitle>
                     <AlertDialogDescription>
-                      任务「{taskInfo?.name}
+                      作业「{taskInfo?.name}
                       」将停止，请确认已经保存好所需数据。
                     </AlertDialogDescription>
                   </AlertDialogHeader>
@@ -260,7 +260,7 @@ export const JupyterOverview = () => {
       >
         <Button onClick={() => navigate("new")} className="h-8">
           <PlusCircledIcon className="mr-1.5 h-4 w-4" />
-          新建任务
+          新建作业
         </Button>
       </DataTable>
       <div className="flex flex-row items-center justify-start space-x-2">

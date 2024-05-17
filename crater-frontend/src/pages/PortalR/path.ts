@@ -10,11 +10,11 @@ export const recommendPath: PathInfo = {
     },
     {
       path: "job",
-      title: "任务管理",
+      title: "作业管理",
       children: [
         {
           path: "dl",
-          title: "深度推荐训练任务",
+          title: "深度推荐训练作业",
         },
       ],
     },

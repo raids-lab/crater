@@ -94,11 +94,11 @@ const Status: FC = () => {
   return (
     <Card className="col-span-1 md:col-span-2">
       <CardHeader>
-        <CardTitle>任务状态</CardTitle>
+        <CardTitle>作业状态</CardTitle>
       </CardHeader>
       <CardContent>
         {isLoading || !stats || stats?.length === 0 ? (
-          <p className="text-muted-foreground">暂无任务数据</p>
+          <p className="text-muted-foreground">暂无作业数据</p>
         ) : (
           <Chart {...chartConfig} />
         )}

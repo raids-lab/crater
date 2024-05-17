@@ -145,7 +145,7 @@ const Volcano: FC = () => {
 
   const toolbarConfig: DataTableToolbarConfig = {
     filterInput: {
-      placeholder: "搜索任务名",
+      placeholder: "搜索作业名",
       key: "taskName",
     },
     filterOptions: [
@@ -334,9 +334,9 @@ const Volcano: FC = () => {
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>删除任务</AlertDialogTitle>
+                      <AlertDialogTitle>删除作业</AlertDialogTitle>
                       <AlertDialogDescription>
-                        任务「{taskInfo?.jobName}
+                        作业「{taskInfo?.jobName}
                         」将停止，请确认已经保存好所需数据。
                       </AlertDialogDescription>
                     </AlertDialogHeader>

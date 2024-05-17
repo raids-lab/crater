@@ -141,7 +141,7 @@ const JupyterDetail = () => {
     mutationFn: (jobName: string) => apiJupyterDelete(jobName),
     onSuccess: () => {
       navigate("/jupyter");
-      toast.success("任务已删除");
+      toast.success("作业已删除");
     },
   });
 
@@ -160,7 +160,7 @@ const JupyterDetail = () => {
     }
   };
   useEffect(() => {
-    setBreadcrumb([{ title: "任务详情" }]);
+    setBreadcrumb([{ title: "作业详情" }]);
   }, [setBreadcrumb]);
 
   useEffect(() => {
@@ -368,9 +368,9 @@ const JupyterDetail = () => {
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>删除任务</AlertDialogTitle>
+                    <AlertDialogTitle>删除作业</AlertDialogTitle>
                     <AlertDialogDescription>
-                      任务「{data.name}
+                      作业「{data.name}
                       」将停止，请确认已经保存好所需数据。
                     </AlertDialogDescription>
                   </AlertDialogHeader>
