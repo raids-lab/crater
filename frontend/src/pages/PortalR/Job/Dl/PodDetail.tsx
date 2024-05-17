@@ -23,11 +23,11 @@ const PodDetail: FC = () => {
     }
     setBreadcrumb([
       {
-        title: "深度推荐训练任务",
+        title: "深度推荐训练作业",
         path: "/recommend/job/dl",
       },
       {
-        title: `任务「${taskName}」详情`,
+        title: `作业「${taskName}」详情`,
         path: `/recommend/job/dl/${taskName}`,
       },
       {

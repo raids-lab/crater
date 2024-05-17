@@ -11,21 +11,35 @@ export const craterPath: PathInfo = {
     },
     {
       path: "job",
-      title: "任务管理",
+      title: "作业管理",
       children: [
         {
           path: "ai",
-          title: "离线任务",
+          title: "批处理作业",
         },
         {
           path: "jupyter",
-          title: "交互式任务",
+          title: "交互式作业",
           children: [
             {
               path: "new",
-              title: "新建任务",
+              title: "新建作业",
             },
           ],
+        },
+      ],
+    },
+    {
+      path: "service",
+      title: "服务管理",
+      children: [
+        {
+          path: "microservice",
+          title: "微服务",
+        },
+        {
+          path: "serverless",
+          title: "无服务",
         },
       ],
     },
@@ -48,8 +62,12 @@ export const craterPath: PathInfo = {
       title: "数据管理",
       children: [
         {
-          path: "share",
-          title: "项目文件",
+          path: "filesystem",
+          title: "文件系统",
+        },
+        {
+          path: "dataset",
+          title: "数据集",
         },
       ],
     },

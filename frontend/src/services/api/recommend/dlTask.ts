@@ -49,7 +49,7 @@ export const apiDlTaskList = () =>
   instance.get<IResponse<IDlTask[]>>(VERSION + "/recommenddljob/list");
 
 // {
-//   "name": "test-recommenddljob", // 任务名称，必填
+//   "name": "test-recommenddljob", // 作业名称，必填
 //   "replicas": 1, // pod副本个数，必填
 //   "runningType": "one-shot", // 运行模式，两种取值：one-shot/long-running，必填
 //   "datasets": [], // 数据集，可为空，可以选datasets/list接口里返回的数据集，列表内每个元素仅有一个name字段

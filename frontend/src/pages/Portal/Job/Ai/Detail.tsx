@@ -37,14 +37,14 @@ const AiJobDetail: FC = () => {
     }
     setBreadcrumb([
       {
-        title: "任务管理",
+        title: "作业管理",
       },
       {
-        title: "AI 训练任务",
+        title: "AI 训练作业",
         path: "/portal/job/ai",
       },
       {
-        title: `任务详情`,
+        title: `作业详情`,
       },
     ]);
   }, [setBreadcrumb, taskInfo, isLoading]);
@@ -58,14 +58,14 @@ const AiJobDetail: FC = () => {
       {taskInfo && (
         <Card className="col-span-full">
           <CardHeader>
-            <CardTitle>任务详情</CardTitle>
+            <CardTitle>作业详情</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             {/* 包括字段有：taskName, id,nameSpace,status,slo,createdAt,startedAt,finishAt，duration，jct，image，jobName */}
             {taskInfo.taskName && (
               <div className="col-span-full">
                 <span className="inline-block w-24 text-muted-foreground">
-                  任务名称：
+                  作业名称：
                 </span>
                 <span className="font-mono">{taskInfo.taskName}</span>
               </div>
@@ -73,7 +73,7 @@ const AiJobDetail: FC = () => {
             {taskInfo.id && (
               <div className="col-span-full">
                 <span className="inline-block w-24 text-muted-foreground">
-                  任务 ID：
+                  作业 ID：
                 </span>
                 <span className="font-mono">{taskInfo.id}</span>
               </div>
@@ -81,7 +81,7 @@ const AiJobDetail: FC = () => {
             {taskInfo.status && (
               <div className="col-span-full">
                 <span className="inline-block w-24 text-muted-foreground">
-                  任务状态：
+                  作业状态：
                 </span>
                 <span className="font-mono">{taskInfo.status}</span>
               </div>
@@ -89,7 +89,7 @@ const AiJobDetail: FC = () => {
             {taskInfo.slo && (
               <div className="col-span-full">
                 <span className="inline-block w-24 text-muted-foreground">
-                  任务 SLO：
+                  作业 SLO：
                 </span>
                 <span className="font-mono">{taskInfo.slo}</span>
               </div>
@@ -130,7 +130,7 @@ const AiJobDetail: FC = () => {
             {taskInfo.jct && (
               <div className="col-span-full">
                 <span className="inline-block w-24 text-muted-foreground">
-                  任务 JCT：
+                  作业 JCT：
                 </span>
                 <span className="font-mono">{taskInfo.jct}</span>
               </div>
@@ -138,7 +138,7 @@ const AiJobDetail: FC = () => {
             {taskInfo.image && (
               <div className="col-span-full">
                 <span className="inline-block w-24 text-muted-foreground">
-                  任务镜像：
+                  作业镜像：
                 </span>
                 <span className="font-mono">{taskInfo.image}</span>
               </div>
@@ -245,7 +245,7 @@ const AiJobDetail: FC = () => {
       {taskLogs && (
         <Card className="col-span-full">
           <CardHeader>
-            <CardTitle>任务日志</CardTitle>
+            <CardTitle>作业日志</CardTitle>
           </CardHeader>
           <CardContent>
             <pre className="whitespace-pre-wrap text-sm text-muted-foreground">

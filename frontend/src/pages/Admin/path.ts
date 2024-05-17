@@ -38,11 +38,11 @@ export const adminPath: PathInfo = {
     },
     {
       path: "job",
-      title: "任务管理",
+      title: "作业管理",
       children: [
         {
           path: "volcano",
-          title: "volcano 任务",
+          title: "volcano 作业",
         },
       ],
     },

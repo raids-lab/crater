@@ -382,7 +382,7 @@ export const Component: FC = () => {
               <CardTitle>快速开始</CardTitle>
               <CardDescription className="text-balance leading-relaxed">
                 在 Crater 启动 Jupyter Lab、打包训练镜像、
-                启动深度学习训练任务等。
+                启动深度学习训练作业等。
               </CardDescription>
             </CardHeader>
             <CardFooter>
@@ -394,7 +394,7 @@ export const Component: FC = () => {
               <CardTitle>快速开始</CardTitle>
               <CardDescription className="text-balance leading-relaxed">
                 在 Crater 启动 Jupyter Lab、打包训练镜像、
-                启动深度学习训练任务等。
+                启动深度学习训练作业等。
               </CardDescription>
             </CardHeader>
             <CardFooter></CardFooter>

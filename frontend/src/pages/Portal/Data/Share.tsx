@@ -46,12 +46,12 @@ export const Component: FC = () => {
   const [dirName, setDirName] = useState<string>("");
   const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
   const path = useMemo(
-    () => pathname.replace(/^\/portal\/data\/share/, ""),
+    () => pathname.replace(/^\/portal\/data\/filesystem/, ""),
     [pathname],
   );
 
   // const { data: spaces } = useQuery({
-  //   queryKey: ["data", "share"],
+  //   queryKey: ["data", "filesystem"],
   //   queryFn: () => apiGetFiles(""),
   //   select: (res) => res.data.data,
   // });
@@ -69,16 +69,16 @@ export const Component: FC = () => {
           title: "数据管理",
           path: "/portal/data",
         };
-      } else if (index == 2 && value == "share") {
+      } else if (index == 2 && value == "filesystem") {
         return {
-          title: "项目文件",
-          path: "/portal/data/share",
+          title: "文件系统",
+          path: "/portal/data/filesystem",
         };
       }
       //  else if (index == 3) {
       //   return {
       //     title: spaces?.find((p) => p.name === value)?.filename ?? value,
-      //     path: `/portal/data/share/${value}`,
+      //     path: `/portal/data/filesystem/${value}`,
       //   };
       // }
       return {
@@ -102,7 +102,7 @@ export const Component: FC = () => {
   }, [pathname]);
 
   const { data: rootList, isLoading } = useQuery({
-    queryKey: ["data", "share", path],
+    queryKey: ["data", "filesystem", path],
     queryFn: () => apiGetFiles(`${path}`),
     select: (res) => res.data.data,
   });
@@ -281,7 +281,9 @@ export const Component: FC = () => {
     mutationFn: (Files: File[]) => uploadFile(Files),
     onSuccess: () => {
       toast.success("文件已上传");
-      void queryClient.invalidateQueries({ queryKey: ["data", "share", path] });
+      void queryClient.invalidateQueries({
+        queryKey: ["data", "filesystem", path],
+      });
     },
   });
 
@@ -331,7 +333,9 @@ export const Component: FC = () => {
   const { mutate: CreateDir } = useMutation({
     mutationFn: () => clientCreateDir(path),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["data", "share", path] });
+      void queryClient.invalidateQueries({
+        queryKey: ["data", "filesystem", path],
+      });
     },
   });
 
@@ -351,7 +355,7 @@ export const Component: FC = () => {
           navigate(backpath);
         }}
         className="h-8 w-8"
-        disabled={pathname === "/portal/data/share"}
+        disabled={pathname === "/portal/data/filesystem"}
       >
         <ArrowLeftIcon />
       </Button>
@@ -362,7 +366,7 @@ export const Component: FC = () => {
         size="icon"
         variant="outline"
         className="h-8 w-8 p-0"
-        disabled={pathname === "/portal/data/share"}
+        disabled={pathname === "/portal/data/filesystem"}
       >
         <UploadIcon />
       </Button>
@@ -379,7 +383,7 @@ export const Component: FC = () => {
             variant="outline"
             className="h-8 w-8"
             size="icon"
-            disabled={pathname === "/portal/data/share"}
+            disabled={pathname === "/portal/data/filesystem"}
           >
             <PlusIcon />
           </Button>

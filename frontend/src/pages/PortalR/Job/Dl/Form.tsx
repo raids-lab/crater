@@ -55,7 +55,7 @@ import { showErrorToast } from "@/utils/toast";
 import { toast } from "sonner";
 
 // {
-//   "name": "test-recommenddljob", // 任务名称，必填
+//   "name": "test-recommenddljob", // 作业名称，必填
 //   "replicas": 1, // pod副本个数，必填
 //   "runningType": "one-shot", // 运行模式，两种取值：one-shot/long-running，必填
 //   "datasets": [], // 数据集，可为空，可以选datasets/list接口里返回的数据集，列表内每个元素仅有一个name字段
@@ -85,10 +85,10 @@ const formSchema = z.object({
   name: z
     .string()
     .min(1, {
-      message: "任务名称不能为空",
+      message: "作业名称不能为空",
     })
     .max(40, {
-      message: "任务名称最多包含40个字符",
+      message: "作业名称最多包含40个字符",
     }),
   replicas: z.coerce.number().min(1, {
     message: "副本个数必须大于0",
@@ -199,7 +199,7 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
     },
     onSuccess: async (_, { name }) => {
       await queryClient.invalidateQueries({ queryKey: ["dltask", "list"] });
-      toast.success(`任务 ${name} 创建成功`);
+      toast.success(`作业 ${name} 创建成功`);
       closeSheet();
     },
   });
@@ -293,12 +293,12 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    任务名称<span className="ml-1 text-red-500">*</span>
+                    作业名称<span className="ml-1 text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
-                  {/* <FormMessage>请输入任务名称</FormMessage> */}
+                  {/* <FormMessage>请输入作业名称</FormMessage> */}
                   <FormMessage />
                 </FormItem>
               )}
@@ -476,7 +476,7 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className={cn(index !== 0 && "sr-only")}>
-                        关联任务
+                        关联作业
                       </FormLabel>
                       <div className="flex flex-row space-x-2">
                         <Popover modal={true}>
@@ -495,7 +495,7 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
                                       (dataset) =>
                                         dataset.value === field.value.name,
                                     )?.label
-                                  : "选择要关联的任务"}
+                                  : "选择要关联的作业"}
                                 <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </Button>
                             </FormControl>
@@ -510,11 +510,11 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
                           >
                             <Command>
                               <CommandInput
-                                placeholder="查找任务"
+                                placeholder="查找作业"
                                 className="h-9"
                               />
                               <ScrollArea className="h-40">
-                                <CommandEmpty>未找到匹配的任务</CommandEmpty>
+                                <CommandEmpty>未找到匹配的作业</CommandEmpty>
                                 <CommandGroup>
                                   {taskList.map((task) => (
                                     <CommandItem
@@ -528,7 +528,7 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
                                         ) {
                                           showErrorToast(
                                             new Error(
-                                              `与任务「${task.label}」的关系已存在`,
+                                              `与作业「${task.label}」的关系已存在`,
                                             ),
                                           );
                                         } else {
@@ -579,7 +579,7 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
             variant="outline"
             onClick={() => relationShipsAppend({ name: "" })}
           >
-            添加关联任务
+            添加关联作业
           </Button>
         </div>
         <div className="grid grid-cols-3 gap-3">
@@ -815,7 +815,7 @@ export function NewDlTaskForm({ closeSheet }: TaskFormProps) {
             </FormItem>
           )}
         />
-        <Button type="submit">提交任务</Button>
+        <Button type="submit">提交作业</Button>
       </form>
     </Form>
   );

@@ -75,7 +75,7 @@ const Quota = () => {
   }, [quota]);
 
   return (
-    <div className="grid grid-flow-row grid-cols-2 gap-4 md:col-span-2">
+    <div className="grid grid-flow-row grid-cols-2 gap-4 lg:col-span-2">
       {quotaData.map((q, i) => (
         <Card key={i} className="flex flex-col items-stretch justify-between">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">

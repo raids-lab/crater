@@ -65,7 +65,7 @@ type TaskInfo = {
 const getHeader = (key: string): string => {
   switch (key) {
     case "name":
-      return "任务名称";
+      return "作业名称";
     case "status":
       return "状态";
     case "createdAt":
@@ -106,7 +106,7 @@ const statuses = [
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
-    placeholder: "搜索任务名称",
+    placeholder: "搜索作业名称",
     key: "name",
   },
   filterOptions: [
@@ -135,7 +135,7 @@ const AiJobHome = () => {
     mutationFn: (name: string) => apiDlTaskDelete(name),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["dltask", "list"] });
-      toast.success("任务已删除");
+      toast.success("作业已删除");
     },
   });
 
@@ -143,7 +143,7 @@ const AiJobHome = () => {
   useEffect(() => {
     setBreadcrumb([
       {
-        title: "深度推荐训练任务",
+        title: "深度推荐训练作业",
       },
     ]);
   }, [setBreadcrumb]);
@@ -253,9 +253,9 @@ const AiJobHome = () => {
               </DropdownMenu>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>删除任务</AlertDialogTitle>
+                  <AlertDialogTitle>删除作业</AlertDialogTitle>
                   <AlertDialogDescription>
-                    任务「{taskInfo?.name}」将不再可见，请谨慎操作。
+                    作业「{taskInfo?.name}」将不再可见，请谨慎操作。
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -301,13 +301,13 @@ const AiJobHome = () => {
       >
         <Sheet open={openSheet} onOpenChange={setOpenSheet}>
           <SheetTrigger asChild>
-            <Button className="h-8 min-w-fit">新建任务</Button>
+            <Button className="h-8 min-w-fit">新建作业</Button>
           </SheetTrigger>
           {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
           <SheetContent className="max-h-screen overflow-y-auto sm:max-w-2xl">
             <SheetHeader>
-              <SheetTitle>新建任务</SheetTitle>
-              <SheetDescription>创建一个新的深度推荐训练任务</SheetDescription>
+              <SheetTitle>新建作业</SheetTitle>
+              <SheetDescription>创建一个新的深度推荐训练作业</SheetDescription>
             </SheetHeader>
             <Separator className="mt-4" />
             <NewDlTaskForm closeSheet={() => setOpenSheet(false)} />

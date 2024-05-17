@@ -117,11 +117,11 @@ const DlJobDetail: FC = () => {
     }
     setBreadcrumb([
       {
-        title: "深度推荐训练任务",
+        title: "深度推荐训练作业",
         path: "/recommend/job/dl",
       },
       {
-        title: `任务「${taskInfo.data?.name}」详情`,
+        title: `作业「${taskInfo.data?.name}」详情`,
       },
     ]);
   }, [setBreadcrumb, taskInfo]);
@@ -287,7 +287,7 @@ const DlJobDetail: FC = () => {
           loading={podInfo.isLoading || taskInfo.isLoading}
         />
       </div>
-      <h2 className="col-span-full pt-2 text-base font-bold">任务数据</h2>
+      <h2 className="col-span-full pt-2 text-base font-bold">作业数据</h2>
       <Card className="col-span-full">
         <CardContent>
           <CardHeader className="p-3" />
