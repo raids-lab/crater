@@ -16,6 +16,7 @@ export type ImagePackInfoResponse = {
   createdAt: string;
   nametag: string;
   creatername: string;
+  imagetype: number;
   params: {
     Convs: number;
     Activations: number;
@@ -35,6 +36,7 @@ export type ImagePackInfo = {
   username: string;
   status: string;
   createdAt: string;
+  imagetype: number;
   params: {
     Convs: number;
     Activations: number;
@@ -114,6 +116,16 @@ export interface ImagePackCreate {
   imageName: string;
   imageTag: string;
   needProfile: boolean;
+  alias: string;
+  description: string;
+}
+
+export interface ImagePackUpload {
+  imageLink: string;
+  imageName: string;
+  imageTag: string;
+  alias: string;
+  description: string;
 }
 
 export const apiUserImagepackCreate = async (imagepack: ImagePackCreate) => {
@@ -124,15 +136,26 @@ export const apiUserImagepackCreate = async (imagepack: ImagePackCreate) => {
   return response.data;
 };
 
+export const apiUserImagepackUpload = async (imageupload: ImagePackUpload) => {
+  const response = await instance.post<IResponse<string>>(
+    VERSION + "/images/upload",
+    imageupload,
+  );
+  return response.data;
+};
+
 export const apiUserImagePackList = () =>
   instance.get<IResponse<ImagePackInfoResponse[]>>(VERSION + "/images/list");
 
-export const apiUserImagePackDelete = async (id: number) => {
+export interface ImageDeleteRequest {
+  id: number;
+  imagetype: number;
+}
+
+export const apiUserImagePackDelete = async (req: ImageDeleteRequest) => {
   const response = await instance.post<IResponse<string>>(
     VERSION + "/images/delete",
-    {
-      id,
-    },
+    req,
   );
   return response.data;
 };

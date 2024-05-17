@@ -16,7 +16,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { NewTaskForm } from "./Form";
+import { ImageCreateForm } from "./CreateForm";
+import { ImageUploadForm } from "./UploadForm";
 import { TableDate } from "@/components/custom/TableDate";
 import {
   ImagePackInfo,
@@ -24,6 +25,7 @@ import {
   apiUserImagePackList,
   getHeader,
   imagepackStatuses,
+  ImageDeleteRequest,
 } from "@/services/api/imagepack";
 import { logger } from "@/utils/loglevel";
 import { toast } from "sonner";
@@ -59,6 +61,7 @@ const toolbarConfig: DataTableToolbarConfig = {
 export const Component: FC = () => {
   const queryClient = useQueryClient();
   const [openSheet, setOpenSheet] = useState(false);
+  const [openSheet2, setOpenSheet2] = useState(false);
   const imagePackInfo = useQuery({
     queryKey: ["imagepack", "list"],
     queryFn: () => apiUserImagePackList(),
@@ -76,6 +79,7 @@ export const Component: FC = () => {
       createdAt: item.createdAt,
       nametag: item.nametag,
       params: item.params,
+      imagetype: item.imagetype,
     }));
   }, [imagePackInfo.data]);
   const refetchImagePackList = async () => {
@@ -89,7 +93,7 @@ export const Component: FC = () => {
     }
   };
   const { mutate: deleteUserImagePack } = useMutation({
-    mutationFn: (id: number) => apiUserImagePackDelete(id),
+    mutationFn: (req: ImageDeleteRequest) => apiUserImagePackDelete(req),
     onSuccess: async () => {
       await refetchImagePackList();
       toast.success("镜像已删除");
@@ -256,8 +260,10 @@ export const Component: FC = () => {
                   <AlertDialogAction
                     variant="destructive"
                     onClick={() => {
-                      // check if browser support clipboard
-                      deleteUserImagePack(imagepackInfo.id);
+                      deleteUserImagePack({
+                        id: imagepackInfo.id,
+                        imagetype: imagepackInfo.imagetype,
+                      });
                     }}
                   >
                     删除
@@ -322,14 +328,26 @@ export const Component: FC = () => {
         <SheetTrigger asChild>
           <Button className="h-8 min-w-fit">创建镜像</Button>
         </SheetTrigger>
-        {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
         <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
           <SheetHeader>
             <SheetTitle>创建镜像</SheetTitle>
             <SheetDescription>创建一个新的训练任务镜像</SheetDescription>
           </SheetHeader>
           <Separator className="mt-4" />
-          <NewTaskForm closeSheet={() => setOpenSheet(false)} />
+          <ImageCreateForm closeSheet={() => setOpenSheet(false)} />
+        </SheetContent>
+      </Sheet>
+      <Sheet open={openSheet2} onOpenChange={setOpenSheet2}>
+        <SheetTrigger asChild>
+          <Button className="h-8 min-w-fit">上传镜像</Button>
+        </SheetTrigger>
+        <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
+          <SheetHeader>
+            <SheetTitle>上传镜像</SheetTitle>
+            <SheetDescription>上传一个新的训练任务镜像</SheetDescription>
+          </SheetHeader>
+          <Separator className="mt-4" />
+          <ImageUploadForm closeSheet={() => setOpenSheet2(false)} />
         </SheetContent>
       </Sheet>
     </DataTable>
