@@ -71,7 +71,7 @@ type (
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Success 200 {object} resputil.Response[any]
+// @Success 200 {object} resputil.Response[LabelResp] "label struct"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/labels [get]
@@ -131,7 +131,7 @@ func (mgr *LabelMgr) CreateLabel(c *gin.Context) {
 // @Security Bearer
 // @Param id path UpdateLabelID true "标签ID"
 // @Param data body UpdateLabelReq true "更新标签"
-// @Success 200 {object} resputil.Response[string] "成功返回"
+// @Success 200 {object} resputil.Response[any] "成功返回"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/admin/labels/{id} [put]
@@ -177,7 +177,7 @@ func (mgr *LabelMgr) UpdateLabel(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param id path DeleteLabelID true "标签ID"
-// @Success 200 {object} resputil.Response[string] "成功返回"
+// @Success 200 {object} resputil.Response[any] "成功返回"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/admin/labels/{id} [delete]
