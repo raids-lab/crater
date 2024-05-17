@@ -1,4 +1,3 @@
-import { PlayIcon, PlusCircledIcon, StopIcon } from "@radix-ui/react-icons";
 import { ColumnDef } from "@tanstack/react-table";
 import {
   AlertDialog,
@@ -26,7 +25,6 @@ import { DataTable } from "@/components/custom/OldDataTable";
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
 import { TableDate } from "@/components/custom/TableDate";
-import Status from "../../Overview/Status";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { toast } from "sonner";
 import { getHeader } from "@/pages/Portal/Job/Ai/statuses";
@@ -34,6 +32,14 @@ import { logger } from "@/utils/loglevel";
 import Quota from "./Quota";
 import JobPhaseLabel, { jobPhases } from "@/components/custom/JobPhaseLabel";
 import { Link, useNavigate } from "react-router-dom";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+} from "@/components/ui/card";
+import { CardTitle } from "@/components/ui-custom/card";
+import { PlayIcon, PlusCircleIcon, Trash } from "lucide-react";
 
 interface JTaskInfo extends IJupyterResp {}
 
@@ -192,7 +198,7 @@ export const JupyterOverview = () => {
                 }}
                 disabled={row.getValue("status") !== "Running"}
               >
-                <PlayIcon />
+                <PlayIcon className="h-4 w-4" />
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -202,7 +208,7 @@ export const JupyterOverview = () => {
                       className="h-8 w-8 p-0 hover:text-red-700"
                       title="终止 Jupyter Lab"
                     >
-                      <StopIcon />
+                      <Trash className="h-4 w-4" />
                     </Button>
                   </div>
                 </AlertDialogTrigger>
@@ -248,7 +254,20 @@ export const JupyterOverview = () => {
   return (
     <>
       <div className="col-span-3 grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
-        <Status />
+        <Card className="flex flex-col justify-between lg:col-span-2">
+          <CardHeader>
+            <CardTitle>交互式作业</CardTitle>
+            <CardDescription className="text-balance pt-2 leading-relaxed">
+              提供开箱即用的 Jupyter Lab 或 Web IDE， 可用于代码编写、调试等。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => navigate("new")}>
+              <PlusCircleIcon className="-ml-0.5 mr-1.5 h-4 w-4" />
+              新建作业
+            </Button>
+          </CardContent>
+        </Card>
         <Quota />
       </div>
       <DataTable
@@ -257,12 +276,7 @@ export const JupyterOverview = () => {
         toolbarConfig={toolbarConfig}
         loading={isLoading}
         className="col-span-3"
-      >
-        <Button onClick={() => navigate("new")} className="h-8">
-          <PlusCircledIcon className="mr-1.5 h-4 w-4" />
-          新建作业
-        </Button>
-      </DataTable>
+      ></DataTable>
       <div className="flex flex-row items-center justify-start space-x-2">
         <div className="pl-2 text-sm text-muted-foreground">
           数据更新于 {updatedAt}

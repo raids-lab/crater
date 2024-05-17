@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -46,7 +47,7 @@ const formSchema = z.object({
       message: "作业名称不能为空",
     })
     .max(40, {
-      message: "作业名称最多包含40个字符",
+      message: "作业名称最多包含 40 个字符",
     }),
   cpu: z.number().int().min(0, {
     message: "暂不支持解除 CPU 配额上限",
@@ -56,6 +57,9 @@ const formSchema = z.object({
   }),
   memory: z.number().int().min(0, {
     message: "暂不支持解除内存配额上限",
+  }),
+  gpuModel: z.string().min(1, {
+    message: "请选择节点 GPU 类型",
   }),
   image: z.string().min(1, {
     message: "作业镜像不能为空",
@@ -78,9 +82,6 @@ const formSchema = z.object({
         }),
     }),
   ),
-  gpuModel: z.string().min(1, {
-    message: "请选择节点 GPU 类型",
-  }),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -193,6 +194,7 @@ const JupyterNew = () => {
       cpu: 1,
       gpu: 0,
       memory: 2,
+      gpuModel: "",
       image: "",
       shareDirs: [],
     },
@@ -296,7 +298,7 @@ const JupyterNew = () => {
             <CardHeader>
               <CardTitle>基本设置</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4">
+            <CardContent className="grid gap-5">
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-3">
                   <FormField
@@ -305,13 +307,15 @@ const JupyterNew = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          作业名
+                          作业名称
                           <FormLabelMust />
                         </FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
-                        {/* <FormMessage>请输入作业名称</FormMessage> */}
+                        <FormDescription>
+                          名称可重复，最多包含 40 个字符
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -402,6 +406,9 @@ const JupyterNew = () => {
                         formTitle="节点类型"
                       />
                     </FormControl>
+                    <FormDescription>
+                      如果不需要 GPU，选择默认即可
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -412,7 +419,7 @@ const JupyterNew = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      镜像地址
+                      容器镜像
                       <FormLabelMust />
                     </FormLabel>
                     <FormControl>
@@ -442,11 +449,11 @@ const JupyterNew = () => {
                     <Separator
                       className={cn("mb-5", index === 0 && "sr-only")}
                     />
-                    <FormField
-                      control={form.control}
-                      name={`shareDirs.${index}`}
-                      render={({ field }) => (
-                        <div className="space-y-5">
+                    <div className="space-y-5">
+                      <FormField
+                        control={form.control}
+                        name={`shareDirs.${index}.subPath`}
+                        render={({ field }) => (
                           <FormItem className="relative">
                             <FormLabel>
                               挂载源 {index + 1}
@@ -471,14 +478,14 @@ const JupyterNew = () => {
                                 </TabsList>
                                 <TabsContent value="file">
                                   <FileSelectDialog
-                                    value={field.value.subPath.split("/").pop()}
-                                    handleSubmit={(item) =>
-                                      field.onChange({
-                                        ...field.value,
-                                        subPath: item.id,
-                                        mountPath: `/mnt/${item.name}`,
-                                      })
-                                    }
+                                    value={field.value.split("/").pop()}
+                                    handleSubmit={(item) => {
+                                      field.onChange(item.id);
+                                      form.setValue(
+                                        `shareDirs.${index}.mountPath`,
+                                        `/mnt/${item.name}`,
+                                      );
+                                    }}
                                   />
                                 </TabsContent>
                                 <TabsContent value="dataset">
@@ -488,30 +495,28 @@ const JupyterNew = () => {
                             </FormControl>
                             <FormMessage />
                           </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`shareDirs.${index}.mountPath`}
+                        render={({ field }) => (
                           <FormItem>
                             <FormLabel>
                               挂载点 {index + 1}
                               <FormLabelMust />
                             </FormLabel>
                             <FormControl>
-                              <Input
-                                id={`input.args.${index}.mountPath`}
-                                className="w-full font-mono "
-                                placeholder="Mount Path"
-                                value={field.value.mountPath}
-                                onChange={(event) =>
-                                  field.onChange({
-                                    ...field.value,
-                                    mountPath: event.target.value,
-                                  })
-                                }
-                              />
+                              <Input {...field} />
                             </FormControl>
+                            <FormDescription>
+                              挂载到容器中的路径
+                            </FormDescription>
                             <FormMessage />
                           </FormItem>
-                        </div>
-                      )}
-                    />
+                        )}
+                      />
+                    </div>
                   </div>
                 ))}
                 <Button

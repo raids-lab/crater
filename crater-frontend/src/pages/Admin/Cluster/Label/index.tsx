@@ -29,7 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { DotsHorizontalIcon, UpdateIcon } from "@radix-ui/react-icons";
+import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -43,6 +43,7 @@ import { UpdateLabelForm } from "./Form";
 import { Badge } from "@/components/ui/badge";
 import { MyResponsivePieCanvas } from "./LabelPie";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
+import { RefreshCcwIcon } from "lucide-react";
 
 export const getTypeText = (type: LabelType): string => {
   switch (type) {
@@ -208,8 +209,8 @@ export const Component: FC = () => {
           <CardContent>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button className=" h-8 min-w-fit">
-                  <UpdateIcon className="mr-1.5 h-4 w-4" />
+                <Button>
+                  <RefreshCcwIcon className="mr-1.5 h-4 w-4" />
                   同步 Nvidia 节点
                 </Button>
               </AlertDialogTrigger>
