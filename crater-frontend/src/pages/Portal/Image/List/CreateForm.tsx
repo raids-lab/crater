@@ -25,6 +25,8 @@ const formSchema = z.object({
   registryProject: z.string(),
   imageName: z.string().min(1, { message: "镜像名不能为空" }),
   imageTag: z.string().min(1, { message: "标签不能为空" }),
+  alias: z.string().min(1, { message: "镜像别名不能为空" }),
+  description: z.string().min(1, { message: "镜像描述不能为空" }),
   needProfile: z.boolean().default(false),
 });
 
@@ -34,7 +36,7 @@ interface TaskFormProps extends React.HTMLAttributes<HTMLDivElement> {
   closeSheet: () => void;
 }
 
-export function NewTaskForm({ closeSheet }: TaskFormProps) {
+export function ImageCreateForm({ closeSheet }: TaskFormProps) {
   const queryClient = useQueryClient();
 
   const { mutate: createImagePack } = useMutation({
@@ -49,6 +51,8 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
         imageName: values.imageName,
         imageTag: values.imageTag,
         needProfile: values.needProfile,
+        alias: values.alias,
+        description: values.description,
       }),
     onSuccess: async (_, { imageName, imageTag }) => {
       await queryClient.invalidateQueries({
@@ -72,6 +76,8 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
       imageName: "",
       imageTag: "",
       needProfile: false,
+      alias: "",
+      description: "",
     },
   });
 
@@ -213,6 +219,38 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                 <FormItem>
                   <FormLabel>
                     镜像标签<span className="ml-1 text-red-500">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input {...field} className="font-mono" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField
+              control={form.control}
+              name="alias"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    镜像别名<span className="ml-1 text-red-500">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input {...field} className="font-mono" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    镜像描述<span className="ml-1 text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input {...field} className="font-mono" />

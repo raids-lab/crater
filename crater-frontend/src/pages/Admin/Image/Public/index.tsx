@@ -78,6 +78,7 @@ export const Component: FC = () => {
       createdAt: item.createdAt,
       nametag: item.nametag,
       params: item.params,
+      imagetype: item.imagetype,
     }));
   }, [imagePackInfo.data]);
 
