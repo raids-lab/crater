@@ -74,11 +74,17 @@ const formSchema = z.object({
         .min(1, {
           message: "挂载到容器中的路径不能为空",
         })
+        .refine((value) => value.startsWith("/"), {
+          message: "路径需以单个斜杠 `/` 开头",
+        })
         .refine((value) => !value.includes(".."), {
-          message: '路径不可包含 ".."',
+          message: "禁止使用相对路径 `..`",
+        })
+        .refine((value) => !value.includes("//"), {
+          message: "避免使用多个连续的斜杠 `//`",
         })
         .refine((value) => value !== "/", {
-          message: '路径不能是 "/"',
+          message: "禁止挂载到根目录 `/`",
         }),
     }),
   ),
@@ -447,7 +453,7 @@ const JupyterNew = () => {
                 {shareDirsFields.map((field, index) => (
                   <div key={field.id}>
                     <Separator
-                      className={cn("mb-5", index === 0 && "sr-only")}
+                      className={cn("mb-5", index === 0 && "hidden")}
                     />
                     <div className="space-y-5">
                       <FormField
