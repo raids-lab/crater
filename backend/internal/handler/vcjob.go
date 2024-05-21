@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -66,13 +67,15 @@ const (
 	LabelKeyTaskUser = "crater.raids.io/task-user"
 	LabelKeyBaseURL  = "crater.raids.io/base-url"
 
-	AnnotationKeyTaskName = "crater.raids.io/task-name"
-	AnnotationKeyJupyter  = "crater.raids.io/jupyter-token"
+	AnnotationKeyTaskName       = "crater.raids.io/task-name"
+	AnnotationKeyJupyter        = "crater.raids.io/jupyter-token"
+	AnnotationKeyUseTensorBoard = "false"
 
 	VolumeData  = "crater-workspace"
 	VolumeCache = "crater-cache"
 
-	JupyterPort = 8888
+	JupyterPort     = 8888
+	TensorBoardPort = 6006
 )
 
 type (
@@ -82,11 +85,12 @@ type (
 	}
 
 	CreateJupyterReq struct {
-		Name         string          `json:"name"`
-		Resource     v1.ResourceList `json:"resource"`
-		Image        string          `json:"image"`
-		VolumeMounts []VolumeMount   `json:"volumeMounts"`
-		Products     []string        `json:"products"`
+		Name           string          `json:"name"`
+		Resource       v1.ResourceList `json:"resource"`
+		Image          string          `json:"image"`
+		VolumeMounts   []VolumeMount   `json:"volumeMounts"`
+		Products       []string        `json:"products"`
+		UseTensorBoard bool            `json:"useTensorBoard"`
 	}
 )
 
@@ -106,6 +110,9 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	// Ingress base URL
 	baseURL := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
 	jobName := fmt.Sprintf("jupyter-%s", baseURL)
+
+	// useTensorBoard
+	useTensorboard := fmt.Sprintf("%t", req.UseTensorBoard)
 
 	// Command to start Jupyter
 	commandSchema := "start.sh jupyter lab --allow-root --NotebookApp.base_url=/jupyter/%s/"
@@ -185,7 +192,8 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		LabelKeyBaseURL:  baseURL,
 	}
 	annotations := map[string]string{
-		AnnotationKeyTaskName: req.Name,
+		AnnotationKeyTaskName:       req.Name,
+		AnnotationKeyUseTensorBoard: useTensorboard,
 	}
 
 	podSpec := v1.PodSpec{
@@ -260,6 +268,14 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 			},
 		},
 	}
+	// 添加 TensorBoard 端口映射
+	if req.UseTensorBoard {
+		podSpec.Containers[0].Ports = append(podSpec.Containers[0].Ports, v1.ContainerPort{
+			ContainerPort: TensorBoardPort, // TensorBoard 默认端口
+			Name:          "tb-port",
+			Protocol:      v1.ProtocolTCP,
+		})
+	}
 	if err = mgr.Create(c, &job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -284,6 +300,16 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 			SessionAffinity: v1.ServiceAffinityNone,
 			Type:            v1.ServiceTypeClusterIP,
 		},
+	}
+
+	// 更新 Service：如果使用TensorBoard，添加额外的端口映射
+	if req.UseTensorBoard {
+		svc.Spec.Ports = append(svc.Spec.Ports, v1.ServicePort{
+			Name:       "tensorboard",
+			Port:       81,
+			Protocol:   v1.ProtocolTCP,
+			TargetPort: intstr.FromInt(TensorBoardPort),
+		})
 	}
 
 	err = mgr.Create(c, svc)
@@ -321,6 +347,23 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	}
 
 	ingress.Spec.Rules[0].HTTP.Paths = append(ingress.Spec.Rules[0].HTTP.Paths, newPath)
+
+	// req.UseTensorBoard为true, 用户希望暴露TensorBoard
+	if req.UseTensorBoard {
+		tensorboardPath := networkingv1.HTTPIngressPath{
+			Path:     fmt.Sprintf("/tensorboard/%s", baseURL),
+			PathType: func(s networkingv1.PathType) *networkingv1.PathType { return &s }(networkingv1.PathTypePrefix),
+			Backend: networkingv1.IngressBackend{
+				Service: &networkingv1.IngressServiceBackend{
+					Name: jobName,
+					Port: networkingv1.ServiceBackendPort{
+						Number: 81,
+					},
+				},
+			},
+		}
+		ingress.Spec.Rules[0].HTTP.Paths = append(ingress.Spec.Rules[0].HTTP.Paths, tensorboardPath)
+	}
 
 	// Update the Ingress
 	_, err = ingressClient.Update(context.Background(), ingress, metav1.UpdateOptions{})
@@ -409,12 +452,21 @@ func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
 	}
 
 	// Remove the path from the first rule
-	for i, path := range ingress.Spec.Rules[0].HTTP.Paths {
-		if strings.Contains(path.Path, baseURL) {
-			ingress.Spec.Rules[0].HTTP.Paths = append(ingress.Spec.Rules[0].HTTP.Paths[:i], ingress.Spec.Rules[0].HTTP.Paths[i+1:]...)
-			break
+	// for i, path := range ingress.Spec.Rules[0].HTTP.Paths {
+	// 	if strings.Contains(path.Path, baseURL) {
+	// 		ingress.Spec.Rules[0].HTTP.Paths = append(ingress.Spec.Rules[0].HTTP.Paths[:i], ingress.Spec.Rules[0].HTTP.Paths[i+1:]...)
+	// 		break
+	// 	}
+	// }
+
+	// Remove both jupyter and tensorboard paths from the first rule
+	newPaths := []networkingv1.HTTPIngressPath{}
+	for _, path := range ingress.Spec.Rules[0].HTTP.Paths {
+		if !strings.Contains(path.Path, baseURL) {
+			newPaths = append(newPaths, path)
 		}
 	}
+	ingress.Spec.Rules[0].HTTP.Paths = newPaths
 
 	// Update the Ingress
 	_, err = ingressClient.Update(context.Background(), ingress, metav1.UpdateOptions{})
@@ -677,6 +729,7 @@ type (
 		RunningTimestamp  metav1.Time    `json:"startedAt"`
 		Duration          string         `json:"runtime"`
 		PodDetails        []PodDetail    `json:"podDetails"`
+		UseTensorBoard    bool           `json:"useTensorBoard"`
 	}
 
 	PodDetail struct {
@@ -719,6 +772,18 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 	if job.Labels[LabelKeyTaskUser] != token.Username {
 		resputil.Error(c, "Job not found", resputil.NotSpecified)
 		return
+	}
+
+	// 从job的annotations中获取useTensorBoard的值
+	useTensorBoardStr, exists := job.Annotations[AnnotationKeyUseTensorBoard]
+	useTensorBoard := false
+	if exists {
+		var err error
+		useTensorBoard, err = strconv.ParseBool(useTensorBoardStr)
+		if err != nil {
+			resputil.Error(c, "Invalid useTensorBoard value", resputil.NotSpecified)
+			return
+		}
 	}
 
 	var jobDetail JobDetailResp
@@ -784,6 +849,7 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		Duration:          fmt.Sprintf("%.0fs", time.Since(runningTimestamp.Time).Seconds()),
 		Retry:             fmt.Sprintf("%d", retryAmount),
 		PodDetails:        PodDetails,
+		UseTensorBoard:    useTensorBoard,
 	}
 	resputil.Success(c, jobDetail)
 }
