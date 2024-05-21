@@ -23,7 +23,7 @@ func newImage(db *gorm.DB, opts ...gen.DOOption) image {
 	_image := image{}
 
 	_image.imageDo.UseDB(db, opts...)
-	_image.imageDo.UseModel(&model.Image{})
+	_image.imageDo.UseModel(&model.ImagePack{})
 
 	tableName := _image.imageDo.TableName()
 	_image.ALL = field.NewAsterisk(tableName)
@@ -224,7 +224,7 @@ func (a imageBelongsToUser) Session(session *gorm.Session) *imageBelongsToUser {
 	return &a
 }
 
-func (a imageBelongsToUser) Model(m *model.Image) *imageBelongsToUserTx {
+func (a imageBelongsToUser) Model(m *model.ImagePack) *imageBelongsToUserTx {
 	return &imageBelongsToUserTx{a.db.Model(m).Association(a.Name())}
 }
 
@@ -299,7 +299,7 @@ func (a imageBelongsToQueue) Session(session *gorm.Session) *imageBelongsToQueue
 	return &a
 }
 
-func (a imageBelongsToQueue) Model(m *model.Image) *imageBelongsToQueueTx {
+func (a imageBelongsToQueue) Model(m *model.ImagePack) *imageBelongsToQueueTx {
 	return &imageBelongsToQueueTx{a.db.Model(m).Association(a.Name())}
 }
 
@@ -372,17 +372,17 @@ type IImageDo interface {
 	Count() (count int64, err error)
 	Scopes(funcs ...func(gen.Dao) gen.Dao) IImageDo
 	Unscoped() IImageDo
-	Create(values ...*model.Image) error
-	CreateInBatches(values []*model.Image, batchSize int) error
-	Save(values ...*model.Image) error
-	First() (*model.Image, error)
-	Take() (*model.Image, error)
-	Last() (*model.Image, error)
-	Find() ([]*model.Image, error)
-	FindInBatch(batchSize int, fc func(tx gen.Dao, batch int) error) (results []*model.Image, err error)
-	FindInBatches(result *[]*model.Image, batchSize int, fc func(tx gen.Dao, batch int) error) error
+	Create(values ...*model.ImagePack) error
+	CreateInBatches(values []*model.ImagePack, batchSize int) error
+	Save(values ...*model.ImagePack) error
+	First() (*model.ImagePack, error)
+	Take() (*model.ImagePack, error)
+	Last() (*model.ImagePack, error)
+	Find() ([]*model.ImagePack, error)
+	FindInBatch(batchSize int, fc func(tx gen.Dao, batch int) error) (results []*model.ImagePack, err error)
+	FindInBatches(result *[]*model.ImagePack, batchSize int, fc func(tx gen.Dao, batch int) error) error
 	Pluck(column field.Expr, dest interface{}) error
-	Delete(...*model.Image) (info gen.ResultInfo, err error)
+	Delete(...*model.ImagePack) (info gen.ResultInfo, err error)
 	Update(column field.Expr, value interface{}) (info gen.ResultInfo, err error)
 	UpdateSimple(columns ...field.AssignExpr) (info gen.ResultInfo, err error)
 	Updates(value interface{}) (info gen.ResultInfo, err error)
@@ -394,9 +394,9 @@ type IImageDo interface {
 	Assign(attrs ...field.AssignExpr) IImageDo
 	Joins(fields ...field.RelationField) IImageDo
 	Preload(fields ...field.RelationField) IImageDo
-	FirstOrInit() (*model.Image, error)
-	FirstOrCreate() (*model.Image, error)
-	FindByPage(offset int, limit int) (result []*model.Image, count int64, err error)
+	FirstOrInit() (*model.ImagePack, error)
+	FirstOrCreate() (*model.ImagePack, error)
+	FindByPage(offset int, limit int) (result []*model.ImagePack, count int64, err error)
 	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
 	Scan(result interface{}) (err error)
 	Returning(value interface{}, columns ...string) IImageDo
@@ -496,57 +496,57 @@ func (i imageDo) Unscoped() IImageDo {
 	return i.withDO(i.DO.Unscoped())
 }
 
-func (i imageDo) Create(values ...*model.Image) error {
+func (i imageDo) Create(values ...*model.ImagePack) error {
 	if len(values) == 0 {
 		return nil
 	}
 	return i.DO.Create(values)
 }
 
-func (i imageDo) CreateInBatches(values []*model.Image, batchSize int) error {
+func (i imageDo) CreateInBatches(values []*model.ImagePack, batchSize int) error {
 	return i.DO.CreateInBatches(values, batchSize)
 }
 
 // Save : !!! underlying implementation is different with GORM
 // The method is equivalent to executing the statement: db.Clauses(clause.OnConflict{UpdateAll: true}).Create(values)
-func (i imageDo) Save(values ...*model.Image) error {
+func (i imageDo) Save(values ...*model.ImagePack) error {
 	if len(values) == 0 {
 		return nil
 	}
 	return i.DO.Save(values)
 }
 
-func (i imageDo) First() (*model.Image, error) {
+func (i imageDo) First() (*model.ImagePack, error) {
 	if result, err := i.DO.First(); err != nil {
 		return nil, err
 	} else {
-		return result.(*model.Image), nil
+		return result.(*model.ImagePack), nil
 	}
 }
 
-func (i imageDo) Take() (*model.Image, error) {
+func (i imageDo) Take() (*model.ImagePack, error) {
 	if result, err := i.DO.Take(); err != nil {
 		return nil, err
 	} else {
-		return result.(*model.Image), nil
+		return result.(*model.ImagePack), nil
 	}
 }
 
-func (i imageDo) Last() (*model.Image, error) {
+func (i imageDo) Last() (*model.ImagePack, error) {
 	if result, err := i.DO.Last(); err != nil {
 		return nil, err
 	} else {
-		return result.(*model.Image), nil
+		return result.(*model.ImagePack), nil
 	}
 }
 
-func (i imageDo) Find() ([]*model.Image, error) {
+func (i imageDo) Find() ([]*model.ImagePack, error) {
 	result, err := i.DO.Find()
-	return result.([]*model.Image), err
+	return result.([]*model.ImagePack), err
 }
 
-func (i imageDo) FindInBatch(batchSize int, fc func(tx gen.Dao, batch int) error) (results []*model.Image, err error) {
-	buf := make([]*model.Image, 0, batchSize)
+func (i imageDo) FindInBatch(batchSize int, fc func(tx gen.Dao, batch int) error) (results []*model.ImagePack, err error) {
+	buf := make([]*model.ImagePack, 0, batchSize)
 	err = i.DO.FindInBatches(&buf, batchSize, func(tx gen.Dao, batch int) error {
 		defer func() { results = append(results, buf...) }()
 		return fc(tx, batch)
@@ -554,7 +554,7 @@ func (i imageDo) FindInBatch(batchSize int, fc func(tx gen.Dao, batch int) error
 	return results, err
 }
 
-func (i imageDo) FindInBatches(result *[]*model.Image, batchSize int, fc func(tx gen.Dao, batch int) error) error {
+func (i imageDo) FindInBatches(result *[]*model.ImagePack, batchSize int, fc func(tx gen.Dao, batch int) error) error {
 	return i.DO.FindInBatches(result, batchSize, fc)
 }
 
@@ -580,23 +580,23 @@ func (i imageDo) Preload(fields ...field.RelationField) IImageDo {
 	return &i
 }
 
-func (i imageDo) FirstOrInit() (*model.Image, error) {
+func (i imageDo) FirstOrInit() (*model.ImagePack, error) {
 	if result, err := i.DO.FirstOrInit(); err != nil {
 		return nil, err
 	} else {
-		return result.(*model.Image), nil
+		return result.(*model.ImagePack), nil
 	}
 }
 
-func (i imageDo) FirstOrCreate() (*model.Image, error) {
+func (i imageDo) FirstOrCreate() (*model.ImagePack, error) {
 	if result, err := i.DO.FirstOrCreate(); err != nil {
 		return nil, err
 	} else {
-		return result.(*model.Image), nil
+		return result.(*model.ImagePack), nil
 	}
 }
 
-func (i imageDo) FindByPage(offset int, limit int) (result []*model.Image, count int64, err error) {
+func (i imageDo) FindByPage(offset int, limit int) (result []*model.ImagePack, count int64, err error) {
 	result, err = i.Offset(offset).Limit(limit).Find()
 	if err != nil {
 		return
@@ -625,7 +625,7 @@ func (i imageDo) Scan(result interface{}) (err error) {
 	return i.DO.Scan(result)
 }
 
-func (i imageDo) Delete(models ...*model.Image) (result gen.ResultInfo, err error) {
+func (i imageDo) Delete(models ...*model.ImagePack) (result gen.ResultInfo, err error) {
 	return i.DO.Delete(models)
 }
 

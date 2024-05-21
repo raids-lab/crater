@@ -2,7 +2,7 @@ package model
 
 import "gorm.io/gorm"
 
-type Image struct {
+type ImagePack struct {
 	gorm.Model
 	UserID        uint
 	User          User
@@ -19,6 +19,21 @@ type Image struct {
 	Alias         string             `gorm:"column:alias;type:varchar(128);not null" json:"alias"`
 	Description   string             `gorm:"column:description;type:varchar(512);not null" json:"description"`
 	CreatorName   string             `gorm:"column:creatorname;type:varchar(128);not null" json:"creatorname"`
+}
+
+type ImageUpload struct {
+	gorm.Model
+	UserID      uint
+	User        User
+	QueueID     uint
+	Queue       Queue
+	ImageLink   string        `gorm:"column:imagelink;type:varchar(128);not null" json:"imagelink"`
+	Status      string        `gorm:"column:status;type:varchar(128);not null" json:"status"`
+	NameTag     string        `gorm:"column:nametag;type:varchar(128);not null" json:"nametag"`
+	TaskType    ImageTaskType `gorm:"column:tasktype;not null;comment:作业状态" json:"tasktype"`
+	Alias       string        `gorm:"column:alias;type:varchar(128);not null" json:"alias"`
+	Description string        `gorm:"column:description;type:varchar(512);not null" json:"description"`
+	CreatorName string        `gorm:"column:creatorname;type:varchar(128);not null" json:"creatorname"`
 }
 
 type ImageProfileParams struct {
