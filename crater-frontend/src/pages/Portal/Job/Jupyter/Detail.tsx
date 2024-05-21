@@ -77,6 +77,7 @@ const JupyterDetail = () => {
     startedAt: "",
     runtime: "",
     podDetails: [],
+    useTensorBoard: false,
   };
   const { id } = useParams<string>();
   const jobName = "" + id;
@@ -149,6 +150,13 @@ const JupyterDetail = () => {
     mutationFn: (jobName: string) => apiJupyterTokenGet(jobName),
     onSuccess: (_, jobName) => {
       window.open(`/job/jupyter/${jobName}`);
+    },
+  });
+
+  const { mutate: goToTensorboardPage } = useMutation({
+    mutationFn: (jobName: string) => apiJupyterTokenGet(jobName),
+    onSuccess: (_, jobName) => {
+      window.open(`/job/tensorboard/${jobName}`);
     },
   });
 
@@ -335,9 +343,22 @@ const JupyterDetail = () => {
                 Go to Multi-Metrics Page
               </Button>
               <Separator orientation="vertical" />
-              <Button className="text-blue-500" size="sm" variant="ghost">
-                Go to TensorBoard Page
-              </Button>
+              {data.useTensorBoard && (
+                <Button
+                  className="text-blue-500"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    toast.info("即将跳转至 TensorBoard 页面");
+                    setTimeout(() => {
+                      goToTensorboardPage(jobName);
+                    }, 500);
+                  }}
+                  disabled={data.status !== JobPhase.Running}
+                >
+                  Go to TensorBoard Page
+                </Button>
+              )}
             </div>
             <div className="flex space-x-2">
               <Button
