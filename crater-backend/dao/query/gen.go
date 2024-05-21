@@ -18,7 +18,8 @@ import (
 var (
 	Q            = new(Query)
 	AIJob        *aIJob
-	Image        *image
+	ImagePack    *imagePack
+	ImageUpload  *imageUpload
 	Label        *label
 	Project      *project
 	ProjectSpace *projectSpace
@@ -32,7 +33,8 @@ var (
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
 	AIJob = &Q.AIJob
-	Image = &Q.Image
+	ImagePack = &Q.ImagePack
+	ImageUpload = &Q.ImageUpload
 	Label = &Q.Label
 	Project = &Q.Project
 	ProjectSpace = &Q.ProjectSpace
@@ -47,7 +49,8 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:           db,
 		AIJob:        newAIJob(db, opts...),
-		Image:        newImage(db, opts...),
+		ImagePack:    newImagePack(db, opts...),
+		ImageUpload:  newImageUpload(db, opts...),
 		Label:        newLabel(db, opts...),
 		Project:      newProject(db, opts...),
 		ProjectSpace: newProjectSpace(db, opts...),
@@ -63,7 +66,8 @@ type Query struct {
 	db *gorm.DB
 
 	AIJob        aIJob
-	Image        image
+	ImagePack    imagePack
+	ImageUpload  imageUpload
 	Label        label
 	Project      project
 	ProjectSpace projectSpace
@@ -80,7 +84,8 @@ func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:           db,
 		AIJob:        q.AIJob.clone(db),
-		Image:        q.Image.clone(db),
+		ImagePack:    q.ImagePack.clone(db),
+		ImageUpload:  q.ImageUpload.clone(db),
 		Label:        q.Label.clone(db),
 		Project:      q.Project.clone(db),
 		ProjectSpace: q.ProjectSpace.clone(db),
@@ -104,7 +109,8 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:           db,
 		AIJob:        q.AIJob.replaceDB(db),
-		Image:        q.Image.replaceDB(db),
+		ImagePack:    q.ImagePack.replaceDB(db),
+		ImageUpload:  q.ImageUpload.replaceDB(db),
 		Label:        q.Label.replaceDB(db),
 		Project:      q.Project.replaceDB(db),
 		ProjectSpace: q.ProjectSpace.replaceDB(db),
@@ -118,7 +124,8 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 
 type queryCtx struct {
 	AIJob        IAIJobDo
-	Image        IImageDo
+	ImagePack    IImagePackDo
+	ImageUpload  IImageUploadDo
 	Label        ILabelDo
 	Project      IProjectDo
 	ProjectSpace IProjectSpaceDo
@@ -132,7 +139,8 @@ type queryCtx struct {
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
 		AIJob:        q.AIJob.WithContext(ctx),
-		Image:        q.Image.WithContext(ctx),
+		ImagePack:    q.ImagePack.WithContext(ctx),
+		ImageUpload:  q.ImageUpload.WithContext(ctx),
 		Label:        q.Label.WithContext(ctx),
 		Project:      q.Project.WithContext(ctx),
 		ProjectSpace: q.ProjectSpace.WithContext(ctx),
