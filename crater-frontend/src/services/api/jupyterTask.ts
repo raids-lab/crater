@@ -47,6 +47,7 @@ export interface IJupyterDetail {
   startedAt: string;
   runtime: string;
   podDetails: PodDetail[];
+  useTensorBoard: boolean;
 }
 
 export interface VolumeMount {
@@ -60,6 +61,7 @@ export interface IJupyterCreate {
   image: string;
   volumeMounts: VolumeMount[];
   products: string[];
+  useTensorBoard: boolean;
 }
 
 export const apiJupyterCreate = async (task: IJupyterCreate) => {

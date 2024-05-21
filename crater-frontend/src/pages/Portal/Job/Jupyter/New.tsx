@@ -39,6 +39,7 @@ import AccordionCard from "@/components/custom/AccordionCard";
 import { Separator } from "@/components/ui/separator";
 import { exportToJson, importFromJson } from "@/utils/form";
 import { useState } from "react";
+import { Switch } from "@/components/ui/switch";
 
 const formSchema = z.object({
   taskname: z
@@ -88,6 +89,8 @@ const formSchema = z.object({
         }),
     }),
   ),
+  // 添加 useTensorBoard 作为布尔类型的属性
+  useTensorBoard: z.boolean(),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -131,6 +134,7 @@ const JupyterNew = () => {
           values.gpuModel !== "default"
             ? labelsInfo.data?.dict.get(values.gpuModel) ?? []
             : [],
+        useTensorBoard: values.useTensorBoard,
       }),
     onSuccess: async (_, { taskname }) => {
       await Promise.all([
@@ -203,6 +207,7 @@ const JupyterNew = () => {
       gpuModel: "",
       image: "",
       shareDirs: [],
+      useTensorBoard: false,
     },
   });
 
@@ -437,6 +442,21 @@ const JupyterNew = () => {
                       />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name={`useTensorBoard`}
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between">
+                    <FormLabel>使用TensorBoard</FormLabel>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
                   </FormItem>
                 )}
               />
