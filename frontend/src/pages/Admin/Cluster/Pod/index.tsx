@@ -65,44 +65,34 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
       <CardContent className="grid gap-4">
         <div>
           <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
-            <p className="text-xs text-gray-500">IP地址:</p>
-            <p className="ml-2 text-sm font-medium text-black">
-              {nodeInfo?.address}
-            </p>
+            <p className="text-xs">IP地址:</p>
+            <p className="ml-2 text-sm font-medium">{nodeInfo?.address}</p>
           </div>
           <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
-            <p className="text-xs text-gray-500">节点角色:</p>
-            <p className="ml-2 text-sm font-medium text-black">
-              {nodeInfo?.role}
-            </p>
+            <p className="text-xs">节点角色:</p>
+            <p className="ml-2 text-sm font-medium">{nodeInfo?.role}</p>
           </div>
           <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
-            <p className="text-xs text-gray-500">操作系统类型:</p>
-            <p className="ml-2 text-sm font-medium text-black">
-              {nodeInfo?.os}
-            </p>
+            <p className="text-xs">操作系统类型:</p>
+            <p className="ml-2 text-sm font-medium">{nodeInfo?.os}</p>
           </div>
           <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
-            <p className="text-xs text-gray-500">操作系统版本:</p>
-            <p className="ml-2 text-sm font-medium text-black">
-              {nodeInfo?.osVersion}
-            </p>
+            <p className="text-xs">操作系统版本:</p>
+            <p className="ml-2 text-sm font-medium">{nodeInfo?.osVersion}</p>
           </div>
           <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
-            <p className="text-xs text-gray-500">系统架构:</p>
-            <p className="ml-2 text-sm font-medium text-black">
-              {nodeInfo?.arch}
-            </p>
+            <p className="text-xs">系统架构:</p>
+            <p className="ml-2 text-sm font-medium">{nodeInfo?.arch}</p>
           </div>
           <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
-            <p className="text-xs text-gray-500">Kubelet版本:</p>
-            <p className="ml-2 text-sm font-medium text-black">
+            <p className="text-xs">Kubelet版本:</p>
+            <p className="ml-2 text-sm font-medium">
               {nodeInfo?.kubeletVersion}
             </p>
           </div>
           <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
-            <p className="text-xs text-gray-500">容器运行时版本:</p>
-            <p className="ml-2 text-sm font-medium text-black">
+            <p className="text-xs">容器运行时版本:</p>
+            <p className="ml-2 text-sm font-medium">
               {nodeInfo?.containerRuntimeVersion}
             </p>
           </div>
@@ -158,14 +148,14 @@ export function GPUDetails({ nodeName }: { nodeName: string }) {
       </CardHeader>
       <CardContent className="grid gap-4">
         <div className="mb-2 flex justify-between">
-          <p className="text-xs text-gray-500">GPU 数量:</p>
-          <p className="text-sm font-medium text-black">{gpuInfo.gpuCount}</p>
+          <p className="text-xs">GPU 数量:</p>
+          <p className="text-sm font-medium">{gpuInfo.gpuCount}</p>
         </div>
         {Object.entries(gpuInfo.gpuUtil).map(([id, util]) => (
           <div className="mb-2 flex justify-between" key={id}>
-            <p className="text-xs text-gray-500">GPU {id} 利用率:</p>
+            <p className="text-xs">GPU {id} 利用率:</p>
             <p
-              className={`text-sm font-medium ${util > 0 ? "text-green-500" : "text-black"}`}
+              className={`text-sm font-medium ${util > 0 ? "text-green-500" : ""}`}
             >
               {util}%
             </p>
