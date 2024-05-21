@@ -37,8 +37,18 @@ type (
 		Description     string              `json:"description"`
 	}
 
+	ImagePackUploadRequest struct {
+		ImageLink   string              `json:"imageLink"`
+		ImageName   string              `json:"imageName"`
+		ImageTag    string              `json:"imageTag"`
+		TaskType    model.ImageTaskType `json:"taskType"`
+		Alias       string              `json:"alias"`
+		Description string              `json:"description"`
+	}
+
 	ImagePackDeleteByIDRequest struct {
-		ID uint `json:"id"`
+		ID        uint `json:"id"`
+		ImageType uint `json:"imagetype"`
 	}
 
 	ImagePackParamsUpdateRequest struct {
@@ -64,13 +74,15 @@ type (
 		CreaterName   string                   `json:"creatername"`
 		ImagePackName string                   `json:"imagepackname"`
 		Params        model.ImageProfileParams `json:"params"`
+		// ImageType: 0 indicates ImagePack; 1 indicates ImageUpload
+		ImageType uint `json:"imagetype"`
 	}
 )
 
 const (
 	UserNameSpace = "crater-jobs"
 	AdminUserName = "admin"
-	PublicQueueID = 0
+	PublicQueueID = 1
 
 	ImagePackInitial  = string(imagepackv1.PackJobInitial)
 	ImagePackPending  = string(imagepackv1.PackJobPending)
@@ -101,6 +113,7 @@ func NewImagePackMgr(
 func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/list", mgr.UserListAll)
 	g.POST("/create", mgr.UserCreate)
+	g.POST("/upload", mgr.UserUpload)
 	g.POST("/delete", mgr.DeleteByID)
 	g.GET("/available", mgr.ListAvailableImages)
 	g.POST("/params", mgr.UpdateParams)
@@ -123,7 +136,7 @@ func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
 // @Produce json
 // @Security Bearer
 // @Param data body ImagePackCreateRequest true "创建ImagePack"
-// @Router /images/create [post]
+// @Router /v1/images/create [post]
 func (mgr *ImagePackMgr) UserCreate(c *gin.Context) {
 	req := &ImagePackCreateRequest{}
 	token := util.GetToken(c)
@@ -135,7 +148,60 @@ func (mgr *ImagePackMgr) UserCreate(c *gin.Context) {
 	}
 	logutils.Log.Infof("create params: %+v", req)
 	mgr.requestDefaultValue(req)
+	logutils.Log.Infof("token: %+v", token)
 	mgr.createImagePack(c, req, token, token.QueueID)
+
+	resputil.Success(c, "")
+}
+
+// UserUpload godoc
+// @Summary 用户上传镜像链接
+// @Description 获取上传镜像的参数，生成变量，调用接口
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param data body ImagePackUploadRequest true "创建ImagePack"
+// @Router /v1/images/upload [post]
+func (mgr *ImagePackMgr) UserUpload(c *gin.Context) {
+	req := &ImagePackUploadRequest{}
+	token := util.GetToken(c)
+	if err := c.ShouldBindJSON(req); err != nil {
+		msg := fmt.Sprintf("validate upload parameters failed, err %v", err)
+		logutils.Log.Errorf(msg)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		return
+	}
+	logutils.Log.Infof("create params: %+v", req)
+	userQuery := query.User
+	user, err := userQuery.WithContext(c).Where(userQuery.ID.Eq(token.UserID)).First()
+	if err != nil {
+		logutils.Log.Errorf("fetch user failed, params: %+v err:%v", req, err)
+		return
+	}
+	queueQuery := query.Queue
+	queue, err := queueQuery.WithContext(c).Where(queueQuery.ID.Eq(token.QueueID)).First()
+	if err != nil {
+		logutils.Log.Errorf("fetch queue failed, params: %+v err:%v", req, err)
+		return
+	}
+	imageUploadEntity := &model.ImageUpload{
+		UserID:      token.UserID,
+		User:        *user,
+		QueueID:     token.QueueID,
+		Queue:       *queue,
+		ImageLink:   req.ImageLink,
+		Status:      ImagePackFinished,
+		NameTag:     fmt.Sprintf("%s:%s", req.ImageName, req.ImageTag),
+		TaskType:    req.TaskType,
+		Alias:       req.Alias,
+		Description: req.Description,
+		CreatorName: user.Name,
+	}
+	imageUploadQuery := query.ImageUpload
+	if err := imageUploadQuery.WithContext(c).Create(imageUploadEntity); err != nil {
+		logutils.Log.Errorf("create imagepack entity failed, params: %+v", imageUploadEntity)
+	}
 	resputil.Success(c, "")
 }
 
@@ -147,7 +213,7 @@ func (mgr *ImagePackMgr) UserCreate(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param data body ImagePackCreateRequest true "创建ImagePack"
-// @Router /images/create [post]
+// @Router /v1/images/create [post]
 func (mgr *ImagePackMgr) AdminCreate(c *gin.Context) {
 	req := &ImagePackCreateRequest{}
 	token := util.GetToken(c)
@@ -159,7 +225,7 @@ func (mgr *ImagePackMgr) AdminCreate(c *gin.Context) {
 	}
 	logutils.Log.Infof("create params: %+v", req)
 	mgr.requestDefaultValue(req)
-	mgr.createImagePack(c, req, token, 1)
+	mgr.createImagePack(c, req, token, PublicQueueID)
 	resputil.Success(c, "")
 }
 
@@ -182,10 +248,10 @@ func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateReq
 	queueQuery := query.Queue
 	queue, err := queueQuery.WithContext(c).Where(queueQuery.ID.Eq(queueID)).First()
 	if err != nil {
-		logutils.Log.Errorf("fetch project failed, params: %+v err:%v", req, err)
+		logutils.Log.Errorf("fetch queue failed, params: %+v err:%v", req, err)
 		return
 	}
-	imagepackQuery := query.Image
+	imagepackQuery := query.ImagePack
 	imagepackName := fmt.Sprintf("%s-%s", user.Name, uuid.New().String())
 	// create ImagePack CRD
 	imagepackCRD := &imagepackv1.ImagePack{
@@ -211,7 +277,7 @@ func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateReq
 		return
 	}
 	imageLink := fmt.Sprintf("%s/%s/%s:%s", req.RegistryServer, req.RegistryProject, req.ImageName, req.ImageTag)
-	imagepackEntity := &model.Image{
+	imagepackEntity := &model.ImagePack{
 		UserID:        token.UserID,
 		User:          *user,
 		QueueID:       queueID,
@@ -242,27 +308,29 @@ func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateReq
 // @Produce json
 // @Security Bearer
 // @Param type query int true "管理员获取镜像的类型"
-// @Router /images/list [GET]
+// @Router /v1/images/list [GET]
 func (mgr *ImagePackMgr) UserListAll(c *gin.Context) {
-	imagepackQuery := query.Image
-	var imagepacks []*model.Image
+	var imagepacks []*model.ImagePack
+	var imageuploads []*model.ImageUpload
 	var err error
 	token := util.GetToken(c)
+	imagepackQuery := query.ImagePack
 	imagepacks, err = imagepackQuery.WithContext(c).
 		Where(imagepackQuery.QueueID.Eq(token.QueueID)).
 		Where(imagepackQuery.Status.Neq(ImagePackDeleted)).
 		Find()
 	if err != nil {
-		logutils.Log.Errorf("fetch imagepacks entity failed, err:%v", err)
+		logutils.Log.Errorf("fetch imagepack entity failed, err:%v", err)
 	}
-	responses := []ImagePackListResponse{}
-	for i := range imagepacks {
-		imagepack := imagepacks[i]
-		if imagepack.Status != ImagePackFinished && imagepack.Status != ImagePackFailed {
-			mgr.updateImagePackStatus(c, imagepack)
-		}
-		responses = append(responses, mgr.generateImageListResponse(imagepack))
+	imageuploadQuery := query.ImageUpload
+	imageuploads, err = imageuploadQuery.WithContext(c).
+		Where(imageuploadQuery.QueueID.Eq(token.QueueID)).
+		Where(imageuploadQuery.Status.Neq(ImagePackDeleted)).
+		Find()
+	if err != nil {
+		logutils.Log.Errorf("fetch imageupload entity failed, err:%v", err)
 	}
+	responses := mgr.generateImageListResponse(c, imagepacks, imageuploads)
 	resputil.Success(c, responses)
 }
 
@@ -274,10 +342,12 @@ func (mgr *ImagePackMgr) UserListAll(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param type query int true "管理员获取镜像的类型"
-// @Router /images/list [GET]
+// @Router /v1/images/list [GET]
 func (mgr *ImagePackMgr) AdminListAll(c *gin.Context) {
-	imagepackQuery := query.Image
-	var imagepacks []*model.Image
+	imagepackQuery := query.ImagePack
+	imageuploadQuery := query.ImageUpload
+	var imagepacks []*model.ImagePack
+	var imageuploads []*model.ImageUpload
 	var err error
 	var req ImagePackAdminListRequest
 	if err = c.ShouldBindQuery(&req); err != nil {
@@ -287,38 +357,75 @@ func (mgr *ImagePackMgr) AdminListAll(c *gin.Context) {
 		return
 	}
 	listType := req.Type
+	//nolint:dupl // there exists mini diff between these logic
 	if listType == 0 {
 		imagepacks, err = imagepackQuery.WithContext(c).
 			Where(imagepackQuery.QueueID.Neq(PublicQueueID)).
 			Where(imagepackQuery.Status.Neq(ImagePackDeleted)).
 			Find()
+		if err != nil {
+			logutils.Log.Errorf("admin fetch personal imagepack failed, err:%v", err)
+			resputil.Error(c, "list image type error", resputil.NotSpecified)
+			return
+		}
+		imageuploads, err = imageuploadQuery.WithContext(c).
+			Where(imageuploadQuery.QueueID.Neq(PublicQueueID)).
+			Where(imageuploadQuery.Status.Neq(ImagePackDeleted)).
+			Find()
+		if err != nil {
+			logutils.Log.Errorf("admin fetch personal imageupload failed, err:%v", err)
+			resputil.Error(c, "list image type error", resputil.NotSpecified)
+			return
+		}
 	} else if listType == 1 {
 		imagepacks, err = imagepackQuery.WithContext(c).
 			Where(imagepackQuery.QueueID.Eq(PublicQueueID)).
 			Where(imagepackQuery.Status.Neq(ImagePackDeleted)).
 			Find()
+		if err != nil {
+			logutils.Log.Errorf("admin fetch public imagepack failed, err:%v", err)
+			resputil.Error(c, "list image type error", resputil.NotSpecified)
+			return
+		}
+		imageuploads, err = imageuploadQuery.WithContext(c).
+			Where(imageuploadQuery.QueueID.Eq(PublicQueueID)).
+			Where(imageuploadQuery.Status.Neq(ImagePackDeleted)).
+			Find()
+		if err != nil {
+			logutils.Log.Errorf("admin fetch public imageupload failed, err:%v", err)
+			resputil.Error(c, "list image type error", resputil.NotSpecified)
+			return
+		}
 	} else {
 		logutils.Log.Errorf("admin list image type error, err:%v", err)
 		resputil.Error(c, "admin list image type error", resputil.NotSpecified)
 		return
 	}
-	if err != nil {
-		logutils.Log.Errorf("admin fetch personal or public imagepack failed, err:%v", err)
-		resputil.Error(c, "list image type error", resputil.NotSpecified)
-		return
-	}
+	responses := mgr.generateImageListResponse(c, imagepacks, imageuploads)
+	resputil.Success(c, responses)
+}
+
+func (mgr *ImagePackMgr) generateImageListResponse(
+	c *gin.Context,
+	imagepacks []*model.ImagePack,
+	imageuploads []*model.ImageUpload,
+) []ImagePackListResponse {
 	responses := []ImagePackListResponse{}
 	for i := range imagepacks {
 		imagepack := imagepacks[i]
 		if imagepack.Status != ImagePackFinished && imagepack.Status != ImagePackFailed {
 			mgr.updateImagePackStatus(c, imagepack)
 		}
-		responses = append(responses, mgr.generateImageListResponse(imagepack))
+		responses = append(responses, mgr.generateImageListResponseFromImagePack(imagepack))
 	}
-	resputil.Success(c, responses)
+	for i := range imageuploads {
+		imageupload := imageuploads[i]
+		responses = append(responses, mgr.generateImageListResponseFromImageUpload(imageupload))
+	}
+	return responses
 }
 
-func (mgr *ImagePackMgr) generateImageListResponse(imagepack *model.Image) ImagePackListResponse {
+func (mgr *ImagePackMgr) generateImageListResponseFromImagePack(imagepack *model.ImagePack) ImagePackListResponse {
 	return ImagePackListResponse{
 		ID:            imagepack.ID,
 		ImageLink:     imagepack.ImageLink,
@@ -328,11 +435,25 @@ func (mgr *ImagePackMgr) generateImageListResponse(imagepack *model.Image) Image
 		CreaterName:   imagepack.User.Name,
 		ImagePackName: imagepack.ImagePackName,
 		Params:        imagepack.Params,
+		ImageType:     0,
 	}
 }
 
-func (mgr *ImagePackMgr) updateImagePackStatus(c *gin.Context, imagepack *model.Image) {
-	imagepackQuery := query.Image
+func (mgr *ImagePackMgr) generateImageListResponseFromImageUpload(imageupload *model.ImageUpload) ImagePackListResponse {
+	return ImagePackListResponse{
+		ID:          imageupload.ID,
+		ImageLink:   imageupload.ImageLink,
+		Status:      imageupload.Status,
+		CreatedAt:   imageupload.CreatedAt,
+		NameTag:     imageupload.NameTag,
+		CreaterName: imageupload.User.Name,
+		Params:      model.ImageProfileParams{},
+		ImageType:   1,
+	}
+}
+
+func (mgr *ImagePackMgr) updateImagePackStatus(c *gin.Context, imagepack *model.ImagePack) {
+	imagepackQuery := query.ImagePack
 	imagepackCRD, err := mgr.imagepackClient.GetImagePack(c, imagepack.ImagePackName, UserNameSpace)
 	if err != nil {
 		logutils.Log.Errorf("fetch imagepack CRD failed, err:%v", err)
@@ -345,7 +466,6 @@ func (mgr *ImagePackMgr) updateImagePackStatus(c *gin.Context, imagepack *model.
 		Update(imagepackQuery.Status, string(imagepackCRD.Status.Stage)); err != nil {
 		logutils.Log.Errorf("save imagepack status failed, err:%v status:%v", err, *imagepack)
 	}
-	resputil.Success(c, "")
 }
 
 // ListAvailableImages godoc
@@ -355,10 +475,40 @@ func (mgr *ImagePackMgr) updateImagePackStatus(c *gin.Context, imagepack *model.
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Router /images/available [GET]
+// @Router /v1/images/available [GET]
 func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
+	token := util.GetToken(c)
+	var err error
+
+	imagepackQuery := query.ImagePack
+	var imagepacks []*model.ImagePack
+	if imagepacks, err = imagepackQuery.WithContext(c).
+		Where(imagepackQuery.QueueID.Eq(token.QueueID)).
+		Where(imagepackQuery.Status.Eq(ImagePackFinished)).
+		Find(); err != nil {
+		logutils.Log.Errorf("fetch available imagepack failed, err:%v", err)
+		resputil.Error(c, "fetch available imagepack failed", resputil.NotSpecified)
+		return
+	}
+	imageuploadQuery := query.ImageUpload
+	var imageuploads []*model.ImageUpload
+	if imageuploads, err = imageuploadQuery.WithContext(c).
+		Where(imageuploadQuery.QueueID.Eq(token.QueueID)).
+		Where(imageuploadQuery.Status.Neq(ImagePackDeleted)).
+		Find(); err != nil {
+		logutils.Log.Errorf("fetch available imageupload failed, err:%v", err)
+		resputil.Error(c, "fetch available imageupload failed", resputil.NotSpecified)
+		return
+	}
+	imageLinks := make([]string, len(imagepacks)+len(imageuploads))
+	for i := range imagepacks {
+		imageLinks[i] = imagepacks[i].ImageLink
+	}
+	for i := range imageuploads {
+		imageLinks[i+len(imagepacks)] = imageuploads[i].ImageLink
+	}
 	// manually add public imagelink
-	imageLinks := []string{"***REMOVED***/crater-workspace/jupyter-base-notebook:ubuntu-22.04"}
+	imageLinks = append(imageLinks, "***REMOVED***/crater-workspace/jupyter-base-notebook:ubuntu-22.04")
 
 	resp := payload.GetImagesResp{Images: imageLinks}
 	resputil.Success(c, resp)
@@ -372,9 +522,10 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param ID body uint true "删除镜像的ID"
-// @Router /images/delete [POST]
+// @Router /v1/images/delete [POST]
 func (mgr *ImagePackMgr) DeleteByID(c *gin.Context) {
-	imagepackQuery := query.Image
+	imagepackQuery := query.ImagePack
+	imageuploadQuery := query.ImageUpload
 	token := util.GetToken(c)
 	var err error
 	imagePackDeleteRequest := &ImagePackDeleteByIDRequest{}
@@ -384,26 +535,39 @@ func (mgr *ImagePackMgr) DeleteByID(c *gin.Context) {
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
-	imagepackID := imagePackDeleteRequest.ID
-	var imagepack *model.Image
-	if imagepack, err = imagepackQuery.WithContext(c).
-		Where(imagepackQuery.ID.Eq(imagepackID)).
-		Where(imagepackQuery.QueueID.Eq(token.QueueID)).First(); err != nil {
-		logutils.Log.Errorf("image not exist or have no permission%+v", err)
-		resputil.Error(c, "failed to find imagepack or entity", resputil.NotSpecified)
-		return
-	}
-	if _, err = imagepackQuery.WithContext(c).
-		Where(imagepackQuery.ID.Eq(imagepackID)).
-		Update(imagepackQuery.Status, ImagePackDeleted); err != nil {
-		logutils.Log.Errorf("delete imagepack entity failed! err:%v", err)
-		resputil.Error(c, "failed to find imagepack or entity", resputil.NotSpecified)
-		return
-	}
-	logutils.Log.Info(mgr.harborClient.GetPing(c))
-	name, tag := strings.Split(imagepack.NameTag, ":")[0], strings.Split(imagepack.NameTag, ":")[1]
-	if err = mgr.harborClient.DeleteArtifact(c, mgr.harborClient.RegistryProject, name, tag); err != nil {
-		logutils.Log.Errorf("delete imagepack artifact failed! err:%+v", err)
+	logutils.Log.Infof("imagePackDeleteRequest %+v", imagePackDeleteRequest)
+	imageID := imagePackDeleteRequest.ID
+	if imagePackDeleteRequest.ImageType == 0 {
+		var imagepack *model.ImagePack
+		if imagepack, err = imagepackQuery.WithContext(c).
+			Where(imagepackQuery.ID.Eq(imageID)).
+			Where(imagepackQuery.QueueID.Eq(token.QueueID)).First(); err != nil {
+			logutils.Log.Errorf("image not exist or have no permission%+v", err)
+			resputil.Error(c, "failed to find imagepack or entity", resputil.NotSpecified)
+			return
+		}
+		if _, err = imagepackQuery.WithContext(c).
+			Where(imagepackQuery.ID.Eq(imageID)).
+			Update(imagepackQuery.Status, ImagePackDeleted); err != nil {
+			logutils.Log.Errorf("delete imagepack entity failed! err:%v", err)
+			resputil.Error(c, "failed to delete imagepack", resputil.NotSpecified)
+			return
+		}
+		name, tag := strings.Split(imagepack.NameTag, ":")[0], strings.Split(imagepack.NameTag, ":")[1]
+		if err = mgr.harborClient.DeleteArtifact(c, mgr.harborClient.RegistryProject, name, tag); err != nil {
+			logutils.Log.Errorf("delete imagepack artifact failed! err:%+v", err)
+		}
+	} else if imagePackDeleteRequest.ImageType == 1 {
+		if _, err = imageuploadQuery.WithContext(c).
+			Where(imageuploadQuery.ID.Eq(imageID)).
+			Update(imageuploadQuery.Status, ImagePackDeleted); err != nil {
+			logutils.Log.Errorf("delete imageupload entity failed! err:%v", err)
+			resputil.Error(c, "failed to delete imageupload", resputil.NotSpecified)
+			return
+		}
+	} else {
+		logutils.Log.Errorf("delete imagetype invalid")
+		resputil.Error(c, "delete imagetype invalid", resputil.NotSpecified)
 	}
 	resputil.Success(c, "")
 }
@@ -416,10 +580,10 @@ func (mgr *ImagePackMgr) DeleteByID(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param data body ImagePackParamsUpdateRequest true "更新ImagePack的name"
-// @Router /images/params [post]
+// @Router /v1/images/params [post]
 func (mgr *ImagePackMgr) UpdateParams(c *gin.Context) {
 	imagePackParamsUpdateRequest := &ImagePackParamsUpdateRequest{}
-	imagepackQuery := query.Image
+	imagepackQuery := query.ImagePack
 	if err := c.ShouldBindJSON(imagePackParamsUpdateRequest); err != nil {
 		msg := fmt.Sprintf("validate update parameters failed, err %v", err)
 		logutils.Log.Errorf(msg)
@@ -448,9 +612,9 @@ func (mgr *ImagePackMgr) UpdateParams(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param imagepackname query string true "获取ImagePack的name"
-// @Router /images/get [GET]
+// @Router /v1/images/get [GET]
 func (mgr *ImagePackMgr) GetImagePackByName(c *gin.Context) {
-	imagepackQuery := query.Image
+	imagepackQuery := query.ImagePack
 	imagePackName := c.DefaultQuery("imagepackname", "")
 	imagepack, err := imagepackQuery.WithContext(c).
 		Where(imagepackQuery.ImagePackName.Eq(imagePackName)).
@@ -472,7 +636,7 @@ func (mgr *ImagePackMgr) GetImagePackByName(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param imagepackname query string true "获取ImagePack的name"
-// @Router /images/log [GET]
+// @Router /v1/images/log [GET]
 func (mgr *ImagePackMgr) GetImagePackLogByName(c *gin.Context) {
 	var req ImagePackLogRequest
 	var kanikoPod *corev1.Pod
