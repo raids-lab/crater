@@ -27,23 +27,34 @@ func main() {
 	m := gormigrate.New(db, gormigrate.DefaultOptions, []*gormigrate.Migration{
 		// your migrations here
 		{
-			// create `labels` table
-			ID: "202405121603",
+			// create `imageupload` table
+			ID: "2024051216174",
 			Migrate: func(tx *gorm.DB) error {
 				// it's a good practice to copy the struct inside the function,
 				// so side effects are prevented if the original struct changes during the time
-				type Label struct {
+				type ImagePack struct {
 					gorm.Model
-					Label    string           `gorm:"uniqueIndex;type:varchar(256);not null;comment:标签名"`
-					Name     string           `gorm:"type:varchar(256);not null;comment:别名"`
-					Type     model.WorkerType `gorm:"not null;comment:类型"`
-					Count    int              `gorm:"not null;comment:节点数量"`
-					Priority int              `gorm:"not null;comment:优先级"`
+					UserID  uint
+					User    model.User
+					QueueID uint
+					Queue   model.Queue
+					//nolint:lll // need these description
+					ImagePackName string                   `gorm:"column:imagepackname;uniqueIndex:imagepackname;type:varchar(128);not null" json:"imagepackname"`
+					ImageLink     string                   `gorm:"column:imagelink;type:varchar(128);not null" json:"imagelink"`
+					NameSpace     string                   `gorm:"column:namespace;type:varchar(128);not null" json:"namespace"`
+					Status        string                   `gorm:"column:status;type:varchar(128);not null" json:"status"`
+					NameTag       string                   `gorm:"column:nametag;type:varchar(128);not null" json:"nametag"`
+					Params        model.ImageProfileParams `gorm:"column:params;type:varchar(512);serializer:json;" json:"params"`
+					NeedProfile   bool                     `gorm:"column:needprofile;type:boolean;default:false" json:"needprofile"`
+					TaskType      model.ImageTaskType      `gorm:"column:tasktype;not null;comment:作业状态" json:"tasktype"`
+					Alias         string                   `gorm:"column:alias;type:varchar(128);not null" json:"alias"`
+					Description   string                   `gorm:"column:description;type:varchar(512);not null" json:"description"`
+					CreatorName   string                   `gorm:"column:creatorname;type:varchar(128);not null" json:"creatorname"`
 				}
-				return tx.Migrator().CreateTable(&Label{})
+				return tx.Migrator().CreateTable(&ImagePack{})
 			},
 			Rollback: func(tx *gorm.DB) error {
-				return tx.Migrator().DropTable("labels")
+				return tx.Migrator().DropTable("imagepack")
 			},
 		},
 	})
@@ -56,7 +67,8 @@ func main() {
 			&model.UserProject{},
 			&model.ProjectSpace{},
 			&model.AIJob{},
-			&model.Image{},
+			&model.ImagePack{},
+			&model.ImageUpload{},
 			&model.Label{},
 			&model.Queue{},
 			&model.UserQueue{},

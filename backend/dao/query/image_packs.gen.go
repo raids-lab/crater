@@ -23,7 +23,7 @@ func newImagePack(db *gorm.DB, opts ...gen.DOOption) imagePack {
 	_imagePack := imagePack{}
 
 	_imagePack.imagePackDo.UseDB(db, opts...)
-	_imagePack.imagePackDo.UseModel(&model.Image{})
+	_imagePack.imagePackDo.UseModel(&model.ImagePack{})
 
 	tableName := _imagePack.imagePackDo.TableName()
 	_imagePack.ALL = field.NewAsterisk(tableName)
@@ -32,7 +32,7 @@ func newImagePack(db *gorm.DB, opts ...gen.DOOption) imagePack {
 	_imagePack.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_imagePack.DeletedAt = field.NewField(tableName, "deleted_at")
 	_imagePack.UserID = field.NewUint(tableName, "user_id")
-	_imagePack.ProjectID = field.NewUint(tableName, "project_id")
+	_imagePack.QueueID = field.NewUint(tableName, "queue_id")
 	_imagePack.ImagePackName = field.NewString(tableName, "imagepackname")
 	_imagePack.ImageLink = field.NewString(tableName, "imagelink")
 	_imagePack.NameSpace = field.NewString(tableName, "namespace")
@@ -40,6 +40,10 @@ func newImagePack(db *gorm.DB, opts ...gen.DOOption) imagePack {
 	_imagePack.NameTag = field.NewString(tableName, "nametag")
 	_imagePack.Params = field.NewField(tableName, "params")
 	_imagePack.NeedProfile = field.NewBool(tableName, "needprofile")
+	_imagePack.TaskType = field.NewUint8(tableName, "tasktype")
+	_imagePack.Alias_ = field.NewString(tableName, "alias")
+	_imagePack.Description = field.NewString(tableName, "description")
+	_imagePack.CreatorName = field.NewString(tableName, "creatorname")
 	_imagePack.User = imagePackBelongsToUser{
 		db: db.Session(&gorm.Session{}),
 
@@ -49,21 +53,21 @@ func newImagePack(db *gorm.DB, opts ...gen.DOOption) imagePack {
 		}{
 			RelationField: field.NewRelation("User.UserProjects", "model.UserProject"),
 		},
+		UserQueues: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("User.UserQueues", "model.UserQueue"),
+		},
 	}
 
-	_imagePack.Project = imagePackBelongsToProject{
+	_imagePack.Queue = imagePackBelongsToQueue{
 		db: db.Session(&gorm.Session{}),
 
-		RelationField: field.NewRelation("Project", "model.Project"),
-		UserProjects: struct {
+		RelationField: field.NewRelation("Queue", "model.Queue"),
+		UserQueues: struct {
 			field.RelationField
 		}{
-			RelationField: field.NewRelation("Project.UserProjects", "model.UserProject"),
-		},
-		ProjectSpaces: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("Project.ProjectSpaces", "model.ProjectSpace"),
+			RelationField: field.NewRelation("Queue.UserQueues", "model.UserQueue"),
 		},
 	}
 
@@ -81,7 +85,7 @@ type imagePack struct {
 	UpdatedAt     field.Time
 	DeletedAt     field.Field
 	UserID        field.Uint
-	ProjectID     field.Uint
+	QueueID       field.Uint
 	ImagePackName field.String
 	ImageLink     field.String
 	NameSpace     field.String
@@ -89,9 +93,13 @@ type imagePack struct {
 	NameTag       field.String
 	Params        field.Field
 	NeedProfile   field.Bool
+	TaskType      field.Uint8
+	Alias_        field.String
+	Description   field.String
+	CreatorName   field.String
 	User          imagePackBelongsToUser
 
-	Project imagePackBelongsToProject
+	Queue imagePackBelongsToQueue
 
 	fieldMap map[string]field.Expr
 }
@@ -113,7 +121,7 @@ func (i *imagePack) updateTableName(table string) *imagePack {
 	i.UpdatedAt = field.NewTime(table, "updated_at")
 	i.DeletedAt = field.NewField(table, "deleted_at")
 	i.UserID = field.NewUint(table, "user_id")
-	i.ProjectID = field.NewUint(table, "project_id")
+	i.QueueID = field.NewUint(table, "queue_id")
 	i.ImagePackName = field.NewString(table, "imagepackname")
 	i.ImageLink = field.NewString(table, "imagelink")
 	i.NameSpace = field.NewString(table, "namespace")
@@ -121,6 +129,10 @@ func (i *imagePack) updateTableName(table string) *imagePack {
 	i.NameTag = field.NewString(table, "nametag")
 	i.Params = field.NewField(table, "params")
 	i.NeedProfile = field.NewBool(table, "needprofile")
+	i.TaskType = field.NewUint8(table, "tasktype")
+	i.Alias_ = field.NewString(table, "alias")
+	i.Description = field.NewString(table, "description")
+	i.CreatorName = field.NewString(table, "creatorname")
 
 	i.fillFieldMap()
 
@@ -147,13 +159,13 @@ func (i *imagePack) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (i *imagePack) fillFieldMap() {
-	i.fieldMap = make(map[string]field.Expr, 15)
+	i.fieldMap = make(map[string]field.Expr, 19)
 	i.fieldMap["id"] = i.ID
 	i.fieldMap["created_at"] = i.CreatedAt
 	i.fieldMap["updated_at"] = i.UpdatedAt
 	i.fieldMap["deleted_at"] = i.DeletedAt
 	i.fieldMap["user_id"] = i.UserID
-	i.fieldMap["project_id"] = i.ProjectID
+	i.fieldMap["queue_id"] = i.QueueID
 	i.fieldMap["imagepackname"] = i.ImagePackName
 	i.fieldMap["imagelink"] = i.ImageLink
 	i.fieldMap["namespace"] = i.NameSpace
@@ -161,6 +173,10 @@ func (i *imagePack) fillFieldMap() {
 	i.fieldMap["nametag"] = i.NameTag
 	i.fieldMap["params"] = i.Params
 	i.fieldMap["needprofile"] = i.NeedProfile
+	i.fieldMap["tasktype"] = i.TaskType
+	i.fieldMap["alias"] = i.Alias_
+	i.fieldMap["description"] = i.Description
+	i.fieldMap["creatorname"] = i.CreatorName
 
 }
 
@@ -180,6 +196,9 @@ type imagePackBelongsToUser struct {
 	field.RelationField
 
 	UserProjects struct {
+		field.RelationField
+	}
+	UserQueues struct {
 		field.RelationField
 	}
 }
@@ -207,7 +226,7 @@ func (a imagePackBelongsToUser) Session(session *gorm.Session) *imagePackBelongs
 	return &a
 }
 
-func (a imagePackBelongsToUser) Model(m *model.Image) *imagePackBelongsToUserTx {
+func (a imagePackBelongsToUser) Model(m *model.ImagePack) *imagePackBelongsToUserTx {
 	return &imagePackBelongsToUserTx{a.db.Model(m).Association(a.Name())}
 }
 
@@ -249,20 +268,17 @@ func (a imagePackBelongsToUserTx) Count() int64 {
 	return a.tx.Count()
 }
 
-type imagePackBelongsToProject struct {
+type imagePackBelongsToQueue struct {
 	db *gorm.DB
 
 	field.RelationField
 
-	UserProjects struct {
-		field.RelationField
-	}
-	ProjectSpaces struct {
+	UserQueues struct {
 		field.RelationField
 	}
 }
 
-func (a imagePackBelongsToProject) Where(conds ...field.Expr) *imagePackBelongsToProject {
+func (a imagePackBelongsToQueue) Where(conds ...field.Expr) *imagePackBelongsToQueue {
 	if len(conds) == 0 {
 		return &a
 	}
@@ -275,27 +291,27 @@ func (a imagePackBelongsToProject) Where(conds ...field.Expr) *imagePackBelongsT
 	return &a
 }
 
-func (a imagePackBelongsToProject) WithContext(ctx context.Context) *imagePackBelongsToProject {
+func (a imagePackBelongsToQueue) WithContext(ctx context.Context) *imagePackBelongsToQueue {
 	a.db = a.db.WithContext(ctx)
 	return &a
 }
 
-func (a imagePackBelongsToProject) Session(session *gorm.Session) *imagePackBelongsToProject {
+func (a imagePackBelongsToQueue) Session(session *gorm.Session) *imagePackBelongsToQueue {
 	a.db = a.db.Session(session)
 	return &a
 }
 
-func (a imagePackBelongsToProject) Model(m *model.Image) *imagePackBelongsToProjectTx {
-	return &imagePackBelongsToProjectTx{a.db.Model(m).Association(a.Name())}
+func (a imagePackBelongsToQueue) Model(m *model.ImagePack) *imagePackBelongsToQueueTx {
+	return &imagePackBelongsToQueueTx{a.db.Model(m).Association(a.Name())}
 }
 
-type imagePackBelongsToProjectTx struct{ tx *gorm.Association }
+type imagePackBelongsToQueueTx struct{ tx *gorm.Association }
 
-func (a imagePackBelongsToProjectTx) Find() (result *model.Project, err error) {
+func (a imagePackBelongsToQueueTx) Find() (result *model.Queue, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a imagePackBelongsToProjectTx) Append(values ...*model.Project) (err error) {
+func (a imagePackBelongsToQueueTx) Append(values ...*model.Queue) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -303,7 +319,7 @@ func (a imagePackBelongsToProjectTx) Append(values ...*model.Project) (err error
 	return a.tx.Append(targetValues...)
 }
 
-func (a imagePackBelongsToProjectTx) Replace(values ...*model.Project) (err error) {
+func (a imagePackBelongsToQueueTx) Replace(values ...*model.Queue) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -311,7 +327,7 @@ func (a imagePackBelongsToProjectTx) Replace(values ...*model.Project) (err erro
 	return a.tx.Replace(targetValues...)
 }
 
-func (a imagePackBelongsToProjectTx) Delete(values ...*model.Project) (err error) {
+func (a imagePackBelongsToQueueTx) Delete(values ...*model.Queue) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -319,11 +335,11 @@ func (a imagePackBelongsToProjectTx) Delete(values ...*model.Project) (err error
 	return a.tx.Delete(targetValues...)
 }
 
-func (a imagePackBelongsToProjectTx) Clear() error {
+func (a imagePackBelongsToQueueTx) Clear() error {
 	return a.tx.Clear()
 }
 
-func (a imagePackBelongsToProjectTx) Count() int64 {
+func (a imagePackBelongsToQueueTx) Count() int64 {
 	return a.tx.Count()
 }
 
@@ -358,17 +374,17 @@ type IImagePackDo interface {
 	Count() (count int64, err error)
 	Scopes(funcs ...func(gen.Dao) gen.Dao) IImagePackDo
 	Unscoped() IImagePackDo
-	Create(values ...*model.Image) error
-	CreateInBatches(values []*model.Image, batchSize int) error
-	Save(values ...*model.Image) error
-	First() (*model.Image, error)
-	Take() (*model.Image, error)
-	Last() (*model.Image, error)
-	Find() ([]*model.Image, error)
-	FindInBatch(batchSize int, fc func(tx gen.Dao, batch int) error) (results []*model.Image, err error)
-	FindInBatches(result *[]*model.Image, batchSize int, fc func(tx gen.Dao, batch int) error) error
+	Create(values ...*model.ImagePack) error
+	CreateInBatches(values []*model.ImagePack, batchSize int) error
+	Save(values ...*model.ImagePack) error
+	First() (*model.ImagePack, error)
+	Take() (*model.ImagePack, error)
+	Last() (*model.ImagePack, error)
+	Find() ([]*model.ImagePack, error)
+	FindInBatch(batchSize int, fc func(tx gen.Dao, batch int) error) (results []*model.ImagePack, err error)
+	FindInBatches(result *[]*model.ImagePack, batchSize int, fc func(tx gen.Dao, batch int) error) error
 	Pluck(column field.Expr, dest interface{}) error
-	Delete(...*model.Image) (info gen.ResultInfo, err error)
+	Delete(...*model.ImagePack) (info gen.ResultInfo, err error)
 	Update(column field.Expr, value interface{}) (info gen.ResultInfo, err error)
 	UpdateSimple(columns ...field.AssignExpr) (info gen.ResultInfo, err error)
 	Updates(value interface{}) (info gen.ResultInfo, err error)
@@ -380,9 +396,9 @@ type IImagePackDo interface {
 	Assign(attrs ...field.AssignExpr) IImagePackDo
 	Joins(fields ...field.RelationField) IImagePackDo
 	Preload(fields ...field.RelationField) IImagePackDo
-	FirstOrInit() (*model.Image, error)
-	FirstOrCreate() (*model.Image, error)
-	FindByPage(offset int, limit int) (result []*model.Image, count int64, err error)
+	FirstOrInit() (*model.ImagePack, error)
+	FirstOrCreate() (*model.ImagePack, error)
+	FindByPage(offset int, limit int) (result []*model.ImagePack, count int64, err error)
 	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
 	Scan(result interface{}) (err error)
 	Returning(value interface{}, columns ...string) IImagePackDo
@@ -482,57 +498,57 @@ func (i imagePackDo) Unscoped() IImagePackDo {
 	return i.withDO(i.DO.Unscoped())
 }
 
-func (i imagePackDo) Create(values ...*model.Image) error {
+func (i imagePackDo) Create(values ...*model.ImagePack) error {
 	if len(values) == 0 {
 		return nil
 	}
 	return i.DO.Create(values)
 }
 
-func (i imagePackDo) CreateInBatches(values []*model.Image, batchSize int) error {
+func (i imagePackDo) CreateInBatches(values []*model.ImagePack, batchSize int) error {
 	return i.DO.CreateInBatches(values, batchSize)
 }
 
 // Save : !!! underlying implementation is different with GORM
 // The method is equivalent to executing the statement: db.Clauses(clause.OnConflict{UpdateAll: true}).Create(values)
-func (i imagePackDo) Save(values ...*model.Image) error {
+func (i imagePackDo) Save(values ...*model.ImagePack) error {
 	if len(values) == 0 {
 		return nil
 	}
 	return i.DO.Save(values)
 }
 
-func (i imagePackDo) First() (*model.Image, error) {
+func (i imagePackDo) First() (*model.ImagePack, error) {
 	if result, err := i.DO.First(); err != nil {
 		return nil, err
 	} else {
-		return result.(*model.Image), nil
+		return result.(*model.ImagePack), nil
 	}
 }
 
-func (i imagePackDo) Take() (*model.Image, error) {
+func (i imagePackDo) Take() (*model.ImagePack, error) {
 	if result, err := i.DO.Take(); err != nil {
 		return nil, err
 	} else {
-		return result.(*model.Image), nil
+		return result.(*model.ImagePack), nil
 	}
 }
 
-func (i imagePackDo) Last() (*model.Image, error) {
+func (i imagePackDo) Last() (*model.ImagePack, error) {
 	if result, err := i.DO.Last(); err != nil {
 		return nil, err
 	} else {
-		return result.(*model.Image), nil
+		return result.(*model.ImagePack), nil
 	}
 }
 
-func (i imagePackDo) Find() ([]*model.Image, error) {
+func (i imagePackDo) Find() ([]*model.ImagePack, error) {
 	result, err := i.DO.Find()
-	return result.([]*model.Image), err
+	return result.([]*model.ImagePack), err
 }
 
-func (i imagePackDo) FindInBatch(batchSize int, fc func(tx gen.Dao, batch int) error) (results []*model.Image, err error) {
-	buf := make([]*model.Image, 0, batchSize)
+func (i imagePackDo) FindInBatch(batchSize int, fc func(tx gen.Dao, batch int) error) (results []*model.ImagePack, err error) {
+	buf := make([]*model.ImagePack, 0, batchSize)
 	err = i.DO.FindInBatches(&buf, batchSize, func(tx gen.Dao, batch int) error {
 		defer func() { results = append(results, buf...) }()
 		return fc(tx, batch)
@@ -540,7 +556,7 @@ func (i imagePackDo) FindInBatch(batchSize int, fc func(tx gen.Dao, batch int) e
 	return results, err
 }
 
-func (i imagePackDo) FindInBatches(result *[]*model.Image, batchSize int, fc func(tx gen.Dao, batch int) error) error {
+func (i imagePackDo) FindInBatches(result *[]*model.ImagePack, batchSize int, fc func(tx gen.Dao, batch int) error) error {
 	return i.DO.FindInBatches(result, batchSize, fc)
 }
 
@@ -566,23 +582,23 @@ func (i imagePackDo) Preload(fields ...field.RelationField) IImagePackDo {
 	return &i
 }
 
-func (i imagePackDo) FirstOrInit() (*model.Image, error) {
+func (i imagePackDo) FirstOrInit() (*model.ImagePack, error) {
 	if result, err := i.DO.FirstOrInit(); err != nil {
 		return nil, err
 	} else {
-		return result.(*model.Image), nil
+		return result.(*model.ImagePack), nil
 	}
 }
 
-func (i imagePackDo) FirstOrCreate() (*model.Image, error) {
+func (i imagePackDo) FirstOrCreate() (*model.ImagePack, error) {
 	if result, err := i.DO.FirstOrCreate(); err != nil {
 		return nil, err
 	} else {
-		return result.(*model.Image), nil
+		return result.(*model.ImagePack), nil
 	}
 }
 
-func (i imagePackDo) FindByPage(offset int, limit int) (result []*model.Image, count int64, err error) {
+func (i imagePackDo) FindByPage(offset int, limit int) (result []*model.ImagePack, count int64, err error) {
 	result, err = i.Offset(offset).Limit(limit).Find()
 	if err != nil {
 		return
@@ -611,7 +627,7 @@ func (i imagePackDo) Scan(result interface{}) (err error) {
 	return i.DO.Scan(result)
 }
 
-func (i imagePackDo) Delete(models ...*model.Image) (result gen.ResultInfo, err error) {
+func (i imagePackDo) Delete(models ...*model.ImagePack) (result gen.ResultInfo, err error) {
 	return i.DO.Delete(models)
 }
 
