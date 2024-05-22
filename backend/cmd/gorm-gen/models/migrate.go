@@ -57,6 +57,27 @@ func main() {
 				return tx.Migrator().DropTable("imagepack")
 			},
 		},
+		{
+			// create `labels` table
+			ID: "202405222223",
+			Migrate: func(tx *gorm.DB) error {
+				// it's a good practice to copy the struct inside the function,
+				// so side effects are prevented if the original struct changes during the time
+				type Label struct {
+					gorm.Model
+					Label    string           `gorm:"uniqueIndex;type:varchar(255);not null;comment:标签名"`
+					Name     string           `gorm:"type:varchar(255);not null;comment:别名"`
+					Resource string           `gorm:"type:varchar(255);not null;comment:资源"`
+					Type     model.WorkerType `gorm:"not null;comment:类型"`
+					Count    int              `gorm:"not null;comment:节点数量"`
+					Priority int              `gorm:"not null;comment:优先级"`
+				}
+				return tx.Migrator().CreateTable(&Label{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("labels")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {

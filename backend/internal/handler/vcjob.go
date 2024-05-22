@@ -163,7 +163,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		}
 	}
 
-	// Node Affinity
+	// TODO: Remove Node Affinity
 	var affinity *v1.Affinity
 	if len(req.Products) > 0 {
 		affinity = lo.ToPtr(v1.Affinity{
@@ -229,11 +229,6 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 				VolumeMounts:             volumeMounts,
 			},
 		},
-	}
-
-	// Check if the user has requested nvidia gpu resource
-	if util.HasNVIDIAGPUResource(req.Resource) {
-		podSpec.RuntimeClassName = lo.ToPtr(util.NVIDIARuntimeClass)
 	}
 
 	// create volcano job
