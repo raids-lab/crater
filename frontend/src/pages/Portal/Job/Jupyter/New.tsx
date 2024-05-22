@@ -123,17 +123,17 @@ const JupyterNew = () => {
     mutationFn: (values: FormSchema) =>
       apiJupyterCreate({
         name: values.taskname,
-        resource: getAiKResource({
-          gpu: values.gpu,
-          memory: `${values.memory}Gi`,
-          cpu: values.cpu,
-        }),
+        resource: getAiKResource(
+          {
+            gpu: values.gpu,
+            memory: `${values.memory}Gi`,
+            cpu: values.cpu,
+          },
+          values.gpuModel,
+        ),
         image: values.image,
         volumeMounts: convertShareDirs(values.shareDirs),
-        products:
-          values.gpuModel !== "default"
-            ? labelsInfo.data?.dict.get(values.gpuModel) ?? []
-            : [],
+        products: [],
         useTensorBoard: values.useTensorBoard,
       }),
     onSuccess: async (_, { taskname }) => {
@@ -172,20 +172,20 @@ const JupyterNew = () => {
         }
         return b.priority - a.priority;
       });
-      // create a map, key is item.name, value is [item.label]
+      // create a map, key is item.resource, value is [item.label]
       const dict = new Map<string, string[]>();
       const list = new Array<{
         value: string;
         label: string;
       }>();
       items.forEach((item) => {
-        if (dict.has(item.name)) {
-          dict.get(item.name)?.push(item.label);
+        if (dict.has(item.resource)) {
+          dict.get(item.resource)?.push(item.label);
         } else {
-          dict.set(item.name, [item.label]);
+          dict.set(item.resource, [item.label]);
           list.push({
-            value: item.name === "" ? "default" : item.name,
-            label: item.name === "" ? "默认 (不指定类型)" : item.name,
+            value: item.resource === "" ? "default" : item.resource,
+            label: item.resource === "" ? "默认 (不指定类型)" : item.name,
           });
         }
       });

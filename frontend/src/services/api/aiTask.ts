@@ -1,4 +1,4 @@
-import { KubernetesResource } from "@/utils/resource";
+import { KubernetesResource, KubernetesResourceList } from "@/utils/resource";
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
 import { showErrorToast } from "@/utils/toast";
@@ -108,7 +108,7 @@ export interface ITaskCreate {
   taskName: string;
   slo: number;
   taskType: string;
-  resourceRequest: KubernetesResource;
+  resourceRequest: KubernetesResourceList;
   image: string;
   workingDir: string;
   shareDirs: {

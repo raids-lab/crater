@@ -9,6 +9,7 @@ export interface LabelInfo {
   id: number;
   label: string;
   name: string;
+  resource: string;
   type: LabelType;
   count: number;
   priority: number;
