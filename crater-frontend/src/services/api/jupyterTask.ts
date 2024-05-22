@@ -1,4 +1,4 @@
-import { KubernetesResource } from "@/utils/resource";
+import { KubernetesResourceList } from "@/utils/resource";
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
 
@@ -57,7 +57,7 @@ export interface VolumeMount {
 
 export interface IJupyterCreate {
   name: string;
-  resource: KubernetesResource;
+  resource: KubernetesResourceList;
   image: string;
   volumeMounts: VolumeMount[];
   products: string[];

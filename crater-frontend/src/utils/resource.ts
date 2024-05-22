@@ -8,6 +8,10 @@ export interface KubernetesResource {
   "nvidia.com/gpu"?: number | string; // "1"
 }
 
+export interface KubernetesResourceList {
+  [key: string]: string | number;
+}
+
 export const AiResourceSchema = z
   .object({
     cpu: z.number().optional(),
@@ -67,7 +71,10 @@ export const getAiResource = (resource?: KubernetesResource): AiResource => {
   };
 };
 
-export const getAiKResource = (resource: AiResource): KubernetesResource => {
+export const getAiKResource = (
+  resource: AiResource,
+  gpuTag?: string,
+): KubernetesResourceList => {
   // Ensure that cpu, gpu, and memory are not less than 0
   logger.debug("Ai", resource);
   const cpu =
@@ -79,18 +86,18 @@ export const getAiKResource = (resource: AiResource): KubernetesResource => {
       ? resource.memory
       : undefined;
 
-  const k8sResource: KubernetesResource = {};
+  const k8sResource: KubernetesResourceList = {};
 
   if (cpu !== undefined) {
-    k8sResource.cpu = cpu;
+    k8sResource["cpu"] = cpu;
   }
 
   if (gpu !== undefined) {
-    k8sResource["nvidia.com/gpu"] = gpu;
+    k8sResource[gpuTag ?? "nvidia.com/gpu"] = gpu;
   }
 
   if (memory !== undefined) {
-    k8sResource.memory = memory;
+    k8sResource["memory"] = memory;
   }
   logger.debug(k8sResource);
   return k8sResource;
