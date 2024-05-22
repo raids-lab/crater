@@ -33,6 +33,7 @@ func newLabel(db *gorm.DB, opts ...gen.DOOption) label {
 	_label.DeletedAt = field.NewField(tableName, "deleted_at")
 	_label.Label = field.NewString(tableName, "label")
 	_label.Name = field.NewString(tableName, "name")
+	_label.Resource = field.NewString(tableName, "resource")
 	_label.Type = field.NewUint8(tableName, "type")
 	_label.Count = field.NewInt(tableName, "count")
 	_label.Priority = field.NewInt(tableName, "priority")
@@ -52,6 +53,7 @@ type label struct {
 	DeletedAt field.Field
 	Label     field.String
 	Name      field.String
+	Resource  field.String
 	Type      field.Uint8
 	Count     field.Int
 	Priority  field.Int
@@ -77,6 +79,7 @@ func (l *label) updateTableName(table string) *label {
 	l.DeletedAt = field.NewField(table, "deleted_at")
 	l.Label = field.NewString(table, "label")
 	l.Name = field.NewString(table, "name")
+	l.Resource = field.NewString(table, "resource")
 	l.Type = field.NewUint8(table, "type")
 	l.Count = field.NewInt(table, "count")
 	l.Priority = field.NewInt(table, "priority")
@@ -104,13 +107,14 @@ func (l *label) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (l *label) fillFieldMap() {
-	l.fieldMap = make(map[string]field.Expr, 9)
+	l.fieldMap = make(map[string]field.Expr, 10)
 	l.fieldMap["id"] = l.ID
 	l.fieldMap["created_at"] = l.CreatedAt
 	l.fieldMap["updated_at"] = l.UpdatedAt
 	l.fieldMap["deleted_at"] = l.DeletedAt
 	l.fieldMap["label"] = l.Label
 	l.fieldMap["name"] = l.Name
+	l.fieldMap["resource"] = l.Resource
 	l.fieldMap["type"] = l.Type
 	l.fieldMap["count"] = l.Count
 	l.fieldMap["priority"] = l.Priority

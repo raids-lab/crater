@@ -58,6 +58,7 @@ type (
 		ID       uint             `json:"id"`
 		Label    string           `json:"label"`
 		Name     string           `json:"name"`
+		Resource string           `json:"resource"`
 		Type     model.WorkerType `json:"type"`
 		Count    int              `json:"count"`
 		Priority int              `json:"priority"`
@@ -78,7 +79,8 @@ type (
 func (mgr *LabelMgr) ListLabels(c *gin.Context) {
 	label := query.Label
 	var labels []LabelResp
-	err := label.WithContext(c).Select(label.ID, label.Label, label.Name, label.Type, label.Count, label.Priority).
+	err := label.WithContext(c).
+		Select(label.ID, label.Label, label.Name, label.Resource, label.Type, label.Count, label.Priority).
 		Order(label.Priority.Desc()).Scan(&labels)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("failed to list labels: %v", err), resputil.NotSpecified)
