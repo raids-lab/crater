@@ -155,8 +155,9 @@ const JupyterDetail = () => {
 
   const { mutate: goToTensorboardPage } = useMutation({
     mutationFn: (jobName: string) => apiJupyterTokenGet(jobName),
+
     onSuccess: (_, jobName) => {
-      window.open(`/tensorboard/${jobName}`);
+      window.open(`https://crater.act.buaa.edu.cn/tensorboard/${jobName}`);
     },
   });
 
