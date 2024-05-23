@@ -92,7 +92,7 @@ export const getAiKResource = (
     k8sResource["cpu"] = cpu;
   }
 
-  if (gpu !== undefined) {
+  if (gpu !== undefined && gpu > 0) {
     k8sResource[gpuTag ?? "nvidia.com/gpu"] = gpu;
   }
 
