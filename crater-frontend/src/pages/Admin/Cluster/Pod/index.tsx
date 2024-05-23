@@ -182,7 +182,7 @@ const toolbarConfig: DataTableToolbarConfig = {
   getHeader: (x) => x,
 };
 
-const columns: ColumnDef<ClusterPodInfo>[] = [
+const getColumns = (nodeName: string): ColumnDef<ClusterPodInfo>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -209,7 +209,22 @@ const columns: ColumnDef<ClusterPodInfo>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title={"容器组名称"} />
     ),
-    cell: ({ row }) => <div className="font-mono">{row.getValue("name")}</div>,
+    cell: ({ row }) => {
+      const podName = encodeURIComponent(row.getValue("name"));
+      const link = `http://192.168.5.60:31121/d/MhnFUFLSz/pod_memory?orgId=1&var-node_name=${nodeName}&var-pod_name=${podName}`;
+      return (
+        <div className="font-mono">
+          <a
+            href={link}
+            className="hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {podName}
+          </a>
+        </div>
+      );
+    },
     enableSorting: false,
   },
   {
@@ -325,6 +340,8 @@ export const PodStatusDetail: FC = () => {
     select: (res) => res.data.data,
     enabled: !!nodeName,
   });
+  const safeNodeName = nodeName || "defaultNodeName";
+  const columns = useMemo(() => getColumns(safeNodeName), [safeNodeName]);
 
   const setBreadcrumb = useBreadcrumb();
 
