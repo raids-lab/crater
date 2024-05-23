@@ -50,6 +50,12 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 		RelationField: field.NewRelation("UserQueues", "model.UserQueue"),
 	}
 
+	_user.UserDatasets = userHasManyUserDatasets{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("UserDatasets", "model.UserDataset"),
+	}
+
 	_user.fillFieldMap()
 
 	return _user
@@ -73,6 +79,8 @@ type user struct {
 	UserProjects userHasManyUserProjects
 
 	UserQueues userHasManyUserQueues
+
+	UserDatasets userHasManyUserDatasets
 
 	fieldMap map[string]field.Expr
 }
@@ -124,7 +132,7 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 13)
+	u.fieldMap = make(map[string]field.Expr, 14)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
@@ -288,6 +296,77 @@ func (a userHasManyUserQueuesTx) Clear() error {
 }
 
 func (a userHasManyUserQueuesTx) Count() int64 {
+	return a.tx.Count()
+}
+
+type userHasManyUserDatasets struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a userHasManyUserDatasets) Where(conds ...field.Expr) *userHasManyUserDatasets {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a userHasManyUserDatasets) WithContext(ctx context.Context) *userHasManyUserDatasets {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a userHasManyUserDatasets) Session(session *gorm.Session) *userHasManyUserDatasets {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a userHasManyUserDatasets) Model(m *model.User) *userHasManyUserDatasetsTx {
+	return &userHasManyUserDatasetsTx{a.db.Model(m).Association(a.Name())}
+}
+
+type userHasManyUserDatasetsTx struct{ tx *gorm.Association }
+
+func (a userHasManyUserDatasetsTx) Find() (result []*model.UserDataset, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a userHasManyUserDatasetsTx) Append(values ...*model.UserDataset) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a userHasManyUserDatasetsTx) Replace(values ...*model.UserDataset) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a userHasManyUserDatasetsTx) Delete(values ...*model.UserDataset) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a userHasManyUserDatasetsTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a userHasManyUserDatasetsTx) Count() int64 {
 	return a.tx.Count()
 }
 

@@ -40,6 +40,12 @@ func newQueue(db *gorm.DB, opts ...gen.DOOption) queue {
 		RelationField: field.NewRelation("UserQueues", "model.UserQueue"),
 	}
 
+	_queue.QueueDatasets = queueHasManyQueueDatasets{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("QueueDatasets", "model.QueueDataset"),
+	}
+
 	_queue.fillFieldMap()
 
 	return _queue
@@ -57,6 +63,8 @@ type queue struct {
 	Nickname   field.String
 	Space      field.String
 	UserQueues queueHasManyUserQueues
+
+	QueueDatasets queueHasManyQueueDatasets
 
 	fieldMap map[string]field.Expr
 }
@@ -104,7 +112,7 @@ func (q *queue) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (q *queue) fillFieldMap() {
-	q.fieldMap = make(map[string]field.Expr, 8)
+	q.fieldMap = make(map[string]field.Expr, 9)
 	q.fieldMap["id"] = q.ID
 	q.fieldMap["created_at"] = q.CreatedAt
 	q.fieldMap["updated_at"] = q.UpdatedAt
@@ -193,6 +201,77 @@ func (a queueHasManyUserQueuesTx) Clear() error {
 }
 
 func (a queueHasManyUserQueuesTx) Count() int64 {
+	return a.tx.Count()
+}
+
+type queueHasManyQueueDatasets struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a queueHasManyQueueDatasets) Where(conds ...field.Expr) *queueHasManyQueueDatasets {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a queueHasManyQueueDatasets) WithContext(ctx context.Context) *queueHasManyQueueDatasets {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a queueHasManyQueueDatasets) Session(session *gorm.Session) *queueHasManyQueueDatasets {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a queueHasManyQueueDatasets) Model(m *model.Queue) *queueHasManyQueueDatasetsTx {
+	return &queueHasManyQueueDatasetsTx{a.db.Model(m).Association(a.Name())}
+}
+
+type queueHasManyQueueDatasetsTx struct{ tx *gorm.Association }
+
+func (a queueHasManyQueueDatasetsTx) Find() (result []*model.QueueDataset, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a queueHasManyQueueDatasetsTx) Append(values ...*model.QueueDataset) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a queueHasManyQueueDatasetsTx) Replace(values ...*model.QueueDataset) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a queueHasManyQueueDatasetsTx) Delete(values ...*model.QueueDataset) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a queueHasManyQueueDatasetsTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a queueHasManyQueueDatasetsTx) Count() int64 {
 	return a.tx.Count()
 }
 

@@ -58,6 +58,11 @@ func newImagePack(db *gorm.DB, opts ...gen.DOOption) imagePack {
 		}{
 			RelationField: field.NewRelation("User.UserQueues", "model.UserQueue"),
 		},
+		UserDatasets: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("User.UserDatasets", "model.UserDataset"),
+		},
 	}
 
 	_imagePack.Queue = imagePackBelongsToQueue{
@@ -68,6 +73,11 @@ func newImagePack(db *gorm.DB, opts ...gen.DOOption) imagePack {
 			field.RelationField
 		}{
 			RelationField: field.NewRelation("Queue.UserQueues", "model.UserQueue"),
+		},
+		QueueDatasets: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("Queue.QueueDatasets", "model.QueueDataset"),
 		},
 	}
 
@@ -201,6 +211,9 @@ type imagePackBelongsToUser struct {
 	UserQueues struct {
 		field.RelationField
 	}
+	UserDatasets struct {
+		field.RelationField
+	}
 }
 
 func (a imagePackBelongsToUser) Where(conds ...field.Expr) *imagePackBelongsToUser {
@@ -274,6 +287,9 @@ type imagePackBelongsToQueue struct {
 	field.RelationField
 
 	UserQueues struct {
+		field.RelationField
+	}
+	QueueDatasets struct {
 		field.RelationField
 	}
 }
