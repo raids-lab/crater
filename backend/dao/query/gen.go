@@ -18,14 +18,17 @@ import (
 var (
 	Q            = new(Query)
 	AIJob        *aIJob
+	Dataset      *dataset
 	ImagePack    *imagePack
 	ImageUpload  *imageUpload
 	Label        *label
 	Project      *project
 	ProjectSpace *projectSpace
 	Queue        *queue
+	QueueDataset *queueDataset
 	Space        *space
 	User         *user
+	UserDataset  *userDataset
 	UserProject  *userProject
 	UserQueue    *userQueue
 )
@@ -33,14 +36,17 @@ var (
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
 	AIJob = &Q.AIJob
+	Dataset = &Q.Dataset
 	ImagePack = &Q.ImagePack
 	ImageUpload = &Q.ImageUpload
 	Label = &Q.Label
 	Project = &Q.Project
 	ProjectSpace = &Q.ProjectSpace
 	Queue = &Q.Queue
+	QueueDataset = &Q.QueueDataset
 	Space = &Q.Space
 	User = &Q.User
+	UserDataset = &Q.UserDataset
 	UserProject = &Q.UserProject
 	UserQueue = &Q.UserQueue
 }
@@ -49,14 +55,17 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:           db,
 		AIJob:        newAIJob(db, opts...),
+		Dataset:      newDataset(db, opts...),
 		ImagePack:    newImagePack(db, opts...),
 		ImageUpload:  newImageUpload(db, opts...),
 		Label:        newLabel(db, opts...),
 		Project:      newProject(db, opts...),
 		ProjectSpace: newProjectSpace(db, opts...),
 		Queue:        newQueue(db, opts...),
+		QueueDataset: newQueueDataset(db, opts...),
 		Space:        newSpace(db, opts...),
 		User:         newUser(db, opts...),
+		UserDataset:  newUserDataset(db, opts...),
 		UserProject:  newUserProject(db, opts...),
 		UserQueue:    newUserQueue(db, opts...),
 	}
@@ -66,14 +75,17 @@ type Query struct {
 	db *gorm.DB
 
 	AIJob        aIJob
+	Dataset      dataset
 	ImagePack    imagePack
 	ImageUpload  imageUpload
 	Label        label
 	Project      project
 	ProjectSpace projectSpace
 	Queue        queue
+	QueueDataset queueDataset
 	Space        space
 	User         user
+	UserDataset  userDataset
 	UserProject  userProject
 	UserQueue    userQueue
 }
@@ -84,14 +96,17 @@ func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:           db,
 		AIJob:        q.AIJob.clone(db),
+		Dataset:      q.Dataset.clone(db),
 		ImagePack:    q.ImagePack.clone(db),
 		ImageUpload:  q.ImageUpload.clone(db),
 		Label:        q.Label.clone(db),
 		Project:      q.Project.clone(db),
 		ProjectSpace: q.ProjectSpace.clone(db),
 		Queue:        q.Queue.clone(db),
+		QueueDataset: q.QueueDataset.clone(db),
 		Space:        q.Space.clone(db),
 		User:         q.User.clone(db),
+		UserDataset:  q.UserDataset.clone(db),
 		UserProject:  q.UserProject.clone(db),
 		UserQueue:    q.UserQueue.clone(db),
 	}
@@ -109,14 +124,17 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:           db,
 		AIJob:        q.AIJob.replaceDB(db),
+		Dataset:      q.Dataset.replaceDB(db),
 		ImagePack:    q.ImagePack.replaceDB(db),
 		ImageUpload:  q.ImageUpload.replaceDB(db),
 		Label:        q.Label.replaceDB(db),
 		Project:      q.Project.replaceDB(db),
 		ProjectSpace: q.ProjectSpace.replaceDB(db),
 		Queue:        q.Queue.replaceDB(db),
+		QueueDataset: q.QueueDataset.replaceDB(db),
 		Space:        q.Space.replaceDB(db),
 		User:         q.User.replaceDB(db),
+		UserDataset:  q.UserDataset.replaceDB(db),
 		UserProject:  q.UserProject.replaceDB(db),
 		UserQueue:    q.UserQueue.replaceDB(db),
 	}
@@ -124,14 +142,17 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 
 type queryCtx struct {
 	AIJob        IAIJobDo
+	Dataset      IDatasetDo
 	ImagePack    IImagePackDo
 	ImageUpload  IImageUploadDo
 	Label        ILabelDo
 	Project      IProjectDo
 	ProjectSpace IProjectSpaceDo
 	Queue        IQueueDo
+	QueueDataset IQueueDatasetDo
 	Space        ISpaceDo
 	User         IUserDo
+	UserDataset  IUserDatasetDo
 	UserProject  IUserProjectDo
 	UserQueue    IUserQueueDo
 }
@@ -139,14 +160,17 @@ type queryCtx struct {
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
 		AIJob:        q.AIJob.WithContext(ctx),
+		Dataset:      q.Dataset.WithContext(ctx),
 		ImagePack:    q.ImagePack.WithContext(ctx),
 		ImageUpload:  q.ImageUpload.WithContext(ctx),
 		Label:        q.Label.WithContext(ctx),
 		Project:      q.Project.WithContext(ctx),
 		ProjectSpace: q.ProjectSpace.WithContext(ctx),
 		Queue:        q.Queue.WithContext(ctx),
+		QueueDataset: q.QueueDataset.WithContext(ctx),
 		Space:        q.Space.WithContext(ctx),
 		User:         q.User.WithContext(ctx),
+		UserDataset:  q.UserDataset.WithContext(ctx),
 		UserProject:  q.UserProject.WithContext(ctx),
 		UserQueue:    q.UserQueue.WithContext(ctx),
 	}

@@ -47,6 +47,9 @@ func main() {
 		model.Label{},
 		model.Queue{},
 		model.UserQueue{},
+		model.Dataset{},
+		model.QueueDataset{},
+		model.UserDataset{},
 	)
 
 	// 执行并生成代码

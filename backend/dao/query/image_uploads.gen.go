@@ -54,6 +54,11 @@ func newImageUpload(db *gorm.DB, opts ...gen.DOOption) imageUpload {
 		}{
 			RelationField: field.NewRelation("User.UserQueues", "model.UserQueue"),
 		},
+		UserDatasets: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("User.UserDatasets", "model.UserDataset"),
+		},
 	}
 
 	_imageUpload.Queue = imageUploadBelongsToQueue{
@@ -64,6 +69,11 @@ func newImageUpload(db *gorm.DB, opts ...gen.DOOption) imageUpload {
 			field.RelationField
 		}{
 			RelationField: field.NewRelation("Queue.UserQueues", "model.UserQueue"),
+		},
+		QueueDatasets: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("Queue.QueueDatasets", "model.QueueDataset"),
 		},
 	}
 
@@ -185,6 +195,9 @@ type imageUploadBelongsToUser struct {
 	UserQueues struct {
 		field.RelationField
 	}
+	UserDatasets struct {
+		field.RelationField
+	}
 }
 
 func (a imageUploadBelongsToUser) Where(conds ...field.Expr) *imageUploadBelongsToUser {
@@ -258,6 +271,9 @@ type imageUploadBelongsToQueue struct {
 	field.RelationField
 
 	UserQueues struct {
+		field.RelationField
+	}
+	QueueDatasets struct {
 		field.RelationField
 	}
 }
