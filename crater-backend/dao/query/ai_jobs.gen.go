@@ -55,6 +55,11 @@ func newAIJob(db *gorm.DB, opts ...gen.DOOption) aIJob {
 		}{
 			RelationField: field.NewRelation("User.UserQueues", "model.UserQueue"),
 		},
+		UserDatasets: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("User.UserDatasets", "model.UserDataset"),
+		},
 	}
 
 	_aIJob.Project = aIJobBelongsToProject{
@@ -190,6 +195,9 @@ type aIJobBelongsToUser struct {
 		field.RelationField
 	}
 	UserQueues struct {
+		field.RelationField
+	}
+	UserDatasets struct {
 		field.RelationField
 	}
 }

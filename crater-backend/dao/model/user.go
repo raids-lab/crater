@@ -23,8 +23,9 @@ type User struct {
 	Space        string  `gorm:"uniqueIndex;type:varchar(256);not null;comment:用户空间绝对路径"`
 	UserProjects []UserProject
 
-	Attributes datatypes.JSONType[UserAttribute] `gorm:"comment:用户的额外属性 (昵称、邮箱、电话、头像等)"`
-	UserQueues []UserQueue
+	Attributes   datatypes.JSONType[UserAttribute] `gorm:"comment:用户的额外属性 (昵称、邮箱、电话、头像等)"`
+	UserQueues   []UserQueue
+	UserDatasets []UserDataset
 }
 
 type UserProject struct {
