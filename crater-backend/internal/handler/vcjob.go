@@ -69,7 +69,7 @@ const (
 
 	AnnotationKeyTaskName       = "crater.raids.io/task-name"
 	AnnotationKeyJupyter        = "crater.raids.io/jupyter-token"
-	AnnotationKeyUseTensorBoard = "false"
+	AnnotationKeyUseTensorBoard = "crater.raids.io/use-tensorboard"
 
 	VolumeData  = "crater-workspace"
 	VolumeCache = "crater-cache"
@@ -346,7 +346,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	// req.UseTensorBoard为true, 用户希望暴露TensorBoard
 	if req.UseTensorBoard {
 		tensorboardPath := networkingv1.HTTPIngressPath{
-			Path:     fmt.Sprintf("/tensorboard/%s", baseURL),
+			Path:     fmt.Sprintf("/tensorboard/%s", jobName),
 			PathType: func(s networkingv1.PathType) *networkingv1.PathType { return &s }(networkingv1.PathTypePrefix),
 			Backend: networkingv1.IngressBackend{
 				Service: &networkingv1.IngressServiceBackend{
