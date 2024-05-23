@@ -435,9 +435,33 @@ const JupyterDetail = () => {
                 <TableRow key={index}>
                   <TableCell>{index}</TableCell>
                   <TableCell className="font-medium">
-                    {pod.name || "---"}
+                    {pod.name ? (
+                      <a
+                        href={`http://192.168.5.60:31121/d/MhnFUFLSz/pod_memory?orgId=1&var-node_name=${pod.nodename}&var-pod_name=${pod.name}`}
+                        className="hover:underline"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {pod.name}
+                      </a>
+                    ) : (
+                      "---"
+                    )}
                   </TableCell>
-                  <TableCell>{pod.nodename || "---"}</TableCell>
+                  <TableCell>
+                    {pod.nodename ? (
+                      <a
+                        href={`http://192.168.5.60:31121/d/Oxed_c6Wz1/k8s-vgpu-scheduler-dashboard?orgId=1&var-node_name=${pod.nodename}`}
+                        className="hover:underline"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {pod.nodename}
+                      </a>
+                    ) : (
+                      "---"
+                    )}
+                  </TableCell>
                   <TableCell>{pod.ip || "---"}</TableCell>
                   <TableCell>{pod.port || "---"}</TableCell>
                   <TableCell>
