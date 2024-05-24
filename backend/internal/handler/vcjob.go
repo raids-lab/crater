@@ -84,13 +84,16 @@ type (
 		MountPath string `json:"mountPath"`
 	}
 
+	NodeSelectorLables struct{}
+
 	CreateJupyterReq struct {
-		Name           string          `json:"name"`
-		Resource       v1.ResourceList `json:"resource"`
-		Image          string          `json:"image"`
-		VolumeMounts   []VolumeMount   `json:"volumeMounts"`
-		Products       []string        `json:"products"`
-		UseTensorBoard bool            `json:"useTensorBoard"`
+		Name           string                       `json:"name"`
+		Resource       v1.ResourceList              `json:"resource"`
+		Image          string                       `json:"image"`
+		VolumeMounts   []VolumeMount                `json:"volumeMounts"`
+		Envs           []v1.EnvVar                  `json:"envs"`
+		Selectors      []v1.NodeSelectorRequirement `json:"selectors"`
+		UseTensorBoard bool                         `json:"useTensorBoard"`
 	}
 )
 
@@ -118,7 +121,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	commandSchema := "start.sh jupyter lab --allow-root --NotebookApp.base_url=/jupyter/%s/"
 	command := fmt.Sprintf(commandSchema, baseURL)
 
-	// Volume Mounts
+	// 1. Volume Mounts
 	volumes := []v1.Volume{
 		{
 			Name: VolumeData,
@@ -163,21 +166,26 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		}
 	}
 
-	// TODO: Remove Node Affinity
+	// 2. Env Vars
+	//nolint:gomnd // 4 is the number of default envs
+	envs := make([]v1.EnvVar, len(req.Envs)+4)
+	envs[0] = v1.EnvVar{Name: "GRANT_SUDO", Value: "1"}
+	envs[1] = v1.EnvVar{Name: "CHOWN_HOME", Value: "1"}
+	envs[2] = v1.EnvVar{Name: "NB_UID", Value: "1001"}
+	envs[3] = v1.EnvVar{Name: "NB_USER", Value: token.Username}
+	for i, env := range req.Envs {
+		envs[i+4] = env
+	}
+
+	// 3. TODO: Node Affinity for ARM64 Nodes
 	var affinity *v1.Affinity
-	if len(req.Products) > 0 {
+	if len(req.Selectors) > 0 {
 		affinity = lo.ToPtr(v1.Affinity{
 			NodeAffinity: lo.ToPtr(v1.NodeAffinity{
 				RequiredDuringSchedulingIgnoredDuringExecution: lo.ToPtr(v1.NodeSelector{
 					NodeSelectorTerms: []v1.NodeSelectorTerm{
 						{
-							MatchExpressions: []v1.NodeSelectorRequirement{
-								{
-									Key:      "nvidia.com/gpu.product",
-									Operator: v1.NodeSelectorOpIn,
-									Values:   req.Products,
-								},
-							},
+							MatchExpressions: req.Selectors,
 						},
 					},
 				}),
@@ -185,6 +193,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		})
 	}
 
+	// 4. Labels and Annotations
 	namespace := config.GetConfig().Workspace.Namespace
 	labels := map[string]string{
 		LabelKeyTaskType: "jupyter",
@@ -196,6 +205,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		AnnotationKeyUseTensorBoard: useTensorboard,
 	}
 
+	// 5. Create the pod spec
 	podSpec := v1.PodSpec{
 		Affinity: affinity,
 		Volumes:  volumes,
@@ -210,12 +220,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 				},
 				WorkingDir: fmt.Sprintf("/home/%s", token.Username),
 
-				Env: []v1.EnvVar{
-					{Name: "GRANT_SUDO", Value: "1"},
-					{Name: "CHOWN_HOME", Value: "1"},
-					{Name: "NB_UID", Value: "1001"},
-					{Name: "NB_USER", Value: token.Username},
-				},
+				Env: envs,
 				Ports: []v1.ContainerPort{
 					{ContainerPort: JupyterPort, Name: "notebook-port", Protocol: v1.ProtocolTCP},
 				},
@@ -231,7 +236,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		},
 	}
 
-	// create volcano job
+	// 6. Create volcano job
 	job := batch.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        jobName,
@@ -263,6 +268,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 			},
 		},
 	}
+
 	// 添加 TensorBoard 端口映射
 	if req.UseTensorBoard {
 		podSpec.Containers[0].Ports = append(podSpec.Containers[0].Ports, v1.ContainerPort{
