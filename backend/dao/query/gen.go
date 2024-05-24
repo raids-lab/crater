@@ -26,6 +26,7 @@ var (
 	ProjectSpace *projectSpace
 	Queue        *queue
 	QueueDataset *queueDataset
+	Resource     *resource
 	Space        *space
 	User         *user
 	UserDataset  *userDataset
@@ -44,6 +45,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	ProjectSpace = &Q.ProjectSpace
 	Queue = &Q.Queue
 	QueueDataset = &Q.QueueDataset
+	Resource = &Q.Resource
 	Space = &Q.Space
 	User = &Q.User
 	UserDataset = &Q.UserDataset
@@ -63,6 +65,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		ProjectSpace: newProjectSpace(db, opts...),
 		Queue:        newQueue(db, opts...),
 		QueueDataset: newQueueDataset(db, opts...),
+		Resource:     newResource(db, opts...),
 		Space:        newSpace(db, opts...),
 		User:         newUser(db, opts...),
 		UserDataset:  newUserDataset(db, opts...),
@@ -83,6 +86,7 @@ type Query struct {
 	ProjectSpace projectSpace
 	Queue        queue
 	QueueDataset queueDataset
+	Resource     resource
 	Space        space
 	User         user
 	UserDataset  userDataset
@@ -104,6 +108,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		ProjectSpace: q.ProjectSpace.clone(db),
 		Queue:        q.Queue.clone(db),
 		QueueDataset: q.QueueDataset.clone(db),
+		Resource:     q.Resource.clone(db),
 		Space:        q.Space.clone(db),
 		User:         q.User.clone(db),
 		UserDataset:  q.UserDataset.clone(db),
@@ -132,6 +137,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		ProjectSpace: q.ProjectSpace.replaceDB(db),
 		Queue:        q.Queue.replaceDB(db),
 		QueueDataset: q.QueueDataset.replaceDB(db),
+		Resource:     q.Resource.replaceDB(db),
 		Space:        q.Space.replaceDB(db),
 		User:         q.User.replaceDB(db),
 		UserDataset:  q.UserDataset.replaceDB(db),
@@ -150,6 +156,7 @@ type queryCtx struct {
 	ProjectSpace IProjectSpaceDo
 	Queue        IQueueDo
 	QueueDataset IQueueDatasetDo
+	Resource     IResourceDo
 	Space        ISpaceDo
 	User         IUserDo
 	UserDataset  IUserDatasetDo
@@ -168,6 +175,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		ProjectSpace: q.ProjectSpace.WithContext(ctx),
 		Queue:        q.Queue.WithContext(ctx),
 		QueueDataset: q.QueueDataset.WithContext(ctx),
+		Resource:     q.Resource.WithContext(ctx),
 		Space:        q.Space.WithContext(ctx),
 		User:         q.User.WithContext(ctx),
 		UserDataset:  q.UserDataset.WithContext(ctx),

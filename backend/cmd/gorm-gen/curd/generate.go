@@ -50,6 +50,7 @@ func main() {
 		model.Dataset{},
 		model.QueueDataset{},
 		model.UserDataset{},
+		model.Resource{},
 	)
 
 	// 执行并生成代码

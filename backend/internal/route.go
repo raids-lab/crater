@@ -83,6 +83,7 @@ func (b *Backend) RegisterService(
 	// Init Handlers
 	authMgr := handler.NewAuthMgr(aitaskCtrl, &httpClient)
 	labelMgr := handler.NewLabelMgr(kc)
+	resoueceMgr := handler.NewResourceMgr(kc)
 	projectMgr := handler.NewProjectMgr(aitaskCtrl)
 	nodeMgr := handler.NewNodeMgr(&nodeClient)
 	userMgr := handler.NewUserMgr()
@@ -109,6 +110,7 @@ func (b *Backend) RegisterService(
 
 	authMgr.RegisterProtected(protectedRouter.Group("/switch"))
 	labelMgr.RegisterProtected(protectedRouter.Group("/labels"))
+	resoueceMgr.RegisterProtected(protectedRouter.Group("/resources"))
 	queueMgr.RegisterProtected(protectedRouter.Group("/accounts"))
 	projectMgr.RegisterProtected(protectedRouter.Group("/projects"))
 	nodeMgr.RegisterProtected(protectedRouter.Group("/nodes"))
@@ -126,6 +128,7 @@ func (b *Backend) RegisterService(
 	adminRouter.Use(middleware.AuthProtected(), middleware.AuthAdmin())
 
 	labelMgr.RegisterAdmin(adminRouter.Group("/labels"))
+	resoueceMgr.RegisterAdmin(adminRouter.Group("/resources"))
 	projectMgr.RegisterAdmin(adminRouter.Group("/projects"))
 	nodeMgr.RegisterAdmin(adminRouter.Group("/nodes"))
 	userMgr.RegisterAdmin(adminRouter.Group("/users"))

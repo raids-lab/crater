@@ -109,6 +109,18 @@ func main() {
 				return tx.Migrator().DropTable("labels")
 			},
 		},
+		{
+			// create `labels` table
+			ID: "202405240951",
+			Migrate: func(tx *gorm.DB) error {
+				// it's a good practice to copy the struct inside the function,
+				// so side effects are prevented if the original struct changes during the time
+				return tx.Migrator().CreateTable(&model.Resource{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("resources")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -127,6 +139,7 @@ func main() {
 			&model.Dataset{},
 			&model.QueueDataset{},
 			&model.UserDataset{},
+			&model.Resource{},
 		)
 		if err != nil {
 			return err
