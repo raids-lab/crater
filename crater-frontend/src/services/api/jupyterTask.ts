@@ -55,12 +55,17 @@ export interface VolumeMount {
   mountPath: string;
 }
 
+export interface Env {
+  name: string;
+  value: string;
+}
+
 export interface IJupyterCreate {
   name: string;
   resource: KubernetesResourceList;
   image: string;
   volumeMounts: VolumeMount[];
-  products: string[];
+  envs: Env[];
   useTensorBoard: boolean;
 }
 

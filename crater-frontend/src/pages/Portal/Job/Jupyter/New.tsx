@@ -23,7 +23,6 @@ import {
   apiJTaskImageList,
 } from "@/services/api/jupyterTask";
 import { cn } from "@/lib/utils";
-import { Cross2Icon } from "@radix-ui/react-icons";
 import { getAiKResource } from "@/utils/resource";
 import { toast } from "sonner";
 import {
@@ -31,15 +30,16 @@ import {
   CircleArrowDown,
   CircleArrowUp,
   CirclePlus,
+  XIcon,
 } from "lucide-react";
 import FormLabelMust from "@/components/custom/FormLabelMust";
 import Combobox from "@/components/form/Combobox";
-import { apiNodeLabelsList } from "@/services/api/nodelabel";
 import AccordionCard from "@/components/custom/AccordionCard";
 import { Separator } from "@/components/ui/separator";
 import { exportToJson, importFromJson } from "@/utils/form";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
+import { apiResourceList } from "@/services/api/resource";
 
 const formSchema = z.object({
   taskname: z
@@ -51,21 +51,45 @@ const formSchema = z.object({
       message: "作业名称最多包含 40 个字符",
     }),
   cpu: z.number().int().min(0, {
-    message: "暂不支持解除 CPU 配额上限",
+    message: "CPU 核数不能小于 0",
   }),
-  gpu: z.number().int().min(0, {
-    message: "指定的 GPU 卡数不能小于 0",
-  }),
+  gpu: z
+    .object({
+      count: z.number().int().min(0, {
+        message: "指定的 GPU 卡数不能小于 0",
+      }),
+      model: z.string().optional(),
+    })
+    .refine(
+      (gpu) => {
+        // If a is not null, then b must not be null
+        return (
+          gpu.count === 0 ||
+          (gpu.count > 0 && gpu.model !== null && gpu.model !== undefined)
+        );
+      },
+      {
+        message: "GPU 型号不能为空",
+        path: ["model"], // The path for the error message
+      },
+    ),
   memory: z.number().int().min(0, {
-    message: "暂不支持解除内存配额上限",
-  }),
-  gpuModel: z.string().min(1, {
-    message: "请选择节点 GPU 类型",
+    message: "内存大小不能小于 0",
   }),
   image: z.string().min(1, {
-    message: "作业镜像不能为空",
+    message: "容器镜像不能为空",
   }),
-  shareDirs: z.array(
+  envs: z.array(
+    z.object({
+      name: z.string().min(1, {
+        message: "环境变量名不能为空",
+      }),
+      value: z.string().min(1, {
+        message: "环境变量值不能为空",
+      }),
+    }),
+  ),
+  volumeMounts: z.array(
     z.object({
       subPath: z.string().min(1, {
         message: "挂载源不能为空",
@@ -90,34 +114,39 @@ const formSchema = z.object({
     }),
   ),
   // 添加 useTensorBoard 作为布尔类型的属性
-  useTensorBoard: z.boolean(),
+  observability: z
+    .object({
+      tbEnable: z.boolean(),
+      tbLogDir: z.string().optional(),
+    })
+    .refine(
+      (observability) => {
+        return (
+          !observability.tbEnable ||
+          (observability.tbEnable &&
+            observability.tbLogDir !== null &&
+            observability.tbLogDir !== undefined)
+        );
+      },
+      {
+        message: "TensorBoard 日志目录不能为空",
+        path: ["tbLogDir"],
+      },
+    ),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
 
-type MountDir = {
-  mountPath: string;
-  subPath: string;
-};
-
-const DataMount = "数据挂载";
+const EnvCard = "环境变量";
+const DataMountCard = "数据挂载";
+const TensorboardCard = "观测面板";
 
 const JupyterNew = () => {
   const [dataMountOpen, setDataMountOpen] = useState<string>();
+  const [envOpen, setEnvOpen] = useState<string>();
+  const [tensorboardOpen, setTensorboardOpen] = useState<string>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-
-  const convertShareDirs = (argsList: FormSchema["shareDirs"]): MountDir[] => {
-    const argsDict: MountDir[] = [];
-    argsList.forEach((dir) => {
-      const truePath = dir.subPath;
-      argsDict.push({
-        mountPath: dir.mountPath,
-        subPath: truePath,
-      });
-    });
-    return argsDict;
-  };
 
   const { mutate: createTask } = useMutation({
     mutationFn: (values: FormSchema) =>
@@ -125,16 +154,16 @@ const JupyterNew = () => {
         name: values.taskname,
         resource: getAiKResource(
           {
-            gpu: values.gpu,
+            gpu: values.gpu.count,
             memory: `${values.memory}Gi`,
             cpu: values.cpu,
           },
-          values.gpuModel,
+          values.gpu.model ?? undefined,
         ),
         image: values.image,
-        volumeMounts: convertShareDirs(values.shareDirs),
-        products: [],
-        useTensorBoard: values.useTensorBoard,
+        volumeMounts: values.volumeMounts,
+        envs: values.envs,
+        useTensorBoard: values.observability.tbEnable,
       }),
     onSuccess: async (_, { taskname }) => {
       await Promise.all([
@@ -158,41 +187,18 @@ const JupyterNew = () => {
     },
   });
 
-  const labelsInfo = useQuery({
+  const { data: resources } = useQuery({
     queryKey: ["label", "list"],
-    queryFn: apiNodeLabelsList,
+    queryFn: () => apiResourceList("nvidia.com"),
     select: (res) => {
-      const items = res.data.data.sort((a, b) => {
-        // make name is empty string to be the first
-        if (a.name === "") {
-          return -1;
-        }
-        if (b.name === "") {
-          return 1;
-        }
-        return b.priority - a.priority;
-      });
-      // create a map, key is item.resource, value is [item.label]
-      const dict = new Map<string, string[]>();
-      const list = new Array<{
-        value: string;
-        label: string;
-      }>();
-      items.forEach((item) => {
-        if (dict.has(item.resource)) {
-          dict.get(item.resource)?.push(item.label);
-        } else {
-          dict.set(item.resource, [item.label]);
-          list.push({
-            value: item.resource === "" ? "default" : item.resource,
-            label: item.resource === "" ? "默认 (不指定类型)" : item.name,
-          });
-        }
-      });
-      return {
-        dict,
-        list,
-      };
+      return res.data.data
+        .sort((a, b) => {
+          return b.amountSingleMax - a.amountSingleMax;
+        })
+        .map((item) => ({
+          value: item.label,
+          label: `${item.amountSingleMax}卡 · ${item.label}`,
+        }));
     },
   });
 
@@ -202,23 +208,36 @@ const JupyterNew = () => {
     defaultValues: {
       taskname: "",
       cpu: 1,
-      gpu: 0,
+      gpu: {
+        count: 0,
+      },
       memory: 2,
-      gpuModel: "",
       image: "",
-      shareDirs: [],
-      useTensorBoard: false,
+      volumeMounts: [],
+      envs: [],
+      observability: {
+        tbEnable: false,
+      },
     },
   });
 
   const currentValues = form.watch();
 
   const {
-    fields: shareDirsFields,
-    append: shareDirsAppend,
-    remove: shareDirsRemove,
+    fields: volumeMountFields,
+    append: volumeMountAppend,
+    remove: volumeMountRemove,
   } = useFieldArray<FormSchema>({
-    name: "shareDirs",
+    name: "volumeMounts",
+    control: form.control,
+  });
+
+  const {
+    fields: envFields,
+    append: envAppend,
+    remove: envRemove,
+  } = useFieldArray<FormSchema>({
+    name: "envs",
     control: form.control,
   });
 
@@ -263,9 +282,13 @@ const JupyterNew = () => {
                     importFromJson<FormSchema>(e.target.files?.[0])
                       .then((data) => {
                         form.reset(data);
-                        if (data.shareDirs.length > 0) {
-                          setDataMountOpen(DataMount);
+                        if (data.volumeMounts.length > 0) {
+                          setDataMountOpen(DataMountCard);
                         }
+                        if (data.envs.length > 0) {
+                          setEnvOpen(EnvCard);
+                        }
+                        toast.success(`导入配置成功`);
                       })
                       .catch(() => {
                         toast.error(`解析错误，导入配置失败`);
@@ -356,7 +379,7 @@ const JupyterNew = () => {
                   />
                   <FormField
                     control={form.control}
-                    name="gpu"
+                    name="gpu.count"
                     render={() => (
                       <FormItem>
                         <FormLabel>
@@ -366,7 +389,9 @@ const JupyterNew = () => {
                         <FormControl>
                           <Input
                             type="number"
-                            {...form.register("gpu", { valueAsNumber: true })}
+                            {...form.register("gpu.count", {
+                              valueAsNumber: true,
+                            })}
                           />
                         </FormControl>
                         <FormMessage />
@@ -400,26 +425,21 @@ const JupyterNew = () => {
               </div>
               <FormField
                 control={form.control}
-                name="gpuModel"
+                name="gpu.model"
                 render={({ field }) => (
-                  <FormItem
-                  // hidden={currentValues.gpu == 0}
-                  >
+                  <FormItem hidden={currentValues.gpu.count == 0}>
                     <FormLabel>
-                      节点类型
+                      GPU 型号
                       <FormLabelMust />
                     </FormLabel>
                     <FormControl>
                       <Combobox
-                        items={labelsInfo.data?.list ?? []}
-                        current={field.value}
+                        items={resources ?? []}
+                        current={field.value ?? ""}
                         handleSelect={(value) => field.onChange(value)}
-                        formTitle="节点类型"
+                        formTitle=" GPU 型号"
                       />
                     </FormControl>
-                    <FormDescription>
-                      如果不需要 GPU，选择默认即可
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -445,32 +465,16 @@ const JupyterNew = () => {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name={`useTensorBoard`}
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between">
-                    <FormLabel>使用TensorBoard</FormLabel>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
             </CardContent>
           </Card>
           <div className="flex flex-col gap-4">
-            <AccordionCard cardTitle="环境变量">TODO</AccordionCard>
             <AccordionCard
-              cardTitle={DataMount}
+              cardTitle={DataMountCard}
               value={dataMountOpen}
               setValue={setDataMountOpen}
             >
               <div className="mt-3 space-y-5">
-                {shareDirsFields.map((field, index) => (
+                {volumeMountFields.map((field, index) => (
                   <div key={field.id}>
                     <Separator
                       className={cn("mb-5", index === 0 && "hidden")}
@@ -478,7 +482,7 @@ const JupyterNew = () => {
                     <div className="space-y-5">
                       <FormField
                         control={form.control}
-                        name={`shareDirs.${index}.subPath`}
+                        name={`volumeMounts.${index}.subPath`}
                         render={({ field }) => (
                           <FormItem className="relative">
                             <FormLabel>
@@ -486,10 +490,10 @@ const JupyterNew = () => {
                               <FormLabelMust />
                             </FormLabel>
                             <button
-                              onClick={() => shareDirsRemove(index)}
-                              className="absolute -top-1.5 right-0 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+                              onClick={() => volumeMountRemove(index)}
+                              className="absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
                             >
-                              <Cross2Icon className="h-4 w-4" />
+                              <XIcon className="h-4 w-4" />
                               <span className="sr-only">Close</span>
                             </button>
                             <FormControl>
@@ -508,7 +512,7 @@ const JupyterNew = () => {
                                     handleSubmit={(item) => {
                                       field.onChange(item.id);
                                       form.setValue(
-                                        `shareDirs.${index}.mountPath`,
+                                        `volumeMounts.${index}.mountPath`,
                                         `/mnt/${item.name}`,
                                       );
                                     }}
@@ -525,7 +529,7 @@ const JupyterNew = () => {
                       />
                       <FormField
                         control={form.control}
-                        name={`shareDirs.${index}.mountPath`}
+                        name={`volumeMounts.${index}.mountPath`}
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>
@@ -550,15 +554,127 @@ const JupyterNew = () => {
                   variant="secondary"
                   className="w-full"
                   onClick={() =>
-                    shareDirsAppend({
+                    volumeMountAppend({
                       subPath: "",
                       mountPath: "",
                     })
                   }
                 >
                   <CirclePlus className="-ml-0.5 mr-1.5 h-4 w-4" />
-                  添加挂载数据
+                  添加{DataMountCard}
                 </Button>
+              </div>
+            </AccordionCard>{" "}
+            <AccordionCard
+              cardTitle={EnvCard}
+              value={envOpen}
+              setValue={setEnvOpen}
+            >
+              <div className="mt-3 space-y-5">
+                {envFields.map((field, index) => (
+                  <div key={field.id}>
+                    <Separator
+                      className={cn("mb-5", index === 0 && "hidden")}
+                    />
+                    <div className="space-y-5">
+                      <FormField
+                        control={form.control}
+                        name={`envs.${index}.name`}
+                        render={({ field }) => (
+                          <FormItem className="relative">
+                            <button
+                              onClick={() => envRemove(index)}
+                              className="absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+                            >
+                              <XIcon className="h-4 w-4" />
+                              <span className="sr-only">Close</span>
+                            </button>
+                            <FormLabel>
+                              变量名 {index + 1}
+                              <FormLabelMust />
+                            </FormLabel>
+                            <FormControl>
+                              <Input {...field} className="font-mono" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`envs.${index}.value`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              变量值 {index + 1}
+                              <FormLabelMust />
+                            </FormLabel>
+                            <FormControl>
+                              <Input {...field} className="font-mono" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() =>
+                    envAppend({
+                      name: "",
+                      value: "",
+                    })
+                  }
+                >
+                  <CirclePlus className="-ml-0.5 mr-1.5 h-4 w-4" />
+                  添加{EnvCard}
+                </Button>
+              </div>
+            </AccordionCard>
+            <AccordionCard
+              cardTitle={TensorboardCard}
+              value={tensorboardOpen}
+              setValue={setTensorboardOpen}
+            >
+              <div className="mt-3 space-y-4">
+                <FormField
+                  control={form.control}
+                  name={`observability.tbEnable`}
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between">
+                      <FormLabel>启用 Tensorboard</FormLabel>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name={`observability.tbLogDir`}
+                  render={({ field }) => (
+                    <FormItem
+                      className={cn({
+                        hidden: !currentValues.observability.tbEnable,
+                      })}
+                    >
+                      <FormControl>
+                        <Input {...field} className="font-mono" />
+                      </FormControl>
+                      <FormDescription>
+                        日志路径（仅支持采集个人文件夹下日志）
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </AccordionCard>
           </div>
