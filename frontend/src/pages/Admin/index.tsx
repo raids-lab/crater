@@ -18,6 +18,7 @@ import { Role } from "@/services/api/auth";
 import DashboardLayout from "@/components/layout/Dashboard";
 import { User } from "./User";
 import Volcano from "./Job/Volcano";
+import Resource from "./Cluster/Resource";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -34,6 +35,12 @@ const sidebarItems: SidebarItem[] = [
         route: {
           path: "label",
           lazy: () => import("./Cluster/Label"),
+        },
+      },
+      {
+        route: {
+          path: "resource",
+          element: <Resource />,
         },
       },
     ],
