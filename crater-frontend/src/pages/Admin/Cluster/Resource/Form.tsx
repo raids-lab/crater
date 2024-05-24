@@ -73,7 +73,7 @@ export function UpdateResourceForm({
   };
 
   return (
-    <DialogContent className="sm:max-w-[425px]">
+    <DialogContent>
       <DialogHeader>
         <DialogTitle>编辑资源</DialogTitle>
         <DialogDescription>{current.label} 的详细信息</DialogDescription>

@@ -79,10 +79,19 @@ const columns: ColumnDef<Resource>[] = [
   {
     accessorKey: "amount",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"资源总量"} />
+      <DataTableColumnHeader column={column} title={"总量"} />
     ),
     cell: ({ row }) => (
       <div className="font-mono">{row.getValue("amount")}</div>
+    ),
+  },
+  {
+    accessorKey: "amountSingleMax",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={"单节点最大数量"} />
+    ),
+    cell: ({ row }) => (
+      <div className="font-mono">{row.getValue("amountSingleMax")}</div>
     ),
   },
   {

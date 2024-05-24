@@ -7,6 +7,7 @@ export interface Resource {
   vendorDomain: string;
   resourceType: string;
   amount: number;
+  amountSingleMax: number;
   format: string;
   priority: number;
   label: string;
