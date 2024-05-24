@@ -14,7 +14,11 @@ export const adminPath: PathInfo = {
         },
         {
           path: "label",
-          title: "节点类型",
+          title: "节点标签",
+        },
+        {
+          path: "resource",
+          title: "资源列表",
         },
       ],
     },
