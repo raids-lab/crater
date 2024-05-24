@@ -73,15 +73,12 @@ func (mgr *ResourceMgr) ListResource(c *gin.Context) {
 }
 
 type (
-	Quantity struct {
-		Amount int64
-		Format string
+	quantity struct {
+		Amount          int64
+		AmountSingleMax int64
+		Format          string
 	}
 )
-
-func (q *Quantity) AddAmount(amount int64) {
-	q.Amount += amount
-}
 
 // SyncResource godoc
 // @Summary Get allocatable resources from the Kubernetes cluster and update the database
@@ -103,7 +100,7 @@ func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
 
 	// Create a map to store the resource quantities
 
-	reourceQuantities := make(map[string]Quantity)
+	reourceQuantities := make(map[string]quantity)
 
 	// Iterate over each node to get capacities: .status.allocatable
 	for i := range nodes.Items {
@@ -113,16 +110,20 @@ func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
 		for key, value := range resources {
 			// Get the label value
 			resourceName := key.String()
+			amount := value.Value()
 			// Get the number of quantities
-			quantity := value.Value()
 			// Add the quantity to the map
 			if q, ok := reourceQuantities[resourceName]; ok {
-				q.AddAmount(quantity)
+				q.Amount += amount
+				if amount > q.AmountSingleMax {
+					q.AmountSingleMax = amount
+				}
 				reourceQuantities[resourceName] = q
 			} else {
-				reourceQuantities[resourceName] = Quantity{
-					Amount: quantity,
-					Format: string(value.Format),
+				reourceQuantities[resourceName] = quantity{
+					Amount:          amount,
+					AmountSingleMax: amount,
+					Format:          string(value.Format),
 				}
 			}
 		}
@@ -131,7 +132,8 @@ func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
 	// Update the database with the latest information
 	r := query.Resource
 	for resourceName, quantity := range reourceQuantities {
-		info, err := r.WithContext(c).Where(r.ResourceName.Eq(resourceName)).Update(r.Amount, quantity.Amount)
+		info, err := r.WithContext(c).Where(r.ResourceName.Eq(resourceName)).
+			Updates(map[string]any{"amount": quantity.Amount, "amount_single_max": quantity.AmountSingleMax})
 		if err != nil {
 			resputil.Error(c, fmt.Sprintf("failed to update resource: %v", err), resputil.NotSpecified)
 			return
@@ -158,12 +160,13 @@ func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
 			}
 
 			newResource := model.Resource{
-				ResourceName: resourceName,
-				VendorDomain: vendorDomain,
-				ResourceType: resourceType,
-				Amount:       quantity.Amount,
-				Format:       quantity.Format,
-				Label:        label,
+				ResourceName:    resourceName,
+				VendorDomain:    vendorDomain,
+				ResourceType:    resourceType,
+				Amount:          quantity.Amount,
+				AmountSingleMax: quantity.AmountSingleMax,
+				Format:          quantity.Format,
+				Label:           label,
 			}
 			err := r.WithContext(c).Create(&newResource)
 			if err != nil {
@@ -173,7 +176,7 @@ func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
 		}
 	}
 
-	resputil.Success(c, reourceQuantities)
+	resputil.Success(c, nil)
 }
 
 type (

@@ -35,6 +35,7 @@ func newResource(db *gorm.DB, opts ...gen.DOOption) resource {
 	_resource.VendorDomain = field.NewString(tableName, "vendor_domain")
 	_resource.ResourceType = field.NewString(tableName, "resource_type")
 	_resource.Amount = field.NewInt64(tableName, "amount")
+	_resource.AmountSingleMax = field.NewInt64(tableName, "amount_single_max")
 	_resource.Format = field.NewString(tableName, "format")
 	_resource.Priority = field.NewInt(tableName, "priority")
 	_resource.Label = field.NewString(tableName, "label")
@@ -47,18 +48,19 @@ func newResource(db *gorm.DB, opts ...gen.DOOption) resource {
 type resource struct {
 	resourceDo resourceDo
 
-	ALL          field.Asterisk
-	ID           field.Uint
-	CreatedAt    field.Time
-	UpdatedAt    field.Time
-	DeletedAt    field.Field
-	ResourceName field.String
-	VendorDomain field.String
-	ResourceType field.String
-	Amount       field.Int64
-	Format       field.String
-	Priority     field.Int
-	Label        field.String
+	ALL             field.Asterisk
+	ID              field.Uint
+	CreatedAt       field.Time
+	UpdatedAt       field.Time
+	DeletedAt       field.Field
+	ResourceName    field.String
+	VendorDomain    field.String
+	ResourceType    field.String
+	Amount          field.Int64
+	AmountSingleMax field.Int64
+	Format          field.String
+	Priority        field.Int
+	Label           field.String
 
 	fieldMap map[string]field.Expr
 }
@@ -83,6 +85,7 @@ func (r *resource) updateTableName(table string) *resource {
 	r.VendorDomain = field.NewString(table, "vendor_domain")
 	r.ResourceType = field.NewString(table, "resource_type")
 	r.Amount = field.NewInt64(table, "amount")
+	r.AmountSingleMax = field.NewInt64(table, "amount_single_max")
 	r.Format = field.NewString(table, "format")
 	r.Priority = field.NewInt(table, "priority")
 	r.Label = field.NewString(table, "label")
@@ -110,7 +113,7 @@ func (r *resource) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (r *resource) fillFieldMap() {
-	r.fieldMap = make(map[string]field.Expr, 11)
+	r.fieldMap = make(map[string]field.Expr, 12)
 	r.fieldMap["id"] = r.ID
 	r.fieldMap["created_at"] = r.CreatedAt
 	r.fieldMap["updated_at"] = r.UpdatedAt
@@ -119,6 +122,7 @@ func (r *resource) fillFieldMap() {
 	r.fieldMap["vendor_domain"] = r.VendorDomain
 	r.fieldMap["resource_type"] = r.ResourceType
 	r.fieldMap["amount"] = r.Amount
+	r.fieldMap["amount_single_max"] = r.AmountSingleMax
 	r.fieldMap["format"] = r.Format
 	r.fieldMap["priority"] = r.Priority
 	r.fieldMap["label"] = r.Label
