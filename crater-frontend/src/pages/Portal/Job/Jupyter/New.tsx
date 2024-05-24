@@ -196,7 +196,7 @@ const JupyterNew = () => {
           return b.amountSingleMax - a.amountSingleMax;
         })
         .map((item) => ({
-          value: item.label,
+          value: item.name,
           label: `${item.amountSingleMax}卡 · ${item.label}`,
         }));
     },
