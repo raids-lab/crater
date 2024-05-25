@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	docs "github.com/raids-lab/crater/docs"
 	"github.com/raids-lab/crater/internal/handler"
+	"github.com/raids-lab/crater/internal/handler/vcjob"
 	"github.com/raids-lab/crater/internal/middleware"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/constants"
@@ -91,7 +92,7 @@ func (b *Backend) RegisterService(
 	contextMgr := handler.NewContextMgr(cl)
 	jwttokenMgr := handler.NewJWTTokenMgr()
 	recommenddljobMgr := handler.NewRecommendDLJobMgr(cl)
-	volcanoMgr := handler.NewVolcanojobMgr(cl, kc)
+	volcanoMgr := vcjob.NewVolcanojobMgr(cl, kc)
 	queueMgr := handler.NewQueueMgr(cl)
 	///////////////////////////////////////
 	//// Public routers, no need login ////
