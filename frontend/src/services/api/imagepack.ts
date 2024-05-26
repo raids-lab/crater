@@ -29,6 +29,10 @@ export type ImagePackInfoResponse = {
   };
 };
 
+export type ImagePackLogResponse = {
+  content: string;
+};
+
 export type ImagePackInfo = {
   id: number;
   nametag: string;
@@ -144,8 +148,20 @@ export const apiUserImagepackUpload = async (imageupload: ImagePackUpload) => {
   return response.data;
 };
 
-export const apiUserImagePackList = () =>
-  instance.get<IResponse<ImagePackInfoResponse[]>>(VERSION + "/images/list");
+export const apiUserImagePackList = (type: number) =>
+  instance.get<IResponse<ImagePackInfoResponse[]>>(
+    `${VERSION}/images/list?type=${type}`,
+  );
+
+export const apiUserImageCreateGet = (id: string) =>
+  instance.get<IResponse<ImagePackInfoResponse>>(
+    `${VERSION}/images/get?id=${id}`,
+  );
+
+export const apiUserImageCreateLog = (id: string) =>
+  instance.get<IResponse<ImagePackLogResponse>>(
+    `${VERSION}/images/log?id=${id}`,
+  );
 
 export interface ImageDeleteRequest {
   id: number;

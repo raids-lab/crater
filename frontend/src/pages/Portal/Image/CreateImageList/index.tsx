@@ -17,7 +17,6 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ImageCreateForm } from "./CreateForm";
-import { ImageUploadForm } from "./UploadForm";
 import { TableDate } from "@/components/custom/TableDate";
 import {
   ImagePackInfo,
@@ -42,12 +41,8 @@ import {
 } from "@/components/ui-custom/alert-dialog";
 import { Trash2, UserRoundMinus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { useNavigate, useRoutes } from "react-router-dom";
+import ImageCreateDetail from "../Info";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -58,13 +53,13 @@ const toolbarConfig: DataTableToolbarConfig = {
   getHeader: getHeader,
 };
 
-export const Component: FC = () => {
+export const ImageTable: FC = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [openSheet, setOpenSheet] = useState(false);
-  const [openSheet2, setOpenSheet2] = useState(false);
   const imagePackInfo = useQuery({
     queryKey: ["imagepack", "list"],
-    queryFn: () => apiUserImagePackList(),
+    queryFn: () => apiUserImagePackList(1),
     select: (res) => res.data.data,
   });
   const data: ImagePackInfo[] = useMemo(() => {
@@ -130,6 +125,14 @@ export const Component: FC = () => {
         <DataTableColumnHeader column={column} title={getHeader("nametag")} />
       ),
       cell: ({ row }) => (
+        <Button
+          onClick={() => navigate(`${row.original.id}`)}
+          variant={"link"}
+          className="h-8 px-0 text-left font-normal text-secondary-foreground"
+        >
+          {row.getValue("nametag")}
+        </Button>
+
         //     params: {
         //       Convs: 0,
         //       Activations: 0,
@@ -140,32 +143,33 @@ export const Component: FC = () => {
         //       Params: 0,
         //       ModelSize: 0,
         //     },
-        <TooltipProvider delayDuration={0}>
-          <Tooltip>
-            <TooltipTrigger>{row.getValue("nametag")}</TooltipTrigger>
-            <TooltipContent className="grid grid-cols-2 gap-1 p-4 font-mono">
-              <div className="col-span-2 pb-2 text-sm font-bold">
-                Profile 信息
-              </div>
-              <div>Convs: </div>
-              <div>{row.original.params.Convs}</div>
-              <div>Activations: </div>
-              <div>{row.original.params.Activations}</div>
-              <div>Denses: </div>
-              <div>{row.original.params.Denses}</div>
-              <div>Others: </div>
-              <div>{row.original.params.Others}</div>
-              <div>GFLOPs: </div>
-              <div>{row.original.params.GFLOPs.toFixed(2)}</div>
-              <div>BatchSize: </div>
-              <div>{row.original.params.BatchSize}</div>
-              <div>Params: </div>
-              <div>{row.original.params.Params}</div>
-              <div>ModelSize: </div>
-              <div>{row.original.params.ModelSize.toFixed(2)}</div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+
+        // <TooltipProvider delayDuration={0}>
+        //   <Tooltip>
+        //     <TooltipTrigger>{row.getValue("nametag")}</TooltipTrigger>
+        //     <TooltipContent className="grid grid-cols-2 gap-1 p-4 font-mono">
+        //       <div className="col-span-2 pb-2 text-sm font-bold">
+        //         Profile 信息
+        //       </div>
+        //       <div>Convs: </div>
+        //       <div>{row.original.params.Convs}</div>
+        //       <div>Activations: </div>
+        //       <div>{row.original.params.Activations}</div>
+        //       <div>Denses: </div>
+        //       <div>{row.original.params.Denses}</div>
+        //       <div>Others: </div>
+        //       <div>{row.original.params.Others}</div>
+        //       <div>GFLOPs: </div>
+        //       <div>{row.original.params.GFLOPs.toFixed(2)}</div>
+        //       <div>BatchSize: </div>
+        //       <div>{row.original.params.BatchSize}</div>
+        //       <div>Params: </div>
+        //       <div>{row.original.params.Params}</div>
+        //       <div>ModelSize: </div>
+        //       <div>{row.original.params.ModelSize.toFixed(2)}</div>
+        //     </TooltipContent>
+        //   </Tooltip>
+        // </TooltipProvider>
       ),
     },
     {
@@ -337,19 +341,21 @@ export const Component: FC = () => {
           <ImageCreateForm closeSheet={() => setOpenSheet(false)} />
         </SheetContent>
       </Sheet>
-      <Sheet open={openSheet2} onOpenChange={setOpenSheet2}>
-        <SheetTrigger asChild>
-          <Button className="h-8 min-w-fit">上传镜像</Button>
-        </SheetTrigger>
-        <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
-          <SheetHeader>
-            <SheetTitle>上传镜像</SheetTitle>
-            <SheetDescription>上传一个新的训练作业镜像</SheetDescription>
-          </SheetHeader>
-          <Separator className="mt-4" />
-          <ImageUploadForm closeSheet={() => setOpenSheet2(false)} />
-        </SheetContent>
-      </Sheet>
     </DataTable>
   );
+};
+
+export const Component = () => {
+  const routes = useRoutes([
+    {
+      index: true,
+      element: <ImageTable />,
+    },
+    {
+      path: ":id",
+      element: <ImageCreateDetail />,
+    },
+  ]);
+
+  return <>{routes}</>;
 };
