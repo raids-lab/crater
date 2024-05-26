@@ -36,7 +36,7 @@ type (
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param CreateTrainingReq body CreateTrainingReq true "CreateTrainingReq"
+// @Param CreateTrainingReq body any true "CreateTrainingReq"
 // @Success 200 {object} resputil.Response[any] "Success"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
