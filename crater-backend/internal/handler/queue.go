@@ -3,7 +3,6 @@ package handler
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/model"
@@ -19,8 +18,6 @@ import (
 
 const (
 	LabelKeyQueueCreatedBy = "crater.raids.io/queue-created-by"
-	LabelKeyQueueUser      = "crater.raids.io/queue-user"
-	LabelKeyQueueCreatedAt = "crater.raids.io/queue-created-at"
 )
 
 type QueueMgr struct {
@@ -120,6 +117,8 @@ type (
 		Capability string `json:"capability"`
 		// least quota
 		Guarantee string `json:"guarantee"`
+		// preempt quota
+		Deserved string `json:"deserved"`
 		// status
 		Type string `json:"type"`
 
@@ -140,8 +139,6 @@ type (
 
 		// Reservation is the profile of resource reservation for queue
 		Allocated string `json:"allocated"`
-
-		UserIDs []string `json:"userids"`
 
 		CreatedAt string `json:"created_at"`
 
@@ -189,8 +186,7 @@ func (mgr *QueueMgr) GetQueue(c *gin.Context) {
 		Inqueue:     queue.Status.Inqueue,
 		Completed:   queue.Status.Completed,
 		Allocated:   model.ResourceListToJSON(queue.Status.Allocated),
-		UserIDs:     strings.Split(queue.ObjectMeta.Labels[LabelKeyQueueUser], ","),
-		CreatedAt:   queue.ObjectMeta.Labels[LabelKeyQueueCreatedAt],
+		CreatedAt:   queue.ObjectMeta.CreationTimestamp.String(),
 		CreatedBy:   queue.ObjectMeta.Labels[LabelKeyQueueCreatedBy],
 	}
 	resputil.Success(c, resp)
@@ -206,12 +202,12 @@ type CreateQueueReq struct {
 	Capability string `json:"capability"`
 	// least quota
 	Guarantee string `json:"guarantee"`
+	// preempt quota
+	Deserved string `json:"deserved"`
 	// If specified, the pod owned by the queue will be scheduled with constraint
 	Affinity []string `json:"affinity"`
 	// Type define the type of queue
 	Type string `json:"type"`
-
-	UserIDs []string `json:"userids"`
 }
 
 // / CreateQueue godoc
@@ -260,11 +256,8 @@ func (mgr *QueueMgr) CreateQueue(c *gin.Context) {
 			}),
 		})
 	}
-	createdAt := fmt.Sprintf("%q", metav1.Now().Time)
 	labels := map[string]string{
-		LabelKeyQueueCreatedAt: createdAt,
 		LabelKeyQueueCreatedBy: token.Username,
-		LabelKeyQueueUser:      strings.Join(req.UserIDs, ","),
 	}
 	queue := &scheduling.Queue{
 		ObjectMeta: metav1.ObjectMeta{
@@ -299,12 +292,12 @@ type UpdateQueueReq struct {
 	Capability *string `json:"capability,omitempty"`
 	// least quota
 	Guarantee *string `json:"guarantee,omitempty"`
+	// preempt quota
+	Deserved string `json:"deserved,omitempty"`
 	// If specified, the pod owned by the queue will be scheduled with constraint
 	Affinity *[]string `json:"affinity,omitempty"`
 	// Type define the type of queue
 	Type *string `json:"type,omitempty"`
-
-	UserIDs *[]string `json:"userids,omitempty"`
 }
 
 // / UpdateQueue godoc
@@ -376,12 +369,6 @@ func (mgr *QueueMgr) UpdateQueue(c *gin.Context) {
 
 	if req.Type != nil {
 		queue.Spec.Type = *req.Type
-	}
-
-	if req.UserIDs != nil {
-		labels := queue.ObjectMeta.Labels
-		labels[LabelKeyQueueUser] = strings.Join(*req.UserIDs, ",")
-		queue.ObjectMeta.Labels = labels
 	}
 
 	if err := mgr.Update(c, queue); err != nil {

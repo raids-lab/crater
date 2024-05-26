@@ -85,7 +85,7 @@ func (b *Backend) RegisterService(
 	authMgr := handler.NewAuthMgr(aitaskCtrl, &httpClient)
 	labelMgr := handler.NewLabelMgr(kc)
 	resoueceMgr := handler.NewResourceMgr(kc)
-	projectMgr := handler.NewProjectMgr(aitaskCtrl)
+	projectMgr := handler.NewProjectMgr(aitaskCtrl, cl)
 	nodeMgr := handler.NewNodeMgr(&nodeClient)
 	userMgr := handler.NewUserMgr()
 	imagepackMgr := handler.NewImagePackMgr(&logClient, &crclient.ImagePackController{Client: cl}, &harborClient)
