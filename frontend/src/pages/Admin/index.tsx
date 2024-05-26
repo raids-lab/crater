@@ -11,7 +11,6 @@ import {
 import OverviewIcon from "@/components/icon/OverviewIcon";
 import DatabaseIcon from "@/components/icon/DatabaseIcon";
 import LightHouseIcon from "@/components/icon/LightHouseIcon";
-import PersonalProject from "./Project/Personal";
 import { GroupUser } from "./Project/Group";
 import ServerIcon from "@/components/icon/ServerIcon";
 import { Role } from "@/services/api/auth";
@@ -19,6 +18,7 @@ import DashboardLayout from "@/components/layout/Dashboard";
 import { User } from "./User";
 import Volcano from "./Job/Volcano";
 import Resource from "./Cluster/Resource";
+import UserProjectManagement from "./Project/projectUser";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -48,20 +48,11 @@ const sidebarItems: SidebarItem[] = [
   {
     path: "project",
     icon: ArchiveIcon,
-    children: [
-      {
-        route: {
-          path: "personal",
-          element: <PersonalProject />,
-        },
-      },
-      {
-        route: {
-          path: "team",
-          element: <GroupUser />,
-        },
-      },
-    ],
+    children: [],
+    route: {
+      path: "project",
+      element: <GroupUser />,
+    },
   },
   {
     path: "user",
@@ -163,6 +154,10 @@ export const adminRoute: RouteObject = {
       );
     }),
     ...sidebarMenus.map((item) => item.route),
+    {
+      path: "/admin/project/:id",
+      element: <UserProjectManagement />,
+    },
     {
       path: "*",
       element: <h1>404</h1>,
