@@ -48,12 +48,12 @@ export const craterPath: PathInfo = {
       title: "镜像管理",
       children: [
         {
-          path: "list",
-          title: "镜像列表",
+          path: "createimage",
+          title: "镜像制作",
         },
         {
-          path: "make",
-          title: "镜像制作",
+          path: "uploadimage",
+          title: "镜像上传",
         },
       ],
     },

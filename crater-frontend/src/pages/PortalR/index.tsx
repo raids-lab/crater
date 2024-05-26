@@ -39,7 +39,7 @@ const sidebarItems: SidebarItem[] = [
       {
         route: {
           path: "list",
-          lazy: () => import("../Portal/Image/List"),
+          lazy: () => import("../Portal/Image/CreateImageList"),
         },
       },
       {
