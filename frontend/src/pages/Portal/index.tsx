@@ -62,11 +62,20 @@ const sidebarItems: SidebarItem[] = [
   {
     path: "image",
     icon: ContainerIcon,
-    children: [],
-    route: {
-      path: "image",
-      lazy: () => import("./Image/List"),
-    },
+    children: [
+      {
+        route: {
+          path: "createimage/*",
+          lazy: () => import("./Image/CreateImageList"),
+        },
+      },
+      {
+        route: {
+          path: "uploadimage/*",
+          lazy: () => import("./Image/UploadImageList"),
+        },
+      },
+    ],
   },
   {
     path: "data",
