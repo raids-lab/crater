@@ -1,11 +1,15 @@
 package handler
 
 import (
+	"sort"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/samber/lo"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,9 +36,23 @@ func (mgr *ContextMgr) RegisterProtected(g *gin.RouterGroup) {
 func (mgr *ContextMgr) RegisterAdmin(_ *gin.RouterGroup) {}
 
 type (
+	ResourceBase struct {
+		Amount int64  `json:"amount"`
+		Format string `json:"format"`
+	}
+
+	ResourceResp struct {
+		Label      string        `json:"label"`
+		Allocated  *ResourceBase `json:"allocated"`
+		Guarantee  *ResourceBase `json:"guarantee"`
+		Deserved   *ResourceBase `json:"deserved"`
+		Capability *ResourceBase `json:"capability"`
+	}
+
 	QuotaResp struct {
-		Capability v1.ResourceList `json:"capability"`
-		Allocated  v1.ResourceList `json:"allocated"`
+		CPU    ResourceResp   `json:"cpu"`
+		Memory ResourceResp   `json:"memory"`
+		GPUs   []ResourceResp `json:"gpus"`
 	}
 )
 
@@ -49,6 +67,8 @@ type (
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "other errors"
 // @Router /v1/context/queue [get]
+//
+//nolint:gocyclo // TODO: refactor
 func (mgr *ContextMgr) GetQueue(c *gin.Context) {
 	token := util.GetToken(c)
 	if token.QueueName == util.QueueNameNull {
@@ -63,7 +83,91 @@ func (mgr *ContextMgr) GetQueue(c *gin.Context) {
 		return
 	}
 
-	resputil.Success(c, QuotaResp{Capability: queue.Spec.Capability, Allocated: queue.Status.Allocated})
+	allocated := queue.Status.Allocated
+	guarantee := queue.Spec.Guarantee.Resource
+	deserved := queue.Spec.Deserved
+	capability := queue.Spec.Capability
+
+	// resources is a map, key is the resource name, value is the resource amount
+	resources := make(map[v1.ResourceName]ResourceResp)
+
+	for name, quantity := range allocated {
+		if name == v1.ResourceCPU || name == v1.ResourceMemory || strings.HasPrefix(string(name), "nvidia.com/") {
+			resources[name] = ResourceResp{
+				Label: string(name),
+				Allocated: lo.ToPtr(ResourceBase{
+					Amount: quantity.Value(),
+					Format: string(quantity.Format),
+				}),
+			}
+		}
+	}
+	for name, quantity := range guarantee {
+		if v, ok := resources[name]; ok {
+			v.Guarantee = lo.ToPtr(ResourceBase{
+				Amount: quantity.Value(),
+				Format: string(quantity.Format),
+			})
+			resources[name] = v
+		}
+	}
+	for name, quantity := range deserved {
+		if v, ok := resources[name]; ok {
+			v.Deserved = lo.ToPtr(ResourceBase{
+				Amount: quantity.Value(),
+				Format: string(quantity.Format),
+			})
+			resources[name] = v
+		}
+	}
+	for name, quantity := range capability {
+		if v, ok := resources[name]; ok {
+			v.Capability = lo.ToPtr(ResourceBase{
+				Amount: quantity.Value(),
+				Format: string(quantity.Format),
+			})
+			resources[name] = v
+		}
+	}
+
+	// if capability is not set, read max from db
+	r := query.Resource
+	for name, resource := range resources {
+		if resource.Capability == nil {
+			resouece, err := r.WithContext(c).Where(r.ResourceName.Eq(string(name))).First()
+			if err != nil {
+				continue
+			}
+			resource.Capability = &ResourceBase{
+				Amount: resouece.Amount,
+				Format: resouece.Format,
+			}
+			resources[name] = resource
+		}
+	}
+
+	// map contains cpu, memory, gpus, get them from the map
+	cpu := resources[v1.ResourceCPU]
+	cpu.Label = "cpu"
+	memory := resources[v1.ResourceMemory]
+	memory.Label = "mem"
+	var gpus []ResourceResp
+	for name, resource := range resources {
+		if strings.HasPrefix(string(name), "nvidia.com/") {
+			// convert nvidia.com/v100 to v100
+			resource.Label = strings.TrimPrefix(string(name), "nvidia.com/")
+			gpus = append(gpus, resource)
+		}
+	}
+	sort.Slice(gpus, func(i, j int) bool {
+		return gpus[i].Label < gpus[j].Label
+	})
+
+	resputil.Success(c, QuotaResp{
+		CPU:    cpu,
+		Memory: memory,
+		GPUs:   gpus,
+	})
 }
 
 type (

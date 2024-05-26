@@ -34,7 +34,7 @@ require (
 	k8s.io/client-go v0.30.0
 	sigs.k8s.io/controller-runtime v0.18.1
 	sigs.k8s.io/scheduler-plugins v0.28.9
-	volcano.sh/apis v1.8.2
+	volcano.sh/apis v1.9.0
 )
 
 require (
