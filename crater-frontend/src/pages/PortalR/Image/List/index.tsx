@@ -142,7 +142,7 @@ export const Component: FC = () => {
   const [openSheet, setOpenSheet] = useState(false);
   const imagePackInfo = useQuery({
     queryKey: ["imagelink", "status"],
-    queryFn: () => apiUserImagePackList(),
+    queryFn: () => apiUserImagePackList(1),
     select: (res) => res.data.data,
   });
   const data: ImagePackInfo[] = useMemo(() => {
