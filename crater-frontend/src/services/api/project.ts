@@ -44,3 +44,52 @@ export const apiProjectCreate = (project: ICreateProject) =>
 
 export const apiProjectList = () =>
   instance.get<IResponse<ProjectBasic[]>>(VERSION + "/projects");
+
+export interface IDeleteProjectReq {
+  id: string;
+}
+
+export interface IDeleteProjectResp {
+  name: string;
+}
+export const apiProjectDelete = (project: IDeleteProjectReq) =>
+  instance.delete<IResponse<IDeleteProjectResp>>(
+    VERSION + "/admin/projects/" + project.id,
+  );
+
+export interface User {
+  id: number;
+  name: string;
+  role: number;
+  accessmode: number;
+}
+
+export enum Access {
+  NA = 1,
+  RO,
+  RW,
+  AO,
+}
+
+export const apiAddUser = async (pid: number, user: User) =>
+  instance.post<IResponse<User>>(
+    VERSION + "/admin/projects/add/" + pid + "/" + user.id,
+    { role: user.role, accessmode: user.accessmode },
+  );
+
+export const apiUpdateUser = async (pid: number, user: User) =>
+  instance.post<IResponse<User>>(
+    VERSION + "/admin/projects/update/" + pid + "/" + user.id,
+    { role: user.role, accessmode: user.accessmode },
+  );
+
+export const apiRemoveUser = async (pid: number, user: User) =>
+  instance.delete<IResponse<User>>(
+    VERSION + "/admin/projects/" + pid + "/" + user.id,
+  );
+
+export const apiUserInProjectList = (pid: number) =>
+  instance.get<IResponse<User[]>>(VERSION + "/admin/projects/userIn/" + pid);
+
+export const apiUserOutOfProjectList = (pid: number) =>
+  instance.get<IResponse<User[]>>(VERSION + "/admin/projects/userOutOf/" + pid);
