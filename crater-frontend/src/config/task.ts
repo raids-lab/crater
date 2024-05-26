@@ -1,2 +1,2 @@
 // Refresh Interval: 5s
-export const REFETCH_INTERVAL = 5000;
+export const REFETCH_INTERVAL = 10000;

@@ -168,7 +168,7 @@ const JupyterNew = () => {
     onSuccess: async (_, { taskname }) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["jupyter", "list"] }),
-        queryClient.invalidateQueries({ queryKey: ["aitask", "quota"] }),
+        queryClient.invalidateQueries({ queryKey: ["context", "quota"] }),
         queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
       ]);
       toast.success(`作业 ${taskname} 创建成功`);
