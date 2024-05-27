@@ -140,6 +140,12 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 						},
 						Spec: podSpec,
 					},
+					Policies: []batch.LifecyclePolicy{
+						{
+							Action: bus.CompleteJobAction,
+							Event:  bus.TaskCompletedEvent,
+						},
+					},
 				},
 			},
 		},
