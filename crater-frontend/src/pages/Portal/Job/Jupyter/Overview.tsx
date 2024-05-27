@@ -15,8 +15,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  IJupyterResp,
-  apiJupyterDelete,
+  IJobResp,
+  apiJobDelete,
   apiJupyterTokenGet,
   apiJupyterList,
   JobPhase,
@@ -41,7 +41,7 @@ import {
 import { CardTitle } from "@/components/ui-custom/card";
 import { PlayIcon, PlusCircleIcon, Trash } from "lucide-react";
 
-interface JTaskInfo extends IJupyterResp {}
+interface JTaskInfo extends IJobResp {}
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -68,9 +68,9 @@ export const JupyterOverview = () => {
     isLoading,
     dataUpdatedAt,
   } = useQuery({
-    queryKey: ["jupyter", "list"],
+    queryKey: ["job", "interactive"],
     queryFn: () => apiJupyterList(),
-    select: (res) => res.data.data,
+    select: (res) => res.data.data.filter((item) => item.jobType === "jupyter"),
     refetchInterval: REFETCH_INTERVAL,
   });
 
@@ -78,7 +78,7 @@ export const JupyterOverview = () => {
     try {
       // 并行发送所有异步请求
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["jupyter", "list"] }),
+        queryClient.invalidateQueries({ queryKey: ["job", "interactive"] }),
         queryClient.invalidateQueries({ queryKey: ["aitask", "quota"] }),
         queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
       ]);
@@ -88,7 +88,7 @@ export const JupyterOverview = () => {
   };
 
   const { mutate: deleteJTask } = useMutation({
-    mutationFn: (jobName: string) => apiJupyterDelete(jobName),
+    mutationFn: (jobName: string) => apiJobDelete(jobName),
     onSuccess: async () => {
       await refetchTaskList();
       toast.success("作业已删除");
@@ -224,10 +224,7 @@ export const JupyterOverview = () => {
                     <AlertDialogCancel>取消</AlertDialogCancel>
                     <AlertDialogAction
                       variant="destructive"
-                      onClick={() => {
-                        // check if browser support clipboard
-                        deleteJTask(taskInfo.jobName);
-                      }}
+                      onClick={() => deleteJTask(taskInfo.jobName)}
                     >
                       删除
                     </AlertDialogAction>

@@ -125,7 +125,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
         schedulerName: values.schedulerName,
       }),
     onSuccess: async (_, { taskname }) => {
-      await queryClient.invalidateQueries({ queryKey: ["aitask", "list"] });
+      await queryClient.invalidateQueries({ queryKey: ["job", "list"] });
       toast.success(`作业 ${taskname} 创建成功`);
       closeSheet();
     },

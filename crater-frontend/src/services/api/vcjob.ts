@@ -16,15 +16,17 @@ export enum JobPhase {
 }
 
 export const apiJupyterList = () =>
-  instance.get<IResponse<IJupyterResp[]>>(VERSION + "/vcjobs", {});
+  instance.get<IResponse<IJobResp[]>>(VERSION + "/vcjobs", {});
 
-export interface IJupyterResp {
+export interface IJobResp {
   name: string;
   jobName: string;
+  jobType: string;
   queue: string;
   status: JobPhase;
   createdAt: string;
   startedAt: string;
+  completedAt: string;
 }
 
 export interface PodDetail {
@@ -90,7 +92,7 @@ export const apiTrainingCreate = async (task: ITrainingCreate) => {
   return response.data;
 };
 
-export const apiJupyterDelete = async (jobName: string) => {
+export const apiJobDelete = async (jobName: string) => {
   const response = await instance.delete<IResponse<string>>(
     `${VERSION}/vcjobs/${jobName}`,
   );

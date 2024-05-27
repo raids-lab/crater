@@ -164,7 +164,7 @@ const JupyterNew = () => {
       }),
     onSuccess: async (_, { taskname }) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["jupyter", "list"] }),
+        queryClient.invalidateQueries({ queryKey: ["job", "list"] }),
         queryClient.invalidateQueries({ queryKey: ["context", "quota"] }),
         queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
       ]);

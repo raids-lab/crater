@@ -55,11 +55,12 @@ import {
   apiJupyterTokenGet,
   IJupyterDetail,
   JobPhase,
-  apiJupyterDelete,
+  apiJobDelete,
   apiJupyterGetDetail,
   apiJupyterLog,
   apiJupyterYaml,
 } from "@/services/api/vcjob";
+import LogSheet from "@/components/custom/LogSheet";
 interface Resource {
   [key: string]: string;
 }
@@ -104,7 +105,6 @@ const JupyterDetail = () => {
     },
   });
 
-  const [showLog, setShowLog] = useState(false);
   const [showYaml, setShowYaml] = useState(false);
   const [isFetchingLogs, setFetchingLogs] = useState(false);
   const [isFetchingYaml, setFetchingYaml] = useState(false);
@@ -139,7 +139,7 @@ const JupyterDetail = () => {
 
   const navigate = useNavigate();
   const { mutate: deleteJTask } = useMutation({
-    mutationFn: (jobName: string) => apiJupyterDelete(jobName),
+    mutationFn: (jobName: string) => apiJobDelete(jobName),
     onSuccess: () => {
       navigate("/jupyter");
       toast.success("作业已删除");
@@ -482,34 +482,14 @@ const JupyterDetail = () => {
                   <TableCell>{pod.status || "---"}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Dialog open={showLog} onOpenChange={setShowLog}>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="default"
-                            onClick={() => handleFetchLogs(jobName)}
-                          >
-                            Stdout/Stderr
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[800px]">
-                          <DialogHeader>
-                            <DialogTitle>Stdout/Stderr logs</DialogTitle>
-                          </DialogHeader>
-                          <Textarea
-                            className="h-72 rounded-md border"
-                            value={logs}
-                            disabled
-                          />
-                          <DialogFooter>
-                            <Button
-                              type="submit"
-                              onClick={() => setShowLog(false)}
-                            >
-                              Close
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
+                      <LogSheet log={logs} title={pod.name}>
+                        <Button
+                          variant="default"
+                          onClick={() => handleFetchLogs(jobName)}
+                        >
+                          Stdout/Stderr
+                        </Button>
+                      </LogSheet>
                     </div>
                   </TableCell>
                 </TableRow>

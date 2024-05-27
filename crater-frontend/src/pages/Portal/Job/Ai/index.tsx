@@ -19,21 +19,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  apiAiTaskDelete,
-  apiAiJobList,
-  convertAiTask,
-} from "@/services/api/aiTask";
 import { DataTable } from "@/components/custom/OldDataTable";
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
-import { useNavigate, useRoutes } from "react-router-dom";
-import AiJobDetail from "./Detail";
+import { Link, useNavigate, useRoutes } from "react-router-dom";
 import { TableDate } from "@/components/custom/TableDate";
-import { cn } from "@/lib/utils";
 import Quota from "../Jupyter/Quota";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { toast } from "sonner";
@@ -48,19 +41,14 @@ import {
 import { CardTitle } from "@/components/ui-custom/card";
 import SplitButton from "@/components/custom/SplitButton";
 import TrainingNew from "./New/Training";
-
-type TaskInfo = {
-  id: number;
-  title: string;
-  taskType: string;
-  status: string;
-  priority: string;
-  profileStatus: string;
-  createdAt: string;
-  startedAt: string;
-  finishAt: string;
-  gpus: string | number | undefined;
-};
+import {
+  IJobResp,
+  JobPhase,
+  apiJobDelete,
+  apiJupyterList,
+} from "@/services/api/vcjob";
+import JobPhaseLabel from "@/components/custom/JobPhaseLabel";
+import JupyterDetail from "../Jupyter/Detail";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -88,18 +76,17 @@ const toolbarConfig: DataTableToolbarConfig = {
 };
 
 const AiJobHome = () => {
-  const [data, setData] = useState<TaskInfo[]>([]);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   const {
-    data: taskList,
+    data: jobList,
     isLoading,
     dataUpdatedAt,
   } = useQuery({
-    queryKey: ["aitask", "list"],
-    queryFn: () => apiAiJobList("training", 100, 0),
-    select: (res) => res.data.data.rows,
+    queryKey: ["job", "batch"],
+    queryFn: () => apiJupyterList(),
+    select: (res) => res.data.data.filter((item) => item.jobType !== "jupyter"),
     refetchInterval: REFETCH_INTERVAL,
   });
 
@@ -107,7 +94,7 @@ const AiJobHome = () => {
     try {
       // 并行发送所有异步请求
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["aitask", "list"] }),
+        queryClient.invalidateQueries({ queryKey: ["job", "batch"] }),
         queryClient.invalidateQueries({ queryKey: ["aitask", "quota"] }),
         queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
       ]);
@@ -117,14 +104,14 @@ const AiJobHome = () => {
   };
 
   const { mutate: deleteTask } = useMutation({
-    mutationFn: (id: number) => apiAiTaskDelete(id),
+    mutationFn: apiJobDelete,
     onSuccess: async () => {
       await refetchTaskList();
       toast.success("作业已删除");
     },
   });
 
-  const columns = useMemo<ColumnDef<TaskInfo>[]>(
+  const columns = useMemo<ColumnDef<IJobResp>[]>(
     () => [
       {
         id: "select",
@@ -138,45 +125,30 @@ const AiJobHome = () => {
           />
         ),
         cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
-          />
+          <div>
+            <Checkbox
+              checked={row.getIsSelected()}
+              onCheckedChange={(value) => row.toggleSelected(!!value)}
+              aria-label="Select row"
+            />
+          </div>
         ),
         enableSorting: false,
         enableHiding: false,
       },
-
       {
-        accessorKey: "id",
+        accessorKey: "name",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("id")} />
-        ),
-        cell: ({ row }) => <>{row.getValue("id")}</>,
-        enableSorting: false,
-      },
-      {
-        accessorKey: "title",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("title")} />
+          <DataTableColumnHeader column={column} title={getHeader("name")} />
         ),
         cell: ({ row }) => (
-          <Button
-            onClick={() => navigate(`${row.original.id}`)}
-            variant={"link"}
-            className="h-8 px-0 text-left font-normal text-secondary-foreground"
+          <Link
+            to={row.original.jobName}
+            className="underline-offset-4 hover:underline"
           >
-            {row.getValue("title")}
-          </Button>
+            {row.getValue("name")}
+          </Link>
         ),
-      },
-      {
-        accessorKey: "gpus",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("gpus")} />
-        ),
-        cell: ({ row }) => <>{row.getValue("gpus")}</>,
       },
       {
         accessorKey: "status",
@@ -184,95 +156,7 @@ const AiJobHome = () => {
           <DataTableColumnHeader column={column} title={getHeader("status")} />
         ),
         cell: ({ row }) => {
-          const status = statuses.find(
-            (status) => status.value === row.getValue("status"),
-          );
-          if (!status) {
-            return null;
-          }
-          return (
-            <div className="flex flex-row items-center justify-start">
-              <div
-                className={cn("flex h-3 w-3 rounded-full", {
-                  "bg-purple-500 hover:bg-purple-400":
-                    status.value === "Queueing",
-                  "bg-slate-500 hover:bg-slate-400": status.value === "Created",
-                  "bg-sky-500 hover:bg-sky-400": status.value === "Running",
-                  "bg-red-500 hover:bg-red-400": status.value === "Failed",
-                  "bg-emerald-500 hover:bg-emerald-400":
-                    status.value === "Succeeded",
-                  "bg-orange-500 hover:bg-orange-400":
-                    status.value === "Preempted",
-                })}
-              ></div>
-              <div className="ml-1.5">{status.label}</div>
-            </div>
-          );
-        },
-        filterFn: (row, id, value) => {
-          return (value as string[]).includes(row.getValue(id));
-        },
-      },
-      {
-        accessorKey: "priority",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("priority")}
-          />
-        ),
-        cell: ({ row }) => {
-          const priority = priorities.find(
-            (priority) => priority.value === row.getValue("priority"),
-          );
-          if (!priority) {
-            return null;
-          }
-          return (
-            <div className="flex items-center">
-              {priority.icon && (
-                <priority.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-              )}
-              <span>{priority.label}</span>
-            </div>
-            // <Badge
-            //   className={cn("flex w-fit items-center px-2 font-normal", {
-            //     "bg-secondary text-secondary-foreground hover:bg-secondary/80":
-            //       priority.value === "low",
-            //   })}
-            // >
-            //   {priority.icon && <priority.icon className="mr-1 h-4 w-4" />}
-            //   <span>{priority.label}</span>
-            // </Badge>
-          );
-        },
-        filterFn: (row, id, value) => {
-          return (value as string[]).includes(row.getValue(id));
-        },
-      },
-      {
-        accessorKey: "profileStatus",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("profileStatus")}
-          />
-        ),
-        cell: ({ row }) => {
-          const profiling = profilingStatuses.find(
-            (profiling) => profiling.value === row.getValue("profileStatus"),
-          );
-          if (!profiling) {
-            return null;
-          }
-          return (
-            <div className="flex items-center">
-              {profiling.icon && (
-                <profiling.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-              )}
-              <span>{profiling.label}</span>
-            </div>
-          );
+          return <JobPhaseLabel jobPhase={row.getValue<JobPhase>("status")} />;
         },
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id));
@@ -305,15 +189,15 @@ const AiJobHome = () => {
         sortingFn: "datetime",
       },
       {
-        accessorKey: "finishAt",
+        accessorKey: "completedAt",
         header: ({ column }) => (
           <DataTableColumnHeader
             column={column}
-            title={getHeader("finishAt")}
+            title={getHeader("completedAt")}
           />
         ),
         cell: ({ row }) => {
-          return <TableDate date={row.getValue("finishAt")}></TableDate>;
+          return <TableDate date={row.getValue("completedAt")}></TableDate>;
         },
         sortingFn: "datetime",
       },
@@ -322,7 +206,6 @@ const AiJobHome = () => {
         enableHiding: false,
         cell: ({ row }) => {
           const taskInfo = row.original;
-
           return (
             <AlertDialog>
               <DropdownMenu>
@@ -334,7 +217,9 @@ const AiJobHome = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>操作</DropdownMenuLabel>
-                  <DropdownMenuItem onClick={() => navigate(`${taskInfo.id}`)}>
+                  <DropdownMenuItem
+                    onClick={() => navigate(`${taskInfo.jobName}`)}
+                  >
                     详情
                   </DropdownMenuItem>
                   <AlertDialogTrigger asChild>
@@ -346,17 +231,14 @@ const AiJobHome = () => {
                 <AlertDialogHeader>
                   <AlertDialogTitle>删除作业</AlertDialogTitle>
                   <AlertDialogDescription>
-                    作业「{taskInfo?.title}」将不再可见，请谨慎操作。
+                    作业「{taskInfo?.name}」将不再可见，请谨慎操作。
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>取消</AlertDialogCancel>
                   <AlertDialogAction
                     variant="destructive"
-                    onClick={() => {
-                      // check if browser support clipboard
-                      deleteTask(taskInfo.id);
-                    }}
+                    onClick={() => deleteTask(taskInfo.jobName)}
                   >
                     删除
                   </AlertDialogAction>
@@ -369,31 +251,6 @@ const AiJobHome = () => {
     ],
     [deleteTask, navigate],
   );
-
-  useEffect(() => {
-    if (isLoading) return;
-    if (!taskList) return;
-    const tableData: TaskInfo[] = taskList
-      .filter((task) => !task.isDeleted)
-      .map((t) => {
-        const task = convertAiTask(t);
-        return {
-          id: task.id,
-          title: task.taskName,
-          taskType: task.taskType,
-          status: task.status,
-          priority: task.slo ? "high" : "low",
-          profileStatus:
-            // 分析状态：profileStatus = 1 或 2 都显示分析中，不需要等待分析这个选项了
-            task.profileStatus === 1 ? "2" : task.profileStatus.toString(),
-          createdAt: task.createdAt,
-          startedAt: task.startedAt,
-          finishAt: task.finishAt,
-          gpus: task.resourceRequest["nvidia.com/gpu"],
-        };
-      });
-    setData(tableData);
-  }, [taskList, isLoading]);
 
   const updatedAt = useMemo(() => {
     return new Date(dataUpdatedAt).toLocaleString();
@@ -427,11 +284,10 @@ const AiJobHome = () => {
         <Quota />
       </div>
       <DataTable
-        data={data}
+        data={jobList ?? []}
         columns={columns}
         toolbarConfig={toolbarConfig}
         loading={isLoading}
-        className="col-span-3"
       ></DataTable>
       <div className="flex flex-row items-center justify-start space-x-2">
         <div className="pl-2 text-sm text-muted-foreground">
@@ -454,7 +310,7 @@ export const Component = () => {
     },
     {
       path: ":id",
-      element: <AiJobDetail />,
+      element: <JupyterDetail />,
     },
   ]);
 

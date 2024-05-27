@@ -1,7 +1,7 @@
 // https://github.com/shadcn-ui/ui/issues/355
 import React, { useEffect, useMemo } from "react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { ChevronRight, type LucideIcon } from "lucide-react";
 import useResizeObserver from "use-resize-observer";
@@ -76,6 +76,7 @@ const Tree = React.forwardRef<HTMLDivElement, TreeProps>(
               ))}
             </ul>
           </div>
+          <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </div>
     );
