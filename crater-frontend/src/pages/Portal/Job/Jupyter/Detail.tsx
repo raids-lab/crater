@@ -59,7 +59,7 @@ import {
   apiJupyterGetDetail,
   apiJupyterLog,
   apiJupyterYaml,
-} from "@/services/api/jupyterTask";
+} from "@/services/api/vcjob";
 interface Resource {
   [key: string]: string;
 }

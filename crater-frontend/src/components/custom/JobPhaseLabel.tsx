@@ -1,4 +1,4 @@
-import { JobPhase } from "@/services/api/jupyterTask";
+import { JobPhase } from "@/services/api/vcjob";
 import { cn } from "@/lib/utils";
 import { Badge } from "../ui/badge";
 

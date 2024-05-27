@@ -10,8 +10,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,17 +17,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { NewTaskForm } from "./Form";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useEffect, useMemo, useState } from "react";
-import { Separator } from "@/components/ui/separator";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   apiAiTaskDelete,
@@ -56,6 +46,8 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui-custom/card";
+import SplitButton from "@/components/custom/SplitButton";
+import TrainingNew from "./New/Training";
 
 type TaskInfo = {
   id: number;
@@ -96,7 +88,6 @@ const toolbarConfig: DataTableToolbarConfig = {
 };
 
 const AiJobHome = () => {
-  const [openSheet, setOpenSheet] = useState(false);
   const [data, setData] = useState<TaskInfo[]>([]);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -421,20 +412,16 @@ const AiJobHome = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Sheet open={openSheet} onOpenChange={setOpenSheet}>
-              <SheetTrigger asChild>
-                <Button>创建批处理作业</Button>
-              </SheetTrigger>
-              {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
-              <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
-                <SheetHeader>
-                  <SheetTitle>新建作业</SheetTitle>
-                  <SheetDescription>创建一个新的 AI 训练作业</SheetDescription>
-                </SheetHeader>
-                <Separator className="mt-4" />
-                <NewTaskForm closeSheet={() => setOpenSheet(false)} />
-              </SheetContent>
-            </Sheet>
+            <SplitButton
+              defaultValue="training"
+              urls={[
+                { url: "training", name: "单机作业" },
+                { url: "pytorch", name: " Pytorch 作业" },
+                { url: "tensorflow", name: " Tensorflow 作业" },
+                { url: "ray", name: " Ray 作业" },
+                { url: "openmpi", name: " OpenMPI 作业" },
+              ]}
+            />
           </CardContent>
         </Card>
         <Quota />
@@ -460,6 +447,10 @@ export const Component = () => {
     {
       index: true,
       element: <AiJobHome />,
+    },
+    {
+      path: "new-training",
+      element: <TrainingNew />,
     },
     {
       path: ":id",

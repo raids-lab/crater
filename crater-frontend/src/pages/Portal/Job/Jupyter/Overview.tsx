@@ -20,7 +20,7 @@ import {
   apiJupyterTokenGet,
   apiJupyterList,
   JobPhase,
-} from "@/services/api/jupyterTask";
+} from "@/services/api/vcjob";
 import { DataTable } from "@/components/custom/OldDataTable";
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
