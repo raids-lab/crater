@@ -43,12 +43,6 @@ export const adminPath: PathInfo = {
     {
       path: "job",
       title: "作业管理",
-      children: [
-        {
-          path: "volcano",
-          title: "volcano 作业",
-        },
-      ],
     },
     {
       path: "image",

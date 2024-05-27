@@ -66,14 +66,11 @@ const sidebarItems: SidebarItem[] = [
   {
     path: "job",
     icon: OverviewIcon,
-    children: [
-      {
-        route: {
-          path: "volcano",
-          element: <Volcano />,
-        },
-      },
-    ],
+    route: {
+      path: "job",
+      element: <Volcano />,
+    },
+    children: [],
   },
   {
     path: "image",

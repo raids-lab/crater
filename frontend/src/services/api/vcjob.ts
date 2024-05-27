@@ -69,9 +69,22 @@ export interface IJupyterCreate {
   useTensorBoard: boolean;
 }
 
+export interface ITrainingCreate extends IJupyterCreate {
+  command: string;
+  workingDir: string;
+}
+
 export const apiJupyterCreate = async (task: IJupyterCreate) => {
   const response = await instance.post<IResponse<string>>(
     VERSION + "/vcjobs/jupyter",
+    task,
+  );
+  return response.data;
+};
+
+export const apiTrainingCreate = async (task: ITrainingCreate) => {
+  const response = await instance.post<IResponse<string>>(
+    VERSION + "/vcjobs/training",
     task,
   );
   return response.data;

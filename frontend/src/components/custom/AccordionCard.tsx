@@ -31,9 +31,7 @@ const AccordionCard = ({
           <AccordionTrigger className="relative mx-6 pl-2.5 text-base font-semibold leading-none tracking-tight before:absolute before:left-0 before:h-4 before:w-1 before:rounded-full before:bg-primary/75 hover:no-underline">
             {cardTitle}
           </AccordionTrigger>
-          <AccordionContent className="overflow-visible  px-6">
-            {children}
-          </AccordionContent>
+          <AccordionContent className="px-6">{children}</AccordionContent>
         </AccordionItem>
       </Accordion>
     </Card>

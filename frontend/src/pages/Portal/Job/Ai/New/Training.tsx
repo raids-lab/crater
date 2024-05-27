@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiJupyterCreate, apiJTaskImageList } from "@/services/api/vcjob";
+import { apiTrainingCreate } from "@/services/api/vcjob";
 import { cn } from "@/lib/utils";
 import { getAiKResource } from "@/utils/resource";
 import { toast } from "sonner";
@@ -37,6 +37,8 @@ import { exportToJson, importFromJson } from "@/utils/form";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { apiResourceList } from "@/services/api/resource";
+import { useRecoilValue } from "recoil";
+import { globalUserInfo } from "@/utils/store";
 
 const formSchema = z.object({
   taskname: z
@@ -75,6 +77,12 @@ const formSchema = z.object({
   }),
   image: z.string().min(1, {
     message: "容器镜像不能为空",
+  }),
+  command: z.string().min(1, {
+    message: "启动命令不能为空",
+  }),
+  workingDir: z.string().min(1, {
+    message: "工作目录不能为空",
   }),
   envs: z.array(
     z.object({
@@ -138,16 +146,17 @@ const EnvCard = "环境变量";
 const DataMountCard = "数据挂载";
 const TensorboardCard = "观测面板";
 
-const JupyterNew = () => {
+const TrainingNew = () => {
   const [dataMountOpen, setDataMountOpen] = useState<string>();
   const [envOpen, setEnvOpen] = useState<string>();
   const [tensorboardOpen, setTensorboardOpen] = useState<string>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const user = useRecoilValue(globalUserInfo);
 
   const { mutate: createTask } = useMutation({
     mutationFn: (values: FormSchema) =>
-      apiJupyterCreate({
+      apiTrainingCreate({
         name: values.taskname,
         resource: getAiKResource(
           {
@@ -158,6 +167,8 @@ const JupyterNew = () => {
           values.gpu.model ?? undefined,
         ),
         image: values.image,
+        command: values.command,
+        workingDir: values.workingDir,
         volumeMounts: values.volumeMounts,
         envs: values.envs,
         useTensorBoard: values.observability.tbEnable,
@@ -169,18 +180,7 @@ const JupyterNew = () => {
         queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
       ]);
       toast.success(`作业 ${taskname} 创建成功`);
-      navigate("/portal/job/jupyter");
-    },
-  });
-
-  const imagesInfo = useQuery({
-    queryKey: ["jupyter", "images"],
-    queryFn: apiJTaskImageList,
-    select: (res) => {
-      return res.data.data.images.map((item) => ({
-        value: item,
-        label: item,
-      }));
+      navigate(-1);
     },
   });
 
@@ -210,6 +210,8 @@ const JupyterNew = () => {
       },
       memory: 2,
       image: "",
+      command: "",
+      workingDir: `/home/${user?.name}`,
       volumeMounts: [],
       envs: [],
       observability: {
@@ -265,7 +267,7 @@ const JupyterNew = () => {
                 <ChevronLeftIcon className="h-4 w-4" />
               </Button>
               <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
-                Jupyter Lab
+                单机训练作业
               </h1>
             </div>
             <div className="flex flex-row gap-3">
@@ -440,7 +442,7 @@ const JupyterNew = () => {
               />
               <FormField
                 control={form.control}
-                name={`image`}
+                name="image"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
@@ -448,12 +450,39 @@ const JupyterNew = () => {
                       <FormLabelMust />
                     </FormLabel>
                     <FormControl>
-                      <Combobox
-                        items={imagesInfo.data ?? []}
-                        current={field.value}
-                        handleSelect={(value) => field.onChange(value)}
-                        formTitle="镜像"
-                      />
+                      <Input {...field} className="font-mono" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="command"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      启动命令
+                      <FormLabelMust />
+                    </FormLabel>
+                    <FormControl>
+                      <Input {...field} className="font-mono" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="workingDir"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      工作目录
+                      <FormLabelMust />
+                    </FormLabel>
+                    <FormControl>
+                      <Input {...field} className="font-mono" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -678,4 +707,4 @@ const JupyterNew = () => {
   );
 };
 
-export default JupyterNew;
+export default TrainingNew;

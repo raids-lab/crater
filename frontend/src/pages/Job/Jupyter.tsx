@@ -2,7 +2,7 @@ import type { FC } from "react";
 import { useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { apiJupyterTokenGet } from "@/services/api/jupyterTask";
+import { apiJupyterTokenGet } from "@/services/api/vcjob";
 import CraterIcon from "@/components/icon/CraterIcon";
 import { Button } from "@/components/ui/button";
 import {
