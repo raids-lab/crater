@@ -56,7 +56,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 
 	// Ingress base URL
 	baseURL := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
-	jobName := fmt.Sprintf("jupyter-%s", baseURL)
+	jobName := fmt.Sprintf("s-%s", baseURL)
 
 	// useTensorBoard
 	useTensorboard := fmt.Sprintf("%t", req.UseTensorBoard)
@@ -110,6 +110,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 				VolumeMounts:             volumeMounts,
 			},
 		},
+		RestartPolicy: v1.RestartPolicyNever,
 	}
 
 	// 6. Create volcano job
