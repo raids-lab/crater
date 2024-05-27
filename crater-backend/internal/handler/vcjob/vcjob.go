@@ -100,7 +100,7 @@ type (
 		VolumeMounts   []VolumeMount                `json:"volumeMounts"`
 		Envs           []v1.EnvVar                  `json:"envs"`
 		Selectors      []v1.NodeSelectorRequirement `json:"selectors"`
-		UseTensorBoard bool                         `json:"useTensorBoard" binding:"required"`
+		UseTensorBoard bool                         `json:"useTensorBoard"`
 	}
 )
 
