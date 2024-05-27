@@ -11,8 +11,13 @@ require (
 )
 
 require (
+	github.com/go-gormigrate/gormigrate/v2 v2.1.2 // indirect
 	github.com/go-sql-driver/mysql v1.7.0 // indirect
+	golang.org/x/mod v0.14.0 // indirect
+	golang.org/x/tools v0.17.0 // indirect
 	gorm.io/driver/mysql v1.4.7 // indirect
+	gorm.io/hints v1.1.0 // indirect
+	gorm.io/plugin/dbresolver v1.5.0 // indirect
 )
 
 require (
@@ -47,4 +52,5 @@ require (
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/datatypes v1.2.0
+	gorm.io/gen v0.3.26
 )
