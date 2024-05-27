@@ -7,6 +7,7 @@ import (
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/server/payload"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -70,6 +71,19 @@ func getNodeGPUCount(podGPUAllocate []monitor.PodGPUAllocate, nodeName string) i
 	return count
 }
 
+// 节点中GPU的数量
+func (nc *NodeClient) getNodeGPUCount(nodeName string) int {
+	gpuUtilMap := nc.PrometheusClient.QueryNodeGPUUtil()
+	count := 0
+	for i := 0; i < len(gpuUtilMap); i++ {
+		gpuUtil := &gpuUtilMap[i]
+		if gpuUtil.Hostname == nodeName {
+			count++
+		}
+	}
+	return count
+}
+
 // GetNodes 获取所有 Node 列表
 func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 	var nodes corev1.NodeList
@@ -92,7 +106,12 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 			Mem: FomatMemoryLoad(MemMap[node.Name]),
 			GPU: fmt.Sprintf("%d", getNodeGPUCount(PodGPUAllocate, node.Name)),
 		}
-
+		gpuCount := nc.getNodeGPUCount(node.Name)
+		capacity_ := node.Status.Capacity
+		if gpuCount > 0 {
+			// 将int类型的gpu_count转换为resource.Quantity类型
+			capacity_["nvidia.com/gpu"] = *resource.NewQuantity(int64(gpuCount), resource.DecimalSI)
+		}
 		nodeInfos[i] = payload.ClusterNodeInfo{
 			Name:      node.Name,
 			Role:      getNodeRole(node),
@@ -185,10 +204,10 @@ func (nc *NodeClient) GetNodeGPUInfo(name string) (payload.GPUInfo, error) {
 		if node.Name != name {
 			continue
 		}
-		if _, ok := node.Status.Capacity["nvidia.com/gpu"]; ok {
+		// if _, ok := node.Status.Capacity["nvidia.com/gpu"]; ok {
+		if nc.getNodeGPUCount(name) > 0 {
 			gpuInfo.HaveGPU = true
-			gpuValue := node.Status.Capacity["nvidia.com/gpu"]
-			gpuInfo.GPUCount = int(gpuValue.Value())
+			gpuInfo.GPUCount = nc.getNodeGPUCount(name)
 			GPUCheckTag := 10
 			if gpuInfo.GPUCount >= GPUCheckTag {
 				gpuInfo.GPUCount /= GPUCheckTag
