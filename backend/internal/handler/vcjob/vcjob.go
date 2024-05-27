@@ -260,14 +260,15 @@ func (mgr *VolcanojobMgr) GetJobLog(c *gin.Context) {
 
 type (
 	JobResp struct {
-		Name              string         `json:"name"`
-		JobName           string         `json:"jobName"`
-		UserName          string         `json:"userName"`
-		JobType           string         `json:"jobType"`
-		Queue             string         `json:"queue"`
-		Status            batch.JobPhase `json:"status"`
-		CreationTimestamp metav1.Time    `json:"createdAt"`
-		RunningTimestamp  metav1.Time    `json:"startedAt"`
+		Name               string         `json:"name"`
+		JobName            string         `json:"jobName"`
+		UserName           string         `json:"userName"`
+		JobType            string         `json:"jobType"`
+		Queue              string         `json:"queue"`
+		Status             batch.JobPhase `json:"status"`
+		CreationTimestamp  metav1.Time    `json:"createdAt"`
+		RunningTimestamp   metav1.Time    `json:"startedAt"`
+		CompletedTimestamp metav1.Time    `json:"completedAt"`
 	}
 )
 
@@ -326,21 +327,24 @@ func JobsToJobList(jobs *batch.JobList) []JobResp {
 		job := &jobs.Items[i]
 		conditions := job.Status.Conditions
 		var runningTimestamp metav1.Time
+		var completedTimestamp metav1.Time
 		for _, condition := range conditions {
 			if condition.Status == batch.Running {
 				runningTimestamp = *condition.LastTransitionTime
-				break
+			} else if condition.Status == batch.Completed || condition.Status == batch.Failed {
+				completedTimestamp = *condition.LastTransitionTime
 			}
 		}
 		jobList[i] = JobResp{
-			Name:              job.Annotations[AnnotationKeyTaskName],
-			JobName:           job.Name,
-			UserName:          job.Labels[LabelKeyTaskUser],
-			JobType:           job.Labels[LabelKeyTaskType],
-			Queue:             job.Spec.Queue,
-			Status:            job.Status.State.Phase,
-			CreationTimestamp: job.CreationTimestamp,
-			RunningTimestamp:  runningTimestamp,
+			Name:               job.Annotations[AnnotationKeyTaskName],
+			JobName:            job.Name,
+			UserName:           job.Labels[LabelKeyTaskUser],
+			JobType:            job.Labels[LabelKeyTaskType],
+			Queue:              job.Spec.Queue,
+			Status:             job.Status.State.Phase,
+			CreationTimestamp:  job.CreationTimestamp,
+			RunningTimestamp:   runningTimestamp,
+			CompletedTimestamp: completedTimestamp,
 		}
 	}
 	sort.Slice(jobList, func(i, j int) bool {
