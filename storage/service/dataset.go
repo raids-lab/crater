@@ -155,8 +155,13 @@ func CopyFile(c *gin.Context) {
 		response.BadRequestError(c, err.Error())
 		return
 	}
-	sourceDir := filepath.Join("crater", param)
-	destDir := filepath.Join("crater", datasetname.Name)
+	pathPart := strings.FieldsFunc(datasetname.Name, func(s rune) bool { return s == '/' })
+	if !strings.HasPrefix(datasetname.Name, "/") || len(pathPart) <= 1 {
+		response.BadRequestError(c, "bad filepath")
+		return
+	}
+	sourceDir := "/crater" + param
+	destDir := "/crater" + datasetname.Name
 	zipFilePath := sourceDir + ".zip"
 
 	err = CompressDir(sourceDir, zipFilePath)
