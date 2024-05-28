@@ -17,19 +17,12 @@ export interface ProjectBasic {
   id: number;
   name: string;
   role: Role;
-  isPersonal: boolean;
-  status: ProjectStatus;
+  accessmode: Access;
 }
 
 export interface ICreateProject {
   name: string;
-  description: string;
-  quota: {
-    cpu: number;
-    memory: number;
-    gpu: number;
-    storage: number;
-  };
+  quota: string;
 }
 
 export interface ICreateProjectResponse {
