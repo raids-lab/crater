@@ -30,8 +30,8 @@ const DashboardLayout = ({
   // 特殊规则，网盘路由切换时，不启用过渡动画
   const motionKey = useMemo(() => {
     // begins with /portal/share/data
-    if (rawPath.startsWith("portal/data/filesystem")) {
-      return "portal/data/filesystem";
+    if (rawPath.startsWith("/portal/data/filesystem")) {
+      return "/portal/data/filesystem";
     }
     return rawPath;
   }, [rawPath]);
