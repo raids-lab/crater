@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui-custom/card";
 import SplitButton from "@/components/custom/SplitButton";
-import TrainingNew from "./New/Training";
+import TrainingNew from "../New/Training";
 import {
   IJobResp,
   JobPhase,
@@ -49,6 +49,7 @@ import {
 } from "@/services/api/vcjob";
 import JobPhaseLabel from "@/components/custom/JobPhaseLabel";
 import JupyterDetail from "../Jupyter/Detail";
+import TensorflowNew from "../New/Tensorflow";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -270,13 +271,13 @@ const AiJobHome = () => {
           </CardHeader>
           <CardContent>
             <SplitButton
-              defaultValue="training"
+              title="batch"
               urls={[
                 { url: "training", name: "单机作业" },
-                { url: "pytorch", name: " Pytorch 作业" },
                 { url: "tensorflow", name: " Tensorflow 作业" },
-                { url: "ray", name: " Ray 作业" },
-                { url: "openmpi", name: " OpenMPI 作业" },
+                { url: "pytorch", name: " Pytorch 作业", disabled: true },
+                { url: "ray", name: " Ray 作业", disabled: true },
+                { url: "openmpi", name: " OpenMPI 作业", disabled: true },
               ]}
             />
           </CardContent>
@@ -307,6 +308,10 @@ export const Component = () => {
     {
       path: "new-training",
       element: <TrainingNew />,
+    },
+    {
+      path: "new-tensorflow",
+      element: <TensorflowNew />,
     },
     {
       path: ":id",

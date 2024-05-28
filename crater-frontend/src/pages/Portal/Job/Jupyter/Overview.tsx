@@ -31,7 +31,7 @@ import { getHeader } from "@/pages/Portal/Job/Ai/statuses";
 import { logger } from "@/utils/loglevel";
 import Quota from "./Quota";
 import JobPhaseLabel, { jobPhases } from "@/components/custom/JobPhaseLabel";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -39,7 +39,8 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui-custom/card";
-import { PlayIcon, PlusCircleIcon, Trash } from "lucide-react";
+import { PlayIcon, Trash } from "lucide-react";
+import SplitButton from "@/components/custom/SplitButton";
 
 interface JTaskInfo extends IJobResp {}
 
@@ -61,7 +62,6 @@ const toolbarConfig: DataTableToolbarConfig = {
 export const JupyterOverview = () => {
   const [data, setData] = useState<JTaskInfo[]>([]);
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
 
   const {
     data: taskList,
@@ -259,10 +259,13 @@ export const JupyterOverview = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => navigate("new")}>
-              <PlusCircleIcon className="-ml-0.5 mr-1.5 h-4 w-4" />
-              新建作业
-            </Button>
+            <SplitButton
+              title="interactive"
+              urls={[
+                { url: "jupyter", name: " Jupyter Lab" },
+                { url: "webide", name: " Web IDE", disabled: true },
+              ]}
+            />
           </CardContent>
         </Card>
         <Quota />
