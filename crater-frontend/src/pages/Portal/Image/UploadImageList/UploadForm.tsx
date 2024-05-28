@@ -14,6 +14,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { apiUserImagepackUpload } from "@/services/api/imagepack";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const formSchema = z.object({
   imageLink: z.string().min(1, { message: "镜像链接不能为空" }),
@@ -21,6 +28,7 @@ const formSchema = z.object({
   imageTag: z.string().min(1, { message: "标签不能为空" }),
   alias: z.string().min(1, { message: "镜像别名不能为空" }),
   description: z.string().min(1, { message: "镜像描述不能为空" }),
+  taskType: z.enum(["1", "2"]),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -40,6 +48,7 @@ export function ImageUploadForm({ closeSheet }: TaskFormProps) {
         imageTag: values.imageTag,
         alias: values.alias,
         description: values.description,
+        taskType: Number(values.taskType),
       }),
     onSuccess: async (_, { imageName, imageTag }) => {
       await queryClient.invalidateQueries({
@@ -123,8 +132,6 @@ export function ImageUploadForm({ closeSheet }: TaskFormProps) {
                 </FormItem>
               )}
             />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
             <FormField
               control={form.control}
               name="alias"
@@ -156,6 +163,34 @@ export function ImageUploadForm({ closeSheet }: TaskFormProps) {
               )}
             />
           </div>
+        </div>
+        <div>
+          <FormField
+            control={form.control}
+            name="taskType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  任务类型<span className="ml-1 text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <SelectTrigger className="">
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">离线任务</SelectItem>
+                      <SelectItem value="2">Jupyter交互式任务</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
         <div className="grid">
           <Button type="submit">提交镜像</Button>

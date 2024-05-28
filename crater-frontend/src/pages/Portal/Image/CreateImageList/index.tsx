@@ -132,18 +132,6 @@ export const ImageTable: FC = () => {
         >
           {row.getValue("nametag")}
         </Button>
-
-        //     params: {
-        //       Convs: 0,
-        //       Activations: 0,
-        //       Denses: 0,
-        //       Others: 0,
-        //       GFLOPs: 0,
-        //       BatchSize: 0,
-        //       Params: 0,
-        //       ModelSize: 0,
-        //     },
-
         // <TooltipProvider delayDuration={0}>
         //   <Tooltip>
         //     <TooltipTrigger>{row.getValue("nametag")}</TooltipTrigger>
