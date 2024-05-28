@@ -6,10 +6,13 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
-import { cn } from "@/lib/utils";
+import JobPhaseLabel from "@/components/custom/JobPhaseLabel";
+import { JobPhase } from "@/services/api/vcjob";
 import { DataTable } from "@/components/custom/OldDataTable";
 import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
 import { TableDate } from "@/components/custom/TableDate";
+import { Badge } from "@/components/ui/badge";
+import { Resource } from "@/pages/Portal/Job/Jupyter/Detail";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -121,6 +124,12 @@ export const getHeader = (key: string): string => {
       return "创建于";
     case "startedAt":
       return "开始于";
+    case "nodeName":
+      return "节点";
+    case "completedAt":
+      return "完成于";
+    case "resource":
+      return "资源";
     default:
       return key;
   }
@@ -134,6 +143,9 @@ export interface VolcanoJobInfo {
   status: string;
   createdAt: string;
   startedAt: string;
+  completedAt: string;
+  nodeName: string;
+  resource: string;
 }
 const Volcano: FC = () => {
   const [data, setData] = useState<VolcanoJobInfo[]>([]);
@@ -173,11 +185,20 @@ const Volcano: FC = () => {
           status: task.status,
           createdAt: task.createdAt,
           startedAt: task.startedAt,
+          completedAt: task.completedAt,
+          nodeName: task.nodeName,
+          resource: task.resource,
         };
       });
     setData(tableData);
   }, [taskList, isLoading]);
-
+  const handleResourceData = (resourceJson: string): Resource => {
+    try {
+      return JSON.parse(resourceJson) as Resource;
+    } catch (error) {
+      return {};
+    }
+  };
   const columns = useMemo<ColumnDef<VolcanoJobInfo>[]>(
     () => [
       {
@@ -238,36 +259,46 @@ const Volcano: FC = () => {
           <DataTableColumnHeader column={column} title={getHeader("status")} />
         ),
         cell: ({ row }) => {
-          const status = statuses.find(
-            (status) => status.value === row.getValue("status"),
-          );
-          if (!status) {
-            return null;
-          }
-          return (
-            <div className="flex flex-row items-center justify-start">
-              <div
-                className={cn("flex h-3 w-3 rounded-full", {
-                  "bg-purple-500 hover:bg-purple-400":
-                    status.value === "Queueing",
-                  "bg-slate-500 hover:bg-slate-400": status.value === "Created",
-                  "bg-pink-500 hover:bg-pink-400": status.value === "Pending",
-                  "bg-sky-500 hover:bg-sky-400": status.value === "Running",
-                  "bg-red-500 hover:bg-red-400": status.value === "Failed",
-                  "bg-emerald-500 hover:bg-emerald-400":
-                    status.value === "Succeeded",
-                  "bg-orange-500 hover:bg-orange-400":
-                    status.value === "Preempted",
-                  "bg-rose-500 hover:bg-rose-200": status.value === "Deleted",
-                })}
-              ></div>
-              <div className="ml-1.5">{status.label}</div>
-            </div>
-          );
+          return <JobPhaseLabel jobPhase={row.getValue<JobPhase>("status")} />;
         },
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id));
         },
+      },
+      {
+        accessorKey: "nodeName",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("nodeName")}
+          />
+        ),
+        cell: ({ row }) => <div>{row.getValue("nodeName")}</div>,
+      },
+      {
+        accessorKey: "resource",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("resource")}
+          />
+        ),
+        cell: ({ row }) => (
+          <div className="item-start flex flex-col gap-1">
+            {Object.entries(handleResourceData(row.getValue("resource"))).map(
+              ([key, value]) => (
+                <Badge
+                  key={key}
+                  variant="secondary"
+                  className="gap-2 font-medium"
+                >
+                  {" "}
+                  {key}: {String(value)}{" "}
+                </Badge>
+              ),
+            )}
+          </div>
+        ),
       },
       {
         accessorKey: "createdAt",
@@ -292,6 +323,19 @@ const Volcano: FC = () => {
         ),
         cell: ({ row }) => {
           return <TableDate date={row.getValue("startedAt")}></TableDate>;
+        },
+        sortingFn: "datetime",
+      },
+      {
+        accessorKey: "completedAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("completedAt")}
+          />
+        ),
+        cell: ({ row }) => {
+          return <TableDate date={row.getValue("completedAt")}></TableDate>;
         },
         sortingFn: "datetime",
       },

@@ -61,7 +61,7 @@ import {
   apiJupyterYaml,
 } from "@/services/api/vcjob";
 import LogSheet from "@/components/custom/LogSheet";
-interface Resource {
+export interface Resource {
   [key: string]: string;
 }
 

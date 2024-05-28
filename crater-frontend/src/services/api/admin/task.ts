@@ -10,6 +10,9 @@ export interface IVolcanoJobInfo {
   status: string;
   createdAt: string;
   startedAt: string;
+  completedAt: string;
+  nodeName: string;
+  resource: string;
 }
 export const apiAdminTaskListByType = () =>
   instance.get<IResponse<IVolcanoJobInfo[]>>(VERSION + "/admin/vcjobs");
