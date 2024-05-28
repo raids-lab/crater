@@ -50,6 +50,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
         needProfile: values.needProfile,
         alias: "",
         description: "",
+        taskType: 1,
       }),
     onSuccess: async (_, { imageName, imageTag }) => {
       await queryClient.invalidateQueries({
