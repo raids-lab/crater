@@ -3,8 +3,8 @@ package util
 import (
 	"sync"
 	"time"
+	"webdav/dao/model"
 	"webdav/logutils"
-	"webdav/model"
 
 	// "github.com/amitshekhariitbhu/go-backend-clean-architecture/domain"
 	jwt "github.com/golang-jwt/jwt/v5"
@@ -30,21 +30,25 @@ func NewTokenConf() *TokenConf {
 
 type (
 	JWTClaims struct {
-		UserID       uint       `json:"ui"`
-		QueueID      uint       `json:"qi"`
-		Username     string     `json:"un"`
-		QueueName    string     `json:"qn"`
-		RoleQueue    model.Role `json:"rq"`
-		RolePlatform model.Role `json:"rp"`
+		UserID           uint             `json:"ui"`
+		QueueID          uint             `json:"qi"`
+		Username         string           `json:"un"`
+		QueueName        string           `json:"qn"`
+		RoleQueue        model.Role       `json:"rq"`
+		RolePlatform     model.Role       `json:"rp"`
+		AccessMode       model.AccessMode `json:"am"`
+		PublicAccessMode model.AccessMode `json:"pa"`
 		jwt.RegisteredClaims
 	}
 	JWTMessage struct {
-		UserID       uint       `json:"userID"`       // User ID
-		QueueID      uint       `json:"queueID"`      // Queue ID
-		Username     string     `json:"username"`     // Username
-		QueueName    string     `json:"queueName"`    // Queue name
-		RoleQueue    model.Role `json:"roleQueue"`    // Role in queue (e.g. user, admin)
-		RolePlatform model.Role `json:"rolePlatform"` // Role in platform (e.g. guest, user, admin)
+		UserID           uint             `json:"userID"`           // User ID
+		QueueID          uint             `json:"queueID"`          // Queue ID
+		Username         string           `json:"username"`         // Username
+		QueueName        string           `json:"queueName"`        // Queue name
+		RoleQueue        model.Role       `json:"roleQueue"`        // Role in queue (e.g. user, admin)
+		AccessMode       model.AccessMode `json:"accessMode"`       // AccessMode in queue
+		PublicAccessMode model.AccessMode `json:"publicaccessmode"` // Public Accessmode
+		RolePlatform     model.Role       `json:"rolePlatform"`     // Role in platform (e.g. guest, user, admin)
 	}
 )
 
@@ -87,12 +91,14 @@ func (tm *TokenManager) createToken(msg *JWTMessage, ttl int) (string, error) {
 	expiresAt := time.Now().Add(time.Hour * time.Duration(ttl))
 
 	claims := &JWTClaims{
-		UserID:       msg.UserID,
-		QueueID:      msg.QueueID,
-		Username:     msg.Username,
-		QueueName:    msg.QueueName,
-		RoleQueue:    msg.RoleQueue,
-		RolePlatform: msg.RolePlatform,
+		UserID:           msg.UserID,
+		QueueID:          msg.QueueID,
+		Username:         msg.Username,
+		QueueName:        msg.QueueName,
+		RoleQueue:        msg.RoleQueue,
+		RolePlatform:     msg.RolePlatform,
+		AccessMode:       msg.AccessMode,
+		PublicAccessMode: msg.PublicAccessMode,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 		},
@@ -124,11 +130,13 @@ func (tm *TokenManager) CheckToken(requestToken string) (JWTMessage, error) {
 		return []byte(tm.secretKey), nil
 	})
 	return JWTMessage{
-		UserID:       claims.UserID,
-		QueueID:      claims.QueueID,
-		Username:     claims.Username,
-		QueueName:    claims.QueueName,
-		RoleQueue:    claims.RoleQueue,
-		RolePlatform: claims.RolePlatform,
+		UserID:           claims.UserID,
+		QueueID:          claims.QueueID,
+		Username:         claims.Username,
+		QueueName:        claims.QueueName,
+		RoleQueue:        claims.RoleQueue,
+		RolePlatform:     claims.RolePlatform,
+		AccessMode:       claims.AccessMode,
+		PublicAccessMode: claims.PublicAccessMode,
 	}, err
 }

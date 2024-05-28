@@ -17,8 +17,11 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 RUN apk add tzdata
 ENV TZ=Asia/Shanghai
 
+COPY ./etc /etc
 
 EXPOSE 7320
+
+USER root
 
 WORKDIR /
 
