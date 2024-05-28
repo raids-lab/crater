@@ -17,6 +17,9 @@ export type ImagePackInfoResponse = {
   nametag: string;
   creatername: string;
   imagetype: number;
+  description: string;
+  alias: string;
+  taskType: number;
   params: {
     Convs: number;
     Activations: number;
@@ -110,6 +113,22 @@ export const imagepackStatuses: {
   },
 ];
 
+export type imagepackTaskTypeValue = 1 | 2;
+
+export const imagepackTaskType: {
+  value: imagepackTaskTypeValue;
+  label: string;
+}[] = [
+  {
+    value: 1,
+    label: "离线任务",
+  },
+  {
+    value: 2,
+    label: "交互式任务",
+  },
+];
+
 export interface ImagePackCreate {
   gitRepository: string;
   accessToken: string;
@@ -122,6 +141,7 @@ export interface ImagePackCreate {
   needProfile: boolean;
   alias: string;
   description: string;
+  taskType: number;
 }
 
 export interface ImagePackUpload {
@@ -130,6 +150,7 @@ export interface ImagePackUpload {
   imageTag: string;
   alias: string;
   description: string;
+  taskType: number;
 }
 
 export const apiUserImagepackCreate = async (imagepack: ImagePackCreate) => {
