@@ -74,6 +74,11 @@ type (
 	ImagePackLogRequest struct {
 		ID uint `form:"id"`
 	}
+
+	ImageAvailableListRequest struct {
+		// type = 0 indicates offline tasks; type = 1 indicates jupyter tasks
+		Type model.ImageTaskType `form:"type"`
+	}
 )
 
 type (
@@ -98,6 +103,9 @@ type (
 		NameTag       string                   `json:"nametag"`
 		CreaterName   string                   `json:"creatername"`
 		ImagePackName string                   `json:"imagepackname"`
+		Description   string                   `json:"description"`
+		Alias         string                   `json:"alias"`
+		TaskType      model.ImageTaskType      `json:"taskType"`
 		Params        model.ImageProfileParams `json:"params"`
 	}
 
@@ -473,7 +481,7 @@ func (mgr *ImagePackMgr) generateImageListResponseFromImagePack(imagepack *model
 		Status:        imagepack.Status,
 		CreatedAt:     imagepack.CreatedAt,
 		NameTag:       imagepack.NameTag,
-		CreaterName:   imagepack.User.Name,
+		CreaterName:   imagepack.CreatorName,
 		ImagePackName: imagepack.ImagePackName,
 		Params:        imagepack.Params,
 		ImageType:     0,
@@ -487,7 +495,7 @@ func (mgr *ImagePackMgr) generateImageListResponseFromImageUpload(imageupload *m
 		Status:      imageupload.Status,
 		CreatedAt:   imageupload.CreatedAt,
 		NameTag:     imageupload.NameTag,
-		CreaterName: imageupload.User.Name,
+		CreaterName: imageupload.CreatorName,
 		Params:      model.ImageProfileParams{},
 		ImageType:   1,
 	}
@@ -520,12 +528,19 @@ func (mgr *ImagePackMgr) updateImagePackStatus(c *gin.Context, imagepack *model.
 func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	token := util.GetToken(c)
 	var err error
-
+	var req ImageAvailableListRequest
+	if err = c.ShouldBindQuery(&req); err != nil {
+		msg := fmt.Sprintf("validate available image parameters failed, err %v", err)
+		logutils.Log.Errorf(msg)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		return
+	}
 	imagepackQuery := query.ImagePack
 	var imagepacks []*model.ImagePack
 	if imagepacks, err = imagepackQuery.WithContext(c).
 		Where(imagepackQuery.QueueID.Eq(token.QueueID)).
 		Where(imagepackQuery.Status.Eq(ImagePackFinished)).
+		Where(imagepackQuery.TaskType.Eq(uint8(req.Type))).
 		Find(); err != nil {
 		logutils.Log.Errorf("fetch available imagepack failed, err:%v", err)
 		resputil.Error(c, "fetch available imagepack failed", resputil.NotSpecified)
@@ -536,6 +551,7 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	if imageuploads, err = imageuploadQuery.WithContext(c).
 		Where(imageuploadQuery.QueueID.Eq(token.QueueID)).
 		Where(imageuploadQuery.Status.Neq(ImagePackDeleted)).
+		Where(imageuploadQuery.TaskType.Eq(uint8(req.Type))).
 		Find(); err != nil {
 		logutils.Log.Errorf("fetch available imageupload failed, err:%v", err)
 		resputil.Error(c, "fetch available imageupload failed", resputil.NotSpecified)
@@ -704,6 +720,9 @@ func (mgr *ImagePackMgr) GetImagePackByID(c *gin.Context) {
 		NameTag:       imagepack.NameTag,
 		CreaterName:   imagepack.CreatorName,
 		ImagePackName: imagepack.ImagePackName,
+		Description:   imagepack.Description,
+		Alias:         imagepack.Alias,
+		TaskType:      imagepack.TaskType,
 		Params:        imagepack.Params,
 	}
 	resputil.Success(c, imageGetResponse)
@@ -734,14 +753,16 @@ func (mgr *ImagePackMgr) GetImagePackLogByName(c *gin.Context) {
 		Where(imagepackQuery.ID.Eq(req.ID)).
 		First()
 	if kanikoPod, err = mgr.imagepackClient.GetImagePackPod(c, imagepack.ImagePackName, UserNameSpace); err != nil {
-		msg := fmt.Sprintf("couldn't fetch imagepack pod by podName %s, err: %+v", imagepack.ImagePackName, err)
-		logutils.Log.Errorf(msg)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		msg := fmt.Sprintf("couldn't fetch imagepack pod by podName %s, pod maybe deleted", imagepack.ImagePackName)
+		logResponse := ImagePackLogResponse{Content: msg}
+		resputil.Success(c, logResponse)
+		return
 	}
 	if podLogs, err = mgr.logClient.GetPodLogs(kanikoPod); err != nil {
-		msg := fmt.Sprintf("couldn't fetch log of imagepack pod, err: %+v", err)
-		logutils.Log.Errorf(msg)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		msg := "couldn't fetch logs of imagepack pod"
+		logResponse := ImagePackLogResponse{Content: msg}
+		resputil.Success(c, logResponse)
+		return
 	}
 	logResponse := ImagePackLogResponse{
 		Content: podLogs,
