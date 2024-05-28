@@ -63,13 +63,13 @@ func (mgr *ProjectMgr) RegisterAdmin(g *gin.RouterGroup) {
 func (mgr *ProjectMgr) ListAllForUser(c *gin.Context) { // Check if the user exists
 	token := util.GetToken(c)
 
-	p := query.Project
-	up := query.UserProject
+	q := query.Queue
+	uq := query.UserQueue
 
 	// Get all projects for the user
 	var projects []payload.ProjectResp
-	err := up.WithContext(c).Where(up.UserID.Eq(token.UserID)).Select(p.ID, p.Name, up.Role, p.IsPersonal, p.Status).
-		Join(p, p.ID.EqCol(up.ProjectID)).Order(p.ID.Desc()).Scan(&projects)
+	err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID)).Select(q.ID, q.Name, uq.Role, uq.AccessMode).
+		Join(q, q.ID.EqCol(uq.QueueID)).Order(q.ID.Desc()).Scan(&projects)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -80,17 +80,18 @@ func (mgr *ProjectMgr) ListAllForUser(c *gin.Context) { // Check if the user exi
 
 type (
 	ListAllReq struct {
-		PageIndex  *int           `form:"pageIndex" binding:"required"` // 第几页（从0开始）
-		PageSize   *int           `form:"pageSize" binding:"required"`  // 每页大小
-		IsPersonal *bool          `form:"isPersonal"`                   // 是否为个人项目
-		Status     *uint8         `form:"status"`                       // 项目状态（pending, active, inactive）
-		NameLike   *string        `form:"nameLike"`                     // 部分匹配项目名称
-		OrderCol   *string        `form:"orderCol"`                     // 排序字段
-		Order      *payload.Order `form:"order"`                        // 排序方式（升序、降序）
+		PageIndex *int           `form:"pageIndex" binding:"required"` // 第几页（从0开始）
+		PageSize  *int           `form:"pageSize" binding:"required"`  // 每页大小
+		NameLike  *string        `form:"nameLike"`                     // 部分匹配项目名称
+		OrderCol  *string        `form:"orderCol"`                     // 排序字段
+		Order     *payload.Order `form:"order"`                        // 排序方式（升序、降序）
 	}
 
 	// Swagger 不支持范型嵌套，定义别名
-	ListAllResp payload.ListResp[*model.Project]
+	ListAllResp struct {
+		*model.Queue
+		Deserved string `json:"deserved"`
+	}
 )
 
 // ListAllForAdmin godoc
@@ -101,7 +102,7 @@ type (
 // @Produce json
 // @Security Bearer
 // @Param page query ListAllReq true "分页参数"
-// @Success 200 {object} resputil.Response[ListAllResp] "项目列表"
+// @Success 200 {object} resputil.Response[any] "项目列表"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/admin/projects [get]
@@ -112,56 +113,64 @@ func (mgr *ProjectMgr) ListAllForAdmin(c *gin.Context) {
 		return
 	}
 
-	p := query.Project
-	pi := p.WithContext(c)
+	q := query.Queue
+	qi := q.WithContext(c)
 
 	// Filter
-	if req.IsPersonal != nil {
-		pi = pi.Where(p.IsPersonal.Is(*req.IsPersonal))
-	}
-	if req.Status != nil {
-		pi = pi.Where(p.Status.Eq(*req.Status))
-	}
 	if req.NameLike != nil {
-		pi = pi.Where(p.Name.Like("%" + *req.NameLike + "%"))
+		qi = qi.Where(q.Name.Like("%" + *req.NameLike + "%"))
 	}
 
 	// Order
 	if req.OrderCol != nil && req.Order != nil {
-		orderCol, ok := p.GetFieldByName(*req.OrderCol)
+		orderCol, ok := q.GetFieldByName(*req.OrderCol)
 		if ok {
 			if *req.Order == payload.Asc {
-				pi = pi.Order(orderCol.Asc())
+				qi = qi.Order(orderCol.Asc())
 			} else {
-				pi = pi.Order(orderCol.Desc())
+				qi = qi.Order(orderCol.Desc())
 			}
 		}
 	}
 
 	// Limit and offset
-	projects, count, err := pi.FindByPage((*req.PageIndex)*(*req.PageSize), *req.PageSize)
+	queues, count, err := qi.FindByPage((*req.PageIndex)*(*req.PageSize), *req.PageSize)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	resp := ListAllResp{Rows: projects, Count: count}
+	var vcQueues scheduling.QueueList
+	if err := mgr.Client.List(c, &vcQueues); err != nil {
+		resputil.Error(c, "List queue failed", resputil.NotSpecified)
+		return
+	}
+	queueMap := map[string]*scheduling.Queue{}
+	for index := range len(vcQueues.Items) {
+		item := &vcQueues.Items[index]
+		queueMap[item.Name] = item
+	}
+	var lists []ListAllResp
+	for _, q := range queues {
+		if _, exist := queueMap[q.Name]; exist {
+			lists = append(lists,
+				ListAllResp{Queue: q, Deserved: model.ResourceListToJSON(queueMap[q.Name].Spec.Deserved)},
+			)
+		} else {
+			resputil.Error(c, "asynchronized queue db with vcqueue", resputil.NotSpecified)
+			return
+		}
+	}
+
+	resp := payload.ListResp[ListAllResp]{Rows: lists, Count: count}
 
 	resputil.Success(c, resp)
 }
 
 type (
-	QuotaReq struct {
-		CPU     *int `json:"cpu" binding:"required"`     // decimal
-		Memory  *int `json:"memory" binding:"required"`  // giga
-		GPU     *int `json:"gpu" binding:"required"`     // decimal
-		Storage *int `json:"storage" binding:"required"` // giga
-	}
-
 	ProjectCreateReq struct {
-		Name        string   `json:"name" binding:"required"`
-		Description string   `json:"description" binding:"required"`
-		Quota       QuotaReq `json:"quota" binding:"required"`
+		Name  string `json:"name" binding:"required"`
+		Quota string `json:"quota" binding:"required"`
 	}
 
 	ProjectCreateResp struct {
@@ -193,61 +202,43 @@ func (mgr *ProjectMgr) CreateTeamProject(c *gin.Context) {
 	// Create a new project, and set the user as the admin in user_project
 	db := query.Use(query.DB)
 
-	var projectID uint
+	var queueID uint
 
 	err := db.Transaction(func(tx *query.Query) error {
-		p := tx.Project
-		up := tx.UserProject
-		s := tx.Space
+		q := tx.Queue
+		uq := tx.UserQueue
 
-		// Create a project
-		quota := model.QuotaDefault
-		quota.CPUReq = *req.Quota.CPU
-		quota.CPU = *req.Quota.CPU
-		quota.MemReq = *req.Quota.Memory
-		quota.Mem = *req.Quota.Memory
-		quota.GPUReq = *req.Quota.GPU
-		quota.GPU = *req.Quota.GPU
-		quota.Storage = *req.Quota.Storage
-
-		project := model.Project{
-			Name:          req.Name,
-			Description:   &req.Description,
-			Namespace:     config.GetConfig().Workspace.Namespace,
-			Status:        model.StatusActive, // todo: change to pending
-			IsPersonal:    false,
-			EmbeddedQuota: quota,
+		// Create a queue Queue
+		queue := model.Queue{
+			Nickname: req.Name,
 		}
-		if err := p.WithContext(c).Create(&project); err != nil {
+		if err := q.WithContext(c).Create(&queue); err != nil {
 			return err
 		}
 		// Create a user-project relationship without quota limit
-		userProject := model.UserProject{
-			UserID:        token.UserID,
-			ProjectID:     project.ID,
-			Role:          model.RoleAdmin, // Set the user as the admin
-			EmbeddedQuota: model.QuotaUnlimited,
+		userQueue := model.UserQueue{
+			UserID:     token.UserID,
+			QueueID:    queue.ID,
+			Role:       model.RoleAdmin, // Set the user as the admin
+			AccessMode: model.AccessModeRW,
 		}
-		if err := up.WithContext(c).Create(&userProject); err != nil {
+		if err := uq.WithContext(c).Create(&userQueue); err != nil {
 			return err
 		}
 
 		// Create a space for the project, folder path is generated by uuid
-		folderPath := fmt.Sprintf("/q-%d", project.ID)
-		space := model.Space{
-			ProjectID: project.ID,
-			Path:      folderPath,
-		}
-		if err := s.WithContext(c).Create(&space); err != nil {
+		queue.Name = fmt.Sprintf("q-%d", queue.ID)
+		queue.Space = fmt.Sprintf("/q-%d", queue.ID)
+		if _, err := q.WithContext(c).Where(q.ID.Eq(queue.ID)).Updates(&queue); err != nil {
 			return err
 		}
 
-		err := mgr.CreateTeamQueue(c, &token, &project, &req, &quota)
+		err := mgr.CreateTeamQueue(c, &token, &queue, &req)
 		if err != nil {
 			return err
 		}
 
-		projectID = project.ID
+		queueID = queue.ID
 
 		return nil
 	})
@@ -256,93 +247,60 @@ func (mgr *ProjectMgr) CreateTeamProject(c *gin.Context) {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	} else {
-		resputil.Success(c, ProjectCreateResp{ID: projectID})
+		resputil.Success(c, ProjectCreateResp{ID: queueID})
 	}
 }
 
-func (mgr *ProjectMgr) CreateTeamQueue(c *gin.Context, token *util.JWTMessage, project *model.Project,
-	req *ProjectCreateReq, quota *model.EmbeddedQuota) error {
+func (mgr *ProjectMgr) CreateTeamQueue(c *gin.Context, token *util.JWTMessage, queue *model.Queue,
+	req *ProjectCreateReq) error {
 	// Create a new queue, and set the user as the admin in user_queue
-	db := query.Use(query.DB)
-	pid := project.ID
-	err := db.Transaction(func(tx *query.Query) error {
-		q := tx.Queue
-		uq := tx.UserQueue
+	var VendorDomain = "nvidia.com"
+	namespace := config.GetConfig().Workspace.Namespace
+	labels := map[string]string{
+		LabelKeyQueueCreatedBy: token.Username,
+	}
 
-		queue := model.Queue{
-			Name:     fmt.Sprintf("q-%d", pid),
-			Nickname: req.Name,
-			Space:    fmt.Sprintf("/q-%d", pid),
-		}
-		if err := q.WithContext(c).Create(&queue); err != nil {
-			return err
-		}
-
-		// Create a user-project relationship without quota limit
-		UserQueue := model.UserQueue{
-			UserID:     token.UserID,
-			QueueID:    queue.ID,
-			Role:       model.RoleAdmin, // Set the user as the admin
-			AccessMode: model.AccessModeRW,
-		}
-		if err := uq.WithContext(c).Create(&UserQueue); err != nil {
-			return err
-		}
-
-		namespace := config.GetConfig().Workspace.Namespace
-		labels := map[string]string{
-			LabelKeyQueueCreatedBy: token.Username,
-		}
-		capability := v1.ResourceList{
-			v1.ResourceCPU:                    *resource.NewQuantity(int64(quota.CPU), resource.DecimalSI),
-			v1.ResourceMemory:                 *resource.NewScaledQuantity(int64(quota.Mem), resource.Giga),
-			v1.ResourceName("nvidia.com/gpu"): *resource.NewQuantity(int64(quota.GPU), resource.DecimalSI),
-		}
-		volcanoQueue := &scheduling.Queue{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("q-%d", pid),
-				Namespace: namespace,
-				Labels:    labels,
-			},
-			Spec: scheduling.QueueSpec{
-				Capability: capability,
-			},
-		}
-
-		if err := mgr.Client.Create(c, volcanoQueue); err != nil {
-			return err
-		}
-
-		return nil
-	})
-
+	r := query.Resource
+	q := r.WithContext(c)
+	q = q.Where(r.VendorDomain.Eq(VendorDomain))
+	resources, err := q.Find()
 	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to list resources: %v", err), resputil.NotSpecified)
 		return err
 	}
+
+	deserved, err := model.JSONToResourceList(req.Quota)
+	if err != nil {
+		resputil.Error(c, "Update queue deserved quota failed", resputil.NotSpecified)
+		return err
+	}
+
+	for _, r := range resources {
+		if _, exists := deserved[v1.ResourceName(r.ResourceName)]; !exists {
+			deserved[v1.ResourceName(r.ResourceName)] = *resource.NewQuantity(0, resource.DecimalSI)
+		}
+	}
+
+	volcanoQueue := &scheduling.Queue{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      queue.Name,
+			Namespace: namespace,
+			Labels:    labels,
+		},
+		Spec: scheduling.QueueSpec{
+			Deserved: deserved,
+		},
+	}
+
+	if err := mgr.Client.Create(c, volcanoQueue); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 type UpdateQuotaReq struct {
-	JobReq *int `json:"jobReq"`
-	Job    *int `json:"job"`
-
-	NodeReq *int `json:"nodeReq"`
-	Node    *int `json:"node"`
-
-	CPUReq *int `json:"cpuReq"`
-	CPU    *int `json:"cpu"`
-
-	GPUReq *int `json:"gpuReq"`
-	GPU    *int `json:"gpu"`
-
-	MemReq *int `json:"memReq"`
-	Mem    *int `json:"mem"`
-
-	GPUMemReq *int `json:"gpuMemReq"`
-	GPUMem    *int `json:"gpuMem"`
-
-	Storage *int    `json:"storage"`
-	Extra   *string `json:"extra"`
+	Quota string `json:"quota" binding:"required"`
 }
 
 type ProjectNameReq struct {
@@ -374,59 +332,46 @@ func (mgr *ProjectMgr) UpdateQuota(c *gin.Context) {
 		return
 	}
 	name := nameReq.Name
-	p := query.Project
-	_, err := p.WithContext(c).Where(p.Name.Eq(name)).Updates(map[string]any{
-		"job_req":     *req.JobReq,
-		"job":         *req.Job,
-		"node_req":    *req.NodeReq,
-		"node":        *req.Node,
-		"cpu_req":     *req.CPUReq,
-		"cpu":         *req.CPU,
-		"gpu_req":     *req.GPUReq,
-		"gpu":         *req.GPU,
-		"mem_req":     *req.MemReq,
-		"mem":         *req.Mem,
-		"gpu_mem_req": *req.GPUMemReq,
-		"gpu_mem":     *req.GPUMem,
-		"storage":     *req.Storage,
-		"extra":       req.Extra,
-	})
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("update quota failed, detail: %v", err), resputil.NotSpecified)
-		return
-	}
-	project, err := p.WithContext(c).Where(p.Name.Eq(name)).First()
+	q := query.Queue
+	queue, err := q.WithContext(c).Where(q.Name.Eq(name)).First()
 
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("find project failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
 
-	capability := &v1.ResourceList{
-		v1.ResourceCPU:                    *resource.NewQuantity(int64(*req.CPU), resource.DecimalSI),
-		v1.ResourceMemory:                 *resource.NewScaledQuantity(int64(*req.Mem), resource.Giga),
-		v1.ResourceName("nvidia.com/gpu"): *resource.NewQuantity(int64(*req.GPU), resource.DecimalSI),
+	deserved, err := model.JSONToResourceList(req.Quota)
+	if err != nil {
+		resputil.Error(c, "Update queue deserved quota failed", resputil.NotSpecified)
+		return
 	}
 
-	if err := mgr.UpdateQueueCapcity(c, project, capability); err != nil {
+	if err := mgr.UpdateQueueCapcity(c, queue, &deserved); err != nil {
 		resputil.Error(c, fmt.Sprintf("update capability failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
 
-	resputil.Success(c, fmt.Sprintf("update capability to %s", model.ResourceListToJSON(*capability)))
+	resputil.Success(c, fmt.Sprintf("update capability to %s", model.ResourceListToJSON(deserved)))
 }
 
-func (mgr *ProjectMgr) UpdateQueueCapcity(c *gin.Context, project *model.Project, capability *v1.ResourceList) error {
-	pid := project.ID
-	queue := &scheduling.Queue{}
+func (mgr *ProjectMgr) UpdateQueueCapcity(c *gin.Context, queue *model.Queue, deservedUpdate *v1.ResourceList) error {
+	vcQueue := &scheduling.Queue{}
 	namespace := config.GetConfig().Workspace.Namespace
-	err := mgr.Get(c, client.ObjectKey{Name: fmt.Sprintf("q-%d", pid), Namespace: namespace}, queue)
+	err := mgr.Get(c, client.ObjectKey{Name: queue.Name, Namespace: namespace}, vcQueue)
 	if err != nil {
 		return err
 	}
-	queue.Spec.Capability = *capability
+	deserved := vcQueue.Spec.Deserved
 
-	if err := mgr.Update(c, queue); err != nil {
+	for k, v := range *deservedUpdate {
+		if _, exists := deserved[k]; !exists {
+			deserved[k] = v
+		}
+	}
+
+	vcQueue.Spec.Deserved = *deservedUpdate
+
+	if err := mgr.Update(c, vcQueue); err != nil {
 		return err
 	}
 
@@ -441,6 +386,18 @@ type DeleteProjectResp struct {
 	Name string `uri:"name" binding:"required"`
 }
 
+// / DeleteProject godoc
+// @Summary 删除项目
+// @Description 删除项目record和队列crd
+// @Tags Project
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param pid path DeleteProjectReq true "pid"
+// @Success 200 {object} resputil.Response[DeleteProjectResp] "删除的队列名"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/admin/projects/{pid} [delete]
 func (mgr *ProjectMgr) DeleteProject(c *gin.Context) {
 	var req DeleteProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -450,55 +407,23 @@ func (mgr *ProjectMgr) DeleteProject(c *gin.Context) {
 
 	db := query.Use(query.DB)
 
-	projectID := req.ID
-	var projectName string
+	queueID := req.ID
+	var queueName string
 
 	err := db.Transaction(func(tx *query.Query) error {
-		p := tx.Project
-		up := tx.UserProject
 		q := tx.Queue
 		uq := tx.UserQueue
-		s := tx.Space
 
-		// get project
-		project, err := p.WithContext(c).Where(p.ID.Eq(projectID)).First()
-		if err != nil {
-			return err
-		}
-		projectName = project.Name
-		// get user-project relationship without quota limit
-		userProjects, err := up.WithContext(c).Where(up.ProjectID.Eq(projectID)).Find()
-		if err != nil {
-			return err
-		}
 		// get queue in db
-		queue, err := q.WithContext(c).Where(q.Name.Eq(fmt.Sprintf("q-%d", projectID))).First()
+		queue, err := q.WithContext(c).Where(q.ID.Eq(queueID)).First()
 		if err != nil {
 			return err
 		}
+		queueName = queue.Nickname
 
-		// get user-project relationship without quota limit
+		// get user-queues relationship without quota limit
 		userQueues, err := uq.WithContext(c).Where(uq.QueueID.Eq(queue.ID)).Find()
 		if err != nil {
-			return err
-		}
-
-		// get space for the project
-
-		spaces, err := s.WithContext(c).Where(s.ProjectID.Eq(projectID)).Find()
-		if err != nil {
-			return err
-		}
-
-		if _, err := s.WithContext(c).Delete(spaces...); err != nil {
-			return err
-		}
-
-		if _, err := up.WithContext(c).Delete(userProjects...); err != nil {
-			return err
-		}
-
-		if _, err := p.WithContext(c).Delete(project); err != nil {
 			return err
 		}
 
@@ -510,11 +435,9 @@ func (mgr *ProjectMgr) DeleteProject(c *gin.Context) {
 			return err
 		}
 
-		if err := mgr.DeleteQueue(c, fmt.Sprintf("q-%d", projectID)); err != nil {
+		if err := mgr.DeleteQueue(c, queue.Name); err != nil {
 			return err
 		}
-
-		projectID = project.ID
 
 		return nil
 	})
@@ -523,7 +446,7 @@ func (mgr *ProjectMgr) DeleteProject(c *gin.Context) {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	} else {
-		resputil.Success(c, DeleteProjectResp{Name: projectName})
+		resputil.Success(c, DeleteProjectResp{Name: queueName})
 	}
 }
 
@@ -536,7 +459,7 @@ func (mgr *ProjectMgr) DeleteQueue(c *gin.Context, qName string) error {
 	}
 
 	if queue.Status.Running != 0 {
-		return err
+		return fmt.Errorf("queue still have running pod")
 	}
 
 	if err := mgr.Client.Delete(c, queue); err != nil {
@@ -548,8 +471,8 @@ func (mgr *ProjectMgr) DeleteQueue(c *gin.Context, qName string) error {
 
 type (
 	UserProjectReq struct {
-		ProjectID uint `uri:"pid" binding:"required"`
-		UserID    uint `uri:"uid" binding:"required"`
+		QueueID uint `uri:"pid" binding:"required"`
+		UserID  uint `uri:"uid" binding:"required"`
 	}
 
 	UpdateUserProjectReq struct {
@@ -558,6 +481,20 @@ type (
 	}
 )
 
+// / AddUserProject godoc
+// @Summary 向项目中添加用户
+// @Description 创建一个userproject
+// @Tags Project
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param uid path uint true "uid"
+// @Param pid path uint true "pid"
+// @Param req body UpdateUserProjectReq true "权限角色"
+// @Success 200 {object} resputil.Response[any] "返回添加的用户名和队列名"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/admin/projects/add/{pid}/{uid} [post]
 func (mgr *ProjectMgr) AddUserProject(c *gin.Context) {
 	var req UserProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -565,8 +502,8 @@ func (mgr *ProjectMgr) AddUserProject(c *gin.Context) {
 		return
 	}
 
-	p := query.Project
-	project, err := p.WithContext(c).Where(p.ID.Eq(req.ProjectID)).First()
+	q := query.Queue
+	queue, err := q.WithContext(c).Where(q.ID.Eq(req.QueueID)).First()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Get Project failed, detail: %v", err), resputil.NotSpecified)
 		return
@@ -577,9 +514,9 @@ func (mgr *ProjectMgr) AddUserProject(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("Get Project failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
-	up := query.UserProject
+	uq := query.UserQueue
 
-	if _, err := up.WithContext(c).Where(up.ProjectID.Eq(req.ProjectID), up.UserID.Eq(req.UserID)).Find(); err != nil {
+	if _, err := uq.WithContext(c).Where(uq.QueueID.Eq(req.QueueID), uq.UserID.Eq(req.UserID)).Find(); err != nil {
 		resputil.Error(c, fmt.Sprintf("Get UserProject failed, detail: %v", err), resputil.NotSpecified)
 		return
 	} else {
@@ -589,22 +526,36 @@ func (mgr *ProjectMgr) AddUserProject(c *gin.Context) {
 			return
 		}
 
-		userProject := model.UserProject{
+		userQueue := model.UserQueue{
 			UserID:     req.UserID,
-			ProjectID:  req.ProjectID,
+			QueueID:    req.QueueID,
 			Role:       model.Role(reqBody.Role),
 			AccessMode: model.AccessMode(reqBody.AccessMode),
 		}
 
-		if err := up.WithContext(c).Create(&userProject); err != nil {
+		if err := uq.WithContext(c).Create(&userQueue); err != nil {
 			resputil.Error(c, fmt.Sprintf("create UserProject failed, detail: %v", err), resputil.NotSpecified)
 			return
 		}
 
-		resputil.Success(c, fmt.Sprintf("Add User %s for %s", user.Name, project.Name))
+		resputil.Success(c, fmt.Sprintf("Add User %s for %s", user.Name, queue.Nickname))
 	}
 }
 
+// / UpdateUserProject godoc
+// @Summary 更新项目用户
+// @Description 创建一个userQueue条目
+// @Tags Project
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param uid path uint true "uid"
+// @Param pid path uint true "pid"
+// @Param req body UpdateUserProjectReq true "权限角色"
+// @Success 200 {object} resputil.Response[any] "返回添加的用户名和队列名"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/admin/projects/update/{pid}/{uid} [post]
 func (mgr *ProjectMgr) UpdateUserProject(c *gin.Context) {
 	var req UserProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -612,8 +563,8 @@ func (mgr *ProjectMgr) UpdateUserProject(c *gin.Context) {
 		return
 	}
 
-	p := query.Project
-	project, err := p.WithContext(c).Where(p.ID.Eq(req.ProjectID)).First()
+	q := query.Queue
+	queue, err := q.WithContext(c).Where(q.ID.Eq(req.QueueID)).First()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Get Project failed, detail: %v", err), resputil.NotSpecified)
 		return
@@ -624,8 +575,8 @@ func (mgr *ProjectMgr) UpdateUserProject(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("Get Project failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
-	up := query.UserProject
-	userProject, err := up.WithContext(c).Where(up.ProjectID.Eq(req.ProjectID), up.UserID.Eq(req.UserID)).First()
+	uq := query.UserQueue
+	userQueue, err := uq.WithContext(c).Where(uq.QueueID.Eq(req.QueueID), uq.UserID.Eq(req.UserID)).First()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Get UserProject failed, detail: %v", err), resputil.NotSpecified)
 		return
@@ -635,14 +586,14 @@ func (mgr *ProjectMgr) UpdateUserProject(c *gin.Context) {
 			resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
 			return
 		}
-		userProject.Role = model.Role(req.Role)
-		userProject.AccessMode = model.AccessMode(req.AccessMode)
-		if _, err := up.WithContext(c).Updates(userProject); err != nil {
+		userQueue.Role = model.Role(req.Role)
+		userQueue.AccessMode = model.AccessMode(req.AccessMode)
+		if _, err := uq.WithContext(c).Updates(userQueue); err != nil {
 			resputil.Error(c, fmt.Sprintf("update UserProject failed, detail: %v", err), resputil.NotSpecified)
 			return
 		}
 
-		resputil.Success(c, fmt.Sprintf("Update User %s for %s", user.Name, project.Name))
+		resputil.Success(c, fmt.Sprintf("Update User %s for %s", user.Name, queue.Nickname))
 	}
 }
 
@@ -657,6 +608,18 @@ type UserProjectGetResp struct {
 	AccessMode uint   `json:"accessmode" gorm:"access_mode"`
 }
 
+// / GetUserInProject godoc
+// @Summary 获取项目下的用户
+// @Description sql查询-join
+// @Tags Project
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param pid path uint true "pid"
+// @Success 200 {object} resputil.Response[UserProjectGetResp[]] "userQueue条目"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/admin/projects/userIn/{pid} [post]
 func (mgr *ProjectMgr) GetUserInProject(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -664,19 +627,19 @@ func (mgr *ProjectMgr) GetUserInProject(c *gin.Context) {
 		return
 	}
 
-	p := query.Project
-	project, err := p.WithContext(c).Where(p.ID.Eq(req.ID)).First()
+	q := query.Queue
+	queue, err := q.WithContext(c).Where(q.ID.Eq(req.ID)).First()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Get Project failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
 
 	u := query.User
-	up := query.UserProject
+	uq := query.UserQueue
 	var resp []UserProjectGetResp
-	exec := u.WithContext(c).Join(up, up.UserID.EqCol(u.ID)).Where(up.DeletedAt.IsNull())
-	exec = exec.Select(u.ID, u.Name, up.Role, up.AccessMode, up.ProjectID)
-	if err := exec.Where(up.ProjectID.Eq(project.ID)).Distinct().Scan(&resp); err != nil {
+	exec := u.WithContext(c).Join(uq, uq.UserID.EqCol(u.ID)).Where(uq.DeletedAt.IsNull())
+	exec = exec.Select(u.ID, u.Name, uq.Role, uq.AccessMode, uq.QueueID)
+	if err := exec.Where(uq.QueueID.Eq(queue.ID)).Distinct().Scan(&resp); err != nil {
 		resputil.Error(c, fmt.Sprintf("Get UserProject failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
@@ -684,6 +647,18 @@ func (mgr *ProjectMgr) GetUserInProject(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
+// / GetUserOutOfProject godoc
+// @Summary 获取项目外的用户
+// @Description sql查询-subquery
+// @Tags Project
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param pid path uint true "pid"
+// @Success 200 {object} resputil.Response[UserProjectGetResp[]] "userQueue条目"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/admin/projects/userOutOf/{pid} [post]
 func (mgr *ProjectMgr) GetUserOutOfProject(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -691,18 +666,24 @@ func (mgr *ProjectMgr) GetUserOutOfProject(c *gin.Context) {
 		return
 	}
 
-	p := query.Project
-	project, err := p.WithContext(c).Where(p.ID.Eq(req.ID)).First()
+	q := query.Queue
+	queue, err := q.WithContext(c).Where(q.ID.Eq(req.ID)).First()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Get Project failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
 
 	u := query.User
-	up := query.UserProject
+	uq := query.UserQueue
+	var uids []uint
+
+	if err := uq.WithContext(c).Select(uq.UserID).Where(uq.QueueID.Eq(queue.ID)).Scan(&uids); err != nil {
+		resputil.Error(c, fmt.Sprintf("Failed to scan user IDs: %v", err), resputil.NotSpecified)
+		return
+	}
+
 	var resp []UserProjectGetResp
-	exec := u.WithContext(c).LeftJoin(up, up.UserID.EqCol(u.ID))
-	exec = exec.Where(up.UserID.IsNull()).Or(up.UserID.IsNotNull(), up.ProjectID.Neq(project.ID)).Distinct()
+	exec := u.WithContext(c).Where(u.ID.NotIn(uids...)).Distinct()
 	if err := exec.Scan(&resp); err != nil {
 		resputil.Error(c, fmt.Sprintf("Get UserProject failed, detail: %v", err), resputil.NotSpecified)
 		return
@@ -711,6 +692,19 @@ func (mgr *ProjectMgr) GetUserOutOfProject(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
+// / DeleteUserProject godoc
+// @Summary 删除项目用户
+// @Description 删除对应userQueue条目
+// @Tags Project
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param uid path uint true "uid"
+// @Param pid path uint true "pid"
+// @Success 200 {object} resputil.Response[any] "返回添加的用户名和队列名"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/admin/projects/update/{pid}/{uid} [delete]
 func (mgr *ProjectMgr) DeleteUserProject(c *gin.Context) {
 	var req UserProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -718,8 +712,8 @@ func (mgr *ProjectMgr) DeleteUserProject(c *gin.Context) {
 		return
 	}
 
-	p := query.Project
-	project, err := p.WithContext(c).Where(p.ID.Eq(req.ProjectID)).First()
+	q := query.Queue
+	queue, err := q.WithContext(c).Where(q.ID.Eq(req.QueueID)).First()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Get Project failed, detail: %v", err), resputil.NotSpecified)
 		return
@@ -730,16 +724,16 @@ func (mgr *ProjectMgr) DeleteUserProject(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("Get Project failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
-	up := query.UserProject
-	userProject, err := up.WithContext(c).Where(up.ProjectID.Eq(project.ID), up.UserID.Eq(user.ID)).First()
+	uq := query.UserQueue
+	userQueue, err := uq.WithContext(c).Where(uq.QueueID.Eq(queue.ID), uq.UserID.Eq(user.ID)).First()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("delete UserProject failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
-	if _, err := up.WithContext(c).Delete(userProject); err != nil {
+	if _, err := uq.WithContext(c).Delete(userQueue); err != nil {
 		resputil.Error(c, fmt.Sprintf("delete UserProject failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
 
-	resputil.Success(c, fmt.Sprintf("delete User %s for %s", user.Name, project.Name))
+	resputil.Success(c, fmt.Sprintf("delete User %s for %s", user.Name, queue.Nickname))
 }
