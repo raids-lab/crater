@@ -272,6 +272,8 @@ type (
 		CreationTimestamp  metav1.Time    `json:"createdAt"`
 		RunningTimestamp   metav1.Time    `json:"startedAt"`
 		CompletedTimestamp metav1.Time    `json:"completedAt"`
+		NodeName           string         `json:"nodeName"`
+		Resource           string         `json:"resource"`
 	}
 )
 
@@ -296,7 +298,7 @@ func (mgr *VolcanojobMgr) GetUserJobs(c *gin.Context) {
 		return
 	}
 
-	jobList := JobsToJobList(jobs)
+	jobList := mgr.JobsToJobList(c, jobs)
 
 	resputil.Success(c, jobList)
 }
@@ -319,12 +321,12 @@ func (mgr *VolcanojobMgr) GetAllJobs(c *gin.Context) {
 		return
 	}
 
-	jobList := JobsToJobList(jobs)
+	jobList := mgr.JobsToJobList(c, jobs)
 
 	resputil.Success(c, jobList)
 }
 
-func JobsToJobList(jobs *batch.JobList) []JobResp {
+func (mgr *VolcanojobMgr) JobsToJobList(c *gin.Context, jobs *batch.JobList) []JobResp {
 	jobList := make([]JobResp, len(jobs.Items))
 	for i := range jobs.Items {
 		job := &jobs.Items[i]
@@ -338,6 +340,19 @@ func JobsToJobList(jobs *batch.JobList) []JobResp {
 				completedTimestamp = *condition.LastTransitionTime
 			}
 		}
+		namespace := config.GetConfig().Workspace.Namespace
+
+		task := &job.Spec.Tasks[0]
+		podName := fmt.Sprintf("%s-%s-0", job.Name, task.Name)
+		pod, err := mgr.getPod(c, namespace, podName)
+		if err != nil {
+			continue
+		}
+		// assume one pod running one container
+		var Resource string
+		if pod.Status.Phase == v1.PodRunning {
+			Resource = model.ResourceListToJSON(pod.Spec.Containers[0].Resources.Requests)
+		}
 		jobList[i] = JobResp{
 			Name:               job.Annotations[AnnotationKeyTaskName],
 			JobName:            job.Name,
@@ -348,6 +363,8 @@ func JobsToJobList(jobs *batch.JobList) []JobResp {
 			CreationTimestamp:  job.CreationTimestamp,
 			RunningTimestamp:   runningTimestamp,
 			CompletedTimestamp: completedTimestamp,
+			NodeName:           pod.Spec.NodeName,
+			Resource:           Resource,
 		}
 	}
 	sort.Slice(jobList, func(i, j int) bool {
