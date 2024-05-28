@@ -41,7 +41,6 @@ import {
 } from "@/components/ui-custom/alert-dialog";
 import { Trash2, UserRoundMinus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useNavigate } from "react-router-dom";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -54,7 +53,6 @@ const toolbarConfig: DataTableToolbarConfig = {
 
 export const Component: FC = () => {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [openSheet, setOpenSheet] = useState(false);
   const imagePackInfo = useQuery({
     queryKey: ["imagepack", "list"],
@@ -123,53 +121,7 @@ export const Component: FC = () => {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeader("nametag")} />
       ),
-      cell: ({ row }) => (
-        <Button
-          onClick={() => navigate(`${row.original.id}`)}
-          variant={"link"}
-          className="h-8 px-0 text-left font-normal text-secondary-foreground"
-        >
-          {row.getValue("nametag")}
-        </Button>
-
-        //     params: {
-        //       Convs: 0,
-        //       Activations: 0,
-        //       Denses: 0,
-        //       Others: 0,
-        //       GFLOPs: 0,
-        //       BatchSize: 0,
-        //       Params: 0,
-        //       ModelSize: 0,
-        //     },
-
-        // <TooltipProvider delayDuration={0}>
-        //   <Tooltip>
-        //     <TooltipTrigger>{row.getValue("nametag")}</TooltipTrigger>
-        //     <TooltipContent className="grid grid-cols-2 gap-1 p-4 font-mono">
-        //       <div className="col-span-2 pb-2 text-sm font-bold">
-        //         Profile 信息
-        //       </div>
-        //       <div>Convs: </div>
-        //       <div>{row.original.params.Convs}</div>
-        //       <div>Activations: </div>
-        //       <div>{row.original.params.Activations}</div>
-        //       <div>Denses: </div>
-        //       <div>{row.original.params.Denses}</div>
-        //       <div>Others: </div>
-        //       <div>{row.original.params.Others}</div>
-        //       <div>GFLOPs: </div>
-        //       <div>{row.original.params.GFLOPs.toFixed(2)}</div>
-        //       <div>BatchSize: </div>
-        //       <div>{row.original.params.BatchSize}</div>
-        //       <div>Params: </div>
-        //       <div>{row.original.params.Params}</div>
-        //       <div>ModelSize: </div>
-        //       <div>{row.original.params.ModelSize.toFixed(2)}</div>
-        //     </TooltipContent>
-        //   </Tooltip>
-        // </TooltipProvider>
-      ),
+      cell: ({ row }) => <div>{row.getValue("nametag")}</div>,
     },
     {
       accessorKey: "link",

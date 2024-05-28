@@ -7,6 +7,7 @@ import {
   apiUserImageCreateGet,
   apiUserImageCreateLog,
   imagepackStatuses,
+  imagepackTaskType,
 } from "@/services/api/imagepack";
 import { TableDate } from "@/components/custom/TableDate";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,9 @@ type ImageCreateInfoCard = React.ComponentProps<typeof Card> & {
     nametag: string;
     creatername: string;
     imagetype: number;
+    description: string;
+    alias: string;
+    taskType: number;
     params: {
       Convs: number;
       Activations: number;
@@ -33,12 +37,6 @@ type ImageCreateInfoCard = React.ComponentProps<typeof Card> & {
   };
 };
 
-type ImageCreateLogCard = React.ComponentProps<typeof Card> & {
-  imageloginfo?: {
-    content: string;
-  };
-};
-
 // CardDemo 组件
 function ImageCreateInfo({
   className,
@@ -47,6 +45,9 @@ function ImageCreateInfo({
 }: ImageCreateInfoCard) {
   const status = imagepackStatuses.find(
     (status) => status.value === imagecreateinfo?.status,
+  );
+  const tasktype = imagepackTaskType.find(
+    (tasktype) => tasktype.value === imagecreateinfo?.taskType,
   );
   return (
     <Card className={className} {...props}>
@@ -103,24 +104,21 @@ function ImageCreateInfo({
               }
             </p>
           </div>
+          <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
+            <p className="text-xs">别名:</p>
+            <p className="ml-2 text-sm font-medium">{imagecreateinfo?.alias}</p>
+          </div>
+          <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
+            <p className="text-xs">描述:</p>
+            <p className="ml-2 text-sm font-medium">
+              {imagecreateinfo?.description}
+            </p>
+          </div>
+          <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
+            <p className="text-xs">任务类型:</p>
+            <p className="ml-2 text-sm font-medium">{tasktype?.label}</p>
+          </div>
         </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function ImageLogInfo({
-  className,
-  imageloginfo,
-  ...props
-}: ImageCreateLogCard) {
-  return (
-    <Card className={className} {...props}>
-      <CardHeader>
-        <CardTitle>镜像日志信息</CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <div>{imageloginfo?.content}</div>
       </CardContent>
     </Card>
   );
@@ -174,17 +172,32 @@ export const ImageCreateDetail: FC = () => {
   }, [setBreadcrumb, imageID]);
 
   return (
-    <div className="col-span-3 grid gap-8 md:grid-cols-4">
-      <div className="flex-none">
-        <ImageCreateInfo imagecreateinfo={imagecreateinfo} />
+    <>
+      <div className="grid-auto-flow: dense; grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
+        <div className="grid-auto-rows: 1fr; grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+          <ImageCreateInfo
+            className="sm:col-span-2"
+            imagecreateinfo={imagecreateinfo}
+          />
+          <ImageParamsInfo
+            className="sm:col-span-2"
+            imagecreateinfo={imagecreateinfo}
+          />
+        </div>
       </div>
-      <div className="flex-none">
-        <ImageParamsInfo imagecreateinfo={imagecreateinfo} />
+      <div className="col-span-3 flex-none">
+        {imageloginfo && (
+          <Card className="col-span-3 bg-gray-100 text-muted-foreground dark:border dark:bg-transparent">
+            <CardHeader className="py-3"></CardHeader>
+            <CardContent>
+              <pre className="whitespace-pre-wrap text-sm">
+                {imageloginfo.content}
+              </pre>
+            </CardContent>
+          </Card>
+        )}
       </div>
-      <div className="flex-none">
-        <ImageLogInfo imageloginfo={imageloginfo} />
-      </div>
-    </div>
+    </>
   );
 };
 
