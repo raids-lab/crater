@@ -12,7 +12,8 @@ type Queue struct {
 	Nickname string `gorm:"type:varchar(128);not null;comment:队列别名 (用于显示)"`
 	Space    string `gorm:"uniqueIndex;type:varchar(512);not null;comment:队列空间绝对路径"`
 
-	UserQueues []UserQueue
+	UserQueues    []UserQueue
+	QueueDatasets []QueueDataset
 }
 
 type UserQueue struct {
