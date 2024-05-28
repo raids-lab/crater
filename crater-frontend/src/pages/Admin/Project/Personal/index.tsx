@@ -4,6 +4,7 @@ import { ProjectStatus } from "@/services/api/project";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { PlusCircledIcon, DotsHorizontalIcon } from "@radix-ui/react-icons";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,7 +63,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { logger } from "@/utils/loglevel";
 import FormLabelMust from "@/components/custom/FormLabelMust";
-import { Textarea } from "@/components/ui/textarea";
 import LoadableButton from "@/components/custom/LoadableButton";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -75,6 +75,10 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { apiProjectCreate, apiProjectDelete } from "@/services/api/project";
 import { useNavigate } from "react-router-dom";
+
+interface Resource {
+  [key: string]: string;
+}
 interface DataTableProps<TData, TValue>
   extends React.HTMLAttributes<HTMLDivElement> {
   setStatus: (status: ProjectStatus) => void;
@@ -123,19 +127,20 @@ function TableWithTabs<TData, TValue>({
     mutationFn: (values: z.infer<typeof formSchema>) =>
       apiProjectCreate({
         name: values.name,
-        description: values.description,
-        quota: {
+        quota: JSON.stringify({
           cpu: values.cpu,
           gpu: values.gpu,
           memory: values.memory,
           storage: values.storage,
-        },
+        }),
       }),
     onSuccess: async (_, { name }) => {
       await queryClient.invalidateQueries({
         queryKey: [
           "admin",
           "projects",
+          false,
+          2,
           pagination.pageIndex,
           pagination.pageSize,
         ],
@@ -180,14 +185,6 @@ function TableWithTabs<TData, TValue>({
       .max(16, {
         message: "账户名称最多16个字符",
       }),
-    description: z
-      .string()
-      .min(1, {
-        message: "账户描述不能为空",
-      })
-      .max(170, {
-        message: "账户描述最多170个字符",
-      }),
     cpu: z.number().int().min(0, {
       message: "如需取消上限，请联系管理员",
     }),
@@ -207,7 +204,6 @@ function TableWithTabs<TData, TValue>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      description: "",
       cpu: 0,
       gpu: 0,
       memory: 0,
@@ -272,25 +268,6 @@ function TableWithTabs<TData, TValue>({
                           </FormControl>
                           <FormDescription>
                             名称是团队账户的唯一标识，最多16个字符
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem className="col-span-2">
-                          <FormLabel>
-                            账户描述
-                            <FormLabelMust />
-                          </FormLabel>
-                          <FormControl>
-                            <Textarea {...field} />
-                          </FormControl>
-                          <FormDescription>
-                            账户描述将是管理员审批的重要依据，最多170个字符
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -410,23 +387,7 @@ function TableWithTabs<TData, TValue>({
 type Project = {
   id: number;
   name: string;
-  status: ProjectStatus;
-  quota: {
-    cpu: number;
-    cpuReq: number;
-    gpu: number;
-    gpuMem: number;
-    gpuMemReq: number;
-    gpuReq: number;
-    job: number;
-    jobReq: number;
-    mem: number;
-    memReq: number;
-    node: number;
-    nodeReq: number;
-    storage: number;
-    extra: string;
-  };
+  deserved: Resource;
 };
 
 const getHeader = (key: string): string => {
@@ -435,7 +396,7 @@ const getHeader = (key: string): string => {
       return "ID";
     case "name":
       return "项目名称";
-    case "quota":
+    case "deserved":
       return "配额";
     default:
       return key;
@@ -512,18 +473,27 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
         enableSorting: false,
       },
       {
-        accessorKey: "quota",
+        accessorKey: "deserved",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("quota")} />
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("deserved")}
+          />
         ),
         cell: ({ row }) => {
-          const quota = row.getValue<Project["quota"]>("quota");
+          const quota = row.getValue<Project["deserved"]>("deserved");
           return (
-            <div className="grid grid-cols-3 rounded-md border p-3 text-xs md:grid-cols-4">
-              <div>CPU: {quota.cpu}</div>
-              <div>GPU: {quota.gpu}</div>
-              <div>内存: {quota.mem}GB</div>
-              <div>存储: {quota.storage}GB</div>
+            <div className="grid grid-cols-3 rounded-md border p-3 text-xs">
+              {quota &&
+                Object.entries(quota).map(([key, value]) => (
+                  <Badge
+                    key={key}
+                    variant="secondary"
+                    className="gap-2 font-medium"
+                  >
+                    {key}: {value}
+                  </Badge>
+                ))}
             </div>
           );
         },
@@ -596,24 +566,8 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
       .map((p) => {
         return {
           id: p.ID,
-          name: p.name,
-          status: p.status,
-          quota: {
-            cpu: p.cpu,
-            cpuReq: p.cpuReq,
-            gpu: p.gpu,
-            gpuMem: p.gpuMem,
-            gpuMemReq: p.gpuMemReq,
-            gpuReq: p.gpuReq,
-            job: p.job,
-            jobReq: p.jobReq,
-            mem: p.mem,
-            memReq: p.memReq,
-            node: p.node,
-            nodeReq: p.nodeReq,
-            storage: p.storage,
-            extra: p.extra,
-          },
+          name: p.Nickname,
+          deserved: JSON.parse(p.deserved) as Resource,
         };
       });
     setData(tableData);
