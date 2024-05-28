@@ -56,7 +56,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 
 	// Ingress base URL
 	baseURL := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
-	jobName := fmt.Sprintf("s-%s", baseURL)
+	jobName := fmt.Sprintf("single-%s", baseURL)
 
 	// useTensorBoard
 	useTensorboard := fmt.Sprintf("%t", req.UseTensorBoard)
@@ -92,7 +92,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 			{
 				Name:    "training",
 				Image:   req.Image,
-				Command: []string{"/bin/bash", "-c", req.Command},
+				Command: []string{"sh", "-c", req.Command},
 				Resources: v1.ResourceRequirements{
 					Limits:   req.Resource,
 					Requests: req.Resource,

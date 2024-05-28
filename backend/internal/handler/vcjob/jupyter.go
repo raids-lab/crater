@@ -44,7 +44,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 
 	// Ingress base URL
 	baseURL := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
-	jobName := fmt.Sprintf("j-%s", baseURL)
+	jobName := fmt.Sprintf("jupyter-%s", baseURL)
 
 	// useTensorBoard
 	useTensorboard := fmt.Sprintf("%t", req.UseTensorBoard)
@@ -94,7 +94,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 			{
 				Name:    "jupyter-notebook",
 				Image:   req.Image,
-				Command: []string{"/bin/bash", "-c", command},
+				Command: []string{"sh", "-c", command},
 				Resources: v1.ResourceRequirements{
 					Limits:   req.Resource,
 					Requests: req.Resource,
