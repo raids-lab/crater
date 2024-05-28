@@ -6,25 +6,10 @@ import { ProjectStatus } from "../project";
 
 export interface IProject {
   ID: number;
-  name: string;
-  description: string;
-  namespace: string;
-  status: ProjectStatus;
-  isPersonal: boolean;
-  cpu: number;
-  cpuReq: number;
-  gpu: number;
-  gpuMem: number;
-  gpuMemReq: number;
-  gpuReq: number;
-  job: number;
-  jobReq: number;
-  mem: number;
-  memReq: number;
-  node: number;
-  nodeReq: number;
-  storage: number;
-  extra: string;
+  Name: string;
+  Nickname: string;
+  Space: string;
+  deserved: string;
 }
 
 export interface IUser {
