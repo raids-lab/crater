@@ -94,6 +94,7 @@ func (b *Backend) RegisterService(
 	recommenddljobMgr := handler.NewRecommendDLJobMgr(cl)
 	volcanoMgr := vcjob.NewVolcanojobMgr(cl, kc)
 	queueMgr := handler.NewQueueMgr(cl)
+	datasetMgr := handler.NewFileMgr()
 	///////////////////////////////////////
 	//// Public routers, no need login ////
 	///////////////////////////////////////
@@ -120,6 +121,7 @@ func (b *Backend) RegisterService(
 	jwttokenMgr.RegisterProtected(protectedRouter.Group("/storage"))
 	recommenddljobMgr.RegisterProtected(protectedRouter.Group("/recommenddljob"))
 	volcanoMgr.RegisterProtected(protectedRouter.Group("/vcjobs"))
+	datasetMgr.RegisterProtected(protectedRouter.Group("/dataset"))
 
 	///////////////////////////////////////
 	//// Admin routers, need admin role ///
