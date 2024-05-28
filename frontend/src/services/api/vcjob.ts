@@ -145,7 +145,7 @@ export const apiJTaskImageList = () =>
     IResponse<{
       images: string[];
     }>
-  >(VERSION + "/images/available");
+  >(VERSION + "/images/available?type=1");
 
 export const apiJupyterTokenGet = (jobName: string) =>
   instance.get<
