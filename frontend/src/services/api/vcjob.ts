@@ -76,6 +76,25 @@ export interface ITrainingCreate extends IJupyterCreate {
   workingDir: string;
 }
 
+export interface ITensorflowCreate {
+  name: string;
+  tasks: {
+    name: string;
+    replicas: number;
+    resource: KubernetesResourceList;
+    image: string;
+    command: string;
+    workingDir: string;
+    ports: {
+      name: string;
+      port: number;
+    }[];
+  }[];
+  volumeMounts: VolumeMount[];
+  envs: Env[];
+  useTensorBoard: boolean;
+}
+
 export const apiJupyterCreate = async (task: IJupyterCreate) => {
   const response = await instance.post<IResponse<string>>(
     VERSION + "/vcjobs/jupyter",
@@ -87,6 +106,14 @@ export const apiJupyterCreate = async (task: IJupyterCreate) => {
 export const apiTrainingCreate = async (task: ITrainingCreate) => {
   const response = await instance.post<IResponse<string>>(
     VERSION + "/vcjobs/training",
+    task,
+  );
+  return response.data;
+};
+
+export const apiTensorflowCreate = async (task: ITensorflowCreate) => {
+  const response = await instance.post<IResponse<string>>(
+    VERSION + "/vcjobs/tensorflow",
     task,
   );
   return response.data;

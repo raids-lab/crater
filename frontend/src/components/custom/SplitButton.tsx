@@ -10,22 +10,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { ChevronDownIcon, PlusCircleIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useLocalStorage } from "usehooks-ts";
 
 interface URL {
   url: string;
   name: string;
+  disabled?: boolean;
 }
 
-const SplitButton = ({
-  urls,
-  defaultValue,
-}: {
-  urls: URL[];
-  defaultValue: string;
-}) => {
-  const [position, setPosition] = useState(defaultValue);
+const SplitButton = ({ urls, title }: { urls: URL[]; title: string }) => {
+  const [position, setPosition] = useLocalStorage(
+    `split-button-${title}`,
+    urls[0].url,
+  );
   const navigate = useNavigate();
   return (
     <div className="flex w-fit items-center space-x-1 rounded-md bg-primary text-primary-foreground">
@@ -53,7 +51,11 @@ const SplitButton = ({
           <DropdownMenuSeparator />
           <DropdownMenuRadioGroup value={position} onValueChange={setPosition}>
             {urls.map((url) => (
-              <DropdownMenuRadioItem key={url.url} value={url.url}>
+              <DropdownMenuRadioItem
+                key={url.url}
+                value={url.url}
+                disabled={url.disabled}
+              >
                 {url.name}
               </DropdownMenuRadioItem>
             ))}

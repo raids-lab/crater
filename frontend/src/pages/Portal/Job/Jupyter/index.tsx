@@ -1,7 +1,7 @@
 import { useRoutes } from "react-router-dom";
 import JupyterDetail from "./Detail";
 import JupyterOverview from "./Overview";
-import JupyterNew from "./New";
+import JupyterNew from "../New/Jupyter";
 
 export const Component = () => {
   const routes = useRoutes([
@@ -10,7 +10,7 @@ export const Component = () => {
       element: <JupyterOverview />,
     },
     {
-      path: "new",
+      path: "new-jupyter",
       element: <JupyterNew />,
     },
     {

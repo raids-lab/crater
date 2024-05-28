@@ -18,9 +18,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiJupyterCreate, apiJTaskImageList } from "@/services/api/vcjob";
+import { apiTrainingCreate } from "@/services/api/vcjob";
 import { cn } from "@/lib/utils";
-import { getAiKResource } from "@/utils/resource";
 import { toast } from "sonner";
 import {
   ChevronLeftIcon,
@@ -33,13 +32,27 @@ import FormLabelMust from "@/components/custom/FormLabelMust";
 import Combobox from "@/components/form/Combobox";
 import AccordionCard from "@/components/custom/AccordionCard";
 import { Separator } from "@/components/ui/separator";
-import { exportToJson, importFromJson } from "@/utils/form";
+import {
+  exportToJson,
+  importFromJson,
+  observabilitySchema,
+  volumeMountsSchema,
+  envsSchema,
+  taskSchema,
+  convertToResourceList,
+} from "@/utils/form";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { apiResourceList } from "@/services/api/resource";
+import { useRecoilValue } from "recoil";
+import { globalUserInfo } from "@/utils/store";
+import { Textarea } from "@/components/ui/textarea";
+
+const VERSION = "20240528";
+const JOB_TYPE = "single";
 
 const formSchema = z.object({
-  taskname: z
+  jobName: z
     .string()
     .min(1, {
       message: "作业名称不能为空",
@@ -47,89 +60,10 @@ const formSchema = z.object({
     .max(40, {
       message: "作业名称最多包含 40 个字符",
     }),
-  cpu: z.number().int().min(0, {
-    message: "CPU 核数不能小于 0",
-  }),
-  gpu: z
-    .object({
-      count: z.number().int().min(0, {
-        message: "指定的 GPU 卡数不能小于 0",
-      }),
-      model: z.string().optional(),
-    })
-    .refine(
-      (gpu) => {
-        // If a is not null, then b must not be null
-        return (
-          gpu.count === 0 ||
-          (gpu.count > 0 && gpu.model !== null && gpu.model !== undefined)
-        );
-      },
-      {
-        message: "GPU 型号不能为空",
-        path: ["model"], // The path for the error message
-      },
-    ),
-  memory: z.number().int().min(0, {
-    message: "内存大小不能小于 0",
-  }),
-  image: z.string().min(1, {
-    message: "容器镜像不能为空",
-  }),
-  envs: z.array(
-    z.object({
-      name: z.string().min(1, {
-        message: "环境变量名不能为空",
-      }),
-      value: z.string().min(1, {
-        message: "环境变量值不能为空",
-      }),
-    }),
-  ),
-  volumeMounts: z.array(
-    z.object({
-      subPath: z.string().min(1, {
-        message: "挂载源不能为空",
-      }),
-      mountPath: z
-        .string()
-        .min(1, {
-          message: "挂载到容器中的路径不能为空",
-        })
-        .refine((value) => value.startsWith("/"), {
-          message: "路径需以单个斜杠 `/` 开头",
-        })
-        .refine((value) => !value.includes(".."), {
-          message: "禁止使用相对路径 `..`",
-        })
-        .refine((value) => !value.includes("//"), {
-          message: "避免使用多个连续的斜杠 `//`",
-        })
-        .refine((value) => value !== "/", {
-          message: "禁止挂载到根目录 `/`",
-        }),
-    }),
-  ),
-  // 添加 useTensorBoard 作为布尔类型的属性
-  observability: z
-    .object({
-      tbEnable: z.boolean(),
-      tbLogDir: z.string().optional(),
-    })
-    .refine(
-      (observability) => {
-        return (
-          !observability.tbEnable ||
-          (observability.tbEnable &&
-            observability.tbLogDir !== null &&
-            observability.tbLogDir !== undefined)
-        );
-      },
-      {
-        message: "TensorBoard 日志目录不能为空",
-        path: ["tbLogDir"],
-      },
-    ),
+  task: taskSchema,
+  envs: envsSchema,
+  volumeMounts: volumeMountsSchema,
+  observability: observabilitySchema,
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -138,49 +72,34 @@ const EnvCard = "环境变量";
 const DataMountCard = "数据挂载";
 const TensorboardCard = "观测面板";
 
-const JupyterNew = () => {
+const TrainingNew = () => {
   const [dataMountOpen, setDataMountOpen] = useState<string>();
   const [envOpen, setEnvOpen] = useState<string>();
   const [tensorboardOpen, setTensorboardOpen] = useState<string>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const user = useRecoilValue(globalUserInfo);
 
   const { mutate: createTask } = useMutation({
     mutationFn: (values: FormSchema) =>
-      apiJupyterCreate({
-        name: values.taskname,
-        resource: getAiKResource(
-          {
-            gpu: values.gpu.count,
-            memory: `${values.memory}Gi`,
-            cpu: values.cpu,
-          },
-          values.gpu.model ?? undefined,
-        ),
-        image: values.image,
+      apiTrainingCreate({
+        name: values.jobName,
+        resource: convertToResourceList(values.task.resource),
+        image: values.task.image,
+        command: values.task.command,
+        workingDir: values.task.workingDir,
         volumeMounts: values.volumeMounts,
         envs: values.envs,
         useTensorBoard: values.observability.tbEnable,
       }),
-    onSuccess: async (_, { taskname }) => {
+    onSuccess: async (_, { jobName }) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["job", "list"] }),
         queryClient.invalidateQueries({ queryKey: ["context", "quota"] }),
         queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
       ]);
-      toast.success(`作业 ${taskname} 创建成功`);
-      navigate("/portal/job/jupyter");
-    },
-  });
-
-  const imagesInfo = useQuery({
-    queryKey: ["jupyter", "images"],
-    queryFn: apiJTaskImageList,
-    select: (res) => {
-      return res.data.data.images.map((item) => ({
-        value: item,
-        label: item,
-      }));
+      toast.success(`作业 ${jobName} 创建成功`);
+      navigate(-1);
     },
   });
 
@@ -203,13 +122,22 @@ const JupyterNew = () => {
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      taskname: "",
-      cpu: 1,
-      gpu: {
-        count: 0,
+      jobName: "",
+      task: {
+        taskName: "training",
+        replicas: 1,
+        resource: {
+          cpu: 1,
+          gpu: {
+            count: 0,
+          },
+          memory: 2,
+        },
+        image: "",
+        command: "",
+        workingDir: "",
+        ports: [],
       },
-      memory: 2,
-      image: "",
       volumeMounts: [],
       envs: [],
       observability: {
@@ -265,18 +193,22 @@ const JupyterNew = () => {
                 <ChevronLeftIcon className="h-4 w-4" />
               </Button>
               <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
-                Jupyter Lab
+                单机训练作业
               </h1>
             </div>
             <div className="flex flex-row gap-3">
               <Button
                 variant="outline"
                 type="button"
-                className="relative h-8 cursor-pointer"
+                className="relative cursor-pointer"
               >
                 <Input
                   onChange={(e) => {
-                    importFromJson<FormSchema>(e.target.files?.[0])
+                    importFromJson<FormSchema>(
+                      VERSION,
+                      JOB_TYPE,
+                      e.target.files?.[0],
+                    )
                       .then((data) => {
                         form.reset(data);
                         if (data.volumeMounts.length > 0) {
@@ -303,15 +235,19 @@ const JupyterNew = () => {
               <Button
                 variant="outline"
                 type="button"
-                className="h-8"
+                // className="h-8"
                 onClick={() => {
                   form
                     .trigger()
                     .then((isValid) => {
                       isValid &&
                         exportToJson(
-                          currentValues,
-                          currentValues.taskname + ".json",
+                          {
+                            version: VERSION,
+                            type: JOB_TYPE,
+                            data: currentValues,
+                          },
+                          currentValues.jobName + ".json",
                         );
                     })
                     .catch((error) => {
@@ -322,7 +258,7 @@ const JupyterNew = () => {
                 <CircleArrowUp className="-ml-0.5 mr-1.5 h-4 w-4" />
                 导出配置
               </Button>
-              <Button type="submit" className="h-8">
+              <Button type="submit">
                 <CirclePlus className="-ml-0.5 mr-1.5 h-4 w-4" />
                 提交作业
               </Button>
@@ -335,7 +271,7 @@ const JupyterNew = () => {
             <CardContent className="grid gap-5">
               <FormField
                 control={form.control}
-                name="taskname"
+                name="jobName"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
@@ -355,7 +291,7 @@ const JupyterNew = () => {
               <div className="grid grid-cols-3 gap-3">
                 <FormField
                   control={form.control}
-                  name="cpu"
+                  name="task.resource.cpu"
                   render={() => (
                     <FormItem>
                       <FormLabel>
@@ -365,26 +301,7 @@ const JupyterNew = () => {
                       <FormControl>
                         <Input
                           type="number"
-                          {...form.register("cpu", { valueAsNumber: true })}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="gpu.count"
-                  render={() => (
-                    <FormItem>
-                      <FormLabel>
-                        GPU (卡数)
-                        <FormLabelMust />
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          {...form.register("gpu.count", {
+                          {...form.register("task.resource.cpu", {
                             valueAsNumber: true,
                           })}
                         />
@@ -395,7 +312,28 @@ const JupyterNew = () => {
                 />
                 <FormField
                   control={form.control}
-                  name="memory"
+                  name="task.resource.gpu.count"
+                  render={() => (
+                    <FormItem>
+                      <FormLabel>
+                        GPU (卡数)
+                        <FormLabelMust />
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          {...form.register("task.resource.gpu.count", {
+                            valueAsNumber: true,
+                          })}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="task.resource.memory"
                   render={() => (
                     <FormItem>
                       <FormLabel>
@@ -406,7 +344,7 @@ const JupyterNew = () => {
                         <FormControl>
                           <Input
                             type="number"
-                            {...form.register("memory", {
+                            {...form.register("task.resource.memory", {
                               valueAsNumber: true,
                             })}
                           />
@@ -419,9 +357,9 @@ const JupyterNew = () => {
               </div>
               <FormField
                 control={form.control}
-                name="gpu.model"
+                name="task.resource.gpu.model"
                 render={({ field }) => (
-                  <FormItem hidden={currentValues.gpu.count == 0}>
+                  <FormItem hidden={currentValues.task.resource.gpu.count == 0}>
                     <FormLabel>
                       GPU 型号
                       <FormLabelMust />
@@ -440,7 +378,7 @@ const JupyterNew = () => {
               />
               <FormField
                 control={form.control}
-                name={`image`}
+                name="task.image"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
@@ -448,13 +386,49 @@ const JupyterNew = () => {
                       <FormLabelMust />
                     </FormLabel>
                     <FormControl>
-                      <Combobox
-                        items={imagesInfo.data ?? []}
-                        current={field.value}
-                        handleSelect={(value) => field.onChange(value)}
-                        formTitle="镜像"
-                      />
+                      <Input {...field} className="font-mono" />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="task.command"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      启动命令
+                      <FormLabelMust />
+                    </FormLabel>
+                    <FormControl>
+                      <Textarea {...field} className="h-24 font-mono" />
+                    </FormControl>
+                    <FormDescription>
+                      将覆盖镜像的启动命令，可通过{" "}
+                      <span className="font-mono">;</span> 拆分多行命令
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="task.workingDir"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      工作目录
+                      <FormLabelMust />
+                    </FormLabel>
+                    <FormControl>
+                      <Input {...field} className="font-mono" />
+                    </FormControl>
+                    <FormDescription>
+                      用户文件夹位于{" "}
+                      <span className="font-mono">/home/{user.name}</span>
+                      ，重启后数据不会丢失
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -678,4 +652,4 @@ const JupyterNew = () => {
   );
 };
 
-export default JupyterNew;
+export default TrainingNew;

@@ -21,6 +21,10 @@ export const craterPath: PathInfo = {
               path: "new-training",
               title: "新建作业",
             },
+            {
+              path: "new-tensorflow",
+              title: "新建作业",
+            },
           ],
         },
         {
@@ -28,7 +32,7 @@ export const craterPath: PathInfo = {
           title: "交互式作业",
           children: [
             {
-              path: "new",
+              path: "new-jupyter",
               title: "新建作业",
             },
           ],
