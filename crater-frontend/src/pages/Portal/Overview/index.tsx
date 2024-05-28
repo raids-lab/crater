@@ -16,6 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DataTable } from "@/components/custom/OldDataTable";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -30,6 +31,7 @@ import {
   PaginationContent,
   PaginationItem,
 } from "@/components/ui/pagination";
+import { Badge } from "@/components/ui/badge";
 import {
   ChevronLeft,
   ChevronRight,
@@ -52,10 +54,12 @@ import {
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
 import { UsageCell } from "@/pages/Admin/Cluster/Node";
 import { getAiResource } from "@/utils/resource";
-import { statuses, getHeader, VolcanoJobInfo } from "@/pages/Admin/Job/Volcano";
+import { getHeader, VolcanoJobInfo } from "@/pages/Admin/Job/Volcano";
 import { TableDate } from "@/components/custom/TableDate";
-import { cn } from "@/lib/utils";
+import { JobPhase } from "@/services/api/vcjob";
+import JobPhaseLabel, { jobPhases } from "@/components/custom/JobPhaseLabel";
 import { apiTaskListByType } from "@/services/api/admin/task";
+import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
 interface ResourceInfo {
   percent: number;
   description: string;
@@ -67,14 +71,31 @@ interface ClusterNodeInfo {
   memory: ResourceInfo;
   gpu: ResourceInfo;
 }
-type info = ClusterNodeInfo | VolcanoJobInfo;
-const NodeHome = <T extends info>({
+interface Resource {
+  [key: string]: string;
+}
+
+const toolbarConfig: DataTableToolbarConfig = {
+  filterInput: {
+    placeholder: "搜索作业名称",
+    key: "name",
+  },
+  filterOptions: [
+    {
+      key: "status",
+      title: "作业状态",
+      option: jobPhases,
+    },
+  ],
+  getHeader: getHeader,
+};
+const NodeHome = ({
   columns,
   table,
   isLoading,
 }: {
-  columns: ColumnDef<T>[];
-  table: TableType<T>;
+  columns: ColumnDef<ClusterNodeInfo>[];
+  table: TableType<ClusterNodeInfo>;
   isLoading: boolean;
 }) => {
   return (
@@ -187,92 +208,13 @@ const columns: ColumnDef<ClusterNodeInfo>[] = [
     enableSorting: false,
   },
 ];
-
-const jobColumns: ColumnDef<VolcanoJobInfo>[] = [
-  {
-    accessorKey: "jobName",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={getHeader("jobName")} />
-    ),
-    cell: ({ row }) => <div>{row.getValue("jobName")}</div>,
-  },
-  {
-    accessorKey: "jobType",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={getHeader("jobType")} />
-    ),
-    cell: ({ row }) => <div>{row.getValue("jobType")}</div>,
-  },
-  {
-    accessorKey: "userName",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={getHeader("userName")} />
-    ),
-    cell: ({ row }) => <div>{row.getValue("userName")}</div>,
-  },
-  {
-    accessorKey: "queue",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={getHeader("queue")} />
-    ),
-    cell: ({ row }) => <div>{row.getValue("queue")}</div>,
-  },
-  {
-    accessorKey: "status",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={getHeader("status")} />
-    ),
-    cell: ({ row }) => {
-      const status = statuses.find(
-        (status) => status.value === row.getValue("status"),
-      );
-      if (!status) {
-        return null;
-      }
-      return (
-        <div className="flex flex-row items-center justify-start">
-          <div
-            className={cn("flex h-3 w-3 rounded-full", {
-              "bg-purple-500 hover:bg-purple-400": status.value === "Queueing",
-              "bg-slate-500 hover:bg-slate-400": status.value === "Created",
-              "bg-pink-500 hover:bg-pink-400": status.value === "Pending",
-              "bg-sky-500 hover:bg-sky-400": status.value === "Running",
-              "bg-red-500 hover:bg-red-400": status.value === "Failed",
-              "bg-emerald-500 hover:bg-emerald-400":
-                status.value === "Succeeded",
-              "bg-orange-500 hover:bg-orange-400": status.value === "Preempted",
-              "bg-rose-500 hover:bg-rose-200": status.value === "Deleted",
-            })}
-          ></div>
-          <div className="ml-1.5">{status.label}</div>
-        </div>
-      );
-    },
-    filterFn: (row, id, value) => {
-      return (value as string[]).includes(row.getValue(id));
-    },
-  },
-  {
-    accessorKey: "createdAt",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={getHeader("createdAt")} />
-    ),
-    cell: ({ row }) => {
-      return <TableDate date={row.getValue("createdAt")}></TableDate>;
-    },
-    sortingFn: "datetime",
-  },
-  {
-    accessorKey: "startedAt",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={getHeader("startedAt")} />
-    ),
-    cell: ({ row }) => {
-      return <TableDate date={row.getValue("startedAt")}></TableDate>;
-    },
-    sortingFn: "datetime",
-  },
-];
+const handleResourceData = (resourceJson: string): Resource => {
+  try {
+    return JSON.parse(resourceJson) as Resource;
+  } catch (error) {
+    return {};
+  }
+};
 
 export const Component: FC = () => {
   const query = useQuery({
@@ -284,6 +226,105 @@ export const Component: FC = () => {
     pageIndex: 0,
     pageSize: 10,
   });
+  const vcJobColumns = useMemo<ColumnDef<VolcanoJobInfo>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("jobName")} />
+        ),
+        cell: ({ row }) => <div>{row.getValue("name")}</div>,
+      },
+      {
+        accessorKey: "jobType",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("jobType")} />
+        ),
+        cell: ({ row }) => <div>{row.getValue("jobType")}</div>,
+      },
+      {
+        accessorKey: "userName",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("userName")}
+          />
+        ),
+        cell: ({ row }) => <div>{row.getValue("userName")}</div>,
+      },
+      {
+        accessorKey: "status",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("status")} />
+        ),
+        cell: ({ row }) => {
+          return <JobPhaseLabel jobPhase={row.getValue<JobPhase>("status")} />;
+        },
+        filterFn: (row, id, value) => {
+          return (value as string[]).includes(row.getValue(id));
+        },
+      },
+      {
+        accessorKey: "nodeName",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("nodeName")}
+          />
+        ),
+        cell: ({ row }) => <div>{row.getValue("nodeName")}</div>,
+      },
+      {
+        accessorKey: "resource",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={"GPU"} />
+        ),
+        cell: ({ row }) => (
+          <div>
+            {Object.entries(handleResourceData(row.getValue("resource")))
+              .filter((entry) => entry[0] !== "cpu" && entry[0] !== "memory")
+              .map(([key, value]) => (
+                <Badge
+                  key={key}
+                  variant="secondary"
+                  className="gap-2 font-medium"
+                >
+                  {" "}
+                  {key}: {String(value)}{" "}
+                </Badge>
+              ))}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "createdAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("createdAt")}
+          />
+        ),
+        cell: ({ row }) => {
+          return <TableDate date={row.getValue("createdAt")}></TableDate>;
+        },
+        sortingFn: "datetime",
+      },
+      {
+        accessorKey: "completedAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("completedAt")}
+          />
+        ),
+        cell: ({ row }) => {
+          return <TableDate date={row.getValue("completedAt")}></TableDate>;
+        },
+        sortingFn: "datetime",
+      },
+    ],
+    [],
+  );
 
   const data: ClusterNodeInfo[] = useMemo(() => {
     if (!query.data) {
@@ -330,21 +371,22 @@ export const Component: FC = () => {
   useEffect(() => {
     if (isLoading) return;
     if (!jobList) return;
-    const tableData: VolcanoJobInfo[] = jobList
-      .map((job) => {
-        //const task = convertJTask(t);
-        return {
-          name: job.name,
-          jobName: job.jobName,
-          jobType: job.jobType,
-          userName: job.userName,
-          queue: job.queue,
-          status: job.status,
-          createdAt: job.createdAt,
-          startedAt: job.startedAt,
-        };
-      })
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const tableData: VolcanoJobInfo[] = jobList.map((job) => {
+      //const task = convertJTask(t);
+      return {
+        name: job.name,
+        jobName: job.jobName,
+        jobType: job.jobType,
+        userName: job.userName,
+        queue: job.queue,
+        status: job.status,
+        createdAt: job.createdAt,
+        startedAt: job.startedAt,
+        completedAt: job.completedAt,
+        nodeName: job.nodeName,
+        resource: job.resource,
+      };
+    });
 
     setJobData(tableData);
   }, [jobList, isLoading]);
@@ -360,22 +402,11 @@ export const Component: FC = () => {
     getPaginationRowModel: getPaginationRowModel(),
   });
 
-  const jobTable = useReactTable({
-    data: jobData,
-    columns: jobColumns,
-    state: {
-      pagination,
-    },
-    getCoreRowModel: getCoreRowModel(),
-    onPaginationChange: setPagination,
-    getPaginationRowModel: getPaginationRowModel(),
-  });
-
   const updatedAt = new Date(query.dataUpdatedAt).toLocaleString();
 
   return (
     <>
-      <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
+      <div className=" grid  items-start gap-4 md:gap-8 lg:col-span-3 ">
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
           <Card className="sm:col-span-2">
             <CardHeader className="pb-3">
@@ -444,17 +475,17 @@ export const Component: FC = () => {
                 <CardDescription>提交的作业数量和状态统计</CardDescription>
               </CardHeader>
               <CardContent>
-                <NodeHome
-                  table={jobTable}
-                  columns={jobColumns}
-                  isLoading={isLoading}
-                />
+                <DataTable
+                  data={jobData}
+                  columns={vcJobColumns}
+                  toolbarConfig={toolbarConfig}
+                  loading={isLoading}
+                  className="col-span-3"
+                ></DataTable>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
-      <div>
         <Card className="overflow-hidden">
           <CardHeader className="flex flex-row items-start bg-muted/50">
             <div className="grid gap-1.5">
