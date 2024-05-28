@@ -7,11 +7,13 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+	"webdav/dao/model"
+	"webdav/dao/query"
 	"webdav/logutils"
-	"webdav/model"
 	"webdav/orm"
 	"webdav/response"
 	"webdav/util"
@@ -29,6 +31,11 @@ type Files struct {
 	IsDir      bool      `json:"isdir"`
 	ModifyTime time.Time `json:"modifytime"`
 	Sys        any       `json:"sys"`
+}
+
+type Permissions struct {
+	Queue  model.FilePermission
+	Public model.FilePermission
 }
 
 const defaultFolderPerm = 0755
@@ -77,37 +84,42 @@ func CheckJWTToken(c *gin.Context) (util.JWTMessage, error) {
 	return token, nil
 }
 
-func GetPermissionFromToken(token util.JWTMessage) model.FilePermission {
+func GetPermissionFromToken(token util.JWTMessage) Permissions {
+	var p Permissions
 	if token.QueueID == util.QueueIDNull {
-		return model.ReadWrite
+		p.Queue = model.ReadWrite
+		p.Public = model.FilePermission(token.PublicAccessMode)
+		return p
 	} else {
-		return model.FilePermission(token.RoleQueue)
+		p.Queue = model.FilePermission(token.AccessMode)
+		p.Public = model.FilePermission(token.PublicAccessMode)
+		return p
 	}
 }
 
-func ListMyProjects(userID uint) []Files {
-	db := orm.DB()
-	var data []Files
-	var user model.User
-	var ftmp Files
-	err := db.Model(&model.User{}).Where("id= ?", userID).First(&user).Error
-	if err == nil {
-		ftmp.Name = user.Space
+func ListMyProjects(userID uint, c *gin.Context) []Files {
+	u := query.User
+	user, err := u.WithContext(c).Where(u.ID.Eq(userID)).First()
+	if err != nil {
+		fmt.Println("can't find user")
+		return nil
 	}
+	var data []Files
+	var ftmp Files
+	ftmp.Name = user.Space
 	if ftmp.Name != "" {
 		data = append(data, ftmp)
 	}
-
-	var userQueue []model.UserQueue
-	err = db.Model(&model.UserQueue{}).Where("user_id = ?", userID).Find(&userQueue).Error
+	uq := query.UserQueue
+	q := query.Queue
+	userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(userID)).Find()
 	if err != nil || userQueue[0].ID == 0 {
 		fmt.Println("user has no project, ", err)
 		return data
 	}
 	for i := range userQueue {
-		var queue model.Queue
 		var tmp Files
-		err = db.Model(&model.Queue{}).Where("id = ?", userQueue[i].QueueID).First(&queue).Error
+		queue, err := q.WithContext(c).Where(q.ID.Eq(userQueue[i].QueueID)).First()
 		if err == nil {
 			tmp.Name = queue.Space
 		}
@@ -154,7 +166,14 @@ func WebDav(c *gin.Context) {
 		response.Error(c, err.Error(), response.NotSpecified)
 		return
 	}
-	permission := GetPermissionFromToken(jwttoken)
+
+	p := GetPermissionFromToken(jwttoken)
+	var permission model.FilePermission
+	if jwttoken.QueueID == 0 {
+		permission = p.Public
+	} else {
+		permission = p.Queue
+	}
 	if permission == model.NotAllowed {
 		c.String(http.StatusUnauthorized, "Unauthorized 1")
 		return
@@ -184,12 +203,19 @@ func AlloweOption(c *gin.Context) {
 func Download(c *gin.Context) {
 	AlloweOption(c)
 	checkfs()
+
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
 		response.Error(c, err.Error(), response.NotSpecified)
 		return
 	}
-	permission := GetPermissionFromToken(jwttoken)
+	p := GetPermissionFromToken(jwttoken)
+	var permission model.FilePermission
+	if jwttoken.QueueID == 0 {
+		permission = p.Public
+	} else {
+		permission = p.Queue
+	}
 	if permission == model.NotAllowed {
 		c.String(http.StatusUnauthorized, "Unauthorized 1")
 		return
@@ -219,24 +245,6 @@ func containsString(slice []string, s string) bool {
 	}
 	return false
 }
-
-// func GetMyDir(c *gin.Context) {
-// 	AlloweOption(c)
-// 	checkfs()
-// 	var data []Files
-// 	jwttoken, err := CheckJWTToken(c)
-// 	if err != nil {
-// 		response.Error(c, err.Error(), response.NotSpecified)
-// 		return
-// 	}
-// 	path := jwttoken.Data.RootPath
-// 	data, err = handleDirsList(fs.FileSystem, c.Writer, path)
-// 	if err != nil {
-// 		response.BadRequestError(c, err.Error())
-// 		return
-// 	}
-// 	response.Success(c, data)
-// }
 
 func GetFilesByPaths(paths []Files, c *gin.Context) ([]Files, error) {
 	var data []Files
@@ -268,13 +276,19 @@ func GetFiles(c *gin.Context) {
 		return
 	}
 	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/files")
-	permission := GetPermissionFromToken(jwttoken)
+	p := GetPermissionFromToken(jwttoken)
+	var permission model.FilePermission
+	if jwttoken.QueueID == 0 {
+		permission = p.Public
+	} else {
+		permission = p.Queue
+	}
 	if permission == model.NotAllowed {
 		c.String(http.StatusUnauthorized, "Unauthorized 1")
 		return
 	}
 	if param == "" || param == "/" {
-		paths := ListMyProjects(jwttoken.UserID)
+		paths := ListMyProjects(jwttoken.UserID, c)
 		fmt.Println(paths)
 		data, err = GetFilesByPaths(paths, c)
 		if err != nil {
@@ -283,7 +297,7 @@ func GetFiles(c *gin.Context) {
 		}
 		response.Success(c, data)
 	} else {
-		data, err = handleDirsList(fs.FileSystem, c.Writer, param)
+		data, err = handleDirsList(fs.FileSystem, param)
 		if err != nil {
 			response.Error(c, err.Error(), response.NotSpecified)
 			return
@@ -292,7 +306,7 @@ func GetFiles(c *gin.Context) {
 	}
 }
 
-func handleDirsList(fs webdav.FileSystem, w http.ResponseWriter, path string) ([]Files, error) {
+func handleDirsList(fs webdav.FileSystem, path string) ([]Files, error) {
 	ctx := context.Background()
 	f, err := fs.OpenFile(ctx, path, os.O_RDONLY, 0)
 	if err != nil {
@@ -306,7 +320,7 @@ func handleDirsList(fs webdav.FileSystem, w http.ResponseWriter, path string) ([
 	}
 	dirs, err := f.Readdir(-1)
 	if err != nil {
-		logutils.Log.Info(w, "Error reading directory", http.StatusInternalServerError)
+		logutils.Log.Info("Error reading directory")
 		return nil, err
 	}
 	var tmp Files
@@ -330,6 +344,7 @@ func CheckFilesExist(c *gin.Context) {
 	var paths SpacePaths
 	if err := c.ShouldBind(&paths); err != nil {
 		response.BadRequestError(c, err.Error())
+		return
 	}
 	for _, p := range paths.Paths {
 		_, err := fs.FileSystem.Stat(c.Request.Context(), p)
@@ -345,4 +360,105 @@ func CheckFilesExist(c *gin.Context) {
 		}
 	}
 	response.Success(c, "create dir success")
+}
+
+func GetDirSize(c *gin.Context) {
+	AlloweOption(c)
+	checkfs()
+	jwttoken, err := CheckJWTToken(c)
+	if err != nil {
+		response.Error(c, err.Error(), response.NotSpecified)
+		return
+	}
+	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/dirsize")
+	p := GetPermissionFromToken(jwttoken)
+	var permission model.FilePermission
+	if jwttoken.QueueID == 0 {
+		permission = p.Public
+	} else {
+		permission = p.Queue
+	}
+	if permission == model.NotAllowed {
+		c.String(http.StatusUnauthorized, "Unauthorized 1")
+		return
+	}
+	if param == "" || param == "/" {
+		response.BadRequestError(c, "Can't get size of all dirs")
+		return
+	}
+	size, err := getDirSize("/crater" + param)
+	if err != nil {
+		response.Error(c, "Can't Get dirsize", response.NotSpecified)
+		return
+	}
+	response.Success(c, size)
+}
+
+func getDirSize(path string) (int64, error) {
+	var size int64
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return size, nil
+}
+
+func checkSpace() {
+	u := query.User
+	q := query.Queue
+	ctx := context.Background()
+	user, err := u.WithContext(ctx).Where(u.ID.IsNotNull()).Find()
+	if err != nil {
+		fmt.Println("can't get user")
+		return
+	}
+	queue, err := q.WithContext(ctx).Where(q.ID.IsNotNull()).Find()
+	if err != nil {
+		fmt.Println("can't get queue")
+		return
+	}
+	for _, us := range user {
+		_, err := fs.FileSystem.Stat(ctx, us.Space)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				fmt.Println("create dir:", us.Space)
+				err = fs.FileSystem.Mkdir(ctx, us.Space, os.FileMode(defaultFolderPerm))
+				if err != nil {
+					fmt.Println("can't create dir:", us.Space)
+					return
+				}
+			}
+		}
+	}
+	for _, que := range queue {
+		_, err := fs.FileSystem.Stat(ctx, que.Space)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				fmt.Println("create dir:", que.Space)
+				err = fs.FileSystem.Mkdir(ctx, que.Space, os.FileMode(defaultFolderPerm))
+				if err != nil {
+					fmt.Println("can't create dir:", que.Space)
+					return
+				}
+			}
+		}
+	}
+}
+
+const defaultTime = 120
+
+func StartCheckSpace() {
+	checkfs()
+	for {
+		checkSpace()
+		time.Sleep(time.Second * defaultTime)
+	}
 }
