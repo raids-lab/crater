@@ -1,4 +1,4 @@
-import { useMemo, type FC, useState, useEffect } from "react";
+import { useMemo, type FC, useState } from "react";
 import {
   Table,
   TableBody,
@@ -45,11 +45,11 @@ import {
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
 import { UsageCell } from "@/pages/Admin/Cluster/Node";
 import { getAiResource } from "@/utils/resource";
-import { getHeader, VolcanoJobInfo } from "@/pages/Admin/Job/Volcano";
+import { getHeader } from "@/pages/Admin/Job/Volcano";
 import { TableDate } from "@/components/custom/TableDate";
 import { JobPhase } from "@/services/api/vcjob";
 import JobPhaseLabel, { jobPhases } from "@/components/custom/JobPhaseLabel";
-import { apiTaskListByType } from "@/services/api/admin/task";
+import { IVolcanoJobInfo, apiTaskListByType } from "@/services/api/admin/task";
 import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
 interface ResourceInfo {
   percent: number;
@@ -217,7 +217,7 @@ export const Component: FC = () => {
     pageIndex: 0,
     pageSize: 10,
   });
-  const vcJobColumns = useMemo<ColumnDef<VolcanoJobInfo>[]>(
+  const vcJobColumns = useMemo<ColumnDef<IVolcanoJobInfo>[]>(
     () => [
       {
         accessorKey: "name",
@@ -274,14 +274,10 @@ export const Component: FC = () => {
           />
         ),
         cell: ({ row }) => (
-          <div>
+          <div className="flex flex-col items-start gap-1 font-medium">
             {Object.entries(handleResourceData(row.getValue("resource"))).map(
               ([key, value]) => (
-                <Badge
-                  key={key}
-                  variant="secondary"
-                  className="gap-2 font-medium"
-                >
+                <Badge key={key} variant="secondary">
                   {" "}
                   {key}: {String(value)}{" "}
                 </Badge>
@@ -291,15 +287,15 @@ export const Component: FC = () => {
         ),
       },
       {
-        accessorKey: "createdAt",
+        accessorKey: "startedAt",
         header: ({ column }) => (
           <DataTableColumnHeader
             column={column}
-            title={getHeader("createdAt")}
+            title={getHeader("startedAt")}
           />
         ),
         cell: ({ row }) => {
-          return <TableDate date={row.getValue("createdAt")}></TableDate>;
+          return <TableDate date={row.getValue("startedAt")}></TableDate>;
         },
         sortingFn: "datetime",
       },
@@ -354,36 +350,11 @@ export const Component: FC = () => {
       });
   }, [query.data]);
 
-  const [jobData, setJobData] = useState<VolcanoJobInfo[]>([]);
-
-  const { data: jobList, isLoading } = useQuery({
+  const { data: jobData, isLoading } = useQuery({
     queryKey: ["admin", "tasklist", "volcanoJob"],
     queryFn: () => apiTaskListByType(),
     select: (res) => res.data.data,
   });
-
-  useEffect(() => {
-    if (isLoading) return;
-    if (!jobList) return;
-    const tableData: VolcanoJobInfo[] = jobList.map((job) => {
-      //const task = convertJTask(t);
-      return {
-        name: job.name,
-        jobName: job.jobName,
-        jobType: job.jobType,
-        userName: job.userName,
-        queue: job.queue,
-        status: job.status,
-        createdAt: job.createdAt,
-        startedAt: job.startedAt,
-        completedAt: job.completedAt,
-        nodeName: job.nodeName,
-        resource: job.resource,
-      };
-    });
-
-    setJobData(tableData);
-  }, [jobList, isLoading]);
 
   const table = useReactTable({
     data,
@@ -427,7 +398,7 @@ export const Component: FC = () => {
         </div>
 
         <DataTable
-          data={jobData}
+          data={jobData ?? []}
           columns={vcJobColumns}
           toolbarConfig={toolbarConfig}
           loading={isLoading}

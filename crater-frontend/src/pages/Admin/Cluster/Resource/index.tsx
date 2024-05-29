@@ -145,7 +145,9 @@ export const Component: FC = () => {
     queryKey: ["resource", "list"],
     queryFn: () => apiResourceList(),
     select: (res) => {
-      return res.data.data.sort((a, b) => a.name.localeCompare(b.name));
+      return res.data.data
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .filter((x) => !x.name.startsWith("hugepages"));
     },
   });
 

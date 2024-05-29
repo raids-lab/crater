@@ -483,7 +483,7 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
         cell: ({ row }) => {
           const quota = row.getValue<Project["deserved"]>("deserved");
           return (
-            <div className="grid grid-cols-3 rounded-md border p-3 text-xs">
+            <div className="grid grid-cols-3 gap-1 rounded-md border p-3 text-xs">
               {quota &&
                 Object.entries(quota).map(([key, value]) => (
                   <Badge
