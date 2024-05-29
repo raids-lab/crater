@@ -7,7 +7,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
@@ -19,10 +18,8 @@ import {
 import { DataTable } from "@/components/custom/OldDataTable";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -32,13 +29,7 @@ import {
   PaginationItem,
 } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
-import {
-  ChevronLeft,
-  ChevronRight,
-  File,
-  ListFilter,
-  MoreVertical,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { apiGetNodes } from "@/services/api/node";
@@ -277,13 +268,15 @@ export const Component: FC = () => {
       {
         accessorKey: "resource",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={"GPU"} />
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("resource")}
+          />
         ),
         cell: ({ row }) => (
           <div>
-            {Object.entries(handleResourceData(row.getValue("resource")))
-              .filter((entry) => entry[0] !== "cpu" && entry[0] !== "memory")
-              .map(([key, value]) => (
+            {Object.entries(handleResourceData(row.getValue("resource"))).map(
+              ([key, value]) => (
                 <Badge
                   key={key}
                   variant="secondary"
@@ -292,7 +285,8 @@ export const Component: FC = () => {
                   {" "}
                   {key}: {String(value)}{" "}
                 </Badge>
-              ))}
+              ),
+            )}
           </div>
         ),
       },
@@ -407,7 +401,7 @@ export const Component: FC = () => {
   return (
     <>
       <div className=" grid  items-start gap-4 md:gap-8 lg:col-span-3 ">
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:col-span-3 xl:grid-cols-4">
           <Card className="sm:col-span-2">
             <CardHeader className="pb-3">
               <CardTitle>快速开始</CardTitle>
@@ -431,62 +425,16 @@ export const Component: FC = () => {
             <CardFooter></CardFooter>
           </Card>
         </div>
-        <Tabs defaultValue="week">
-          <div className="flex items-center">
-            <TabsList>
-              <TabsTrigger value="week">今日</TabsTrigger>
-              <TabsTrigger value="month">本周</TabsTrigger>
-              <TabsTrigger value="year">本月</TabsTrigger>
-            </TabsList>
-            <div className="ml-auto flex items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 gap-1 text-sm"
-                  >
-                    <ListFilter className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only">Filter</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Filter by</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuCheckboxItem checked>
-                    Running
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem>Successed</DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem>
-                    Traininged
-                  </DropdownMenuCheckboxItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button size="sm" variant="outline" className="h-7 gap-1 text-sm">
-                <File className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only">Export</span>
-              </Button>
-            </div>
-          </div>
-          <TabsContent value="week">
-            <Card>
-              <CardHeader className="px-7">
-                <CardTitle>集群作业</CardTitle>
-                <CardDescription>提交的作业数量和状态统计</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <DataTable
-                  data={jobData}
-                  columns={vcJobColumns}
-                  toolbarConfig={toolbarConfig}
-                  loading={isLoading}
-                  className="col-span-3"
-                ></DataTable>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-        <Card className="overflow-hidden">
+
+        <DataTable
+          data={jobData}
+          columns={vcJobColumns}
+          toolbarConfig={toolbarConfig}
+          loading={isLoading}
+          className="col-span-3"
+        ></DataTable>
+
+        <Card className="overflow-hidden lg:col-span-3">
           <CardHeader className="flex flex-row items-start bg-muted/50">
             <div className="grid gap-1.5">
               <CardTitle>集群资源</CardTitle>
