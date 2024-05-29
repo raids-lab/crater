@@ -48,6 +48,7 @@ import { apiResourceList } from "@/services/api/resource";
 import { useRecoilValue } from "recoil";
 import { globalUserInfo } from "@/utils/store";
 import { Textarea } from "@/components/ui/textarea";
+import { apiGetDataset } from "@/services/api/dataset";
 
 const VERSION = "20240528";
 const JOB_TYPE = "tensorflow";
@@ -135,7 +136,16 @@ const TensorflowNew = () => {
         }));
     },
   });
-
+  const datasetInfo = useQuery({
+    queryKey: ["datsets"],
+    queryFn: () => apiGetDataset(),
+    select: (res) => {
+      return res.data.data.map((item) => ({
+        value: item.URL,
+        label: item.Name,
+      }));
+    },
+  });
   // 1. Define your form.
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
@@ -858,7 +868,18 @@ const TensorflowNew = () => {
                                   />
                                 </TabsContent>
                                 <TabsContent value="dataset">
-                                  <Input disabled />
+                                  <Combobox
+                                    items={datasetInfo.data ?? []}
+                                    current={field.value}
+                                    handleSelect={(value) => {
+                                      field.onChange(value);
+                                      form.setValue(
+                                        `volumeMounts.${index}.mountPath`,
+                                        `/mnt/${value.split("/").pop()}`,
+                                      );
+                                    }}
+                                    formTitle="数据集"
+                                  />
                                 </TabsContent>
                               </Tabs>
                             </FormControl>
