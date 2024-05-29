@@ -4,6 +4,7 @@ import {
   ERROR_INVALID_REQUEST,
   ERROR_INVALID_ROLE,
   ERROR_NOT_SPECIFIED,
+  ERROR_QUEUE_NOT_FOUND,
   ERROR_TOKEN_EXPIRED,
 } from "./error_code";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/utils/store";
@@ -79,6 +80,8 @@ instance.interceptors.response.use(
         showErrorToast(error);
       } else if (error.response?.data.code === ERROR_INVALID_REQUEST) {
         showErrorToast(`请求参数有误`);
+      } else if (error.response?.data.code === ERROR_QUEUE_NOT_FOUND) {
+        showErrorToast("请先指定队列");
       }
     } else {
       showErrorToast(error);

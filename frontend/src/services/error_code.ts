@@ -9,4 +9,5 @@ export const ERROR_TOKEN_EXPIRED: ErrorCode = 40101;
 export const ERROR_USER_NOT_FOUND: ErrorCode = 40102;
 export const ERROR_INVALID_TOKEN: ErrorCode = 40103;
 export const ERROR_INVALID_ROLE: ErrorCode = 40301;
+export const ERROR_QUEUE_NOT_FOUND: ErrorCode = 40401;
 export const ERROR_NOT_SPECIFIED: ErrorCode = 99999;
