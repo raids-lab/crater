@@ -8,6 +8,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -74,9 +75,8 @@ func (mgr *ResourceMgr) ListResource(c *gin.Context) {
 
 type (
 	quantity struct {
-		Amount          int64
-		AmountSingleMax int64
-		Format          string
+		Total resource.Quantity
+		Max   resource.Quantity
 	}
 )
 
@@ -99,7 +99,6 @@ func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
 	}
 
 	// Create a map to store the resource quantities
-
 	reourceQuantities := make(map[string]quantity)
 
 	// Iterate over each node to get capacities: .status.allocatable
@@ -110,20 +109,18 @@ func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
 		for key, value := range resources {
 			// Get the label value
 			resourceName := key.String()
-			amount := value.Value()
 			// Get the number of quantities
 			// Add the quantity to the map
 			if q, ok := reourceQuantities[resourceName]; ok {
-				q.Amount += amount
-				if amount > q.AmountSingleMax {
-					q.AmountSingleMax = amount
+				q.Total.Add(value)
+				if value.Cmp(q.Max) > 0 {
+					q.Max = value
 				}
 				reourceQuantities[resourceName] = q
 			} else {
 				reourceQuantities[resourceName] = quantity{
-					Amount:          amount,
-					AmountSingleMax: amount,
-					Format:          string(value.Format),
+					Total: value,
+					Max:   value,
 				}
 			}
 		}
@@ -133,7 +130,10 @@ func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
 	r := query.Resource
 	for resourceName, quantity := range reourceQuantities {
 		info, err := r.WithContext(c).Where(r.ResourceName.Eq(resourceName)).
-			Updates(map[string]any{"amount": quantity.Amount, "amount_single_max": quantity.AmountSingleMax})
+			Updates(map[string]any{
+				"amount":            quantity.Total.Value(),
+				"amount_single_max": quantity.Max.Value(),
+			})
 		if err != nil {
 			resputil.Error(c, fmt.Sprintf("failed to update resource: %v", err), resputil.NotSpecified)
 			return
@@ -163,9 +163,9 @@ func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
 				ResourceName:    resourceName,
 				VendorDomain:    vendorDomain,
 				ResourceType:    resourceType,
-				Amount:          quantity.Amount,
-				AmountSingleMax: quantity.AmountSingleMax,
-				Format:          quantity.Format,
+				Amount:          quantity.Total.Value(),
+				AmountSingleMax: quantity.Max.Value(),
+				Format:          string(quantity.Max.Format),
 				Label:           label,
 			}
 			err := r.WithContext(c).Create(&newResource)
