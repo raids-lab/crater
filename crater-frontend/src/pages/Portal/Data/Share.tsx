@@ -135,24 +135,6 @@ export const Component: FC = () => {
   const columns = useMemo<ColumnDef<FileItem>[]>(
     () => [
       {
-        id: "type",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={"类型"} />
-        ),
-        cell: ({ row }) => {
-          if (row.original.isdir) {
-            return (
-              <Folder className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-              // </div>
-            );
-          } else {
-            return <File className="h-5 w-5 text-muted-foreground" />;
-          }
-        },
-        enableSorting: false,
-        enableHiding: false,
-      },
-      {
         accessorKey: "name",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("name")} />
@@ -160,19 +142,29 @@ export const Component: FC = () => {
         cell: ({ row }) => {
           if (row.original.isdir) {
             return (
-              <Button
-                onClick={() => {
-                  // setFilepath(filepath + "/" + row.original.name);
-                  navigate(pathname + "/" + row.original.name);
-                }}
-                variant={"link"}
-                className="h-8 px-0 text-left font-normal text-secondary-foreground"
-              >
-                {row.getValue("name")}
-              </Button>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <Folder className="mr-2 h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                <Button
+                  onClick={() => {
+                    // setFilepath(filepath + "/" + row.original.name);
+                    navigate(pathname + "/" + row.original.name);
+                  }}
+                  variant={"link"}
+                  className="h-8 px-0 text-left font-normal text-secondary-foreground"
+                >
+                  {row.getValue("name")}
+                </Button>
+              </div>
             );
           } else {
-            return <>{row.getValue("name")}</>;
+            return (
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <File className="mr-2 h-5 w-5 text-muted-foreground" />
+                <span className="text-secondary-foreground">
+                  {row.getValue("name")}
+                </span>
+              </div>
+            );
           }
         },
         enableSorting: false,
@@ -198,7 +190,7 @@ export const Component: FC = () => {
         ),
         cell: ({ row }) => {
           if (row.original.isdir) {
-            return <FileSizeComponent size={0} />;
+            return;
           } else {
             return <FileSizeComponent size={row.getValue("size")} />;
           }
