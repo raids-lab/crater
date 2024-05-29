@@ -263,17 +263,17 @@ func (mgr *VolcanojobMgr) GetJobLog(c *gin.Context) {
 
 type (
 	JobResp struct {
-		Name               string         `json:"name"`
-		JobName            string         `json:"jobName"`
-		UserName           string         `json:"userName"`
-		JobType            string         `json:"jobType"`
-		Queue              string         `json:"queue"`
-		Status             batch.JobPhase `json:"status"`
-		CreationTimestamp  metav1.Time    `json:"createdAt"`
-		RunningTimestamp   metav1.Time    `json:"startedAt"`
-		CompletedTimestamp metav1.Time    `json:"completedAt"`
-		NodeName           string         `json:"nodeName"`
-		Resource           string         `json:"resource"`
+		Name               string          `json:"name"`
+		JobName            string          `json:"jobName"`
+		Owner              string          `json:"owner"`
+		JobType            string          `json:"jobType"`
+		Queue              string          `json:"queue"`
+		Status             batch.JobPhase  `json:"status"`
+		CreationTimestamp  metav1.Time     `json:"createdAt"`
+		RunningTimestamp   metav1.Time     `json:"startedAt"`
+		CompletedTimestamp metav1.Time     `json:"completedAt"`
+		Nodes              []string        `json:"nodes"`
+		Resources          v1.ResourceList `json:"resources"`
 	}
 )
 
@@ -298,7 +298,7 @@ func (mgr *VolcanojobMgr) GetUserJobs(c *gin.Context) {
 		return
 	}
 
-	jobList := mgr.JobsToJobList(c, jobs)
+	jobList := mgr.convertJobResp(c, jobs)
 
 	resputil.Success(c, jobList)
 }
@@ -321,12 +321,12 @@ func (mgr *VolcanojobMgr) GetAllJobs(c *gin.Context) {
 		return
 	}
 
-	jobList := mgr.JobsToJobList(c, jobs)
+	jobList := mgr.convertJobResp(c, jobs)
 
 	resputil.Success(c, jobList)
 }
 
-func (mgr *VolcanojobMgr) JobsToJobList(c *gin.Context, jobs *batch.JobList) []JobResp {
+func (mgr *VolcanojobMgr) convertJobResp(c *gin.Context, jobs *batch.JobList) []JobResp {
 	jobList := make([]JobResp, len(jobs.Items))
 	for i := range jobs.Items {
 		job := &jobs.Items[i]
@@ -340,31 +340,47 @@ func (mgr *VolcanojobMgr) JobsToJobList(c *gin.Context, jobs *batch.JobList) []J
 				completedTimestamp = *condition.LastTransitionTime
 			}
 		}
-		namespace := config.GetConfig().Workspace.Namespace
 
-		task := &job.Spec.Tasks[0]
-		podName := fmt.Sprintf("%s-%s-0", job.Name, task.Name)
-		pod, err := mgr.getPod(c, namespace, podName)
-		if err != nil {
-			continue
-		}
-		// assume one pod running one container
-		var Resource string
-		if pod.Status.Phase == v1.PodRunning {
-			Resource = model.ResourceListToJSON(pod.Spec.Containers[0].Resources.Requests)
+		namespace := config.GetConfig().Workspace.Namespace
+		var nodes []string
+		resources := make(v1.ResourceList, 0)
+		for i := range job.Spec.Tasks {
+			task := &job.Spec.Tasks[i]
+			replicas := task.Replicas
+			for j := int32(0); j < replicas; j++ {
+				podName := fmt.Sprintf("%s-%s-%d", job.Name, task.Name, j)
+				pod, err := mgr.getPod(c, namespace, podName)
+				if err != nil {
+					continue
+				}
+				if pod.Status.Phase == v1.PodRunning {
+					nodes = append(nodes, pod.Spec.NodeName)
+					for k := range pod.Spec.Containers {
+						container := &pod.Spec.Containers[k]
+						for name, quantity := range container.Resources.Requests {
+							if v, ok := resources[name]; !ok {
+								resources[name] = quantity.DeepCopy()
+							} else {
+								v.Add(quantity)
+								resources[name] = v
+							}
+						}
+					}
+				}
+			}
 		}
 		jobList[i] = JobResp{
 			Name:               job.Annotations[AnnotationKeyTaskName],
 			JobName:            job.Name,
-			UserName:           job.Labels[LabelKeyTaskUser],
+			Owner:              job.Labels[LabelKeyTaskUser],
 			JobType:            job.Labels[LabelKeyTaskType],
 			Queue:              job.Spec.Queue,
 			Status:             job.Status.State.Phase,
 			CreationTimestamp:  job.CreationTimestamp,
 			RunningTimestamp:   runningTimestamp,
 			CompletedTimestamp: completedTimestamp,
-			NodeName:           pod.Spec.NodeName,
-			Resource:           Resource,
+			Nodes:              nodes,
+			Resources:          resources,
 		}
 	}
 	sort.Slice(jobList, func(i, j int) bool {
