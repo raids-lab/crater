@@ -37,6 +37,7 @@ import { exportToJson, importFromJson } from "@/utils/form";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { apiResourceList } from "@/services/api/resource";
+import { apiGetDataset } from "@/services/api/dataset";
 
 const VERSION = "20240528";
 const JOB_TYPE = "jupyter";
@@ -183,6 +184,16 @@ const JupyterNew = () => {
       return res.data.data.images.map((item) => ({
         value: item,
         label: item,
+      }));
+    },
+  });
+  const datasetInfo = useQuery({
+    queryKey: ["datsets"],
+    queryFn: () => apiGetDataset(),
+    select: (res) => {
+      return res.data.data.map((item) => ({
+        value: item.URL,
+        label: item.Name,
       }));
     },
   });
@@ -507,7 +518,10 @@ const JupyterNew = () => {
                                   <TabsTrigger value="file">
                                     文件系统
                                   </TabsTrigger>
-                                  <TabsTrigger value="dataset">
+                                  <TabsTrigger
+                                    value="dataset"
+                                    // onClick={handleTabClick}
+                                  >
                                     数据集
                                   </TabsTrigger>
                                 </TabsList>
@@ -524,7 +538,18 @@ const JupyterNew = () => {
                                   />
                                 </TabsContent>
                                 <TabsContent value="dataset">
-                                  <Input disabled />
+                                  <Combobox
+                                    items={datasetInfo.data ?? []}
+                                    current={field.value}
+                                    handleSelect={(value) => {
+                                      field.onChange(value);
+                                      form.setValue(
+                                        `volumeMounts.${index}.mountPath`,
+                                        `/mnt/${value.split("/").pop()}`,
+                                      );
+                                    }}
+                                    formTitle="数据集"
+                                  />
                                 </TabsContent>
                               </Tabs>
                             </FormControl>
