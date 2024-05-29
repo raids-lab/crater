@@ -6,7 +6,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
-import JobPhaseLabel from "@/components/custom/JobPhaseLabel";
+import JobPhaseLabel, { jobPhases } from "@/components/custom/JobPhaseLabel";
 import { JobPhase } from "@/services/api/vcjob";
 import { DataTable } from "@/components/custom/OldDataTable";
 import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
@@ -32,10 +32,6 @@ import {
   CrossCircledIcon,
   StopwatchIcon,
   StopIcon,
-  // CheckIcon,
-  //Cross2Icon,
-  DotIcon,
-  DotFilledIcon,
 } from "@radix-ui/react-icons";
 
 export type StatusValue =
@@ -95,25 +91,12 @@ export const statuses: {
   },
 ];
 
-const deleteStatuses = [
-  {
-    label: "已删除",
-    value: "已删除",
-    icon: DotFilledIcon,
-  },
-  {
-    label: "未删除",
-    value: "未删除",
-    icon: DotIcon,
-  },
-];
-
 export const getHeader = (key: string): string => {
   switch (key) {
     case "jobName":
-      return "job 名称";
+      return "作业名称";
     case "jobType":
-      return "job 类型";
+      return "作业类型";
     case "queue":
       return "队列";
     case "userName":
@@ -134,6 +117,22 @@ export const getHeader = (key: string): string => {
       return key;
   }
 };
+
+const toolbarConfig: DataTableToolbarConfig = {
+  filterInput: {
+    placeholder: "搜索作业名称",
+    key: "name",
+  },
+  filterOptions: [
+    {
+      key: "status",
+      title: "作业状态",
+      option: jobPhases,
+    },
+  ],
+  getHeader: getHeader,
+};
+
 export interface VolcanoJobInfo {
   name: string;
   jobName: string;
@@ -155,20 +154,6 @@ const Volcano: FC = () => {
     select: (res) => res.data.data,
   });
 
-  const toolbarConfig: DataTableToolbarConfig = {
-    filterInput: {
-      placeholder: "搜索作业名",
-      key: "taskName",
-    },
-    filterOptions: [
-      {
-        key: "isDeleted",
-        title: "删除状态",
-        option: deleteStatuses,
-      },
-    ],
-    getHeader: getHeader,
-  };
   useEffect(() => {
     if (isLoading) return;
     if (!taskList) return;
@@ -199,6 +184,7 @@ const Volcano: FC = () => {
       return {};
     }
   };
+
   const columns = useMemo<ColumnDef<VolcanoJobInfo>[]>(
     () => [
       {
@@ -223,11 +209,11 @@ const Volcano: FC = () => {
         enableHiding: false,
       },
       {
-        accessorKey: "jobName",
+        accessorKey: "name",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("jobName")} />
         ),
-        cell: ({ row }) => <div>{row.getValue("jobName")}</div>,
+        cell: ({ row }) => <div>{row.getValue("name")}</div>,
       },
       {
         accessorKey: "jobType",
