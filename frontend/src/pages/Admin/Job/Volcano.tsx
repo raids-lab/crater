@@ -1,7 +1,9 @@
-import { apiAdminTaskListByType } from "@/services/api/admin/task";
+import {
+  IVolcanoJobInfo,
+  apiAdminTaskListByType,
+} from "@/services/api/admin/task";
 import { useQuery } from "@tanstack/react-query";
-import type { FC } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -96,7 +98,7 @@ export const getHeader = (key: string): string => {
     case "jobName":
       return "作业名称";
     case "jobType":
-      return "作业类型";
+      return "类型";
     case "queue":
       return "队列";
     case "userName":
@@ -133,50 +135,13 @@ const toolbarConfig: DataTableToolbarConfig = {
   getHeader: getHeader,
 };
 
-export interface VolcanoJobInfo {
-  name: string;
-  jobName: string;
-  userName: string;
-  jobType: string;
-  queue: string;
-  status: string;
-  createdAt: string;
-  startedAt: string;
-  completedAt: string;
-  nodeName: string;
-  resource: string;
-}
-const Volcano: FC = () => {
-  const [data, setData] = useState<VolcanoJobInfo[]>([]);
+const Volcano = () => {
   const { data: taskList, isLoading } = useQuery({
     queryKey: ["admin", "tasklist", "volcanoJob"],
     queryFn: () => apiAdminTaskListByType(),
     select: (res) => res.data.data,
   });
 
-  useEffect(() => {
-    if (isLoading) return;
-    if (!taskList) return;
-    const tableData: VolcanoJobInfo[] = taskList
-      //.filter((task) => !task.isDeleted)
-      .map((task) => {
-        //const task = convertJTask(t);
-        return {
-          name: task.name,
-          jobName: task.jobName,
-          jobType: task.jobType,
-          userName: task.userName,
-          queue: task.queue,
-          status: task.status,
-          createdAt: task.createdAt,
-          startedAt: task.startedAt,
-          completedAt: task.completedAt,
-          nodeName: task.nodeName,
-          resource: task.resource,
-        };
-      });
-    setData(tableData);
-  }, [taskList, isLoading]);
   const handleResourceData = (resourceJson: string): Resource => {
     try {
       return JSON.parse(resourceJson) as Resource;
@@ -185,7 +150,7 @@ const Volcano: FC = () => {
     }
   };
 
-  const columns = useMemo<ColumnDef<VolcanoJobInfo>[]>(
+  const columns = useMemo<ColumnDef<IVolcanoJobInfo>[]>(
     () => [
       {
         id: "select",
@@ -270,14 +235,10 @@ const Volcano: FC = () => {
           />
         ),
         cell: ({ row }) => (
-          <div className="item-start flex flex-col gap-1">
+          <div className="flex flex-col items-start gap-1">
             {Object.entries(handleResourceData(row.getValue("resource"))).map(
               ([key, value]) => (
-                <Badge
-                  key={key}
-                  variant="secondary"
-                  className="gap-2 font-medium"
-                >
+                <Badge key={key} variant="secondary">
                   {" "}
                   {key}: {String(value)}{" "}
                 </Badge>
@@ -394,7 +355,7 @@ const Volcano: FC = () => {
 
   return (
     <DataTable
-      data={data}
+      data={taskList ?? []}
       columns={columns}
       toolbarConfig={toolbarConfig}
       loading={isLoading}
