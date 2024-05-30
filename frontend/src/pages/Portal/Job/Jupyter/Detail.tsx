@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
 import { RefreshCcwIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { PlayIcon, StopIcon } from "@radix-ui/react-icons";
 import {
@@ -18,15 +18,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
 import {
   TableHead,
@@ -59,6 +50,7 @@ import {
   apiJupyterGetDetail,
   apiJupyterLog,
   apiJupyterYaml,
+  Logs,
 } from "@/services/api/vcjob";
 import LogSheet from "@/components/custom/LogSheet";
 export interface Resource {
@@ -85,9 +77,10 @@ const JupyterDetail = () => {
   const setBreadcrumb = useBreadcrumb();
   const [data, setData] = useState<IJupyterDetail>(initial);
   const [refetchInterval, setRefetchInterval] = useState(5000); // Manage interval state
+  const queryClient = useQueryClient();
 
   const { data: taskList, isLoading } = useQuery({
-    queryKey: ["jupyter", "detail", jobName],
+    queryKey: ["job", "detail", jobName],
     queryFn: () => apiJupyterGetDetail(jobName),
     select: (res) => res.data.data,
     refetchInterval: refetchInterval,
@@ -98,44 +91,22 @@ const JupyterDetail = () => {
     setRefetchInterval(intervalMs);
   };
 
-  const { mutate: fetchDetail } = useMutation({
-    mutationFn: (jobName: string) => apiJupyterGetDetail(jobName),
-    onSuccess: (res) => {
-      setData(res.data.data);
-    },
+  const [logs, setLogs] = useState<Logs>({});
+  const [yaml, setYaml] = useState("Loading...");
+
+  const { data: fetchLogsData, isLoading: fetchLogsBool } = useQuery({
+    queryKey: ["job", "logs", jobName],
+    queryFn: () => apiJupyterLog(jobName),
+    select: (res) => res.data.data.logs,
+    refetchInterval: refetchInterval,
   });
 
-  const [showYaml, setShowYaml] = useState(false);
-  const [isFetchingLogs, setFetchingLogs] = useState(false);
-  const [isFetchingYaml, setFetchingYaml] = useState(false);
-  const [logs, setLogs] = useState("");
-  const [yaml, setYaml] = useState("");
-
-  const { mutate: fetchLogs } = useMutation({
-    mutationFn: apiJupyterLog,
-    onSuccess: (res) => {
-      setLogs(res.data.data);
-      setFetchingLogs(false);
-    },
+  const { data: fetchYamlData, isLoading: fetchYamlBool } = useQuery({
+    queryKey: ["job", "yaml", jobName],
+    queryFn: () => apiJupyterYaml(jobName),
+    select: (res) => res.data.data,
+    refetchInterval: refetchInterval,
   });
-
-  const { mutate: fetchYaml } = useMutation({
-    mutationFn: apiJupyterYaml,
-    onSuccess: (res) => {
-      setYaml(res.data.data);
-      setFetchingYaml(false);
-    },
-  });
-
-  const handleFetchLogs = (jobName: string) => {
-    setFetchingLogs(true);
-    fetchLogs(jobName);
-  };
-
-  const handleFetchYaml = (jobName: string) => {
-    setFetchingYaml(true);
-    fetchYaml(jobName);
-  };
 
   const navigate = useNavigate();
   const { mutate: deleteJTask } = useMutation({
@@ -179,13 +150,13 @@ const JupyterDetail = () => {
   }, [taskList, isLoading, taskList?.runtime]);
 
   useEffect(() => {
-    if (isFetchingLogs) {
-      setLogs("Loading...");
+    if (!fetchLogsBool && fetchLogsData) {
+      setLogs(fetchLogsData);
     }
-    if (isFetchingYaml) {
-      setYaml("Loading...");
+    if (!fetchYamlBool && fetchYamlData) {
+      setYaml(fetchYamlData);
     }
-  }, [isFetchingLogs, isFetchingYaml]);
+  }, [fetchLogsBool, fetchLogsData, fetchYamlBool, fetchYamlData]);
 
   return (
     <>
@@ -210,7 +181,11 @@ const JupyterDetail = () => {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => fetchDetail(jobName)}
+              onClick={() =>
+                void queryClient.invalidateQueries({
+                  queryKey: ["job", "detail", jobName],
+                })
+              }
             >
               <RefreshCcwIcon className="h-3.5 w-3.5" />
             </Button>
@@ -309,32 +284,13 @@ const JupyterDetail = () => {
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Dialog open={showYaml} onOpenChange={setShowYaml}>
-                <DialogTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleFetchYaml(jobName)}
-                  >
-                    View Job Config
+              <div className="flex space-x-2">
+                <LogSheet log={yaml} title={jobName + " Job Yaml"}>
+                  <Button size="sm" variant="ghost">
+                    View Job Yaml
                   </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[800px]">
-                  <DialogHeader>
-                    <DialogTitle>Job Yaml</DialogTitle>
-                  </DialogHeader>
-                  <Textarea
-                    className="h-72 rounded-md border"
-                    value={yaml}
-                    disabled
-                  />
-                  <DialogFooter>
-                    <Button type="submit" onClick={() => setShowYaml(false)}>
-                      Close
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                </LogSheet>
+              </div>
               <Separator orientation="vertical" />
               <Button size="sm" variant="ghost">
                 View Ekdi Diagnostics
@@ -482,13 +438,8 @@ const JupyterDetail = () => {
                   <TableCell>{pod.status || "---"}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <LogSheet log={logs} title={pod.name}>
-                        <Button
-                          variant="default"
-                          onClick={() => handleFetchLogs(jobName)}
-                        >
-                          Stdout/Stderr
-                        </Button>
+                      <LogSheet log={logs[pod.name]} title={pod.name}>
+                        <Button variant="default">Stdout/Stderr</Button>
                       </LogSheet>
                     </div>
                   </TableCell>
