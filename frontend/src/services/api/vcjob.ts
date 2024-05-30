@@ -130,9 +130,15 @@ export const apiJupyterGetDetail = (jobName: string) =>
   instance.get<IResponse<IJupyterDetail>>(
     `${VERSION}/vcjobs/${jobName}/detail`,
   );
+export interface Logs {
+  [key: string]: string;
+}
+interface GetJobLogResp {
+  logs: Logs;
+}
 
 export const apiJupyterLog = (jobName: string) =>
-  instance.get<IResponse<string>>(VERSION + `/vcjobs/${jobName}/log`);
+  instance.get<IResponse<GetJobLogResp>>(VERSION + `/vcjobs/${jobName}/log`);
 
 export const apiJupyterYaml = (jobName: string) =>
   instance.get<IResponse<string>>(VERSION + `/vcjobs/${jobName}/yaml`);
