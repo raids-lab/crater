@@ -3,7 +3,9 @@ package vcjob
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -223,7 +225,10 @@ func (mgr *VolcanojobMgr) getPodLog(c *gin.Context, namespace, podName string) (
 	return buf, nil
 }
 
-// GetJobLog godoc
+type GetJobLogResp struct {
+	Logs map[string]string `json:"logs"`
+}
+
 func (mgr *VolcanojobMgr) GetJobLog(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -245,20 +250,22 @@ func (mgr *VolcanojobMgr) GetJobLog(c *gin.Context) {
 	}
 
 	// Get the logs of the job pod
+	resp := GetJobLogResp{Logs: map[string]string{}}
 	var podName string
 	for i := range job.Spec.Tasks {
 		task := &job.Spec.Tasks[i]
-		podName = fmt.Sprintf("%s-%s-0", job.Name, task.Name)
-		break
+		for j := range task.Replicas {
+			podName = fmt.Sprintf("%s-%s-%d", job.Name, task.Name, j)
+			buf, err := mgr.getPodLog(c, namespace, podName)
+			if err != nil {
+				log.Printf("failed to get log of %s:%s", podName, err)
+				continue
+			}
+			resp.Logs[podName] = buf.String()
+		}
 	}
 
-	buf, err := mgr.getPodLog(c, namespace, podName)
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	resputil.Success(c, buf.String())
+	resputil.Success(c, resp)
 }
 
 type (
@@ -480,33 +487,35 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 	PodDetails := []PodDetail{}
 	for i := range job.Spec.Tasks {
 		task := &job.Spec.Tasks[i]
-		podName = fmt.Sprintf("%s-%s-0", job.Name, task.Name)
-		pod, err := mgr.getPod(c, namespace, podName)
-		if err != nil {
-			continue
-		}
-		// assume one pod running one container
-		if pod.Status.Phase == v1.PodRunning {
-			portStr := ""
-			for _, port := range pod.Spec.Containers[0].Ports {
-				portStr += fmt.Sprintf("%s:%d,", port.Name, port.ContainerPort)
+		for j := range task.Replicas {
+			podName = fmt.Sprintf("%s-%s-%d", job.Name, task.Name, j)
+			pod, err := mgr.getPod(c, namespace, podName)
+			if err != nil {
+				continue
 			}
-			portStr = portStr[:len(portStr)-1]
-			podDetail := PodDetail{
-				Name:     pod.Name,
-				NodeName: pod.Spec.NodeName,
-				IP:       pod.Status.PodIP,
-				Port:     portStr,
-				Resource: model.ResourceListToJSON(pod.Spec.Containers[0].Resources.Requests),
-				Status:   pod.Status.Phase,
+			// assume one pod running one container
+			if pod.Status.Phase == v1.PodRunning {
+				portStr := ""
+				for _, port := range pod.Spec.Containers[0].Ports {
+					portStr += fmt.Sprintf("%s:%d,", port.Name, port.ContainerPort)
+				}
+				portStr = portStr[:len(portStr)-1]
+				podDetail := PodDetail{
+					Name:     pod.Name,
+					NodeName: pod.Spec.NodeName,
+					IP:       pod.Status.PodIP,
+					Port:     portStr,
+					Resource: model.ResourceListToJSON(pod.Spec.Containers[0].Resources.Requests),
+					Status:   pod.Status.Phase,
+				}
+				PodDetails = append(PodDetails, podDetail)
+			} else {
+				podDetail := PodDetail{
+					Name:   pod.Name,
+					Status: pod.Status.Phase,
+				}
+				PodDetails = append(PodDetails, podDetail)
 			}
-			PodDetails = append(PodDetails, podDetail)
-		} else {
-			podDetail := PodDetail{
-				Name:   pod.Name,
-				Status: pod.Status.Phase,
-			}
-			PodDetails = append(PodDetails, podDetail)
 		}
 	}
 
@@ -559,7 +568,24 @@ func (mgr *VolcanojobMgr) GetJobYaml(c *gin.Context) {
 		return
 	}
 
-	JobYaml, err := yaml.Marshal(job)
+	// prune useless field
+	job.ObjectMeta.ManagedFields = nil
+
+	// utilize json omitempty tag to further prune
+	jsonData, err := json.Marshal(job)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	var prunedJob map[string]any
+	err = json.Unmarshal(jsonData, &prunedJob)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	JobYaml, err := yaml.Marshal(prunedJob)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
