@@ -284,13 +284,11 @@ const JupyterDetail = () => {
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <div className="flex space-x-2">
-                <LogSheet log={yaml} title={jobName + " Job Yaml"}>
-                  <Button size="sm" variant="ghost">
-                    View Job Yaml
-                  </Button>
-                </LogSheet>
-              </div>
+              <LogSheet log={yaml} title={jobName + " Job Yaml"}>
+                <Button size="sm" variant="ghost">
+                  View Job Yaml
+                </Button>
+              </LogSheet>
               <Separator orientation="vertical" />
               <Button size="sm" variant="ghost">
                 View Ekdi Diagnostics

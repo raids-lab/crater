@@ -1,8 +1,4 @@
-import {
-  apiAiTaskGet,
-  apiJobGetLog,
-  convertAiTask,
-} from "@/services/api/aiTask";
+import { apiAiTaskGet, convertAiTask } from "@/services/api/aiTask";
 import { globalBreadCrumb } from "@/utils/store";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, type FC } from "react";
@@ -24,13 +20,6 @@ const AiJobDetail: FC = () => {
     enabled: !!taskID,
   });
 
-  const { data: taskLogs, isLoading: isLoadingLogs } = useQuery({
-    queryKey: ["aitask", "tasklog", taskID],
-    queryFn: () => apiJobGetLog(taskID ?? ""),
-    select: (res) => res.data.data,
-    enabled: !!taskID,
-  });
-
   useEffect(() => {
     if (isLoading) {
       return;
@@ -49,7 +38,7 @@ const AiJobDetail: FC = () => {
     ]);
   }, [setBreadcrumb, taskInfo, isLoading]);
 
-  if (isLoading || isLoadingLogs) {
+  if (isLoading) {
     return <></>;
   }
 
@@ -241,18 +230,6 @@ const AiJobDetail: FC = () => {
             </CardContent>
           </Card>
         </div>
-      )}
-      {taskLogs && (
-        <Card className="col-span-full">
-          <CardHeader>
-            <CardTitle>作业日志</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="whitespace-pre-wrap text-sm text-muted-foreground">
-              {taskLogs}
-            </pre>
-          </CardContent>
-        </Card>
       )}
     </div>
   );

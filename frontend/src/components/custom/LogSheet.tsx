@@ -10,8 +10,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import useResizeObserver from "use-resize-observer";
 
 type LogSheetProps = React.HTMLAttributes<HTMLDivElement> & {
-  title: string;
-  log: string;
+  title?: string;
+  log?: string;
 };
 
 const LogSheet = ({ title, log, children }: LogSheetProps) => {
@@ -21,12 +21,12 @@ const LogSheet = ({ title, log, children }: LogSheetProps) => {
     <Sheet>
       <SheetTrigger asChild>{children}</SheetTrigger>
       {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
-      <SheetContent className="flex h-screen flex-col sm:max-w-3xl">
+      <SheetContent className="flex flex-col gap-6 sm:max-w-3xl">
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
         <Card
-          className="flex-1 bg-gray-100 text-muted-foreground dark:border dark:bg-transparent"
+          className="h-[calc(100vh_-104px)] bg-gray-100 text-muted-foreground dark:border dark:bg-transparent"
           ref={refRoot}
         >
           <ScrollArea style={{ width, height }}>

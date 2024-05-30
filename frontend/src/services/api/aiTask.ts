@@ -169,7 +169,9 @@ export const apiAiTaskGet = (taskID: number) =>
   });
 
 export const apiJobGetLog = (jobName: string) =>
-  instance.get<IResponse<string>>(`${VERSION}/vcjobs/${jobName}/log`);
+  instance.get<IResponse<{ logs: Record<string, string> }>>(
+    `${VERSION}/vcjobs/${jobName}/log`,
+  );
 
 //   path: /v1/sharedir/list
 //   method: GET

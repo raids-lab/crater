@@ -5,17 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { apiJupyterTokenGet } from "@/services/api/vcjob";
 import CraterIcon from "@/components/icon/CraterIcon";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { apiJobGetLog } from "@/services/api/aiTask";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import LogSheet from "@/components/custom/LogSheet";
 
 const Jupyter: FC = () => {
   // get param from url
@@ -24,7 +15,12 @@ const Jupyter: FC = () => {
   const { data: taskLogs } = useQuery({
     queryKey: ["jupyter", "tasklog", id],
     queryFn: () => apiJobGetLog(id ?? ""),
-    select: (res) => res.data.data,
+    select: (res) => {
+      const logs = res.data.data.logs;
+      const firstKey = Object.keys(logs)[0];
+      const firstValue = logs[firstKey];
+      return firstValue;
+    },
     enabled: !!id,
   });
 
@@ -66,35 +62,16 @@ const Jupyter: FC = () => {
         src={url}
         className="absolute bottom-0 left-0 right-0 top-0 h-screen w-screen"
       />
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button
-            className="absolute bottom-10 right-4 h-10 w-10 rounded-full hover:bg-transparent"
-            size="icon"
-            variant={"ghost"}
-            title="Jupyter 日志"
-          >
-            <CraterIcon />
-          </Button>
-        </SheetTrigger>
-        {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
-        <SheetContent className="max-h-screen sm:max-w-3xl" side="left">
-          <SheetHeader>
-            <SheetTitle>Jupyter 日志</SheetTitle>
-            <SheetDescription></SheetDescription>
-          </SheetHeader>
-          {taskLogs && (
-            <Card className="bg-gray-100 text-muted-foreground dark:border dark:bg-transparent">
-              <ScrollArea className="h-[calc(100vh_-_80px)]">
-                <CardHeader className="py-3"></CardHeader>
-                <CardContent>
-                  <pre className="whitespace-pre-wrap text-sm">{taskLogs}</pre>
-                </CardContent>
-              </ScrollArea>
-            </Card>
-          )}
-        </SheetContent>
-      </Sheet>
+      <LogSheet log={taskLogs} title={id}>
+        <Button
+          className="absolute bottom-10 right-4 h-10 w-10 rounded-full hover:bg-transparent"
+          size="icon"
+          variant={"ghost"}
+          title="Jupyter 日志"
+        >
+          <CraterIcon />
+        </Button>
+      </LogSheet>
     </div>
   );
 };
