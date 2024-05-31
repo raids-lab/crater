@@ -4,7 +4,7 @@ import { IResponse } from "@/services/types";
 export interface IVolcanoJobInfo {
   name: string;
   jobName: string;
-  userName: string;
+  owner: string;
   jobType: string;
   queue: string;
   status: string;

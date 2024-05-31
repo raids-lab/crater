@@ -1,4 +1,4 @@
-import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
+import { DataTableColumnHeader } from "@/components/custom/PagenationDataTable/DataTableColumnHeader";
 import { apiAdminProjectList } from "@/services/api/admin/user";
 import { ProjectStatus } from "@/services/api/project";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -68,8 +68,8 @@ import { useMutation } from "@tanstack/react-query";
 import {
   DataTableToolbarConfig,
   DataTableToolbarRight,
-} from "@/components/custom/DataTable/DataTableToolbar";
-import DataTableCard from "@/components/custom/DataTable/DataTableCard";
+} from "@/components/custom/PagenationDataTable/DataTableToolbar";
+import DataTableCard from "@/components/custom/PagenationDataTable/DataTableCard";
 import { Tabs } from "@/components/ui/tabs";
 import { z } from "zod";
 import { toast } from "sonner";

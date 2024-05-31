@@ -95,25 +95,25 @@ export const statuses: {
 
 export const getHeader = (key: string): string => {
   switch (key) {
-    case "jobName":
-      return "作业名称";
+    case "name":
+      return "名称";
     case "jobType":
       return "类型";
     case "queue":
       return "队列";
-    case "userName":
-      return "创建用户";
+    case "owner":
+      return "创建者";
     case "status":
       return "状态";
     case "createdAt":
       return "创建于";
     case "startedAt":
       return "开始于";
-    case "nodeName":
-      return "节点";
     case "completedAt":
       return "完成于";
-    case "resource":
+    case "nodes":
+      return "节点";
+    case "resources":
       return "资源";
     default:
       return key;
