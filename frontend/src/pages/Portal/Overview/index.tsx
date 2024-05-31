@@ -1,48 +1,17 @@
-import { useMemo, type FC, useState } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { useMemo, type FC } from "react";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
-import { DataTable } from "@/components/custom/OldDataTable";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-} from "@/components/ui/pagination";
+import { DataTable } from "@/components/custom/DataTable";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { apiGetNodes } from "@/services/api/node";
-import {
-  ColumnDef,
-  PaginationState,
-  flexRender,
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-  Table as TableType,
-} from "@tanstack/react-table";
-import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
+import { ColumnDef } from "@tanstack/react-table";
+import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { UsageCell } from "@/pages/Admin/Cluster/Node";
 import { getAiResource } from "@/utils/resource";
 import { getHeader } from "@/pages/Admin/Job/Volcano";
@@ -50,7 +19,9 @@ import { TableDate } from "@/components/custom/TableDate";
 import { JobPhase } from "@/services/api/vcjob";
 import JobPhaseLabel, { jobPhases } from "@/components/custom/JobPhaseLabel";
 import { IVolcanoJobInfo, apiTaskListByType } from "@/services/api/admin/task";
-import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
+import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
+import { CardTitle } from "@/components/ui-custom/card";
+
 interface ResourceInfo {
   percent: number;
   description: string;
@@ -61,9 +32,6 @@ interface ClusterNodeInfo {
   cpu: ResourceInfo;
   memory: ResourceInfo;
   gpu: ResourceInfo;
-}
-interface Resource {
-  [key: string]: string;
 }
 
 const toolbarConfig: DataTableToolbarConfig = {
@@ -76,94 +44,13 @@ const toolbarConfig: DataTableToolbarConfig = {
       key: "status",
       title: "作业状态",
       option: jobPhases,
+      defaultValues: ["Running"],
     },
   ],
   getHeader: getHeader,
 };
-const NodeHome = ({
-  columns,
-  table,
-  isLoading,
-}: {
-  columns: ColumnDef<ClusterNodeInfo>[];
-  table: TableType<ClusterNodeInfo>;
-  isLoading: boolean;
-}) => {
-  return (
-    <Table>
-      <TableHeader>
-        {table.getHeaderGroups().map((headerGroup) => (
-          <TableRow key={headerGroup.id} className="bg-accent hover:bg-accent">
-            {headerGroup.headers.map((header) => {
-              return (
-                <TableHead key={header.id} colSpan={header.colSpan}>
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
-                </TableHead>
-              );
-            })}
-          </TableRow>
-        ))}
-      </TableHeader>
-      <TableBody>
-        {table.getRowModel().rows?.length ? (
-          table.getRowModel().rows.map((row) => (
-            <TableRow
-              key={row.id}
-              data-state={row.getIsSelected() && "selected"}
-            >
-              {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))
-        ) : (
-          <>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-60">
-                  <svg
-                    aria-hidden="true"
-                    className="m-auto h-8 w-8 animate-spin fill-primary text-gray-200 dark:text-gray-600"
-                    viewBox="0 0 100 101"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
-                      fill="currentColor"
-                    />
-                    <path
-                      d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
-                      fill="currentFill"
-                    />
-                  </svg>
-                </TableCell>
-              </TableRow>
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-40 text-center"
-                >
-                  暂无数据
-                </TableCell>
-              </TableRow>
-            )}
-          </>
-        )}
-      </TableBody>
-    </Table>
-  );
-};
 
-const columns: ColumnDef<ClusterNodeInfo>[] = [
+const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
   {
     accessorKey: "name",
     header: ({ column }) => (
@@ -199,30 +86,47 @@ const columns: ColumnDef<ClusterNodeInfo>[] = [
     enableSorting: false,
   },
 ];
-const handleResourceData = (resourceJson: string): Resource => {
-  try {
-    return JSON.parse(resourceJson) as Resource;
-  } catch (error) {
-    return {};
-  }
-};
 
 export const Component: FC = () => {
-  const query = useQuery({
+  const nodeQuery = useQuery({
     queryKey: ["overview", "nodes"],
     queryFn: () => apiGetNodes(),
-    select: (res) => res.data.data.rows,
+    select: (res) =>
+      res.data.data.rows
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .filter((x) => x.role === "worker" && x.isReady)
+        .map((x) => {
+          const capacity = getAiResource(x.capacity);
+          const allocated = getAiResource(x.allocated);
+          return {
+            name: x.name,
+            cpu: {
+              percent: (allocated.cpu ?? 0) / (capacity.cpu ?? 1) / 10,
+              description: `${((allocated.cpu ?? 0) / 1000).toFixed(1)}/${capacity.cpu ?? 1}`,
+            },
+            memory: {
+              percent:
+                ((allocated.memoryNum ?? 0) / (capacity.memoryNum ?? 1)) * 100,
+              description: `${(allocated.memoryNum ?? 0).toFixed(1)}/${(capacity.memoryNum ?? 1).toFixed(0)}Gi`,
+            },
+            gpu: {
+              percent: capacity.gpu
+                ? ((allocated.gpu ?? 0) / (capacity.gpu ?? 1)) * 100
+                : 0,
+              description: capacity.gpu
+                ? `${(allocated.gpu ?? 0).toFixed(0)}/${capacity.gpu ?? 1}`
+                : "",
+            },
+          };
+        }),
   });
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 10,
-  });
+
   const vcJobColumns = useMemo<ColumnDef<IVolcanoJobInfo>[]>(
     () => [
       {
         accessorKey: "name",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("jobName")} />
+          <DataTableColumnHeader column={column} title={getHeader("name")} />
         ),
         cell: ({ row }) => <div>{row.getValue("name")}</div>,
       },
@@ -234,14 +138,11 @@ export const Component: FC = () => {
         cell: ({ row }) => <div>{row.getValue("jobType")}</div>,
       },
       {
-        accessorKey: "userName",
+        accessorKey: "owner",
         header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("userName")}
-          />
+          <DataTableColumnHeader column={column} title={getHeader("owner")} />
         ),
-        cell: ({ row }) => <div>{row.getValue("userName")}</div>,
+        cell: ({ row }) => <div>{row.getValue("owner")}</div>,
       },
       {
         accessorKey: "status",
@@ -256,35 +157,43 @@ export const Component: FC = () => {
         },
       },
       {
-        accessorKey: "nodeName",
+        accessorKey: "nodes",
         header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("nodeName")}
-          />
+          <DataTableColumnHeader column={column} title={getHeader("nodes")} />
         ),
-        cell: ({ row }) => <div>{row.getValue("nodeName")}</div>,
+        cell: ({ row }) => {
+          const nodes = row.getValue<string[]>("nodes");
+          return (
+            <div className="flex items-start gap-1">
+              {nodes?.map((node) => (
+                <Badge key={node} variant="secondary">
+                  {node}
+                </Badge>
+              ))}
+            </div>
+          );
+        },
       },
       {
-        accessorKey: "resource",
+        accessorKey: "resources",
         header: ({ column }) => (
           <DataTableColumnHeader
             column={column}
-            title={getHeader("resource")}
+            title={getHeader("resources")}
           />
         ),
-        cell: ({ row }) => (
-          <div className="flex flex-col items-start gap-1 font-medium">
-            {Object.entries(handleResourceData(row.getValue("resource"))).map(
-              ([key, value]) => (
+        cell: ({ row }) => {
+          const resources = row.getValue<Record<string, string>>("resources");
+          return (
+            <div className="flex items-start gap-1">
+              {Object.entries(resources).map(([key, value]) => (
                 <Badge key={key} variant="secondary">
-                  {" "}
-                  {key}: {String(value)}{" "}
+                  {key.replace("nvidia.com/", "")}: {value}
                 </Badge>
-              ),
-            )}
-          </div>
-        ),
+              ))}
+            </div>
+          );
+        },
       },
       {
         accessorKey: "startedAt",
@@ -316,62 +225,15 @@ export const Component: FC = () => {
     [],
   );
 
-  const data: ClusterNodeInfo[] = useMemo(() => {
-    if (!query.data) {
-      return [];
-    }
-    // sort by name
-    return query.data
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .filter((x) => x.role === "worker" && x.isReady)
-      .map((x) => {
-        const capacity = getAiResource(x.capacity);
-        const allocated = getAiResource(x.allocated);
-        return {
-          name: x.name,
-          cpu: {
-            percent: (allocated.cpu ?? 0) / (capacity.cpu ?? 1) / 10,
-            description: `${((allocated.cpu ?? 0) / 1000).toFixed(1)}/${capacity.cpu ?? 1}`,
-          },
-          memory: {
-            percent:
-              ((allocated.memoryNum ?? 0) / (capacity.memoryNum ?? 1)) * 100,
-            description: `${(allocated.memoryNum ?? 0).toFixed(1)}/${(capacity.memoryNum ?? 1).toFixed(0)}Gi`,
-          },
-          gpu: {
-            percent: capacity.gpu
-              ? ((allocated.gpu ?? 0) / (capacity.gpu ?? 1)) * 100
-              : 0,
-            description: capacity.gpu
-              ? `${(allocated.gpu ?? 0).toFixed(0)}/${capacity.gpu ?? 1}`
-              : "",
-          },
-        };
-      });
-  }, [query.data]);
-
-  const { data: jobData, isLoading } = useQuery({
+  const vcjobQuery = useQuery({
     queryKey: ["admin", "tasklist", "volcanoJob"],
     queryFn: () => apiTaskListByType(),
     select: (res) => res.data.data,
   });
 
-  const table = useReactTable({
-    data,
-    columns,
-    state: {
-      pagination,
-    },
-    getCoreRowModel: getCoreRowModel(),
-    onPaginationChange: setPagination,
-    getPaginationRowModel: getPaginationRowModel(),
-  });
-
-  const updatedAt = new Date(query.dataUpdatedAt).toLocaleString();
-
   return (
     <>
-      <div className=" grid  items-start gap-4 md:gap-8 lg:col-span-3 ">
+      <div className="grid items-start gap-4 md:gap-8 lg:col-span-3">
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:col-span-3 xl:grid-cols-4">
           <Card className="sm:col-span-2">
             <CardHeader className="pb-3">
@@ -387,7 +249,7 @@ export const Component: FC = () => {
           </Card>
           <Card className="sm:col-span-2">
             <CardHeader className="pb-3">
-              <CardTitle>快速开始</CardTitle>
+              <CardTitle>作业统计</CardTitle>
               <CardDescription className="text-balance leading-relaxed">
                 在 Crater 启动 Jupyter Lab、打包训练镜像、
                 启动深度学习训练作业等。
@@ -396,79 +258,23 @@ export const Component: FC = () => {
             <CardFooter></CardFooter>
           </Card>
         </div>
-
         <DataTable
-          data={jobData ?? []}
+          info={{
+            title: "作业信息",
+            description: "查看集群作业的运行情况",
+          }}
+          query={vcjobQuery}
           columns={vcJobColumns}
           toolbarConfig={toolbarConfig}
-          loading={isLoading}
-          className="col-span-3"
         ></DataTable>
-
-        <Card className="overflow-hidden lg:col-span-3">
-          <CardHeader className="flex flex-row items-start bg-muted/50">
-            <div className="grid gap-1.5">
-              <CardTitle>集群资源</CardTitle>
-              <CardDescription>查看各节点的资源使用情况</CardDescription>
-            </div>
-            <div className="ml-auto flex items-center gap-1">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="icon" variant="outline" className="h-8 w-8">
-                    <MoreVertical className="h-3.5 w-3.5" />
-                    <span className="sr-only">More</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem>Edit</DropdownMenuItem>
-                  <DropdownMenuItem>Export</DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>Trash</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6 text-sm">
-            <NodeHome
-              table={table}
-              columns={columns}
-              isLoading={query.isLoading}
-            />
-          </CardContent>
-          <CardFooter className="flex flex-row items-center border-t bg-muted/50 px-6 py-3">
-            <div className="text-xs text-muted-foreground">
-              更新于 <time dateTime="2023-11-23">{updatedAt}</time>
-            </div>
-            <Pagination className="ml-auto mr-0 w-auto">
-              <PaginationContent>
-                <PaginationItem>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="h-6 w-6"
-                    onClick={() => table.previousPage()}
-                    disabled={!table.getCanPreviousPage()}
-                  >
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                    <span className="sr-only">Previous Order</span>
-                  </Button>
-                </PaginationItem>
-                <PaginationItem>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="h-6 w-6"
-                    onClick={() => table.nextPage()}
-                    disabled={!table.getCanNextPage()}
-                  >
-                    <ChevronRight className="h-3.5 w-3.5" />
-                    <span className="sr-only">Next Order</span>
-                  </Button>
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </CardFooter>
-        </Card>
+        <DataTable
+          info={{
+            title: "节点信息",
+            description: "查看集群节点的资源使用情况",
+          }}
+          query={nodeQuery}
+          columns={nodeColumns}
+        ></DataTable>
       </div>
     </>
   );

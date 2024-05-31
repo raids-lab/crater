@@ -10,26 +10,33 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 interface DataTableViewOptionsProps<TData> {
   table: Table<TData>;
   getHeader: (key: string) => string;
+  className?: string;
 }
 
 export function DataTableViewOptions<TData>({
   table,
   getHeader,
+  className,
 }: DataTableViewOptionsProps<TData>) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="ml-auto flex h-8">
-          <MixerHorizontalIcon className="mr-2 h-4 w-4" />
-          视图
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn("ml-auto flex h-8", className)}
+        >
+          <MixerHorizontalIcon className="h-4 w-4" />
+          <span className="sr-only sm:not-sr-only sm:ml-2">视图</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[150px]">
-        <DropdownMenuLabel>显示列</DropdownMenuLabel>
+        <DropdownMenuLabel>视图</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {table
           .getAllColumns()
@@ -41,7 +48,6 @@ export function DataTableViewOptions<TData>({
             return (
               <DropdownMenuCheckboxItem
                 key={column.id}
-                className="capitalize"
                 checked={column.getIsVisible()}
                 onCheckedChange={(value) => column.toggleVisibility(!!value)}
               >

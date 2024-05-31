@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { ListFilter } from "lucide-react";
-import { useEffect } from "react";
 
 export interface DataTableFacetedFilterOption {
   label: string;
@@ -33,28 +32,21 @@ interface DataTableFacetedFilterProps<TData, TValue> {
   column?: Column<TData, TValue>;
   title?: string;
   options: DataTableFacetedFilterOption[];
-  defaultValues?: string[];
 }
 
 export function DataTableFacetedFilter<TData, TValue>({
   column,
   title,
   options,
-  defaultValues,
 }: DataTableFacetedFilterProps<TData, TValue>) {
   const facets = column?.getFacetedUniqueValues();
   const selectedValues = new Set(column?.getFilterValue() as string[]);
-
-  // set default filter option
-  useEffect(() => {
-    defaultValues && column?.setFilterValue(defaultValues);
-  }, [defaultValues, column]);
 
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="h-8 border-dashed">
-          <ListFilter className="mr-1.5 h-4 w-4" />
+          <ListFilter className="mr-2 h-4 w-4" />
           {title}
           {selectedValues?.size > 0 && (
             <>
