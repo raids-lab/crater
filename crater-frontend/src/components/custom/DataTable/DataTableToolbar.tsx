@@ -15,7 +15,7 @@ export interface DataTableToolbarConfig {
     placeholder: string;
     key: string;
   };
-  filterOptions: {
+  filterOptions: readonly {
     key: string;
     title: string;
     option: DataTableFacetedFilterOption[];
