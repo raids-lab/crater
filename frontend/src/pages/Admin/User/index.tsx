@@ -1,8 +1,4 @@
-import {
-  DotsHorizontalIcon,
-  StarFilledIcon,
-  StarIcon,
-} from "@radix-ui/react-icons";
+import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { ColumnDef } from "@tanstack/react-table";
 import {
   AlertDialog,
@@ -30,13 +26,13 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { showErrorToast } from "@/utils/toast";
 import { toast } from "sonner";
-import { DataTable } from "@/components/custom/OldDataTable";
-import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
-import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
+import { DataTable } from "@/components/custom/DataTable";
+import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
+import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import {
   apiAdminUserDelete,
   apiAdminUserList,
@@ -46,17 +42,18 @@ import { useRecoilValue } from "recoil";
 import { globalUserInfo } from "@/utils/store";
 import { Role } from "@/services/api/auth";
 import { ProjectStatus } from "@/services/api/project";
+import { Badge } from "@/components/ui/badge";
 
 interface TUser {
   id: number;
   name: string;
-  role: Role;
-  status: ProjectStatus;
+  role: string;
+  status: string;
 }
 
 const getHeader = (key: string): string => {
   switch (key) {
-    case "userName":
+    case "name":
       return "用户名";
     case "role":
       return "权限";
@@ -71,25 +68,21 @@ const roles = [
   {
     label: "管理员",
     value: Role.Admin.toString(),
-    icon: StarFilledIcon,
   },
   {
     label: "普通用户",
     value: Role.User.toString(),
-    icon: StarIcon,
   },
 ];
 
 const statuses = [
   {
     label: "已激活",
-    value: ProjectStatus.Active,
-    icon: StarFilledIcon,
+    value: ProjectStatus.Active.toString(),
   },
   {
     label: "未激活",
-    value: ProjectStatus.Inactive,
-    icon: StarIcon,
+    value: ProjectStatus.Inactive.toString(),
   },
 ];
 
@@ -104,19 +97,29 @@ const toolbarConfig: DataTableToolbarConfig = {
       title: "权限",
       option: roles,
     },
+    {
+      key: "status",
+      title: "状态",
+      option: statuses,
+    },
   ],
   getHeader: getHeader,
 };
 
 export const User = () => {
-  const [data, setData] = useState<TUser[]>([]);
   const queryClient = useQueryClient();
   const { name: currentUserName } = useRecoilValue(globalUserInfo);
 
-  const { data: userList, isLoading } = useQuery({
+  const userQuery = useQuery({
     queryKey: ["admin", "userlist"],
     queryFn: apiAdminUserList,
-    select: (res) => res.data.data,
+    select: (res) =>
+      res.data.data.map((item) => ({
+        id: item.id,
+        name: item.name,
+        role: item.role.toString(),
+        status: item.status.toString(),
+      })),
   });
 
   const { mutate: deleteUser } = useMutation({
@@ -179,12 +182,13 @@ export const User = () => {
             return null;
           }
           return (
-            <div className="flex items-center">
-              {role.icon && (
-                <role.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-              )}
-              <span>{role.label}</span>
-            </div>
+            <Badge
+              variant={
+                role.value === Role.User.toString() ? "outline" : "default"
+              }
+            >
+              {role.label}
+            </Badge>
           );
         },
         filterFn: (row, id, value) => {
@@ -204,12 +208,15 @@ export const User = () => {
             return null;
           }
           return (
-            <div className="flex items-center">
-              {status.icon && (
-                <status.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-              )}
-              <span>{status.label}</span>
-            </div>
+            <Badge
+              variant={
+                status.value === ProjectStatus.Active.toString()
+                  ? "outline"
+                  : "secondary"
+              }
+            >
+              {status.label}
+            </Badge>
           );
         },
         filterFn: (row, id, value) => {
@@ -297,24 +304,11 @@ export const User = () => {
     [deleteUser, currentUserName, updateRole],
   );
 
-  useEffect(() => {
-    if (isLoading) return;
-    if (!userList) return;
-    const tableData: TUser[] = userList.map((user) => ({
-      id: user.id,
-      name: user.name,
-      role: user.role,
-      status: user.status,
-    }));
-    setData(tableData);
-  }, [userList, isLoading]);
-
   return (
     <DataTable
-      data={data}
+      query={userQuery}
       columns={columns}
       toolbarConfig={toolbarConfig}
-      loading={isLoading}
     />
   );
 };

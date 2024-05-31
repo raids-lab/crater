@@ -21,9 +21,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { DataTable } from "@/components/custom/OldDataTable";
-import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
-import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
+import { DataTable } from "@/components/custom/DataTable";
+import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
+import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { Link, useNavigate, useRoutes } from "react-router-dom";
 import { TableDate } from "@/components/custom/TableDate";
@@ -80,11 +80,7 @@ const AiJobHome = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const {
-    data: jobList,
-    isLoading,
-    dataUpdatedAt,
-  } = useQuery({
+  const batchQuery = useQuery({
     queryKey: ["job", "batch"],
     queryFn: () => apiJupyterList(),
     select: (res) => res.data.data.filter((item) => item.jobType !== "jupyter"),
@@ -253,10 +249,6 @@ const AiJobHome = () => {
     [deleteTask, navigate],
   );
 
-  const updatedAt = useMemo(() => {
-    return new Date(dataUpdatedAt).toLocaleString();
-  }, [dataUpdatedAt]);
-
   return (
     <>
       <div className="col-span-3 grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
@@ -285,16 +277,10 @@ const AiJobHome = () => {
         <Quota />
       </div>
       <DataTable
-        data={jobList ?? []}
+        query={batchQuery}
         columns={columns}
         toolbarConfig={toolbarConfig}
-        loading={isLoading}
       ></DataTable>
-      <div className="flex flex-row items-center justify-start space-x-2">
-        <div className="pl-2 text-sm text-muted-foreground">
-          数据更新于 {updatedAt}
-        </div>
-      </div>
     </>
   );
 };

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui-custom/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   IJobResp,
@@ -21,9 +21,9 @@ import {
   apiJupyterList,
   JobPhase,
 } from "@/services/api/vcjob";
-import { DataTable } from "@/components/custom/OldDataTable";
-import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
-import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
+import { DataTable } from "@/components/custom/DataTable";
+import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
+import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { TableDate } from "@/components/custom/TableDate";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { toast } from "sonner";
@@ -60,14 +60,9 @@ const toolbarConfig: DataTableToolbarConfig = {
 };
 
 export const JupyterOverview = () => {
-  const [data, setData] = useState<JTaskInfo[]>([]);
   const queryClient = useQueryClient();
 
-  const {
-    data: taskList,
-    isLoading,
-    dataUpdatedAt,
-  } = useQuery({
+  const interactiveQuery = useQuery({
     queryKey: ["job", "interactive"],
     queryFn: () => apiJupyterList(),
     select: (res) => res.data.data.filter((item) => item.jobType === "jupyter"),
@@ -239,15 +234,6 @@ export const JupyterOverview = () => {
     [deleteJTask, getPortToken],
   );
 
-  useEffect(() => {
-    if (isLoading) return;
-    if (!taskList) return;
-    const tableData = taskList;
-    setData(tableData);
-  }, [taskList, isLoading]);
-
-  const updatedAt = new Date(dataUpdatedAt).toLocaleString();
-
   return (
     <>
       <div className="col-span-3 grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
@@ -271,17 +257,10 @@ export const JupyterOverview = () => {
         <Quota />
       </div>
       <DataTable
-        data={data}
+        query={interactiveQuery}
         columns={columns}
         toolbarConfig={toolbarConfig}
-        loading={isLoading}
-        className="col-span-3"
-      ></DataTable>
-      <div className="flex flex-row items-center justify-start space-x-2">
-        <div className="pl-2 text-sm text-muted-foreground">
-          数据更新于 {updatedAt}
-        </div>
-      </div>
+      />
     </>
   );
 };

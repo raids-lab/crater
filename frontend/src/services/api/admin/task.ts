@@ -14,6 +14,7 @@ export interface IVolcanoJobInfo {
   nodeName: string;
   resource: string;
 }
+
 export const apiAdminTaskListByType = () =>
   instance.get<IResponse<IVolcanoJobInfo[]>>(VERSION + "/admin/vcjobs");
 
