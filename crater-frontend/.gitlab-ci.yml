@@ -17,8 +17,8 @@ build_frontend:
     - pnpm config set registry https://registry.npmmirror.com
     - pnpm install
     - pnpm build
-  rules:
-    - if: '$CI_COMMIT_REF_NAME == "main" && $CI_PIPELINE_SOURCE == "merge_request_event"'
+  only:
+    - main
   cache:
     paths:
       - node_modules/
