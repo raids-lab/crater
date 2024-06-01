@@ -82,7 +82,7 @@ enableMocking()
           <ThemeProvider storageKey={VITE_UI_THEME_KEY}>
             <QueryClientProvider client={queryClient}>
               <RouterProvider router={router} />
-              <Toaster richColors />
+              <Toaster richColors closeButton />
               <ReactQueryDevtools initialIsOpen={false} />
             </QueryClientProvider>
           </ThemeProvider>

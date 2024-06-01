@@ -149,7 +149,7 @@ const JupyterNew = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { mutate: createTask } = useMutation({
+  const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) =>
       apiJupyterCreate({
         name: values.taskname,
@@ -168,7 +168,7 @@ const JupyterNew = () => {
       }),
     onSuccess: async (_, { taskname }) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["job", "list"] }),
+        queryClient.invalidateQueries({ queryKey: ["job"] }),
         queryClient.invalidateQueries({ queryKey: ["context", "quota"] }),
         queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
       ]);
@@ -256,7 +256,10 @@ const JupyterNew = () => {
   const onSubmit = (values: FormSchema) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
-    createTask(values);
+    !isPending && createTask(values);
+    if (isPending) {
+      toast.info("请勿重复提交");
+    }
   };
 
   return (

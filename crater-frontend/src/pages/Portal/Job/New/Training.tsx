@@ -81,7 +81,7 @@ const TrainingNew = () => {
   const queryClient = useQueryClient();
   const user = useRecoilValue(globalUserInfo);
 
-  const { mutate: createTask } = useMutation({
+  const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) =>
       apiTrainingCreate({
         name: values.jobName,
@@ -95,7 +95,7 @@ const TrainingNew = () => {
       }),
     onSuccess: async (_, { jobName }) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["job", "list"] }),
+        queryClient.invalidateQueries({ queryKey: ["job"] }),
         queryClient.invalidateQueries({ queryKey: ["context", "quota"] }),
         queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
       ]);
@@ -180,7 +180,10 @@ const TrainingNew = () => {
   const onSubmit = (values: FormSchema) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
-    createTask(values);
+    !isPending && createTask(values);
+    if (isPending) {
+      toast.info("请勿重复提交");
+    }
   };
 
   return (
