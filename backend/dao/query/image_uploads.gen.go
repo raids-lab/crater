@@ -44,11 +44,6 @@ func newImageUpload(db *gorm.DB, opts ...gen.DOOption) imageUpload {
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("User", "model.User"),
-		UserProjects: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("User.UserProjects", "model.UserProject"),
-		},
 		UserQueues: struct {
 			field.RelationField
 		}{
@@ -189,9 +184,6 @@ type imageUploadBelongsToUser struct {
 
 	field.RelationField
 
-	UserProjects struct {
-		field.RelationField
-	}
 	UserQueues struct {
 		field.RelationField
 	}

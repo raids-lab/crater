@@ -48,11 +48,6 @@ func newImagePack(db *gorm.DB, opts ...gen.DOOption) imagePack {
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("User", "model.User"),
-		UserProjects: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("User.UserProjects", "model.UserProject"),
-		},
 		UserQueues: struct {
 			field.RelationField
 		}{
@@ -205,9 +200,6 @@ type imagePackBelongsToUser struct {
 
 	field.RelationField
 
-	UserProjects struct {
-		field.RelationField
-	}
 	UserQueues struct {
 		field.RelationField
 	}

@@ -10,7 +10,6 @@ import (
 	"github.com/raids-lab/crater/internal/payload"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
-	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -20,14 +19,12 @@ import (
 )
 
 type ProjectMgr struct {
-	taskController *aitaskctl.TaskController
 	client.Client
 }
 
-func NewProjectMgr(taskController *aitaskctl.TaskController, cl client.Client) Manager {
+func NewProjectMgr(cl client.Client) Manager {
 	return &ProjectMgr{
-		taskController: taskController,
-		Client:         cl,
+		Client: cl,
 	}
 }
 

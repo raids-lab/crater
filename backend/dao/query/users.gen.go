@@ -37,13 +37,8 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.Role = field.NewUint8(tableName, "role")
 	_user.Status = field.NewUint8(tableName, "status")
 	_user.Space = field.NewString(tableName, "space")
+	_user.AccessMode = field.NewUint8(tableName, "access_mode")
 	_user.Attributes = field.NewField(tableName, "attributes")
-	_user.UserProjects = userHasManyUserProjects{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("UserProjects", "model.UserProject"),
-	}
-
 	_user.UserQueues = userHasManyUserQueues{
 		db: db.Session(&gorm.Session{}),
 
@@ -64,20 +59,19 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 type user struct {
 	userDo userDo
 
-	ALL          field.Asterisk
-	ID           field.Uint
-	CreatedAt    field.Time
-	UpdatedAt    field.Time
-	DeletedAt    field.Field
-	Name         field.String
-	Nickname     field.String
-	Password     field.String
-	Role         field.Uint8
-	Status       field.Uint8
-	Space        field.String
-	Attributes   field.Field
-	UserProjects userHasManyUserProjects
-
+	ALL        field.Asterisk
+	ID         field.Uint
+	CreatedAt  field.Time
+	UpdatedAt  field.Time
+	DeletedAt  field.Field
+	Name       field.String
+	Nickname   field.String
+	Password   field.String
+	Role       field.Uint8
+	Status     field.Uint8
+	Space      field.String
+	AccessMode field.Uint8
+	Attributes field.Field
 	UserQueues userHasManyUserQueues
 
 	UserDatasets userHasManyUserDatasets
@@ -107,6 +101,7 @@ func (u *user) updateTableName(table string) *user {
 	u.Role = field.NewUint8(table, "role")
 	u.Status = field.NewUint8(table, "status")
 	u.Space = field.NewString(table, "space")
+	u.AccessMode = field.NewUint8(table, "access_mode")
 	u.Attributes = field.NewField(table, "attributes")
 
 	u.fillFieldMap()
@@ -143,6 +138,7 @@ func (u *user) fillFieldMap() {
 	u.fieldMap["role"] = u.Role
 	u.fieldMap["status"] = u.Status
 	u.fieldMap["space"] = u.Space
+	u.fieldMap["access_mode"] = u.AccessMode
 	u.fieldMap["attributes"] = u.Attributes
 
 }
@@ -155,77 +151,6 @@ func (u user) clone(db *gorm.DB) user {
 func (u user) replaceDB(db *gorm.DB) user {
 	u.userDo.ReplaceDB(db)
 	return u
-}
-
-type userHasManyUserProjects struct {
-	db *gorm.DB
-
-	field.RelationField
-}
-
-func (a userHasManyUserProjects) Where(conds ...field.Expr) *userHasManyUserProjects {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a userHasManyUserProjects) WithContext(ctx context.Context) *userHasManyUserProjects {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a userHasManyUserProjects) Session(session *gorm.Session) *userHasManyUserProjects {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a userHasManyUserProjects) Model(m *model.User) *userHasManyUserProjectsTx {
-	return &userHasManyUserProjectsTx{a.db.Model(m).Association(a.Name())}
-}
-
-type userHasManyUserProjectsTx struct{ tx *gorm.Association }
-
-func (a userHasManyUserProjectsTx) Find() (result []*model.UserProject, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a userHasManyUserProjectsTx) Append(values ...*model.UserProject) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a userHasManyUserProjectsTx) Replace(values ...*model.UserProject) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a userHasManyUserProjectsTx) Delete(values ...*model.UserProject) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a userHasManyUserProjectsTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a userHasManyUserProjectsTx) Count() int64 {
-	return a.tx.Count()
 }
 
 type userHasManyUserQueues struct {

@@ -12,7 +12,6 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
-	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"golang.org/x/crypto/bcrypt"
@@ -21,16 +20,14 @@ import (
 )
 
 type AuthMgr struct {
-	client         *http.Client
-	tokenMgr       *util.TokenManager
-	taskController *aitaskctl.TaskController
+	client   *http.Client
+	tokenMgr *util.TokenManager
 }
 
-func NewAuthMgr(taskController *aitaskctl.TaskController, client *http.Client) Manager {
+func NewAuthMgr(client *http.Client) Manager {
 	return &AuthMgr{
-		client:         client,
-		tokenMgr:       util.GetTokenMgr(),
-		taskController: taskController,
+		client:   client,
+		tokenMgr: util.GetTokenMgr(),
 	}
 }
 
@@ -40,7 +37,7 @@ func (mgr *AuthMgr) RegisterPublic(g *gin.RouterGroup) {
 }
 
 func (mgr *AuthMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.POST("", mgr.SwitchProject) // 切换项目 /switch
+	g.POST("", mgr.SwitchQueue) // 切换项目 /switch
 }
 
 func (mgr *AuthMgr) RegisterAdmin(_ *gin.RouterGroup) {}
@@ -59,9 +56,11 @@ type (
 	}
 
 	UserContext struct {
-		Queue        string     `json:"queue"`        // Current Queue Name
-		RoleQueue    model.Role `json:"roleQueue"`    // User role of the queue
-		RolePlatform model.Role `json:"rolePlatform"` // User role of the platform
+		Queue        string           `json:"queue"`        // Current Queue Name
+		RoleQueue    model.Role       `json:"roleQueue"`    // User role of the queue
+		RolePlatform model.Role       `json:"rolePlatform"` // User role of the platform
+		AccessQueue  model.AccessMode `json:"accessQueue"`  // User access mode of the queue
+		AccessPublic model.AccessMode `json:"accessPublic"` // User access mode of the platform
 	}
 )
 
@@ -114,8 +113,11 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		return
 	}
 
-	// Check if the user exists
 	u := query.User
+	q := query.Queue
+	uq := query.UserQueue
+
+	// Check if the user exists
 	user, err := u.WithContext(c).Where(u.Name.Eq(req.Username)).First()
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -133,26 +135,36 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 			return
 		}
 	}
+
 	if user.Status != model.StatusActive {
 		l.Error("user is not active")
 		resputil.HTTPError(c, http.StatusUnauthorized, "User is not active", resputil.NotSpecified)
 		return
 	}
-	uq := query.UserQueue
-	uesrqueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID), uq.QueueID.Eq(model.DefaultQueueID)).First()
+
+	lastUserQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID)).Last()
 	if err != nil {
-		l.Error("user has not public queue", err)
-		resputil.Error(c, "Can't get public queue", resputil.NotSpecified)
+		l.Error("user has not last queue", err)
+		resputil.Error(c, "Can not get last queue", resputil.NotSpecified)
+		return
 	}
+
+	lastQueue, err := q.WithContext(c).Where(q.ID.Eq(lastUserQueue.QueueID)).First()
+	if err != nil {
+		l.Error("user has not last queue", err)
+		resputil.Error(c, "Can not get last queue", resputil.NotSpecified)
+		return
+	}
+
 	// Generate JWT tokens
 	jwtMessage := util.JWTMessage{
 		UserID:           user.ID,
 		Username:         user.Name,
-		QueueID:          util.QueueIDNull,
-		QueueName:        util.QueueNameNull,
-		RoleQueue:        model.RoleGuest,
-		AccessMode:       model.AccessModeRW,
-		PublicAccessMode: uesrqueue.AccessMode,
+		QueueID:          lastQueue.ID,
+		QueueName:        lastQueue.Name,
+		RoleQueue:        lastUserQueue.Role,
+		AccessMode:       lastUserQueue.AccessMode,
+		PublicAccessMode: user.AccessMode,
 		RolePlatform:     user.Role,
 	}
 	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
@@ -164,9 +176,11 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		Context: UserContext{
-			Queue:        util.QueueNameNull,
-			RoleQueue:    model.RoleGuest,
+			Queue:        lastQueue.Name,
+			RoleQueue:    lastUserQueue.Role,
 			RolePlatform: user.Role,
+			AccessQueue:  lastUserQueue.AccessMode,
+			AccessPublic: user.AccessMode,
 		},
 	}
 	resputil.Success(c, loginResponse)
@@ -347,7 +361,7 @@ type SwitchQueueReq struct {
 	Queue string `json:"queue" binding:"required"`
 }
 
-// SwitchProject godoc
+// SwitchQueue godoc
 // @Summary 类似登录，切换项目并返回新的 JWT Token
 // @Description 读取body中的项目ID，生成新的 JWT Token
 // @Tags Auth
@@ -359,7 +373,7 @@ type SwitchQueueReq struct {
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/switch [post]
-func (mgr *AuthMgr) SwitchProject(c *gin.Context) {
+func (mgr *AuthMgr) SwitchQueue(c *gin.Context) {
 	var req SwitchQueueReq
 	if err := c.ShouldBind(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
@@ -387,12 +401,6 @@ func (mgr *AuthMgr) SwitchProject(c *gin.Context) {
 		resputil.Error(c, "Queue not found", resputil.NotSpecified)
 		return
 	}
-	userPublicQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID), uq.QueueID.Eq(model.DefaultQueueID)).First()
-	if err != nil {
-		resputil.Error(c, "Public Queue not found", resputil.NotSpecified)
-	}
-	// Get personal project id for the user (as the default project)
-	// Each user has a personal project (with the same name as the user)
 
 	// Generate new JWT tokens
 	jwtMessage := util.JWTMessage{
@@ -403,7 +411,7 @@ func (mgr *AuthMgr) SwitchProject(c *gin.Context) {
 		RoleQueue:        userQueue.Role,
 		RolePlatform:     token.RolePlatform,
 		AccessMode:       userQueue.AccessMode,
-		PublicAccessMode: userPublicQueue.AccessMode,
+		PublicAccessMode: token.PublicAccessMode,
 	}
 	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
 	if err != nil {
@@ -416,7 +424,9 @@ func (mgr *AuthMgr) SwitchProject(c *gin.Context) {
 		Context: UserContext{
 			Queue:        req.Queue,
 			RoleQueue:    userQueue.Role,
+			AccessQueue:  userQueue.AccessMode,
 			RolePlatform: token.RolePlatform,
+			AccessPublic: token.PublicAccessMode,
 		},
 	}
 	resputil.Success(c, loginResponse)
