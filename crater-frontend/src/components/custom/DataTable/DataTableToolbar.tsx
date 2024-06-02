@@ -1,14 +1,12 @@
-import { Cross2Icon, MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import { Table } from "@tanstack/react-table";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DataTableViewOptions } from "./DataTableViewOptions";
-
 import {
   DataTableFacetedFilter,
   DataTableFacetedFilterOption,
 } from "./DataTableFacetedFilter";
+import { SearchIcon, XIcon } from "lucide-react";
 
 export interface DataTableToolbarConfig {
   filterInput: {
@@ -28,11 +26,13 @@ interface DataTableToolbarProps<TData>
   extends React.HTMLAttributes<HTMLDivElement> {
   table: Table<TData>;
   config: DataTableToolbarConfig;
+  isLoading: boolean;
 }
 
 export function DataTableToolbar<TData>({
   table,
   config: { filterInput, filterOptions, getHeader },
+  isLoading,
   children,
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0;
@@ -42,7 +42,7 @@ export function DataTableToolbar<TData>({
       <div className="flex flex-row items-center space-x-2">
         {children}
         <div className="relative ml-auto h-8 flex-1 md:grow-0">
-          <MagnifyingGlassIcon className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+          <SearchIcon className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder={filterInput.placeholder}
             value={
@@ -69,7 +69,7 @@ export function DataTableToolbar<TData>({
               />
             ),
         )}
-        {isFiltered && (
+        {isFiltered && !isLoading && (
           <Button
             variant="outline"
             size="icon"
@@ -78,7 +78,7 @@ export function DataTableToolbar<TData>({
             onClick={() => table.resetColumnFilters()}
             className="h-8 w-8 border-dashed"
           >
-            <Cross2Icon className="h-4 w-4" />
+            <XIcon className="h-4 w-4" />
           </Button>
         )}
       </div>

@@ -15,19 +15,17 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  IJobResp,
   apiJobDelete,
   apiJupyterTokenGet,
-  apiJupyterList,
   JobPhase,
+  apiJobInteractiveList,
 } from "@/services/api/vcjob";
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { TableDate } from "@/components/custom/TableDate";
-import { REFETCH_INTERVAL } from "@/config/task";
 import { toast } from "sonner";
-import { getHeader } from "@/pages/Portal/Job/Ai/statuses";
+import { getHeader } from "@/pages/Portal/Job/Batch/statuses";
 import { logger } from "@/utils/loglevel";
 import Quota from "./Quota";
 import JobPhaseLabel, { jobPhases } from "@/components/custom/JobPhaseLabel";
@@ -41,8 +39,7 @@ import {
 import { CardTitle } from "@/components/ui-custom/card";
 import { PlayIcon, Trash } from "lucide-react";
 import SplitButton from "@/components/custom/SplitButton";
-
-interface JTaskInfo extends IJobResp {}
+import { IVolcanoJobInfo } from "@/services/api/admin/task";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -59,21 +56,20 @@ const toolbarConfig: DataTableToolbarConfig = {
   getHeader: getHeader,
 };
 
-export const JupyterOverview = () => {
+export const Component = () => {
   const queryClient = useQueryClient();
 
   const interactiveQuery = useQuery({
     queryKey: ["job", "interactive"],
-    queryFn: () => apiJupyterList(),
-    select: (res) => res.data.data.filter((item) => item.jobType === "jupyter"),
-    refetchInterval: REFETCH_INTERVAL,
+    queryFn: apiJobInteractiveList,
+    select: (res) => res.data.data.filter((task) => task.jobType === "jupyter"),
   });
 
   const refetchTaskList = async () => {
     try {
       // 并行发送所有异步请求
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["job", "interactive"] }),
+        queryClient.invalidateQueries({ queryKey: ["job"] }),
         queryClient.invalidateQueries({ queryKey: ["aitask", "quota"] }),
         queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
       ]);
@@ -82,8 +78,8 @@ export const JupyterOverview = () => {
     }
   };
 
-  const { mutate: deleteJTask } = useMutation({
-    mutationFn: (jobName: string) => apiJobDelete(jobName),
+  const { mutate: deleteTask } = useMutation({
+    mutationFn: apiJobDelete,
     onSuccess: async () => {
       await refetchTaskList();
       toast.success("作业已删除");
@@ -97,7 +93,7 @@ export const JupyterOverview = () => {
     },
   });
 
-  const columns = useMemo<ColumnDef<JTaskInfo>[]>(
+  const interColumns = useMemo<ColumnDef<IVolcanoJobInfo>[]>(
     () => [
       {
         id: "select",
@@ -219,7 +215,7 @@ export const JupyterOverview = () => {
                     <AlertDialogCancel>取消</AlertDialogCancel>
                     <AlertDialogAction
                       variant="destructive"
-                      onClick={() => deleteJTask(taskInfo.jobName)}
+                      onClick={() => deleteTask(taskInfo.jobName)}
                     >
                       删除
                     </AlertDialogAction>
@@ -231,7 +227,7 @@ export const JupyterOverview = () => {
         },
       },
     ],
-    [deleteJTask, getPortToken],
+    [deleteTask, getPortToken],
   );
 
   return (
@@ -258,11 +254,9 @@ export const JupyterOverview = () => {
       </div>
       <DataTable
         query={interactiveQuery}
-        columns={columns}
+        columns={interColumns}
         toolbarConfig={toolbarConfig}
-      />
+      ></DataTable>
     </>
   );
 };
-
-export default JupyterOverview;

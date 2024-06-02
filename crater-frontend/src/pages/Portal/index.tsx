@@ -14,6 +14,8 @@ import {
   FlaskConicalIcon,
   MessageSquareMoreIcon,
 } from "lucide-react";
+import batchRoutes from "./Job/Batch";
+import interactiveRoutes from "./Job/Interactive";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -31,14 +33,14 @@ const sidebarItems: SidebarItem[] = [
     children: [
       {
         route: {
-          path: "ai/*",
-          lazy: () => import("./Job/Ai"),
+          path: "inter/*",
+          children: interactiveRoutes,
         },
       },
       {
         route: {
-          path: "jupyter/*",
-          lazy: () => import("./Job/Jupyter"),
+          path: "batch/*",
+          children: batchRoutes,
         },
       },
     ],
@@ -150,7 +152,7 @@ export const portalRoute: RouteObject = {
   children: [
     {
       index: true,
-      element: <Navigate to="job/jupyter" replace />,
+      element: <Navigate to="overview" replace />,
     },
     ...sidebarItems.map((item) => {
       return (

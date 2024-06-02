@@ -63,7 +63,7 @@ const Quota = () => {
     queryKey: ["context", "quota"],
     queryFn: apiContextQuota,
     select: (res) => res.data.data,
-    enabled: account.id !== "",
+    enabled: account.queue !== "",
     refetchInterval: REFETCH_INTERVAL,
   });
 

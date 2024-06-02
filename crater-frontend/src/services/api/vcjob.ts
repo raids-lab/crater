@@ -1,6 +1,7 @@
 import { KubernetesResourceList } from "@/utils/resource";
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
+import { IVolcanoJobInfo } from "./admin/task";
 
 export enum JobPhase {
   Pending = "Pending",
@@ -15,19 +16,14 @@ export enum JobPhase {
   Failed = "Failed",
 }
 
-export const apiJupyterList = () =>
-  instance.get<IResponse<IJobResp[]>>(VERSION + "/vcjobs", {});
+export const apiJobAllList = () =>
+  instance.get<IResponse<IVolcanoJobInfo[]>>(VERSION + "/vcjobs", {});
 
-export interface IJobResp {
-  name: string;
-  jobName: string;
-  jobType: string;
-  queue: string;
-  status: JobPhase;
-  createdAt: string;
-  startedAt: string;
-  completedAt: string;
-}
+export const apiJobBatchList = () =>
+  instance.get<IResponse<IVolcanoJobInfo[]>>(VERSION + "/vcjobs", {});
+
+export const apiJobInteractiveList = () =>
+  instance.get<IResponse<IVolcanoJobInfo[]>>(VERSION + "/vcjobs", {});
 
 export interface PodDetail {
   name: string;

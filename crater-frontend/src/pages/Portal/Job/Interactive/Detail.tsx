@@ -57,7 +57,7 @@ export interface Resource {
   [key: string]: string;
 }
 
-const JupyterDetail = () => {
+export const Component = () => {
   const initial: IJupyterDetail = {
     name: "",
     namespace: "",
@@ -449,5 +449,3 @@ const JupyterDetail = () => {
     </>
   );
 };
-
-export default JupyterDetail;

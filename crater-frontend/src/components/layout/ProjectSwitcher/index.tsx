@@ -35,7 +35,7 @@ interface ProjectSwitcherProps extends PopoverTriggerProps {
 
 export default function ProjectSwitcher({ className }: ProjectSwitcherProps) {
   const [open, setOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useRecoilState(globalAccount);
+  const [account, setAccount] = useRecoilState(globalAccount);
   const queryClient = useQueryClient();
   const location = useLocation();
 
@@ -50,12 +50,16 @@ export default function ProjectSwitcher({ className }: ProjectSwitcherProps) {
     select: (res) => res.data.data,
   });
 
+  const currentQueue = useMemo(() => {
+    return projects?.find((p) => p.id === account.queue);
+  }, [projects, account.queue]);
+
   const { mutate: switchQueue } = useMutation({
     mutationFn: (project: QueueBasic) => apiQueueSwitch(project.id),
-    onSuccess: (_, project) => {
-      setSelectedProject(project);
+    onSuccess: ({ context }, { name }) => {
+      setAccount(context);
       setOpen(false);
-      toast.success(`已切换至账户 ${project.name}`);
+      toast.success(`已切换至账户 ${name}`);
       void queryClient.invalidateQueries();
     },
   });
@@ -76,23 +80,21 @@ export default function ProjectSwitcher({ className }: ProjectSwitcherProps) {
               },
             )}
           >
-            {selectedProject.name === "" ? (
+            {currentQueue && currentQueue.name !== "" ? (
               <>
                 <Avatar className="mr-2 h-5 w-5">
                   <AvatarFallback className="bg-primary/15 font-normal text-primary">
-                    {selectedProject.name.slice(0, 1).toUpperCase()}
+                    {currentQueue.name.slice(0, 1).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <p className="text-muted-foreground">未选择账户</p>
+                <p className="capitalize">{currentQueue.name}</p>
               </>
             ) : (
               <>
                 <Avatar className="mr-2 h-5 w-5">
-                  <AvatarFallback className="bg-primary/15 font-normal text-primary">
-                    {selectedProject.name.slice(0, 1).toUpperCase()}
-                  </AvatarFallback>
+                  <AvatarFallback className="bg-primary/15 font-normal text-primary" />
                 </Avatar>
-                <p className="capitalize">{selectedProject.name}</p>
+                <p className="text-muted-foreground">未选择账户</p>
               </>
             )}
             <CaretSortIcon className="ml-auto h-4 w-4 shrink-0 opacity-50" />
@@ -115,7 +117,7 @@ export default function ProjectSwitcher({ className }: ProjectSwitcherProps) {
                     <CommandItem
                       key={`team-${team.id}`}
                       onSelect={() => {
-                        if (selectedProject.id !== team.id) {
+                        if (currentQueue?.id !== team.id) {
                           switchQueue(team);
                         } else {
                           setOpen(false);
@@ -132,7 +134,7 @@ export default function ProjectSwitcher({ className }: ProjectSwitcherProps) {
                       <CheckIcon
                         className={cn(
                           "ml-auto h-4 w-4",
-                          selectedProject.id === team.id
+                          currentQueue?.id === team.id
                             ? "opacity-100"
                             : "opacity-0",
                         )}

@@ -14,7 +14,7 @@ export const craterPath: PathInfo = {
       title: "作业管理",
       children: [
         {
-          path: "ai",
+          path: "batch",
           title: "批处理作业",
           children: [
             {
@@ -28,7 +28,7 @@ export const craterPath: PathInfo = {
           ],
         },
         {
-          path: "jupyter",
+          path: "inter",
           title: "交互式作业",
           children: [
             {
