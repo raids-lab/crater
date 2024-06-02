@@ -82,7 +82,7 @@ func (mgr *NodeMgr) ListNodePod(c *gin.Context) {
 	}
 
 	logutils.Log.Infof("Node List Pod, name: %s", req.Name)
-	nodes, err := mgr.nodeClient.ListNodesPod(req.Name)
+	nodes, err := mgr.nodeClient.ListNodesPod(req.Name, c)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("List nodes pods failed, err %v", err), resputil.NotSpecified)
 		return
