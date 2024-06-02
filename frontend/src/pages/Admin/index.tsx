@@ -16,7 +16,7 @@ import ServerIcon from "@/components/icon/ServerIcon";
 import { Role } from "@/services/api/auth";
 import DashboardLayout from "@/components/layout/Dashboard";
 import { User } from "./User";
-import Volcano from "./Job/Volcano";
+// import Volcano from "./Job/Volcano";
 import Resource from "./Cluster/Resource";
 import UserProjectManagement from "./Project/projectUser";
 
@@ -67,8 +67,9 @@ const sidebarItems: SidebarItem[] = [
     path: "job",
     icon: OverviewIcon,
     route: {
-      path: "job",
-      element: <Volcano />,
+      path: "job/*",
+      // element: <Volcano />,
+      lazy: () => import("./Job/Volcano"),
     },
     children: [],
   },

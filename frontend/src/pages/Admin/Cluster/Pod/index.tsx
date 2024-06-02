@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { apiGetAdminNodeDetail } from "@/services/api/admin/cluster";
 import { apiGetAdminNodeGPU } from "@/services/api/admin/cluster";
 import { TableDate } from "@/components/custom/TableDate";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -281,7 +282,6 @@ const getColumns = (nodeName: string): ColumnDef<ClusterPodInfo>[] => [
       );
     },
   },
-
   {
     accessorKey: "memory",
     header: ({ column }) => (
@@ -291,7 +291,6 @@ const getColumns = (nodeName: string): ColumnDef<ClusterPodInfo>[] => [
       <div className="font-mono">{row.getValue("memory")}</div>
     ),
   },
-
   {
     id: "actions",
     enableHiding: false,
@@ -332,8 +331,68 @@ const getColumns = (nodeName: string): ColumnDef<ClusterPodInfo>[] => [
   },
 ];
 
+// export const PodStatusDetail: FC = () => {
+//   const { id: nodeName } = useParams();
+//   const { data: nodeInfo, isLoading } = useQuery({
+//     queryKey: ["admin", "nodes", nodeName],
+//     queryFn: () => apiGetAdminNodeDetail(`${nodeName}`),
+//     select: (res) => res.data.data,
+//     enabled: !!nodeName,
+//   });
+//   const safeNodeName = nodeName || "defaultNodeName";
+//   const columns = useMemo(() => getColumns(safeNodeName), [safeNodeName]);
+
+//   const setBreadcrumb = useBreadcrumb();
+
+//   // 修改 BreadCrumb
+//   useEffect(() => {
+//     setBreadcrumb([{ title: nodeName ?? "" }]);
+//   }, [setBreadcrumb, nodeName]);
+
+//   // 处理 podsList 变量
+//   const podsInfo: ClusterPodInfo[] = useMemo(() => {
+//     if (isLoading || !nodeInfo) {
+//       return [];
+//     }
+//     return nodeInfo?.pods
+//       .sort((a, b) => a.name.localeCompare(b.name))
+//       .map((x) => {
+//         return {
+//           name: x.name,
+//           status: x.status,
+//           time: x.createTime,
+//           address: x.IP,
+//           cpu: x.CPU,
+//           memory: x.Mem,
+//           isVcjob: x.isVcjob,
+//         };
+//       });
+//   }, [isLoading, nodeInfo]);
+
+//   return (
+//     <div className="col-span-3 grid gap-8 md:grid-cols-4">
+//       <div className="flex-none">
+//         <CardDemo nodeInfo={nodeInfo} />
+//         {nodeName && <GPUDetails nodeName={nodeName} />}
+//       </div>
+//       <div className="md:col-span-3">
+//         <DataTable
+//           data={podsInfo}
+//           columns={columns}
+//           toolbarConfig={toolbarConfig}
+//           loading={isLoading}
+//         />
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default PodStatusDetail;
+
 export const PodStatusDetail: FC = () => {
   const { id: nodeName } = useParams();
+  const [showAll, setShowAll] = useState(false); // 新增状态用于控制是否显示所有数据
+
   const { data: nodeInfo, isLoading } = useQuery({
     queryKey: ["admin", "nodes", nodeName],
     queryFn: () => apiGetAdminNodeDetail(`${nodeName}`),
@@ -355,7 +414,9 @@ export const PodStatusDetail: FC = () => {
     if (isLoading || !nodeInfo) {
       return [];
     }
+    // 根据 showAll 状态和 isVcjob 字段筛选数据
     return nodeInfo?.pods
+      .filter((pod) => showAll || pod.isVcjob === "true")
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((x) => {
         return {
@@ -365,9 +426,10 @@ export const PodStatusDetail: FC = () => {
           address: x.IP,
           cpu: x.CPU,
           memory: x.Mem,
+          isVcjob: x.isVcjob,
         };
       });
-  }, [isLoading, nodeInfo]);
+  }, [isLoading, nodeInfo, showAll]); // 添加 showAll 作为依赖
 
   return (
     <div className="col-span-3 grid gap-8 md:grid-cols-4">
@@ -376,6 +438,10 @@ export const PodStatusDetail: FC = () => {
         {nodeName && <GPUDetails nodeName={nodeName} />}
       </div>
       <div className="md:col-span-3">
+        <Button onClick={() => setShowAll(!showAll)} className="mb-4 w-full">
+          <Undo2 className="mr-2 h-4 w-4" />{" "}
+          {showAll ? "显示只包含 Vcjob 的" : "显示所有"}
+        </Button>
         <DataTable
           data={podsInfo}
           columns={columns}
