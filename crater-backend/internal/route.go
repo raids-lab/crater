@@ -10,7 +10,6 @@ import (
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	"github.com/raids-lab/crater/internal/middleware"
-	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/constants"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/monitor"
@@ -24,7 +23,7 @@ type Backend struct {
 	R *gin.Engine
 }
 
-func Register(aitaskCtrl *aitaskctl.TaskController, cl client.Client, cs *kubernetes.Clientset, pc *monitor.PrometheusClient) *Backend {
+func Register(cl client.Client, cs *kubernetes.Clientset, pc *monitor.PrometheusClient) *Backend {
 	s := new(Backend)
 	s.R = gin.Default()
 
@@ -36,7 +35,7 @@ func Register(aitaskCtrl *aitaskctl.TaskController, cl client.Client, cs *kubern
 	})
 
 	// Register custom routes
-	s.RegisterService(aitaskCtrl, cl, cs, pc)
+	s.RegisterService(cl, cs, pc)
 
 	// Swagger
 	// todo: DisablingWrapHandler https://github.com/swaggo/gin-swagger/blob/master/swagger.go#L205
@@ -52,7 +51,6 @@ func Register(aitaskCtrl *aitaskctl.TaskController, cl client.Client, cs *kubern
 }
 
 func (b *Backend) RegisterService(
-	aitaskCtrl *aitaskctl.TaskController,
 	cl client.Client,
 	kc *kubernetes.Clientset,
 	pc *monitor.PrometheusClient,
@@ -82,10 +80,10 @@ func (b *Backend) RegisterService(
 	harborClient := crclient.NewHarborClient()
 
 	// Init Handlers
-	authMgr := handler.NewAuthMgr(aitaskCtrl, &httpClient)
+	authMgr := handler.NewAuthMgr(&httpClient)
 	labelMgr := handler.NewLabelMgr(kc)
 	resoueceMgr := handler.NewResourceMgr(kc)
-	projectMgr := handler.NewProjectMgr(aitaskCtrl, cl)
+	projectMgr := handler.NewProjectMgr(cl)
 	nodeMgr := handler.NewNodeMgr(&nodeClient)
 	userMgr := handler.NewUserMgr()
 	imagepackMgr := handler.NewImagePackMgr(&logClient, &crclient.ImagePackController{Client: cl}, &harborClient)

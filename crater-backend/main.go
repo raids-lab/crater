@@ -38,7 +38,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal"
-	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/profiler"
@@ -139,18 +138,6 @@ func main() {
 	// taskUpdateChan := make(chan util.TaskUpdateChan)
 	jobStatusChan := make(chan util.JobStatusChan)
 
-	taskCtrl := aitaskctl.NewTaskController(
-		mgr.GetClient(),
-		clientset,
-		jobStatusChan,
-	)
-	err = taskCtrl.Init()
-	if err != nil {
-		setupLog.Error(err, "unable to set up task controller")
-		os.Exit(1)
-	}
-	setupLog.Info("task controller init success")
-
 	// 3. init job controller
 	jobReconciler := reconciler.NewAIJobReconciler(
 		mgr.GetClient(),
@@ -182,22 +169,15 @@ func main() {
 	if backendConfig.EnableProfiling {
 		prometheusClient := monitor.NewPrometheusClient(backendConfig.PrometheusAPI)
 		aijobProfiler := profiler.NewProfiler(mgr, prometheusClient, backendConfig.ProfilingTimeout)
-		taskCtrl.SetProfiler(aijobProfiler)
 		// todo: start profiling
 		aijobProfiler.Start(stopCh)
 		setupLog.Info("enable profiling success")
 	}
 
-	err = taskCtrl.Start(stopCh)
-	if err != nil {
-		setupLog.Error(err, "unable to start task controller")
-		os.Exit(1)
-	}
-
 	// 5. start server
 	setupLog.Info("starting server")
 	prometheusClient := monitor.NewPrometheusClient(backendConfig.PrometheusAPI)
-	backend := internal.Register(taskCtrl, mgr.GetClient(), clientset, prometheusClient)
+	backend := internal.Register(mgr.GetClient(), clientset, prometheusClient)
 	if err := backend.R.Run(backendConfig.ServerAddr); err != nil {
 		setupLog.Error(err, "problem running server")
 		os.Exit(1)

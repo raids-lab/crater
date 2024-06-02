@@ -21,5 +21,5 @@ type UserQueue struct {
 	UserID     uint       `gorm:"primaryKey"`
 	QueueID    uint       `gorm:"primaryKey"`
 	Role       Role       `gorm:"not null;comment:用户在队列中的角色 (user, admin)"`
-	AccessMode AccessMode `gorm:"not null;comment:用户在队列空间的访问模式 (ro, rw)"`
+	AccessMode AccessMode `gorm:"not null;comment:用户在队列空间的访问模式 (na, ro, rw)"`
 }

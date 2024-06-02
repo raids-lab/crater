@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/raids-lab/crater/dao/query"
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
@@ -396,36 +395,11 @@ func GenVolumeAndMountsFromAITask(task *models.AITask) ([]corev1.Volume, []corev
 	if len(splited) != 2 {
 		return nil, nil, fmt.Errorf("user name is not valid: %v", task.UserName)
 	}
-	// string to uint
-	uid, err := strconv.ParseUint(splited[0], 10, 64)
-	if err != nil {
-		return nil, nil, fmt.Errorf("parse user id: %v", splited[0])
-	}
-
-	// get username
-	u := query.User
-	user, err := u.WithContext(context.Background()).Where(u.ID.Eq(uint(uid))).First()
-	if err != nil {
-		return nil, nil, fmt.Errorf("get user: %w", err)
-	}
-
-	p := query.Project
-	project, err := p.WithContext(context.Background()).Where(p.Name.Eq(user.Name), p.IsPersonal.Is(true)).First()
-	if err != nil {
-		return nil, nil, fmt.Errorf("get project: %w", err)
-	}
-	s := query.Space
-	space, err := s.WithContext(context.Background()).Where(s.ProjectID.Eq(project.ID)).First()
-	if err != nil {
-		return nil, nil, fmt.Errorf("get space: %w", err)
-	}
-	// trim leading '/' from space.Path
-	spacePath := strings.TrimLeft(space.Path, "/")
 	volumeMounts := []corev1.VolumeMount{
 		{
 			Name:      "personal-volume",
 			MountPath: "/home/" + task.UserName,
-			SubPath:   spacePath,
+			SubPath:   "public",
 		},
 		{
 			Name:      "cache-volume",
