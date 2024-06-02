@@ -31,7 +31,7 @@ import {
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { UseQueryResult } from "@tanstack/react-query";
 import { CardTitle } from "@/components/ui-custom/card";
@@ -61,7 +61,7 @@ export function DataTable<TData, TValue>({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
-  const { data, isLoading, dataUpdatedAt, refetch } = query;
+  const { data: queryData, isLoading, dataUpdatedAt, refetch } = query;
   const updatedAt = new Date(dataUpdatedAt).toLocaleString([], {
     hour: "2-digit",
     minute: "2-digit",
@@ -75,8 +75,13 @@ export function DataTable<TData, TValue>({
     },
   );
 
+  const data = useMemo(() => {
+    if (!queryData || isLoading) return [];
+    return queryData;
+  }, [queryData, isLoading]);
+
   const table = useReactTable({
-    data: data ?? [],
+    data: data,
     columns,
     state: {
       sorting,
