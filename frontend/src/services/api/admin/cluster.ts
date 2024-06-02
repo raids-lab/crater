@@ -18,6 +18,7 @@ export interface IClusterPodInfo {
   IP: string;
   createTime: string;
   status: string;
+  isVcjob: string;
 }
 
 export interface IClusterNodeDetail {

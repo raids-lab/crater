@@ -20,6 +20,7 @@ import {
   StopwatchIcon,
   StopIcon,
 } from "@radix-ui/react-icons";
+import { useRoutes, Link } from "react-router-dom";
 
 export type StatusValue =
   | "Queueing"
@@ -126,7 +127,30 @@ const vcjobColumns: ColumnDef<IVolcanoJobInfo>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title={getHeader("name")} />
     ),
-    cell: ({ row }) => <div>{row.getValue("name")}</div>,
+    // cell: ({ row }) => <div>{row.getValue("name")}</div>,
+    // cell: ({ row }) => (
+    //   <Link
+    //     to={row.original.jobName}
+    //     className="underline-offset-4 hover:underline"
+    //   >
+    //     {row.getValue("name")}
+    //   </Link>
+    // ),
+    cell: ({ row }) => {
+      // 判断状态是否为 'Running'
+      if (row.getValue("status") === "Running") {
+        return (
+          <Link
+            to={row.original.jobName}
+            className="underline-offset-4 hover:underline"
+          >
+            {row.getValue("name")}
+          </Link>
+        );
+      } else {
+        return <div>{row.getValue("name")}</div>;
+      }
+    },
   },
   {
     accessorKey: "jobType",
@@ -228,4 +252,21 @@ const Volcano = () => {
   );
 };
 
-export default Volcano;
+import JobDetail from "./JobDetail";
+// import JupyterDetail from "../../Portal/Job/Jupyter/Detail";
+// export default Volcano;
+export const Component = () => {
+  const routes = useRoutes([
+    {
+      index: true,
+      element: <Volcano />,
+    },
+    {
+      path: ":id",
+      element: <JobDetail />,
+      // element: <JupyterDetail />,
+    },
+  ]);
+
+  return <>{routes}</>;
+};
