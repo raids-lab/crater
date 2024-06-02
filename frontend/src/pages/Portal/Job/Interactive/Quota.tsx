@@ -10,7 +10,7 @@ import { globalAccount } from "@/utils/store";
 import { useQuery } from "@tanstack/react-query";
 import { CpuIcon, MemoryStickIcon } from "lucide-react";
 import GpuIcon from "@/components/icon/GpuIcon";
-import { useRecoilValue } from "recoil";
+import { useAtomValue } from "jotai";
 import { REFETCH_INTERVAL } from "@/config/task";
 
 const QuotaCard = ({
@@ -58,7 +58,7 @@ const QuotaCard = ({
 };
 
 const Quota = () => {
-  const account = useRecoilValue(globalAccount);
+  const account = useAtomValue(globalAccount);
   const { data: quota } = useQuery({
     queryKey: ["context", "quota"],
     queryFn: apiContextQuota,

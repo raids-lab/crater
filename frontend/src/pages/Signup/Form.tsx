@@ -11,8 +11,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import { useSetRecoilState } from "recoil";
-import { globalUserInfo } from "@/utils/store";
+import { useSetAtom } from "jotai";
+import { globalAccount, globalUserInfo } from "@/utils/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUserSignup } from "@/services/api/auth";
 import LoadableButton from "@/components/custom/LoadableButton";
@@ -46,7 +46,8 @@ const formSchema = z
 export function SignupForm() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const setUserState = useSetRecoilState(globalUserInfo);
+  const setUserState = useSetAtom(globalUserInfo);
+  const setAccount = useSetAtom(globalAccount);
 
   const { mutate: loginUser, isPending } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
@@ -59,8 +60,8 @@ export function SignupForm() {
       await queryClient.invalidateQueries();
       setUserState({
         name: username,
-        platformRole: data.context.rolePlatform,
       });
+      setAccount(data.context);
       toast.success(
         `你好，${data.context.rolePlatform ? "管理员" : "用户"} ${username}`,
       );

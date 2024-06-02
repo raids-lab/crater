@@ -11,7 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   globalLastView,
   globalAccount,
@@ -20,7 +20,6 @@ import {
 } from "@/utils/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Role, apiUserLogin } from "@/services/api/auth";
-
 import LoadableButton from "@/components/custom/LoadableButton";
 import { toast } from "sonner";
 
@@ -46,11 +45,11 @@ const formSchema = z.object({
 export function ProfileForm() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const setUserState = useSetRecoilState(globalUserInfo);
-  const setAccount = useSetRecoilState(globalAccount);
+  const setUserState = useSetAtom(globalUserInfo);
+  const setAccount = useSetAtom(globalAccount);
   const { resetAll } = useResetStore();
 
-  const lastView = useRecoilValue(globalLastView);
+  const lastView = useAtomValue(globalLastView);
 
   const { mutate: loginUser, status } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
@@ -63,7 +62,6 @@ export function ProfileForm() {
       await queryClient.invalidateQueries();
       setUserState({
         name: username,
-        platformRole: data.context.rolePlatform,
       });
       setAccount(data.context);
       toast.success(

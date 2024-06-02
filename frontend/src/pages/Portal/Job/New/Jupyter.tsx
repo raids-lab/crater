@@ -173,7 +173,7 @@ export const Component = () => {
         queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
       ]);
       toast.success(`作业 ${taskname} 创建成功`);
-      navigate("/portal/job/jupyter");
+      navigate(-1);
     },
   });
 

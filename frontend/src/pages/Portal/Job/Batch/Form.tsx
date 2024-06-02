@@ -3,7 +3,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useRecoilValue } from "recoil";
+import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
 import { Button } from "@/components/ui/button";
 import {
@@ -81,7 +81,7 @@ type MountDir = {
 
 export function NewTaskForm({ closeSheet }: TaskFormProps) {
   const queryClient = useQueryClient();
-  const { name: currentUserName } = useRecoilValue(globalUserInfo);
+  const { name: currentUserName } = useAtomValue(globalUserInfo);
   // const { data: spaces } = useQuery({
   //   queryKey: ["data", "share"],
   //   queryFn: () => apiGetFiles(""),
@@ -319,9 +319,9 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                         共享目录
                       </FormLabel>
                       <FormControl>
-                        <div className=" grid grid-cols-2 rounded-lg border-2">
-                          <div className="flex flex-row ">
-                            <p className="w-[5px] "></p>
+                        <div className="grid grid-cols-2 rounded-lg border-2">
+                          <div className="flex flex-row">
+                            <p className="w-[5px]"></p>
                             <p className="mt-2 w-[80px] font-mono text-base">
                               项目路径:
                             </p>
@@ -334,8 +334,8 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                               }
                             />
                           </div>
-                          <div className="col-span-2 flex flex-row ">
-                            <p className="w-[5px] "></p>
+                          <div className="col-span-2 flex flex-row">
+                            <p className="w-[5px]"></p>
                             <p className="mt-2 w-[80px] font-mono text-base">
                               挂载路径:
                             </p>
@@ -351,7 +351,7 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
                                 })
                               }
                             />
-                            <p className="w-[5px] "></p>
+                            <p className="w-[5px]"></p>
                             <Button
                               size="icon"
                               variant="outline"

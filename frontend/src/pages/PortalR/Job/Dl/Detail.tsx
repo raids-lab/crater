@@ -17,7 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { useEffect, type FC, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useSetRecoilState } from "recoil";
+import { useSetAtom } from "jotai";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,7 +93,7 @@ const toolbarConfig: DataTableToolbarConfig = {
 
 // route format: /portal/job/ai/detail?id=xxx
 const DlJobDetail: FC = () => {
-  const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
+  const setBreadcrumb = useSetAtom(globalBreadCrumb);
   const navigate = useNavigate();
   const { name: taskName } = useParams();
 

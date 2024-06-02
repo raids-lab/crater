@@ -1,45 +1,17 @@
-import { atom, useResetRecoilState } from "recoil";
+import { atom } from "jotai";
+import { atomWithStorage, useResetAtom } from "jotai/utils";
 import { UserInfo } from "@/hooks/useAuth";
-import { localStorageEffect } from "./utils";
-import { AccessMode, Role, UserContext } from "@/services/api/auth";
+import { AccessMode, Role, CurrentAccount } from "@/services/api/auth";
 
 /**
  * LocalStorage and Recoil Keys
  */
 const USER_INFO_KEY = "user_info";
 const LAST_VIEW_KEY = "last_view";
-const BREAD_CRUMB_KEY = "bread_crumb";
-const SIDEBAR_MINISIZE_KEY = "sidebar_mini";
-const CURRENT_ACCOUNT_KEY = "current_account";
-
+export const CURRENT_ACCOUNT_KEY = "current_account";
 export const ACCESS_TOKEN_KEY = "access_token";
 export const REFRESH_TOKEN_KEY = "refresh_token";
 export const VITE_UI_THEME_KEY = "vite_ui_theme";
-
-/**
- * User States
- */
-
-const defaultUserContext: UserInfo = {
-  name: "",
-  platformRole: Role.Guest,
-};
-
-export const globalUserInfo = atom({
-  key: USER_INFO_KEY,
-  default: defaultUserContext,
-  effects: [localStorageEffect(USER_INFO_KEY)],
-});
-
-/**
- * Remember the last view.
- * Will not be cleared when logout.
- */
-export const globalLastView = atom({
-  key: LAST_VIEW_KEY,
-  default: "",
-  effects: [localStorageEffect(LAST_VIEW_KEY)],
-});
 
 /**
  * Navigation BreadCrumb
@@ -48,47 +20,63 @@ export type BreadCrumbItem = {
   title: string;
   path?: string;
 };
+export const globalBreadCrumb = atom([] as BreadCrumbItem[]);
 
-export const globalBreadCrumb = atom({
-  key: BREAD_CRUMB_KEY,
-  default: [] as BreadCrumbItem[],
+/**
+ * User Info
+ */
+const defaultUserContext: UserInfo = {
+  name: "",
+};
+
+export const globalUserInfo = atomWithStorage(
+  USER_INFO_KEY,
+  defaultUserContext,
+  undefined,
+  {
+    getOnInit: true,
+  },
+);
+
+/**
+ * Remember the last view.
+ * Will not be cleared when logout.
+ */
+export const globalLastView = atomWithStorage(LAST_VIEW_KEY, "", undefined, {
+  getOnInit: true,
 });
 
-export const globalSidebarMini = atom({
-  key: SIDEBAR_MINISIZE_KEY,
-  default: false,
-  effects_UNSTABLE: [localStorageEffect(SIDEBAR_MINISIZE_KEY)],
-});
+export const defaultAccount: CurrentAccount = {
+  queue: "",
+  roleQueue: Role.Guest,
+  rolePlatform: Role.Guest,
+  accessQueue: AccessMode.NotAllowed,
+  accessPublic: AccessMode.NotAllowed,
+};
 
-export const globalAccount = atom({
-  key: CURRENT_ACCOUNT_KEY,
-  default: {
-    queue: "",
-    roleQueue: Role.Guest,
-    rolePlatform: Role.Guest,
-    accessQueue: AccessMode.NotAllowed,
-    accessPublic: AccessMode.NotAllowed,
-  } as UserContext,
-  effects_UNSTABLE: [localStorageEffect(CURRENT_ACCOUNT_KEY)],
-});
+// Hydrating from Local Storage on First Render: https://github.com/pmndrs/jotai/discussions/1737
+export const globalAccount = atomWithStorage(
+  CURRENT_ACCOUNT_KEY,
+  defaultAccount,
+  undefined,
+  {
+    getOnInit: true,
+  },
+);
 
 /**
  * Reset all states
  */
 export const useResetStore = () => {
-  const resetUserInfo = useResetRecoilState(globalUserInfo);
-  const resetBreadCrumb = useResetRecoilState(globalBreadCrumb);
-  const resetSidebarMini = useResetRecoilState(globalSidebarMini);
-  const resetProject = useResetRecoilState(globalAccount);
+  const resetUserInfo = useResetAtom(globalUserInfo);
+  const resetLastView = useResetAtom(globalLastView);
+  const resetProject = useResetAtom(globalAccount);
 
   const resetAll = () => {
-    // Recoil
+    // Jotai
     resetUserInfo();
-    resetBreadCrumb();
-    resetSidebarMini();
+    resetLastView();
     resetProject();
-    // LocalStorage
-    // window.localStorage.clear();
   };
 
   return { resetAll };

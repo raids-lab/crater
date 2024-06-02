@@ -7,7 +7,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { useRecoilValue } from "recoil";
+import { useAtomValue } from "jotai";
 import { globalBreadCrumb } from "@/utils/store";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,7 @@ import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
 
 export const NavBreadcrumb = ({ className }: { className: string }) => {
   useBreadcrumb();
-  const breadcrumb = useRecoilValue(globalBreadCrumb);
+  const breadcrumb = useAtomValue(globalBreadCrumb);
 
   return (
     <Breadcrumb className={className}>

@@ -3,14 +3,14 @@ import { globalBreadCrumb } from "@/utils/store";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { useSetRecoilState } from "recoil";
+import { useSetAtom } from "jotai";
 import { ProgressBar } from "@/components/custom/ProgressBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SmallDataCard } from "@/components/custom/DataCard";
 
 // route format: /portal/job/ai/detail?id=xxx
 export const Component = () => {
-  const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
+  const setBreadcrumb = useSetAtom(globalBreadCrumb);
   const { id: taskID } = useParams();
 
   const { data: taskInfo, isLoading } = useQuery({
