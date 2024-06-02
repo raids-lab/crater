@@ -1,5 +1,6 @@
 import instance, { VERSION } from "@/services/axios";
 import { IResponse } from "@/services/types";
+import { IJupyterDetail } from "../vcjob";
 
 export interface IVolcanoJobInfo {
   name: string;
@@ -20,3 +21,8 @@ export const apiAdminTaskListByType = () =>
 
 export const apiTaskListByType = () =>
   instance.get<IResponse<IVolcanoJobInfo[]>>(VERSION + "/vcjobs/all");
+
+export const apiJupyterGetAdminDetail = (jobName: string) =>
+  instance.get<IResponse<IJupyterDetail>>(
+    `${VERSION}/admin/vcjobs/${jobName}/detail`,
+  );
