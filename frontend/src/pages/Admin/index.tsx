@@ -2,23 +2,23 @@ import { SidebarItem, SidebarMenu } from "@/components/layout/Sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { FC, PropsWithChildren, Suspense } from "react";
 import { Navigate, RouteObject } from "react-router-dom";
-import {
-  FileTextIcon,
-  ArchiveIcon,
-  Pencil2Icon,
-  PersonIcon,
-} from "@radix-ui/react-icons";
-import OverviewIcon from "@/components/icon/OverviewIcon";
-import DatabaseIcon from "@/components/icon/DatabaseIcon";
-import LightHouseIcon from "@/components/icon/LightHouseIcon";
-import { GroupUser } from "./Project/Group";
-import ServerIcon from "@/components/icon/ServerIcon";
+import { GroupUser } from "./Queue/Group";
 import { Role } from "@/services/api/auth";
 import DashboardLayout from "@/components/layout/Dashboard";
 import { User } from "./User";
 // import Volcano from "./Job/Volcano";
 import Resource from "./Cluster/Resource";
-import UserProjectManagement from "./Project/projectUser";
+import UserProjectManagement from "./Queue/ProjectUser";
+import {
+  ContainerIcon,
+  DatabaseIcon,
+  FileTextIcon,
+  FlaskConicalIcon,
+  MessageSquareMoreIcon,
+  ServerIcon,
+  UserRoundIcon,
+  UsersRoundIcon,
+} from "lucide-react";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -46,17 +46,26 @@ const sidebarItems: SidebarItem[] = [
     ],
   },
   {
-    path: "project",
-    icon: ArchiveIcon,
-    children: [],
+    path: "account",
+    icon: UsersRoundIcon,
     route: {
-      path: "project",
-      element: <GroupUser />,
+      path: "account/*",
+      children: [
+        {
+          index: true,
+          element: <GroupUser />,
+        },
+        {
+          path: ":id",
+          element: <UserProjectManagement />,
+        },
+      ],
     },
+    children: [],
   },
   {
     path: "user",
-    icon: PersonIcon,
+    icon: UserRoundIcon,
     children: [],
     route: {
       path: "user",
@@ -65,7 +74,7 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     path: "job",
-    icon: OverviewIcon,
+    icon: FlaskConicalIcon,
     route: {
       path: "job/*",
       // element: <Volcano />,
@@ -75,7 +84,7 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     path: "image",
-    icon: LightHouseIcon,
+    icon: ContainerIcon,
     children: [
       {
         route: {
@@ -114,7 +123,7 @@ const sidebarMenus: SidebarMenu[] = [
   },
   {
     path: "feedback",
-    icon: Pencil2Icon,
+    icon: MessageSquareMoreIcon,
     route: {
       path: "feedback",
     },
@@ -152,10 +161,6 @@ export const adminRoute: RouteObject = {
       );
     }),
     ...sidebarMenus.map((item) => item.route),
-    {
-      path: "/admin/project/:id",
-      element: <UserProjectManagement />,
-    },
     {
       path: "*",
       element: <h1>404</h1>,

@@ -74,6 +74,7 @@ import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTabl
 import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
 import { Role } from "@/services/api/auth";
 import { z } from "zod";
+import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
 
 const formSchema = z.object({
   index: z.string().min(1, {
@@ -145,6 +146,14 @@ const accessmodes = [
 
 const UserProjectManagement = () => {
   const { id } = useParams();
+
+  const setBreadcrumb = useBreadcrumb();
+
+  // 修改 BreadCrumb
+  useEffect(() => {
+    setBreadcrumb([{ title: `${id}` ?? "" }]);
+  }, [setBreadcrumb, id]);
+
   const queryClient = useQueryClient();
   const pid = useMemo(() => Number(id), [id]);
 
@@ -423,11 +432,6 @@ const UserProjectManagement = () => {
 
   return (
     <>
-      <div className="col-span-3 ">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">项目用户</h2>
-        </div>
-      </div>
       <DataTable
         data={usersInProject}
         columns={columns}
@@ -436,7 +440,7 @@ const UserProjectManagement = () => {
       >
         <Dialog open={openSheet} onOpenChange={setOpenSheet}>
           <DialogTrigger asChild>
-            <Button size="sm">添加用户</Button>
+            <Button className="h-8">添加用户</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>

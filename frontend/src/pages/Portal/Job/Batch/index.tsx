@@ -15,7 +15,7 @@ const batchRoutes: RouteObject[] = [
   },
   {
     path: ":id",
-    lazy: () => import("./Detail"),
+    lazy: () => import("../Interactive/Detail"),
   },
 ];
 

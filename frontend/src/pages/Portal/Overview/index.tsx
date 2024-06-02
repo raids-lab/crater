@@ -21,6 +21,7 @@ import JobPhaseLabel, { jobPhases } from "@/components/custom/JobPhaseLabel";
 import { IVolcanoJobInfo, apiTaskListByType } from "@/services/api/admin/task";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { CardTitle } from "@/components/ui-custom/card";
+import { toast } from "sonner";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -198,7 +199,9 @@ export const Component: FC = () => {
             </CardDescription>
           </CardHeader>
           <CardFooter>
-            <Button>Create New Task</Button>
+            <Button onClick={() => toast.warning("这个功能还没做")}>
+              Create New Task
+            </Button>
           </CardFooter>
         </Card>
         <Card className="sm:col-span-2">

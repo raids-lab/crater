@@ -23,18 +23,8 @@ export const adminPath: PathInfo = {
       ],
     },
     {
-      path: "project",
-      title: "项目管理",
-      children: [
-        {
-          path: "personal",
-          title: "个人项目",
-        },
-        {
-          path: "team",
-          title: "团队项目",
-        },
-      ],
+      path: "account",
+      title: "账户管理",
     },
     {
       path: "user",

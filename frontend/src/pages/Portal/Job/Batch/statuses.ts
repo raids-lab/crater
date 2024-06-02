@@ -4,8 +4,10 @@ export const getHeader = (key: string): string => {
       return "序号";
     case "name":
       return "名称";
-    case "taskType":
+    case "jobType":
       return "类型";
+    case "owner":
+      return "创建者";
     case "gpus":
       return "GPU";
     case "status":

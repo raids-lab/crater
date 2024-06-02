@@ -44,6 +44,7 @@ import {
 import { CardTitle } from "@/components/ui-custom/card";
 import SplitButton from "@/components/custom/SplitButton";
 import { IVolcanoJobInfo } from "@/services/api/admin/task";
+import { REFETCH_INTERVAL } from "@/config/task";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -68,6 +69,7 @@ export const Component = () => {
     queryKey: ["job", "batch"],
     queryFn: apiJobBatchList,
     select: (res) => res.data.data.filter((task) => task.jobType !== "jupyter"),
+    refetchInterval: REFETCH_INTERVAL,
   });
 
   const refetchTaskList = async () => {
@@ -129,6 +131,20 @@ export const Component = () => {
             {row.getValue("name")}
           </Link>
         ),
+      },
+      {
+        accessorKey: "jobType",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("jobType")} />
+        ),
+        cell: ({ row }) => <div>{row.getValue("jobType")}</div>,
+      },
+      {
+        accessorKey: "owner",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("owner")} />
+        ),
+        cell: ({ row }) => <div>{row.getValue("owner")}</div>,
       },
       {
         accessorKey: "status",
