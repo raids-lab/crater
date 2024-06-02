@@ -3,7 +3,7 @@ import { apiAdminProjectList } from "@/services/api/admin/user";
 import { ProjectStatus } from "@/services/api/project";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { PlusCircledIcon, DotsHorizontalIcon } from "@radix-ui/react-icons";
+import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
@@ -75,6 +75,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { apiProjectCreate, apiProjectDelete } from "@/services/api/project";
 import { useNavigate } from "react-router-dom";
+import { PlusCircleIcon } from "lucide-react";
 
 interface Resource {
   [key: string]: string;
@@ -229,23 +230,20 @@ function TableWithTabs<TData, TValue>({
             >
               <DialogTrigger asChild>
                 <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-label="Select a project"
-                  className="w-full justify-start bg-background px-2 md:w-[120px]"
+                  className="h-8"
                   onSelect={() => {
                     setShowNewTeamDialog(true);
                   }}
                 >
-                  <PlusCircledIcon className="mr-2" />
-                  新建团队账户
+                  <PlusCircleIcon className="-ml-0.5 mr-2 h-4 w-4" />
+                  新建账户
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>新建团队账户</DialogTitle>
+                  <DialogTitle>新建账户</DialogTitle>
                   <DialogDescription>
-                    团队账户可包含多名成员，成员间共享配额、镜像、数据等资源。
+                    账户可包含多名成员，成员间共享配额、镜像、数据等资源。
                   </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -267,7 +265,7 @@ function TableWithTabs<TData, TValue>({
                             <Input autoComplete="off" {...field} />
                           </FormControl>
                           <FormDescription>
-                            名称是团队账户的唯一标识，最多16个字符
+                            名称是账户的唯一标识，最多16个字符
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -395,7 +393,7 @@ const getHeader = (key: string): string => {
     case "id":
       return "ID";
     case "name":
-      return "项目名称";
+      return "账户名称";
     case "deserved":
       return "配额";
     default:
@@ -450,7 +448,7 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
           pagination.pageSize,
         ],
       });
-      toast.success(`项目 ${projectName} 已删除`);
+      toast.success(`账户 ${projectName} 已删除`);
     },
   });
 
@@ -520,9 +518,7 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>操作</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => navigate(`/admin/project/${proj.id}`)}
-                    >
+                    <DropdownMenuItem onClick={() => navigate(`${proj.id}`)}>
                       管理用户
                     </DropdownMenuItem>
                     <AlertDialogTrigger asChild>
@@ -534,7 +530,7 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
                   <AlertDialogHeader>
                     <AlertDialogTitle>删除项目</AlertDialogTitle>
                     <AlertDialogDescription>
-                      项目 {proj?.name} 将被删除，请谨慎操作。
+                      账户 {proj?.name} 将被删除，请谨慎操作。
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

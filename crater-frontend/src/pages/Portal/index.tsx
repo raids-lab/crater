@@ -5,7 +5,6 @@ import { Navigate, RouteObject } from "react-router-dom";
 import { Role } from "@/services/api/auth";
 import DashboardLayout from "@/components/layout/Dashboard";
 import {
-  ArchiveIcon,
   BarChartBigIcon,
   BriefcaseIcon,
   ContainerIcon,
@@ -13,6 +12,7 @@ import {
   FileTextIcon,
   FlaskConicalIcon,
   MessageSquareMoreIcon,
+  UsersRoundIcon,
 } from "lucide-react";
 import batchRoutes from "./Job/Batch";
 import interactiveRoutes from "./Job/Interactive";
@@ -97,17 +97,12 @@ const sidebarItems: SidebarItem[] = [
     ],
   },
   {
-    path: "project",
-    icon: ArchiveIcon,
+    path: "account",
+    icon: UsersRoundIcon,
     children: [
       {
         route: {
           path: "member",
-        },
-      },
-      {
-        route: {
-          path: "config",
         },
       },
     ],

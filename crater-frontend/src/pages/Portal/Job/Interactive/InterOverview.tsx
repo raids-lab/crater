@@ -37,9 +37,10 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui-custom/card";
-import { PlayIcon, Trash } from "lucide-react";
+import { ExternalLink, TrashIcon } from "lucide-react";
 import SplitButton from "@/components/custom/SplitButton";
 import { IVolcanoJobInfo } from "@/services/api/admin/task";
+import { REFETCH_INTERVAL } from "@/config/task";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -63,6 +64,7 @@ export const Component = () => {
     queryKey: ["job", "interactive"],
     queryFn: apiJobInteractiveList,
     select: (res) => res.data.data.filter((task) => task.jobType === "jupyter"),
+    refetchInterval: REFETCH_INTERVAL,
   });
 
   const refetchTaskList = async () => {
@@ -133,6 +135,20 @@ export const Component = () => {
         ),
       },
       {
+        accessorKey: "jobType",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("jobType")} />
+        ),
+        cell: ({ row }) => <div>{row.getValue("jobType")}</div>,
+      },
+      {
+        accessorKey: "owner",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("owner")} />
+        ),
+        cell: ({ row }) => <div>{row.getValue("owner")}</div>,
+      },
+      {
         accessorKey: "status",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("status")} />
@@ -174,32 +190,34 @@ export const Component = () => {
         id: "actions",
         enableHiding: false,
         cell: ({ row }) => {
-          const taskInfo = row.original;
+          const jobInfo = row.original;
           return (
             <div className="flex flex-row space-x-1">
               <Button
                 variant="outline"
-                className="h-8 w-8 p-0 hover:text-sky-700"
-                title="运行 Jupyter Lab"
+                size="icon"
+                className="h-8 w-8 text-primary hover:text-primary/90"
+                title="跳转至 Jupyter Lab"
                 onClick={() => {
                   toast.info("即将跳转至 Jupyter 页面");
                   setTimeout(() => {
-                    getPortToken(taskInfo.jobName);
+                    getPortToken(jobInfo.jobName);
                   }, 500);
                 }}
-                disabled={row.getValue("status") !== "Running"}
+                disabled={jobInfo.status !== "Running"}
               >
-                <PlayIcon className="h-4 w-4" />
+                <ExternalLink className="h-4 w-4" />
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <div>
                     <Button
                       variant="outline"
-                      className="h-8 w-8 p-0 hover:text-red-700"
+                      size="icon"
+                      className="h-8 w-8 text-red-600 hover:text-destructive/90"
                       title="终止 Jupyter Lab"
                     >
-                      <Trash className="h-4 w-4" />
+                      <TrashIcon className="h-4 w-4" />
                     </Button>
                   </div>
                 </AlertDialogTrigger>
@@ -207,7 +225,7 @@ export const Component = () => {
                   <AlertDialogHeader>
                     <AlertDialogTitle>删除作业</AlertDialogTitle>
                     <AlertDialogDescription>
-                      作业「{taskInfo?.name}
+                      作业「{jobInfo?.name}
                       」将停止，请确认已经保存好所需数据。
                     </AlertDialogDescription>
                   </AlertDialogHeader>
@@ -215,7 +233,7 @@ export const Component = () => {
                     <AlertDialogCancel>取消</AlertDialogCancel>
                     <AlertDialogAction
                       variant="destructive"
-                      onClick={() => deleteTask(taskInfo.jobName)}
+                      onClick={() => deleteTask(jobInfo.jobName)}
                     >
                       删除
                     </AlertDialogAction>
