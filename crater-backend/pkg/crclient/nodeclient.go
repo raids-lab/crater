@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gin-gonic/gin"
+	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/server/payload"
 	corev1 "k8s.io/api/core/v1"
@@ -11,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 )
 
 type NodeClient struct {
@@ -125,13 +128,14 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 	return nodeInfos, nil
 }
 
-func (nc *NodeClient) ListNodesPod(name string) (payload.ClusterNodePodInfo, error) {
+func (nc *NodeClient) ListNodesPod(name string, c *gin.Context) (payload.ClusterNodePodInfo, error) {
 	var nodes corev1.NodeList
 
 	err := nc.List(context.Background(), &nodes)
 	if err != nil {
 		return payload.ClusterNodePodInfo{}, err
 	}
+	_, jobPodList := nc.GetAllJobs(c)
 
 	for i := range nodes.Items {
 		node := &nodes.Items[i]
@@ -164,6 +168,13 @@ func (nc *NodeClient) ListNodesPod(name string) (payload.ClusterNodePodInfo, err
 		// 遍历当前节点的Pods，收集所需信息
 		for i := range podList.Items {
 			pod := &podList.Items[i]
+			isVcjob := "false"
+			for _, jobPod := range jobPodList {
+				if pod.Name == jobPod {
+					isVcjob = "true"
+					break
+				}
+			}
 			podInfo := payload.Pod{
 				Name:       pod.Name,
 				IP:         pod.Status.PodIP,
@@ -171,6 +182,7 @@ func (nc *NodeClient) ListNodesPod(name string) (payload.ClusterNodePodInfo, err
 				Status:     string(pod.Status.Phase),
 				CPU:        nc.PrometheusClient.QueryPodCPURatio(pod.Name),
 				Mem:        FomatMemoryLoad(nc.PrometheusClient.QueryPodMemory(pod.Name)),
+				IsVcjob:    isVcjob,
 			}
 
 			nodeInfo.Pods = append(nodeInfo.Pods, podInfo)
@@ -251,4 +263,29 @@ func (nc *NodeClient) ListNodesTest() ([]payload.ClusterNodeInfo, error) {
 		}
 	}
 	return nodeInfos, nil
+}
+
+func (nc *NodeClient) GetAllJobs(c *gin.Context) (jobNames, jobPods []string) {
+	jobs := &batch.JobList{}
+	if err := nc.List(c, jobs, client.MatchingLabels{}); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return nil, nil
+	}
+	var jobList []string
+	var podList []string
+
+	for j := range jobs.Items {
+		job := &jobs.Items[j]
+		JobName := job.Name
+		jobList = append(jobList, JobName)
+		var podName string
+		for i := range job.Spec.Tasks {
+			task := &job.Spec.Tasks[i]
+			for j := range task.Replicas {
+				podName = fmt.Sprintf("%s-%s-%d", job.Name, task.Name, j)
+				podList = append(podList, podName)
+			}
+		}
+	}
+	return jobList, podList
 }

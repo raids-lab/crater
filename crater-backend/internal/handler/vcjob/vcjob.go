@@ -64,6 +64,7 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 
 func (mgr *VolcanojobMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.GetAllJobs)
+	g.GET(":name/detail", mgr.GetAdminJobDetail)
 }
 
 const (
@@ -453,7 +454,11 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		resputil.Error(c, "Job not found", resputil.NotSpecified)
 		return
 	}
+	jobDetail := getJobDetailFuntion(c, mgr, job, namespace)
+	resputil.Success(c, jobDetail)
+}
 
+func getJobDetailFuntion(c *gin.Context, mgr *VolcanojobMgr, job *batch.Job, namespace string) JobDetailResp {
 	// 从job的annotations中获取useTensorBoard的值
 	useTensorBoardStr, exists := job.Annotations[AnnotationKeyUseTensorBoard]
 	useTensorBoard := false
@@ -462,7 +467,6 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		useTensorBoard, err = strconv.ParseBool(useTensorBoardStr)
 		if err != nil {
 			resputil.Error(c, "Invalid useTensorBoard value", resputil.NotSpecified)
-			return
 		}
 	}
 
@@ -533,6 +537,36 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		PodDetails:        PodDetails,
 		UseTensorBoard:    useTensorBoard,
 	}
+
+	return jobDetail
+}
+
+// GetAdminJobDetail godoc
+// @Summary 获取jupyter详情
+// @Description 调用k8s get crd
+// @Tags vcjob-jupyter
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param jobname query string true "vcjob-name"
+// @Success 200 {object} resputil.Response[any] "任务描述"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/vcjobs/{name}/detail [get]
+func (mgr *VolcanojobMgr) GetAdminJobDetail(c *gin.Context) {
+	var req JobActionReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+	job := &batch.Job{}
+	namespace := config.GetConfig().Workspace.Namespace
+	if err := mgr.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	jobDetail := getJobDetailFuntion(c, mgr, job, namespace)
 	resputil.Success(c, jobDetail)
 }
 
