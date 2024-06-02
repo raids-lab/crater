@@ -38,7 +38,7 @@ import {
   apiAdminUserList,
   apiAdminUserUpdateRole,
 } from "@/services/api/admin/user";
-import { useRecoilValue } from "recoil";
+import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
 import { Role } from "@/services/api/auth";
 import { ProjectStatus } from "@/services/api/project";
@@ -108,7 +108,7 @@ const toolbarConfig: DataTableToolbarConfig = {
 
 export const User = () => {
   const queryClient = useQueryClient();
-  const { name: currentUserName } = useRecoilValue(globalUserInfo);
+  const { name: currentUserName } = useAtomValue(globalUserInfo);
 
   const userQuery = useQuery({
     queryKey: ["admin", "userlist"],

@@ -12,7 +12,7 @@ import { UserDropdownMenu } from "@/components/layout/UserDropdownMenu";
 import { useMemo, useState } from "react";
 import SidebarSheet from "./SidebarSheet";
 import { PanelLeft } from "lucide-react";
-import { useRecoilValue } from "recoil";
+import { useAtomValue } from "jotai";
 import { globalAccount } from "@/utils/store";
 import { Role } from "@/services/api/auth";
 
@@ -25,7 +25,7 @@ const DashboardLayout = ({
 }) => {
   const { pathname: rawPath } = useLocation();
   const [open, setOpen] = useState(false);
-  const currentAccount = useRecoilValue(globalAccount);
+  const currentAccount = useAtomValue(globalAccount);
 
   // 特殊规则，网盘路由切换时，不启用过渡动画
   const motionKey = useMemo(() => {

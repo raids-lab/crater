@@ -4,10 +4,10 @@ import { globalBreadCrumb } from "@/utils/store";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, type FC } from "react";
 import { useParams } from "react-router-dom";
-import { useSetRecoilState } from "recoil";
+import { useSetAtom } from "jotai";
 
 const PodDetail: FC = () => {
-  const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
+  const setBreadcrumb = useSetAtom(globalBreadCrumb);
   const { name: taskName, podName } = useParams();
 
   const podInfo = useQuery({

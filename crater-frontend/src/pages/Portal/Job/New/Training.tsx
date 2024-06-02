@@ -44,7 +44,7 @@ import {
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { apiResourceList } from "@/services/api/resource";
-import { useRecoilValue } from "recoil";
+import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
 import { Textarea } from "@/components/ui/textarea";
 import { apiGetDataset } from "@/services/api/dataset";
@@ -79,7 +79,7 @@ export const Component = () => {
   const [tensorboardOpen, setTensorboardOpen] = useState<string>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const user = useRecoilValue(globalUserInfo);
+  const user = useAtomValue(globalUserInfo);
 
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) =>

@@ -37,7 +37,7 @@ export enum AccessMode {
   ReadWrite,
 }
 
-export interface UserContext {
+export interface CurrentAccount {
   queue: string;
   roleQueue: Role;
   rolePlatform: Role;
@@ -48,7 +48,7 @@ export interface UserContext {
 export interface IAuthResponse {
   accessToken: string;
   refreshToken: string;
-  context: UserContext;
+  context: CurrentAccount;
 }
 
 export const apiUserSignup = async (user: ISignup) => {

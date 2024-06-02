@@ -2,10 +2,10 @@ import { BreadCrumbItem, globalBreadCrumb } from "@/utils/store";
 import { getBreadcrumbByPath } from "@/utils/title";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { useSetRecoilState } from "recoil";
+import { useSetAtom } from "jotai";
 
 const useBreadcrumb = () => {
-  const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
+  const setBreadcrumb = useSetAtom(globalBreadCrumb);
   const location = useLocation();
   const [detail, setDetail] = useState<BreadCrumbItem[]>([]);
 

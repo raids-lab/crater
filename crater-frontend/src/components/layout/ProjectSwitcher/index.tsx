@@ -17,13 +17,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useMemo, useState } from "react";
-import { useRecoilState } from "recoil";
 import { globalAccount } from "@/utils/store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiQueueSwitch } from "@/services/api/auth";
 import { useLocation } from "react-router-dom";
 import { QueueBasic, apiQueueList } from "@/services/api/queue";
+import { useAtom } from "jotai";
 
 type PopoverTriggerProps = React.ComponentPropsWithoutRef<
   typeof PopoverTrigger
@@ -35,7 +35,7 @@ interface ProjectSwitcherProps extends PopoverTriggerProps {
 
 export default function ProjectSwitcher({ className }: ProjectSwitcherProps) {
   const [open, setOpen] = useState(false);
-  const [account, setAccount] = useRecoilState(globalAccount);
+  const [account, setAccount] = useAtom(globalAccount);
   const queryClient = useQueryClient();
   const location = useLocation();
 

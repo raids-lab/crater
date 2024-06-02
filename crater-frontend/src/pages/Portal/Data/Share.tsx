@@ -29,7 +29,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { File, Folder } from "lucide-react";
-import { useSetRecoilState } from "recoil";
+import { useSetAtom } from "jotai";
 import { globalBreadCrumb } from "@/utils/store";
 import {
   FileItem,
@@ -44,7 +44,7 @@ export const Component: FC = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [dirName, setDirName] = useState<string>("");
-  const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
+  const setBreadcrumb = useSetAtom(globalBreadCrumb);
   const path = useMemo(
     () => pathname.replace(/^\/portal\/data\/filesystem/, ""),
     [pathname],

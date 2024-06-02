@@ -10,8 +10,13 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { Button } from "../ui/button";
-import { useRecoilValue, useSetRecoilState } from "recoil";
-import { globalLastView, globalUserInfo, useResetStore } from "@/utils/store";
+import { useAtomValue, useSetAtom } from "jotai";
+import {
+  globalAccount,
+  globalLastView,
+  globalUserInfo,
+  useResetStore,
+} from "@/utils/store";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/utils/theme";
@@ -22,11 +27,12 @@ import { Role } from "@/services/api/auth";
 export const UserDropdownMenu: FC = () => {
   const queryClient = useQueryClient();
   const { resetAll } = useResetStore();
-  const userInfo = useRecoilValue(globalUserInfo);
+  const userInfo = useAtomValue(globalUserInfo);
+  const account = useAtomValue(globalAccount);
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, setTheme } = useTheme();
-  const setLastView = useSetRecoilState(globalLastView);
+  const setLastView = useSetAtom(globalLastView);
 
   const pathParts = useMemo(() => {
     const pathParts = location.pathname.split("/").filter(Boolean);
@@ -72,7 +78,7 @@ export const UserDropdownMenu: FC = () => {
           </DropdownMenuGroup>
         ) : (
           <DropdownMenuGroup>
-            {userInfo.platformRole === Role.Admin && (
+            {account.rolePlatform === Role.Admin && (
               <DropdownMenuItem
                 onClick={() => {
                   setLastView("admin");
