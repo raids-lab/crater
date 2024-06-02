@@ -55,8 +55,6 @@ import (
 // @in header
 // @name Authorization
 // @description 访问 /login 并获取 TOKEN 后，填入 'Bearer ${TOKEN}' 以访问受保护的接口
-//
-//nolint:gocyclo // todo: remove old mysql init
 func main() {
 	// set global timezone
 	time.Local = time.UTC

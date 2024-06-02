@@ -4,7 +4,7 @@ if ! (golangci-lint --version); then
     exit 1
 fi
 
-if ! (golangci-lint run --fix); then
+if ! (golangci-lint run); then
     echo "Lint fail!"
     exit 1
 fi
