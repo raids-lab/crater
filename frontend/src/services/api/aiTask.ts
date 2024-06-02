@@ -2,7 +2,7 @@ import { KubernetesResource, KubernetesResourceList } from "@/utils/resource";
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
 import { showErrorToast } from "@/utils/toast";
-import { JobStatus } from "@/pages/Portal/Job/Ai/statuses";
+import { JobPhase } from "./vcjob";
 
 export interface IAiTask {
   id: number;
@@ -187,29 +187,7 @@ export const apiJobGetLog = (jobName: string) =>
 export const apiAiTaskShareDirList = () =>
   instance.get<IResponse<string[]>>(VERSION + "/sharedir/list");
 
-// taskStats
-// path: /v1/aitask/taskStats
-// method: GET
-// response
-// "taskCount": [
-//   {
-//       "Status": "Queueing",
-//       "Count": 2
-//   },
-//   {
-//       "Status": "Running",
-//       "Count": 1
-//   },
-//   {
-//       "Status": "Pending",
-//       "Count": 2
-//   },
-//   {
-//       "Status": "Succeeded",
-//       "Count": 99
-//   }
-// ]
 export const apiAiTaskStats = () =>
-  instance.get<
-    IResponse<{ taskCount: { Status: JobStatus; Count: number }[] }>
-  >(VERSION + "/aijobs/jobStats");
+  instance.get<IResponse<{ taskCount: { Status: JobPhase; Count: number }[] }>>(
+    VERSION + "/aijobs/jobStats",
+  );

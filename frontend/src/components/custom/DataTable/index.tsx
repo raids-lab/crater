@@ -102,7 +102,11 @@ export function DataTable<TData, TValue>({
   return (
     <div className={cn("flex flex-col gap-2 lg:col-span-3", className)}>
       {toolbarConfig && (
-        <DataTableToolbar table={table} config={toolbarConfig}>
+        <DataTableToolbar
+          table={table}
+          config={toolbarConfig}
+          isLoading={query.isLoading}
+        >
           {children}
         </DataTableToolbar>
       )}
@@ -187,7 +191,7 @@ export function DataTable<TData, TValue>({
                     <TableRow>
                       <TableCell
                         colSpan={columns.length}
-                        className="h-40 text-center"
+                        className="h-60 text-center text-muted-foreground"
                       >
                         暂无数据
                       </TableCell>

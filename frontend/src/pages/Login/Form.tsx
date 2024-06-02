@@ -19,7 +19,7 @@ import {
   useResetStore,
 } from "@/utils/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AccessMode, Role, apiUserLogin } from "@/services/api/auth";
+import { Role, apiUserLogin } from "@/services/api/auth";
 
 import LoadableButton from "@/components/custom/LoadableButton";
 import { toast } from "sonner";
@@ -65,15 +65,7 @@ export function ProfileForm() {
         name: username,
         platformRole: data.context.rolePlatform,
       });
-      setAccount({
-        id: data.context.queue,
-        name: data.context.queue,
-        role: data.context.roleQueue,
-        access:
-          data.context.roleQueue === Role.Admin
-            ? AccessMode.ReadWrite
-            : AccessMode.ReadOnly,
-      });
+      setAccount(data.context);
       toast.success(
         `你好，${data.context.rolePlatform ? "管理员" : "用户"} ${username}`,
       );

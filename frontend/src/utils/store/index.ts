@@ -1,8 +1,7 @@
 import { atom, useResetRecoilState } from "recoil";
 import { UserInfo } from "@/hooks/useAuth";
 import { localStorageEffect } from "./utils";
-import { AccessMode, Role } from "@/services/api/auth";
-import { QueueBasic } from "@/services/api/queue";
+import { AccessMode, Role, UserContext } from "@/services/api/auth";
 
 /**
  * LocalStorage and Recoil Keys
@@ -64,11 +63,12 @@ export const globalSidebarMini = atom({
 export const globalAccount = atom({
   key: CURRENT_ACCOUNT_KEY,
   default: {
-    id: "",
-    name: "",
-    role: Role.Guest,
-    access: AccessMode.ReadOnly,
-  } as QueueBasic,
+    queue: "",
+    roleQueue: Role.Guest,
+    rolePlatform: Role.Guest,
+    accessQueue: AccessMode.NotAllowed,
+    accessPublic: AccessMode.NotAllowed,
+  } as UserContext,
   effects_UNSTABLE: [localStorageEffect(CURRENT_ACCOUNT_KEY)],
 });
 

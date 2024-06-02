@@ -73,7 +73,7 @@ const EnvCard = "环境变量";
 const DataMountCard = "数据挂载";
 const TensorboardCard = "观测面板";
 
-const TrainingNew = () => {
+export const Component = () => {
   const [dataMountOpen, setDataMountOpen] = useState<string>();
   const [envOpen, setEnvOpen] = useState<string>();
   const [tensorboardOpen, setTensorboardOpen] = useState<string>();
@@ -675,5 +675,3 @@ const TrainingNew = () => {
     </>
   );
 };
-
-export default TrainingNew;

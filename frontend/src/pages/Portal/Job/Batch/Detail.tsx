@@ -1,7 +1,7 @@
 import { apiAiTaskGet, convertAiTask } from "@/services/api/aiTask";
 import { globalBreadCrumb } from "@/utils/store";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, type FC } from "react";
+import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
 import { ProgressBar } from "@/components/custom/ProgressBar";
@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SmallDataCard } from "@/components/custom/DataCard";
 
 // route format: /portal/job/ai/detail?id=xxx
-const AiJobDetail: FC = () => {
+export const Component = () => {
   const setBreadcrumb = useSetRecoilState(globalBreadCrumb);
   const { id: taskID } = useParams();
 
@@ -234,5 +234,3 @@ const AiJobDetail: FC = () => {
     </div>
   );
 };
-
-export default AiJobDetail;

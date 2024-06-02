@@ -32,7 +32,8 @@ export enum Role {
 }
 
 export enum AccessMode {
-  ReadOnly = 1,
+  NotAllowed = 1,
+  ReadOnly,
   ReadWrite,
 }
 
@@ -40,6 +41,8 @@ export interface UserContext {
   queue: string;
   roleQueue: Role;
   rolePlatform: Role;
+  accessQueue: AccessMode;
+  accessPublic: AccessMode;
 }
 
 export interface IAuthResponse {

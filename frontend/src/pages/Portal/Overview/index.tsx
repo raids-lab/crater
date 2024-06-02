@@ -182,7 +182,7 @@ export const Component: FC = () => {
 
   const vcjobQuery = useQuery({
     queryKey: ["admin", "tasklist", "volcanoJob"],
-    queryFn: () => apiTaskListByType(),
+    queryFn: apiTaskListByType,
     select: (res) => res.data.data,
   });
 

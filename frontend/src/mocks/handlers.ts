@@ -1,5 +1,5 @@
 // 1. Import the "HttpResponse" class from the library.
-import { IAuthResponse, ILogin, Role } from "@/services/api/auth";
+import { AccessMode, IAuthResponse, ILogin, Role } from "@/services/api/auth";
 import { IResponse } from "@/services/types";
 import { logger } from "@/utils/loglevel";
 import { http, HttpResponse } from "msw";
@@ -28,8 +28,10 @@ export const handlers = [
             refreshToken: mockUser.refreshToken,
             context: {
               queue: "",
-              roleQueue: Role.Admin,
-              rolePlatform: mockUser.role,
+              roleQueue: Role.Guest,
+              rolePlatform: Role.Guest,
+              accessQueue: AccessMode.NotAllowed,
+              accessPublic: AccessMode.NotAllowed,
             },
           },
           code: 0,

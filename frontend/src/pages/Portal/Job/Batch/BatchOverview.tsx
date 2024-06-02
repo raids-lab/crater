@@ -21,17 +21,20 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiJobDelete, JobPhase, apiJobBatchList } from "@/services/api/vcjob";
+
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
-import { Link, useNavigate, useRoutes } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { TableDate } from "@/components/custom/TableDate";
-import Quota from "../Jupyter/Quota";
-import { REFETCH_INTERVAL } from "@/config/task";
 import { toast } from "sonner";
-import { getHeader, priorities, profilingStatuses, statuses } from "./statuses";
+import { getHeader } from "@/pages/Portal/Job/Batch/statuses";
 import { logger } from "@/utils/loglevel";
+import Quota from "../Interactive/Quota";
+import JobPhaseLabel, { jobPhases } from "@/components/custom/JobPhaseLabel";
+
 import {
   Card,
   CardContent,
@@ -40,58 +43,38 @@ import {
 } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui-custom/card";
 import SplitButton from "@/components/custom/SplitButton";
-import TrainingNew from "../New/Training";
-import {
-  IJobResp,
-  JobPhase,
-  apiJobDelete,
-  apiJupyterList,
-} from "@/services/api/vcjob";
-import JobPhaseLabel from "@/components/custom/JobPhaseLabel";
-import JupyterDetail from "../Jupyter/Detail";
-import TensorflowNew from "../New/Tensorflow";
+import { IVolcanoJobInfo } from "@/services/api/admin/task";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
     placeholder: "搜索作业名称",
-    key: "title",
+    key: "name",
   },
   filterOptions: [
     {
       key: "status",
       title: "作业状态",
-      option: statuses,
-    },
-    {
-      key: "priority",
-      title: "优先级",
-      option: priorities,
-    },
-    {
-      key: "profileStatus",
-      title: "分析状态",
-      option: profilingStatuses,
+      option: jobPhases,
     },
   ],
   getHeader: getHeader,
 };
 
-const AiJobHome = () => {
+export const Component = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   const batchQuery = useQuery({
     queryKey: ["job", "batch"],
-    queryFn: () => apiJupyterList(),
-    select: (res) => res.data.data.filter((item) => item.jobType !== "jupyter"),
-    refetchInterval: REFETCH_INTERVAL,
+    queryFn: apiJobBatchList,
+    select: (res) => res.data.data.filter((task) => task.jobType !== "jupyter"),
   });
 
   const refetchTaskList = async () => {
     try {
       // 并行发送所有异步请求
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["job", "batch"] }),
+        queryClient.invalidateQueries({ queryKey: ["job"] }),
         queryClient.invalidateQueries({ queryKey: ["aitask", "quota"] }),
         queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
       ]);
@@ -108,7 +91,7 @@ const AiJobHome = () => {
     },
   });
 
-  const columns = useMemo<ColumnDef<IJobResp>[]>(
+  const batchColumns = useMemo<ColumnDef<IVolcanoJobInfo>[]>(
     () => [
       {
         id: "select",
@@ -278,32 +261,9 @@ const AiJobHome = () => {
       </div>
       <DataTable
         query={batchQuery}
-        columns={columns}
+        columns={batchColumns}
         toolbarConfig={toolbarConfig}
       ></DataTable>
     </>
   );
-};
-
-export const Component = () => {
-  const routes = useRoutes([
-    {
-      index: true,
-      element: <AiJobHome />,
-    },
-    {
-      path: "new-training",
-      element: <TrainingNew />,
-    },
-    {
-      path: "new-tensorflow",
-      element: <TensorflowNew />,
-    },
-    {
-      path: ":id",
-      element: <JupyterDetail />,
-    },
-  ]);
-
-  return <>{routes}</>;
 };
