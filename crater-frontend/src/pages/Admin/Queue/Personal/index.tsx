@@ -1,10 +1,10 @@
 import { DataTableColumnHeader } from "@/components/custom/PagenationDataTable/DataTableColumnHeader";
 import { apiAdminProjectList } from "@/services/api/admin/user";
-import { ProjectStatus } from "@/services/api/project";
+import { ProjectStatus, apiProjectUpdate } from "@/services/api/project";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { Badge } from "@/components/ui/badge";
+import { CirclePlusIcon, XIcon } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,14 +16,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useEffect, useMemo, useState } from "react";
 import {
   ColumnDef,
@@ -40,15 +32,6 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Form,
@@ -59,7 +42,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { logger } from "@/utils/loglevel";
 import FormLabelMust from "@/components/custom/FormLabelMust";
@@ -76,10 +59,239 @@ import { toast } from "sonner";
 import { apiProjectCreate, apiProjectDelete } from "@/services/api/project";
 import { useNavigate } from "react-router-dom";
 import { PlusCircleIcon } from "lucide-react";
+import { apiResourceList } from "@/services/api/resource";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import useResizeObserver from "use-resize-observer";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
-interface Resource {
+function convertResourcesToMap(resources: Resource[]): {
+  [key: string]: string;
+} {
+  const resourceMap: { [key: string]: string } = {};
+  resources.forEach((resource) => {
+    resourceMap[resource.name] = resource.amount.toString();
+  });
+  return resourceMap;
+}
+
+const resourceSchema = z.array(
+  z.object({
+    name: z.string().min(1, {
+      message: "资源名称不能为空",
+    }),
+    amount: z.number().int().min(0, {
+      message: "资源至少为0",
+    }),
+  }),
+);
+
+const formSchema = z.object({
+  name: z
+    .string()
+    .min(1, {
+      message: "账户名称不能为空",
+    })
+    .max(16, {
+      message: "账户名称最多16个字符",
+    }),
+  resources: resourceSchema,
+});
+
+type FormSchema = z.infer<typeof formSchema>;
+interface ResourceMap {
   [key: string]: string;
 }
+
+interface Resource {
+  name: string;
+  amount: number;
+}
+
+type ProjectSheetProps = React.HTMLAttributes<HTMLDivElement> & {
+  formData: FormSchema;
+  isPending: boolean;
+  resourcesData?: Resource[];
+  apiProjcet: (form: FormSchema) => void;
+};
+
+const ProjectSheet = ({
+  formData,
+  isPending,
+  resourcesData,
+  apiProjcet,
+  children,
+}: ProjectSheetProps) => {
+  const { ref: refRoot, width, height } = useResizeObserver();
+
+  const [open, setOpenchange] = useState(false);
+  // 1. Define your form.
+  const form = useForm<FormSchema>({
+    resolver: zodResolver(formSchema),
+    defaultValues: formData,
+  });
+
+  const {
+    fields: resourcesFields,
+    append: resourcesAppend,
+    remove: resourcesRemove,
+  } = useFieldArray<FormSchema>({
+    name: "resources",
+    control: form.control,
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    if (!resourcesData) return;
+    form.reset();
+    const resourcesList = resourcesData;
+    resourcesAppend(resourcesList);
+  }, [form, open, resourcesAppend, resourcesData]);
+
+  // 2. Define a submit handler.
+  const onSubmit = (values: z.infer<typeof formSchema>) => {
+    // Do something with the form values.
+    // ✅ This will be type-safe and validated.
+    !isPending && apiProjcet(values);
+    setOpenchange(false);
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={setOpenchange}>
+      <SheetTrigger asChild>{children}</SheetTrigger>
+      {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
+      <SheetContent className="flex flex-col gap-6 sm:max-w-3xl">
+        <SheetHeader>
+          <SheetTitle>新建账户</SheetTitle>
+        </SheetHeader>
+        <Card
+          className="h-[calc(100vh_-104px)] bg-white text-muted-foreground dark:border dark:bg-transparent"
+          ref={refRoot}
+        >
+          <ScrollArea style={{ width, height }}>
+            <CardHeader className="py-3"></CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form
+                  // eslint-disable-next-line @typescript-eslint/no-misused-promises
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="grid gap-4 md:grid-cols-1"
+                >
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem className="col-span-1">
+                        <FormLabel>
+                          账户名称
+                          <FormLabelMust />
+                        </FormLabel>
+                        <FormControl>
+                          <Input autoComplete="off" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          名称是账户的唯一标识，最多16个字符
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="space-y-2">
+                    {resourcesFields.length > 0 && (
+                      <div>
+                        <FormLabel>资源配额</FormLabel>
+                      </div>
+                    )}
+                    {resourcesFields.map(({ id }, index) => (
+                      <div key={id} className="flex items-start gap-2">
+                        <FormField
+                          control={form.control}
+                          name={`resources.${index}.name`}
+                          render={({ field }) => (
+                            <FormItem className="flex-1">
+                              <FormControl>
+                                <Input {...field} placeholder="资源名称" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`resources.${index}.amount`}
+                          render={() => (
+                            <FormItem>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="资源数目"
+                                  {...form.register(
+                                    `resources.${index}.amount`,
+                                    {
+                                      valueAsNumber: true,
+                                    },
+                                  )}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button
+                          size="icon"
+                          type="button"
+                          variant="outline"
+                          onClick={() => resourcesRemove(index)}
+                        >
+                          <XIcon className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => resourcesAppend({ name: "", amount: 0 })}
+                    >
+                      <CirclePlusIcon className="mr-2 h-4 w-4" />
+                      添加配额
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </CardContent>
+            <CardContent>
+              <LoadableButton
+                isLoading={isPending}
+                type="submit"
+                className="flex flex-col justify-end"
+                onClick={() => {
+                  form
+                    .trigger()
+                    .then(() => {
+                      if (form.formState.isValid) {
+                        onSubmit(form.getValues());
+                      }
+                    })
+                    .catch((e) => logger.debug(e));
+                }}
+              >
+                提交申请
+              </LoadableButton>
+            </CardContent>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        </Card>
+      </SheetContent>
+    </Sheet>
+  );
+};
+
 interface DataTableProps<TData, TValue>
   extends React.HTMLAttributes<HTMLDivElement> {
   setStatus: (status: ProjectStatus) => void;
@@ -106,7 +318,7 @@ function TableWithTabs<TData, TValue>({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [showNewTeamDialog, setShowNewTeamDialog] = useState(false);
+
   const [activeTab, setActiveTab] = useState<string>("active");
   const [cachedRowCount, setCachedRowCount] = useState(rowCount);
   const queryClient = useQueryClient();
@@ -128,12 +340,7 @@ function TableWithTabs<TData, TValue>({
     mutationFn: (values: z.infer<typeof formSchema>) =>
       apiProjectCreate({
         name: values.name,
-        quota: JSON.stringify({
-          cpu: values.cpu,
-          gpu: values.gpu,
-          memory: values.memory,
-          storage: values.storage,
-        }),
+        quota: JSON.stringify(convertResourcesToMap(values.resources)),
       }),
     onSuccess: async (_, { name }) => {
       await queryClient.invalidateQueries({
@@ -147,10 +354,23 @@ function TableWithTabs<TData, TValue>({
         ],
       });
       toast.success(`账户 ${name} 创建成功`);
-      setShowNewTeamDialog(false);
-      form.reset();
     },
   });
+
+  const { data: resourcesData } = useQuery({
+    queryKey: ["label", "list"],
+    queryFn: () => apiResourceList("nvidia.com"),
+    select: (res) => {
+      return res.data.data.map(
+        (item) =>
+          ({
+            name: item.name,
+            amount: 0,
+          }) as Resource,
+      );
+    },
+  });
+
   const table = useReactTable({
     data,
     columns,
@@ -177,46 +397,22 @@ function TableWithTabs<TData, TValue>({
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
 
-  const formSchema = z.object({
-    name: z
-      .string()
-      .min(1, {
-        message: "账户名称不能为空",
-      })
-      .max(16, {
-        message: "账户名称最多16个字符",
-      }),
-    cpu: z.number().int().min(0, {
-      message: "如需取消上限，请联系管理员",
-    }),
-    gpu: z.number().int().min(0, {
-      message: "如需取消上限，请联系管理员",
-    }),
-    memory: z.number().int().min(0, {
-      message: "如需取消上限，请联系管理员",
-    }),
-    storage: z.number().int().min(0, {
-      message: "如需取消上限，请联系管理员",
-    }),
-  });
-
-  // 1. Define your form.
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      cpu: 0,
-      gpu: 0,
-      memory: 0,
-      storage: 0,
-    },
-  });
-
-  // 2. Define a submit handler.
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
-    !isPending && createNewProject(values);
+  const defaultValues = {
+    name: "",
+    resources: [
+      {
+        name: "cpu",
+        amount: 0,
+      },
+      {
+        name: "memory",
+        amount: 0,
+      },
+      {
+        name: "storage",
+        amount: 0,
+      },
+    ],
   };
 
   return (
@@ -224,155 +420,17 @@ function TableWithTabs<TData, TValue>({
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="flex flex-row justify-between gap-2">
           <div>
-            <Dialog
-              open={showNewTeamDialog}
-              onOpenChange={setShowNewTeamDialog}
+            <ProjectSheet
+              formData={defaultValues}
+              isPending={isPending}
+              resourcesData={resourcesData}
+              apiProjcet={createNewProject}
             >
-              <DialogTrigger asChild>
-                <Button
-                  className="h-8"
-                  onSelect={() => {
-                    setShowNewTeamDialog(true);
-                  }}
-                >
-                  <PlusCircleIcon className="-ml-0.5 mr-2 h-4 w-4" />
-                  新建账户
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>新建账户</DialogTitle>
-                  <DialogDescription>
-                    账户可包含多名成员，成员间共享配额、镜像、数据等资源。
-                  </DialogDescription>
-                </DialogHeader>
-                <Form {...form}>
-                  <form
-                    // eslint-disable-next-line @typescript-eslint/no-misused-promises
-                    onSubmit={form.handleSubmit(onSubmit)}
-                    className="grid gap-4 md:grid-cols-2"
-                  >
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem className="col-span-2">
-                          <FormLabel>
-                            账户名称
-                            <FormLabelMust />
-                          </FormLabel>
-                          <FormControl>
-                            <Input autoComplete="off" {...field} />
-                          </FormControl>
-                          <FormDescription>
-                            名称是账户的唯一标识，最多16个字符
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="cpu"
-                      render={() => (
-                        <FormItem>
-                          <FormLabel>
-                            申请 CPU 核心数
-                            <FormLabelMust />
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              {...form.register("cpu", { valueAsNumber: true })}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="gpu"
-                      render={() => (
-                        <FormItem>
-                          <FormLabel>
-                            申请 GPU 卡数
-                            <FormLabelMust />
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              {...form.register("gpu", { valueAsNumber: true })}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="memory"
-                      render={() => (
-                        <FormItem>
-                          <FormLabel>
-                            内存上限 (GB)
-                            <FormLabelMust />
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              {...form.register("memory", {
-                                valueAsNumber: true,
-                              })}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="storage"
-                      render={() => (
-                        <FormItem>
-                          <FormLabel>
-                            账户存储空间 (GB)
-                            <FormLabelMust />
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              {...form.register("storage", {
-                                valueAsNumber: true,
-                              })}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </form>
-                </Form>
-                <DialogFooter>
-                  <LoadableButton
-                    isLoading={isPending}
-                    type="submit"
-                    onClick={() => {
-                      form
-                        .trigger()
-                        .then(() => {
-                          if (form.formState.isValid) {
-                            onSubmit(form.getValues());
-                          }
-                        })
-                        .catch((e) => logger.debug(e));
-                    }}
-                  >
-                    提交申请
-                  </LoadableButton>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+              <Button className="h-8">
+                <PlusCircleIcon className="-ml-0.5 mr-2 h-4 w-4" />
+                新建账户
+              </Button>
+            </ProjectSheet>
           </div>
           <DataTableToolbarRight table={table} config={toolbarConfig} />
         </div>
@@ -385,7 +443,7 @@ function TableWithTabs<TData, TValue>({
 type Project = {
   id: number;
   name: string;
-  deserved: Resource;
+  deserved: ResourceMap;
 };
 
 const getHeader = (key: string): string => {
@@ -415,6 +473,7 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
   const navigate = useNavigate();
   const [data, setData] = useState<Project[]>([]);
   const [status, setStatus] = useState<ProjectStatus>(ProjectStatus.Active);
+
   const queryClient = useQueryClient();
   const { data: projects, isLoading } = useQuery({
     queryKey: [
@@ -449,6 +508,27 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
         ],
       });
       toast.success(`账户 ${projectName} 已删除`);
+    },
+  });
+
+  const { mutate: updateProject, isPending } = useMutation({
+    mutationFn: (values: z.infer<typeof formSchema>) =>
+      apiProjectUpdate({
+        name: values.name,
+        quota: JSON.stringify(convertResourcesToMap(values.resources)),
+      }),
+    onSuccess: async (_, { name }) => {
+      await queryClient.invalidateQueries({
+        queryKey: [
+          "admin",
+          "projects",
+          false,
+          2,
+          pagination.pageIndex,
+          pagination.pageSize,
+        ],
+      });
+      toast.success(`账户 ${name} 更新成功`);
     },
   });
 
@@ -502,30 +582,34 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
         enableHiding: false,
         cell: ({ row }) => {
           const proj = row.original;
+          const defaultValues = {
+            name: proj.name,
+            resources: [],
+          };
+          const resourcesData = Object.entries(proj.deserved).map(
+            ([key, value]) =>
+              ({
+                name: key,
+                amount: parseInt(value),
+              }) as Resource,
+          );
           return (
-            <div>
+            <div className="flex flex-col gap-1">
+              <Button title="管理用户" onClick={() => navigate(`${proj.id}`)}>
+                管理用户
+              </Button>
+              <ProjectSheet
+                formData={defaultValues}
+                isPending={isPending}
+                resourcesData={resourcesData}
+                apiProjcet={updateProject}
+              >
+                <Button title="修改配额">修改配额</Button>
+              </ProjectSheet>
               <AlertDialog>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="h-8 w-8 p-0"
-                      title="更多选项"
-                    >
-                      <DotsHorizontalIcon className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>操作</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate(`${proj.id}`)}>
-                      管理用户
-                    </DropdownMenuItem>
-                    <AlertDialogTrigger asChild>
-                      <DropdownMenuItem>删除</DropdownMenuItem>
-                    </AlertDialogTrigger>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <AlertDialogTrigger asChild>
+                  <Button title="删除项目">删除项目</Button>
+                </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>删除项目</AlertDialogTitle>
@@ -551,7 +635,7 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
         },
       },
     ],
-    [deleteProject, navigate],
+    [deleteProject, isPending, navigate, updateProject],
   );
 
   useEffect(() => {
@@ -563,7 +647,7 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
         return {
           id: p.ID,
           name: p.Nickname,
-          deserved: JSON.parse(p.deserved) as Resource,
+          deserved: JSON.parse(p.deserved) as ResourceMap,
         };
       });
     setData(tableData);
