@@ -532,8 +532,8 @@ export const Component = () => {
                       <FormLabel>端口</FormLabel>
                     </div>
                   )}
-                  {psPortFields.map((_, index) => (
-                    <div key={index} className="flex items-start gap-2">
+                  {psPortFields.map((field, index) => (
+                    <div key={field.id} className="flex items-start gap-2">
                       <FormField
                         control={form.control}
                         name={`ps.ports.${index}.name`}
@@ -567,6 +567,7 @@ export const Component = () => {
                       <Button
                         size="icon"
                         variant="outline"
+                        type="button"
                         onClick={() => psPortRemove(index)}
                       >
                         <XIcon className="h-4 w-4" />
@@ -763,8 +764,8 @@ export const Component = () => {
                       <FormLabel>端口</FormLabel>
                     </div>
                   )}
-                  {workerPortFields.map((_, index) => (
-                    <div key={index} className="flex items-start gap-2">
+                  {workerPortFields.map(({ id }, index) => (
+                    <div key={id} className="flex items-start gap-2">
                       <FormField
                         control={form.control}
                         name={`worker.ports.${index}.name`}
@@ -842,6 +843,7 @@ export const Component = () => {
                               <FormLabelMust />
                             </FormLabel>
                             <button
+                              type="button"
                               onClick={() => volumeMountRemove(index)}
                               className="absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
                             >
@@ -946,6 +948,7 @@ export const Component = () => {
                         render={({ field }) => (
                           <FormItem className="relative">
                             <button
+                              type="button"
                               onClick={() => envRemove(index)}
                               className="absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
                             >
