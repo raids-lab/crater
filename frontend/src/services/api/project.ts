@@ -35,6 +35,12 @@ export const apiProjectCreate = (project: ICreateProject) =>
     project,
   );
 
+export const apiProjectUpdate = (project: ICreateProject) =>
+  instance.put<IResponse<ICreateProjectResponse>>(
+    VERSION + "/admin/projects/" + project.name + "/quotas",
+    project,
+  );
+
 export const apiProjectList = () =>
   instance.get<IResponse<ProjectBasic[]>>(VERSION + "/projects");
 
