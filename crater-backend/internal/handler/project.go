@@ -330,7 +330,7 @@ func (mgr *ProjectMgr) UpdateQuota(c *gin.Context) {
 	}
 	name := nameReq.Name
 	q := query.Queue
-	queue, err := q.WithContext(c).Where(q.Name.Eq(name)).First()
+	queue, err := q.WithContext(c).Where(q.Nickname.Eq(name)).First()
 
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("find project failed, detail: %v", err), resputil.NotSpecified)
