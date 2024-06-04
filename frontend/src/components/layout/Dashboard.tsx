@@ -36,7 +36,7 @@ const DashboardLayout = ({
     return rawPath;
   }, [rawPath]);
 
-  // 特殊规则，portal 个人项目或者非管理员角色，隐藏项目管理菜单
+  // 特殊规则，portal 个人账户或者非管理员角色，隐藏账户管理菜单
   const sidebarItems = useMemo(() => {
     if (
       rawPath.startsWith("/portal") &&

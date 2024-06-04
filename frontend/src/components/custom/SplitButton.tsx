@@ -29,7 +29,7 @@ const SplitButton = ({ urls, title }: { urls: URL[]; title: string }) => {
     <div className="flex w-fit items-center space-x-1 rounded-md bg-primary text-primary-foreground">
       <Button
         className="pr-3 shadow-none"
-        onClick={() => navigate(`new-${position}`)}
+        onClick={() => navigate(`/${position}`)}
       >
         <PlusCircleIcon className="-ml-0.5 mr-1.5 h-4 w-4" />
         新建{urls.find((url) => url.url === position)?.name}

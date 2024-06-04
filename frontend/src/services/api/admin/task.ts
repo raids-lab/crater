@@ -12,8 +12,8 @@ export interface IVolcanoJobInfo {
   createdAt: string;
   startedAt: string;
   completedAt: string;
-  nodeName: string;
-  resource: string;
+  nodes: string[];
+  resources: Record<string, string>;
 }
 
 export const apiAdminTaskListByType = () =>

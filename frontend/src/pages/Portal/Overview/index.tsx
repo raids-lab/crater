@@ -7,7 +7,6 @@ import {
 } from "@/components/ui/card";
 import { DataTable } from "@/components/custom/DataTable";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { apiGetNodes } from "@/services/api/node";
 import { ColumnDef } from "@tanstack/react-table";
@@ -21,7 +20,11 @@ import JobPhaseLabel, { jobPhases } from "@/components/custom/JobPhaseLabel";
 import { IVolcanoJobInfo, apiTaskListByType } from "@/services/api/admin/task";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { CardTitle } from "@/components/ui-custom/card";
-import { toast } from "sonner";
+import NivoPie from "@/components/chart/NivoPie";
+import SplitButton from "@/components/custom/SplitButton";
+import { Button } from "@/components/ui/button";
+import { ContainerIcon, FileTextIcon } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -187,32 +190,195 @@ export const Component: FC = () => {
     select: (res) => res.data.data,
   });
 
+  const jobStatus = useMemo(() => {
+    if (!vcjobQuery.data) {
+      return [];
+    }
+    const data = vcjobQuery.data;
+    const counts = data.reduce(
+      (acc, item) => {
+        const phase = item.status;
+        if (!acc[phase]) {
+          acc[phase] = 0;
+        }
+        acc[phase] += 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+    return Object.entries(counts).map(([phase, count]) => ({
+      id: phase,
+      label: phase,
+      value: count,
+    }));
+  }, [vcjobQuery.data]);
+
+  const queueStatus = useMemo(() => {
+    if (!vcjobQuery.data) {
+      return [];
+    }
+    const data = vcjobQuery.data;
+    const counts = data.reduce(
+      (acc, item) => {
+        const queue = item.queue;
+        if (!acc[queue]) {
+          acc[queue] = 0;
+        }
+        acc[queue] += 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+    return Object.entries(counts).map(([phase, count]) => ({
+      id: phase,
+      label: phase,
+      value: count,
+    }));
+  }, [vcjobQuery.data]);
+
+  const typeStatus = useMemo(() => {
+    if (!vcjobQuery.data) {
+      return [];
+    }
+    const data = vcjobQuery.data;
+    const counts = data.reduce(
+      (acc, item) => {
+        const type = item.jobType;
+        if (!acc[type]) {
+          acc[type] = 0;
+        }
+        acc[type] += 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+    return Object.entries(counts).map(([phase, count]) => ({
+      id: phase,
+      label: phase,
+      value: count,
+    }));
+  }, [vcjobQuery.data]);
+
+  const gpuStatus = useMemo(() => {
+    if (!vcjobQuery.data) {
+      return [];
+    }
+    const data = vcjobQuery.data;
+    const counts = data.reduce(
+      (acc, item) => {
+        const resources = item.resources;
+        for (const [k, value] of Object.entries(resources)) {
+          if (k.startsWith("nvidia.com")) {
+            const key = k.replace("nvidia.com/", "");
+            if (!acc[key]) {
+              acc[key] = 0;
+            }
+            acc[key] += parseInt(value);
+          }
+        }
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+    return Object.entries(counts).map(([phase, count]) => ({
+      id: phase,
+      label: phase,
+      value: count,
+    }));
+  }, [vcjobQuery.data]);
+
+  const navigate = useNavigate();
+
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:col-span-3 xl:grid-cols-4">
-        <Card className="sm:col-span-2">
-          <CardHeader className="pb-3">
+      <div className="grid gap-4 md:gap-6 lg:col-span-3 lg:grid-cols-3">
+        <Card className="col-span-2 flex flex-col justify-between lg:col-span-2">
+          <CardHeader>
             <CardTitle>快速开始</CardTitle>
-            <CardDescription className="text-balance leading-relaxed">
-              在 Crater 启动 Jupyter Lab、打包训练镜像、
-              启动深度学习训练作业等。
+            <CardDescription className="text-balance pt-2 leading-relaxed">
+              在 Crater 启动深度学习或高性能计算作业、打包镜像、 启动微服务或
+              Serverless 等。
             </CardDescription>
           </CardHeader>
-          <CardFooter>
-            <Button onClick={() => toast.warning("这个功能还没做")}>
-              Create New Task
+          <CardFooter className="flex flex-row gap-3">
+            <SplitButton
+              title="overview"
+              urls={[
+                { url: "portal/job/inter/new-jupyter", name: " Jupyter Lab" },
+                {
+                  url: "portal/job/batch/new-tensorflow",
+                  name: " Tensorflow 作业",
+                },
+                { url: "portal/job/batch/new-training", name: "自定义作业" },
+              ]}
+            />
+            <Button
+              variant="secondary"
+              onClick={() => navigate("/portal/image/createimage")}
+              className="hidden xl:flex"
+            >
+              <ContainerIcon className="mr-2 h-4 w-4" />
+              镜像制作
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                window.open("https://crater.act.buaa.edu.cn/website/")
+              }
+              className="hidden lg:flex"
+            >
+              <FileTextIcon className="mr-2 h-4 w-4" />
+              使用说明
             </Button>
           </CardFooter>
         </Card>
-        <Card className="sm:col-span-2">
+
+        <Card>
           <CardHeader className="pb-3">
             <CardTitle>作业统计</CardTitle>
-            <CardDescription className="text-balance leading-relaxed">
-              在 Crater 启动 Jupyter Lab、打包训练镜像、
-              启动深度学习训练作业等。
-            </CardDescription>
           </CardHeader>
-          <CardFooter></CardFooter>
+          <div className="h-44 px-2">
+            <NivoPie
+              data={jobStatus}
+              margin={{ top: 25, bottom: 30 }}
+              colors={({ id }) =>
+                jobPhases.find((x) => x.value === id)?.color ?? "#000"
+              }
+              arcLabelsTextColor="#ffffff"
+            />
+          </div>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>账户统计</CardTitle>
+          </CardHeader>
+          <div className="h-44 px-2">
+            <NivoPie data={queueStatus} margin={{ top: 25, bottom: 30 }} />
+          </div>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>类型统计</CardTitle>
+          </CardHeader>
+          <div className="h-44 px-2">
+            <NivoPie
+              data={typeStatus}
+              margin={{ top: 25, bottom: 30 }}
+              colors={{ scheme: "accent" }}
+            />
+          </div>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>已申请 GPU</CardTitle>
+          </CardHeader>
+          <div className="h-44 px-2">
+            <NivoPie
+              data={gpuStatus}
+              margin={{ top: 25, bottom: 30 }}
+              colors={{ scheme: "set2" }}
+            />
+          </div>
         </Card>
       </div>
       <DataTable

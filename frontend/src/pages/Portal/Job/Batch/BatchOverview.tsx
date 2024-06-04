@@ -37,8 +37,8 @@ import JobPhaseLabel, { jobPhases } from "@/components/custom/JobPhaseLabel";
 
 import {
   Card,
-  CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
 } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui-custom/card";
@@ -250,7 +250,7 @@ export const Component = () => {
 
   return (
     <>
-      <div className="col-span-3 grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
+      <div className="grid gap-4 md:gap-6 lg:col-span-3 lg:grid-cols-4">
         <Card className="flex flex-col justify-between lg:col-span-2">
           <CardHeader>
             <CardTitle>批处理作业</CardTitle>
@@ -260,18 +260,33 @@ export const Component = () => {
               OpenMPI 分布式计算作业等。
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardFooter>
             <SplitButton
               title="batch"
               urls={[
-                { url: "training", name: "单机作业" },
-                { url: "tensorflow", name: " Tensorflow 作业" },
-                { url: "pytorch", name: " Pytorch 作业", disabled: true },
-                { url: "ray", name: " Ray 作业", disabled: true },
-                { url: "openmpi", name: " OpenMPI 作业", disabled: true },
+                { url: "portal/job/batch/new-training", name: "自定义作业" },
+                {
+                  url: "portal/job/batch/new-tensorflow",
+                  name: " Tensorflow 作业",
+                },
+                {
+                  url: "portal/job/batch/new-pytorch",
+                  name: " Pytorch 作业",
+                  disabled: true,
+                },
+                {
+                  url: "portal/job/batch/new-ray",
+                  name: " Ray 作业",
+                  disabled: true,
+                },
+                {
+                  url: "portal/job/batch/new-openmpi",
+                  name: " OpenMPI 作业",
+                  disabled: true,
+                },
               ]}
             />
-          </CardContent>
+          </CardFooter>
         </Card>
         <Quota />
       </div>

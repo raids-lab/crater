@@ -6,42 +6,52 @@ export const jobPhases = [
   {
     value: "Pending",
     label: "等待中",
+    color: "#a855f7",
   },
   {
     value: "Aborting",
     label: "即将中止",
+    color: "#ec4899",
   },
   {
     value: "Aborted",
     label: "已中止",
+    color: "#ec4899",
   },
   {
     value: "Running",
     label: "运行中",
+    color: "#3b82f6",
   },
   {
     value: "Restarting",
     label: "重启中",
+    color: "#f43f5e",
   },
   {
     value: "Completing",
     label: "即将完成",
+    color: "#10b981",
   },
   {
     value: "Completed",
     label: "已完成",
+    color: "#10b981",
   },
   {
     value: "Terminating",
     label: "即将终止",
+    color: "#f97316",
   },
   {
     value: "Terminated",
     label: "已终止",
+    color: "#f97316",
   },
   {
     value: "Failed",
     label: "失败",
+    color: "#ef4444",
   },
 ];
 

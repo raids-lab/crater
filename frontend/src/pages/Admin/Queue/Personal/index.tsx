@@ -608,11 +608,11 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
               </ProjectSheet>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button title="删除项目">删除项目</Button>
+                  <Button title="删除账户">删除账户</Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>删除项目</AlertDialogTitle>
+                    <AlertDialogTitle>删除账户</AlertDialogTitle>
                     <AlertDialogDescription>
                       账户 {proj?.name} 将被删除，请谨慎操作。
                     </AlertDialogDescription>

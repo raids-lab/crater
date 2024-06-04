@@ -32,8 +32,8 @@ import JobPhaseLabel, { jobPhases } from "@/components/custom/JobPhaseLabel";
 import { Link } from "react-router-dom";
 import {
   Card,
-  CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
 } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui-custom/card";
@@ -250,7 +250,7 @@ export const Component = () => {
 
   return (
     <>
-      <div className="col-span-3 grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
+      <div className="grid gap-4 md:gap-6 lg:col-span-3 lg:grid-cols-4">
         <Card className="flex flex-col justify-between lg:col-span-2">
           <CardHeader>
             <CardTitle>交互式作业</CardTitle>
@@ -258,15 +258,19 @@ export const Component = () => {
               提供开箱即用的 Jupyter Lab 或 Web IDE， 可用于代码编写、调试等。
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardFooter>
             <SplitButton
               title="interactive"
               urls={[
-                { url: "jupyter", name: " Jupyter Lab" },
-                { url: "webide", name: " Web IDE", disabled: true },
+                { url: "portal/job/inter/new-jupyter", name: " Jupyter Lab" },
+                {
+                  url: "portal/job/inter/new-webide",
+                  name: " Web IDE",
+                  disabled: true,
+                },
               ]}
             />
-          </CardContent>
+          </CardFooter>
         </Card>
         <Quota />
       </div>
