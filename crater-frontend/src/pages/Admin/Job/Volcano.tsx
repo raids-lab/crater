@@ -88,7 +88,7 @@ export const getHeader = (key: string): string => {
     case "queue":
       return "队列";
     case "owner":
-      return "创建者";
+      return "用户";
     case "status":
       return "状态";
     case "createdAt":

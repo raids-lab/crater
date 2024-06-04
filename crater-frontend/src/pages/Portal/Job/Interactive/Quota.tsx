@@ -13,6 +13,22 @@ import GpuIcon from "@/components/icon/GpuIcon";
 import { useAtomValue } from "jotai";
 import { REFETCH_INTERVAL } from "@/config/task";
 
+const showAmount = (allocated: number, label?: string) => {
+  if (label === "mem") {
+    return (allocated / 1024 / 1024 / 1024).toFixed(0);
+  }
+  return allocated;
+};
+
+const showUnit = (label?: string) => {
+  if (label === "mem") {
+    return "GB";
+  } else if (label === "cpu") {
+    return "核";
+  }
+  return "卡";
+};
+
 const QuotaCard = ({
   resource,
   ...props
@@ -20,6 +36,9 @@ const QuotaCard = ({
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   resource?: ResourceResp;
 }) => {
+  const allocated = resource?.allocated.amount ?? 0;
+  const quota = resource?.deserved?.amount ?? resource?.capability.amount ?? 1;
+  const progress = (allocated / quota) * 100;
   return (
     <Card className="flex flex-col items-stretch justify-between">
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
@@ -29,29 +48,38 @@ const QuotaCard = ({
           </div>
           {resource?.label}
         </CardDescription>
-        <p className="m-0 font-mono text-xl font-bold">
-          {resource?.label === "mem" ? (
-            <>
-              {(resource?.allocated.amount / 1024 / 1024 / 1024).toFixed(0)}/
-              {(resource?.capability.amount / 1024 / 1024 / 1024).toFixed(0)}
-              <span className="ml-0.5 text-base">GB</span>
-            </>
-          ) : (
-            <>
-              {resource?.allocated.amount}/{resource?.capability.amount}
-            </>
-          )}
+        <p className="font-sans text-xs text-muted-foreground">
+          已用
+          <span className="mx-0.5 font-mono text-xl font-bold text-primary">
+            {showAmount(allocated, resource?.label)}
+          </span>
+          {showUnit(resource?.label)}
         </p>
       </CardHeader>
-      <CardFooter>
-        <Progress
-          value={
-            ((resource?.allocated.amount ?? 0) /
-              (resource?.capability.amount ?? 1)) *
-            100
-          }
-          aria-label={resource?.label}
-        />
+      <CardFooter className="flex flex-col gap-2">
+        <Progress value={progress} aria-label={resource?.label} />
+        <div className="flex w-full flex-row-reverse items-center justify-between text-xs">
+          {resource?.capability.amount !== undefined && (
+            <p className="text-orange-500">
+              上限: {showAmount(resource?.capability?.amount, resource?.label)}
+            </p>
+          )}
+          {resource?.deserved?.amount !== undefined && (
+            <p className="text-teal-500">
+              应得: {showAmount(resource?.deserved?.amount, resource?.label)}
+            </p>
+          )}
+          {resource?.allocated.amount !== undefined && (
+            <p className="text-sky-500">
+              已用: {showAmount(resource?.allocated?.amount, resource?.label)}
+            </p>
+          )}
+          {resource?.guarantee?.amount !== undefined && (
+            <p className="text-slate-500">
+              保证: {showAmount(resource?.guarantee?.amount, resource?.label)}
+            </p>
+          )}
+        </div>
       </CardFooter>
     </Card>
   );

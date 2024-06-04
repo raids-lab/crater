@@ -67,7 +67,7 @@ function ImageCreateInfo({
             </p>
           </div>
           <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
-            <p className="text-xs">创建者:</p>
+            <p className="text-xs">用户:</p>
             <p className="ml-2 text-sm font-medium">
               {imagecreateinfo?.creatername}
             </p>

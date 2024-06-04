@@ -7,7 +7,7 @@ export const getHeader = (key: string): string => {
     case "jobType":
       return "类型";
     case "owner":
-      return "创建者";
+      return "用户";
     case "gpus":
       return "GPU";
     case "status":
