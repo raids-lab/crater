@@ -41,6 +41,8 @@ import { ExternalLink, TrashIcon } from "lucide-react";
 import SplitButton from "@/components/custom/SplitButton";
 import { IVolcanoJobInfo } from "@/services/api/admin/task";
 import { REFETCH_INTERVAL } from "@/config/task";
+import { useAtomValue } from "jotai";
+import { globalUserInfo } from "@/utils/store";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -58,6 +60,7 @@ const toolbarConfig: DataTableToolbarConfig = {
 };
 
 export const Component = () => {
+  const userInfo = useAtomValue(globalUserInfo);
   const queryClient = useQueryClient();
 
   const interactiveQuery = useQuery({
@@ -204,22 +207,24 @@ export const Component = () => {
                     getPortToken(jobInfo.jobName);
                   }, 500);
                 }}
-                disabled={jobInfo.status !== "Running"}
+                disabled={
+                  jobInfo.status !== "Running" ||
+                  userInfo.name !== jobInfo.owner
+                }
               >
                 <ExternalLink className="h-4 w-4" />
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <div>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 text-red-600 hover:text-destructive/90"
-                      title="终止 Jupyter Lab"
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 text-red-600 hover:text-destructive/90"
+                    title="终止 Jupyter Lab"
+                    disabled={userInfo.name !== jobInfo.owner}
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
@@ -245,7 +250,7 @@ export const Component = () => {
         },
       },
     ],
-    [deleteTask, getPortToken],
+    [deleteTask, getPortToken, userInfo.name],
   );
 
   return (

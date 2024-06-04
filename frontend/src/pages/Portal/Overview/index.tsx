@@ -25,6 +25,7 @@ import SplitButton from "@/components/custom/SplitButton";
 import { Button } from "@/components/ui/button";
 import { ContainerIcon, FileTextIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -40,6 +41,29 @@ const toolbarConfig: DataTableToolbarConfig = {
     },
   ],
   getHeader: getHeader,
+};
+
+interface PieCardProps extends React.HTMLAttributes<HTMLDivElement> {
+  cardTitle: string;
+  isLoading?: boolean;
+}
+
+const PieCard = ({ children, cardTitle, isLoading }: PieCardProps) => {
+  return (
+    <Card className="relative">
+      {isLoading && (
+        <div className="absolute bottom-0 left-0 right-0 top-0 z-10 flex items-center justify-center">
+          <LoadingCircleIcon />
+        </div>
+      )}
+      <CardHeader className="pb-3">
+        <CardTitle>{cardTitle}</CardTitle>
+      </CardHeader>
+      <div className="flex h-44 items-center justify-center px-2">
+        {children}
+      </div>
+    </Card>
+  );
 };
 
 export const Component: FC = () => {
@@ -296,7 +320,7 @@ export const Component: FC = () => {
           <CardHeader>
             <CardTitle>快速开始</CardTitle>
             <CardDescription className="text-balance pt-2 leading-relaxed">
-              在 Crater 启动深度学习或高性能计算作业、打包镜像、 启动微服务或
+              在 Crater 启动批处理或交互式计算作业、定制镜像、启动微服务或
               Serverless 等。
             </CardDescription>
           </CardHeader>
@@ -332,54 +356,33 @@ export const Component: FC = () => {
             </Button>
           </CardFooter>
         </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle>作业统计</CardTitle>
-          </CardHeader>
-          <div className="h-44 px-2">
-            <NivoPie
-              data={jobStatus}
-              margin={{ top: 25, bottom: 30 }}
-              colors={({ id }) =>
-                jobPhases.find((x) => x.value === id)?.color ?? "#000"
-              }
-              arcLabelsTextColor="#ffffff"
-            />
-          </div>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle>账户统计</CardTitle>
-          </CardHeader>
-          <div className="h-44 px-2">
-            <NivoPie data={queueStatus} margin={{ top: 25, bottom: 30 }} />
-          </div>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle>类型统计</CardTitle>
-          </CardHeader>
-          <div className="h-44 px-2">
-            <NivoPie
-              data={typeStatus}
-              margin={{ top: 25, bottom: 30 }}
-              colors={{ scheme: "accent" }}
-            />
-          </div>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle>已申请 GPU</CardTitle>
-          </CardHeader>
-          <div className="h-44 px-2">
-            <NivoPie
-              data={gpuStatus}
-              margin={{ top: 25, bottom: 30 }}
-              colors={{ scheme: "set2" }}
-            />
-          </div>
-        </Card>
+        <PieCard cardTitle="作业统计" isLoading={vcjobQuery.isLoading}>
+          <NivoPie
+            data={jobStatus}
+            margin={{ top: 25, bottom: 30 }}
+            colors={({ id }) =>
+              jobPhases.find((x) => x.value === id)?.color ?? "#000"
+            }
+            arcLabelsTextColor="#ffffff"
+          />
+        </PieCard>
+        <PieCard cardTitle="账户统计" isLoading={vcjobQuery.isLoading}>
+          <NivoPie data={queueStatus} margin={{ top: 25, bottom: 30 }} />
+        </PieCard>
+        <PieCard cardTitle="类型统计" isLoading={vcjobQuery.isLoading}>
+          <NivoPie
+            data={typeStatus}
+            margin={{ top: 25, bottom: 30 }}
+            colors={{ scheme: "accent" }}
+          />
+        </PieCard>
+        <PieCard cardTitle="已申请 GPU" isLoading={vcjobQuery.isLoading}>
+          <NivoPie
+            data={gpuStatus}
+            margin={{ top: 25, bottom: 30 }}
+            colors={{ scheme: "set2" }}
+          />
+        </PieCard>
       </div>
       <DataTable
         info={{

@@ -6,7 +6,7 @@ export const recommendPath: PathInfo = {
   children: [
     {
       path: "overview",
-      title: "概览",
+      title: "集群概览",
     },
     {
       path: "job",
