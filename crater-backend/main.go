@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"os"
 	"time"
 
@@ -31,6 +32,7 @@ import (
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
@@ -55,6 +57,8 @@ import (
 // @in header
 // @name Authorization
 // @description 访问 /login 并获取 TOKEN 后，填入 'Bearer ${TOKEN}' 以访问受保护的接口
+//
+//nolint:gocyclo // TODO: refactor main function
 func main() {
 	// set global timezone
 	time.Local = time.UTC
@@ -115,6 +119,16 @@ func main() {
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
+	}
+
+	// Create a new field indexer
+	if err = mgr.GetFieldIndexer().IndexField(context.Background(), &batch.Job{}, "spec.queue", func(rawObj client.Object) []string {
+		// Extract the `spec.queue` field from the Job object
+		job := rawObj.(*batch.Job)
+		return []string{job.Spec.Queue}
+	}); err != nil {
+		setupLog.Error(err, "unable to index field spec.queue")
 		os.Exit(1)
 	}
 
