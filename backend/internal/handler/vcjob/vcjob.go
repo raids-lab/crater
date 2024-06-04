@@ -301,7 +301,7 @@ func (mgr *VolcanojobMgr) GetUserJobs(c *gin.Context) {
 
 	// TODO: add indexer to list jobs by user
 	jobs := &batch.JobList{}
-	if err := mgr.List(c, jobs, client.MatchingLabels{LabelKeyTaskUser: token.Username}); err != nil {
+	if err := mgr.List(c, jobs, client.MatchingFields{"spec.queue": token.QueueName}); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
