@@ -13,10 +13,10 @@ export const handlers = [
       const { username, password } = await request.json();
       logger.info(`login with username: ${username}, password: ${password}`);
       const mockUser = {
-        username: "Huangjx",
+        username: "ganhao",
         password: "",
         accessToken:
-          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aSI6NiwicWkiOjAsInVuIjoiZ2FuaGFvIiwicW4iOiIiLCJycSI6MSwicnAiOjMsImV4cCI6MTcxNTE1NDI2OH0.UUr-S1WJjtpw8Mgqo1OTbSjuckLaJ-OCAdLxQEaLyGQ",
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aSI6NiwicWkiOjIzLCJ1biI6ImdhbmhhbyIsInFuIjoicS0yMyIsInJxIjoyLCJycCI6MywiYW0iOjIsInBhIjoyLCJleHAiOjE3MTc2NDQ0ODV9.7y8Fp2cUX5B7kN7YeJSrd6rfIR9t41-hQSQrhhIrnKY",
         refreshToken: "",
         role: Role.Admin,
       };
