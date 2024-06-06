@@ -106,7 +106,14 @@ const sidebarItems: SidebarItem[] = [
     children: [
       {
         route: {
-          path: "dataset",
+          path: "queue/*",
+          lazy: () => import("./Data/Queue"),
+        },
+      },
+      {
+        route: {
+          path: "user/*",
+          lazy: () => import("./Data/User"),
         },
       },
     ],
