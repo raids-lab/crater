@@ -53,8 +53,12 @@ export const adminPath: PathInfo = {
       title: "数据管理",
       children: [
         {
-          path: "dataset",
-          title: "系统文件",
+          path: "user",
+          title: "用户文件",
+        },
+        {
+          path: "queue",
+          title: "队列文件",
         },
       ],
     },
