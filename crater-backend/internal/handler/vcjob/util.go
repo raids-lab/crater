@@ -71,3 +71,45 @@ func generateNodeAffinity(expressions []v1.NodeSelectorRequirement) (affinity *v
 	}
 	return affinity
 }
+
+func generatePodSpec(
+	task *TaskReq,
+	affinity *v1.Affinity,
+	volumes []v1.Volume,
+	volumeMounts []v1.VolumeMount,
+	envs []v1.EnvVar,
+	ports []v1.ContainerPort,
+) (podSpec v1.PodSpec) {
+	podSpec = v1.PodSpec{
+		Affinity: affinity,
+		Volumes:  volumes,
+		Containers: []v1.Container{
+			{
+				Name:  task.Name,
+				Image: task.Image,
+				Resources: v1.ResourceRequirements{
+					Limits:   task.Resource,
+					Requests: task.Resource,
+				},
+				Env:   envs,
+				Ports: ports,
+				SecurityContext: &v1.SecurityContext{
+					AllowPrivilegeEscalation: lo.ToPtr(true),
+					RunAsUser:                lo.ToPtr(int64(0)),
+					RunAsGroup:               lo.ToPtr(int64(0)),
+				},
+				TerminationMessagePath:   "/dev/termination-log",
+				TerminationMessagePolicy: v1.TerminationMessageReadFile,
+				VolumeMounts:             volumeMounts,
+			},
+		},
+		RestartPolicy: v1.RestartPolicyNever,
+	}
+	if task.Command != nil {
+		podSpec.Containers[0].Command = []string{"sh", "-c", *task.Command}
+	}
+	if task.WorkingDir != nil {
+		podSpec.Containers[0].WorkingDir = *task.WorkingDir
+	}
+	return podSpec
+}
