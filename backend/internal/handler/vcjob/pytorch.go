@@ -14,42 +14,7 @@ import (
 	bus "volcano.sh/apis/pkg/apis/bus/v1alpha1"
 )
 
-type (
-	PortReq struct {
-		Name string `json:"name"`
-		Port int32  `json:"port"`
-	}
-
-	TaskReq struct {
-		Name       string          `json:"name"`
-		Replicas   int32           `json:"replicas"`
-		Resource   v1.ResourceList `json:"resource"`
-		Image      string          `json:"image"`
-		Command    *string         `json:"command"`
-		WorkingDir *string         `json:"workingDir"`
-		Ports      []PortReq       `json:"ports"`
-	}
-
-	CreateTensorflowReq struct {
-		CreateJobCommon `json:",inline"`
-		Name            string    `json:"name" binding:"required"`
-		Tasks           []TaskReq `json:"tasks"`
-	}
-)
-
-// CreateTrainingJob godoc
-// @Summary Create a training job
-// @Description Create a training job
-// @Tags VolcanoJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param CreateTrainingReq body any true "CreateTrainingReq"
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/vcjobs/training [post]
-func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
+func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	token := util.GetToken(c)
 	if token.QueueName == util.QueueNameNull {
 		resputil.Error(c, "Queue not specified", resputil.QueueNotFound)
@@ -62,8 +27,8 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 		return
 	}
 
-	// Ingress base URL
-	jobName := fmt.Sprintf("tf-%s-%s", token.Username, uuid.New().String()[:5])
+	// base URL
+	jobName := fmt.Sprintf("py-%s-%s", token.Username, uuid.New().String()[:5])
 
 	// 1. Volume Mounts
 	volumes, volumeMounts, err := generateVolumeMounts(c, token.UserID, req.VolumeMounts)
@@ -78,7 +43,7 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	// 3. Labels and Annotations
 	namespace := config.GetConfig().Workspace.Namespace
 	labels := map[string]string{
-		LabelKeyTaskType: "tensorflow",
+		LabelKeyTaskType: "pytorch",
 		LabelKeyTaskUser: token.Username,
 		LabelKeyBaseURL:  jobName,
 	}
@@ -90,8 +55,8 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	tasks := make([]batch.TaskSpec, len(req.Tasks))
 	minAvailable := int32(0)
 	for i := range req.Tasks {
-		task := &req.Tasks[i]
 		// 4.1. Generate ports
+		task := &req.Tasks[i]
 		ports := make([]v1.ContainerPort, len(task.Ports))
 		for j, port := range task.Ports {
 			ports[j] = v1.ContainerPort{
@@ -116,16 +81,18 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 			},
 		}
 
-		if task.Name == "worker" {
+		if task.Name == "master" {
 			taskSpec.Policies = []batch.LifecyclePolicy{
 				{
 					Action: bus.CompleteJobAction,
 					Event:  bus.TaskCompletedEvent,
 				},
 			}
+			minAvailable = task.Replicas
+		} else if task.Name == "worker" {
+			taskSpec.Template.Spec.RestartPolicy = v1.RestartPolicyOnFailure
 		}
 
-		minAvailable += task.Replicas
 		tasks[i] = taskSpec
 	}
 
@@ -141,14 +108,7 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 			MinAvailable:  minAvailable,
 			SchedulerName: VolcanoSchedulerName,
 			Plugins: map[string][]string{
-				"env": {},
-				"svc": {},
-			},
-			Policies: []batch.LifecyclePolicy{
-				{
-					Action: bus.RestartJobAction,
-					Event:  bus.PodEvictedEvent,
-				},
+				"pytorch": {"--master=master", "--worker=worker", "--port=23456"},
 			},
 			Queue: token.QueueName,
 			Tasks: tasks,

@@ -60,6 +60,9 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 
 	// tensorflow
 	g.POST("tensorflow", mgr.CreateTensorflowJob)
+
+	// pytorch
+	g.POST("pytorch", mgr.CreatePytorchJob)
 }
 
 func (mgr *VolcanojobMgr) RegisterAdmin(g *gin.RouterGroup) {
