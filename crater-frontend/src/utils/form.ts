@@ -43,12 +43,8 @@ export const taskSchema = z.object({
   image: z.string().min(1, {
     message: "容器镜像不能为空",
   }),
-  command: z.string().min(1, {
-    message: "启动命令不能为空",
-  }),
-  workingDir: z.string().min(1, {
-    message: "工作目录不能为空",
-  }),
+  command: z.string().optional(),
+  workingDir: z.string().optional(),
   ports: z.array(
     z.object({
       name: z.string().min(1, {

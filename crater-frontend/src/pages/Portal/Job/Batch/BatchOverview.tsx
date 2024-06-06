@@ -264,7 +264,6 @@ export const Component = () => {
             <SplitButton
               title="batch"
               urls={[
-                { url: "portal/job/batch/new-training", name: "自定义作业" },
                 {
                   url: "portal/job/batch/new-tensorflow",
                   name: " Tensorflow 作业",
@@ -272,7 +271,6 @@ export const Component = () => {
                 {
                   url: "portal/job/batch/new-pytorch",
                   name: " Pytorch 作业",
-                  disabled: true,
                 },
                 {
                   url: "portal/job/batch/new-ray",
@@ -280,9 +278,18 @@ export const Component = () => {
                   disabled: true,
                 },
                 {
+                  url: "portal/job/batch/new-deepspeed",
+                  name: " DeepSpeed 作业",
+                  disabled: true,
+                },
+                {
                   url: "portal/job/batch/new-openmpi",
                   name: " OpenMPI 作业",
                   disabled: true,
+                },
+                {
+                  url: "portal/job/batch/new-custom",
+                  name: "自定义作业（单机）",
                 },
               ]}
             />

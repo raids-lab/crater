@@ -18,12 +18,16 @@ export const craterPath: PathInfo = {
           title: "批处理作业",
           children: [
             {
-              path: "new-training",
-              title: "新建作业",
+              path: "new-custom",
+              title: "新建自定义作业",
             },
             {
               path: "new-tensorflow",
-              title: "新建作业",
+              title: "新建 Tensorflow 作业",
+            },
+            {
+              path: "new-pytorch",
+              title: "新建 Pytorch 作业",
             },
           ],
         },
@@ -63,7 +67,7 @@ export const craterPath: PathInfo = {
         },
         {
           path: "uploadimage",
-          title: "镜像上传",
+          title: "镜像列表",
         },
       ],
     },

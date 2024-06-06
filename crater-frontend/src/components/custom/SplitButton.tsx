@@ -31,7 +31,7 @@ const SplitButton = ({ urls, title }: { urls: URL[]; title: string }) => {
         className="pr-3 shadow-none"
         onClick={() => navigate(`/${position}`)}
       >
-        <PlusCircleIcon className="-ml-0.5 mr-1.5 h-4 w-4" />
+        <PlusCircleIcon className="-ml-0.5 mr-2 h-4 w-4" />
         新建{urls.find((url) => url.url === position)?.name}
       </Button>
       <Separator orientation="vertical" className="h-[20px]" />

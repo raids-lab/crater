@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiTensorflowCreate } from "@/services/api/vcjob";
+import { apiPytorchCreate } from "@/services/api/vcjob";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -85,7 +85,7 @@ export const Component = () => {
 
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) =>
-      apiTensorflowCreate({
+      apiPytorchCreate({
         name: values.jobName,
         tasks: [
           {
@@ -152,7 +152,7 @@ export const Component = () => {
     defaultValues: {
       jobName: "",
       ps: {
-        taskName: "ps",
+        taskName: "master",
         replicas: 1,
         resource: {
           cpu: 1,
@@ -253,7 +253,7 @@ export const Component = () => {
                 <ChevronLeftIcon className="h-4 w-4" />
               </Button>
               <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
-                Tensorflow 分布式训练作业
+                Pytorch 分布式训练作业
               </h1>
             </div>
             <div className="flex flex-row gap-3">
@@ -353,7 +353,7 @@ export const Component = () => {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>Parameter Server</CardTitle>
+                <CardTitle>Master</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-5">
                 <FormField
@@ -491,7 +491,7 @@ export const Component = () => {
                         <Textarea {...field} className="h-24 font-mono" />
                       </FormControl>
                       <FormDescription>
-                        将覆盖镜像的启动命令，可通过{" "}
+                        如果设置，将覆盖镜像的启动命令，可通过{" "}
                         <span className="font-mono">;</span> 拆分多行命令
                       </FormDescription>
                       <FormMessage />
@@ -717,7 +717,7 @@ export const Component = () => {
                         <Textarea {...field} className="h-24 font-mono" />
                       </FormControl>
                       <FormDescription>
-                        将覆盖镜像的启动命令，可通过{" "}
+                        如果设置，将覆盖镜像的启动命令，可通过{" "}
                         <span className="font-mono">;</span> 拆分多行命令
                       </FormDescription>
                       <FormMessage />

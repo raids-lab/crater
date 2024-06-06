@@ -281,12 +281,12 @@ export const Component: FC = () => {
     >
       <Sheet open={openSheet} onOpenChange={setOpenSheet}>
         <SheetTrigger asChild>
-          <Button className="h-8 min-w-fit">上传镜像</Button>
+          <Button className="h-8 min-w-fit">导入镜像</Button>
         </SheetTrigger>
         <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
           <SheetHeader>
-            <SheetTitle>上传镜像</SheetTitle>
-            <SheetDescription>上传一个新的训练作业镜像</SheetDescription>
+            <SheetTitle>导入镜像</SheetTitle>
+            <SheetDescription>导入一个新的训练作业镜像</SheetDescription>
           </SheetHeader>
           <Separator className="mt-4" />
           <ImageUploadForm closeSheet={() => setOpenSheet(false)} />

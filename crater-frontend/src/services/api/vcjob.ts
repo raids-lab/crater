@@ -68,8 +68,8 @@ export interface IJupyterCreate {
 }
 
 export interface ITrainingCreate extends IJupyterCreate {
-  command: string;
-  workingDir: string;
+  command?: string;
+  workingDir?: string;
 }
 
 export interface ITensorflowCreate {
@@ -79,8 +79,8 @@ export interface ITensorflowCreate {
     replicas: number;
     resource: KubernetesResourceList;
     image: string;
-    command: string;
-    workingDir: string;
+    command?: string;
+    workingDir?: string;
     ports: {
       name: string;
       port: number;
@@ -110,6 +110,14 @@ export const apiTrainingCreate = async (task: ITrainingCreate) => {
 export const apiTensorflowCreate = async (task: ITensorflowCreate) => {
   const response = await instance.post<IResponse<string>>(
     VERSION + "/vcjobs/tensorflow",
+    task,
+  );
+  return response.data;
+};
+
+export const apiPytorchCreate = async (task: ITensorflowCreate) => {
+  const response = await instance.post<IResponse<string>>(
+    VERSION + "/vcjobs/pytorch",
     task,
   );
   return response.data;

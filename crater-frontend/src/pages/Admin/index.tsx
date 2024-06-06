@@ -16,6 +16,7 @@ import {
   FlaskConicalIcon,
   MessageSquareMoreIcon,
   ServerIcon,
+  SettingsIcon,
   UserRoundIcon,
   UsersRoundIcon,
 } from "lucide-react";
@@ -117,6 +118,15 @@ const sidebarItems: SidebarItem[] = [
         },
       },
     ],
+  },
+  {
+    path: "setting",
+    icon: SettingsIcon,
+    children: [],
+    route: {
+      path: "setting",
+      lazy: () => import("./Setting"),
+    },
   },
 ];
 

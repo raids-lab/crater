@@ -12,6 +12,8 @@ import { CpuIcon, MemoryStickIcon } from "lucide-react";
 import GpuIcon from "@/components/icon/GpuIcon";
 import { useAtomValue } from "jotai";
 import { REFETCH_INTERVAL } from "@/config/task";
+import { useMemo } from "react";
+import { cn } from "@/lib/utils";
 
 const showAmount = (allocated: number, label?: string) => {
   if (label === "mem") {
@@ -38,7 +40,11 @@ const QuotaCard = ({
 }) => {
   const allocated = resource?.allocated.amount ?? 0;
   const quota = resource?.deserved?.amount ?? resource?.capability.amount ?? 1;
-  const progress = (allocated / quota) * 100;
+  const [progress, overflow] = useMemo(() => {
+    const progress = (allocated / quota) * 100;
+    const overflow = progress > 100;
+    return [overflow ? 100 : progress, overflow];
+  }, [allocated, quota]);
   return (
     <Card className="flex flex-col items-stretch justify-between">
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
@@ -50,14 +56,22 @@ const QuotaCard = ({
         </CardDescription>
         <p className="font-sans text-xs text-muted-foreground">
           已用
-          <span className="mx-0.5 font-mono text-xl font-bold text-primary">
+          <span
+            className={cn("mx-0.5 font-mono text-xl font-bold text-primary", {
+              "text-orange-500": overflow,
+            })}
+          >
             {showAmount(allocated, resource?.label)}
           </span>
           {showUnit(resource?.label)}
         </p>
       </CardHeader>
       <CardFooter className="flex flex-col gap-2">
-        <Progress value={progress} aria-label={resource?.label} />
+        <Progress
+          value={progress}
+          aria-label={resource?.label}
+          className={cn({ "bg-orange-500/20 [&>*]:bg-orange-400": overflow })}
+        />
         <div className="flex w-full flex-row-reverse items-center justify-between text-xs">
           {resource?.capability.amount !== undefined && (
             <p className="text-orange-500">

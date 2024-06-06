@@ -6,12 +6,16 @@ const batchRoutes: RouteObject[] = [
     lazy: () => import("./BatchOverview"),
   },
   {
-    path: "new-training",
-    lazy: () => import("../New/Training"),
+    path: "new-custom",
+    lazy: () => import("../New/Custom"),
   },
   {
     path: "new-tensorflow",
     lazy: () => import("../New/Tensorflow"),
+  },
+  {
+    path: "new-pytorch",
+    lazy: () => import("../New/Pytorch"),
   },
   {
     path: ":id",

@@ -42,7 +42,7 @@ const DashboardLayout = ({
       rawPath.startsWith("/portal") &&
       currentAccount.roleQueue !== Role.Admin
     ) {
-      return items.filter((item) => item.path !== "project");
+      return items.filter((item) => item.path !== "account");
     }
     return items;
   }, [items, currentAccount, rawPath]);
