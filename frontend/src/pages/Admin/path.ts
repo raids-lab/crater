@@ -63,6 +63,10 @@ export const adminPath: PathInfo = {
       ],
     },
     {
+      path: "setting",
+      title: "平台设置",
+    },
+    {
       path: "docs",
       title: "文档编辑",
     },
