@@ -12,6 +12,12 @@ export interface FileItem {
 export const apiGetFiles = (path: string) =>
   instance.get<IResponse<FileItem[]>>(`ss/files/${path}`);
 
+export const apiGetUserFiles = (path: string) =>
+  instance.get<IResponse<FileItem[]>>(`ss/admin/user/${path}`);
+
+export const apiGetQueueFiles = (path: string) =>
+  instance.get<IResponse<FileItem[]>>(`ss/admin/queue/${path}`);
+
 export const apiMkdir = async (path: string) => {
   await instance.request({
     method: "MKCOL",

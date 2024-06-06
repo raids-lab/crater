@@ -141,7 +141,7 @@ export const Component = () => {
     queryFn: () => apiGetDataset(),
     select: (res) => {
       return res.data.data.map((item) => ({
-        value: item.URL,
+        value: item.URL.replace(/^\/+/, ""),
         label: item.Name,
       }));
     },
