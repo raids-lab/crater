@@ -2,11 +2,19 @@ import instance, { VERSION } from "@/services/axios";
 import { IResponse } from "@/services/types";
 import { IJupyterDetail } from "../vcjob";
 
+export enum JobType {
+  Custom = "training",
+  Jupyter = "jupyter",
+  Tensorflow = "tensorflow",
+  Pytorch = "pytorch",
+  WebIDE = "webide",
+}
+
 export interface IVolcanoJobInfo {
   name: string;
   jobName: string;
   owner: string;
-  jobType: string;
+  jobType: JobType;
   queue: string;
   status: string;
   createdAt: string;

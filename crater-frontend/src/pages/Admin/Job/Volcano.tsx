@@ -86,7 +86,7 @@ export const getHeader = (key: string): string => {
     case "jobType":
       return "类型";
     case "queue":
-      return "队列";
+      return "账户";
     case "owner":
       return "用户";
     case "status":
