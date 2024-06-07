@@ -79,9 +79,9 @@ instance.interceptors.response.use(
       } else if (error.response?.data.code === ERROR_NOT_SPECIFIED) {
         showErrorToast(error);
       } else if (error.response?.data.code === ERROR_INVALID_REQUEST) {
-        showErrorToast(`请求参数有误`);
+        showErrorToast(`请求参数有误, ${error.response?.data.msg}`);
       } else if (error.response?.data.code === ERROR_QUEUE_NOT_FOUND) {
-        showErrorToast("请先指定队列");
+        showErrorToast("当前用户不存在关联的账户，请联系管理员");
       }
     } else {
       showErrorToast(error);

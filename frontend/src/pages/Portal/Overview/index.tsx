@@ -6,7 +6,6 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { DataTable } from "@/components/custom/DataTable";
-import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { apiGetNodes } from "@/services/api/node";
 import { ColumnDef } from "@tanstack/react-table";
@@ -17,7 +16,11 @@ import { getHeader } from "@/pages/Admin/Job/Volcano";
 import { TableDate } from "@/components/custom/TableDate";
 import { JobPhase } from "@/services/api/vcjob";
 import JobPhaseLabel, { jobPhases } from "@/components/custom/JobPhaseLabel";
-import { IVolcanoJobInfo, apiTaskListByType } from "@/services/api/admin/task";
+import {
+  IVolcanoJobInfo,
+  JobType,
+  apiTaskListByType,
+} from "@/services/api/admin/task";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { CardTitle } from "@/components/ui-custom/card";
 import NivoPie from "@/components/chart/NivoPie";
@@ -26,6 +29,10 @@ import { Button } from "@/components/ui/button";
 import { ContainerIcon, FileTextIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
+import ResourceBadges from "@/components/custom/ResourceBadges";
+import NodeBadges from "@/components/custom/NodeBadges";
+import JobTypeLabel, { jobTypes } from "@/components/custom/JobTypeLabel";
+import { REFETCH_INTERVAL } from "@/config/task";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -34,8 +41,13 @@ const toolbarConfig: DataTableToolbarConfig = {
   },
   filterOptions: [
     {
+      key: "jobType",
+      title: "类型",
+      option: jobTypes,
+    },
+    {
       key: "status",
-      title: "作业状态",
+      title: "状态",
       option: jobPhases,
       defaultValues: ["Running"],
     },
@@ -107,18 +119,22 @@ export const Component: FC = () => {
   const vcJobColumns = useMemo<ColumnDef<IVolcanoJobInfo>[]>(
     () => [
       {
-        accessorKey: "name",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("name")} />
-        ),
-        cell: ({ row }) => <div>{row.getValue("name")}</div>,
-      },
-      {
         accessorKey: "jobType",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("jobType")} />
         ),
-        cell: ({ row }) => <div>{row.getValue("jobType")}</div>,
+        cell: ({ row }) => (
+          <JobTypeLabel jobType={row.getValue<JobType>("jobType")} />
+        ),
+      },
+      {
+        accessorKey: "name",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("name")} />
+        ),
+        cell: ({ row }) => (
+          <div className="flex flex-row gap-2">{row.getValue("name")}</div>
+        ),
       },
       {
         accessorKey: "owner",
@@ -126,6 +142,13 @@ export const Component: FC = () => {
           <DataTableColumnHeader column={column} title={getHeader("owner")} />
         ),
         cell: ({ row }) => <div>{row.getValue("owner")}</div>,
+      },
+      {
+        accessorKey: "queue",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("queue")} />
+        ),
+        cell: ({ row }) => <div>{row.getValue("queue")}</div>,
       },
       {
         accessorKey: "status",
@@ -146,15 +169,7 @@ export const Component: FC = () => {
         ),
         cell: ({ row }) => {
           const nodes = row.getValue<string[]>("nodes");
-          return (
-            <div className="flex items-start gap-1">
-              {nodes?.map((node) => (
-                <Badge key={node} variant="secondary">
-                  {node}
-                </Badge>
-              ))}
-            </div>
-          );
+          return <NodeBadges nodes={nodes} />;
         },
       },
       {
@@ -167,15 +182,7 @@ export const Component: FC = () => {
         ),
         cell: ({ row }) => {
           const resources = row.getValue<Record<string, string>>("resources");
-          return (
-            <div className="flex items-start gap-1">
-              {Object.entries(resources).map(([key, value]) => (
-                <Badge key={key} variant="secondary">
-                  {key.replace("nvidia.com/", "")}: {value}
-                </Badge>
-              ))}
-            </div>
-          );
+          return <ResourceBadges resources={resources} />;
         },
       },
       {
@@ -212,6 +219,7 @@ export const Component: FC = () => {
     queryKey: ["admin", "tasklist", "volcanoJob"],
     queryFn: apiTaskListByType,
     select: (res) => res.data.data,
+    refetchInterval: REFETCH_INTERVAL,
   });
 
   const jobStatus = useMemo(() => {
@@ -336,7 +344,10 @@ export const Component: FC = () => {
                   url: "portal/job/batch/new-pytorch",
                   name: " Pytorch 作业",
                 },
-                { url: "portal/job/inter/new-jupyter", name: " Jupyter Lab" },
+                {
+                  url: "portal/job/batch/new-custom",
+                  name: "自定义作业（单机）",
+                },
                 {
                   url: "portal/job/batch/new-ray",
                   name: " Ray 作业",
@@ -352,10 +363,7 @@ export const Component: FC = () => {
                   name: " OpenMPI 作业",
                   disabled: true,
                 },
-                {
-                  url: "portal/job/batch/new-custom",
-                  name: "自定义作业（单机）",
-                },
+                { url: "portal/job/inter/new-jupyter", name: " Jupyter Lab" },
               ]}
             />
             <Button

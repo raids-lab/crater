@@ -22,13 +22,12 @@ import {
 } from "@/services/api/vcjob";
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { TableDate } from "@/components/custom/TableDate";
 import { toast } from "sonner";
-import { getHeader } from "@/pages/Portal/Job/Batch/statuses";
+import { getHeader, jobToolbarConfig } from "@/pages/Portal/Job/statuses";
 import { logger } from "@/utils/loglevel";
 import Quota from "./Quota";
-import JobPhaseLabel, { jobPhases } from "@/components/custom/JobPhaseLabel";
+import JobPhaseLabel from "@/components/custom/JobPhaseLabel";
 import { Link } from "react-router-dom";
 import {
   Card,
@@ -39,25 +38,13 @@ import {
 import { CardTitle } from "@/components/ui-custom/card";
 import { ExternalLink, TrashIcon } from "lucide-react";
 import SplitButton from "@/components/custom/SplitButton";
-import { IVolcanoJobInfo } from "@/services/api/admin/task";
+import { IVolcanoJobInfo, JobType } from "@/services/api/admin/task";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
-
-const toolbarConfig: DataTableToolbarConfig = {
-  filterInput: {
-    placeholder: "搜索作业名称",
-    key: "name",
-  },
-  filterOptions: [
-    {
-      key: "status",
-      title: "作业状态",
-      option: jobPhases,
-    },
-  ],
-  getHeader: getHeader,
-};
+import NodeBadges from "@/components/custom/NodeBadges";
+import ResourceBadges from "@/components/custom/ResourceBadges";
+import JobTypeLabel from "@/components/custom/JobTypeLabel";
 
 export const Component = () => {
   const userInfo = useAtomValue(globalUserInfo);
@@ -66,7 +53,8 @@ export const Component = () => {
   const interactiveQuery = useQuery({
     queryKey: ["job", "interactive"],
     queryFn: apiJobInteractiveList,
-    select: (res) => res.data.data.filter((task) => task.jobType === "jupyter"),
+    select: (res) =>
+      res.data.data.filter((task) => task.jobType === JobType.Jupyter),
     refetchInterval: REFETCH_INTERVAL,
   });
 
@@ -124,6 +112,15 @@ export const Component = () => {
         enableHiding: false,
       },
       {
+        accessorKey: "jobType",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("jobType")} />
+        ),
+        cell: ({ row }) => (
+          <JobTypeLabel jobType={row.getValue<JobType>("jobType")} />
+        ),
+      },
+      {
         accessorKey: "name",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("name")} />
@@ -136,13 +133,6 @@ export const Component = () => {
             {row.getValue("name")}
           </Link>
         ),
-      },
-      {
-        accessorKey: "jobType",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("jobType")} />
-        ),
-        cell: ({ row }) => <div>{row.getValue("jobType")}</div>,
       },
       {
         accessorKey: "owner",
@@ -161,6 +151,29 @@ export const Component = () => {
         },
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id));
+        },
+      },
+      {
+        accessorKey: "nodes",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("nodes")} />
+        ),
+        cell: ({ row }) => {
+          const nodes = row.getValue<string[]>("nodes");
+          return <NodeBadges nodes={nodes} />;
+        },
+      },
+      {
+        accessorKey: "resources",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("resources")}
+          />
+        ),
+        cell: ({ row }) => {
+          const resources = row.getValue<Record<string, string>>("resources");
+          return <ResourceBadges resources={resources} />;
         },
       },
       {
@@ -282,7 +295,7 @@ export const Component = () => {
       <DataTable
         query={interactiveQuery}
         columns={interColumns}
-        toolbarConfig={toolbarConfig}
+        toolbarConfig={jobToolbarConfig}
       ></DataTable>
     </>
   );
