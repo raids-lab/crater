@@ -144,15 +144,15 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 
 	lastUserQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID)).Last()
 	if err != nil {
-		l.Error("user has not last queue", err)
-		resputil.Error(c, "Can not get last queue", resputil.NotSpecified)
+		l.Error("user has no queue", err)
+		resputil.Error(c, "User must has at least one queue", resputil.QueueNotFound)
 		return
 	}
 
 	lastQueue, err := q.WithContext(c).Where(q.ID.Eq(lastUserQueue.QueueID)).First()
 	if err != nil {
-		l.Error("user has not last queue", err)
-		resputil.Error(c, "Can not get last queue", resputil.NotSpecified)
+		l.Error("user has no queue", err)
+		resputil.Error(c, "User must has at least one queue", resputil.QueueNotFound)
 		return
 	}
 
@@ -205,18 +205,6 @@ func (mgr *AuthMgr) createUser(c *gin.Context, name string) (*model.User, error)
 	}
 
 	// TODO: Create personal directory
-
-	// TODO: disable auto link to default queue in the future
-	uq := query.UserQueue
-	userQueue := model.UserQueue{
-		UserID:     user.ID,
-		QueueID:    model.DefaultQueueID,
-		Role:       model.RoleUser,
-		AccessMode: model.AccessModeRW,
-	}
-	if err := uq.WithContext(c).Create(&userQueue); err != nil {
-		return nil, err
-	}
 
 	return &user, nil
 }
