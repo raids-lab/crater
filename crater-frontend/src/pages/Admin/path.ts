@@ -60,6 +60,10 @@ export const adminPath: PathInfo = {
           path: "queue",
           title: "账户文件",
         },
+        {
+          path: "dataset",
+          title: "数据集",
+        },
       ],
     },
     {
