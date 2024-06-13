@@ -137,4 +137,5 @@ func (b *Backend) RegisterService(
 	recommenddljobMgr.RegisterAdmin(adminRouter.Group("/recommenddljob"))
 	queueMgr.RegisterAdmin(adminRouter.Group("/queues"))
 	volcanoMgr.RegisterAdmin(adminRouter.Group("/vcjobs"))
+	datasetMgr.RegisterAdmin(adminRouter.Group("/dataset"))
 }

@@ -2,6 +2,8 @@ package handler
 
 import (
 	"fmt"
+	"regexp"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/model"
@@ -21,19 +23,27 @@ func NewFileMgr() Manager {
 func (mgr *FileMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *FileMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.GET("/mydataset", mgr.GetAllDataset)
+	g.GET("/mydataset", mgr.GetMyDataset)
 	g.POST("/create", mgr.CreateDataset)
 	g.DELETE("/delete/:id", mgr.DeleteDataset)
 	g.POST("/share/user", mgr.ShareDatasetWithUser)
 	g.POST("/share/queue", mgr.ShareDatasetWithQueue)
 }
 
-func (mgr *FileMgr) RegisterAdmin(_ *gin.RouterGroup) {
+func (mgr *FileMgr) RegisterAdmin(g *gin.RouterGroup) {
+	g.GET("/alldataset", mgr.GetAllDataset)
 }
 
-type DatasetResp []*model.Dataset
+type DatasetResp struct {
+	Name      string    `json:"name"`
+	ID        uint      `json:"id"`
+	UserName  string    `json:"username"`
+	URL       string    `json:"url"`
+	Describe  string    `json:"describe"`
+	CreatedAt time.Time `json:"createdAt"`
+}
 
-// GetAllDataset godoc
+// GetMyDataset godoc
 // @Summary 获取数据集
 // @Description 获取数据集
 // @Tags Dataset
@@ -44,12 +54,11 @@ type DatasetResp []*model.Dataset
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/mydataset [get]
-func (mgr *FileMgr) GetAllDataset(c *gin.Context) {
+func (mgr *FileMgr) GetMyDataset(c *gin.Context) {
 	token := util.GetToken(c)
-	datasets := make(map[uint]*model.Dataset)
+	datasets := make(map[uint]DatasetResp)
 	ud := query.UserDataset
 	d := query.Dataset
-	qd := query.QueueDataset
 	userDataset, err := ud.WithContext(c).Where(ud.UserID.Eq(token.UserID)).Find()
 	if err != nil {
 		logutils.Log.Infof("Can't get , err: %v", err)
@@ -59,44 +68,101 @@ func (mgr *FileMgr) GetAllDataset(c *gin.Context) {
 	for i := range userDataset {
 		dataset, uderr := d.WithContext(c).Where(d.ID.Eq(userDataset[i].DatasetID)).First()
 		if uderr != nil {
-			resputil.Error(c, fmt.Sprintf("Get user's dataset failed, err %v", err), resputil.NotSpecified)
+			resputil.Error(c, fmt.Sprintf("Get user's dataset failed, err %v", uderr), resputil.NotSpecified)
 			return
 		}
-		datasets[dataset.ID] = dataset
+		tmp, terr := mgr.generateDataseResponse(c, dataset)
+		if terr == nil {
+			datasets[dataset.ID] = tmp
+		}
 	}
-	queueDataset, err := qd.WithContext(c).Where(qd.QueueID.Eq(1)).Find()
+	err = mgr.generateQueueDataseResponse(c, 1, datasets)
 	if err != nil {
-		resputil.Error(c, "Can't get public queuedatasets", resputil.NotSpecified)
+		resputil.Error(c, "Can't get public datasets", resputil.NotSpecified)
 		return
 	}
-	for i := range queueDataset {
-		dataset, qderr := d.WithContext(c).Where(d.ID.Eq(queueDataset[i].DatasetID)).First()
-		if qderr != nil {
-			resputil.Error(c, fmt.Sprintf("Get public dataset failed, err %v", err), resputil.NotSpecified)
-			return
-		}
-		datasets[dataset.ID] = dataset
-	}
 	if token.QueueID != 0 && token.QueueID != 1 {
-		myqueueDataset, err := qd.WithContext(c).Where(qd.QueueID.Eq(token.QueueID)).Find()
+		err = mgr.generateQueueDataseResponse(c, token.QueueID, datasets)
 		if err != nil {
-			resputil.Error(c, "Can't get my queuedatasets", resputil.NotSpecified)
+			resputil.Error(c, "Can't get queue datasets", resputil.NotSpecified)
 			return
 		}
-		for i := range myqueueDataset {
-			dataset, err := d.WithContext(c).Where(d.ID.Eq(myqueueDataset[i].DatasetID)).First()
-			if err != nil {
-				resputil.Error(c, fmt.Sprintf("Get my queue's dataset failed, err %v", err), resputil.NotSpecified)
-				return
-			}
-			datasets[dataset.ID] = dataset
-		}
 	}
-	result := make([]*model.Dataset, 0, len(datasets))
+	result := make([]DatasetResp, 0, len(datasets))
 	for _, data := range datasets {
 		result = append(result, data)
 	}
 	resputil.Success(c, result)
+}
+
+// GetAllDataset godoc
+// @Summary 获取所有数据集
+// @Description 获取所有数据集
+// @Tags Dataset
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} resputil.Response[any] "成功返回值描述"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/admin/dataset/alldataset [get]
+func (mgr *FileMgr) GetAllDataset(c *gin.Context) {
+	datasets := make(map[uint]DatasetResp)
+	d := query.Dataset
+	dataset, err := d.WithContext(c).Where(d.ID.IsNotNull()).Find()
+	if err != nil {
+		resputil.Error(c, "Can't get datasets", resputil.NotSpecified)
+		return
+	}
+	for i := range dataset {
+		tmp, terr := mgr.generateDataseResponse(c, dataset[i])
+		if terr == nil {
+			datasets[tmp.ID] = tmp
+		}
+	}
+	result := make([]DatasetResp, 0, len(datasets))
+	for _, data := range datasets {
+		result = append(result, data)
+	}
+	resputil.Success(c, result)
+}
+
+func (mgr *FileMgr) generateQueueDataseResponse(c *gin.Context, queueid uint, data map[uint]DatasetResp) error {
+	d := query.Dataset
+	qd := query.QueueDataset
+	queueDataset, err := qd.WithContext(c).Where(qd.QueueID.Eq(queueid)).Find()
+	if err != nil {
+		return err
+	}
+	for i := range queueDataset {
+		dataset, err := d.WithContext(c).Where(d.ID.Eq(queueDataset[i].DatasetID)).First()
+		if err != nil {
+			return err
+		}
+		tmp, terr := mgr.generateDataseResponse(c, dataset)
+		if terr != nil {
+			return terr
+		}
+		data[tmp.ID] = tmp
+	}
+	return nil
+}
+
+func (mgr *FileMgr) generateDataseResponse(c *gin.Context, dataset *model.Dataset) (DatasetResp, error) {
+	u := query.User
+	user, uerr := u.WithContext(c).Where(u.ID.Eq(dataset.UserID)).First()
+	if uerr != nil {
+		resputil.Error(c, fmt.Sprintf("Dataset has no creator, err %v", uerr), resputil.NotSpecified)
+		return DatasetResp{}, uerr
+	}
+	return DatasetResp{
+		Name:      dataset.Name,
+		Describe:  dataset.Describe,
+		URL:       dataset.URL,
+		UserName:  user.Name,
+		ID:        dataset.ID,
+		CreatedAt: dataset.CreatedAt,
+	}, nil
 }
 
 type DatasetReq struct {
@@ -124,6 +190,8 @@ func (mgr *FileMgr) CreateDataset(c *gin.Context) {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
+	regex := regexp.MustCompile("^/+")
+	url := regex.ReplaceAllString(datasetReq.URL, "")
 	db := query.Use(query.DB)
 	err := db.Transaction(func(tx *query.Query) error {
 		d := tx.Dataset
@@ -131,7 +199,7 @@ func (mgr *FileMgr) CreateDataset(c *gin.Context) {
 		var dataset model.Dataset
 		dataset.Name = datasetReq.Name
 		dataset.Describe = datasetReq.Describe
-		dataset.URL = datasetReq.URL
+		dataset.URL = url
 		dataset.UserID = token.UserID
 		if err := d.WithContext(c).Create(&dataset); err != nil {
 			return err
@@ -300,12 +368,18 @@ func (mgr *FileMgr) DeleteDataset(c *gin.Context) {
 		if err != nil {
 			return err
 		}
-		if _, err := ud.WithContext(c).Delete(userDataset...); err != nil {
-			return err
+		if len(userDataset) > 0 {
+			if _, err := ud.WithContext(c).Delete(userDataset...); err != nil {
+				return err
+			}
 		}
-		if _, err := qd.WithContext(c).Delete(queueDataset...); err != nil {
-			return err
+
+		if len(queueDataset) > 0 {
+			if _, err := qd.WithContext(c).Delete(queueDataset...); err != nil {
+				return err
+			}
 		}
+
 		if _, err := d.WithContext(c).Delete(dataset); err != nil {
 			return err
 		}
