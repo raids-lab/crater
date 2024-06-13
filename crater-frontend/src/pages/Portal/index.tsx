@@ -91,7 +91,8 @@ const sidebarItems: SidebarItem[] = [
       },
       {
         route: {
-          path: "dataset",
+          path: "dataset/*",
+          lazy: () => import("./Data/Dataset"),
         },
       },
     ],
