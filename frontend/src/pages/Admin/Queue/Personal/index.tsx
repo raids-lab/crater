@@ -4,7 +4,13 @@ import { ProjectStatus, apiProjectUpdate } from "@/services/api/project";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CirclePlusIcon, XIcon } from "lucide-react";
+import {
+  CirclePlusIcon,
+  PencilIcon,
+  TrashIcon,
+  UserRoundIcon,
+  XIcon,
+} from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,23 +66,26 @@ import { apiProjectCreate, apiProjectDelete } from "@/services/api/project";
 import { useNavigate } from "react-router-dom";
 import { PlusCircleIcon } from "lucide-react";
 import { apiResourceList } from "@/services/api/resource";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import useResizeObserver from "use-resize-observer";
 import {
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
-function convertResourcesToMap(resources: Resource[]): {
+function convertResourcesToMap(
+  resources: Resource[],
+  field: keyof Resource,
+): {
   [key: string]: string;
 } {
   const resourceMap: { [key: string]: string } = {};
   resources.forEach((resource) => {
-    resourceMap[resource.name] = resource.amount.toString();
+    resourceMap[resource.name] = resource[field] as string;
   });
   return resourceMap;
 }
@@ -86,9 +95,30 @@ const resourceSchema = z.array(
     name: z.string().min(1, {
       message: "资源名称不能为空",
     }),
-    amount: z.number().int().min(0, {
-      message: "资源至少为0",
-    }),
+    guaranteed: z.union([
+      z.string().min(1, {
+        message: "资源名称不能为空",
+      }),
+      z.number().int().min(0, {
+        message: "资源至少为0",
+      }),
+    ]),
+    deserved: z.union([
+      z.string().min(1, {
+        message: "资源名称不能为空",
+      }),
+      z.number().int().min(0, {
+        message: "资源至少为0",
+      }),
+    ]),
+    capacity: z.union([
+      z.string().min(1, {
+        message: "资源名称不能为空",
+      }),
+      z.number().int().min(0, {
+        message: "资源至少为0",
+      }),
+    ]),
   }),
 );
 
@@ -111,7 +141,9 @@ interface ResourceMap {
 
 interface Resource {
   name: string;
-  amount: number;
+  guaranteed: number | string;
+  deserved: number | string;
+  capacity: number | string;
 }
 
 type ProjectSheetProps = React.HTMLAttributes<HTMLDivElement> & {
@@ -166,83 +198,110 @@ const ProjectSheet = ({
     <Sheet open={open} onOpenChange={setOpenchange}>
       <SheetTrigger asChild>{children}</SheetTrigger>
       {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
-      <SheetContent className="flex flex-col gap-6 sm:max-w-3xl">
+      <SheetContent className="flex flex-col gap-6 px-0 sm:max-w-3xl">
         <SheetHeader>
-          <SheetTitle>新建账户</SheetTitle>
+          <SheetTitle className="pl-6">新建账户</SheetTitle>
         </SheetHeader>
-        <Card
-          className="h-[calc(100vh_-104px)] bg-white text-muted-foreground dark:border dark:bg-transparent"
-          ref={refRoot}
-        >
+        <div ref={refRoot} className="h-full w-full">
           <ScrollArea style={{ width, height }}>
-            <CardHeader className="py-3"></CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form
-                  // eslint-disable-next-line @typescript-eslint/no-misused-promises
-                  onSubmit={form.handleSubmit(onSubmit)}
-                  className="grid gap-4 md:grid-cols-1"
-                >
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem className="col-span-1">
-                        <FormLabel>
-                          账户名称
-                          <FormLabelMust />
-                        </FormLabel>
-                        <FormControl>
-                          <Input autoComplete="off" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          名称是账户的唯一标识，最多16个字符
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="space-y-2">
-                    {resourcesFields.length > 0 && (
+            <Form {...form}>
+              <form
+                // eslint-disable-next-line @typescript-eslint/no-misused-promises
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="grid gap-4 px-6 md:grid-cols-1"
+              >
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem className="col-span-1">
+                      <FormLabel>
+                        账户名称
+                        <FormLabelMust />
+                      </FormLabel>
+                      <FormControl>
+                        <Input autoComplete="off" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        名称是账户的唯一标识，最多16个字符
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="space-y-2">
+                  {resourcesFields.length > 0 && (
+                    <FormLabel>资源配额</FormLabel>
+                  )}
+                  {resourcesFields.map(({ id }, index) => (
+                    <div key={id} className="flex flex-row gap-2">
+                      <FormField
+                        control={form.control}
+                        name={`resources.${index}.name`}
+                        render={({ field }) => (
+                          <FormItem className="w-fit">
+                            <FormControl>
+                              <Input {...field} placeholder="资源" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`resources.${index}.guaranteed`}
+                        render={() => (
+                          <FormItem>
+                            <FormControl>
+                              <Input
+                                type="string"
+                                placeholder="保证"
+                                {...form.register(
+                                  `resources.${index}.guaranteed`,
+                                )}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`resources.${index}.deserved`}
+                        render={() => (
+                          <FormItem>
+                            <FormControl>
+                              <Input
+                                type="string"
+                                placeholder="应得"
+                                {...form.register(
+                                  `resources.${index}.deserved`,
+                                )}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`resources.${index}.capacity`}
+                        render={() => (
+                          <FormItem>
+                            <FormControl>
+                              <Input
+                                type="string"
+                                placeholder="上限"
+                                {...form.register(
+                                  `resources.${index}.capacity`,
+                                )}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <div>
-                        <FormLabel>资源配额</FormLabel>
-                      </div>
-                    )}
-                    {resourcesFields.map(({ id }, index) => (
-                      <div key={id} className="flex items-start gap-2">
-                        <FormField
-                          control={form.control}
-                          name={`resources.${index}.name`}
-                          render={({ field }) => (
-                            <FormItem className="flex-1">
-                              <FormControl>
-                                <Input {...field} placeholder="资源名称" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name={`resources.${index}.amount`}
-                          render={() => (
-                            <FormItem>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  placeholder="资源数目"
-                                  {...form.register(
-                                    `resources.${index}.amount`,
-                                    {
-                                      valueAsNumber: true,
-                                    },
-                                  )}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
                         <Button
                           size="icon"
                           type="button"
@@ -252,41 +311,47 @@ const ProjectSheet = ({
                           <XIcon className="h-4 w-4" />
                         </Button>
                       </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => resourcesAppend({ name: "", amount: 0 })}
-                    >
-                      <CirclePlusIcon className="mr-2 h-4 w-4" />
-                      添加配额
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </CardContent>
-            <CardContent>
-              <LoadableButton
-                isLoading={isPending}
-                type="submit"
-                className="flex flex-col justify-end"
-                onClick={() => {
-                  form
-                    .trigger()
-                    .then(() => {
-                      if (form.formState.isValid) {
-                        onSubmit(form.getValues());
-                      }
-                    })
-                    .catch((e) => logger.debug(e));
-                }}
-              >
-                提交申请
-              </LoadableButton>
-            </CardContent>
-            <ScrollBar orientation="horizontal" />
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() =>
+                      resourcesAppend({
+                        name: "",
+                        guaranteed: "",
+                        deserved: "",
+                        capacity: "",
+                      })
+                    }
+                  >
+                    <CirclePlusIcon className="mr-2 h-4 w-4" />
+                    添加配额
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </ScrollArea>
-        </Card>
+        </div>
+        <SheetFooter>
+          <LoadableButton
+            isLoading={isPending}
+            type="submit"
+            className="mr-6 flex flex-col justify-end"
+            onClick={() => {
+              form
+                .trigger()
+                .then(() => {
+                  if (form.formState.isValid) {
+                    onSubmit(form.getValues());
+                  }
+                })
+                .catch((e) => logger.debug(e));
+            }}
+          >
+            提交申请
+          </LoadableButton>
+        </SheetFooter>
       </SheetContent>
     </Sheet>
   );
@@ -340,7 +405,9 @@ function TableWithTabs<TData, TValue>({
     mutationFn: (values: z.infer<typeof formSchema>) =>
       apiProjectCreate({
         name: values.name,
-        quota: JSON.stringify(convertResourcesToMap(values.resources)),
+        guaranteed: convertResourcesToMap(values.resources, "guaranteed"),
+        deserved: convertResourcesToMap(values.resources, "deserved"),
+        capacity: convertResourcesToMap(values.resources, "capacity"),
       }),
     onSuccess: async (_, { name }) => {
       await queryClient.invalidateQueries({
@@ -365,7 +432,9 @@ function TableWithTabs<TData, TValue>({
         (item) =>
           ({
             name: item.name,
-            amount: 0,
+            guaranteed: "",
+            deserved: "",
+            capacity: "",
           }) as Resource,
       );
     },
@@ -402,15 +471,15 @@ function TableWithTabs<TData, TValue>({
     resources: [
       {
         name: "cpu",
-        amount: 0,
+        guaranteed: "",
+        deserved: "",
+        capacity: "",
       },
       {
         name: "memory",
-        amount: 0,
-      },
-      {
-        name: "storage",
-        amount: 0,
+        guaranteed: "",
+        deserved: "",
+        capacity: "",
       },
     ],
   };
@@ -443,7 +512,9 @@ function TableWithTabs<TData, TValue>({
 type Project = {
   id: number;
   name: string;
+  guaranteed: ResourceMap;
   deserved: ResourceMap;
+  capacity: ResourceMap;
 };
 
 const getHeader = (key: string): string => {
@@ -453,7 +524,11 @@ const getHeader = (key: string): string => {
     case "name":
       return "账户名称";
     case "deserved":
-      return "配额";
+      return "应得";
+    case "guaranteed":
+      return "保证";
+    case "capacity":
+      return "上限";
     default:
       return key;
   }
@@ -465,7 +540,7 @@ const toolbarConfig: DataTableToolbarConfig = {
   getHeader: getHeader,
 };
 
-export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
+export const Project = () => {
   const [pagination, setPagination] = useState<PaginationState>({
     pageSize: 10,
     pageIndex: 0,
@@ -479,7 +554,6 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
     queryKey: [
       "admin",
       "projects",
-      isPersonal,
       status,
       pagination.pageIndex,
       pagination.pageSize,
@@ -488,7 +562,6 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
       apiAdminProjectList({
         pageIndex: pagination.pageIndex,
         pageSize: pagination.pageSize,
-        isPersonal,
         status,
       }),
     select: (res) => res.data.data,
@@ -501,7 +574,6 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
         queryKey: [
           "admin",
           "projects",
-          isPersonal,
           status,
           pagination.pageIndex,
           pagination.pageSize,
@@ -515,7 +587,9 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
     mutationFn: (values: z.infer<typeof formSchema>) =>
       apiProjectUpdate({
         name: values.name,
-        quota: JSON.stringify(convertResourcesToMap(values.resources)),
+        guaranteed: convertResourcesToMap(values.resources, "guaranteed"),
+        deserved: convertResourcesToMap(values.resources, "deserved"),
+        capacity: convertResourcesToMap(values.resources, "capacity"),
       }),
     onSuccess: async (_, { name }) => {
       await queryClient.invalidateQueries({
@@ -551,6 +625,33 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
         enableSorting: false,
       },
       {
+        accessorKey: "guaranteed",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("guaranteed")}
+          />
+        ),
+        cell: ({ row }) => {
+          const quota = row.getValue<Project["guaranteed"]>("guaranteed");
+          return (
+            <div className="flex flex-col gap-2">
+              {quota &&
+                Object.entries(quota).map(([key, value]) => (
+                  <Badge
+                    key={key}
+                    variant="secondary"
+                    className="gap-2 font-medium"
+                  >
+                    {key}: {value}
+                  </Badge>
+                ))}
+            </div>
+          );
+        },
+        enableSorting: false,
+      },
+      {
         accessorKey: "deserved",
         header: ({ column }) => (
           <DataTableColumnHeader
@@ -561,7 +662,34 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
         cell: ({ row }) => {
           const quota = row.getValue<Project["deserved"]>("deserved");
           return (
-            <div className="grid grid-cols-3 gap-1 rounded-md border p-3 text-xs">
+            <div className="flex flex-col gap-2">
+              {quota &&
+                Object.entries(quota).map(([key, value]) => (
+                  <Badge
+                    key={key}
+                    variant="secondary"
+                    className="gap-2 font-medium"
+                  >
+                    {key}: {value}
+                  </Badge>
+                ))}
+            </div>
+          );
+        },
+        enableSorting: false,
+      },
+      {
+        accessorKey: "capacity",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("capacity")}
+          />
+        ),
+        cell: ({ row }) => {
+          const quota = row.getValue<Project["capacity"]>("capacity");
+          return (
+            <div className="flex flex-col gap-2">
               {quota &&
                 Object.entries(quota).map(([key, value]) => (
                   <Badge
@@ -586,17 +714,50 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
             name: proj.name,
             resources: [],
           };
-          const resourcesData = Object.entries(proj.deserved).map(
-            ([key, value]) =>
-              ({
-                name: key,
-                amount: parseInt(value),
-              }) as Resource,
+          const nameRecord = {} as Record<string, Resource>;
+          Object.entries(proj.guaranteed).map(([key, value]) =>
+            nameRecord[key]
+              ? (nameRecord[key].guaranteed = value)
+              : (nameRecord[key] = {
+                  name: key,
+                  guaranteed: value,
+                  deserved: 0,
+                  capacity: 0,
+                } as Resource),
           );
+          Object.entries(proj.deserved).map(([key, value]) =>
+            nameRecord[key]
+              ? (nameRecord[key].deserved = value)
+              : (nameRecord[key] = {
+                  name: key,
+                  deserved: value,
+                  guaranteed: 0,
+                  capacity: 0,
+                } as Resource),
+          );
+          Object.entries(proj.capacity).map(([key, value]) =>
+            nameRecord[key]
+              ? (nameRecord[key].capacity = value)
+              : (nameRecord[key] = {
+                  name: key,
+                  capacity: value,
+                  guaranteed: 0,
+                  deserved: 0,
+                } as Resource),
+          );
+          const resourcesData = Object.entries(nameRecord).map(
+            ([, value]) => value,
+          );
+
           return (
-            <div className="flex flex-col gap-1">
-              <Button title="管理用户" onClick={() => navigate(`${proj.id}`)}>
-                管理用户
+            <div className="flex flex-row items-center justify-end gap-1">
+              <Button
+                title="管理用户"
+                onClick={() => navigate(`${proj.id}`)}
+                variant="outline"
+                size="icon"
+              >
+                <UserRoundIcon className="h-4 w-4" />
               </Button>
               <ProjectSheet
                 formData={defaultValues}
@@ -604,11 +765,15 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
                 resourcesData={resourcesData}
                 apiProjcet={updateProject}
               >
-                <Button title="修改配额">修改配额</Button>
+                <Button title="修改配额" variant="outline" size="icon">
+                  <PencilIcon className="h-4 w-4" />
+                </Button>
               </ProjectSheet>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button title="删除账户">删除账户</Button>
+                  <Button title="删除账户" variant="outline" size="icon">
+                    <TrashIcon className="h-4 w-4" />
+                  </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
@@ -647,7 +812,18 @@ export const Project = ({ isPersonal }: { isPersonal: boolean }) => {
         return {
           id: p.ID,
           name: p.Nickname,
-          deserved: JSON.parse(p.deserved) as ResourceMap,
+          guaranteed:
+            p.guaranteed != "null"
+              ? (JSON.parse(p.guaranteed) as ResourceMap)
+              : ({} as ResourceMap),
+          deserved:
+            p.deserved != "null"
+              ? (JSON.parse(p.deserved) as ResourceMap)
+              : ({} as ResourceMap),
+          capacity:
+            p.capacity != "null"
+              ? (JSON.parse(p.capacity) as ResourceMap)
+              : ({} as ResourceMap),
         };
       });
     setData(tableData);
