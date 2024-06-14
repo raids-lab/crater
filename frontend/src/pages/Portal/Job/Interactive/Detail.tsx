@@ -28,12 +28,6 @@ import {
   Table,
 } from "@/components/ui/table";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -228,95 +222,30 @@ export const Component = () => {
         </CardContent>
         <Separator />
         <CardContent className="flex flex-col gap-4 p-7">
-          <div
-            className="grid grid-cols-7 gap-12"
-            style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
-          >
-            <div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline">{data.jobName}</Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Job Name</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline">{data.createdAt}</Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Created At</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline">{data.username}</Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Username</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline">{data.namespace}</Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Namespace</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline">{data.runtime}</Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Runtime</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline">{data.status}</Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Status</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline">{data.retry}</Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Retry</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          </div>
+          <Table className="w-full">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Job Name</TableHead>
+                <TableHead>Created At</TableHead>
+                <TableHead>Username</TableHead>
+                <TableHead>Namespace</TableHead>
+                <TableHead>Runtime</TableHead>
+                <TableHead>Retry</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell>{data.jobName}</TableCell>
+                <TableHead>{data.createdAt}</TableHead>
+                <TableHead>{data.username}</TableHead>
+                <TableHead>{data.namespace}</TableHead>
+                <TableHead>{data.runtime}</TableHead>
+                <TableHead>{data.status}</TableHead>
+                <TableHead>{data.retry}</TableHead>
+              </TableRow>
+            </TableBody>
+          </Table>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <LogSheet log={yaml} title={jobName + " Job Yaml"}>

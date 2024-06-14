@@ -2,7 +2,6 @@ import { SidebarItem, SidebarMenu } from "@/components/layout/Sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { FC, PropsWithChildren, Suspense } from "react";
 import { Navigate, RouteObject } from "react-router-dom";
-import { GroupUser } from "./Queue/Group";
 import { Role } from "@/services/api/auth";
 import DashboardLayout from "@/components/layout/Dashboard";
 import { User } from "./User";
@@ -19,6 +18,7 @@ import {
   UserRoundIcon,
   UsersRoundIcon,
 } from "lucide-react";
+import { Project } from "./Queue/Personal";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -53,7 +53,7 @@ const sidebarItems: SidebarItem[] = [
       children: [
         {
           index: true,
-          element: <GroupUser />,
+          element: <Project />,
         },
         {
           path: ":id",

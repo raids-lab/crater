@@ -9,7 +9,9 @@ export interface IProject {
   Name: string;
   Nickname: string;
   Space: string;
+  guaranteed: string;
   deserved: string;
+  capacity: string;
 }
 
 export interface IUser {
@@ -44,7 +46,6 @@ export const apiAdminUserUpdateRole = (userName: string, role: Role) =>
 interface IGetAdminProjectList {
   pageIndex: number;
   pageSize: number;
-  isPersonal: boolean;
   nameLike?: string;
   orderCol?: string;
   order?: "desc" | "asc";
@@ -54,7 +55,6 @@ interface IGetAdminProjectList {
 export const apiAdminProjectList = ({
   pageIndex,
   pageSize,
-  isPersonal,
   nameLike,
   orderCol,
   order,
@@ -64,7 +64,6 @@ export const apiAdminProjectList = ({
     `${VERSION}/admin/projects`,
     {
       params: {
-        isPersonal,
         nameLike,
         orderCol,
         order,
