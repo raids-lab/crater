@@ -88,11 +88,12 @@ const QuotaCard = ({
               已用: {showAmount(resource?.allocated?.amount, resource?.label)}
             </p>
           )}
-          {resource?.guarantee?.amount !== undefined && (
-            <p className="text-slate-500">
-              保证: {showAmount(resource?.guarantee?.amount, resource?.label)}
-            </p>
-          )}
+          {resource?.guarantee?.amount !== undefined &&
+            resource?.guarantee?.amount > 0 && (
+              <p className="text-slate-500">
+                保证: {showAmount(resource?.guarantee?.amount, resource?.label)}
+              </p>
+            )}
         </div>
       </CardFooter>
     </Card>

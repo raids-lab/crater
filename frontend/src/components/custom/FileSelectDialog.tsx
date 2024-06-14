@@ -11,7 +11,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DialogTrigger } from "@radix-ui/react-dialog";
 import { Tree, TreeDataItem } from "@/components/custom/LazyFileTree";
-import { ChevronsUpDown, FileDigit, Folder } from "lucide-react";
+import { ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -64,8 +64,6 @@ export const FileSelectDialog = ({
                 onSelectChange={(item) => {
                   setContent(item);
                 }}
-                folderIcon={Folder}
-                itemIcon={FileDigit}
               />
             </div>
           </div>

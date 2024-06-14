@@ -18,7 +18,7 @@ import {
   UserRoundIcon,
   UsersRoundIcon,
 } from "lucide-react";
-import { Project } from "./Queue/Personal";
+import { Account } from "./Queue";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -53,7 +53,7 @@ const sidebarItems: SidebarItem[] = [
       children: [
         {
           index: true,
-          element: <Project />,
+          element: <Account />,
         },
         {
           path: ":id",

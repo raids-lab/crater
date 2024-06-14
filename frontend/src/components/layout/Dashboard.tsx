@@ -30,8 +30,8 @@ const DashboardLayout = ({
   // 特殊规则，网盘路由切换时，不启用过渡动画
   const motionKey = useMemo(() => {
     // begins with /portal/share/data
-    if (rawPath.startsWith("/portal/data/filesystem")) {
-      return "/portal/data/filesystem";
+    if (rawPath.startsWith("/portal/data/filesystem/")) {
+      return "/portal/data/filesystem/";
     }
     return rawPath;
   }, [rawPath]);
@@ -88,16 +88,7 @@ const DashboardLayout = ({
             </SheetContent>
           </Sheet>
           <NavBreadcrumb className="hidden md:flex" />
-          {/* <div className="relative ml-auto flex-1 md:grow-0">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search..."
-                className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[336px]"
-              />
-            </div> */}
           <ProjectSwitcher className="relative ml-auto flex-1 md:grow-0" />
-
           <UserDropdownMenu />
         </header>
         <motion.div
@@ -105,10 +96,9 @@ const DashboardLayout = ({
           initial={{ opacity: 0, y: "3vh" }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", duration: 1.2 }}
+          className="grid flex-1 items-start gap-4 p-4 md:gap-x-6 md:gap-y-8 md:px-8 md:py-0 lg:grid-cols-3"
         >
-          <main className="grid flex-1 items-start gap-4 p-4 md:gap-x-6 md:gap-y-8 md:px-8 md:py-0 lg:grid-cols-3">
-            <Outlet />
-          </main>
+          <Outlet />
         </motion.div>
       </div>
     </div>

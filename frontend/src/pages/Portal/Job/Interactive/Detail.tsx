@@ -2,11 +2,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
-import { RefreshCcwIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
-import { PlayIcon, StopIcon } from "@radix-ui/react-icons";
+import {
+  ExternalLinkIcon,
+  FileSlidersIcon,
+  FileTextIcon,
+  PieChartIcon,
+  RefreshCcwIcon,
+  SquareTerminalIcon,
+  TrashIcon,
+} from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,6 +22,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
+import { useEffect, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import {
   TableHead,
@@ -47,31 +54,35 @@ import {
   Logs,
 } from "@/services/api/vcjob";
 import LogSheet from "@/components/custom/LogSheet";
+import JobPhaseLabel from "@/components/custom/JobPhaseLabel";
+import { TableDate } from "@/components/custom/TableDate";
 export interface Resource {
   [key: string]: string;
 }
 
+const initial: IJupyterDetail = {
+  name: "",
+  namespace: "",
+  username: "",
+  jobName: "",
+  retry: "",
+  queue: "",
+  status: JobPhase.Unknown,
+  createdAt: "",
+  startedAt: "",
+  runtime: "",
+  podDetails: [],
+  useTensorBoard: false,
+};
+
 export const Component = () => {
-  const initial: IJupyterDetail = {
-    name: "",
-    namespace: "",
-    username: "",
-    jobName: "",
-    retry: "",
-    queue: "",
-    status: JobPhase.Pending,
-    createdAt: "",
-    startedAt: "",
-    runtime: "",
-    podDetails: [],
-    useTensorBoard: false,
-  };
   const { id } = useParams<string>();
   const jobName = "" + id;
   const setBreadcrumb = useBreadcrumb();
   const [data, setData] = useState<IJupyterDetail>(initial);
   const [refetchInterval, setRefetchInterval] = useState(5000); // Manage interval state
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: taskList, isLoading } = useQuery({
     queryKey: ["job", "detail", jobName],
@@ -102,19 +113,18 @@ export const Component = () => {
     refetchInterval: refetchInterval,
   });
 
-  const navigate = useNavigate();
-  const { mutate: deleteJTask } = useMutation({
-    mutationFn: (jobName: string) => apiJobDelete(jobName),
-    onSuccess: () => {
-      navigate("/jupyter");
-      toast.success("作业已删除");
-    },
-  });
-
   const { mutate: getPortToken } = useMutation({
     mutationFn: (jobName: string) => apiJupyterTokenGet(jobName),
     onSuccess: (_, jobName) => {
       window.open(`/job/jupyter/${jobName}`);
+    },
+  });
+
+  const { mutate: deleteJTask } = useMutation({
+    mutationFn: () => apiJobDelete(jobName),
+    onSuccess: () => {
+      navigate("/jupyter");
+      toast.success("作业已删除");
     },
   });
 
@@ -198,18 +208,19 @@ export const Component = () => {
           </div>
           <div className="flex items-center gap-2">
             <Select onValueChange={(value) => handleIntervalChange(value)}>
-              <SelectTrigger className="w-[180px] bg-background">
-                <SelectValue placeholder="Update Every 5s" />
+              <SelectTrigger className="h-8 w-[130px] bg-background">
+                <SelectValue placeholder="每 5s 刷新" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="5">Update Every 5s</SelectItem>
-                <SelectItem value="10">Update Every 10s</SelectItem>
-                <SelectItem value="20">Update Every 20s</SelectItem>
+                <SelectItem value="5">每 5s 刷新</SelectItem>
+                <SelectItem value="10">每 10s 刷新</SelectItem>
+                <SelectItem value="20">每 20s 刷新</SelectItem>
               </SelectContent>
             </Select>
             <Button
               variant="outline"
               size="icon"
+              className="h-8 w-8"
               onClick={() =>
                 void queryClient.invalidateQueries({
                   queryKey: ["job", "detail", jobName],
@@ -225,95 +236,93 @@ export const Component = () => {
           <Table className="w-full">
             <TableHeader>
               <TableRow>
-                <TableHead>Job Name</TableHead>
-                <TableHead>Created At</TableHead>
-                <TableHead>Username</TableHead>
-                <TableHead>Namespace</TableHead>
-                <TableHead>Runtime</TableHead>
-                <TableHead>Retry</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="text-xs">作业名称</TableHead>
+                <TableHead className="text-xs">状态</TableHead>
+                <TableHead className="text-xs">账户</TableHead>
+                <TableHead className="text-xs">用户</TableHead>
+                <TableHead className="text-xs">命名空间</TableHead>
+                <TableHead className="text-xs">创建于</TableHead>
+                <TableHead className="text-xs">持续时间</TableHead>
+                <TableHead className="text-xs">重试次数</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               <TableRow>
                 <TableCell>{data.jobName}</TableCell>
-                <TableHead>{data.createdAt}</TableHead>
-                <TableHead>{data.username}</TableHead>
-                <TableHead>{data.namespace}</TableHead>
-                <TableHead>{data.runtime}</TableHead>
-                <TableHead>{data.status}</TableHead>
-                <TableHead>{data.retry}</TableHead>
+                <TableCell>
+                  <JobPhaseLabel jobPhase={data.status} />
+                </TableCell>
+                <TableCell>{data.queue}</TableCell>
+                <TableCell>{data.username}</TableCell>
+                <TableCell>{data.namespace}</TableCell>
+                <TableCell>
+                  <TableDate date={data.createdAt} />
+                </TableCell>
+                <TableCell>{data.runtime}</TableCell>
+                <TableCell>{data.retry}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
+          <div className="mt-4 flex items-center justify-between">
+            <div className="flex h-5 items-center space-x-2">
               <LogSheet log={yaml} title={jobName + " Job Yaml"}>
-                <Button size="sm" variant="ghost">
-                  View Job Yaml
+                <Button variant="ghost" size="sm">
+                  <FileSlidersIcon className="mr-2 h-4 w-4" />
+                  作业 YAML
                 </Button>
               </LogSheet>
               <Separator orientation="vertical" />
-              <Button size="sm" variant="ghost">
-                View Ekdi Diagnostics
-              </Button>
-              <Separator orientation="vertical" />
-              {/* <Button className="text-blue-500" size="sm" variant="ghost">
-                Go to Multi-Metrics Page
-              </Button> */}
               <Button
-                className="text-blue-500"
-                size="sm"
                 variant="ghost"
+                size="sm"
                 onClick={() => {
                   const url = generateMetricsUrl(data.podDetails);
                   window.open(url, "_blank");
                 }}
               >
-                Go to Multi-Metrics Page
+                <PieChartIcon className="mr-2 h-4 w-4" />
+                资源监控
               </Button>
-              <Separator orientation="vertical" />
               {data.useTensorBoard && (
-                <Button
-                  className="text-blue-500"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    toast.info("即将跳转至 TensorBoard 页面");
-                    setTimeout(() => {
-                      goToTensorboardPage(jobName);
-                    }, 500);
-                  }}
-                  disabled={data.status !== JobPhase.Running}
-                >
-                  Go to TensorBoard Page
-                </Button>
+                <>
+                  <Separator orientation="vertical" />
+                  <Button
+                    className="text-primary"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      toast.info("即将跳转至 TensorBoard 页面");
+                      setTimeout(() => {
+                        goToTensorboardPage(jobName);
+                      }, 500);
+                    }}
+                    disabled={data.status !== JobPhase.Running}
+                  >
+                    Go to TensorBoard Page
+                  </Button>
+                </>
               )}
             </div>
-            <div className="flex space-x-2">
+            <div className="flex flex-row gap-2">
               <Button
-                variant="outline"
-                className="h-8 w-8 p-0 hover:text-sky-700"
-                title="运行 Jupyter Lab"
+                size="sm"
+                title="跳转至交互式页面"
                 onClick={() => {
-                  toast.info("即将跳转至 Jupyter 页面");
+                  toast.info("即将跳转至交互式页面");
                   setTimeout(() => {
                     getPortToken(jobName);
                   }, 500);
                 }}
-                disabled={data.status !== JobPhase.Running}
               >
-                <PlayIcon />
+                <ExternalLinkIcon className="mr-2 h-4 w-4" />
+                交互式页面
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <div>
-                    <Button
-                      variant="outline"
-                      className="h-8 w-8 p-0 hover:text-red-700"
-                      title="终止 Jupyter Lab"
-                    >
-                      <StopIcon />
+                    <Button variant="destructive" size="sm" title="删除作业">
+                      <TrashIcon className="mr-2 h-4 w-4" />
+                      删除作业
                     </Button>
                   </div>
                 </AlertDialogTrigger>
@@ -330,8 +339,7 @@ export const Component = () => {
                     <AlertDialogAction
                       variant="destructive"
                       onClick={() => {
-                        // check if browser support clipboard
-                        deleteJTask(jobName);
+                        deleteJTask();
                       }}
                     >
                       删除
@@ -347,14 +355,14 @@ export const Component = () => {
         <Table className="w-full">
           <TableHeader>
             <TableRow>
-              <TableHead>No.</TableHead>
-              <TableHead>Container ID</TableHead>
-              <TableHead>Assigned Node</TableHead>
-              <TableHead>IP</TableHead>
-              <TableHead>Ports</TableHead>
-              <TableHead>Resources</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Info</TableHead>
+              <TableHead className="text-xs">序号</TableHead>
+              <TableHead className="text-xs">Pod 名称</TableHead>
+              <TableHead className="text-xs">已分配节点</TableHead>
+              <TableHead className="text-xs">IP</TableHead>
+              <TableHead className="text-xs">端口</TableHead>
+              <TableHead className="text-xs">资源</TableHead>
+              <TableHead className="text-xs">状态</TableHead>
+              <TableHead className="text-xs"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -362,12 +370,12 @@ export const Component = () => {
               Array.isArray(data.podDetails) &&
               data.podDetails.map((pod, index) => (
                 <TableRow key={index}>
-                  <TableCell>{index}</TableCell>
-                  <TableCell className="font-medium">
+                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>
                     {pod.name ? (
                       <a
                         href={`http://192.168.5.60:31121/d/MhnFUFLSz/pod_memory?orgId=1&var-node_name=${pod.nodename}&var-pod_name=${pod.name}`}
-                        className="hover:underline"
+                        className="underline-offset-4 hover:underline"
                         target="_blank"
                         rel="noopener noreferrer"
                       >
@@ -394,25 +402,50 @@ export const Component = () => {
                   <TableCell>{pod.ip || "---"}</TableCell>
                   <TableCell>{pod.port || "---"}</TableCell>
                   <TableCell>
-                    {pod.resource &&
-                      Object.entries(handleResourceData(pod.resource)).map(
-                        ([key, value]) => (
-                          <Badge
-                            key={key}
-                            variant="secondary"
-                            className="gap-2 font-medium"
-                          >
-                            {" "}
-                            {key}: {String(value)}{" "}
-                          </Badge>
-                        ),
-                      )}
+                    {/* TODO: @wgz replace with <ResourceBadges resources={resources} /> */}
+                    {pod.resource ? (
+                      <div className="flex flex-row gap-1">
+                        {Object.entries(handleResourceData(pod.resource)).map(
+                          ([key, value]) => (
+                            <Badge
+                              key={key}
+                              variant="secondary"
+                              className="font-normal"
+                            >
+                              {key}: {String(value)}
+                            </Badge>
+                          ),
+                        )}
+                      </div>
+                    ) : (
+                      "---"
+                    )}
                   </TableCell>
                   <TableCell>{pod.status || "---"}</TableCell>
                   <TableCell>
-                    <div className="flex space-x-2">
-                      <LogSheet log={logs[pod.name]} title={pod.name}>
-                        <Button variant="default">Stdout/Stderr</Button>
+                    <div className="flex items-center justify-center space-x-1">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 text-primary hover:text-primary/90"
+                        title="打开终端"
+                        onClick={() => toast.warning("Web 终端功能开发中")}
+                      >
+                        <SquareTerminalIcon className="h-4 w-4" />
+                      </Button>
+                      <LogSheet
+                        log={logs[pod.name]}
+                        title={pod.name}
+                        side="left"
+                      >
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          title="查看日志"
+                        >
+                          <FileTextIcon className="h-4 w-4" />
+                        </Button>
                       </LogSheet>
                     </div>
                   </TableCell>

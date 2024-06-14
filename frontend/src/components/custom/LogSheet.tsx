@@ -12,16 +12,17 @@ import useResizeObserver from "use-resize-observer";
 type LogSheetProps = React.HTMLAttributes<HTMLDivElement> & {
   title?: string;
   log?: string;
+  side?: "bottom" | "left" | "right" | "top" | null | undefined;
 };
 
-const LogSheet = ({ title, log, children }: LogSheetProps) => {
+const LogSheet = ({ title, log, side, children }: LogSheetProps) => {
   const { ref: refRoot, width, height } = useResizeObserver();
 
   return (
     <Sheet>
       <SheetTrigger asChild>{children}</SheetTrigger>
       {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
-      <SheetContent className="flex flex-col gap-6 sm:max-w-3xl">
+      <SheetContent className="flex flex-col gap-6 sm:max-w-3xl" side={side}>
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>

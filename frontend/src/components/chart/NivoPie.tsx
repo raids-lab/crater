@@ -16,6 +16,7 @@ const NivoPie = <RawDatum extends MayHaveLabel>(
         from: "color",
         modifiers: [["darker", 0.6]],
       }}
+      arcLinkLabelsSkipAngle={10}
       colors={{ scheme: theme === "dark" ? "category10" : "paired" }}
       theme={nivoTheme}
       {...props}

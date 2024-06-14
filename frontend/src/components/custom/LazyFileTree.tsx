@@ -3,7 +3,12 @@ import React, { useEffect, useMemo } from "react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { ChevronRight, type LucideIcon } from "lucide-react";
+import {
+  ChevronRight,
+  FileDigitIcon,
+  FolderIcon,
+  type LucideIcon,
+} from "lucide-react";
 import useResizeObserver from "use-resize-observer";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { FileItem, apiGetFiles } from "@/services/api/file";
@@ -11,30 +16,32 @@ import { FileItem, apiGetFiles } from "@/services/api/file";
 interface TreeDataItem {
   id: string;
   name: string;
-  icon?: LucideIcon;
+  icon: LucideIcon;
   hasChildren: boolean;
 }
+
+export const getFolderTitle = (folder: string) => {
+  // public: 公共空间
+  // q-*: 账户共享空间
+  // u-*: 用户私有空间
+  if (folder === "public") {
+    return "公共空间";
+  } else if (folder.startsWith("q-")) {
+    return "账户空间";
+  } else if (folder.startsWith("u-")) {
+    return "用户空间";
+  }
+  return folder;
+};
 
 type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
   initialSlelectedItemId?: string;
   onSelectChange?: (item: TreeDataItem | undefined) => void;
-  folderIcon?: LucideIcon;
-  itemIcon?: LucideIcon;
   className?: string;
 };
 
 const Tree = React.forwardRef<HTMLDivElement, TreeProps>(
-  (
-    {
-      initialSlelectedItemId,
-      onSelectChange,
-      folderIcon,
-      itemIcon,
-      className,
-      ...props
-    },
-    ref,
-  ) => {
+  ({ initialSlelectedItemId, onSelectChange, className, ...props }, ref) => {
     const [selectedItemId, setSelectedItemId] = React.useState<
       string | undefined
     >(initialSlelectedItemId);
@@ -52,7 +59,10 @@ const Tree = React.forwardRef<HTMLDivElement, TreeProps>(
     const { data } = useQuery({
       queryKey: ["directory", "list"],
       queryFn: () => apiGetFiles(""),
-      select: (res) => res.data.data,
+      select: (res) =>
+        res.data.data?.sort((a, b) => {
+          return a.name.localeCompare(b.name);
+        }) ?? [],
     });
 
     const { ref: refRoot, width, height } = useResizeObserver();
@@ -64,14 +74,13 @@ const Tree = React.forwardRef<HTMLDivElement, TreeProps>(
             <ul>
               {data?.map((item, index) => (
                 <TreeItem
+                  level={0}
                   key={index}
                   currentPath={item.name}
                   data={item}
                   ref={ref}
                   selectedItemId={selectedItemId}
                   handleSelectChange={handleSelectChange}
-                  FolderIcon={folderIcon}
-                  ItemIcon={itemIcon}
                 />
               ))}
             </ul>
@@ -86,23 +95,21 @@ Tree.displayName = "Tree";
 
 type TreeItemProps = TreeProps & {
   data: FileItem;
+  level: number;
   currentPath: string;
   selectedItemId?: string;
   handleSelectChange: (item: TreeDataItem | undefined) => void;
-  FolderIcon?: LucideIcon;
-  ItemIcon?: LucideIcon;
 };
 
 const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
   (
     {
-      className,
+      level,
       data,
       currentPath,
       selectedItemId,
       handleSelectChange,
-      FolderIcon,
-      ItemIcon,
+      className,
       ...props
     },
     ref,
@@ -110,11 +117,11 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
     const item: TreeDataItem = useMemo(() => {
       return {
         id: currentPath,
-        name: data.name,
-        icon: data.isdir ? FolderIcon : ItemIcon,
+        name: level === 0 ? getFolderTitle(data.name) : data.name,
+        icon: data.isdir ? FolderIcon : FileDigitIcon,
         hasChildren: data.isdir && data.size > 0,
       };
-    }, [FolderIcon, ItemIcon, currentPath, data]);
+    }, [currentPath, data, level]);
 
     useEffect(() => {
       if (data.isdir && data.size > 0) {
@@ -138,7 +145,16 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
     const { mutate: getChildren } = useMutation({
       mutationFn: () => apiGetFiles(currentPath),
       onSuccess: (fileList) => {
-        const children = fileList.data.data;
+        const children =
+          fileList.data.data?.sort((a, b) => {
+            if (a.isdir && !b.isdir) {
+              return -1; // a在b之前
+            } else if (!a.isdir && b.isdir) {
+              return 1; // a在b之后
+            } else {
+              return a.name.localeCompare(b.name);
+            }
+          }) ?? [];
         if (children) {
           setChildren(children);
           setChildrenInitialized(true);
@@ -165,31 +181,22 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
                     handleSelectChange(item);
                   }}
                 >
-                  {item.icon && (
-                    <item.icon
-                      className="mr-2 h-4 w-4 shrink-0 text-accent-foreground/50"
-                      aria-hidden="true"
-                    />
-                  )}
-                  {!item.icon && FolderIcon && (
-                    <FolderIcon
-                      className="mr-2 h-4 w-4 shrink-0 text-accent-foreground/50"
-                      aria-hidden="true"
-                    />
-                  )}
+                  <item.icon
+                    className="mr-2 h-4 w-4 shrink-0 text-accent-foreground/50"
+                    aria-hidden="true"
+                  />
                   <span className="truncate text-sm">{item.name}</span>
                 </AccordionTrigger>
                 <AccordionContent className="pl-6">
                   <ul>
                     {children.map((data, index) => (
                       <TreeItem
+                        level={level + 1}
                         key={index}
                         data={data}
                         currentPath={`${currentPath}/${data.name}`}
                         selectedItemId={selectedItemId}
                         handleSelectChange={handleSelectChange}
-                        FolderIcon={FolderIcon}
-                        ItemIcon={ItemIcon}
                       />
                     ))}
                   </ul>
@@ -201,7 +208,6 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
               item={item}
               isSelected={selectedItemId === item.id}
               onClick={() => handleSelectChange(item)}
-              Icon={ItemIcon}
             />
           )}
         </div>
@@ -216,33 +222,24 @@ const Leaf = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement> & {
     item: TreeDataItem;
     isSelected?: boolean;
-    Icon?: LucideIcon;
     className?: string;
   }
->(({ className, item, isSelected, Icon, ...props }, ref) => {
+>(({ className, item, isSelected, ...props }, ref) => {
   return (
     <div
       ref={ref}
       className={cn(
-        "flex cursor-pointer items-center px-2 py-2         before:absolute before:left-0 before:right-1 before:-z-10 before:h-[1.75rem] before:w-full before:bg-muted/80 before:opacity-0 hover:before:opacity-100",
+        "flex cursor-pointer items-center px-2 py-2 before:absolute before:left-0 before:right-1 before:-z-10 before:h-[1.75rem] before:w-full before:bg-muted/80 before:opacity-0 hover:before:opacity-100",
         className,
         isSelected &&
           "text-accent-foreground before:border-l-2 before:border-l-accent-foreground/50 before:bg-accent before:opacity-100 dark:before:border-0",
       )}
       {...props}
     >
-      {item.icon && (
-        <item.icon
-          className="mr-2 h-4 w-4 shrink-0 text-accent-foreground/50"
-          aria-hidden="true"
-        />
-      )}
-      {!item.icon && Icon && (
-        <Icon
-          className="mr-2 h-4 w-4 shrink-0 text-accent-foreground/50"
-          aria-hidden="true"
-        />
-      )}
+      <item.icon
+        className="mr-2 h-4 w-4 shrink-0 text-accent-foreground/50"
+        aria-hidden="true"
+      />
       <span className="flex-grow truncate text-sm">{item.name}</span>
     </div>
   );
