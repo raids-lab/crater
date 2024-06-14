@@ -8,8 +8,10 @@ import (
 	"github.com/gin-gonic/gin"
 	docs "github.com/raids-lab/crater/docs"
 	"github.com/raids-lab/crater/internal/handler"
+	"github.com/raids-lab/crater/internal/handler/aijob"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	"github.com/raids-lab/crater/internal/middleware"
+	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/constants"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/monitor"
@@ -23,7 +25,7 @@ type Backend struct {
 	R *gin.Engine
 }
 
-func Register(cl client.Client, cs *kubernetes.Clientset, pc *monitor.PrometheusClient) *Backend {
+func Register(cl client.Client, cs *kubernetes.Clientset, pc *monitor.PrometheusClient, aitaskCtrl *aitaskctl.TaskController) *Backend {
 	s := new(Backend)
 	s.R = gin.Default()
 
@@ -35,7 +37,7 @@ func Register(cl client.Client, cs *kubernetes.Clientset, pc *monitor.Prometheus
 	})
 
 	// Register custom routes
-	s.RegisterService(cl, cs, pc)
+	s.RegisterService(cl, cs, pc, aitaskCtrl)
 
 	// Swagger
 	// todo: DisablingWrapHandler https://github.com/swaggo/gin-swagger/blob/master/swagger.go#L205
@@ -54,6 +56,7 @@ func (b *Backend) RegisterService(
 	cl client.Client,
 	kc *kubernetes.Clientset,
 	pc *monitor.PrometheusClient,
+	aitaskCtrl *aitaskctl.TaskController,
 ) {
 	// Enable CORS for http://localhost:XXXX in debug mode
 	if gin.Mode() == gin.DebugMode {
@@ -91,6 +94,7 @@ func (b *Backend) RegisterService(
 	jwttokenMgr := handler.NewJWTTokenMgr()
 	recommenddljobMgr := handler.NewRecommendDLJobMgr(cl)
 	volcanoMgr := vcjob.NewVolcanojobMgr(cl, kc)
+	aijobMgr := aijob.NewAITaskMgr(aitaskCtrl, &pvcClient, &logClient)
 	queueMgr := handler.NewQueueMgr(cl)
 	datasetMgr := handler.NewFileMgr()
 	///////////////////////////////////////
@@ -119,6 +123,7 @@ func (b *Backend) RegisterService(
 	jwttokenMgr.RegisterProtected(protectedRouter.Group("/storage"))
 	recommenddljobMgr.RegisterProtected(protectedRouter.Group("/recommenddljob"))
 	volcanoMgr.RegisterProtected(protectedRouter.Group("/vcjobs"))
+	aijobMgr.RegisterProtected(protectedRouter.Group("/aijobs"))
 	datasetMgr.RegisterProtected(protectedRouter.Group("/dataset"))
 
 	///////////////////////////////////////
@@ -137,5 +142,6 @@ func (b *Backend) RegisterService(
 	recommenddljobMgr.RegisterAdmin(adminRouter.Group("/recommenddljob"))
 	queueMgr.RegisterAdmin(adminRouter.Group("/queues"))
 	volcanoMgr.RegisterAdmin(adminRouter.Group("/vcjobs"))
+	aijobMgr.RegisterAdmin(adminRouter.Group("/aijobs"))
 	datasetMgr.RegisterAdmin(adminRouter.Group("/dataset"))
 }
