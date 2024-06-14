@@ -12,7 +12,6 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
@@ -87,7 +86,9 @@ type (
 	// Swagger 不支持范型嵌套，定义别名
 	ListAllResp struct {
 		*model.Queue
-		Deserved string `json:"deserved"`
+		Guaranteed string `json:"guaranteed"`
+		Deserved   string `json:"deserved"`
+		Capacity   string `json:"capacity"`
 	}
 )
 
@@ -151,7 +152,12 @@ func (mgr *ProjectMgr) ListAllForAdmin(c *gin.Context) {
 	for _, q := range queues {
 		if _, exist := queueMap[q.Name]; exist {
 			lists = append(lists,
-				ListAllResp{Queue: q, Deserved: model.ResourceListToJSON(queueMap[q.Name].Spec.Deserved)},
+				ListAllResp{
+					Queue:      q,
+					Guaranteed: model.ResourceListToJSON(queueMap[q.Name].Spec.Guarantee.Resource),
+					Deserved:   model.ResourceListToJSON(queueMap[q.Name].Spec.Deserved),
+					Capacity:   model.ResourceListToJSON(queueMap[q.Name].Spec.Capability),
+				},
 			)
 		} else {
 			resputil.Error(c, "asynchronized queue db with vcqueue", resputil.NotSpecified)
@@ -166,8 +172,10 @@ func (mgr *ProjectMgr) ListAllForAdmin(c *gin.Context) {
 
 type (
 	ProjectCreateReq struct {
-		Name  string `json:"name" binding:"required"`
-		Quota string `json:"quota" binding:"required"`
+		Name       string          `json:"name" binding:"required"`
+		Guaranteed v1.ResourceList `json:"guaranteed" binding:"required"`
+		Deserved   v1.ResourceList `json:"deserved" binding:"required"`
+		Capability v1.ResourceList `json:"capacity" binding:"required"`
 	}
 
 	ProjectCreateResp struct {
@@ -251,31 +259,9 @@ func (mgr *ProjectMgr) CreateTeamProject(c *gin.Context) {
 func (mgr *ProjectMgr) CreateTeamQueue(c *gin.Context, token *util.JWTMessage, queue *model.Queue,
 	req *ProjectCreateReq) error {
 	// Create a new queue, and set the user as the admin in user_queue
-	var VendorDomain = "nvidia.com"
 	namespace := config.GetConfig().Workspace.Namespace
 	labels := map[string]string{
 		LabelKeyQueueCreatedBy: token.Username,
-	}
-
-	r := query.Resource
-	q := r.WithContext(c)
-	q = q.Where(r.VendorDomain.Eq(VendorDomain))
-	resources, err := q.Find()
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to list resources: %v", err), resputil.NotSpecified)
-		return err
-	}
-
-	deserved, err := model.JSONToResourceList(req.Quota)
-	if err != nil {
-		resputil.Error(c, "Update queue deserved quota failed", resputil.NotSpecified)
-		return err
-	}
-
-	for _, r := range resources {
-		if _, exists := deserved[v1.ResourceName(r.ResourceName)]; !exists {
-			deserved[v1.ResourceName(r.ResourceName)] = *resource.NewQuantity(0, resource.DecimalSI)
-		}
 	}
 
 	volcanoQueue := &scheduling.Queue{
@@ -285,7 +271,9 @@ func (mgr *ProjectMgr) CreateTeamQueue(c *gin.Context, token *util.JWTMessage, q
 			Labels:    labels,
 		},
 		Spec: scheduling.QueueSpec{
-			Deserved: deserved,
+			Guarantee:  scheduling.Guarantee{Resource: req.Guaranteed},
+			Capability: req.Capability,
+			Deserved:   req.Deserved,
 		},
 	}
 
@@ -297,7 +285,9 @@ func (mgr *ProjectMgr) CreateTeamQueue(c *gin.Context, token *util.JWTMessage, q
 }
 
 type UpdateQuotaReq struct {
-	Quota string `json:"quota" binding:"required"`
+	Guaranteed v1.ResourceList `json:"guaranteed" binding:"required"`
+	Deserved   v1.ResourceList `json:"deserved" binding:"required"`
+	Capability v1.ResourceList `json:"capacity" binding:"required"`
 }
 
 type ProjectNameReq struct {
@@ -337,36 +327,25 @@ func (mgr *ProjectMgr) UpdateQuota(c *gin.Context) {
 		return
 	}
 
-	deserved, err := model.JSONToResourceList(req.Quota)
-	if err != nil {
-		resputil.Error(c, "Update queue deserved quota failed", resputil.NotSpecified)
-		return
-	}
-
-	if err := mgr.UpdateQueueCapcity(c, queue, &deserved); err != nil {
+	if err := mgr.UpdateQueueCapcity(c, queue, &req); err != nil {
 		resputil.Error(c, fmt.Sprintf("update capability failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
 
-	resputil.Success(c, fmt.Sprintf("update capability to %s", model.ResourceListToJSON(deserved)))
+	resputil.Success(c, fmt.Sprintf("update capability of %s", name))
 }
 
-func (mgr *ProjectMgr) UpdateQueueCapcity(c *gin.Context, queue *model.Queue, deservedUpdate *v1.ResourceList) error {
+func (mgr *ProjectMgr) UpdateQueueCapcity(c *gin.Context, queue *model.Queue, req *UpdateQuotaReq) error {
 	vcQueue := &scheduling.Queue{}
 	namespace := config.GetConfig().Workspace.Namespace
 	err := mgr.Get(c, client.ObjectKey{Name: queue.Name, Namespace: namespace}, vcQueue)
 	if err != nil {
 		return err
 	}
-	deserved := vcQueue.Spec.Deserved
 
-	for k, v := range *deservedUpdate {
-		if _, exists := deserved[k]; !exists {
-			deserved[k] = v
-		}
-	}
-
-	vcQueue.Spec.Deserved = *deservedUpdate
+	vcQueue.Spec.Guarantee = scheduling.Guarantee{Resource: req.Guaranteed}
+	vcQueue.Spec.Deserved = req.Deserved
+	vcQueue.Spec.Capability = req.Capability
 
 	if err := mgr.Update(c, vcQueue); err != nil {
 		return err
