@@ -21,9 +21,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/raids-lab/crater/pkg/aitaskctl"
 	aisystemv1alpha1 "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
 	recommenddljob "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
+	db "github.com/raids-lab/crater/pkg/db/orm"
 	"go.uber.org/zap/zapcore"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -138,6 +140,12 @@ func main() {
 	}
 
 	// 1. init db
+	err = db.InitDB()
+	if err != nil {
+		setupLog.Error(err, "unable to init db")
+		os.Exit(1)
+	}
+
 	err = query.InitDB()
 	if err != nil {
 		setupLog.Error(err, "unable to init query db")
@@ -149,6 +157,18 @@ func main() {
 	// 2. init task controller
 	// taskUpdateChan := make(chan util.TaskUpdateChan)
 	jobStatusChan := make(chan util.JobStatusChan)
+
+	taskCtrl := aitaskctl.NewTaskController(
+		mgr.GetClient(),
+		clientset,
+		jobStatusChan,
+	)
+	err = taskCtrl.Init()
+	if err != nil {
+		setupLog.Error(err, "unable to set up task controller")
+		os.Exit(1)
+	}
+	setupLog.Info("task controller init success")
 
 	// 3. init job controller
 	jobReconciler := reconciler.NewAIJobReconciler(
@@ -181,15 +201,22 @@ func main() {
 	if backendConfig.EnableProfiling {
 		prometheusClient := monitor.NewPrometheusClient(backendConfig.PrometheusAPI)
 		aijobProfiler := profiler.NewProfiler(mgr, prometheusClient, backendConfig.ProfilingTimeout)
+		taskCtrl.SetProfiler(aijobProfiler)
 		// todo: start profiling
 		aijobProfiler.Start(stopCh)
 		setupLog.Info("enable profiling success")
 	}
 
+	err = taskCtrl.Start(stopCh)
+	if err != nil {
+		setupLog.Error(err, "unable to start task controller")
+		os.Exit(1)
+	}
+
 	// 5. start server
 	setupLog.Info("starting server")
 	prometheusClient := monitor.NewPrometheusClient(backendConfig.PrometheusAPI)
-	backend := internal.Register(mgr.GetClient(), clientset, prometheusClient)
+	backend := internal.Register(mgr.GetClient(), clientset, prometheusClient, taskCtrl)
 	if err := backend.R.Run(backendConfig.ServerAddr); err != nil {
 		setupLog.Error(err, "problem running server")
 		os.Exit(1)

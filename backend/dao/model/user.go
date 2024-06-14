@@ -27,16 +27,3 @@ type User struct {
 	UserQueues   []UserQueue
 	UserDatasets []UserDataset
 }
-
-type UserProject struct {
-	gorm.Model
-	UserID    uint `gorm:"primaryKey"`
-	ProjectID uint `gorm:"primaryKey"`
-	Role      Role `gorm:"not null;comment:用户在项目中的角色 (guest, user, admin)"`
-
-	AccessMode AccessMode `gorm:"not null;comment:项目空间的访问模式 (ro, ao, rw)"`
-
-	// quota limit (job, node, cpu, memory, gpu, gpuMem, storage) for the project
-	// if value is -1, than use the quota value in project
-	EmbeddedQuota `gorm:"embedded"`
-}

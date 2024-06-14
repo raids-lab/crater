@@ -125,12 +125,7 @@ func main() {
 
 	m.InitSchema(func(tx *gorm.DB) error {
 		err := tx.AutoMigrate(
-			&model.Project{},
-			&model.Space{},
 			&model.User{},
-			&model.UserProject{},
-			&model.ProjectSpace{},
-			&model.AIJob{},
 			&model.ImagePack{},
 			&model.ImageUpload{},
 			&model.Label{},
