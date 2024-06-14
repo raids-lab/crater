@@ -86,7 +86,7 @@ const sidebarItems: SidebarItem[] = [
       {
         route: {
           path: "filesystem/*",
-          lazy: () => import("./Data/Share"),
+          lazy: () => import("./Data/FileSystem"),
         },
       },
       {

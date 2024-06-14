@@ -1,21 +1,15 @@
 import type { FC } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect, useMemo, useRef } from "react";
-import { DataTable } from "@/components/custom/OldDataTable";
+import { DataTable } from "@/components/custom/DataTable";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
+import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
+import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { TableDate } from "@/components/custom/TableDate";
 import { FileSizeComponent } from "@/components/custom/FileSize";
-import {
-  DownloadIcon,
-  UploadIcon,
-  PlusIcon,
-  ArrowLeftIcon,
-} from "@radix-ui/react-icons";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +22,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { File, Folder } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  DownloadIcon,
+  File,
+  Folder,
+  FolderPlusIcon,
+  UploadIcon,
+} from "lucide-react";
 import { useSetAtom } from "jotai";
 import { globalBreadCrumb } from "@/utils/store";
 import {
@@ -39,22 +40,68 @@ import {
 } from "@/services/api/file";
 import { ACCESS_TOKEN_KEY } from "@/utils/store";
 import { showErrorToast } from "@/utils/toast";
+import { Card, CardDescription, CardHeader } from "@/components/ui/card";
+import { CardTitle } from "@/components/ui-custom/card";
+
+const getFolderTitle = (folder: string) => {
+  // public: 公共空间
+  // q-*: 账户共享空间
+  // u-*: 用户私有空间
+  if (folder === "public") {
+    return "公共空间";
+  } else if (folder.startsWith("q-")) {
+    return "共享空间";
+  } else if (folder.startsWith("u-")) {
+    return "个人空间";
+  }
+  return folder;
+};
+
+const getFolderDescription = (folder: string) => {
+  // public: 公共空间
+  // q-*: 账户共享空间
+  // u-*: 用户私有空间
+  if (folder === "public") {
+    return "平台上所有用户都可以访问，如需获取上传权限，请联系管理员";
+  } else if (folder.startsWith("q-")) {
+    return "账户共享空间，仅限账户内用户访问，如需获取上传权限，请联系账户管理员";
+  } else if (folder.startsWith("u-")) {
+    return "个人空间，仅限当前用户访问，拥有完全的读写权限";
+  }
+  return folder;
+};
+
+const getHeader = (key: string): string => {
+  switch (key) {
+    case "name":
+      return "名称";
+    case "modifytime":
+      return "更新于";
+    case "size":
+      return "大小";
+    default:
+      return key;
+  }
+};
+const toolbarConfig: DataTableToolbarConfig = {
+  filterInput: {
+    placeholder: "搜索名称",
+    key: "name",
+  },
+  filterOptions: [],
+  getHeader: getHeader,
+};
 
 export const Component: FC = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [dirName, setDirName] = useState<string>("");
   const setBreadcrumb = useSetAtom(globalBreadCrumb);
+
   const path = useMemo(
     () => pathname.replace(/^\/portal\/data\/filesystem/, ""),
     [pathname],
   );
-
-  // const { data: spaces } = useQuery({
-  //   queryKey: ["data", "filesystem"],
-  //   queryFn: () => apiGetFiles(""),
-  //   select: (res) => res.data.data,
-  // });
 
   useEffect(() => {
     const pathParts = pathname.split("/").filter(Boolean);
@@ -74,13 +121,12 @@ export const Component: FC = () => {
           title: "文件系统",
           path: "/portal/data/filesystem",
         };
+      } else if (index == 3) {
+        return {
+          title: getFolderTitle(value),
+          path: `/portal/data/filesystem/${value}`,
+        };
       }
-      //  else if (index == 3) {
-      //   return {
-      //     title: spaces?.find((p) => p.name === value)?.filename ?? value,
-      //     path: `/portal/data/filesystem/${value}`,
-      //   };
-      // }
       return {
         title: value,
         path: `/${pathParts.slice(0, index + 1).join("/")}`,
@@ -101,36 +147,38 @@ export const Component: FC = () => {
     return pathname.replace(/\/[^/]+$/, "");
   }, [pathname]);
 
-  const { data: rootList, isLoading } = useQuery({
+  const query = useQuery({
     queryKey: ["data", "filesystem", path],
     queryFn: () => apiGetFiles(`${path}`),
-    select: (res) => res.data.data,
+    select: (res) => {
+      return (
+        res.data.data
+          ?.map((r) => {
+            return {
+              name: r.name,
+              modifytime: r.modifytime,
+              isdir: r.isdir,
+              size: r.size,
+              sys: r.sys,
+            };
+          })
+          .sort((a, b) => {
+            if (a.isdir && !b.isdir) {
+              return -1; // a在b之前
+            } else if (!a.isdir && b.isdir) {
+              return 1; // a在b之后
+            } else {
+              return a.name.localeCompare(b.name);
+            }
+          }) ?? []
+      );
+    },
   });
 
-  const data: FileItem[] = useMemo(() => {
-    if (!rootList) {
-      return [];
-    }
-    return rootList
-      .map((r) => {
-        return {
-          name: r.name,
-          modifytime: r.modifytime,
-          isdir: r.isdir,
-          size: r.size,
-          sys: r.sys,
-        };
-      })
-      .sort((a, b) => {
-        if (a.isdir && !b.isdir) {
-          return -1; // a在b之前
-        } else if (!a.isdir && b.isdir) {
-          return 1; // a在b之后
-        } else {
-          return a.name.localeCompare(b.name);
-        }
-      });
-  }, [rootList]);
+  const isRoot = useMemo(
+    () => pathname === "/portal/data/filesystem",
+    [pathname],
+  );
 
   const columns = useMemo<ColumnDef<FileItem>[]>(
     () => [
@@ -167,7 +215,6 @@ export const Component: FC = () => {
             );
           }
         },
-        enableSorting: false,
       },
       {
         accessorKey: "modifytime",
@@ -180,8 +227,6 @@ export const Component: FC = () => {
         cell: ({ row }) => {
           return <TableDate date={row.getValue("modifytime")}></TableDate>;
         },
-        //sortingFn: "datetime",
-        enableSorting: false,
       },
       {
         accessorKey: "size",
@@ -234,7 +279,7 @@ export const Component: FC = () => {
                     toast.info("正在下载该文件");
                   }}
                 >
-                  <DownloadIcon />
+                  <DownloadIcon className="h-4 w-4" />
                 </Button>
               </div>
             );
@@ -244,27 +289,6 @@ export const Component: FC = () => {
     ],
     [navigate, path, pathname],
   );
-
-  const getHeader = (key: string): string => {
-    switch (key) {
-      case "name":
-        return "文件名";
-      case "modifytime":
-        return "更新于";
-      case "size":
-        return "文件大小";
-      default:
-        return key;
-    }
-  };
-  const toolbarConfig: DataTableToolbarConfig = {
-    filterInput: {
-      placeholder: "搜索名称",
-      key: "name",
-    },
-    filterOptions: [],
-    getHeader: getHeader,
-  };
 
   const refInput = useRef<HTMLInputElement>(null);
   const refInput2 = useRef<HTMLInputElement>(null);
@@ -332,83 +356,104 @@ export const Component: FC = () => {
   });
 
   return (
-    <DataTable
-      data={data}
-      columns={columns}
-      toolbarConfig={toolbarConfig}
-      loading={isLoading}
-      className="col-span-3"
-    >
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() => {
-          // setFilepath(backfilepath);
-          navigate(backpath);
-        }}
-        className="h-8 w-8"
-        disabled={pathname === "/portal/data/filesystem"}
-      >
-        <ArrowLeftIcon />
-      </Button>
-      <Button
-        onClick={() => {
-          refInput.current?.click();
-        }}
-        size="icon"
-        variant="outline"
-        className="h-8 w-8 p-0"
-        disabled={pathname === "/portal/data/filesystem"}
-      >
-        <UploadIcon />
-      </Button>
-      <input
-        type="file"
-        ref={refInput}
-        style={{ display: "none" }}
-        multiple={true}
-        onChange={handleFileSelect}
-      />
-      <Dialog>
-        <DialogTrigger asChild>
+    <>
+      {isRoot ? (
+        <>
+          {query.data?.map((r) => (
+            <Card
+              key={r.name}
+              onClick={() => navigate(r.name)}
+              className="cursor-pointer"
+            >
+              <CardHeader>
+                <CardTitle>{getFolderTitle(r.name)}</CardTitle>
+                <CardDescription>
+                  {getFolderDescription(r.name)}
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          ))}
+        </>
+      ) : (
+        <DataTable
+          query={query}
+          columns={columns}
+          toolbarConfig={toolbarConfig}
+        >
           <Button
             variant="outline"
-            className="h-8 w-8"
             size="icon"
-            disabled={pathname === "/portal/data/filesystem"}
+            onClick={() => {
+              navigate(backpath);
+            }}
+            className="h-8 w-8"
+            disabled={isRoot}
+            title="返回上一级"
           >
-            <PlusIcon />
+            <ArrowLeftIcon className="h-4 w-4" />
           </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>创建新文件夹</DialogTitle>
-            <DialogDescription>输入文件夹名</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                名称
-              </Label>
-              <Input
-                id="name"
-                type="text"
-                defaultValue=""
-                className="col-span-3"
-                ref={refInput2}
-                onChange={handleChange}
-              />
-            </div>
-          </div>
-          <DialogClose>
-            <DialogFooter>
-              <Button type="submit" onClick={() => CreateDir()}>
-                创建文件夹
+          <Button
+            onClick={() => {
+              refInput.current?.click();
+            }}
+            size="icon"
+            variant="outline"
+            className="h-8 w-8 p-0"
+            disabled={isRoot}
+            title="上传文件"
+          >
+            <UploadIcon className="h-4 w-4" />
+          </Button>
+          <input
+            type="file"
+            ref={refInput}
+            style={{ display: "none" }}
+            multiple={true}
+            onChange={handleFileSelect}
+          />
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-8 w-8"
+                size="icon"
+                disabled={isRoot}
+                title="创建文件夹"
+              >
+                <FolderPlusIcon className="h-4 w-4" />
               </Button>
-            </DialogFooter>
-          </DialogClose>
-        </DialogContent>
-      </Dialog>
-    </DataTable>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>创建新文件夹</DialogTitle>
+                <DialogDescription>输入文件夹名</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">
+                    名称
+                  </Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    defaultValue=""
+                    className="col-span-3"
+                    ref={refInput2}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+              <DialogClose>
+                <DialogFooter>
+                  <Button type="submit" onClick={() => CreateDir()}>
+                    创建文件夹
+                  </Button>
+                </DialogFooter>
+              </DialogClose>
+            </DialogContent>
+          </Dialog>
+        </DataTable>
+      )}
+    </>
   );
 };
