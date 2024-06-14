@@ -13,6 +13,7 @@ build_frontend:
   image: harbor.act.buaa.edu.cn/crater/node-pnpm:21
   script:
     - sed -i "s/VITE_APP_VERSION=\".*\"/VITE_APP_VERSION=\"${CI_COMMIT_SHORT_SHA}\"/" .env
+    - pnpm config set store-dir .pnpm-store
     - pnpm config set registry https://registry.npmmirror.com
     - pnpm install
     - pnpm build
@@ -21,6 +22,7 @@ build_frontend:
   cache:
     key: "crater-web-frontend"
     paths:
+      - .pnpm-store/
       - node_modules/
   artifacts:
     paths:
