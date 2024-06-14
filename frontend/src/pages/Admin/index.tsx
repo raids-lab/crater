@@ -10,13 +10,12 @@ import { User } from "./User";
 import Resource from "./Cluster/Resource";
 import UserProjectManagement from "./Queue/ProjectUser";
 import {
-  ContainerIcon,
+  BoxIcon,
   DatabaseIcon,
   FileTextIcon,
   FlaskConicalIcon,
   MessageSquareMoreIcon,
   ServerIcon,
-  SettingsIcon,
   UserRoundIcon,
   UsersRoundIcon,
 } from "lucide-react";
@@ -85,7 +84,7 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     path: "image",
-    icon: ContainerIcon,
+    icon: BoxIcon,
     children: [
       {
         route: {
@@ -124,15 +123,6 @@ const sidebarItems: SidebarItem[] = [
         },
       },
     ],
-  },
-  {
-    path: "setting",
-    icon: SettingsIcon,
-    children: [],
-    route: {
-      path: "setting",
-      lazy: () => import("./Setting"),
-    },
   },
 ];
 

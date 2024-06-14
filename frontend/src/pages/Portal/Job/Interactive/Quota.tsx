@@ -110,13 +110,13 @@ const Quota = () => {
   });
 
   return (
-    <div className="grid grid-flow-row grid-cols-2 gap-4 lg:col-span-2">
+    <>
       <QuotaCard resource={quota?.cpu} icon={CpuIcon} />
       <QuotaCard resource={quota?.memory} icon={MemoryStickIcon} />
       {quota?.gpus?.map((gpu, i) => (
         <QuotaCard key={i} resource={gpu} icon={GpuIcon} />
       ))}
-    </div>
+    </>
   );
 };
 

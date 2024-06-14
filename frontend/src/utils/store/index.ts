@@ -8,7 +8,8 @@ import { AccessMode, Role, CurrentAccount } from "@/services/api/auth";
  */
 const USER_INFO_KEY = "user_info";
 const LAST_VIEW_KEY = "last_view";
-export const CURRENT_ACCOUNT_KEY = "current_account";
+const CURRENT_ACCOUNT_KEY = "current_account";
+const SETTINGS_KEY = "settings";
 export const ACCESS_TOKEN_KEY = "access_token";
 export const REFRESH_TOKEN_KEY = "refresh_token";
 export const VITE_UI_THEME_KEY = "vite_ui_theme";
@@ -64,6 +65,17 @@ export const globalAccount = atomWithStorage(
   },
 );
 
+export const globalSettings = atomWithStorage(
+  SETTINGS_KEY,
+  {
+    scheduler: "volcano",
+  },
+  undefined,
+  {
+    getOnInit: true,
+  },
+);
+
 /**
  * Reset all states
  */
@@ -71,12 +83,14 @@ export const useResetStore = () => {
   const resetUserInfo = useResetAtom(globalUserInfo);
   const resetLastView = useResetAtom(globalLastView);
   const resetProject = useResetAtom(globalAccount);
+  const resetSettings = useResetAtom(globalSettings);
 
   const resetAll = () => {
     // Jotai
     resetUserInfo();
     resetLastView();
     resetProject();
+    resetSettings();
   };
 
   return { resetAll };

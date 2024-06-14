@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useAtom } from "jotai";
+import { globalSettings } from "@/utils/store";
 
 const formSchema = z.object({
   scheduler: z.string().min(1, { message: "请选择调度算法" }),
@@ -28,15 +30,16 @@ const formSchema = z.object({
 type FormSchema = z.infer<typeof formSchema>;
 
 export const Component = () => {
+  const [settings, setSettings] = useAtom(globalSettings);
+
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      scheduler: "volcano",
-    },
+    defaultValues: settings,
   });
 
   const handleSubmit = () => {
     toast.success("更新成功");
+    setSettings(form.getValues());
   };
 
   return (
@@ -68,11 +71,8 @@ export const Component = () => {
                         <SelectValue placeholder="请选择" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="original">
-                          Kubernetes 原生调度算法
-                        </SelectItem>
                         <SelectItem value="volcano">
-                          Volcano 调度算法
+                          Baseline - 原生调度算法
                         </SelectItem>
                         <SelectItem value="colocate">
                           GPUSched -
