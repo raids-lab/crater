@@ -26,7 +26,7 @@ import { CardTitle } from "@/components/ui-custom/card";
 import NivoPie from "@/components/chart/NivoPie";
 import SplitButton from "@/components/custom/SplitButton";
 import { Button } from "@/components/ui/button";
-import { ContainerIcon, FileTextIcon } from "lucide-react";
+import { BoxIcon, FileTextIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
 import ResourceBadges from "@/components/custom/ResourceBadges";
@@ -371,7 +371,7 @@ export const Component: FC = () => {
               onClick={() => navigate("/portal/image/createimage")}
               className="hidden xl:flex"
             >
-              <ContainerIcon className="mr-2 h-4 w-4" />
+              <BoxIcon className="mr-2 h-4 w-4" />
               镜像制作
             </Button>
             <Button

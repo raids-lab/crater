@@ -7,12 +7,12 @@ import DashboardLayout from "@/components/layout/Dashboard";
 import {
   BarChartBigIcon,
   BriefcaseIcon,
-  ContainerIcon,
+  BoxIcon,
   DatabaseIcon,
-  FileTextIcon,
   FlaskConicalIcon,
   MessageSquareMoreIcon,
   UsersRoundIcon,
+  SettingsIcon,
 } from "lucide-react";
 import batchRoutes from "./Job/Batch";
 import interactiveRoutes from "./Job/Interactive";
@@ -63,7 +63,7 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     path: "image",
-    icon: ContainerIcon,
+    icon: BoxIcon,
     children: [
       {
         route: {
@@ -112,11 +112,11 @@ const sidebarItems: SidebarItem[] = [
 
 const sidebarMenus: SidebarMenu[] = [
   {
-    path: "docs",
-    icon: FileTextIcon,
+    path: "setting",
+    icon: SettingsIcon,
     route: {
-      path: "docs",
-      lazy: () => import("./Docs"),
+      path: "setting",
+      lazy: () => import("./Setting"),
     },
   },
   {

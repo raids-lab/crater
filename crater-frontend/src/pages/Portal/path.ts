@@ -96,8 +96,8 @@ export const craterPath: PathInfo = {
       ],
     },
     {
-      path: "docs",
-      title: "使用文档",
+      path: "setting",
+      title: "系统设置",
     },
     {
       path: "feedback",
