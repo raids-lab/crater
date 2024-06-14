@@ -14,6 +14,7 @@ export enum JobPhase {
   Terminating = "Terminating",
   Terminated = "Terminated",
   Failed = "Failed",
+  Unknown = "",
 }
 
 export const apiJobAllList = () =>

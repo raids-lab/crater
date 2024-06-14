@@ -540,7 +540,7 @@ const toolbarConfig: DataTableToolbarConfig = {
   getHeader: getHeader,
 };
 
-export const Project = () => {
+export const Account = () => {
   const [pagination, setPagination] = useState<PaginationState>({
     pageSize: 10,
     pageIndex: 0,
@@ -750,11 +750,12 @@ export const Project = () => {
           );
 
           return (
-            <div className="flex flex-row items-center justify-end gap-1">
+            <div className="flex flex-row items-center justify-center gap-1">
               <Button
                 title="管理用户"
                 onClick={() => navigate(`${proj.id}`)}
                 variant="outline"
+                className="h-8 w-8"
                 size="icon"
               >
                 <UserRoundIcon className="h-4 w-4" />
@@ -765,13 +766,23 @@ export const Project = () => {
                 resourcesData={resourcesData}
                 apiProjcet={updateProject}
               >
-                <Button title="修改配额" variant="outline" size="icon">
+                <Button
+                  title="修改配额"
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                >
                   <PencilIcon className="h-4 w-4" />
                 </Button>
               </ProjectSheet>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button title="删除账户" variant="outline" size="icon">
+                  <Button
+                    title="删除账户"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                  >
                     <TrashIcon className="h-4 w-4" />
                   </Button>
                 </AlertDialogTrigger>
