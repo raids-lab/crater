@@ -92,7 +92,7 @@ export const Component: FC = () => {
   const data = useQuery({
     queryKey: ["data", "queuefiles", path],
     queryFn: () => apiGetQueueFiles(`${path}`),
-    select: (res) => res.data.data,
+    select: (res) => res.data.data ?? [],
   });
 
   const columns = useMemo<ColumnDef<FileItem>[]>(

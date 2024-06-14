@@ -93,7 +93,7 @@ export const Component: FC = () => {
   const data = useQuery({
     queryKey: ["data", "userfiles", path],
     queryFn: () => apiGetUserFiles(`${path}`),
-    select: (res) => res.data.data,
+    select: (res) => res.data.data ?? [],
     refetchInterval: REFETCH_INTERVAL,
   });
 

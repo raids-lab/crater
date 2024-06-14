@@ -75,13 +75,14 @@ function Directory({
     mutationFn: (truePath: string) => apiGetFiles(truePath),
     onSuccess: (fileList) => {
       if (fileList.data.data !== null) {
-        const childDirectories: DirectoryItem[] = fileList.data.data
-          .filter((file) => file.isdir)
-          .map((file) => {
-            return {
-              name: file.name,
-            };
-          });
+        const childDirectories: DirectoryItem[] =
+          fileList.data.data
+            ?.filter((file) => file.isdir)
+            .map((file) => {
+              return {
+                name: file.name,
+              };
+            }) ?? [];
         setIsLoading(false);
         onPathChange(directoryPath);
         setChildren(childDirectories);
@@ -104,7 +105,7 @@ function Directory({
   return (
     <div>
       <Button
-        className={` left-0 w-[500px]  justify-start px-1 py-2.5 text-left ${isSelected ? "bg-blue-50" : ""}`}
+        className={`left-0 w-[500px] justify-start px-1 py-2.5 text-left ${isSelected ? "bg-blue-50" : ""}`}
         variant="ghost"
         onClick={toggleOpen}
       >
@@ -177,11 +178,11 @@ export function FileSelect({
   }, [FileList, isLoading]);
 
   return (
-    <div className=" left-0  flex h-[410px] w-[590px] max-w-screen-sm flex-col">
+    <div className="left-0 flex h-[410px] w-[590px] max-w-screen-sm flex-col">
       {/* ...保留FileSelect组件的其他部分代码 */}
       <div className="bg-slate-150 left-0 flex h-[50px] w-full items-center gap-2.5 rounded-lg border-2 px-1 py-2.5">
         <ChevronRightIcon className="h-4 w-4" />
-        <div className="flex-1 ">{selectedPath || ""}</div>
+        <div className="flex-1">{selectedPath || ""}</div>
         <Button aria-label="Refresh" size="icon" onClick={handleRefreshClick}>
           <RefreshCwIcon className="h-4 w-4" />
         </Button>
