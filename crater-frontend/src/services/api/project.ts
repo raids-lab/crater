@@ -22,7 +22,9 @@ export interface ProjectBasic {
 
 export interface ICreateProject {
   name: string;
-  quota: string;
+  guaranteed: Record<string, string | number>;
+  deserved: Record<string, string | number>;
+  capacity: Record<string, string | number>;
 }
 
 export interface ICreateProjectResponse {
