@@ -1,7 +1,4 @@
-import {
-  IVolcanoJobInfo,
-  apiAdminTaskListByType,
-} from "@/services/api/admin/task";
+import { IJobInfo, apiAdminTaskListByType } from "@/services/api/vcjob";
 import { useQuery } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
@@ -121,7 +118,7 @@ const toolbarConfig: DataTableToolbarConfig = {
   getHeader: getHeader,
 };
 
-const vcjobColumns: ColumnDef<IVolcanoJobInfo>[] = [
+const vcjobColumns: ColumnDef<IJobInfo>[] = [
   {
     accessorKey: "name",
     header: ({ column }) => (

@@ -49,7 +49,7 @@ import {
   JobPhase,
   apiJobDelete,
   apiJupyterGetDetail,
-  apiJupyterLog,
+  apiJobLogs,
   apiJupyterYaml,
   Logs,
 } from "@/services/api/vcjob";
@@ -101,7 +101,7 @@ export const Component = () => {
 
   const { data: fetchLogsData, isLoading: fetchLogsBool } = useQuery({
     queryKey: ["job", "logs", jobName],
-    queryFn: () => apiJupyterLog(jobName),
+    queryFn: () => apiJobLogs(jobName),
     select: (res) => res.data.data.logs,
     refetchInterval: refetchInterval,
   });

@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { IJupyterDetail, JobPhase } from "@/services/api/vcjob";
-import { apiJupyterGetAdminDetail } from "@/services/api/admin/task";
+import { apiJupyterGetAdminDetail } from "@/services/api/vcjob";
 export interface Resource {
   [key: string]: string;
 }

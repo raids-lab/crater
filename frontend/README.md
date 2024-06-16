@@ -61,7 +61,7 @@ VITE_USE_MSW=false      # true to use MSW, false to use real API
 
 - 语言：[TypeScript](https://www.typescriptlang.org/docs)
 - 前端框架：[React](https://react.dev/learn)
-  - 状态管理：[Recoil](https://recoiljs.org/zh-hans/)
+  - 状态管理：[Jotai](https://jotai.org/)
   - 查询管理：[Tanstack Query](https://tanstack.com/query/latest)
 - CSS 框架：[Tailwind CSS](https://tailwindcss.com/docs/guides/vite)
 

@@ -1,7 +1,42 @@
 import { KubernetesResourceList } from "@/utils/resource";
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
-import { IVolcanoJobInfo } from "./admin/task";
+import { globalJobUrl, store } from "@/utils/store";
+
+export enum JobType {
+  Custom = "training",
+  Jupyter = "jupyter",
+  Tensorflow = "tensorflow",
+  Pytorch = "pytorch",
+  WebIDE = "webide",
+}
+
+export interface IJobInfo {
+  name: string;
+  jobName: string;
+  owner: string;
+  jobType: JobType;
+  queue: string;
+  status: string;
+  createdAt: string;
+  startedAt: string;
+  completedAt: string;
+  nodes: string[];
+  resources: Record<string, string>;
+}
+
+export const apiAdminTaskListByType = () =>
+  instance.get<IResponse<IJobInfo[]>>(`${VERSION}/admin/${JOB_URL}`);
+
+export const apiJobAllList = () =>
+  instance.get<IResponse<IJobInfo[]>>(`${VERSION}/${JOB_URL}/all`);
+
+export const apiJupyterGetAdminDetail = (jobName: string) =>
+  instance.get<IResponse<IJupyterDetail>>(
+    `${VERSION}/admin/${JOB_URL}/${jobName}/detail`,
+  );
+
+const JOB_URL = store.get(globalJobUrl);
 
 export enum JobPhase {
   Pending = "Pending",
@@ -17,14 +52,11 @@ export enum JobPhase {
   Unknown = "",
 }
 
-export const apiJobAllList = () =>
-  instance.get<IResponse<IVolcanoJobInfo[]>>(VERSION + "/vcjobs", {});
-
 export const apiJobBatchList = () =>
-  instance.get<IResponse<IVolcanoJobInfo[]>>(VERSION + "/vcjobs", {});
+  instance.get<IResponse<IJobInfo[]>>(`${VERSION}/${JOB_URL}`);
 
 export const apiJobInteractiveList = () =>
-  instance.get<IResponse<IVolcanoJobInfo[]>>(VERSION + "/vcjobs", {});
+  instance.get<IResponse<IJobInfo[]>>(`${VERSION}/${JOB_URL}`);
 
 export interface PodDetail {
   name: string;
@@ -94,7 +126,7 @@ export interface ITensorflowCreate {
 
 export const apiJupyterCreate = async (task: IJupyterCreate) => {
   const response = await instance.post<IResponse<string>>(
-    VERSION + "/vcjobs/jupyter",
+    `${VERSION}/${JOB_URL}/jupyter`,
     task,
   );
   return response.data;
@@ -102,7 +134,7 @@ export const apiJupyterCreate = async (task: IJupyterCreate) => {
 
 export const apiTrainingCreate = async (task: ITrainingCreate) => {
   const response = await instance.post<IResponse<string>>(
-    VERSION + "/vcjobs/training",
+    `${VERSION}/${JOB_URL}/training`,
     task,
   );
   return response.data;
@@ -110,7 +142,7 @@ export const apiTrainingCreate = async (task: ITrainingCreate) => {
 
 export const apiTensorflowCreate = async (task: ITensorflowCreate) => {
   const response = await instance.post<IResponse<string>>(
-    VERSION + "/vcjobs/tensorflow",
+    `${VERSION}/${JOB_URL}/tensorflow`,
     task,
   );
   return response.data;
@@ -118,7 +150,7 @@ export const apiTensorflowCreate = async (task: ITensorflowCreate) => {
 
 export const apiPytorchCreate = async (task: ITensorflowCreate) => {
   const response = await instance.post<IResponse<string>>(
-    VERSION + "/vcjobs/pytorch",
+    `${VERSION}/${JOB_URL}/pytorch`,
     task,
   );
   return response.data;
@@ -126,14 +158,14 @@ export const apiPytorchCreate = async (task: ITensorflowCreate) => {
 
 export const apiJobDelete = async (jobName: string) => {
   const response = await instance.delete<IResponse<string>>(
-    `${VERSION}/vcjobs/${jobName}`,
+    `${VERSION}/${JOB_URL}/${jobName}`,
   );
   return response.data;
 };
 
 export const apiJupyterGetDetail = (jobName: string) =>
   instance.get<IResponse<IJupyterDetail>>(
-    `${VERSION}/vcjobs/${jobName}/detail`,
+    `${VERSION}/${JOB_URL}/${jobName}/detail`,
   );
 export interface Logs {
   [key: string]: string;
@@ -142,21 +174,20 @@ interface GetJobLogResp {
   logs: Logs;
 }
 
-export const apiJupyterLog = (jobName: string) =>
-  instance.get<IResponse<GetJobLogResp>>(VERSION + `/vcjobs/${jobName}/log`);
+export const apiJobLogs = (jobName: string) =>
+  instance.get<IResponse<GetJobLogResp>>(
+    `${VERSION}/${JOB_URL}/${jobName}/log`,
+  );
 
 export const apiJupyterYaml = (jobName: string) =>
-  instance.get<IResponse<string>>(VERSION + `/vcjobs/${jobName}/yaml`);
-
-export const apiJTaskShareDirList = () =>
-  instance.get<IResponse<string[]>>(VERSION + "/sharedir/list");
+  instance.get<IResponse<string>>(`${VERSION}/${JOB_URL}/${jobName}/yaml`);
 
 export const apiJTaskImageList = () =>
   instance.get<
     IResponse<{
       images: string[];
     }>
-  >(VERSION + "/images/available?type=1");
+  >(`${VERSION}/images/available?type=2`);
 
 export const apiJupyterTokenGet = (jobName: string) =>
   instance.get<
@@ -164,4 +195,4 @@ export const apiJupyterTokenGet = (jobName: string) =>
       baseURL: string;
       token: string;
     }>
-  >(VERSION + `/vcjobs/${jobName}/token`);
+  >(`${VERSION}/${JOB_URL}/${jobName}/token`);

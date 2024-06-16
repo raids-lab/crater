@@ -6,7 +6,6 @@ import {
   RouterProvider,
 } from "react-router-dom";
 import "./index.css";
-import { RecoilRoot } from "recoil";
 import Login from "./pages/Login";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -14,12 +13,13 @@ import Signup from "./pages/Signup";
 import { portalRoute } from "./pages/Portal";
 import { Toaster } from "@/components/ui-custom/sonner";
 import { ThemeProvider } from "./utils/theme";
-import { VITE_UI_THEME_KEY } from "./utils/store";
+import { store, VITE_UI_THEME_KEY } from "./utils/store";
 import { adminRoute } from "./pages/Admin";
 import { recommendRoute } from "./pages/PortalR";
 import Jupyter from "./pages/Job/Jupyter";
 import { logger } from "./utils/loglevel";
 import Website from "./pages/Website";
+import { Provider as JotaiProvider } from "jotai";
 
 const router = createBrowserRouter([
   {
@@ -78,7 +78,7 @@ enableMocking()
   .then(() => {
     ReactDOM.createRoot(document.getElementById("root")!).render(
       <React.StrictMode>
-        <RecoilRoot>
+        <JotaiProvider store={store}>
           <ThemeProvider storageKey={VITE_UI_THEME_KEY}>
             <QueryClientProvider client={queryClient}>
               <RouterProvider router={router} />
@@ -86,7 +86,7 @@ enableMocking()
               <ReactQueryDevtools initialIsOpen={false} />
             </QueryClientProvider>
           </ThemeProvider>
-        </RecoilRoot>
+        </JotaiProvider>
       </React.StrictMode>,
     );
   })

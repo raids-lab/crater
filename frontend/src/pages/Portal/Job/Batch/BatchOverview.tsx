@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui-custom/card";
 import SplitButton from "@/components/custom/SplitButton";
-import { IVolcanoJobInfo, JobType } from "@/services/api/admin/task";
+import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
 import NodeBadges from "@/components/custom/NodeBadges";
 import ResourceBadges from "@/components/custom/ResourceBadges";
@@ -79,7 +79,7 @@ export const Component = () => {
     },
   });
 
-  const batchColumns = useMemo<ColumnDef<IVolcanoJobInfo>[]>(
+  const batchColumns = useMemo<ColumnDef<IJobInfo>[]>(
     () => [
       {
         id: "select",

@@ -16,11 +16,7 @@ import { getHeader } from "@/pages/Admin/Job/Volcano";
 import { TableDate } from "@/components/custom/TableDate";
 import { JobPhase } from "@/services/api/vcjob";
 import JobPhaseLabel, { jobPhases } from "@/components/custom/JobPhaseLabel";
-import {
-  IVolcanoJobInfo,
-  JobType,
-  apiTaskListByType,
-} from "@/services/api/admin/task";
+import { IJobInfo, JobType, apiJobAllList } from "@/services/api/vcjob";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { CardTitle } from "@/components/ui-custom/card";
 import NivoPie from "@/components/chart/NivoPie";
@@ -116,7 +112,7 @@ export const Component: FC = () => {
         }),
   });
 
-  const vcJobColumns = useMemo<ColumnDef<IVolcanoJobInfo>[]>(
+  const vcJobColumns = useMemo<ColumnDef<IJobInfo>[]>(
     () => [
       {
         accessorKey: "jobType",
@@ -215,18 +211,18 @@ export const Component: FC = () => {
     [],
   );
 
-  const vcjobQuery = useQuery({
-    queryKey: ["admin", "tasklist", "volcanoJob"],
-    queryFn: apiTaskListByType,
+  const jobQuery = useQuery({
+    queryKey: ["overview", "joblist"],
+    queryFn: apiJobAllList,
     select: (res) => res.data.data,
     refetchInterval: REFETCH_INTERVAL,
   });
 
   const jobStatus = useMemo(() => {
-    if (!vcjobQuery.data) {
+    if (!jobQuery.data) {
       return [];
     }
-    const data = vcjobQuery.data;
+    const data = jobQuery.data;
     const counts = data.reduce(
       (acc, item) => {
         const phase = item.status;
@@ -243,13 +239,13 @@ export const Component: FC = () => {
       label: phase,
       value: count,
     }));
-  }, [vcjobQuery.data]);
+  }, [jobQuery.data]);
 
   const queueStatus = useMemo(() => {
-    if (!vcjobQuery.data) {
+    if (!jobQuery.data) {
       return [];
     }
-    const data = vcjobQuery.data;
+    const data = jobQuery.data;
     const counts = data.reduce(
       (acc, item) => {
         const queue = item.queue;
@@ -266,13 +262,13 @@ export const Component: FC = () => {
       label: phase,
       value: count,
     }));
-  }, [vcjobQuery.data]);
+  }, [jobQuery.data]);
 
   const typeStatus = useMemo(() => {
-    if (!vcjobQuery.data) {
+    if (!jobQuery.data) {
       return [];
     }
-    const data = vcjobQuery.data;
+    const data = jobQuery.data;
     const counts = data.reduce(
       (acc, item) => {
         const type = item.jobType;
@@ -289,13 +285,13 @@ export const Component: FC = () => {
       label: phase,
       value: count,
     }));
-  }, [vcjobQuery.data]);
+  }, [jobQuery.data]);
 
   const gpuStatus = useMemo(() => {
-    if (!vcjobQuery.data) {
+    if (!jobQuery.data) {
       return [];
     }
-    const data = vcjobQuery.data;
+    const data = jobQuery.data;
     const counts = data.reduce(
       (acc, item) => {
         const resources = item.resources;
@@ -317,7 +313,7 @@ export const Component: FC = () => {
       label: phase,
       value: count,
     }));
-  }, [vcjobQuery.data]);
+  }, [jobQuery.data]);
 
   const navigate = useNavigate();
 
@@ -386,7 +382,7 @@ export const Component: FC = () => {
             </Button>
           </CardFooter>
         </Card>
-        <PieCard cardTitle="作业统计" isLoading={vcjobQuery.isLoading}>
+        <PieCard cardTitle="作业统计" isLoading={jobQuery.isLoading}>
           <NivoPie
             data={jobStatus}
             margin={{ top: 25, bottom: 30 }}
@@ -396,17 +392,17 @@ export const Component: FC = () => {
             arcLabelsTextColor="#ffffff"
           />
         </PieCard>
-        <PieCard cardTitle="账户统计" isLoading={vcjobQuery.isLoading}>
+        <PieCard cardTitle="账户统计" isLoading={jobQuery.isLoading}>
           <NivoPie data={queueStatus} margin={{ top: 25, bottom: 30 }} />
         </PieCard>
-        <PieCard cardTitle="类型统计" isLoading={vcjobQuery.isLoading}>
+        <PieCard cardTitle="类型统计" isLoading={jobQuery.isLoading}>
           <NivoPie
             data={typeStatus}
             margin={{ top: 25, bottom: 30 }}
             colors={{ scheme: "accent" }}
           />
         </PieCard>
-        <PieCard cardTitle="已申请 GPU" isLoading={vcjobQuery.isLoading}>
+        <PieCard cardTitle="已申请 GPU" isLoading={jobQuery.isLoading}>
           <NivoPie
             data={gpuStatus}
             margin={{ top: 25, bottom: 30 }}
@@ -419,7 +415,7 @@ export const Component: FC = () => {
           title: "作业信息",
           description: "查看集群作业的运行情况",
         }}
-        query={vcjobQuery}
+        query={jobQuery}
         columns={vcJobColumns}
         toolbarConfig={toolbarConfig}
       ></DataTable>
