@@ -248,7 +248,7 @@ func (mgr *VolcanojobMgr) GetJobLog(c *gin.Context) {
 		return
 	}
 
-	if job.Labels[LabelKeyTaskUser] != token.Username {
+	if job.Spec.Queue != token.QueueName {
 		resputil.Error(c, "Job not found", resputil.NotSpecified)
 		return
 	}
@@ -279,7 +279,7 @@ type (
 		Owner              string          `json:"owner"`
 		JobType            string          `json:"jobType"`
 		Queue              string          `json:"queue"`
-		Status             batch.JobPhase  `json:"status"`
+		Status             string          `json:"status"`
 		CreationTimestamp  metav1.Time     `json:"createdAt"`
 		RunningTimestamp   metav1.Time     `json:"startedAt"`
 		CompletedTimestamp metav1.Time     `json:"completedAt"`
@@ -386,7 +386,7 @@ func (mgr *VolcanojobMgr) convertJobResp(c *gin.Context, jobs *batch.JobList) []
 			Owner:              job.Labels[LabelKeyTaskUser],
 			JobType:            job.Labels[LabelKeyTaskType],
 			Queue:              job.Spec.Queue,
-			Status:             job.Status.State.Phase,
+			Status:             string(job.Status.State.Phase),
 			CreationTimestamp:  job.CreationTimestamp,
 			RunningTimestamp:   runningTimestamp,
 			CompletedTimestamp: completedTimestamp,
@@ -453,7 +453,7 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		return
 	}
 
-	if job.Labels[LabelKeyTaskUser] != token.Username {
+	if job.Spec.Queue != token.QueueName {
 		resputil.Error(c, "Job not found", resputil.NotSpecified)
 		return
 	}
@@ -501,7 +501,7 @@ func getJobDetailFuntion(c *gin.Context, mgr *VolcanojobMgr, job *batch.Job, nam
 				continue
 			}
 			// assume one pod running one container
-			if pod.Status.Phase == v1.PodRunning {
+			if pod.Status.Phase != v1.PodRunning {
 				portStr := ""
 				for _, port := range pod.Spec.Containers[0].Ports {
 					portStr += fmt.Sprintf("%s:%d,", port.Name, port.ContainerPort)
@@ -600,7 +600,7 @@ func (mgr *VolcanojobMgr) GetJobYaml(c *gin.Context) {
 		return
 	}
 
-	if job.Labels[LabelKeyTaskUser] != token.Username {
+	if job.Spec.Queue != token.QueueName {
 		resputil.Error(c, "Job not found", resputil.NotSpecified)
 		return
 	}

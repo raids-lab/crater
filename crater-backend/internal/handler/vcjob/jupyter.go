@@ -285,7 +285,7 @@ func (mgr *VolcanojobMgr) GetJupyterIngress(c *gin.Context) {
 	}
 
 	if job.Labels[LabelKeyTaskUser] != token.Username {
-		resputil.Error(c, "Job not found", resputil.NotSpecified)
+		resputil.Error(c, "Job do not belong to the user", resputil.NotSpecified)
 		return
 	}
 

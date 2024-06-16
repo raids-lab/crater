@@ -2,24 +2,24 @@ package aijob
 
 import (
 	"fmt"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/internal/handler"
+	"github.com/raids-lab/crater/internal/handler/vcjob"
 	"github.com/raids-lab/crater/internal/resputil"
+	interutil "github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/crclient"
 	tasksvc "github.com/raids-lab/crater/pkg/db/task"
-	usersvc "github.com/raids-lab/crater/pkg/db/user"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
 	payload "github.com/raids-lab/crater/pkg/server/payload"
 	"github.com/raids-lab/crater/pkg/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type AIJobMgr struct {
 	taskService    tasksvc.DBService
-	userService    usersvc.DBService
 	pvcClient      *crclient.PVCClient
 	logClient      *crclient.LogClient
 	taskController *aitaskctl.TaskController
@@ -28,7 +28,6 @@ type AIJobMgr struct {
 func NewAITaskMgr(taskController *aitaskctl.TaskController, pvcClient *crclient.PVCClient, logClient *crclient.LogClient) handler.Manager {
 	return &AIJobMgr{
 		taskService:    tasksvc.NewDBService(),
-		userService:    usersvc.NewDBService(),
 		pvcClient:      pvcClient,
 		logClient:      logClient,
 		taskController: taskController,
@@ -45,7 +44,7 @@ func (mgr *AIJobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET(":name/log", mgr.GetLogs)
 	g.GET(":name/detail", mgr.Get)
 
-	g.POST("custom", mgr.Create)
+	g.POST("training", mgr.Create)
 }
 
 func (mgr *AIJobMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -62,28 +61,23 @@ func (mgr *AIJobMgr) NotifyTaskUpdate(taskID uint, userName string, op util.Task
 }
 
 func (mgr *AIJobMgr) Create(c *gin.Context) {
-	logutils.Log.Infof("Task Create, url: %s", c.Request.URL)
-	var req payload.CreateTaskReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
-		logutils.Log.Error(msg)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+	var vcReq vcjob.CreateCustomReq
+	if err := c.ShouldBindJSON(&vcReq); err != nil {
+		resputil.BadRequestError(c, err.Error())
 		return
 	}
 
-	userContext, _ := util.GetUserFromGinContext(c)
-	req.UserName = userContext.UserName
-	req.Namespace = userContext.Namespace
+	var req payload.CreateTaskReq
 
-	if req.ShareDirs != nil && len(req.ShareDirs) > 0 {
-		for pvcName := range req.ShareDirs {
-			err := mgr.pvcClient.CheckOrCreateUserPvc(req.Namespace, pvcName)
-			if err != nil {
-				resputil.Error(c, fmt.Sprintf("get user pvc failed, err %v", err), resputil.NotSpecified)
-				return
-			}
-		}
-	}
+	token := interutil.GetToken(c)
+	req.TaskName = vcReq.Name
+	req.UserName = token.QueueName
+	req.SLO = 0
+	req.TaskType = "training"
+	req.Image = vcReq.Image
+	req.ResourceRequest = vcReq.Resource
+	req.Command = vcReq.Command
+	req.WorkingDir = vcReq.WorkingDir
 
 	taskModel := models.FormatTaskAttrToModel(&req.TaskAttr)
 	err := mgr.taskService.Create(taskModel)
@@ -101,22 +95,46 @@ func (mgr *AIJobMgr) Create(c *gin.Context) {
 }
 
 func (mgr *AIJobMgr) List(c *gin.Context) {
-	var req payload.ListTaskReq
-	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate list parameters failed, err %v", err), resputil.NotSpecified)
-		return
-	}
-
-	userContext, _ := util.GetUserFromGinContext(c)
-	taskModels, err := mgr.taskService.ListByUserAndTaskType(userContext.UserName, models.TrainingTask)
+	token := interutil.GetToken(c)
+	taskModels, err := mgr.taskService.ListByQueue(token.QueueName)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("list task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
-	resp := payload.ListTaskResp{
-		Rows: taskModels,
+
+	var jobs []vcjob.JobResp
+	for i := range taskModels {
+		taskModel := &taskModels[i]
+
+		var runningTimestamp metav1.Time
+		if taskModel.StartedAt != nil {
+			runningTimestamp = metav1.NewTime(*taskModel.StartedAt)
+		}
+
+		var completedTimestamp metav1.Time
+		if taskModel.FinishAt != nil {
+			completedTimestamp = metav1.NewTime(*taskModel.FinishAt)
+		}
+
+		resources, _ := models.JSONToResourceList(taskModel.ResourceRequest)
+
+		job := vcjob.JobResp{
+			Name:               taskModel.TaskName,
+			JobName:            taskModel.JobName,
+			Owner:              token.Username,
+			JobType:            taskModel.TaskType,
+			Queue:              taskModel.UserName,
+			Status:             taskModel.Status,
+			CreationTimestamp:  metav1.NewTime(taskModel.CreatedAt),
+			RunningTimestamp:   runningTimestamp,
+			CompletedTimestamp: completedTimestamp,
+			Nodes:              []string{},
+			Resources:          resources,
+		}
+		jobs = append(jobs, job)
 	}
-	resputil.Success(c, resp)
+
+	resputil.Success(c, jobs)
 }
 
 func (mgr *AIJobMgr) Get(c *gin.Context) {
@@ -126,8 +144,8 @@ func (mgr *AIJobMgr) Get(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("validate get parameters failed, err %v", err), resputil.NotSpecified)
 		return
 	}
-	userContext, _ := util.GetUserFromGinContext(c)
-	taskModel, err := mgr.taskService.GetByUserAndID(userContext.UserName, req.TaskID)
+	token := interutil.GetToken(c)
+	taskModel, err := mgr.taskService.GetByUserAndID(token.Username, req.TaskID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
@@ -146,8 +164,8 @@ func (mgr *AIJobMgr) GetLogs(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("validate get parameters failed, err %v", err), resputil.NotSpecified)
 		return
 	}
-	userContext, _ := util.GetUserFromGinContext(c)
-	taskModel, err := mgr.taskService.GetByUserAndID(userContext.UserName, req.TaskID)
+	token := interutil.GetToken(c)
+	taskModel, err := mgr.taskService.GetByUserAndID(token.Username, req.TaskID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
@@ -183,18 +201,18 @@ func (mgr *AIJobMgr) Delete(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("validate delete parameters failed, err %v", err), resputil.NotSpecified)
 		return
 	}
-	userContext, _ := util.GetUserFromGinContext(c)
+	token := interutil.GetToken(c)
 	// check if user is authorized to delete the task
-	_, err = mgr.taskService.GetByUserAndID(userContext.UserName, req.TaskID)
+	_, err = mgr.taskService.GetByUserAndID(token.Username, req.TaskID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
-	mgr.NotifyTaskUpdate(req.TaskID, userContext.UserName, util.DeleteTask)
+	mgr.NotifyTaskUpdate(req.TaskID, token.Username, util.DeleteTask)
 	if req.ForceDelete {
-		err = mgr.taskService.ForceDeleteByUserAndID(userContext.UserName, req.TaskID)
+		err = mgr.taskService.ForceDeleteByUserAndID(token.Username, req.TaskID)
 	} else {
-		err = mgr.taskService.DeleteByUserAndID(userContext.UserName, req.TaskID)
+		err = mgr.taskService.DeleteByUserAndID(token.Username, req.TaskID)
 	}
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("delete task failed, err %v", err), resputil.NotSpecified)
@@ -212,8 +230,8 @@ func (mgr *AIJobMgr) UpdateSLO(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("validate update parameters failed, err %v", err), resputil.NotSpecified)
 		return
 	}
-	userContext, _ := util.GetUserFromGinContext(c)
-	task, err := mgr.taskService.GetByUserAndID(userContext.UserName, req.TaskID)
+	token := interutil.GetToken(c)
+	task, err := mgr.taskService.GetByUserAndID(token.Username, req.TaskID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
@@ -224,16 +242,16 @@ func (mgr *AIJobMgr) UpdateSLO(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("update task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
-	mgr.NotifyTaskUpdate(req.TaskID, userContext.UserName, util.UpdateTask)
+	mgr.NotifyTaskUpdate(req.TaskID, token.Username, util.UpdateTask)
 	logutils.Log.Infof("update task success, taskID: %d", req.TaskID)
 	resputil.Success(c, "")
 }
 
 func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
-	userContext, _ := util.GetUserFromGinContext(c)
-	quotaInfo := mgr.taskController.GetQuotaInfoSnapshotByUsername(userContext.UserName)
+	token := interutil.GetToken(c)
+	quotaInfo := mgr.taskController.GetQuotaInfoSnapshotByUsername(token.Username)
 	if quotaInfo == nil {
-		resputil.Error(c, fmt.Sprintf("get user:%v quota failed", userContext.UserName), resputil.NotSpecified)
+		resputil.Error(c, fmt.Sprintf("get user:%v quota failed", token.Username), resputil.NotSpecified)
 		return
 	}
 	resp := payload.GetQuotaResp{
@@ -245,8 +263,8 @@ func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
 }
 
 func (mgr *AIJobMgr) GetTaskStats(c *gin.Context) {
-	userContext, _ := util.GetUserFromGinContext(c)
-	taskCountList, err := mgr.taskService.GetUserTaskStatusCount(userContext.UserName)
+	token := interutil.GetToken(c)
+	taskCountList, err := mgr.taskService.GetUserTaskStatusCount(token.Username)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task count statistic failed, err %v", err), resputil.NotSpecified)
 		return
