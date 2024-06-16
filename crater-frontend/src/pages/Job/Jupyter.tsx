@@ -2,10 +2,9 @@ import type { FC } from "react";
 import { useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { apiJupyterTokenGet } from "@/services/api/vcjob";
+import { apiJobLogs, apiJupyterTokenGet } from "@/services/api/vcjob";
 import CraterIcon from "@/components/icon/CraterIcon";
 import { Button } from "@/components/ui/button";
-import { apiJobGetLog } from "@/services/api/aiTask";
 import LogSheet from "@/components/custom/LogSheet";
 
 const Jupyter: FC = () => {
@@ -14,7 +13,7 @@ const Jupyter: FC = () => {
 
   const { data: taskLogs } = useQuery({
     queryKey: ["jupyter", "tasklog", id],
-    queryFn: () => apiJobGetLog(id ?? ""),
+    queryFn: () => apiJobLogs(id ?? ""),
     select: (res) => {
       const logs = res.data.data.logs;
       const firstKey = Object.keys(logs)[0];

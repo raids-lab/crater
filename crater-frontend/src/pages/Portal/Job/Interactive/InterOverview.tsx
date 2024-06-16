@@ -38,7 +38,7 @@ import {
 import { CardTitle } from "@/components/ui-custom/card";
 import { ExternalLink, TrashIcon } from "lucide-react";
 import SplitButton from "@/components/custom/SplitButton";
-import { IVolcanoJobInfo, JobType } from "@/services/api/admin/task";
+import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
@@ -86,7 +86,7 @@ export const Component = () => {
     },
   });
 
-  const interColumns = useMemo<ColumnDef<IVolcanoJobInfo>[]>(
+  const interColumns = useMemo<ColumnDef<IJobInfo>[]>(
     () => [
       {
         id: "select",

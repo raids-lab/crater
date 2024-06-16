@@ -1,8 +1,7 @@
-import { KubernetesResource, KubernetesResourceList } from "@/utils/resource";
+import { KubernetesResource } from "@/utils/resource";
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
 import { showErrorToast } from "@/utils/toast";
-import { JobPhase } from "./vcjob";
 
 export interface IAiTask {
   id: number;
@@ -104,90 +103,9 @@ export const convertAiTask = (task: IAiTask): AiTask => {
   }
 };
 
-export interface ITaskCreate {
-  taskName: string;
-  slo: number;
-  taskType: string;
-  resourceRequest: KubernetesResourceList;
-  image: string;
-  workingDir: string;
-  shareDirs: {
-    [key: string]: string;
-  }[];
-
-  command: string;
-  gpuModel: string;
-  schedulerName: string;
-}
-
-export const apiAiTaskCreate = async (task: ITaskCreate) => {
-  const response = await instance.post<IResponse<string>>(
-    VERSION + "/aijobs",
-    task,
-  );
-  return response.data;
-};
-
-export const apiAiTaskDelete = async (taskID: number) => {
-  const response = await instance.delete<IResponse<string>>(
-    VERSION + "/aijobs/" + taskID,
-  );
-  return response.data;
-};
-
-export const apiAiJobList = (
-  taskType: string,
-  pageSize: number,
-  pageIndex: number,
-) =>
-  instance.get<
-    IResponse<{
-      rows: IAiTask[];
-    }>
-  >(VERSION + "/aijobs", {
-    params: {
-      taskType,
-      pageSize,
-      pageIndex,
-    },
-  });
-
-export const apiAiTaskQuota = () =>
-  instance.get<
-    IResponse<{
-      hard: KubernetesResource;
-      hardUsed: KubernetesResource;
-      softUsed: KubernetesResource;
-    }>
-  >(VERSION + "/aitask/getQuota");
-
 export const apiAiTaskGet = (taskID: number) =>
   instance.get<IResponse<IAiTask>>(VERSION + "/aitask/get", {
     params: {
       taskID,
     },
   });
-
-export const apiJobGetLog = (jobName: string) =>
-  instance.get<IResponse<{ logs: Record<string, string> }>>(
-    `${VERSION}/vcjobs/${jobName}/log`,
-  );
-
-//   path: /v1/sharedir/list
-//   method: GET
-//   response
-// {
-// "data": [
-//     "dnn-train-data",
-//     "jupyterhub-shared-volume"
-// ],
-// "error": "",
-// "status": true
-// }
-export const apiAiTaskShareDirList = () =>
-  instance.get<IResponse<string[]>>(VERSION + "/sharedir/list");
-
-export const apiAiTaskStats = () =>
-  instance.get<IResponse<{ taskCount: { Status: JobPhase; Count: number }[] }>>(
-    VERSION + "/aijobs/jobStats",
-  );

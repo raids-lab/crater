@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Badge } from "../ui/badge";
-import { JobType } from "@/services/api/admin/task";
+import { JobType } from "@/services/api/vcjob";
 
 export const jobTypes = [
   {

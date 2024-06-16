@@ -40,6 +40,8 @@ export const Component = () => {
   const handleSubmit = () => {
     toast.success("更新成功");
     setSettings(form.getValues());
+    // refresh page
+    window.location.reload();
   };
 
   return (

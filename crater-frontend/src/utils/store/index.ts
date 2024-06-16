@@ -1,10 +1,12 @@
-import { atom } from "jotai";
+import { atom, createStore } from "jotai";
 import { atomWithStorage, useResetAtom } from "jotai/utils";
 import { UserInfo } from "@/hooks/useAuth";
 import { AccessMode, Role, CurrentAccount } from "@/services/api/auth";
 
+export const store = createStore();
+
 /**
- * LocalStorage and Recoil Keys
+ * LocalStorage and Jotai Keys
  */
 const USER_INFO_KEY = "user_info";
 const LAST_VIEW_KEY = "last_view";
@@ -75,6 +77,20 @@ export const globalSettings = atomWithStorage(
     getOnInit: true,
   },
 );
+
+export const globalJobUrl = atom((get) => {
+  const scheduler = get(globalSettings).scheduler;
+  switch (scheduler) {
+    case "volcano":
+      return "vcjobs";
+    case "colocate":
+      return "aijobs";
+    case "sparse":
+      return "spjobs";
+    default:
+      return "vcjobs";
+  }
+});
 
 /**
  * Reset all states
