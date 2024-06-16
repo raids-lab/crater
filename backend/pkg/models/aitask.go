@@ -103,15 +103,6 @@ type TaskAttr struct {
 	StartedAt time.Time `gorm:"column:started_at" json:"startedAt"`
 }
 
-type JupyterTaskAttr struct {
-	TaskName        string                `json:"taskName" binding:"required"`
-	Image           string                `json:"image" binding:"required"`
-	ResourceRequest v1.ResourceList       `json:"resourceRequest" binding:"required"`
-	ShareDirs       map[string][]DirMount `json:"shareDirs"`
-	GPUModel        string                `json:"gpuModel"`
-	SchedulerName   string                `json:"schedulerName"`
-}
-
 type TaskStatusCount struct {
 	Status string
 	Count  int

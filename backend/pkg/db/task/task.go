@@ -17,7 +17,7 @@ type DBService interface {
 	ForceDeleteByUserAndID(userName string, taskID uint) error
 	ListByTaskType(taskType string, page, pageSize int) ([]models.AITask, int64, error)
 	ListByUserAndStatuses(userName string, status []string) ([]models.AITask, error)
-	ListByUserAndTaskType(userName string, taskType string) ([]models.AITask, error)
+	ListByQueue(queue string) ([]models.AITask, error)
 	GetByID(taskID uint) (*models.AITask, error)
 	GetByUserAndID(userName string, taskID uint) (*models.AITask, error)
 	UpdateProfilingStat(taskID uint, profileStatus uint, stat string, status string) error
@@ -112,9 +112,9 @@ func (s *service) ListByTaskType(taskType string, page, pageSize int) ([]models.
 	return tasks, totalRows, err
 }
 
-func (s *service) ListByUserAndTaskType(userName, taskType string) ([]models.AITask, error) {
+func (s *service) ListByQueue(queue string) ([]models.AITask, error) {
 	var tasks []models.AITask
-	err := db.Orm.Where("username = ? and task_type = ? and is_deleted = ?", userName, taskType, false).Find(&tasks).Error
+	err := db.Orm.Where("username = ? and is_deleted = ?", queue, false).Find(&tasks).Error
 	return tasks, err
 }
 

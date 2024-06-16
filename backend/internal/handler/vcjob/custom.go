@@ -19,7 +19,7 @@ import (
 )
 
 type (
-	CreateTrainingReq struct {
+	CreateCustomReq struct {
 		CreateJobCommon `json:",inline"`
 		Name            string          `json:"name" binding:"required"`
 		Resource        v1.ResourceList `json:"resource"`
@@ -48,7 +48,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 		return
 	}
 
-	var req CreateTrainingReq
+	var req CreateCustomReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
