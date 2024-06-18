@@ -1,16 +1,28 @@
 package model
 
-import "gorm.io/gorm"
+import (
+	"gorm.io/datatypes"
+	"gorm.io/gorm"
+	v1 "k8s.io/api/core/v1"
+)
 
 const (
 	DefaultQueueID = 1
 )
+
+type QueueQuota struct {
+	Guaranteed v1.ResourceList `json:"guaranteed"`
+	Deserved   v1.ResourceList `json:"deserved"`
+	Capability v1.ResourceList `json:"capability"`
+}
 
 type Queue struct {
 	gorm.Model
 	Name     string `gorm:"uniqueIndex;type:varchar(32);not null;comment:队列名称 (对应 Volcano Queue CRD)"`
 	Nickname string `gorm:"type:varchar(128);not null;comment:队列别名 (用于显示)"`
 	Space    string `gorm:"uniqueIndex;type:varchar(512);not null;comment:队列空间绝对路径"`
+
+	Quota datatypes.JSONType[QueueQuota] `gorm:"comment:资源配额"`
 
 	UserQueues    []UserQueue
 	QueueDatasets []QueueDataset

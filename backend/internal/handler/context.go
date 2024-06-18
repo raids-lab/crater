@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
@@ -29,8 +30,9 @@ func NewContextMgr(cl client.Client) Manager {
 func (mgr *ContextMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *ContextMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.GET("/queue", mgr.GetQueue)
-	g.GET("/info", mgr.GetUserInfo)
+	g.GET("queues", mgr.ListUserQueue)
+	g.GET("quota", mgr.GetQuota)
+	g.GET("info", mgr.GetUserInfo)
 }
 
 func (mgr *ContextMgr) RegisterAdmin(_ *gin.RouterGroup) {}
@@ -56,7 +58,7 @@ type (
 	}
 )
 
-// GetQueue godoc
+// GetQuota godoc
 // @Summary Get the queue information
 // @Description query the queue information by client-go
 // @Tags Context
@@ -69,7 +71,7 @@ type (
 // @Router /v1/context/queue [get]
 //
 //nolint:gocyclo // TODO: refactor
-func (mgr *ContextMgr) GetQueue(c *gin.Context) {
+func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 	token := util.GetToken(c)
 	if token.QueueName == util.QueueNameNull {
 		resputil.Error(c, "Queue not specified", resputil.QueueNotFound)
@@ -208,4 +210,41 @@ func (mgr *ContextMgr) GetUserInfo(c *gin.Context) {
 	}
 
 	resputil.Success(c, info)
+}
+
+type (
+	UserQueueResp struct {
+		Name       string           `json:"id"`
+		Nickname   string           `json:"name"`
+		Role       model.Role       `json:"role"`
+		AccessMode model.AccessMode `json:"access"`
+	}
+)
+
+// ListUserQueue godoc
+// @Summary list user queues
+// @Description list user queues by user id
+// @Tags Queue
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} resputil.Response[[]UserQueueResp] "User queue list"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/queues [get]
+func (mgr *ContextMgr) ListUserQueue(c *gin.Context) {
+	token := util.GetToken(c)
+
+	uq := query.UserQueue
+	q := query.Queue
+
+	var userQueues []UserQueueResp
+	err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID)).
+		Join(q, uq.QueueID.EqCol(q.ID)).Select(q.Name, q.Nickname, uq.Role, uq.AccessMode).Scan(&userQueues)
+	if err != nil {
+		resputil.Error(c, "List user queue failed", resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, userQueues)
 }
