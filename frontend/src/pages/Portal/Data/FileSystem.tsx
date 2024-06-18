@@ -29,12 +29,14 @@ import {
   Folder,
   FolderPlusIcon,
   LogInIcon,
+  Trash2,
   UploadIcon,
 } from "lucide-react";
 import { useSetAtom } from "jotai";
 import { globalBreadCrumb } from "@/utils/store";
 import {
   FileItem,
+  apiFileDelete,
   apiGetFiles,
   apiMkdir,
   apiUploadFile,
@@ -49,6 +51,17 @@ import {
 } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui-custom/card";
 import { getFolderTitle } from "@/components/custom/LazyFileTree";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui-custom/alert-dialog";
 
 const getFolderDescription = (folder: string) => {
   // public: 公共空间
@@ -172,7 +185,15 @@ export const Component: FC = () => {
     () => pathname === "/portal/data/filesystem",
     [pathname],
   );
-
+  const { mutate: deleteFile } = useMutation({
+    mutationFn: (req: string) => apiFileDelete(req),
+    onSuccess: async () => {
+      toast.success("删除成功");
+      await queryClient.invalidateQueries({
+        queryKey: ["data", "filesystem", path],
+      });
+    },
+  });
   const columns = useMemo<ColumnDef<FileItem>[]>(
     () => [
       {
@@ -274,13 +295,83 @@ export const Component: FC = () => {
                 >
                   <DownloadIcon className="h-4 w-4" />
                 </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <div>
+                      <Button
+                        variant="outline"
+                        className="h-8 w-8 p-0 hover:text-red-700"
+                        title="删除文件"
+                      >
+                        <Trash2 size={16} strokeWidth={2} />
+                      </Button>
+                    </div>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>删除文件</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        文件将删除
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>取消</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        onClick={() => {
+                          deleteFile(path + "/" + row.original.name);
+                        }}
+                      >
+                        删除
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            );
+          } else {
+            return (
+              <div className="flex flex-row space-x-1">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <div>
+                      <Button
+                        variant="outline"
+                        className="h-8 w-8 p-0 hover:text-red-700"
+                        title="删除文件夹"
+                        disabled={isRoot}
+                      >
+                        <Trash2 size={16} strokeWidth={2} />
+                      </Button>
+                    </div>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>删除文件夹</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        文件将删除
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>取消</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        onClick={() => {
+                          deleteFile(path + "/" + row.original.name);
+                        }}
+                      >
+                        删除
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             );
           }
         },
       },
     ],
-    [navigate, path, pathname],
+    [navigate, deleteFile, isRoot, path, pathname],
   );
 
   const refInput = useRef<HTMLInputElement>(null);
@@ -313,7 +404,7 @@ export const Component: FC = () => {
       const filedataBuffer = await file.arrayBuffer();
       await apiUploadFile(`${path}/` + filename, filedataBuffer)
         .then(() => {
-          toast.success("文件已下载");
+          toast.success("文件已上传");
         })
         .catch((error) => {
           showErrorToast(error);
