@@ -506,7 +506,9 @@ func getJobDetailFuntion(c *gin.Context, mgr *VolcanojobMgr, job *batch.Job, nam
 				for _, port := range pod.Spec.Containers[0].Ports {
 					portStr += fmt.Sprintf("%s:%d,", port.Name, port.ContainerPort)
 				}
-				portStr = portStr[:len(portStr)-1]
+				if portStr != "" {
+					portStr = portStr[:len(portStr)-1]
+				}
 				podDetail := PodDetail{
 					Name:     pod.Name,
 					NodeName: pod.Spec.NodeName,
@@ -535,7 +537,7 @@ func getJobDetailFuntion(c *gin.Context, mgr *VolcanojobMgr, job *batch.Job, nam
 		Status:            job.Status.State.Phase,
 		CreationTimestamp: job.CreationTimestamp,
 		RunningTimestamp:  runningTimestamp,
-		Duration:          fmt.Sprintf("%.0fs", time.Since(runningTimestamp.Time).Seconds()),
+		Duration:          time.Since(runningTimestamp.Time).Truncate(time.Second).String(),
 		Retry:             fmt.Sprintf("%d", retryAmount),
 		PodDetails:        PodDetails,
 		UseTensorBoard:    useTensorBoard,

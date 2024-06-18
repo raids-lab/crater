@@ -9,6 +9,7 @@ import (
 	docs "github.com/raids-lab/crater/docs"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/handler/aijob"
+	"github.com/raids-lab/crater/internal/handler/spjob"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	"github.com/raids-lab/crater/internal/middleware"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
@@ -95,6 +96,7 @@ func (b *Backend) RegisterService(
 	recommenddljobMgr := handler.NewRecommendDLJobMgr(cl)
 	volcanoMgr := vcjob.NewVolcanojobMgr(cl, kc)
 	aijobMgr := aijob.NewAITaskMgr(aitaskCtrl, &pvcClient, &logClient)
+	sparseMgr := spjob.NewSparseJobMgr(cl, &logClient)
 	datasetMgr := handler.NewFileMgr()
 	///////////////////////////////////////
 	//// Public routers, no need login ////
@@ -122,6 +124,7 @@ func (b *Backend) RegisterService(
 	recommenddljobMgr.RegisterProtected(protectedRouter.Group("/recommenddljob"))
 	volcanoMgr.RegisterProtected(protectedRouter.Group("/vcjobs"))
 	aijobMgr.RegisterProtected(protectedRouter.Group("/aijobs"))
+	sparseMgr.RegisterProtected(protectedRouter.Group("/spjobs"))
 	datasetMgr.RegisterProtected(protectedRouter.Group("/dataset"))
 
 	///////////////////////////////////////
@@ -140,5 +143,6 @@ func (b *Backend) RegisterService(
 	recommenddljobMgr.RegisterAdmin(adminRouter.Group("/recommenddljob"))
 	volcanoMgr.RegisterAdmin(adminRouter.Group("/vcjobs"))
 	aijobMgr.RegisterAdmin(adminRouter.Group("/aijobs"))
+	sparseMgr.RegisterAdmin(adminRouter.Group("/spjobs"))
 	datasetMgr.RegisterAdmin(adminRouter.Group("/dataset"))
 }

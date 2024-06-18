@@ -31,7 +31,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	jobName := fmt.Sprintf("py-%s-%s", token.Username, uuid.New().String()[:5])
 
 	// 1. Volume Mounts
-	volumes, volumeMounts, err := generateVolumeMounts(c, token.UserID, req.VolumeMounts)
+	volumes, volumeMounts, err := GenerateVolumeMounts(c, token.UserID, req.VolumeMounts)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.UserNotFound)
 		return
