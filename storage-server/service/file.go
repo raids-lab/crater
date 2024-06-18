@@ -84,30 +84,87 @@ func CheckJWTToken(c *gin.Context) (util.JWTMessage, error) {
 	return token, nil
 }
 
-func GetPermissionFromToken(token util.JWTMessage) Permissions {
-	var p Permissions
-	if token.QueueID == util.QueueIDNull {
-		p.Queue = model.ReadWrite
-		p.Public = model.FilePermission(token.PublicAccessMode)
-		return p
+func GetPermissionFromToken(token util.JWTMessage) model.FilePermission {
+	if token.RolePlatform == model.RoleAdmin {
+		return model.ReadWrite
+	} else if token.QueueID == util.QueueIDNull {
+		return model.FilePermission(token.PublicAccessMode)
 	} else {
-		p.Queue = model.FilePermission(token.AccessMode)
-		p.Public = model.FilePermission(token.PublicAccessMode)
-		return p
+		return model.FilePermission(token.AccessMode)
 	}
 }
 
-func ListMyProjects(userID uint, c *gin.Context) []Files {
+func ListCurrentProjects(userID, queueID uint, c *gin.Context) []string {
 	u := query.User
 	user, err := u.WithContext(c).Where(u.ID.Eq(userID)).First()
 	if err != nil {
 		fmt.Println("can't find user")
 		return nil
 	}
-	var data []Files
-	var ftmp Files
-	ftmp.Name = user.Space
-	if ftmp.Name != "" {
+	var data []string
+	if user.Space != "" {
+		data = append(data, user.Space)
+	}
+	q := query.Queue
+	publicqueue, err := q.WithContext(c).Where(q.ID.Eq(1)).First()
+	if err != nil {
+		fmt.Println("can't find public queue, ", err)
+		return data
+	}
+	data = append(data, publicqueue.Space)
+	if queueID != 0 && queueID != 1 {
+		queue, err := q.WithContext(c).Where(q.ID.Eq(queueID)).First()
+		if err != nil {
+			fmt.Println("user has no project, ", err)
+			return data
+		}
+		data = append(data, queue.Space)
+	}
+	return data
+}
+
+func ListQueueProjects(c *gin.Context) []string {
+	var data []string
+	q := query.Queue
+	queues, err := q.WithContext(c).Where(q.ID.IsNotNull()).Find()
+	if err != nil || len(queues) == 0 {
+		fmt.Println("can't find queue, ", err)
+		return data
+	}
+	for i := range queues {
+		if queues[i].Space != "" {
+			data = append(data, queues[i].Space)
+		}
+	}
+	return data
+}
+
+func ListUserProjects(c *gin.Context) []string {
+	var data []string
+	u := query.User
+	user, err := u.WithContext(c).Where(u.ID.IsNotNull()).Find()
+	if err != nil || len(user) == 0 {
+		fmt.Println("can't find user, ", err)
+		return data
+	}
+	for i := range user {
+		if user[i].Space != "" {
+			data = append(data, user[i].Space)
+		}
+	}
+	return data
+}
+
+func ListMyProjects(userID uint, c *gin.Context) []string {
+	u := query.User
+	user, err := u.WithContext(c).Where(u.ID.Eq(userID)).First()
+	if err != nil {
+		fmt.Println("can't find user")
+		return nil
+	}
+	var data []string
+	ftmp := user.Space
+	if ftmp != "" {
 		data = append(data, ftmp)
 	}
 	uq := query.UserQueue
@@ -118,12 +175,12 @@ func ListMyProjects(userID uint, c *gin.Context) []Files {
 		return data
 	}
 	for i := range userQueue {
-		var tmp Files
+		var tmp string
 		queue, err := q.WithContext(c).Where(q.ID.Eq(userQueue[i].QueueID)).First()
 		if err == nil {
-			tmp.Name = queue.Space
+			tmp = queue.Space
 		}
-		if tmp.Name != "" {
+		if tmp != "" {
 			data = append(data, tmp)
 		}
 	}
@@ -167,18 +224,12 @@ func WebDav(c *gin.Context) {
 		return
 	}
 
-	p := GetPermissionFromToken(jwttoken)
-	var permission model.FilePermission
-	if jwttoken.QueueID == 0 {
-		permission = p.Public
-	} else {
-		permission = p.Queue
-	}
+	permission := GetPermissionFromToken(jwttoken)
 	if permission == model.NotAllowed {
 		c.String(http.StatusUnauthorized, "Unauthorized 1")
 		return
 	}
-	rwMethods := []string{"PROPPATCH", "MKCOL", "PUT", "MOVE", "LOCK", "UNLOCK"}
+	rwMethods := []string{"PROPPATCH", "MKCOL", "PUT", "MOVE", "LOCK", "UNLOCK", "DELETE"}
 	if permission == model.ReadOnly && containsString(rwMethods, c.Request.Method) {
 		c.String(http.StatusUnauthorized, "Unauthorized 2")
 		return
@@ -209,19 +260,13 @@ func Download(c *gin.Context) {
 		response.Error(c, err.Error(), response.NotSpecified)
 		return
 	}
-	p := GetPermissionFromToken(jwttoken)
-	var permission model.FilePermission
-	if jwttoken.QueueID == 0 {
-		permission = p.Public
-	} else {
-		permission = p.Queue
-	}
+	path := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/download/")
+	permission := GetPermission(path, jwttoken, c)
 	if permission == model.NotAllowed {
 		c.String(http.StatusUnauthorized, "Unauthorized 1")
 		return
 	}
-	path := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/download/")
-	fmt.Println(path)
+
 	f, err := fs.FileSystem.OpenFile(c.Request.Context(), path, os.O_RDWR, 0)
 	if err != nil {
 		response.BadRequestError(c, "can't find file")
@@ -246,11 +291,11 @@ func containsString(slice []string, s string) bool {
 	return false
 }
 
-func GetFilesByPaths(paths []Files, c *gin.Context) ([]Files, error) {
+func GetFilesByPaths(paths []string, c *gin.Context) ([]Files, error) {
 	var data []Files
 	data = nil
 	for _, p := range paths {
-		fi, err := fs.FileSystem.Stat(c.Request.Context(), p.Name)
+		fi, err := fs.FileSystem.Stat(c.Request.Context(), p)
 		if err != nil {
 			fmt.Println("cann't find file:", err)
 			return nil, err
@@ -276,20 +321,66 @@ func GetFiles(c *gin.Context) {
 		return
 	}
 	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/files")
-	p := GetPermissionFromToken(jwttoken)
-	var permission model.FilePermission
-	if jwttoken.QueueID == 0 {
-		permission = p.Public
-	} else {
-		permission = p.Queue
-	}
+	permission := GetPermission(param, jwttoken, c)
 	if permission == model.NotAllowed {
 		c.String(http.StatusUnauthorized, "Unauthorized 1")
 		return
 	}
 	if param == "" || param == "/" {
-		paths := ListMyProjects(jwttoken.UserID, c)
+		paths := ListCurrentProjects(jwttoken.UserID, jwttoken.QueueID, c)
 		fmt.Println(paths)
+		data, err = GetFilesByPaths(paths, c)
+		if err != nil {
+			response.Error(c, "no project or porject has no dir", response.NotSpecified)
+			return
+		}
+		response.Success(c, data)
+	} else {
+		data, err = handleDirsList(fs.FileSystem, param)
+		if err != nil {
+			response.Error(c, err.Error(), response.NotSpecified)
+			return
+		}
+		response.Success(c, data)
+	}
+}
+
+func GetAllFiles(c *gin.Context) {
+	AlloweOption(c)
+	checkfs()
+	var data []Files
+	jwttoken, err := CheckJWTToken(c)
+	if err != nil {
+		response.Error(c, err.Error(), response.NotSpecified)
+		return
+	}
+	if jwttoken.RolePlatform != model.RoleAdmin {
+		c.String(http.StatusUnauthorized, "Unauthorized 3")
+		return
+	}
+	var queueFlag int
+	var param string
+	if strings.HasPrefix(c.Request.URL.Path, "/api/ss/admin/queue") {
+		queueFlag = 1
+		param = strings.TrimPrefix(c.Request.URL.Path, "/api/ss/admin/queue")
+	} else if strings.HasPrefix(c.Request.URL.Path, "/api/ss/admin/user") {
+		queueFlag = 2
+		param = strings.TrimPrefix(c.Request.URL.Path, "/api/ss/admin/user")
+	} else {
+		response.BadRequestError(c, "error url")
+		return
+	}
+
+	if param == "" || param == "/" {
+		var paths []string
+		if queueFlag == 1 {
+			paths = ListQueueProjects(c)
+		} else if queueFlag == 2 {
+			paths = ListUserProjects(c)
+		} else {
+			response.BadRequestError(c, "error url")
+			return
+		}
 		data, err = GetFilesByPaths(paths, c)
 		if err != nil {
 			response.Error(c, "no project or porject has no dir", response.NotSpecified)
@@ -371,13 +462,7 @@ func GetDirSize(c *gin.Context) {
 		return
 	}
 	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/dirsize")
-	p := GetPermissionFromToken(jwttoken)
-	var permission model.FilePermission
-	if jwttoken.QueueID == 0 {
-		permission = p.Public
-	} else {
-		permission = p.Queue
-	}
+	permission := GetPermission(param, jwttoken, c)
 	if permission == model.NotAllowed {
 		c.String(http.StatusUnauthorized, "Unauthorized 1")
 		return
@@ -453,6 +538,57 @@ func checkSpace() {
 	}
 }
 
+func DeleteFile(c *gin.Context) {
+	AlloweOption(c)
+	checkfs()
+	jwttoken, err := CheckJWTToken(c)
+	if err != nil {
+		response.Error(c, err.Error(), response.NotSpecified)
+		return
+	}
+	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/delete/")
+	permission := GetPermission(param, jwttoken, c)
+	if permission == model.NotAllowed || permission == model.ReadOnly {
+		c.String(http.StatusUnauthorized, "Unauthorized 1")
+		return
+	}
+	path := strings.TrimLeft(param, "/")
+	err = fs.FileSystem.RemoveAll(c, path)
+	if err != nil {
+		response.Error(c, err.Error(), response.NotSpecified)
+		return
+	}
+	response.Success(c, "Delete file successfully ")
+}
+
+func GetPermission(path string, token util.JWTMessage, c *gin.Context) model.FilePermission {
+	path = strings.TrimLeft(path, "/")
+	cleanedPath := filepath.Clean(path)
+	part := strings.Split(cleanedPath, "/")
+	if token.RolePlatform == model.RoleAdmin {
+		return model.ReadWrite
+	}
+	if strings.HasPrefix(part[0], "u-") {
+		err := CheckUser(token.UserID, part[0], c)
+		if err != nil {
+			return model.NotAllowed
+		}
+		return model.ReadWrite
+	} else if strings.HasPrefix(part[0], "q-") {
+		return model.FilePermission(token.AccessMode)
+	} else if strings.HasPrefix(part[0], "public") {
+		return model.FilePermission(token.PublicAccessMode)
+	} else {
+		return model.NotAllowed
+	}
+}
+
+func CheckUser(userid uint, space string, c *gin.Context) error {
+	u := query.User
+	_, err := u.WithContext(c).Where(u.ID.Eq(userid), u.Space.Eq(space)).First()
+	return err
+}
+
 const defaultTime = 120
 
 func StartCheckSpace() {
@@ -461,4 +597,83 @@ func StartCheckSpace() {
 		checkSpace()
 		time.Sleep(time.Second * defaultTime)
 	}
+}
+
+type UserSpaceResp struct {
+	Username string `json:"username"`
+	Space    string `json:"space"`
+}
+type QueueSpaceResp struct {
+	Queuename string `json:"queuename"`
+	Space     string `json:"space"`
+}
+
+func GetUserSpace(c *gin.Context) {
+	AlloweOption(c)
+	checkfs()
+	jwttoken, err := CheckJWTToken(c)
+	if err != nil {
+		response.Error(c, err.Error(), response.NotSpecified)
+		return
+	}
+	if jwttoken.RolePlatform != model.RoleAdmin {
+		response.Error(c, "can't get user", response.InvalidRole)
+		return
+	}
+	u := query.User
+	user, err := u.WithContext(c).Where(u.ID.IsNotNull()).Find()
+	if err != nil {
+		response.Error(c, err.Error(), response.NotSpecified)
+		return
+	}
+	var userSpaceResp []UserSpaceResp
+	for i := range user {
+		var userspace UserSpaceResp
+		userspace.Space = user[i].Space
+		userspace.Username = user[i].Name
+		userSpaceResp = append(userSpaceResp, userspace)
+	}
+	response.Success(c, userSpaceResp)
+}
+
+func GetQueueSpace(c *gin.Context) {
+	AlloweOption(c)
+	checkfs()
+	jwttoken, err := CheckJWTToken(c)
+	if err != nil {
+		response.Error(c, err.Error(), response.NotSpecified)
+		return
+	}
+	q := query.Queue
+	queue, err := q.WithContext(c).Where(q.ID.IsNotNull()).Find()
+	if err != nil {
+		response.Error(c, err.Error(), response.NotSpecified)
+		return
+	}
+	if jwttoken.RolePlatform != model.RoleAdmin {
+		response.Error(c, "has no permission to get queue", response.InvalidRole)
+		return
+	}
+	var queueSpaceResp []QueueSpaceResp
+	for i := range queue {
+		var queuespace QueueSpaceResp
+		queuespace.Queuename = queue[i].Name
+		queuespace.Space = queue[i].Space
+		queueSpaceResp = append(queueSpaceResp, queuespace)
+	}
+	response.Success(c, queueSpaceResp)
+}
+
+func RegisterFile(r *gin.Engine) {
+	r.Handle("OPTIONS", "/api/ss", AlloweOption)
+	r.Handle("OPTIONS", "/api/ss/*path", AlloweOption)
+	r.Handle("GET", "/api/ss/files", GetFiles)
+	r.Handle("GET", "/api/ss/files/*path", GetFiles)
+	r.Handle("GET", "/api/ss/admin/*path", GetAllFiles)
+	r.Handle("GET", "/api/ss/download/*path", Download)
+	r.Handle("POST", "/api/ss/checkspace", CheckFilesExist)
+	r.Handle("GET", "/api/ss/dirsize/*path", GetDirSize)
+	r.Handle("DELETE", "/api/ss/delete/*path", DeleteFile)
+	r.Handle("GET", "/api/ss/userspace", GetUserSpace)
+	r.Handle("GET", "/api/ss/queuespace", GetQueueSpace)
 }
