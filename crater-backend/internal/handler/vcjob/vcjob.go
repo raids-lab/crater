@@ -501,7 +501,7 @@ func getJobDetailFuntion(c *gin.Context, mgr *VolcanojobMgr, job *batch.Job, nam
 				continue
 			}
 			// assume one pod running one container
-			if pod.Status.Phase != v1.PodRunning {
+			if pod.Status.Phase == v1.PodRunning {
 				portStr := ""
 				for _, port := range pod.Spec.Containers[0].Ports {
 					portStr += fmt.Sprintf("%s:%d,", port.Name, port.ContainerPort)
