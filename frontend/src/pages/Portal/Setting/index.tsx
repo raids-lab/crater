@@ -80,7 +80,7 @@ export const Component = () => {
                           GPUSched -
                           多租户弹性资源管理和基于性能干扰感知预测模型的作业混合放置算法
                         </SelectItem>
-                        <SelectItem value="sprase">
+                        <SelectItem value="sparse">
                           RecSched - 面向深度推荐系统训练的资源调度算法
                         </SelectItem>
                       </SelectContent>

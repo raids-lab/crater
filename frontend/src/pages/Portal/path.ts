@@ -18,7 +18,11 @@ export const craterPath: PathInfo = {
           title: "批处理作业",
           children: [
             {
-              path: "new-custom",
+              path: "new-aijobs",
+              title: "新建自定义作业",
+            },
+            {
+              path: "new-spjobs",
               title: "新建自定义作业",
             },
             {
