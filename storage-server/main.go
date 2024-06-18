@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"os"
+	"webdav/dao/query"
 	"webdav/service"
 
 	"webdav/logutils"
@@ -10,8 +13,16 @@ import (
 
 func main() {
 	r := gin.Default()
+	err := query.InitDB()
+	if err != nil {
+		fmt.Println("err init")
+		os.Exit(1)
+	}
+
+	query.SetDefault(query.DB)
+
+	go service.StartCheckSpace()
 	methods := []string{
-		"DELETE",
 		"PUT",
 		"MKCOL",
 		"MOVE", "COPY",
@@ -24,13 +35,9 @@ func main() {
 		r.Handle(m, "/api/ss/*path", service.WebDav)
 	}
 
-	r.Handle("OPTIONS", "/api/ss", service.AlloweOption)
-	r.Handle("OPTIONS", "/api/ss/*path", service.AlloweOption)
-	r.Handle("GET", "/api/ss/files", service.GetFiles)
-	r.Handle("GET", "/api/ss/files/*path", service.GetFiles)
-	r.Handle("GET", "/api/ss/download/*path", service.Download)
-	r.Handle("POST", "/api/ss/checkspace", service.CheckFilesExist)
-	err := r.Run(":7320")
+	service.RegisterDataset(r)
+	service.RegisterFile(r)
+	err = r.Run(":7320")
 	if err != nil {
 		logutils.Log.Fatal(err)
 	}
