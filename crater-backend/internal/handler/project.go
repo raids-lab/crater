@@ -256,6 +256,10 @@ func (mgr *ProjectMgr) CreateTeamProject(c *gin.Context) {
 	}
 }
 
+const (
+	LabelKeyQueueCreatedBy = "crater.raids.io/queue-created-by"
+)
+
 func (mgr *ProjectMgr) CreateTeamQueue(c *gin.Context, token *util.JWTMessage, queue *model.Queue,
 	req *ProjectCreateReq) error {
 	// Create a new queue, and set the user as the admin in user_queue

@@ -95,7 +95,6 @@ func (b *Backend) RegisterService(
 	recommenddljobMgr := handler.NewRecommendDLJobMgr(cl)
 	volcanoMgr := vcjob.NewVolcanojobMgr(cl, kc)
 	aijobMgr := aijob.NewAITaskMgr(aitaskCtrl, &pvcClient, &logClient)
-	queueMgr := handler.NewQueueMgr(cl)
 	datasetMgr := handler.NewFileMgr()
 	///////////////////////////////////////
 	//// Public routers, no need login ////
@@ -115,7 +114,6 @@ func (b *Backend) RegisterService(
 	authMgr.RegisterProtected(protectedRouter.Group("/switch"))
 	labelMgr.RegisterProtected(protectedRouter.Group("/labels"))
 	resoueceMgr.RegisterProtected(protectedRouter.Group("/resources"))
-	queueMgr.RegisterProtected(protectedRouter.Group("/accounts"))
 	projectMgr.RegisterProtected(protectedRouter.Group("/projects"))
 	nodeMgr.RegisterProtected(protectedRouter.Group("/nodes"))
 	imagepackMgr.RegisterProtected(protectedRouter.Group("/images"))
@@ -140,7 +138,6 @@ func (b *Backend) RegisterService(
 	userMgr.RegisterAdmin(adminRouter.Group("/users"))
 	imagepackMgr.RegisterAdmin(adminRouter.Group("/images"))
 	recommenddljobMgr.RegisterAdmin(adminRouter.Group("/recommenddljob"))
-	queueMgr.RegisterAdmin(adminRouter.Group("/queues"))
 	volcanoMgr.RegisterAdmin(adminRouter.Group("/vcjobs"))
 	aijobMgr.RegisterAdmin(adminRouter.Group("/aijobs"))
 	datasetMgr.RegisterAdmin(adminRouter.Group("/dataset"))

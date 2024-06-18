@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-gormigrate/gormigrate/v2"
 	"github.com/raids-lab/crater/dao/model"
+	"gorm.io/datatypes"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -119,6 +120,23 @@ func main() {
 			},
 			Rollback: func(tx *gorm.DB) error {
 				return tx.Migrator().DropTable("resources")
+			},
+		},
+		{
+			// add `quota` column to `users` table
+			ID: "202406181403",
+			Migrate: func(tx *gorm.DB) error {
+				// when table already exists, define only columns that are about to change
+				type Queue struct {
+					Quota datatypes.JSONType[model.QueueQuota] `gorm:"comment:资源配额"`
+				}
+				return tx.Migrator().AddColumn(&Queue{}, "Quota")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Queue struct {
+					Quota datatypes.JSONType[model.QueueQuota] `gorm:"comment:资源配额"`
+				}
+				return tx.Migrator().DropColumn(&Queue{}, "Quota")
 			},
 		},
 	})
