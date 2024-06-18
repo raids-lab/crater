@@ -133,13 +133,7 @@ func CopyFile(c *gin.Context) {
 		return
 	}
 	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/dataset/create")
-	p := GetPermissionFromToken(jwttoken)
-	var permission model.FilePermission
-	if jwttoken.QueueID == 0 {
-		permission = p.Public
-	} else {
-		permission = p.Queue
-	}
+	permission := GetPermission(param, jwttoken, c)
 	if permission == model.NotAllowed {
 		c.String(http.StatusUnauthorized, "Unauthorized 1")
 		return
@@ -181,4 +175,8 @@ func CopyFile(c *gin.Context) {
 		return
 	}
 	fmt.Println(destDir, "Directory uncompressed successfully!")
+}
+
+func RegisterDataset(r *gin.Engine) {
+	r.Handle("POST", "/api/ss/dataset/create/*path", CopyFile)
 }

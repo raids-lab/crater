@@ -49,3 +49,11 @@ type TokenResp struct {
 	} `json:"data"`
 	Msg string `json:"msg"`
 }
+type FilePermissionType int
+
+const (
+	OtherMode FilePermissionType = iota
+	PublicMode
+	QueueMOde
+	UserMode
+)

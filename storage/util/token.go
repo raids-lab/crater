@@ -55,6 +55,7 @@ type (
 const (
 	QueueNameNull = ""
 	QueueIDNull   = 0
+	QueueDefault  = 1
 )
 
 type TokenManager struct {
