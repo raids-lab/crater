@@ -62,7 +62,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	useTensorboard := fmt.Sprintf("%t", req.UseTensorBoard)
 
 	// 1. Volume Mounts
-	volumes, volumeMounts, err := generateVolumeMounts(c, token.UserID, req.VolumeMounts)
+	volumes, volumeMounts, err := GenerateVolumeMounts(c, token.UserID, req.VolumeMounts)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.UserNotFound)
 		return
