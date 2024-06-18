@@ -21,4 +21,4 @@ export interface QuotaResp {
 }
 
 export const apiContextQuota = () =>
-  instance.get<IResponse<QuotaResp>>(VERSION + "/context/queue");
+  instance.get<IResponse<QuotaResp>>(VERSION + "/context/quota");
