@@ -11,3 +11,24 @@ type ProjectResp struct {
 	Role       model.Role       `json:"role"`       // 用户在项目中的角色
 	AccessMode model.AccessMode `json:"accessmode"` // 用户在项目中的权限
 }
+
+type (
+	ResourceBase struct {
+		Amount int64  `json:"amount"`
+		Format string `json:"format"`
+	}
+
+	ResourceResp struct {
+		Label      string        `json:"label"`
+		Allocated  *ResourceBase `json:"allocated"`
+		Guarantee  *ResourceBase `json:"guarantee"`
+		Deserved   *ResourceBase `json:"deserved"`
+		Capability *ResourceBase `json:"capability"`
+	}
+
+	QuotaResp struct {
+		CPU    ResourceResp   `json:"cpu"`
+		Memory ResourceResp   `json:"memory"`
+		GPUs   []ResourceResp `json:"gpus"`
+	}
+)

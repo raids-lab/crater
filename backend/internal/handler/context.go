@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/payload"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
@@ -36,27 +37,6 @@ func (mgr *ContextMgr) RegisterProtected(g *gin.RouterGroup) {
 }
 
 func (mgr *ContextMgr) RegisterAdmin(_ *gin.RouterGroup) {}
-
-type (
-	ResourceBase struct {
-		Amount int64  `json:"amount"`
-		Format string `json:"format"`
-	}
-
-	ResourceResp struct {
-		Label      string        `json:"label"`
-		Allocated  *ResourceBase `json:"allocated"`
-		Guarantee  *ResourceBase `json:"guarantee"`
-		Deserved   *ResourceBase `json:"deserved"`
-		Capability *ResourceBase `json:"capability"`
-	}
-
-	QuotaResp struct {
-		CPU    ResourceResp   `json:"cpu"`
-		Memory ResourceResp   `json:"memory"`
-		GPUs   []ResourceResp `json:"gpus"`
-	}
-)
 
 // GetQuota godoc
 // @Summary Get the queue information
@@ -91,13 +71,13 @@ func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 	capability := queue.Spec.Capability
 
 	// resources is a map, key is the resource name, value is the resource amount
-	resources := make(map[v1.ResourceName]ResourceResp)
+	resources := make(map[v1.ResourceName]payload.ResourceResp)
 
 	for name, quantity := range allocated {
 		if name == v1.ResourceCPU || name == v1.ResourceMemory || strings.HasPrefix(string(name), "nvidia.com/") {
-			resources[name] = ResourceResp{
+			resources[name] = payload.ResourceResp{
 				Label: string(name),
-				Allocated: lo.ToPtr(ResourceBase{
+				Allocated: lo.ToPtr(payload.ResourceBase{
 					Amount: quantity.Value(),
 					Format: string(quantity.Format),
 				}),
@@ -106,7 +86,7 @@ func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 	}
 	for name, quantity := range guarantee {
 		if v, ok := resources[name]; ok {
-			v.Guarantee = lo.ToPtr(ResourceBase{
+			v.Guarantee = lo.ToPtr(payload.ResourceBase{
 				Amount: quantity.Value(),
 				Format: string(quantity.Format),
 			})
@@ -115,7 +95,7 @@ func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 	}
 	for name, quantity := range deserved {
 		if v, ok := resources[name]; ok {
-			v.Deserved = lo.ToPtr(ResourceBase{
+			v.Deserved = lo.ToPtr(payload.ResourceBase{
 				Amount: quantity.Value(),
 				Format: string(quantity.Format),
 			})
@@ -124,7 +104,7 @@ func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 	}
 	for name, quantity := range capability {
 		if v, ok := resources[name]; ok {
-			v.Capability = lo.ToPtr(ResourceBase{
+			v.Capability = lo.ToPtr(payload.ResourceBase{
 				Amount: quantity.Value(),
 				Format: string(quantity.Format),
 			})
@@ -140,7 +120,7 @@ func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 			if err != nil {
 				continue
 			}
-			resource.Capability = &ResourceBase{
+			resource.Capability = &payload.ResourceBase{
 				Amount: resouece.Amount,
 				Format: resouece.Format,
 			}
@@ -153,7 +133,7 @@ func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 	cpu.Label = "cpu"
 	memory := resources[v1.ResourceMemory]
 	memory.Label = "mem"
-	var gpus []ResourceResp
+	var gpus []payload.ResourceResp
 	for name, resource := range resources {
 		if strings.HasPrefix(string(name), "nvidia.com/") {
 			// convert nvidia.com/v100 to v100
@@ -165,7 +145,7 @@ func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 		return gpus[i].Label < gpus[j].Label
 	})
 
-	resputil.Success(c, QuotaResp{
+	resputil.Success(c, payload.QuotaResp{
 		CPU:    cpu,
 		Memory: memory,
 		GPUs:   gpus,

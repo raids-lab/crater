@@ -87,30 +87,30 @@ func NewPrometheusClient(apiURL string) *PrometheusClient {
 func (p *PrometheusClient) QueryPodUtilMetric(namespace, podname string) (PodUtil, error) {
 	podUtil := PodUtil{}
 	var err error
-	podUtil.GPUUtilAvg, err = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_DEV_GPU_UTIL{exported_namespace=%q,exported_pod=%q}[60s])/100", namespace, podname))
+	podUtil.GPUUtilAvg, err = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_DEV_GPU_UTIL{namespace=%q,pod=%q}[60s])/100", namespace, podname))
 	if err != nil {
 		return podUtil, err
 	}
-	podUtil.GPUUtilMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_DEV_GPU_UTIL{exported_namespace=%q,exported_pod=%q}[60s])/100", namespace, podname))
-	podUtil.GPUUtilStd, _ = p.queryMetric(fmt.Sprintf("stddev_over_time(DCGM_FI_DEV_GPU_UTIL{exported_namespace=%q,exported_pod=%q}[60s])/100", namespace, podname))
-	podUtil.SMActiveAvg, _ = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_SM_ACTIVE{exported_namespace=%q,exported_pod=%q}[60s])", namespace, podname))
-	podUtil.SMActiveMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_PROF_SM_ACTIVE{exported_namespace=%q,exported_pod=%q}[60s])", namespace, podname))
-	podUtil.SMActiveStd, _ = p.queryMetric(fmt.Sprintf("stddev_over_time(DCGM_FI_PROF_SM_ACTIVE{exported_namespace=%q,exported_pod=%q}[60s])", namespace, podname))
-	podUtil.SMOccupancyAvg, _ = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_SM_OCCUPANCY{exported_namespace=%q,exported_pod=%q}[60s])", namespace, podname))
-	podUtil.SMOccupancyMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_PROF_SM_OCCUPANCY{exported_namespace=%q,exported_pod=%q}[60s])", namespace, podname))
-	podUtil.SMOccupancyStd, _ = p.queryMetric(fmt.Sprintf("stddev_over_time(DCGM_FI_PROF_SM_OCCUPANCY{exported_namespace=%q,exported_pod=%q}[60s])", namespace, podname))
-	podUtil.DramUtilAvg, _ = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_DRAM_ACTIVE{exported_namespace=%q,exported_pod=%q}[60s])", namespace, podname))
-	podUtil.DramUtilMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_PROF_DRAM_ACTIVE{exported_namespace=%q,exported_pod=%q}[60s])", namespace, podname))
-	podUtil.DramUtilStd, _ = p.queryMetric(fmt.Sprintf("stddev_over_time(DCGM_FI_PROF_DRAM_ACTIVE{exported_namespace=%q,exported_pod=%q}[60s])", namespace, podname))
-	podUtil.MemCopyUtilAvg, _ = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_DEV_MEM_COPY_UTIL{exported_namespace=%q,exported_pod=%q}[60s])/100", namespace, podname))
-	podUtil.MemCopyUtilMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_DEV_MEM_COPY_UTIL{exported_namespace=%q,exported_pod=%q}[60s])/100", namespace, podname))
-	podUtil.MemCopyUtilStd, _ = p.queryMetric(fmt.Sprintf("stddev_over_time(DCGM_FI_DEV_MEM_COPY_UTIL{exported_namespace=%q,exported_pod=%q}[60s])/100", namespace, podname))
-	podUtil.PCIETxAvg, _ = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_PCIE_TX_BYTES{exported_namespace=%q,exported_pod=%q}[60s])/1048576", namespace, podname))
-	podUtil.PCIETxMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_PROF_PCIE_TX_BYTES{exported_namespace=%q,exported_pod=%q}[60s])/1048576", namespace, podname))
-	podUtil.PCIERxAvg, _ = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_PCIE_RX_BYTES{exported_namespace=%q,exported_pod=%q}[60s])/1048576", namespace, podname))
-	podUtil.PCIERxMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_PROF_PCIE_RX_BYTES{exported_namespace=%q,exported_pod=%q}[60s])/1048576", namespace, podname))
+	podUtil.GPUUtilMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_DEV_GPU_UTIL{namespace=%q,pod=%q}[60s])/100", namespace, podname))
+	podUtil.GPUUtilStd, _ = p.queryMetric(fmt.Sprintf("stddev_over_time(DCGM_FI_DEV_GPU_UTIL{namespace=%q,pod=%q}[60s])/100", namespace, podname))
+	podUtil.SMActiveAvg, _ = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_SM_ACTIVE{namespace=%q,pod=%q}[60s])", namespace, podname))
+	podUtil.SMActiveMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_PROF_SM_ACTIVE{namespace=%q,pod=%q}[60s])", namespace, podname))
+	podUtil.SMActiveStd, _ = p.queryMetric(fmt.Sprintf("stddev_over_time(DCGM_FI_PROF_SM_ACTIVE{namespace=%q,pod=%q}[60s])", namespace, podname))
+	podUtil.SMOccupancyAvg, _ = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_SM_OCCUPANCY{namespace=%q,pod=%q}[60s])", namespace, podname))
+	podUtil.SMOccupancyMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_PROF_SM_OCCUPANCY{namespace=%q,pod=%q}[60s])", namespace, podname))
+	podUtil.SMOccupancyStd, _ = p.queryMetric(fmt.Sprintf("stddev_over_time(DCGM_FI_PROF_SM_OCCUPANCY{namespace=%q,pod=%q}[60s])", namespace, podname))
+	podUtil.DramUtilAvg, _ = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_DRAM_ACTIVE{namespace=%q,pod=%q}[60s])", namespace, podname))
+	podUtil.DramUtilMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_PROF_DRAM_ACTIVE{namespace=%q,pod=%q}[60s])", namespace, podname))
+	podUtil.DramUtilStd, _ = p.queryMetric(fmt.Sprintf("stddev_over_time(DCGM_FI_PROF_DRAM_ACTIVE{namespace=%q,pod=%q}[60s])", namespace, podname))
+	podUtil.MemCopyUtilAvg, _ = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_DEV_MEM_COPY_UTIL{namespace=%q,pod=%q}[60s])/100", namespace, podname))
+	podUtil.MemCopyUtilMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_DEV_MEM_COPY_UTIL{namespace=%q,pod=%q}[60s])/100", namespace, podname))
+	podUtil.MemCopyUtilStd, _ = p.queryMetric(fmt.Sprintf("stddev_over_time(DCGM_FI_DEV_MEM_COPY_UTIL{namespace=%q,pod=%q}[60s])/100", namespace, podname))
+	podUtil.PCIETxAvg, _ = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_PCIE_TX_BYTES{namespace=%q,pod=%q}[60s])/1048576", namespace, podname))
+	podUtil.PCIETxMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_PROF_PCIE_TX_BYTES{namespace=%q,pod=%q}[60s])/1048576", namespace, podname))
+	podUtil.PCIERxAvg, _ = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_PCIE_RX_BYTES{namespace=%q,pod=%q}[60s])/1048576", namespace, podname))
+	podUtil.PCIERxMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_PROF_PCIE_RX_BYTES{namespace=%q,pod=%q}[60s])/1048576", namespace, podname))
 	podUtil.CPUUsageAvg, _ = p.queryMetric(fmt.Sprintf("avg_over_time(irate(container_cpu_usage_seconds_total{namespace=%q,pod=%q,container!=\"POD\",container!=\"\"}[30s])[2m:])", namespace, podname))
-	podUtil.GPUMemMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_DEV_FB_USED{exported_namespace=%q,exported_pod=%q}[60s])", namespace, podname))
+	podUtil.GPUMemMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_DEV_FB_USED{namespace=%q,pod=%q}[60s])", namespace, podname))
 	podUtil.CPUMemMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(container_memory_usage_bytes{namespace=%q,pod=%q,container!=\"POD\",container!=\"\"}[60s])/1048576", namespace, podname))
 
 	// todo: check stats
@@ -164,7 +164,7 @@ func (p *PrometheusClient) QueryMetricDemo(expression string) error {
 
 			// 提取metric中的标签和value中的值
 			uuid := metric["UUID"]
-			exportedPod := metric["exported_pod"]
+			exportedPod := metric["pod"]
 			gpuCount := metric["gpu_count"]
 			metricValue := float64(value)
 

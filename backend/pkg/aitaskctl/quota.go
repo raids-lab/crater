@@ -1,8 +1,11 @@
 package aitaskctl
 
 import (
+	"context"
 	"sync"
 
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
 	v1 "k8s.io/api/core/v1"
@@ -111,12 +114,13 @@ func (c *TaskController) GetQuotaInfo(username string) *QuotaInfo {
 	if value, ok := c.quotaInfos.Load(username); ok {
 		return value.(*QuotaInfo)
 	} else {
-		quotadb, err := c.quotaDB.GetByUserName(username)
+		q := query.Queue
+		quotadb, err := q.WithContext(context.Background()).Where(q.Name.Eq((username))).First()
 		if err != nil {
 			logutils.Log.Errorf("get quota from db failed, err: %v", err)
 			return nil
 		}
-		_, info := c.AddOrUpdateQuotaInfo(username, quotadb)
+		_, info := c.AddOrUpdateQuotaInfo(quotadb)
 		return info
 	}
 }
@@ -142,13 +146,14 @@ func (c *TaskController) ListQuotaInfoSnapshot() []QuotaInfoSnapshot {
 	return quotaInfos
 }
 
-func (c *TaskController) AddOrUpdateQuotaInfo(name string, quota *models.Quota) (added bool, quotaInfo *QuotaInfo) {
-	hardQuota, _ := models.JSONToResourceList(quota.HardQuota)
-	if _, ok := c.quotaInfos.Load(name); !ok {
+func (c *TaskController) AddOrUpdateQuotaInfo(queue *model.Queue) (added bool, quotaInfo *QuotaInfo) {
+	name := queue.Name
+	quota := queue.Quota.Data()
+	if _, ok := c.quotaInfos.Load(queue.Name); !ok {
 		quotaInfo := &QuotaInfo{
-			Name: quota.UserName,
-			Hard: hardQuota,
-			// Soft:      dq.Spec.Soft.DeepCopy(),
+			Name:      name,
+			Hard:      quota.Deserved,
+			Soft:      quota.Capability,
 			HardUsed:  v1.ResourceList{},
 			SoftUsed:  v1.ResourceList{},
 			UsedTasks: make(map[string]*models.AITask),
@@ -168,7 +173,7 @@ func (c *TaskController) AddOrUpdateQuotaInfo(name string, quota *models.Quota) 
 		c.quotaInfos.Store(name, quotaInfo)
 		added = true
 	} else {
-		c.UpdateQuotaInfoHard(name, hardQuota)
+		c.UpdateQuotaInfoHard(name, quota.Deserved)
 		added = false
 	}
 	return added, c.GetQuotaInfo(name)

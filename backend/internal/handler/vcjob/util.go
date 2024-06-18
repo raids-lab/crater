@@ -1,14 +1,19 @@
 package vcjob
 
 import (
-	"github.com/gin-gonic/gin"
+	"context"
+
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/samber/lo"
 	v1 "k8s.io/api/core/v1"
 )
 
-func GenerateVolumeMounts(c *gin.Context, userID uint, volumes []VolumeMount) (pvc []v1.Volume, volumeMounts []v1.VolumeMount, err error) {
+func GenerateVolumeMounts(
+	ctx context.Context,
+	userID uint,
+	volumes []VolumeMount,
+) (pvc []v1.Volume, volumeMounts []v1.VolumeMount, err error) {
 	pvc = []v1.Volume{
 		{
 			Name: VolumeData,
@@ -30,7 +35,7 @@ func GenerateVolumeMounts(c *gin.Context, userID uint, volumes []VolumeMount) (p
 
 	volumeMounts = make([]v1.VolumeMount, len(volumes)+2)
 	u := query.User
-	user, err := u.WithContext(c).Where(u.ID.Eq(userID)).First()
+	user, err := u.WithContext(ctx).Where(u.ID.Eq(userID)).First()
 	if err != nil {
 		return nil, nil, err
 	}

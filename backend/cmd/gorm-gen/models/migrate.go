@@ -139,6 +139,23 @@ func main() {
 				return tx.Migrator().DropColumn(&Queue{}, "Quota")
 			},
 		},
+		{
+			// add `quota` column to `users` table
+			ID: "202406182314",
+			Migrate: func(tx *gorm.DB) error {
+				// when table already exists, define only columns that are about to change
+				type AITask struct {
+					Owner string `json:"owner"`
+				}
+				return tx.Migrator().AddColumn(&AITask{}, "Owner")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type AITask struct {
+					Owner string `json:"owner"`
+				}
+				return tx.Migrator().DropColumn(&AITask{}, "Owner")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {

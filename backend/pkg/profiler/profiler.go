@@ -134,7 +134,7 @@ func (p *Profiler) run(ctx context.Context) {
 				// 1. create pod
 				// 2. update task status
 
-				err := p.podControl.CreateProfilePodFromTask(task)
+				err := p.podControl.CreateProfilePodFromTask(ctx, task)
 				if err != nil {
 					logutils.Log.Errorf("create profiling pod failed, taskID:%v, taskName:%v, err:%v", task.ID, task.TaskName, err)
 					err = p.taskDB.UpdateProfilingStat(task.ID, models.ProfileFailed, "", "")

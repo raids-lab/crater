@@ -61,16 +61,8 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	// useTensorBoard
 	useTensorboard := fmt.Sprintf("%t", req.UseTensorBoard)
 
-	// 1. Volume Mounts
-	volumes, volumeMounts, err := GenerateVolumeMounts(c, token.UserID, req.VolumeMounts)
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.UserNotFound)
-		return
-	}
-
 	// 2. Env Vars (Skip)
 	// 3. TODO: Node Affinity for ARM64 Nodes
-	affinity := generateNodeAffinity(req.Selectors)
 
 	// 4. Labels and Annotations
 	namespace := config.GetConfig().Workspace.Namespace
@@ -85,32 +77,10 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	}
 
 	// 5. Create the pod spec
-	podSpec := v1.PodSpec{
-		Affinity: affinity,
-		Volumes:  volumes,
-		Containers: []v1.Container{
-			{
-				Name:    "training",
-				Image:   req.Image,
-				Command: []string{"sh", "-c", req.Command},
-				Resources: v1.ResourceRequirements{
-					Limits:   req.Resource,
-					Requests: req.Resource,
-				},
-				WorkingDir: req.WorkingDir,
-				Env:        req.Envs,
-				Ports:      []v1.ContainerPort{},
-				SecurityContext: &v1.SecurityContext{
-					AllowPrivilegeEscalation: lo.ToPtr(true),
-					RunAsUser:                lo.ToPtr(int64(0)),
-					RunAsGroup:               lo.ToPtr(int64(0)),
-				},
-				TerminationMessagePath:   "/dev/termination-log",
-				TerminationMessagePolicy: v1.TerminationMessageReadFile,
-				VolumeMounts:             volumeMounts,
-			},
-		},
-		RestartPolicy: v1.RestartPolicyNever,
+	podSpec, err := GenerateCustomPodSpec(c, token.UserID, &req)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.UserNotFound)
+		return
 	}
 
 	// 6. Create volcano job
@@ -241,4 +211,45 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	}
 
 	resputil.Success(c, job)
+}
+
+func GenerateCustomPodSpec(
+	ctx context.Context,
+	userID uint,
+	custom *CreateCustomReq,
+) (podSpec v1.PodSpec, err error) {
+	volumes, volumeMounts, err := GenerateVolumeMounts(ctx, userID, custom.VolumeMounts)
+	if err != nil {
+		return podSpec, err
+	}
+	affinity := generateNodeAffinity(custom.Selectors)
+
+	podSpec = v1.PodSpec{
+		Affinity: affinity,
+		Volumes:  volumes,
+		Containers: []v1.Container{
+			{
+				Name:       custom.Name,
+				Image:      custom.Image,
+				Command:    []string{"sh", "-c", custom.Command},
+				WorkingDir: custom.WorkingDir,
+				Resources: v1.ResourceRequirements{
+					Limits:   custom.Resource,
+					Requests: custom.Resource,
+				},
+				Env:   custom.Envs,
+				Ports: []v1.ContainerPort{},
+				SecurityContext: &v1.SecurityContext{
+					AllowPrivilegeEscalation: lo.ToPtr(true),
+					RunAsUser:                lo.ToPtr(int64(0)),
+					RunAsGroup:               lo.ToPtr(int64(0)),
+				},
+				TerminationMessagePath:   "/dev/termination-log",
+				TerminationMessagePolicy: v1.TerminationMessageReadFile,
+				VolumeMounts:             volumeMounts,
+			},
+		},
+		RestartPolicy: v1.RestartPolicyNever,
+	}
+	return podSpec, nil
 }

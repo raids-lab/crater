@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/raids-lab/crater/pkg/logutils"
+	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -75,8 +76,10 @@ type AITask struct {
 	ScheduleInfo    string     `gorm:"column:schedule_info;type:text" json:"scheduleInfo"`
 	Token           string     `gorm:"column:token;type:varchar(128)" json:"token"`
 	NodePort        int32      `gorm:"column:node_port;type:int" json:"nodePort"`
-	SchedulerName   string     `gorm:"column:scheduler_name;type:varchar(128)" json:"schedulerName"`
-	GPUModel        string     `gorm:"column:gpu_model;type:varchar(128)" json:"gpuModel"`
+
+	PodTemplate datatypes.JSONType[v1.PodSpec] `json:"podTemplate"`
+	Node        string                         `json:"node"`
+	Owner       string                         `json:"owner"`
 }
 
 // TaskAttr request

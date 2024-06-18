@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/crclient"
 	quotadb "github.com/raids-lab/crater/pkg/db/quota"
 	taskdb "github.com/raids-lab/crater/pkg/db/task"
@@ -56,33 +57,23 @@ func (c *TaskController) SetProfiler(srcProfiler *profiler.Profiler) {
 // Init init taskQueue And quotaInfos
 func (c *TaskController) Init() error {
 	// init quotas
-	quotas, err := c.quotaDB.ListAllQuotas()
+	q := query.Queue
+	quotas, err := q.WithContext(context.Background()).Find()
 	if err != nil {
 		logutils.Log.Errorf("list all quotas failed, err: %v", err)
 	}
 	logutils.Log.Infof("list all quotas success, len: %v", len(quotas))
 	for i := range quotas {
 		// 添加quota
-		c.AddOrUpdateQuotaInfo(quotas[i].UserName, &quotas[i])
-		queueingList, err := c.taskDB.ListByUserAndStatuses(quotas[i].UserName, models.TaskQueueingStatuses)
+		c.AddOrUpdateQuotaInfo(quotas[i])
+		queueingList, err := c.taskDB.ListByUserAndStatuses(quotas[i].Name, models.TaskQueueingStatuses)
 		if err != nil {
-			logutils.Log.Errorf("list user:%v queueing tasks failed, err: %v", quotas[i].UserName, err)
+			logutils.Log.Errorf("list user:%v queueing tasks failed, err: %v", quotas[i].Name, err)
 			continue
 		}
-		c.taskQueue.InitUserQueue(quotas[i].UserName, queueingList)
+		c.taskQueue.InitUserQueue(quotas[i].Name, queueingList)
 	}
 	return nil
-}
-
-// AddUser adds a user with the specified username and quota to the TaskController.
-// It also initializes the user's task queue based on their quota.
-func (c *TaskController) AddUser(_ string, quota *models.Quota) {
-	c.AddOrUpdateQuotaInfo(quota.UserName, quota)
-	queueingList, err := c.taskDB.ListByUserAndStatuses(quota.UserName, models.TaskQueueingStatuses)
-	if err != nil {
-		logutils.Log.Errorf("list user:%v queueing tasks failed, err: %v", quota.UserName, err)
-	}
-	c.taskQueue.InitUserQueue(quota.UserName, queueingList)
 }
 
 // Start method

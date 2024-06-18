@@ -52,8 +52,5 @@ func InitMigration() error {
 	if err := Orm.AutoMigrate(&models.AITask{}); err != nil {
 		return fmt.Errorf("init migration AITask: %w", err)
 	}
-	if err := Orm.AutoMigrate(&models.Quota{}, &models.User{}); err != nil {
-		return fmt.Errorf("init migration User and Quota: %w", err)
-	}
 	return nil
 }
