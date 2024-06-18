@@ -8,7 +8,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-func generateVolumeMounts(c *gin.Context, userID uint, volumes []VolumeMount) (pvc []v1.Volume, volumeMounts []v1.VolumeMount, err error) {
+func GenerateVolumeMounts(c *gin.Context, userID uint, volumes []VolumeMount) (pvc []v1.Volume, volumeMounts []v1.VolumeMount, err error) {
 	pvc = []v1.Volume{
 		{
 			Name: VolumeData,
