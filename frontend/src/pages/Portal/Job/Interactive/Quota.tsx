@@ -38,8 +38,8 @@ const QuotaCard = ({
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   resource?: ResourceResp;
 }) => {
-  const allocated = resource?.allocated.amount ?? 0;
-  const quota = resource?.deserved?.amount ?? resource?.capability.amount ?? 1;
+  const allocated = resource?.allocated?.amount ?? 0;
+  const quota = resource?.deserved?.amount ?? resource?.capability?.amount ?? 1;
   const [progress, overflow] = useMemo(() => {
     const progress = (allocated / quota) * 100;
     const overflow = progress > 100;
@@ -73,7 +73,7 @@ const QuotaCard = ({
           className={cn({ "bg-orange-500/20 [&>*]:bg-orange-400": overflow })}
         />
         <div className="flex w-full flex-row-reverse items-center justify-between text-xs">
-          {resource?.capability.amount !== undefined && (
+          {resource?.capability?.amount !== undefined && (
             <p className="text-orange-500">
               上限: {showAmount(resource?.capability?.amount, resource?.label)}
             </p>
@@ -83,7 +83,7 @@ const QuotaCard = ({
               应得: {showAmount(resource?.deserved?.amount, resource?.label)}
             </p>
           )}
-          {resource?.allocated.amount !== undefined && (
+          {resource?.allocated?.amount !== undefined && (
             <p className="text-sky-500">
               已用: {showAmount(resource?.allocated?.amount, resource?.label)}
             </p>

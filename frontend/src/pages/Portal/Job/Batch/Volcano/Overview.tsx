@@ -30,7 +30,7 @@ import { TableDate } from "@/components/custom/TableDate";
 import { toast } from "sonner";
 import { getHeader, jobToolbarConfig } from "@/pages/Portal/Job/statuses";
 import { logger } from "@/utils/loglevel";
-import Quota from "../Interactive/Quota";
+import Quota from "../../Interactive/Quota";
 import JobPhaseLabel from "@/components/custom/JobPhaseLabel";
 import {
   Card,
@@ -46,12 +46,12 @@ import NodeBadges from "@/components/custom/NodeBadges";
 import ResourceBadges from "@/components/custom/ResourceBadges";
 import JobTypeLabel from "@/components/custom/JobTypeLabel";
 import { globalJobUrl } from "@/utils/store";
-import { useAtom } from "jotai";
+import { useAtomValue } from "jotai";
 
-export const Component = () => {
+const VolcanoOverview = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const jobType = useAtom(globalJobUrl)[0];
+  const jobType = useAtomValue(globalJobUrl);
 
   const batchQuery = useQuery({
     queryKey: ["job", "batch"],
@@ -319,3 +319,5 @@ export const Component = () => {
     </>
   );
 };
+
+export default VolcanoOverview;
