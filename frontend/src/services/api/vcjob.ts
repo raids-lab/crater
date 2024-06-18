@@ -105,6 +105,16 @@ export interface ITrainingCreate extends IJupyterCreate {
   workingDir?: string;
 }
 
+export interface ISparseCreate extends ITrainingCreate {
+  runningType?: string;
+  params?: number;
+  macs?: number;
+  batchSize?: number;
+  vocabularySize?: number[];
+  embeddingDim?: number[];
+  replicas?: number;
+}
+
 export interface ITensorflowCreate {
   name: string;
   tasks: {
@@ -133,6 +143,14 @@ export const apiJupyterCreate = async (task: IJupyterCreate) => {
 };
 
 export const apiTrainingCreate = async (task: ITrainingCreate) => {
+  const response = await instance.post<IResponse<string>>(
+    `${VERSION}/${JOB_URL}/training`,
+    task,
+  );
+  return response.data;
+};
+
+export const apiSparseCreate = async (task: ISparseCreate) => {
   const response = await instance.post<IResponse<string>>(
     `${VERSION}/${JOB_URL}/training`,
     task,

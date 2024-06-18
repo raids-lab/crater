@@ -45,10 +45,13 @@ import { REFETCH_INTERVAL } from "@/config/task";
 import NodeBadges from "@/components/custom/NodeBadges";
 import ResourceBadges from "@/components/custom/ResourceBadges";
 import JobTypeLabel from "@/components/custom/JobTypeLabel";
+import { globalJobUrl } from "@/utils/store";
+import { useAtom } from "jotai";
 
 export const Component = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const jobType = useAtom(globalJobUrl)[0];
 
   const batchQuery = useQuery({
     queryKey: ["job", "batch"],
@@ -299,7 +302,7 @@ export const Component = () => {
                   disabled: true,
                 },
                 {
-                  url: "portal/job/batch/new-custom",
+                  url: "portal/job/batch/new-" + jobType,
                   name: "自定义作业（单机）",
                 },
               ]}
