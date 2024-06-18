@@ -10,4 +10,4 @@ export interface QueueBasic {
 }
 
 export const apiQueueList = () =>
-  instance.get<IResponse<QueueBasic[]>>(`${VERSION}/accounts`);
+  instance.get<IResponse<QueueBasic[]>>(`${VERSION}/context/queues`);
