@@ -29,6 +29,8 @@ import ResourceBadges from "@/components/custom/ResourceBadges";
 import NodeBadges from "@/components/custom/NodeBadges";
 import JobTypeLabel, { jobTypes } from "@/components/custom/JobTypeLabel";
 import { REFETCH_INTERVAL } from "@/config/task";
+import { useAtomValue } from "jotai";
+import { globalJobUrl } from "@/utils/store";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -75,6 +77,8 @@ const PieCard = ({ children, cardTitle, isLoading }: PieCardProps) => {
 };
 
 export const Component: FC = () => {
+  const jobType = useAtomValue(globalJobUrl);
+
   const nodeQuery = useQuery({
     queryKey: ["overview", "nodes"],
     queryFn: apiGetNodes,
@@ -341,7 +345,7 @@ export const Component: FC = () => {
                   name: " Pytorch 作业",
                 },
                 {
-                  url: "portal/job/batch/new-custom",
+                  url: `portal/job/batch/new-${jobType}`,
                   name: "自定义作业（单机）",
                 },
                 {

@@ -1,3 +1,4 @@
+import { globalJobUrl, store } from "@/utils/store";
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
 
@@ -8,10 +9,10 @@ interface ResourceBase {
 
 export interface ResourceResp {
   label: string;
-  allocated: ResourceBase;
+  allocated?: ResourceBase;
   guarantee?: ResourceBase;
   deserved?: ResourceBase;
-  capability: ResourceBase;
+  capability?: ResourceBase;
 }
 
 export interface QuotaResp {
@@ -20,5 +21,9 @@ export interface QuotaResp {
   gpus: ResourceResp[];
 }
 
-export const apiContextQuota = () =>
-  instance.get<IResponse<QuotaResp>>(VERSION + "/context/quota");
+const JOB_URL = store.get(globalJobUrl);
+
+export const apiContextQuota = () => {
+  const url = JOB_URL === "aijobs" ? "/aijobs/quota" : "/context/quota";
+  return instance.get<IResponse<QuotaResp>>(VERSION + url);
+};
