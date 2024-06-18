@@ -16,7 +16,7 @@ export const handlers = [
         username: "ganhao",
         password: "",
         accessToken:
-          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aSI6NiwicWkiOjIzLCJ1biI6ImdhbmhhbyIsInFuIjoicS0yMyIsInJxIjoyLCJycCI6MywiYW0iOjIsInBhIjoyLCJleHAiOjE3MTgyODMzNzB9.RXlWvE44Z-FW6RA2mD6nDl5chRmIb9en-KMgFo0z5hM",
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aSI6NiwicWkiOjIzLCJ1biI6ImdhbmhhbyIsInFuIjoicS0yMyIsInJxIjoyLCJycCI6MywiYW0iOjIsInBhIjoyLCJleHAiOjE3MTg3MTU0Nzh9.zr9EvuN6_yXLJ0yeUbEIEALXEnlASNfRWgmWI7PG5J0",
         refreshToken: "",
         role: Role.Admin,
       };
