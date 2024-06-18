@@ -14,10 +14,8 @@ func FormatTaskAttrToModel(task *TaskAttr) *AITask {
 		Command:         task.Command,
 		Args:            MapToJSONString(task.Args),
 		SLO:             task.SLO,
-		Status:          task.Status,
+		Status:          TaskQueueingStatus,
 		EsitmatedTime:   task.EsitmatedTime,
-		SchedulerName:   task.SchedulerName,
-		GPUModel:        task.GPUModel,
 	}
 }
 

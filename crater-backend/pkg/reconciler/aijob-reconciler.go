@@ -129,6 +129,7 @@ func (r *AIJobReconciler) notifyJobStatus(job *aijobapi.AIJob) {
 		if job.Status.Conditions != nil && len(job.Status.Conditions) > 0 {
 			reason = job.Status.Conditions[len(job.Status.Conditions)-1].Message
 		}
+
 		c := util.JobStatusChan{
 			TaskID:    getTaskIDFromAIJob(job),
 			NewStatus: string(job.Status.Phase),

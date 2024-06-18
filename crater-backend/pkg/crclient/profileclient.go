@@ -8,7 +8,7 @@ import (
 
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	"github.com/raids-lab/crater/pkg/models"
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -23,8 +23,8 @@ type ProfilingPodControl struct {
 	client.Client
 }
 
-func (c *ProfilingPodControl) ListProflingPods() ([]corev1.Pod, error) {
-	pods := &corev1.PodList{}
+func (c *ProfilingPodControl) ListProflingPods() ([]v1.Pod, error) {
+	pods := &v1.PodList{}
 	err := c.List(context.Background(), pods, client.MatchingLabels(ProfilingPodLabels))
 	if err != nil {
 		return nil, err
@@ -37,7 +37,7 @@ func (c *ProfilingPodControl) DeleteProfilePodFromTask(task *models.AITask) erro
 	podName = strings.ToLower(podName)
 	podName = strings.ReplaceAll(podName, "_", "-")
 	ns := task.Namespace
-	pod := &corev1.Pod{
+	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      podName,
 			Namespace: ns,
@@ -47,7 +47,7 @@ func (c *ProfilingPodControl) DeleteProfilePodFromTask(task *models.AITask) erro
 	return err
 }
 
-func (c *ProfilingPodControl) GetTaskIDFromPod(pod *corev1.Pod) (uint, error) {
+func (c *ProfilingPodControl) GetTaskIDFromPod(pod *v1.Pod) (uint, error) {
 	id, ok := pod.Labels[aijobapi.LabelKeyTaskID]
 	if !ok {
 		return 0, fmt.Errorf("taskID not found in pod: %v/%v", pod.Namespace, pod.Name)
@@ -56,11 +56,26 @@ func (c *ProfilingPodControl) GetTaskIDFromPod(pod *corev1.Pod) (uint, error) {
 	return uint(taskID), nil
 }
 
-func (c *ProfilingPodControl) CreateProfilePodFromTask(task *models.AITask) error {
-	resourceRequest, err := models.JSONToResourceList(task.ResourceRequest)
-	if err != nil {
-		return fmt.Errorf("resource request is not valid: %w", err)
+func (c *ProfilingPodControl) CreateProfilePodFromTask(ctx context.Context, task *models.AITask) error {
+	podSpec := task.PodTemplate.Data()
+	if podSpec.Containers == nil || len(podSpec.Containers) == 0 {
+		return fmt.Errorf("no container in pod spec")
 	}
+
+	// 1. rewrite resourceRequest nvidia.com/* to nvidia.com/p100
+	resourceRequest := make(v1.ResourceList)
+	rawResourceRequest := podSpec.Containers[0].Resources.Requests
+	for k, v := range rawResourceRequest {
+		if strings.Contains(string(k), "nvidia.com") {
+			resourceRequest["nvidia.com/p100"] = v
+		} else {
+			resourceRequest[k] = v
+		}
+	}
+	podSpec.Containers[0].Resources.Requests = resourceRequest
+	podSpec.Containers[0].Resources.Limits = resourceRequest
+
+	// 2. pod meta
 	podName := fmt.Sprintf("%s-%d-profiling", task.TaskName, task.ID)
 	podName = strings.ToLower(podName)
 	podName = strings.ReplaceAll(podName, "_", "-")
@@ -72,11 +87,20 @@ func (c *ProfilingPodControl) CreateProfilePodFromTask(task *models.AITask) erro
 		labels[k] = v
 	}
 
-	volumes, volumeMounts, err := GenVolumeAndMountsFromAITask(task)
-	if err != nil {
-		return fmt.Errorf("gen volumes and mounts: %w", err)
+	// 3. pod node selector and toleration
+	podSpec.NodeSelector = map[string]string{
+		"profile": "true", // todo: for test
 	}
-	pod := &corev1.Pod{
+	podSpec.Tolerations = []v1.Toleration{
+		{
+			Key:      "profile",
+			Operator: v1.TolerationOpExists,
+			Effect:   v1.TaintEffectNoSchedule,
+		},
+	}
+
+	// 4. pod template
+	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      podName,
 			Namespace: task.Namespace,
@@ -85,39 +109,10 @@ func (c *ProfilingPodControl) CreateProfilePodFromTask(task *models.AITask) erro
 				"profiling-pod": "true",
 			},
 		},
-
-		Spec: corev1.PodSpec{
-			RestartPolicy: corev1.RestartPolicyNever,
-			NodeSelector: map[string]string{
-				"profile": "true", // todo: for test
-			},
-			Containers: []corev1.Container{
-				{
-					Image:   task.Image,
-					Name:    "main",
-					Command: []string{"/bin/bash", "-c", task.Command}, // todo:
-					// Args:    models.JSONStringToList(task.Args),        // todo:
-					Resources: corev1.ResourceRequirements{
-						Limits:   resourceRequest,
-						Requests: resourceRequest,
-					},
-					WorkingDir:   task.WorkingDir,
-					VolumeMounts: volumeMounts,
-				},
-			},
-			Volumes: volumes,
-			// add toleration that can be scheduled to profile node
-			Tolerations: []corev1.Toleration{
-				{
-					Key:      "profile",
-					Operator: corev1.TolerationOpExists,
-					Effect:   corev1.TaintEffectNoSchedule,
-				},
-			},
-		},
+		Spec: podSpec,
 	}
-	err = c.Create(context.Background(), pod)
-	if err != nil {
+
+	if err := c.Create(ctx, pod); err != nil {
 		return fmt.Errorf("create pod %s failed: %w", task.TaskName, err)
 	}
 	return nil

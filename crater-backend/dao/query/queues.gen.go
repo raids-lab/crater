@@ -34,6 +34,7 @@ func newQueue(db *gorm.DB, opts ...gen.DOOption) queue {
 	_queue.Name = field.NewString(tableName, "name")
 	_queue.Nickname = field.NewString(tableName, "nickname")
 	_queue.Space = field.NewString(tableName, "space")
+	_queue.Quota = field.NewField(tableName, "quota")
 	_queue.UserQueues = queueHasManyUserQueues{
 		db: db.Session(&gorm.Session{}),
 
@@ -62,6 +63,7 @@ type queue struct {
 	Name       field.String
 	Nickname   field.String
 	Space      field.String
+	Quota      field.Field
 	UserQueues queueHasManyUserQueues
 
 	QueueDatasets queueHasManyQueueDatasets
@@ -88,6 +90,7 @@ func (q *queue) updateTableName(table string) *queue {
 	q.Name = field.NewString(table, "name")
 	q.Nickname = field.NewString(table, "nickname")
 	q.Space = field.NewString(table, "space")
+	q.Quota = field.NewField(table, "quota")
 
 	q.fillFieldMap()
 
@@ -112,7 +115,7 @@ func (q *queue) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (q *queue) fillFieldMap() {
-	q.fieldMap = make(map[string]field.Expr, 9)
+	q.fieldMap = make(map[string]field.Expr, 10)
 	q.fieldMap["id"] = q.ID
 	q.fieldMap["created_at"] = q.CreatedAt
 	q.fieldMap["updated_at"] = q.UpdatedAt
@@ -120,6 +123,7 @@ func (q *queue) fillFieldMap() {
 	q.fieldMap["name"] = q.Name
 	q.fieldMap["nickname"] = q.Nickname
 	q.fieldMap["space"] = q.Space
+	q.fieldMap["quota"] = q.Quota
 
 }
 

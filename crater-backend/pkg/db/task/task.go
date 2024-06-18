@@ -18,6 +18,7 @@ type DBService interface {
 	ListByTaskType(taskType string, page, pageSize int) ([]models.AITask, int64, error)
 	ListByUserAndStatuses(userName string, status []string) ([]models.AITask, error)
 	ListByQueue(queue string) ([]models.AITask, error)
+	ListAll() ([]models.AITask, error)
 	GetByID(taskID uint) (*models.AITask, error)
 	GetByUserAndID(userName string, taskID uint) (*models.AITask, error)
 	UpdateProfilingStat(taskID uint, profileStatus uint, stat string, status string) error
@@ -115,6 +116,12 @@ func (s *service) ListByTaskType(taskType string, page, pageSize int) ([]models.
 func (s *service) ListByQueue(queue string) ([]models.AITask, error) {
 	var tasks []models.AITask
 	err := db.Orm.Where("username = ? and is_deleted = ?", queue, false).Find(&tasks).Error
+	return tasks, err
+}
+
+func (s *service) ListAll() ([]models.AITask, error) {
+	var tasks []models.AITask
+	err := db.Orm.Find(&tasks).Error
 	return tasks, err
 }
 
