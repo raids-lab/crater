@@ -26,7 +26,7 @@ export const SmallDataCard = ({
   return (
     <Card>
       <CardHeader className="pb-0">
-        <CardTitle className="text-sm font-medium capitalize">
+        <CardTitle className="text-sm font-medium capitalize text-muted-foreground">
           {title}
         </CardTitle>
       </CardHeader>

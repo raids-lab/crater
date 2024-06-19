@@ -11,11 +11,14 @@ const batchRoutes: RouteObject[] = [
   },
   {
     path: ":id",
-    lazy: () => import("../Interactive/Detail"),
+    lazy:
+      jobType === "aijobs"
+        ? () => import("../Detail/AIJob")
+        : () => import("../Detail/Interactive"),
   },
   {
     path: "new-aijobs",
-    lazy: () => import("../New/Custom"),
+    lazy: () => import("../New/Colocate"),
   },
   {
     path: "new-vcjobs",
