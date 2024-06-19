@@ -12,8 +12,8 @@ export const ProgressBar = ({
   const newWidth = width > 100 ? 100 : width;
   return (
     <div
-      className={cn("relative h-4 rounded bg-background text-foreground", {
-        " text-white": width > 90,
+      className={cn("relative h-4 rounded bg-accent/50 text-foreground", {
+        "text-white": width > 90,
       })}
     >
       <div
@@ -26,7 +26,7 @@ export const ProgressBar = ({
         style={{ width: `${newWidth}%` }}
       ></div>
       {first && second ? (
-        <div className="absolute inset-0 grid grid-cols-7 gap-1 font-mono text-xs font-medium ">
+        <div className="absolute inset-0 grid grid-cols-7 gap-1 font-mono text-xs font-medium">
           <div className="col-span-4 text-right">{first}:</div>
           <div className="col-span-3">{second}</div>
         </div>

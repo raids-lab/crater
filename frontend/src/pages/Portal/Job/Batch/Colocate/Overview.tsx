@@ -169,9 +169,11 @@ const ColocateOverview = () => {
     queryKey: ["job", "batch"],
     queryFn: apiJobBatchList,
     select: (res) =>
-      res.data.data.filter(
-        (task) => task.jobType !== JobType.Jupyter,
-      ) as unknown as ColocateJobInfo[],
+      res.data.data
+        .filter((task) => task.jobType !== JobType.Jupyter)
+        .sort((a, b) =>
+          b.createdAt.localeCompare(a.createdAt),
+        ) as unknown as ColocateJobInfo[],
     refetchInterval: REFETCH_INTERVAL,
   });
 
@@ -237,7 +239,7 @@ const ColocateOverview = () => {
         ),
         cell: ({ row }) => (
           <Link
-            to={row.original.jobName}
+            to={`${row.original.id}`}
             className="underline-offset-4 hover:underline"
           >
             {row.getValue("name")}

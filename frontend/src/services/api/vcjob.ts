@@ -181,7 +181,7 @@ export const apiJobDelete = async (jobName: string) => {
   return response.data;
 };
 
-export const apiJupyterGetDetail = (jobName: string) =>
+export const apiJobGetDetail = (jobName: string) =>
   instance.get<IResponse<IJupyterDetail>>(
     `${VERSION}/${JOB_URL}/${jobName}/detail`,
   );

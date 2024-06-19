@@ -48,7 +48,7 @@ import {
   IJupyterDetail,
   JobPhase,
   apiJobDelete,
-  apiJupyterGetDetail,
+  apiJobGetDetail,
   apiJobLogs,
   apiJupyterYaml,
   Logs,
@@ -86,7 +86,7 @@ export const Component = () => {
 
   const { data: taskList, isLoading } = useQuery({
     queryKey: ["job", "detail", jobName],
-    queryFn: () => apiJupyterGetDetail(jobName),
+    queryFn: () => apiJobGetDetail(jobName),
     select: (res) => res.data.data,
     refetchInterval: refetchInterval,
   });

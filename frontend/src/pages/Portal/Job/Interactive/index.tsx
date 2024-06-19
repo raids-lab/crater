@@ -11,7 +11,7 @@ const interactiveRoutes: RouteObject[] = [
   },
   {
     path: ":id",
-    lazy: () => import("./Detail"),
+    lazy: () => import("../Detail/Interactive"),
   },
 ];
 

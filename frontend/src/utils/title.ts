@@ -1,6 +1,5 @@
 import { adminPath } from "@/pages/Admin/path";
 import { craterPath } from "@/pages/Portal/path";
-import { recommendPath } from "@/pages/PortalR/path";
 
 export type PathInfo = {
   path: string; // router path
@@ -9,7 +8,7 @@ export type PathInfo = {
   children?: PathInfo[]; // children path info
 };
 
-const pathDict: PathInfo[] = [craterPath, recommendPath, adminPath];
+const pathDict: PathInfo[] = [craterPath, adminPath];
 
 /**
  *

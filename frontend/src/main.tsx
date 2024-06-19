@@ -15,7 +15,6 @@ import { Toaster } from "@/components/ui-custom/sonner";
 import { ThemeProvider } from "./utils/theme";
 import { store, VITE_UI_THEME_KEY } from "./utils/store";
 import { adminRoute } from "./pages/Admin";
-import { recommendRoute } from "./pages/PortalR";
 import Jupyter from "./pages/Job/Jupyter";
 import { logger } from "./utils/loglevel";
 import Website from "./pages/Website";
@@ -31,7 +30,6 @@ const router = createBrowserRouter([
     element: <Signup />,
   },
   portalRoute,
-  recommendRoute,
   adminRoute,
   {
     path: "/job/jupyter/:id",

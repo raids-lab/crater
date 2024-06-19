@@ -32,7 +32,7 @@ export interface IAiTask {
   scheduleInfo: string;
 }
 
-interface ProfileStat {
+export interface ProfileStat {
   gpu_util_avg: number; //上限1
   gpu_util_max: number; //上限1
   gpu_util_std: number;
