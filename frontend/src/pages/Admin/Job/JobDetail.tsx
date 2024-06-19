@@ -85,42 +85,6 @@ const JupyterDetail = () => {
     }
   }, [taskList, isLoading, taskList?.runtime]);
 
-  interface PodDetail {
-    name: string;
-    nodename: string;
-  }
-  const generateMetricsUrl = (podDetails: PodDetail[]) => {
-    // 根据 pod 的数量定义不同的路径
-    const paths: { [key: number]: string } = {
-      1: "p07YRssIz/pod1",
-      2: "Xq4ygssSk/pod2",
-      3: "TiCsgsySz/pod3",
-      4: "bXd8gsySk/pod4",
-    };
-
-    // 获取对应 pod 数量的路径
-    const path = paths[podDetails.length] || paths[1]; // 使用 pod1 的路径作为默认值
-
-    const base = `http://192.168.5.60:31121/d/${path}?orgId=1`;
-
-    // 生成 pod 名称和节点名称的参数
-    const podParams = podDetails
-      .map(
-        (pod, index) =>
-          `var-pod${index + 1}=${encodeURIComponent(pod.name)}&var-node${index + 1}=${encodeURIComponent(pod.nodename)}`,
-      )
-      .join("&");
-
-    // 生成 GPU 参数
-    const gpuParams = podDetails
-      .map((_, index) => `var-pod${index + 1}_gpu=All`)
-      .join("&");
-
-    // 组合所有参数
-    const queryParams = `${podParams}&${gpuParams}`;
-    return `${base}&${queryParams}`;
-  };
-
   return (
     <>
       <Card className="col-span-3">
@@ -256,7 +220,9 @@ const JupyterDetail = () => {
                 size="sm"
                 variant="ghost"
                 onClick={() => {
-                  const url = generateMetricsUrl(data.podDetails);
+                  const url =
+                    "http://192.168.5.60:31121/d/R4ZPFfyIz/job-monitor?orgId=1&var-job=" +
+                    data.jobName;
                   window.open(url, "_blank");
                 }}
               >
