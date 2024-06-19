@@ -140,6 +140,8 @@ func (c *JobControl) createTrainingJobFromTask(task *models.AITask) (jobname str
 		podSpec.PriorityClassName = models.PriorityClassGauranteed
 	}
 
+	podSpec.SchedulerName = "kube-gpu-colocate-scheduler"
+
 	job := &aijobapi.AIJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        jobname,

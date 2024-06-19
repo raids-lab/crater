@@ -5,8 +5,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
@@ -25,19 +27,21 @@ import (
 	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 )
 
 type AIJobMgr struct {
+	kubeClient     kubernetes.Interface
 	taskService    tasksvc.DBService
-	pvcClient      *crclient.PVCClient
 	logClient      *crclient.LogClient
 	taskController *aitaskctl.TaskController
 }
 
-func NewAITaskMgr(taskController *aitaskctl.TaskController, pvcClient *crclient.PVCClient, logClient *crclient.LogClient) handler.Manager {
+func NewAITaskMgr(taskController *aitaskctl.TaskController, kc kubernetes.Interface, logClient *crclient.LogClient) handler.Manager {
 	return &AIJobMgr{
+		kubeClient:     kc,
 		taskService:    tasksvc.NewDBService(),
-		pvcClient:      pvcClient,
 		logClient:      logClient,
 		taskController: taskController,
 	}
@@ -212,8 +216,7 @@ func (mgr *AIJobMgr) Create(c *gin.Context) {
 	req.TaskName = vcReq.Name
 	req.Namespace = config.GetConfig().Workspace.Namespace
 	req.UserName = token.QueueName
-	// vcReq.SLO
-	req.SLO = 0
+	req.SLO = vcReq.SLO
 	req.TaskType = "training"
 	req.Image = vcReq.Image
 	req.ResourceRequest = vcReq.Resource
@@ -309,6 +312,14 @@ type AIJobDetailReq struct {
 	JobID uint `uri:"id" binding:"required"`
 }
 
+type AIJobDetailResp struct {
+	vcjob.JobDetailResp
+	ID            uint   `json:"id"`
+	Priority      string `json:"priority"`
+	ProfileStat   string `json:"profileStat"`
+	ProfileStatus string `json:"profileStatus"`
+}
+
 func (mgr *AIJobMgr) Get(c *gin.Context) {
 	var req AIJobDetailReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -316,27 +327,69 @@ func (mgr *AIJobMgr) Get(c *gin.Context) {
 		return
 	}
 	token := interutil.GetToken(c)
-	taskModel, err := mgr.taskService.GetByUserAndID(token.Username, req.JobID)
+	taskModel, err := mgr.taskService.GetByQueueAndID(token.QueueName, req.JobID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
-	resp := payload.GetTaskResp{
-		AITask: *taskModel,
+
+	var runningTimestamp metav1.Time
+	if taskModel.StartedAt != nil {
+		runningTimestamp = metav1.NewTime(*taskModel.StartedAt)
+	}
+
+	var priority string
+	if taskModel.SLO > 0 {
+		priority = "high"
+	} else {
+		priority = "low"
+	}
+
+	var podDetail []vcjob.PodDetail
+	podName := fmt.Sprintf("%s-0", taskModel.JobName)
+	pod, err := mgr.kubeClient.CoreV1().Pods(taskModel.Namespace).Get(c, podName, metav1.GetOptions{})
+	if err == nil {
+		podDetail = []vcjob.PodDetail{{
+			Name:     pod.Name,
+			NodeName: pod.Spec.NodeName,
+			IP:       pod.Status.PodIP,
+			Resource: model.ResourceListToJSON(pod.Spec.Containers[0].Resources.Requests),
+			Status:   pod.Status.Phase,
+		}}
+	}
+
+	resp := AIJobDetailResp{
+		JobDetailResp: vcjob.JobDetailResp{
+			Name:              taskModel.TaskName,
+			Namespace:         taskModel.Namespace,
+			Username:          taskModel.Owner,
+			JobName:           taskModel.TaskName,
+			Retry:             fmt.Sprintf("%d", 0),
+			Queue:             taskModel.UserName,
+			Status:            convertJobPhase(taskModel.Status),
+			CreationTimestamp: metav1.NewTime(taskModel.CreatedAt),
+			RunningTimestamp:  runningTimestamp,
+			Duration:          time.Since(runningTimestamp.Time).Truncate(time.Second).String(),
+			PodDetails:        podDetail,
+			UseTensorBoard:    false,
+		},
+		ID:            taskModel.ID,
+		Priority:      priority,
+		ProfileStat:   taskModel.ProfileStat,
+		ProfileStatus: strconv.FormatUint(uint64(taskModel.ProfileStatus), 10),
 	}
 	logutils.Log.Infof("get task success, taskID: %d", req.JobID)
 	resputil.Success(c, resp)
 }
 
 func (mgr *AIJobMgr) GetLogs(c *gin.Context) {
-	logutils.Log.Infof("Task Get, url: %s", c.Request.URL)
-	var req payload.GetTaskReq
-	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate get parameters failed, err %v", err), resputil.NotSpecified)
+	var req AIJobDetailReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
 		return
 	}
 	token := interutil.GetToken(c)
-	taskModel, err := mgr.taskService.GetByUserAndID(token.Username, req.TaskID)
+	taskModel, err := mgr.taskService.GetByQueueAndID(token.QueueName, req.JobID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
@@ -360,7 +413,7 @@ func (mgr *AIJobMgr) GetLogs(c *gin.Context) {
 	resp := payload.GetTaskLogResp{
 		Logs: logs,
 	}
-	logutils.Log.Infof("get task success, taskID: %d", req.TaskID)
+	logutils.Log.Infof("get task success, taskID: %d", req.JobID)
 	resputil.Success(c, resp)
 }
 
@@ -374,7 +427,7 @@ func (mgr *AIJobMgr) Delete(c *gin.Context) {
 	token := interutil.GetToken(c)
 
 	// check if user is authorized to delete the task
-	_, err := mgr.taskService.GetByUserAndID(token.QueueName, req.JobID)
+	_, err := mgr.taskService.GetByQueueAndID(token.QueueName, req.JobID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
@@ -399,7 +452,7 @@ func (mgr *AIJobMgr) UpdateSLO(c *gin.Context) {
 		return
 	}
 	token := interutil.GetToken(c)
-	task, err := mgr.taskService.GetByUserAndID(token.Username, req.TaskID)
+	task, err := mgr.taskService.GetByQueueAndID(token.QueueName, req.TaskID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
@@ -426,4 +479,21 @@ func (mgr *AIJobMgr) GetTaskStats(c *gin.Context) {
 		TaskCount: taskCountList,
 	}
 	resputil.Success(c, resp)
+}
+
+func convertJobPhase(aijobStatus string) batch.JobPhase {
+	switch aijobStatus {
+	case "Pending":
+		return batch.Pending
+	case "Running":
+		return batch.Running
+	case "Succeeded":
+		return batch.Completed
+	case "Failed":
+		return batch.Failed
+	case "Preempted":
+		return batch.Aborted
+	default:
+		return batch.Pending
+	}
 }
