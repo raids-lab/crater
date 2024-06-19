@@ -22,8 +22,8 @@ const formSchema = z.object({
     .min(1, {
       message: "数据集名称不能为空",
     })
-    .max(40, {
-      message: "数据集名称最多包含 40 个字符",
+    .max(256, {
+      message: "数据集名称最多包含 256 个字符",
     }),
   describe: z.string(),
   url: z.string(),
