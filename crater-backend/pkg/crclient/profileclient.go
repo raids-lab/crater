@@ -115,5 +115,6 @@ func (c *ProfilingPodControl) CreateProfilePodFromTask(ctx context.Context, task
 	if err := c.Create(ctx, pod); err != nil {
 		return fmt.Errorf("create pod %s failed: %w", task.TaskName, err)
 	}
+
 	return nil
 }

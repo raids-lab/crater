@@ -95,7 +95,7 @@ func (b *Backend) RegisterService(
 	jwttokenMgr := handler.NewJWTTokenMgr()
 	recommenddljobMgr := handler.NewRecommendDLJobMgr(cl)
 	volcanoMgr := vcjob.NewVolcanojobMgr(cl, kc)
-	aijobMgr := aijob.NewAITaskMgr(aitaskCtrl, &pvcClient, &logClient)
+	aijobMgr := aijob.NewAITaskMgr(aitaskCtrl, kc, &logClient)
 	sparseMgr := spjob.NewSparseJobMgr(cl, &logClient)
 	datasetMgr := handler.NewFileMgr()
 	///////////////////////////////////////

@@ -143,6 +143,10 @@ func (p *Profiler) run(ctx context.Context) {
 					}
 				} else {
 					logutils.Log.Infof("create profiling pod success, taskID:%v, taskName:%v", task.ID, task.TaskName)
+					err = p.taskDB.UpdateProfilingStat(task.ID, models.Profiling, "", "")
+					if err != nil {
+						logutils.Log.Errorf("update profiling stat failed, taskID:%v, err:%v", task.ID, err)
+					}
 				}
 				p.taskQueue.Delete(task)
 			}
