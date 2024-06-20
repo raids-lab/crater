@@ -259,115 +259,165 @@ export const Component: FC = () => {
         id: "actions",
         enableHiding: false,
         cell: ({ row }) => {
-          if (!row.original.isdir) {
-            return (
-              <div className="flex flex-row space-x-1">
-                <Button
-                  variant="outline"
-                  className="h-8 w-8 p-0 hover:text-sky-700"
-                  title="下载文件"
-                  onClick={() => {
-                    const link = `https://crater.act.buaa.edu.cn/api/ss/download${path}/${row.original.name}`;
-                    const o = new XMLHttpRequest();
-                    o.open("GET", link);
-                    o.responseType = "blob";
-                    const token = localStorage.getItem(ACCESS_TOKEN_KEY);
-                    o.setRequestHeader("Authorization", "Bearer " + token);
-                    o.onload = function () {
-                      if (o.status == 200) {
-                        const content = o.response as string;
-                        const a = document.createElement("a");
-                        a.style.display = "none";
-                        a.download = row.original.name || "";
-                        const blob = new Blob([content]);
-                        a.href = URL.createObjectURL(blob);
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        toast.success("下载文件成功！");
-                      } else {
-                        toast.error("下载失败：" + o.statusText);
-                      }
-                    };
-                    o.send();
-                    toast.info("正在下载该文件");
-                  }}
-                >
-                  <DownloadIcon className="h-4 w-4" />
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <div>
+          return (
+            <>
+              {path.startsWith("/public") ? (
+                <>
+                  {row.original.isdir ? null : (
+                    <div className="flex flex-row space-x-1">
                       <Button
                         variant="outline"
-                        className="h-8 w-8 p-0 hover:text-red-700"
-                        title="删除文件"
-                      >
-                        <Trash2 size={16} strokeWidth={2} />
-                      </Button>
-                    </div>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>删除文件</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        文件将删除
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>取消</AlertDialogCancel>
-                      <AlertDialogAction
-                        variant="destructive"
+                        className="h-8 w-8 p-0 hover:text-sky-700"
+                        title="下载文件"
                         onClick={() => {
-                          deleteFile(path + "/" + row.original.name);
+                          const link = `https://crater.act.buaa.edu.cn/api/ss/download${path}/${row.original.name}`;
+                          const o = new XMLHttpRequest();
+                          o.open("GET", link);
+                          o.responseType = "blob";
+                          const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+                          o.setRequestHeader(
+                            "Authorization",
+                            "Bearer " + token,
+                          );
+                          o.onload = function () {
+                            if (o.status == 200) {
+                              const content = o.response as string;
+                              const a = document.createElement("a");
+                              a.style.display = "none";
+                              a.download = row.original.name || "";
+                              const blob = new Blob([content]);
+                              a.href = URL.createObjectURL(blob);
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              toast.success("下载文件成功！");
+                            } else {
+                              toast.error("下载失败：" + o.statusText);
+                            }
+                          };
+                          o.send();
+                          toast.info("正在下载该文件");
                         }}
                       >
-                        删除
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            );
-          } else {
-            return (
-              <div className="flex flex-row space-x-1">
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <div>
+                        <DownloadIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {row.original.isdir ? (
+                    <div className="flex flex-row space-x-1">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <div>
+                            <Button
+                              variant="outline"
+                              className="h-8 w-8 p-0 hover:text-red-700"
+                              title="删除文件夹"
+                              disabled={isRoot}
+                            >
+                              <Trash2 size={16} strokeWidth={2} />
+                            </Button>
+                          </div>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>删除文件夹</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              文件将删除
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>取消</AlertDialogCancel>
+                            <AlertDialogAction
+                              variant="destructive"
+                              onClick={() => {
+                                deleteFile(path + "/" + row.original.name);
+                              }}
+                            >
+                              删除
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  ) : (
+                    <div className="flex flex-row space-x-1">
                       <Button
                         variant="outline"
-                        className="h-8 w-8 p-0 hover:text-red-700"
-                        title="删除文件夹"
-                        disabled={isRoot}
-                      >
-                        <Trash2 size={16} strokeWidth={2} />
-                      </Button>
-                    </div>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>删除文件夹</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        文件将删除
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>取消</AlertDialogCancel>
-                      <AlertDialogAction
-                        variant="destructive"
+                        className="h-8 w-8 p-0 hover:text-sky-700"
+                        title="下载文件"
                         onClick={() => {
-                          deleteFile(path + "/" + row.original.name);
+                          const link = `https://crater.act.buaa.edu.cn/api/ss/download${path}/${row.original.name}`;
+                          const o = new XMLHttpRequest();
+                          o.open("GET", link);
+                          o.responseType = "blob";
+                          const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+                          o.setRequestHeader(
+                            "Authorization",
+                            "Bearer " + token,
+                          );
+                          o.onload = function () {
+                            if (o.status == 200) {
+                              const content = o.response as string;
+                              const a = document.createElement("a");
+                              a.style.display = "none";
+                              a.download = row.original.name || "";
+                              const blob = new Blob([content]);
+                              a.href = URL.createObjectURL(blob);
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              toast.success("下载文件成功！");
+                            } else {
+                              toast.error("下载失败：" + o.statusText);
+                            }
+                          };
+                          o.send();
+                          toast.info("正在下载该文件");
                         }}
                       >
-                        删除
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            );
-          }
+                        <DownloadIcon className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <div>
+                            <Button
+                              variant="outline"
+                              className="h-8 w-8 p-0 hover:text-red-700"
+                              title="删除文件"
+                            >
+                              <Trash2 size={16} strokeWidth={2} />
+                            </Button>
+                          </div>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>删除文件</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              文件将删除
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>取消</AlertDialogCancel>
+                            <AlertDialogAction
+                              variant="destructive"
+                              onClick={() => {
+                                deleteFile(path + "/" + row.original.name);
+                              }}
+                            >
+                              删除
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          );
         },
       },
     ],
