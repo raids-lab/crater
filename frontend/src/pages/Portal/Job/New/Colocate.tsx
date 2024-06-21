@@ -469,7 +469,7 @@ export const Component = () => {
                     <FormControl>
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value}
                       >
                         <SelectTrigger className="">
                           <SelectValue placeholder="请选择" />
