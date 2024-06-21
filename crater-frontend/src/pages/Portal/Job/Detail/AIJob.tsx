@@ -297,7 +297,10 @@ export const Component = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  const url = generateMetricsUrl(data.podDetails);
+                  // const url = generateMetricsUrl(data.podDetails);
+                  const url =
+                    "http://192.168.5.60:31121/d/R4ZPFfyIz/job-monitor?orgId=1&var-job=" +
+                    data.jobName;
                   window.open(url, "_blank");
                 }}
               >
