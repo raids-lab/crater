@@ -61,8 +61,8 @@ export const apiProjectDelete = (project: IDeleteProjectReq) =>
 export interface User {
   id: number;
   name: string;
-  role: number;
-  accessmode: number;
+  role: string;
+  accessmode: string;
 }
 
 export enum Access {
