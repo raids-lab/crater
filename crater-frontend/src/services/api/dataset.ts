@@ -25,6 +25,11 @@ export interface DatasetReq {
   name: string;
   url: string;
 }
+
+export interface DatasetReanmeReq {
+  datasetID: number;
+  name: string;
+}
 export const apiGetDataset = () =>
   instance.get<IResponse<Dataset[]>>(VERSION + `/dataset/mydataset`);
 
@@ -42,3 +47,12 @@ export const apiDatasetCreate = (dataset: DatasetReq) =>
 
 export const apiDatasetDelete = (datasetID: number) =>
   instance.delete<IResponse<string>>(VERSION + `/dataset/delete/${datasetID}`);
+
+export const apiDatasetRename = (drr: DatasetReanmeReq) =>
+  instance.post<IResponse<string>>(VERSION + "/dataset/rename", drr);
+
+export const apiAdminShareDatasetwithUser = (ud: UserDataset) =>
+  instance.post<IResponse<string>>(VERSION + "/admin/dataset/share/user", ud);
+
+export const apiAdminShareDatasetwithQueue = (qd: QueueDataset) =>
+  instance.post<IResponse<string>>(VERSION + "/admin/dataset/share/queue", qd);
