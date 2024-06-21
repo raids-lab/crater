@@ -92,19 +92,14 @@ type FormSchema = z.infer<typeof formSchema>;
 
 const roles = [
   {
-    label: "管理员",
-    value: Role.Admin.toString(),
-    icon: StarFilledIcon,
-  },
-  {
     label: "普通用户",
     value: Role.User.toString(),
     icon: StarIcon,
   },
   {
-    label: "游客",
-    value: Role.Guest.toString(),
-    icon: StarIcon,
+    label: "管理员",
+    value: Role.Admin.toString(),
+    icon: StarFilledIcon,
   },
 ];
 
@@ -123,11 +118,6 @@ const getHeader = (key: string): string => {
 
 const accessmodes = [
   {
-    label: "无",
-    value: Access.NA.toString(),
-    icon: StarFilledIcon,
-  },
-  {
     label: "只读",
     value: Access.RO.toString(),
     icon: StarIcon,
@@ -135,12 +125,7 @@ const accessmodes = [
   {
     label: "读写",
     value: Access.RW.toString(),
-    icon: StarIcon,
-  },
-  {
-    label: "完全",
-    value: Access.AO.toString(),
-    icon: StarIcon,
+    icon: StarFilledIcon,
   },
 ];
 
@@ -232,7 +217,7 @@ const UserProjectManagement = () => {
         ),
         cell: ({ row }) => {
           const role = roles.find(
-            (role) => role.value === row.getValue<number>("role").toString(),
+            (role) => role.value === row.getValue("role"),
           );
           if (!role) {
             return null;
@@ -260,8 +245,7 @@ const UserProjectManagement = () => {
         ),
         cell: ({ row }) => {
           const status = accessmodes.find(
-            (status) =>
-              status.value === row.getValue<number>("accessmode").toString(),
+            (status) => status.value === row.getValue("accessmode"),
           );
           if (!status) {
             return null;
@@ -311,7 +295,7 @@ const UserProjectManagement = () => {
                                 updateUser({
                                   id: user.id,
                                   name: user.name,
-                                  role: parseInt(role.value),
+                                  role: role.value,
                                   accessmode: user.accessmode,
                                 })
                               }
@@ -335,7 +319,7 @@ const UserProjectManagement = () => {
                                   id: user.id,
                                   name: user.name,
                                   role: user.role,
-                                  accessmode: parseInt(accessmode.value),
+                                  accessmode: accessmode.value,
                                 })
                               }
                             >
@@ -424,8 +408,8 @@ const UserProjectManagement = () => {
     addUser({
       id: usersOutOfProject.at(parseInt(values.index))?.id as number,
       name: usersOutOfProject.at(parseInt(values.index))?.name as string,
-      role: parseInt(values.role),
-      accessmode: parseInt(values.accessmode),
+      role: values.role,
+      accessmode: values.accessmode,
     });
     setOpenSheet(false);
   };
@@ -510,9 +494,8 @@ const UserProjectManagement = () => {
                         </FormControl>
                         <SelectContent>
                           <SelectGroup>
-                            <SelectItem value="1">Guest</SelectItem>
-                            <SelectItem value="2">User</SelectItem>
-                            <SelectItem value="3">Admin</SelectItem>
+                            <SelectItem value="2">普通用户</SelectItem>
+                            <SelectItem value="3">管理员</SelectItem>
                           </SelectGroup>
                         </SelectContent>
                       </Select>
@@ -541,10 +524,8 @@ const UserProjectManagement = () => {
                         </FormControl>
                         <SelectContent>
                           <SelectGroup>
-                            <SelectItem value="1">NA</SelectItem>
-                            <SelectItem value="2">RO</SelectItem>
-                            <SelectItem value="3">RW</SelectItem>
-                            <SelectItem value="4">AO</SelectItem>
+                            <SelectItem value="2">只读</SelectItem>
+                            <SelectItem value="3">读写</SelectItem>
                           </SelectGroup>
                         </SelectContent>
                       </Select>
