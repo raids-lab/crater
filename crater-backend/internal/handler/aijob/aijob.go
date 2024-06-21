@@ -382,8 +382,16 @@ func (mgr *AIJobMgr) Get(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
+type AIJobLogReq struct {
+	JobID uint `uri:"id" binding:"required"`
+}
+
+type AIJobLogResp struct {
+	Logs map[string]string `json:"logs"`
+}
+
 func (mgr *AIJobMgr) GetLogs(c *gin.Context) {
-	var req AIJobDetailReq
+	var req AIJobLogReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
@@ -400,7 +408,7 @@ func (mgr *AIJobMgr) GetLogs(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("get task log failed, err %v", err), resputil.NotSpecified)
 		return
 	}
-	var logs []string
+	logs := make(map[string]string, len(pods))
 	for i := range pods {
 		pod := &pods[i]
 		podLog, err := mgr.logClient.GetPodLogs(pod)
@@ -408,9 +416,9 @@ func (mgr *AIJobMgr) GetLogs(c *gin.Context) {
 			resputil.Error(c, fmt.Sprintf("get task log failed, err %v", err), resputil.NotSpecified)
 			return
 		}
-		logs = append(logs, podLog)
+		logs[pod.Name] = podLog
 	}
-	resp := payload.GetTaskLogResp{
+	resp := AIJobLogResp{
 		Logs: logs,
 	}
 	logutils.Log.Infof("get task success, taskID: %d", req.JobID)
