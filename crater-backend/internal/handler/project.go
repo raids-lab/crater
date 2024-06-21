@@ -602,8 +602,8 @@ type ProjectGetReq struct {
 type UserProjectGetResp struct {
 	ID         uint   `json:"id"`
 	Name       string `json:"name"`
-	Role       uint   `json:"role"`
-	AccessMode uint   `json:"accessmode" gorm:"access_mode"`
+	Role       string `json:"role"`
+	AccessMode string `json:"accessmode" gorm:"access_mode"`
 }
 
 // / GetUserInProject godoc
