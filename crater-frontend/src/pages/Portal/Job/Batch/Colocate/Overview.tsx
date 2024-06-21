@@ -18,7 +18,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiJobDelete, apiJobBatchList } from "@/services/api/vcjob";
@@ -46,27 +45,20 @@ import JobTypeLabel from "@/components/custom/JobTypeLabel";
 import { globalJobUrl } from "@/utils/store";
 import { useAtomValue } from "jotai";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 export const priorities = [
   {
     label: "高",
     value: "high",
+    className: "text-amber-500 border-amber-500 bg-amber-500/10",
   },
   {
     label: "低",
     value: "low",
+    className: "text-slate-500 border-slate-500 bg-slate-500/10",
   },
 ];
-
-export enum JobStatus {
-  Initial = 1,
-  Created,
-  Running,
-  Succeeded,
-  Failed,
-  Preempted,
-}
 
 export type StatusValue =
   | "Queueing"
@@ -79,30 +71,37 @@ export type StatusValue =
 export const statuses: {
   value: StatusValue;
   label: string;
+  className?: string;
 }[] = [
   {
     value: "Queueing",
     label: "检查中",
+    className: "text-purple-500 border-purple-500 bg-purple-500/10",
   },
   {
     value: "Created",
     label: "等待中",
+    className: "text-slate-500 border-slate-500 bg-slate-500/10",
   },
   {
     value: "Running",
     label: "运行中",
+    className: "text-sky-500 border-sky-500 bg-sky-500/10",
   },
   {
     value: "Succeeded",
-    label: "成功",
+    label: "已完成",
+    className: "text-emerald-500 border-emerald-500 bg-emerald-500/10",
   },
   {
     value: "Preempted",
     label: "被抢占",
+    className: "text-orange-500 border-orange-500 bg-orange-500/10",
   },
   {
     value: "Failed",
     label: "失败",
+    className: "text-red-500 border-red-500 bg-red-500/10",
   },
 ];
 
@@ -110,22 +109,32 @@ export const profilingStatuses = [
   {
     value: "0",
     label: "未分析",
+    className: "text-purple-500 border-purple-500 bg-purple-500/10",
   },
   {
     value: "1",
-    label: "等待分析",
+    label: "待分析",
+    className: "text-slate-500 border-slate-500 bg-slate-500/10",
   },
   {
     value: "2",
     label: "分析中",
+    className: "text-sky-500 border-sky-500 bg-sky-500/10",
   },
   {
     value: "3",
-    label: "分析完成",
+    label: "已分析",
+    className: "text-emerald-500 border-emerald-500 bg-emerald-500/10",
   },
   {
     value: "4",
-    label: "分析失败",
+    label: "失败",
+    className: "text-red-500 border-red-500 bg-red-500/10",
+  },
+  {
+    value: "5",
+    label: "跳过",
+    className: "text-slate-500 border-slate-500 bg-slate-500/10",
   },
 ];
 
@@ -201,29 +210,6 @@ const ColocateOverview = () => {
   const batchColumns = useMemo<ColumnDef<ColocateJobInfo>[]>(
     () => [
       {
-        id: "select",
-        header: ({ table }) => (
-          <Checkbox
-            checked={table.getIsAllPageRowsSelected()}
-            onCheckedChange={(value) =>
-              table.toggleAllPageRowsSelected(!!value)
-            }
-            aria-label="Select all"
-          />
-        ),
-        cell: ({ row }) => (
-          <div>
-            <Checkbox
-              checked={row.getIsSelected()}
-              onCheckedChange={(value) => row.toggleSelected(!!value)}
-              aria-label="Select row"
-            />
-          </div>
-        ),
-        enableSorting: false,
-        enableHiding: false,
-      },
-      {
         accessorKey: "jobType",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("jobType")} />
@@ -265,24 +251,7 @@ const ColocateOverview = () => {
           if (!status) {
             return null;
           }
-          return (
-            <div className="flex flex-row items-center justify-start">
-              <div
-                className={cn("flex h-3 w-3 rounded-full", {
-                  "bg-purple-500 hover:bg-purple-400":
-                    status.value === "Queueing",
-                  "bg-slate-500 hover:bg-slate-400": status.value === "Created",
-                  "bg-sky-500 hover:bg-sky-400": status.value === "Running",
-                  "bg-red-500 hover:bg-red-400": status.value === "Failed",
-                  "bg-emerald-500 hover:bg-emerald-400":
-                    status.value === "Succeeded",
-                  "bg-orange-500 hover:bg-orange-400":
-                    status.value === "Preempted",
-                })}
-              ></div>
-              <div className="ml-1.5">{status.label}</div>
-            </div>
-          );
+          return <Badge className={status.className}>{status.label}</Badge>;
         },
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id));
@@ -303,23 +272,24 @@ const ColocateOverview = () => {
           if (!priority) {
             return null;
           }
-          return (
-            <div className="flex items-center">
-              <span>{priority.label}</span>
-            </div>
-            // <Badge
-            //   className={cn("flex w-fit items-center px-2 font-normal", {
-            //     "bg-secondary text-secondary-foreground hover:bg-secondary/80":
-            //       priority.value === "low",
-            //   })}
-            // >
-            //   {priority.icon && <priority.icon className="mr-1 h-4 w-4" />}
-            //   <span>{priority.label}</span>
-            // </Badge>
-          );
+          return <Badge className={priority.className}>{priority.label}</Badge>;
         },
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id));
+        },
+        enableSorting: false,
+      },
+      {
+        accessorKey: "resources",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("resources")}
+          />
+        ),
+        cell: ({ row }) => {
+          const resources = row.getValue<Record<string, string>>("resources");
+          return <ResourceBadges resources={resources} />;
         },
       },
       {
@@ -338,26 +308,11 @@ const ColocateOverview = () => {
             return null;
           }
           return (
-            <div className="flex items-center">
-              <span>{profiling.label}</span>
-            </div>
+            <Badge className={profiling.className}>{profiling.label}</Badge>
           );
         },
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id));
-        },
-      },
-      {
-        accessorKey: "resources",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("resources")}
-          />
-        ),
-        cell: ({ row }) => {
-          const resources = row.getValue<Record<string, string>>("resources");
-          return <ResourceBadges resources={resources} />;
         },
       },
       {
