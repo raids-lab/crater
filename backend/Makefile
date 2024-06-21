@@ -2,7 +2,9 @@
 # Image URL to use all building/pushing image targets
 IMG ?= controller:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.25.0
+ENVTEST_K8S_VERSION = 1.26.9
+KUBECONFIG_PATH := ${PWD}/kubeconfig
+CONFIG_FILE := ./etc/debug-config.yaml
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -66,7 +68,8 @@ build: fmt # generate vet ## Build manager binary.
 
 .PHONY: run
 run: fmt # manifests generate vet ## Run a controller from your host.
-	go run ./main.go -db-config-file ./dbconf.yaml
+	export KUBECONFIG=$(KUBECONFIG_PATH) && \
+	go run main.go --config-file $(CONFIG_FILE) --server-port $(SERVER_PORT)
 
 # If you wish built the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
