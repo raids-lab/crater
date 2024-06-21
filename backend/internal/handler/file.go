@@ -28,10 +28,13 @@ func (mgr *FileMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.DELETE("/delete/:id", mgr.DeleteDataset)
 	g.POST("/share/user", mgr.ShareDatasetWithUser)
 	g.POST("/share/queue", mgr.ShareDatasetWithQueue)
+	g.POST("/rename", mgr.RemaneDatset)
 }
 
 func (mgr *FileMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("/alldataset", mgr.GetAllDataset)
+	g.POST("/share/user", mgr.AdminShareDatasetWithUser)
+	g.POST("/share/queue", mgr.AdminShareDatasetWithQueue)
 }
 
 type DatasetResp struct {
@@ -243,33 +246,72 @@ func (mgr *FileMgr) ShareDatasetWithUser(c *gin.Context) {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
-	u := query.User
 	d := query.Dataset
 	_, err := d.WithContext(c).Where(d.UserID.Eq(token.UserID), d.ID.Eq(userReq.DatasetID)).First()
 	if err != nil {
 		resputil.Error(c, "you has no permission or this dataset not exist", resputil.InvalidRequest)
 		return
 	}
-	_, err = u.WithContext(c).Where(u.ID.Eq(userReq.UserID)).First()
+	err = mgr.shareWithUser(c, userReq)
 	if err != nil {
-		resputil.Error(c, "user not exist", resputil.InvalidRequest)
+		resputil.Error(c, err.Error(), resputil.InvalidRequest)
 		return
+	}
+	resputil.Success(c, "Shared successfully")
+}
+
+// AdminShareDatasetWithUser godoc
+// @Summary 管理员对用户分享数据集
+// @Description 管理员对用户分享数据集
+// @Tags Dataset
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param userReq body SharedUserReq true "共享数据集用户"
+// @Success 200 {object} resputil.Response[string] "成功返回值描述"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/admin/dataset/share/user [post]
+func (mgr *FileMgr) AdminShareDatasetWithUser(c *gin.Context) {
+	var userReq SharedUserReq
+	if err := c.ShouldBindJSON(&userReq); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	d := query.Dataset
+	_, err := d.WithContext(c).Where(d.ID.Eq(userReq.DatasetID)).First()
+	if err != nil {
+		resputil.Error(c, "this dataset not exist", resputil.InvalidRequest)
+		return
+	}
+	err = mgr.shareWithUser(c, userReq)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.InvalidRequest)
+		return
+	}
+	resputil.Success(c, "Shared with user successfully")
+}
+
+func (mgr *FileMgr) shareWithUser(c *gin.Context, userReq SharedUserReq) error {
+	u := query.User
+	_, err := u.WithContext(c).Where(u.ID.Eq(userReq.UserID)).First()
+	if err != nil {
+		return fmt.Errorf("user not exist")
 	}
 	ud := query.UserDataset
 	hud, _ := ud.WithContext(c).Where(ud.UserID.Eq(userReq.UserID), ud.DatasetID.Eq(userReq.DatasetID)).First()
 	if hud != nil {
-		resputil.Error(c, "user has shared dataset", resputil.InvalidRequest)
-		return
+		return fmt.Errorf("user has shared dataset")
 	}
 	userDataset := model.UserDataset{
 		UserID:    userReq.UserID,
 		DatasetID: userReq.DatasetID,
 	}
 	if err := ud.WithContext(c).Create(&userDataset); err != nil {
-		resputil.Error(c, err.Error(), resputil.InvalidRequest)
-		return
+		return err
 	}
-	resputil.Success(c, "Shared successfully")
+	return nil
 }
 
 type SharedQueueReq struct {
@@ -290,39 +332,78 @@ type SharedQueueReq struct {
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/share/queue [post]
 func (mgr *FileMgr) ShareDatasetWithQueue(c *gin.Context) {
-	token := util.GetToken(c)
 	var queueReq SharedQueueReq
 	if err := c.ShouldBindJSON(&queueReq); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
-	q := query.Queue
+	token := util.GetToken(c)
 	d := query.Dataset
-	qd := query.QueueDataset
 	_, err := d.WithContext(c).Where(d.UserID.Eq(token.UserID), d.ID.Eq(queueReq.DatasetID)).First()
 	if err != nil {
 		resputil.Error(c, "you has no permission or this dataset not exist", resputil.InvalidRequest)
 		return
 	}
-	_, err = q.WithContext(c).Where(q.ID.Eq(queueReq.QueueID)).First()
+	err = mgr.shareWithQueue(c, queueReq)
 	if err != nil {
-		resputil.Error(c, "queue not exist", resputil.InvalidRequest)
+		resputil.Error(c, err.Error(), resputil.InvalidRequest)
 		return
+	}
+	resputil.Success(c, "Shared successfully")
+}
+
+// AdminShareDatasetWithQueue godoc
+// @Summary 管理员对队列分享数据集
+// @Description 管理员对队列分享数据集
+// @Tags Dataset
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param queueReq body SharedQueueReq true "共享数据集队列"
+// @Success 200 {object} resputil.Response[string] "成功返回值描述"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/admin/dataset/share/queue [post]
+func (mgr *FileMgr) AdminShareDatasetWithQueue(c *gin.Context) {
+	var queueReq SharedQueueReq
+	err := c.ShouldBindJSON(&queueReq)
+	if err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+	d := query.Dataset
+	_, err = d.WithContext(c).Where(d.ID.Eq(queueReq.DatasetID)).First()
+	if err != nil {
+		resputil.Error(c, "can't find this dataset", resputil.InvalidRequest)
+		return
+	}
+	err = mgr.shareWithQueue(c, queueReq)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.InvalidRequest)
+		return
+	}
+	resputil.Success(c, "Shared with queue successfully")
+}
+
+func (mgr *FileMgr) shareWithQueue(c *gin.Context, queueReq SharedQueueReq) error {
+	q := query.Queue
+	qd := query.QueueDataset
+	_, err := q.WithContext(c).Where(q.ID.Eq(queueReq.QueueID)).First()
+	if err != nil {
+		return fmt.Errorf("queue not exist")
 	}
 	hqd, _ := qd.WithContext(c).Where(qd.QueueID.Eq(queueReq.QueueID), qd.DatasetID.Eq(queueReq.DatasetID)).First()
 	if hqd != nil {
-		resputil.Error(c, "queue has shared dataset", resputil.InvalidRequest)
-		return
+		return fmt.Errorf("queue has shared dataset")
 	}
 	queuedataset := model.QueueDataset{
 		QueueID:   queueReq.QueueID,
 		DatasetID: queueReq.DatasetID,
 	}
 	if err := qd.WithContext(c).Create(&queuedataset); err != nil {
-		resputil.Error(c, err.Error(), resputil.InvalidRequest)
-		return
+		return err
 	}
-	resputil.Success(c, "Shared successfully")
+	return nil
 }
 
 type DeleteDatasetReq struct {
@@ -391,4 +472,46 @@ func (mgr *FileMgr) DeleteDataset(c *gin.Context) {
 	} else {
 		resputil.Success(c, "Deleted successfully")
 	}
+}
+
+type RenameReq struct {
+	DatasetID uint   `json:"datasetID" binding:"required"`
+	Name      string `json:"name" binding:"required"`
+}
+
+// RemaneDatset godoc
+// @Summary 数据集重命名
+// @Description 数据集重命名
+// @Tags Dataset
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param req body RenameReq true "参数描述"
+// @Success 200 {object} resputil.Response[string] "成功返回值描述"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/dataset/rename [post]
+func (mgr *FileMgr) RemaneDatset(c *gin.Context) {
+	token := util.GetToken(c)
+	var req RenameReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+	d := query.Dataset
+	dataset, err := d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).First()
+	if err != nil {
+		resputil.Error(c, "this dataset not exist", resputil.InvalidRequest)
+		return
+	}
+	if dataset.UserID != token.UserID && token.RolePlatform != model.RoleAdmin {
+		resputil.Error(c, "you has no permission to rename", resputil.InvalidRequest)
+		return
+	}
+	_, err = d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).Update(d.Name, req.Name)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to rename dataset: %v", err), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, "Successfully rename dataset")
 }
