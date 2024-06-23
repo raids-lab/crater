@@ -251,7 +251,11 @@ const ColocateOverview = () => {
           if (!status) {
             return null;
           }
-          return <Badge className={status.className}>{status.label}</Badge>;
+          return (
+            <Badge className={status.className} variant="outline">
+              {status.label}
+            </Badge>
+          );
         },
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id));
@@ -272,7 +276,11 @@ const ColocateOverview = () => {
           if (!priority) {
             return null;
           }
-          return <Badge className={priority.className}>{priority.label}</Badge>;
+          return (
+            <Badge className={priority.className} variant="outline">
+              {priority.label}
+            </Badge>
+          );
         },
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id));
@@ -308,7 +316,9 @@ const ColocateOverview = () => {
             return null;
           }
           return (
-            <Badge className={profiling.className}>{profiling.label}</Badge>
+            <Badge className={profiling.className} variant="outline">
+              {profiling.label}
+            </Badge>
           );
         },
         filterFn: (row, id, value) => {
