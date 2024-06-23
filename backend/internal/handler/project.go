@@ -88,9 +88,9 @@ type (
 	// Swagger 不支持范型嵌套，定义别名
 	ListAllResp struct {
 		*model.Queue
-		Guaranteed string `json:"guaranteed"`
-		Deserved   string `json:"deserved"`
-		Capacity   string `json:"capacity"`
+		Guaranteed v1.ResourceList `json:"guaranteed"`
+		Deserved   v1.ResourceList `json:"deserved"`
+		Capacity   v1.ResourceList `json:"capacity"`
 	}
 )
 
@@ -156,9 +156,9 @@ func (mgr *ProjectMgr) ListAllForAdmin(c *gin.Context) {
 			lists = append(lists,
 				ListAllResp{
 					Queue:      q,
-					Guaranteed: model.ResourceListToJSON(queueMap[q.Name].Spec.Guarantee.Resource),
-					Deserved:   model.ResourceListToJSON(queueMap[q.Name].Spec.Deserved),
-					Capacity:   model.ResourceListToJSON(queueMap[q.Name].Spec.Capability),
+					Guaranteed: queueMap[q.Name].Spec.Guarantee.Resource,
+					Deserved:   queueMap[q.Name].Spec.Deserved,
+					Capacity:   queueMap[q.Name].Spec.Capability,
 				},
 			)
 		} else {
