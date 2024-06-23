@@ -9,9 +9,9 @@ export interface IProject {
   Name: string;
   Nickname: string;
   Space: string;
-  guaranteed: string;
-  deserved: string;
-  capacity: string;
+  guaranteed: Record<string, string | number>;
+  deserved: Record<string, string | number>;
+  capacity: Record<string, string | number>;
 }
 
 export interface IUser {
