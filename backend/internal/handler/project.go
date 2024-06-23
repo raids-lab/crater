@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/model"
@@ -474,8 +475,8 @@ type (
 	}
 
 	UpdateUserProjectReq struct {
-		AccessMode uint `json:"accessmode" binding:"required"`
-		Role       uint `json:"role" binding:"required"`
+		AccessMode string `json:"accessmode" binding:"required"`
+		Role       string `json:"role" binding:"required"`
 	}
 )
 
@@ -519,7 +520,19 @@ func (mgr *ProjectMgr) AddUserProject(c *gin.Context) {
 		return
 	} else {
 		var reqBody UpdateUserProjectReq
-		if err := c.ShouldBindJSON(&reqBody); err != nil {
+		if err = c.ShouldBindJSON(&reqBody); err != nil {
+			resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+			return
+		}
+
+		var role, access uint64
+
+		if role, err = strconv.ParseUint(reqBody.Role, 10, 64); err != nil {
+			resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+			return
+		}
+
+		if access, err = strconv.ParseUint(reqBody.AccessMode, 10, 64); err != nil {
 			resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
 			return
 		}
@@ -527,8 +540,8 @@ func (mgr *ProjectMgr) AddUserProject(c *gin.Context) {
 		userQueue := model.UserQueue{
 			UserID:     req.UserID,
 			QueueID:    req.QueueID,
-			Role:       model.Role(reqBody.Role),
-			AccessMode: model.AccessMode(reqBody.AccessMode),
+			Role:       model.Role(role),
+			AccessMode: model.AccessMode(access),
 		}
 
 		if err := uq.WithContext(c).Create(&userQueue); err != nil {
@@ -580,12 +593,25 @@ func (mgr *ProjectMgr) UpdateUserProject(c *gin.Context) {
 		return
 	} else {
 		var req UpdateUserProjectReq
-		if err := c.ShouldBindJSON(&req); err != nil {
+		if err = c.ShouldBindJSON(&req); err != nil {
 			resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
 			return
 		}
-		userQueue.Role = model.Role(req.Role)
-		userQueue.AccessMode = model.AccessMode(req.AccessMode)
+
+		var role, access uint64
+
+		if role, err = strconv.ParseUint(req.Role, 10, 64); err != nil {
+			resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+			return
+		}
+
+		if access, err = strconv.ParseUint(req.AccessMode, 10, 64); err != nil {
+			resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+			return
+		}
+
+		userQueue.Role = model.Role(role)
+		userQueue.AccessMode = model.AccessMode(access)
 		if _, err := uq.WithContext(c).Updates(userQueue); err != nil {
 			resputil.Error(c, fmt.Sprintf("update UserProject failed, detail: %v", err), resputil.NotSpecified)
 			return
