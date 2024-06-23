@@ -41,6 +41,7 @@ export interface IClusterNodeGPU {
   haveGPU: boolean;
   gpuCount: number;
   gpuUtil: Record<string, number>;
+  relateJobs: string[];
 }
 
 export const apiGetAdminNodes = () =>
