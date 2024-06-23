@@ -5,6 +5,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  CircleArrowDown,
+  CircleArrowUp,
   CirclePlusIcon,
   PencilIcon,
   TrashIcon,
@@ -76,6 +78,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { exportToJson, importFromJson } from "@/utils/form";
+const VERSION = "20240623";
+const JOB_TYPE = "queue";
 
 function convertResourcesToMap(
   resources: Resource[],
@@ -85,7 +90,9 @@ function convertResourcesToMap(
 } {
   const resourceMap: { [key: string]: string } = {};
   resources.forEach((resource) => {
-    resourceMap[resource.name] = resource[field] as string;
+    if (resource[field] !== "") {
+      resourceMap[resource.name] = resource[field] as string;
+    }
   });
   return resourceMap;
 }
@@ -95,30 +102,36 @@ const resourceSchema = z.array(
     name: z.string().min(1, {
       message: "资源名称不能为空",
     }),
-    guaranteed: z.union([
-      z.string().min(1, {
-        message: "资源名称不能为空",
-      }),
-      z.number().int().min(0, {
-        message: "资源至少为0",
-      }),
-    ]),
-    deserved: z.union([
-      z.string().min(1, {
-        message: "资源名称不能为空",
-      }),
-      z.number().int().min(0, {
-        message: "资源至少为0",
-      }),
-    ]),
-    capacity: z.union([
-      z.string().min(1, {
-        message: "资源名称不能为空",
-      }),
-      z.number().int().min(0, {
-        message: "资源至少为0",
-      }),
-    ]),
+    guaranteed: z
+      .union([
+        z.string().min(0, {
+          message: "资源不能为空",
+        }),
+        z.number().int().min(0, {
+          message: "资源至少为0",
+        }),
+      ])
+      .default("null"),
+    deserved: z
+      .union([
+        z.string().min(0, {
+          message: "资源不能为空",
+        }),
+        z.number().int().min(0, {
+          message: "资源至少为0",
+        }),
+      ])
+      .default("null"),
+    capacity: z
+      .union([
+        z.string().min(0, {
+          message: "资源不能为空",
+        }),
+        z.number().int().min(0, {
+          message: "资源至少为0",
+        }),
+      ])
+      .default("null"),
   }),
 );
 
@@ -169,6 +182,8 @@ const ProjectSheet = ({
     defaultValues: formData,
   });
 
+  const currentValues = form.watch();
+
   const {
     fields: resourcesFields,
     append: resourcesAppend,
@@ -202,6 +217,60 @@ const ProjectSheet = ({
         <SheetHeader>
           <SheetTitle className="pl-6">新建账户</SheetTitle>
         </SheetHeader>
+        <div className="ml-6 flex flex-row gap-3">
+          <Button
+            variant="outline"
+            type="button"
+            className="relative h-8 cursor-pointer"
+          >
+            <Input
+              onChange={(e) => {
+                importFromJson<FormSchema>(
+                  VERSION,
+                  JOB_TYPE,
+                  e.target.files?.[0],
+                )
+                  .then((data) => {
+                    form.reset(data);
+                    toast.success(`导入配置成功`);
+                  })
+                  .catch(() => {
+                    toast.error(`解析错误，导入配置失败`);
+                  });
+              }}
+              type="file"
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            />
+            <CircleArrowDown className="-ml-0.5 mr-1.5 h-4 w-4" />
+            导入配置
+          </Button>
+          <Button
+            variant="outline"
+            type="button"
+            className="h-8"
+            onClick={() => {
+              form
+                .trigger()
+                .then((isValid) => {
+                  isValid &&
+                    exportToJson(
+                      {
+                        version: VERSION,
+                        type: JOB_TYPE,
+                        data: currentValues,
+                      },
+                      currentValues.name + ".json",
+                    );
+                })
+                .catch((error) => {
+                  toast.error((error as Error).message);
+                });
+            }}
+          >
+            <CircleArrowUp className="-ml-0.5 mr-1.5 h-4 w-4" />
+            导出配置
+          </Button>
+        </div>
         <div ref={refRoot} className="h-full w-full">
           <ScrollArea style={{ width, height }}>
             <Form {...form}>
@@ -721,8 +790,8 @@ export const Account = () => {
               : (nameRecord[key] = {
                   name: key,
                   guaranteed: value,
-                  deserved: 0,
-                  capacity: 0,
+                  deserved: "",
+                  capacity: "",
                 } as Resource),
           );
           Object.entries(proj.deserved).map(([key, value]) =>
@@ -731,8 +800,8 @@ export const Account = () => {
               : (nameRecord[key] = {
                   name: key,
                   deserved: value,
-                  guaranteed: 0,
-                  capacity: 0,
+                  guaranteed: "",
+                  capacity: "",
                 } as Resource),
           );
           Object.entries(proj.capacity).map(([key, value]) =>
@@ -741,8 +810,8 @@ export const Account = () => {
               : (nameRecord[key] = {
                   name: key,
                   capacity: value,
-                  guaranteed: 0,
-                  deserved: 0,
+                  guaranteed: "",
+                  deserved: "",
                 } as Resource),
           );
           const resourcesData = Object.entries(nameRecord).map(
@@ -824,16 +893,16 @@ export const Account = () => {
           id: p.ID,
           name: p.Nickname,
           guaranteed:
-            p.guaranteed != "null"
-              ? (JSON.parse(p.guaranteed) as ResourceMap)
+            p.guaranteed != null
+              ? (p.guaranteed as ResourceMap)
               : ({} as ResourceMap),
           deserved:
-            p.deserved != "null"
-              ? (JSON.parse(p.deserved) as ResourceMap)
+            p.deserved != null
+              ? (p.deserved as ResourceMap)
               : ({} as ResourceMap),
           capacity:
-            p.capacity != "null"
-              ? (JSON.parse(p.capacity) as ResourceMap)
+            p.capacity != null
+              ? (p.capacity as ResourceMap)
               : ({} as ResourceMap),
         };
       });
