@@ -23,7 +23,7 @@ const sidebarItems: SidebarItem[] = [
     icon: BarChartBigIcon,
     children: [],
     route: {
-      path: "overview",
+      path: "overview/*",
       lazy: () => import("./Overview"),
     },
   },

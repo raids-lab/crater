@@ -23,7 +23,7 @@ import NivoPie from "@/components/chart/NivoPie";
 import SplitButton from "@/components/custom/SplitButton";
 import { Button } from "@/components/ui/button";
 import { BoxIcon, FileTextIcon } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useRoutes } from "react-router-dom";
 import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
 import ResourceBadges from "@/components/custom/ResourceBadges";
 import NodeBadges from "@/components/custom/NodeBadges";
@@ -31,6 +31,7 @@ import JobTypeLabel, { jobTypes } from "@/components/custom/JobTypeLabel";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
 import { globalJobUrl } from "@/utils/store";
+import PodStatusDetail from "../../Admin/Cluster/Pod";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -321,7 +322,7 @@ export const Component: FC = () => {
 
   const navigate = useNavigate();
 
-  return (
+  const mainElement = (
     <>
       <div className="grid gap-4 md:gap-6 lg:col-span-3 lg:grid-cols-3">
         <Card className="col-span-2 flex flex-col justify-between lg:col-span-2">
@@ -433,4 +434,19 @@ export const Component: FC = () => {
       ></DataTable>
     </>
   );
+
+  const routes = useRoutes([
+    {
+      index: true,
+      element: mainElement,
+    },
+    {
+      path: ":id",
+      element: <PodStatusDetail />,
+    },
+  ]);
+
+  return <>{routes}</>;
+
+  return mainElement;
 };
