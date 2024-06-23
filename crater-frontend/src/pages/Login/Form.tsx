@@ -31,7 +31,16 @@ const formSchema = z.object({
     })
     .max(20, {
       message: "Username must be at most 20 characters.",
-    }),
+    })
+    .refine(
+      (value) => {
+        const regex = /^[a-z0-9]+$/;
+        return regex.test(value);
+      },
+      {
+        message: "只能包含小写字母和数字",
+      },
+    ),
   password: z
     .string()
     .min(1, {

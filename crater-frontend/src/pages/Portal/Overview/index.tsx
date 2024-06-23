@@ -404,14 +404,14 @@ export const Component: FC = () => {
           <NivoPie
             data={typeStatus}
             margin={{ top: 25, bottom: 30 }}
-            colors={{ scheme: "accent" }}
+            colors={{ scheme: "set2" }}
           />
         </PieCard>
         <PieCard cardTitle="已申请 GPU" isLoading={jobQuery.isLoading}>
           <NivoPie
             data={gpuStatus}
             margin={{ top: 25, bottom: 30 }}
-            colors={{ scheme: "set2" }}
+            colors={{ scheme: "accent" }}
           />
         </PieCard>
       </div>
