@@ -140,7 +140,6 @@ export function GPUDetails({ nodeName }: { nodeName: string }) {
       </Card>
     );
   if (!gpuInfo || !gpuInfo.haveGPU) return null; // 如果没有 GPU 数据或节点不包含 GPU，不显示组件
-
   return (
     <Card className="mt-4">
       <CardHeader>
@@ -152,16 +151,35 @@ export function GPUDetails({ nodeName }: { nodeName: string }) {
           <p className="text-xs">GPU 数量:</p>
           <p className="text-sm font-medium">{gpuInfo.gpuCount}</p>
         </div>
-        {Object.entries(gpuInfo.gpuUtil).map(([id, util]) => (
-          <div className="mb-2 flex justify-between" key={id}>
-            <p className="text-xs">GPU {id} 利用率:</p>
-            <p
-              className={`text-sm font-medium ${util > 0 ? "text-green-500" : ""}`}
-            >
-              {util}%
-            </p>
-          </div>
-        ))}
+        {Object.entries(gpuInfo.gpuUtil).map(([id, util]) => {
+          const jobUrl = `http://192.168.5.60:31121/d/R4ZPFfyIz/job-monitor?orgId=1&var-job=${gpuInfo.relateJobs[parseInt(id)]}`;
+
+          return (
+            <>
+              <div className="mb-2 flex justify-between" key={id}>
+                <p className="text-xs">GPU {id} 利用率:</p>
+                <p
+                  className={`text-sm font-medium ${util > 0 ? "text-green-500" : ""}`}
+                >
+                  {util}%
+                </p>
+              </div>
+              <div className="mb-2 flex justify-between" key={id}>
+                <p className="text-xs">关联Job:</p>
+                <p className="text-sm font-medium">
+                  <a
+                    href={jobUrl}
+                    className="hover:underline"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {gpuInfo.relateJobs[parseInt(id)]}
+                  </a>
+                </p>
+              </div>
+            </>
+          );
+        })}
       </CardContent>
     </Card>
   );
