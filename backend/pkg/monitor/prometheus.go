@@ -324,3 +324,32 @@ func (p *PrometheusClient) GetNodeGPUUtil(expression string) ([]NodeGPUUtil, err
 
 	return nil, fmt.Errorf("expected vector type result but got %s", result.Type())
 }
+
+func (p *PrometheusClient) GetJobPods(expression string) (map[string][]string, error) {
+	// 执行查询
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+	result, _, err := p.v1api.Query(ctx, expression, time.Now())
+	if err != nil {
+		return nil, err
+	}
+
+	// 定义返回的结构体
+	jobPods := make(map[string][]string)
+
+	// 检查结果类型是否为向量
+	if result.Type() == model.ValVector {
+		vector := result.(model.Vector)
+		for _, sample := range vector {
+			metric := sample.Metric
+			job := metric["created_by_name"]
+			pod := metric["pod"]
+
+			jobPods[string(job)] = append(jobPods[string(job)], string(pod))
+		}
+
+		return jobPods, nil
+	}
+
+	return nil, fmt.Errorf("expected vector type result but got %s", result.Type())
+}

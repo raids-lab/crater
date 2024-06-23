@@ -208,10 +208,11 @@ func (nc *NodeClient) GetNodeGPUInfo(name string) (payload.GPUInfo, error) {
 
 	// 初始化返回值
 	gpuInfo := payload.GPUInfo{
-		Name:     name,
-		HaveGPU:  false,
-		GPUCount: 0,
-		GPUUtil:  make(map[string]float32),
+		Name:       name,
+		HaveGPU:    false,
+		GPUCount:   0,
+		GPUUtil:    make(map[string]float32),
+		RelateJobs: make(map[string][]string),
 	}
 
 	// 首先查询当前节点是否有GPU
@@ -236,14 +237,26 @@ func (nc *NodeClient) GetNodeGPUInfo(name string) (payload.GPUInfo, error) {
 	}
 
 	// 使用PrometheusClient查询当前节点上的GPU使用率
+	jobPodsList := nc.PrometheusClient.GetJobPodsList()
 	gpuUtilMap := nc.PrometheusClient.QueryNodeGPUUtil()
 	for i := 0; i < len(gpuUtilMap); i++ {
 		gpuUtil := &gpuUtilMap[i]
 		if gpuUtil.Hostname == name {
 			gpuInfo.GPUUtil[gpuUtil.Gpu] = gpuUtil.Util
+			// 如果gpuUtil.pod在jobPodsList的value中，则将jobPodsList中的job加入gpuInfo.RelateJobs[gpuUtil.Gpu]
+			curPod := gpuUtil.Pod
+			for job, pods := range jobPodsList {
+				// 确认curPod是否在pods中
+				for _, pod := range pods {
+					if curPod == pod {
+						// 将job加入gpuInfo.RelateJobs[gpuUtil.Gpu]
+						gpuInfo.RelateJobs[gpuUtil.Gpu] = append(gpuInfo.RelateJobs[gpuUtil.Gpu], job)
+						break
+					}
+				}
+			}
 		}
 	}
-
 	return gpuInfo, nil
 }
 

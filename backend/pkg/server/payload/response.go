@@ -66,10 +66,11 @@ type ListNodePodResp struct {
 }
 
 type GPUInfo struct {
-	Name     string             `json:"name"`
-	HaveGPU  bool               `json:"haveGPU"`
-	GPUCount int                `json:"gpuCount"`
-	GPUUtil  map[string]float32 `json:"gpuUtil"`
+	Name       string              `json:"name"`
+	HaveGPU    bool                `json:"haveGPU"`
+	GPUCount   int                 `json:"gpuCount"`
+	GPUUtil    map[string]float32  `json:"gpuUtil"`
+	RelateJobs map[string][]string `json:"relateJobs"`
 }
 
 type GetTaskResp struct {

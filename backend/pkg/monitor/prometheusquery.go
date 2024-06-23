@@ -83,3 +83,13 @@ func (p *PrometheusClient) QueryNodeGPUUtil() []NodeGPUUtil {
 	}
 	return data
 }
+
+func (p *PrometheusClient) GetJobPodsList() map[string][]string {
+	query := "kube_pod_info{namespace=\"crater-workspace\",created_by_kind=\"Job\"}"
+	data, err := p.GetJobPods(query)
+	if err != nil {
+		logutils.Log.Errorf("GetJobPodsList error: %v", err)
+		return nil
+	}
+	return data
+}
