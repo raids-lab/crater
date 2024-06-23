@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/gin-gonic/gin"
 	ldap "github.com/go-ldap/ldap/v3"
@@ -92,6 +93,13 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		"username": req.Username,
 		"auth":     req.AuthMethod,
 	})
+
+	// Username can only contain lowercase letters, numbers
+	if !regexp.MustCompile(`^[a-z0-9]+$`).MatchString(req.Username) {
+		l.Error("invalid username")
+		resputil.HTTPError(c, http.StatusBadRequest, "Invalid username", resputil.InvalidRequest)
+		return
+	}
 
 	// Check if request auth method is valid
 	switch req.AuthMethod {

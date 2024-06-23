@@ -8,9 +8,6 @@ const (
 	InvalidRequest ErrorCode = 40001
 	TokenExpired   ErrorCode = 40101
 	UserNotFound   ErrorCode = 40102
-	InvalidToken   ErrorCode = 40103
-
-	InvalidRole ErrorCode = 40301
 
 	// When request do not contain required queue
 	QueueNotFound ErrorCode = 40401
