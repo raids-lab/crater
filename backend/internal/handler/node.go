@@ -29,6 +29,8 @@ func (mgr *NodeMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *NodeMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("", mgr.ListNode)
+	g.GET("/:name/pod", mgr.ListNodePod)
+	g.GET("/:name/gpu", mgr.ListNodeGPUUtil)
 }
 
 func (mgr *NodeMgr) RegisterAdmin(g *gin.RouterGroup) {
