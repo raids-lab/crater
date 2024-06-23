@@ -17,7 +17,7 @@ func AuthProtected() gin.HandlerFunc {
 		authHeader := c.Request.Header.Get("Authorization")
 		t := strings.Split(authHeader, " ")
 		if len(t) < 2 || t[0] != "Bearer" {
-			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid token", resputil.InvalidToken)
+			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid token", resputil.TokenExpired)
 			c.Abort()
 			return
 		}
@@ -38,31 +38,24 @@ func AuthProtected() gin.HandlerFunc {
 			// check platform role
 			user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
 			if err != nil {
-				resputil.HTTPError(c, http.StatusUnauthorized, "User not found", resputil.UserNotFound)
+				resputil.HTTPError(c, http.StatusUnauthorized, "User not found", resputil.TokenExpired)
 				c.Abort()
 				return
 			}
-			if user.Role != token.RolePlatform {
-				resputil.HTTPError(c, http.StatusUnauthorized, "Platform role not match", resputil.InvalidRole)
+			if user.Role != token.RolePlatform || user.AccessMode != token.PublicAccessMode {
+				resputil.HTTPError(c, http.StatusUnauthorized, "Platform token not match", resputil.TokenExpired)
 				c.Abort()
-				return
-			}
-
-			// check queue role
-			if token.QueueName == util.QueueNameNull {
-				util.SetJWTContext(c, token)
-				c.Next()
 				return
 			}
 
 			userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID), uq.QueueID.Eq(token.QueueID)).First()
 			if err != nil {
-				resputil.HTTPError(c, http.StatusUnauthorized, "UserQueue not found", resputil.UserNotFound)
+				resputil.HTTPError(c, http.StatusUnauthorized, "UserQueue not found", resputil.TokenExpired)
 				c.Abort()
 				return
 			}
-			if userQueue.Role != token.RoleQueue {
-				resputil.HTTPError(c, http.StatusUnauthorized, "Queue role not match", resputil.InvalidRole)
+			if userQueue.Role != token.RoleQueue || userQueue.AccessMode != token.AccessMode {
+				resputil.HTTPError(c, http.StatusUnauthorized, "Queue role not match", resputil.TokenExpired)
 				c.Abort()
 				return
 			}
@@ -78,7 +71,7 @@ func AuthAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := util.GetToken(c)
 		if token.RolePlatform != model.RoleAdmin {
-			resputil.HTTPError(c, http.StatusUnauthorized, "Not Admin", resputil.InvalidRole)
+			resputil.HTTPError(c, http.StatusUnauthorized, "Not Admin", resputil.TokenExpired)
 			c.Abort()
 			return
 		}
