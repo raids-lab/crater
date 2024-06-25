@@ -22,6 +22,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Role, apiUserLogin } from "@/services/api/auth";
 import LoadableButton from "@/components/custom/LoadableButton";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 const formSchema = z.object({
   username: z
@@ -51,7 +52,7 @@ const formSchema = z.object({
     }),
 });
 
-export function ProfileForm() {
+export function LoginForm() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const setUserState = useSetAtom(globalUserInfo);
@@ -84,6 +85,9 @@ export function ProfileForm() {
             ? "/recommend"
             : "/portal";
       navigate(dashboard, { replace: true });
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 
@@ -130,7 +134,16 @@ export function ProfileForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>密码</FormLabel>
+              <div className="flex items-center justify-between">
+                <FormLabel>密码</FormLabel>
+                <button
+                  className="p-0 text-sm text-muted-foreground underline"
+                  type="button"
+                  onClick={() => toast.info("请联系 ACT 实验室账号管理员")}
+                >
+                  忘记密码？
+                </button>
+              </div>
               <FormControl>
                 <Input
                   type="password"
@@ -147,8 +160,16 @@ export function ProfileForm() {
           className="w-full"
           isLoading={status === "pending"}
         >
-          登录
+          ACT 登录
         </LoadableButton>
+        <Button
+          className="w-full"
+          type="button"
+          variant="outline"
+          onClick={() => toast.warning("暂未开放")}
+        >
+          其他登录方式
+        </Button>
       </form>
     </Form>
   );
