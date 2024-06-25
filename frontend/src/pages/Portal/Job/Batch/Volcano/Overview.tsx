@@ -281,10 +281,12 @@ const VolcanoOverview = () => {
                 {
                   url: "portal/job/batch/new-tensorflow",
                   name: " Tensorflow 作业",
+                  disabled: jobType === "spjobs",
                 },
                 {
                   url: "portal/job/batch/new-pytorch",
                   name: " Pytorch 作业",
+                  disabled: jobType === "spjobs",
                 },
                 {
                   url: "portal/job/batch/new-ray",

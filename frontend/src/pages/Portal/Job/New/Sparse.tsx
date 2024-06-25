@@ -419,7 +419,7 @@ export const Component = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        模型乘加运算数
+                        模型乘加运算数(百万)
                         <span className="ml-1 text-red-500">*</span>
                       </FormLabel>
                       <FormControl>
@@ -435,7 +435,8 @@ export const Component = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        模型参数量<span className="ml-1 text-red-500">*</span>
+                        模型参数量(千)
+                        <span className="ml-1 text-red-500">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input type="number" {...field} />
@@ -471,7 +472,7 @@ export const Component = () => {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className={cn(index !== 0 && "sr-only")}>
-                              稀疏特征
+                              稀疏特征(万)
                             </FormLabel>
                             <FormControl>
                               <div className="flex flex-row space-x-2">
