@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	"github.com/raids-lab/crater/internal/resputil"
@@ -21,6 +22,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 )
+
+const AnnotationKeyTaskName = "crater.raids.io/task-name"
 
 var dlNamespace = config.GetConfig().Workspace.Namespace
 var jobStatusMap = map[corev1.PodPhase]batch.JobPhase{
@@ -78,13 +81,17 @@ func (mgr *SparseJobMgr) rolePermit(token *util.JWTMessage, reqName string) bool
 type (
 	CreateRecommendDLJobReq struct {
 		vcjob.CreateCustomReq
-		RunningType    string `json:"runningType"`
-		Macs           int64  `json:"macs"`
-		Params         int64  `json:"params"`
-		BatchSize      int    `json:"batchSize"`
-		VocabularySize []int  `json:"vocabularySize"`
-		EmbeddingDim   []int  `json:"embeddingDim"`
-		Replicas       int    `json:"replicas"`
+		RunningType         string `json:"runningType"`
+		Macs                int64  `json:"macs"`
+		Params              int64  `json:"params"`
+		BatchSize           int    `json:"batchSize"`
+		EmbeddingSizeTotal  int64  `json:"embeddingSizeTotal"`
+		EmbeddingDimTotal   int    `json:"embeddingDimTotal"`
+		EmbeddingTableCount int    `json:"embeddingTableCount"`
+		VocabularySize      []int  `json:"vocabularySize"`
+		EmbeddingDim        []int  `json:"embeddingDim"`
+		Replicas            int    `json:"replicas"`
+		InputTensor         []int  `json:"inputTensor"`
 	}
 )
 
@@ -103,10 +110,18 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 		return
 	}
 
+	baseURL := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
+	jobName := fmt.Sprintf("sparse-%s", baseURL)
+
+	annotations := map[string]string{
+		AnnotationKeyTaskName: req.Name,
+	}
+
 	job := &recommenddljobapi.RecommendDLJob{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      req.Name,
-			Namespace: dlNamespace,
+			Name:        jobName,
+			Namespace:   dlNamespace,
+			Annotations: annotations,
 		},
 		Spec: recommenddljobapi.RecommendDLJobSpec{
 			Replicas:    int32(req.Replicas),
@@ -130,12 +145,16 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 					},
 				},
 			},
-			Username:       token.Username,
-			Macs:           req.Macs,
-			Params:         req.Params,
-			BatchSize:      req.BatchSize,
-			VocabularySize: req.VocabularySize,
-			EmbeddingDim:   req.EmbeddingDim,
+			Username:            token.Username,
+			Macs:                req.Macs,
+			Params:              req.Params,
+			BatchSize:           req.BatchSize,
+			VocabularySize:      req.VocabularySize,
+			EmbeddingDim:        req.EmbeddingDim,
+			EmbeddingSizeTotal:  req.EmbeddingSizeTotal,
+			EmbeddingDimTotal:   req.EmbeddingDimTotal,
+			EmbeddingTableCount: req.EmbeddingTableCount,
+			InputTensor:         req.InputTensor,
 		},
 	}
 
@@ -174,11 +193,11 @@ func (mgr *SparseJobMgr) List(c *gin.Context) {
 		}
 
 		job := vcjob.JobResp{
-			Name:               spjob.Name,
+			Name:               spjob.Annotations[AnnotationKeyTaskName],
 			JobName:            spjob.Name,
-			Owner:              token.Username,
+			Owner:              spjob.Spec.Username,
 			JobType:            "training",
-			Queue:              spjob.Spec.Username,
+			Queue:              token.QueueName,
 			Status:             string(jobStatusMap[pod.Status.Phase]),
 			CreationTimestamp:  spjob.CreationTimestamp,
 			RunningTimestamp:   runningTimestamp,
