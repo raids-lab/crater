@@ -3,6 +3,7 @@ package spjob
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -81,17 +82,17 @@ func (mgr *SparseJobMgr) rolePermit(token *util.JWTMessage, reqName string) bool
 type (
 	CreateRecommendDLJobReq struct {
 		vcjob.CreateCustomReq
-		RunningType         string `json:"runningType"`
-		Macs                int64  `json:"macs"`
-		Params              int64  `json:"params"`
-		BatchSize           int    `json:"batchSize"`
-		EmbeddingSizeTotal  int64  `json:"embeddingSizeTotal"`
-		EmbeddingDimTotal   int    `json:"embeddingDimTotal"`
-		EmbeddingTableCount int    `json:"embeddingTableCount"`
-		VocabularySize      []int  `json:"vocabularySize"`
-		EmbeddingDim        []int  `json:"embeddingDim"`
-		Replicas            int    `json:"replicas"`
-		InputTensor         []int  `json:"inputTensor"`
+		RunningType         recommenddljobapi.RunningType `json:"runningType"`
+		Macs                int64                         `json:"macs"`
+		Params              int64                         `json:"params"`
+		BatchSize           int                           `json:"batchSize"`
+		EmbeddingSizeTotal  int64                         `json:"embeddingSizeTotal"`
+		EmbeddingDimTotal   int                           `json:"embeddingDimTotal"`
+		EmbeddingTableCount int                           `json:"embeddingTableCount"`
+		VocabularySize      []int                         `json:"vocabularySize"`
+		EmbeddingDim        []int                         `json:"embeddingDim"`
+		Replicas            int32                         `json:"replicas"`
+		InputTensor         []int                         `json:"inputTensor"`
 	}
 )
 
@@ -124,8 +125,8 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 			Annotations: annotations,
 		},
 		Spec: recommenddljobapi.RecommendDLJobSpec{
-			Replicas:    int32(req.Replicas),
-			RunningType: recommenddljobapi.RunningType(req.RunningType),
+			Replicas:    req.Replicas,
+			RunningType: req.RunningType,
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Volumes: volumes,
@@ -208,6 +209,10 @@ func (mgr *SparseJobMgr) List(c *gin.Context) {
 		jobs = append(jobs, job)
 	}
 
+	sort.Slice(jobs, func(i, j int) bool {
+		return jobs[i].CreationTimestamp.After(jobs[j].CreationTimestamp.Time)
+	})
+
 	resputil.Success(c, jobs)
 }
 
@@ -254,18 +259,21 @@ func (mgr *SparseJobMgr) GetByName(c *gin.Context) {
 		return
 	}
 
-	var pod *corev1.Pod
-	if pods := mgr.GetPodsByName(c, job.Name); pods == nil {
+	var pods []*corev1.Pod
+	PodDetails := []PodDetail{}
+
+	if pods = mgr.GetPodsByName(c, job.Name); pods == nil {
 		resputil.Error(c, "get recommenddljob failed, err: nil pods", resputil.NotSpecified)
 		return
-	} else {
-		pod = pods[0]
 	}
+	pod := pods[0]
 	conditions := pod.Status.Conditions
 	var runningTimestamp v1.Time
 	for _, condition := range conditions {
 		if condition.Type == corev1.PodReady {
 			runningTimestamp = condition.LastTransitionTime
+		} else {
+			runningTimestamp = pod.CreationTimestamp
 		}
 	}
 
@@ -276,33 +284,34 @@ func (mgr *SparseJobMgr) GetByName(c *gin.Context) {
 		}
 	}
 
-	PodDetails := []PodDetail{}
-
-	// assume one pod running one container
-	if pod.Status.Phase == corev1.PodRunning {
-		portStr := ""
-		for _, port := range pod.Spec.Containers[0].Ports {
-			portStr += fmt.Sprintf("%s:%d,", port.Name, port.ContainerPort)
+	for _, pod := range pods {
+		// assume one pod running one container
+		if pod.Status.Phase == corev1.PodRunning {
+			portStr := ""
+			for _, port := range pod.Spec.Containers[0].Ports {
+				portStr += fmt.Sprintf("%s:%d,", port.Name, port.ContainerPort)
+			}
+			if portStr != "" {
+				portStr = portStr[:len(portStr)-1]
+			}
+			podDetail := PodDetail{
+				Name:     pod.Name,
+				NodeName: pod.Spec.NodeName,
+				IP:       pod.Status.PodIP,
+				Port:     portStr,
+				Resource: model.ResourceListToJSON(pod.Spec.Containers[0].Resources.Requests),
+				Status:   string(pod.Status.Phase),
+			}
+			PodDetails = append(PodDetails, podDetail)
+		} else {
+			podDetail := PodDetail{
+				Name:   pod.Name,
+				Status: string(pod.Status.Phase),
+			}
+			PodDetails = append(PodDetails, podDetail)
 		}
-		if portStr != "" {
-			portStr = portStr[:len(portStr)-1]
-		}
-		podDetail := PodDetail{
-			Name:     pod.Name,
-			NodeName: pod.Spec.NodeName,
-			IP:       pod.Status.PodIP,
-			Port:     portStr,
-			Resource: model.ResourceListToJSON(pod.Spec.Containers[0].Resources.Requests),
-			Status:   string(pod.Status.Phase),
-		}
-		PodDetails = append(PodDetails, podDetail)
-	} else {
-		podDetail := PodDetail{
-			Name:   pod.Name,
-			Status: string(pod.Status.Phase),
-		}
-		PodDetails = append(PodDetails, podDetail)
 	}
+
 	ret := JobDetailResp{
 		Name:              job.Name,
 		JobName:           job.Name,
