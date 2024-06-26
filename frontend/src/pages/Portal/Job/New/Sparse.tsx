@@ -50,6 +50,13 @@ import { apiGetDataset } from "@/services/api/dataset";
 import { IDlAnalyze, apiDlAnalyze } from "@/services/api/recommend/dlTask";
 import { ProgressBar } from "@/components/custom/ProgressBar";
 import { Cross1Icon } from "@radix-ui/react-icons";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const VERSION = "20240528";
 const JOB_TYPE = "single";
@@ -63,6 +70,9 @@ const formSchema = z.object({
     .max(40, {
       message: "作业名称最多包含 40 个字符",
     }),
+  replicas: z.coerce.number().min(1, {
+    message: "副本个数必须大于0",
+  }),
   runningType: z.enum(["one-shot", "long-running"], {
     invalid_type_error: "Select a runningType",
     required_error: "请选择运行模式",
@@ -113,7 +123,7 @@ export const Component = () => {
         batchSize: values.batchSize,
         vocabularySize: values.dim.map((item) => item.vocabularySize),
         embeddingDim: values.dim.map((item) => item.embeddingDim),
-        replicas: values.task.replicas,
+        replicas: values.replicas,
       }),
     onSuccess: async (_, { jobName }) => {
       await Promise.all([
@@ -341,6 +351,49 @@ export const Component = () => {
                     <FormDescription>
                       名称可重复，最多包含 40 个字符
                     </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="replicas"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Pod 副本个数<span className="ml-1 text-red-500">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="runningType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      运行模式<span className="ml-1 text-red-500">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <SelectTrigger className="">
+                          <SelectValue placeholder="请选择" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="one-shot">one-shot</SelectItem>
+                          <SelectItem value="long-running">
+                            long-running
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
