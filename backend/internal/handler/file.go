@@ -24,6 +24,8 @@ func (mgr *FileMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *FileMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/mydataset", mgr.GetMyDataset)
+	g.GET("/:datasetId/usersNotIn", mgr.ListUsersOutOfDataset)
+	g.GET("/:datasetId/queuesNotIn", mgr.ListQueuesOutOfDataset)
 	g.POST("/create", mgr.CreateDataset)
 	g.DELETE("/delete/:id", mgr.DeleteDataset)
 	g.POST("/share/user", mgr.ShareDatasetWithUser)
@@ -224,8 +226,8 @@ func (mgr *FileMgr) CreateDataset(c *gin.Context) {
 }
 
 type SharedUserReq struct {
-	DatasetID uint `json:"datasetID" binding:"required"`
-	UserID    uint `json:"userID" binding:"required"`
+	DatasetID uint   `json:"datasetID" binding:"required"`
+	UserIDs   []uint `json:"userIDs" binding:"required"`
 }
 
 // ShareDatasetWithUser godoc
@@ -295,28 +297,33 @@ func (mgr *FileMgr) AdminShareDatasetWithUser(c *gin.Context) {
 
 func (mgr *FileMgr) shareWithUser(c *gin.Context, userReq SharedUserReq) error {
 	u := query.User
-	_, err := u.WithContext(c).Where(u.ID.Eq(userReq.UserID)).First()
-	if err != nil {
-		return fmt.Errorf("user not exist")
+	if len(userReq.UserIDs) == 0 {
+		return fmt.Errorf("need to choose users to share")
 	}
-	ud := query.UserDataset
-	hud, _ := ud.WithContext(c).Where(ud.UserID.Eq(userReq.UserID), ud.DatasetID.Eq(userReq.DatasetID)).First()
-	if hud != nil {
-		return fmt.Errorf("user has shared dataset")
-	}
-	userDataset := model.UserDataset{
-		UserID:    userReq.UserID,
-		DatasetID: userReq.DatasetID,
-	}
-	if err := ud.WithContext(c).Create(&userDataset); err != nil {
-		return err
+	for _, uid := range userReq.UserIDs {
+		_, err := u.WithContext(c).Where(u.ID.Eq(uid)).First()
+		if err != nil {
+			return fmt.Errorf("user not exist")
+		}
+		ud := query.UserDataset
+		hud, _ := ud.WithContext(c).Where(ud.UserID.Eq(uid), ud.DatasetID.Eq(userReq.DatasetID)).First()
+		if hud != nil {
+			return fmt.Errorf("user has shared dataset")
+		}
+		userDataset := model.UserDataset{
+			UserID:    uid,
+			DatasetID: userReq.DatasetID,
+		}
+		if err := ud.WithContext(c).Create(&userDataset); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 type SharedQueueReq struct {
-	DatasetID uint `json:"datasetID" binding:"required"`
-	QueueID   uint `json:"queueID" binding:"required"`
+	DatasetID uint   `json:"datasetID" binding:"required"`
+	QueueIDs  []uint `json:"queueIDs" binding:"required"`
 }
 
 // ShareDatasetWithQueue godoc
@@ -388,20 +395,25 @@ func (mgr *FileMgr) AdminShareDatasetWithQueue(c *gin.Context) {
 func (mgr *FileMgr) shareWithQueue(c *gin.Context, queueReq SharedQueueReq) error {
 	q := query.Queue
 	qd := query.QueueDataset
-	_, err := q.WithContext(c).Where(q.ID.Eq(queueReq.QueueID)).First()
-	if err != nil {
-		return fmt.Errorf("queue not exist")
+	if len(queueReq.QueueIDs) == 0 {
+		return fmt.Errorf("need to choose queues to share")
 	}
-	hqd, _ := qd.WithContext(c).Where(qd.QueueID.Eq(queueReq.QueueID), qd.DatasetID.Eq(queueReq.DatasetID)).First()
-	if hqd != nil {
-		return fmt.Errorf("queue has shared dataset")
-	}
-	queuedataset := model.QueueDataset{
-		QueueID:   queueReq.QueueID,
-		DatasetID: queueReq.DatasetID,
-	}
-	if err := qd.WithContext(c).Create(&queuedataset); err != nil {
-		return err
+	for _, QueueID := range queueReq.QueueIDs {
+		_, err := q.WithContext(c).Where(q.ID.Eq(QueueID)).First()
+		if err != nil {
+			return fmt.Errorf("queue not exist")
+		}
+		hqd, _ := qd.WithContext(c).Where(qd.QueueID.Eq(QueueID), qd.DatasetID.Eq(queueReq.DatasetID)).First()
+		if hqd != nil {
+			return fmt.Errorf("queue has shared dataset")
+		}
+		queuedataset := model.QueueDataset{
+			QueueID:   QueueID,
+			DatasetID: queueReq.DatasetID,
+		}
+		if err := qd.WithContext(c).Create(&queuedataset); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -514,4 +526,102 @@ func (mgr *FileMgr) RemaneDatset(c *gin.Context) {
 		return
 	}
 	resputil.Success(c, "Successfully rename dataset")
+}
+
+type DatasetGetReq struct {
+	DatasetID uint `uri:"datasetId" binding:"required"`
+}
+
+type UserDatasetGetResp struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+}
+
+// ListUsersOutOfDataset godoc
+// @Summary 没有该数据集权限的用户列表
+// @Description 没有该数据集权限的用户列表
+// @Tags Dataset
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param req path DatasetGetReq true "数据集ID"
+// @Success 200 {object} resputil.Response[UserDatasetGetResp[]] "成功返回值描述"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/dataset/{datasetId}/usersNotIn [get]
+//
+//nolint:dupl // there exists mini diff between these logic
+func (mgr *FileMgr) ListUsersOutOfDataset(c *gin.Context) {
+	var req DatasetGetReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.Error(c, fmt.Sprintf("get users out of dataset failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+	d := query.Dataset
+	dataset, err := d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).First()
+	if err != nil {
+		resputil.Error(c, "this dataset not exist", resputil.InvalidRequest)
+		return
+	}
+	u := query.User
+	ud := query.UserDataset
+	var uids []uint
+	if err := ud.WithContext(c).Select(ud.UserID).Where(ud.DatasetID.Eq(dataset.ID)).Scan(&uids); err != nil {
+		resputil.Error(c, fmt.Sprintf("Failed to scan user IDs: %v", err), resputil.NotSpecified)
+		return
+	}
+	var resp []UserDatasetGetResp
+	exec := u.WithContext(c).Where(u.ID.NotIn(uids...)).Distinct()
+	if err := exec.Scan(&resp); err != nil {
+		resputil.Error(c, fmt.Sprintf("Get UserDataset failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, resp)
+}
+
+type QueueDatasetGetResp struct {
+	ID       uint   `json:"id"`
+	Nickname string `json:"name"`
+}
+
+// ListQueuesOutOfDataset godoc
+// @Summary 没有该数据集权限的队列列表
+// @Description 没有该数据集权限的队列列表
+// @Tags Dataset
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param req path DatasetGetReq true "数据集ID"
+// @Success 200 {object} resputil.Response[QueueDatasetGetResp[]] "成功返回值描述"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/dataset/{datasetId}/queuesNotIn [get]
+//
+//nolint:dupl // there exists mini diff between these logic
+func (mgr *FileMgr) ListQueuesOutOfDataset(c *gin.Context) {
+	var req DatasetGetReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.Error(c, fmt.Sprintf("get queues out of dataset failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+	d := query.Dataset
+	dataset, err := d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).First()
+	if err != nil {
+		resputil.Error(c, "this dataset not exist", resputil.InvalidRequest)
+		return
+	}
+	q := query.Queue
+	qd := query.QueueDataset
+	var qids []uint
+	if err := qd.WithContext(c).Select(qd.QueueID).Where(qd.DatasetID.Eq(dataset.ID)).Scan(&qids); err != nil {
+		resputil.Error(c, fmt.Sprintf("Failed to scan queue IDs: %v", err), resputil.NotSpecified)
+		return
+	}
+	var resp []QueueDatasetGetResp
+	exec := q.WithContext(c).Where(q.ID.NotIn(qids...)).Distinct()
+	if err := exec.Scan(&resp); err != nil {
+		resputil.Error(c, fmt.Sprintf("Get QueueDataset failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, resp)
 }
