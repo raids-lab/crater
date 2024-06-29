@@ -12,11 +12,11 @@ export interface Dataset {
 
 export interface UserDataset {
   datasetID: number;
-  userID: number;
+  userIDs: number[];
 }
 
 export interface QueueDataset {
-  queueID: number;
+  queueIDs: number[];
   datasetID: number;
 }
 
@@ -28,6 +28,16 @@ export interface DatasetReq {
 
 export interface DatasetReanmeReq {
   datasetID: number;
+  name: string;
+}
+
+export interface UserDatasetGetResp {
+  id: number;
+  name: string;
+}
+
+export interface QueueDatasetGetResp {
+  id: number;
   name: string;
 }
 export const apiGetDataset = () =>
@@ -56,3 +66,13 @@ export const apiAdminShareDatasetwithUser = (ud: UserDataset) =>
 
 export const apiAdminShareDatasetwithQueue = (qd: QueueDataset) =>
   instance.post<IResponse<string>>(VERSION + "/admin/dataset/share/queue", qd);
+
+export const apiListUsersNotInDataset = (datasetID: number) =>
+  instance.get<IResponse<UserDatasetGetResp[]>>(
+    VERSION + `/dataset/${datasetID}/usersNotIn`,
+  );
+
+export const apiListQueuesNotInDataset = (datasetID: number) =>
+  instance.get<IResponse<QueueDatasetGetResp[]>>(
+    VERSION + `/dataset/${datasetID}/queuesNotIn`,
+  );
