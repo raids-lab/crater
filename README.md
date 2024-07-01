@@ -1,41 +1,34 @@
-# Website
+# Crater Document
 
-This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
+该网站使用 [Docusaurus](https://docusaurus.io/)，一个现代的静态网站生成器构建。
 
-### Installation
+### 安装
 
-```
-$ yarn
-```
-
-### Local Development
-
-```
-$ yarn start
+```bash
+$ pnpm install
 ```
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+### 本地开发
 
-### Build
-
-```
-$ yarn build
+```bash
+$ pnpm start
 ```
 
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
+该命令将启动一个本地开发服务器，并自动打开浏览器窗口。大多数更改会实时反映，无需重新启动服务器。
 
-### Deployment
+### 构建
 
-Using SSH:
-
-```
-$ USE_SSH=true yarn deploy
+```bash
+$ pnpm build
 ```
 
-Not using SSH:
+该命令将生成的静态内容放入 `build` 目录，可以使用任何静态内容托管服务来进行托管。
 
-```
-$ GIT_USER=<Your GitHub username> yarn deploy
-```
+### 部署
 
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+这部分代码还没来得及整理，目前部署方式是重启 K8S Deployment，会重新拉取代码并渲染。
+
+TODO:
+
+- [ ] 为部署镜像添加就绪探针，从而支持滚动更新
+- [ ] 添加自动化部署流程文档

@@ -1,51 +1,5 @@
 stages:
-  - build_frontend
-  - build_image
   - deploy
-
-variables:
-  HUSKY: "0" # avoid installing Git Hooks on CI servers
-  HARBOR_REGISTRY_IMAGE: harbor.act.buaa.edu.cn/crater/web-frontend
-
-# Build frontend and generate artifacts
-build_frontend:
-  stage: build_frontend
-  image: harbor.act.buaa.edu.cn/crater/node:21
-  script:
-    - sed -i "s/VITE_APP_VERSION=\".*\"/VITE_APP_VERSION=\"${CI_COMMIT_TAG}\"/" .env
-    - npm install -g pnpm
-    - pnpm config set registry https://registry.npmmirror.com
-    - pnpm install
-    - pnpm build
-  rules:
-    - if: $CI_COMMIT_TAG
-  cache:
-    paths:
-      - node_modules/
-  artifacts:
-    paths:
-      - dist/
-    expire_in: 1 week
-
-# Build Docker image and push to harbor registry
-build_image:
-  stage: build_image
-  image:
-    name: harbor.act.buaa.edu.cn/crater/kaniko-executor:debug
-    entrypoint: [""]
-  script:
-    # Since GitLab container registry is not enabled, we need to set up harbor registry manually.
-    - mkdir -p /kaniko/.docker
-    - echo "{\"auths\":{\"${HARBOR_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${HARBOR_REGISTRY_USER}" "${HARBOR_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
-    - >-
-      /kaniko/executor
-      --context "${CI_PROJECT_DIR}"
-      --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
-      --destination "${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_TAG}"
-  rules:
-    - if: $CI_COMMIT_TAG
-  dependencies:
-    - build_frontend
 
 # Deploy to Kubernetes cluster
 deploy:
@@ -55,8 +9,6 @@ deploy:
     entrypoint: [""]
   script:
     - kubectl config use-context raids/resource-scheduling/crater/web-frontend:crater-cluster
-    - kubectl set image deployment/crater-web-frontend crater-web-frontend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_TAG} -n crater
-  rules:
-    - if: $CI_COMMIT_TAG
-  dependencies:
-    - build_image
+    - kubectl rollout restart deployment crater-website -n crater
+  only:
+    - main
