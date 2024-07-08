@@ -140,11 +140,20 @@ ACT 的 HTTPS 证书每 3 个月更新一次，在证书过期前，将新证书
 ```bash
 # 如果没有可执行权限
 chmod +x create-secret.sh
+```
 
-# 更新 TLS 保密字典并推送到集群中
-# bash create-secret.sh -tls {xxxxx.zip} -n crater crater-tls-secret
-bash ./create-secret.sh crater-tls-secret -n crater -tls act.buaa.edu.cn-until-2024-04-08.zip
-bash ./create-secret.sh crater-tls-secret -n crater-jobs -tls act.buaa.edu.cn-until-2024-04-08.zip
+更新 TLS 保密字典并推送到集群中：
+
+```bash
+#!/bin/bash
+
+# 定义环境变量
+export ACT_CERTS="act.buaa.edu.cn.certs.until-24-09-30.tar.gz"
+
+# 使用环境变量替换字面值
+bash ./create-secret.sh crater-tls-secret -n crater -tls "${ACT_CERTS}"
+bash ./create-secret.sh crater-tls-secret -n crater-workspace -tls "${ACT_CERTS}"
+bash ./create-secret.sh kubesphere-tls-secret -n kubesphere-system -tls "${ACT_CERTS}"
 ```
 
 ## 4. 项目结构

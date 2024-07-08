@@ -32,14 +32,20 @@ fi
 # Unzip the file to act.buaa.edu.cn
 # if the filename ends with .zip
 # if the filename ends with .tgz
+# if the filename ends with .tar.gz
+
 if [[ "$zip_file" == *.zip ]]; then
     unzip -o "$zip_file"
 elif [[ "$zip_file" == *.tgz ]]; then
     tar -xzf "$zip_file"
+elif [[ "$zip_file" == *.tar.gz ]]; then
+    tar -xzf "$zip_file"
 else
-    echo "Error: Invalid file format. Please provide a zip or tgz file."
+    echo "Error: Invalid file format. Please provide a zip, tgz, or tar.gz file."
     exit 1
 fi
+
+
 
 # Check if necessary files are present
 if [ ! -f "act.buaa.edu.cn/act.buaa.edu.cn.key" ] || [ ! -f "act.buaa.edu.cn/fullchain.cer" ]; then
