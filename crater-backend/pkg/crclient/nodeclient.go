@@ -306,3 +306,55 @@ func (nc *NodeClient) GetAllJobs(c *gin.Context) (jobNames, jobPods []string) {
 	}
 	return jobList, podList
 }
+
+func (nc *NodeClient) GetAllRunningJobs(c *gin.Context) (jobNames []string) {
+	jobs := &batch.JobList{}
+	if err := nc.List(c, jobs, client.MatchingLabels{}); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return nil
+	}
+	var jobList []string
+
+	for j := range jobs.Items {
+		job := &jobs.Items[j]
+		JobName := job.Name
+		if job.Status.State.Phase == "Running" {
+			jobList = append(jobList, JobName)
+		}
+	}
+	return jobList
+}
+
+func (nc *NodeClient) GetGPURelatedPods() (gpuJobPodsList map[string]string) {
+	// jobPodsList是一个map，其中key为使用了GPU的podName，value为这个pod对应的job
+	gpuUtilMap := nc.PrometheusClient.QueryNodeGPUUtil()
+	jobPodsList := nc.PrometheusClient.GetJobPodsList()
+	gpuJobPodsList = make(map[string]string)
+	for i := 0; i < len(gpuUtilMap); i++ {
+		gpuUtil := &gpuUtilMap[i]
+		curPod := gpuUtil.Pod
+		for job, pods := range jobPodsList {
+			for _, pod := range pods {
+				if curPod == pod {
+					gpuJobPodsList[curPod] = job
+					break
+				}
+			}
+		}
+	}
+	return gpuJobPodsList
+}
+
+func (nc *NodeClient) GetLeastUsedGPUJobs(time, util int) []string {
+	GPUJobPodsList := nc.GetGPURelatedPods()
+	leastUsedJobs := make([]string, 0)
+	for pod, job := range GPUJobPodsList {
+		// 将time和util转换为string类型
+		_time := fmt.Sprintf("%d", time)
+		_util := fmt.Sprintf("%d", util)
+		if nc.PrometheusClient.GetLeastUsedGPUJobList(pod, _time, _util) > 0 {
+			leastUsedJobs = append(leastUsedJobs, job)
+		}
+	}
+	return leastUsedJobs
+}

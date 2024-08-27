@@ -27,6 +27,7 @@ var (
 	User         *user
 	UserDataset  *userDataset
 	UserQueue    *userQueue
+	Whitelist    *whitelist
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
@@ -41,6 +42,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	User = &Q.User
 	UserDataset = &Q.UserDataset
 	UserQueue = &Q.UserQueue
+	Whitelist = &Q.Whitelist
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
@@ -56,6 +58,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		User:         newUser(db, opts...),
 		UserDataset:  newUserDataset(db, opts...),
 		UserQueue:    newUserQueue(db, opts...),
+		Whitelist:    newWhitelist(db, opts...),
 	}
 }
 
@@ -72,6 +75,7 @@ type Query struct {
 	User         user
 	UserDataset  userDataset
 	UserQueue    userQueue
+	Whitelist    whitelist
 }
 
 func (q *Query) Available() bool { return q.db != nil }
@@ -89,6 +93,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		User:         q.User.clone(db),
 		UserDataset:  q.UserDataset.clone(db),
 		UserQueue:    q.UserQueue.clone(db),
+		Whitelist:    q.Whitelist.clone(db),
 	}
 }
 
@@ -113,6 +118,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		User:         q.User.replaceDB(db),
 		UserDataset:  q.UserDataset.replaceDB(db),
 		UserQueue:    q.UserQueue.replaceDB(db),
+		Whitelist:    q.Whitelist.replaceDB(db),
 	}
 }
 
@@ -127,6 +133,7 @@ type queryCtx struct {
 	User         IUserDo
 	UserDataset  IUserDatasetDo
 	UserQueue    IUserQueueDo
+	Whitelist    IWhitelistDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
@@ -141,6 +148,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		User:         q.User.WithContext(ctx),
 		UserDataset:  q.UserDataset.WithContext(ctx),
 		UserQueue:    q.UserQueue.WithContext(ctx),
+		Whitelist:    q.Whitelist.WithContext(ctx),
 	}
 }
 
