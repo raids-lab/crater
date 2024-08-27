@@ -46,6 +46,7 @@ func main() {
 		model.QueueDataset{},
 		model.UserDataset{},
 		model.Resource{},
+		model.Whitelist{},
 	)
 
 	// 执行并生成代码
