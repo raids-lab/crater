@@ -353,3 +353,22 @@ func (p *PrometheusClient) GetJobPods(expression string) (map[string][]string, e
 
 	return nil, fmt.Errorf("expected vector type result but got %s", result.Type())
 }
+
+func (p *PrometheusClient) CheckGPUUsed(expression string) (int, error) {
+	// 执行查询
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+	result, _, err := p.v1api.Query(ctx, expression, time.Now())
+	if err != nil {
+		return 0, err
+	}
+
+	// 检查结果类型是否为向量
+	if result.Type() == model.ValVector {
+		vector := result.(model.Vector)
+		// 返回vector的长度
+		return len(vector), nil
+	}
+
+	return 0, fmt.Errorf("expected vector type result but got %s", result.Type())
+}

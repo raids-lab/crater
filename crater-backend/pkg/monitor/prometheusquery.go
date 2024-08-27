@@ -93,3 +93,13 @@ func (p *PrometheusClient) GetJobPodsList() map[string][]string {
 	}
 	return data
 }
+
+func (p *PrometheusClient) GetLeastUsedGPUJobList(podName, time, util string) int {
+	query := fmt.Sprintf("max_over_time(DCGM_FI_DEV_GPU_UTIL{pod=%q}[%vm]) <= %v", podName, time, util)
+	data, err := p.CheckGPUUsed(query)
+	if err != nil {
+		logutils.Log.Errorf("GetLeastUsedGPUJobList error: %v", err)
+		return 0
+	}
+	return data
+}

@@ -9,6 +9,7 @@ import (
 	docs "github.com/raids-lab/crater/docs"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/handler/aijob"
+	"github.com/raids-lab/crater/internal/handler/operations"
 	"github.com/raids-lab/crater/internal/handler/spjob"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	"github.com/raids-lab/crater/internal/middleware"
@@ -98,6 +99,7 @@ func (b *Backend) RegisterService(
 	aijobMgr := aijob.NewAITaskMgr(aitaskCtrl, kc, &logClient)
 	sparseMgr := spjob.NewSparseJobMgr(cl, &logClient)
 	datasetMgr := handler.NewFileMgr()
+	operationsMgr := operations.NewOperationsMgr(&nodeClient, cl, kc)
 	///////////////////////////////////////
 	//// Public routers, no need login ////
 	///////////////////////////////////////
@@ -105,6 +107,7 @@ func (b *Backend) RegisterService(
 	publicRouter := b.R.Group("")
 
 	authMgr.RegisterPublic(publicRouter)
+	operationsMgr.RegisterPublic(publicRouter.Group("/operations"))
 
 	///////////////////////////////////////
 	//// Protected routers, need login ////
@@ -126,6 +129,7 @@ func (b *Backend) RegisterService(
 	aijobMgr.RegisterProtected(protectedRouter.Group("/aijobs"))
 	sparseMgr.RegisterProtected(protectedRouter.Group("/spjobs"))
 	datasetMgr.RegisterProtected(protectedRouter.Group("/dataset"))
+	operationsMgr.RegisterProtected(protectedRouter.Group("/operations"))
 
 	///////////////////////////////////////
 	//// Admin routers, need admin role ///
@@ -145,4 +149,5 @@ func (b *Backend) RegisterService(
 	aijobMgr.RegisterAdmin(adminRouter.Group("/aijobs"))
 	sparseMgr.RegisterAdmin(adminRouter.Group("/spjobs"))
 	datasetMgr.RegisterAdmin(adminRouter.Group("/dataset"))
+	operationsMgr.RegisterAdmin(adminRouter.Group("/operations"))
 }
