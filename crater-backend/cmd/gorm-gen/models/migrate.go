@@ -156,6 +156,18 @@ func main() {
 				return tx.Migrator().DropColumn(&AITask{}, "Owner")
 			},
 		},
+		{
+			// create `jobs` table
+			ID: "202408310951",
+			Migrate: func(tx *gorm.DB) error {
+				// it's a good practice to copy the struct inside the function,
+				// so side effects are prevented if the original struct changes during the time
+				return tx.Migrator().CreateTable(&model.Job{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("jobs")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {

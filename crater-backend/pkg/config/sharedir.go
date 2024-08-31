@@ -10,11 +10,11 @@ type ShareDir struct {
 var shareDirs ShareDirs = []ShareDir{
 	{
 		Pvc:       "dnn-train-data",
-		Namespace: "user-wjh",
+		Namespace: "crater-workspace",
 	},
 	{
 		Pvc:       "jupyterhub-shared-volume",
-		Namespace: "jupyter",
+		Namespace: "crater-workspace",
 	},
 }
 
