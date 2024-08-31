@@ -47,6 +47,7 @@ func main() {
 		model.UserDataset{},
 		model.Resource{},
 		model.Whitelist{},
+		model.Job{},
 	)
 
 	// 执行并生成代码

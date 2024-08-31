@@ -74,11 +74,11 @@ func (b *Backend) RegisterService(
 	}
 
 	// Init Clients and Configs
-	pvcClient := crclient.PVCClient{Client: cl}
-	err := pvcClient.InitShareDir()
-	if err != nil {
-		panic(err)
-	}
+	// pvcClient := crclient.PVCClient{Client: cl}
+	// err := pvcClient.InitShareDir()
+	// if err != nil {
+	// 	panic(err)
+	// }
 	httpClient := http.Client{}
 	logClient := crclient.LogClient{Client: cl, KubeClient: kc}
 	nodeClient := crclient.NodeClient{Client: cl, KubeClient: kc, PrometheusClient: pc}

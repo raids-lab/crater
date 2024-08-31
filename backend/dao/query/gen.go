@@ -20,6 +20,7 @@ var (
 	Dataset      *dataset
 	ImagePack    *imagePack
 	ImageUpload  *imageUpload
+	Job          *job
 	Label        *label
 	Queue        *queue
 	QueueDataset *queueDataset
@@ -35,6 +36,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	Dataset = &Q.Dataset
 	ImagePack = &Q.ImagePack
 	ImageUpload = &Q.ImageUpload
+	Job = &Q.Job
 	Label = &Q.Label
 	Queue = &Q.Queue
 	QueueDataset = &Q.QueueDataset
@@ -51,6 +53,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		Dataset:      newDataset(db, opts...),
 		ImagePack:    newImagePack(db, opts...),
 		ImageUpload:  newImageUpload(db, opts...),
+		Job:          newJob(db, opts...),
 		Label:        newLabel(db, opts...),
 		Queue:        newQueue(db, opts...),
 		QueueDataset: newQueueDataset(db, opts...),
@@ -68,6 +71,7 @@ type Query struct {
 	Dataset      dataset
 	ImagePack    imagePack
 	ImageUpload  imageUpload
+	Job          job
 	Label        label
 	Queue        queue
 	QueueDataset queueDataset
@@ -86,6 +90,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		Dataset:      q.Dataset.clone(db),
 		ImagePack:    q.ImagePack.clone(db),
 		ImageUpload:  q.ImageUpload.clone(db),
+		Job:          q.Job.clone(db),
 		Label:        q.Label.clone(db),
 		Queue:        q.Queue.clone(db),
 		QueueDataset: q.QueueDataset.clone(db),
@@ -111,6 +116,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		Dataset:      q.Dataset.replaceDB(db),
 		ImagePack:    q.ImagePack.replaceDB(db),
 		ImageUpload:  q.ImageUpload.replaceDB(db),
+		Job:          q.Job.replaceDB(db),
 		Label:        q.Label.replaceDB(db),
 		Queue:        q.Queue.replaceDB(db),
 		QueueDataset: q.QueueDataset.replaceDB(db),
@@ -126,6 +132,7 @@ type queryCtx struct {
 	Dataset      IDatasetDo
 	ImagePack    IImagePackDo
 	ImageUpload  IImageUploadDo
+	Job          IJobDo
 	Label        ILabelDo
 	Queue        IQueueDo
 	QueueDataset IQueueDatasetDo
@@ -141,6 +148,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		Dataset:      q.Dataset.WithContext(ctx),
 		ImagePack:    q.ImagePack.WithContext(ctx),
 		ImageUpload:  q.ImageUpload.WithContext(ctx),
+		Job:          q.Job.WithContext(ctx),
 		Label:        q.Label.WithContext(ctx),
 		Queue:        q.Queue.WithContext(ctx),
 		QueueDataset: q.QueueDataset.WithContext(ctx),

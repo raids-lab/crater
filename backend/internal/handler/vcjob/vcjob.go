@@ -14,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
@@ -303,13 +304,15 @@ func (mgr *VolcanojobMgr) GetUserJobs(c *gin.Context) {
 	token := util.GetToken(c)
 
 	// TODO: add indexer to list jobs by user
-	jobs := &batch.JobList{}
-	if err := mgr.List(c, jobs, client.MatchingFields{"spec.queue": token.QueueName}); err != nil {
+	j := query.Job
+	jobs, err := j.WithContext(c).Preload(query.Job.Queue).Preload(query.Job.User).
+		Where(j.UserID.Eq(token.UserID), j.QueueID.Eq(token.QueueID)).Find()
+	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	jobList := mgr.convertJobResp(c, jobs)
+	jobList := mgr.convertJobResp(jobs)
 
 	resputil.Success(c, jobList)
 }
@@ -326,72 +329,34 @@ func (mgr *VolcanojobMgr) GetUserJobs(c *gin.Context) {
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/vcjobs/all [get]
 func (mgr *VolcanojobMgr) GetAllJobs(c *gin.Context) {
-	jobs := &batch.JobList{}
-	if err := mgr.List(c, jobs, client.MatchingLabels{}); err != nil {
+	j := query.Job
+	jobs, err := j.WithContext(c).Preload(query.Job.Queue).Preload(query.Job.User).Find()
+	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	jobList := mgr.convertJobResp(c, jobs)
+	jobList := mgr.convertJobResp(jobs)
 
 	resputil.Success(c, jobList)
 }
 
-func (mgr *VolcanojobMgr) convertJobResp(c *gin.Context, jobs *batch.JobList) []JobResp {
-	jobList := make([]JobResp, len(jobs.Items))
-	for i := range jobs.Items {
-		job := &jobs.Items[i]
-		conditions := job.Status.Conditions
-		var runningTimestamp metav1.Time
-		var completedTimestamp metav1.Time
-		for _, condition := range conditions {
-			if condition.Status == batch.Running {
-				runningTimestamp = *condition.LastTransitionTime
-			} else if condition.Status == batch.Completed || condition.Status == batch.Failed {
-				completedTimestamp = *condition.LastTransitionTime
-			}
-		}
-
-		namespace := config.GetConfig().Workspace.Namespace
-		var nodes []string
-		resources := make(v1.ResourceList, 0)
-		for i := range job.Spec.Tasks {
-			task := &job.Spec.Tasks[i]
-			replicas := task.Replicas
-			for j := int32(0); j < replicas; j++ {
-				podName := fmt.Sprintf("%s-%s-%d", job.Name, task.Name, j)
-				pod, err := mgr.getPod(c, namespace, podName)
-				if err != nil {
-					continue
-				}
-				if pod.Status.Phase == v1.PodRunning {
-					nodes = append(nodes, pod.Spec.NodeName)
-					for k := range pod.Spec.Containers {
-						container := &pod.Spec.Containers[k]
-						for name, quantity := range container.Resources.Requests {
-							if v, ok := resources[name]; !ok {
-								resources[name] = quantity.DeepCopy()
-							} else {
-								v.Add(quantity)
-								resources[name] = v
-							}
-						}
-					}
-				}
-			}
-		}
+func (mgr *VolcanojobMgr) convertJobResp(jobs []*model.Job) []JobResp {
+	jobList := make([]JobResp, len(jobs))
+	for i := range jobs {
+		job := jobs[i]
 		jobList[i] = JobResp{
-			Name:               job.Annotations[AnnotationKeyTaskName],
-			JobName:            job.Name,
-			Owner:              job.Labels[LabelKeyTaskUser],
-			JobType:            job.Labels[LabelKeyTaskType],
-			Queue:              job.Spec.Queue,
-			Status:             string(job.Status.State.Phase),
-			CreationTimestamp:  job.CreationTimestamp,
-			RunningTimestamp:   runningTimestamp,
-			CompletedTimestamp: completedTimestamp,
-			Nodes:              nodes,
-			Resources:          resources,
+			Name:               job.Name,
+			JobName:            job.JobName,
+			Owner:              job.User.Name,
+			JobType:            job.JobType,
+			Queue:              job.Queue.Name,
+			Status:             string(job.Status),
+			CreationTimestamp:  metav1.NewTime(job.CreationTimestamp),
+			RunningTimestamp:   metav1.NewTime(job.RunningTimestamp),
+			CompletedTimestamp: metav1.NewTime(job.CompletedTimestamp),
+			Nodes:              job.Nodes.Data(),
+			Resources:          job.Resources.Data(),
 		}
 	}
 	sort.Slice(jobList, func(i, j int) bool {

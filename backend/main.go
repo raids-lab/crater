@@ -21,35 +21,35 @@ import (
 	"os"
 	"time"
 
-	"github.com/raids-lab/crater/pkg/aitaskctl"
-	aisystemv1alpha1 "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
-	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
-	recommenddljob "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
-	db "github.com/raids-lab/crater/pkg/db/orm"
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"go.uber.org/zap/zapcore"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	schedulerpluginsv1alpha1 "sigs.k8s.io/scheduler-plugins/apis/scheduling/v1alpha1"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
-
-	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal"
+	"github.com/raids-lab/crater/pkg/aitaskctl"
+	aisystemv1alpha1 "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
+	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
+	recommenddljob "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
 	"github.com/raids-lab/crater/pkg/config"
+	db "github.com/raids-lab/crater/pkg/db/orm"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/profiler"
 	"github.com/raids-lab/crater/pkg/reconciler"
 	"github.com/raids-lab/crater/pkg/util"
-	"k8s.io/client-go/kubernetes"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 // @title Crater API
@@ -111,6 +111,11 @@ func main() {
 	cfg := ctrl.GetConfigOrDie()
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme,
+		Cache: cache.Options{
+			DefaultNamespaces: map[string]cache.Config{
+				config.GetConfig().Workspace.Namespace: {},
+			},
+		},
 		Metrics: metricsserver.Options{
 			BindAddress: backendConfig.MetricsAddr,
 		},
@@ -139,7 +144,7 @@ func main() {
 		panic(err.Error())
 	}
 
-	// 1. init db
+	// 1. init db (Used for aijob)
 	err = db.InitDB()
 	if err != nil {
 		setupLog.Error(err, "unable to init db")
@@ -176,12 +181,22 @@ func main() {
 		mgr.GetScheme(),
 		jobStatusChan,
 	)
-
 	err = jobReconciler.SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to set up job controller")
 		os.Exit(1)
 	}
+
+	vcjobReconciler := reconciler.NewVcJobReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+	)
+	err = vcjobReconciler.SetupWithManager(mgr)
+	if err != nil {
+		setupLog.Error(err, "unable to set up vcjob controller")
+		os.Exit(1)
+	}
+
 	stopCh := ctrl.SetupSignalHandler()
 
 	// 4. start manager
