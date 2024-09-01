@@ -168,6 +168,15 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName,
 			Namespace: namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "batch.volcano.sh/v1alpha1",
+					Kind:               "Job",
+					Name:               jobName,
+					UID:                job.UID,
+					BlockOwnerDeletion: lo.ToPtr(true),
+				},
+			},
 		},
 		Spec: v1.ServiceSpec{
 			Selector: labels,

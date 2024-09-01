@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/model"
@@ -15,6 +16,7 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
+	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -76,6 +78,15 @@ func (mgr *OperationsMgr) DeleteJobByName(c *gin.Context, jobName string) error 
 		return err
 	}
 	baseURL := job.Labels[vcjob.LabelKeyBaseURL]
+
+	j := query.Job
+	if _, err := j.WithContext(c).Where(j.JobName.Eq(jobName)).Updates(model.Job{
+		Status:             model.Freed,
+		CompletedTimestamp: time.Now(),
+		Nodes:              datatypes.NewJSONType([]string{}),
+	}); err != nil {
+		return err
+	}
 
 	if err := mgr.Delete(c, job); err != nil {
 		return err
