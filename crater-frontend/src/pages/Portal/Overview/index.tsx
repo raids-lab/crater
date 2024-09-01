@@ -35,8 +35,8 @@ import PodStatusDetail from "../../Admin/Cluster/Pod";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
-    placeholder: "搜索作业名称",
-    key: "name",
+    placeholder: "搜索账户名称",
+    key: "queue",
   },
   filterOptions: [
     {
@@ -129,22 +129,6 @@ export const Component: FC = () => {
         ),
       },
       {
-        accessorKey: "name",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("name")} />
-        ),
-        cell: ({ row }) => (
-          <div className="flex flex-row gap-2">{row.getValue("name")}</div>
-        ),
-      },
-      {
-        accessorKey: "owner",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("owner")} />
-        ),
-        cell: ({ row }) => <div>{row.getValue("owner")}</div>,
-      },
-      {
         accessorKey: "queue",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("queue")} />
@@ -152,16 +136,11 @@ export const Component: FC = () => {
         cell: ({ row }) => <div>{row.getValue("queue")}</div>,
       },
       {
-        accessorKey: "status",
+        accessorKey: "owner",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("status")} />
+          <DataTableColumnHeader column={column} title={getHeader("owner")} />
         ),
-        cell: ({ row }) => {
-          return <JobPhaseLabel jobPhase={row.getValue<JobPhase>("status")} />;
-        },
-        filterFn: (row, id, value) => {
-          return (value as string[]).includes(row.getValue(id));
-        },
+        cell: ({ row }) => <div>{row.getValue("owner")}</div>,
       },
       {
         accessorKey: "nodes",
@@ -185,6 +164,31 @@ export const Component: FC = () => {
           const resources = row.getValue<Record<string, string>>("resources");
           return <ResourceBadges resources={resources} />;
         },
+      },
+      {
+        accessorKey: "status",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("status")} />
+        ),
+        cell: ({ row }) => {
+          return <JobPhaseLabel jobPhase={row.getValue<JobPhase>("status")} />;
+        },
+        filterFn: (row, id, value) => {
+          return (value as string[]).includes(row.getValue(id));
+        },
+      },
+      {
+        accessorKey: "createdAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("createdAt")}
+          />
+        ),
+        cell: ({ row }) => {
+          return <TableDate date={row.getValue("createdAt")}></TableDate>;
+        },
+        sortingFn: "datetime",
       },
       {
         accessorKey: "startedAt",
@@ -251,17 +255,19 @@ export const Component: FC = () => {
       return [];
     }
     const data = jobQuery.data;
-    const counts = data.reduce(
-      (acc, item) => {
-        const queue = item.queue;
-        if (!acc[queue]) {
-          acc[queue] = 0;
-        }
-        acc[queue] += 1;
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
+    const counts = data
+      .filter((job) => job.status == "Running")
+      .reduce(
+        (acc, item) => {
+          const queue = item.queue;
+          if (!acc[queue]) {
+            acc[queue] = 0;
+          }
+          acc[queue] += 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
     return Object.entries(counts).map(([phase, count]) => ({
       id: phase,
       label: phase,
@@ -274,17 +280,19 @@ export const Component: FC = () => {
       return [];
     }
     const data = jobQuery.data;
-    const counts = data.reduce(
-      (acc, item) => {
-        const type = item.jobType;
-        if (!acc[type]) {
-          acc[type] = 0;
-        }
-        acc[type] += 1;
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
+    const counts = data
+      .filter((job) => job.status == "Running")
+      .reduce(
+        (acc, item) => {
+          const type = item.jobType;
+          if (!acc[type]) {
+            acc[type] = 0;
+          }
+          acc[type] += 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
     return Object.entries(counts).map(([phase, count]) => ({
       id: phase,
       label: phase,
@@ -297,22 +305,24 @@ export const Component: FC = () => {
       return [];
     }
     const data = jobQuery.data;
-    const counts = data.reduce(
-      (acc, item) => {
-        const resources = item.resources;
-        for (const [k, value] of Object.entries(resources)) {
-          if (k.startsWith("nvidia.com")) {
-            const key = k.replace("nvidia.com/", "");
-            if (!acc[key]) {
-              acc[key] = 0;
+    const counts = data
+      .filter((job) => job.status == "Running")
+      .reduce(
+        (acc, item) => {
+          const resources = item.resources;
+          for (const [k, value] of Object.entries(resources)) {
+            if (k.startsWith("nvidia.com")) {
+              const key = k.replace("nvidia.com/", "");
+              if (!acc[key]) {
+                acc[key] = 0;
+              }
+              acc[key] += parseInt(value);
             }
-            acc[key] += parseInt(value);
           }
-        }
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
     return Object.entries(counts).map(([phase, count]) => ({
       id: phase,
       label: phase,
@@ -378,7 +388,7 @@ export const Component: FC = () => {
             <Button
               variant="secondary"
               onClick={() =>
-                window.open("https://crater.act.buaa.edu.cn/website/")
+                window.open("https://crater.act.buaa.edu.cn/website/docs/intro")
               }
               className="hidden lg:flex"
             >

@@ -17,7 +17,7 @@ import {
   globalUserInfo,
   useResetStore,
 } from "@/utils/store";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/utils/theme";
 import { toast } from "sonner";
@@ -92,7 +92,9 @@ export const UserDropdownMenu: FC = () => {
             <DropdownMenuItem disabled>个人空间</DropdownMenuItem>
           </DropdownMenuGroup>
         )}
-        <DropdownMenuItem disabled>系统设置</DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/portal/setting">系统设置</Link>
+        </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
         >

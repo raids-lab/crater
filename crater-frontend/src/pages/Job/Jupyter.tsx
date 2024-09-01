@@ -23,7 +23,7 @@ const Jupyter: FC = () => {
     enabled: !!id,
   });
 
-  const jupyterInfo = useQuery({
+  const { data: jupyterInfo } = useQuery({
     queryKey: ["jupyter", id],
     queryFn: () => apiJupyterTokenGet(id ?? "0"),
     select: (res) => res.data.data,
@@ -31,26 +31,26 @@ const Jupyter: FC = () => {
   });
 
   const url = useMemo(() => {
-    if (jupyterInfo.data) {
-      return `https://crater.act.buaa.edu.cn/jupyter/${jupyterInfo.data.baseURL}?token=${jupyterInfo.data.token}`;
+    if (jupyterInfo) {
+      return `https://crater.act.buaa.edu.cn/jupyter/${jupyterInfo.baseURL}?token=${jupyterInfo.token}`;
     } else {
       return "";
     }
   }, [jupyterInfo]);
 
   // set jupyter notebook icon as current page icon
-  // icon url: `https://crater.act.buaa.edu.cn/jupyter/${jupyterInfo.data.baseURL}/static/favicons/favicon.ico`
+  // icon url: `https://crater.act.buaa.edu.cn/jupyter/${jupyterInfo.baseURL}/static/favicons/favicon.ico`
   // set title to jupyter base url
   useEffect(() => {
-    if (jupyterInfo.data?.baseURL) {
+    if (jupyterInfo?.baseURL) {
       const link = document.querySelector(
         "link[rel='website icon']",
       ) as HTMLLinkElement;
       if (link) {
-        link.href = `https://crater.act.buaa.edu.cn/jupyter/${jupyterInfo.data.baseURL}/static/favicons/favicon.ico`;
+        link.href = `https://crater.act.buaa.edu.cn/jupyter/${jupyterInfo.baseURL}/static/favicons/favicon.ico`;
         link.type = "image/x-icon";
       }
-      document.title = jupyterInfo.data.baseURL;
+      document.title = jupyterInfo.baseURL;
     }
   }, [jupyterInfo]);
 

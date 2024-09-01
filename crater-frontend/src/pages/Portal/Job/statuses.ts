@@ -27,7 +27,7 @@ export const getHeader = (key: string): string => {
     case "startedAt":
       return "开始于";
     case "completedAt":
-      return "完成于";
+      return "结束于";
     default:
       return key;
   }
