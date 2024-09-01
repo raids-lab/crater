@@ -49,6 +49,8 @@ export enum JobPhase {
   Terminating = "Terminating",
   Terminated = "Terminated",
   Failed = "Failed",
+  Deleted = "Deleted",
+  Freed = "Freed",
   Unknown = "",
 }
 

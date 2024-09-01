@@ -44,15 +44,15 @@ export default function ProjectSwitcher({ className }: ProjectSwitcherProps) {
     return pathParts[0] === "admin";
   }, [location]);
 
-  const { data: projects } = useQuery({
+  const { data: queues } = useQuery({
     queryKey: ["queues"],
     queryFn: apiQueueList,
     select: (res) => res.data.data,
   });
 
   const currentQueue = useMemo(() => {
-    return projects?.find((p) => p.id === account.queue);
-  }, [projects, account.queue]);
+    return queues?.find((p) => p.id === account.queue);
+  }, [queues, account]);
 
   const { mutate: switchQueue } = useMutation({
     mutationFn: (project: QueueBasic) => apiQueueSwitch(project.id),
@@ -111,9 +111,9 @@ export default function ProjectSwitcher({ className }: ProjectSwitcherProps) {
             <CommandList>
               <CommandInput placeholder="查找账户" />
               <CommandEmpty>暂无数据</CommandEmpty>
-              {!!projects && projects.length > 0 && (
+              {!!queues && queues.length > 0 && (
                 <CommandGroup>
-                  {projects.map((team) => (
+                  {queues.map((team) => (
                     <CommandItem
                       key={`team-${team.id}`}
                       onSelect={() => {

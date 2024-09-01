@@ -36,7 +36,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui-custom/card";
-import { ExternalLink, TrashIcon } from "lucide-react";
+import { ExternalLink, SquareIcon, TrashIcon } from "lucide-react";
 import SplitButton from "@/components/custom/SplitButton";
 import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
@@ -75,7 +75,7 @@ export const Component = () => {
     mutationFn: apiJobDelete,
     onSuccess: async () => {
       await refetchTaskList();
-      toast.success("作业已删除");
+      toast.success("操作成功");
     },
   });
 
@@ -203,6 +203,19 @@ export const Component = () => {
         sortingFn: "datetime",
       },
       {
+        accessorKey: "completedAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("completedAt")}
+          />
+        ),
+        cell: ({ row }) => {
+          return <TableDate date={row.getValue("completedAt")}></TableDate>;
+        },
+        sortingFn: "datetime",
+      },
+      {
         id: "actions",
         enableHiding: false,
         cell: ({ row }) => {
@@ -229,33 +242,69 @@ export const Component = () => {
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 text-red-600 hover:text-destructive/90"
-                    title="终止 Jupyter Lab"
-                    disabled={userInfo.name !== jobInfo.owner}
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                  </Button>
+                  {jobInfo.status == "Deleted" ? (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 text-red-600 hover:text-destructive/90"
+                      title="删除 Jupyter Lab"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 text-orange-600 hover:text-destructive/90"
+                      title="停止 Jupyter Lab"
+                    >
+                      <SquareIcon className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </AlertDialogTrigger>
                 <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>删除作业</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      作业「{jobInfo?.name}
-                      」将停止，请确认已经保存好所需数据。
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>取消</AlertDialogCancel>
-                    <AlertDialogAction
-                      variant="destructive"
-                      onClick={() => deleteTask(jobInfo.jobName)}
-                    >
-                      删除
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
+                  {jobInfo.status == "Deleted" ? (
+                    <>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>删除作业</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          作业「{jobInfo?.name}
+                          」将被删除，所有元数据都将被清理。
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction
+                          variant="destructive"
+                          onClick={() => deleteTask(jobInfo.jobName)}
+                        >
+                          删除
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </>
+                  ) : (
+                    <>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>停止作业</AlertDialogTitle>
+                        <AlertDialogDescription className="text-balance">
+                          作业 {jobInfo?.name} 将停止，除{" "}
+                          <span className="font-mono">
+                            /home/{jobInfo.owner}
+                          </span>{" "}
+                          及其他挂载目录之外的文件将无法恢复，请确认已经保存好所需数据。
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction
+                          variant="destructive"
+                          onClick={() => deleteTask(jobInfo.jobName)}
+                        >
+                          停止
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </>
+                  )}
                 </AlertDialogContent>
               </AlertDialog>
             </div>

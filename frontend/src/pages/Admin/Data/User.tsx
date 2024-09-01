@@ -109,7 +109,7 @@ export const Component: FC = () => {
     select: (res) => res.data.data ?? [],
     refetchInterval: REFETCH_INTERVAL,
   });
-  const userSpace = useQuery({
+  const { data: userSpace } = useQuery({
     queryKey: ["data", "userspace", path],
     queryFn: () => apiGetUserSpace(),
     select: (res) => res.data.data ?? [],
@@ -117,7 +117,7 @@ export const Component: FC = () => {
   });
   const userMap = useMemo(() => {
     const map = new Map();
-    userSpace.data?.forEach((file) => {
+    userSpace?.forEach((file) => {
       map.set(file.space, file.username);
     });
     return map;
