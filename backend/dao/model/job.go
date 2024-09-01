@@ -9,13 +9,16 @@ import (
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 )
 
-const Deleted batch.JobPhase = "deleted"
+const (
+	Deleted batch.JobPhase = "Deleted"
+	Freed   batch.JobPhase = "Freed"
+)
 
 // User is the basic entity of the system
 type Job struct {
 	gorm.Model
-	Name               string                              `gorm:"not null;comment:作业名称"`
-	JobName            string                              `gorm:"index:job_name;not null;comment:作业名称"`
+	Name               string                              `gorm:"not null;type:varchar(256);comment:作业名称"`
+	JobName            string                              `gorm:"uniqueIndex;type:varchar(256);not null;comment:作业名称"`
 	UserID             uint                                `gorm:"primaryKey"`
 	User               User                                `gorm:"foreignKey:UserID"`
 	QueueID            uint                                `gorm:"primaryKey"`

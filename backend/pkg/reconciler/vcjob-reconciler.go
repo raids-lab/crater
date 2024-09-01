@@ -28,6 +28,7 @@ import (
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	"github.com/raids-lab/crater/pkg/config"
 	"gorm.io/datatypes"
+	"gorm.io/gen"
 	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -80,6 +81,8 @@ func (r *VcJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 
 // Reconcile 主要用于同步 VcJob 的状态到数据库中
+//
+//nolint:gocyclo // refactor later
 func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	j := query.Job
@@ -95,11 +98,35 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	if k8serrors.IsNotFound(err) {
 		// set job status to deleted
-		_, err = j.WithContext(ctx).Where(j.JobName.Eq(job.Name)).Update(j.Status, model.Deleted)
+		var record *model.Job
+		record, err = j.WithContext(ctx).Where(j.JobName.Eq(req.Name)).First()
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			logger.Error(err, "unable to fetch job record")
+			return ctrl.Result{Requeue: true}, err
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logger.Info("job not found in database")
+			return ctrl.Result{}, nil
+		}
+
+		if record.Status == model.Deleted || record.Status == model.Freed {
+			return ctrl.Result{}, nil
+		}
+
+		var info gen.ResultInfo
+		info, err = j.WithContext(ctx).Where(j.JobName.Eq(req.Name)).Updates(model.Job{
+			Status:             model.Deleted,
+			CompletedTimestamp: time.Now(),
+			Nodes:              datatypes.NewJSONType([]string{}),
+		})
 		if err != nil {
 			logger.Error(err, "unable to update job status to deleted")
 			return ctrl.Result{Requeue: true}, err
 		}
+		if info.RowsAffected == 0 {
+			logger.Info("job not found in database")
+		}
+		return ctrl.Result{}, nil
 	}
 
 	// create or update db record
@@ -126,11 +153,7 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	// if job found, update the record
-	updateRecord, err := r.generateUpdateJobModel(ctx, &job)
-	if err != nil {
-		logger.Error(err, "unable to generate update job model")
-		return ctrl.Result{}, err
-	}
+	updateRecord := r.generateUpdateJobModel(ctx, &job)
 	_, err = j.WithContext(ctx).Where(j.JobName.Eq(job.Name)).Updates(updateRecord)
 	if err != nil {
 		logger.Error(err, "unable to update job record")
@@ -165,11 +188,11 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 	// get user and queue
 	user, err := u.WithContext(ctx).Where(u.Name.Eq(job.Labels[vcjob.LabelKeyTaskUser])).First()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to get user %s: %w", job.Labels[vcjob.LabelKeyTaskUser], err)
 	}
 	queue, err := q.WithContext(ctx).Where(q.Name.Eq(job.Spec.Queue)).First()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to get queue %s: %w", job.Spec.Queue, err)
 	}
 
 	return &model.Job{
@@ -185,7 +208,7 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 	}, nil
 }
 
-func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch.Job) (*model.Job, error) {
+func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch.Job) *model.Job {
 	conditions := job.Status.Conditions
 	var runningTimestamp time.Time
 	var completedTimestamp time.Time
@@ -205,7 +228,7 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 			var pod v1.Pod
 			err := r.Get(ctx, types.NamespacedName{Namespace: config.GetConfig().Workspace.Namespace, Name: podName}, &pod)
 			if err != nil {
-				return nil, err
+				continue
 			}
 			if pod.Status.Phase == v1.PodRunning {
 				nodes = append(nodes, pod.Spec.NodeName)
@@ -217,5 +240,5 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 		RunningTimestamp:   runningTimestamp,
 		CompletedTimestamp: completedTimestamp,
 		Nodes:              datatypes.NewJSONType(nodes),
-	}, nil
+	}
 }

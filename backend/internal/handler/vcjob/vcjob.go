@@ -22,6 +22,7 @@ import (
 	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -136,6 +137,16 @@ func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
 	job := &batch.Job{}
 	namespace := config.GetConfig().Workspace.Namespace
 	if err := mgr.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
+		if errors.IsNotFound(err) {
+			j := query.Job
+			_, err = j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Delete()
+			if err != nil {
+				resputil.Error(c, err.Error(), resputil.NotSpecified)
+				return
+			}
+			resputil.Success(c, nil)
+			return
+		}
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
@@ -155,19 +166,8 @@ func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
 		return
 	}
 
-	// 2. Delete the service
-	svc := &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      req.JobName,
-			Namespace: namespace,
-		},
-	}
-	if err := mgr.Delete(context.Background(), svc); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	// 3. Delete the ingress
+	// 2. Delete the ingress
+	// TODO(liuxw24): remove the code
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 	ingressClient := mgr.kubeClient.NetworkingV1().Ingresses(namespace)
@@ -350,7 +350,7 @@ func (mgr *VolcanojobMgr) convertJobResp(jobs []*model.Job) []JobResp {
 			JobName:            job.JobName,
 			Owner:              job.User.Name,
 			JobType:            job.JobType,
-			Queue:              job.Queue.Name,
+			Queue:              job.Queue.Nickname,
 			Status:             string(job.Status),
 			CreationTimestamp:  metav1.NewTime(job.CreationTimestamp),
 			RunningTimestamp:   metav1.NewTime(job.RunningTimestamp),

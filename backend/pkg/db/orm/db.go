@@ -49,6 +49,9 @@ func InitDB() error {
 
 // InitMigration init mysql migration
 func InitMigration() error {
+	if err := InitDB(); err != nil {
+		return fmt.Errorf("init migration: %w", err)
+	}
 	if err := Orm.AutoMigrate(&models.AITask{}); err != nil {
 		return fmt.Errorf("init migration AITask: %w", err)
 	}

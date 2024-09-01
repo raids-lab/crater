@@ -9,6 +9,8 @@ import (
 	"gorm.io/datatypes"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+
+	aitask "github.com/raids-lab/crater/pkg/db/orm"
 )
 
 func ConnectPostgres() *gorm.DB {
@@ -203,5 +205,10 @@ func main() {
 
 	if err := m.Migrate(); err != nil {
 		panic(fmt.Errorf("could not migrate: %w", err))
+	}
+
+	// for emias scheduler
+	if err := aitask.InitMigration(); err != nil {
+		panic(fmt.Errorf("could not init migration: %w", err))
 	}
 }
