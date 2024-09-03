@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiGetNodes } from "@/services/api/node";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import { nodeColumns, ClusterNodeInfo } from "@/pages/Admin/Cluster/Node";
+import { nodeColumns, ClusterNodeInfo } from "@/components/custom/NodeList";
 import { getAiResource } from "@/utils/resource";
 import { getHeader } from "@/pages/Admin/Job/Volcano";
 import { TableDate } from "@/components/custom/TableDate";
@@ -31,7 +31,7 @@ import JobTypeLabel, { jobTypes } from "@/components/custom/JobTypeLabel";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
 import { globalJobUrl } from "@/utils/store";
-import PodStatusDetail from "../../Admin/Cluster/Pod";
+import NodeDetail from "./NodeDetail";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -451,8 +451,8 @@ export const Component: FC = () => {
       element: mainElement,
     },
     {
-      path: ":id",
-      element: <PodStatusDetail />,
+      path: "node/:id",
+      element: <NodeDetail />,
     },
   ]);
 

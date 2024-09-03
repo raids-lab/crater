@@ -1,4 +1,8 @@
-import { IJobInfo, apiAdminTaskListByType } from "@/services/api/vcjob";
+import {
+  IJobInfo,
+  JobType,
+  apiAdminTaskListByType,
+} from "@/services/api/vcjob";
 import { useQuery } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
@@ -7,7 +11,6 @@ import { JobPhase } from "@/services/api/vcjob";
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { TableDate } from "@/components/custom/TableDate";
-import { Badge } from "@/components/ui/badge";
 import {
   CircleIcon,
   ClockIcon,
@@ -120,6 +123,15 @@ const toolbarConfig: DataTableToolbarConfig = {
 
 const vcjobColumns: ColumnDef<IJobInfo>[] = [
   {
+    accessorKey: "jobType",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={getHeader("jobType")} />
+    ),
+    cell: ({ row }) => (
+      <JobTypeLabel jobType={row.getValue<JobType>("jobType")} />
+    ),
+  },
+  {
     accessorKey: "name",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title={getHeader("name")} />
@@ -135,26 +147,15 @@ const vcjobColumns: ColumnDef<IJobInfo>[] = [
     // ),
     cell: ({ row }) => {
       // 判断状态是否为 'Running'
-      if (row.getValue("status") === "Running") {
-        return (
-          <Link
-            to={row.original.jobName}
-            className="underline-offset-4 hover:underline"
-          >
-            {row.getValue("name")}
-          </Link>
-        );
-      } else {
-        return <div>{row.getValue("name")}</div>;
-      }
+      return (
+        <Link
+          to={row.original.jobName}
+          className="underline-offset-4 hover:underline"
+        >
+          {row.getValue("name")}
+        </Link>
+      );
     },
-  },
-  {
-    accessorKey: "jobType",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={getHeader("jobType")} />
-    ),
-    cell: ({ row }) => <div>{row.getValue("jobType")}</div>,
   },
   {
     accessorKey: "owner",
@@ -162,6 +163,26 @@ const vcjobColumns: ColumnDef<IJobInfo>[] = [
       <DataTableColumnHeader column={column} title={getHeader("owner")} />
     ),
     cell: ({ row }) => <div>{row.getValue("owner")}</div>,
+  },
+  {
+    accessorKey: "nodes",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={getHeader("nodes")} />
+    ),
+    cell: ({ row }) => {
+      const nodes = row.getValue<string[]>("nodes");
+      return <NodeBadges nodes={nodes} />;
+    },
+  },
+  {
+    accessorKey: "resources",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={getHeader("resources")} />
+    ),
+    cell: ({ row }) => {
+      const resources = row.getValue<Record<string, string>>("resources");
+      return <ResourceBadges resources={resources} />;
+    },
   },
   {
     accessorKey: "status",
@@ -176,40 +197,14 @@ const vcjobColumns: ColumnDef<IJobInfo>[] = [
     },
   },
   {
-    accessorKey: "nodes",
+    accessorKey: "createdAt",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={getHeader("nodes")} />
+      <DataTableColumnHeader column={column} title={getHeader("createdAt")} />
     ),
     cell: ({ row }) => {
-      const nodes = row.getValue<string[]>("nodes");
-      return (
-        <div className="flex items-start gap-1">
-          {nodes?.map((node) => (
-            <Badge key={node} variant="secondary">
-              {node}
-            </Badge>
-          ))}
-        </div>
-      );
+      return <TableDate date={row.getValue("createdAt")}></TableDate>;
     },
-  },
-  {
-    accessorKey: "resources",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={getHeader("resources")} />
-    ),
-    cell: ({ row }) => {
-      const resources = row.getValue<Record<string, string>>("resources");
-      return (
-        <div className="flex items-start gap-1">
-          {Object.entries(resources).map(([key, value]) => (
-            <Badge key={key} variant="secondary">
-              {key.replace("nvidia.com/", "")}: {value}
-            </Badge>
-          ))}
-        </div>
-      );
-    },
+    sortingFn: "datetime",
   },
   {
     accessorKey: "startedAt",
@@ -250,6 +245,9 @@ const Volcano = () => {
 };
 
 import JobDetail from "./JobDetail";
+import ResourceBadges from "@/components/custom/ResourceBadges";
+import NodeBadges from "@/components/custom/NodeBadges";
+import JobTypeLabel from "@/components/custom/JobTypeLabel";
 // import JupyterDetail from "../../Portal/Job/Jupyter/Detail";
 // export default Volcano;
 export const Component = () => {

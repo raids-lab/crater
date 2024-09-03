@@ -1,25 +1,10 @@
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, type FC } from "react";
+import { type FC } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import { DataTable } from "@/components/custom/DataTable";
-import { Checkbox } from "@/components/ui/checkbox";
-import { apiGetAdminNodes } from "@/services/api/admin/cluster";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { getAiResource } from "@/utils/resource";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { DotsHorizontalIcon } from "@radix-ui/react-icons";
-import { Link, useNavigate, useRoutes } from "react-router-dom";
-import PodStatusDetail from "../Pod";
+import { Link } from "react-router-dom";
 
 interface ResourceInfo {
   percent: number;
@@ -36,7 +21,7 @@ export interface ClusterNodeInfo {
   labels: Record<string, string>;
 }
 
-const toolbarConfig: DataTableToolbarConfig = {
+export const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
     placeholder: "搜索节点名称",
     key: "name",
@@ -83,7 +68,7 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
         className="h-8 px-0 text-left font-normal text-secondary-foreground underline-offset-2 hover:underline"
         to={`node/${row.original.name}`}
       >
-        {row.getValue("name")}
+        <p>{row.getValue("name")}</p>
       </Link>
     ),
   },
@@ -195,121 +180,3 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
     enableSorting: false,
   },
 ];
-
-const NodeHome = () => {
-  const nodeQuery = useQuery({
-    queryKey: ["overview", "nodes"],
-    queryFn: apiGetAdminNodes,
-    select: (res) =>
-      res.data.data.rows
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .filter((x) => x.role === "worker" && x.isReady)
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map((x) => {
-          const capacity = getAiResource(x.capacity);
-          const allocated = getAiResource(x.allocated);
-          return {
-            name: x.name,
-            isReady: x.isReady,
-            role: x.role,
-            cpu: {
-              percent: (allocated.cpu ?? 0) / (capacity.cpu ?? 1) / 10,
-              description: `${((allocated.cpu ?? 0) / 1000).toFixed(1)}/${capacity.cpu ?? 1}`,
-            },
-            memory: {
-              percent:
-                ((allocated.memoryNum ?? 0) / (capacity.memoryNum ?? 1)) * 100,
-              description: `${(allocated.memoryNum ?? 0).toFixed(1)}/${(capacity.memoryNum ?? 1).toFixed(0)}Gi`,
-            },
-            gpu: {
-              percent: capacity.gpu
-                ? ((allocated.gpu ?? 0) / (capacity.gpu ?? 1)) * 100
-                : 0,
-              description: capacity.gpu
-                ? `${(allocated.gpu ?? 0).toFixed(0)}/${capacity.gpu ?? 1}`
-                : "",
-            },
-            labels: x.labels,
-          } as ClusterNodeInfo;
-        }),
-  });
-
-  const navigate = useNavigate();
-
-  const columns = useMemo<ColumnDef<ClusterNodeInfo>[]>(
-    () => [
-      {
-        id: "select",
-        header: ({ table }) => (
-          <Checkbox
-            checked={table.getIsAllPageRowsSelected()}
-            onCheckedChange={(value) =>
-              table.toggleAllPageRowsSelected(!!value)
-            }
-            aria-label="Select all"
-          />
-        ),
-        cell: ({ row }) => (
-          <>
-            <Checkbox
-              checked={row.getIsSelected()}
-              onCheckedChange={(value) => row.toggleSelected(!!value)}
-              aria-label="Select row"
-            />
-          </>
-        ),
-        enableSorting: false,
-        enableHiding: false,
-      },
-      ...nodeColumns,
-      {
-        id: "actions",
-        enableHiding: false,
-        cell: ({ row }) => {
-          return (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">操作</span>
-                  <DotsHorizontalIcon className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>操作</DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={() => navigate(`${row.original.name}`)}
-                >
-                  查看详情
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          );
-        },
-      },
-    ],
-    [navigate],
-  );
-
-  return (
-    <DataTable
-      query={nodeQuery}
-      columns={columns}
-      toolbarConfig={toolbarConfig}
-    />
-  );
-};
-
-export const Component = () => {
-  const routes = useRoutes([
-    {
-      index: true,
-      element: <NodeHome />,
-    },
-    {
-      path: ":id",
-      element: <PodStatusDetail />,
-    },
-  ]);
-
-  return <>{routes}</>;
-};

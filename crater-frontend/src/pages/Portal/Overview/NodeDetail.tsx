@@ -324,7 +324,7 @@ const getColumns = (nodeName: string): ColumnDef<ClusterPodInfo>[] => [
   },
 ];
 
-export const PodStatusDetail: FC = () => {
+export const NodeDetail: FC = () => {
   const { id: nodeName } = useParams();
   const [showAll, setShowAll] = useState(false); // 新增状态用于控制是否显示所有数据
 
@@ -388,4 +388,4 @@ export const PodStatusDetail: FC = () => {
   );
 };
 
-export default PodStatusDetail;
+export default NodeDetail;
