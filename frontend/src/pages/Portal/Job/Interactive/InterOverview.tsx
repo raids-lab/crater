@@ -36,7 +36,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui-custom/card";
-import { ExternalLink, SquareIcon, TrashIcon } from "lucide-react";
+import { ExternalLink, SquareIcon, Trash2Icon } from "lucide-react";
 import SplitButton from "@/components/custom/SplitButton";
 import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
@@ -242,14 +242,14 @@ export const Component = () => {
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  {jobInfo.status == "Deleted" ? (
+                  {jobInfo.status == "Deleted" || jobInfo.status == "Freed" ? (
                     <Button
                       variant="outline"
                       size="icon"
                       className="h-8 w-8 text-red-600 hover:text-destructive/90"
                       title="删除 Jupyter Lab"
                     >
-                      <TrashIcon className="h-4 w-4" />
+                      <Trash2Icon className="h-4 w-4" />
                     </Button>
                   ) : (
                     <Button
@@ -258,12 +258,12 @@ export const Component = () => {
                       className="h-8 w-8 text-orange-600 hover:text-destructive/90"
                       title="停止 Jupyter Lab"
                     >
-                      <SquareIcon className="h-3.5 w-3.5" />
+                      <SquareIcon className="h-3.5 w-3.5" strokeWidth={"2.5"} />
                     </Button>
                   )}
                 </AlertDialogTrigger>
                 <AlertDialogContent>
-                  {jobInfo.status == "Deleted" ? (
+                  {jobInfo.status == "Deleted" || jobInfo.status == "Freed" ? (
                     <>
                       <AlertDialogHeader>
                         <AlertDialogTitle>删除作业</AlertDialogTitle>
