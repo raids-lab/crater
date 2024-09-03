@@ -51,9 +51,10 @@ pnpm install
 ```bash
 VITE_API_BASE_URL="http://localhost:8098/"  # 指定后端 API 地址
 VITE_USE_MSW=false      # true to use MSW, false to use real API
+PORT=5180               # 开发服务器端口，请参考 Wiki
 ```
 
-之后，您可以运行 `pnpm dev --port 5173`，启动开发服务器。
+之后，您可以运行 `make run`，启动开发服务器。
 
 ### 2.2 主要技术栈
 
