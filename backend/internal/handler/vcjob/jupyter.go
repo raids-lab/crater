@@ -51,8 +51,8 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	useTensorboard := fmt.Sprintf("%t", req.UseTensorBoard)
 
 	// Command to start Jupyter
-	commandSchema := "start.sh jupyter lab --allow-root --NotebookApp.base_url=/jupyter/%s/"
-	command := fmt.Sprintf(commandSchema, baseURL)
+	commandSchema := "start.sh jupyter lab --allow-root --notebook-dir=/home/%s --NotebookApp.base_url=/jupyter/%s/"
+	command := fmt.Sprintf(commandSchema, token.Username, baseURL)
 
 	// 1. Volume Mounts
 	volumes, volumeMounts, err := GenerateVolumeMounts(c, token.UserID, req.VolumeMounts)
@@ -61,6 +61,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		return
 	}
 
+	// 1.1 Support NGC images
 	if !strings.Contains(req.Image, "jupyter") {
 		volumes = append(volumes, v1.Volume{
 			Name: "bash-script-volume",
@@ -81,8 +82,8 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 			SubPath:   "start.sh",
 		})
 
-		commandSchema := "/usr/bin/start.sh jupyter lab --allow-root --NotebookApp.base_url=/jupyter/%s/"
-		command = fmt.Sprintf(commandSchema, baseURL)
+		commandSchema := "/usr/bin/start.sh jupyter lab --allow-root --notebook-dir=/home/%s --NotebookApp.base_url=/jupyter/%s/"
+		command = fmt.Sprintf(commandSchema, token.Username, baseURL)
 	}
 
 	// 2. Env Vars
