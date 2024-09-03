@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -60,6 +61,30 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		return
 	}
 
+	if !strings.Contains(req.Image, "jupyter") {
+		volumes = append(volumes, v1.Volume{
+			Name: "bash-script-volume",
+			VolumeSource: v1.VolumeSource{
+				ConfigMap: &v1.ConfigMapVolumeSource{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: "jupyter-start-configmap",
+					},
+					//nolint:gomnd // 0755 is the default mode
+					DefaultMode: lo.ToPtr(int32(0755)),
+				},
+			},
+		})
+		volumeMounts = append(volumeMounts, v1.VolumeMount{
+			Name:      "bash-script-volume",
+			MountPath: "/usr/bin/start.sh",
+			ReadOnly:  false,
+			SubPath:   "start.sh",
+		})
+
+		commandSchema := "/usr/bin/start.sh jupyter lab --allow-root --NotebookApp.base_url=/jupyter/%s/"
+		command = fmt.Sprintf(commandSchema, baseURL)
+	}
+
 	// 2. Env Vars
 	//nolint:gomnd // 4 is the number of default envs
 	envs := make([]v1.EnvVar, len(req.Envs)+4)
@@ -94,7 +119,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 			{
 				Name:    "jupyter-notebook",
 				Image:   req.Image,
-				Command: []string{"sh", "-c", command},
+				Command: []string{"bash", "-c", command},
 				Resources: v1.ResourceRequirements{
 					Limits:   req.Resource,
 					Requests: req.Resource,
