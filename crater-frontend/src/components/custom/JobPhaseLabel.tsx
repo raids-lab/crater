@@ -102,7 +102,7 @@ export const getJobPhaseLabel = (
       return {
         label: "运行中",
         color: "text-blue-500 border-blue-500 bg-blue-500/10",
-        description: "作业正在运行，您可以点击作业名称查看详情",
+        description: "作业正在运行",
       };
     case JobPhase.Restarting:
       return {
@@ -143,14 +143,14 @@ export const getJobPhaseLabel = (
     case JobPhase.Deleted:
       return {
         label: "已停止",
-        color: "text-red-500 border-red-500 bg-red-500/10",
+        color: "text-orange-500 border-orange-500 bg-orange-500/10",
         description: "作业被手动停止，相关资源已删除，仅保留元数据",
       };
     case JobPhase.Freed:
       return {
         label: "已释放",
-        color: "text-red-500 border-red-500 bg-red-500/10",
-        description: "由于您的作业长期占用资源但未使用，已自动释放",
+        color: "text-orange-500 border-orange-500 bg-orange-500/10",
+        description: "作业长期占用资源但未使用，已自动释放",
       };
     default:
       return {
@@ -168,7 +168,7 @@ const JobPhaseLabel = ({ jobPhase }: { jobPhase: JobPhase }) => {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger disabled>
-          <Badge className={cn("", data.color)} variant="outline">
+          <Badge className={cn("cursor-pointer", data.color)} variant="outline">
             <div className="">{data.label}</div>
           </Badge>
         </TooltipTrigger>

@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/table";
 import { DataTablePagination } from "./DataTablePagination";
 import { DataTableToolbar, DataTableToolbarConfig } from "./DataTableToolbar";
-import { useLocalStorage } from "usehooks-ts";
 import {
   Card,
   CardContent,
@@ -68,13 +67,10 @@ export function DataTable<TData, TValue>({
     minute: "2-digit",
     second: "2-digit",
   });
-  const [pagination, setPagination] = useLocalStorage<PaginationState>(
-    "pagination",
-    {
-      pageIndex: 0,
-      pageSize: 10,
-    },
-  );
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
   const data = useMemo(() => {
     if (!queryData || isLoading) return [];
