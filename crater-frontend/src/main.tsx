@@ -54,6 +54,14 @@ const router = createBrowserRouter([
   },
 ]);
 
+// TypeError: Failed to fetch dynamically imported module
+// https://github.com/vitejs/vite/issues/11804
+// https://vitejs.dev/guide/build#load-error-handling
+window.addEventListener("vite:preloadError", () => {
+  logger.info("vite:preloadError");
+  window.location.reload(); // for example, refresh the page
+});
+
 const queryClient = new QueryClient();
 
 async function enableMocking() {
