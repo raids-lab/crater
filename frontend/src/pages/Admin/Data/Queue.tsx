@@ -77,7 +77,7 @@ export const Component: FC = () => {
         };
       } else if (index == 2 && value == "queue") {
         return {
-          title: "队列文件",
+          title: "账户文件",
           path: "/admin/data/queue",
         };
       }

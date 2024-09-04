@@ -16,6 +16,7 @@ import {
 import { Check, ChevronsUpDown } from "lucide-react";
 // import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
+import { ScrollArea } from "../ui/scroll-area";
 
 export interface ComboboxItem {
   label: string;
@@ -47,7 +48,8 @@ const Combobox = ({
             role="combobox"
             aria-expanded={open}
             className={cn(
-              "w-full justify-between text-ellipsis whitespace-nowrap  px-3 font-normal",
+              "w-full justify-between text-ellipsis whitespace-nowrap px-3 font-normal",
+              "data-[state=open]:outline-none data-[state=open]:ring-1 data-[state=open]:ring-ring",
               !current && "text-muted-foreground",
               className,
             )}
@@ -69,29 +71,32 @@ const Combobox = ({
         <Command>
           <CommandInput placeholder={`查找${formTitle}`} className="h-9" />
           <CommandEmpty>未找到匹配的{formTitle}</CommandEmpty>
-          {/* <ScrollArea className="h-40"> */}
+
           <CommandGroup>
-            {items.map((image) => (
-              <CommandItem
-                value={image.label}
-                key={image.value}
-                onSelect={() => {
-                  handleSelect(image.value);
-                  setOpen(false);
-                }}
-                className="flex w-full flex-row items-center justify-between"
-              >
-                {image.label}
-                <Check
-                  className={cn(
-                    "ml-auto h-4 w-4",
-                    image.value === current ? "opacity-100" : "opacity-0",
-                  )}
-                />
-              </CommandItem>
-            ))}
+            <ScrollArea>
+              <div className="max-h-48">
+                {items.map((image) => (
+                  <CommandItem
+                    value={image.label}
+                    key={image.value}
+                    onSelect={() => {
+                      handleSelect(image.value);
+                      setOpen(false);
+                    }}
+                    className="flex w-full flex-row items-center justify-between"
+                  >
+                    {image.label}
+                    <Check
+                      className={cn(
+                        "ml-auto h-4 w-4",
+                        image.value === current ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                  </CommandItem>
+                ))}
+              </div>
+            </ScrollArea>
           </CommandGroup>
-          {/* </ScrollArea> */}
         </Command>
       </PopoverContent>
     </Popover>

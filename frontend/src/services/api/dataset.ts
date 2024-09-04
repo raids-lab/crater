@@ -32,7 +32,7 @@ export interface DatasetReanmeReq {
 }
 
 export interface UserDatasetGetResp {
-  id: number;
+  id: string;
   name: string;
 }
 
