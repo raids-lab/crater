@@ -45,9 +45,7 @@ build_backend:
     - go env -w GO111MODULE=on
     - go env -w GOPROXY=https://goproxy.cn,direct
     - go mod download
-    - set +e
-    - go install github.com/swaggo/swag/cmd/swag@latest
-    - set -e
+    - command -v swag >/dev/null 2>&1 || go install github.com/swaggo/swag/cmd/swag@latest
     - swag init
     - go build -ldflags="-w -s" -o bin/controller main.go
   artifacts:
