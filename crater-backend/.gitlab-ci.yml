@@ -18,7 +18,7 @@ lint:
     - go env -w GO111MODULE=on
     - go env -w GOPROXY=https://goproxy.cn,direct
     - go mod download
-    - go install github.com/swaggo/swag/cmd/swag@latest
+    - command -v swag >/dev/null 2>&1 || go install github.com/swaggo/swag/cmd/swag@latest
     - swag init
     # Write the code coverage report to gl-code-quality-report.json
     # and print linting issues to stdout in the format: path/to/file:line description
