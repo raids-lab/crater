@@ -45,7 +45,14 @@ build_backend:
     - go env -w GO111MODULE=on
     - go env -w GOPROXY=https://goproxy.cn,direct
     - go mod download
+    - set +e
     - go install github.com/swaggo/swag/cmd/swag@latest
+    - status=$?
+    - set -e
+    # 如果上一个命令失败，输出警告信息并继续执行
+    if [ $status -ne 0 ]; then
+       echo "go install github.com/swaggo/swag/cmd/swag@latest failed. Skipping..."
+    fi
     - swag init
     - go build -ldflags="-w -s" -o bin/controller main.go
   artifacts:
