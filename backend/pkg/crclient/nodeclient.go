@@ -77,21 +77,6 @@ func (nc *NodeClient) getNodeGPUCount(nodeName string) int {
 	return count
 }
 
-func (nc *NodeClient) getNodeGPUAllocate(nodeName string) int {
-	gpuInfo, err := nc.GetNodeGPUInfo(nodeName)
-	if err != nil {
-		return 0
-	}
-	// 统计gpuInfo.GPUUtil > 0 的gpu数量
-	count := 0
-	for _, util := range gpuInfo.GPUUtil {
-		if util > 0 {
-			count++
-		}
-	}
-	return count
-}
-
 // GetNodes 获取所有 Node 列表
 func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 	var nodes corev1.NodeList
@@ -102,8 +87,9 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 	}
 
 	nodeInfos := make([]payload.ClusterNodeInfo, len(nodes.Items))
-	CPUMap := nc.PrometheusClient.QueryNodeCPUUsageRatio()
+	CPUMap := nc.PrometheusClient.QueryNodeAllocatedCPU()
 	MemMap := nc.PrometheusClient.QueryNodeAllocatedMemory()
+	GPUMap := nc.PrometheusClient.QueryNodeAllocatedGPU()
 
 	// Loop through each node and print allocated resources
 	for i := range nodes.Items {
@@ -111,7 +97,7 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 		allocatedInfo := payload.AllocatedInfo{
 			CPU: calculateCPULoad(CPUMap[node.Name], int(node.Status.Capacity.Cpu().MilliValue())),
 			Mem: FomatMemoryLoad(MemMap[node.Name]),
-			GPU: fmt.Sprintf("%d", nc.getNodeGPUAllocate(node.Name)),
+			GPU: fmt.Sprintf("%d", GPUMap[node.Name]),
 		}
 		gpuCount := nc.getNodeGPUCount(node.Name)
 		capacity_ := node.Status.Capacity
