@@ -26,11 +26,34 @@ func (p *PrometheusClient) QueryNodeMemoryUsageRatio() map[string]float32 {
 	return data
 }
 
+// QueryNodeAllocatedMemory returns the allocated memory of each node
 func (p *PrometheusClient) QueryNodeAllocatedMemory() map[string]int {
-	query := "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes"
-	data, err := p.IntMapQuery(query, "instance")
+	query := "sum by (node) (kube_pod_container_resource_requests{resource=\"memory\"})"
+	data, err := p.IntMapQuery(query, "node")
 	if err != nil {
 		logutils.Log.Errorf("QueryNodeAllocatedMemory error: %v", err)
+		return nil
+	}
+	return data
+}
+
+// QueryNodeAllocatedCPU returns the allocated CPU of each node
+func (p *PrometheusClient) QueryNodeAllocatedCPU() map[string]float32 {
+	query := "sum by (node) (kube_pod_container_resource_requests{resource=\"cpu\"})"
+	data, err := p.Float32MapQuery(query, "node")
+	if err != nil {
+		logutils.Log.Errorf("QueryNodeAllocatedCPU error: %v", err)
+		return nil
+	}
+	return data
+}
+
+// QueryNodeAllocatedGPU returns the allocated GPU of each node
+func (p *PrometheusClient) QueryNodeAllocatedGPU() map[string]int {
+	query := "sum by (node) (kube_pod_container_resource_requests{resource=~\"nvidia_.*\"})"
+	data, err := p.IntMapQuery(query, "node")
+	if err != nil {
+		logutils.Log.Errorf("QueryNodeAllocatedGPU error: %v", err)
 		return nil
 	}
 	return data
