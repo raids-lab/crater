@@ -464,7 +464,8 @@ export const Component = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      任务优先级<span className="ml-1 text-red-500">*</span>
+                      任务优先级
+                      <FormLabelMust />
                     </FormLabel>
                     <FormControl>
                       <Select

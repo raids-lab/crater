@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useAtom } from "jotai";
 import { globalSettings } from "@/utils/store";
+import FormLabelMust from "@/components/custom/FormLabelMust";
 
 const formSchema = z.object({
   scheduler: z.string().min(1, { message: "请选择调度算法" }),
@@ -62,7 +63,8 @@ export const Component = () => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    调度算法<span className="ml-1 text-red-500">*</span>
+                    调度算法
+                    <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <Select

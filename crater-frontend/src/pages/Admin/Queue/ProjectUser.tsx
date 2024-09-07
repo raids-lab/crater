@@ -14,7 +14,7 @@ import {
   FormControl,
 } from "@/components/ui/form";
 import FormLabelMust from "@/components/custom/FormLabelMust";
-import { DialogTrigger, Dialog } from "@/components/ui/dialog";
+import { DialogTrigger, Dialog, DialogClose } from "@/components/ui/dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
@@ -385,12 +385,6 @@ const UserProjectManagement = () => {
 
   const [openSheet, setOpenSheet] = useState(false);
 
-  const closeDialog = (event: { preventDefault: () => void }) => {
-    event.preventDefault();
-    setOpenSheet(false);
-    form.reset();
-  };
-
   // 1. Define your form.
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
@@ -469,7 +463,9 @@ const UserProjectManagement = () => {
                           </SelectGroup>
                         </SelectContent>
                       </Select>
-                      <FormDescription>选择用户</FormDescription>
+                      <FormDescription>
+                        可选择一位或多位用户加入到账户中
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -499,7 +495,7 @@ const UserProjectManagement = () => {
                           </SelectGroup>
                         </SelectContent>
                       </Select>
-                      <FormDescription>选择角色</FormDescription>
+                      <FormDescription>配置用户在账户中的角色</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -530,14 +526,18 @@ const UserProjectManagement = () => {
                         </SelectContent>
                       </Select>
 
-                      <FormDescription>选择访问权限</FormDescription>
+                      <FormDescription>
+                        设置用户在账户空间的访问权限
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 <DialogFooter>
-                  <Button onClick={closeDialog}>关闭</Button>
-                  <Button type="submit">提交</Button>
+                  <DialogClose asChild>
+                    <Button variant="outline">取消</Button>
+                  </DialogClose>
+                  <Button type="submit">添加</Button>
                 </DialogFooter>
               </form>
             </Form>

@@ -1,6 +1,6 @@
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
-import { IClusterNodeInfo } from "./admin/cluster";
+import { IClusterNodeInfo } from "./cluster";
 
 export const apiGetNodes = () =>
   instance.get<

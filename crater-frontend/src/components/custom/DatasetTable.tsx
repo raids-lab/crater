@@ -221,114 +221,13 @@ export function DatasetTable({
         cell: ({ row }) => {
           return (
             <div className="flex flex-row space-x-1">
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <div>
-                    <Button
-                      variant="outline"
-                      className="h-8 w-8 p-0 hover:text-red-700"
-                      title="删除数据集"
-                    >
-                      <Trash2 size={16} strokeWidth={2} />
-                    </Button>
-                  </div>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>删除数据集</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      数据集将删除
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>取消</AlertDialogCancel>
-                    <AlertDialogAction
-                      variant="destructive"
-                      onClick={() => {
-                        // check if browser support clipboard
-                        deleteDataset(row.original.id);
-                      }}
-                    >
-                      删除
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
               <Dialog>
                 <DialogTrigger asChild>
                   <div>
                     <Button
                       variant="outline"
-                      className="h-8 w-8 p-0 hover:text-red-700"
-                      title="用户共享"
-                    >
-                      <User size={16} strokeWidth={2} />
-                    </Button>
-                  </div>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>分享至用户</DialogTitle>
-                    <DialogDescription>
-                      和指定的用户共享数据集
-                    </DialogDescription>
-                  </DialogHeader>
-                  <ShareDatasetToUserDialog
-                    datasetId={row.original.id}
-                    apiShareDatasetwithUser={apiShareDatasetwithUser}
-                  />
-                </DialogContent>
-              </Dialog>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <div>
-                    <Button
-                      variant="outline"
-                      className="h-8 w-8 p-0 hover:text-red-700"
-                      title="账户共享"
-                    >
-                      <Users size={16} strokeWidth={2} />
-                    </Button>
-                  </div>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>共享数据集</DialogTitle>
-                    <DialogDescription>和账户共享数据集</DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="queue" className="text-right">
-                        账户名称
-                      </Label>
-                      <QueueNotInSelect
-                        id={row.original.id}
-                        onChange={onChangeQueue}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <DialogClose>
-                      <Button variant="outline">取消</Button>
-                    </DialogClose>
-                    <DialogClose>
-                      <Button
-                        type="submit"
-                        variant="default"
-                        onClick={() => shareWithQueue(row.original.id)}
-                      >
-                        共享
-                      </Button>
-                    </DialogClose>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <div>
-                    <Button
-                      variant="outline"
-                      className="h-8 w-8 p-0 hover:text-red-700"
+                      className="h-8 w-8"
+                      size="icon"
                       title="重命名"
                     >
                       <Pencil size={16} strokeWidth={2} />
@@ -370,6 +269,109 @@ export function DatasetTable({
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <div>
+                    <Button
+                      variant="outline"
+                      className="h-8 w-8 p-0"
+                      title="用户共享"
+                    >
+                      <User size={16} strokeWidth={2} />
+                    </Button>
+                  </div>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>分享至用户</DialogTitle>
+                    <DialogDescription>
+                      和指定的用户共享数据集
+                    </DialogDescription>
+                  </DialogHeader>
+                  <ShareDatasetToUserDialog
+                    datasetId={row.original.id}
+                    apiShareDatasetwithUser={apiShareDatasetwithUser}
+                  />
+                </DialogContent>
+              </Dialog>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <div>
+                    <Button
+                      variant="outline"
+                      className="h-8 w-8"
+                      size="icon"
+                      title="账户共享"
+                    >
+                      <Users size={16} strokeWidth={2} />
+                    </Button>
+                  </div>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>共享数据集</DialogTitle>
+                    <DialogDescription>和账户共享数据集</DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="queue" className="text-right">
+                        账户名称
+                      </Label>
+                      <QueueNotInSelect
+                        id={row.original.id}
+                        onChange={onChangeQueue}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <DialogClose>
+                      <Button variant="outline">取消</Button>
+                    </DialogClose>
+                    <DialogClose>
+                      <Button
+                        type="submit"
+                        variant="default"
+                        onClick={() => shareWithQueue(row.original.id)}
+                      >
+                        共享
+                      </Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <div>
+                    <Button
+                      variant="outline"
+                      className="h-8 w-8 p-0 hover:text-destructive"
+                      title="删除数据集"
+                    >
+                      <Trash2 size={16} strokeWidth={2} />
+                    </Button>
+                  </div>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>删除数据集</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      数据集将删除
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>取消</AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="destructive"
+                      onClick={() => {
+                        // check if browser support clipboard
+                        deleteDataset(row.original.id);
+                      }}
+                    >
+                      删除
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           );
         },

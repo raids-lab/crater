@@ -5,7 +5,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTable } from "@/components/custom/DataTable";
 import { Checkbox } from "@/components/ui/checkbox";
-import { apiGetAdminNodes } from "@/services/api/admin/cluster";
+import { apiGetNodes } from "@/services/api/cluster";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { getAiResource } from "@/utils/resource";
@@ -19,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { Link, useNavigate, useRoutes } from "react-router-dom";
-import PodStatusDetail from "../Pod";
+import NodeDetail from "@/components/custom/NodeDetail";
 
 interface ResourceInfo {
   percent: number;
@@ -81,7 +81,7 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
     cell: ({ row }) => (
       <Link
         className="h-8 px-0 text-left font-normal text-secondary-foreground underline-offset-2 hover:underline"
-        to={`node/${row.original.name}`}
+        to={`${row.original.name}`}
       >
         {row.getValue("name")}
       </Link>
@@ -199,7 +199,7 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
 const NodeHome = () => {
   const nodeQuery = useQuery({
     queryKey: ["overview", "nodes"],
-    queryFn: apiGetAdminNodes,
+    queryFn: apiGetNodes,
     select: (res) =>
       res.data.data.rows
         .sort((a, b) => a.name.localeCompare(b.name))
@@ -307,7 +307,7 @@ export const Component = () => {
     },
     {
       path: ":id",
-      element: <PodStatusDetail />,
+      element: <NodeDetail />,
     },
   ]);
 

@@ -40,14 +40,14 @@ export const jobToolbarConfig: DataTableToolbarConfig = {
   },
   filterOptions: [
     {
-      key: "status",
-      title: "状态",
-      option: jobPhases,
-    },
-    {
       key: "jobType",
       title: "类型",
       option: jobTypes,
+    },
+    {
+      key: "status",
+      title: "状态",
+      option: jobPhases,
     },
   ],
   getHeader: getHeader,

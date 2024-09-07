@@ -13,7 +13,10 @@ import {
   ChevronRightIcon,
   ChevronsLeftIcon,
   ChevronsRightIcon,
+  RefreshCcw,
+  Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface DataTablePaginationProps<TData> {
   updatedAt: string;
@@ -28,7 +31,27 @@ export function DataTablePagination<TData>({
 }: DataTablePaginationProps<TData>) {
   return (
     <div className="flex w-full items-center justify-between">
-      <div className="flex flex-row items-center gap-3 text-xs">
+      <div className="flex flex-row items-center space-x-1.5 text-xs">
+        {table.getFilteredSelectedRowModel().rows.length > 0 && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-7 w-7"
+            title="刷新"
+            onClick={() => toast.warning("批量删除功能开发中")}
+          >
+            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+          </Button>
+        )}
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-7 w-7"
+          title="刷新"
+          onClick={refetch}
+        >
+          <RefreshCcw className="h-3.5 w-3.5" />
+        </Button>
         <Select
           value={`${table.getState().pagination.pageSize}`}
           onValueChange={(value) => {
@@ -46,17 +69,8 @@ export function DataTablePagination<TData>({
             ))}
           </SelectContent>
         </Select>
-        <p className="text-muted-foreground">
-          更新于{" "}
-          <time
-            dateTime="2023-11-23"
-            onClick={refetch}
-            className="cursor-pointer"
-            title="刷新数据"
-          >
-            {updatedAt}
-          </time>
-          ，
+        <p className="pl-1.5 text-muted-foreground">
+          更新于 <time dateTime="2023-11-23">{updatedAt}</time>，
           {table.getFilteredSelectedRowModel().rows.length === 0 ? (
             <>共 {table.getFilteredRowModel().rows.length} 条</>
           ) : (

@@ -361,7 +361,8 @@ export const Component = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Pod 副本个数<span className="ml-1 text-red-500">*</span>
+                      Pod 副本个数
+                      <FormLabelMust />
                     </FormLabel>
                     <FormControl>
                       <Input type="number" {...field} />
@@ -376,7 +377,8 @@ export const Component = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      运行模式<span className="ml-1 text-red-500">*</span>
+                      运行模式
+                      <FormLabelMust />
                     </FormLabel>
                     <FormControl>
                       <Select
@@ -473,7 +475,7 @@ export const Component = () => {
                     <FormItem>
                       <FormLabel>
                         模型乘加运算数(百万)
-                        <span className="ml-1 text-red-500">*</span>
+                        <FormLabelMust />
                       </FormLabel>
                       <FormControl>
                         <Input type="number" {...field} />
@@ -489,7 +491,7 @@ export const Component = () => {
                     <FormItem>
                       <FormLabel>
                         模型参数量(千)
-                        <span className="ml-1 text-red-500">*</span>
+                        <FormLabelMust />
                       </FormLabel>
                       <FormControl>
                         <Input type="number" {...field} />
@@ -504,7 +506,8 @@ export const Component = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        BatchSize<span className="ml-1 text-red-500">*</span>
+                        BatchSize
+                        <FormLabelMust />
                       </FormLabel>
                       <FormControl>
                         <Input type="number" {...field} />
