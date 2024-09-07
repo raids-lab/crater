@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import batchRoutes from "./Job/Batch";
 import interactiveRoutes from "./Job/Interactive";
-
+import datasetRoutes from "./Data";
 const sidebarItems: SidebarItem[] = [
   {
     path: "overview",
@@ -92,7 +92,7 @@ const sidebarItems: SidebarItem[] = [
       {
         route: {
           path: "dataset/*",
-          lazy: () => import("./Data/Dataset"),
+          children: datasetRoutes,
         },
       },
     ],

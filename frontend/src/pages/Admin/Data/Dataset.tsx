@@ -1,18 +1,9 @@
 import { type FC } from "react";
-import {
-  apiAdminGetDataset,
-  apiAdminShareDatasetwithQueue,
-  apiAdminShareDatasetwithUser,
-} from "@/services/api/dataset";
+import { apiAdminGetDataset } from "@/services/api/dataset";
 
 import { DatasetTable } from "@/components/custom/DatasetTable";
 
-export const Component: FC = () => {
-  return (
-    <DatasetTable
-      apiGetDataset={apiAdminGetDataset}
-      apiShareDatasetwithUser={apiAdminShareDatasetwithUser}
-      apiShareDatasetwithQueue={apiAdminShareDatasetwithQueue}
-    />
-  );
+const AdminDataset: FC = () => {
+  return <DatasetTable apiGetDataset={apiAdminGetDataset} />;
 };
+export default AdminDataset;
