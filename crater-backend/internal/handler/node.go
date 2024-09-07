@@ -29,13 +29,14 @@ func (mgr *NodeMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *NodeMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("", mgr.ListNode)
-	g.GET("/:name/pod", mgr.ListNodePod)
+	g.GET("/:name", mgr.GetNode)
+	g.GET("/:name/pods", mgr.GetPodsForNode)
 	g.GET("/:name/gpu", mgr.ListNodeGPUUtil)
 }
 
 func (mgr *NodeMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.ListNode)
-	g.GET("/:name/pod", mgr.ListNodePod)
+	g.GET("/:name/pods", mgr.GetPodsForNode)
 	g.GET("/:name/gpu", mgr.ListNodeGPUUtil)
 }
 
@@ -63,7 +64,34 @@ func (mgr *NodeMgr) ListNode(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
-// ListNodePod godoc
+// GetNode godoc
+// @Summary 获取节点详细信息
+// @Description kubectl + prometheus获取节点详细信息
+// @Tags Node
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param name path string true "节点名称"
+// @Success 200 {object} resputil.Response[payload.ClusterNodeDetail] "成功返回值"
+// @Failure 400 {object} resputil.Response[any] "请求参数错误"
+// @Failure 500 {object} resputil.Response[any] "其他错误"
+// @Router /v1/nodes/{name} [get]
+func (mgr *NodeMgr) GetNode(c *gin.Context) {
+	var req NodePodRequest
+	if err := c.ShouldBindUri(&req); err != nil {
+		logutils.Log.Infof("Bind URI failed, err: %v", err)
+		resputil.Error(c, "Invalid request parameter", resputil.NotSpecified)
+		return
+	}
+	nodeInfo, err := mgr.nodeClient.GetNode(c, req.Name)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("List nodes pods failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, nodeInfo)
+}
+
+// GetPodsForNode godoc
 // @Summary 获取节点Pod信息
 // @Description kubectl + prometheus获取节点Pod信息
 // @Tags Node
@@ -75,7 +103,7 @@ func (mgr *NodeMgr) ListNode(c *gin.Context) {
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/nodes/{name}/pod/ [get]
-func (mgr *NodeMgr) ListNodePod(c *gin.Context) {
+func (mgr *NodeMgr) GetPodsForNode(c *gin.Context) {
 	var req NodePodRequest
 	if err := c.ShouldBindUri(&req); err != nil {
 		logutils.Log.Infof("Bind URI failed, err: %v", err)
@@ -84,12 +112,12 @@ func (mgr *NodeMgr) ListNodePod(c *gin.Context) {
 	}
 
 	logutils.Log.Infof("Node List Pod, name: %s", req.Name)
-	nodes, err := mgr.nodeClient.ListNodesPod(req.Name, c)
+	pods, err := mgr.nodeClient.GetPodsForNode(c, req.Name)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("List nodes pods failed, err %v", err), resputil.NotSpecified)
 		return
 	}
-	resputil.Success(c, nodes)
+	resputil.Success(c, pods)
 }
 
 // ListNodeGPUUtil godoc

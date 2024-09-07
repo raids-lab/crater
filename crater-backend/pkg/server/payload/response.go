@@ -43,7 +43,7 @@ type Pod struct {
 	IsVcjob    string  `json:"isVcjob"`
 }
 
-type ClusterNodePodInfo struct {
+type ClusterNodeDetail struct {
 	Name                    string `json:"name"`
 	Role                    string `json:"role"`
 	IsReady                 bool   `json:"isReady"`
@@ -54,7 +54,10 @@ type ClusterNodePodInfo struct {
 	Arch                    string `json:"arch"`
 	KubeletVersion          string `json:"kubeletVersion"`
 	ContainerRuntimeVersion string `json:"containerRuntimeVersion"`
-	Pods                    []Pod  `json:"pods"`
+}
+
+type ClusterNodePodInfo struct {
+	Pods []Pod `json:"pods"`
 }
 
 type ListNodeResp struct {
