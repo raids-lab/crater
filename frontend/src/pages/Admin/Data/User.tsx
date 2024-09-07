@@ -245,7 +245,7 @@ export const Component: FC = () => {
                     <div>
                       <Button
                         variant="outline"
-                        className="h-8 w-8 p-0 hover:text-red-700"
+                        className="h-8 w-8 p-0 hover:text-destructive"
                         title="删除文件"
                       >
                         <Trash2 size={16} strokeWidth={2} />
@@ -282,7 +282,7 @@ export const Component: FC = () => {
                     <div>
                       <Button
                         variant="outline"
-                        className="h-8 w-8 p-0 hover:text-red-700"
+                        className="h-8 w-8 p-0 hover:text-destructive"
                         title="删除文件夹"
                       >
                         <Trash2 size={16} strokeWidth={2} />

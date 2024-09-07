@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import FormLabelMust from "@/components/custom/FormLabelMust";
 
 const formSchema = z.object({
   gitRepository: z.string().url({ message: "仓库地址应为合法 URL" }),
@@ -110,7 +111,8 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                Git 仓库地址<span className="ml-1 text-red-500">*</span>
+                Git 仓库地址
+                <FormLabelMust />
               </FormLabel>
               <FormControl>
                 <Input {...field} />
@@ -126,7 +128,8 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                Access Token<span className="ml-1 text-red-500">*</span>
+                Access Token
+                <FormLabelMust />
               </FormLabel>
               <FormControl>
                 <Input {...field} />
@@ -143,7 +146,8 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem className="col-span-2">
                   <FormLabel>
-                    镜像仓库地址<span className="ml-1 text-red-500">*</span>
+                    镜像仓库地址
+                    <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <Input {...field} />
@@ -158,7 +162,8 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem className="col-span-2">
                   <FormLabel>
-                    镜像仓库项目<span className="ml-1 text-red-500">*</span>
+                    镜像仓库项目
+                    <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <Input {...field} />
@@ -173,7 +178,8 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    镜像仓库账户<span className="ml-1 text-red-500">*</span>
+                    镜像仓库账户
+                    <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <Input
@@ -192,7 +198,8 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    镜像仓库密码<span className="ml-1 text-red-500">*</span>
+                    镜像仓库密码
+                    <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <Input
@@ -212,7 +219,8 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    镜像名称<span className="ml-1 text-red-500">*</span>
+                    镜像名称
+                    <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <Input {...field} className="font-mono" />
@@ -227,7 +235,8 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    镜像标签<span className="ml-1 text-red-500">*</span>
+                    镜像标签
+                    <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <Input {...field} className="font-mono" />
@@ -242,7 +251,8 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    镜像别名<span className="ml-1 text-red-500">*</span>
+                    镜像别名
+                    <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <Input {...field} className="font-mono" />
@@ -257,7 +267,8 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    镜像描述<span className="ml-1 text-red-500">*</span>
+                    镜像描述
+                    <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <Input {...field} className="font-mono" />
@@ -275,7 +286,8 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
-                  任务类型<span className="ml-1 text-red-500">*</span>
+                  任务类型
+                  <FormLabelMust />
                 </FormLabel>
                 <FormControl>
                   <Select

@@ -32,6 +32,9 @@ export interface IClusterNodeDetail {
   arch: string;
   kubeletVersion: string;
   containerRuntimeVersion: string;
+}
+
+export interface IClusterNodePods {
   pods: IClusterPodInfo[];
 }
 
@@ -44,20 +47,19 @@ export interface IClusterNodeGPU {
   relateJobs: string[];
 }
 
-export const apiGetAdminNodes = () =>
+export const apiGetNodes = () =>
   instance.get<
     IResponse<{
       rows: IClusterNodeInfo[];
     }>
-  >(VERSION + "/admin/nodes");
+  >(VERSION + "/nodes");
 
-export const apiGetAdminNodeDetail = (name: string) =>
-  instance.get<IResponse<IClusterNodeDetail>>(
-    VERSION + `/admin/nodes/${name}/pod`,
-  );
+export const apiGetNodeDetail = (name: string) =>
+  instance.get<IResponse<IClusterNodeDetail>>(VERSION + `/nodes/${name}`);
+
+export const apiGetNodePods = (name: string) =>
+  instance.get<IResponse<IClusterNodePods>>(VERSION + `/nodes/${name}/pods`);
 
 // 获取节点的 GPU 详情
-export const apiGetAdminNodeGPU = (name: string) =>
-  instance.get<IResponse<IClusterNodeGPU>>(
-    VERSION + `/admin/nodes/${name}/gpu`,
-  );
+export const apiGetNodeGPU = (name: string) =>
+  instance.get<IResponse<IClusterNodeGPU>>(VERSION + `/nodes/${name}/gpu`);

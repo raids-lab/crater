@@ -66,7 +66,7 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
     cell: ({ row }) => (
       <Link
         className="h-8 px-0 text-left font-normal text-secondary-foreground underline-offset-2 hover:underline"
-        to={`node/${row.original.name}`}
+        to={`${row.original.name}`}
       >
         <p>{row.getValue("name")}</p>
       </Link>
@@ -110,7 +110,7 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
   {
     accessorKey: "cpu",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"CPUs"} />
+      <DataTableColumnHeader column={column} title={"CPU"} />
     ),
     cell: ({ row }) => <UsageCell value={row.getValue<ResourceInfo>("cpu")} />,
     sortingFn: (rowA, rowB) => {
@@ -136,7 +136,7 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
   {
     accessorKey: "gpu",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"GPUs"} />
+      <DataTableColumnHeader column={column} title={"GPU"} />
     ),
     cell: ({ row }) => <UsageCell value={row.getValue<ResourceInfo>("gpu")} />,
     sortingFn: (rowA, rowB) => {

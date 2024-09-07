@@ -1,11 +1,11 @@
-import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
+import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, type FC } from "react";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
-import { DataTable } from "@/components/custom/OldDataTable";
-import { apiGetAdminNodeDetail } from "@/services/api/admin/cluster";
-import { apiGetAdminNodeGPU } from "@/services/api/admin/cluster";
+import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
+import { DataTable } from "@/components/custom/DataTable";
+import { apiGetNodeDetail, apiGetNodePods } from "@/services/api/cluster";
+import { apiGetNodeGPU } from "@/services/api/cluster";
 import { TableDate } from "@/components/custom/TableDate";
 import { useState } from "react";
 import {
@@ -30,13 +30,13 @@ import { Button } from "@/components/ui/button";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import {
   Card,
+  CardTitle,
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
-import { Link, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Undo2 } from "lucide-react";
 import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
 import PodPhaseLabel from "@/components/custom/PodPhaseLabel";
@@ -56,55 +56,36 @@ type CardDemoProps = React.ComponentProps<typeof Card> & {
 
 // CardDemo 组件
 export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
+  const navigate = useNavigate();
   return (
     <Card className={className} {...props}>
-      <CardHeader>
+      <CardHeader className="mb-6 border-b bg-muted/50 dark:bg-muted/25">
         <CardTitle>{nodeInfo?.name}</CardTitle>
-        <CardDescription>节点详细信息</CardDescription>
+        <CardDescription>节点属性</CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-4">
-        <div>
-          <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
-            <p className="text-xs">IP地址:</p>
-            <p className="ml-2 text-sm font-medium">{nodeInfo?.address}</p>
-          </div>
-          <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
-            <p className="text-xs">节点角色:</p>
-            <p className="ml-2 text-sm font-medium">{nodeInfo?.role}</p>
-          </div>
-          <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
-            <p className="text-xs">操作系统类型:</p>
-            <p className="ml-2 text-sm font-medium">{nodeInfo?.os}</p>
-          </div>
-          <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
-            <p className="text-xs">操作系统版本:</p>
-            <p className="ml-2 text-sm font-medium">{nodeInfo?.osVersion}</p>
-          </div>
-          <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
-            <p className="text-xs">系统架构:</p>
-            <p className="ml-2 text-sm font-medium">{nodeInfo?.arch}</p>
-          </div>
-          <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
-            <p className="text-xs">Kubelet版本:</p>
-            <p className="ml-2 text-sm font-medium">
-              {nodeInfo?.kubeletVersion}
-            </p>
-          </div>
-          <div className="mb-2 flex items-center pb-2 last:mb-0 last:pb-0">
-            <p className="text-xs">容器运行时版本:</p>
-            <p className="ml-2 text-sm font-medium">
-              {nodeInfo?.containerRuntimeVersion}
-            </p>
-          </div>
-        </div>
+      <CardContent className="grid grid-flow-col grid-rows-7 gap-y-4 text-xs">
+        <p className="text-muted-foreground">IP 地址</p>
+        <p className="text-muted-foreground">角色</p>
+        <p className="text-muted-foreground">操作系统类型</p>
+        <p className="text-muted-foreground">操作系统版本</p>
+        <p className="text-muted-foreground">系统架构</p>
+        <p className="text-muted-foreground">Kubelet 版本</p>
+        <p className="text-muted-foreground">容器运行时</p>
+        <p className="font-mono font-medium">{nodeInfo?.address}</p>
+        <p className="font-medium capitalize">{nodeInfo?.role}</p>
+        <p className="font-medium capitalize">{nodeInfo?.os}</p>
+        <p className="font-medium">{nodeInfo?.osVersion}</p>
+        <p className="font-medium uppercase">{nodeInfo?.arch}</p>
+        <p className="font-mono font-medium">{nodeInfo?.kubeletVersion}</p>
+        <p className="font-mono font-medium">
+          {nodeInfo?.containerRuntimeVersion}
+        </p>
       </CardContent>
       <CardFooter className="flex justify-center">
         <div className="w-full">
-          <Link to="/admin/cluster/node" className="w-full">
-            <Button className="w-full">
-              <Undo2 className="mr-2 h-4 w-4" /> 返回集群节点列表
-            </Button>
-          </Link>
+          <Button className="w-full" onClick={() => navigate(-1)}>
+            <Undo2 className="mr-2 h-4 w-4" /> 返回集群节点列表
+          </Button>
         </div>
       </CardFooter>
     </Card>
@@ -120,7 +101,7 @@ export function GPUDetails({ nodeName }: { nodeName: string }) {
     error,
   } = useQuery({
     queryKey: ["admin", "nodes", nodeName, "gpu"],
-    queryFn: () => apiGetAdminNodeGPU(nodeName),
+    queryFn: () => apiGetNodeGPU(nodeName),
     select: (res) => res.data.data,
     enabled: !!nodeName,
     refetchInterval: 1000,
@@ -246,16 +227,6 @@ const getColumns = (nodeName: string): ColumnDef<ClusterPodInfo>[] => [
     enableSorting: false,
   },
   {
-    accessorKey: "address",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"容器组IP地址"} />
-    ),
-    cell: ({ row }) => (
-      <div className="font-mono">{row.getValue("address")}</div>
-    ),
-    enableSorting: false,
-  },
-  {
     accessorKey: "cpu",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title={"CPU 分配"} />
@@ -324,14 +295,35 @@ const getColumns = (nodeName: string): ColumnDef<ClusterPodInfo>[] => [
   },
 ];
 
-export const PodStatusDetail: FC = () => {
+export const NodeDetail: FC = () => {
   const { id: nodeName } = useParams();
   const [showAll, setShowAll] = useState(false); // 新增状态用于控制是否显示所有数据
 
-  const { data: nodeInfo, isLoading } = useQuery({
-    queryKey: ["admin", "nodes", nodeName],
-    queryFn: () => apiGetAdminNodeDetail(`${nodeName}`),
+  const { data: nodeDetail } = useQuery({
+    queryKey: ["nodes", nodeName, "detail"],
+    queryFn: () => apiGetNodeDetail(`${nodeName}`),
     select: (res) => res.data.data,
+    enabled: !!nodeName,
+  });
+
+  const podsQuery = useQuery({
+    queryKey: ["nodes", nodeName, "pods"],
+    queryFn: () => apiGetNodePods(`${nodeName}`),
+    select: (res) =>
+      res.data.data?.pods
+        .filter((pod) => showAll || pod.isVcjob === "true")
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((x) => {
+          return {
+            name: x.name,
+            status: x.status,
+            time: x.createTime,
+            address: x.IP,
+            cpu: x.CPU,
+            memory: x.Mem,
+            isVcjob: x.isVcjob,
+          };
+        }),
     enabled: !!nodeName,
   });
   const safeNodeName = nodeName || "defaultNodeName";
@@ -344,32 +336,10 @@ export const PodStatusDetail: FC = () => {
     setBreadcrumb([{ title: nodeName ?? "" }]);
   }, [setBreadcrumb, nodeName]);
 
-  // 处理 podsList 变量
-  const podsInfo: ClusterPodInfo[] = useMemo(() => {
-    if (isLoading || !nodeInfo) {
-      return [];
-    }
-    // 根据 showAll 状态和 isVcjob 字段筛选数据
-    return nodeInfo?.pods
-      .filter((pod) => showAll || pod.isVcjob === "true")
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((x) => {
-        return {
-          name: x.name,
-          status: x.status,
-          time: x.createTime,
-          address: x.IP,
-          cpu: x.CPU,
-          memory: x.Mem,
-          isVcjob: x.isVcjob,
-        };
-      });
-  }, [isLoading, nodeInfo, showAll]); // 添加 showAll 作为依赖
-
   return (
     <div className="col-span-3 grid gap-8 md:grid-cols-4">
       <div className="flex-none">
-        <CardDemo nodeInfo={nodeInfo} />
+        <CardDemo nodeInfo={nodeDetail} />
         {nodeName && <GPUDetails nodeName={nodeName} />}
       </div>
       <div className="md:col-span-3">
@@ -378,14 +348,13 @@ export const PodStatusDetail: FC = () => {
           {showAll ? "显示只包含 Vcjob 的" : "显示所有"}
         </Button>
         <DataTable
-          data={podsInfo}
+          query={podsQuery}
           columns={columns}
           toolbarConfig={toolbarConfig}
-          loading={isLoading}
         />
       </div>
     </div>
   );
 };
 
-export default PodStatusDetail;
+export default NodeDetail;

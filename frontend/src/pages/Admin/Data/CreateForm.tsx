@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { apiDatasetCreate } from "@/services/api/dataset";
 import { FileSelectDialog } from "@/components/custom/FileSelectDialog";
+import FormLabelMust from "@/components/custom/FormLabelMust";
 
 const formSchema = z.object({
   datasetName: z
@@ -84,7 +85,8 @@ export function DatasetCreateForm({ closeSheet }: TaskFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                数据集名称<span className="ml-1 text-red-500">*</span>
+                数据集名称
+                <FormLabelMust />
               </FormLabel>
               <FormControl>
                 <Input {...field} />
@@ -100,7 +102,8 @@ export function DatasetCreateForm({ closeSheet }: TaskFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                数据集描述<span className="ml-1 text-red-500">*</span>
+                数据集描述
+                <FormLabelMust />
               </FormLabel>
               <FormControl>
                 <Input {...field} />
@@ -117,7 +120,8 @@ export function DatasetCreateForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem className="col-span-2">
                   <FormLabel>
-                    数据集地址<span className="ml-1 text-red-500">*</span>
+                    数据集地址
+                    <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <FileSelectDialog

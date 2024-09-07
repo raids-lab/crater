@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import FormLabelMust from "@/components/custom/FormLabelMust";
 
 const formSchema = z.object({
   imageLink: z.string().min(1, { message: "镜像链接不能为空" }),
@@ -91,7 +92,8 @@ export function ImageUploadForm({ closeSheet }: TaskFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                镜像链接<span className="ml-1 text-red-500">*</span>
+                镜像链接
+                <FormLabelMust />
               </FormLabel>
               <FormControl>
                 <Input {...field} className="font-mono" />
@@ -108,7 +110,8 @@ export function ImageUploadForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    镜像名称<span className="ml-1 text-red-500">*</span>
+                    镜像名称
+                    <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <Input {...field} className="font-mono" />
@@ -123,7 +126,8 @@ export function ImageUploadForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    镜像标签<span className="ml-1 text-red-500">*</span>
+                    镜像标签
+                    <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <Input {...field} className="font-mono" />
@@ -138,7 +142,8 @@ export function ImageUploadForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    镜像别名<span className="ml-1 text-red-500">*</span>
+                    镜像别名
+                    <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <Input {...field} className="font-mono" />
@@ -153,7 +158,8 @@ export function ImageUploadForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    镜像描述<span className="ml-1 text-red-500">*</span>
+                    镜像描述
+                    <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <Input {...field} className="font-mono" />
@@ -171,7 +177,8 @@ export function ImageUploadForm({ closeSheet }: TaskFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
-                  任务类型<span className="ml-1 text-red-500">*</span>
+                  任务类型
+                  <FormLabelMust />
                 </FormLabel>
                 <FormControl>
                   <Select

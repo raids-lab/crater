@@ -57,21 +57,6 @@ const getJobTypeLabel = (
         label: "WebIDE",
         color: "text-lime-600 bg-lime-500/10",
       };
-    // case JobPhase.Terminating:
-    //   return {
-    //     label: "即将终止",
-    //     color: "text-orange-500 bg-orange-500/10",
-    //   };
-    // case JobPhase.Terminated:
-    //   return {
-    //     label: "已终止",
-    //     color: "text-orange-500 bg-orange-500/10",
-    //   };
-    // case JobPhase.Failed:
-    //   return {
-    //     label: "失败",
-    //     color: "text-red-500 bg-red-500/10",
-    //   };
     default:
       return {
         label: "未知",

@@ -31,7 +31,7 @@ import JobTypeLabel, { jobTypes } from "@/components/custom/JobTypeLabel";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
 import { globalJobUrl } from "@/utils/store";
-import NodeDetail from "./NodeDetail";
+import NodeDetail from "@/components/custom/NodeDetail";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -437,7 +437,7 @@ export const Component: FC = () => {
       <DataTable
         info={{
           title: "节点信息",
-          description: "查看集群节点的资源使用情况",
+          description: "集群节点维度的资源分配情况",
         }}
         query={nodeQuery}
         columns={nodeColumns}
@@ -451,7 +451,7 @@ export const Component: FC = () => {
       element: mainElement,
     },
     {
-      path: "node/:id",
+      path: ":id",
       element: <NodeDetail />,
     },
   ]);

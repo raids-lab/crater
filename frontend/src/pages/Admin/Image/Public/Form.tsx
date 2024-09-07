@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import FormLabelMust from "@/components/custom/FormLabelMust";
 
 const formSchema = z.object({
   gitRepository: z.string().min(1, { message: "仓库地址不能为空" }),
@@ -108,7 +109,8 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                Git 仓库地址<span className="ml-1 text-red-500">*</span>
+                Git 仓库地址
+                <FormLabelMust />
               </FormLabel>
               <FormControl>
                 <Input {...field} />
@@ -124,7 +126,8 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                Access Token<span className="ml-1 text-red-500">*</span>
+                Access Token
+                <FormLabelMust />
               </FormLabel>
               <FormControl>
                 <Input {...field} />
@@ -141,7 +144,8 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    镜像名称<span className="ml-1 text-red-500">*</span>
+                    镜像名称
+                    <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <Input {...field} className="font-mono" />
@@ -156,7 +160,8 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    镜像标签<span className="ml-1 text-red-500">*</span>
+                    镜像标签
+                    <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <Input {...field} className="font-mono" />
@@ -171,7 +176,8 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    镜像别名<span className="ml-1 text-red-500">*</span>
+                    镜像别名
+                    <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <Input {...field} className="font-mono" />
@@ -186,7 +192,8 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    镜像描述<span className="ml-1 text-red-500">*</span>
+                    镜像描述
+                    <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <Input {...field} className="font-mono" />
@@ -204,7 +211,8 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
-                  任务类型<span className="ml-1 text-red-500">*</span>
+                  任务类型
+                  <FormLabelMust />
                 </FormLabel>
                 <FormControl>
                   <Select
