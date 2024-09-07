@@ -25,7 +25,9 @@ func (mgr *FileMgr) RegisterPublic(_ *gin.RouterGroup) {}
 func (mgr *FileMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/mydataset", mgr.GetMyDataset)
 	g.GET("/:datasetId/usersNotIn", mgr.ListUsersOutOfDataset)
+	g.GET("/:datasetId/usersIn", mgr.ListUserOfDataset)
 	g.GET("/:datasetId/queuesNotIn", mgr.ListQueuesOutOfDataset)
+	g.GET("/:datasetId/queuesIn", mgr.ListQueueOfDataset)
 	g.POST("/create", mgr.CreateDataset)
 	g.DELETE("/delete/:id", mgr.DeleteDataset)
 	g.POST("/share/user", mgr.ShareDatasetWithUser)
@@ -579,6 +581,61 @@ func (mgr *FileMgr) ListUsersOutOfDataset(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
+type UserDatasetResp struct {
+	ID      uint   `json:"id"`
+	Name    string `json:"name"`
+	IsOwner bool   `json:"isowner"`
+}
+
+// 函数名称 ListUserOfDataset
+// @Summary 获取该数据集共享用户
+// @Description 获取该数据集共享用户
+// @Tags Dataset
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param req path DatasetGetReq true "数据集ID"
+// @Success 200 {object} resputil.Response[UserDatasetResp[]] "成功返回值描述"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/dataset/{datasetId}/usersIn [get]
+func (mgr *FileMgr) ListUserOfDataset(c *gin.Context) {
+	var req DatasetGetReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.Error(c, fmt.Sprintf("get dataset failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+	d := query.Dataset
+	u := query.User
+	ud := query.UserDataset
+	dataset, err := d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).First()
+	if err != nil {
+		resputil.Error(c, "this dataset not exist", resputil.InvalidRequest)
+		return
+	}
+	var uids []uint
+	if err := ud.WithContext(c).Select(ud.UserID).Where(ud.DatasetID.Eq(dataset.ID)).Distinct().Scan(&uids); err != nil {
+		resputil.Error(c, fmt.Sprintf("Failed to scan user IDs: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	var resp []UserDatasetResp
+	for i := range uids {
+		user, err := u.WithContext(c).Where(u.ID.Eq(uids[i])).First()
+		if err != nil {
+			resputil.Error(c, fmt.Sprintf("Can't find user :%v", err), resputil.InvalidRequest)
+		}
+		res := UserDatasetResp{
+			ID:      uids[i],
+			IsOwner: uids[i] == dataset.UserID,
+			Name:    user.Name,
+		}
+		resp = append(resp, res)
+	}
+
+	resputil.Success(c, resp)
+}
+
 type QueueDatasetGetResp struct {
 	ID       uint   `json:"id"`
 	Nickname string `json:"name"`
@@ -619,6 +676,46 @@ func (mgr *FileMgr) ListQueuesOutOfDataset(c *gin.Context) {
 	}
 	var resp []QueueDatasetGetResp
 	exec := q.WithContext(c).Where(q.ID.NotIn(qids...)).Distinct()
+	if err := exec.Scan(&resp); err != nil {
+		resputil.Error(c, fmt.Sprintf("Get QueueDataset failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, resp)
+}
+
+// 函数名称 ListQueueOfDataset
+// @Summary 数据集的共享队列
+// @Description 数据集的共享队列
+// @Tags Dataset
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param req path DatasetGetReq true "数据集ID"
+// @Success 200 {object} resputil.Response[QueueDatasetGetResp[]] "成功返回值描述"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/dataset/{datasetId}/queuesIn [get]
+func (mgr *FileMgr) ListQueueOfDataset(c *gin.Context) {
+	var req DatasetGetReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.Error(c, fmt.Sprintf("get queues of dataset failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+	d := query.Dataset
+	q := query.Queue
+	qd := query.QueueDataset
+	dataset, err := d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).First()
+	if err != nil {
+		resputil.Error(c, "this dataset not exist", resputil.InvalidRequest)
+		return
+	}
+	var qids []uint
+	if err := qd.WithContext(c).Select(qd.QueueID).Where(qd.DatasetID.Eq(dataset.ID)).Distinct().Scan(&qids); err != nil {
+		resputil.Error(c, fmt.Sprintf("Failed to scan queue IDs: %v", err), resputil.NotSpecified)
+		return
+	}
+	var resp []QueueDatasetGetResp
+	exec := q.WithContext(c).Where(q.ID.In(qids...)).Distinct()
 	if err := exec.Scan(&resp); err != nil {
 		resputil.Error(c, fmt.Sprintf("Get QueueDataset failed, detail: %v", err), resputil.NotSpecified)
 		return
