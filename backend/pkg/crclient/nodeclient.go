@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gin-gonic/gin"
-	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/server/payload"
 	corev1 "k8s.io/api/core/v1"
@@ -118,70 +116,86 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 	return nodeInfos, nil
 }
 
-func (nc *NodeClient) ListNodesPod(name string, c *gin.Context) (payload.ClusterNodePodInfo, error) {
-	var nodes corev1.NodeList
+// GetNode 获取指定 Node 的信息
+func (nc *NodeClient) GetNode(ctx context.Context, name string) (payload.ClusterNodeDetail, error) {
+	node := &corev1.Node{}
 
-	err := nc.List(context.Background(), &nodes)
+	err := nc.Get(ctx, client.ObjectKey{
+		Namespace: "",
+		Name:      name,
+	}, node)
 	if err != nil {
-		return payload.ClusterNodePodInfo{}, err
-	}
-	_, jobPodList := nc.GetAllJobs(c)
-
-	for i := range nodes.Items {
-		node := &nodes.Items[i]
-		if node.Name != name {
-			continue
-		}
-		// 初始化节点信息
-		nodeInfo := payload.ClusterNodePodInfo{
-			Name:                    node.Name,
-			Role:                    getNodeRole(node),
-			IsReady:                 isNodeReady(node),
-			Time:                    node.CreationTimestamp.String(),
-			Address:                 node.Status.Addresses[0].Address,
-			Os:                      node.Status.NodeInfo.OperatingSystem,
-			OsVersion:               node.Status.NodeInfo.OSImage,
-			Arch:                    node.Status.NodeInfo.Architecture,
-			KubeletVersion:          node.Status.NodeInfo.KubeletVersion,
-			ContainerRuntimeVersion: node.Status.NodeInfo.ContainerRuntimeVersion,
-			Pods:                    []payload.Pod{},
-		}
-
-		// 使用KubeClient获取当前节点上的所有Pods
-		podList, err := nc.KubeClient.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{
-			FieldSelector: "spec.nodeName=" + node.Name,
-		})
-		if err != nil {
-			return payload.ClusterNodePodInfo{}, err
-		}
-
-		// 遍历当前节点的Pods，收集所需信息
-		for i := range podList.Items {
-			pod := &podList.Items[i]
-			isVcjob := "false"
-			for _, jobPod := range jobPodList {
-				if pod.Name == jobPod {
-					isVcjob = "true"
-					break
-				}
-			}
-			podInfo := payload.Pod{
-				Name:       pod.Name,
-				IP:         pod.Status.PodIP,
-				CreateTime: pod.CreationTimestamp.String(),
-				Status:     string(pod.Status.Phase),
-				CPU:        nc.PrometheusClient.QueryPodCPURatio(pod.Name),
-				Mem:        FomatMemoryLoad(nc.PrometheusClient.QueryPodMemory(pod.Name)),
-				IsVcjob:    isVcjob,
-			}
-
-			nodeInfo.Pods = append(nodeInfo.Pods, podInfo)
-		}
-
-		return nodeInfo, nil
+		return payload.ClusterNodeDetail{}, err
 	}
 
-	return payload.ClusterNodePodInfo{}, fmt.Errorf("node %s not found", name)
+	nodeInfo := payload.ClusterNodeDetail{
+		Name:                    node.Name,
+		Role:                    getNodeRole(node),
+		IsReady:                 isNodeReady(node),
+		Time:                    node.CreationTimestamp.String(),
+		Address:                 node.Status.Addresses[0].Address,
+		Os:                      node.Status.NodeInfo.OperatingSystem,
+		OsVersion:               node.Status.NodeInfo.OSImage,
+		Arch:                    node.Status.NodeInfo.Architecture,
+		KubeletVersion:          node.Status.NodeInfo.KubeletVersion,
+		ContainerRuntimeVersion: node.Status.NodeInfo.ContainerRuntimeVersion,
+	}
+	return nodeInfo, nil
+}
+
+func (nc *NodeClient) GetPodsForNode(ctx context.Context, name string) (*payload.ClusterNodePodInfo, error) {
+	node := &corev1.Node{}
+
+	err := nc.Get(ctx, client.ObjectKey{
+		Namespace: "",
+		Name:      name,
+	}, node)
+	if err != nil {
+		return nil, err
+	}
+
+	_, jobPodList, err := nc.GetAllJobs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// 初始化节点信息
+	nodeInfo := payload.ClusterNodePodInfo{
+		Pods: []payload.Pod{},
+	}
+
+	// 使用KubeClient获取当前节点上的所有Pods
+	podList, err := nc.KubeClient.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{
+		FieldSelector: "spec.nodeName=" + node.Name,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// 遍历当前节点的Pods，收集所需信息
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		isVcjob := "false"
+		for _, jobPod := range jobPodList {
+			if pod.Name == jobPod {
+				isVcjob = "true"
+				break
+			}
+		}
+		podInfo := payload.Pod{
+			Name:       pod.Name,
+			IP:         pod.Status.PodIP,
+			CreateTime: pod.CreationTimestamp.String(),
+			Status:     string(pod.Status.Phase),
+			CPU:        nc.PrometheusClient.QueryPodCPURatio(pod.Name),
+			Mem:        FomatMemoryLoad(nc.PrometheusClient.QueryPodMemory(pod.Name)),
+			IsVcjob:    isVcjob,
+		}
+
+		nodeInfo.Pods = append(nodeInfo.Pods, podInfo)
+	}
+
+	return &nodeInfo, nil
 }
 
 func (nc *NodeClient) GetNodeGPUInfo(name string) (payload.GPUInfo, error) {
@@ -268,11 +282,10 @@ func (nc *NodeClient) ListNodesTest() ([]payload.ClusterNodeInfo, error) {
 	return nodeInfos, nil
 }
 
-func (nc *NodeClient) GetAllJobs(c *gin.Context) (jobNames, jobPods []string) {
+func (nc *NodeClient) GetAllJobs(c context.Context) (jobNames, jobPods []string, err error) {
 	jobs := &batch.JobList{}
 	if err := nc.List(c, jobs, client.MatchingLabels{}); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return nil, nil
+		return nil, nil, err
 	}
 	var jobList []string
 	var podList []string
@@ -290,14 +303,13 @@ func (nc *NodeClient) GetAllJobs(c *gin.Context) (jobNames, jobPods []string) {
 			}
 		}
 	}
-	return jobList, podList
+	return jobList, podList, nil
 }
 
-func (nc *NodeClient) GetAllRunningJobs(c *gin.Context) (jobNames []string) {
+func (nc *NodeClient) GetAllRunningJobs(c context.Context) ([]string, error) {
 	jobs := &batch.JobList{}
 	if err := nc.List(c, jobs, client.MatchingLabels{}); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return nil
+		return nil, err
 	}
 	var jobList []string
 
@@ -308,7 +320,7 @@ func (nc *NodeClient) GetAllRunningJobs(c *gin.Context) (jobNames []string) {
 			jobList = append(jobList, JobName)
 		}
 	}
-	return jobList
+	return jobList, nil
 }
 
 func (nc *NodeClient) GetGPURelatedPods() (gpuJobPodsList map[string]string) {
