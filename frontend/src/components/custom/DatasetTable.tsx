@@ -24,7 +24,7 @@ import {
   apiDatasetDelete,
   apiDatasetRename,
 } from "@/services/api/dataset";
-import { Pencil, Trash2, User, Users } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Sheet,
@@ -48,55 +48,20 @@ import {
   DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
-import { OnChangeValue } from "react-select";
-import { ShareDatasetToUserDialog } from "@/components/custom/UserNotInSelect";
-import { QueueNotInSelect } from "@/components/custom/QueueNotInSelect";
-import { UserDataset } from "@/services/api/dataset";
-import { QueueDataset } from "@/services/api/dataset";
-
-interface QueueOption {
-  value: string;
-  id: number;
-  label: string;
-}
 
 import { IResponse } from "@/services/types";
 import { AxiosResponse } from "axios";
+import { Link } from "react-router-dom";
 interface DatesetTableProps {
   apiGetDataset: () => Promise<AxiosResponse<IResponse<Dataset[]>>>;
-  apiShareDatasetwithUser: (
-    ud: UserDataset,
-  ) => Promise<AxiosResponse<IResponse<string>>>;
-  apiShareDatasetwithQueue: (
-    qd: QueueDataset,
-  ) => Promise<AxiosResponse<IResponse<string>>>;
 }
-export function DatasetTable({
-  apiGetDataset,
-  apiShareDatasetwithUser,
-  apiShareDatasetwithQueue,
-}: DatesetTableProps) {
+export function DatasetTable({ apiGetDataset }: DatesetTableProps) {
   const refInput = useRef<HTMLInputElement>(null);
   const [datasetNewName, setDatasetNewName] = useState<string>("");
   const data = useQuery({
     queryKey: ["data", "mydataset"],
     queryFn: () => apiGetDataset(),
     select: (res) => res.data.data,
-  });
-
-  const { mutate: shareWithQueue } = useMutation({
-    mutationFn: (datasetId: number) =>
-      apiShareDatasetwithQueue({
-        datasetID: datasetId,
-        queueIDs: queueIds,
-      }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ["data", "mydataset"],
-      });
-      toast.success("共享成功");
-      setQueueIds([]);
-    },
   });
 
   const { mutate: RenameDataset } = useMutation({
@@ -136,12 +101,6 @@ export function DatasetTable({
   });
   const queryClient = useQueryClient();
 
-  const [queueIds, setQueueIds] = useState<number[]>([]);
-  const onChangeQueue = (newValue: OnChangeValue<QueueOption, true>) => {
-    const queueIds: number[] = newValue.map((queue) => queue.id);
-    setQueueIds(queueIds);
-  };
-
   const [openSheet, setOpenSheet] = useState(false);
 
   const columns = useMemo<ColumnDef<Dataset>[]>(
@@ -153,9 +112,12 @@ export function DatasetTable({
         ),
         cell: ({ row }) => {
           return (
-            <div style={{ display: "flex", alignItems: "center" }}>
+            <Link
+              to={`${row.original.id}`}
+              className="underline-offset-4 hover:underline"
+            >
               {row.getValue("name")}
-            </div>
+            </Link>
           );
         },
         enableSorting: false,
@@ -269,76 +231,6 @@ export function DatasetTable({
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <div>
-                    <Button
-                      variant="outline"
-                      className="h-8 w-8 p-0"
-                      title="用户共享"
-                    >
-                      <User size={16} strokeWidth={2} />
-                    </Button>
-                  </div>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>分享至用户</DialogTitle>
-                    <DialogDescription>
-                      和指定的用户共享数据集
-                    </DialogDescription>
-                  </DialogHeader>
-                  <ShareDatasetToUserDialog
-                    datasetId={row.original.id}
-                    apiShareDatasetwithUser={apiShareDatasetwithUser}
-                  />
-                </DialogContent>
-              </Dialog>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <div>
-                    <Button
-                      variant="outline"
-                      className="h-8 w-8"
-                      size="icon"
-                      title="账户共享"
-                    >
-                      <Users size={16} strokeWidth={2} />
-                    </Button>
-                  </div>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>共享数据集</DialogTitle>
-                    <DialogDescription>和账户共享数据集</DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="queue" className="text-right">
-                        账户名称
-                      </Label>
-                      <QueueNotInSelect
-                        id={row.original.id}
-                        onChange={onChangeQueue}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <DialogClose>
-                      <Button variant="outline">取消</Button>
-                    </DialogClose>
-                    <DialogClose>
-                      <Button
-                        type="submit"
-                        variant="default"
-                        onClick={() => shareWithQueue(row.original.id)}
-                      >
-                        共享
-                      </Button>
-                    </DialogClose>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <div>
@@ -377,7 +269,7 @@ export function DatasetTable({
         },
       },
     ],
-    [apiShareDatasetwithUser, deleteDataset, shareWithQueue, RenameDataset],
+    [deleteDataset, RenameDataset],
   );
 
   const getHeader = (key: string): string => {
