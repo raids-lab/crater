@@ -86,9 +86,6 @@ export function LoginForm() {
             : "/portal";
       navigate(dashboard, { replace: true });
     },
-    onError: (error) => {
-      toast.error(error.message);
-    },
   });
 
   // 1. Define your form.
