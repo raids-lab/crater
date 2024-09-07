@@ -36,6 +36,11 @@ export interface UserDatasetGetResp {
   name: string;
 }
 
+export interface UserDatasetResp {
+  id: number;
+  name: string;
+  isowner: boolean;
+}
 export interface QueueDatasetGetResp {
   id: number;
   name: string;
@@ -75,4 +80,13 @@ export const apiListUsersNotInDataset = (datasetID: number) =>
 export const apiListQueuesNotInDataset = (datasetID: number) =>
   instance.get<IResponse<QueueDatasetGetResp[]>>(
     VERSION + `/dataset/${datasetID}/queuesNotIn`,
+  );
+export const apiListUsersInDataset = (datasetID: number) =>
+  instance.get<IResponse<UserDatasetResp[]>>(
+    VERSION + `/dataset/${datasetID}/usersIn`,
+  );
+
+export const apiListQueuesInDataset = (datasetID: number) =>
+  instance.get<IResponse<QueueDatasetGetResp[]>>(
+    VERSION + `/dataset/${datasetID}/queuesIn`,
   );

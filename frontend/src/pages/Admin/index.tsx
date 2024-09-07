@@ -19,7 +19,7 @@ import {
   UsersRoundIcon,
 } from "lucide-react";
 import { Account } from "./Queue";
-
+import admindatasetRoutes from "./Data";
 const sidebarItems: SidebarItem[] = [
   {
     path: "cluster",
@@ -119,7 +119,7 @@ const sidebarItems: SidebarItem[] = [
       {
         route: {
           path: "dataset/*",
-          lazy: () => import("./Data/Dataset"),
+          children: admindatasetRoutes,
         },
       },
     ],
