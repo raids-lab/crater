@@ -1,7 +1,6 @@
 package vcjob
 
 import (
-	"context"
 	"fmt"
 	"regexp"
 	"strings"
@@ -235,37 +234,58 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		return
 	}
 
-	// 添加锁
-	mgr.mu.Lock()
-	defer mgr.mu.Unlock()
-
-	// 创建 Ingress，转发 Jupyter 端口
-	ingressClient := mgr.kubeClient.NetworkingV1().Ingresses(namespace)
-
-	// Get the existing Ingress
-	ingress, err := ingressClient.Get(c, config.GetConfig().Workspace.IngressName, metav1.GetOptions{})
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	// Add a new path to the first rule
-	newPath := networkingv1.HTTPIngressPath{
-		Path:     fmt.Sprintf("/jupyter/%s", baseURL),
-		PathType: func(s networkingv1.PathType) *networkingv1.PathType { return &s }(networkingv1.PathTypePrefix),
-		Backend: networkingv1.IngressBackend{
-			Service: &networkingv1.IngressServiceBackend{
-				Name: jobName,
-				Port: networkingv1.ServiceBackendPort{
-					Number: 80,
+	// 创建 Ingress，添加 OwnerReference
+	ingress := &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			// 每个作业的 Service 创建单独的 Ingress
+			Name:      jobName,
+			Namespace: namespace,
+			Annotations: map[string]string{
+				// 启用 SSL 重定向
+				"nginx.ingress.kubernetes.io/ssl-redirect": "true",
+				// 设置请求体的最大大小
+				"nginx.ingress.kubernetes.io/proxy-body-size": "20480m",
+			},
+			// 添加 OwnerReference
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(&job, batch.SchemeGroupVersion.WithKind("Job")),
+			},
+		},
+		Spec: networkingv1.IngressSpec{
+			// 指定 Ingress 控制器为 nginx
+			IngressClassName: func(s string) *string { return &s }("nginx"),
+			Rules: []networkingv1.IngressRule{
+				{
+					Host: "crater.***REMOVED***", // 设置 Host
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{
+								{
+									Path:     fmt.Sprintf("/jupyter/%s", baseURL),
+									PathType: func(s networkingv1.PathType) *networkingv1.PathType { return &s }(networkingv1.PathTypePrefix),
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: jobName,
+											Port: networkingv1.ServiceBackendPort{
+												Number: 80,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			TLS: []networkingv1.IngressTLS{
+				{
+					Hosts:      []string{"crater.***REMOVED***"}, // 需要 TLS 的主机名
+					SecretName: "crater-tls-secret",                // TLS 证书的 Secret 名称
 				},
 			},
 		},
 	}
 
-	ingress.Spec.Rules[0].HTTP.Paths = append(ingress.Spec.Rules[0].HTTP.Paths, newPath)
-
-	// req.UseTensorBoard为true, 用户希望暴露TensorBoard
 	if req.UseTensorBoard {
 		tensorboardPath := networkingv1.HTTPIngressPath{
 			Path:     fmt.Sprintf("/tensorboard/%s", jobName),
@@ -282,9 +302,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		ingress.Spec.Rules[0].HTTP.Paths = append(ingress.Spec.Rules[0].HTTP.Paths, tensorboardPath)
 	}
 
-	// Update the Ingress
-	_, err = ingressClient.Update(context.Background(), ingress, metav1.UpdateOptions{})
-	if err != nil {
+	if err := mgr.Create(c, ingress); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
