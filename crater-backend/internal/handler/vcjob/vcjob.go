@@ -2,13 +2,11 @@ package vcjob
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"sort"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -21,8 +19,6 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -127,6 +123,10 @@ type (
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/vcjobs/{name} [delete]
+
+// 简化 DeleteJob 方法
+// 无需显式删除 Ingress 和 Service
+// OwnerReference 会自动处理
 func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -137,16 +137,6 @@ func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
 	job := &batch.Job{}
 	namespace := config.GetConfig().Workspace.Namespace
 	if err := mgr.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
-		if errors.IsNotFound(err) {
-			j := query.Job
-			_, err = j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Delete()
-			if err != nil {
-				resputil.Error(c, err.Error(), resputil.NotSpecified)
-				return
-			}
-			resputil.Success(c, nil)
-			return
-		}
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
@@ -157,48 +147,8 @@ func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
 		return
 	}
 
-	// 0. Preserve the job ingress base url
-	baseURL := job.Labels[LabelKeyBaseURL]
-
-	// 1. Delete the job
+	// 直接删除 Job，OwnerReference 会自动删除 Ingress 和 Service
 	if err := mgr.Delete(c, job); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	// 2. Delete the ingress
-	// TODO(liuxw24): remove the code
-	mgr.mu.Lock()
-	defer mgr.mu.Unlock()
-	ingressClient := mgr.kubeClient.NetworkingV1().Ingresses(namespace)
-
-	// Get the existing Ingress
-	ingress, err := ingressClient.Get(c, config.GetConfig().Workspace.IngressName, metav1.GetOptions{})
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	// Remove the path from the first rule
-	// for i, path := range ingress.Spec.Rules[0].HTTP.Paths {
-	// 	if strings.Contains(path.Path, baseURL) {
-	// 		ingress.Spec.Rules[0].HTTP.Paths = append(ingress.Spec.Rules[0].HTTP.Paths[:i], ingress.Spec.Rules[0].HTTP.Paths[i+1:]...)
-	// 		break
-	// 	}
-	// }
-
-	// Remove both jupyter and tensorboard paths from the first rule
-	newPaths := []networkingv1.HTTPIngressPath{}
-	for _, path := range ingress.Spec.Rules[0].HTTP.Paths {
-		if !strings.Contains(path.Path, baseURL) {
-			newPaths = append(newPaths, path)
-		}
-	}
-	ingress.Spec.Rules[0].HTTP.Paths = newPaths
-
-	// Update the Ingress
-	_, err = ingressClient.Update(context.Background(), ingress, metav1.UpdateOptions{})
-	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
