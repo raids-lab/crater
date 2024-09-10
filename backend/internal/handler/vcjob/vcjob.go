@@ -19,6 +19,7 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -137,6 +138,16 @@ func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
 	job := &batch.Job{}
 	namespace := config.GetConfig().Workspace.Namespace
 	if err := mgr.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
+		if errors.IsNotFound(err) {
+			j := query.Job
+			_, err = j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Delete()
+			if err != nil {
+				resputil.Error(c, err.Error(), resputil.NotSpecified)
+				return
+			}
+			resputil.Success(c, nil)
+			return
+		}
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
