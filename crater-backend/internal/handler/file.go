@@ -32,13 +32,18 @@ func (mgr *FileMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.DELETE("/delete/:id", mgr.DeleteDataset)
 	g.POST("/share/user", mgr.ShareDatasetWithUser)
 	g.POST("/share/queue", mgr.ShareDatasetWithQueue)
+	g.POST("/cancelshare/user", mgr.CancelShareDatasetWithUser)
+	g.POST("/cancelshare/queue", mgr.CancelShareDatasetWithQueue)
 	g.POST("/rename", mgr.RemaneDatset)
+	g.GET("/detail/:datasetId", mgr.GetDatasetByID)
 }
 
 func (mgr *FileMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("/alldataset", mgr.GetAllDataset)
 	g.POST("/share/user", mgr.AdminShareDatasetWithUser)
 	g.POST("/share/queue", mgr.AdminShareDatasetWithQueue)
+	g.POST("/cancelshare/user", mgr.AdminCancelShareDatasetWithUser)
+	g.POST("/cancelshare/queue", mgr.AdmincancelShareDatasetWithQueue)
 }
 
 type DatasetResp struct {
@@ -99,6 +104,40 @@ func (mgr *FileMgr) GetMyDataset(c *gin.Context) {
 	for _, data := range datasets {
 		result = append(result, data)
 	}
+	resputil.Success(c, result)
+}
+
+// 函数名称 GetDatasetByID
+// @Summary 通过数据集id获取数据集信息
+// @Description 通过数据集id获取数据集信息
+// @Tags Dataset
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param req path DatasetGetReq true "数据集ID"
+// @Success 200 {object} resputil.Response[any] "成功返回值描述"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/dataset/detail/{datasetId} [get]
+func (mgr *FileMgr) GetDatasetByID(c *gin.Context) {
+	var req DatasetGetReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.Error(c, fmt.Sprintf("get dataset failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+	d := query.Dataset
+	dataset, err := d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).First()
+	if err != nil {
+		resputil.Error(c, "this dataset not exist", resputil.InvalidRequest)
+		return
+	}
+	res, err := mgr.generateDataseResponse(c, dataset)
+	if err != nil {
+		resputil.Error(c, "Can't get this dataset", resputil.NotSpecified)
+		return
+	}
+	var result []DatasetResp
+	result = append(result, res)
 	resputil.Success(c, result)
 }
 
@@ -231,6 +270,10 @@ type SharedUserReq struct {
 	DatasetID uint   `json:"datasetID" binding:"required"`
 	UserIDs   []uint `json:"userIDs" binding:"required"`
 }
+type cancelsharedUserReq struct {
+	DatasetID uint `json:"datasetID" binding:"required"`
+	UserID    uint `json:"userID" binding:"required"`
+}
 
 // ShareDatasetWithUser godoc
 // @Summary 跟用户共享数据集
@@ -282,7 +325,6 @@ func (mgr *FileMgr) AdminShareDatasetWithUser(c *gin.Context) {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
-
 	d := query.Dataset
 	_, err := d.WithContext(c).Where(d.ID.Eq(userReq.DatasetID)).First()
 	if err != nil {
@@ -319,6 +361,89 @@ func (mgr *FileMgr) shareWithUser(c *gin.Context, userReq SharedUserReq) error {
 		if err := ud.WithContext(c).Create(&userDataset); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// 函数名称 CancelShareDatasetWithUser
+// @Summary 普通用户取消数据集共享用户
+// @Description 普通用户取消数据集共享
+// @Tags Dataset
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param Req body cancelsharedUserReq true "共享数据集用户"
+// @Success 200 {object} resputil.Response[string] "成功返回值描述"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/dataset/cancelshare/user [post]
+func (mgr *FileMgr) CancelShareDatasetWithUser(c *gin.Context) {
+	var Req cancelsharedUserReq
+	err := c.ShouldBindJSON(&Req)
+	if err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+	d := query.Dataset
+	token := util.GetToken(c)
+	_, err = d.WithContext(c).Where(d.UserID.Eq(token.UserID), d.ID.Eq(Req.DatasetID)).First()
+	if err != nil {
+		resputil.Error(c, "you has no permission to cancel share with user", resputil.NotSpecified)
+		return
+	}
+	cerr := mgr.cancelShareWithUser(c, Req)
+	if cerr != nil {
+		resputil.Error(c, cerr.Error(), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, "cancel share with user successfully")
+}
+
+// 函数名称 AdminCancelShareDatasetWithUser
+// @Summary 管理员取消数据集共享用户
+// @Description 管理员取消数据集共享用户
+// @Tags Dataset
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param Req body cancelsharedUserReq true "共享数据集用户"
+// @Success 200 {object} resputil.Response[string] "成功返回值描述"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/admin/dataset/cancelshare/user [post]
+func (mgr *FileMgr) AdminCancelShareDatasetWithUser(c *gin.Context) {
+	var Req cancelsharedUserReq
+	if err := c.ShouldBindJSON(&Req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+	d := query.Dataset
+	if _, err := d.WithContext(c).Where(d.ID.Eq(Req.DatasetID)).First(); err != nil {
+		resputil.Error(c, "this dataset not exist", resputil.NotSpecified)
+		return
+	}
+	if err := mgr.cancelShareWithUser(c, Req); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, "Shared with user successfully")
+}
+func (mgr *FileMgr) cancelShareWithUser(c *gin.Context, userReq cancelsharedUserReq) error {
+	ud := query.UserDataset
+	u := query.User
+	if _, err := u.WithContext(c).Where(u.ID.Eq(userReq.UserID)).First(); err != nil {
+		return fmt.Errorf("can't find user")
+	}
+	d := query.Q.Dataset
+	if _, err := d.WithContext(c).Where(d.ID.Eq(userReq.DatasetID), d.UserID.Eq(userReq.UserID)).First(); err == nil {
+		return fmt.Errorf("can't cancel share with creator")
+	}
+	uud, _ := ud.WithContext(c).Where(ud.UserID.Eq(userReq.UserID), ud.DatasetID.Eq(userReq.DatasetID)).First()
+	if uud == nil {
+		return fmt.Errorf("user doesn't shared dataset")
+	}
+	if _, err := ud.WithContext(c).Delete(uud); err != nil {
+		return err
 	}
 	return nil
 }
@@ -375,14 +500,13 @@ func (mgr *FileMgr) ShareDatasetWithQueue(c *gin.Context) {
 // @Router /v1/admin/dataset/share/queue [post]
 func (mgr *FileMgr) AdminShareDatasetWithQueue(c *gin.Context) {
 	var queueReq SharedQueueReq
+	d := query.Dataset
 	err := c.ShouldBindJSON(&queueReq)
 	if err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
-	d := query.Dataset
-	_, err = d.WithContext(c).Where(d.ID.Eq(queueReq.DatasetID)).First()
-	if err != nil {
+	if _, err = d.WithContext(c).Where(d.ID.Eq(queueReq.DatasetID)).First(); err != nil {
 		resputil.Error(c, "can't find this dataset", resputil.InvalidRequest)
 		return
 	}
@@ -416,6 +540,94 @@ func (mgr *FileMgr) shareWithQueue(c *gin.Context, queueReq SharedQueueReq) erro
 		if err := qd.WithContext(c).Create(&queuedataset); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+type cancelSharedQueueReq struct {
+	DatasetID uint `json:"datasetID" binding:"required"`
+	QueueID   uint `json:"queueID" binding:"required"`
+}
+
+// 函数名称 CancelShareDatasetWithQueue
+// @Summary 普通用户取消数据共享队列
+// @Description 普通用户取消数据共享队列
+// @Tags Dataset
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param queueReq body cancelSharedQueueReq true "共享数据集队列"
+// @Success 200 {object} resputil.Response[string] "成功返回值描述"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router  /v1/dataset/cancelshare/queue [post]
+func (mgr *FileMgr) CancelShareDatasetWithQueue(c *gin.Context) {
+	var queueReq cancelSharedQueueReq
+	if err := c.ShouldBindJSON(&queueReq); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+	d := query.Dataset
+	token := util.GetToken(c)
+	_, err := d.WithContext(c).Where(d.UserID.Eq(token.UserID), d.ID.Eq(queueReq.DatasetID)).First()
+	if err != nil {
+		resputil.Error(c, "you can't cancel share with queue", resputil.InvalidRequest)
+		return
+	}
+	err = mgr.cancelShareWithQueue(c, queueReq)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.InvalidRequest)
+		return
+	}
+	resputil.Success(c, "cancel successfully")
+}
+
+// 函数名称 AdmincancelShareDatasetWithQueue
+// @Summary 管理员取消数据共享队列
+// @Description 管理员取消数据共享队列
+// @Tags Dataset
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param queueReq body cancelSharedQueueReq true "共享数据集队列"
+// @Success 200 {object} resputil.Response[string] "成功返回值描述"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/admin/dataset/cancelshare/queue [post]
+func (mgr *FileMgr) AdmincancelShareDatasetWithQueue(c *gin.Context) {
+	var queueReq cancelSharedQueueReq
+	err := c.ShouldBindJSON(&queueReq)
+	if err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+	d := query.Dataset
+	_, err = d.WithContext(c).Where(d.ID.Eq(queueReq.DatasetID)).First()
+	if err != nil {
+		resputil.Error(c, "dataset does not exist", resputil.InvalidRequest)
+		return
+	}
+	err = mgr.cancelShareWithQueue(c, queueReq)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.InvalidRequest)
+		return
+	}
+	resputil.Success(c, "cancel successfully")
+}
+
+func (mgr *FileMgr) cancelShareWithQueue(c *gin.Context, cancelQueueReq cancelSharedQueueReq) error {
+	q := query.Queue
+	qd := query.QueueDataset
+	_, err := q.WithContext(c).Where(q.ID.Eq(cancelQueueReq.QueueID)).First()
+	if err != nil {
+		return fmt.Errorf("queue not exist")
+	}
+	hqd, _ := qd.WithContext(c).Where(qd.QueueID.Eq(cancelQueueReq.QueueID), qd.DatasetID.Eq(cancelQueueReq.DatasetID)).First()
+	if hqd == nil {
+		return fmt.Errorf("the dataset was not shared with the queue")
+	}
+	if _, err := qd.WithContext(c).Delete(hqd); err != nil {
+		return err
 	}
 	return nil
 }
