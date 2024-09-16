@@ -1,4 +1,6 @@
 import {
+  apiAdminCancelShareWithQueue,
+  apiAdminCancelShareWithUser,
   apiAdminShareDatasetwithQueue,
   apiAdminShareDatasetwithUser,
 } from "@/services/api/dataset";
@@ -9,6 +11,8 @@ export const Component = () => {
     <DatasetShareTable
       apiShareDatasetwithQueue={apiAdminShareDatasetwithQueue}
       apiShareDatasetwithUser={apiAdminShareDatasetwithUser}
+      apiCancelDatasetSharewithQueue={apiAdminCancelShareWithQueue}
+      apiCancelDatasetSharewithUser={apiAdminCancelShareWithUser}
     />
   );
 };

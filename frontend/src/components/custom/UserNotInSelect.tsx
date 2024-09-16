@@ -44,7 +44,7 @@ export function ShareDatasetToUserDialog({
     onSuccess: () => {
       toast.success("共享成功");
       void queryClient.invalidateQueries({
-        queryKey: ["data", "mydataset"],
+        queryKey: ["data", "userdataset", datasetId],
       });
     },
   });
