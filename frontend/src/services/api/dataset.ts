@@ -45,8 +45,22 @@ export interface QueueDatasetGetResp {
   id: number;
   name: string;
 }
+
+export interface cancelSharedUserResp {
+  datasetID: number;
+  userID: number;
+}
+export interface cancelSharedQueueResp {
+  datasetID: number;
+  queueID: number;
+}
+
 export const apiGetDataset = () =>
   instance.get<IResponse<Dataset[]>>(VERSION + `/dataset/mydataset`);
+
+//因为table表单的query必须要返回数组，实际上数组里只有一个数据集的数据
+export const apiGetDatasetByID = (datasetID: number) =>
+  instance.get<IResponse<Dataset[]>>(VERSION + `/dataset/detail/${datasetID}`);
 
 export const apiAdminGetDataset = () =>
   instance.get<IResponse<Dataset[]>>(VERSION + `/admin/dataset/alldataset`);
@@ -89,4 +103,22 @@ export const apiListUsersInDataset = (datasetID: number) =>
 export const apiListQueuesInDataset = (datasetID: number) =>
   instance.get<IResponse<QueueDatasetGetResp[]>>(
     VERSION + `/dataset/${datasetID}/queuesIn`,
+  );
+
+export const apiCancelShareWithUser = (CSU: cancelSharedUserResp) =>
+  instance.post<IResponse<string>>(VERSION + `/dataset/cancelshare/user`, CSU);
+
+export const apiCancelShareWithQueue = (CSQ: cancelSharedQueueResp) =>
+  instance.post<IResponse<string>>(VERSION + `/dataset/cancelshare/queue`, CSQ);
+
+export const apiAdminCancelShareWithUser = (CSU: cancelSharedUserResp) =>
+  instance.post<IResponse<string>>(
+    VERSION + `/admin/dataset/cancelshare/user`,
+    CSU,
+  );
+
+export const apiAdminCancelShareWithQueue = (CSQ: cancelSharedQueueResp) =>
+  instance.post<IResponse<string>>(
+    VERSION + `/admin/dataset/cancelshare/queue`,
+    CSQ,
   );
