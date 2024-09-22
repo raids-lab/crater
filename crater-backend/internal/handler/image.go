@@ -14,6 +14,7 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
+	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/logutils"
 	payload "github.com/raids-lab/crater/pkg/server/payload"
@@ -114,10 +115,10 @@ type (
 	}
 )
 
-const (
-	UserNameSpace = "crater-jobs"
+var (
+	UserNameSpace = config.GetConfig().Workspace.ImageNameSpace
 	AdminUserName = "admin"
-	PublicQueueID = 1
+	PublicQueueID = uint(1)
 
 	ImagePackInitial  = string(imagepackv1.PackJobInitial)
 	ImagePackPending  = string(imagepackv1.PackJobPending)
