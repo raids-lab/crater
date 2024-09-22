@@ -51,9 +51,15 @@ const (
 type ImageTaskType uint8
 
 const (
-	_           ImageTaskType = iota
-	OffLineTask               // 离线任务
-	JupyterTask               // Jupyter交互式任务
+	_              ImageTaskType = iota
+	JupyterTask                  // Jupyter交互式任务
+	WebIDETask                   // Web IDE任务
+	TensorflowTask               // Tensorflow任务
+	PytorchTask                  // Pytorch任务
+	RayTask                      // Ray任务
+	DeepSpeedTask                // DeepSpeed任务
+	OpenMPITask                  // OpenMPI任务
+	UserDefineTask               // 用户自定义任务
 )
 
 type WorkerType uint8

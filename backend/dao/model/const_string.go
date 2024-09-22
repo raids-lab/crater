@@ -92,13 +92,19 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[OffLineTask-1]
-	_ = x[JupyterTask-2]
+	_ = x[JupyterTask-1]
+	_ = x[WebIDETask-2]
+	_ = x[TensorflowTask-3]
+	_ = x[PytorchTask-4]
+	_ = x[RayTask-5]
+	_ = x[DeepSpeedTask-6]
+	_ = x[OpenMPITask-7]
+	_ = x[UserDefineTask-8]
 }
 
-const _ImageTaskType_name = "OffLineTaskJupyterTask"
+const _ImageTaskType_name = "JupyterTaskWebIDETaskTensorflowTaskPytorchTaskRayTaskDeepSpeedTaskOpenMPITaskUserDefineTask"
 
-var _ImageTaskType_index = [...]uint8{0, 11, 22}
+var _ImageTaskType_index = [...]uint8{0, 11, 21, 35, 46, 53, 66, 77, 91}
 
 func (i ImageTaskType) String() string {
 	i -= 1
