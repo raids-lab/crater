@@ -5,7 +5,7 @@ stages:
 
 variables:
   HUSKY: "0" # avoid installing Git Hooks on CI servers
-  HARBOR_REGISTRY_IMAGE: harbor.act.buaa.edu.cn/crater/web-frontend
+  HARBOR_REGISTRY_IMAGE: "${HARBOR_REGISTRY}/crater/web-frontend"
 
 # Build frontend and generate artifacts
 build_frontend:
