@@ -1,4 +1,4 @@
-import { Table } from "@tanstack/react-table";
+import { Row, Table } from "@tanstack/react-table";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,31 +17,74 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui-custom/alert-dialog";
 
 interface DataTablePaginationProps<TData> {
   updatedAt: string;
   refetch: () => void;
   table: Table<TData>;
+  handleDelete?: (rows: Row<TData>[]) => void;
 }
 
 export function DataTablePagination<TData>({
   updatedAt,
   refetch,
   table,
+  handleDelete,
 }: DataTablePaginationProps<TData>) {
   return (
     <div className="flex w-full items-center justify-between">
       <div className="flex flex-row items-center space-x-1.5 text-xs">
         {table.getFilteredSelectedRowModel().rows.length > 0 && (
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-7 w-7"
-            title="刷新"
-            onClick={() => toast.warning("批量删除功能开发中")}
-          >
-            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-7 w-7"
+                title="删除"
+              >
+                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>批量删除作业</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    选中的作业将被删除，此操作不可撤销。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="destructive"
+                    onClick={() => {
+                      if (handleDelete) {
+                        handleDelete(table.getFilteredSelectedRowModel().rows);
+                        // cancel selection
+                        table.resetRowSelection();
+                      } else {
+                        toast.warning("批量删除功能开发中");
+                      }
+                    }}
+                  >
+                    删除
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
         <Button
           variant="outline"
