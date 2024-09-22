@@ -1,6 +1,7 @@
 package aijob
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -8,6 +9,15 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
+	"gopkg.in/yaml.v2"
+	"gorm.io/datatypes"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
+
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler"
@@ -16,6 +26,7 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	interutil "github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
+	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 	tasksvc "github.com/raids-lab/crater/pkg/db/task"
@@ -23,23 +34,20 @@ import (
 	"github.com/raids-lab/crater/pkg/models"
 	payload "github.com/raids-lab/crater/pkg/server/payload"
 	"github.com/raids-lab/crater/pkg/util"
-	"github.com/samber/lo"
-	"gorm.io/datatypes"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 )
 
 type AIJobMgr struct {
+	client         client.Client
 	kubeClient     kubernetes.Interface
 	taskService    tasksvc.DBService
 	logClient      *crclient.LogClient
 	taskController *aitaskctl.TaskController
 }
 
-func NewAITaskMgr(taskController *aitaskctl.TaskController, kc kubernetes.Interface, logClient *crclient.LogClient) handler.Manager {
+func NewAITaskMgr(taskController *aitaskctl.TaskController, cl client.Client,
+	kc kubernetes.Interface, logClient *crclient.LogClient) handler.Manager {
 	return &AIJobMgr{
+		client:         cl,
 		kubeClient:     kc,
 		taskService:    tasksvc.NewDBService(),
 		logClient:      logClient,
@@ -56,6 +64,7 @@ func (mgr *AIJobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.DELETE(":id", mgr.Delete)
 
 	g.GET(":id/log", mgr.GetLogs)
+	g.GET(":id/yaml", mgr.GetJobYaml)
 	g.GET(":id/detail", mgr.Get)
 
 	g.POST("training", mgr.Create)
@@ -74,6 +83,18 @@ func (mgr *AIJobMgr) NotifyTaskUpdate(taskID uint, userName string, op util.Task
 	})
 }
 
+// GetQuota godoc
+// @Summary Get the quota of the queue
+// @Description Get the quota of the queue by client-go
+// @Tags AIJob
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} resputil.Response[any] "Quota Information"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/aijobs/quota [get]
+//
 //nolint:gocyclo // TODO: refactor
 func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
 	token := interutil.GetToken(c)
@@ -203,6 +224,18 @@ type (
 	}
 )
 
+// Create godoc
+// @Summary Create a new AI job
+// @Description Create a new AI job by client-go
+// @Tags AIJob
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param job body CreateAIJobReq true "Create AI Job Request"
+// @Success 200 {object} resputil.Response[any] "Create AI Job Response"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/aijobs/training [post]
 func (mgr *AIJobMgr) Create(c *gin.Context) {
 	var vcReq CreateAIJobReq
 	if err := c.ShouldBindJSON(&vcReq); err != nil {
@@ -253,6 +286,17 @@ type AIJobResp struct {
 	ProfileStatus string `json:"profileStatus"`
 }
 
+// List godoc
+// @Summary List AI jobs
+// @Description List AI jobs by client-go
+// @Tags AIJob
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} resputil.Response[any] "AI Job List"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/aijobs [get]
 func (mgr *AIJobMgr) List(c *gin.Context) {
 	token := interutil.GetToken(c)
 	taskModels, err := mgr.taskService.ListByQueue(token.QueueName)
@@ -320,6 +364,18 @@ type AIJobDetailResp struct {
 	ProfileStatus string `json:"profileStatus"`
 }
 
+// Get godoc
+// @Summary Get AI job details
+// @Description Get AI job details by client-go
+// @Tags AIJob
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path uint true "Job ID"
+// @Success 200 {object} resputil.Response[any] "AI Job Details"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/aijobs/{id}/detail [get]
 func (mgr *AIJobMgr) Get(c *gin.Context) {
 	var req AIJobDetailReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -390,6 +446,18 @@ type AIJobLogResp struct {
 	Logs map[string]string `json:"logs"`
 }
 
+// GetLogs godoc
+// @Summary Get AI job logs
+// @Description Get AI job logs by client-go
+// @Tags AIJob
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path uint true "Job ID"
+// @Success 200 {object} resputil.Response[any] "AI Job Logs"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/aijobs/{id}/log [get]
 func (mgr *AIJobMgr) GetLogs(c *gin.Context) {
 	var req AIJobLogReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -425,6 +493,18 @@ func (mgr *AIJobMgr) GetLogs(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
+// Delete godoc
+// @Summary Delete an AI job
+// @Description Delete an AI job by client-go
+// @Tags AIJob
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path uint true "Job ID"
+// @Success 200 {object} resputil.Response[any] "Delete AI Job Response"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/aijobs/{id} [delete]
 func (mgr *AIJobMgr) Delete(c *gin.Context) {
 	var req AIJobDetailReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -504,4 +584,68 @@ func convertJobPhase(aijobStatus string) batch.JobPhase {
 	default:
 		return batch.Pending
 	}
+}
+
+// GetJobYaml godoc
+// @Summary 获取vcjob Yaml详情
+// @Description 调用k8s get crd
+// @Tags vcjob-jupyter
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param jobname query string true "vcjob-name"
+// @Success 200 {object} resputil.Response[any] "任务yaml"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/aijobs/{id}/yaml [get]
+func (mgr *AIJobMgr) GetJobYaml(c *gin.Context) {
+	var req AIJobDetailReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	token := interutil.GetToken(c)
+	taskModel, err := mgr.taskService.GetByQueueAndID(token.QueueName, req.JobID)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+
+	if taskModel.UserName != token.QueueName {
+		resputil.Error(c, "Job not found", resputil.NotSpecified)
+		return
+	}
+
+	job := &aijobapi.AIJob{}
+	namespace := config.GetConfig().Workspace.Namespace
+	if err = mgr.client.Get(c, client.ObjectKey{Name: taskModel.JobName,
+		Namespace: namespace}, job); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	// prune useless field
+	job.ObjectMeta.ManagedFields = nil
+
+	// utilize json omitempty tag to further prune
+	jsonData, err := json.Marshal(job)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	var prunedJob map[string]any
+	err = json.Unmarshal(jsonData, &prunedJob)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	JobYaml, err := yaml.Marshal(prunedJob)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, string(JobYaml))
 }
