@@ -43,9 +43,10 @@ type Config struct {
 	MonitoringPort int    `yaml:"monitoringPort"`
 	// Workspace Settings
 	Workspace struct {
-		Namespace   string `yaml:"namespace"`
-		PVCName     string `yaml:"pvcName"`
-		IngressName string `yaml:"ingressName"`
+		Namespace      string `yaml:"namespace"`
+		PVCName        string `yaml:"pvcName"`
+		IngressName    string `yaml:"ingressName"`
+		ImageNameSpace string `yaml:"imageNameSpace"`
 	} `yaml:"workspace"`
 	ACT struct {
 		Image struct {
