@@ -5,7 +5,7 @@ stages:
   - deploy
 
 variables:
-  HARBOR_REGISTRY_IMAGE: ***REMOVED***/crater/web-backend
+  HARBOR_REGISTRY_IMAGE: "${HARBOR_REGISTRY}/crater/web-backend"
 
 # https://docs.gitlab.com/ee/development/go_guide/#automatic-linting
 lint:
