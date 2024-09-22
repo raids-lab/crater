@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
 import {
-  ExternalLinkIcon,
   FileSlidersIcon,
   FileTextIcon,
   PieChartIcon,
@@ -132,13 +131,6 @@ export const Component = () => {
     queryFn: () => apiJupyterYaml(jobName),
     select: (res) => res.data.data,
     refetchInterval: refetchInterval,
-  });
-
-  const { mutate: getPortToken } = useMutation({
-    mutationFn: (jobName: string) => apiJupyterTokenGet(jobName),
-    onSuccess: (_, jobName) => {
-      window.open(`/job/jupyter/${jobName}`);
-    },
   });
 
   const { mutate: deleteJTask } = useMutation({
@@ -293,19 +285,6 @@ export const Component = () => {
               )}
             </div>
             <div className="flex flex-row gap-2">
-              <Button
-                size="sm"
-                title="跳转至交互式页面"
-                onClick={() => {
-                  toast.info("即将跳转至交互式页面");
-                  setTimeout(() => {
-                    getPortToken(jobName);
-                  }, 500);
-                }}
-              >
-                <ExternalLinkIcon className="mr-2 h-4 w-4" />
-                交互式页面
-              </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <div>

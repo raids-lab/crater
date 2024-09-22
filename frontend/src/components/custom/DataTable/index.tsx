@@ -2,6 +2,7 @@ import {
   ColumnDef,
   ColumnFiltersState,
   PaginationState,
+  Row,
   SortingState,
   VisibilityState,
   flexRender,
@@ -46,6 +47,7 @@ interface DataTableProps<TData, TValue>
   query: UseQueryResult<TData[], Error>;
   columns: ColumnDef<TData, TValue>[];
   toolbarConfig?: DataTableToolbarConfig;
+  handleMultipleDelete?: (rows: Row<TData>[]) => void;
   className?: string;
 }
 
@@ -54,6 +56,7 @@ export function DataTable<TData, TValue>({
   query,
   columns,
   toolbarConfig,
+  handleMultipleDelete,
   children,
   className,
 }: DataTableProps<TData, TValue>) {
@@ -199,6 +202,7 @@ export function DataTable<TData, TValue>({
               table={table}
               refetch={() => void refetch()}
               updatedAt={updatedAt}
+              handleDelete={handleMultipleDelete}
             />
           )}
         </CardFooter>
