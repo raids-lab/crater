@@ -136,7 +136,7 @@ const UserProjectManagement = () => {
 
   // 修改 BreadCrumb
   useEffect(() => {
-    setBreadcrumb([{ title: `${id}` ?? "" }]);
+    setBreadcrumb([{ title: `${id}` }]);
   }, [setBreadcrumb, id]);
 
   const queryClient = useQueryClient();
