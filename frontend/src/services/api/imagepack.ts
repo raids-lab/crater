@@ -113,7 +113,7 @@ export const imagepackStatuses: {
   },
 ];
 
-export type imagepackTaskTypeValue = 1 | 2;
+export type imagepackTaskTypeValue = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 export const imagepackTaskType: {
   value: imagepackTaskTypeValue;
@@ -121,11 +121,35 @@ export const imagepackTaskType: {
 }[] = [
   {
     value: 1,
-    label: "离线任务",
+    label: "Jupyter交互式任务",
   },
   {
     value: 2,
-    label: "交互式任务",
+    label: "Web IDE任务",
+  },
+  {
+    value: 3,
+    label: "Tensorflow任务",
+  },
+  {
+    value: 4,
+    label: "Pytorch任务",
+  },
+  {
+    value: 5,
+    label: "Ray任务",
+  },
+  {
+    value: 6,
+    label: "DeepSpeed任务",
+  },
+  {
+    value: 7,
+    label: "OpenMPI任务",
+  },
+  {
+    value: 8,
+    label: "用户自定义任务",
   },
 ];
 
