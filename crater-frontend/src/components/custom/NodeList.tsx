@@ -5,6 +5,8 @@ import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableCo
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
+import NodeTypeLabel from "@/components/custom/NodeTypeLabel";
+import { NodeType } from "@/services/api/node";
 
 interface ResourceInfo {
   percent: number;
@@ -12,6 +14,7 @@ interface ResourceInfo {
 }
 
 export interface ClusterNodeInfo {
+  type: string;
   name: string;
   isReady: boolean;
   role: string;
@@ -58,6 +61,15 @@ export const UsageCell: FC<{ value: ResourceInfo }> = ({ value }) => {
 };
 
 export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
+  {
+    accessorKey: "type",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={"类型"} />
+    ),
+    cell: ({ row }) => (
+      <NodeTypeLabel nodeType={row.getValue<NodeType>("type")} />
+    ),
+  },
   {
     accessorKey: "name",
     header: ({ column }) => (
