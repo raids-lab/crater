@@ -103,7 +103,10 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 			// 将int类型的gpu_count转换为resource.Quantity类型
 			capacity_["nvidia.com/gpu"] = *resource.NewQuantity(int64(gpuCount), resource.DecimalSI)
 		}
+		// 获取节点类型
+		nodeType := node.Labels["node-type"]
 		nodeInfos[i] = payload.ClusterNodeInfo{
+			Type:      nodeType, // 添加节点类型
 			Name:      node.Name,
 			Role:      getNodeRole(node),
 			Labels:    node.Labels,
