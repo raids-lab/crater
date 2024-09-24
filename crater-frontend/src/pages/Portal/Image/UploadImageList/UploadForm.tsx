@@ -29,7 +29,7 @@ const formSchema = z.object({
   imageTag: z.string().min(1, { message: "标签不能为空" }),
   alias: z.string().min(1, { message: "镜像别名不能为空" }),
   description: z.string().min(1, { message: "镜像描述不能为空" }),
-  taskType: z.enum(["1", "2"]),
+  taskType: z.enum(["1", "2", "3", "4", "5", "6", "7", "8"]),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -189,8 +189,14 @@ export function ImageUploadForm({ closeSheet }: TaskFormProps) {
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">离线任务</SelectItem>
-                      <SelectItem value="2">Jupyter交互式任务</SelectItem>
+                      <SelectItem value="1">Jupyter交互式任务</SelectItem>
+                      <SelectItem value="2">Web IDE任务</SelectItem>
+                      <SelectItem value="3">Tensorflow任务</SelectItem>
+                      <SelectItem value="4">Pytorch任务</SelectItem>
+                      <SelectItem value="5">Ray任务</SelectItem>
+                      <SelectItem value="6">DeepSpeed任务</SelectItem>
+                      <SelectItem value="7">OpenMPI任务</SelectItem>
+                      <SelectItem value="8">用户自定义任务</SelectItem>
                     </SelectContent>
                   </Select>
                 </FormControl>
