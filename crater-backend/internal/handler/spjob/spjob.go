@@ -525,7 +525,7 @@ func (mgr *SparseJobMgr) AnalyzeResourceUsage(c *gin.Context) {
 		return
 	}
 	p100Mem := analyzeResp.Data["V100"].GPUMemoryMax
-	//nolint:gomnd // TODO: refactor
+	//nolint:mnd // TODO: refactor
 	if p100Mem > 16 {
 		p100Mem = 16.01
 	}

@@ -57,7 +57,7 @@ linters-settings:
         replacement: "any"
   goimports:
     local-prefixes: github.com/golangci/golangci-lint
-  gomnd:
+  mnd:
     # don't include the "operation" and "assign"
     checks:
       - argument
@@ -109,7 +109,7 @@ linters:
     - dupl
     - errcheck
     - errorlint
-    - exportloopref
+    - copyloopvar
     - funlen
     - gocheckcompilerdirectives
     - gochecknoinits
@@ -119,7 +119,7 @@ linters:
     - godox
     - gofmt
     - goimports
-    - gomnd
+    - mnd
     - goprintffuncname
     - gosec
     - gosimple
@@ -148,7 +148,7 @@ issues:
     - path: (.+)_test\.go
       linters:
         - dupl
-        - gomnd
+        - mnd
         - lll
 
     - path: pkg/golinters
