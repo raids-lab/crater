@@ -179,7 +179,6 @@ func (mgr *ImagePackMgr) UserCreate(c *gin.Context) {
 	token := util.GetToken(c)
 	if err := c.ShouldBindJSON(req); err != nil {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
-		logutils.Log.Errorf(msg)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
@@ -205,7 +204,6 @@ func (mgr *ImagePackMgr) UserUpload(c *gin.Context) {
 	token := util.GetToken(c)
 	if err := c.ShouldBindJSON(req); err != nil {
 		msg := fmt.Sprintf("validate upload parameters failed, err %v", err)
-		logutils.Log.Errorf(msg)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
@@ -256,7 +254,6 @@ func (mgr *ImagePackMgr) AdminCreate(c *gin.Context) {
 	token := util.GetToken(c)
 	if err := c.ShouldBindJSON(req); err != nil {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
-		logutils.Log.Errorf(msg)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
