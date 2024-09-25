@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: crater-web-backend-container
-          image: ***REMOVED***/crater/web-backend@sha256:6c8bcfed0f92fa1d20dc3cf350fe5bfe42474e3f906902c99cd5260432cfce53
+          image: ***REMOVED***/web-backend:3a1af9bb
           imagePullPolicy: IfNotPresent
           command:
             - /controller

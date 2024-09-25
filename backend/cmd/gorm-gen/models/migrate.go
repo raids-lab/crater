@@ -11,12 +11,13 @@ import (
 	"gorm.io/gorm"
 
 	aitask "github.com/raids-lab/crater/pkg/db/orm"
+	"github.com/raids-lab/crater/pkg/models"
 )
 
 func ConnectPostgres() *gorm.DB {
 	// Connect to the database
-	dsn := `host=***REMOVED*** user=postgres password=***REMOVED*** 
-		dbname=crater port=30432 sslmode=require TimeZone=Asia/Shanghai`
+	dsn := `host=10.8.0.6 user=postgres password=***REMOVED*** 
+		dbname=crater port=5432 sslmode=require TimeZone=Asia/Shanghai`
 	db, err := gorm.Open(postgres.Open(dsn))
 	if err != nil {
 		panic(fmt.Errorf("connect to postgres: %w", err))
@@ -184,6 +185,9 @@ func main() {
 			&model.QueueDataset{},
 			&model.UserDataset{},
 			&model.Resource{},
+			&model.Job{},
+			&models.AITask{},
+			&model.Whitelist{},
 		)
 		if err != nil {
 			return err

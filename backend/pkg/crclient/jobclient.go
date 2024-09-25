@@ -106,7 +106,7 @@ func (c *JobControl) DeleteJobFromTask(task *models.AITask) error {
 
 func (c *JobControl) createTrainingJobFromTask(task *models.AITask) (jobname string, err error) {
 	podSpec := task.PodTemplate.Data()
-	if podSpec.Containers == nil || len(podSpec.Containers) == 0 {
+	if len(podSpec.Containers) == 0 {
 		err = fmt.Errorf("no container in pod spec")
 		return "", err
 	}
@@ -115,6 +115,7 @@ func (c *JobControl) createTrainingJobFromTask(task *models.AITask) (jobname str
 	taskName := strings.ToLower(task.TaskName)
 	jobname = fmt.Sprintf("%s-%d", taskName, task.ID)
 	jobname = strings.ReplaceAll(jobname, "_", "-")
+	//nolint:gosec // taskID is safe
 	taskID := strconv.Itoa(int(task.ID))
 
 	// set labels and annotations

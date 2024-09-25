@@ -566,7 +566,7 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 		imageLinks[i+len(imagepacks)] = imageuploads[i].ImageLink
 	}
 	// manually add public imagelink
-	imageLinks = append(imageLinks, "***REMOVED***/crater-workspace/jupyter-base-notebook:ubuntu-22.04")
+	imageLinks = append(imageLinks, "***REMOVED***/docker.io/jupyter/base-notebook:ubuntu-22.04")
 
 	resp := payload.GetImagesResp{Images: imageLinks}
 	resputil.Success(c, resp)

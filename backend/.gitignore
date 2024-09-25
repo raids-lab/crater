@@ -29,4 +29,4 @@ Dockerfile.cross
 __debug_*
 
 # Kubernetes Config
-kubeconfig
+kubeconfig*
