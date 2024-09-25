@@ -350,7 +350,6 @@ func (mgr *ImagePackMgr) UserListAll(c *gin.Context) {
 	var req ImagePackUserListRequest
 	if err = c.ShouldBindQuery(&req); err != nil {
 		msg := fmt.Sprintf("validate user list parameters failed, err %v", err)
-		logutils.Log.Errorf(msg)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
@@ -399,7 +398,6 @@ func (mgr *ImagePackMgr) AdminListAll(c *gin.Context) {
 	var req ImagePackAdminListRequest
 	if err = c.ShouldBindQuery(&req); err != nil {
 		msg := fmt.Sprintf("validate list parameters failed, err %v", err)
-		logutils.Log.Errorf(msg)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
@@ -529,7 +527,6 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	var req ImageAvailableListRequest
 	if err = c.ShouldBindQuery(&req); err != nil {
 		msg := fmt.Sprintf("validate available image parameters failed, err %v", err)
-		logutils.Log.Errorf(msg)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
@@ -586,7 +583,6 @@ func (mgr *ImagePackMgr) DeleteByID(c *gin.Context) {
 	imagePackDeleteRequest := &ImagePackDeleteByIDRequest{}
 	if err = c.ShouldBindJSON(imagePackDeleteRequest); err != nil {
 		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
-		logutils.Log.Errorf(msg)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
@@ -641,7 +637,6 @@ func (mgr *ImagePackMgr) UpdateParams(c *gin.Context) {
 	imagepackQuery := query.ImagePack
 	if err := c.ShouldBindJSON(imagePackParamsUpdateRequest); err != nil {
 		msg := fmt.Sprintf("validate update parameters failed, err %v", err)
-		logutils.Log.Errorf(msg)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
@@ -676,7 +671,6 @@ func (mgr *ImagePackMgr) GetImagePackByName(c *gin.Context) {
 		First()
 	if err != nil {
 		msg := fmt.Sprintf("fetch imagepack by name failed, err %v", err)
-		logutils.Log.Errorf(msg)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
@@ -697,7 +691,6 @@ func (mgr *ImagePackMgr) GetImagePackByID(c *gin.Context) {
 	var req ImagePackUserGetRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		msg := fmt.Sprintf("validate image get parameters failed, err %v", err)
-		logutils.Log.Errorf(msg)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
@@ -706,7 +699,6 @@ func (mgr *ImagePackMgr) GetImagePackByID(c *gin.Context) {
 		First()
 	if err != nil {
 		msg := fmt.Sprintf("fetch imagepack by name failed, err %v", err)
-		logutils.Log.Errorf(msg)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
@@ -742,7 +734,6 @@ func (mgr *ImagePackMgr) GetImagePackLogByName(c *gin.Context) {
 	var podLogs string
 	if err = c.ShouldBindQuery(&req); err != nil {
 		msg := fmt.Sprintf("validate list parameters failed, err %v", err)
-		logutils.Log.Errorf(msg)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
