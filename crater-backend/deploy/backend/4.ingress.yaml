@@ -17,38 +17,10 @@ spec:
     - host: crater.***REMOVED***
       http:
         paths:
-          - path: /api(/|$)(.*)
-            pathType: Prefix
-            backend:
+          - backend:
               service:
                 name: crater-web-backend-svc
                 port:
                   number: 80
----
-# jobs ingress
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: crater-jobs-ingress
-  namespace: crater-workspace
-  annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/proxy-body-size: 20480m # 20G
-spec:
-  ingressClassName: nginx
-  tls:
-    - hosts:
-        - crater.***REMOVED***
-      secretName: crater-tls-secret
-  rules:
-    - host: crater.***REMOVED***
-      http:
-        paths:
-          # unreachable path for default backend
-          - path: /jupyter/unreachable
+            path: /api/(?!(ss/))(.*)
             pathType: Prefix
-            backend:
-              service:
-                name: unreachable-service
-                port:
-                  number: 80

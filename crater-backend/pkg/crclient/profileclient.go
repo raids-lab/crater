@@ -53,12 +53,13 @@ func (c *ProfilingPodControl) GetTaskIDFromPod(pod *v1.Pod) (uint, error) {
 		return 0, fmt.Errorf("taskID not found in pod: %v/%v", pod.Namespace, pod.Name)
 	}
 	taskID, _ := strconv.Atoi(id)
+	//nolint:gosec // taskID is safe
 	return uint(taskID), nil
 }
 
 func (c *ProfilingPodControl) CreateProfilePodFromTask(ctx context.Context, task *models.AITask) error {
 	podSpec := task.PodTemplate.Data()
-	if podSpec.Containers == nil || len(podSpec.Containers) == 0 {
+	if len(podSpec.Containers) == 0 {
 		return fmt.Errorf("no container in pod spec")
 	}
 
@@ -79,6 +80,7 @@ func (c *ProfilingPodControl) CreateProfilePodFromTask(ctx context.Context, task
 	podName := fmt.Sprintf("%s-%d-profiling", task.TaskName, task.ID)
 	podName = strings.ToLower(podName)
 	podName = strings.ReplaceAll(podName, "_", "-")
+	//nolint:gosec // taskID is safe
 	taskID := strconv.Itoa(int(task.ID))
 	labels := map[string]string{
 		aijobapi.LabelKeyTaskID: taskID,

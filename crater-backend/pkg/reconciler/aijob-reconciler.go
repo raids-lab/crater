@@ -126,7 +126,7 @@ func (r *AIJobReconciler) notifyJobStatus(job *aijobapi.AIJob) {
 			return
 		}
 		reason := ""
-		if job.Status.Conditions != nil && len(job.Status.Conditions) > 0 {
+		if len(job.Status.Conditions) > 0 {
 			reason = job.Status.Conditions[len(job.Status.Conditions)-1].Message
 		}
 

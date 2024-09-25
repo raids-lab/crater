@@ -15,6 +15,7 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
+	"github.com/samber/lo"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -34,6 +35,7 @@ func NewAuthMgr(client *http.Client) Manager {
 
 func (mgr *AuthMgr) RegisterPublic(g *gin.RouterGroup) {
 	g.POST("/login", mgr.Login)
+	g.POST("/signup", mgr.Signup)
 	g.POST("/refresh", mgr.RefreshToken)
 }
 
@@ -130,7 +132,7 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// User exists in the auth method but not in the database, create a new user
-			user, err = mgr.createUser(c, req.Username)
+			user, err = mgr.createUser(c, req.Username, nil)
 			if err != nil {
 				l.Error("create new user", err)
 				resputil.Error(c, "Create user failed", resputil.NotSpecified)
@@ -195,12 +197,12 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 }
 
 // createUser is called when the user is not found in the database
-func (mgr *AuthMgr) createUser(c *gin.Context, name string) (*model.User, error) {
+func (mgr *AuthMgr) createUser(c *gin.Context, name string, password *string) (*model.User, error) {
 	u := query.User
 	user := model.User{
 		Name:     name,
 		Nickname: name,
-		Password: nil,
+		Password: password,
 		Role:     model.RoleAdmin, // todo: change to model.RoleUser
 		Status:   model.StatusActive,
 		Space:    fmt.Sprintf("u-%s", uuid.New().String()[:8]),
@@ -312,6 +314,67 @@ func (mgr *AuthMgr) actAuth(username, password string) error {
 	}
 
 	return nil
+}
+
+type (
+	SignupReq struct {
+		Username string `json:"username" binding:"required"`
+		Password string `json:"password" binding:"required"`
+	}
+)
+
+func (mgr *AuthMgr) Signup(c *gin.Context) {
+	var req SignupReq
+	if err := c.ShouldBind(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	l := logutils.Log.WithFields(logutils.Fields{
+		"username": req.Username,
+	})
+
+	u := query.User
+	uq := query.UserQueue
+
+	_, err := u.WithContext(c).Where(u.Name.Eq(req.Username)).First()
+	if err == nil {
+		resputil.Error(c, "User already exists", resputil.InvalidRequest)
+		return
+	}
+
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	user, err := mgr.createUser(c, req.Username, lo.ToPtr(string(hashedPassword)))
+	if err != nil {
+		l.Error("create new user", err)
+		resputil.Error(c, "Create user failed", resputil.NotSpecified)
+		return
+	}
+
+	// add default user queue
+	userQueue := model.UserQueue{
+		UserID:     user.ID,
+		QueueID:    2,
+		Role:       model.RoleUser,
+		AccessMode: model.AccessModeRW,
+	}
+	err = uq.WithContext(c).Create(&userQueue)
+	if err != nil {
+		l.Error("create user queue", err)
+		resputil.Error(c, "Create user queue failed", resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, "Signup successful")
 }
 
 type (

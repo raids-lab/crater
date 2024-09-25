@@ -538,9 +538,11 @@ func (mgr *ProjectMgr) AddUserProject(c *gin.Context) {
 		}
 
 		userQueue := model.UserQueue{
-			UserID:     req.UserID,
-			QueueID:    req.QueueID,
-			Role:       model.Role(role),
+			UserID:  req.UserID,
+			QueueID: req.QueueID,
+			//nolint:gosec // TODO(wanggz): refactor this
+			Role: model.Role(role),
+			//nolint:gosec // TODO(wanggz): refactor this
 			AccessMode: model.AccessMode(access),
 		}
 
@@ -610,7 +612,9 @@ func (mgr *ProjectMgr) UpdateUserProject(c *gin.Context) {
 			return
 		}
 
+		//nolint:gosec // TODO(wanggz): refactor this
 		userQueue.Role = model.Role(role)
+		//nolint:gosec // TODO(wanggz): refactor this
 		userQueue.AccessMode = model.AccessMode(access)
 		if _, err := uq.WithContext(c).Updates(userQueue); err != nil {
 			resputil.Error(c, fmt.Sprintf("update UserProject failed, detail: %v", err), resputil.NotSpecified)

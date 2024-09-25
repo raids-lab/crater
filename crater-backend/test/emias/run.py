@@ -63,7 +63,7 @@ def submit_job(token, job_name, queue, model_name, priority, batch_size, cpu, me
             "nvidia.com/gpu": gpu
         },
         "image": "***REMOVED***/ai-portal/jupyter-tensorflow:v2.2.0",
-        "command": f". /miniconda/etc/profile.d/conda.sh && conda activate base  && python run_model.py --gpus 1 --dur {duration}  --model-name {model_name} --batch-size {batch_size} --amp 0",
+        "command": f". /miniconda/etc/profile.d/conda.sh && conda activate base  && python run_model.py --gpus {gpu} --dur {duration}  --model-name {model_name} --batch-size {batch_size} --amp 0",
         "workingDir": "/dlbench",
         "volumeMounts": [
             {"subPath": "public/dnn-train-data", "mountPath": "/datasets"},

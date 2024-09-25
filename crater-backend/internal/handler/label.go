@@ -43,7 +43,7 @@ type (
 	}
 
 	UpdateLabelID struct {
-		ID int `uri:"id" binding:"required"`
+		ID uint `uri:"id" binding:"required"`
 	}
 	UpdateLabelReq struct {
 		Name     string           `json:"name"`
@@ -159,7 +159,7 @@ func (mgr *LabelMgr) UpdateLabel(c *gin.Context) {
 
 	label := query.Label
 
-	_, err := label.WithContext(c).Where(label.ID.Eq(uint(reqID.ID))).Updates(map[string]any{
+	_, err := label.WithContext(c).Where(label.ID.Eq(reqID.ID)).Updates(map[string]any{
 		"name":     req.Name,
 		"priority": req.Priority,
 		"type":     workerType,
