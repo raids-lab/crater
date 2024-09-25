@@ -480,14 +480,7 @@ function TableWithTabs<TData, TValue>({
       }),
     onSuccess: async (_, { name }) => {
       await queryClient.invalidateQueries({
-        queryKey: [
-          "admin",
-          "projects",
-          false,
-          2,
-          pagination.pageIndex,
-          pagination.pageSize,
-        ],
+        queryKey: ["admin", "accounts"],
       });
       toast.success(`账户 ${name} 创建成功`);
     },
@@ -622,7 +615,7 @@ export const Account = () => {
   const { data: projects, isLoading } = useQuery({
     queryKey: [
       "admin",
-      "projects",
+      "accounts",
       status,
       pagination.pageIndex,
       pagination.pageSize,
@@ -640,13 +633,7 @@ export const Account = () => {
     mutationFn: (projectId: string) => apiProjectDelete({ id: projectId }),
     onSuccess: async (_, projectName) => {
       await queryClient.invalidateQueries({
-        queryKey: [
-          "admin",
-          "projects",
-          status,
-          pagination.pageIndex,
-          pagination.pageSize,
-        ],
+        queryKey: ["admin", "accounts"],
       });
       toast.success(`账户 ${projectName} 已删除`);
     },
@@ -662,14 +649,7 @@ export const Account = () => {
       }),
     onSuccess: async (_, { name }) => {
       await queryClient.invalidateQueries({
-        queryKey: [
-          "admin",
-          "projects",
-          false,
-          2,
-          pagination.pageIndex,
-          pagination.pageSize,
-        ],
+        queryKey: ["admin", "accounts"],
       });
       toast.success(`账户 ${name} 更新成功`);
     },

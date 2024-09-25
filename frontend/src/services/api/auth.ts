@@ -7,7 +7,6 @@ import { IResponse } from "../types";
  */
 export interface ISignup {
   userName: string;
-  role: string;
   password: string;
 }
 
@@ -53,9 +52,6 @@ export interface IAuthResponse {
 
 export const apiUserSignup = async (user: ISignup) => {
   const response = await instance.post<IAuthResponse>("signup", user);
-  const { accessToken, refreshToken } = response.data;
-  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
   return response.data;
 };
 
