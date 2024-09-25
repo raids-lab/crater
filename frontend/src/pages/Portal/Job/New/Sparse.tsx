@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiSparseCreate } from "@/services/api/vcjob";
+import { apiJTaskImageList, apiSparseCreate } from "@/services/api/vcjob";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -57,6 +57,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ImageTaskType } from "@/services/api/imagepack";
 
 const VERSION = "20240528";
 const JOB_TYPE = "single";
@@ -135,7 +136,16 @@ export const Component = () => {
       navigate(-1);
     },
   });
-
+  const imagesInfo = useQuery({
+    queryKey: ["jupyter", "images"],
+    queryFn: () => apiJTaskImageList(ImageTaskType.UserDefineTask),
+    select: (res) => {
+      return res.data.data.images.map((item) => ({
+        value: item,
+        label: item,
+      }));
+    },
+  });
   const datasetInfo = useQuery({
     queryKey: ["datsets"],
     queryFn: () => apiGetDataset(),
@@ -669,7 +679,12 @@ export const Component = () => {
                       <FormLabelMust />
                     </FormLabel>
                     <FormControl>
-                      <Input {...field} className="font-mono" />
+                      <Combobox
+                        items={imagesInfo.data ?? []}
+                        current={field.value}
+                        handleSelect={(value) => field.onChange(value)}
+                        formTitle="镜像"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
