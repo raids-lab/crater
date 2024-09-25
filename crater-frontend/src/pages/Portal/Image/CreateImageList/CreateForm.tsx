@@ -14,7 +14,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { apiUserImagepackCreate } from "@/services/api/imagepack";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -299,12 +298,20 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="1">Jupyter交互式任务</SelectItem>
-                      <SelectItem value="2">Web IDE任务</SelectItem>
+                      <SelectItem value="2" disabled>
+                        Web IDE任务
+                      </SelectItem>
                       <SelectItem value="3">Tensorflow任务</SelectItem>
                       <SelectItem value="4">Pytorch任务</SelectItem>
-                      <SelectItem value="5">Ray任务</SelectItem>
-                      <SelectItem value="6">DeepSpeed任务</SelectItem>
-                      <SelectItem value="7">OpenMPI任务</SelectItem>
+                      <SelectItem value="5" disabled>
+                        Ray任务
+                      </SelectItem>
+                      <SelectItem value="6" disabled>
+                        DeepSpeed任务
+                      </SelectItem>
+                      <SelectItem value="7" disabled>
+                        OpenMPI任务
+                      </SelectItem>
                       <SelectItem value="8">用户自定义任务</SelectItem>
                     </SelectContent>
                   </Select>
@@ -314,7 +321,7 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
             )}
           />
         </div>
-        <div>
+        {/* <div>
           <FormField
             control={form.control}
             name="needProfile"
@@ -335,7 +342,7 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
               </FormItem>
             )}
           />
-        </div>
+        </div> */}
         <div className="grid">
           <Button type="submit">提交镜像</Button>
         </div>

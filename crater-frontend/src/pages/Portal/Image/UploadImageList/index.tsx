@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { ImageUploadForm } from "./UploadForm";
 import { TableDate } from "@/components/custom/TableDate";
 import {
@@ -23,8 +22,8 @@ import {
   apiUserImagePackDelete,
   apiUserImagePackList,
   getHeader,
-  imagepackStatuses,
   ImageDeleteRequest,
+  imagepackTaskType,
 } from "@/services/api/imagepack";
 import { logger } from "@/utils/loglevel";
 import { toast } from "sonner";
@@ -39,8 +38,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
-import { Trash2, UserRoundMinus } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import JobTypeLabel from "@/components/custom/JobTypeLabel";
+import { JobType } from "@/services/api/vcjob";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -55,7 +56,7 @@ export const Component: FC = () => {
   const queryClient = useQueryClient();
   const [openSheet, setOpenSheet] = useState(false);
   const imagePackInfo = useQuery({
-    queryKey: ["imagepack", "list"],
+    queryKey: ["imagelink", "list"],
     queryFn: () => apiUserImagePackList(2),
     select: (res) => res.data.data,
   });
@@ -72,13 +73,14 @@ export const Component: FC = () => {
       nametag: item.nametag,
       params: item.params,
       imagetype: item.imagetype,
+      tasktype: item.tasktype,
     }));
   }, [imagePackInfo.data]);
   const refetchImagePackList = async () => {
     try {
       // 并行发送所有异步请求
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["imagepack", "list"] }),
+        queryClient.invalidateQueries({ queryKey: ["imagelink", "list"] }),
       ]);
     } catch (error) {
       logger.error("更新查询失败", error);
@@ -142,35 +144,16 @@ export const Component: FC = () => {
       cell: ({ row }) => <div>{row.getValue("username")}</div>,
     },
     {
-      accessorKey: "status",
+      accessorKey: "tasktype",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("status")} />
+        <DataTableColumnHeader column={column} title={getHeader("tasktype")} />
       ),
       cell: ({ row }) => {
-        const status = imagepackStatuses.find(
-          (status) => status.value === row.getValue("status"),
+        const tasktype = imagepackTaskType.find(
+          (tasktype) => tasktype.value === row.getValue("tasktype"),
         );
-        if (!status) {
-          return null;
-        }
-        return (
-          <div className="flex flex-row items-center justify-start">
-            <div
-              className={cn("flex h-3 w-3 rounded-full", {
-                "bg-purple-500 hover:bg-purple-400": status.value === "Initial",
-                "bg-slate-500 hover:bg-slate-400": status.value === "Pending",
-                "bg-sky-500 hover:bg-sky-400": status.value === "Running",
-                "bg-red-500 hover:bg-red-400": status.value === "Failed",
-                "bg-emerald-500 hover:bg-emerald-400":
-                  status.value === "Finished",
-              })}
-            ></div>
-            <div className="ml-1.5">{status.label}</div>
-          </div>
-        );
-      },
-      filterFn: (row, id, value) => {
-        return (value as string[]).includes(row.getValue(id));
+        const type: JobType = tasktype?.label as JobType;
+        return <JobTypeLabel jobType={type} />;
       },
     },
     {
@@ -226,7 +209,7 @@ export const Component: FC = () => {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-            <AlertDialog>
+            {/* <AlertDialog>
               <AlertDialogTrigger asChild>
                 <div>
                   <Button
@@ -264,7 +247,7 @@ export const Component: FC = () => {
                   <AlertDialogCancel>关闭</AlertDialogCancel>
                 </AlertDialogFooter>
               </AlertDialogContent>
-            </AlertDialog>
+            </AlertDialog> */}
           </div>
         );
       },

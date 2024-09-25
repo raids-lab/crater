@@ -25,6 +25,7 @@ import {
   getHeader,
   imagepackStatuses,
   ImageDeleteRequest,
+  imagepackTaskType,
 } from "@/services/api/imagepack";
 import { logger } from "@/utils/loglevel";
 import { toast } from "sonner";
@@ -39,10 +40,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
-import { Trash2, UserRoundMinus } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate, useRoutes } from "react-router-dom";
 import ImageCreateDetail from "../Info";
+import JobTypeLabel from "@/components/custom/JobTypeLabel";
+import { JobType } from "@/services/api/vcjob";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -75,6 +78,7 @@ export const ImageTable: FC = () => {
       nametag: item.nametag,
       params: item.params,
       imagetype: item.imagetype,
+      tasktype: item.tasktype,
     }));
   }, [imagePackInfo.data]);
   const refetchImagePackList = async () => {
@@ -132,32 +136,6 @@ export const ImageTable: FC = () => {
         >
           {row.getValue("nametag")}
         </Button>
-        // <TooltipProvider delayDuration={0}>
-        //   <Tooltip>
-        //     <TooltipTrigger>{row.getValue("nametag")}</TooltipTrigger>
-        //     <TooltipContent className="grid grid-cols-2 gap-1 p-4 font-mono">
-        //       <div className="col-span-2 pb-2 text-sm font-bold">
-        //         Profile 信息
-        //       </div>
-        //       <div>Convs: </div>
-        //       <div>{row.original.params.Convs}</div>
-        //       <div>Activations: </div>
-        //       <div>{row.original.params.Activations}</div>
-        //       <div>Denses: </div>
-        //       <div>{row.original.params.Denses}</div>
-        //       <div>Others: </div>
-        //       <div>{row.original.params.Others}</div>
-        //       <div>GFLOPs: </div>
-        //       <div>{row.original.params.GFLOPs.toFixed(2)}</div>
-        //       <div>BatchSize: </div>
-        //       <div>{row.original.params.BatchSize}</div>
-        //       <div>Params: </div>
-        //       <div>{row.original.params.Params}</div>
-        //       <div>ModelSize: </div>
-        //       <div>{row.original.params.ModelSize.toFixed(2)}</div>
-        //     </TooltipContent>
-        //   </Tooltip>
-        // </TooltipProvider>
       ),
     },
     {
@@ -211,6 +189,19 @@ export const ImageTable: FC = () => {
       },
     },
     {
+      accessorKey: "tasktype",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeader("tasktype")} />
+      ),
+      cell: ({ row }) => {
+        const tasktype = imagepackTaskType.find(
+          (tasktype) => tasktype.value === row.getValue("tasktype"),
+        );
+        const type: JobType = tasktype?.label as JobType;
+        return <JobTypeLabel jobType={type} />;
+      },
+    },
+    {
       accessorKey: "createdAt",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeader("createdAt")} />
@@ -260,45 +251,6 @@ export const ImageTable: FC = () => {
                   >
                     删除
                   </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <div>
-                  <Button
-                    variant="outline"
-                    className="h-8 w-8 p-0 hover:text-blue-700"
-                    title="profile数据"
-                  >
-                    <UserRoundMinus size={16} strokeWidth={2} />
-                  </Button>
-                </div>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Profile参数</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    <div className="grid grid-cols-2 gap-1 p-4 font-mono text-lg">
-                      <div>Convs: {imagepackInfo?.params.Convs}</div>
-                      <div>
-                        Activations: {imagepackInfo?.params.Activations}
-                      </div>
-                      <div>Denses: {imagepackInfo?.params.Denses}</div>
-                      <div>Others: {imagepackInfo?.params.Others}</div>
-                      <div>
-                        GFLOPs: {imagepackInfo?.params.GFLOPs.toFixed(2)}
-                      </div>
-                      <div>BatchSize: {imagepackInfo?.params.BatchSize}</div>
-                      <div>Params: {imagepackInfo?.params.Params}</div>
-                      <div>
-                        ModelSize: {imagepackInfo?.params.ModelSize.toFixed(2)}
-                      </div>
-                    </div>
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>关闭</AlertDialogCancel>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
