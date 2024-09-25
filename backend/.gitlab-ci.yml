@@ -9,7 +9,7 @@ variables:
 
 # https://docs.gitlab.com/ee/development/go_guide/#automatic-linting
 lint:
-  image: ***REMOVED***/crater/golangci-lint:v1.57.1
+  image: ***REMOVED***/docker.io/golangci/golangci-lint:v1.61.0
   stage: test
   script:
     - mkdir -p .cache

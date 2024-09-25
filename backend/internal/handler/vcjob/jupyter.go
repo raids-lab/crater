@@ -69,7 +69,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 					LocalObjectReference: v1.LocalObjectReference{
 						Name: "jupyter-start-configmap",
 					},
-					//nolint:gomnd // 0755 is the default mode
+					//nolint:mnd // 0755 is the default mode
 					DefaultMode: lo.ToPtr(int32(0755)),
 				},
 			},
@@ -86,7 +86,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	}
 
 	// 2. Env Vars
-	//nolint:gomnd // 4 is the number of default envs
+	//nolint:mnd // 4 is the number of default envs
 	envs := make([]v1.EnvVar, len(req.Envs)+4)
 	envs[0] = v1.EnvVar{Name: "GRANT_SUDO", Value: "1"}
 	envs[1] = v1.EnvVar{Name: "CHOWN_HOME", Value: "1"}
