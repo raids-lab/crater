@@ -9,6 +9,9 @@ export enum JobType {
   Tensorflow = "tensorflow",
   Pytorch = "pytorch",
   WebIDE = "webide",
+  Ray = "ray",
+  DeepSpeed = "deepspeed",
+  OpenMPI = "openmpi",
 }
 
 export interface IJobInfo {
@@ -202,12 +205,12 @@ export const apiJobLogs = (jobName: string) =>
 export const apiJupyterYaml = (jobName: string) =>
   instance.get<IResponse<string>>(`${VERSION}/${JOB_URL}/${jobName}/yaml`);
 
-export const apiJTaskImageList = () =>
+export const apiJTaskImageList = (imageTaskType: number) =>
   instance.get<
     IResponse<{
       images: string[];
     }>
-  >(`${VERSION}/images/available?type=2`);
+  >(`${VERSION}/images/available?type=${imageTaskType}`);
 
 export const apiJupyterTokenGet = (jobName: string) =>
   instance.get<

@@ -23,7 +23,7 @@ type ImageCreateInfoCard = React.ComponentProps<typeof Card> & {
     imagetype: number;
     description: string;
     alias: string;
-    taskType: number;
+    tasktype: number;
     params: {
       Convs: number;
       Activations: number;
@@ -47,7 +47,7 @@ function ImageCreateInfo({
     (status) => status.value === imagecreateinfo?.status,
   );
   const tasktype = imagepackTaskType.find(
-    (tasktype) => tasktype.value === imagecreateinfo?.taskType,
+    (tasktype) => tasktype.value === imagecreateinfo?.tasktype,
   );
   return (
     <Card className={className} {...props}>
