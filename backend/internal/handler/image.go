@@ -77,7 +77,6 @@ type (
 	}
 
 	ImageAvailableListRequest struct {
-		// type = 0 indicates offline tasks; type = 1 indicates jupyter tasks
 		Type model.ImageTaskType `form:"type"`
 	}
 )
@@ -91,6 +90,7 @@ type (
 		NameTag       string                   `json:"nametag"`
 		CreaterName   string                   `json:"creatername"`
 		ImagePackName string                   `json:"imagepackname"`
+		TaskType      model.ImageTaskType      `json:"tasktype"`
 		Params        model.ImageProfileParams `json:"params"`
 		// ImageType: 0 indicates ImagePack; 1 indicates ImageUpload
 		ImageType uint `json:"imagetype"`
@@ -480,6 +480,7 @@ func (mgr *ImagePackMgr) generateImageListResponseFromImagePack(imagepack *model
 		CreaterName:   imagepack.CreatorName,
 		ImagePackName: imagepack.ImagePackName,
 		Params:        imagepack.Params,
+		TaskType:      imagepack.TaskType,
 		ImageType:     0,
 	}
 }
@@ -492,6 +493,7 @@ func (mgr *ImagePackMgr) generateImageListResponseFromImageUpload(imageupload *m
 		CreatedAt:   imageupload.CreatedAt,
 		NameTag:     imageupload.NameTag,
 		CreaterName: imageupload.CreatorName,
+		TaskType:    imageupload.TaskType,
 		Params:      model.ImageProfileParams{},
 		ImageType:   1,
 	}
@@ -559,8 +561,6 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	for i := range imageuploads {
 		imageLinks[i+len(imagepacks)] = imageuploads[i].ImageLink
 	}
-	// manually add public imagelink
-	imageLinks = append(imageLinks, "***REMOVED***/docker.io/jupyter/base-notebook:ubuntu-22.04")
 
 	resp := payload.GetImagesResp{Images: imageLinks}
 	resputil.Success(c, resp)
