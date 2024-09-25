@@ -10,13 +10,11 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
-import { useSetAtom } from "jotai";
-import { globalAccount, globalUserInfo } from "@/utils/store";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { apiUserSignup } from "@/services/api/auth";
 import LoadableButton from "@/components/custom/LoadableButton";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 const formSchema = z
   .object({
@@ -44,30 +42,16 @@ const formSchema = z
   });
 
 export function SignupForm() {
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const setUserState = useSetAtom(globalUserInfo);
-  const setAccount = useSetAtom(globalAccount);
-
   const { mutate: loginUser, isPending } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
       apiUserSignup({
         userName: values.username,
         password: values.password,
-        role: "user",
       }),
-    onSuccess: async (data, { username }) => {
-      await queryClient.invalidateQueries();
-      setUserState({
-        name: username,
-      });
-      setAccount(data.context);
-      toast.success(
-        `你好，${data.context.rolePlatform ? "管理员" : "用户"} ${username}`,
-      );
-      // navigate to /portal and clear all history
-      const dashboard = "/portal";
-      navigate(dashboard, { replace: true });
+    onSuccess: () => {
+      toast.success("注册成功");
+      navigate("/login");
     },
   });
 

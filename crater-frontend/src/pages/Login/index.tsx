@@ -1,9 +1,12 @@
 import CraterIcon from "@/components/icon/CraterIcon";
 import CraterText from "@/components/icon/CraterText";
 import { LoginForm } from "./Form";
-import { toast } from "sonner";
+import { useState } from "react";
+import { SignupForm } from "../Signup/Form";
 
 export function Dashboard() {
+  const [showSignup, setShowSignup] = useState(false);
+
   return (
     <div className="h-screen w-full lg:grid lg:grid-cols-2">
       <div className="hidden bg-muted lg:block">
@@ -39,24 +42,40 @@ export function Dashboard() {
         </div>
       </div>
       <div className="flex items-center justify-center py-12">
-        <div className="mx-auto grid w-[350px] gap-6">
-          <div className="grid gap-2 text-center">
-            <h1 className="text-3xl font-bold">用户登录</h1>
-            <p className="text-sm text-muted-foreground">
-              已接入 ACT 实验室统一身份认证
-            </p>
+        {showSignup ? (
+          <div className="mx-auto grid w-[350px] gap-6">
+            <div className="grid gap-2 text-center">
+              <h1 className="text-3xl font-bold">用户注册</h1>
+              <p className="text-sm text-muted-foreground"></p>
+            </div>
+            <SignupForm />
+            <div className="text-center text-sm text-muted-foreground">
+              已有账号？
+              <button
+                onClick={() => setShowSignup(false)}
+                className="underline"
+              >
+                立即登录
+              </button>
+            </div>
           </div>
-          <LoginForm />
-          <div className="text-center text-sm text-muted-foreground">
-            还没有账号？
-            <button
-              onClick={() => toast.info("请联系 ACT 实验室账号管理员")}
-              className="underline"
-            >
-              立即注册
-            </button>
+        ) : (
+          <div className="mx-auto grid w-[350px] gap-6">
+            <div className="grid gap-2 text-center">
+              <h1 className="text-3xl font-bold">用户登录</h1>
+              <p className="text-sm text-muted-foreground">
+                已接入 ACT 实验室统一身份认证
+              </p>
+            </div>
+            <LoginForm />
+            <div className="text-center text-sm text-muted-foreground">
+              还没有账号？
+              <button onClick={() => setShowSignup(true)} className="underline">
+                立即注册
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

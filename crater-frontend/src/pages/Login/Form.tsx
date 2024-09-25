@@ -62,11 +62,11 @@ export function LoginForm() {
   const lastView = useAtomValue(globalLastView);
 
   const { mutate: loginUser, status } = useMutation({
-    mutationFn: (values: z.infer<typeof formSchema>) =>
+    mutationFn: (values: z.infer<typeof formSchema> & { auth: string }) =>
       apiUserLogin({
         username: values.username,
         password: values.password,
-        auth: "act",
+        auth: values.auth,
       }),
     onSuccess: async (data, { username }) => {
       await queryClient.invalidateQueries();
@@ -96,6 +96,7 @@ export function LoginForm() {
       password: "",
     },
   });
+  const currentValues = form.watch();
 
   // 2. Define a submit handler.
   const onSubmit = (values: z.infer<typeof formSchema>) => {
@@ -103,7 +104,11 @@ export function LoginForm() {
     // ✅ This will be type-safe and validated.
     if (status !== "pending") {
       resetAll();
-      loginUser(values);
+      loginUser({
+        username: values.username,
+        password: values.password,
+        auth: "act",
+      });
     }
   };
 
@@ -163,7 +168,16 @@ export function LoginForm() {
           className="w-full"
           type="button"
           variant="outline"
-          onClick={() => toast.warning("暂未开放")}
+          onClick={() => {
+            if (status !== "pending") {
+              resetAll();
+              loginUser({
+                username: currentValues.username,
+                password: currentValues.password,
+                auth: "normal",
+              });
+            }
+          }}
         >
           其他登录方式
         </Button>
