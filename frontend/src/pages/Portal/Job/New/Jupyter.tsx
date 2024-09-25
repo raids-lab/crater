@@ -38,6 +38,7 @@ import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { apiResourceList } from "@/services/api/resource";
 import { apiGetDataset } from "@/services/api/dataset";
+import { ImageTaskType } from "@/services/api/imagepack";
 
 const VERSION = "20240528";
 const JOB_TYPE = "jupyter";
@@ -179,7 +180,7 @@ export const Component = () => {
 
   const imagesInfo = useQuery({
     queryKey: ["jupyter", "images"],
-    queryFn: apiJTaskImageList,
+    queryFn: () => apiJTaskImageList(ImageTaskType.JupyterTask),
     select: (res) => {
       return res.data.data.images.map((item) => ({
         value: item,

@@ -28,6 +28,7 @@ import {
   ImagePackInfo,
   getHeader,
   imagepackStatuses,
+  imagepackTaskType,
 } from "@/services/api/imagepack";
 import { Button } from "@/components/ui/button";
 import { Trash2, UserRoundMinus } from "lucide-react";
@@ -38,6 +39,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import JobTypeLabel from "@/components/custom/JobTypeLabel";
+import { JobType } from "@/services/api/vcjob";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -68,6 +71,7 @@ export const Component: FC = () => {
       nametag: item.nametag,
       params: item.params,
       imagetype: item.imagetype,
+      tasktype: item.tasktype,
     }));
   }, [imagePackInfo.data]);
   const refetchImagePackList = async () => {
@@ -203,6 +207,19 @@ export const Component: FC = () => {
       },
       filterFn: (row, id, value) => {
         return (value as string[]).includes(row.getValue(id));
+      },
+    },
+    {
+      accessorKey: "tasktype",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeader("tasktype")} />
+      ),
+      cell: ({ row }) => {
+        const tasktype = imagepackTaskType.find(
+          (tasktype) => tasktype.value === row.getValue("tasktype"),
+        );
+        const type: JobType = tasktype?.label as JobType;
+        return <JobTypeLabel jobType={type} />;
       },
     },
     {

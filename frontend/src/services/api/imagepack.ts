@@ -19,7 +19,7 @@ export type ImagePackInfoResponse = {
   imagetype: number;
   description: string;
   alias: string;
-  taskType: number;
+  tasktype: number;
   params: {
     Convs: number;
     Activations: number;
@@ -44,6 +44,7 @@ export type ImagePackInfo = {
   status: string;
   createdAt: string;
   imagetype: number;
+  tasktype: number;
   params: {
     Convs: number;
     Activations: number;
@@ -68,6 +69,8 @@ export const getHeader = (key: string): string => {
       return "状态";
     case "createdAt":
       return "创建时间";
+    case "tasktype":
+      return "任务类型";
     default:
       return key;
   }
@@ -121,35 +124,35 @@ export const imagepackTaskType: {
 }[] = [
   {
     value: 1,
-    label: "Jupyter交互式任务",
+    label: "jupyter",
   },
   {
     value: 2,
-    label: "Web IDE任务",
+    label: "webide",
   },
   {
     value: 3,
-    label: "Tensorflow任务",
+    label: "tensorflow",
   },
   {
     value: 4,
-    label: "Pytorch任务",
+    label: "pytorch",
   },
   {
     value: 5,
-    label: "Ray任务",
+    label: "ray",
   },
   {
     value: 6,
-    label: "DeepSpeed任务",
+    label: "deepspeed",
   },
   {
     value: 7,
-    label: "OpenMPI任务",
+    label: "openmpi",
   },
   {
     value: 8,
-    label: "用户自定义任务",
+    label: "training",
   },
 ];
 
@@ -175,6 +178,35 @@ export interface ImagePackUpload {
   alias: string;
   description: string;
   taskType: number;
+}
+
+export const ImageTaskType = {
+  JupyterTask: 1, // Jupyter交互式任务
+  WebIDETask: 2, // Web IDE任务
+  TensorflowTask: 3, // Tensorflow任务
+  PytorchTask: 4, // Pytorch任务
+  RayTask: 5, // Ray任务
+  DeepSpeedTask: 6, // DeepSpeed任务
+  OpenMPITask: 7, // OpenMPI任务
+  UserDefineTask: 8, // 用户自定义任务
+};
+
+export const imageLinkRegex =
+  /^[a-zA-Z0-9.-]+(\/[a-zA-Z0-9.-]+)+:([a-zA-Z0-9.-]+)$/;
+
+export const imageNameRegex = /^([\w.-]+)\/([\w.-]+):([\w.-]+)$/;
+export const imageTagRegex = /:([\w.-]+)$/;
+
+export function parseImageLink(imageLink: string) {
+  const parts = imageLink.split(":");
+  if (parts.length === 2) {
+    const nameParts = parts[0].split("/");
+    const imageName =
+      nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0];
+    const imageTag = parts[1];
+    return { imageName, imageTag };
+  }
+  return { imageName: "", imageTag: "" };
 }
 
 export const apiUserImagepackCreate = async (imagepack: ImagePackCreate) => {
