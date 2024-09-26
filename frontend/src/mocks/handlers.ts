@@ -32,6 +32,7 @@ export const handlers = [
               rolePlatform: Role.Guest,
               accessQueue: AccessMode.NotAllowed,
               accessPublic: AccessMode.NotAllowed,
+              space: "",
             },
           },
           code: 0,

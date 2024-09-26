@@ -72,6 +72,7 @@ export function LoginForm() {
       await queryClient.invalidateQueries();
       setUserState({
         name: username,
+        space: data.context.space,
       });
       setAccount(data.context);
       toast.success(

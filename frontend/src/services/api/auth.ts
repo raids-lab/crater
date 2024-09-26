@@ -42,6 +42,7 @@ export interface CurrentAccount {
   rolePlatform: Role;
   accessQueue: AccessMode;
   accessPublic: AccessMode;
+  space: string;
 }
 
 export interface IAuthResponse {
