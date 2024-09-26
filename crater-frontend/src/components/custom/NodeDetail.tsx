@@ -54,6 +54,9 @@ type CardDemoProps = React.ComponentProps<typeof Card> & {
   };
 };
 
+const job_monitor = import.meta.env.VITE_GRAFANA_JOB_MONITOR;
+const pod_memory = import.meta.env.VITE_GRAFANA_POD_MEMORY;
+
 // CardDemo 组件
 export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
   const navigate = useNavigate();
@@ -132,7 +135,7 @@ export function GPUDetails({ nodeName }: { nodeName: string }) {
           <p className="text-sm font-medium">{gpuInfo.gpuCount}</p>
         </div>
         {Object.entries(gpuInfo.gpuUtil).map(([id, util]) => {
-          const jobUrl = `http://192.168.5.60:31121/d/R4ZPFfyIz/job-monitor?orgId=1&var-job=${gpuInfo.relateJobs[parseInt(id)]}`;
+          const jobUrl = `${job_monitor}?orgId=1&var-job=${gpuInfo.relateJobs[parseInt(id)]}`;
 
           return (
             <>
@@ -189,7 +192,7 @@ const getColumns = (nodeName: string): ColumnDef<ClusterPodInfo>[] => [
     ),
     cell: ({ row }) => {
       const podName = encodeURIComponent(row.getValue("name"));
-      const link = `http://192.168.5.60:31121/d/MhnFUFLSz/pod_memory?orgId=1&var-node_name=${nodeName}&var-pod_name=${podName}&from=now-1h&to=now`;
+      const link = `${pod_memory}?orgId=1&var-node_name=${nodeName}&var-pod_name=${podName}&from=now-1h&to=now`;
       return (
         <div className="font-mono">
           <a
