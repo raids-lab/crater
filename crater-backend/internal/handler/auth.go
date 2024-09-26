@@ -64,6 +64,7 @@ type (
 		RolePlatform model.Role       `json:"rolePlatform"` // User role of the platform
 		AccessQueue  model.AccessMode `json:"accessQueue"`  // User access mode of the queue
 		AccessPublic model.AccessMode `json:"accessPublic"` // User access mode of the platform
+		Space        string           `json:"space"`        // User pvc subpath the platform
 	}
 )
 
@@ -191,6 +192,7 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 			RolePlatform: user.Role,
 			AccessQueue:  lastUserQueue.AccessMode,
 			AccessPublic: user.AccessMode,
+			Space:        user.Space,
 		},
 	}
 	resputil.Success(c, loginResponse)
