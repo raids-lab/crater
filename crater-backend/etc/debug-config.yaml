@@ -1,7 +1,7 @@
 enableLeaderElection: false
 leaderElectionID: ***REMOVED***
 enableProfiling: true
-prometheusAPI: ***REMOVED***
+prometheusAPI: "http://10.8.0.15:32229"
 profilingTimeout: 120
 dbHost: ***REMOVED***
 dbPort: 30306
@@ -15,8 +15,8 @@ metricsAddr: :8090
 probeAddr: :8091
 monitoringPort: 0
 postgres:
-  host: ***REMOVED***
-  port: 30432
+  host: 10.8.0.6
+  port: 5432
   dbname: crater
   user: postgres
   password: ***REMOVED***
