@@ -63,7 +63,7 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
         <CardTitle>{nodeInfo?.name}</CardTitle>
         <CardDescription>节点属性</CardDescription>
       </CardHeader>
-      <CardContent className="grid grid-flow-col grid-rows-7 gap-y-4 text-xs">
+      <CardContent className="grid grid-flow-col grid-rows-7 gap-x-2 gap-y-3 text-xs">
         <p className="text-muted-foreground">IP 地址</p>
         <p className="text-muted-foreground">角色</p>
         <p className="text-muted-foreground">操作系统类型</p>
@@ -337,12 +337,12 @@ export const NodeDetail: FC = () => {
   }, [setBreadcrumb, nodeName]);
 
   return (
-    <div className="col-span-3 grid gap-8 md:grid-cols-4">
-      <div className="flex-none">
+    <div className="col-span-3 grid gap-8 md:grid-cols-7">
+      <div className="col-span-2 flex-none">
         <CardDemo nodeInfo={nodeDetail} />
         {nodeName && <GPUDetails nodeName={nodeName} />}
       </div>
-      <div className="md:col-span-3">
+      <div className="md:col-span-5">
         <Button onClick={() => setShowAll(!showAll)} className="mb-4 w-full">
           <Undo2 className="mr-2 h-4 w-4" />{" "}
           {showAll ? "显示只包含 Vcjob 的" : "显示所有"}

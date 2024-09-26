@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Badge } from "../ui/badge";
-import { NodeType } from "@/services/api/node";
+import { NodeType } from "@/services/api/cluster";
 
 export const nodeTypes = [
   {

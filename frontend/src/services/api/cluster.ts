@@ -2,7 +2,14 @@ import instance, { VERSION } from "@/services/axios";
 import { IResponse } from "@/services/types";
 import { KubernetesResource } from "@/utils/resource";
 
+export enum NodeType {
+  Hygon = "hygon",
+  Shenwei = "shenwei",
+  Yitian = "yitian",
+}
+
 export interface IClusterNodeInfo {
+  type: NodeType;
   name: string;
   role: string;
   labels: Record<string, string>;

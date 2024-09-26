@@ -40,6 +40,7 @@ import {
   envsSchema,
   taskSchema,
   convertToResourceList,
+  nodeSelectorSchema,
 } from "@/utils/form";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
@@ -58,6 +59,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ImageTaskType } from "@/services/api/imagepack";
+import { DataMountCard, EnvCard, TensorboardCard, OtherCard } from "./Custom";
 
 const VERSION = "20240528";
 const JOB_TYPE = "single";
@@ -91,18 +93,16 @@ const formSchema = z.object({
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
   observability: observabilitySchema,
+  nodeSelector: nodeSelectorSchema,
 });
 
 type FormSchema = z.infer<typeof formSchema>;
-
-const EnvCard = "环境变量";
-const DataMountCard = "数据挂载";
-const TensorboardCard = "观测面板";
 
 export const Component = () => {
   const [dataMountOpen, setDataMountOpen] = useState<string>();
   const [envOpen, setEnvOpen] = useState<string>();
   const [tensorboardOpen, setTensorboardOpen] = useState<string>();
+  const [otherOpen, setOtherOpen] = useState<string>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAtomValue(globalUserInfo);
@@ -125,6 +125,15 @@ export const Component = () => {
         vocabularySize: values.dim.map((item) => item.vocabularySize),
         embeddingDim: values.dim.map((item) => item.embeddingDim),
         replicas: values.replicas,
+        selectors: values.nodeSelector.enable
+          ? [
+              {
+                key: "kubernetes.io/hostname",
+                operator: "In",
+                values: [`${values.nodeSelector.nodeName}`],
+              },
+            ]
+          : undefined,
       }),
     onSuccess: async (_, { jobName }) => {
       await Promise.all([
@@ -186,6 +195,9 @@ export const Component = () => {
       envs: [],
       observability: {
         tbEnable: false,
+      },
+      nodeSelector: {
+        enable: false,
       },
     },
   });
@@ -947,6 +959,48 @@ export const Component = () => {
                       </FormControl>
                       <FormDescription>
                         日志路径（仅支持采集个人文件夹下日志）
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </AccordionCard>
+            <AccordionCard
+              cardTitle={OtherCard}
+              value={otherOpen}
+              setValue={setOtherOpen}
+            >
+              <div className="mt-3 space-y-2">
+                <FormField
+                  control={form.control}
+                  name={`nodeSelector.enable`}
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between space-x-0 space-y-0">
+                      <FormLabel>启用节点选择功能</FormLabel>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name={`nodeSelector.nodeName`}
+                  render={({ field }) => (
+                    <FormItem
+                      className={cn({
+                        hidden: !currentValues.nodeSelector.enable,
+                      })}
+                    >
+                      <FormControl>
+                        <Input {...field} className="font-mono" />
+                      </FormControl>
+                      <FormDescription>
+                        节点名称（可通过概览页面查看）
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

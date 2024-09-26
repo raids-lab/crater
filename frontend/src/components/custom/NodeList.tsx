@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import NodeTypeLabel from "@/components/custom/NodeTypeLabel";
-import { NodeType } from "@/services/api/node";
+import { NodeType } from "@/services/api/cluster";
 
 interface ResourceInfo {
   percent: number;
@@ -14,7 +14,7 @@ interface ResourceInfo {
 }
 
 export interface ClusterNodeInfo {
-  type: string;
+  type: NodeType;
   name: string;
   isReady: boolean;
   role: string;
