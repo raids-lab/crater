@@ -39,6 +39,8 @@ import { Switch } from "@/components/ui/switch";
 import { apiResourceList } from "@/services/api/resource";
 import { apiGetDataset } from "@/services/api/dataset";
 import { ImageTaskType } from "@/services/api/imagepack";
+import { useAtomValue } from "jotai";
+import { globalUserInfo } from "@/utils/store";
 
 const VERSION = "20240528";
 const JOB_TYPE = "jupyter";
@@ -149,6 +151,7 @@ export const Component = () => {
   const [tensorboardOpen, setTensorboardOpen] = useState<string>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const user = useAtomValue(globalUserInfo);
 
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) =>
@@ -225,7 +228,7 @@ export const Component = () => {
       },
       memory: 2,
       image: "",
-      volumeMounts: [],
+      volumeMounts: [{ subPath: user.space, mountPath: "/home/" + user.name }],
       envs: [],
       observability: {
         tbEnable: false,
