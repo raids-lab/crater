@@ -24,6 +24,7 @@ type AllocatedInfo struct {
 }
 
 type ClusterNodeInfo struct {
+	Type     string            `json:"type"`
 	Name     string            `json:"name"`
 	Role     string            `json:"role"`
 	Labels   map[string]string `json:"labels"`
