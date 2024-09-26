@@ -2,5 +2,6 @@
 
 ```bash
 kubectl delete configmap backend-config -n crater
+kubectl create configmap backend-config -n crater --from-file=config.yaml=etc/release-config.yaml 
 kubectl create configmap backend-config -n crater --from-file=config.yaml=etc/zjlab-config.yaml 
 ```
