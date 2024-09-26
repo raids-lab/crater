@@ -172,10 +172,10 @@ export const Component = () => {
         },
         image: "",
         command: "",
-        workingDir: "",
+        workingDir: "/home/" + user.name,
         ports: [],
       },
-      volumeMounts: [],
+      volumeMounts: [{ subPath: user.space, mountPath: "/home/" + user.name }],
       envs: [],
       observability: {
         tbEnable: false,
