@@ -119,6 +119,28 @@ export const observabilitySchema = z
 
 export type ObservabilitySchema = z.infer<typeof observabilitySchema>;
 
+export const nodeSelectorSchema = z
+  .object({
+    enable: z.boolean(),
+    nodeName: z.string().optional(),
+  })
+  .refine(
+    (observability) => {
+      return (
+        !observability.enable ||
+        (observability.enable &&
+          observability.nodeName !== null &&
+          observability.nodeName !== undefined)
+      );
+    },
+    {
+      message: "节点名称不能为空",
+      path: ["nodeName"],
+    },
+  );
+
+export type NodeSelectorSchema = z.infer<typeof observabilitySchema>;
+
 export interface JobSubmitJson<T> {
   version: string;
   type: string;

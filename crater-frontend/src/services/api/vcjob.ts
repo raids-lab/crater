@@ -96,6 +96,20 @@ export interface Env {
   value: string;
 }
 
+export type NodeSelectorOperator =
+  | "In"
+  | "NotIn"
+  | "Exists"
+  | "DoesNotExist"
+  | "Gt"
+  | "Lt";
+
+export interface NodeSelectorRequirement {
+  key: string;
+  operator: NodeSelectorOperator;
+  values?: string[];
+}
+
 export interface IJupyterCreate {
   name: string;
   resource: KubernetesResourceList;
@@ -103,6 +117,7 @@ export interface IJupyterCreate {
   volumeMounts: VolumeMount[];
   envs: Env[];
   useTensorBoard: boolean;
+  selectors?: NodeSelectorRequirement[];
 }
 
 export interface ITrainingCreate extends IJupyterCreate {

@@ -92,6 +92,7 @@ export const Component: FC = () => {
           const capacity = getAiResource(x.capacity);
           const allocated = getAiResource(x.allocated);
           return {
+            type: x.type,
             name: x.name,
             isReady: x.isReady,
             role: x.role,
