@@ -30,6 +30,7 @@ export const globalBreadCrumb = atom([] as BreadCrumbItem[]);
  */
 const defaultUserContext: UserInfo = {
   name: "",
+  space: "",
 };
 
 export const globalUserInfo = atomWithStorage(
@@ -55,6 +56,7 @@ export const defaultAccount: CurrentAccount = {
   rolePlatform: Role.Guest,
   accessQueue: AccessMode.NotAllowed,
   accessPublic: AccessMode.NotAllowed,
+  space: "",
 };
 
 // Hydrating from Local Storage on First Render: https://github.com/pmndrs/jotai/discussions/1737

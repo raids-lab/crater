@@ -5,6 +5,7 @@ import { useAtomValue } from "jotai";
 
 export interface UserInfo {
   name: string; // unique username
+  space: string; // user space
 }
 
 /**
