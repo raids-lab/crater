@@ -268,12 +268,16 @@ func (mgr *SparseJobMgr) GetByName(c *gin.Context) {
 	}
 	pod := pods[0]
 	conditions := pod.Status.Conditions
+
 	var runningTimestamp v1.Time
+	var duration string
 	for _, condition := range conditions {
 		if condition.Type == corev1.PodReady {
 			runningTimestamp = condition.LastTransitionTime
+			duration = time.Since(runningTimestamp.Time).Truncate(time.Second).String()
 		} else {
-			runningTimestamp = pod.CreationTimestamp
+			runningTimestamp = v1.Time{}
+			duration = "0s"
 		}
 	}
 
@@ -321,7 +325,7 @@ func (mgr *SparseJobMgr) GetByName(c *gin.Context) {
 		Status:            string(jobStatusMap[pod.Status.Phase]),
 		CreationTimestamp: job.CreationTimestamp,
 		RunningTimestamp:  runningTimestamp,
-		Duration:          time.Since(runningTimestamp.Time).Truncate(time.Second).String(),
+		Duration:          duration,
 		Retry:             fmt.Sprintf("%d", retryAmount),
 		PodDetails:        PodDetails,
 		UseTensorBoard:    false,
