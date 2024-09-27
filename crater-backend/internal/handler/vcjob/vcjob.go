@@ -402,10 +402,15 @@ func getJobDetailFuntion(c *gin.Context, mgr *VolcanojobMgr, job *batch.Job, nam
 	var jobDetail JobDetailResp
 	conditions := job.Status.Conditions
 	var runningTimestamp metav1.Time
+	var duration string
 	for _, condition := range conditions {
 		if condition.Status == batch.Running {
 			runningTimestamp = *condition.LastTransitionTime
+			duration = time.Since(runningTimestamp.Time).Truncate(time.Second).String()
 			break
+		} else {
+			runningTimestamp = metav1.Time{}
+			duration = "0s"
 		}
 	}
 
@@ -463,7 +468,7 @@ func getJobDetailFuntion(c *gin.Context, mgr *VolcanojobMgr, job *batch.Job, nam
 		Status:            job.Status.State.Phase,
 		CreationTimestamp: job.CreationTimestamp,
 		RunningTimestamp:  runningTimestamp,
-		Duration:          time.Since(runningTimestamp.Time).Truncate(time.Second).String(),
+		Duration:          duration,
 		Retry:             fmt.Sprintf("%d", retryAmount),
 		PodDetails:        PodDetails,
 		UseTensorBoard:    useTensorBoard,
