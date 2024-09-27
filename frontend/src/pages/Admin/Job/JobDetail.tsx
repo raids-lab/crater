@@ -34,6 +34,11 @@ export interface Resource {
   [key: string]: string;
 }
 
+const job_monitor = import.meta.env.VITE_GRAFANA_JOB_MONITOR;
+const pod_memory = import.meta.env.VITE_GRAFANA_POD_MEMORY;
+const k8s_vgpu_scheduler_dashboard = import.meta.env
+  .VITE_GRAFANA_K8S_VGPU_SCHEDULER_DASHBOARD;
+
 const JupyterDetail = () => {
   const initial: IJupyterDetail = {
     name: "",
@@ -220,9 +225,7 @@ const JupyterDetail = () => {
                 size="sm"
                 variant="ghost"
                 onClick={() => {
-                  const url =
-                    "http://192.168.5.60:31121/d/R4ZPFfyIz/job-monitor?orgId=1&var-job=" +
-                    data.jobName;
+                  const url = `${job_monitor}?orgId=1&var-job=` + data.jobName;
                   window.open(url, "_blank");
                 }}
               >
@@ -254,7 +257,7 @@ const JupyterDetail = () => {
                   <TableCell className="font-medium">
                     {pod.name ? (
                       <a
-                        href={`http://192.168.5.60:31121/d/MhnFUFLSz/pod_memory?orgId=1&var-node_name=${pod.nodename}&var-pod_name=${pod.name}`}
+                        href={`${pod_memory}?orgId=1&var-node_name=${pod.nodename}&var-pod_name=${pod.name}`}
                         className="hover:underline"
                         target="_blank"
                         rel="noopener noreferrer"
@@ -268,7 +271,7 @@ const JupyterDetail = () => {
                   <TableCell>
                     {pod.nodename ? (
                       <a
-                        href={`http://192.168.5.60:31121/d/Oxed_c6Wz1/k8s-vgpu-scheduler-dashboard?orgId=1&var-node_name=${pod.nodename}`}
+                        href={`${k8s_vgpu_scheduler_dashboard}?orgId=1&var-node_name=${pod.nodename}`}
                         className="hover:underline"
                         target="_blank"
                         rel="noopener noreferrer"
