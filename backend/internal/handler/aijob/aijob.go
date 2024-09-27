@@ -536,8 +536,13 @@ func (mgr *AIJobMgr) Get(c *gin.Context) {
 	}
 
 	var runningTimestamp metav1.Time
+	var duration string
 	if taskModel.StartedAt != nil {
 		runningTimestamp = metav1.NewTime(*taskModel.StartedAt)
+		duration = time.Since(runningTimestamp.Time).Truncate(time.Second).String()
+	} else {
+		runningTimestamp = metav1.Time{}
+		duration = "0s"
 	}
 
 	var priority string
@@ -571,7 +576,7 @@ func (mgr *AIJobMgr) Get(c *gin.Context) {
 			Status:            convertJobPhase(taskModel.Status),
 			CreationTimestamp: metav1.NewTime(taskModel.CreatedAt),
 			RunningTimestamp:  runningTimestamp,
-			Duration:          time.Since(runningTimestamp.Time).Truncate(time.Second).String(),
+			Duration:          duration,
 			PodDetails:        podDetail,
 			UseTensorBoard:    false,
 		},
