@@ -37,9 +37,10 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { useNavigate, useParams } from "react-router-dom";
-import { Undo2 } from "lucide-react";
+import { ExternalLink, Undo2 } from "lucide-react";
 import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
 import PodPhaseLabel from "@/components/custom/PodPhaseLabel";
+import { Separator } from "@/components/ui/separator";
 
 type CardDemoProps = React.ComponentProps<typeof Card> & {
   nodeInfo?: {
@@ -62,11 +63,33 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
   const navigate = useNavigate();
   return (
     <Card className={className} {...props}>
-      <CardHeader className="mb-6 border-b bg-muted/50 dark:bg-muted/25">
+      {/* <CardHeader className="mb-6 border-b bg-muted/50 dark:bg-muted/25">
         <CardTitle>{nodeInfo?.name}</CardTitle>
         <CardDescription>节点属性</CardDescription>
-      </CardHeader>
-      <CardContent className="grid grid-flow-col grid-rows-7 gap-x-2 gap-y-3 text-xs">
+      </CardHeader> */}
+      <CardContent className="flex items-center justify-between bg-muted/50 p-6">
+        <div className="flex flex-col items-start gap-2">
+          <CardTitle>{nodeInfo?.name}</CardTitle>
+          <CardDescription>节点属性</CardDescription>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => {
+              window.open(
+                `http://8.141.83.224:31120/d/Oxed_c6Wz1/node_monitor?orgId=1&var-node=${nodeInfo?.name}&from=now-30m&to=now`,
+              );
+            }}
+            disabled={nodeInfo?.name == "zjlab-sw"}
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </CardContent>
+      <Separator />
+      <CardContent className="mt-6 grid grid-flow-col grid-rows-7 gap-x-2 gap-y-3 text-xs">
         <p className="text-muted-foreground">IP 地址</p>
         <p className="text-muted-foreground">角色</p>
         <p className="text-muted-foreground">操作系统类型</p>
@@ -110,19 +133,7 @@ export function GPUDetails({ nodeName }: { nodeName: string }) {
     refetchInterval: 1000,
   });
 
-  if (isLoading)
-    return (
-      <Card>
-        <CardContent>Loading GPU details...</CardContent>
-      </Card>
-    );
-  if (error)
-    return (
-      <Card>
-        <CardContent>Error fetching GPU details.</CardContent>
-      </Card>
-    );
-  if (!gpuInfo || !gpuInfo.haveGPU) return null; // 如果没有 GPU 数据或节点不包含 GPU，不显示组件
+  if (isLoading || error || !gpuInfo || !gpuInfo.haveGPU) return <></>; // 如果没有 GPU 数据或节点不包含 GPU，不显示组件
   return (
     <Card className="mt-4">
       <CardHeader>
@@ -232,7 +243,7 @@ const getColumns = (nodeName: string): ColumnDef<ClusterPodInfo>[] => [
   {
     accessorKey: "cpu",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"CPU 分配"} />
+      <DataTableColumnHeader column={column} title={"CPU"} />
     ),
     cell: ({ row }) => {
       const cpuValue = row.getValue("cpu");
@@ -246,19 +257,19 @@ const getColumns = (nodeName: string): ColumnDef<ClusterPodInfo>[] => [
   {
     accessorKey: "memory",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"内存分配"} />
+      <DataTableColumnHeader column={column} title={"Memory"} />
     ),
     cell: ({ row }) => (
       <div className="font-mono">{row.getValue("memory")}</div>
     ),
   },
-  {
-    accessorKey: "gpu",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"GPU 分配"} />
-    ),
-    cell: () => <div className="font-mono">TODO</div>,
-  },
+  // {
+  //   accessorKey: "gpu",
+  //   header: ({ column }) => (
+  //     <DataTableColumnHeader column={column} title={"GPU 分配"} />
+  //   ),
+  //   cell: () => <div className="font-mono">TODO</div>,
+  // },
   {
     id: "actions",
     enableHiding: false,
@@ -300,7 +311,7 @@ const getColumns = (nodeName: string): ColumnDef<ClusterPodInfo>[] => [
 
 export const NodeDetail: FC = () => {
   const { id: nodeName } = useParams();
-  const [showAll, setShowAll] = useState(false); // 新增状态用于控制是否显示所有数据
+  const [showAll] = useState(true); // 新增状态用于控制是否显示所有数据
 
   const { data: nodeDetail } = useQuery({
     queryKey: ["nodes", nodeName, "detail"],
@@ -346,10 +357,10 @@ export const NodeDetail: FC = () => {
         {nodeName && <GPUDetails nodeName={nodeName} />}
       </div>
       <div className="md:col-span-5">
-        <Button onClick={() => setShowAll(!showAll)} className="mb-4 w-full">
+        {/* <Button onClick={() => setShowAll(!showAll)} className="mb-4 w-full">
           <Undo2 className="mr-2 h-4 w-4" />{" "}
           {showAll ? "显示只包含 Vcjob 的" : "显示所有"}
-        </Button>
+        </Button> */}
         <DataTable
           query={podsQuery}
           columns={columns}
