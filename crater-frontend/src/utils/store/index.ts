@@ -72,7 +72,7 @@ export const globalAccount = atomWithStorage(
 export const globalSettings = atomWithStorage(
   SETTINGS_KEY,
   {
-    scheduler: "volcano",
+    scheduler: "colocate" as "volcano" | "colocate" | "sparse",
   },
   undefined,
   {

@@ -6,8 +6,12 @@ const interactiveRoutes: RouteObject[] = [
     lazy: () => import("./InterOverview"),
   },
   {
-    path: "new-jupyter",
+    path: "new-jupyter-vcjobs",
     lazy: () => import("../New/Jupyter"),
+  },
+  {
+    path: "new-jupyter-aijobs",
+    lazy: () => import("../New/ColocateJupyter"),
   },
   {
     path: ":id",

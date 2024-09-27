@@ -41,13 +41,14 @@ import SplitButton from "@/components/custom/SplitButton";
 import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
-import { globalUserInfo } from "@/utils/store";
+import { globalJobUrl, globalUserInfo } from "@/utils/store";
 import NodeBadges from "@/components/custom/NodeBadges";
 import ResourceBadges from "@/components/custom/ResourceBadges";
 import JobTypeLabel from "@/components/custom/JobTypeLabel";
 
 export const Component = () => {
   const userInfo = useAtomValue(globalUserInfo);
+  const jobType = useAtomValue(globalJobUrl);
   const queryClient = useQueryClient();
 
   const interactiveQuery = useQuery({
@@ -329,7 +330,10 @@ export const Component = () => {
             <SplitButton
               title="interactive"
               urls={[
-                { url: "portal/job/inter/new-jupyter", name: " Jupyter Lab" },
+                {
+                  url: `portal/job/inter/new-jupyter-${jobType}`,
+                  name: " Jupyter Lab",
+                },
                 {
                   url: "portal/job/inter/new-webide",
                   name: " Web IDE",

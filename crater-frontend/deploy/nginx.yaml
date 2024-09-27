@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: crater-web-frontend-container
-          image: crater-harbor.act.buaa.edu.cn/crater/web-frontend:92b1c398
+          image: crater-harbor.act.buaa.edu.cn/crater/web-frontend:100f83f1
           ports:
             - containerPort: 80
 

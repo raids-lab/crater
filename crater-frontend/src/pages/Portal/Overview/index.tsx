@@ -15,7 +15,10 @@ import { getAiResource } from "@/utils/resource";
 import { getHeader } from "@/pages/Admin/Job/Volcano";
 import { TableDate } from "@/components/custom/TableDate";
 import { JobPhase } from "@/services/api/vcjob";
-import JobPhaseLabel, { jobPhases } from "@/components/custom/JobPhaseLabel";
+import JobPhaseLabel, {
+  aijobPhases,
+  jobPhases,
+} from "@/components/custom/JobPhaseLabel";
 import { IJobInfo, JobType, apiJobAllList } from "@/services/api/vcjob";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { CardTitle } from "@/components/ui-custom/card";
@@ -30,7 +33,7 @@ import NodeBadges from "@/components/custom/NodeBadges";
 import JobTypeLabel, { jobTypes } from "@/components/custom/JobTypeLabel";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
-import { globalJobUrl } from "@/utils/store";
+import { globalJobUrl, globalSettings } from "@/utils/store";
 import NodeDetail from "@/components/custom/NodeDetail";
 
 const toolbarConfig: DataTableToolbarConfig = {
@@ -79,6 +82,7 @@ const PieCard = ({ children, cardTitle, isLoading }: PieCardProps) => {
 
 export const Component: FC = () => {
   const jobType = useAtomValue(globalJobUrl);
+  const { scheduler } = useAtomValue(globalSettings);
 
   const nodeQuery = useQuery({
     queryKey: ["overview", "nodes"],
@@ -402,9 +406,10 @@ export const Component: FC = () => {
           <NivoPie
             data={jobStatus}
             margin={{ top: 25, bottom: 30 }}
-            colors={({ id }) =>
-              jobPhases.find((x) => x.value === id)?.color ?? "#000"
-            }
+            colors={({ id }) => {
+              const phases = scheduler === "volcano" ? jobPhases : aijobPhases;
+              return phases.find((x) => x.value === id)?.color ?? "#000";
+            }}
             arcLabelsTextColor="#ffffff"
           />
         </PieCard>
