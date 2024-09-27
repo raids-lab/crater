@@ -76,9 +76,9 @@ const initial: IJupyterDetail = {
 };
 
 const job_monitor = import.meta.env.VITE_GRAFANA_JOB_MONITOR;
-const pod_memory = import.meta.env.VITE_GRAFANA_POD_MEMORY;
-const k8s_vgpu_scheduler_dashboard = import.meta.env
-  .VITE_GRAFANA_K8S_VGPU_SCHEDULER_DASHBOARD;
+// const pod_memory = import.meta.env.VITE_GRAFANA_POD_MEMORY;
+// const k8s_vgpu_scheduler_dashboard = import.meta.env
+// .VITE_GRAFANA_K8S_VGPU_SCHEDULER_DASHBOARD;
 
 export const Component = () => {
   const { id } = useParams<string>();
@@ -120,8 +120,9 @@ export const Component = () => {
 
   const { mutate: getPortToken } = useMutation({
     mutationFn: (jobName: string) => apiJupyterTokenGet(jobName),
-    onSuccess: (_, jobName) => {
-      window.open(`/job/jupyter/${jobName}`);
+    onSuccess: (res) => {
+      const data = res.data.data;
+      window.open(`${data.baseURL}?token=${data.token}`);
     },
   });
 
@@ -241,19 +242,21 @@ export const Component = () => {
                   作业 YAML
                 </Button>
               </LogSheet>
-              <Separator orientation="vertical" />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  // const url = generateMetricsUrl(data.podDetails);
-                  const url = `${job_monitor}?orgId=1&var-job=${data.jobName}`;
-                  window.open(url, "_blank");
-                }}
-              >
-                <PieChartIcon className="mr-2 h-4 w-4" />
-                资源监控
-              </Button>
+              {false && <Separator orientation="vertical" />}
+              {false && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    // const url = generateMetricsUrl(data.podDetails);
+                    const url = `${job_monitor}?orgId=1&var-job=${data.jobName}`;
+                    window.open(url, "_blank");
+                  }}
+                >
+                  <PieChartIcon className="mr-2 h-4 w-4" />
+                  资源监控
+                </Button>
+              )}
               {data.useTensorBoard && (
                 <>
                   <Separator orientation="vertical" />
@@ -345,7 +348,7 @@ export const Component = () => {
                   <TableCell>
                     {pod.name ? (
                       <a
-                        href={`${pod_memory}?orgId=1&var-node_name=${pod.nodename}&var-pod_name=${pod.name}`}
+                        href={`http://8.141.83.224:31120/d/MhnFUFLSz/pod_monitor?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`}
                         className="underline-offset-4 hover:underline"
                         target="_blank"
                         rel="noopener noreferrer"
@@ -359,7 +362,7 @@ export const Component = () => {
                   <TableCell>
                     {pod.nodename ? (
                       <a
-                        href={`${k8s_vgpu_scheduler_dashboard}?orgId=1&var-node_name=${pod.nodename}`}
+                        href={`http://8.141.83.224:31120/d/Oxed_c6Wz1/node_monitor?orgId=1&var-node=${pod.nodename}&from=now-30m&to=now`}
                         className="hover:underline"
                         target="_blank"
                         rel="noopener noreferrer"

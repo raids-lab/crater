@@ -11,24 +11,21 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   apiJobDelete,
+  apiJobBatchList,
   apiJupyterTokenGet,
-  JobPhase,
-  apiJobInteractiveList,
 } from "@/services/api/vcjob";
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
+import { Link } from "react-router-dom";
 import { TableDate } from "@/components/custom/TableDate";
 import { toast } from "sonner";
-import { getHeader, jobToolbarConfig } from "@/pages/Portal/Job/statuses";
+import { getHeader } from "@/pages/Portal/Job/statuses";
 import { logger } from "@/utils/loglevel";
 import Quota from "./Quota";
-import JobPhaseLabel from "@/components/custom/JobPhaseLabel";
-import { Link } from "react-router-dom";
 import {
   Card,
   CardDescription,
@@ -36,27 +33,158 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui-custom/card";
-import { ExternalLink, SquareIcon, Trash2Icon } from "lucide-react";
 import SplitButton from "@/components/custom/SplitButton";
 import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
-import { useAtomValue } from "jotai";
-import { globalJobUrl, globalUserInfo } from "@/utils/store";
-import NodeBadges from "@/components/custom/NodeBadges";
 import ResourceBadges from "@/components/custom/ResourceBadges";
 import JobTypeLabel from "@/components/custom/JobTypeLabel";
+import { globalJobUrl, globalUserInfo } from "@/utils/store";
+import { useAtomValue } from "jotai";
+import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ExternalLink, SquareIcon, Trash2Icon } from "lucide-react";
 
-const InterOverview = () => {
-  const userInfo = useAtomValue(globalUserInfo);
-  const jobType = useAtomValue(globalJobUrl);
+export const priorities = [
+  {
+    label: "高",
+    value: "high",
+    className: "text-amber-500 border-amber-500 bg-amber-500/10",
+  },
+  {
+    label: "低",
+    value: "low",
+    className: "text-slate-500 border-slate-500 bg-slate-500/10",
+  },
+];
+
+export type StatusValue =
+  | "Queueing"
+  | "Created"
+  | "Running"
+  | "Failed"
+  | "Succeeded"
+  | "Preempted";
+
+export const statuses: {
+  value: StatusValue;
+  label: string;
+  className?: string;
+}[] = [
+  {
+    value: "Queueing",
+    label: "检查中",
+    className: "text-purple-500 border-purple-500 bg-purple-500/10",
+  },
+  {
+    value: "Created",
+    label: "等待中",
+    className: "text-slate-500 border-slate-500 bg-slate-500/10",
+  },
+  {
+    value: "Running",
+    label: "运行中",
+    className: "text-sky-500 border-sky-500 bg-sky-500/10",
+  },
+  {
+    value: "Succeeded",
+    label: "已完成",
+    className: "text-emerald-500 border-emerald-500 bg-emerald-500/10",
+  },
+  {
+    value: "Preempted",
+    label: "被抢占",
+    className: "text-orange-500 border-orange-500 bg-orange-500/10",
+  },
+  {
+    value: "Failed",
+    label: "失败",
+    className: "text-red-500 border-red-500 bg-red-500/10",
+  },
+];
+
+export const profilingStatuses = [
+  {
+    value: "0",
+    label: "未分析",
+    className: "text-purple-500 border-purple-500 bg-purple-500/10",
+  },
+  {
+    value: "1",
+    label: "待分析",
+    className: "text-slate-500 border-slate-500 bg-slate-500/10",
+  },
+  {
+    value: "2",
+    label: "分析中",
+    className: "text-sky-500 border-sky-500 bg-sky-500/10",
+  },
+  {
+    value: "3",
+    label: "已分析",
+    className: "text-emerald-500 border-emerald-500 bg-emerald-500/10",
+  },
+  {
+    value: "4",
+    label: "失败",
+    className: "text-red-500 border-red-500 bg-red-500/10",
+  },
+  {
+    value: "5",
+    label: "跳过",
+    className: "text-slate-500 border-slate-500 bg-slate-500/10",
+  },
+];
+
+const toolbarConfig: DataTableToolbarConfig = {
+  filterInput: {
+    placeholder: "搜索名称",
+    key: "title",
+  },
+  filterOptions: [
+    {
+      key: "status",
+      title: "作业状态",
+      option: statuses,
+    },
+    {
+      key: "priority",
+      title: "优先级",
+      option: priorities,
+    },
+  ],
+  getHeader: getHeader,
+};
+
+interface ColocateJobInfo extends IJobInfo {
+  id: number;
+  profileStatus: string;
+  priority: string;
+}
+
+const ColocateOverview = () => {
   const queryClient = useQueryClient();
+  const jobType = useAtomValue(globalJobUrl);
+  const userInfo = useAtomValue(globalUserInfo);
 
-  const interactiveQuery = useQuery({
+  const batchQuery = useQuery({
     queryKey: ["job", "interactive"],
-    queryFn: apiJobInteractiveList,
+    queryFn: apiJobBatchList,
     select: (res) =>
-      res.data.data.filter((task) => task.jobType === JobType.Jupyter),
+      res.data.data
+        .filter((task) => task.jobType === JobType.Jupyter)
+        .sort((a, b) =>
+          b.createdAt.localeCompare(a.createdAt),
+        ) as unknown as ColocateJobInfo[],
     refetchInterval: REFETCH_INTERVAL,
+  });
+
+  const { mutate: getPortToken } = useMutation({
+    mutationFn: (jobName: string) => apiJupyterTokenGet(jobName),
+    onSuccess: (res) => {
+      const data = res.data.data;
+      window.open(`${data.baseURL}?token=${data.token}`, "_blank");
+    },
   });
 
   const refetchTaskList = async () => {
@@ -76,18 +204,11 @@ const InterOverview = () => {
     mutationFn: apiJobDelete,
     onSuccess: async () => {
       await refetchTaskList();
-      toast.success("操作成功");
+      toast.success("作业已删除");
     },
   });
 
-  const { mutate: getPortToken } = useMutation({
-    mutationFn: (jobName: string) => apiJupyterTokenGet(jobName),
-    onSuccess: (_, jobName) => {
-      window.open(`/job/jupyter/${jobName}`);
-    },
-  });
-
-  const interColumns = useMemo<ColumnDef<IJobInfo>[]>(
+  const batchColumns = useMemo<ColumnDef<ColocateJobInfo>[]>(
     () => [
       {
         id: "select",
@@ -128,7 +249,7 @@ const InterOverview = () => {
         ),
         cell: ({ row }) => (
           <Link
-            to={row.original.jobName}
+            to={`${row.original.id}`}
             className="underline-offset-4 hover:underline"
           >
             {row.getValue("name")}
@@ -148,21 +269,47 @@ const InterOverview = () => {
           <DataTableColumnHeader column={column} title={getHeader("status")} />
         ),
         cell: ({ row }) => {
-          return <JobPhaseLabel jobPhase={row.getValue<JobPhase>("status")} />;
+          const status = statuses.find(
+            (status) => status.value === row.getValue("status"),
+          );
+          if (!status) {
+            return null;
+          }
+          return (
+            <Badge className={status.className} variant="outline">
+              {status.label}
+            </Badge>
+          );
         },
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id));
         },
       },
       {
-        accessorKey: "nodes",
+        accessorKey: "priority",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("nodes")} />
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("priority")}
+          />
         ),
         cell: ({ row }) => {
-          const nodes = row.getValue<string[]>("nodes");
-          return <NodeBadges nodes={nodes} />;
+          const priority = priorities.find(
+            (priority) => priority.value === row.getValue("priority"),
+          );
+          if (!priority) {
+            return null;
+          }
+          return (
+            <Badge className={priority.className} variant="outline">
+              {priority.label}
+            </Badge>
+          );
         },
+        filterFn: (row, id, value) => {
+          return (value as string[]).includes(row.getValue(id));
+        },
+        enableSorting: false,
       },
       {
         accessorKey: "resources",
@@ -204,19 +351,6 @@ const InterOverview = () => {
         sortingFn: "datetime",
       },
       {
-        accessorKey: "completedAt",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("completedAt")}
-          />
-        ),
-        cell: ({ row }) => {
-          return <TableDate date={row.getValue("completedAt")}></TableDate>;
-        },
-        sortingFn: "datetime",
-      },
-      {
         id: "actions",
         enableHiding: false,
         cell: ({ row }) => {
@@ -231,7 +365,7 @@ const InterOverview = () => {
                 onClick={() => {
                   toast.info("即将跳转至 Jupyter 页面");
                   setTimeout(() => {
-                    getPortToken(jobInfo.jobName);
+                    getPortToken(`${jobInfo.id}`);
                   }, 500);
                 }}
                 disabled={
@@ -346,12 +480,18 @@ const InterOverview = () => {
         <Quota />
       </div>
       <DataTable
-        query={interactiveQuery}
-        columns={interColumns}
-        toolbarConfig={jobToolbarConfig}
+        query={batchQuery}
+        columns={batchColumns}
+        toolbarConfig={toolbarConfig}
+        handleMultipleDelete={(rows) => {
+          rows.forEach((row) => {
+            deleteTask(row.original.id.toString());
+          });
+          void refetchTaskList();
+        }}
       ></DataTable>
     </>
   );
 };
 
-export default InterOverview;
+export default ColocateOverview;

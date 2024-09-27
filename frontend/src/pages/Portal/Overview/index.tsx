@@ -90,8 +90,7 @@ export const Component: FC = () => {
     select: (res) =>
       res.data.data.rows
         .sort((a, b) => a.name.localeCompare(b.name))
-        .filter((x) => x.role === "worker" && x.isReady)
-        .sort((a, b) => a.name.localeCompare(b.name))
+        .sort((a, b) => b.name.localeCompare(a.name))
         .map((x) => {
           const capacity = getAiResource(x.capacity);
           const allocated = getAiResource(x.allocated);
@@ -431,15 +430,17 @@ export const Component: FC = () => {
           />
         </PieCard>
       </div>
-      <DataTable
-        info={{
-          title: "作业信息",
-          description: "查看集群作业的运行情况",
-        }}
-        query={jobQuery}
-        columns={vcJobColumns}
-        toolbarConfig={toolbarConfig}
-      ></DataTable>
+      {false && (
+        <DataTable
+          info={{
+            title: "作业信息",
+            description: "查看集群作业的运行情况",
+          }}
+          query={jobQuery}
+          columns={vcJobColumns}
+          toolbarConfig={toolbarConfig}
+        ></DataTable>
+      )}
       <DataTable
         info={{
           title: "节点信息",

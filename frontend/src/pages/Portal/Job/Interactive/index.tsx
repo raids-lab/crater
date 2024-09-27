@@ -1,9 +1,14 @@
 import { RouteObject } from "react-router-dom";
+import InterOverview from "./InterOverview";
+import ColocateInterOverview from "./ColocateInterOverview";
+import { globalJobUrl, store } from "@/utils/store";
 
+const jobType = store.get(globalJobUrl);
 const interactiveRoutes: RouteObject[] = [
   {
     index: true,
-    lazy: () => import("./InterOverview"),
+    element:
+      jobType === "aijobs" ? <ColocateInterOverview /> : <InterOverview />,
   },
   {
     path: "new-jupyter-vcjobs",
