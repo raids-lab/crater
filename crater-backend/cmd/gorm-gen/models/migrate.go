@@ -195,11 +195,22 @@ func main() {
 
 		queue := model.Queue{
 			Name:     "default",
-			Nickname: "公共队列",
+			Nickname: "公共账户",
 			Space:    "/public",
 		}
 
 		res := tx.Create(&queue)
+		if res.Error != nil {
+			return res.Error
+		}
+
+		queue2 := model.Queue{
+			Name:     "q-2",
+			Nickname: "测试账户 A",
+			Space:    "/q-2",
+		}
+
+		res = tx.Create(&queue2)
 		if res.Error != nil {
 			return res.Error
 		}

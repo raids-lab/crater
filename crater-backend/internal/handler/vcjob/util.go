@@ -54,7 +54,7 @@ func GenerateVolumeMounts(
 	return pvc, volumeMounts, nil
 }
 
-func generateNodeAffinity(expressions []v1.NodeSelectorRequirement) (affinity *v1.Affinity) {
+func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement) (affinity *v1.Affinity) {
 	if len(expressions) > 0 {
 		affinity = lo.ToPtr(v1.Affinity{
 			NodeAffinity: lo.ToPtr(v1.NodeAffinity{

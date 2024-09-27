@@ -68,7 +68,7 @@ func (c *ProfilingPodControl) CreateProfilePodFromTask(ctx context.Context, task
 	rawResourceRequest := podSpec.Containers[0].Resources.Requests
 	for k, v := range rawResourceRequest {
 		if strings.Contains(string(k), "nvidia.com") {
-			resourceRequest["nvidia.com/p100"] = v
+			resourceRequest["nvidia.com/v100"] = v
 		} else {
 			resourceRequest[k] = v
 		}

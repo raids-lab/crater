@@ -1,8 +1,10 @@
 package aijob
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -58,8 +60,9 @@ func NewAITaskMgr(taskController *aitaskctl.TaskController, cl client.Client,
 func (mgr *AIJobMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *AIJobMgr) RegisterProtected(g *gin.RouterGroup) {
+	g.GET(":id/token", mgr.GetJupyterToken)
 	g.GET("", mgr.List)
-	g.GET("all", mgr.List)
+	g.GET("all", mgr.ListAll)
 	g.GET("quota", mgr.GetQuota)
 	g.DELETE(":id", mgr.Delete)
 
@@ -68,6 +71,7 @@ func (mgr *AIJobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET(":id/detail", mgr.Get)
 
 	g.POST("training", mgr.Create)
+	g.POST("jupyter", mgr.CreateJupyterJob)
 }
 
 func (mgr *AIJobMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -218,6 +222,132 @@ func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
 }
 
 type (
+	CreateJupyterReq struct {
+		vcjob.CreateJobCommon `json:",inline"`
+		Name                  string          `json:"name" binding:"required"`
+		Resource              v1.ResourceList `json:"resource"`
+		Image                 string          `json:"image" binding:"required"`
+	}
+)
+
+func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
+	token := interutil.GetToken(c)
+	var vcReq CreateJupyterReq
+	if err := c.ShouldBindJSON(&vcReq); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	var req payload.CreateTaskReq
+
+	req.TaskName = vcReq.Name
+	req.Namespace = config.GetConfig().Workspace.Namespace
+	req.UserName = token.QueueName
+	req.SLO = 1
+	req.TaskType = "jupyter"
+	req.Image = vcReq.Image
+	req.ResourceRequest = vcReq.Resource
+
+	taskModel := models.FormatTaskAttrToModel(&req.TaskAttr)
+
+	// Command to start Jupyter
+	commandSchema := "start.sh jupyter lab --allow-root --notebook-dir=/home/%s"
+	command := fmt.Sprintf(commandSchema, token.Username)
+
+	// 1. Volume Mounts
+	volumes, volumeMounts, err := vcjob.GenerateVolumeMounts(c, token.UserID, vcReq.VolumeMounts)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.UserNotFound)
+		return
+	}
+
+	// 1.1 Support NGC images
+	if !strings.Contains(req.Image, "jupyter") {
+		volumes = append(volumes, v1.Volume{
+			Name: "bash-script-volume",
+			VolumeSource: v1.VolumeSource{
+				ConfigMap: &v1.ConfigMapVolumeSource{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: "jupyter-start-configmap",
+					},
+					//nolint:mnd // 0755 is the default mode
+					DefaultMode: lo.ToPtr(int32(0755)),
+				},
+			},
+		})
+		volumeMounts = append(volumeMounts, v1.VolumeMount{
+			Name:      "bash-script-volume",
+			MountPath: "/usr/bin/start.sh",
+			ReadOnly:  false,
+			SubPath:   "start.sh",
+		})
+
+		commandSchema := "/usr/bin/start.sh jupyter lab --allow-root --notebook-dir=/home/%s"
+		command = fmt.Sprintf(commandSchema, token.Username)
+	}
+
+	// 2. Env Vars
+	//nolint:mnd // 4 is the number of default envs
+	envs := make([]v1.EnvVar, len(vcReq.Envs)+4)
+	envs[0] = v1.EnvVar{Name: "GRANT_SUDO", Value: "1"}
+	envs[1] = v1.EnvVar{Name: "CHOWN_HOME", Value: "1"}
+	envs[2] = v1.EnvVar{Name: "NB_UID", Value: "1001"}
+	envs[3] = v1.EnvVar{Name: "NB_USER", Value: token.Username}
+	for i, env := range vcReq.Envs {
+		envs[i+4] = env
+	}
+
+	// 3. TODO: Node Affinity for ARM64 Nodes
+	affinity := vcjob.GenerateNodeAffinity(vcReq.Selectors)
+
+	// 5. Create the pod spec
+	podSpec := v1.PodSpec{
+		Affinity: affinity,
+		Volumes:  volumes,
+		Containers: []v1.Container{
+			{
+				Name:    "jupyter-notebook",
+				Image:   req.Image,
+				Command: []string{"bash", "-c", command},
+				Resources: v1.ResourceRequirements{
+					Limits:   vcReq.Resource,
+					Requests: vcReq.Resource,
+				},
+				WorkingDir: fmt.Sprintf("/home/%s", token.Username),
+
+				Env: envs,
+				Ports: []v1.ContainerPort{
+					{ContainerPort: vcjob.JupyterPort, Name: "notebook-port", Protocol: v1.ProtocolTCP},
+				},
+				SecurityContext: &v1.SecurityContext{
+					AllowPrivilegeEscalation: lo.ToPtr(true),
+					RunAsUser:                lo.ToPtr(int64(0)),
+					RunAsGroup:               lo.ToPtr(int64(0)),
+				},
+				TerminationMessagePath:   "/dev/termination-log",
+				TerminationMessagePolicy: v1.TerminationMessageReadFile,
+				VolumeMounts:             volumeMounts,
+			},
+		},
+	}
+
+	taskModel.PodTemplate = datatypes.NewJSONType(podSpec)
+	taskModel.Owner = token.Username
+	err = mgr.taskService.Create(taskModel)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("create task failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+	mgr.NotifyTaskUpdate(taskModel.ID, taskModel.UserName, util.CreateTask)
+
+	logutils.Log.Infof("create task success, taskID: %d", taskModel.ID)
+	resp := payload.CreateTaskResp{
+		TaskID: taskModel.ID,
+	}
+	resputil.Success(c, resp)
+}
+
+type (
 	CreateAIJobReq struct {
 		vcjob.CreateCustomReq `json:",inline"`
 		SLO                   uint `json:"slo"`
@@ -307,49 +437,65 @@ func (mgr *AIJobMgr) List(c *gin.Context) {
 
 	jobs := make([]AIJobResp, len(taskModels))
 	for i := range taskModels {
-		taskModel := &taskModels[i]
-
-		var runningTimestamp metav1.Time
-		if taskModel.StartedAt != nil {
-			runningTimestamp = metav1.NewTime(*taskModel.StartedAt)
-		}
-
-		var completedTimestamp metav1.Time
-		if taskModel.FinishAt != nil {
-			completedTimestamp = metav1.NewTime(*taskModel.FinishAt)
-		}
-
-		var priority string
-		if taskModel.SLO > 0 {
-			priority = "high"
-		} else {
-			priority = "low"
-		}
-
-		resources, _ := models.JSONToResourceList(taskModel.ResourceRequest)
-
-		job := AIJobResp{
-			ID:            taskModel.ID,
-			Priority:      priority,
-			ProfileStatus: strconv.FormatUint(uint64(taskModel.ProfileStatus), 10),
-			JobResp: vcjob.JobResp{ // 显式初始化嵌入的结构体
-				Name:               taskModel.TaskName,
-				JobName:            taskModel.TaskName,
-				Owner:              taskModel.Owner,
-				JobType:            taskModel.TaskType,
-				Queue:              taskModel.UserName,
-				Status:             taskModel.Status,
-				CreationTimestamp:  metav1.NewTime(taskModel.CreatedAt),
-				RunningTimestamp:   runningTimestamp,
-				CompletedTimestamp: completedTimestamp,
-				Nodes:              []string{taskModel.Node},
-				Resources:          resources,
-			},
-		}
-		jobs[i] = job
+		jobs[i] = convertToAIJobResp(&taskModels[i])
 	}
 
 	resputil.Success(c, jobs)
+}
+
+func (mgr *AIJobMgr) ListAll(c *gin.Context) {
+	taskModels, err := mgr.taskService.ListAll()
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("list task failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+
+	jobs := make([]AIJobResp, len(taskModels))
+	for i := range taskModels {
+		jobs[i] = convertToAIJobResp(&taskModels[i])
+	}
+
+	resputil.Success(c, jobs)
+}
+
+func convertToAIJobResp(aiTask *models.AITask) AIJobResp {
+	var runningTimestamp metav1.Time
+	if aiTask.StartedAt != nil {
+		runningTimestamp = metav1.NewTime(*aiTask.StartedAt)
+	}
+
+	var completedTimestamp metav1.Time
+	if aiTask.FinishAt != nil {
+		completedTimestamp = metav1.NewTime(*aiTask.FinishAt)
+	}
+
+	var priority string
+	if aiTask.SLO > 0 {
+		priority = "high"
+	} else {
+		priority = "low"
+	}
+
+	resources, _ := models.JSONToResourceList(aiTask.ResourceRequest)
+
+	return AIJobResp{
+		ID:            aiTask.ID,
+		Priority:      priority,
+		ProfileStatus: strconv.FormatUint(uint64(aiTask.ProfileStatus), 10),
+		JobResp: vcjob.JobResp{
+			Name:               aiTask.TaskName,
+			JobName:            aiTask.JobName,
+			Owner:              aiTask.Owner,
+			JobType:            aiTask.TaskType,
+			Queue:              aiTask.UserName,
+			Status:             aiTask.Status,
+			CreationTimestamp:  metav1.NewTime(aiTask.CreatedAt),
+			RunningTimestamp:   runningTimestamp,
+			CompletedTimestamp: completedTimestamp,
+			Nodes:              []string{aiTask.Node},
+			Resources:          resources,
+		},
+	}
 }
 
 type AIJobDetailReq struct {
@@ -419,7 +565,7 @@ func (mgr *AIJobMgr) Get(c *gin.Context) {
 			Name:              taskModel.TaskName,
 			Namespace:         taskModel.Namespace,
 			Username:          taskModel.Owner,
-			JobName:           taskModel.TaskName,
+			JobName:           taskModel.JobName,
 			Retry:             fmt.Sprintf("%d", 0),
 			Queue:             taskModel.UserName,
 			Status:            convertJobPhase(taskModel.Status),
@@ -648,4 +794,84 @@ func (mgr *AIJobMgr) GetJobYaml(c *gin.Context) {
 		return
 	}
 	resputil.Success(c, string(JobYaml))
+}
+
+func (mgr *AIJobMgr) GetJupyterToken(c *gin.Context) {
+	var req AIJobDetailReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	token := interutil.GetToken(c)
+	taskModel, err := mgr.taskService.GetByQueueAndID(token.QueueName, req.JobID)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+
+	if taskModel.UserName != token.QueueName {
+		resputil.Error(c, "Job not found", resputil.NotSpecified)
+		return
+	}
+
+	svc := &v1.Service{}
+	namespace := config.GetConfig().Workspace.Namespace
+	if err = mgr.client.Get(c, client.ObjectKey{Name: "svc-" + taskModel.JobName, Namespace: namespace}, svc); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	if svc.Spec.Type != v1.ServiceTypeNodePort {
+		resputil.Error(c, "Service type is not NodePort", resputil.NotSpecified)
+		return
+	}
+
+	if len(svc.Spec.Ports) == 0 {
+		resputil.Error(c, "Service port not found", resputil.NotSpecified)
+		return
+	}
+
+	baseURL := fmt.Sprintf("http://8.141.83.224:%d", int(svc.Spec.Ports[0].NodePort))
+
+	// Get the logs of the job pod
+	var jupyterToken string
+
+	podName := fmt.Sprintf("%s-0", taskModel.JobName)
+	buf, err := mgr.getPodLog(c, namespace, podName)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	re := regexp.MustCompile(`\?token=([a-zA-Z0-9]+)`)
+	matches := re.FindStringSubmatch(buf.String())
+	if len(matches) >= 2 {
+		jupyterToken = matches[1]
+	} else {
+		resputil.Error(c, "Jupyter token not found", resputil.NotSpecified)
+		return
+	}
+
+	if jupyterToken == "" {
+		resputil.Error(c, "Jupyter token not found", resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, vcjob.JobIngressResp{BaseURL: baseURL, Token: jupyterToken})
+}
+
+func (mgr *AIJobMgr) getPodLog(c *gin.Context, namespace, podName string) (*bytes.Buffer, error) {
+	logOptions := &v1.PodLogOptions{}
+	logReq := mgr.kubeClient.CoreV1().Pods(namespace).GetLogs(podName, logOptions)
+	logs, err := logReq.Stream(c)
+	if err != nil {
+		return nil, err
+	}
+	defer logs.Close()
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(logs)
+	if err != nil {
+		return nil, err
+	}
+	return buf, nil
 }

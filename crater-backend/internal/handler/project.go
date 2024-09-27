@@ -32,8 +32,8 @@ func NewProjectMgr(cl client.Client) Manager {
 func (mgr *ProjectMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *ProjectMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.GET("", mgr.ListAllForUser)     // 获取该用户的所有项目
-	g.POST("", mgr.CreateTeamProject) // 创建团队项目（个人项目在用户注册时创建）
+	g.GET("", mgr.ListAllForUser) // 获取该用户的所有项目
+	g.POST("", mgr.CreateAccount) // 创建团队项目（个人项目在用户注册时创建）
 }
 
 func (mgr *ProjectMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -140,31 +140,16 @@ func (mgr *ProjectMgr) ListAllForAdmin(c *gin.Context) {
 		return
 	}
 
-	var vcQueues scheduling.QueueList
-	if err := mgr.Client.List(c, &vcQueues); err != nil {
-		resputil.Error(c, "List queue failed", resputil.NotSpecified)
-		return
-	}
-	queueMap := map[string]*scheduling.Queue{}
-	for index := range len(vcQueues.Items) {
-		item := &vcQueues.Items[index]
-		queueMap[item.Name] = item
-	}
 	var lists []ListAllResp
 	for _, q := range queues {
-		if _, exist := queueMap[q.Name]; exist {
-			lists = append(lists,
-				ListAllResp{
-					Queue:      q,
-					Guaranteed: queueMap[q.Name].Spec.Guarantee.Resource,
-					Deserved:   queueMap[q.Name].Spec.Deserved,
-					Capacity:   queueMap[q.Name].Spec.Capability,
-				},
-			)
-		} else {
-			resputil.Error(c, "asynchronized queue db with vcqueue", resputil.NotSpecified)
-			return
-		}
+		lists = append(lists,
+			ListAllResp{
+				Queue:      q,
+				Guaranteed: q.Quota.Data().Guaranteed,
+				Deserved:   q.Quota.Data().Deserved,
+				Capacity:   q.Quota.Data().Capability,
+			},
+		)
 	}
 
 	resp := payload.ListResp[ListAllResp]{Rows: lists, Count: count}
@@ -174,10 +159,11 @@ func (mgr *ProjectMgr) ListAllForAdmin(c *gin.Context) {
 
 type (
 	ProjectCreateReq struct {
-		Name       string          `json:"name" binding:"required"`
-		Guaranteed v1.ResourceList `json:"guaranteed" binding:"required"`
-		Deserved   v1.ResourceList `json:"deserved" binding:"required"`
-		Capability v1.ResourceList `json:"capacity" binding:"required"`
+		Name           string          `json:"name" binding:"required"`
+		Guaranteed     v1.ResourceList `json:"guaranteed" binding:"required"`
+		Deserved       v1.ResourceList `json:"deserved" binding:"required"`
+		Capability     v1.ResourceList `json:"capacity" binding:"required"`
+		WithoutVolcano bool            `json:"withoutVolcano"`
 	}
 
 	ProjectCreateResp struct {
@@ -185,7 +171,7 @@ type (
 	}
 )
 
-// CreateTeamProject godoc
+// CreateAccount godoc
 // @Summary 创建团队项目
 // @Description 从请求中获取项目名称、描述和配额，以当前用户为管理员，创建一个团队项目
 // @Tags Project
@@ -197,7 +183,7 @@ type (
 // @Failure 400 {object} resputil.Response[any]	"请求参数错误"
 // @Failure 500 {object} resputil.Response[any]	"项目创建失败，返回错误信息"
 // @Router /v1/projects [post]
-func (mgr *ProjectMgr) CreateTeamProject(c *gin.Context) {
+func (mgr *ProjectMgr) CreateAccount(c *gin.Context) {
 	token := util.GetToken(c)
 
 	var req ProjectCreateReq
@@ -246,12 +232,17 @@ func (mgr *ProjectMgr) CreateTeamProject(c *gin.Context) {
 			return err
 		}
 
-		err := mgr.CreateTeamQueue(c, &token, &queue, &req)
+		queueID = queue.ID
+
+		if req.WithoutVolcano {
+			return nil
+		}
+
+		// Create a queue in Volcano
+		err := mgr.CreateVolcanoQueue(c, &token, &queue, &req)
 		if err != nil {
 			return err
 		}
-
-		queueID = queue.ID
 
 		return nil
 	})
@@ -268,7 +259,7 @@ const (
 	LabelKeyQueueCreatedBy = "crater.raids.io/queue-created-by"
 )
 
-func (mgr *ProjectMgr) CreateTeamQueue(c *gin.Context, token *util.JWTMessage, queue *model.Queue,
+func (mgr *ProjectMgr) CreateVolcanoQueue(c *gin.Context, token *util.JWTMessage, queue *model.Queue,
 	req *ProjectCreateReq) error {
 	// Create a new queue, and set the user as the admin in user_queue
 	namespace := config.GetConfig().Workspace.Namespace
@@ -297,9 +288,10 @@ func (mgr *ProjectMgr) CreateTeamQueue(c *gin.Context, token *util.JWTMessage, q
 }
 
 type UpdateQuotaReq struct {
-	Guaranteed v1.ResourceList `json:"guaranteed" binding:"required"`
-	Deserved   v1.ResourceList `json:"deserved" binding:"required"`
-	Capability v1.ResourceList `json:"capacity" binding:"required"`
+	Guaranteed     v1.ResourceList `json:"guaranteed" binding:"required"`
+	Deserved       v1.ResourceList `json:"deserved" binding:"required"`
+	Capability     v1.ResourceList `json:"capacity" binding:"required"`
+	WithoutVolcano bool            `json:"withoutVolcano"`
 }
 
 type ProjectNameReq struct {
@@ -339,11 +331,6 @@ func (mgr *ProjectMgr) UpdateQuota(c *gin.Context) {
 		return
 	}
 
-	if err := mgr.updateQueueCapcity(c, queue, &req); err != nil {
-		resputil.Error(c, fmt.Sprintf("update capability failed, detail: %v", err), resputil.NotSpecified)
-		return
-	}
-
 	// update db
 	queue.Quota = datatypes.NewJSONType(model.QueueQuota{
 		Guaranteed: req.Guaranteed,
@@ -355,10 +342,21 @@ func (mgr *ProjectMgr) UpdateQuota(c *gin.Context) {
 		return
 	}
 
+	// update queue
+	if req.WithoutVolcano {
+		resputil.Success(c, fmt.Sprintf("update capability of %s", name))
+		return
+	}
+
+	if err := mgr.updateVolcanoQueue(c, queue, &req); err != nil {
+		resputil.Error(c, fmt.Sprintf("update capability failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+
 	resputil.Success(c, fmt.Sprintf("update capability of %s", name))
 }
 
-func (mgr *ProjectMgr) updateQueueCapcity(c *gin.Context, queue *model.Queue, req *UpdateQuotaReq) error {
+func (mgr *ProjectMgr) updateVolcanoQueue(c *gin.Context, queue *model.Queue, req *UpdateQuotaReq) error {
 	vcQueue := &scheduling.Queue{}
 	namespace := config.GetConfig().Workspace.Namespace
 	err := mgr.Get(c, client.ObjectKey{Name: queue.Name, Namespace: namespace}, vcQueue)

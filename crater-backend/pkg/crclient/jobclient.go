@@ -11,8 +11,10 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
+	"github.com/samber/lo"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -141,7 +143,11 @@ func (c *JobControl) createTrainingJobFromTask(task *models.AITask) (jobname str
 		podSpec.PriorityClassName = models.PriorityClassGauranteed
 	}
 
-	podSpec.SchedulerName = "kube-gpu-colocate-scheduler"
+	if podSpec.Affinity != nil {
+		podSpec.SchedulerName = "default-scheduler"
+	} else {
+		podSpec.SchedulerName = "kube-gpu-colocate-scheduler"
+	}
 
 	job := &aijobapi.AIJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -172,11 +178,121 @@ func (c *JobControl) createTrainingJobFromTask(task *models.AITask) (jobname str
 	return jobname, nil
 }
 
+func (c *JobControl) createJupyterJobFromTask(task *models.AITask) (jobname string, err error) {
+	podSpec := task.PodTemplate.Data()
+	if len(podSpec.Containers) == 0 {
+		err = fmt.Errorf("no container in pod spec")
+		return "", err
+	}
+
+	// convert metadata to lower case
+	taskName := strings.ToLower(task.TaskName)
+	jobname = fmt.Sprintf("%s-%d", taskName, task.ID)
+	jobname = strings.ReplaceAll(jobname, "_", "-")
+	//nolint:gosec // taskID is safe
+	taskID := strconv.Itoa(int(task.ID))
+
+	// set labels and annotations
+	labels := map[string]string{
+		aijobapi.LabelKeyTaskID:        taskID,
+		aijobapi.LabelKeyTaskUser:      task.UserName,
+		aijobapi.LabelKeyTaskType:      task.TaskType,
+		aijobapi.LabelKeyTaskSLO:       strconv.FormatUint(uint64(task.SLO), 10),
+		aijobapi.JobNameLabel:          jobname,
+		aijobapi.LabelKeyEstimatedTime: strconv.FormatUint(uint64(task.EsitmatedTime), 10),
+	}
+
+	annotations := make(map[string]string)
+	annotations[aijobapi.AnnotationKeyProfileStat] = task.ProfileStat
+	if task.ProfileStatus == models.ProfileFinish {
+		annotations[aijobapi.AnnotationKeyPreemptCount] = "0"
+	}
+
+	// set priority class
+	podSpec.PriorityClassName = models.PriorityClassGauranteed
+
+	if podSpec.Affinity != nil {
+		podSpec.SchedulerName = "default-scheduler"
+	} else {
+		podSpec.SchedulerName = "kube-gpu-colocate-scheduler"
+	}
+
+	job := &aijobapi.AIJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        jobname,
+			Namespace:   task.Namespace,
+			Labels:      labels,
+			Annotations: annotations,
+		},
+		Spec: aijobapi.JobSpec{
+			Replicas: 1,
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        jobname,
+					Labels:      labels,
+					Namespace:   task.Namespace,
+					Annotations: annotations,
+				},
+				Spec: podSpec,
+			},
+			ResourceRequest: podSpec.Containers[0].Resources.Requests,
+		},
+	}
+	err = c.Create(context.Background(), job)
+	if err != nil {
+		err = fmt.Errorf("create job %s: %w", task.TaskName, err)
+		return "", err
+	}
+
+	// 创建 Service，转发 Jupyter 端口
+	svc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ServicePrefix + jobname,
+			Namespace: task.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "aisystem.github.com/v1alpha1",
+					Kind:               "AIJob",
+					Name:               job.Name,
+					UID:                job.UID,
+					BlockOwnerDeletion: lo.ToPtr(true),
+				},
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: map[string]string{
+				aijobapi.LabelKeyTaskID: taskID,
+			},
+			Ports: []corev1.ServicePort{
+				{
+					Name:       jobname,
+					Port:       80,
+					Protocol:   corev1.ProtocolTCP,
+					TargetPort: intstr.FromInt(jupyterPort),
+					// NodePort:   0, // Kubernetes will allocate a port
+				},
+			},
+			SessionAffinity: corev1.ServiceAffinityNone,
+			Type:            corev1.ServiceTypeNodePort,
+		},
+	}
+
+	err = c.Create(context.Background(), svc)
+	if err != nil {
+		err = fmt.Errorf("create service %s: %w", task.TaskName, err)
+		return "", err
+	}
+
+	return jobname, nil
+}
+
 // task.TaskType 目前有两种类型：training 和 jupyter，如果是 jupyter，则同时创建随机的端口转发
 func (c *JobControl) CreateJobFromTask(task *models.AITask) (jobname string, err error) {
 	switch task.TaskType {
 	case models.TrainingTask:
 		return c.createTrainingJobFromTask(task)
+	case models.JupyterTask:
+		return c.createJupyterJobFromTask(task)
 	default:
 		err = fmt.Errorf("task type is not valid: %v", task.TaskType)
 		return

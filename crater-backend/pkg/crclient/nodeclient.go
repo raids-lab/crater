@@ -33,7 +33,9 @@ func isNodeReady(node *corev1.Node) bool {
 // getNodeRole 获取节点角色
 func getNodeRole(node *corev1.Node) string {
 	for key := range node.Labels {
-		if key == "node-role.kubernetes.io/master" {
+		switch key {
+		case "node-role.kubernetes.io/master":
+		case "node-role.kubernetes.io/control-plane":
 			return "master"
 		}
 	}
@@ -102,6 +104,10 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 		if gpuCount > 0 {
 			// 将int类型的gpu_count转换为resource.Quantity类型
 			capacity_["nvidia.com/gpu"] = *resource.NewQuantity(int64(gpuCount), resource.DecimalSI)
+		}
+		// TODO: remove
+		if node.Name == "zjlab-5" || node.Name == "zjlab-6" {
+			capacity_["nvidia.com/gpu"] = *resource.NewQuantity(int64(2), resource.DecimalSI)
 		}
 		// 获取节点类型
 		nodeType := node.Labels["crater.raids.io/nodetype"]
