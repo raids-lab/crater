@@ -547,6 +547,7 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	var imageuploads []*model.ImageUpload
 	if imageuploads, err = imageuploadQuery.WithContext(c).
 		Where(imageuploadQuery.QueueID.In(PublicQueueID, token.QueueID)).
+		Where(imageuploadQuery.Status.Neq(ImagePackDeleted)).
 		Where(imageuploadQuery.TaskType.Eq(uint8(req.Type))).
 		Find(); err != nil {
 		logutils.Log.Errorf("fetch available imageupload failed, err:%v", err)
