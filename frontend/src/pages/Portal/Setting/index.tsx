@@ -25,7 +25,10 @@ import { globalSettings } from "@/utils/store";
 import FormLabelMust from "@/components/custom/FormLabelMust";
 
 const formSchema = z.object({
-  scheduler: z.string().min(1, { message: "请选择调度算法" }),
+  scheduler: z.enum(["volcano", "colocate", "sparse"], {
+    invalid_type_error: "请选择调度算法",
+    required_error: "请选择调度算法",
+  }),
 });
 
 type FormSchema = z.infer<typeof formSchema>;

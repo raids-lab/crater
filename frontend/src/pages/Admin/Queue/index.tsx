@@ -79,6 +79,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { exportToJson, importFromJson } from "@/utils/form";
+import { useAtomValue } from "jotai";
+import { globalSettings } from "@/utils/store";
 const VERSION = "20240623";
 const JOB_TYPE = "queue";
 
@@ -449,6 +451,7 @@ function TableWithTabs<TData, TValue>({
   rowCount,
   pagination,
 }: DataTableProps<TData, TValue>) {
+  const { scheduler } = useAtomValue(globalSettings);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -477,6 +480,7 @@ function TableWithTabs<TData, TValue>({
         guaranteed: convertResourcesToMap(values.resources, "guaranteed"),
         deserved: convertResourcesToMap(values.resources, "deserved"),
         capacity: convertResourcesToMap(values.resources, "capacity"),
+        withoutVolcano: scheduler !== "volcano",
       }),
     onSuccess: async (_, { name }) => {
       await queryClient.invalidateQueries({
@@ -639,6 +643,7 @@ export const Account = () => {
     },
   });
 
+  const { scheduler } = useAtomValue(globalSettings);
   const { mutate: updateProject, isPending } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
       apiProjectUpdate({
@@ -646,6 +651,7 @@ export const Account = () => {
         guaranteed: convertResourcesToMap(values.resources, "guaranteed"),
         deserved: convertResourcesToMap(values.resources, "deserved"),
         capacity: convertResourcesToMap(values.resources, "capacity"),
+        withoutVolcano: scheduler !== "volcano",
       }),
     onSuccess: async (_, { name }) => {
       await queryClient.invalidateQueries({

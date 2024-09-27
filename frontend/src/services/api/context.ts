@@ -1,4 +1,4 @@
-import { globalJobUrl, store } from "@/utils/store";
+import { globalSettings, store } from "@/utils/store";
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
 
@@ -21,9 +21,9 @@ export interface QuotaResp {
   gpus: ResourceResp[];
 }
 
-const JOB_URL = store.get(globalJobUrl);
+const { scheduler } = store.get(globalSettings);
 
 export const apiContextQuota = () => {
-  const url = JOB_URL === "aijobs" ? "/aijobs/quota" : "/context/quota";
+  const url = scheduler === "volcano" ? "/context/quota" : "/aijobs/quota";
   return instance.get<IResponse<QuotaResp>>(VERSION + url);
 };
