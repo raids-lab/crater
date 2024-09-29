@@ -37,7 +37,7 @@ func (mgr *ResourceMgr) RegisterAdmin(g *gin.RouterGroup) {
 type (
 	ListResourceReq struct {
 		// VendorDomain of the resource in parameter (optional)
-		VendorDomain *string `form:"vendorDomain"`
+		WithVendorDomain bool `form:"withVendorDomain"`
 	}
 )
 
@@ -62,8 +62,8 @@ func (mgr *ResourceMgr) ListResource(c *gin.Context) {
 
 	r := query.Resource
 	q := r.WithContext(c).Order(r.Priority.Desc())
-	if req.VendorDomain != nil {
-		q = q.Where(r.VendorDomain.Eq(*req.VendorDomain))
+	if req.WithVendorDomain {
+		q = q.Where(r.VendorDomain.IsNotNull())
 	}
 	resources, err := q.Find()
 	if err != nil {

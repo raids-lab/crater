@@ -111,6 +111,8 @@ func (mgr *LabelMgr) CreateLabel(c *gin.Context) {
 	switch req.Type {
 	case model.Nvidia:
 		workerType = model.Nvidia
+	case model.Enflame:
+		workerType = model.Enflame
 	default:
 		workerType = model.Nvidia
 	}

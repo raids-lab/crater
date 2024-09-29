@@ -67,6 +67,7 @@ type WorkerType uint8
 const (
 	_       WorkerType = iota
 	Nvidia             // Nvidia GPU worker
+	Enflame            // Enflame AI worker
 	Unknown            // Unknown worker
 )
 

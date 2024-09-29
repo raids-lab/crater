@@ -126,7 +126,7 @@ func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
 	usedQuota := mgr.taskController.GetQuotaInfoSnapshotByUsername(token.QueueName)
 
 	for name, quantity := range deserved {
-		if name == v1.ResourceCPU || name == v1.ResourceMemory || strings.HasPrefix(string(name), "nvidia.com/") {
+		if name == v1.ResourceCPU || name == v1.ResourceMemory || strings.Contains(string(name), "/") {
 			resources[name] = interpayload.ResourceResp{
 				Label: string(name),
 				Deserved: lo.ToPtr(interpayload.ResourceBase{
@@ -204,9 +204,14 @@ func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
 	memory.Label = "mem"
 	var gpus []interpayload.ResourceResp
 	for name, resource := range resources {
-		if strings.HasPrefix(string(name), "nvidia.com/") {
+		if strings.Contains(string(name), "/") {
 			// convert nvidia.com/v100 to v100
-			resource.Label = strings.TrimPrefix(string(name), "nvidia.com/")
+			split := strings.Split(string(name), "/")
+			if len(split) == 2 {
+				resourceType := split[1]
+				label := resourceType
+				resource.Label = label
+			}
 			gpus = append(gpus, resource)
 		}
 	}
