@@ -13,10 +13,10 @@ export interface Resource {
   label: string;
 }
 
-export const apiResourceList = (vendorDomain?: string) => {
+export const apiResourceList = (withVendorDomain: boolean) => {
   return instance.get<IResponse<Resource[]>>(`${VERSION}/resources`, {
     params: {
-      vendorDomain,
+      withVendorDomain,
     },
   });
 };

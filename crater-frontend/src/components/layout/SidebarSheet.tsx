@@ -9,7 +9,6 @@ import React, { Fragment, useCallback, useEffect, useState } from "react";
 import { RouteObject, useLocation, useNavigate } from "react-router-dom";
 import { ScrollArea } from "../ui/scroll-area";
 import { getTitleByPath } from "@/utils/title";
-import { toast } from "sonner";
 
 export type SidebarSubItem = {
   route: RouteObject;
@@ -186,17 +185,7 @@ export default function Sidebar({
             </SingleButton>
           ))}
         </div>
-        <p
-          className="h-9 select-none pt-1 text-center text-xs font-light text-muted-foreground"
-          onDoubleClick={() => {
-            if (actived.view === "portal") {
-              navigate("/recommend");
-            } else if (actived.view === "recommend") {
-              navigate("/portal");
-            }
-            toast.success("切换至另一视图");
-          }}
-        >
+        <p className="h-9 select-none pt-1 text-center text-xs font-light text-muted-foreground">
           {import.meta.env.VITE_APP_VERSION}
         </p>
       </div>

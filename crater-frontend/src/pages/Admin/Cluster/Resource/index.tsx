@@ -143,7 +143,7 @@ export const Component: FC = () => {
 
   const { data: resourceList, isLoading } = useQuery({
     queryKey: ["resource", "list"],
-    queryFn: () => apiResourceList(),
+    queryFn: () => apiResourceList(false),
     select: (res) => {
       return res.data.data
         .sort((a, b) => a.name.localeCompare(b.name))

@@ -411,7 +411,7 @@ const ColocateOverview = () => {
                         <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction
                           variant="destructive"
-                          onClick={() => deleteTask(jobInfo.jobName)}
+                          onClick={() => deleteTask(`${jobInfo.id}`)}
                         >
                           删除
                         </AlertDialogAction>
@@ -433,7 +433,7 @@ const ColocateOverview = () => {
                         <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction
                           variant="destructive"
-                          onClick={() => deleteTask(jobInfo.jobName)}
+                          onClick={() => deleteTask(`${jobInfo.id}`)}
                         >
                           停止
                         </AlertDialogAction>

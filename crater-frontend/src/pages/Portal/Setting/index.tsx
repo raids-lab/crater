@@ -79,7 +79,7 @@ export const Component = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="volcano">
-                          Baseline - 原生调度算法
+                          BASE - 原生调度算法
                         </SelectItem>
                         <SelectItem value="colocate">
                           EMIAS - 面向多租户可抢占异构资源场景的调度算法

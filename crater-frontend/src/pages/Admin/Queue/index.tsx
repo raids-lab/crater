@@ -491,8 +491,8 @@ function TableWithTabs<TData, TValue>({
   });
 
   const { data: resourcesData } = useQuery({
-    queryKey: ["label", "list"],
-    queryFn: () => apiResourceList("nvidia.com"),
+    queryKey: ["resources", "list"],
+    queryFn: () => apiResourceList(true),
     select: (res) => {
       return res.data.data.map(
         (item) =>
