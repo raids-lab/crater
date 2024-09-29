@@ -333,11 +333,19 @@ const ColocateOverview = () => {
           />
         ),
         cell: ({ row }) => {
-          const profiling = profilingStatuses.find(
+          let profiling = profilingStatuses.find(
             (profiling) => profiling.value === row.getValue("profileStatus"),
           );
           if (!profiling) {
             return null;
+          }
+          if (row.getValue<string>("status") === "Succeeded") {
+            profiling = {
+              value: "3",
+              label: "已分析",
+              className:
+                "text-emerald-500 border-emerald-500 bg-emerald-500/10",
+            };
           }
           return (
             <Badge className={profiling.className} variant="outline">

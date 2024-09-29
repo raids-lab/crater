@@ -242,21 +242,19 @@ export const Component = () => {
                   作业 YAML
                 </Button>
               </LogSheet>
-              {false && <Separator orientation="vertical" />}
-              {false && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    // const url = generateMetricsUrl(data.podDetails);
-                    const url = `${job_monitor}?orgId=1&var-job=${data.jobName}`;
-                    window.open(url, "_blank");
-                  }}
-                >
-                  <PieChartIcon className="mr-2 h-4 w-4" />
-                  资源监控
-                </Button>
-              )}
+              <Separator orientation="vertical" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  // const url = generateMetricsUrl(data.podDetails);
+                  const url = `${job_monitor}?orgId=1&var-job=${data.jobName}`;
+                  window.open(url, "_blank");
+                }}
+              >
+                <PieChartIcon className="mr-2 h-4 w-4" />
+                资源监控
+              </Button>
               {data.useTensorBoard && (
                 <>
                   <Separator orientation="vertical" />

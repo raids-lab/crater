@@ -430,17 +430,15 @@ export const Component: FC = () => {
           />
         </PieCard>
       </div>
-      {false && (
-        <DataTable
-          info={{
-            title: "作业信息",
-            description: "查看集群作业的运行情况",
-          }}
-          query={jobQuery}
-          columns={vcJobColumns}
-          toolbarConfig={toolbarConfig}
-        ></DataTable>
-      )}
+      <DataTable
+        info={{
+          title: "作业信息",
+          description: "查看集群作业的运行情况",
+        }}
+        query={jobQuery}
+        columns={vcJobColumns}
+        toolbarConfig={toolbarConfig}
+      />
       <DataTable
         info={{
           title: "节点信息",

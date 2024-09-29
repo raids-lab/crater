@@ -131,8 +131,8 @@ export const Component = () => {
   });
 
   const { data: resources } = useQuery({
-    queryKey: ["label", "list"],
-    queryFn: () => apiResourceList("nvidia.com"),
+    queryKey: ["resources", "list"],
+    queryFn: () => apiResourceList(true),
     select: (res) => {
       return res.data.data
         .sort((a, b) => {
