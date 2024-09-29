@@ -118,12 +118,13 @@ func _() {
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
 	_ = x[Nvidia-1]
-	_ = x[Unknown-2]
+	_ = x[Enflame-2]
+	_ = x[Unknown-3]
 }
 
-const _WorkerType_name = "NvidiaUnknown"
+const _WorkerType_name = "NvidiaEnflameUnknown"
 
-var _WorkerType_index = [...]uint8{0, 6, 13}
+var _WorkerType_index = [...]uint8{0, 6, 13, 20}
 
 func (i WorkerType) String() string {
 	i -= 1
