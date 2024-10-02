@@ -238,7 +238,7 @@ func (mgr *FileMgr) CreateDataset(c *gin.Context) {
 	}
 	regex := regexp.MustCompile("^/+")
 	url := regex.ReplaceAllString(datasetReq.URL, "")
-	db := query.Use(query.DB)
+	db := query.Use(query.GetDB())
 	err := db.Transaction(func(tx *query.Query) error {
 		d := tx.Dataset
 		ud := tx.UserDataset
@@ -655,7 +655,7 @@ func (mgr *FileMgr) DeleteDataset(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("validate delete parameters failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
-	db := query.Use(query.DB)
+	db := query.Use(query.GetDB())
 	err := db.Transaction(func(tx *query.Query) error {
 		d := tx.Dataset
 		ud := tx.UserDataset

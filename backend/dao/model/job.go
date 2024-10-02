@@ -24,12 +24,14 @@ type Job struct {
 	QueueID            uint                                `gorm:"primaryKey"`
 	Queue              Queue                               `gorm:"foreignKey:QueueID"`
 	JobType            string                              `gorm:"not null;comment:作业类型"`
-	Status             batch.JobPhase                      `gorm:"index:status;not null;comment:用户状态 (pending, active, inactive)"`
+	Status             batch.JobPhase                      `gorm:"index:status;not null;comment:作业状态"`
 	CreationTimestamp  time.Time                           `gorm:"not null;comment:作业创建时间"`
 	RunningTimestamp   time.Time                           `gorm:"comment:作业开始运行时间"`
 	CompletedTimestamp time.Time                           `gorm:"comment:作业完成时间"`
 	Nodes              datatypes.JSONType[[]string]        `gorm:"comment:作业运行的节点"`
 	Resources          datatypes.JSONType[v1.ResourceList] `gorm:"comment:作业的资源需求"`
+
+	KeepWhenLowResourceUsage bool `gorm:"comment:当资源利用率低时是否保留"`
 
 	Attributes datatypes.JSONType[*batch.Job] `gorm:"comment:作业的原始属性"`
 }

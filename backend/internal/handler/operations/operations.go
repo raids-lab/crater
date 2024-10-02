@@ -16,6 +16,7 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/samber/lo"
 	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -54,8 +55,8 @@ func (mgr *OperationsMgr) RegisterAdmin(g *gin.RouterGroup) {
 }
 
 type JobFreRequest struct {
-	TimeRange int  `form:"timeRange" binding:"required"`
-	Util      *int `form:"util" binding:"required"`
+	TimeRange int `form:"timeRange" binding:"required"`
+	Util      int `form:"util" binding:"required"`
 }
 
 func (mgr *OperationsMgr) getJobWhiteList(c *gin.Context) ([]string, error) {
@@ -71,7 +72,7 @@ func (mgr *OperationsMgr) getJobWhiteList(c *gin.Context) ([]string, error) {
 	return cleanList, nil
 }
 
-func (mgr *OperationsMgr) DeleteJobByName(c *gin.Context, jobName string) error {
+func (mgr *OperationsMgr) deleteJobByName(c *gin.Context, jobName string) error {
 	job := &batch.Job{}
 	namespace := config.GetConfig().Workspace.Namespace
 	if err := mgr.Get(c, client.ObjectKey{Name: jobName, Namespace: namespace}, job); err != nil {
@@ -196,39 +197,24 @@ func (mgr *OperationsMgr) DeleteUnUsedJobList(c *gin.Context) {
 		return
 	}
 
-	if req.Util == nil {
-		resputil.HTTPError(c, http.StatusBadRequest, "Util is required and must be a valid integer", resputil.InvalidRequest)
-		return
-	}
-
-	unUsedJobs := mgr.nodeClient.GetLeastUsedGPUJobs(req.TimeRange, *req.Util)
+	unUsedJobs := mgr.nodeClient.GetLeastUsedGPUJobs(req.TimeRange, req.Util)
 	whiteList, _ := mgr.getJobWhiteList(c)
 	deleteJobList := []string{}
+
 	for _, job := range unUsedJobs {
-		if !contains(whiteList, job) {
-			err := mgr.DeleteJobByName(c, job)
-			if err == nil {
-				fmt.Printf("Delete job %s successfully\n", job)
-				deleteJobList = append(deleteJobList, job)
-			} else {
-				fmt.Printf("Delete job %s failed\n", job)
-				fmt.Println(err)
-			}
-		} else {
+		if lo.Contains(whiteList, job) {
 			fmt.Printf("Job %s is in the white list\n", job)
+			continue
 		}
+		if err := mgr.deleteJobByName(c, job); err != nil {
+			fmt.Printf("Delete job %s failed\n", job)
+			fmt.Println(err)
+		}
+		fmt.Printf("Delete job %s successfully\n", job)
+		deleteJobList = append(deleteJobList, job)
 	}
 	response := map[string][]string{
 		"delete_job_list": deleteJobList,
 	}
 	resputil.Success(c, response)
-}
-
-func contains(s []string, e string) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
 }

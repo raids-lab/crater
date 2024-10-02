@@ -193,7 +193,7 @@ func (mgr *ProjectMgr) CreateAccount(c *gin.Context) {
 	}
 
 	// Create a new project, and set the user as the admin in user_project
-	db := query.Use(query.DB)
+	db := query.Use(query.GetDB())
 
 	var queueID uint
 
@@ -402,7 +402,7 @@ func (mgr *ProjectMgr) DeleteProject(c *gin.Context) {
 		return
 	}
 
-	db := query.Use(query.DB)
+	db := query.Use(query.GetDB())
 
 	queueID := req.ID
 	var queueName string
