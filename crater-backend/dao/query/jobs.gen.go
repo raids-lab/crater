@@ -42,6 +42,7 @@ func newJob(db *gorm.DB, opts ...gen.DOOption) job {
 	_job.CompletedTimestamp = field.NewTime(tableName, "completed_timestamp")
 	_job.Nodes = field.NewField(tableName, "nodes")
 	_job.Resources = field.NewField(tableName, "resources")
+	_job.KeepWhenLowResourceUsage = field.NewBool(tableName, "keep_when_low_resource_usage")
 	_job.Attributes = field.NewField(tableName, "attributes")
 	_job.User = jobBelongsToUser{
 		db: db.Session(&gorm.Session{}),
@@ -83,24 +84,25 @@ func newJob(db *gorm.DB, opts ...gen.DOOption) job {
 type job struct {
 	jobDo jobDo
 
-	ALL                field.Asterisk
-	ID                 field.Uint
-	CreatedAt          field.Time
-	UpdatedAt          field.Time
-	DeletedAt          field.Field
-	Name               field.String
-	JobName            field.String
-	UserID             field.Uint
-	QueueID            field.Uint
-	JobType            field.String
-	Status             field.String
-	CreationTimestamp  field.Time
-	RunningTimestamp   field.Time
-	CompletedTimestamp field.Time
-	Nodes              field.Field
-	Resources          field.Field
-	Attributes         field.Field
-	User               jobBelongsToUser
+	ALL                      field.Asterisk
+	ID                       field.Uint
+	CreatedAt                field.Time
+	UpdatedAt                field.Time
+	DeletedAt                field.Field
+	Name                     field.String
+	JobName                  field.String
+	UserID                   field.Uint
+	QueueID                  field.Uint
+	JobType                  field.String
+	Status                   field.String
+	CreationTimestamp        field.Time
+	RunningTimestamp         field.Time
+	CompletedTimestamp       field.Time
+	Nodes                    field.Field
+	Resources                field.Field
+	KeepWhenLowResourceUsage field.Bool
+	Attributes               field.Field
+	User                     jobBelongsToUser
 
 	Queue jobBelongsToQueue
 
@@ -134,6 +136,7 @@ func (j *job) updateTableName(table string) *job {
 	j.CompletedTimestamp = field.NewTime(table, "completed_timestamp")
 	j.Nodes = field.NewField(table, "nodes")
 	j.Resources = field.NewField(table, "resources")
+	j.KeepWhenLowResourceUsage = field.NewBool(table, "keep_when_low_resource_usage")
 	j.Attributes = field.NewField(table, "attributes")
 
 	j.fillFieldMap()
@@ -159,7 +162,7 @@ func (j *job) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (j *job) fillFieldMap() {
-	j.fieldMap = make(map[string]field.Expr, 18)
+	j.fieldMap = make(map[string]field.Expr, 19)
 	j.fieldMap["id"] = j.ID
 	j.fieldMap["created_at"] = j.CreatedAt
 	j.fieldMap["updated_at"] = j.UpdatedAt
@@ -175,6 +178,7 @@ func (j *job) fillFieldMap() {
 	j.fieldMap["completed_timestamp"] = j.CompletedTimestamp
 	j.fieldMap["nodes"] = j.Nodes
 	j.fieldMap["resources"] = j.Resources
+	j.fieldMap["keep_when_low_resource_usage"] = j.KeepWhenLowResourceUsage
 	j.fieldMap["attributes"] = j.Attributes
 
 }

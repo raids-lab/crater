@@ -6,27 +6,15 @@ import (
 
 	"github.com/go-gormigrate/gormigrate/v2"
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
 	"gorm.io/datatypes"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	aitask "github.com/raids-lab/crater/pkg/db/orm"
 	"github.com/raids-lab/crater/pkg/models"
 )
 
-func ConnectPostgres() *gorm.DB {
-	// Connect to the database
-	dsn := `host=10.8.0.6 user=postgres password=***REMOVED*** 
-		dbname=crater port=5432 sslmode=require TimeZone=Asia/Shanghai`
-	db, err := gorm.Open(postgres.Open(dsn))
-	if err != nil {
-		panic(fmt.Errorf("connect to postgres: %w", err))
-	}
-	return db
-}
-
 func main() {
-	db := ConnectPostgres()
+	db := query.GetDB()
 
 	m := gormigrate.New(db, gormigrate.DefaultOptions, []*gormigrate.Migration{
 		// your migrations here
@@ -171,6 +159,37 @@ func main() {
 				return tx.Migrator().DropTable("jobs")
 			},
 		},
+		{
+			ID: "202410012314",
+			Migrate: func(tx *gorm.DB) error {
+				type Job struct {
+					KeepWhenLowResourceUsage bool `gorm:"comment:当资源利用率低时是否保留"`
+				}
+				return tx.Migrator().AddColumn(&Job{}, "KeepWhenLowResourceUsage")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Job struct {
+					KeepWhenLowResourceUsage bool `gorm:"comment:当资源利用率低时是否保留"`
+				}
+				return tx.Migrator().DropColumn(&Job{}, "KeepWhenLowResourceUsage")
+			},
+		},
+		{
+			ID: "202410022314",
+			Migrate: func(tx *gorm.DB) error {
+				// when table already exists, define only columns that are about to change
+				type AITask struct {
+					KeepWhenLowResourceUsage bool `gorm:"comment:当资源利用率低时是否保留"`
+				}
+				return tx.Migrator().AddColumn(&AITask{}, "KeepWhenLowResourceUsage")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type AITask struct {
+					KeepWhenLowResourceUsage bool `gorm:"comment:当资源利用率低时是否保留"`
+				}
+				return tx.Migrator().DropColumn(&AITask{}, "KeepWhenLowResourceUsage")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -223,7 +242,7 @@ func main() {
 	}
 
 	// for emias scheduler
-	if err := aitask.InitMigration(); err != nil {
-		panic(fmt.Errorf("could not init migration: %w", err))
-	}
+	// if err := aitask.InitMigration(); err != nil {
+	// 	panic(fmt.Errorf("could not init migration: %w", err))
+	// }
 }

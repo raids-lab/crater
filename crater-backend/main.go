@@ -152,13 +152,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = query.InitDB()
-	if err != nil {
-		setupLog.Error(err, "unable to init query db")
-		os.Exit(1)
-	}
-
-	query.SetDefault(query.DB)
+	query.SetDefault(query.GetDB())
 
 	// 2. init task controller
 	// taskUpdateChan := make(chan util.TaskUpdateChan)
