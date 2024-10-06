@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiJobLogs, apiJupyterTokenGet } from "@/services/api/vcjob";
 import CraterIcon from "@/components/icon/CraterIcon";
 import { Button } from "@/components/ui/button";
-import LogSheet from "@/components/custom/LogSheet";
+import CodeSheet from "@/components/codeblock/CodeSheet";
 
 const Jupyter: FC = () => {
   // get param from url
@@ -61,7 +61,7 @@ const Jupyter: FC = () => {
         src={url}
         className="absolute bottom-0 left-0 right-0 top-0 h-screen w-screen"
       />
-      <LogSheet log={taskLogs} title={id}>
+      <CodeSheet code={taskLogs} title={id}>
         <Button
           className="absolute bottom-10 right-4 h-10 w-10 rounded-full hover:bg-transparent"
           size="icon"
@@ -70,7 +70,7 @@ const Jupyter: FC = () => {
         >
           <CraterIcon />
         </Button>
-      </LogSheet>
+      </CodeSheet>
     </div>
   );
 };
