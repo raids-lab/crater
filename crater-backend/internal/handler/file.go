@@ -122,7 +122,7 @@ func (mgr *FileMgr) GetMyDataset(c *gin.Context) {
 func (mgr *FileMgr) GetDatasetByID(c *gin.Context) {
 	var req DatasetGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("get dataset failed, detail: %v", err), resputil.NotSpecified)
+		resputil.BadRequestError(c, fmt.Sprintf("get dataset failed, detail: %v", err))
 		return
 	}
 	d := query.Dataset
@@ -379,21 +379,18 @@ func (mgr *FileMgr) shareWithUser(c *gin.Context, userReq SharedUserReq) error {
 // @Router /v1/dataset/cancelshare/user [post]
 func (mgr *FileMgr) CancelShareDatasetWithUser(c *gin.Context) {
 	var Req cancelsharedUserReq
-	err := c.ShouldBindJSON(&Req)
-	if err != nil {
+	if err := c.ShouldBindJSON(&Req); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
 	d := query.Dataset
 	token := util.GetToken(c)
-	_, err = d.WithContext(c).Where(d.UserID.Eq(token.UserID), d.ID.Eq(Req.DatasetID)).First()
-	if err != nil {
+	if _, err := d.WithContext(c).Where(d.UserID.Eq(token.UserID), d.ID.Eq(Req.DatasetID)).First(); err != nil {
 		resputil.Error(c, "you has no permission to cancel share with user", resputil.NotSpecified)
 		return
 	}
-	cerr := mgr.cancelShareWithUser(c, Req)
-	if cerr != nil {
-		resputil.Error(c, cerr.Error(), resputil.NotSpecified)
+	if err := mgr.cancelShareWithUser(c, Req); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	resputil.Success(c, "cancel share with user successfully")
@@ -652,7 +649,7 @@ func (mgr *FileMgr) DeleteDataset(c *gin.Context) {
 	token := util.GetToken(c)
 	var req DeleteDatasetReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate delete parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.BadRequestError(c, fmt.Sprintf("validate delete parameters failed, detail: %v", err))
 		return
 	}
 	db := query.Use(query.GetDB())
@@ -768,7 +765,7 @@ type UserDatasetGetResp struct {
 func (mgr *FileMgr) ListUsersOutOfDataset(c *gin.Context) {
 	var req DatasetGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("get users out of dataset failed, detail: %v", err), resputil.NotSpecified)
+		resputil.BadRequestError(c, fmt.Sprintf("get users out of dataset failed, detail: %v", err))
 		return
 	}
 	d := query.Dataset
@@ -814,7 +811,7 @@ type UserDatasetResp struct {
 func (mgr *FileMgr) ListUserOfDataset(c *gin.Context) {
 	var req DatasetGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("get dataset failed, detail: %v", err), resputil.NotSpecified)
+		resputil.BadRequestError(c, fmt.Sprintf("get dataset failed, detail: %v", err))
 		return
 	}
 	d := query.Dataset
@@ -870,7 +867,7 @@ type QueueDatasetGetResp struct {
 func (mgr *FileMgr) ListQueuesOutOfDataset(c *gin.Context) {
 	var req DatasetGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("get queues out of dataset failed, detail: %v", err), resputil.NotSpecified)
+		resputil.BadRequestError(c, fmt.Sprintf("get queues out of dataset failed, detail: %v", err))
 		return
 	}
 	d := query.Dataset
@@ -910,7 +907,7 @@ func (mgr *FileMgr) ListQueuesOutOfDataset(c *gin.Context) {
 func (mgr *FileMgr) ListQueueOfDataset(c *gin.Context) {
 	var req DatasetGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("get queues of dataset failed, detail: %v", err), resputil.NotSpecified)
+		resputil.BadRequestError(c, fmt.Sprintf("get queues of dataset failed, detail: %v", err))
 		return
 	}
 	d := query.Dataset

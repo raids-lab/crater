@@ -51,10 +51,6 @@ type (
 // @Router /v1/vcjobs/training [post]
 func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	token := util.GetToken(c)
-	if token.QueueName == util.QueueNameNull {
-		resputil.Error(c, "Queue not specified", resputil.QueueNotFound)
-		return
-	}
 
 	var req CreateTensorflowReq
 	if err := c.ShouldBindJSON(&req); err != nil {

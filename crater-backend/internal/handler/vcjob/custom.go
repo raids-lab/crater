@@ -43,10 +43,6 @@ type (
 // @Router /v1/vcjobs/training [post]
 func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	token := util.GetToken(c)
-	if token.QueueName == util.QueueNameNull {
-		resputil.Error(c, "Queue not specified", resputil.QueueNotFound)
-		return
-	}
 
 	var req CreateCustomReq
 	if err := c.ShouldBindJSON(&req); err != nil {

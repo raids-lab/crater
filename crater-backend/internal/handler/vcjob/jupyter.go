@@ -31,10 +31,6 @@ type (
 
 func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	token := util.GetToken(c)
-	if token.QueueName == util.QueueNameNull {
-		resputil.Error(c, "Queue not specified", resputil.QueueNotFound)
-		return
-	}
 
 	var req CreateJupyterReq
 	if err := c.ShouldBindJSON(&req); err != nil {

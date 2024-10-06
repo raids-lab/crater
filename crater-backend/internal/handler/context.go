@@ -54,14 +54,14 @@ func (mgr *ContextMgr) RegisterAdmin(_ *gin.RouterGroup) {}
 func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 	token := util.GetToken(c)
 	if token.QueueName == util.QueueNameNull {
-		resputil.Error(c, "Queue not specified", resputil.QueueNotFound)
+		resputil.Error(c, "Queue not specified", resputil.TokenExpired)
 		return
 	}
 
 	queue := scheduling.Queue{}
 	err := mgr.Get(c, types.NamespacedName{Name: token.QueueName, Namespace: config.GetConfig().Workspace.Namespace}, &queue)
 	if err != nil {
-		resputil.Error(c, "Queue not found", resputil.QueueNotFound)
+		resputil.Error(c, "Queue not found", resputil.TokenExpired)
 		return
 	}
 
