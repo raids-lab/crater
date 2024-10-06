@@ -37,7 +37,7 @@ lint:
 # Build backend and generate artifacts
 build_backend:
   stage: build_backend
-  image: ***REMOVED***/crater/golang:1.22-alpine
+  image: ***REMOVED***/docker.io/library/golang:1.23-alpine
   script:
     - mkdir -p .cache
     - export GOPATH="$CI_PROJECT_DIR/.cache"
