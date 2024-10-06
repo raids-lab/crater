@@ -16,10 +16,6 @@ import (
 
 func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	token := util.GetToken(c)
-	if token.QueueName == util.QueueNameNull {
-		resputil.Error(c, "Queue not specified", resputil.QueueNotFound)
-		return
-	}
 
 	var req CreateTensorflowReq
 	if err := c.ShouldBindJSON(&req); err != nil {

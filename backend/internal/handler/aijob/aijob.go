@@ -103,14 +103,14 @@ func (mgr *AIJobMgr) NotifyTaskUpdate(taskID uint, userName string, op util.Task
 func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
 	token := interutil.GetToken(c)
 	if token.QueueName == interutil.QueueNameNull {
-		resputil.Error(c, "Queue not specified", resputil.QueueNotFound)
+		resputil.Error(c, "Queue not specified", resputil.TokenExpired)
 		return
 	}
 
 	q := query.Queue
 	queue, err := q.WithContext(c).Where(q.Name.Eq(token.QueueName)).First()
 	if err != nil {
-		resputil.Error(c, "Queue not found", resputil.QueueNotFound)
+		resputil.Error(c, "Queue not found", resputil.TokenExpired)
 		return
 	}
 
