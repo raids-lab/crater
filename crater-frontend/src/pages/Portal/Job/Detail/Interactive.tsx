@@ -53,7 +53,7 @@ import {
   apiJupyterYaml,
   Logs,
 } from "@/services/api/vcjob";
-import LogSheet from "@/components/custom/LogSheet";
+import CodeSheet from "@/components/codeblock/CodeSheet";
 import JobPhaseLabel from "@/components/custom/JobPhaseLabel";
 import { TableDate } from "@/components/custom/TableDate";
 export interface Resource {
@@ -236,12 +236,12 @@ export const Component = () => {
           </Table>
           <div className="mt-4 flex items-center justify-between">
             <div className="flex h-5 items-center space-x-2">
-              <LogSheet log={yaml} title={jobName + " Job Yaml"}>
+              <CodeSheet code={yaml} title={jobName + " Job Yaml"}>
                 <Button variant="ghost" size="sm">
                   <FileSlidersIcon className="mr-2 h-4 w-4" />
                   作业 YAML
                 </Button>
-              </LogSheet>
+              </CodeSheet>
               <Separator orientation="vertical" />
               <Button
                 variant="ghost"
@@ -405,8 +405,8 @@ export const Component = () => {
                       >
                         <SquareTerminalIcon className="h-4 w-4" />
                       </Button>
-                      <LogSheet
-                        log={logs[pod.name]}
+                      <CodeSheet
+                        code={logs[pod.name]}
                         title={pod.name}
                         side="left"
                       >
@@ -418,7 +418,7 @@ export const Component = () => {
                         >
                           <FileTextIcon className="h-4 w-4" />
                         </Button>
-                      </LogSheet>
+                      </CodeSheet>
                     </div>
                   </TableCell>
                 </TableRow>

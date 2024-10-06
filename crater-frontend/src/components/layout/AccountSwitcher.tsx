@@ -1,5 +1,4 @@
 import { CaretSortIcon, CheckIcon } from "@radix-ui/react-icons";
-
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -24,16 +23,14 @@ import { apiQueueSwitch } from "@/services/api/auth";
 import { useLocation } from "react-router-dom";
 import { QueueBasic, apiQueueList } from "@/services/api/queue";
 import { useAtom } from "jotai";
+import { showErrorToast } from "@/utils/toast";
 
-type PopoverTriggerProps = React.ComponentPropsWithoutRef<
-  typeof PopoverTrigger
->;
-
-interface ProjectSwitcherProps extends PopoverTriggerProps {
+interface AccountSwitcherProps
+  extends React.ComponentPropsWithoutRef<typeof PopoverTrigger> {
   className?: string;
 }
 
-export default function ProjectSwitcher({ className }: ProjectSwitcherProps) {
+export default function AccountSwitcher({ className }: AccountSwitcherProps) {
   const [open, setOpen] = useState(false);
   const [account, setAccount] = useAtom(globalAccount);
   const queryClient = useQueryClient();
@@ -61,6 +58,9 @@ export default function ProjectSwitcher({ className }: ProjectSwitcherProps) {
       setOpen(false);
       toast.success(`已切换至账户 ${name}`);
       void queryClient.invalidateQueries();
+    },
+    onError: (error) => {
+      showErrorToast(error);
     },
   });
 

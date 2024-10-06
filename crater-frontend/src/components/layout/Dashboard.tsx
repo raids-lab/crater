@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import CraterIcon from "@/components/icon/CraterIcon";
 import CraterText from "@/components/icon/CraterText";
-import ProjectSwitcher from "@/components/layout/ProjectSwitcher";
+import AccountSwitcher from "@/components/layout/AccountSwitcher";
 import { NavBreadcrumb } from "@/components/layout/NavBreadcrumb";
 import { UserDropdownMenu } from "@/components/layout/UserDropdownMenu";
 import { useMemo, useState } from "react";
@@ -88,7 +88,7 @@ const DashboardLayout = ({
             </SheetContent>
           </Sheet>
           <NavBreadcrumb className="hidden md:flex" />
-          <ProjectSwitcher className="relative ml-auto flex-1 md:grow-0" />
+          <AccountSwitcher className="relative ml-auto flex-1 md:grow-0" />
           <UserDropdownMenu />
         </header>
         <motion.div

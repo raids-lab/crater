@@ -149,10 +149,11 @@ chmod +x create-secret.sh
 #!/bin/bash
 
 # 定义环境变量
-export ACT_CERTS="act.buaa.edu.cn.certs.until-24-09-30.tar.gz"
+export ACT_CERTS="act.buaa.edu.cn-until-241224.certs.tgz"
 
 # 使用环境变量替换字面值
 bash ./create-secret.sh crater-tls-secret -n crater -tls "${ACT_CERTS}"
+bash ./create-secret.sh crater-tls-secret -n harbor -tls "${ACT_CERTS}"
 bash ./create-secret.sh crater-tls-secret -n crater-workspace -tls "${ACT_CERTS}"
 bash ./create-secret.sh kubesphere-tls-secret -n kubesphere-system -tls "${ACT_CERTS}"
 ```
