@@ -18,21 +18,24 @@ import (
 	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 )
 
-type ContextMgr struct {
-	name string
-	client.Client
+//nolint:gochecknoinits // This is the standard way to register a gin handler.
+func init() {
+	Registers = append(Registers, NewContextMgr)
 }
 
-func NewContextMgr(cl client.Client) Manager {
+type ContextMgr struct {
+	name   string
+	client client.Client
+}
+
+func NewContextMgr(conf RegisterConfig) Manager {
 	return &ContextMgr{
 		name:   "context",
-		Client: cl,
+		client: conf.Client,
 	}
 }
 
-func (mgr *ContextMgr) GetName() string {
-	return mgr.name
-}
+func (mgr *ContextMgr) GetName() string { return mgr.name }
 
 func (mgr *ContextMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
@@ -65,7 +68,7 @@ func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 	}
 
 	queue := scheduling.Queue{}
-	err := mgr.Get(c, types.NamespacedName{Name: token.QueueName, Namespace: config.GetConfig().Workspace.Namespace}, &queue)
+	err := mgr.client.Get(c, types.NamespacedName{Name: token.QueueName, Namespace: config.GetConfig().Workspace.Namespace}, &queue)
 	if err != nil {
 		resputil.Error(c, "Queue not found", resputil.TokenExpired)
 		return

@@ -179,7 +179,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 			Protocol:      v1.ProtocolTCP,
 		})
 	}
-	if err = mgr.Create(c, &job); err != nil {
+	if err = mgr.client.Create(c, &job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
@@ -224,7 +224,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		})
 	}
 
-	err = mgr.Create(c, svc)
+	err = mgr.client.Create(c, svc)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -298,7 +298,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		ingress.Spec.Rules[0].HTTP.Paths = append(ingress.Spec.Rules[0].HTTP.Paths, tensorboardPath)
 	}
 
-	if err := mgr.Create(c, ingress); err != nil {
+	if err := mgr.client.Create(c, ingress); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
@@ -328,7 +328,7 @@ func (mgr *VolcanojobMgr) GetJupyterIngress(c *gin.Context) {
 	token := util.GetToken(c)
 	job := &batch.Job{}
 	namespace := config.GetConfig().Workspace.Namespace
-	if err := mgr.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
+	if err := mgr.client.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
@@ -383,7 +383,7 @@ func (mgr *VolcanojobMgr) GetJupyterIngress(c *gin.Context) {
 
 	// Cache the jupyter token in the job annotations
 	job.Annotations[AnnotationKeyJupyter] = jupyterToken
-	if err := mgr.Update(c, job); err != nil {
+	if err := mgr.client.Update(c, job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}

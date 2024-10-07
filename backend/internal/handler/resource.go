@@ -13,21 +13,24 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type ResourceMgr struct {
-	name       string
-	KubeClient kubernetes.Interface
+//nolint:gochecknoinits // This is the standard way to register a gin handler.
+func init() {
+	Registers = append(Registers, NewResourceMgr)
 }
 
-func NewResourceMgr(kc kubernetes.Interface) Manager {
+type ResourceMgr struct {
+	name       string
+	kubeClient kubernetes.Interface
+}
+
+func NewResourceMgr(conf RegisterConfig) Manager {
 	return &ResourceMgr{
 		name:       "resources",
-		KubeClient: kc,
+		kubeClient: conf.KubeClient,
 	}
 }
 
-func (mgr *ResourceMgr) GetName() string {
-	return mgr.name
-}
+func (mgr *ResourceMgr) GetName() string { return mgr.name }
 
 func (mgr *ResourceMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
@@ -98,7 +101,7 @@ type (
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/admin/resources/sync [post]
 func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
-	nodes, err := mgr.KubeClient.CoreV1().Nodes().List(c, metav1.ListOptions{})
+	nodes, err := mgr.kubeClient.CoreV1().Nodes().List(c, metav1.ListOptions{})
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("failed to list nodes: %v", err), resputil.NotSpecified)
 		return

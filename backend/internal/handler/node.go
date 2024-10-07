@@ -10,6 +10,11 @@ import (
 	"github.com/raids-lab/crater/pkg/server/payload"
 )
 
+//nolint:gochecknoinits // This is the standard way to register a gin handler.
+func init() {
+	Registers = append(Registers, NewNodeMgr)
+}
+
 type NodeMgr struct {
 	name       string
 	nodeClient *crclient.NodeClient
@@ -20,16 +25,18 @@ type NodePodRequest struct {
 	Name string `uri:"name" binding:"required"`
 }
 
-func NewNodeMgr(nodeClient *crclient.NodeClient) Manager {
+func NewNodeMgr(conf RegisterConfig) Manager {
 	return &NodeMgr{
-		name:       "nodes",
-		nodeClient: nodeClient,
+		name: "nodes",
+		nodeClient: &crclient.NodeClient{
+			Client:           conf.Client,
+			KubeClient:       conf.KubeClient,
+			PrometheusClient: conf.PrometheusClient,
+		},
 	}
 }
 
-func (mgr *NodeMgr) GetName() string {
-	return mgr.name
-}
+func (mgr *NodeMgr) GetName() string { return mgr.name }
 
 func (mgr *NodeMgr) RegisterPublic(_ *gin.RouterGroup) {}
 

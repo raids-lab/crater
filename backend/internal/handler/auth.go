@@ -21,32 +21,35 @@ import (
 	"gorm.io/gorm"
 )
 
+//nolint:gochecknoinits // This is the standard way to register a gin handler.
+func init() {
+	Registers = append(Registers, NewAuthMgr)
+}
+
 type AuthMgr struct {
 	name     string
 	client   *http.Client
 	tokenMgr *util.TokenManager
 }
 
-func NewAuthMgr(client *http.Client) Manager {
+func NewAuthMgr(_ RegisterConfig) Manager {
 	return &AuthMgr{
 		name:     "auth",
-		client:   client,
+		client:   &http.Client{},
 		tokenMgr: util.GetTokenMgr(),
 	}
 }
 
-func (mgr *AuthMgr) GetName() string {
-	return mgr.name
-}
+func (mgr *AuthMgr) GetName() string { return mgr.name }
 
 func (mgr *AuthMgr) RegisterPublic(g *gin.RouterGroup) {
-	g.POST("/login", mgr.Login)
-	g.POST("/signup", mgr.Signup)
-	g.POST("/refresh", mgr.RefreshToken)
+	g.POST("login", mgr.Login)
+	g.POST("signup", mgr.Signup)
+	g.POST("refresh", mgr.RefreshToken)
 }
 
 func (mgr *AuthMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.POST("", mgr.SwitchQueue) // 切换项目 /switch
+	g.POST("switch", mgr.SwitchQueue) // 切换项目 /switch
 }
 
 func (mgr *AuthMgr) RegisterAdmin(_ *gin.RouterGroup) {}
@@ -90,7 +93,7 @@ const (
 // @Failure 400 {object} resputil.Response[any]	"请求参数错误"
 // @Failure 401 {object} resputil.Response[any]	"用户名或密码错误"
 // @Failure 500 {object} resputil.Response[any]	"数据库交互错误"
-// @Router /login [post]
+// @Router /auth/login [post]
 func (mgr *AuthMgr) Login(c *gin.Context) {
 	var req LoginReq
 	if err := c.ShouldBind(&req); err != nil {
@@ -439,7 +442,7 @@ type SwitchQueueReq struct {
 // @Success 200 {object} resputil.Response[LoginResp] "用户上下文"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/switch [post]
+// @Router /v1/auth/switch [post]
 func (mgr *AuthMgr) SwitchQueue(c *gin.Context) {
 	var req SwitchQueueReq
 	if err := c.ShouldBind(&req); err != nil {

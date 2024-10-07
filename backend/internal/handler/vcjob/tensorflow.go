@@ -48,7 +48,7 @@ type (
 // @Success 200 {object} resputil.Response[any] "Success"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/vcjobs/training [post]
+// @Router /v1/vcjobs/tensorflow [post]
 func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	token := util.GetToken(c)
 
@@ -151,7 +151,7 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 		},
 	}
 
-	if err = mgr.Create(c, &job); err != nil {
+	if err = mgr.client.Create(c, &job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}

@@ -11,7 +11,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 )
 
 type NodeClient struct {
@@ -51,7 +50,7 @@ func calculateCPULoad(ratio float32, cpu int) string {
 	return result
 }
 
-func FomatMemoryLoad(mem int) string {
+func fomatMemoryLoad(mem int) string {
 	trans := 1024
 	mem_ := mem / trans
 	if mem_ < trans {
@@ -96,7 +95,7 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 		node := &nodes.Items[i]
 		allocatedInfo := payload.AllocatedInfo{
 			CPU: calculateCPULoad(CPUMap[node.Name], int(node.Status.Capacity.Cpu().MilliValue())),
-			Mem: FomatMemoryLoad(MemMap[node.Name]),
+			Mem: fomatMemoryLoad(MemMap[node.Name]),
 			GPU: fmt.Sprintf("%d", GPUMap[node.Name]),
 		}
 		gpuCount := nc.getNodeGPUCount(node.Name)
@@ -189,7 +188,7 @@ func (nc *NodeClient) GetPodsForNode(ctx context.Context, name string) (*payload
 			CreateTime: pod.CreationTimestamp.String(),
 			Status:     string(pod.Status.Phase),
 			CPU:        nc.PrometheusClient.QueryPodCPUUsage(pod.Name),
-			Mem:        FomatMemoryLoad(nc.PrometheusClient.QueryPodMemoryUsage(pod.Name)),
+			Mem:        fomatMemoryLoad(nc.PrometheusClient.QueryPodMemoryUsage(pod.Name)),
 			OwnerKind:  ownerKind,
 		}
 
@@ -261,71 +260,8 @@ func (nc *NodeClient) GetNodeGPUInfo(name string) (payload.GPUInfo, error) {
 	return gpuInfo, nil
 }
 
-func (nc *NodeClient) ListNodesTest() ([]payload.ClusterNodeInfo, error) {
-	var nodes corev1.NodeList
-
-	err := nc.List(context.Background(), &nodes)
-	if err != nil {
-		return nil, err
-	}
-
-	nodeInfos := make([]payload.ClusterNodeInfo, len(nodes.Items))
-	for i := range nodes.Items {
-		node := &nodes.Items[i]
-		nodeInfos[i] = payload.ClusterNodeInfo{
-			Name:     node.Name,
-			Role:     getNodeRole(node),
-			Labels:   node.Labels,
-			IsReady:  isNodeReady(node),
-			Capacity: node.Status.Capacity,
-		}
-	}
-	return nodeInfos, nil
-}
-
-func (nc *NodeClient) GetAllJobs(c context.Context) (jobNames, jobPods []string, err error) {
-	jobs := &batch.JobList{}
-	if err := nc.List(c, jobs, client.MatchingLabels{}); err != nil {
-		return nil, nil, err
-	}
-	var jobList []string
-	var podList []string
-
-	for j := range jobs.Items {
-		job := &jobs.Items[j]
-		JobName := job.Name
-		jobList = append(jobList, JobName)
-		var podName string
-		for i := range job.Spec.Tasks {
-			task := &job.Spec.Tasks[i]
-			for j := range task.Replicas {
-				podName = fmt.Sprintf("%s-%s-%d", job.Name, task.Name, j)
-				podList = append(podList, podName)
-			}
-		}
-	}
-	return jobList, podList, nil
-}
-
-func (nc *NodeClient) GetAllRunningJobs(c context.Context) ([]string, error) {
-	jobs := &batch.JobList{}
-	if err := nc.List(c, jobs, client.MatchingLabels{}); err != nil {
-		return nil, err
-	}
-	var jobList []string
-
-	for j := range jobs.Items {
-		job := &jobs.Items[j]
-		JobName := job.Name
-		if job.Status.State.Phase == "Running" {
-			jobList = append(jobList, JobName)
-		}
-	}
-	return jobList, nil
-}
-
-func (nc *NodeClient) GetGPURelatedPods() (gpuJobPodsList map[string]string) {
-	// jobPodsList是一个map，其中key为使用了GPU的podName，value为这个pod对应的job
+func (nc *NodeClient) GetLeastUsedGPUJobs(time, util int) []string {
+	var gpuJobPodsList map[string]string
 	gpuUtilMap := nc.PrometheusClient.QueryNodeGPUUtil()
 	jobPodsList := nc.PrometheusClient.GetJobPodsList()
 	gpuJobPodsList = make(map[string]string)
@@ -341,13 +277,9 @@ func (nc *NodeClient) GetGPURelatedPods() (gpuJobPodsList map[string]string) {
 			}
 		}
 	}
-	return gpuJobPodsList
-}
 
-func (nc *NodeClient) GetLeastUsedGPUJobs(time, util int) []string {
-	GPUJobPodsList := nc.GetGPURelatedPods()
 	leastUsedJobs := make([]string, 0)
-	for pod, job := range GPUJobPodsList {
+	for pod, job := range gpuJobPodsList {
 		// 将time和util转换为string类型
 		_time := fmt.Sprintf("%d", time)
 		_util := fmt.Sprintf("%d", util)

@@ -111,7 +111,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		},
 	}
 
-	if err = mgr.Create(c, &job); err != nil {
+	if err = mgr.client.Create(c, &job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}

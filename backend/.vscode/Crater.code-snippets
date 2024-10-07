@@ -36,23 +36,37 @@
 	"New Gin Handler": {
 		"prefix": "ngh",
 		"body": [
-			"package handler",
+			"package ${TM_DIRECTORY/(.*)\\\/(.+)$/$2/}",
 			"",
-			"import \"github.com/gin-gonic/gin\"",
+			"import (",
+			"  \"github.com/gin-gonic/gin\"",
 			"",
-			"type ${TM_FILENAME_BASE}Mgr struct {",
+			"  \"github.com/raids-lab/crater/internal/handler\"",
+			")",
+			"",
+			"//nolint:gochecknoinits // This is the standard way to register a gin handler.",
+			"func init() {",
+			"  handler.Registers = append(handler.Registers, New${TM_FILENAME_BASE/(.*)/${1:/pascalcase}/}Mgr)",
 			"}",
 			"",
-			"func New${TM_FILENAME_BASE}Mgr() Manager {",
-			"  return &${TM_FILENAME_BASE}Mgr{}",
+			"type ${TM_FILENAME_BASE/(.*)/${1:/pascalcase}/}Mgr struct {",
+			"  name string",
 			"}",
 			"",
-			"func (mgr *${TM_FILENAME_BASE}Mgr) RegisterPublic(_ *gin.RouterGroup) {}",
+			"func New${TM_FILENAME_BASE/(.*)/${1:/pascalcase}/}Mgr(_ handler.RegisterConfig) handler.Manager {",
+			"  return &${TM_FILENAME_BASE/(.*)/${1:/pascalcase}/}Mgr{",
+			"    name: \"${TM_FILENAME_BASE/(.*)/${1:/downcase}/}\",",
+			"}",
+			"}",
 			"",
-			"func (mgr *${TM_FILENAME_BASE}Mgr) RegisterProtected(_ *gin.RouterGroup) {}",
+			"func (mgr *${TM_FILENAME_BASE/(.*)/${1:/pascalcase}/}Mgr) GetName() string { return mgr.name }",
 			"",
-			"func (mgr *${TM_FILENAME_BASE}Mgr) RegisterAdmin(_ *gin.RouterGroup) {}"
+			"func (mgr *${TM_FILENAME_BASE/(.*)/${1:/pascalcase}/}Mgr) RegisterPublic(_ *gin.RouterGroup) {}",
+			"",
+			"func (mgr *${TM_FILENAME_BASE/(.*)/${1:/pascalcase}/}Mgr) RegisterProtected(_ *gin.RouterGroup) {}",
+			"",
+			"func (mgr *${TM_FILENAME_BASE/(.*)/${1:/pascalcase}/}Mgr) RegisterAdmin(_ *gin.RouterGroup) {}"
 		],
-		"description": "使用文件名，快速生成新的 Gin Handler 模版"
+		"description": "New Gin Handler"
 	}
 }

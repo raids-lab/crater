@@ -11,21 +11,24 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type LabelMgr struct {
-	name       string
-	KubeClient kubernetes.Interface
+//nolint:gochecknoinits // This is the standard way to register a gin handler.
+func init() {
+	Registers = append(Registers, NewLabelMgr)
 }
 
-func NewLabelMgr(kc kubernetes.Interface) Manager {
+type LabelMgr struct {
+	name       string
+	kubeClient kubernetes.Interface
+}
+
+func NewLabelMgr(conf RegisterConfig) Manager {
 	return &LabelMgr{
 		name:       "labels",
-		KubeClient: kc,
+		kubeClient: conf.KubeClient,
 	}
 }
 
-func (mgr *LabelMgr) GetName() string {
-	return mgr.name
-}
+func (mgr *LabelMgr) GetName() string { return mgr.name }
 
 func (mgr *LabelMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
@@ -206,7 +209,7 @@ func (mgr *LabelMgr) DeleteLabel(c *gin.Context) {
 }
 
 func (mgr *LabelMgr) SyncNvidiaLabels(c *gin.Context) {
-	nodes, err := mgr.KubeClient.CoreV1().Nodes().List(c, metav1.ListOptions{})
+	nodes, err := mgr.kubeClient.CoreV1().Nodes().List(c, metav1.ListOptions{})
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("failed to list nodes: %v", err), resputil.NotSpecified)
 		return

@@ -44,10 +44,10 @@ type AIJobMgr struct {
 	kubeClient     kubernetes.Interface
 	taskService    tasksvc.DBService
 	logClient      *crclient.LogClient
-	taskController *aitaskctl.TaskController
+	taskController aitaskctl.TaskControllerInterface
 }
 
-func NewAITaskMgr(taskController *aitaskctl.TaskController, cl client.Client,
+func NewAITaskMgr(taskController aitaskctl.TaskControllerInterface, cl client.Client,
 	kc kubernetes.Interface, logClient *crclient.LogClient) handler.Manager {
 	return &AIJobMgr{
 		name:           "aijobs",
@@ -59,9 +59,7 @@ func NewAITaskMgr(taskController *aitaskctl.TaskController, cl client.Client,
 	}
 }
 
-func (mgr *AIJobMgr) GetName() string {
-	return mgr.name
-}
+func (mgr *AIJobMgr) GetName() string { return mgr.name }
 
 func (mgr *AIJobMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
@@ -372,7 +370,7 @@ type (
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param job body CreateAIJobReq true "Create AI Job Request"
+// @Param job body any true "Create AI Job Request"
 // @Success 200 {object} resputil.Response[any] "Create AI Job Response"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
