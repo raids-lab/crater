@@ -8,11 +8,18 @@ import (
 )
 
 type JWTTokenMgr struct {
+	name string
 }
 
 func NewJWTTokenMgr() Manager {
-	return &JWTTokenMgr{}
+	return &JWTTokenMgr{
+		name: "storage",
+	}
 }
+func (mgr *JWTTokenMgr) GetName() string {
+	return mgr.name
+}
+
 func (mgr *JWTTokenMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *JWTTokenMgr) RegisterProtected(g *gin.RouterGroup) {

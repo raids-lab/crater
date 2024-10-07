@@ -11,6 +11,7 @@ import (
 )
 
 type NodeMgr struct {
+	name       string
 	nodeClient *crclient.NodeClient
 }
 
@@ -21,8 +22,13 @@ type NodePodRequest struct {
 
 func NewNodeMgr(nodeClient *crclient.NodeClient) Manager {
 	return &NodeMgr{
+		name:       "nodes",
 		nodeClient: nodeClient,
 	}
+}
+
+func (mgr *NodeMgr) GetName() string {
+	return mgr.name
 }
 
 func (mgr *NodeMgr) RegisterPublic(_ *gin.RouterGroup) {}

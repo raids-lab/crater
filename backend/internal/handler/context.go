@@ -19,13 +19,19 @@ import (
 )
 
 type ContextMgr struct {
+	name string
 	client.Client
 }
 
 func NewContextMgr(cl client.Client) Manager {
 	return &ContextMgr{
+		name:   "context",
 		Client: cl,
 	}
+}
+
+func (mgr *ContextMgr) GetName() string {
+	return mgr.name
 }
 
 func (mgr *ContextMgr) RegisterPublic(_ *gin.RouterGroup) {}

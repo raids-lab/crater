@@ -41,7 +41,7 @@ type Pod struct {
 	IP         string  `json:"IP"`
 	CreateTime string  `json:"createTime"`
 	Status     string  `json:"status"`
-	IsVcjob    string  `json:"isVcjob"`
+	OwnerKind  string  `json:"ownerKind"`
 }
 
 type ClusterNodeDetail struct {

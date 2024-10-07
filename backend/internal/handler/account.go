@@ -19,24 +19,30 @@ import (
 	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 )
 
-type ProjectMgr struct {
+type AccountMgr struct {
+	name string
 	client.Client
 }
 
-func NewProjectMgr(cl client.Client) Manager {
-	return &ProjectMgr{
+func NewAccountMgr(cl client.Client) Manager {
+	return &AccountMgr{
+		name:   "projects",
 		Client: cl,
 	}
 }
 
-func (mgr *ProjectMgr) RegisterPublic(_ *gin.RouterGroup) {}
+func (mgr *AccountMgr) GetName() string {
+	return mgr.name
+}
 
-func (mgr *ProjectMgr) RegisterProtected(g *gin.RouterGroup) {
+func (mgr *AccountMgr) RegisterPublic(_ *gin.RouterGroup) {}
+
+func (mgr *AccountMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("", mgr.ListAllForUser) // 获取该用户的所有项目
 	g.POST("", mgr.CreateAccount) // 创建团队项目（个人项目在用户注册时创建）
 }
 
-func (mgr *ProjectMgr) RegisterAdmin(g *gin.RouterGroup) {
+func (mgr *AccountMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.ListAllForAdmin) // 获取所有项目
 	g.PUT("/:name/quotas", mgr.UpdateQuota)
 	g.DELETE("/:pid", mgr.DeleteProject)
@@ -58,7 +64,7 @@ func (mgr *ProjectMgr) RegisterAdmin(g *gin.RouterGroup) {
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/projects [get]
-func (mgr *ProjectMgr) ListAllForUser(c *gin.Context) { // Check if the user exists
+func (mgr *AccountMgr) ListAllForUser(c *gin.Context) { // Check if the user exists
 	token := util.GetToken(c)
 
 	q := query.Queue
@@ -106,7 +112,7 @@ type (
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/admin/projects [get]
-func (mgr *ProjectMgr) ListAllForAdmin(c *gin.Context) {
+func (mgr *AccountMgr) ListAllForAdmin(c *gin.Context) {
 	var req ListAllReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		resputil.HTTPError(c, http.StatusBadRequest, err.Error(), resputil.InvalidRequest)
@@ -183,7 +189,7 @@ type (
 // @Failure 400 {object} resputil.Response[any]	"请求参数错误"
 // @Failure 500 {object} resputil.Response[any]	"项目创建失败，返回错误信息"
 // @Router /v1/projects [post]
-func (mgr *ProjectMgr) CreateAccount(c *gin.Context) {
+func (mgr *AccountMgr) CreateAccount(c *gin.Context) {
 	token := util.GetToken(c)
 
 	var req ProjectCreateReq
@@ -259,7 +265,7 @@ const (
 	LabelKeyQueueCreatedBy = "crater.raids.io/queue-created-by"
 )
 
-func (mgr *ProjectMgr) CreateVolcanoQueue(c *gin.Context, token *util.JWTMessage, queue *model.Queue,
+func (mgr *AccountMgr) CreateVolcanoQueue(c *gin.Context, token *util.JWTMessage, queue *model.Queue,
 	req *ProjectCreateReq) error {
 	// Create a new queue, and set the user as the admin in user_queue
 	namespace := config.GetConfig().Workspace.Namespace
@@ -311,7 +317,7 @@ type ProjectNameReq struct {
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/admin/projects/{name}/quotas [put]
-func (mgr *ProjectMgr) UpdateQuota(c *gin.Context) {
+func (mgr *AccountMgr) UpdateQuota(c *gin.Context) {
 	var req UpdateQuotaReq
 	var nameReq ProjectNameReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -356,7 +362,7 @@ func (mgr *ProjectMgr) UpdateQuota(c *gin.Context) {
 	resputil.Success(c, fmt.Sprintf("update capability of %s", name))
 }
 
-func (mgr *ProjectMgr) updateVolcanoQueue(c *gin.Context, queue *model.Queue, req *UpdateQuotaReq) error {
+func (mgr *AccountMgr) updateVolcanoQueue(c *gin.Context, queue *model.Queue, req *UpdateQuotaReq) error {
 	vcQueue := &scheduling.Queue{}
 	namespace := config.GetConfig().Workspace.Namespace
 	err := mgr.Get(c, client.ObjectKey{Name: queue.Name, Namespace: namespace}, vcQueue)
@@ -395,7 +401,7 @@ type DeleteProjectResp struct {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/admin/projects/{pid} [delete]
-func (mgr *ProjectMgr) DeleteProject(c *gin.Context) {
+func (mgr *AccountMgr) DeleteProject(c *gin.Context) {
 	var req DeleteProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate delete parameters failed, detail: %v", err), resputil.NotSpecified)
@@ -447,7 +453,7 @@ func (mgr *ProjectMgr) DeleteProject(c *gin.Context) {
 	}
 }
 
-func (mgr *ProjectMgr) DeleteQueue(c *gin.Context, qName string) error {
+func (mgr *AccountMgr) DeleteQueue(c *gin.Context, qName string) error {
 	queue := &scheduling.Queue{}
 	namespace := config.GetConfig().Workspace.Namespace
 	err := mgr.Client.Get(c, client.ObjectKey{Name: qName, Namespace: namespace}, queue)
@@ -492,7 +498,7 @@ type (
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/admin/projects/add/{pid}/{uid} [post]
-func (mgr *ProjectMgr) AddUserProject(c *gin.Context) {
+func (mgr *AccountMgr) AddUserProject(c *gin.Context) {
 	var req UserProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
@@ -567,7 +573,7 @@ func (mgr *ProjectMgr) AddUserProject(c *gin.Context) {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/admin/projects/update/{pid}/{uid} [post]
-func (mgr *ProjectMgr) UpdateUserProject(c *gin.Context) {
+func (mgr *AccountMgr) UpdateUserProject(c *gin.Context) {
 	var req UserProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
@@ -646,7 +652,7 @@ type UserProjectGetResp struct {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/admin/projects/userIn/{pid} [post]
-func (mgr *ProjectMgr) GetUserInProject(c *gin.Context) {
+func (mgr *AccountMgr) GetUserInProject(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
@@ -685,7 +691,7 @@ func (mgr *ProjectMgr) GetUserInProject(c *gin.Context) {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/admin/projects/userOutOf/{pid} [post]
-func (mgr *ProjectMgr) GetUserOutOfProject(c *gin.Context) {
+func (mgr *AccountMgr) GetUserOutOfProject(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
@@ -731,7 +737,7 @@ func (mgr *ProjectMgr) GetUserOutOfProject(c *gin.Context) {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/admin/projects/update/{pid}/{uid} [delete]
-func (mgr *ProjectMgr) DeleteUserProject(c *gin.Context) {
+func (mgr *AccountMgr) DeleteUserProject(c *gin.Context) {
 	var req UserProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)

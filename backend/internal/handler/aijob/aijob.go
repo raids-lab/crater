@@ -39,6 +39,7 @@ import (
 )
 
 type AIJobMgr struct {
+	name           string
 	client         client.Client
 	kubeClient     kubernetes.Interface
 	taskService    tasksvc.DBService
@@ -49,12 +50,17 @@ type AIJobMgr struct {
 func NewAITaskMgr(taskController *aitaskctl.TaskController, cl client.Client,
 	kc kubernetes.Interface, logClient *crclient.LogClient) handler.Manager {
 	return &AIJobMgr{
+		name:           "aijobs",
 		client:         cl,
 		kubeClient:     kc,
 		taskService:    tasksvc.NewDBService(),
 		logClient:      logClient,
 		taskController: taskController,
 	}
+}
+
+func (mgr *AIJobMgr) GetName() string {
+	return mgr.name
 }
 
 func (mgr *AIJobMgr) RegisterPublic(_ *gin.RouterGroup) {}

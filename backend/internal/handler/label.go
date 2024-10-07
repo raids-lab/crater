@@ -12,17 +12,22 @@ import (
 )
 
 type LabelMgr struct {
+	name       string
 	KubeClient kubernetes.Interface
 }
 
 func NewLabelMgr(kc kubernetes.Interface) Manager {
 	return &LabelMgr{
+		name:       "labels",
 		KubeClient: kc,
 	}
 }
 
-func (mgr *LabelMgr) RegisterPublic(_ *gin.RouterGroup) {
+func (mgr *LabelMgr) GetName() string {
+	return mgr.name
 }
+
+func (mgr *LabelMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *LabelMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("", mgr.ListLabels)

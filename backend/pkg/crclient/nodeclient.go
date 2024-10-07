@@ -16,8 +16,8 @@ import (
 
 type NodeClient struct {
 	client.Client
-	KubeClient       *kubernetes.Clientset
-	PrometheusClient *monitor.PrometheusClient
+	KubeClient       kubernetes.Interface
+	PrometheusClient monitor.PrometheusInterface
 }
 
 // https://stackoverflow.com/questions/67630551/how-to-use-client-go-to-get-the-node-status
@@ -163,11 +163,6 @@ func (nc *NodeClient) GetPodsForNode(ctx context.Context, name string) (*payload
 		return nil, err
 	}
 
-	_, jobPodList, err := nc.GetAllJobs(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	// 初始化节点信息
 	nodeInfo := payload.ClusterNodePodInfo{
 		Pods: []payload.Pod{},
@@ -184,21 +179,18 @@ func (nc *NodeClient) GetPodsForNode(ctx context.Context, name string) (*payload
 	// 遍历当前节点的Pods，收集所需信息
 	for i := range podList.Items {
 		pod := &podList.Items[i]
-		isVcjob := "false"
-		for _, jobPod := range jobPodList {
-			if pod.Name == jobPod {
-				isVcjob = "true"
-				break
-			}
+		ownerKind := ""
+		for _, owner := range pod.OwnerReferences {
+			ownerKind = owner.Kind
 		}
 		podInfo := payload.Pod{
 			Name:       pod.Name,
 			IP:         pod.Status.PodIP,
 			CreateTime: pod.CreationTimestamp.String(),
 			Status:     string(pod.Status.Phase),
-			CPU:        nc.PrometheusClient.QueryPodCPURatio(pod.Name),
-			Mem:        FomatMemoryLoad(nc.PrometheusClient.QueryPodMemory(pod.Name)),
-			IsVcjob:    isVcjob,
+			CPU:        nc.PrometheusClient.QueryPodCPUUsage(pod.Name),
+			Mem:        FomatMemoryLoad(nc.PrometheusClient.QueryPodMemoryUsage(pod.Name)),
+			OwnerKind:  ownerKind,
 		}
 
 		nodeInfo.Pods = append(nodeInfo.Pods, podInfo)

@@ -129,6 +129,7 @@ var (
 )
 
 type ImagePackMgr struct {
+	name            string
 	logClient       *crclient.LogClient
 	imagepackClient *crclient.ImagePackController
 	harborClient    *crclient.HarborClient
@@ -138,13 +139,20 @@ func NewImagePackMgr(
 	logClient *crclient.LogClient,
 	imagepackClient *crclient.ImagePackController,
 	harborClient *crclient.HarborClient,
-) *ImagePackMgr {
+) Manager {
 	return &ImagePackMgr{
+		name:            "images",
 		logClient:       logClient,
 		imagepackClient: imagepackClient,
 		harborClient:    harborClient,
 	}
 }
+
+func (mgr *ImagePackMgr) GetName() string {
+	return mgr.name
+}
+
+func (mgr *ImagePackMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/list", mgr.UserListAll)

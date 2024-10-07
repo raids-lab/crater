@@ -14,13 +14,19 @@ import (
 )
 
 type ResourceMgr struct {
+	name       string
 	KubeClient kubernetes.Interface
 }
 
 func NewResourceMgr(kc kubernetes.Interface) Manager {
 	return &ResourceMgr{
+		name:       "resources",
 		KubeClient: kc,
 	}
+}
+
+func (mgr *ResourceMgr) GetName() string {
+	return mgr.name
 }
 
 func (mgr *ResourceMgr) RegisterPublic(_ *gin.RouterGroup) {}

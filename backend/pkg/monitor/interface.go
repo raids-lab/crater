@@ -1,0 +1,43 @@
+package monitor
+
+// PrometheusClient is a client for Prometheus
+type PrometheusInterface interface {
+	///////////// Node Related //////////////
+
+	// QueryNodeCPUUsageRatio queries the CPU usage ratio of a node
+	QueryNodeCPUUsageRatio() map[string]float32
+
+	// QueryNodeMemoryUsageRatio queries the memory usage ratio of a node
+	QueryNodeMemoryUsageRatio() map[string]float32
+
+	// QueryNodeGPUUtil queries the GPU utilization of a node
+	QueryNodeGPUUtil() []NodeGPUUtil
+
+	// QueryNodeAllocatedCPU queries the allocated CPU of each node
+	QueryNodeAllocatedCPU() map[string]float32
+
+	// QueryNodeAllocatedMemory queries the allocated memory of each node
+	QueryNodeAllocatedMemory() map[string]int
+
+	// QueryNodeAllocatedGPU queries the allocated GPU of each node
+	QueryNodeAllocatedGPU() map[string]int
+
+	///////////// Pod Related //////////////
+
+	// QueryPodCPURatio queries the CPU ratio of a pod
+	QueryPodCPUUsage(podName string) float32
+
+	// QueryPodMemoryRatio queries the memory ratio of a pod
+	QueryPodMemoryUsage(podName string) int
+
+	// QueryPodProfileMetric queries the profile metric of a pod (used for AiJob)
+	QueryPodProfileMetric(namespace, podname string) (PodUtil, error)
+
+	///////////// Job Related //////////////
+
+	// GetJobPodsList returns the job pods list
+	GetJobPodsList() map[string][]string
+
+	// GetLeastUsedGPUJobList returns the least used GPU job list
+	GetLeastUsedGPUJobList(podName, time, util string) int
+}

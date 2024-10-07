@@ -19,13 +19,19 @@ import (
 var dlNamespace = config.GetConfig().Workspace.Namespace
 
 type RecommendDLJobMgr struct {
+	name      string
 	jobclient *crclient.RecommendDLJobController
 }
 
 func NewRecommendDLJobMgr(crClient client.Client) *RecommendDLJobMgr {
 	return &RecommendDLJobMgr{
+		name:      "recommenddljob",
 		jobclient: &crclient.RecommendDLJobController{Client: crClient},
 	}
+}
+
+func (mgr *RecommendDLJobMgr) GetName() string {
+	return mgr.name
 }
 
 func (mgr *RecommendDLJobMgr) RegisterPublic(_ *gin.RouterGroup) {}
