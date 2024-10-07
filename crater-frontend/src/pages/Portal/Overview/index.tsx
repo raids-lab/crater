@@ -90,7 +90,6 @@ export const Component: FC = () => {
     select: (res) =>
       res.data.data.rows
         .sort((a, b) => a.name.localeCompare(b.name))
-        .sort((a, b) => b.name.localeCompare(a.name))
         .map((x) => {
           const capacity = getAiResource(x.capacity);
           const allocated = getAiResource(x.allocated);

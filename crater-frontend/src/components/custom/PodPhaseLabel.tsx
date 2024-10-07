@@ -7,7 +7,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-const podPhases = [
+export const podPhases = [
   {
     value: "Pending",
     label: "等待中",

@@ -324,6 +324,9 @@ export const Component = () => {
                         if (data.observability.tbEnable) {
                           setTensorboardOpen(TensorboardCard);
                         }
+                        if (data.nodeSelector.enable) {
+                          setOtherOpen(OtherCard);
+                        }
                         toast.success(`导入配置成功`);
                       })
                       .catch(() => {
