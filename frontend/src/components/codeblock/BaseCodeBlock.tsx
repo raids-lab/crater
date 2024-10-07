@@ -12,7 +12,7 @@ function BaseCodeBlock({ code, language }: { code: string; language: string }) {
       theme={theme == "light" ? themes.vsDark : themes.vsDark}
     >
       <div className="relative">
-        <CodeBlock.Code className="rounded-xl bg-gray-900 px-4 py-6 shadow-lg">
+        <CodeBlock.Code className="rounded-xl px-3 py-5 shadow-lg">
           <div className="table-row">
             <CodeBlock.LineNumber className="table-cell select-none pr-4 text-right text-xs text-gray-500" />
             <CodeBlock.LineContent className="table-cell text-sm">
