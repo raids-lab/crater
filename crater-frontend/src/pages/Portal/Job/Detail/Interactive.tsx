@@ -56,6 +56,7 @@ import {
 import CodeSheet from "@/components/codeblock/CodeSheet";
 import JobPhaseLabel from "@/components/custom/JobPhaseLabel";
 import { TableDate } from "@/components/custom/TableDate";
+import TerminalDialog from "@/components/codeblock/TerminalDialog";
 export interface Resource {
   [key: string]: string;
 }
@@ -88,6 +89,8 @@ export const Component = () => {
   const [refetchInterval, setRefetchInterval] = useState(5000); // Manage interval state
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [isTerminalOpen, setIsTerminalOpen] = useState(false);
+  const [terminalPod, setTerminalPod] = useState<string>("");
 
   const { data: taskList, isLoading } = useQuery({
     queryKey: ["job", "detail", jobName],
@@ -401,7 +404,11 @@ export const Component = () => {
                         size="icon"
                         className="h-8 w-8 text-primary hover:text-primary/90"
                         title="打开终端"
-                        onClick={() => toast.warning("Web 终端功能开发中")}
+                        onClick={() => {
+                          // toast.warning("Web 终端功能开发中");
+                          setTerminalPod(pod.name);
+                          setIsTerminalOpen(true);
+                        }}
                       >
                         <SquareTerminalIcon className="h-4 w-4" />
                       </Button>
@@ -426,6 +433,11 @@ export const Component = () => {
           </TableBody>
         </Table>
       </Card>
+      <TerminalDialog
+        isOpen={isTerminalOpen}
+        setIsOpen={setIsTerminalOpen}
+        podName={terminalPod}
+      />
     </>
   );
 };

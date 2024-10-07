@@ -51,7 +51,7 @@ const CodeSheet = ({
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
         <Card
-          className="relative h-[calc(100vh_-104px)] w-full overflow-hidden bg-gray-100 text-muted-foreground dark:border dark:bg-transparent"
+          className="relative h-[calc(100vh_-104px)] w-full overflow-hidden bg-slate-900 p-1 text-muted-foreground dark:border"
           ref={refRoot}
         >
           <ScrollArea style={{ width, height }}>
