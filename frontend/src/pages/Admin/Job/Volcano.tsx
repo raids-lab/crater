@@ -212,7 +212,7 @@ const vcjobColumns: ColumnDef<IJobInfo>[] = [
       <DataTableColumnHeader column={column} title={getHeader("startedAt")} />
     ),
     cell: ({ row }) => {
-      return <TableDate date={row.getValue("startedAt")}></TableDate>;
+      return <TableDate date={row.getValue("startedAt")} />;
     },
     sortingFn: "datetime",
   },

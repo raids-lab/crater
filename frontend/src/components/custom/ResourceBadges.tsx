@@ -14,19 +14,21 @@ const ResourceBadges = ({
   });
 
   return (
-    <div className="flex items-start gap-1">
+    <div className="flex flex-col items-start gap-1 lg:flex-row lg:flex-wrap">
       {sortedEntries.map(([key, value]) => {
-        let displayKey: string;
+        let display: string;
         if (key.includes("/")) {
-          displayKey = key.split("/")[1];
+          display = `${key.split("/")[1]}: ${value}`;
         } else if (key === "memory") {
-          displayKey = "mem";
+          display = `mem: ${value}`;
+        } else if (key === "cpu") {
+          display = `cpu: ${value}`;
         } else {
-          displayKey = key;
+          display = `${key}: ${value}`;
         }
         return (
           <Badge key={key} variant="secondary" className="font-normal">
-            {displayKey}: {value}
+            {display}
           </Badge>
         );
       })}

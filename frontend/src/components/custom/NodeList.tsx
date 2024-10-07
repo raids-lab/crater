@@ -97,7 +97,7 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
             "bg-emerald-500 hover:bg-emerald-400":
               row.getValue("isReady") === true,
           })}
-        ></div>
+        />
         <div className="ml-1.5">
           {row.getValue("isReady") === true ? "运行中" : "异常"}
         </div>
