@@ -52,12 +52,15 @@ export interface IAuthResponse {
 }
 
 export const apiUserSignup = async (user: ISignup) => {
-  const response = await instance.post<IAuthResponse>("signup", user);
+  const response = await instance.post<IAuthResponse>("auth/signup", user);
   return response.data;
 };
 
 export const apiUserLogin = async (user: ILogin) => {
-  const response = await instance.post<IResponse<IAuthResponse>>("login", user);
+  const response = await instance.post<IResponse<IAuthResponse>>(
+    "auth/login",
+    user,
+  );
   const { accessToken, refreshToken } = response.data.data;
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
@@ -66,7 +69,7 @@ export const apiUserLogin = async (user: ILogin) => {
 
 export const apiQueueSwitch = async (queue: string) => {
   const response = await instance.post<IResponse<IAuthResponse>>(
-    VERSION + "/switch",
+    VERSION + "/auth/switch",
     {
       queue,
     },

@@ -29,7 +29,7 @@ const refreshTokenFn = async (): Promise<string> => {
     refreshToken: localStorage.getItem(REFRESH_TOKEN_KEY) || "",
   };
   const response = await instance.post<IResponse<IRefreshResponse>>(
-    "/refresh",
+    "auth/refresh",
     data,
   );
   const { accessToken, refreshToken } = response.data.data;
