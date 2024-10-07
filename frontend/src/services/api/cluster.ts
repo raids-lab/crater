@@ -25,7 +25,7 @@ export interface IClusterPodInfo {
   IP: string;
   createTime: string;
   status: string;
-  isVcjob: string;
+  ownerKind: string;
 }
 
 export interface IClusterNodeDetail {

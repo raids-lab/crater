@@ -7,11 +7,12 @@ import {
 } from "@/components/ui/sheet";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
-import LogBlock from "./CodeBlock";
+import BaseCodeBlock from "./BaseCodeBlock";
 import useResizeObserver from "use-resize-observer";
 import { useCopyToClipboard } from "usehooks-ts";
 import { Button } from "../ui/button";
 import { CopyCheckIcon, CopyIcon } from "lucide-react";
+import { toast } from "sonner";
 
 type CodeSheetProps = React.HTMLAttributes<HTMLDivElement> & {
   title?: string;
@@ -32,7 +33,13 @@ const CodeSheet = ({
 
   const copyCode = () => {
     // Logic to copy `code`
-    void copy(code ?? "");
+    copy(code ?? "")
+      .then(() => {
+        toast.success("已复制到剪贴板");
+      })
+      .catch(() => {
+        toast.error("复制失败");
+      });
   };
 
   return (
@@ -49,11 +56,11 @@ const CodeSheet = ({
         >
           <ScrollArea style={{ width, height }}>
             {/* <pre className="whitespace-pre-wrap text-sm">{log}</pre> */}
-            <LogBlock code={code ?? ""} language={language ?? ""} />
+            <BaseCodeBlock code={code ?? ""} language={language ?? ""} />
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
           <Button
-            className="absolute right-3 top-3 h-8 w-8"
+            className="absolute right-4 top-4 h-8 w-8"
             onClick={copyCode}
             variant="outline"
             size="icon"

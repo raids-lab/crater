@@ -7,7 +7,6 @@ import { DataTable } from "@/components/custom/DataTable";
 import { apiGetNodeDetail, apiGetNodePods } from "@/services/api/cluster";
 import { apiGetNodeGPU } from "@/services/api/cluster";
 import { TableDate } from "@/components/custom/TableDate";
-import { useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,8 +38,9 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { ExternalLink, Undo2 } from "lucide-react";
 import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
-import PodPhaseLabel from "@/components/custom/PodPhaseLabel";
+import PodPhaseLabel, { podPhases } from "@/components/custom/PodPhaseLabel";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "../ui/badge";
 
 type CardDemoProps = React.ComponentProps<typeof Card> & {
   nodeInfo?: {
@@ -188,18 +188,56 @@ interface ClusterPodInfo {
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
-    placeholder: "搜索容器组名称",
+    placeholder: "搜索 Pod 名称",
     key: "name",
   },
-  filterOptions: [],
+  filterOptions: [
+    {
+      key: "status",
+      title: "状态",
+      option: podPhases,
+      defaultValues: ["Running"],
+    },
+    {
+      key: "ownerKind",
+      title: "类型",
+      option: [
+        {
+          value: "Job",
+          label: "BASE",
+        },
+        {
+          value: "AIJob",
+          label: "EMIAS",
+        },
+      ],
+      defaultValues: ["Job"],
+    },
+  ],
   getHeader: (x) => x,
 };
 
 const getColumns = (nodeName: string): ColumnDef<ClusterPodInfo>[] => [
   {
+    accessorKey: "ownerKind",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={"从属"} />
+    ),
+    cell: ({ row }) => {
+      return (
+        <Badge variant="outline" className="font-mono font-normal">
+          {row.getValue("ownerKind")}
+        </Badge>
+      );
+    },
+    filterFn: (row, id, value) => {
+      return (value as string[]).includes(row.getValue(id));
+    },
+  },
+  {
     accessorKey: "name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"容器组名称"} />
+      <DataTableColumnHeader column={column} title={"Pod 名称"} />
     ),
     cell: ({ row }) => {
       const podName = encodeURIComponent(row.getValue("name"));
@@ -229,6 +267,9 @@ const getColumns = (nodeName: string): ColumnDef<ClusterPodInfo>[] => [
         <PodPhaseLabel podPhase={row.getValue("status")} />
       </div>
     ),
+    filterFn: (row, id, value) => {
+      return (value as string[]).includes(row.getValue(id));
+    },
   },
   {
     accessorKey: "time",
@@ -311,7 +352,6 @@ const getColumns = (nodeName: string): ColumnDef<ClusterPodInfo>[] => [
 
 export const NodeDetail: FC = () => {
   const { id: nodeName } = useParams();
-  const [showAll] = useState(true); // 新增状态用于控制是否显示所有数据
 
   const { data: nodeDetail } = useQuery({
     queryKey: ["nodes", nodeName, "detail"],
@@ -325,7 +365,6 @@ export const NodeDetail: FC = () => {
     queryFn: () => apiGetNodePods(`${nodeName}`),
     select: (res) =>
       res.data.data?.pods
-        .filter((pod) => showAll || pod.isVcjob === "true")
         .sort((a, b) => a.name.localeCompare(b.name))
         .map((x) => {
           return {
@@ -335,7 +374,7 @@ export const NodeDetail: FC = () => {
             address: x.IP,
             cpu: x.CPU,
             memory: x.Mem,
-            isVcjob: x.isVcjob,
+            ownerKind: x.ownerKind,
           };
         }),
     enabled: !!nodeName,
@@ -357,10 +396,6 @@ export const NodeDetail: FC = () => {
         {nodeName && <GPUDetails nodeName={nodeName} />}
       </div>
       <div className="md:col-span-5">
-        {/* <Button onClick={() => setShowAll(!showAll)} className="mb-4 w-full">
-          <Undo2 className="mr-2 h-4 w-4" />{" "}
-          {showAll ? "显示只包含 Vcjob 的" : "显示所有"}
-        </Button> */}
         <DataTable
           query={podsQuery}
           columns={columns}
