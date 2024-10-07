@@ -11,19 +11,22 @@ import (
 	"github.com/raids-lab/crater/pkg/logutils"
 )
 
+//nolint:gochecknoinits // This is the standard way to register a gin handler.
+func init() {
+	Registers = append(Registers, NewUserMgr)
+}
+
 type UserMgr struct {
 	name string
 }
 
-func NewUserMgr() Manager {
+func NewUserMgr(_ RegisterConfig) Manager {
 	return &UserMgr{
 		name: "users",
 	}
 }
 
-func (mgr *UserMgr) GetName() string {
-	return mgr.name
-}
+func (mgr *UserMgr) GetName() string { return mgr.name }
 
 func (mgr *UserMgr) RegisterPublic(_ *gin.RouterGroup) {}
 

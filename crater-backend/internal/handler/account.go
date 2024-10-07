@@ -19,21 +19,24 @@ import (
 	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 )
 
-type AccountMgr struct {
-	name string
-	client.Client
+//nolint:gochecknoinits // This is the standard way to register a gin handler.
+func init() {
+	Registers = append(Registers, NewAccountMgr)
 }
 
-func NewAccountMgr(cl client.Client) Manager {
+type AccountMgr struct {
+	name   string
+	client client.Client
+}
+
+func NewAccountMgr(conf RegisterConfig) Manager {
 	return &AccountMgr{
 		name:   "projects",
-		Client: cl,
+		client: conf.Client,
 	}
 }
 
-func (mgr *AccountMgr) GetName() string {
-	return mgr.name
-}
+func (mgr *AccountMgr) GetName() string { return mgr.name }
 
 func (mgr *AccountMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
@@ -184,7 +187,7 @@ type (
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param data body ProjectCreateReq true "项目信息"
+// @Param data body any true "项目信息"
 // @Success 200 {object} resputil.Response[ProjectCreateResp] "成功创建项目，返回项目ID"
 // @Failure 400 {object} resputil.Response[any]	"请求参数错误"
 // @Failure 500 {object} resputil.Response[any]	"项目创建失败，返回错误信息"
@@ -286,7 +289,7 @@ func (mgr *AccountMgr) CreateVolcanoQueue(c *gin.Context, token *util.JWTMessage
 		},
 	}
 
-	if err := mgr.Client.Create(c, volcanoQueue); err != nil {
+	if err := mgr.client.Create(c, volcanoQueue); err != nil {
 		return err
 	}
 
@@ -312,7 +315,7 @@ type ProjectNameReq struct {
 // @Produce json
 // @Security Bearer
 // @Param name path ProjectNameReq true "projectname"
-// @Param data body UpdateQuotaReq true "更新quota"
+// @Param data body any true "更新quota"
 // @Success 200 {object} resputil.Response[string] "成功更新配额"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
@@ -365,7 +368,7 @@ func (mgr *AccountMgr) UpdateQuota(c *gin.Context) {
 func (mgr *AccountMgr) updateVolcanoQueue(c *gin.Context, queue *model.Queue, req *UpdateQuotaReq) error {
 	vcQueue := &scheduling.Queue{}
 	namespace := config.GetConfig().Workspace.Namespace
-	err := mgr.Get(c, client.ObjectKey{Name: queue.Name, Namespace: namespace}, vcQueue)
+	err := mgr.client.Get(c, client.ObjectKey{Name: queue.Name, Namespace: namespace}, vcQueue)
 	if err != nil {
 		return err
 	}
@@ -374,7 +377,7 @@ func (mgr *AccountMgr) updateVolcanoQueue(c *gin.Context, queue *model.Queue, re
 	vcQueue.Spec.Deserved = req.Deserved
 	vcQueue.Spec.Capability = req.Capability
 
-	if err := mgr.Update(c, vcQueue); err != nil {
+	if err := mgr.client.Update(c, vcQueue); err != nil {
 		return err
 	}
 
@@ -456,7 +459,7 @@ func (mgr *AccountMgr) DeleteProject(c *gin.Context) {
 func (mgr *AccountMgr) DeleteQueue(c *gin.Context, qName string) error {
 	queue := &scheduling.Queue{}
 	namespace := config.GetConfig().Workspace.Namespace
-	err := mgr.Client.Get(c, client.ObjectKey{Name: qName, Namespace: namespace}, queue)
+	err := mgr.client.Get(c, client.ObjectKey{Name: qName, Namespace: namespace}, queue)
 	if err != nil {
 		return err
 	}
@@ -465,7 +468,7 @@ func (mgr *AccountMgr) DeleteQueue(c *gin.Context, qName string) error {
 		return fmt.Errorf("queue still have running pod")
 	}
 
-	if err := mgr.Client.Delete(c, queue); err != nil {
+	if err := mgr.client.Delete(c, queue); err != nil {
 		return err
 	}
 

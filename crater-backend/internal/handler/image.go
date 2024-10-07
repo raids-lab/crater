@@ -148,9 +148,7 @@ func NewImagePackMgr(
 	}
 }
 
-func (mgr *ImagePackMgr) GetName() string {
-	return mgr.name
-}
+func (mgr *ImagePackMgr) GetName() string { return mgr.name }
 
 func (mgr *ImagePackMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
@@ -256,7 +254,7 @@ func (mgr *ImagePackMgr) UserUpload(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param data body ImagePackCreateRequest true "创建ImagePack"
-// @Router /v1/images/create [post]
+// @Router /v1/admin/images/create [post]
 func (mgr *ImagePackMgr) AdminCreate(c *gin.Context) {
 	req := &ImagePackCreateRequest{}
 	token := util.GetToken(c)
@@ -396,7 +394,7 @@ func (mgr *ImagePackMgr) UserListAll(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param type query int true "管理员获取镜像的类型"
-// @Router /v1/images/list [GET]
+// @Router /v1/admin/images/list [GET]
 func (mgr *ImagePackMgr) AdminListAll(c *gin.Context) {
 	imagepackQuery := query.ImagePack
 	imageuploadQuery := query.ImageUpload

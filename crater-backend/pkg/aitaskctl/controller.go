@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/crclient"
 	quotadb "github.com/raids-lab/crater/pkg/db/quota"
@@ -16,12 +17,26 @@ import (
 	"github.com/raids-lab/crater/pkg/models"
 	"github.com/raids-lab/crater/pkg/profiler"
 	"github.com/raids-lab/crater/pkg/util"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // TaskController 调度task
+type TaskControllerInterface interface {
+	AddOrUpdateQuotaInfo(queue *model.Queue) (added bool, quotaInfo *QuotaInfo)
+	DeleteQuotaInfo(namespace string)
+	GetQuotaInfo(username string) *QuotaInfo
+	GetQuotaInfoSnapshotByUsername(username string) *QuotaInfoSnapshot
+	Init() error
+	ListQuotaInfoSnapshot() []QuotaInfoSnapshot
+	SetProfiler(srcProfiler *profiler.Profiler)
+	Start(ctx context.Context) error
+	TaskUpdated(event util.TaskUpdateChan)
+	UpdateQuotaInfoHard(username string, hard v1.ResourceList)
+}
+
 type TaskController struct {
 	jobControl    *crclient.JobControl      // 创建AIJob的接口
 	quotaDB       quotadb.DBService         // 获取db中的quota
@@ -38,7 +53,7 @@ const (
 )
 
 // NewTaskController returns a new *TaskController
-func NewTaskController(crClient client.Client, cs kubernetes.Interface, statusChan <-chan util.JobStatusChan) *TaskController {
+func NewTaskController(crClient client.Client, cs kubernetes.Interface, statusChan <-chan util.JobStatusChan) TaskControllerInterface {
 	return &TaskController{
 		jobControl:    &crclient.JobControl{Client: crClient, KubeClient: cs},
 		quotaDB:       quotadb.NewDBService(),

@@ -50,9 +50,7 @@ func NewSparseJobMgr(crClient client.Client, logClient *crclient.LogClient) hand
 	}
 }
 
-func (mgr *SparseJobMgr) GetName() string {
-	return mgr.name
-}
+func (mgr *SparseJobMgr) GetName() string { return mgr.name }
 
 func (mgr *SparseJobMgr) RegisterPublic(_ *gin.RouterGroup) {}
 

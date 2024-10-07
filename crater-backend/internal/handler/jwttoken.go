@@ -7,18 +7,22 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 )
 
+//nolint:gochecknoinits // This is the standard way to register a gin handler.
+func init() {
+	Registers = append(Registers, NewJWTTokenMgr)
+}
+
 type JWTTokenMgr struct {
 	name string
 }
 
-func NewJWTTokenMgr() Manager {
+func NewJWTTokenMgr(_ RegisterConfig) Manager {
 	return &JWTTokenMgr{
 		name: "storage",
 	}
 }
-func (mgr *JWTTokenMgr) GetName() string {
-	return mgr.name
-}
+
+func (mgr *JWTTokenMgr) GetName() string { return mgr.name }
 
 func (mgr *JWTTokenMgr) RegisterPublic(_ *gin.RouterGroup) {}
 

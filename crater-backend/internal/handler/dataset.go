@@ -13,23 +13,26 @@ import (
 	"github.com/raids-lab/crater/pkg/logutils"
 )
 
-type FileMgr struct {
+//nolint:gochecknoinits // This is the standard way to register a gin handler.
+func init() {
+	Registers = append(Registers, NewDatasetMgr)
+}
+
+type DatasetMgr struct {
 	name string
 }
 
-func NewFileMgr() Manager {
-	return &FileMgr{
+func NewDatasetMgr(_ RegisterConfig) Manager {
+	return &DatasetMgr{
 		name: "dataset",
 	}
 }
 
-func (mgr *FileMgr) GetName() string {
-	return mgr.name
-}
+func (mgr *DatasetMgr) GetName() string { return mgr.name }
 
-func (mgr *FileMgr) RegisterPublic(_ *gin.RouterGroup) {}
+func (mgr *DatasetMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
-func (mgr *FileMgr) RegisterProtected(g *gin.RouterGroup) {
+func (mgr *DatasetMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/mydataset", mgr.GetMyDataset)
 	g.GET("/:datasetId/usersNotIn", mgr.ListUsersOutOfDataset)
 	g.GET("/:datasetId/usersIn", mgr.ListUserOfDataset)
@@ -45,7 +48,7 @@ func (mgr *FileMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/detail/:datasetId", mgr.GetDatasetByID)
 }
 
-func (mgr *FileMgr) RegisterAdmin(g *gin.RouterGroup) {
+func (mgr *DatasetMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("/alldataset", mgr.GetAllDataset)
 	g.POST("/share/user", mgr.AdminShareDatasetWithUser)
 	g.POST("/share/queue", mgr.AdminShareDatasetWithQueue)
@@ -73,7 +76,7 @@ type DatasetResp struct {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/mydataset [get]
-func (mgr *FileMgr) GetMyDataset(c *gin.Context) {
+func (mgr *DatasetMgr) GetMyDataset(c *gin.Context) {
 	token := util.GetToken(c)
 	datasets := make(map[uint]DatasetResp)
 	ud := query.UserDataset
@@ -126,7 +129,7 @@ func (mgr *FileMgr) GetMyDataset(c *gin.Context) {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/detail/{datasetId} [get]
-func (mgr *FileMgr) GetDatasetByID(c *gin.Context) {
+func (mgr *DatasetMgr) GetDatasetByID(c *gin.Context) {
 	var req DatasetGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, fmt.Sprintf("get dataset failed, detail: %v", err))
@@ -159,7 +162,7 @@ func (mgr *FileMgr) GetDatasetByID(c *gin.Context) {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/admin/dataset/alldataset [get]
-func (mgr *FileMgr) GetAllDataset(c *gin.Context) {
+func (mgr *DatasetMgr) GetAllDataset(c *gin.Context) {
 	datasets := make(map[uint]DatasetResp)
 	d := query.Dataset
 	dataset, err := d.WithContext(c).Where(d.ID.IsNotNull()).Find()
@@ -180,7 +183,7 @@ func (mgr *FileMgr) GetAllDataset(c *gin.Context) {
 	resputil.Success(c, result)
 }
 
-func (mgr *FileMgr) generateQueueDataseResponse(c *gin.Context, queueid uint, data map[uint]DatasetResp) error {
+func (mgr *DatasetMgr) generateQueueDataseResponse(c *gin.Context, queueid uint, data map[uint]DatasetResp) error {
 	d := query.Dataset
 	qd := query.QueueDataset
 	queueDataset, err := qd.WithContext(c).Where(qd.QueueID.Eq(queueid)).Find()
@@ -201,7 +204,7 @@ func (mgr *FileMgr) generateQueueDataseResponse(c *gin.Context, queueid uint, da
 	return nil
 }
 
-func (mgr *FileMgr) generateDataseResponse(c *gin.Context, dataset *model.Dataset) (DatasetResp, error) {
+func (mgr *DatasetMgr) generateDataseResponse(c *gin.Context, dataset *model.Dataset) (DatasetResp, error) {
 	u := query.User
 	user, uerr := u.WithContext(c).Where(u.ID.Eq(dataset.UserID)).First()
 	if uerr != nil {
@@ -236,7 +239,7 @@ type DatasetReq struct {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/create [post]
-func (mgr *FileMgr) CreateDataset(c *gin.Context) {
+func (mgr *DatasetMgr) CreateDataset(c *gin.Context) {
 	token := util.GetToken(c)
 	var datasetReq DatasetReq
 	if err := c.ShouldBindJSON(&datasetReq); err != nil {
@@ -293,7 +296,7 @@ type cancelsharedUserReq struct {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/share/user [post]
-func (mgr *FileMgr) ShareDatasetWithUser(c *gin.Context) {
+func (mgr *DatasetMgr) ShareDatasetWithUser(c *gin.Context) {
 	token := util.GetToken(c)
 	var userReq SharedUserReq
 	if err := c.ShouldBindJSON(&userReq); err != nil {
@@ -326,7 +329,7 @@ func (mgr *FileMgr) ShareDatasetWithUser(c *gin.Context) {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/admin/dataset/share/user [post]
-func (mgr *FileMgr) AdminShareDatasetWithUser(c *gin.Context) {
+func (mgr *DatasetMgr) AdminShareDatasetWithUser(c *gin.Context) {
 	var userReq SharedUserReq
 	if err := c.ShouldBindJSON(&userReq); err != nil {
 		resputil.BadRequestError(c, err.Error())
@@ -346,7 +349,7 @@ func (mgr *FileMgr) AdminShareDatasetWithUser(c *gin.Context) {
 	resputil.Success(c, "Shared with user successfully")
 }
 
-func (mgr *FileMgr) shareWithUser(c *gin.Context, userReq SharedUserReq) error {
+func (mgr *DatasetMgr) shareWithUser(c *gin.Context, userReq SharedUserReq) error {
 	u := query.User
 	if len(userReq.UserIDs) == 0 {
 		return fmt.Errorf("need to choose users to share")
@@ -384,7 +387,7 @@ func (mgr *FileMgr) shareWithUser(c *gin.Context, userReq SharedUserReq) error {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/cancelshare/user [post]
-func (mgr *FileMgr) CancelShareDatasetWithUser(c *gin.Context) {
+func (mgr *DatasetMgr) CancelShareDatasetWithUser(c *gin.Context) {
 	var Req cancelsharedUserReq
 	if err := c.ShouldBindJSON(&Req); err != nil {
 		resputil.BadRequestError(c, err.Error())
@@ -415,7 +418,7 @@ func (mgr *FileMgr) CancelShareDatasetWithUser(c *gin.Context) {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/admin/dataset/cancelshare/user [post]
-func (mgr *FileMgr) AdminCancelShareDatasetWithUser(c *gin.Context) {
+func (mgr *DatasetMgr) AdminCancelShareDatasetWithUser(c *gin.Context) {
 	var Req cancelsharedUserReq
 	if err := c.ShouldBindJSON(&Req); err != nil {
 		resputil.BadRequestError(c, err.Error())
@@ -432,7 +435,7 @@ func (mgr *FileMgr) AdminCancelShareDatasetWithUser(c *gin.Context) {
 	}
 	resputil.Success(c, "Shared with user successfully")
 }
-func (mgr *FileMgr) cancelShareWithUser(c *gin.Context, userReq cancelsharedUserReq) error {
+func (mgr *DatasetMgr) cancelShareWithUser(c *gin.Context, userReq cancelsharedUserReq) error {
 	ud := query.UserDataset
 	u := query.User
 	if _, err := u.WithContext(c).Where(u.ID.Eq(userReq.UserID)).First(); err != nil {
@@ -469,7 +472,7 @@ type SharedQueueReq struct {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/share/queue [post]
-func (mgr *FileMgr) ShareDatasetWithQueue(c *gin.Context) {
+func (mgr *DatasetMgr) ShareDatasetWithQueue(c *gin.Context) {
 	var queueReq SharedQueueReq
 	if err := c.ShouldBindJSON(&queueReq); err != nil {
 		resputil.BadRequestError(c, err.Error())
@@ -502,7 +505,7 @@ func (mgr *FileMgr) ShareDatasetWithQueue(c *gin.Context) {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/admin/dataset/share/queue [post]
-func (mgr *FileMgr) AdminShareDatasetWithQueue(c *gin.Context) {
+func (mgr *DatasetMgr) AdminShareDatasetWithQueue(c *gin.Context) {
 	var queueReq SharedQueueReq
 	d := query.Dataset
 	err := c.ShouldBindJSON(&queueReq)
@@ -522,7 +525,7 @@ func (mgr *FileMgr) AdminShareDatasetWithQueue(c *gin.Context) {
 	resputil.Success(c, "Shared with queue successfully")
 }
 
-func (mgr *FileMgr) shareWithQueue(c *gin.Context, queueReq SharedQueueReq) error {
+func (mgr *DatasetMgr) shareWithQueue(c *gin.Context, queueReq SharedQueueReq) error {
 	q := query.Queue
 	qd := query.QueueDataset
 	if len(queueReq.QueueIDs) == 0 {
@@ -565,7 +568,7 @@ type cancelSharedQueueReq struct {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router  /v1/dataset/cancelshare/queue [post]
-func (mgr *FileMgr) CancelShareDatasetWithQueue(c *gin.Context) {
+func (mgr *DatasetMgr) CancelShareDatasetWithQueue(c *gin.Context) {
 	var queueReq cancelSharedQueueReq
 	if err := c.ShouldBindJSON(&queueReq); err != nil {
 		resputil.BadRequestError(c, err.Error())
@@ -598,7 +601,7 @@ func (mgr *FileMgr) CancelShareDatasetWithQueue(c *gin.Context) {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/admin/dataset/cancelshare/queue [post]
-func (mgr *FileMgr) AdmincancelShareDatasetWithQueue(c *gin.Context) {
+func (mgr *DatasetMgr) AdmincancelShareDatasetWithQueue(c *gin.Context) {
 	var queueReq cancelSharedQueueReq
 	err := c.ShouldBindJSON(&queueReq)
 	if err != nil {
@@ -619,7 +622,7 @@ func (mgr *FileMgr) AdmincancelShareDatasetWithQueue(c *gin.Context) {
 	resputil.Success(c, "cancel successfully")
 }
 
-func (mgr *FileMgr) cancelShareWithQueue(c *gin.Context, cancelQueueReq cancelSharedQueueReq) error {
+func (mgr *DatasetMgr) cancelShareWithQueue(c *gin.Context, cancelQueueReq cancelSharedQueueReq) error {
 	q := query.Queue
 	qd := query.QueueDataset
 	_, err := q.WithContext(c).Where(q.ID.Eq(cancelQueueReq.QueueID)).First()
@@ -652,7 +655,7 @@ type DeleteDatasetReq struct {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/delete/{id} [delete]
-func (mgr *FileMgr) DeleteDataset(c *gin.Context) {
+func (mgr *DatasetMgr) DeleteDataset(c *gin.Context) {
 	token := util.GetToken(c)
 	var req DeleteDatasetReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -721,7 +724,7 @@ type RenameReq struct {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/rename [post]
-func (mgr *FileMgr) RemaneDatset(c *gin.Context) {
+func (mgr *DatasetMgr) RemaneDatset(c *gin.Context) {
 	token := util.GetToken(c)
 	var req RenameReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -769,7 +772,7 @@ type UserDatasetGetResp struct {
 // @Router /v1/dataset/{datasetId}/usersNotIn [get]
 //
 //nolint:dupl // there exists mini diff between these logic
-func (mgr *FileMgr) ListUsersOutOfDataset(c *gin.Context) {
+func (mgr *DatasetMgr) ListUsersOutOfDataset(c *gin.Context) {
 	var req DatasetGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, fmt.Sprintf("get users out of dataset failed, detail: %v", err))
@@ -815,7 +818,7 @@ type UserDatasetResp struct {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/{datasetId}/usersIn [get]
-func (mgr *FileMgr) ListUserOfDataset(c *gin.Context) {
+func (mgr *DatasetMgr) ListUserOfDataset(c *gin.Context) {
 	var req DatasetGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, fmt.Sprintf("get dataset failed, detail: %v", err))
@@ -871,7 +874,7 @@ type QueueDatasetGetResp struct {
 // @Router /v1/dataset/{datasetId}/queuesNotIn [get]
 //
 //nolint:dupl // there exists mini diff between these logic
-func (mgr *FileMgr) ListQueuesOutOfDataset(c *gin.Context) {
+func (mgr *DatasetMgr) ListQueuesOutOfDataset(c *gin.Context) {
 	var req DatasetGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, fmt.Sprintf("get queues out of dataset failed, detail: %v", err))
@@ -911,7 +914,7 @@ func (mgr *FileMgr) ListQueuesOutOfDataset(c *gin.Context) {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/{datasetId}/queuesIn [get]
-func (mgr *FileMgr) ListQueueOfDataset(c *gin.Context) {
+func (mgr *DatasetMgr) ListQueueOfDataset(c *gin.Context) {
 	var req DatasetGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, fmt.Sprintf("get queues of dataset failed, detail: %v", err))

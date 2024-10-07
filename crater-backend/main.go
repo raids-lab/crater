@@ -40,6 +40,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal"
+	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	aisystemv1alpha1 "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
@@ -225,7 +226,12 @@ func main() {
 
 	// 5. start server
 	setupLog.Info("starting server")
-	backend := internal.Register(mgr.GetClient(), clientset, prometheusClient, taskCtrl)
+	registerConfig := handler.RegisterConfig{
+		Client:           mgr.GetClient(),
+		KubeClient:       clientset,
+		PrometheusClient: prometheusClient,
+	}
+	backend := internal.Register(registerConfig, taskCtrl)
 	if err := backend.R.Run(backendConfig.ServerAddr); err != nil {
 		setupLog.Error(err, "problem running server")
 		os.Exit(1)

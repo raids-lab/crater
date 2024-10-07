@@ -4,67 +4,39 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/resputil"
-	"github.com/raids-lab/crater/internal/util"
-	recommenddljobapi "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
-	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 	utils "github.com/raids-lab/crater/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var dlNamespace = config.GetConfig().Workspace.Namespace
+//nolint:gochecknoinits // This is the standard way to register a gin handler.
+func init() {
+	Registers = append(Registers, NewRecommendDLJobMgr)
+}
 
 type RecommendDLJobMgr struct {
 	name      string
 	jobclient *crclient.RecommendDLJobController
 }
 
-func NewRecommendDLJobMgr(crClient client.Client) *RecommendDLJobMgr {
+func NewRecommendDLJobMgr(conf RegisterConfig) Manager {
 	return &RecommendDLJobMgr{
 		name:      "recommenddljob",
-		jobclient: &crclient.RecommendDLJobController{Client: crClient},
+		jobclient: &crclient.RecommendDLJobController{Client: conf.Client},
 	}
 }
 
-func (mgr *RecommendDLJobMgr) GetName() string {
-	return mgr.name
-}
+func (mgr *RecommendDLJobMgr) GetName() string { return mgr.name }
 
 func (mgr *RecommendDLJobMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *RecommendDLJobMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.POST("/create", mgr.Create)
-	g.POST("/delete", mgr.Delete)
-	g.GET("/list", mgr.List)
-	g.GET("/info", mgr.GetByName)
-	g.GET("/pods", mgr.GetPodsByName)
 	g.POST("/analyze", mgr.AnalyzeResourceUsage)
 }
 
-func (mgr *RecommendDLJobMgr) RegisterAdmin(g *gin.RouterGroup) {
-	g.POST("/create", mgr.Create)
-	g.POST("/delete", mgr.Delete)
-	g.GET("/list", mgr.List)
-	g.GET("/info", mgr.GetByName)
-	g.GET("/pods", mgr.GetPodsByName)
-	g.POST("/analyze", mgr.AnalyzeResourceUsage)
-}
-
-func (mgr *RecommendDLJobMgr) rolePermit(token *util.JWTMessage, reqName string) bool {
-	// TODO: 适配新的 Queue 机制，这先改成不报错的形式了
-	var uid, pid uint
-	if num, err := fmt.Sscanf("%d-%d", reqName, uid, pid); err != nil || num != 2 {
-		return false
-	}
-	ok := false
-	if token.RolePlatform == model.RoleAdmin {
-		ok = true
-	}
-	return ok
+func (mgr *RecommendDLJobMgr) RegisterAdmin(_ *gin.RouterGroup) {
 }
 
 type (
@@ -100,227 +72,12 @@ type (
 	}
 )
 
-func (mgr *RecommendDLJobMgr) Create(c *gin.Context) {
-	token := util.GetToken(c)
-	req := &CreateRecommendDLJobReq{}
-	if err := c.ShouldBindJSON(req); err != nil {
-		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), resputil.NotSpecified)
-		return
-	}
-	job := &recommenddljobapi.RecommendDLJob{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      req.Name,
-			Namespace: dlNamespace,
-		},
-		Spec: recommenddljobapi.RecommendDLJobSpec{
-			Replicas:            req.Replicas,
-			RunningType:         recommenddljobapi.RunningType(req.RunningType),
-			DataSets:            make([]recommenddljobapi.DataSetRef, 0, len(req.DataSets)),
-			RelationShips:       make([]recommenddljobapi.DataRelationShip, 0, len(req.RelationShips)),
-			Template:            req.Template,
-			Username:            token.Username,
-			Macs:                req.Macs,
-			Params:              req.Params,
-			BatchSize:           req.BatchSize,
-			EmbeddingSizeTotal:  req.EmbeddingSizeTotal,
-			EmbeddingDimTotal:   req.EmbeddingDimTotal,
-			EmbeddingTableCount: req.EmbeddingTableCount,
-			VocabularySize:      req.VocabularySize,
-			EmbeddingDim:        req.EmbeddingDim,
-			InputTensor:         req.InputTensor,
-		},
-	}
-	for _, releationShip := range req.RelationShips {
-		job.Spec.RelationShips = append(job.Spec.RelationShips, recommenddljobapi.DataRelationShip{
-			Type:         recommenddljobapi.DataRelationShipType("input"),
-			JobName:      releationShip,
-			JobNamespace: dlNamespace,
-		})
-	}
-	for _, datasetName := range req.DataSets {
-		job.Spec.DataSets = append(job.Spec.DataSets, recommenddljobapi.DataSetRef{
-			Name: datasetName,
-		})
-	}
-
-	if err := mgr.jobclient.CreateRecommendDLJob(c, job); err != nil {
-		resputil.Error(c, fmt.Sprintf("create recommenddljob failed, err:%v", err), resputil.NotSpecified)
-		return
-	}
-	resp := GetRecommendDLJobResp{
-		ObjectMeta: job.ObjectMeta,
-		Spec:       &req.RecommendDLJobSpec,
-		Status: &RecommendDLJobStatus{
-			Phase:    string(job.Status.Phase),
-			PodNames: job.Status.PodNames,
-		},
-	}
-	resputil.Success(c, resp)
-}
-
-type (
-	ListRecommendDLJobResp []GetRecommendDLJobResp
-)
-
-func (mgr *RecommendDLJobMgr) List(c *gin.Context) {
-	token := util.GetToken(c)
-
-	jobList, err := mgr.jobclient.ListRecommendDLJob(c, dlNamespace)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("list recommenddljob failed, err:%v", err), resputil.NotSpecified)
-		return
-	}
-	ret := make(ListRecommendDLJobResp, 0, len(jobList))
-	for _, job := range jobList {
-		if !mgr.rolePermit(&token, job.Spec.Username) {
-			continue
-		}
-		//nolint:dupl // TODO: refactor
-		retJob := GetRecommendDLJobResp{
-			ObjectMeta: job.ObjectMeta,
-			Spec: &RecommendDLJobSpec{
-				Replicas:            job.Spec.Replicas,
-				RunningType:         string(job.Spec.RunningType),
-				DataSets:            make([]string, 0, len(job.Spec.DataSets)),
-				RelationShips:       make([]string, 0, len(job.Spec.RelationShips)),
-				Template:            job.Spec.Template,
-				Username:            job.Spec.Username,
-				Macs:                job.Spec.Macs,
-				Params:              job.Spec.Params,
-				BatchSize:           job.Spec.BatchSize,
-				EmbeddingSizeTotal:  job.Spec.EmbeddingSizeTotal,
-				EmbeddingDimTotal:   job.Spec.EmbeddingDimTotal,
-				EmbeddingTableCount: job.Spec.EmbeddingTableCount,
-				VocabularySize:      job.Spec.VocabularySize,
-				EmbeddingDim:        job.Spec.EmbeddingDim,
-				InputTensor:         job.Spec.InputTensor,
-			},
-			Status: &RecommendDLJobStatus{
-				Phase:    string(job.Status.Phase),
-				PodNames: job.Status.PodNames,
-			},
-		}
-		for _, dataset := range job.Spec.DataSets {
-			retJob.Spec.DataSets = append(retJob.Spec.DataSets, dataset.Name)
-		}
-		for _, releationship := range job.Spec.RelationShips {
-			retJob.Spec.RelationShips = append(retJob.Spec.RelationShips, releationship.JobName)
-		}
-		ret = append(ret, retJob)
-	}
-	resputil.Success(c, ret)
-}
-
-type GetRecommendDLJobReq struct {
-	Name string `form:"name" binding:"required"`
-}
-
-func (mgr *RecommendDLJobMgr) GetByName(c *gin.Context) {
-	token := util.GetToken(c)
-	req := &GetRecommendDLJobReq{}
-	if err := c.ShouldBindQuery(req); err != nil {
-		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), resputil.NotSpecified)
-		return
-	}
-	var job *recommenddljobapi.RecommendDLJob
-	var err error
-	if job, err = mgr.jobclient.GetRecommendDLJob(c, req.Name, dlNamespace); err != nil {
-		resputil.Error(c, fmt.Sprintf("get recommenddljob failed, err:%v", err), resputil.NotSpecified)
-		return
-	}
-	if !mgr.rolePermit(&token, job.Spec.Username) {
-		resputil.Error(c, "get recommenddljob failed, err: access deny", resputil.NotSpecified)
-		return
-	}
-	//nolint:dupl // TODO: refactor
-	ret := GetRecommendDLJobResp{
-		ObjectMeta: job.ObjectMeta,
-		Spec: &RecommendDLJobSpec{
-			Replicas:            job.Spec.Replicas,
-			RunningType:         string(job.Spec.RunningType),
-			DataSets:            make([]string, 0, len(job.Spec.DataSets)),
-			RelationShips:       make([]string, 0, len(job.Spec.RelationShips)),
-			Template:            job.Spec.Template,
-			Username:            job.Spec.Username,
-			Macs:                job.Spec.Macs,
-			Params:              job.Spec.Params,
-			BatchSize:           job.Spec.BatchSize,
-			EmbeddingSizeTotal:  job.Spec.EmbeddingSizeTotal,
-			EmbeddingDimTotal:   job.Spec.EmbeddingDimTotal,
-			EmbeddingTableCount: job.Spec.EmbeddingTableCount,
-			VocabularySize:      job.Spec.VocabularySize,
-			EmbeddingDim:        job.Spec.EmbeddingDim,
-			InputTensor:         job.Spec.InputTensor,
-		},
-		Status: &RecommendDLJobStatus{
-			Phase:    string(job.Status.Phase),
-			PodNames: job.Status.PodNames,
-		},
-	}
-	for _, dataset := range job.Spec.DataSets {
-		ret.Spec.DataSets = append(ret.Spec.DataSets, dataset.Name)
-	}
-	for _, releationship := range job.Spec.RelationShips {
-		ret.Spec.RelationShips = append(ret.Spec.RelationShips, releationship.JobName)
-	}
-	resputil.Success(c, ret)
-}
-
 type GetRecommendDLJobPodListReq struct {
 	Name string `form:"name" binding:"required"`
 }
 
-func (mgr *RecommendDLJobMgr) GetPodsByName(c *gin.Context) {
-	token := util.GetToken(c)
-	req := &GetRecommendDLJobPodListReq{}
-	if err := c.ShouldBindQuery(req); err != nil {
-		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), resputil.NotSpecified)
-		return
-	}
-	var job *recommenddljobapi.RecommendDLJob
-	var err error
-	if job, err = mgr.jobclient.GetRecommendDLJob(c, req.Name, dlNamespace); err != nil {
-		resputil.Error(c, fmt.Sprintf("get recommenddljob failed, err:%v", err), resputil.NotSpecified)
-		return
-	}
-	if !mgr.rolePermit(&token, job.Spec.Username) {
-		resputil.Error(c, "get recommenddljob pods failed, err: access deny", resputil.NotSpecified)
-		return
-	}
-	var podList []*corev1.Pod
-	if podList, err = mgr.jobclient.GetRecommendDLJobPodList(c, req.Name, dlNamespace); err != nil {
-		resputil.Error(c, fmt.Sprintf("get recommenddljob pods failed, err:%v", err), resputil.NotSpecified)
-		return
-	}
-	resputil.Success(c, podList)
-}
-
 type DeleteRecommendDLJobReq struct {
 	Name string `form:"name" binding:"required"`
-}
-
-func (mgr *RecommendDLJobMgr) Delete(c *gin.Context) {
-	token := util.GetToken(c)
-	req := &DeleteRecommendDLJobReq{}
-	if err := c.ShouldBindJSON(req); err != nil {
-		resputil.Error(c, fmt.Sprintf("bind request body failed, err:%v", err), resputil.NotSpecified)
-		return
-	}
-	var job *recommenddljobapi.RecommendDLJob
-	var err error
-	if job, err = mgr.jobclient.GetRecommendDLJob(c, req.Name, dlNamespace); err != nil {
-		resputil.Error(c, fmt.Sprintf("delete recommenddljob failed, err:%v", err), resputil.NotSpecified)
-		return
-	}
-	if !mgr.rolePermit(&token, job.Spec.Username) {
-		resputil.Error(c, "get recommenddljob pods failed, err: access deny", resputil.NotSpecified)
-		return
-	}
-	if err := mgr.jobclient.DeleteRecommendDLJob(c, req.Name, dlNamespace); err != nil {
-		resputil.Error(c, fmt.Sprintf("delete recommenddljob failed, err:%v", err), resputil.NotSpecified)
-		return
-	}
-	resputil.Success(c, nil)
 }
 
 type (

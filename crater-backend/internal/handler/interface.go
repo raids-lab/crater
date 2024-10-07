@@ -2,6 +2,8 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/raids-lab/crater/pkg/aitaskctl"
+	"github.com/raids-lab/crater/pkg/monitor"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -23,6 +25,10 @@ type RegisterConfig struct {
 	KubeClient kubernetes.Interface
 
 	// PrometheusClient is the prometheus client.
+	PrometheusClient monitor.PrometheusInterface
+
+	// AITaskCtrl is the aitask controller.
+	AITaskCtrl aitaskctl.TaskControllerInterface
 }
 
 // Registers is a slice of Manager Init functions.

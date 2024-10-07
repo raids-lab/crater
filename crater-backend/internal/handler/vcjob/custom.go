@@ -11,7 +11,6 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/samber/lo"
 	v1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
@@ -126,7 +125,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 			Protocol:      v1.ProtocolTCP,
 		})
 	}
-	if err = mgr.Create(c, &job); err != nil {
+	if err = mgr.client.Create(c, &job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
@@ -162,45 +161,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 		})
 	}
 
-	err = mgr.Create(c, svc)
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	// 添加锁
-	mgr.mu.Lock()
-	defer mgr.mu.Unlock()
-
-	// 创建 Ingress，转发 Jupyter 端口
-	ingressClient := mgr.kubeClient.NetworkingV1().Ingresses(namespace)
-
-	// Get the existing Ingress
-	ingress, err := ingressClient.Get(c, config.GetConfig().Workspace.IngressName, metav1.GetOptions{})
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	// req.UseTensorBoard为true, 用户希望暴露TensorBoard
-	if req.UseTensorBoard {
-		tensorboardPath := networkingv1.HTTPIngressPath{
-			Path:     fmt.Sprintf("/tensorboard/%s", jobName),
-			PathType: func(s networkingv1.PathType) *networkingv1.PathType { return &s }(networkingv1.PathTypePrefix),
-			Backend: networkingv1.IngressBackend{
-				Service: &networkingv1.IngressServiceBackend{
-					Name: jobName,
-					Port: networkingv1.ServiceBackendPort{
-						Number: 81,
-					},
-				},
-			},
-		}
-		ingress.Spec.Rules[0].HTTP.Paths = append(ingress.Spec.Rules[0].HTTP.Paths, tensorboardPath)
-	}
-
-	// Update the Ingress
-	_, err = ingressClient.Update(context.Background(), ingress, metav1.UpdateOptions{})
+	err = mgr.client.Create(c, svc)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return

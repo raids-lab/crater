@@ -7,7 +7,6 @@ import (
 	"log"
 	"sort"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -26,24 +25,26 @@ import (
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 )
 
-type VolcanojobMgr struct {
-	name string
-	client.Client
-	kubeClient kubernetes.Interface
-	mu         sync.Mutex // Add a mutex to protect the ingress creation
+//nolint:gochecknoinits // This is the standard way to register a gin handler.
+func init() {
+	handler.Registers = append(handler.Registers, NewVolcanojobMgr)
 }
 
-func NewVolcanojobMgr(cl client.Client, kc kubernetes.Interface) handler.Manager {
+type VolcanojobMgr struct {
+	name       string
+	client     client.Client
+	kubeClient kubernetes.Interface
+}
+
+func NewVolcanojobMgr(conf handler.RegisterConfig) handler.Manager {
 	return &VolcanojobMgr{
 		name:       "vcjobs",
-		Client:     cl,
-		kubeClient: kc,
+		client:     conf.Client,
+		kubeClient: conf.KubeClient,
 	}
 }
 
-func (mgr *VolcanojobMgr) GetName() string {
-	return mgr.name
-}
+func (mgr *VolcanojobMgr) GetName() string { return mgr.name }
 
 func (mgr *VolcanojobMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
@@ -143,7 +144,7 @@ func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
 
 	job := &batch.Job{}
 	namespace := config.GetConfig().Workspace.Namespace
-	if err := mgr.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
+	if err := mgr.client.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
 		if errors.IsNotFound(err) {
 			j := query.Job
 			_, err = j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Delete()
@@ -165,7 +166,7 @@ func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
 	}
 
 	// 直接删除 Job，OwnerReference 会自动删除 Ingress 和 Service
-	if err := mgr.Delete(c, job); err != nil {
+	if err := mgr.client.Delete(c, job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
@@ -211,7 +212,7 @@ func (mgr *VolcanojobMgr) GetJobLog(c *gin.Context) {
 	token := util.GetToken(c)
 	job := &batch.Job{}
 	namespace := config.GetConfig().Workspace.Namespace
-	if err := mgr.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
+	if err := mgr.client.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
@@ -380,7 +381,7 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 	token := util.GetToken(c)
 	job := &batch.Job{}
 	namespace := config.GetConfig().Workspace.Namespace
-	if err := mgr.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
+	if err := mgr.client.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
@@ -494,7 +495,7 @@ func getJobDetailFuntion(c *gin.Context, mgr *VolcanojobMgr, job *batch.Job, nam
 // @Success 200 {object} resputil.Response[any] "任务描述"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/vcjobs/{name}/detail [get]
+// @Router /v1/admin/vcjobs/{name}/detail [get]
 func (mgr *VolcanojobMgr) GetAdminJobDetail(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -503,7 +504,7 @@ func (mgr *VolcanojobMgr) GetAdminJobDetail(c *gin.Context) {
 	}
 	job := &batch.Job{}
 	namespace := config.GetConfig().Workspace.Namespace
-	if err := mgr.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
+	if err := mgr.client.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
@@ -534,7 +535,7 @@ func (mgr *VolcanojobMgr) GetJobYaml(c *gin.Context) {
 	token := util.GetToken(c)
 	job := &batch.Job{}
 	namespace := config.GetConfig().Workspace.Namespace
-	if err := mgr.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
+	if err := mgr.client.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
