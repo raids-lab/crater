@@ -26,13 +26,13 @@ type Profiler struct {
 	mutex            sync.Mutex
 	taskQueue        queue.Queue                   //
 	taskDB           tasksvc.DBService             // update profiling status
-	prometheusClient *monitor.PrometheusClient     // get monitor data
+	prometheusClient monitor.PrometheusInterface   // get monitor data
 	podControl       *crclient.ProfilingPodControl // get pod status
 	profilingTimeout time.Duration                 // profiling timeout
 	profileCache     map[uint64]monitor.PodUtil
 }
 
-func NewProfiler(mgr manager.Manager, prometheusClient *monitor.PrometheusClient, profileTimeout int) *Profiler {
+func NewProfiler(mgr manager.Manager, prometheusClient monitor.PrometheusInterface, profileTimeout int) *Profiler {
 	return &Profiler{
 		mutex:            sync.Mutex{}, // todo: add lock to taskQueue
 		taskQueue:        queue.New(keyFunc, fifoOrdering),
@@ -207,7 +207,7 @@ func (p *Profiler) run(ctx context.Context) {
 				} else if pod.Status.Phase == corev1.PodSucceeded {
 					jobStatus = models.TaskSucceededStatus
 				}
-				podUtil, err := p.prometheusClient.QueryPodUtilMetric(pod.Namespace, pod.Name)
+				podUtil, err := p.prometheusClient.QueryPodProfileMetric(pod.Namespace, pod.Name)
 				if err != nil {
 					logutils.Log.Errorf("profile query pod util failed, taskID:%v, pod:%v/%v, err:%v", taskID, pod.Namespace, pod.Name, err)
 					err = p.taskDB.UpdateProfilingStat(taskID, models.ProfileFailed, "", jobStatus)

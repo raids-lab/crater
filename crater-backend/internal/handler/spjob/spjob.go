@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
@@ -36,15 +37,21 @@ var jobStatusMap = map[corev1.PodPhase]batch.JobPhase{
 }
 
 type SparseJobMgr struct {
+	name      string
 	jobclient *crclient.RecommendDLJobController
 	logClient *crclient.LogClient
 }
 
-func NewSparseJobMgr(crClient client.Client, logClient *crclient.LogClient) *SparseJobMgr {
+func NewSparseJobMgr(crClient client.Client, logClient *crclient.LogClient) handler.Manager {
 	return &SparseJobMgr{
+		name:      "spjobs",
 		jobclient: &crclient.RecommendDLJobController{Client: crClient},
 		logClient: logClient,
 	}
+}
+
+func (mgr *SparseJobMgr) GetName() string {
+	return mgr.name
 }
 
 func (mgr *SparseJobMgr) RegisterPublic(_ *gin.RouterGroup) {}

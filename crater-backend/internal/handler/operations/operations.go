@@ -27,6 +27,7 @@ import (
 )
 
 type OperationsMgr struct {
+	name       string
 	nodeClient *crclient.NodeClient
 	client.Client
 	kubeClient kubernetes.Interface
@@ -35,10 +36,15 @@ type OperationsMgr struct {
 
 func NewOperationsMgr(nodeClient *crclient.NodeClient, cl client.Client, kc kubernetes.Interface) handler.Manager {
 	return &OperationsMgr{
+		name:       "operations",
 		nodeClient: nodeClient,
 		Client:     cl,
 		kubeClient: kc,
 	}
+}
+
+func (mgr *OperationsMgr) GetName() string {
+	return mgr.name
 }
 
 func (mgr *OperationsMgr) RegisterPublic(g *gin.RouterGroup) {

@@ -27,6 +27,7 @@ import (
 )
 
 type VolcanojobMgr struct {
+	name string
 	client.Client
 	kubeClient kubernetes.Interface
 	mu         sync.Mutex // Add a mutex to protect the ingress creation
@@ -34,9 +35,14 @@ type VolcanojobMgr struct {
 
 func NewVolcanojobMgr(cl client.Client, kc kubernetes.Interface) handler.Manager {
 	return &VolcanojobMgr{
+		name:       "vcjobs",
 		Client:     cl,
 		kubeClient: kc,
 	}
+}
+
+func (mgr *VolcanojobMgr) GetName() string {
+	return mgr.name
 }
 
 func (mgr *VolcanojobMgr) RegisterPublic(_ *gin.RouterGroup) {}

@@ -208,8 +208,8 @@ func main() {
 	setupLog.Info("cache sync success")
 
 	// profiler config
+	prometheusClient := monitor.NewPrometheusClient(backendConfig.PrometheusAPI)
 	if backendConfig.EnableProfiling {
-		prometheusClient := monitor.NewPrometheusClient(backendConfig.PrometheusAPI)
 		aijobProfiler := profiler.NewProfiler(mgr, prometheusClient, backendConfig.ProfilingTimeout)
 		taskCtrl.SetProfiler(aijobProfiler)
 		// todo: start profiling
@@ -225,7 +225,6 @@ func main() {
 
 	// 5. start server
 	setupLog.Info("starting server")
-	prometheusClient := monitor.NewPrometheusClient(backendConfig.PrometheusAPI)
 	backend := internal.Register(mgr.GetClient(), clientset, prometheusClient, taskCtrl)
 	if err := backend.R.Run(backendConfig.ServerAddr); err != nil {
 		setupLog.Error(err, "problem running server")

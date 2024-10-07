@@ -27,7 +27,7 @@ type Backend struct {
 	R *gin.Engine
 }
 
-func Register(cl client.Client, cs *kubernetes.Clientset, pc *monitor.PrometheusClient, aitaskCtrl *aitaskctl.TaskController) *Backend {
+func Register(cl client.Client, cs kubernetes.Interface, pc monitor.PrometheusInterface, aitaskCtrl *aitaskctl.TaskController) *Backend {
 	s := new(Backend)
 	s.R = gin.Default()
 
@@ -56,8 +56,8 @@ func Register(cl client.Client, cs *kubernetes.Clientset, pc *monitor.Prometheus
 
 func (b *Backend) RegisterService(
 	cl client.Client,
-	kc *kubernetes.Clientset,
-	pc *monitor.PrometheusClient,
+	kc kubernetes.Interface,
+	pc monitor.PrometheusInterface,
 	aitaskCtrl *aitaskctl.TaskController,
 ) {
 	// Enable CORS for http://localhost:XXXX in debug mode
@@ -74,11 +74,6 @@ func (b *Backend) RegisterService(
 	}
 
 	// Init Clients and Configs
-	// pvcClient := crclient.PVCClient{Client: cl}
-	// err := pvcClient.InitShareDir()
-	// if err != nil {
-	// 	panic(err)
-	// }
 	httpClient := http.Client{}
 	logClient := crclient.LogClient{Client: cl, KubeClient: kc}
 	nodeClient := crclient.NodeClient{Client: cl, KubeClient: kc, PrometheusClient: pc}
@@ -88,7 +83,7 @@ func (b *Backend) RegisterService(
 	authMgr := handler.NewAuthMgr(&httpClient)
 	labelMgr := handler.NewLabelMgr(kc)
 	resoueceMgr := handler.NewResourceMgr(kc)
-	projectMgr := handler.NewProjectMgr(cl)
+	projectMgr := handler.NewAccountMgr(cl)
 	nodeMgr := handler.NewNodeMgr(&nodeClient)
 	userMgr := handler.NewUserMgr()
 	imagepackMgr := handler.NewImagePackMgr(&logClient, &crclient.ImagePackController{Client: cl}, &harborClient)

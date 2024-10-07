@@ -22,15 +22,21 @@ import (
 )
 
 type AuthMgr struct {
+	name     string
 	client   *http.Client
 	tokenMgr *util.TokenManager
 }
 
 func NewAuthMgr(client *http.Client) Manager {
 	return &AuthMgr{
+		name:     "auth",
 		client:   client,
 		tokenMgr: util.GetTokenMgr(),
 	}
+}
+
+func (mgr *AuthMgr) GetName() string {
+	return mgr.name
 }
 
 func (mgr *AuthMgr) RegisterPublic(g *gin.RouterGroup) {

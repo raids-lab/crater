@@ -12,10 +12,17 @@ import (
 )
 
 type UserMgr struct {
+	name string
 }
 
 func NewUserMgr() Manager {
-	return &UserMgr{}
+	return &UserMgr{
+		name: "users",
+	}
+}
+
+func (mgr *UserMgr) GetName() string {
+	return mgr.name
 }
 
 func (mgr *UserMgr) RegisterPublic(_ *gin.RouterGroup) {}
