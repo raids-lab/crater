@@ -159,6 +159,7 @@ export const imagepackTaskType: {
 export interface ImagePackCreate {
   gitRepository: string;
   accessToken: string;
+  dockerfile: string;
   registryServer: string;
   registryUser: string;
   registryPass: string;
