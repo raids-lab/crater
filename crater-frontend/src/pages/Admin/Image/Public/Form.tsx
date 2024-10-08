@@ -24,8 +24,13 @@ import {
 import FormLabelMust from "@/components/custom/FormLabelMust";
 
 const formSchema = z.object({
-  gitRepository: z.string().min(1, { message: "仓库地址不能为空" }),
-  accessToken: z.string().min(1, { message: "AccessToken不能为空" }),
+  gitRepository: z.string().url({ message: "仓库地址应为合法 URL" }).optional(),
+  accessToken: z
+    .string()
+    .min(1, { message: "Access Token 不能为空" })
+    .optional(),
+  dockerfile: z.string().optional(),
+  dockerfileSource: z.enum(["1", "2"]),
   registryServer: z.string(),
   registryUser: z.string(),
   registryPass: z.string(),
@@ -50,8 +55,9 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
   const { mutate: createImagePack } = useMutation({
     mutationFn: (values: FormSchema) =>
       apiAdminImagepackCreate({
-        gitRepository: values.gitRepository,
-        accessToken: values.accessToken,
+        gitRepository: values.gitRepository ? values.gitRepository : "",
+        accessToken: values.accessToken ? values.accessToken : "",
+        dockerfile: values.dockerfile ? values.dockerfile : "",
         registryServer: values.registryServer,
         registryUser: values.registryUser,
         registryPass: values.registryPass,

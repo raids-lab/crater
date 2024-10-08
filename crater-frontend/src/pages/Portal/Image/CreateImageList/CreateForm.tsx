@@ -22,14 +22,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import FormLabelMust from "@/components/custom/FormLabelMust";
+import { Textarea } from "@/components/ui/textarea";
 
 const formSchema = z.object({
-  gitRepository: z.string().url({ message: "仓库地址应为合法 URL" }),
-  accessToken: z.string().min(1, { message: "Access Token 不能为空" }),
-  registryServer: z.string(),
-  registryUser: z.string(),
-  registryPass: z.string(),
-  registryProject: z.string(),
+  gitRepository: z.string().optional(),
+  accessToken: z.string().optional(),
+  dockerfile: z.string().optional(),
+  dockerfileSource: z.enum(["1", "2"]),
+  // registryServer: z.string().optional(),
+  // registryUser: z.string().optional(),
+  // registryPass: z.string().optional(),
+  // registryProject: z.string().optional(),
   imageName: z.string().min(1, { message: "镜像名不能为空" }),
   imageTag: z.string().min(1, { message: "标签不能为空" }),
   alias: z.string().min(1, { message: "镜像别名不能为空" }),
@@ -50,12 +53,13 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
   const { mutate: createImagePack } = useMutation({
     mutationFn: (values: FormSchema) =>
       apiUserImagepackCreate({
-        gitRepository: values.gitRepository,
-        accessToken: values.accessToken,
-        registryServer: values.registryServer,
-        registryUser: values.registryUser,
-        registryPass: values.registryPass,
-        registryProject: values.registryProject,
+        gitRepository: values.gitRepository ? values.gitRepository : "",
+        accessToken: values.accessToken ? values.accessToken : "",
+        dockerfile: values.dockerfile ? values.dockerfile : "",
+        registryServer: "",
+        registryUser: "",
+        registryPass: "",
+        registryProject: "",
         imageName: values.imageName,
         imageTag: values.imageTag,
         needProfile: values.needProfile,
@@ -76,12 +80,14 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      dockerfileSource: "1",
       gitRepository: "",
       accessToken: "",
-      registryServer: "",
-      registryUser: "",
-      registryPass: "",
-      registryProject: "",
+      dockerfile: "",
+      // registryServer: "",
+      // registryUser: "",
+      // registryPass: "",
+      // registryProject: "",
       imageName: "",
       imageTag: "",
       needProfile: false,
@@ -89,6 +95,8 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
       description: "",
     },
   });
+
+  const currentValues = form.watch();
 
   // 2. Define a submit handler.
   const onSubmit = (values: FormSchema) => {
@@ -104,11 +112,40 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
         onSubmit={form.handleSubmit(onSubmit)}
         className="mt-6 flex flex-col space-y-4"
       >
+        <div>
+          <FormField
+            control={form.control}
+            name="dockerfileSource"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  镜像构建方式
+                  <FormLabelMust />
+                </FormLabel>
+                <FormControl>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <SelectTrigger className="">
+                      <SelectValue placeholder="请选择镜像构建方式" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">代码仓库</SelectItem>
+                      <SelectItem value="2">Dockerfile</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         <FormField
           control={form.control}
           name="gitRepository"
           render={({ field }) => (
-            <FormItem>
+            <FormItem hidden={currentValues.dockerfileSource == "2"}>
               <FormLabel>
                 Git 仓库地址
                 <FormLabelMust />
@@ -125,7 +162,7 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
           control={form.control}
           name="accessToken"
           render={({ field }) => (
-            <FormItem>
+            <FormItem hidden={currentValues.dockerfileSource == "2"}>
               <FormLabel>
                 Access Token
                 <FormLabelMust />
@@ -137,9 +174,27 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
             </FormItem>
           )}
         />
+        <div className="">
+          <FormField
+            control={form.control}
+            name="dockerfile"
+            render={({ field }) => (
+              <FormItem hidden={currentValues.dockerfileSource == "1"}>
+                <FormLabel>
+                  Dockerfile
+                  <FormLabelMust />
+                </FormLabel>
+                <FormControl>
+                  <Textarea {...field} className="h-24 font-mono" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         <div>
           <div className="grid grid-cols-2 gap-3">
-            <FormField
+            {/* <FormField
               control={form.control}
               name="registryServer"
               render={({ field }) => (
@@ -211,7 +266,7 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
                   <FormMessage />
                 </FormItem>
               )}
-            />
+            /> */}
             <FormField
               control={form.control}
               name="imageName"
