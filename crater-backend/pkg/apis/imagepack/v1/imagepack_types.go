@@ -43,6 +43,7 @@ type ImagePackSpec struct {
 
 	GitRepository   string `json:"gitRepository"`
 	AccessToken     string `json:"accessToken"`
+	Dockerfile      string `json:"dockerfile,omitempty"`
 	RegistryServer  string `json:"registryServer"`
 	RegistryUser    string `json:"registryUser"`
 	RegistryPass    string `json:"registryPass"`

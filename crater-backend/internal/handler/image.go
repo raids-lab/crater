@@ -36,6 +36,7 @@ type (
 		TaskType        model.ImageTaskType `json:"taskType"`
 		Alias           string              `json:"alias"`
 		Description     string              `json:"description"`
+		Dockerfile      string              `json:"dockerfile"`
 	}
 
 	ImagePackUploadRequest struct {
@@ -310,6 +311,7 @@ func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateReq
 			ImageName:       req.ImageName,
 			ImageTag:        req.ImageTag,
 			NeedProfile:     req.NeedProfile,
+			Dockerfile:      req.Dockerfile,
 		},
 	}
 	if err := mgr.imagepackClient.CreateImagePack(c, imagepackCRD); err != nil {
