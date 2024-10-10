@@ -40,6 +40,7 @@ func newImageUpload(db *gorm.DB, opts ...gen.DOOption) imageUpload {
 	_imageUpload.Alias_ = field.NewString(tableName, "alias")
 	_imageUpload.Description = field.NewString(tableName, "description")
 	_imageUpload.CreatorName = field.NewString(tableName, "creatorname")
+	_imageUpload.IsPublic = field.NewBool(tableName, "ispublic")
 	_imageUpload.User = imageUploadBelongsToUser{
 		db: db.Session(&gorm.Session{}),
 
@@ -94,6 +95,7 @@ type imageUpload struct {
 	Alias_      field.String
 	Description field.String
 	CreatorName field.String
+	IsPublic    field.Bool
 	User        imageUploadBelongsToUser
 
 	Queue imageUploadBelongsToQueue
@@ -126,6 +128,7 @@ func (i *imageUpload) updateTableName(table string) *imageUpload {
 	i.Alias_ = field.NewString(table, "alias")
 	i.Description = field.NewString(table, "description")
 	i.CreatorName = field.NewString(table, "creatorname")
+	i.IsPublic = field.NewBool(table, "ispublic")
 
 	i.fillFieldMap()
 
@@ -152,7 +155,7 @@ func (i *imageUpload) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (i *imageUpload) fillFieldMap() {
-	i.fieldMap = make(map[string]field.Expr, 15)
+	i.fieldMap = make(map[string]field.Expr, 16)
 	i.fieldMap["id"] = i.ID
 	i.fieldMap["created_at"] = i.CreatedAt
 	i.fieldMap["updated_at"] = i.UpdatedAt
@@ -166,6 +169,7 @@ func (i *imageUpload) fillFieldMap() {
 	i.fieldMap["alias"] = i.Alias_
 	i.fieldMap["description"] = i.Description
 	i.fieldMap["creatorname"] = i.CreatorName
+	i.fieldMap["ispublic"] = i.IsPublic
 
 }
 

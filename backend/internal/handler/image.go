@@ -117,10 +117,10 @@ type (
 )
 
 var (
-	UserNameSpace = config.GetConfig().Workspace.ImageNameSpace
-	AdminUserName = "admin"
-	PublicQueueID = uint(1)
-
+	UserNameSpace     = config.GetConfig().Workspace.ImageNameSpace
+	AdminUserName     = "admin"
+	PublicQueueID     = uint(1)
+	PublicImageUserID = uint(0)
 	ImagePackInitial  = string(imagepackv1.PackJobInitial)
 	ImagePackPending  = string(imagepackv1.PackJobPending)
 	ImagePackRunning  = string(imagepackv1.PackJobRunning)
@@ -192,7 +192,7 @@ func (mgr *ImagePackMgr) UserCreate(c *gin.Context) {
 	logutils.Log.Infof("create params: %+v", req)
 	mgr.requestDefaultValue(req)
 	logutils.Log.Infof("token: %+v", token)
-	mgr.createImagePack(c, req, token, token.QueueID)
+	mgr.createImagePack(c, req, token, false)
 
 	resputil.Success(c, "")
 }
@@ -266,7 +266,7 @@ func (mgr *ImagePackMgr) AdminCreate(c *gin.Context) {
 	}
 	logutils.Log.Infof("create params: %+v", req)
 	mgr.requestDefaultValue(req)
-	mgr.createImagePack(c, req, token, PublicQueueID)
+	mgr.createImagePack(c, req, token, true)
 	resputil.Success(c, "")
 }
 
@@ -279,7 +279,7 @@ func (mgr *ImagePackMgr) requestDefaultValue(req *ImagePackCreateRequest) {
 	}
 }
 
-func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateRequest, token util.JWTMessage, queueID uint) {
+func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateRequest, token util.JWTMessage, isPublic bool) {
 	userQuery := query.User
 	user, err := userQuery.WithContext(c).Where(userQuery.ID.Eq(token.UserID)).First()
 	if err != nil {
@@ -287,7 +287,7 @@ func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateReq
 		return
 	}
 	queueQuery := query.Queue
-	queue, err := queueQuery.WithContext(c).Where(queueQuery.ID.Eq(queueID)).First()
+	queue, err := queueQuery.WithContext(c).Where(queueQuery.ID.Eq(token.QueueID)).First()
 	if err != nil {
 		logutils.Log.Errorf("fetch queue failed, params: %+v err:%v", req, err)
 		return
@@ -322,7 +322,7 @@ func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateReq
 	imagepackEntity := &model.ImagePack{
 		UserID:        token.UserID,
 		User:          *user,
-		QueueID:       queueID,
+		QueueID:       token.QueueID,
 		Queue:         *queue,
 		ImagePackName: imagepackName,
 		ImageLink:     imageLink,
@@ -335,6 +335,7 @@ func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateReq
 		Alias:         req.Alias,
 		Description:   req.Description,
 		CreatorName:   user.Name,
+		IsPublic:      isPublic,
 	}
 
 	if err := imagepackQuery.WithContext(c).Create(imagepackEntity); err != nil {
@@ -365,8 +366,9 @@ func (mgr *ImagePackMgr) UserListAll(c *gin.Context) {
 	if req.Type == 1 {
 		imagepackQuery := query.ImagePack
 		imagepacks, err = imagepackQuery.WithContext(c).
-			Where(imagepackQuery.QueueID.Eq(token.QueueID)).
+			Where(imagepackQuery.UserID.Eq(token.UserID)).
 			Where(imagepackQuery.Status.Neq(ImagePackDeleted)).
+			Or(imagepackQuery.IsPublic).
 			Find()
 		if err != nil {
 			logutils.Log.Errorf("fetch imagepack entity failed, err:%v", err)
@@ -374,8 +376,9 @@ func (mgr *ImagePackMgr) UserListAll(c *gin.Context) {
 	} else if req.Type == 2 {
 		imageuploadQuery := query.ImageUpload
 		imageuploads, err = imageuploadQuery.WithContext(c).
-			Where(imageuploadQuery.QueueID.Eq(token.QueueID)).
+			Where(imageuploadQuery.UserID.Eq(token.UserID)).
 			Where(imageuploadQuery.Status.Neq(ImagePackDeleted)).
+			Or(imageuploadQuery.IsPublic).
 			Find()
 		if err != nil {
 			logutils.Log.Errorf("fetch imageupload entity failed, err:%v", err)
@@ -410,10 +413,9 @@ func (mgr *ImagePackMgr) AdminListAll(c *gin.Context) {
 		return
 	}
 	listType := req.Type
-	//nolint:dupl // there exists mini diff between these logic
 	if listType == 0 {
 		imagepacks, err = imagepackQuery.WithContext(c).
-			Where(imagepackQuery.QueueID.Neq(PublicQueueID)).
+			Where(imagepackQuery.IsPublic.Not()).
 			Where(imagepackQuery.Status.Neq(ImagePackDeleted)).
 			Find()
 		if err != nil {
@@ -422,7 +424,7 @@ func (mgr *ImagePackMgr) AdminListAll(c *gin.Context) {
 			return
 		}
 		imageuploads, err = imageuploadQuery.WithContext(c).
-			Where(imageuploadQuery.QueueID.Neq(PublicQueueID)).
+			Where(imageuploadQuery.IsPublic.Not()).
 			Where(imageuploadQuery.Status.Neq(ImagePackDeleted)).
 			Find()
 		if err != nil {
@@ -432,7 +434,7 @@ func (mgr *ImagePackMgr) AdminListAll(c *gin.Context) {
 		}
 	} else if listType == 1 {
 		imagepacks, err = imagepackQuery.WithContext(c).
-			Where(imagepackQuery.QueueID.Eq(PublicQueueID)).
+			Where(imagepackQuery.IsPublic).
 			Where(imagepackQuery.Status.Neq(ImagePackDeleted)).
 			Find()
 		if err != nil {
@@ -441,7 +443,7 @@ func (mgr *ImagePackMgr) AdminListAll(c *gin.Context) {
 			return
 		}
 		imageuploads, err = imageuploadQuery.WithContext(c).
-			Where(imageuploadQuery.QueueID.Eq(PublicQueueID)).
+			Where(imageuploadQuery.IsPublic).
 			Where(imageuploadQuery.Status.Neq(ImagePackDeleted)).
 			Find()
 		if err != nil {
@@ -543,7 +545,7 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	imagepackQuery := query.ImagePack
 	var imagepacks []*model.ImagePack
 	if imagepacks, err = imagepackQuery.WithContext(c).
-		Where(imagepackQuery.QueueID.In(PublicQueueID, token.QueueID)).
+		Where(imagepackQuery.UserID.In(PublicImageUserID, token.UserID)).
 		Where(imagepackQuery.Status.Eq(ImagePackFinished)).
 		Where(imagepackQuery.TaskType.Eq(uint8(req.Type))).
 		Find(); err != nil {
@@ -554,7 +556,7 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	imageuploadQuery := query.ImageUpload
 	var imageuploads []*model.ImageUpload
 	if imageuploads, err = imageuploadQuery.WithContext(c).
-		Where(imageuploadQuery.QueueID.In(PublicQueueID, token.QueueID)).
+		Where(imageuploadQuery.UserID.In(PublicImageUserID, token.UserID)).
 		Where(imageuploadQuery.Status.Neq(ImagePackDeleted)).
 		Where(imageuploadQuery.TaskType.Eq(uint8(req.Type))).
 		Find(); err != nil {
@@ -600,7 +602,7 @@ func (mgr *ImagePackMgr) DeleteByID(c *gin.Context) {
 		var imagepack *model.ImagePack
 		if imagepack, err = imagepackQuery.WithContext(c).
 			Where(imagepackQuery.ID.Eq(imageID)).
-			Where(imagepackQuery.QueueID.Eq(token.QueueID)).First(); err != nil {
+			Where(imagepackQuery.UserID.Eq(token.UserID)).First(); err != nil {
 			logutils.Log.Errorf("image not exist or have no permission%+v", err)
 			resputil.Error(c, "failed to find imagepack or entity", resputil.NotSpecified)
 			return
