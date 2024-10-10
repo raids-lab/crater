@@ -190,6 +190,40 @@ func main() {
 				return tx.Migrator().DropColumn(&AITask{}, "KeepWhenLowResourceUsage")
 			},
 		},
+		{
+			// add `ispublic` column to `Image` table
+			ID: "202410101955",
+			Migrate: func(tx *gorm.DB) error {
+				// when table already exists, define only columns that are about to change
+				type ImagePack struct {
+					IsPublic bool `gorm:"column:ispublic;type:boolean;default:false" json:"ispublic"`
+				}
+				return tx.Migrator().AddColumn(&ImagePack{}, "IsPublic")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type ImagePack struct {
+					IsPublic bool `gorm:"column:ispublic;type:boolean;default:false" json:"ispublic"`
+				}
+				return tx.Migrator().DropColumn(&ImagePack{}, "IsPublic")
+			},
+		},
+		{
+			// add `ispublic` column to `Image` table
+			ID: "202410102007",
+			Migrate: func(tx *gorm.DB) error {
+				// when table already exists, define only columns that are about to change
+				type ImageUpload struct {
+					IsPublic bool `gorm:"column:ispublic;type:boolean;default:false" json:"ispublic"`
+				}
+				return tx.Migrator().AddColumn(&ImageUpload{}, "IsPublic")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type ImageUpload struct {
+					IsPublic bool `gorm:"column:ispublic;type:boolean;default:false" json:"ispublic"`
+				}
+				return tx.Migrator().DropColumn(&ImageUpload{}, "IsPublic")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
