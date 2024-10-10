@@ -19,6 +19,7 @@ type ImagePack struct {
 	Alias         string             `gorm:"column:alias;type:varchar(128);not null" json:"alias"`
 	Description   string             `gorm:"column:description;type:varchar(512);not null" json:"description"`
 	CreatorName   string             `gorm:"column:creatorname;type:varchar(128);not null" json:"creatorname"`
+	IsPublic      bool               `gorm:"column:ispublic;type:boolean;default:false" json:"ispublic"`
 }
 
 type ImageUpload struct {
@@ -34,6 +35,7 @@ type ImageUpload struct {
 	Alias       string        `gorm:"column:alias;type:varchar(128);not null" json:"alias"`
 	Description string        `gorm:"column:description;type:varchar(512);not null" json:"description"`
 	CreatorName string        `gorm:"column:creatorname;type:varchar(128);not null" json:"creatorname"`
+	IsPublic    bool          `gorm:"column:ispublic;type:boolean;default:false" json:"ispublic"`
 }
 
 type ImageProfileParams struct {
