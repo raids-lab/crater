@@ -49,14 +49,12 @@ import {
   JobPhase,
   apiJobDelete,
   apiJobGetDetail,
-  apiJobLogs,
   apiJupyterYaml,
-  Logs,
 } from "@/services/api/vcjob";
 import CodeSheet from "@/components/codeblock/CodeSheet";
-import JobPhaseLabel from "@/components/custom/JobPhaseLabel";
+import JobPhaseLabel from "@/components/phase/JobPhaseLabel";
 import { TableDate } from "@/components/custom/TableDate";
-import TerminalDialog from "@/components/codeblock/TerminalDialog";
+import LogDialog, { PodNamespacedName } from "@/components/codeblock/LogDialog";
 export interface Resource {
   [key: string]: string;
 }
@@ -89,8 +87,7 @@ export const Component = () => {
   const [refetchInterval, setRefetchInterval] = useState(5000); // Manage interval state
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [isTerminalOpen, setIsTerminalOpen] = useState(false);
-  const [terminalPod, setTerminalPod] = useState<string>("");
+  const [showLogPod, setShowLogPod] = useState<PodNamespacedName | undefined>();
 
   const { data: taskList, isLoading } = useQuery({
     queryKey: ["job", "detail", jobName],
@@ -104,15 +101,7 @@ export const Component = () => {
     setRefetchInterval(intervalMs);
   };
 
-  const [logs, setLogs] = useState<Logs>({});
   const [yaml, setYaml] = useState("Loading...");
-
-  const { data: fetchLogsData, isLoading: fetchLogsBool } = useQuery({
-    queryKey: ["job", "logs", jobName],
-    queryFn: () => apiJobLogs(jobName),
-    select: (res) => res.data.data.logs,
-    refetchInterval: refetchInterval,
-  });
 
   const { data: fetchYamlData, isLoading: fetchYamlBool } = useQuery({
     queryKey: ["job", "yaml", jobName],
@@ -163,13 +152,10 @@ export const Component = () => {
   }, [taskList, isLoading, taskList?.runtime]);
 
   useEffect(() => {
-    if (!fetchLogsBool && fetchLogsData) {
-      setLogs(fetchLogsData);
-    }
     if (!fetchYamlBool && fetchYamlData) {
       setYaml(fetchYamlData);
     }
-  }, [fetchLogsBool, fetchLogsData, fetchYamlBool, fetchYamlData]);
+  }, [fetchYamlBool, fetchYamlData]);
 
   return (
     <>
@@ -405,27 +391,25 @@ export const Component = () => {
                         className="h-8 w-8 text-primary hover:text-primary/90"
                         title="打开终端"
                         onClick={() => {
-                          // toast.warning("Web 终端功能开发中");
-                          setTerminalPod(pod.name);
-                          setIsTerminalOpen(true);
+                          toast.warning("Web 终端功能暂未开放");
                         }}
                       >
                         <SquareTerminalIcon className="h-4 w-4" />
                       </Button>
-                      <CodeSheet
-                        code={logs[pod.name]}
-                        title={pod.name}
-                        side="left"
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        title="查看日志"
+                        onClick={() => {
+                          setShowLogPod({
+                            namespace: data.namespace,
+                            name: pod.name,
+                          });
+                        }}
                       >
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          title="查看日志"
-                        >
-                          <FileTextIcon className="h-4 w-4" />
-                        </Button>
-                      </CodeSheet>
+                        <FileTextIcon className="h-4 w-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -433,10 +417,9 @@ export const Component = () => {
           </TableBody>
         </Table>
       </Card>
-      <TerminalDialog
-        isOpen={isTerminalOpen}
-        setIsOpen={setIsTerminalOpen}
-        podName={terminalPod}
+      <LogDialog
+        namespacedName={showLogPod}
+        setNamespacedName={setShowLogPod}
       />
     </>
   );

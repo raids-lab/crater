@@ -31,7 +31,7 @@ import { toast } from "sonner";
 import { getHeader, jobToolbarConfig } from "@/pages/Portal/Job/statuses";
 import { logger } from "@/utils/loglevel";
 import Quota from "../../Interactive/Quota";
-import JobPhaseLabel from "@/components/custom/JobPhaseLabel";
+import JobPhaseLabel from "@/components/phase/JobPhaseLabel";
 import {
   Card,
   CardDescription,

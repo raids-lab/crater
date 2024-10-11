@@ -1,7 +1,7 @@
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
 
-export interface ContainerStatus {
+export interface ContainerInfo {
   name: string;
   image: string;
   state: {
@@ -22,17 +22,44 @@ export interface ContainerStatus {
       containerID: string;
     };
   };
-  resources: Record<string, string>;
+  resources?: Record<string, string>;
   restartCount: number;
   isInitContainer: boolean;
 }
 
 export interface ContainerStatusResponse {
-  containers: ContainerStatus[];
+  containers: ContainerInfo[];
 }
 
 // http://localhost:8092/v1/pods/jupyter-liyilong-3885b-default0-0/containers
-export const apiGetPodContainers = (podName: string) =>
+export const apiGetPodContainers = (namespace?: string, podName?: string) =>
   instance.get<IResponse<ContainerStatusResponse>>(
-    `${VERSION}/pods/${podName}/containers`,
+    `${VERSION}/namespaces/${namespace}/pods/${podName}/containers`,
   );
+
+// http://localhost:8092/v1/pods/jupyter-liyilong-3885b-default0-0/containers/jupyter/log
+// PodContainerLogQueryReq struct {
+//   // from query
+//   TailLines  *int64 `form:"tailLines" binding:"required"`
+//   Timestamps bool   `form:"timestamps" binding:"required"`
+//   Follow     bool   `form:"follow" binding:"required"`
+// }
+export interface PodContainerLogQueryReq {
+  tailLines: number;
+  timestamps: boolean;
+  follow: boolean;
+}
+
+export const apiGetPodContainerLog = (
+  namespace?: string,
+  podName?: string,
+  containerName?: string,
+  query?: PodContainerLogQueryReq,
+) => {
+  return instance.get<IResponse<string>>(
+    `${VERSION}/namespaces/${namespace}/pods/${podName}/containers/${containerName}/log`,
+    {
+      params: query,
+    },
+  );
+};

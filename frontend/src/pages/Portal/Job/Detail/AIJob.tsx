@@ -53,7 +53,7 @@ import {
   Logs,
 } from "@/services/api/vcjob";
 import CodeSheet from "@/components/codeblock/CodeSheet";
-import JobPhaseLabel from "@/components/custom/JobPhaseLabel";
+import JobPhaseLabel from "@/components/phase/JobPhaseLabel";
 import { TableDate } from "@/components/custom/TableDate";
 import { SmallDataCard } from "@/components/custom/DataCard";
 import { ProfileStat } from "@/services/api/aiTask";

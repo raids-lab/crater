@@ -15,7 +15,7 @@ function BaseCodeBlock({ code, language }: { code: string; language: string }) {
         <CodeBlock.Code className="rounded-xl px-3 py-5 shadow-lg">
           <div className="table-row">
             <CodeBlock.LineNumber className="table-cell select-none pr-4 text-right text-xs text-gray-500" />
-            <CodeBlock.LineContent className="table-cell text-sm">
+            <CodeBlock.LineContent className="table-cell whitespace-normal break-words text-sm">
               <CodeBlock.Token />
             </CodeBlock.LineContent>
           </div>

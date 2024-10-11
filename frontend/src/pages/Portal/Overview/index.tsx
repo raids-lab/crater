@@ -18,7 +18,7 @@ import { JobPhase } from "@/services/api/vcjob";
 import JobPhaseLabel, {
   aijobPhases,
   jobPhases,
-} from "@/components/custom/JobPhaseLabel";
+} from "@/components/phase/JobPhaseLabel";
 import { IJobInfo, JobType, apiJobAllList } from "@/services/api/vcjob";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { CardTitle } from "@/components/ui-custom/card";

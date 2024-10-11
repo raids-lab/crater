@@ -1,12 +1,5 @@
 import { JobPhase } from "@/services/api/vcjob";
-import { cn } from "@/lib/utils";
-import { Badge } from "../ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { PhaseLabel, PhaseLabelData } from "./PhaseLabel";
 
 export const jobPhases = [
   {
@@ -104,13 +97,7 @@ export const aijobPhases = [
   },
 ];
 
-export const getJobPhaseLabel = (
-  phase: JobPhase,
-): {
-  label: string;
-  color: string;
-  description: string;
-} => {
+export const getJobPhaseLabel = (phase: JobPhase): PhaseLabelData => {
   switch (phase) {
     case JobPhase.Pending:
       return {
@@ -195,22 +182,7 @@ export const getJobPhaseLabel = (
 };
 
 const JobPhaseLabel = ({ jobPhase }: { jobPhase: JobPhase }) => {
-  const data = getJobPhaseLabel(jobPhase);
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger disabled>
-          <Badge className={cn("cursor-pointer", data.color)} variant="outline">
-            <div className="">{data.label}</div>
-          </Badge>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{data.description}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
+  return <PhaseLabel phase={jobPhase} getPhaseLabel={getJobPhaseLabel} />;
 };
 
 export default JobPhaseLabel;

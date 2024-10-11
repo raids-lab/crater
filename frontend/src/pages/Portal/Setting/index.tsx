@@ -1,5 +1,11 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { CardTitle } from "@/components/ui-custom/card";
+import {
+  Card,
+  CardTitle,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardDescription,
+} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -13,7 +19,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   FormField,
   FormItem,
-  FormLabel,
   FormControl,
   FormMessage,
   Form,
@@ -22,7 +27,6 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useAtom } from "jotai";
 import { globalSettings } from "@/utils/store";
-import FormLabelMust from "@/components/custom/FormLabelMust";
 
 const formSchema = z.object({
   scheduler: z.enum(["volcano", "colocate", "sparse"], {
@@ -51,24 +55,22 @@ export const Component = () => {
   return (
     <Card className="lg:col-span-2">
       <CardHeader>
-        <CardTitle>基本设置</CardTitle>
+        <CardTitle>调度算法</CardTitle>
+        <CardDescription>
+          为您的工作负载选取最佳资源分配和调度策略
+        </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-5">
-        <Form {...form}>
-          <form
-            // eslint-disable-next-line @typescript-eslint/no-misused-promises
-            onSubmit={form.handleSubmit(handleSubmit)}
-            className="flex flex-col space-y-4"
-          >
+      <Form {...form}>
+        <form
+          // eslint-disable-next-line @typescript-eslint/no-misused-promises
+          onSubmit={form.handleSubmit(handleSubmit)}
+        >
+          <CardContent>
             <FormField
               control={form.control}
               name="scheduler"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>
-                    调度算法
-                    <FormLabelMust />
-                  </FormLabel>
                   <FormControl>
                     <Select
                       onValueChange={field.onChange}
@@ -94,12 +96,12 @@ export const Component = () => {
                 </FormItem>
               )}
             />
-            <div className="flex flex-row-reverse">
-              <Button type="submit">更新设置</Button>
-            </div>
-          </form>
-        </Form>
-      </CardContent>
+          </CardContent>
+          <CardFooter className="border-t px-6 py-4">
+            <Button type="submit">更新设置</Button>
+          </CardFooter>
+        </form>
+      </Form>
     </Card>
   );
 };

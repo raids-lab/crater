@@ -27,7 +27,7 @@ import { toast } from "sonner";
 import { getHeader, jobToolbarConfig } from "@/pages/Portal/Job/statuses";
 import { logger } from "@/utils/loglevel";
 import Quota from "./Quota";
-import JobPhaseLabel from "@/components/custom/JobPhaseLabel";
+import JobPhaseLabel from "@/components/phase/JobPhaseLabel";
 import { Link } from "react-router-dom";
 import {
   Card,

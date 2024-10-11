@@ -1,5 +1,5 @@
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
-import { jobPhases } from "@/components/custom/JobPhaseLabel";
+import { jobPhases } from "@/components/phase/JobPhaseLabel";
 import { jobTypes } from "@/components/custom/JobTypeLabel";
 
 export const getHeader = (key: string): string => {
