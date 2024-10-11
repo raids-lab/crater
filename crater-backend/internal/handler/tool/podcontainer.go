@@ -1,45 +1,53 @@
 package tool
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/resputil"
-	"github.com/raids-lab/crater/pkg/config"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
 func init() {
-	handler.Registers = append(handler.Registers, NewPodContainerMgr)
+	handler.Registers = append(handler.Registers, NewAPIServerMgr)
 }
 
-type PodContainerMgr struct {
-	name   string
-	client client.Client
+type APIServerMgr struct {
+	name       string
+	client     client.Client
+	kubeClient kubernetes.Interface
 }
 
-func NewPodContainerMgr(conf handler.RegisterConfig) handler.Manager {
-	return &PodContainerMgr{
-		name:   "pods",
-		client: conf.Client,
+func NewAPIServerMgr(conf handler.RegisterConfig) handler.Manager {
+	return &APIServerMgr{
+		name:       "namespaces",
+		client:     conf.Client,
+		kubeClient: conf.KubeClient,
 	}
 }
 
-func (mgr *PodContainerMgr) GetName() string { return mgr.name }
+func (mgr *APIServerMgr) GetName() string { return mgr.name }
 
-func (mgr *PodContainerMgr) RegisterPublic(_ *gin.RouterGroup) {}
+func (mgr *APIServerMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
-func (mgr *PodContainerMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.GET(":name/containers", mgr.GetPodContainers)
+func (mgr *APIServerMgr) RegisterProtected(g *gin.RouterGroup) {
+	g.GET(":namespace/pods/:name/containers", mgr.GetPodContainers)
+	g.GET(":namespace/pods/:name/containers/:container/log", mgr.GetPodContainerLog)
 }
 
-func (mgr *PodContainerMgr) RegisterAdmin(_ *gin.RouterGroup) {}
+func (mgr *APIServerMgr) RegisterAdmin(_ *gin.RouterGroup) {}
 
 type (
 	PodContainerReq struct {
-		PodName string `uri:"name" binding:"required"`
+		Namespace string `uri:"namespace" binding:"required"`
+		PodName   string `uri:"name" binding:"required"`
 	}
 
 	ContainerStatus struct {
@@ -63,12 +71,13 @@ type (
 // @Accept json
 // @Produce json
 // @Security Bearer
+// @Param namespace path string true "命名空间"
 // @Param name path string true "Pod名称"
 // @Success 200 {object} resputil.Response[any] "Pod容器列表"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/pods/{name}/containers [get]
-func (mgr *PodContainerMgr) GetPodContainers(c *gin.Context) {
+// @Router /v1/namepaces/{namespace}/pods/{name}/containers [get]
+func (mgr *APIServerMgr) GetPodContainers(c *gin.Context) {
 	var req PodContainerReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
@@ -76,9 +85,20 @@ func (mgr *PodContainerMgr) GetPodContainers(c *gin.Context) {
 	}
 
 	var pod v1.Pod
-	if err := mgr.client.Get(c, client.ObjectKey{Namespace: config.GetConfig().Workspace.Namespace, Name: req.PodName}, &pod); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
+	if err := mgr.client.Get(c, client.ObjectKey{Namespace: req.Namespace, Name: req.PodName}, &pod); err != nil {
+		if strings.Contains(err.Error(), "unknown namespace") {
+			// try to get the pod from the kube client
+			//nolint:govet // Ignore govet warning about shadowing err.
+			if podPtr, err := mgr.kubeClient.CoreV1().Pods(req.Namespace).Get(c, req.PodName, metav1.GetOptions{}); err != nil {
+				resputil.Error(c, err.Error(), resputil.NotSpecified)
+				return
+			} else {
+				pod = *podPtr
+			}
+		} else {
+			resputil.Error(c, err.Error(), resputil.NotSpecified)
+			return
+		}
 	}
 
 	// TODO(liyilong): Check if the user has permission to view the pod.
@@ -117,4 +137,67 @@ func (mgr *PodContainerMgr) GetPodContainers(c *gin.Context) {
 		}
 	}
 	resputil.Success(c, PodContainersResp{Containers: containers})
+}
+
+type (
+	PodContainerLogURIReq struct {
+		// from uri
+		Namespace     string `uri:"namespace" binding:"required"`
+		PodName       string `uri:"name" binding:"required"`
+		ContainerName string `uri:"container" binding:"required"`
+	}
+
+	PodContainerLogQueryReq struct {
+		// from query
+		TailLines  *int64 `form:"tailLines" binding:"required"`
+		Timestamps bool   `form:"timestamps"`
+		Follow     bool   `form:"follow"`
+	}
+)
+
+// GetPodContainerLog godoc
+// @Summary 获取Pod容器日志
+// @Description 获取Pod容器日志
+// @Tags Pod
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param namespace path string true "命名空间"
+// @Param name path string true "Pod名称"
+// @Param container path string true "容器名称"
+// @Param page query int true "页码"
+// @Param size query int true "每页数量"
+// @Success 200 {object} resputil.Response[any] "Pod容器日志"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/namespaces/{namespace}/pods/{name}/containers/{container}/log [get]
+func (mgr *APIServerMgr) GetPodContainerLog(c *gin.Context) {
+	// Implementation for fetching and returning the pod container log
+	var req PodContainerLogURIReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+	var param PodContainerLogQueryReq
+	if err := c.ShouldBindQuery(&param); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	// 获取指定 Pod 的日志请求
+	logReq := mgr.kubeClient.CoreV1().Pods(req.Namespace).GetLogs(req.PodName, &v1.PodLogOptions{
+		Container:  req.ContainerName,
+		Follow:     param.Follow,
+		TailLines:  param.TailLines,
+		Timestamps: param.Timestamps,
+	})
+
+	// 获取日志内容
+	logData, err := logReq.DoRaw(c)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to get log: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, logData)
 }

@@ -184,6 +184,7 @@ func (nc *NodeClient) GetPodsForNode(ctx context.Context, name string) (*payload
 		}
 		podInfo := payload.Pod{
 			Name:       pod.Name,
+			Namespace:  pod.Namespace,
 			IP:         pod.Status.PodIP,
 			CreateTime: pod.CreationTimestamp.String(),
 			Status:     string(pod.Status.Phase),
