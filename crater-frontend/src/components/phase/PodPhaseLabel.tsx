@@ -1,11 +1,4 @@
-import { cn } from "@/lib/utils";
-import { Badge } from "../ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { PhaseLabel } from "./PhaseLabel";
 
 export const podPhases = [
   {
@@ -60,22 +53,7 @@ const getPodPhaseLabel = (
 };
 
 const PodPhaseLabel = ({ podPhase }: { podPhase: string }) => {
-  const data = getPodPhaseLabel(podPhase);
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger disabled>
-          <Badge className={cn("cursor-pointer", data.color)} variant="outline">
-            <div className="">{data.label}</div>
-          </Badge>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{data.description}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
+  return <PhaseLabel phase={podPhase} getPhaseLabel={getPodPhaseLabel} />;
 };
 
 export default PodPhaseLabel;

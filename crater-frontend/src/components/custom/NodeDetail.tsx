@@ -1,23 +1,16 @@
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, type FC } from "react";
+import { useEffect, useMemo, useState, type FC } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTable } from "@/components/custom/DataTable";
-import { apiGetNodeDetail, apiGetNodePods } from "@/services/api/cluster";
+import {
+  apiGetNodeDetail,
+  apiGetNodePods,
+  IClusterPodInfo,
+} from "@/services/api/cluster";
 import { apiGetNodeGPU } from "@/services/api/cluster";
 import { TableDate } from "@/components/custom/TableDate";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,9 +31,10 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { ExternalLink, Undo2 } from "lucide-react";
 import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
-import PodPhaseLabel, { podPhases } from "@/components/custom/PodPhaseLabel";
+import PodPhaseLabel, { podPhases } from "@/components/phase/PodPhaseLabel";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "../ui/badge";
+import LogDialog, { PodNamespacedName } from "../codeblock/LogDialog";
 
 type CardDemoProps = React.ComponentProps<typeof Card> & {
   nodeInfo?: {
@@ -179,13 +173,6 @@ export function GPUDetails({ nodeName }: { nodeName: string }) {
   );
 }
 
-interface ClusterPodInfo {
-  name: string;
-  status: string;
-  time: string;
-  address: string;
-}
-
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
     placeholder: "搜索 Pod 名称",
@@ -217,7 +204,10 @@ const toolbarConfig: DataTableToolbarConfig = {
   getHeader: (x) => x,
 };
 
-const getColumns = (nodeName: string): ColumnDef<ClusterPodInfo>[] => [
+const getColumns = (
+  nodeName: string,
+  handleShowPodLog: (namespacedName: PodNamespacedName) => void,
+): ColumnDef<IClusterPodInfo>[] => [
   {
     accessorKey: "ownerKind",
     header: ({ column }) => (
@@ -272,12 +262,12 @@ const getColumns = (nodeName: string): ColumnDef<ClusterPodInfo>[] => [
     },
   },
   {
-    accessorKey: "time",
+    accessorKey: "createTime",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title={"创建于"} />
     ),
     cell: ({ row }) => {
-      return <TableDate date={row.getValue("time")}></TableDate>;
+      return <TableDate date={row.getValue("createTime")}></TableDate>;
     },
     enableSorting: false,
   },
@@ -317,34 +307,28 @@ const getColumns = (nodeName: string): ColumnDef<ClusterPodInfo>[] => [
     cell: ({ row }) => {
       const taskInfo = row.original;
       return (
-        <AlertDialog>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">操作</span>
-                <DotsHorizontalIcon className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>操作</DropdownMenuLabel>
-              <AlertDialogTrigger asChild>
-                <DropdownMenuItem>编辑标签</DropdownMenuItem>
-              </AlertDialogTrigger>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>编辑标签</AlertDialogTitle>
-              <AlertDialogDescription>
-                [WIP] 为节点 {taskInfo.name} 编辑标签
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>取消</AlertDialogCancel>
-              <AlertDialogAction>提交</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">操作</span>
+              <DotsHorizontalIcon className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>操作</DropdownMenuLabel>
+            <DropdownMenuItem>监控</DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                handleShowPodLog({
+                  namespace: taskInfo.namespace,
+                  name: taskInfo.name,
+                })
+              }
+            >
+              日志
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       );
     },
   },
@@ -352,6 +336,8 @@ const getColumns = (nodeName: string): ColumnDef<ClusterPodInfo>[] => [
 
 export const NodeDetail: FC = () => {
   const { id: nodeName } = useParams();
+  const setBreadcrumb = useBreadcrumb();
+  const [showLogPod, setShowLogPod] = useState<PodNamespacedName | undefined>();
 
   const { data: nodeDetail } = useQuery({
     queryKey: ["nodes", nodeName, "detail"],
@@ -364,25 +350,14 @@ export const NodeDetail: FC = () => {
     queryKey: ["nodes", nodeName, "pods"],
     queryFn: () => apiGetNodePods(`${nodeName}`),
     select: (res) =>
-      res.data.data?.pods
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map((x) => {
-          return {
-            name: x.name,
-            status: x.status,
-            time: x.createTime,
-            address: x.IP,
-            cpu: x.CPU,
-            memory: x.Mem,
-            ownerKind: x.ownerKind,
-          };
-        }),
+      res.data.data?.pods.sort((a, b) => a.name.localeCompare(b.name)),
     enabled: !!nodeName,
   });
-  const safeNodeName = nodeName || "defaultNodeName";
-  const columns = useMemo(() => getColumns(safeNodeName), [safeNodeName]);
 
-  const setBreadcrumb = useBreadcrumb();
+  const columns = useMemo(
+    () => getColumns(nodeName || "defaultNodeName", setShowLogPod),
+    [nodeName],
+  );
 
   // 修改 BreadCrumb
   useEffect(() => {
@@ -402,6 +377,10 @@ export const NodeDetail: FC = () => {
           toolbarConfig={toolbarConfig}
         />
       </div>
+      <LogDialog
+        namespacedName={showLogPod}
+        setNamespacedName={setShowLogPod}
+      />
     </div>
   );
 };

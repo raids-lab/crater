@@ -7,7 +7,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import JobPhaseLabel, { jobPhases } from "@/components/custom/JobPhaseLabel";
+import JobPhaseLabel, { jobPhases } from "@/components/phase/JobPhaseLabel";
 import { JobPhase } from "@/services/api/vcjob";
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";

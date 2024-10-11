@@ -20,9 +20,10 @@ export interface IClusterNodeInfo {
 
 export interface IClusterPodInfo {
   name: string;
-  CPU: string;
-  Mem: string;
-  IP: string;
+  namespace: string;
+  cpu: string;
+  memory: string;
+  ip: string;
   createTime: string;
   status: string;
   ownerKind: string;
