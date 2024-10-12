@@ -125,7 +125,7 @@ export function GPUDetails({ nodeName }: { nodeName: string }) {
     queryFn: () => apiGetNodeGPU(nodeName),
     select: (res) => res.data.data,
     enabled: !!nodeName,
-    refetchInterval: 1000,
+    refetchInterval: 5000,
   });
 
   if (isLoading || error || !gpuInfo || !gpuInfo.haveGPU) return <></>; // 如果没有 GPU 数据或节点不包含 GPU，不显示组件

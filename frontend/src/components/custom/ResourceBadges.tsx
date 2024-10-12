@@ -27,7 +27,11 @@ const ResourceBadges = ({
           display = `${key}: ${value}`;
         }
         return (
-          <Badge key={key} variant="secondary" className="font-normal">
+          <Badge
+            key={key}
+            variant="secondary"
+            className="font-mono font-normal"
+          >
             {display}
           </Badge>
         );
