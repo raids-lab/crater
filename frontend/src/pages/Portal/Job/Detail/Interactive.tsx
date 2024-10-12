@@ -54,7 +54,8 @@ import {
 import CodeSheet from "@/components/codeblock/CodeSheet";
 import JobPhaseLabel from "@/components/phase/JobPhaseLabel";
 import { TableDate } from "@/components/custom/TableDate";
-import LogDialog, { PodNamespacedName } from "@/components/codeblock/LogDialog";
+import { PodNamespacedName } from "@/components/codeblock/PodContainerDialog";
+import LogDialog from "@/components/codeblock/LogDialog";
 export interface Resource {
   [key: string]: string;
 }
