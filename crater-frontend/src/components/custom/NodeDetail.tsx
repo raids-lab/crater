@@ -34,7 +34,8 @@ import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
 import PodPhaseLabel, { podPhases } from "@/components/phase/PodPhaseLabel";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "../ui/badge";
-import LogDialog, { PodNamespacedName } from "../codeblock/LogDialog";
+import { PodNamespacedName } from "../codeblock/PodContainerDialog";
+import LogDialog from "../codeblock/LogDialog";
 
 type CardDemoProps = React.ComponentProps<typeof Card> & {
   nodeInfo?: {

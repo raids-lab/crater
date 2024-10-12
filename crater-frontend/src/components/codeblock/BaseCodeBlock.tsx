@@ -1,8 +1,12 @@
 import { CodeBlock } from "react-code-block";
 import { themes } from "prism-react-renderer";
 import { useTheme } from "@/utils/theme";
+import { forwardRef } from "react";
 
-function BaseCodeBlock({ code, language }: { code: string; language: string }) {
+const BaseCodeBlock = forwardRef<
+  HTMLDivElement,
+  { code: string; language: string }
+>(({ code, language }, ref) => {
   const { theme } = useTheme();
 
   return (
@@ -11,7 +15,7 @@ function BaseCodeBlock({ code, language }: { code: string; language: string }) {
       language={language}
       theme={theme == "light" ? themes.vsDark : themes.vsDark}
     >
-      <div className="relative">
+      <div className="relative" ref={ref}>
         <CodeBlock.Code className="rounded-xl px-3 py-5 shadow-lg">
           <div className="table-row">
             <CodeBlock.LineNumber className="table-cell select-none pr-4 text-right text-xs text-gray-500" />
@@ -23,6 +27,7 @@ function BaseCodeBlock({ code, language }: { code: string; language: string }) {
       </div>
     </CodeBlock>
   );
-}
+});
+BaseCodeBlock.displayName = "BaseCodeBlock";
 
 export default BaseCodeBlock;
