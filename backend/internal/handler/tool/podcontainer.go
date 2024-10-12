@@ -149,9 +149,10 @@ type (
 
 	PodContainerLogQueryReq struct {
 		// from query
-		TailLines  *int64 `form:"tailLines" binding:"required"`
+		TailLines  *int64 `form:"tailLines"`
 		Timestamps bool   `form:"timestamps"`
 		Follow     bool   `form:"follow"`
+		Previous   bool   `form:"previous"`
 	}
 )
 
