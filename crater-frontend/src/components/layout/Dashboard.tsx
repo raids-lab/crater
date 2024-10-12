@@ -48,7 +48,7 @@ const DashboardLayout = ({
   }, [items, currentAccount, rawPath]);
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40">
+    <div className="flex min-h-screen w-full flex-col bg-muted/40 dark:bg-muted/30">
       <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background shadow md:flex xl:w-48">
         <nav className="flex flex-col items-center gap-3 md:py-5">
           <Link

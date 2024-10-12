@@ -135,13 +135,17 @@ const TableCellForm = ({
             {selectedContainer.state.terminated.exitCode}
           </div>
           <div className="text-muted-foreground">退出原因</div>
-          <div className="col-span-2">
+          <div className="col-span-2 whitespace-normal break-all font-mono">
             {selectedContainer.state.terminated.reason}
           </div>
-          <div className="text-muted-foreground">退出消息</div>
-          <div className="col-span-2">
-            {selectedContainer.state.terminated.message}
-          </div>
+          {!!selectedContainer.state.terminated.message && (
+            <>
+              <div className="text-muted-foreground">退出消息</div>
+              <div className="col-span-2 whitespace-normal break-all font-mono">
+                {selectedContainer.state.terminated.message}
+              </div>
+            </>
+          )}
           <div className="text-muted-foreground">开始时间</div>
           <div className="col-span-2">
             <TableDate date={selectedContainer.state.terminated.startedAt} />
@@ -154,14 +158,22 @@ const TableCellForm = ({
       )}
       {selectedContainer.state.waiting && (
         <>
-          <div className="text-muted-foreground">等待原因</div>
-          <div className="col-span-2">
-            {selectedContainer.state.waiting.reason}
-          </div>
-          <div className="text-muted-foreground">等待消息</div>
-          <div className="col-span-2">
-            {selectedContainer.state.waiting.message}
-          </div>
+          {!!selectedContainer.state.waiting.reason && (
+            <>
+              <div className="text-muted-foreground">等待原因</div>
+              <div className="col-span-2 whitespace-normal break-all font-mono">
+                {selectedContainer.state.waiting.reason}
+              </div>
+            </>
+          )}
+          {!!selectedContainer.state.waiting.message && (
+            <>
+              <div className="text-muted-foreground">等待消息</div>
+              <div className="col-span-2 whitespace-normal break-all font-mono">
+                {selectedContainer.state.waiting.message}
+              </div>
+            </>
+          )}
         </>
       )}
     </div>
@@ -230,7 +242,9 @@ function Content({
           />
 
           <fieldset className="hidden h-[calc(100vh_-264px)] max-h-full gap-6 overflow-y-auto rounded-lg border border-input p-4 shadow-sm md:grid">
-            <legend className="-ml-1 px-2 text-sm font-medium">容器信息</legend>
+            <legend className="-ml-1 px-2 text-sm font-medium">
+              {selectedContainer.isInitContainer ? "初始化容器" : "容器信息"}
+            </legend>
             <TableCellForm selectedContainer={selectedContainer} />
           </fieldset>
         </div>

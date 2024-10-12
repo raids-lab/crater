@@ -48,15 +48,15 @@ import {
   JobPhase,
   apiJobDelete,
   apiJobGetDetail,
-  apiJobLogs,
   apiJupyterYaml,
-  Logs,
 } from "@/services/api/vcjob";
 import CodeSheet from "@/components/codeblock/CodeSheet";
 import JobPhaseLabel from "@/components/phase/JobPhaseLabel";
 import { TableDate } from "@/components/custom/TableDate";
 import { SmallDataCard } from "@/components/custom/DataCard";
 import { ProfileStat } from "@/services/api/aiTask";
+import LogDialog from "@/components/codeblock/LogDialog";
+import { PodNamespacedName } from "@/components/codeblock/PodContainerDialog";
 
 export interface Resource {
   [key: string]: string;
@@ -101,6 +101,9 @@ export const Component = () => {
   const [refetchInterval, setRefetchInterval] = useState(5000); // Manage interval state
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [namespacedName, setNamespacedName] = useState<
+    PodNamespacedName | undefined
+  >();
 
   const { data: taskInfo, isLoading } = useQuery({
     queryKey: ["job", "detail", jobName],
@@ -121,15 +124,7 @@ export const Component = () => {
     setRefetchInterval(intervalMs);
   };
 
-  const [logs, setLogs] = useState<Logs>({});
   const [yaml, setYaml] = useState("Loading...");
-
-  const { data: fetchLogsData, isLoading: fetchLogsBool } = useQuery({
-    queryKey: ["job", "logs", jobName],
-    queryFn: () => apiJobLogs(jobName),
-    select: (res) => res.data.data.logs,
-    refetchInterval: refetchInterval,
-  });
 
   const { data: fetchYamlData, isLoading: fetchYamlBool } = useQuery({
     queryKey: ["job", "yaml", jobName],
@@ -172,13 +167,10 @@ export const Component = () => {
   }, [taskInfo, isLoading, taskInfo?.runtime]);
 
   useEffect(() => {
-    if (!fetchLogsBool && fetchLogsData) {
-      setLogs(fetchLogsData);
-    }
     if (!fetchYamlBool && fetchYamlData) {
       setYaml(fetchYamlData);
     }
-  }, [fetchLogsBool, fetchLogsData, fetchYamlBool, fetchYamlData]);
+  }, [fetchYamlBool, fetchYamlData]);
 
   return (
     <>
@@ -408,20 +400,20 @@ export const Component = () => {
                         >
                           <SquareTerminalIcon className="h-4 w-4" />
                         </Button>
-                        <CodeSheet
-                          code={logs[pod.name]}
-                          title={pod.name}
-                          side="left"
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          title="查看日志"
+                          onClick={() => {
+                            setNamespacedName({
+                              namespace: data.namespace,
+                              name: pod.name,
+                            });
+                          }}
                         >
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            title="查看日志"
-                          >
-                            <FileTextIcon className="h-4 w-4" />
-                          </Button>
-                        </CodeSheet>
+                          <FileTextIcon className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -492,6 +484,10 @@ export const Component = () => {
           </CardContent>
         </Card>
       )}
+      <LogDialog
+        namespacedName={namespacedName}
+        setNamespacedName={setNamespacedName}
+      />
     </>
   );
 };

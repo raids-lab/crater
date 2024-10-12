@@ -45,9 +45,10 @@ export const apiGetPodContainers = (namespace?: string, podName?: string) =>
 //   Follow     bool   `form:"follow" binding:"required"`
 // }
 export interface PodContainerLogQueryReq {
-  tailLines: number;
   timestamps: boolean;
   follow: boolean;
+  previous: boolean;
+  tailLines?: number;
 }
 
 export const apiGetPodContainerLog = (

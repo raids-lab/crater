@@ -2,7 +2,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import useResizeObserver from "use-resize-observer";
 import { Card } from "../ui/card";
 import { apiGetPodContainerLog, ContainerInfo } from "@/services/api/tool";
-import BaseCodeBlock from "./BaseCodeBlock";
 import {
   CalendarArrowDown,
   CalendarOff,
@@ -15,30 +14,12 @@ import { useCopyToClipboard } from "usehooks-ts";
 import { ButtonGroup } from "../ui-custom/button-group";
 import { Button } from "../ui/button";
 import { PodContainerDialog, PodNamespacedName } from "./PodContainerDialog";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import LoadingCircleIcon from "../icon/LoadingCircleIcon";
 
 const DEFAULT_TAIL_LINES = 500;
-
-const scrollToBottom = (container: HTMLElement | null, smooth = false) => {
-  if (container?.children.length) {
-    const lastElement = container?.querySelector("pre")
-      ?.lastChild as HTMLElement;
-    lastElement?.scrollIntoView({
-      behavior: smooth ? "smooth" : "auto",
-      block: "end",
-      inline: "nearest",
-    });
-  }
-};
-
-const getLineCount = (container: HTMLElement | null) => {
-  // <div><pre>{children}</pre></div>
-  // get the line count of the children inside pre tag
-  return container?.querySelector("pre")?.children.length;
-};
 
 function LogCard({
   namespacedName,
@@ -49,13 +30,13 @@ function LogCard({
 }) {
   const queryClient = useQueryClient();
   const [tailLines, setTailLines] = useState(DEFAULT_TAIL_LINES);
-  const [showMore, setShowMore] = useState(false);
   const [timestamps, setTimestamps] = useState(false);
-  const [copiedText, copy] = useCopyToClipboard();
+  const [copied, setCopied] = useState(false);
+  const [, copy] = useCopyToClipboard();
   const { ref: refRoot, width, height } = useResizeObserver();
   const logAreaRef = useRef<HTMLDivElement>(null);
 
-  const { data: logText, isLoading } = useQuery({
+  const { data: logText } = useQuery({
     queryKey: [
       "logtext",
       namespacedName.namespace,
@@ -74,6 +55,7 @@ function LogCard({
           tailLines: tailLines,
           timestamps: timestamps,
           follow: false,
+          previous: false,
         },
       ),
     select: (res) => {
@@ -81,10 +63,38 @@ function LogCard({
       return atob(res.data.data);
     },
     enabled:
+      !selectedContainer.state.waiting &&
       !!namespacedName.namespace &&
       !!namespacedName.name &&
       !!selectedContainer?.name &&
       !!tailLines,
+  });
+
+  const { mutate: DownloadTotalLog } = useMutation({
+    mutationFn: () =>
+      apiGetPodContainerLog(
+        namespacedName.namespace,
+        namespacedName.name,
+        selectedContainer.name,
+        {
+          tailLines: undefined,
+          timestamps: timestamps,
+          follow: false,
+          previous: false,
+        },
+      ),
+    onSuccess: (res) => {
+      const logText = atob(res.data.data);
+      const blob = new Blob([logText], {
+        type: "text/plain;charset=utf-8",
+      });
+      const filename = selectedContainer?.name ?? "log";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+    },
   });
 
   const copyCode = () => {
@@ -94,6 +104,7 @@ function LogCard({
     }
     copy(logText)
       .then(() => {
+        setCopied(true);
         toast.success("已复制到剪贴板");
       })
       .catch(() => {
@@ -106,109 +117,110 @@ function LogCard({
       toast.warning("没有日志可供下载");
       return;
     }
-    const blob = new Blob([logText], {
-      type: "text/plain;charset=utf-8",
-    });
-    const filename = selectedContainer?.name ?? "log";
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
+    DownloadTotalLog();
   };
 
   const handleRefresh = () => {
     setTailLines(DEFAULT_TAIL_LINES);
+    setCopied(false);
+    setTimestamps(false);
     void queryClient.invalidateQueries({ queryKey: ["logtext"] });
   };
+
+  // scroll to bottom when init
+  const [showLog, setShowLog] = useState(false);
+  useEffect(() => {
+    if (tailLines === DEFAULT_TAIL_LINES) {
+      logAreaRef.current?.scrollIntoView(false);
+    }
+    setShowLog(true);
+    return () => {
+      setShowLog(false);
+    };
+  }, [logText, tailLines]);
+
+  const showMore = useMemo(() => {
+    if (logText) {
+      const lines = logText.split("\n").length;
+      return lines > tailLines;
+    }
+    return false;
+  }, [logText, tailLines]);
 
   const handleShowMore = () => {
     setTailLines((prev) => prev + DEFAULT_TAIL_LINES);
   };
 
-  useEffect(() => {
-    if (getLineCount(logAreaRef.current) === tailLines) {
-      setShowMore(true);
-    }
-  }, [logText, tailLines]);
-
-  // scroll to bottom when init
-  useEffect(() => {
-    scrollToBottom(logAreaRef.current);
-  }, [logText]);
-
-  if (!logText) {
-    // TODO: (liyilong) loading or error
-    return (
-      <Card className="flex h-full items-center justify-center overflow-hidden rounded-md bg-slate-900 p-1 text-white dark:border md:col-span-2 xl:col-span-3">
-        {isLoading && <LoadingCircleIcon />}
-        {!isLoading && (
-          <div className="font-normal text-slate-400">暂无日志</div>
-        )}
-      </Card>
-    );
-  }
-
   return (
     <Card
-      className="relative h-full overflow-hidden rounded-md bg-slate-900 p-1 text-white dark:border md:col-span-2 xl:col-span-3"
+      className="relative h-full overflow-hidden rounded-md bg-slate-900 p-1 text-white dark:border dark:bg-muted/30 md:col-span-2 xl:col-span-3"
       ref={refRoot}
     >
-      <ScrollArea style={{ width, height }}>
-        {showMore && (
-          <div className="flex justify-center pt-2">
-            <Button onClick={handleShowMore} size="sm">
-              显示更多
+      {showLog ? (
+        <>
+          <ScrollArea style={{ width, height }}>
+            <div ref={logAreaRef}>
+              {showMore && (
+                <div className="flex select-none justify-center pt-5">
+                  <Button size="sm" onClick={handleShowMore}>
+                    显示更多
+                  </Button>
+                </div>
+              )}
+              <pre className="whitespace-pre-wrap break-words px-3 py-3 text-sm text-cyan-200 dark:text-muted-foreground">
+                {logText}
+              </pre>
+            </div>
+          </ScrollArea>
+          <ButtonGroup className="absolute right-5 top-5 rounded-md border border-input bg-background text-foreground">
+            <Button
+              onClick={handleRefresh}
+              className="border-0 border-r hover:text-primary focus-visible:ring-0"
+              variant="ghost"
+              size="icon"
+              title="刷新"
+            >
+              <RefreshCcw className="h-4 w-4" />
             </Button>
-          </div>
-        )}
-        <BaseCodeBlock code={logText} language="python" ref={logAreaRef} />
-      </ScrollArea>
-      <ButtonGroup className="absolute right-5 top-5 text-foreground">
-        <Button
-          onClick={handleRefresh}
-          className="border-0 border-r hover:text-primary focus-visible:ring-0"
-          variant="outline"
-          size="icon"
-          title="刷新"
-        >
-          <RefreshCcw className="h-4 w-4" />
-        </Button>
-        <Button
-          onClick={() => setTimestamps((prev) => !prev)}
-          className="border-0 border-r hover:text-primary focus-visible:ring-0"
-          variant="outline"
-          size="icon"
-          title="显示时间戳"
-        >
-          {timestamps ? (
-            <CalendarOff className="h-4 w-4" />
-          ) : (
-            <CalendarArrowDown className="h-4 w-4" />
-          )}
-        </Button>
-        <Button
-          onClick={copyCode}
-          className="border-0 border-r hover:text-primary focus-visible:ring-0"
-          variant="outline"
-          size="icon"
-          title="复制"
-        >
-          {copiedText ? (
-            <CopyCheckIcon className="h-4 w-4" />
-          ) : (
-            <CopyIcon className="h-4 w-4" />
-          )}
-        </Button>
-        <Button
-          onClick={handleDownload}
-          className="border-0 hover:text-primary focus-visible:ring-0"
-          variant="outline"
-          size="icon"
-        >
-          <DownloadIcon className="h-4 w-4" />
-        </Button>
-      </ButtonGroup>
+            <Button
+              onClick={() => setTimestamps((prev) => !prev)}
+              className="border-0 border-r hover:text-primary focus-visible:ring-0"
+              variant="ghost"
+              size="icon"
+              title="显示时间戳"
+            >
+              {timestamps ? (
+                <CalendarOff className="h-4 w-4" />
+              ) : (
+                <CalendarArrowDown className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              onClick={copyCode}
+              className="border-0 border-r hover:text-primary focus-visible:ring-0"
+              variant="ghost"
+              size="icon"
+              title="复制"
+            >
+              {copied ? (
+                <CopyCheckIcon className="h-4 w-4" />
+              ) : (
+                <CopyIcon className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              onClick={handleDownload}
+              className="border-0 hover:text-primary focus-visible:ring-0"
+              variant="ghost"
+              size="icon"
+            >
+              <DownloadIcon className="h-4 w-4" />
+            </Button>
+          </ButtonGroup>
+        </>
+      ) : (
+        <LoadingCircleIcon />
+      )}
     </Card>
   );
 }

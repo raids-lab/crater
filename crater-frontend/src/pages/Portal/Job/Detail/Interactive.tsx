@@ -56,6 +56,7 @@ import JobPhaseLabel from "@/components/phase/JobPhaseLabel";
 import { TableDate } from "@/components/custom/TableDate";
 import { PodNamespacedName } from "@/components/codeblock/PodContainerDialog";
 import LogDialog from "@/components/codeblock/LogDialog";
+import TerminalDialog from "@/components/codeblock/TerminalDialog";
 export interface Resource {
   [key: string]: string;
 }
@@ -89,6 +90,9 @@ export const Component = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [showLogPod, setShowLogPod] = useState<PodNamespacedName | undefined>();
+  const [showTerminalPod, setShowTerminalPod] = useState<
+    PodNamespacedName | undefined
+  >();
 
   const { data: taskList, isLoading } = useQuery({
     queryKey: ["job", "detail", jobName],
@@ -392,7 +396,10 @@ export const Component = () => {
                         className="h-8 w-8 text-primary hover:text-primary/90"
                         title="打开终端"
                         onClick={() => {
-                          toast.warning("Web 终端功能暂未开放");
+                          setShowTerminalPod({
+                            namespace: data.namespace,
+                            name: pod.name,
+                          });
                         }}
                       >
                         <SquareTerminalIcon className="h-4 w-4" />
@@ -421,6 +428,10 @@ export const Component = () => {
       <LogDialog
         namespacedName={showLogPod}
         setNamespacedName={setShowLogPod}
+      />
+      <TerminalDialog
+        namespacedName={showTerminalPod}
+        setNamespacedName={setShowTerminalPod}
       />
     </>
   );
