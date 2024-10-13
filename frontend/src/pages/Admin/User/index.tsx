@@ -41,7 +41,7 @@ import {
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
 import { Role } from "@/services/api/auth";
-import { ProjectStatus } from "@/services/api/project";
+import { ProjectStatus } from "@/services/api/account";
 import { Badge } from "@/components/ui/badge";
 
 interface TUser {

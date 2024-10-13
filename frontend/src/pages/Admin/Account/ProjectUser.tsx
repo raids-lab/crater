@@ -67,7 +67,7 @@ import {
   apiUserInProjectList,
   apiUserOutOfProjectList,
   Access,
-} from "@/services/api/project";
+} from "@/services/api/account";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/custom/OldDataTable";
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";

@@ -7,7 +7,7 @@ import DashboardLayout from "@/components/layout/Dashboard";
 import { User } from "./User";
 // import Volcano from "./Job/Volcano";
 import Resource from "./Cluster/Resource";
-import UserProjectManagement from "./Queue/ProjectUser";
+import UserProjectManagement from "./Account/ProjectUser";
 import {
   BoxIcon,
   DatabaseIcon,
@@ -18,7 +18,7 @@ import {
   UserRoundIcon,
   UsersRoundIcon,
 } from "lucide-react";
-import { Account } from "./Queue";
+import { Account } from "./Account";
 import admindatasetRoutes from "./Data";
 const sidebarItems: SidebarItem[] = [
   {
