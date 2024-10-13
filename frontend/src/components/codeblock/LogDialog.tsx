@@ -167,7 +167,7 @@ function LogCard({
                   </Button>
                 </div>
               )}
-              <pre className="whitespace-pre-wrap break-words px-3 py-3 text-sm text-cyan-200 dark:text-muted-foreground">
+              <pre className="whitespace-pre-wrap break-words px-3 py-3 text-sm text-cyan-200 dark:text-blue-300">
                 {logText}
               </pre>
             </div>

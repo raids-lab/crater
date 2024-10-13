@@ -205,17 +205,6 @@ export const apiJobGetDetail = (jobName: string) =>
   instance.get<IResponse<IJupyterDetail>>(
     `${VERSION}/${JOB_URL}/${jobName}/detail`,
   );
-export interface Logs {
-  [key: string]: string;
-}
-interface GetJobLogResp {
-  logs: Logs;
-}
-
-export const apiJobLogs = (jobName: string) =>
-  instance.get<IResponse<GetJobLogResp>>(
-    `${VERSION}/${JOB_URL}/${jobName}/log`,
-  );
 
 export const apiJupyterYaml = (jobName: string) =>
   instance.get<IResponse<string>>(`${VERSION}/${JOB_URL}/${jobName}/yaml`);
@@ -232,5 +221,7 @@ export const apiJupyterTokenGet = (jobName: string) =>
     IResponse<{
       baseURL: string;
       token: string;
+      podName: string;
+      namespace: string;
     }>
   >(`${VERSION}/${JOB_URL}/${jobName}/token`);

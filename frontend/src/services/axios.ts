@@ -2,10 +2,10 @@ import axios, { AxiosRequestConfig, isAxiosError } from "axios";
 import { IErrorResponse, IRefresh, IRefreshResponse, IResponse } from "./types";
 import {
   ERROR_INVALID_REQUEST,
-  ERROR_INVALID_ROLE,
   ERROR_NOT_SPECIFIED,
-  ERROR_QUEUE_NOT_FOUND,
   ERROR_TOKEN_EXPIRED,
+  ERROR_TOKEN_INVALID,
+  ERROR_USER_NOT_ALLOWED,
 } from "./error_code";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/utils/store";
 import { showErrorToast } from "@/utils/toast";
@@ -54,38 +54,40 @@ instance.interceptors.request.use(
 );
 
 instance.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   async (error) => {
-    if (isAxiosError<IErrorResponse>(error)) {
-      const originalRequest = error.config as AxiosRetryRequestConfig;
-      if (
-        error.response?.data.code === ERROR_TOKEN_EXPIRED &&
-        originalRequest &&
-        !originalRequest._retry
-      ) {
-        originalRequest._retry = true;
-        try {
-          const token = await refreshTokenFn();
-          instance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-          return instance(originalRequest);
-        } catch (refreshError) {
-          window.location.href = "/login";
-        }
-      } else if (error.response?.data.code === ERROR_INVALID_ROLE) {
-        showErrorToast("暂无权限访问，将跳转到默认页面");
-        window.location.href = "/portal";
-      } else if (error.response?.data.code === ERROR_NOT_SPECIFIED) {
-        showErrorToast(error);
-      } else if (error.response?.data.code === ERROR_INVALID_REQUEST) {
-        showErrorToast(`请求参数有误, ${error.response?.data.msg}`);
-      } else if (error.response?.data.code === ERROR_QUEUE_NOT_FOUND) {
-        showErrorToast("用户激活成功，但无关联账户，请联系平台管理员");
+    if (!isAxiosError<IErrorResponse>(error)) {
+      showErrorToast(error);
+      return Promise.reject(error);
+    }
+
+    const originalRequest = error.config as AxiosRetryRequestConfig;
+    const errorCode = error.response?.data.code;
+
+    if (
+      errorCode === ERROR_TOKEN_EXPIRED &&
+      originalRequest &&
+      !originalRequest._retry
+    ) {
+      originalRequest._retry = true;
+      try {
+        const token = await refreshTokenFn();
+        instance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        return instance(originalRequest);
+      } catch (refreshError) {
+        window.location.href = "/login";
       }
-    } else {
+    } else if (errorCode === ERROR_TOKEN_INVALID) {
+      alert("登录过期，请重新登录");
+      window.location.href = "/login";
+    } else if (errorCode === ERROR_INVALID_REQUEST) {
+      showErrorToast(`请求参数有误, ${error.response?.data.msg}`);
+    } else if (errorCode === ERROR_USER_NOT_ALLOWED) {
+      showErrorToast("用户激活成功，但无关联账户，请联系平台管理员");
+    } else if (errorCode === ERROR_NOT_SPECIFIED) {
       showErrorToast(error);
     }
+
     return Promise.reject(error);
   },
 );

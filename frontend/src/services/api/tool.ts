@@ -37,13 +37,6 @@ export const apiGetPodContainers = (namespace?: string, podName?: string) =>
     `${VERSION}/namespaces/${namespace}/pods/${podName}/containers`,
   );
 
-// http://localhost:8092/v1/pods/jupyter-liyilong-3885b-default0-0/containers/jupyter/log
-// PodContainerLogQueryReq struct {
-//   // from query
-//   TailLines  *int64 `form:"tailLines" binding:"required"`
-//   Timestamps bool   `form:"timestamps" binding:"required"`
-//   Follow     bool   `form:"follow" binding:"required"`
-// }
 export interface PodContainerLogQueryReq {
   timestamps: boolean;
   follow: boolean;

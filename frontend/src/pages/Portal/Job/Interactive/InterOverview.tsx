@@ -41,13 +41,12 @@ import SplitButton from "@/components/custom/SplitButton";
 import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
-import { globalJobUrl, globalUserInfo } from "@/utils/store";
+import { globalJobUrl } from "@/utils/store";
 import NodeBadges from "@/components/custom/NodeBadges";
 import ResourceBadges from "@/components/custom/ResourceBadges";
 import JobTypeLabel from "@/components/custom/JobTypeLabel";
 
 const InterOverview = () => {
-  const userInfo = useAtomValue(globalUserInfo);
   const jobType = useAtomValue(globalJobUrl);
   const queryClient = useQueryClient();
 
@@ -234,10 +233,7 @@ const InterOverview = () => {
                     getPortToken(jobInfo.jobName);
                   }, 500);
                 }}
-                disabled={
-                  jobInfo.status !== "Running" ||
-                  userInfo.name !== jobInfo.owner
-                }
+                disabled={jobInfo.status !== "Running"}
               >
                 <ExternalLink className="h-4 w-4" />
               </Button>
@@ -313,7 +309,7 @@ const InterOverview = () => {
         },
       },
     ],
-    [deleteTask, getPortToken, userInfo.name],
+    [deleteTask, getPortToken],
   );
 
   return (
