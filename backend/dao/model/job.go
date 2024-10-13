@@ -14,7 +14,17 @@ const (
 	Freed   batch.JobPhase = "Freed"
 )
 
-// User is the basic entity of the system
+type JobType string
+
+const (
+	Jupyter    JobType = "jupyter"
+	WebIDE     JobType = "webide"
+	Pytorch    JobType = "pytorch"
+	Tensorflow JobType = "tensorflow"
+	KubeRay    JobType = "kuberay"
+	Custom     JobType = "custom"
+)
+
 type Job struct {
 	gorm.Model
 	Name               string                              `gorm:"not null;type:varchar(256);comment:作业名称"`
@@ -23,7 +33,7 @@ type Job struct {
 	User               User                                `gorm:"foreignKey:UserID"`
 	QueueID            uint                                `gorm:"primaryKey"`
 	Queue              Queue                               `gorm:"foreignKey:QueueID"`
-	JobType            string                              `gorm:"not null;comment:作业类型"`
+	JobType            JobType                             `gorm:"not null;comment:作业类型"`
 	Status             batch.JobPhase                      `gorm:"index:status;not null;comment:作业状态"`
 	CreationTimestamp  time.Time                           `gorm:"not null;comment:作业创建时间"`
 	RunningTimestamp   time.Time                           `gorm:"comment:作业开始运行时间"`

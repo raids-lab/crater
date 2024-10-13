@@ -35,6 +35,7 @@ func newUserQueue(db *gorm.DB, opts ...gen.DOOption) userQueue {
 	_userQueue.QueueID = field.NewUint(tableName, "queue_id")
 	_userQueue.Role = field.NewUint8(tableName, "role")
 	_userQueue.AccessMode = field.NewUint8(tableName, "access_mode")
+	_userQueue.Quota = field.NewField(tableName, "quota")
 
 	_userQueue.fillFieldMap()
 
@@ -53,6 +54,7 @@ type userQueue struct {
 	QueueID    field.Uint
 	Role       field.Uint8
 	AccessMode field.Uint8
+	Quota      field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -77,6 +79,7 @@ func (u *userQueue) updateTableName(table string) *userQueue {
 	u.QueueID = field.NewUint(table, "queue_id")
 	u.Role = field.NewUint8(table, "role")
 	u.AccessMode = field.NewUint8(table, "access_mode")
+	u.Quota = field.NewField(table, "quota")
 
 	u.fillFieldMap()
 
@@ -103,7 +106,7 @@ func (u *userQueue) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *userQueue) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 8)
+	u.fieldMap = make(map[string]field.Expr, 9)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
@@ -112,6 +115,7 @@ func (u *userQueue) fillFieldMap() {
 	u.fieldMap["queue_id"] = u.QueueID
 	u.fieldMap["role"] = u.Role
 	u.fieldMap["access_mode"] = u.AccessMode
+	u.fieldMap["quota"] = u.Quota
 }
 
 func (u userQueue) clone(db *gorm.DB) userQueue {

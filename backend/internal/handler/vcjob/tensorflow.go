@@ -64,7 +64,7 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	// 1. Volume Mounts
 	volumes, volumeMounts, err := GenerateVolumeMounts(c, token.UserID, req.VolumeMounts)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.UserNotFound)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 

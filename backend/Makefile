@@ -163,3 +163,15 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
 $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+# Generate the code for the CURD operations
+.PHONY: curd
+curd:
+	@echo "Generating CURD code..."
+	go run cmd/gorm-gen/curd/generate.go
+
+# Migration the database
+.PHONY: migrate
+migrate:
+	@echo "Migrating database..."
+	go run cmd/gorm-gen/models/migrate.go

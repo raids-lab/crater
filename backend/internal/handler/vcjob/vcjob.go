@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"sort"
 	"strconv"
 	"time"
@@ -53,13 +52,12 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("all", mgr.GetAllJobs)
 	g.DELETE(":name", mgr.DeleteJob)
 
-	g.GET(":name/log", mgr.GetJobLog)
 	g.GET(":name/detail", mgr.GetJobDetail)
 	g.GET(":name/yaml", mgr.GetJobYaml)
 
 	// jupyter
 	g.POST("jupyter", mgr.CreateJupyterJob)
-	g.GET(":name/token", mgr.GetJupyterIngress)
+	g.GET(":name/token", mgr.GetJobToken)
 
 	// training
 	g.POST("training", mgr.CreateTrainingJob)
@@ -99,9 +97,11 @@ type (
 		JobName string `uri:"name" binding:"required"`
 	}
 
-	JobIngressResp struct {
-		BaseURL string `json:"baseURL"`
-		Token   string `json:"token"`
+	JobTokenResp struct {
+		BaseURL   string `json:"baseURL"`
+		Token     string `json:"token"`
+		PodName   string `json:"podName"`
+		Namespace string `json:"namespace"`
 	}
 )
 
@@ -202,45 +202,6 @@ type GetJobLogResp struct {
 	Logs map[string]string `json:"logs"`
 }
 
-func (mgr *VolcanojobMgr) GetJobLog(c *gin.Context) {
-	var req JobActionReq
-	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-
-	token := util.GetToken(c)
-	job := &batch.Job{}
-	namespace := config.GetConfig().Workspace.Namespace
-	if err := mgr.client.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	if job.Spec.Queue != token.QueueName {
-		resputil.Error(c, "Job not found", resputil.NotSpecified)
-		return
-	}
-
-	// Get the logs of the job pod
-	resp := GetJobLogResp{Logs: map[string]string{}}
-	var podName string
-	for i := range job.Spec.Tasks {
-		task := &job.Spec.Tasks[i]
-		for j := range task.Replicas {
-			podName = fmt.Sprintf("%s-%s-%d", job.Name, task.Name, j)
-			buf, err := mgr.getPodLog(c, namespace, podName)
-			if err != nil {
-				log.Printf("failed to get log of %s:%s", podName, err)
-				continue
-			}
-			resp.Logs[podName] = buf.String()
-		}
-	}
-
-	resputil.Success(c, resp)
-}
-
 type (
 	JobResp struct {
 		Name               string          `json:"name"`
@@ -316,8 +277,8 @@ func (mgr *VolcanojobMgr) convertJobResp(jobs []*model.Job) []JobResp {
 		jobList[i] = JobResp{
 			Name:               job.Name,
 			JobName:            job.JobName,
-			Owner:              job.User.Name,
-			JobType:            job.JobType,
+			Owner:              job.User.Nickname,
+			JobType:            string(job.JobType),
 			Queue:              job.Queue.Nickname,
 			Status:             string(job.Status),
 			CreationTimestamp:  metav1.NewTime(job.CreationTimestamp),

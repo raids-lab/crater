@@ -238,7 +238,7 @@ func (mgr *ImagePackMgr) UserUpload(c *gin.Context) {
 		TaskType:    req.TaskType,
 		Alias:       req.Alias,
 		Description: req.Description,
-		CreatorName: user.Name,
+		CreatorName: user.Nickname,
 	}
 	imageUploadQuery := query.ImageUpload
 	if err := imageUploadQuery.WithContext(c).Create(imageUploadEntity); err != nil {
@@ -307,7 +307,7 @@ func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateReq
 			RegistryUser:    req.RegistryUser,
 			RegistryPass:    req.RegistryPass,
 			RegistryProject: req.RegistryProject,
-			UserName:        user.Name,
+			UserName:        user.Nickname,
 			ImageName:       req.ImageName,
 			ImageTag:        req.ImageTag,
 			NeedProfile:     req.NeedProfile,

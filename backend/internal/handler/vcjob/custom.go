@@ -74,7 +74,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	// 5. Create the pod spec
 	podSpec, err := GenerateCustomPodSpec(c, token.UserID, &req)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.UserNotFound)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 

@@ -112,7 +112,7 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 
 	volumes, volumeMounts, err := vcjob.GenerateVolumeMounts(c, token.UserID, req.VolumeMounts)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.UserNotFound)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 

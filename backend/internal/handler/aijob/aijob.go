@@ -106,15 +106,11 @@ func (mgr *AIJobMgr) NotifyTaskUpdate(taskID uint, userName string, op util.Task
 //nolint:gocyclo // TODO: refactor
 func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
 	token := interutil.GetToken(c)
-	if token.QueueName == interutil.QueueNameNull {
-		resputil.Error(c, "Queue not specified", resputil.TokenExpired)
-		return
-	}
 
 	q := query.Queue
 	queue, err := q.WithContext(c).Where(q.Name.Eq(token.QueueName)).First()
 	if err != nil {
-		resputil.Error(c, "Queue not found", resputil.TokenExpired)
+		resputil.Error(c, "Queue not found", resputil.TokenInvalid)
 		return
 	}
 
@@ -266,7 +262,7 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 	// 1. Volume Mounts
 	volumes, volumeMounts, err := vcjob.GenerateVolumeMounts(c, token.UserID, vcReq.VolumeMounts)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.UserNotFound)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
@@ -871,7 +867,7 @@ func (mgr *AIJobMgr) GetJupyterToken(c *gin.Context) {
 		return
 	}
 
-	resputil.Success(c, vcjob.JobIngressResp{BaseURL: baseURL, Token: jupyterToken})
+	resputil.Success(c, vcjob.JobTokenResp{BaseURL: baseURL, Token: jupyterToken})
 }
 
 func (mgr *AIJobMgr) getPodLog(c *gin.Context, namespace, podName string) (*bytes.Buffer, error) {
