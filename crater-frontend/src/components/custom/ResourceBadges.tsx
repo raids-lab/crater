@@ -20,9 +20,9 @@ const ResourceBadges = ({
         if (key.includes("/")) {
           display = `${key.split("/")[1]}: ${value}`;
         } else if (key === "memory") {
-          display = `mem: ${value}`;
+          display = `${value}`;
         } else if (key === "cpu") {
-          display = `cpu: ${value}`;
+          display = `${value}c`;
         } else {
           display = `${key}: ${value}`;
         }

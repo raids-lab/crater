@@ -1,4 +1,4 @@
-# python3 ./src/services/generator.py ../web-backend/pkg/server/response/code.go ./src/services/error_code.ts
+# python3 ./src/services/generator.py ../web-backend/internal/resputil/code.go ./src/services/error_code.ts
 
 import os
 import re

@@ -1,27 +1,18 @@
 import type { FC } from "react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { apiJobLogs, apiJupyterTokenGet } from "@/services/api/vcjob";
-import CraterIcon from "@/components/icon/CraterIcon";
-import { Button } from "@/components/ui/button";
-import CodeSheet from "@/components/codeblock/CodeSheet";
+import { apiJupyterTokenGet } from "@/services/api/vcjob";
+import LogDialog from "@/components/codeblock/LogDialog";
+import { PodNamespacedName } from "@/components/codeblock/PodContainerDialog";
+import FloatingBall from "./FloatingBall";
 
 const Jupyter: FC = () => {
   // get param from url
   const { id } = useParams();
-
-  const { data: taskLogs } = useQuery({
-    queryKey: ["jupyter", "tasklog", id],
-    queryFn: () => apiJobLogs(id ?? ""),
-    select: (res) => {
-      const logs = res.data.data.logs;
-      const firstKey = Object.keys(logs)[0];
-      const firstValue = logs[firstKey];
-      return firstValue;
-    },
-    enabled: !!id,
-  });
+  const [namespacedName, setNamespacedName] = useState<
+    PodNamespacedName | undefined
+  >();
 
   const { data: jupyterInfo } = useQuery({
     queryKey: ["jupyter", id],
@@ -61,16 +52,19 @@ const Jupyter: FC = () => {
         src={url}
         className="absolute bottom-0 left-0 right-0 top-0 h-screen w-screen"
       />
-      <CodeSheet code={taskLogs} title={id}>
-        <Button
-          className="absolute bottom-10 right-4 h-10 w-10 rounded-full hover:bg-transparent"
-          size="icon"
-          variant={"ghost"}
-          title="Jupyter 日志"
-        >
-          <CraterIcon />
-        </Button>
-      </CodeSheet>
+      <FloatingBall
+        handleShowLog={() =>
+          jupyterInfo &&
+          setNamespacedName({
+            name: jupyterInfo.podName,
+            namespace: jupyterInfo.namespace,
+          })
+        }
+      />
+      <LogDialog
+        namespacedName={namespacedName}
+        setNamespacedName={setNamespacedName}
+      />
     </div>
   );
 };
