@@ -32,9 +32,22 @@ export interface ICreateProjectResponse {
   id: number;
 }
 
+export interface IProject {
+  id: number;
+  name: string;
+  nickname: string;
+  space: string;
+  guaranteed: Record<string, string>;
+  deserved: Record<string, string>;
+  capacity: Record<string, string>;
+}
+
+export const apiAdminAccountList = () =>
+  instance.get<IResponse<IProject[]>>(`${VERSION}/admin/projects`);
+
 export const apiProjectCreate = (project: ICreateProject) =>
   instance.post<IResponse<ICreateProjectResponse>>(
-    VERSION + "/projects",
+    VERSION + "/admin/projects",
     project,
   );
 
@@ -43,9 +56,6 @@ export const apiProjectUpdate = (project: ICreateProject) =>
     VERSION + "/admin/projects/" + project.name + "/quotas",
     project,
   );
-
-export const apiProjectList = () =>
-  instance.get<IResponse<ProjectBasic[]>>(VERSION + "/projects");
 
 export interface IDeleteProjectReq {
   id: string;
