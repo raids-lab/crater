@@ -2,7 +2,6 @@ package handler
 
 import (
 	"fmt"
-	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -42,11 +41,11 @@ func (mgr *AccountMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *AccountMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("", mgr.ListAllForUser) // 获取该用户的所有项目
-	g.POST("", mgr.CreateAccount) // 创建团队项目（个人项目在用户注册时创建）
 }
 
 func (mgr *AccountMgr) RegisterAdmin(g *gin.RouterGroup) {
-	g.GET("", mgr.ListAllForAdmin) // 获取所有项目
+	g.GET("", mgr.ListAllForAdmin)
+	g.POST("", mgr.CreateAccount)
 	g.PUT("/:name/quotas", mgr.UpdateQuota)
 	g.DELETE("/:pid", mgr.DeleteProject)
 	g.POST("/add/:pid/:uid", mgr.AddUserProject)
@@ -96,7 +95,10 @@ type (
 
 	// Swagger 不支持范型嵌套，定义别名
 	ListAllResp struct {
-		*model.Queue
+		ID         uint            `json:"id"`
+		Name       string          `json:"name"`
+		Nickname   string          `json:"nickname"`
+		Space      string          `json:"space"`
 		Guaranteed v1.ResourceList `json:"guaranteed"`
 		Deserved   v1.ResourceList `json:"deserved"`
 		Capacity   v1.ResourceList `json:"capacity"`
@@ -116,34 +118,9 @@ type (
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/admin/projects [get]
 func (mgr *AccountMgr) ListAllForAdmin(c *gin.Context) {
-	var req ListAllReq
-	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.HTTPError(c, http.StatusBadRequest, err.Error(), resputil.InvalidRequest)
-		return
-	}
-
 	q := query.Queue
-	qi := q.WithContext(c)
 
-	// Filter
-	if req.NameLike != nil {
-		qi = qi.Where(q.Name.Like("%" + *req.NameLike + "%"))
-	}
-
-	// Order
-	if req.OrderCol != nil && req.Order != nil {
-		orderCol, ok := q.GetFieldByName(*req.OrderCol)
-		if ok {
-			if *req.Order == payload.Asc {
-				qi = qi.Order(orderCol.Asc())
-			} else {
-				qi = qi.Order(orderCol.Desc())
-			}
-		}
-	}
-
-	// Limit and offset
-	queues, count, err := qi.FindByPage((*req.PageIndex)*(*req.PageSize), *req.PageSize)
+	queues, err := q.WithContext(c).Order(q.ID.Asc()).Find()
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -153,7 +130,10 @@ func (mgr *AccountMgr) ListAllForAdmin(c *gin.Context) {
 	for _, q := range queues {
 		lists = append(lists,
 			ListAllResp{
-				Queue:      q,
+				ID:         q.ID,
+				Name:       q.Name,
+				Nickname:   q.Nickname,
+				Space:      q.Space,
 				Guaranteed: q.Quota.Data().Guaranteed,
 				Deserved:   q.Quota.Data().Deserved,
 				Capacity:   q.Quota.Data().Capability,
@@ -161,9 +141,7 @@ func (mgr *AccountMgr) ListAllForAdmin(c *gin.Context) {
 		)
 	}
 
-	resp := payload.ListResp[ListAllResp]{Rows: lists, Count: count}
-
-	resputil.Success(c, resp)
+	resputil.Success(c, lists)
 }
 
 type (
