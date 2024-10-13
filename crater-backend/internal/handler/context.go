@@ -62,15 +62,11 @@ func (mgr *ContextMgr) RegisterAdmin(_ *gin.RouterGroup) {}
 //nolint:gocyclo // TODO: refactor
 func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 	token := util.GetToken(c)
-	if token.QueueName == util.QueueNameNull {
-		resputil.Error(c, "Queue not specified", resputil.TokenExpired)
-		return
-	}
 
 	queue := scheduling.Queue{}
 	err := mgr.client.Get(c, types.NamespacedName{Name: token.QueueName, Namespace: config.GetConfig().Workspace.Namespace}, &queue)
 	if err != nil {
-		resputil.Error(c, "Queue not found", resputil.TokenExpired)
+		resputil.Error(c, "Queue not found", resputil.TokenInvalid)
 		return
 	}
 
@@ -191,7 +187,7 @@ func (mgr *ContextMgr) GetUserInfo(c *gin.Context) {
 	u := query.User
 	user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
 	if err != nil {
-		resputil.Error(c, "User not found", resputil.UserNotFound)
+		resputil.Error(c, "User not found", resputil.NotSpecified)
 		return
 	}
 

@@ -7,6 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
@@ -52,7 +54,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	// 1. Volume Mounts
 	volumes, volumeMounts, err := GenerateVolumeMounts(c, token.UserID, req.VolumeMounts)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.UserNotFound)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
@@ -306,7 +308,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	resputil.Success(c, job)
 }
 
-// GetJupyterIngress godoc
+// GetJobToken godoc
 // @Summary Get the ingress base url and jupyter token of the job
 // @Description Get the token of the job by logs
 // @Tags VolcanoJob
@@ -314,11 +316,11 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param jobName path string true "Job Name"
-// @Success 200 {object} resputil.Response[JobIngressResp] "Success"
+// @Success 200 {object} resputil.Response[JobTokenResp] "Success"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/vcjobs/{name}/token [get]
-func (mgr *VolcanojobMgr) GetJupyterIngress(c *gin.Context) {
+func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
@@ -326,40 +328,57 @@ func (mgr *VolcanojobMgr) GetJupyterIngress(c *gin.Context) {
 	}
 
 	token := util.GetToken(c)
-	job := &batch.Job{}
-	namespace := config.GetConfig().Workspace.Namespace
-	if err := mgr.client.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
+	j := query.Job
+	job, err := j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Where(j.UserID.Eq(token.UserID)).First()
+	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	if job.Labels[LabelKeyTaskUser] != token.Username {
+	if job.JobType != model.Jupyter {
+		resputil.Error(c, "Job type is not Jupyter", resputil.NotSpecified)
+		return
+	}
+
+	vcjob := &batch.Job{}
+	namespace := config.GetConfig().Workspace.Namespace
+	if err = mgr.client.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, vcjob); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	if vcjob.Labels[LabelKeyTaskUser] != token.Username {
 		resputil.Error(c, "Job do not belong to the user", resputil.NotSpecified)
 		return
 	}
 
 	// Check if the job is running
-	status := job.Status.State.Phase
+	status := vcjob.Status.State.Phase
 	if status != batch.Running {
 		resputil.Error(c, "Job not running", resputil.NotSpecified)
 		return
 	}
 
-	baseURL := job.Labels[LabelKeyBaseURL]
-
-	// Check if jupyter token has been cached in the job annotations
-	jupyterToken, ok := job.Annotations[AnnotationKeyJupyter]
-	if ok {
-		resputil.Success(c, JobIngressResp{BaseURL: baseURL, Token: jupyterToken})
-		return
-	}
+	baseURL := vcjob.Labels[LabelKeyBaseURL]
 
 	// Get the logs of the job pod
 	var podName string
-	for i := range job.Spec.Tasks {
-		task := &job.Spec.Tasks[i]
-		podName = fmt.Sprintf("%s-%s-0", job.Name, task.Name)
+	for i := range vcjob.Spec.Tasks {
+		task := &vcjob.Spec.Tasks[i]
+		podName = fmt.Sprintf("%s-%s-0", vcjob.Name, task.Name)
 		break
+	}
+
+	// Check if jupyter token has been cached in the job annotations
+	jupyterToken, ok := vcjob.Annotations[AnnotationKeyJupyter]
+	if ok {
+		resputil.Success(c, JobTokenResp{
+			BaseURL:   baseURL,
+			Token:     jupyterToken,
+			PodName:   podName,
+			Namespace: namespace,
+		})
+		return
 	}
 
 	buf, err := mgr.getPodLog(c, namespace, podName)
@@ -382,11 +401,16 @@ func (mgr *VolcanojobMgr) GetJupyterIngress(c *gin.Context) {
 	}
 
 	// Cache the jupyter token in the job annotations
-	job.Annotations[AnnotationKeyJupyter] = jupyterToken
-	if err := mgr.client.Update(c, job); err != nil {
+	vcjob.Annotations[AnnotationKeyJupyter] = jupyterToken
+	if err := mgr.client.Update(c, vcjob); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	resputil.Success(c, JobIngressResp{BaseURL: baseURL, Token: jupyterToken})
+	resputil.Success(c, JobTokenResp{
+		BaseURL:   baseURL,
+		Token:     jupyterToken,
+		PodName:   podName,
+		Namespace: namespace,
+	})
 }

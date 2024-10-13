@@ -7,10 +7,10 @@ const (
 
 	InvalidRequest ErrorCode = 40001
 	TokenExpired   ErrorCode = 40101
-	UserNotFound   ErrorCode = 40102
+	TokenInvalid   ErrorCode = 40102
 
-	// When request do not contain required queue
-	QueueNotFound ErrorCode = 40401
+	// User is not allowed to access the resource
+	UserNotAllowed ErrorCode = 40301
 
 	// Indicates laziness of the developer
 	// Frontend will directly print the message without any translation

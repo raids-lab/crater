@@ -34,4 +34,6 @@ type UserQueue struct {
 	QueueID    uint       `gorm:"primaryKey"`
 	Role       Role       `gorm:"not null;comment:用户在队列中的角色 (user, admin)"`
 	AccessMode AccessMode `gorm:"not null;comment:用户在队列空间的访问模式 (na, ro, rw)"`
+
+	Quota datatypes.JSONType[QueueQuota] `gorm:"comment:用户在队列中的资源配额"`
 }

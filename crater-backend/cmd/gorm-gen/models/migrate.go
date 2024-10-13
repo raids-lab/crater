@@ -224,6 +224,38 @@ func main() {
 				return tx.Migrator().DropColumn(&ImageUpload{}, "IsPublic")
 			},
 		},
+		{
+			// add user quota json column to userQueue table
+			ID: "202410131759",
+			Migrate: func(tx *gorm.DB) error {
+				type UserQueue struct {
+					Quota datatypes.JSONType[model.QueueQuota] `gorm:"comment:用户在队列中的资源配额"`
+				}
+				return tx.Migrator().AddColumn(&UserQueue{}, "Quota")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type UserQueue struct {
+					Quota datatypes.JSONType[model.QueueQuota] `gorm:"comment:用户在队列中的资源配额"`
+				}
+				return tx.Migrator().DropColumn(&UserQueue{}, "Quota")
+			},
+		},
+		{
+			// add some columns to job table
+			ID: "202410132006",
+			Migrate: func(tx *gorm.DB) error {
+				type Job struct {
+					IsPublic bool `gorm:"comment:是否公开"`
+				}
+				return tx.Migrator().AddColumn(&Job{}, "IsPublic")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Job struct {
+					IsPublic bool `gorm:"comment:是否公开"`
+				}
+				return tx.Migrator().DropColumn(&Job{}, "IsPublic")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {

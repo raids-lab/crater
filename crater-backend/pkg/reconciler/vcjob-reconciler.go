@@ -200,7 +200,7 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 		JobName:           job.Name,
 		UserID:            user.ID,
 		QueueID:           queue.ID,
-		JobType:           job.Labels[vcjob.LabelKeyTaskType],
+		JobType:           model.JobType(job.Labels[vcjob.LabelKeyTaskType]),
 		Status:            job.Status.State.Phase,
 		CreationTimestamp: job.CreationTimestamp.Time,
 		Resources:         datatypes.NewJSONType(resources),

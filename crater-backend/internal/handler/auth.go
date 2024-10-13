@@ -165,14 +165,14 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 	lastUserQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID)).Last()
 	if err != nil {
 		l.Error("user has no queue", err)
-		resputil.Error(c, "User must has at least one queue", resputil.QueueNotFound)
+		resputil.Error(c, "User must has at least one queue", resputil.UserNotAllowed)
 		return
 	}
 
 	lastQueue, err := q.WithContext(c).Where(q.ID.Eq(lastUserQueue.QueueID)).First()
 	if err != nil {
 		l.Error("user has no queue", err)
-		resputil.Error(c, "User must has at least one queue", resputil.QueueNotFound)
+		resputil.Error(c, "User must has at least one queue", resputil.UserNotAllowed)
 		return
 	}
 
@@ -253,7 +253,7 @@ func (mgr *AuthMgr) CreatePersonalDir(c *gin.Context, user *model.User) error {
 	if err != nil {
 		return fmt.Errorf("can't create request:%s", err.Error())
 	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 	// 发送请求
 	resp, err := client.Do(req)
 	if err != nil {

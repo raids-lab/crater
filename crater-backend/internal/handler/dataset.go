@@ -215,7 +215,7 @@ func (mgr *DatasetMgr) generateDataseResponse(c *gin.Context, dataset *model.Dat
 		Name:      dataset.Name,
 		Describe:  dataset.Describe,
 		URL:       dataset.URL,
-		UserName:  user.Name,
+		UserName:  user.Nickname,
 		ID:        dataset.ID,
 		CreatedAt: dataset.CreatedAt,
 	}, nil
