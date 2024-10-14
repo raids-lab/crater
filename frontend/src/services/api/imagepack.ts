@@ -226,6 +226,11 @@ export const apiUserImagepackUpload = async (imageupload: ImagePackUpload) => {
   return response.data;
 };
 
+export enum ImagePackListType {
+  Create = 1,
+  Upload,
+}
+
 export const apiUserImagePackList = (type: number) =>
   instance.get<IResponse<ImagePackInfoResponse[]>>(
     `${VERSION}/images/list?type=${type}`,

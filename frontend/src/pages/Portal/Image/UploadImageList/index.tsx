@@ -24,6 +24,7 @@ import {
   getHeader,
   ImageDeleteRequest,
   imagepackTaskType,
+  ImagePackListType,
 } from "@/services/api/imagepack";
 import { logger } from "@/utils/loglevel";
 import { toast } from "sonner";
@@ -57,7 +58,7 @@ export const Component: FC = () => {
   const [openSheet, setOpenSheet] = useState(false);
   const imagePackInfo = useQuery({
     queryKey: ["imagelink", "list"],
-    queryFn: () => apiUserImagePackList(2),
+    queryFn: () => apiUserImagePackList(ImagePackListType.Upload),
     select: (res) => res.data.data,
   });
   const data: ImagePackInfo[] = useMemo(() => {
