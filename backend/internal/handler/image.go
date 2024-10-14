@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	modelv2 "github.com/mittwald/goharbor-client/v5/apiv2/model"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
@@ -190,7 +191,7 @@ func (mgr *ImagePackMgr) UserCreate(c *gin.Context) {
 		return
 	}
 	logutils.Log.Infof("create params: %+v", req)
-	mgr.requestDefaultValue(req)
+	mgr.requestDefaultValue(req, token.Username)
 	logutils.Log.Infof("token: %+v", token)
 	mgr.createImagePack(c, req, token, false)
 
@@ -265,21 +266,25 @@ func (mgr *ImagePackMgr) AdminCreate(c *gin.Context) {
 		return
 	}
 	logutils.Log.Infof("create params: %+v", req)
-	mgr.requestDefaultValue(req)
+	mgr.requestDefaultValue(req, token.Username)
 	mgr.createImagePack(c, req, token, true)
 	resputil.Success(c, "")
 }
 
-func (mgr *ImagePackMgr) requestDefaultValue(req *ImagePackCreateRequest) {
+func (mgr *ImagePackMgr) requestDefaultValue(req *ImagePackCreateRequest, userName string) {
 	if req.RegistryServer == "" {
 		req.RegistryServer = mgr.harborClient.RegistryServer
 		req.RegistryUser = mgr.harborClient.RegistryUser
 		req.RegistryPass = mgr.harborClient.RegistryPass
-		req.RegistryProject = mgr.harborClient.RegistryProject
+		req.RegistryProject = fmt.Sprintf("user-%s", userName)
 	}
 }
 
 func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateRequest, token util.JWTMessage, isPublic bool) {
+	if err := mgr.checkExistProject(c, token.Username); err != nil {
+		logutils.Log.Errorf("check project exist failed")
+		return
+	}
 	userQuery := query.User
 	user, err := userQuery.WithContext(c).Where(userQuery.ID.Eq(token.UserID)).First()
 	if err != nil {
@@ -369,6 +374,7 @@ func (mgr *ImagePackMgr) UserListAll(c *gin.Context) {
 			Where(imagepackQuery.UserID.Eq(token.UserID)).
 			Where(imagepackQuery.Status.Neq(ImagePackDeleted)).
 			Or(imagepackQuery.IsPublic).
+			Where(imagepackQuery.Status.Neq(ImagePackDeleted)).
 			Find()
 		if err != nil {
 			logutils.Log.Errorf("fetch imagepack entity failed, err:%v", err)
@@ -379,6 +385,7 @@ func (mgr *ImagePackMgr) UserListAll(c *gin.Context) {
 			Where(imageuploadQuery.UserID.Eq(token.UserID)).
 			Where(imageuploadQuery.Status.Neq(ImagePackDeleted)).
 			Or(imageuploadQuery.IsPublic).
+			Where(imageuploadQuery.Status.Neq(ImagePackDeleted)).
 			Find()
 		if err != nil {
 			logutils.Log.Errorf("fetch imageupload entity failed, err:%v", err)
@@ -615,7 +622,8 @@ func (mgr *ImagePackMgr) DeleteByID(c *gin.Context) {
 			return
 		}
 		name, tag := strings.Split(imagepack.NameTag, ":")[0], strings.Split(imagepack.NameTag, ":")[1]
-		if err = mgr.harborClient.DeleteArtifact(c, mgr.harborClient.RegistryProject, name, tag); err != nil {
+		projectName := fmt.Sprintf("user-%s", token.Username)
+		if err = mgr.harborClient.DeleteArtifact(c, projectName, name, tag); err != nil {
 			logutils.Log.Errorf("delete imagepack artifact failed! err:%+v", err)
 		}
 	} else if imagePackDeleteRequest.ImageType == 1 {
@@ -767,4 +775,20 @@ func (mgr *ImagePackMgr) GetImagePackLogByName(c *gin.Context) {
 		Content: podLogs,
 	}
 	resputil.Success(c, logResponse)
+}
+
+func (mgr *ImagePackMgr) checkExistProject(c *gin.Context, userName string) error {
+	projectName := fmt.Sprintf("user-%s", userName)
+	var err error
+	if exist, _ := mgr.harborClient.ProjectExists(c, projectName); !exist {
+		public := false
+		projectRequest := &modelv2.ProjectReq{
+			ProjectName: projectName,
+			Public:      &public,
+		}
+		if err = mgr.harborClient.NewProject(c, projectRequest); err != nil {
+			logutils.Log.Errorf("create harbor project failed! err:%+v", err)
+		}
+	}
+	return err
 }
