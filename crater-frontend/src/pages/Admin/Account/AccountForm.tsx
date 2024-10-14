@@ -43,6 +43,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
+import { zhCN } from "date-fns/locale";
 
 const VERSION = "20240623";
 const JOB_TYPE = "queue";
@@ -216,7 +217,7 @@ export const ProjectSheet = ({
                                 )}
                               >
                                 {field.value ? (
-                                  format(field.value, "PPP")
+                                  format(field.value, "PPP", { locale: zhCN })
                                 ) : (
                                   <span>请选择日期</span>
                                 )}
@@ -227,6 +228,7 @@ export const ProjectSheet = ({
                           <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
                               mode="single"
+                              locale={zhCN}
                               selected={field.value}
                               onSelect={field.onChange}
                               disabled={(date) => date < new Date()}
