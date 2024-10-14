@@ -26,6 +26,7 @@ import {
   imagepackStatuses,
   ImageDeleteRequest,
   imagepackTaskType,
+  ImagePackListType,
 } from "@/services/api/imagepack";
 import { logger } from "@/utils/loglevel";
 import { toast } from "sonner";
@@ -62,7 +63,7 @@ export const ImageTable: FC = () => {
   const [openSheet, setOpenSheet] = useState(false);
   const imagePackInfo = useQuery({
     queryKey: ["imagepack", "list"],
-    queryFn: () => apiUserImagePackList(1),
+    queryFn: () => apiUserImagePackList(ImagePackListType.Create),
     select: (res) => res.data.data,
   });
   const data: ImagePackInfo[] = useMemo(() => {
