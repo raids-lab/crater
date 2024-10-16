@@ -18,14 +18,6 @@ type Config struct {
 	EnableProfiling  bool   `yaml:"enableProfiling"`
 	PrometheusAPI    string `yaml:"prometheusAPI"`
 	ProfilingTimeout int    `yaml:"profilingTimeout"`
-	// DB Settings
-	DBHost              string `yaml:"dbHost"`
-	DBPort              string `yaml:"dbPort"`
-	DBUser              string `yaml:"dbUser"`
-	DBPassword          string `yaml:"dbPassword"`
-	DBName              string `yaml:"dbName"`
-	DBCharset           string `yaml:"dbCharset"`
-	DBConnectionTimeout int    `yaml:"dbConnTimeout"`
 	// New DB Settings
 	Postgres struct {
 		Host     string `yaml:"host"`

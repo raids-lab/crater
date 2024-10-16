@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -142,7 +143,7 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// User exists in the auth method but not in the database, create a new user
-			user, err = mgr.createUser(c, req.Username, nil)
+			user, err = createUser(c, req.Username, nil)
 			if err != nil {
 				l.Error("create new user", err)
 				resputil.Error(c, "Create user failed", resputil.NotSpecified)
@@ -208,7 +209,7 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 }
 
 // createUser is called when the user is not found in the database
-func (mgr *AuthMgr) createUser(c *gin.Context, name string, password *string) (*model.User, error) {
+func createUser(c context.Context, name string, password *string) (*model.User, error) {
 	u := query.User
 	user := model.User{
 		Name:     name,
@@ -365,7 +366,7 @@ func (mgr *AuthMgr) Signup(c *gin.Context) {
 		return
 	}
 
-	user, err := mgr.createUser(c, req.Username, lo.ToPtr(string(hashedPassword)))
+	user, err := createUser(c, req.Username, lo.ToPtr(string(hashedPassword)))
 	if err != nil {
 		l.Error("create new user", err)
 		resputil.Error(c, "Create user failed", resputil.NotSpecified)
