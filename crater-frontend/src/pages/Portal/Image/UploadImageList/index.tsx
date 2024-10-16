@@ -59,7 +59,7 @@ export const Component: FC = () => {
   const imagePackInfo = useQuery({
     queryKey: ["imagelink", "list"],
     queryFn: () => apiUserImagePackList(ImagePackListType.Upload),
-    select: (res) => res.data.data,
+    select: (res) => res.data.data.imagepacklist,
   });
   const data: ImagePackInfo[] = useMemo(() => {
     if (!imagePackInfo.data) {
@@ -75,6 +75,7 @@ export const Component: FC = () => {
       params: item.params,
       imagetype: item.imagetype,
       tasktype: item.tasktype,
+      ispublic: item.ispublic,
     }));
   }, [imagePackInfo.data]);
   const refetchImagePackList = async () => {

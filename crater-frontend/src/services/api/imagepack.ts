@@ -8,7 +8,12 @@ import {
   StopwatchIcon,
 } from "@radix-ui/react-icons";
 
-export type ImagePackInfoResponse = {
+export type ImagePackListResponse = {
+  imagepacklist: ImagePackInfoResponse[];
+  totalsize: number;
+};
+
+type ImagePackInfoResponse = {
   ID: number;
   // name: string;
   imagelink: string;
@@ -20,6 +25,7 @@ export type ImagePackInfoResponse = {
   description: string;
   alias: string;
   tasktype: number;
+  ispublic: boolean;
   params: {
     Convs: number;
     Activations: number;
@@ -45,6 +51,7 @@ export type ImagePackInfo = {
   createdAt: string;
   imagetype: number;
   tasktype: number;
+  ispublic: boolean;
   params: {
     Convs: number;
     Activations: number;
@@ -232,7 +239,7 @@ export enum ImagePackListType {
 }
 
 export const apiUserImagePackList = (type: number) =>
-  instance.get<IResponse<ImagePackInfoResponse[]>>(
+  instance.get<IResponse<ImagePackListResponse>>(
     `${VERSION}/images/list?type=${type}`,
   );
 
