@@ -259,6 +259,40 @@ func main() {
 				return tx.Migrator().DropColumn(&Job{}, "IsPublic")
 			},
 		},
+		{
+			// add one column to ImagePack table
+			ID: "202410151052",
+			Migrate: func(tx *gorm.DB) error {
+				// when table already exists, define only columns that are about to change
+				type ImagePack struct {
+					Size int64 `gorm:"column:size;type:bigint;default:0" json:"size"`
+				}
+				return tx.Migrator().AddColumn(&ImagePack{}, "Size")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type ImagePack struct {
+					Size int64 `gorm:"column:size;type:bigint;default:0" json:"size"`
+				}
+				return tx.Migrator().DropColumn(&ImagePack{}, "Size")
+			},
+		},
+		{
+			// add one column to User table
+			ID: "202410151153",
+			Migrate: func(tx *gorm.DB) error {
+				// when table already exists, define only columns that are about to change
+				type User struct {
+					ImageQuota int64 `gorm:"type:bigint;default:-1;comment:用户在镜像仓库的配额"`
+				}
+				return tx.Migrator().AddColumn(&User{}, "ImageQuota")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type User struct {
+					ImageQuota int64 `gorm:"type:bigint;default:-1;comment:用户在镜像仓库的配额"`
+				}
+				return tx.Migrator().DropColumn(&User{}, "ImageQuota")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {

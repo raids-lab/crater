@@ -5,6 +5,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const ImageQuotaInfinity = -1
+
 // Optional fields for user
 type UserAttribute struct {
 	Email  string `json:"email"`
@@ -22,6 +24,7 @@ type User struct {
 	Status     Status     `gorm:"index:status;not null;comment:用户状态 (pending, active, inactive)"`
 	Space      string     `gorm:"uniqueIndex;type:varchar(256);not null;comment:用户空间绝对路径"`
 	AccessMode AccessMode `gorm:"not null;comment:用户在公共空间的访问模式 (na, ro, rw)"`
+	ImageQuota int64      `gorm:"type:bigint;default:-1;comment:用户在镜像仓库的配额"`
 
 	Attributes   datatypes.JSONType[UserAttribute] `gorm:"comment:用户的额外属性 (昵称、邮箱、电话、头像等)"`
 	UserQueues   []UserQueue
