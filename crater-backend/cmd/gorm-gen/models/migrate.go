@@ -5,8 +5,11 @@ import (
 	"fmt"
 
 	"github.com/go-gormigrate/gormigrate/v2"
+	"github.com/google/uuid"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/samber/lo"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
@@ -278,9 +281,10 @@ func main() {
 			return err
 		}
 
+		// create default queue
 		queue := model.Queue{
 			Name:     "default",
-			Nickname: "公共账户",
+			Nickname: "公共资源池",
 			Space:    "/public",
 		}
 
@@ -289,16 +293,48 @@ func main() {
 			return res.Error
 		}
 
-		queue2 := model.Queue{
-			Name:     "q-2",
-			Nickname: "测试账户 A",
-			Space:    "/q-2",
+		// create default admin user, add to default queue
+		// 1. generate a random name and password
+		name := fmt.Sprintf("admin-%s", uuid.New().String()[:5])
+		password := uuid.New().String()[:8]
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+		// 2. create a user with the name and password
+		user := model.User{
+			Name:       name,
+			Nickname:   "初始管理员",
+			Password:   lo.ToPtr(string(hashedPassword)),
+			Role:       model.RoleAdmin, // todo: change to model.RoleUser
+			Status:     model.StatusActive,
+			Space:      fmt.Sprintf("u-%s", uuid.New().String()[:8]),
+			Attributes: datatypes.NewJSONType(model.UserAttribute{}),
 		}
 
-		res = tx.Create(&queue2)
+		res = tx.Create(&user)
 		if res.Error != nil {
 			return res.Error
 		}
+
+		// 3. add the user to the default queue
+		userQueue := model.UserQueue{
+			UserID:     user.ID,
+			QueueID:    queue.ID,
+			Role:       model.RoleAdmin,
+			AccessMode: model.AccessModeRW,
+		}
+
+		res = tx.Create(&userQueue)
+		if res.Error != nil {
+			return res.Error
+		}
+
+		// 4. print the name and password
+		fmt.Printf(`Default admin user created:
+	Name: %s
+	Password: %s
+		`, name, password)
 
 		return nil
 	})
