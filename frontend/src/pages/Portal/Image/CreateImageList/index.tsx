@@ -64,7 +64,7 @@ export const ImageTable: FC = () => {
   const imagePackInfo = useQuery({
     queryKey: ["imagepack", "list"],
     queryFn: () => apiUserImagePackList(ImagePackListType.Create),
-    select: (res) => res.data.data,
+    select: (res) => res.data.data.imagepacklist,
   });
   const data: ImagePackInfo[] = useMemo(() => {
     if (!imagePackInfo.data) {
@@ -80,6 +80,7 @@ export const ImageTable: FC = () => {
       params: item.params,
       imagetype: item.imagetype,
       tasktype: item.tasktype,
+      ispublic: item.ispublic,
     }));
   }, [imagePackInfo.data]);
   const refetchImagePackList = async () => {
