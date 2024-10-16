@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -81,10 +82,14 @@ type (
 	ImageAvailableListRequest struct {
 		Type model.ImageTaskType `form:"type"`
 	}
+
+	UpdateProjectQuotaRequest struct {
+		Size int64 `json:"size"`
+	}
 )
 
 type (
-	ImagePackListResponse struct {
+	ImagePackInfo struct {
 		ID            uint                     `json:"ID"`
 		ImageLink     string                   `json:"imagelink"`
 		Status        string                   `json:"status"`
@@ -95,7 +100,13 @@ type (
 		TaskType      model.ImageTaskType      `json:"tasktype"`
 		Params        model.ImageProfileParams `json:"params"`
 		// ImageType: 0 indicates ImagePack; 1 indicates ImageUpload
-		ImageType uint `json:"imagetype"`
+		ImageType uint  `json:"imagetype"`
+		Size      int64 `json:"size"`
+		IsPublic  bool  `json:"ispublic"`
+	}
+	ImagePackListResponse struct {
+		ImagePackInfoList []ImagePackInfo `json:"imagepacklist"`
+		TotalSize         int64           `json:"totalsize"`
 	}
 
 	ImagePackGetResponse struct {
@@ -128,6 +139,9 @@ var (
 	ImagePackFinished = string(imagepackv1.PackJobFinished)
 	ImagePackFailed   = string(imagepackv1.PackJobFailed)
 	ImagePackDeleted  = "Deleted"
+	ProjectIsPublic   = true
+	//nolint:mnd // default project quota: 20GB
+	DefaultQuotaSize = int64(20 * math.Pow(2, 30))
 )
 
 type ImagePackMgr struct {
@@ -164,6 +178,7 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.POST("/getbyname", mgr.GetImagePackByName)
 	g.GET("/get", mgr.GetImagePackByID)
 	g.GET("/log", mgr.GetImagePackLogByName)
+	g.POST("/quota", mgr.UpdateProjectQuota)
 }
 
 func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -281,7 +296,7 @@ func (mgr *ImagePackMgr) requestDefaultValue(req *ImagePackCreateRequest, userNa
 }
 
 func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateRequest, token util.JWTMessage, isPublic bool) {
-	if err := mgr.checkExistProject(c, token.Username); err != nil {
+	if err := mgr.checkExistProject(c, token); err != nil {
 		logutils.Log.Errorf("check project exist failed")
 		return
 	}
@@ -394,8 +409,8 @@ func (mgr *ImagePackMgr) UserListAll(c *gin.Context) {
 		logutils.Log.Errorf("the value of type can only be 1 or 2")
 	}
 
-	responses := mgr.generateImageListResponse(c, imagepacks, imageuploads)
-	resputil.Success(c, responses)
+	response := mgr.generateImageListResponse(c, imagepacks, imageuploads, token.Username)
+	resputil.Success(c, response)
 }
 
 // AdminListAll godoc
@@ -419,6 +434,7 @@ func (mgr *ImagePackMgr) AdminListAll(c *gin.Context) {
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
+	token := util.GetToken(c)
 	listType := req.Type
 	if listType == 0 {
 		imagepacks, err = imagepackQuery.WithContext(c).
@@ -463,32 +479,62 @@ func (mgr *ImagePackMgr) AdminListAll(c *gin.Context) {
 		resputil.Error(c, "admin list image type error", resputil.NotSpecified)
 		return
 	}
-	responses := mgr.generateImageListResponse(c, imagepacks, imageuploads)
-	resputil.Success(c, responses)
+	response := mgr.generateImageListResponse(c, imagepacks, imageuploads, token.Username)
+	resputil.Success(c, response)
 }
 
 func (mgr *ImagePackMgr) generateImageListResponse(
 	c *gin.Context,
 	imagepacks []*model.ImagePack,
 	imageuploads []*model.ImageUpload,
-) []ImagePackListResponse {
-	responses := []ImagePackListResponse{}
+	userName string,
+) ImagePackListResponse {
+	imagepackInfos := []ImagePackInfo{}
+	var totalSize int64
 	for i := range imagepacks {
 		imagepack := imagepacks[i]
 		if imagepack.Status != ImagePackFinished && imagepack.Status != ImagePackFailed {
 			mgr.updateImagePackStatus(c, imagepack)
 		}
-		responses = append(responses, mgr.generateImageListResponseFromImagePack(imagepack))
+		if imagepack.Size == 0 && imagepack.Status == ImagePackFinished {
+			mgr.updateImagePackSize(c, imagepack, userName)
+		}
+		totalSize += imagepack.Size
+		imagepackInfos = append(imagepackInfos, mgr.generateImageListResponseFromImagePack(imagepack))
 	}
 	for i := range imageuploads {
 		imageupload := imageuploads[i]
-		responses = append(responses, mgr.generateImageListResponseFromImageUpload(imageupload))
+		imagepackInfos = append(imagepackInfos, mgr.generateImageListResponseFromImageUpload(imageupload))
 	}
-	return responses
+	imageListResponse := ImagePackListResponse{
+		ImagePackInfoList: imagepackInfos,
+		TotalSize:         totalSize,
+	}
+	return imageListResponse
 }
 
-func (mgr *ImagePackMgr) generateImageListResponseFromImagePack(imagepack *model.ImagePack) ImagePackListResponse {
-	return ImagePackListResponse{
+func (mgr *ImagePackMgr) updateImagePackSize(c *gin.Context, imagepack *model.ImagePack, userName string) {
+	var imageArtifact *modelv2.Artifact
+	var err error
+	fmt.Printf("\n%+v\n", imagepack)
+	projectName := fmt.Sprintf("user-%s", userName)
+	nameTag := strings.Split(imagepack.NameTag, ":")
+	name := nameTag[0]
+	tag := nameTag[1]
+	if imageArtifact, err = mgr.harborClient.GetArtifact(c, projectName, name, tag); err != nil {
+		logutils.Log.Errorf("get imagepack artifact failed! err:%+v", err)
+		return
+	}
+	imagepackQuery := query.ImagePack
+	if _, err := imagepackQuery.WithContext(c).
+		Where(imagepackQuery.ID.Eq(imagepack.ID)).
+		Update(imagepackQuery.Size, imageArtifact.Size); err != nil {
+		logutils.Log.Errorf("save imagepack size failed, err:%v", err)
+	}
+}
+
+func (mgr *ImagePackMgr) generateImageListResponseFromImagePack(imagepack *model.ImagePack) ImagePackInfo {
+	return ImagePackInfo{
 		ID:            imagepack.ID,
 		ImageLink:     imagepack.ImageLink,
 		Status:        imagepack.Status,
@@ -499,11 +545,13 @@ func (mgr *ImagePackMgr) generateImageListResponseFromImagePack(imagepack *model
 		Params:        imagepack.Params,
 		TaskType:      imagepack.TaskType,
 		ImageType:     0,
+		Size:          imagepack.Size,
+		IsPublic:      imagepack.IsPublic,
 	}
 }
 
-func (mgr *ImagePackMgr) generateImageListResponseFromImageUpload(imageupload *model.ImageUpload) ImagePackListResponse {
-	return ImagePackListResponse{
+func (mgr *ImagePackMgr) generateImageListResponseFromImageUpload(imageupload *model.ImageUpload) ImagePackInfo {
+	return ImagePackInfo{
 		ID:          imageupload.ID,
 		ImageLink:   imageupload.ImageLink,
 		Status:      imageupload.Status,
@@ -551,8 +599,12 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	}
 	imagepackQuery := query.ImagePack
 	var imagepacks []*model.ImagePack
+	//nolint:dupl // there are differences between the two logics
 	if imagepacks, err = imagepackQuery.WithContext(c).
-		Where(imagepackQuery.UserID.In(PublicImageUserID, token.UserID)).
+		Where(imagepackQuery.UserID.Eq(token.UserID)).
+		Where(imagepackQuery.Status.Eq(ImagePackFinished)).
+		Where(imagepackQuery.TaskType.Eq(uint8(req.Type))).
+		Or(imagepackQuery.IsPublic).
 		Where(imagepackQuery.Status.Eq(ImagePackFinished)).
 		Where(imagepackQuery.TaskType.Eq(uint8(req.Type))).
 		Find(); err != nil {
@@ -562,8 +614,12 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	}
 	imageuploadQuery := query.ImageUpload
 	var imageuploads []*model.ImageUpload
+	//nolint:dupl // there are differences between the two logics
 	if imageuploads, err = imageuploadQuery.WithContext(c).
-		Where(imageuploadQuery.UserID.In(PublicImageUserID, token.UserID)).
+		Where(imageuploadQuery.UserID.Eq(token.UserID)).
+		Where(imageuploadQuery.Status.Neq(ImagePackDeleted)).
+		Where(imageuploadQuery.TaskType.Eq(uint8(req.Type))).
+		Or(imageuploadQuery.IsPublic).
 		Where(imageuploadQuery.Status.Neq(ImagePackDeleted)).
 		Where(imageuploadQuery.TaskType.Eq(uint8(req.Type))).
 		Find(); err != nil {
@@ -777,18 +833,55 @@ func (mgr *ImagePackMgr) GetImagePackLogByName(c *gin.Context) {
 	resputil.Success(c, logResponse)
 }
 
-func (mgr *ImagePackMgr) checkExistProject(c *gin.Context, userName string) error {
-	projectName := fmt.Sprintf("user-%s", userName)
-	var err error
+func (mgr *ImagePackMgr) checkExistProject(c *gin.Context, token util.JWTMessage) error {
+	projectName := fmt.Sprintf("user-%s", token.Username)
 	if exist, _ := mgr.harborClient.ProjectExists(c, projectName); !exist {
-		public := false
 		projectRequest := &modelv2.ProjectReq{
-			ProjectName: projectName,
-			Public:      &public,
+			ProjectName:  projectName,
+			Public:       &ProjectIsPublic,
+			StorageLimit: &DefaultQuotaSize,
+		}
+		userQuery := query.User
+		var err error
+		if _, err = userQuery.WithContext(c).
+			Where(userQuery.ID.Eq(token.UserID)).
+			Update(userQuery.ImageQuota, DefaultQuotaSize); err != nil {
+			logutils.Log.Errorf("save user imageQuota failed, err:%v", err)
+			return err
 		}
 		if err = mgr.harborClient.NewProject(c, projectRequest); err != nil {
 			logutils.Log.Errorf("create harbor project failed! err:%+v", err)
+			return err
 		}
 	}
-	return err
+	return nil
+}
+
+// UpdateProjectQuota godoc
+// @Summary 更新project的配额
+// @Description 传入int64参数，查找用户的project，并更新镜像存储的配额
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param size body int64 true "删除镜像的ID"
+// @Router /v1/images/quota [POST]
+func (mgr *ImagePackMgr) UpdateProjectQuota(c *gin.Context) {
+	req := &UpdateProjectQuotaRequest{}
+	token := util.GetToken(c)
+	if err := c.ShouldBindJSON(req); err != nil {
+		msg := fmt.Sprintf("validate update project quota failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		return
+	}
+	projectName := fmt.Sprintf("user-%s", token.Username)
+	var err error
+	var project *modelv2.Project
+	if project, err = mgr.harborClient.GetProject(c, projectName); err != nil {
+		resputil.Error(c, "get harbor project failed", resputil.NotSpecified)
+	}
+	if err = mgr.harborClient.UpdateStorageQuotaByProjectID(c, int64(project.ProjectID), DefaultQuotaSize); err != nil {
+		resputil.Error(c, "update harbor project quota failed", resputil.NotSpecified)
+	}
+	resputil.Success(c, "")
 }

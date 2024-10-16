@@ -20,6 +20,7 @@ type ImagePack struct {
 	Description   string             `gorm:"column:description;type:varchar(512);not null" json:"description"`
 	CreatorName   string             `gorm:"column:creatorname;type:varchar(128);not null" json:"creatorname"`
 	IsPublic      bool               `gorm:"column:ispublic;type:boolean;default:false" json:"ispublic"`
+	Size          int64              `gorm:"column:size;type:bigint;default:0" json:"size"`
 }
 
 type ImageUpload struct {
