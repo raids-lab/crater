@@ -133,7 +133,7 @@ func (p *PrometheusClient) QueryPodMemoryUsage(podName string) int {
 }
 
 func (p *PrometheusClient) QueryPodGPU() []PodGPUAllocate {
-	expression := "kube_pod_container_resource_requests{namespace=\"crater-jobs\", resource=\"nvidia_com_gpu\"}"
+	expression := `kube_pod_container_resource_requests{namespace="crater-jobs", resource="nvidia_com_gpu"}`
 	data, err := p.podGPU(expression)
 	if err != nil {
 		logutils.Log.Errorf("QueryPodGPU error: %v", err)
@@ -153,7 +153,7 @@ func (p *PrometheusClient) QueryNodeGPUUtil() []NodeGPUUtil {
 }
 
 func (p *PrometheusClient) GetJobPodsList() map[string][]string {
-	query := "kube_pod_info{namespace=\"crater-workspace\",created_by_kind=\"Job\"}"
+	query := `kube_pod_info{namespace="crater-workspace",created_by_kind="Job"}`
 	data, err := p.getJobPods(query)
 	if err != nil {
 		logutils.Log.Errorf("GetJobPodsList error: %v", err)

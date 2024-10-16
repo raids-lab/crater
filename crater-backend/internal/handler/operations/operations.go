@@ -57,7 +57,7 @@ func (mgr *OperationsMgr) RegisterAdmin(g *gin.RouterGroup) {
 
 type JobFreRequest struct {
 	TimeRange int `form:"timeRange" binding:"required"`
-	Util      int `form:"util" binding:"required"`
+	Util      int `form:"util"`
 }
 
 func (mgr *OperationsMgr) getJobWhiteList(c *gin.Context) ([]string, error) {
@@ -163,7 +163,12 @@ func (mgr *OperationsMgr) AddJobWhiteList(c *gin.Context) {
 func (mgr *OperationsMgr) DeleteUnUsedJobList(c *gin.Context) {
 	var req JobFreRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.HTTPError(c, http.StatusBadRequest, err.Error(), resputil.InvalidRequest)
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	if req.TimeRange <= 0 {
+		resputil.BadRequestError(c, "timeRange must be greater than 0")
 		return
 	}
 
