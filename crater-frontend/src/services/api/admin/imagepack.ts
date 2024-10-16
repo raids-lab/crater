@@ -1,6 +1,6 @@
 import instance, { VERSION } from "@/services/axios";
 import { IResponse } from "@/services/types";
-import { ImagePackCreate, ImagePackInfoResponse } from "../imagepack";
+import { ImagePackCreate, ImagePackListResponse } from "../imagepack";
 
 export const apiAdminImagepackCreate = async (imagepack: ImagePackCreate) => {
   const response = await instance.post<IResponse<string>>(
@@ -11,7 +11,7 @@ export const apiAdminImagepackCreate = async (imagepack: ImagePackCreate) => {
 };
 
 export const apiAdminImagePackList = (type: number) =>
-  instance.get<IResponse<ImagePackInfoResponse[]>>(
+  instance.get<IResponse<ImagePackListResponse>>(
     VERSION + "/admin/images/list",
     {
       params: {
