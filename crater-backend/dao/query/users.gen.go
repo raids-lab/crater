@@ -38,6 +38,7 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.Status = field.NewUint8(tableName, "status")
 	_user.Space = field.NewString(tableName, "space")
 	_user.AccessMode = field.NewUint8(tableName, "access_mode")
+	_user.ImageQuota = field.NewInt64(tableName, "image_quota")
 	_user.Attributes = field.NewField(tableName, "attributes")
 	_user.UserQueues = userHasManyUserQueues{
 		db: db.Session(&gorm.Session{}),
@@ -71,6 +72,7 @@ type user struct {
 	Status     field.Uint8
 	Space      field.String
 	AccessMode field.Uint8
+	ImageQuota field.Int64
 	Attributes field.Field
 	UserQueues userHasManyUserQueues
 
@@ -102,6 +104,7 @@ func (u *user) updateTableName(table string) *user {
 	u.Status = field.NewUint8(table, "status")
 	u.Space = field.NewString(table, "space")
 	u.AccessMode = field.NewUint8(table, "access_mode")
+	u.ImageQuota = field.NewInt64(table, "image_quota")
 	u.Attributes = field.NewField(table, "attributes")
 
 	u.fillFieldMap()
@@ -127,7 +130,7 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 14)
+	u.fieldMap = make(map[string]field.Expr, 15)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
@@ -139,6 +142,7 @@ func (u *user) fillFieldMap() {
 	u.fieldMap["status"] = u.Status
 	u.fieldMap["space"] = u.Space
 	u.fieldMap["access_mode"] = u.AccessMode
+	u.fieldMap["image_quota"] = u.ImageQuota
 	u.fieldMap["attributes"] = u.Attributes
 
 }

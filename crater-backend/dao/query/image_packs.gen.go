@@ -45,6 +45,7 @@ func newImagePack(db *gorm.DB, opts ...gen.DOOption) imagePack {
 	_imagePack.Description = field.NewString(tableName, "description")
 	_imagePack.CreatorName = field.NewString(tableName, "creatorname")
 	_imagePack.IsPublic = field.NewBool(tableName, "ispublic")
+	_imagePack.Size = field.NewInt64(tableName, "size")
 	_imagePack.User = imagePackBelongsToUser{
 		db: db.Session(&gorm.Session{}),
 
@@ -104,6 +105,7 @@ type imagePack struct {
 	Description   field.String
 	CreatorName   field.String
 	IsPublic      field.Bool
+	Size          field.Int64
 	User          imagePackBelongsToUser
 
 	Queue imagePackBelongsToQueue
@@ -141,6 +143,7 @@ func (i *imagePack) updateTableName(table string) *imagePack {
 	i.Description = field.NewString(table, "description")
 	i.CreatorName = field.NewString(table, "creatorname")
 	i.IsPublic = field.NewBool(table, "ispublic")
+	i.Size = field.NewInt64(table, "size")
 
 	i.fillFieldMap()
 
@@ -167,7 +170,7 @@ func (i *imagePack) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (i *imagePack) fillFieldMap() {
-	i.fieldMap = make(map[string]field.Expr, 20)
+	i.fieldMap = make(map[string]field.Expr, 21)
 	i.fieldMap["id"] = i.ID
 	i.fieldMap["created_at"] = i.CreatedAt
 	i.fieldMap["updated_at"] = i.UpdatedAt
@@ -186,6 +189,7 @@ func (i *imagePack) fillFieldMap() {
 	i.fieldMap["description"] = i.Description
 	i.fieldMap["creatorname"] = i.CreatorName
 	i.fieldMap["ispublic"] = i.IsPublic
+	i.fieldMap["size"] = i.Size
 
 }
 
