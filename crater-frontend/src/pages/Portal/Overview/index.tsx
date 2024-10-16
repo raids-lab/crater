@@ -351,6 +351,10 @@ export const Component: FC = () => {
               title="overview"
               urls={[
                 {
+                  url: `portal/job/inter/new-jupyter-${jobType}`,
+                  name: " Jupyter Lab",
+                },
+                {
                   url: "portal/job/batch/new-tensorflow",
                   name: " Tensorflow 作业",
                 },
@@ -377,7 +381,6 @@ export const Component: FC = () => {
                   name: " OpenMPI 作业",
                   disabled: true,
                 },
-                { url: "portal/job/inter/new-jupyter", name: " Jupyter Lab" },
               ]}
             />
             <Button
