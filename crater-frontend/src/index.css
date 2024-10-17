@@ -57,3 +57,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* 在你的全局CSS文件中添加以下样式 */
+.custom-xterm-screen {
+  @apply !p-4; /* 你可以根据需要调整padding的值 */
+}
