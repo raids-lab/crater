@@ -2,12 +2,17 @@ package tool
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
+	"context"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/remotecommand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/raids-lab/crater/internal/handler"
@@ -21,6 +26,7 @@ func init() {
 
 type APIServerMgr struct {
 	name       string
+	config     *rest.Config
 	client     client.Client
 	kubeClient kubernetes.Interface
 }
@@ -28,6 +34,7 @@ type APIServerMgr struct {
 func NewAPIServerMgr(conf handler.RegisterConfig) handler.Manager {
 	return &APIServerMgr{
 		name:       "namespaces",
+		config:     conf.Kubeconfig,
 		client:     conf.Client,
 		kubeClient: conf.KubeClient,
 	}
@@ -40,6 +47,7 @@ func (mgr *APIServerMgr) RegisterPublic(_ *gin.RouterGroup) {}
 func (mgr *APIServerMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET(":namespace/pods/:name/containers", mgr.GetPodContainers)
 	g.GET(":namespace/pods/:name/containers/:container/log", mgr.GetPodContainerLog)
+	g.GET(":namespace/pods/:name/containers/:container/terminal", mgr.GetPodContainerTerminal)
 }
 
 func (mgr *APIServerMgr) RegisterAdmin(_ *gin.RouterGroup) {}
@@ -202,4 +210,78 @@ func (mgr *APIServerMgr) GetPodContainerLog(c *gin.Context) {
 	}
 
 	resputil.Success(c, logData)
+}
+
+type (
+	PodContainerTerminalReq struct {
+		// from uri
+		Namespace     string `uri:"namespace" binding:"required"`
+		PodName       string `uri:"name" binding:"required"`
+		ContainerName string `uri:"container" binding:"required"`
+	}
+)
+
+type streamHandler struct {
+	ws *websocket.Conn
+}
+
+func (h *streamHandler) Write(p []byte) (int, error) {
+	err := h.ws.WriteMessage(websocket.TextMessage, p)
+	return len(p), err
+}
+
+func (h *streamHandler) Read(p []byte) (int, error) {
+	_, message, err := h.ws.ReadMessage()
+	if err != nil {
+		return 0, err
+	}
+	return copy(p, message), nil
+}
+
+func (mgr *APIServerMgr) GetPodContainerTerminal(c *gin.Context) {
+	var req PodContainerTerminalReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+	var upgrade = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(_ *http.Request) bool {
+			return true
+		},
+	}
+	ws, err := upgrade.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+	defer ws.Close()
+	request := mgr.kubeClient.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(req.PodName).
+		Namespace(req.Namespace).
+		SubResource("exec").
+		Param("container", req.ContainerName).
+		Param("stdin", "true").
+		Param("stdout", "true").
+		Param("stderr", "true").
+		Param("tty", "true").
+		Param("command", "sh")
+
+	executor, err := remotecommand.NewSPDYExecutor(mgr.config, "POST", request.URL())
+	if err != nil {
+		panic(err.Error())
+	}
+	ctx := context.Background()
+	stream := &streamHandler{ws: ws}
+	err = executor.StreamWithContext(ctx, remotecommand.StreamOptions{
+		Stdin:  stream,
+		Stdout: stream,
+		Stderr: stream,
+		Tty:    true,
+	})
+	if err != nil {
+		panic(err.Error())
+	}
 }
