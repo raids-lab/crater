@@ -14,15 +14,20 @@ import (
 
 func AuthProtected() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.Request.Header.Get("Authorization")
-		t := strings.Split(authHeader, " ")
-		if len(t) < 2 || t[0] != "Bearer" {
-			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid token", resputil.TokenInvalid)
-			c.Abort()
-			return
+		var authToken string
+		// if request type is websocket, read token from string
+		if c.Request.Header.Get("Upgrade") == "websocket" {
+			authToken = c.Query("token")
+		} else {
+			authHeader := c.Request.Header.Get("Authorization")
+			t := strings.Split(authHeader, " ")
+			if len(t) < 2 || t[0] != "Bearer" {
+				resputil.HTTPError(c, http.StatusUnauthorized, "Invalid token", resputil.TokenInvalid)
+				c.Abort()
+				return
+			}
+			authToken = t[1]
 		}
-
-		authToken := t[1]
 		token, err := util.GetTokenMgr().CheckToken(authToken)
 		if err != nil {
 			resputil.HTTPError(c, http.StatusUnauthorized, err.Error(), resputil.TokenExpired)

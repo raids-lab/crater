@@ -228,6 +228,7 @@ func main() {
 	setupLog.Info("starting server")
 	registerConfig := handler.RegisterConfig{
 		Client:           mgr.GetClient(),
+		Kubeconfig:       cfg,
 		KubeClient:       clientset,
 		PrometheusClient: prometheusClient,
 	}
