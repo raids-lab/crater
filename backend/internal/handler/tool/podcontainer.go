@@ -11,6 +11,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -231,6 +232,10 @@ func (h *streamHandler) Write(p []byte) (int, error) {
 }
 
 func (h *streamHandler) Read(p []byte) (int, error) {
+	// TODO(wuzexing24): Avoid remote terminal leaking.
+	// References:
+	// - https://github.com/kubernetes/client-go/issues/554
+	// - https://github.com/juicedata/juicefs-csi-driver/pull/1053
 	_, message, err := h.ws.ReadMessage()
 	if err != nil {
 		return 0, err
@@ -257,23 +262,30 @@ func (mgr *APIServerMgr) GetPodContainerTerminal(c *gin.Context) {
 		return
 	}
 	defer ws.Close()
+
+	ctx, cancel := context.WithCancel(c)
+	defer cancel()
+
+	// Reference: https://github.com/juicedata/juicefs-csi-driver/pull/1053
 	request := mgr.kubeClient.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Name(req.PodName).
 		Namespace(req.Namespace).
-		SubResource("exec").
-		Param("container", req.ContainerName).
-		Param("stdin", "true").
-		Param("stdout", "true").
-		Param("stderr", "true").
-		Param("tty", "true").
-		Param("command", "sh")
+		SubResource("exec")
+	request.VersionedParams(&v1.PodExecOptions{
+		Command:   []string{"sh", "-c", "bash || sh"},
+		Container: req.ContainerName,
+		Stdin:     true,
+		Stdout:    true,
+		Stderr:    true,
+		TTY:       true,
+	}, scheme.ParameterCodec)
 
 	executor, err := remotecommand.NewSPDYExecutor(mgr.config, "POST", request.URL())
 	if err != nil {
-		panic(err.Error())
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
 	}
-	ctx := context.Background()
 	stream := &streamHandler{ws: ws}
 	err = executor.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdin:  stream,
@@ -282,6 +294,7 @@ func (mgr *APIServerMgr) GetPodContainerTerminal(c *gin.Context) {
 		Tty:    true,
 	})
 	if err != nil {
-		panic(err.Error())
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
 	}
 }
