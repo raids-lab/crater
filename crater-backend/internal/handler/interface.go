@@ -5,6 +5,7 @@ import (
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -20,6 +21,9 @@ type Manager interface {
 type RegisterConfig struct {
 	// Client is the controller-runtime client.
 	Client client.Client
+
+	// Kubeconfig is the
+	Kubeconfig *rest.Config
 
 	// KubeClient is the kubernetes client.
 	KubeClient kubernetes.Interface
