@@ -9,9 +9,15 @@ const ImageQuotaInfinity = -1
 
 // Optional fields for user
 type UserAttribute struct {
-	Email  string `json:"email"`
-	Phone  string `json:"phone"`
-	Avatar string `json:"avatar"`
+	Name      string  `json:"name,omitempty"`      // 账号
+	Nickname  *string `json:"nickname,omitempty"`  // 昵称
+	Email     *string `json:"email,omitempty"`     // 邮箱
+	Teacher   *string `json:"teacher,omitempty"`   // 老师
+	Group     *string `json:"group,omitempty"`     // 课题组
+	ExpiredAt *string `json:"expiredAt,omitempty"` // 过期时间
+
+	Phone  *string `json:"phone,omitempty"`  // 电话
+	Avatar *string `json:"avatar,omitempty"` // 头像
 }
 
 // User is the basic entity of the system

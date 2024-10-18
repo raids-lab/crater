@@ -2,14 +2,20 @@ package handler
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"regexp"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	ldap "github.com/go-ldap/ldap/v3"
 	"github.com/google/uuid"
+	imrocreq "github.com/imroc/req/v3"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
@@ -30,6 +36,8 @@ func init() {
 type AuthMgr struct {
 	name     string
 	client   *http.Client
+	req      *imrocreq.Client
+	openAPI  config.ACTOpenAPI
 	tokenMgr *util.TokenManager
 }
 
@@ -37,7 +45,9 @@ func NewAuthMgr(_ RegisterConfig) Manager {
 	return &AuthMgr{
 		name:     "auth",
 		client:   &http.Client{},
+		req:      imrocreq.C().DevMode(),
 		tokenMgr: util.GetTokenMgr(),
+		openAPI:  config.GetConfig().ACT.OpenAPI,
 	}
 }
 
@@ -57,18 +67,20 @@ func (mgr *AuthMgr) RegisterAdmin(_ *gin.RouterGroup) {}
 
 type (
 	LoginReq struct {
-		Username   string `json:"username" binding:"required"` // 用户名
-		Password   string `json:"password" binding:"required"` // 密码
-		AuthMethod string `json:"auth" binding:"required"`     // 认证方式 [normal, act]
+		AuthMethod AuthMethod `json:"auth" binding:"required"` // [normal, act-ldap, act-api]
+		Username   *string    `json:"username"`                // (act-ldap, normal)
+		Password   *string    `json:"password"`                // (act-ldap, normal)
+		Token      *string    `json:"token"`                   // (act-api)
 	}
 
 	LoginResp struct {
-		AccessToken  string      `json:"accessToken"`
-		RefreshToken string      `json:"refreshToken"`
-		Context      UserContext `json:"context"`
+		AccessToken  string              `json:"accessToken"`
+		RefreshToken string              `json:"refreshToken"`
+		Context      AccountContext      `json:"context"`
+		User         model.UserAttribute `json:"user"`
 	}
 
-	UserContext struct {
+	AccountContext struct {
 		Queue        string           `json:"queue"`        // Current Queue Name
 		RoleQueue    model.Role       `json:"roleQueue"`    // User role of the queue
 		RolePlatform model.Role       `json:"rolePlatform"` // User role of the platform
@@ -78,9 +90,12 @@ type (
 	}
 )
 
+type AuthMethod string
+
 const (
-	AuthMethodNormal = "normal"
-	AuthMethodACT    = "act"
+	AuthMethodNormal  AuthMethod = "normal"
+	AuthMethodACTLDAP AuthMethod = "act-ldap"
+	AuthMethodACTAPI  AuthMethod = "act-api"
 )
 
 // Login godoc
@@ -95,6 +110,8 @@ const (
 // @Failure 401 {object} resputil.Response[any]	"用户名或密码错误"
 // @Failure 500 {object} resputil.Response[any]	"数据库交互错误"
 // @Router /auth/login [post]
+//
+//nolint:gocyclo // TODO(liyilong): refactor this
 func (mgr *AuthMgr) Login(c *gin.Context) {
 	var req LoginReq
 	if err := c.ShouldBind(&req); err != nil {
@@ -107,23 +124,49 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		"auth":     req.AuthMethod,
 	})
 
-	// Username can only contain lowercase letters, numbers
-	if !regexp.MustCompile(`^[a-z0-9]+$`).MatchString(req.Username) {
-		l.Error("invalid username")
-		resputil.HTTPError(c, http.StatusBadRequest, "Invalid username", resputil.InvalidRequest)
+	var username, password, token string
+	switch req.AuthMethod {
+	case AuthMethodACTAPI:
+		if req.Token == nil {
+			resputil.HTTPError(c, http.StatusBadRequest, "Token not provided", resputil.InvalidRequest)
+			return
+		}
+		token = *req.Token
+	case AuthMethodACTLDAP, AuthMethodNormal:
+		if req.Username == nil || req.Password == nil {
+			resputil.HTTPError(c, http.StatusBadRequest, "Username or password not provided", resputil.InvalidRequest)
+			return
+		}
+		username = *req.Username
+		password = *req.Password
+		// Username can only contain lowercase letters, numbers
+		if !regexp.MustCompile(`^[a-z0-9]+$`).MatchString(username) {
+			l.Error("invalid username")
+			resputil.HTTPError(c, http.StatusBadRequest, "Invalid username", resputil.InvalidRequest)
+			return
+		}
+	default:
+		resputil.HTTPError(c, http.StatusBadRequest, "Invalid auth method", resputil.InvalidRequest)
 		return
 	}
 
 	// Check if request auth method is valid
+	var attributes model.UserAttribute
 	switch req.AuthMethod {
-	case AuthMethodACT:
-		if err := mgr.actAuth(req.Username, req.Password); err != nil {
+	case AuthMethodACTAPI:
+		if err := mgr.actAPIAuth(c, token, &attributes); err != nil {
+			l.Error("invalid token: ", err)
+			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid token", resputil.NotSpecified)
+			return
+		}
+	case AuthMethodACTLDAP:
+		if err := mgr.actLDAPAuth(c, username, password); err != nil {
 			l.Error("invalid credentials: ", err)
 			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.NotSpecified)
 			return
 		}
 	case AuthMethodNormal:
-		if err := mgr.normalAuth(c, req.Username, req.Password); err != nil {
+		if err := mgr.normalAuth(c, username, password); err != nil {
 			l.Error("invalid credentials: ", err)
 			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.NotSpecified)
 			return
@@ -134,27 +177,12 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		return
 	}
 
-	u := query.User
-	q := query.Queue
-	uq := query.UserQueue
-
 	// Check if the user exists
-	user, err := u.WithContext(c).Where(u.Name.Eq(req.Username)).First()
+	user, err := createOrUpdateUser(c, &req, &attributes)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// User exists in the auth method but not in the database, create a new user
-			user, err = createUser(c, req.Username, nil)
-			if err != nil {
-				l.Error("create new user", err)
-				resputil.Error(c, "Create user failed", resputil.NotSpecified)
-				return
-			}
-		} else {
-			// Other DB error
-			l.Error(err)
-			resputil.Error(c, err.Error(), resputil.NotSpecified)
-			return
-		}
+		l.Error("create or update user", err)
+		resputil.Error(c, "Create or update user failed", resputil.NotSpecified)
+		return
 	}
 
 	if user.Status != model.StatusActive {
@@ -163,6 +191,8 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		return
 	}
 
+	q := query.Queue
+	uq := query.UserQueue
 	lastUserQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID)).Last()
 	if err != nil {
 		l.Error("user has no queue", err)
@@ -196,7 +226,7 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 	loginResponse := LoginResp{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		Context: UserContext{
+		Context: AccountContext{
 			Queue:        lastQueue.Name,
 			RoleQueue:    lastUserQueue.Role,
 			RolePlatform: user.Role,
@@ -204,8 +234,47 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 			AccessPublic: user.AccessMode,
 			Space:        user.Space,
 		},
+		User: user.Attributes.Data(),
 	}
 	resputil.Success(c, loginResponse)
+}
+
+func createOrUpdateUser(
+	c context.Context,
+	req *LoginReq,
+	attr *model.UserAttribute,
+) (*model.User, error) {
+	if attr.Name == "" {
+		attr.Name = *req.Username
+	}
+
+	u := query.User
+	user, err := u.WithContext(c).Where(u.Name.Eq(attr.Name)).First()
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// User exists in the auth method but not in the database, create a new user
+			user, err = createUser(c, attr.Name, req.Password)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
+	}
+
+	// If need to update user attributes
+	newAttr := datatypes.NewJSONType(*attr)
+	if attr.Nickname == nil || reflect.DeepEqual(user.Attributes, newAttr) {
+		return user, nil
+	}
+
+	if _, err := u.WithContext(c).Where(u.ID.Eq(user.ID)).
+		Update(u.Attributes, datatypes.NewJSONType(*attr)); err != nil {
+		return nil, err
+	}
+
+	user.Attributes = newAttr
+	return user, nil
 }
 
 // createUser is called when the user is not found in the database
@@ -219,7 +288,7 @@ func createUser(c context.Context, name string, password *string) (*model.User, 
 		Status:   model.StatusActive,
 		Space:    fmt.Sprintf("u-%s", uuid.New().String()[:8]),
 		Attributes: datatypes.NewJSONType(model.UserAttribute{
-			Email: name + "@***REMOVED***",
+			Email: lo.ToPtr(name + "@***REMOVED***"),
 		}),
 	}
 	if err := u.WithContext(c).Create(&user); err != nil {
@@ -285,7 +354,86 @@ func (mgr *AuthMgr) normalAuth(c *gin.Context, username, password string) error 
 	return nil
 }
 
-func (mgr *AuthMgr) actAuth(username, password string) error {
+// curl --location '***REMOVED***' \
+// --header 'Chameleon-Key: ***REMOVED***' \
+// --header 'Content-Type: application/json' \
+//
+//	--data '{
+//	    "token": "3a719d68-4c83-4ae2-aec9-7afe59c1916c",
+//	    "stamp": "2024-10-17T09:33:09.681Z",
+//	    "sign": "13uVNLrIwwtMUXiRT0Bp3dgDjw/v9/D5rTlD0j+EYgQ="
+//	}'
+//
+//	{
+//	    "data": {
+//	        "account": "liyilong",
+//	        "name": "李亦龙",
+//	        "email": "liyilong@***REMOVED***",
+//	        "teacher": "沃天宇",
+//	        "group": "云计算",
+//	        "ad_expire": "2026-08-01"
+//	    },
+//	    "sign": "e3efIcpnmep6gmJiQQKCX6vOzjRk5o/O4qaEUlc40+4="
+//	}
+type (
+	ActAPIAuthReq struct {
+		Token string `json:"token"`
+		Stamp string `json:"stamp"`
+		Sign  string `json:"sign"`
+	}
+
+	ActAPIAuthResp struct {
+		Data struct {
+			Account  string `json:"account"`
+			Name     string `json:"name"`
+			Email    string `json:"email"`
+			Teacher  string `json:"teacher"`
+			Group    string `json:"group"`
+			AdExpire string `json:"ad_expire"`
+		} `json:"data"`
+		Sign string `json:"sign"`
+	}
+)
+
+func (mgr *AuthMgr) actAPIAuth(_ context.Context, token string, attr *model.UserAttribute) error {
+	timestamp := time.Now().UTC().Format(time.RFC3339)
+	h := hmac.New(sha256.New, []byte(mgr.openAPI.AccessToken))
+	h.Write([]byte(token + timestamp))
+	signature := base64.StdEncoding.EncodeToString(h.Sum(nil))
+
+	// Send request to ACT API with body v
+	var result ActAPIAuthResp
+	resp, err := mgr.req.R().
+		SetBody(&ActAPIAuthReq{
+			Token: token,
+			Stamp: timestamp,
+			Sign:  signature,
+		}).
+		SetHeader("Chameleon-Key", mgr.openAPI.ChameleonKey).
+		SetHeader("Content-Type", "application/json").
+		SetSuccessResult(&result).
+		Post(mgr.openAPI.URL)
+	if err != nil {
+		return err
+	}
+
+	if !resp.IsSuccessState() {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	// TODO(liyilong): 验证返回的签名
+
+	attr.Name = result.Data.Account
+	attr.Nickname = &result.Data.Name
+	attr.Email = &result.Data.Email
+	attr.Teacher = &result.Data.Teacher
+	attr.Group = &result.Data.Group
+	attr.ExpiredAt = &result.Data.AdExpire
+
+	return nil
+}
+
+func (mgr *AuthMgr) actLDAPAuth(_ context.Context, username, password string) error {
 	authConfig := config.GetConfig()
 	// ACT 管理员认证
 	l, err := ldap.DialURL(authConfig.ACT.Auth.Address)
@@ -376,7 +524,7 @@ func (mgr *AuthMgr) Signup(c *gin.Context) {
 	// add default user queue
 	userQueue := model.UserQueue{
 		UserID:     user.ID,
-		QueueID:    2,
+		QueueID:    1,
 		Role:       model.RoleUser,
 		AccessMode: model.AccessModeRW,
 	}
@@ -492,7 +640,7 @@ func (mgr *AuthMgr) SwitchQueue(c *gin.Context) {
 	loginResponse := LoginResp{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		Context: UserContext{
+		Context: AccountContext{
 			Queue:        req.Queue,
 			RoleQueue:    userQueue.Role,
 			AccessQueue:  userQueue.AccessMode,

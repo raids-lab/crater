@@ -33,6 +33,10 @@ act:
     registryUser: ***REMOVED***
     registryPass: ***REMOVED***
     registryProject: crater-images
+  openAPI:
+    url: ***REMOVED***
+    chameleonKey: ***REMOVED***
+    accessToken: ***REMOVED***
   auth:
     userName: ***REMOVED***
     password: ***REMOVED***
