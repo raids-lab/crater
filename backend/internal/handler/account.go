@@ -47,7 +47,7 @@ func (mgr *AccountMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.ListAllForAdmin)
 	g.POST("", mgr.CreateAccount)
 	g.PUT("/:name/quotas", mgr.UpdateQuota)
-	g.DELETE("/:pid", mgr.DeleteProject)
+	g.DELETE("/:pid", mgr.DeleteAccount)
 	g.POST("/add/:pid/:uid", mgr.AddUserProject)
 	g.POST("/update/:pid/:uid", mgr.UpdateUserProject)
 	g.GET("/userIn/:pid", mgr.GetUserInProject)
@@ -370,7 +370,7 @@ type DeleteProjectResp struct {
 	Name string `uri:"name" binding:"required"`
 }
 
-// / DeleteProject godoc
+// / DeleteAccount godoc
 // @Summary 删除项目
 // @Description 删除项目record和队列crd
 // @Tags Project
@@ -382,7 +382,7 @@ type DeleteProjectResp struct {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/admin/projects/{pid} [delete]
-func (mgr *AccountMgr) DeleteProject(c *gin.Context) {
+func (mgr *AccountMgr) DeleteAccount(c *gin.Context) {
 	var req DeleteProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate delete parameters failed, detail: %v", err), resputil.NotSpecified)

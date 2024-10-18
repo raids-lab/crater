@@ -53,7 +53,14 @@ type Config struct {
 			Address  string `yaml:"address"`
 			SearchDN string `yaml:"searchDN"`
 		} `yaml:"auth"`
+		OpenAPI ACTOpenAPI `yaml:"openAPI"`
 	} `yaml:"act"`
+}
+
+type ACTOpenAPI struct {
+	URL          string `yaml:"url"`
+	ChameleonKey string `yaml:"chameleonKey"`
+	AccessToken  string `yaml:"accessToken"`
 }
 
 var (

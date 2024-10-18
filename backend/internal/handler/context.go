@@ -192,14 +192,7 @@ func (mgr *ContextMgr) GetUserInfo(c *gin.Context) {
 	}
 
 	userAttr := user.Attributes.Data()
-	info := UserInfoResp{
-		Nickname: user.Nickname,
-		Email:    userAttr.Email,
-		Avatar:   userAttr.Avatar,
-		Phone:    userAttr.Phone,
-	}
-
-	resputil.Success(c, info)
+	resputil.Success(c, userAttr)
 }
 
 type (
@@ -230,7 +223,7 @@ func (mgr *ContextMgr) ListUserQueue(c *gin.Context) {
 
 	var userQueues []UserQueueResp
 	err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID)).
-		Join(q, uq.QueueID.EqCol(q.ID)).Select(q.Name, q.Nickname, uq.Role, uq.AccessMode).Scan(&userQueues)
+		Join(q, uq.QueueID.EqCol(q.ID)).Select(q.Name, q.Nickname, uq.Role, uq.AccessMode).Order(q.ID).Scan(&userQueues)
 	if err != nil {
 		resputil.Error(c, "List user queue failed", resputil.NotSpecified)
 		return

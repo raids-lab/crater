@@ -33,8 +33,7 @@ func isNodeReady(node *corev1.Node) bool {
 func getNodeRole(node *corev1.Node) string {
 	for key := range node.Labels {
 		switch key {
-		case "node-role.kubernetes.io/master":
-		case "node-role.kubernetes.io/control-plane":
+		case "node-role.kubernetes.io/master", "node-role.kubernetes.io/control-plane":
 			return "master"
 		}
 	}

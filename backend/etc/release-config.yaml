@@ -26,6 +26,10 @@ act:
     registryUser: ***REMOVED***
     registryPass: ***REMOVED***
     registryProject: crater
+  openAPI:
+    url: ***REMOVED***
+    chameleonKey: ***REMOVED***
+    accessToken: ***REMOVED***
   auth:
     userName: ***REMOVED***
     password: ***REMOVED***
