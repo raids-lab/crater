@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/model"
@@ -54,6 +52,7 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 
 	g.GET(":name/detail", mgr.GetJobDetail)
 	g.GET(":name/yaml", mgr.GetJobYaml)
+	g.GET(":name/pods", mgr.GetJobPods)
 
 	// jupyter
 	g.POST("jupyter", mgr.CreateJupyterJob)
@@ -71,7 +70,6 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 
 func (mgr *VolcanojobMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.GetAllJobs)
-	g.GET(":name/detail", mgr.GetAdminJobDetail)
 }
 
 const (
@@ -174,14 +172,6 @@ func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
 	resputil.Success(c, nil)
 }
 
-func (mgr *VolcanojobMgr) getPod(c *gin.Context, namespace, podName string) (*v1.Pod, error) {
-	pod, err := mgr.kubeClient.CoreV1().Pods(namespace).Get(c, podName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return pod, nil
-}
-
 func (mgr *VolcanojobMgr) getPodLog(c *gin.Context, namespace, podName string) (*bytes.Buffer, error) {
 	logOptions := &v1.PodLogOptions{}
 	logReq := mgr.kubeClient.CoreV1().Pods(namespace).GetLogs(podName, logOptions)
@@ -241,7 +231,7 @@ func (mgr *VolcanojobMgr) GetUserJobs(c *gin.Context) {
 		return
 	}
 
-	jobList := mgr.convertJobResp(jobs)
+	jobList := convertJobResp(jobs)
 
 	resputil.Success(c, jobList)
 }
@@ -265,12 +255,12 @@ func (mgr *VolcanojobMgr) GetAllJobs(c *gin.Context) {
 		return
 	}
 
-	jobList := mgr.convertJobResp(jobs)
+	jobList := convertJobResp(jobs)
 
 	resputil.Success(c, jobList)
 }
 
-func (mgr *VolcanojobMgr) convertJobResp(jobs []*model.Job) []JobResp {
+func convertJobResp(jobs []*model.Job) []JobResp {
 	jobList := make([]JobResp, len(jobs))
 	for i := range jobs {
 		job := jobs[i]
@@ -296,18 +286,15 @@ func (mgr *VolcanojobMgr) convertJobResp(jobs []*model.Job) []JobResp {
 
 type (
 	JobDetailResp struct {
-		Name              string         `json:"name"`
-		Namespace         string         `json:"namespace"`
-		Username          string         `json:"username"`
-		JobName           string         `json:"jobName"`
-		Retry             string         `json:"retry"`
-		Queue             string         `json:"queue"`
-		Status            batch.JobPhase `json:"status"`
-		CreationTimestamp metav1.Time    `json:"createdAt"`
-		RunningTimestamp  metav1.Time    `json:"startedAt"`
-		Duration          string         `json:"runtime"`
-		PodDetails        []PodDetail    `json:"podDetails"`
-		UseTensorBoard    bool           `json:"useTensorBoard"`
+		Name               string         `json:"name"`
+		Namespace          string         `json:"namespace"`
+		Username           string         `json:"username"`
+		JobName            string         `json:"jobName"`
+		Queue              string         `json:"queue"`
+		Status             batch.JobPhase `json:"status"`
+		CreationTimestamp  metav1.Time    `json:"createdAt"`
+		RunningTimestamp   metav1.Time    `json:"startedAt"`
+		CompletedTimestamp metav1.Time    `json:"completedAt"`
 	}
 
 	PodDetail struct {
@@ -323,7 +310,7 @@ type (
 // GetJobDetail godoc
 // @Summary 获取jupyter详情
 // @Description 调用k8s get crd
-// @Tags vcjob-jupyter
+// @Tags VolcanoJob
 // @Accept json
 // @Produce json
 // @Security Bearer
@@ -340,138 +327,113 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 	}
 
 	token := util.GetToken(c)
-	job := &batch.Job{}
-	namespace := config.GetConfig().Workspace.Namespace
-	if err := mgr.client.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
+
+	// find from db
+	j := query.Job
+	job, err := j.WithContext(c).
+		Preload(query.Job.Queue).
+		Preload(query.Job.User).
+		Where(j.JobName.Eq(req.JobName)).
+		Where(j.QueueID.Eq(token.QueueID)).
+		Where(j.UserID.Eq(token.UserID)).
+		First()
+	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	if job.Spec.Queue != token.QueueName {
-		resputil.Error(c, "Job not found", resputil.NotSpecified)
-		return
+	jobDetail := JobDetailResp{
+		Name:               job.Name,
+		Namespace:          job.Attributes.Data().Namespace,
+		Username:           job.User.Nickname,
+		JobName:            job.JobName,
+		Queue:              job.Queue.Nickname,
+		Status:             job.Status,
+		CreationTimestamp:  metav1.NewTime(job.CreationTimestamp),
+		RunningTimestamp:   metav1.NewTime(job.RunningTimestamp),
+		CompletedTimestamp: metav1.NewTime(job.CompletedTimestamp),
 	}
-	jobDetail := getJobDetailFuntion(c, mgr, job, namespace)
 	resputil.Success(c, jobDetail)
 }
 
-func getJobDetailFuntion(c *gin.Context, mgr *VolcanojobMgr, job *batch.Job, namespace string) JobDetailResp {
-	// 从job的annotations中获取useTensorBoard的值
-	useTensorBoardStr, exists := job.Annotations[AnnotationKeyUseTensorBoard]
-	useTensorBoard := false
-	if exists {
-		var err error
-		useTensorBoard, err = strconv.ParseBool(useTensorBoardStr)
-		if err != nil {
-			resputil.Error(c, "Invalid useTensorBoard value", resputil.NotSpecified)
-		}
-	}
-
-	var jobDetail JobDetailResp
-	conditions := job.Status.Conditions
-	var runningTimestamp metav1.Time
-	var duration string
-	for _, condition := range conditions {
-		if condition.Status == batch.Running {
-			runningTimestamp = *condition.LastTransitionTime
-			duration = time.Since(runningTimestamp.Time).Truncate(time.Second).String()
-			break
-		} else {
-			runningTimestamp = metav1.Time{}
-			duration = "0s"
-		}
-	}
-
-	retryAmount := 0
-	for _, condition := range conditions {
-		if condition.Status == batch.Restarting {
-			retryAmount += 1
-		}
-	}
-
-	var podName string
-	PodDetails := []PodDetail{}
-	for i := range job.Spec.Tasks {
-		task := &job.Spec.Tasks[i]
-		for j := range task.Replicas {
-			podName = fmt.Sprintf("%s-%s-%d", job.Name, task.Name, j)
-			pod, err := mgr.getPod(c, namespace, podName)
-			if err != nil {
-				continue
-			}
-			// assume one pod running one container
-			if pod.Status.Phase == v1.PodRunning {
-				portStr := ""
-				for _, port := range pod.Spec.Containers[0].Ports {
-					portStr += fmt.Sprintf("%s:%d,", port.Name, port.ContainerPort)
-				}
-				if portStr != "" {
-					portStr = portStr[:len(portStr)-1]
-				}
-				podDetail := PodDetail{
-					Name:     pod.Name,
-					NodeName: pod.Spec.NodeName,
-					IP:       pod.Status.PodIP,
-					Port:     portStr,
-					Resource: model.ResourceListToJSON(pod.Spec.Containers[0].Resources.Requests),
-					Status:   pod.Status.Phase,
-				}
-				PodDetails = append(PodDetails, podDetail)
-			} else {
-				podDetail := PodDetail{
-					Name:   pod.Name,
-					Status: pod.Status.Phase,
-				}
-				PodDetails = append(PodDetails, podDetail)
-			}
-		}
-	}
-
-	jobDetail = JobDetailResp{
-		Name:              job.Annotations[AnnotationKeyTaskName],
-		JobName:           job.Name,
-		Username:          job.Labels[LabelKeyTaskUser],
-		Namespace:         namespace,
-		Queue:             job.Spec.Queue,
-		Status:            job.Status.State.Phase,
-		CreationTimestamp: job.CreationTimestamp,
-		RunningTimestamp:  runningTimestamp,
-		Duration:          duration,
-		Retry:             fmt.Sprintf("%d", retryAmount),
-		PodDetails:        PodDetails,
-		UseTensorBoard:    useTensorBoard,
-	}
-
-	return jobDetail
-}
-
-// GetAdminJobDetail godoc
-// @Summary 获取jupyter详情
-// @Description 调用k8s get crd
-// @Tags vcjob-jupyter
+// GetJobPods godoc
+// @Summary 获取任务的Pod列表
+// @Description 获取任务的Pod列表
+// @Tags VolcanoJob
 // @Accept json
 // @Produce json
 // @Security Bearer
 // @Param jobname query string true "vcjob-name"
-// @Success 200 {object} resputil.Response[any] "任务描述"
+// @Success 200 {object} resputil.Response[any] "Pod列表"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/vcjobs/{name}/detail [get]
-func (mgr *VolcanojobMgr) GetAdminJobDetail(c *gin.Context) {
+// @Router /v1/vcjobs/{name}/pods [get]
+func (mgr *VolcanojobMgr) GetJobPods(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
-	job := &batch.Job{}
-	namespace := config.GetConfig().Workspace.Namespace
-	if err := mgr.client.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
+
+	token := util.GetToken(c)
+	j := query.Job
+	job, err := j.WithContext(c).
+		Where(j.JobName.Eq(req.JobName)).
+		Where(j.QueueID.Eq(token.QueueID)).
+		Where(j.UserID.Eq(token.UserID)).
+		First()
+	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	jobDetail := getJobDetailFuntion(c, mgr, job, namespace)
-	resputil.Success(c, jobDetail)
+	// every pod has label crater.raids.io/base-url: tf-liyilong-1314c
+	// get pods with label selector
+	vcjob := job.Attributes.Data()
+	var podList = &v1.PodList{}
+	if value, ok := vcjob.Labels[LabelKeyBaseURL]; !ok {
+		resputil.Error(c, "label not found", resputil.NotSpecified)
+		return
+	} else {
+		labels := client.MatchingLabels{LabelKeyBaseURL: value}
+		err = mgr.client.List(c, podList, client.InNamespace(vcjob.Namespace), labels)
+		if err != nil {
+			resputil.Error(c, err.Error(), resputil.NotSpecified)
+			return
+		}
+	}
+
+	PodDetails := []PodDetail{}
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		// assume one pod running one container
+		if pod.Status.Phase == v1.PodRunning {
+			portStr := ""
+			for _, port := range pod.Spec.Containers[0].Ports {
+				portStr += fmt.Sprintf("%s:%d,", port.Name, port.ContainerPort)
+			}
+			if portStr != "" {
+				portStr = portStr[:len(portStr)-1]
+			}
+			podDetail := PodDetail{
+				Name:     pod.Name,
+				NodeName: pod.Spec.NodeName,
+				IP:       pod.Status.PodIP,
+				Port:     portStr,
+				Resource: model.ResourceListToJSON(pod.Spec.Containers[0].Resources.Requests),
+				Status:   pod.Status.Phase,
+			}
+			PodDetails = append(PodDetails, podDetail)
+		} else {
+			podDetail := PodDetail{
+				Name:   pod.Name,
+				Status: pod.Status.Phase,
+			}
+			PodDetails = append(PodDetails, podDetail)
+		}
+	}
+
+	resputil.Success(c, PodDetails)
 }
 
 // GetJobYaml godoc
@@ -494,23 +456,23 @@ func (mgr *VolcanojobMgr) GetJobYaml(c *gin.Context) {
 	}
 
 	token := util.GetToken(c)
-	job := &batch.Job{}
-	namespace := config.GetConfig().Workspace.Namespace
-	if err := mgr.client.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
+	j := query.Job
+	job, err := j.WithContext(c).
+		Where(j.JobName.Eq(req.JobName)).
+		Where(j.QueueID.Eq(token.QueueID)).
+		Where(j.UserID.Eq(token.UserID)).
+		First()
+	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
-
-	if job.Spec.Queue != token.QueueName {
-		resputil.Error(c, "Job not found", resputil.NotSpecified)
-		return
-	}
+	vcjob := job.Attributes.Data()
 
 	// prune useless field
-	job.ObjectMeta.ManagedFields = nil
+	vcjob.ObjectMeta.ManagedFields = nil
 
 	// utilize json omitempty tag to further prune
-	jsonData, err := json.Marshal(job)
+	jsonData, err := json.Marshal(vcjob)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -522,6 +484,9 @@ func (mgr *VolcanojobMgr) GetJobYaml(c *gin.Context) {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
+
+	// remove status field
+	delete(prunedJob, "status")
 
 	JobYaml, err := yaml.Marshal(prunedJob)
 	if err != nil {
