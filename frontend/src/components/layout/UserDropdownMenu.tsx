@@ -2,7 +2,6 @@ import { useMemo, type FC } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -21,7 +20,14 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/utils/theme";
 import { toast } from "sonner";
-import { UserRound } from "lucide-react";
+import {
+  ContactRound,
+  LogOutIcon,
+  MoonIcon,
+  SettingsIcon,
+  SunIcon,
+  UserRound,
+} from "lucide-react";
 import { Role } from "@/services/api/auth";
 
 export const UserDropdownMenu: FC = () => {
@@ -57,47 +63,47 @@ export const UserDropdownMenu: FC = () => {
       <DropdownMenuContent className="w-44" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{userInfo.name}</p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {userInfo.name}@act.buaa.edu.cn
+            <p className="text-sm font-medium leading-none">
+              {userInfo.nickname}
+            </p>
+            <p className="overflow-clip text-ellipsis text-xs text-muted-foreground">
+              {userInfo.email}
             </p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {isAdminView ? (
-          <DropdownMenuGroup>
-            <DropdownMenuItem
-              onClick={() => {
+        {account.rolePlatform === Role.Admin && (
+          <DropdownMenuItem
+            onClick={() => {
+              if (isAdminView) {
                 setLastView("portal");
                 navigate("/portal");
                 toast.success("切换至用户视图");
-              }}
-            >
-              切换为普通用户
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-        ) : (
-          <DropdownMenuGroup>
-            {account.rolePlatform === Role.Admin && (
-              <DropdownMenuItem
-                onClick={() => {
-                  setLastView("admin");
-                  navigate("/admin");
-                  toast.success("切换至管理员视图");
-                }}
-              >
-                切换为管理员
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem disabled>个人空间</DropdownMenuItem>
-          </DropdownMenuGroup>
+              } else {
+                setLastView("admin");
+                navigate("/admin");
+                toast.success("切换至管理员视图");
+              }
+            }}
+          >
+            <ContactRound className="mr-2 h-4 w-4" />
+            <span>切换为{isAdminView ? "普通用户" : "管理员"}</span>
+          </DropdownMenuItem>
         )}
         <DropdownMenuItem asChild>
-          <Link to="/portal/setting">系统设置</Link>
+          <Link to="/portal/setting">
+            <SettingsIcon className="mr-2 h-4 w-4" />
+            系统设置
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
         >
+          {theme === "light" ? (
+            <MoonIcon className="mr-2 h-4 w-4" />
+          ) : (
+            <SunIcon className="mr-2 h-4 w-4" />
+          )}
           {theme === "light" ? "深色模式" : "浅色模式"}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -110,7 +116,8 @@ export const UserDropdownMenu: FC = () => {
             toast.success("已退出");
           }}
         >
-          退出登录
+          <LogOutIcon className="mr-2 h-4 w-4" />
+          <span>退出登录</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

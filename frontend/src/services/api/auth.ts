@@ -14,9 +14,10 @@ export interface ISignup {
  * Login
  */
 export interface ILogin {
-  username: string;
-  password: string;
   auth: string;
+  token?: string;
+  username?: string;
+  password?: string;
 }
 
 // const (
@@ -36,7 +37,7 @@ export enum AccessMode {
   ReadWrite,
 }
 
-export interface CurrentAccount {
+export interface AccountContext {
   queue: string;
   roleQueue: Role;
   rolePlatform: Role;
@@ -45,10 +46,22 @@ export interface CurrentAccount {
   space: string;
 }
 
+export interface UserContext {
+  name: string;
+  nickname?: string;
+  email?: string;
+  teacher?: string;
+  group?: string;
+  expire?: string;
+  phone?: string;
+  avatar?: string;
+}
+
 export interface IAuthResponse {
   accessToken: string;
   refreshToken: string;
-  context: CurrentAccount;
+  user: UserContext;
+  context: AccountContext;
 }
 
 export const apiUserSignup = async (user: ISignup) => {

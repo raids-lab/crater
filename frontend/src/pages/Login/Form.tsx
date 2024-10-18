@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   globalLastView,
@@ -23,6 +23,7 @@ import { Role, apiUserLogin } from "@/services/api/auth";
 import LoadableButton from "@/components/custom/LoadableButton";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useEffect } from "react";
 
 const formSchema = z.object({
   username: z
@@ -53,6 +54,8 @@ const formSchema = z.object({
 });
 
 export function LoginForm() {
+  const location = useLocation();
+
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const setUserState = useSetAtom(globalUserInfo);
@@ -62,32 +65,47 @@ export function LoginForm() {
   const lastView = useAtomValue(globalLastView);
 
   const { mutate: loginUser, status } = useMutation({
-    mutationFn: (values: z.infer<typeof formSchema> & { auth: string }) =>
+    mutationFn: (values: {
+      auth: string;
+      username?: string;
+      password?: string;
+      token?: string;
+    }) =>
       apiUserLogin({
+        auth: values.auth,
         username: values.username,
         password: values.password,
-        auth: values.auth,
+        token: values.token,
       }),
-    onSuccess: async (data, { username }) => {
+    onSuccess: async (data) => {
       await queryClient.invalidateQueries();
       setUserState({
-        name: username,
+        ...data.user,
         space: data.context.space,
       });
       setAccount(data.context);
       toast.success(
-        `你好，${data.context.rolePlatform ? "管理员" : "用户"} ${username}`,
+        `你好，${data.context.rolePlatform ? "系统管理员" : "用户"}${data.user.nickname}`,
       );
       // navigate to /portal and clear all history
       const dashboard =
         lastView === "admin" && data.context.rolePlatform === Role.Admin
           ? "/admin"
-          : lastView === "recommend"
-            ? "/recommend"
-            : "/portal";
+          : "/portal/overview";
       navigate(dashboard, { replace: true });
     },
   });
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const token = searchParams.get("token");
+    if (token && token.length > 0) {
+      loginUser({
+        auth: "act-api",
+        token,
+      });
+    }
+  }, [location, loginUser]);
 
   // 1. Define your form.
   const form = useForm<z.infer<typeof formSchema>>({
@@ -108,7 +126,7 @@ export function LoginForm() {
       loginUser({
         username: values.username,
         password: values.password,
-        auth: "act",
+        auth: "act-ldap",
       });
     }
   };
