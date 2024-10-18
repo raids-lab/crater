@@ -508,11 +508,22 @@ type AIJobDetailReq struct {
 }
 
 type AIJobDetailResp struct {
-	vcjob.JobDetailResp
-	ID            uint   `json:"id"`
-	Priority      string `json:"priority"`
-	ProfileStat   string `json:"profileStat"`
-	ProfileStatus string `json:"profileStatus"`
+	Name              string            `json:"name"`
+	Namespace         string            `json:"namespace"`
+	Username          string            `json:"username"`
+	JobName           string            `json:"jobName"`
+	Retry             string            `json:"retry"`
+	Queue             string            `json:"queue"`
+	Status            batch.JobPhase    `json:"status"`
+	CreationTimestamp metav1.Time       `json:"createdAt"`
+	RunningTimestamp  metav1.Time       `json:"startedAt"`
+	Duration          string            `json:"runtime"`
+	PodDetails        []vcjob.PodDetail `json:"podDetails"`
+	UseTensorBoard    bool              `json:"useTensorBoard"`
+	ID                uint              `json:"id"`
+	Priority          string            `json:"priority"`
+	ProfileStat       string            `json:"profileStat"`
+	ProfileStatus     string            `json:"profileStatus"`
 }
 
 // Get godoc
@@ -571,24 +582,22 @@ func (mgr *AIJobMgr) Get(c *gin.Context) {
 	}
 
 	resp := AIJobDetailResp{
-		JobDetailResp: vcjob.JobDetailResp{
-			Name:              taskModel.TaskName,
-			Namespace:         taskModel.Namespace,
-			Username:          taskModel.Owner,
-			JobName:           taskModel.JobName,
-			Retry:             fmt.Sprintf("%d", 0),
-			Queue:             taskModel.UserName,
-			Status:            convertJobPhase(taskModel.Status),
-			CreationTimestamp: metav1.NewTime(taskModel.CreatedAt),
-			RunningTimestamp:  runningTimestamp,
-			Duration:          duration,
-			PodDetails:        podDetail,
-			UseTensorBoard:    false,
-		},
-		ID:            taskModel.ID,
-		Priority:      priority,
-		ProfileStat:   taskModel.ProfileStat,
-		ProfileStatus: strconv.FormatUint(uint64(taskModel.ProfileStatus), 10),
+		Name:              taskModel.TaskName,
+		Namespace:         taskModel.Namespace,
+		Username:          taskModel.Owner,
+		JobName:           taskModel.JobName,
+		Retry:             fmt.Sprintf("%d", 0),
+		Queue:             taskModel.UserName,
+		Status:            convertJobPhase(taskModel.Status),
+		CreationTimestamp: metav1.NewTime(taskModel.CreatedAt),
+		RunningTimestamp:  runningTimestamp,
+		Duration:          duration,
+		PodDetails:        podDetail,
+		UseTensorBoard:    false,
+		ID:                taskModel.ID,
+		Priority:          priority,
+		ProfileStat:       taskModel.ProfileStat,
+		ProfileStatus:     strconv.FormatUint(uint64(taskModel.ProfileStatus), 10),
 	}
 	logutils.Log.Infof("get task success, taskID: %d", req.JobID)
 	resputil.Success(c, resp)
