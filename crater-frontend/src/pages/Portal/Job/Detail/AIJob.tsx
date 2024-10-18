@@ -44,11 +44,11 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
   apiJupyterTokenGet,
-  IJupyterDetail,
   JobPhase,
   apiJobDelete,
   apiJobGetDetail,
   apiJupyterYaml,
+  PodDetail,
 } from "@/services/api/vcjob";
 import CodeSheet from "@/components/codeblock/CodeSheet";
 import JobPhaseLabel from "@/components/phase/JobPhaseLabel";
@@ -62,7 +62,19 @@ export interface Resource {
   [key: string]: string;
 }
 
-interface AIjobDetail extends IJupyterDetail {
+interface AIjobDetail {
+  name: string;
+  namespace: string;
+  username: string;
+  jobName: string;
+  retry: string;
+  queue: string;
+  status: JobPhase;
+  createdAt: string;
+  startedAt: string;
+  runtime: string;
+  podDetails: PodDetail[];
+  useTensorBoard: boolean;
   id: number;
   priority: string;
   profileStat: string;
@@ -97,7 +109,7 @@ export const Component = () => {
   const { id } = useParams<string>();
   const jobName = "" + id;
   const setBreadcrumb = useBreadcrumb();
-  const [data, setData] = useState<IJupyterDetail>(initial);
+  const [data, setData] = useState<AIjobDetail>(initial);
   const [refetchInterval, setRefetchInterval] = useState(5000); // Manage interval state
   const queryClient = useQueryClient();
   const navigate = useNavigate();

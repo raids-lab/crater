@@ -45,11 +45,10 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
   apiJupyterTokenGet,
-  IJupyterDetail,
-  JobPhase,
   apiJobDelete,
   apiJobGetDetail,
   apiJupyterYaml,
+  apiJobGetPods,
 } from "@/services/api/vcjob";
 import CodeSheet from "@/components/codeblock/CodeSheet";
 import JobPhaseLabel from "@/components/phase/JobPhaseLabel";
@@ -61,21 +60,6 @@ export interface Resource {
   [key: string]: string;
 }
 
-const initial: IJupyterDetail = {
-  name: "",
-  namespace: "",
-  username: "",
-  jobName: "",
-  retry: "",
-  queue: "",
-  status: JobPhase.Unknown,
-  createdAt: "",
-  startedAt: "",
-  runtime: "",
-  podDetails: [],
-  useTensorBoard: false,
-};
-
 const job_monitor = import.meta.env.VITE_GRAFANA_JOB_MONITOR;
 // const pod_memory = import.meta.env.VITE_GRAFANA_POD_MEMORY;
 // const k8s_vgpu_scheduler_dashboard = import.meta.env
@@ -85,7 +69,6 @@ export const Component = () => {
   const { id } = useParams<string>();
   const jobName = "" + id;
   const setBreadcrumb = useBreadcrumb();
-  const [data, setData] = useState<IJupyterDetail>(initial);
   const [refetchInterval, setRefetchInterval] = useState(5000); // Manage interval state
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -94,10 +77,17 @@ export const Component = () => {
     PodNamespacedName | undefined
   >();
 
-  const { data: taskList, isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["job", "detail", jobName],
     queryFn: () => apiJobGetDetail(jobName),
     select: (res) => res.data.data,
+    refetchInterval: refetchInterval,
+  });
+
+  const { data: pods, isLoading: podsLoading } = useQuery({
+    queryKey: ["job", "detail", jobName, "pods"],
+    queryFn: () => apiJobGetPods(jobName),
+    select: (res) => res.data.data.sort((a, b) => a.name.localeCompare(b.name)),
     refetchInterval: refetchInterval,
   });
 
@@ -131,14 +121,6 @@ export const Component = () => {
     },
   });
 
-  const { mutate: goToTensorboardPage } = useMutation({
-    mutationFn: (jobName: string) => apiJupyterTokenGet(jobName),
-
-    onSuccess: (_, jobName) => {
-      window.open(`https://crater.act.buaa.edu.cn/tensorboard/${jobName}`);
-    },
-  });
-
   const handleResourceData = (resourceJson: string): Resource => {
     try {
       return JSON.parse(resourceJson) as Resource;
@@ -146,21 +128,20 @@ export const Component = () => {
       return {};
     }
   };
+
   useEffect(() => {
     setBreadcrumb([{ title: "作业详情" }]);
   }, [setBreadcrumb]);
-
-  useEffect(() => {
-    if (!isLoading && taskList) {
-      setData(taskList);
-    }
-  }, [taskList, isLoading, taskList?.runtime]);
 
   useEffect(() => {
     if (!fetchYamlBool && fetchYamlData) {
       setYaml(fetchYamlData);
     }
   }, [fetchYamlBool, fetchYamlData]);
+
+  if (isLoading || podsLoading || !data) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <>
@@ -207,8 +188,8 @@ export const Component = () => {
                 <TableHead className="text-xs">用户</TableHead>
                 <TableHead className="text-xs">命名空间</TableHead>
                 <TableHead className="text-xs">创建于</TableHead>
-                <TableHead className="text-xs">持续时间</TableHead>
-                <TableHead className="text-xs">重试次数</TableHead>
+                <TableHead className="text-xs">开始于</TableHead>
+                <TableHead className="text-xs">完成于</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -223,8 +204,12 @@ export const Component = () => {
                 <TableCell>
                   <TableDate date={data.createdAt} />
                 </TableCell>
-                <TableCell>{data.runtime}</TableCell>
-                <TableCell>{data.retry}</TableCell>
+                <TableCell>
+                  <TableDate date={data.startedAt} />
+                </TableCell>
+                <TableCell>
+                  <TableDate date={data.completedAt} />
+                </TableCell>
               </TableRow>
             </TableBody>
           </Table>
@@ -249,25 +234,6 @@ export const Component = () => {
                 <PieChartIcon className="mr-2 h-4 w-4" />
                 资源监控
               </Button>
-              {data.useTensorBoard && (
-                <>
-                  <Separator orientation="vertical" />
-                  <Button
-                    className="text-primary"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      toast.info("即将跳转至 TensorBoard 页面");
-                      setTimeout(() => {
-                        goToTensorboardPage(jobName);
-                      }, 500);
-                    }}
-                    disabled={data.status !== JobPhase.Running}
-                  >
-                    Go to TensorBoard Page
-                  </Button>
-                </>
-              )}
             </div>
             <div className="flex flex-row gap-2">
               <Button
@@ -332,9 +298,8 @@ export const Component = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.podDetails &&
-              Array.isArray(data.podDetails) &&
-              data.podDetails.map((pod, index) => (
+            {pods &&
+              pods.map((pod, index) => (
                 <TableRow key={index}>
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>
@@ -395,6 +360,7 @@ export const Component = () => {
                         size="icon"
                         className="h-8 w-8 text-primary hover:text-primary/90"
                         title="打开终端"
+                        disabled={pod.status != "Running"}
                         onClick={() => {
                           setShowTerminalPod({
                             namespace: data.namespace,

@@ -320,7 +320,6 @@ const Volcano = () => {
   );
 };
 
-import JobDetail from "./JobDetail";
 import ResourceBadges from "@/components/custom/ResourceBadges";
 import NodeBadges from "@/components/custom/NodeBadges";
 import JobTypeLabel from "@/components/custom/JobTypeLabel";
@@ -338,11 +337,6 @@ export const Component = () => {
     {
       index: true,
       element: <Volcano />,
-    },
-    {
-      path: ":id",
-      element: <JobDetail />,
-      // element: <JupyterDetail />,
     },
   ]);
 

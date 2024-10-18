@@ -60,11 +60,14 @@ const InterOverview = () => {
 
   const refetchTaskList = async () => {
     try {
-      // 并行发送所有异步请求
+      // 隔 200ms 并行发送所有异步请求
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["job"] }),
-        queryClient.invalidateQueries({ queryKey: ["aitask", "quota"] }),
-        queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
+        new Promise((resolve) => setTimeout(resolve, 200)).then(() =>
+          queryClient.invalidateQueries({ queryKey: ["job"] }),
+        ),
+        new Promise((resolve) => setTimeout(resolve, 200)).then(() =>
+          queryClient.invalidateQueries({ queryKey: ["context", "quota"] }),
+        ),
       ]);
     } catch (error) {
       logger.error("更新查询失败", error);
@@ -345,6 +348,11 @@ const InterOverview = () => {
         query={interactiveQuery}
         columns={interColumns}
         toolbarConfig={jobToolbarConfig}
+        handleMultipleDelete={(rows) => {
+          rows.forEach((row) => {
+            deleteTask(row.original.jobName);
+          });
+        }}
       ></DataTable>
     </>
   );
