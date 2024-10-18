@@ -1,7 +1,11 @@
 import { atom, createStore } from "jotai";
 import { atomWithStorage, useResetAtom } from "jotai/utils";
-import { UserInfo } from "@/hooks/useAuth";
-import { AccessMode, Role, CurrentAccount } from "@/services/api/auth";
+import {
+  AccessMode,
+  Role,
+  AccountContext,
+  UserContext,
+} from "@/services/api/auth";
 
 export const store = createStore();
 
@@ -28,7 +32,9 @@ export const globalBreadCrumb = atom([] as BreadCrumbItem[]);
 /**
  * User Info
  */
-const defaultUserContext: UserInfo = {
+const defaultUserContext: UserContext & {
+  space: string;
+} = {
   name: "",
   space: "",
 };
@@ -50,7 +56,7 @@ export const globalLastView = atomWithStorage(LAST_VIEW_KEY, "", undefined, {
   getOnInit: true,
 });
 
-export const defaultAccount: CurrentAccount = {
+export const defaultAccount: AccountContext = {
   queue: "",
   roleQueue: Role.Guest,
   rolePlatform: Role.Guest,

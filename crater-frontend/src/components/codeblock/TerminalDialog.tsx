@@ -98,7 +98,7 @@ function TerminalCard({
   }, [namespacedName, selectedContainer]);
 
   return (
-    <Card className="overflow-hidden rounded-md bg-black p-1 dark:border dark:bg-muted/30 md:col-span-2 xl:col-span-3">
+    <Card className="overflow-hidden rounded-md bg-black p-1 dark:border md:col-span-2 xl:col-span-3">
       <div ref={xtermRef} className="h-full w-full" />
     </Card>
   );

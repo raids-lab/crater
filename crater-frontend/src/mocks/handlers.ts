@@ -34,6 +34,9 @@ export const handlers = [
               accessPublic: AccessMode.NotAllowed,
               space: "",
             },
+            user: {
+              name: "",
+            },
           },
           code: 0,
           msg: "",
