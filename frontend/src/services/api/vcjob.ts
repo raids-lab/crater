@@ -81,9 +81,7 @@ export interface IJupyterDetail {
   status: JobPhase;
   createdAt: string;
   startedAt: string;
-  runtime: string;
-  podDetails: PodDetail[];
-  useTensorBoard: boolean;
+  completedAt: string;
 }
 
 export interface VolumeMount {
@@ -205,6 +203,9 @@ export const apiJobGetDetail = (jobName: string) =>
   instance.get<IResponse<IJupyterDetail>>(
     `${VERSION}/${JOB_URL}/${jobName}/detail`,
   );
+
+export const apiJobGetPods = (jobName: string) =>
+  instance.get<IResponse<PodDetail[]>>(`${VERSION}/${JOB_URL}/${jobName}/pods`);
 
 export const apiJupyterYaml = (jobName: string) =>
   instance.get<IResponse<string>>(`${VERSION}/${JOB_URL}/${jobName}/yaml`);
