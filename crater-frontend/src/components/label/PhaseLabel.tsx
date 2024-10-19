@@ -25,14 +25,14 @@ export const PhaseLabel = <T,>({
   const data = getPhaseLabel(phase);
 
   return (
-    <TooltipProvider>
+    <TooltipProvider delayDuration={100}>
       <Tooltip>
         <TooltipTrigger disabled>
-          <Badge className={cn("cursor-pointer", data.color)} variant="outline">
+          <Badge className={cn("cursor-help", data.color)} variant="outline">
             <div>{data.label}</div>
           </Badge>
         </TooltipTrigger>
-        <TooltipContent>
+        <TooltipContent className="max-w-44 border bg-background text-foreground">
           <p>{data.description}</p>
         </TooltipContent>
       </Tooltip>

@@ -14,7 +14,7 @@ const batchRoutes: RouteObject[] = [
     lazy:
       jobType === "aijobs"
         ? () => import("../Detail/AIJob")
-        : () => import("../Detail/Interactive"),
+        : () => import("../Detail/Base"),
   },
   {
     path: "new-aijobs",

@@ -40,7 +40,7 @@ import { CardTitle } from "@/components/ui-custom/card";
 import SplitButton from "@/components/custom/SplitButton";
 import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
-import ResourceBadges from "@/components/custom/ResourceBadges";
+import ResourceBadges from "@/components/label/ResourceBadges";
 import JobTypeLabel from "@/components/custom/JobTypeLabel";
 import { globalJobUrl } from "@/utils/store";
 import { useAtomValue } from "jotai";

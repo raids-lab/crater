@@ -48,7 +48,7 @@ const CodeSheet = ({
       {/* scroll in sheet: https://github.com/shadcn-ui/ui/issues/16 */}
       <SheetContent className="flex flex-col gap-6 sm:max-w-3xl" side={side}>
         <SheetHeader>
-          <SheetTitle>{title}</SheetTitle>
+          <SheetTitle className="font-mono">{title}</SheetTitle>
         </SheetHeader>
         <Card
           className="relative h-[calc(100vh_-104px)] w-full overflow-hidden bg-slate-900 p-1 text-muted-foreground dark:border"

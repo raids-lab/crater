@@ -34,7 +34,7 @@ import { useNavigate } from "react-router-dom";
 import { useAtomValue } from "jotai";
 import { globalSettings } from "@/utils/store";
 import { DataTable } from "@/components/custom/DataTable";
-import ResourceBadges from "@/components/custom/ResourceBadges";
+import ResourceBadges from "@/components/label/ResourceBadges";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { apiResourceList } from "@/services/api/resource";
 import { ProjectSheet } from "./AccountForm";

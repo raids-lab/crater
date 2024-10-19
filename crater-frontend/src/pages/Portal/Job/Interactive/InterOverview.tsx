@@ -27,7 +27,7 @@ import { toast } from "sonner";
 import { getHeader, jobToolbarConfig } from "@/pages/Portal/Job/statuses";
 import { logger } from "@/utils/loglevel";
 import Quota from "./Quota";
-import JobPhaseLabel from "@/components/phase/JobPhaseLabel";
+import JobPhaseLabel from "@/components/label/JobPhaseLabel";
 import { Link } from "react-router-dom";
 import {
   Card,
@@ -42,8 +42,8 @@ import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
 import { globalJobUrl } from "@/utils/store";
-import NodeBadges from "@/components/custom/NodeBadges";
-import ResourceBadges from "@/components/custom/ResourceBadges";
+import NodeBadges from "@/components/label/NodeBadges";
+import ResourceBadges from "@/components/label/ResourceBadges";
 import JobTypeLabel from "@/components/custom/JobTypeLabel";
 
 const InterOverview = () => {

@@ -7,7 +7,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import JobPhaseLabel, { jobPhases } from "@/components/phase/JobPhaseLabel";
+import JobPhaseLabel, { jobPhases } from "@/components/label/JobPhaseLabel";
 import { JobPhase } from "@/services/api/vcjob";
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
@@ -320,8 +320,8 @@ const Volcano = () => {
   );
 };
 
-import ResourceBadges from "@/components/custom/ResourceBadges";
-import NodeBadges from "@/components/custom/NodeBadges";
+import ResourceBadges from "@/components/label/ResourceBadges";
+import NodeBadges from "@/components/label/NodeBadges";
 import JobTypeLabel from "@/components/custom/JobTypeLabel";
 import {
   Tooltip,
