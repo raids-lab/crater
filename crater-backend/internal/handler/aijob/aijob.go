@@ -20,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
-	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
@@ -573,11 +572,12 @@ func (mgr *AIJobMgr) Get(c *gin.Context) {
 	pod, err := mgr.kubeClient.CoreV1().Pods(taskModel.Namespace).Get(c, podName, metav1.GetOptions{})
 	if err == nil {
 		podDetail = []vcjob.PodDetail{{
-			Name:     pod.Name,
-			NodeName: pod.Spec.NodeName,
-			IP:       pod.Status.PodIP,
-			Resource: model.ResourceListToJSON(pod.Spec.Containers[0].Resources.Requests),
-			Status:   pod.Status.Phase,
+			Name:      pod.Name,
+			Namespace: pod.Namespace,
+			NodeName:  lo.ToPtr(pod.Spec.NodeName),
+			IP:        pod.Status.PodIP,
+			Resource:  pod.Spec.Containers[0].Resources.Requests,
+			Phase:     pod.Status.Phase,
 		}}
 	}
 
