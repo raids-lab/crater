@@ -24,10 +24,18 @@ import { BoxIcon } from "lucide-react";
 import ContainerStatusLabel, {
   ContainerStatus,
 } from "../label/ContainerStatusLabel";
+import { useNamespacedState } from "@/hooks/useNamespacedState";
 
 export interface PodNamespacedName {
   namespace: string;
   name: string;
+}
+
+export type NamespacedName = PodNamespacedName | undefined;
+
+export interface PodContainerDialogProps {
+  namespacedName: NamespacedName;
+  setNamespacedName: (namespacedName: NamespacedName) => void;
 }
 
 function ContainerSelect({
@@ -222,19 +230,19 @@ function Content({
 
   return (
     <>
-      <DialogHeader className="flex h-[48px] flex-row items-center justify-start border-b px-5">
-        <DialogTitle className="text-lg font-semibold">
+      <DialogHeader>
+        <DialogTitle className="font-semibold">
           <span className="font-mono">{podName}</span>
         </DialogTitle>
       </DialogHeader>
-      <div className="mx-5 grid h-[calc(100vh_-176px)] w-[calc(100vw_-144px)] gap-5 pb-5 md:grid-cols-3 xl:grid-cols-4">
+      <div className="grid h-[calc(100vh_-190px)] w-[calc(100vw_-154px)] gap-6 md:grid-cols-3 xl:grid-cols-4">
         {namespacedName && selectedContainer && (
           <ActionComponent
             namespacedName={namespacedName}
             selectedContainer={selectedContainer}
           />
         )}
-        <div className="space-y-3">
+        <div className="space-y-4">
           <ContainerSelect
             currentContainer={selectedContainer}
             setCurrentContainer={setSelectedContainer}
@@ -258,35 +266,21 @@ export function PodContainerDialog({
   namespacedName,
   setNamespacedName,
   ActionComponent,
-}: {
-  // props types
-  namespacedName?: PodNamespacedName;
-  setNamespacedName: (namespacedName: PodNamespacedName | undefined) => void;
+}: PodContainerDialogProps & {
   ActionComponent: React.ComponentType<{
     namespacedName: PodNamespacedName;
     selectedContainer: ContainerInfo;
   }>;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  // if namespacedName is set, open the dialog
-  // if dialog is closed, reset the namespacedName
-  useEffect(() => {
-    if (namespacedName) {
-      setIsOpen(true);
-    }
-  }, [namespacedName]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setNamespacedName(undefined);
-    }
-  }, [isOpen, setNamespacedName]);
+  const [isOpen, setIsOpen] = useNamespacedState(
+    namespacedName,
+    setNamespacedName,
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent
-        className="h-[calc(100vh_-104px)] w-[calc(100vw_-104px)] max-w-full gap-5 p-0"
+        className="h-[calc(100vh_-104px)] w-[calc(100vw_-104px)] max-w-full gap-5"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <Content

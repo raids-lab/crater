@@ -51,13 +51,13 @@ function Content({
 
   return (
     <>
-      <DialogHeader className="flex h-[48px] flex-row items-center justify-start border-b px-5">
-        <DialogTitle className="text-lg font-semibold">
+      <DialogHeader>
+        <DialogTitle className="font-semibold">
           <span className="font-mono">{jobName}</span>
         </DialogTitle>
       </DialogHeader>
       <Card
-        className="relative mx-5 mb-5 h-[calc(100vh_-292px)] w-[calc(100vw_-240px)] overflow-hidden bg-slate-900 p-1 text-muted-foreground dark:border"
+        className="relative h-[calc(100vh_-292px)] w-[calc(100vw_-252px)] overflow-hidden bg-slate-900 p-1 text-muted-foreground dark:border"
         ref={refRoot}
       >
         <ScrollArea style={{ width, height }}>
@@ -101,7 +101,7 @@ export function ConfigDialog({
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent
-        className="h-[calc(100vh_-200px)] w-[calc(100vw_-200px)] max-w-full gap-5 p-0"
+        className="h-[calc(100vh_-200px)] w-[calc(100vw_-200px)] max-w-full gap-5"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <Content jobName={jobName} getConfig={getConfig} language={language} />

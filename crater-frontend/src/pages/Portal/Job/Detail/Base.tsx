@@ -45,6 +45,7 @@ import JobPhaseLabel from "@/components/label/JobPhaseLabel";
 import { TableDate } from "@/components/custom/TableDate";
 import { PodTable } from "./PodTable";
 import { ConfigDialog } from "@/components/codeblock/ConfigDialog";
+import { CardTitle } from "@/components/ui-custom/card";
 export interface Resource {
   [key: string]: string;
 }
@@ -94,10 +95,8 @@ export const Component = () => {
     <>
       <Card className="col-span-3">
         <CardContent className="flex items-center justify-between bg-muted/50 p-6 dark:bg-muted/25">
-          <div className="flex flex-row items-center gap-2">
-            <h1 className="text-xl font-semibold capitalize text-foreground">
-              {data.name}
-            </h1>
+          <div className="flex flex-col items-start gap-2">
+            <CardTitle>{data.name}</CardTitle>
           </div>
           <div className="flex items-center gap-2">
             <Button

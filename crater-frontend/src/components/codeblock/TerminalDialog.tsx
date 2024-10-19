@@ -1,7 +1,11 @@
 import { useEffect, useRef } from "react";
 import { Card } from "../ui/card";
 import { ContainerInfo } from "@/services/api/tool";
-import { PodContainerDialog, PodNamespacedName } from "./PodContainerDialog";
+import {
+  PodContainerDialog,
+  PodContainerDialogProps,
+  PodNamespacedName,
+} from "./PodContainerDialog";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
@@ -107,10 +111,7 @@ function TerminalCard({
 export default function TerminalDialog({
   namespacedName,
   setNamespacedName,
-}: {
-  namespacedName?: PodNamespacedName;
-  setNamespacedName: (namespacedName: PodNamespacedName | undefined) => void;
-}) {
+}: PodContainerDialogProps) {
   return (
     <PodContainerDialog
       namespacedName={namespacedName}

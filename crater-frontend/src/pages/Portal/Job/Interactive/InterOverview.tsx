@@ -10,7 +10,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -45,6 +44,7 @@ import { globalJobUrl } from "@/utils/store";
 import NodeBadges from "@/components/label/NodeBadges";
 import ResourceBadges from "@/components/label/ResourceBadges";
 import JobTypeLabel from "@/components/custom/JobTypeLabel";
+import TooltipButton from "@/components/custom/TooltipButton";
 
 const InterOverview = () => {
   const jobType = useAtomValue(globalJobUrl);
@@ -225,11 +225,11 @@ const InterOverview = () => {
           const jobInfo = row.original;
           return (
             <div className="flex flex-row space-x-1">
-              <Button
+              <TooltipButton
                 variant="outline"
                 size="icon"
-                className="h-8 w-8 text-primary hover:text-primary/90"
-                title="跳转至 Jupyter Lab"
+                className="h-8 w-8 text-primary hover:bg-primary/10 hover:text-primary/90"
+                tooltipContent="跳转至 Jupyter Lab"
                 onClick={() => {
                   toast.info("即将跳转至 Jupyter 页面");
                   setTimeout(() => {
@@ -239,27 +239,27 @@ const InterOverview = () => {
                 disabled={jobInfo.status !== "Running"}
               >
                 <ExternalLink className="h-4 w-4" />
-              </Button>
+              </TooltipButton>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   {jobInfo.status == "Deleted" || jobInfo.status == "Freed" ? (
-                    <Button
+                    <TooltipButton
                       variant="outline"
                       size="icon"
-                      className="h-8 w-8 text-red-600 hover:text-destructive/90"
-                      title="删除 Jupyter Lab"
+                      className="h-8 w-8 text-red-600 hover:bg-destructive/10 hover:text-destructive/90"
+                      tooltipContent="删除作业"
                     >
                       <Trash2Icon className="h-4 w-4" />
-                    </Button>
+                    </TooltipButton>
                   ) : (
-                    <Button
+                    <TooltipButton
                       variant="outline"
                       size="icon"
-                      className="h-8 w-8 text-orange-600 hover:text-destructive/90"
-                      title="停止 Jupyter Lab"
+                      className="h-8 w-8 text-orange-500 hover:bg-orange-500/10 hover:text-orange-500/90"
+                      tooltipContent="停止作业"
                     >
                       <SquareIcon className="h-3.5 w-3.5" strokeWidth={"2.5"} />
-                    </Button>
+                    </TooltipButton>
                   )}
                 </AlertDialogTrigger>
                 <AlertDialogContent>

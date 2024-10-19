@@ -34,7 +34,10 @@ import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
 import PodPhaseLabel, { podPhases } from "@/components/label/PodPhaseLabel";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "../ui/badge";
-import { PodNamespacedName } from "../codeblock/PodContainerDialog";
+import {
+  NamespacedName,
+  PodNamespacedName,
+} from "../codeblock/PodContainerDialog";
 import LogDialog from "../codeblock/LogDialog";
 
 type CardDemoProps = React.ComponentProps<typeof Card> & {
@@ -338,7 +341,7 @@ const getColumns = (
 export const NodeDetail: FC = () => {
   const { id: nodeName } = useParams();
   const setBreadcrumb = useBreadcrumb();
-  const [showLogPod, setShowLogPod] = useState<PodNamespacedName | undefined>();
+  const [showLogPod, setShowLogPod] = useState<NamespacedName>();
 
   const { data: nodeDetail } = useQuery({
     queryKey: ["nodes", nodeName, "detail"],
