@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -226,19 +227,30 @@ type streamHandler struct {
 	ws *websocket.Conn
 }
 
+const (
+	// WriteTimeout specifies the maximum duration for completing a write operation.
+	WriteTimeout = 10 * time.Second
+	// EndOfTransmission represents the signal for ending the transmission (Ctrl+D).
+	EndOfTransmission = "\u0004"
+)
+
 func (h *streamHandler) Write(p []byte) (int, error) {
+	if err := h.ws.SetWriteDeadline(time.Now().Add(WriteTimeout)); err != nil {
+		// If setting the write deadline fails, return the error immediately.
+		return 0, err
+	}
 	err := h.ws.WriteMessage(websocket.TextMessage, p)
 	return len(p), err
 }
 
+// References:
+// - https://github.com/kubernetes/client-go/issues/554
+// - https://github.com/juicedata/juicefs-csi-driver/pull/1053
 func (h *streamHandler) Read(p []byte) (int, error) {
-	// TODO(wuzexing24): Avoid remote terminal leaking.
-	// References:
-	// - https://github.com/kubernetes/client-go/issues/554
-	// - https://github.com/juicedata/juicefs-csi-driver/pull/1053
 	_, message, err := h.ws.ReadMessage()
 	if err != nil {
-		return 0, err
+		// Returns "0x04" on error
+		return copy(p, EndOfTransmission), err
 	}
 	return copy(p, message), nil
 }
