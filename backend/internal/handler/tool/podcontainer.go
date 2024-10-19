@@ -252,9 +252,12 @@ func (mgr *APIServerMgr) GetPodContainerTerminal(c *gin.Context) {
 	var upgrade = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
-		CheckOrigin: func(_ *http.Request) bool {
+	}
+	// Allow all origins in debug mode
+	if gin.Mode() == gin.DebugMode {
+		upgrade.CheckOrigin = func(_ *http.Request) bool {
 			return true
-		},
+		}
 	}
 	ws, err := upgrade.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
