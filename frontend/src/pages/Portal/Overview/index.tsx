@@ -18,7 +18,7 @@ import { JobPhase } from "@/services/api/vcjob";
 import JobPhaseLabel, {
   aijobPhases,
   jobPhases,
-} from "@/components/phase/JobPhaseLabel";
+} from "@/components/label/JobPhaseLabel";
 import { IJobInfo, JobType, apiJobAllList } from "@/services/api/vcjob";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { CardTitle } from "@/components/ui-custom/card";
@@ -28,8 +28,8 @@ import { Button } from "@/components/ui/button";
 import { BoxIcon, FileTextIcon } from "lucide-react";
 import { useNavigate, useRoutes } from "react-router-dom";
 import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
-import ResourceBadges from "@/components/custom/ResourceBadges";
-import NodeBadges from "@/components/custom/NodeBadges";
+import ResourceBadges from "@/components/label/ResourceBadges";
+import NodeBadges from "@/components/label/NodeBadges";
 import JobTypeLabel, { jobTypes } from "@/components/custom/JobTypeLabel";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";

@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
@@ -47,16 +46,17 @@ import {
   JobPhase,
   apiJobDelete,
   apiJobGetDetail,
-  apiJupyterYaml,
+  apiJobGetYaml,
   PodDetail,
 } from "@/services/api/vcjob";
-import CodeSheet from "@/components/codeblock/CodeSheet";
-import JobPhaseLabel from "@/components/phase/JobPhaseLabel";
+import JobPhaseLabel from "@/components/label/JobPhaseLabel";
 import { TableDate } from "@/components/custom/TableDate";
 import { SmallDataCard } from "@/components/custom/DataCard";
 import { ProfileStat } from "@/services/api/aiTask";
 import LogDialog from "@/components/codeblock/LogDialog";
 import { PodNamespacedName } from "@/components/codeblock/PodContainerDialog";
+import ResourceBadges from "@/components/label/ResourceBadges";
+import { ConfigDialog } from "@/components/codeblock/ConfigDialog";
 
 export interface Resource {
   [key: string]: string;
@@ -136,15 +136,6 @@ export const Component = () => {
     setRefetchInterval(intervalMs);
   };
 
-  const [yaml, setYaml] = useState("Loading...");
-
-  const { data: fetchYamlData, isLoading: fetchYamlBool } = useQuery({
-    queryKey: ["job", "yaml", jobName],
-    queryFn: () => apiJupyterYaml(jobName),
-    select: (res) => res.data.data,
-    refetchInterval: refetchInterval,
-  });
-
   const { mutate: deleteJTask } = useMutation({
     mutationFn: () => apiJobDelete(jobName),
     onSuccess: () => {
@@ -161,13 +152,6 @@ export const Component = () => {
     },
   });
 
-  const handleResourceData = (resourceJson: string): Resource => {
-    try {
-      return JSON.parse(resourceJson) as Resource;
-    } catch (error) {
-      return {};
-    }
-  };
   useEffect(() => {
     setBreadcrumb([{ title: "作业详情" }]);
   }, [setBreadcrumb]);
@@ -177,12 +161,6 @@ export const Component = () => {
       setData(taskInfo);
     }
   }, [taskInfo, isLoading, taskInfo?.runtime]);
-
-  useEffect(() => {
-    if (!fetchYamlBool && fetchYamlData) {
-      setYaml(fetchYamlData);
-    }
-  }, [fetchYamlBool, fetchYamlData]);
 
   return (
     <>
@@ -252,12 +230,12 @@ export const Component = () => {
           </Table>
           <div className="mt-4 flex items-center justify-between">
             <div className="flex h-5 items-center space-x-2">
-              <CodeSheet code={yaml} title={jobName + " Job Yaml"}>
+              <ConfigDialog getConfig={apiJobGetYaml} jobName={jobName}>
                 <Button variant="ghost" size="sm">
                   <FileSlidersIcon className="mr-2 h-4 w-4" />
                   作业 YAML
                 </Button>
-              </CodeSheet>
+              </ConfigDialog>
               <Separator orientation="vertical" />
               <Button
                 variant="ghost"
@@ -381,26 +359,9 @@ export const Component = () => {
                     <TableCell>{pod.ip || "---"}</TableCell>
                     <TableCell>{pod.port || "---"}</TableCell>
                     <TableCell>
-                      {/* TODO: @wgz replace with <ResourceBadges resources={resources} /> */}
-                      {pod.resource ? (
-                        <div className="flex flex-row gap-1">
-                          {Object.entries(handleResourceData(pod.resource)).map(
-                            ([key, value]) => (
-                              <Badge
-                                key={key}
-                                variant="secondary"
-                                className="font-normal"
-                              >
-                                {key}: {String(value)}
-                              </Badge>
-                            ),
-                          )}
-                        </div>
-                      ) : (
-                        "---"
-                      )}
+                      <ResourceBadges resources={pod.resource} />
                     </TableCell>
-                    <TableCell>{pod.status || "---"}</TableCell>
+                    <TableCell>{pod.phase || "---"}</TableCell>
                     <TableCell>
                       <div className="flex items-center justify-center space-x-1">
                         <Button

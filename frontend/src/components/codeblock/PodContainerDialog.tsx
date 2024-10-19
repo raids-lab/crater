@@ -16,14 +16,14 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiGetPodContainers, ContainerInfo } from "@/services/api/tool";
 import { toast } from "sonner";
-import ResourceBadges from "../custom/ResourceBadges";
+import ResourceBadges from "../label/ResourceBadges";
 import { cn } from "@/lib/utils";
 import { TableDate } from "../custom/TableDate";
 import { shortenImageName, shortestImageName } from "@/utils/formatter";
 import { BoxIcon } from "lucide-react";
 import ContainerStatusLabel, {
   ContainerStatus,
-} from "../phase/ContainerStatusLabel";
+} from "../label/ContainerStatusLabel";
 
 export interface PodNamespacedName {
   namespace: string;

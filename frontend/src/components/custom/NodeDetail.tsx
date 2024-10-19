@@ -31,7 +31,7 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { ExternalLink, Undo2 } from "lucide-react";
 import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
-import PodPhaseLabel, { podPhases } from "@/components/phase/PodPhaseLabel";
+import PodPhaseLabel, { podPhases } from "@/components/label/PodPhaseLabel";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "../ui/badge";
 import { PodNamespacedName } from "../codeblock/PodContainerDialog";

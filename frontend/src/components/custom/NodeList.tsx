@@ -5,7 +5,7 @@ import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableCo
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import NodeTypeLabel from "@/components/custom/NodeTypeLabel";
+import NodeTypeLabel from "@/components/label/NodeTypeLabel";
 import { NodeType } from "@/services/api/cluster";
 
 interface ResourceInfo {

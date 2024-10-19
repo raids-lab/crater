@@ -4,14 +4,14 @@ import { IResponse } from "../types";
 import { globalJobUrl, store } from "@/utils/store";
 
 export enum JobType {
-  Custom = "training",
   Jupyter = "jupyter",
-  Tensorflow = "tensorflow",
-  Pytorch = "pytorch",
   WebIDE = "webide",
-  Ray = "ray",
+  Pytorch = "pytorch",
+  Tensorflow = "tensorflow",
+  KubeRay = "kuberay",
   DeepSpeed = "deepspeed",
   OpenMPI = "openmpi",
+  Custom = "custom",
 }
 
 export interface IJobInfo {
@@ -65,17 +65,20 @@ export const apiJobInteractiveList = () =>
 
 export interface PodDetail {
   name: string;
+  namespace: string;
   nodename: string;
   ip: string;
   port: string;
-  resource: string;
-  status: string;
+  resource?: Record<string, string>;
+  phase: string;
 }
+
 export interface IJupyterDetail {
   name: string;
   namespace: string;
   username: string;
   jobName: string;
+  jobType: JobType;
   retry: string;
   queue: string;
   status: JobPhase;
@@ -207,7 +210,7 @@ export const apiJobGetDetail = (jobName: string) =>
 export const apiJobGetPods = (jobName: string) =>
   instance.get<IResponse<PodDetail[]>>(`${VERSION}/${JOB_URL}/${jobName}/pods`);
 
-export const apiJupyterYaml = (jobName: string) =>
+export const apiJobGetYaml = (jobName: string) =>
   instance.get<IResponse<string>>(`${VERSION}/${JOB_URL}/${jobName}/yaml`);
 
 export const apiJTaskImageList = (imageTaskType: number) =>
