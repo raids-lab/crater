@@ -13,7 +13,11 @@ import {
 import { useCopyToClipboard } from "usehooks-ts";
 import { ButtonGroup } from "../ui-custom/button-group";
 import { Button } from "../ui/button";
-import { PodContainerDialog, PodNamespacedName } from "./PodContainerDialog";
+import {
+  PodContainerDialog,
+  PodContainerDialogProps,
+  PodNamespacedName,
+} from "./PodContainerDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -228,10 +232,7 @@ function LogCard({
 export default function LogDialog({
   namespacedName,
   setNamespacedName,
-}: {
-  namespacedName?: PodNamespacedName;
-  setNamespacedName: (namespacedName: PodNamespacedName | undefined) => void;
-}) {
+}: PodContainerDialogProps) {
   return (
     <PodContainerDialog
       namespacedName={namespacedName}

@@ -4,15 +4,13 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiJupyterTokenGet } from "@/services/api/vcjob";
 import LogDialog from "@/components/codeblock/LogDialog";
-import { PodNamespacedName } from "@/components/codeblock/PodContainerDialog";
+import { NamespacedName } from "@/components/codeblock/PodContainerDialog";
 import FloatingBall from "./FloatingBall";
 
 const Jupyter: FC = () => {
   // get param from url
   const { id } = useParams();
-  const [namespacedName, setNamespacedName] = useState<
-    PodNamespacedName | undefined
-  >();
+  const [namespacedName, setNamespacedName] = useState<NamespacedName>();
 
   const { data: jupyterInfo } = useQuery({
     queryKey: ["jupyter", id],

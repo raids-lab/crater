@@ -7,12 +7,13 @@ import { EthernetPort, LogsIcon, TerminalIcon } from "lucide-react";
 import { DataTable } from "@/components/custom/DataTable";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { PodNamespacedName } from "@/components/codeblock/PodContainerDialog";
+import { NamespacedName } from "@/components/codeblock/PodContainerDialog";
 import LogDialog from "@/components/codeblock/LogDialog";
 import TerminalDialog from "@/components/codeblock/TerminalDialog";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import NodeBadges from "@/components/label/NodeBadges";
+import PodIngressDialog from "./Ingress";
 
 const getHeader = (key: string): string => {
   switch (key) {
@@ -23,7 +24,7 @@ const getHeader = (key: string): string => {
     case "nodename":
       return "节点";
     case "ip":
-      return "IP";
+      return "内网 IP";
     case "port":
       return "端口";
     case "resource":
@@ -51,10 +52,9 @@ const toolbarConfig: DataTableToolbarConfig = {
 };
 
 export const PodTable = ({ jobName }: { jobName: string }) => {
-  const [showLogPod, setShowLogPod] = useState<PodNamespacedName | undefined>();
-  const [showTerminalPod, setShowTerminalPod] = useState<
-    PodNamespacedName | undefined
-  >();
+  const [showLog, setShowLog] = useState<NamespacedName>();
+  const [showTerminal, setShowTerminal] = useState<NamespacedName>();
+  const [showIngress, setShowIngress] = useState<NamespacedName>();
   const query = useQuery({
     queryKey: ["job", "detail", jobName, "pods"],
     queryFn: () => apiJobGetPods(jobName),
@@ -85,11 +85,22 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
       },
     },
     {
+      accessorKey: "phase",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeader("phase")} />
+      ),
+      cell: ({ row }) => <PodPhaseLabel podPhase={row.getValue("phase")} />,
+      filterFn: (row, id, value) => {
+        return (value as string[]).includes(row.getValue(id));
+      },
+    },
+    {
       accessorKey: "ip",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeader("ip")} />
       ),
       cell: ({ row }) => <p className="font-mono">{row.getValue("ip")}</p>,
+      enableSorting: false,
     },
     {
       accessorKey: "nodename",
@@ -110,23 +121,6 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
       ),
     },
     {
-      accessorKey: "phase",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("phase")} />
-      ),
-      cell: ({ row }) => <PodPhaseLabel podPhase={row.getValue("phase")} />,
-      filterFn: (row, id, value) => {
-        return (value as string[]).includes(row.getValue(id));
-      },
-    },
-    {
-      accessorKey: "port",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("port")} />
-      ),
-      cell: ({ row }) => <>{row.getValue("port")}</>,
-    },
-    {
       id: "actions",
       header: "",
       cell: ({ row }) => {
@@ -136,11 +130,11 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
             <TooltipButton
               variant="outline"
               size="icon"
-              className="h-8 w-8 text-primary hover:text-primary/90"
+              className="h-8 w-8 text-primary hover:bg-primary/10 hover:text-primary/90"
               tooltipContent="打开终端"
               disabled={pod.phase !== "Running"}
               onClick={() => {
-                setShowTerminalPod({
+                setShowTerminal({
                   namespace: pod.namespace,
                   name: pod.name,
                 });
@@ -151,19 +145,25 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
             <TooltipButton
               variant="outline"
               size="icon"
-              className="h-8 w-8 text-purple-500 hover:text-purple-500/90"
-              tooltipContent="设置转发规则"
+              className="h-8 w-8 text-purple-500 hover:bg-purple-500/10 hover:text-purple-500/90"
+              tooltipContent="设置外部访问规则"
               disabled={pod.phase !== "Running"}
+              onClick={() => {
+                setShowIngress({
+                  namespace: pod.namespace,
+                  name: pod.name,
+                });
+              }}
             >
               <EthernetPort className="h-4 w-4" />
             </TooltipButton>
             <TooltipButton
               variant="outline"
               size="icon"
-              className="h-8 w-8 text-orange-500 hover:text-orange-500/90"
+              className="h-8 w-8 text-orange-500 hover:bg-orange-500/10 hover:text-orange-500/90"
               tooltipContent="查看日志"
               onClick={() => {
-                setShowLogPod({
+                setShowLog({
                   namespace: pod.namespace,
                   name: pod.name,
                 });
@@ -188,13 +188,14 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
         query={query}
         columns={columns}
       />
-      <LogDialog
-        namespacedName={showLogPod}
-        setNamespacedName={setShowLogPod}
-      />
+      <LogDialog namespacedName={showLog} setNamespacedName={setShowLog} />
       <TerminalDialog
-        namespacedName={showTerminalPod}
-        setNamespacedName={setShowTerminalPod}
+        namespacedName={showTerminal}
+        setNamespacedName={setShowTerminal}
+      />
+      <PodIngressDialog
+        namespacedName={showIngress}
+        setNamespacedName={setShowIngress}
       />
     </>
   );

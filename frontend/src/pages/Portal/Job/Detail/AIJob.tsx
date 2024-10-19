@@ -54,7 +54,7 @@ import { TableDate } from "@/components/custom/TableDate";
 import { SmallDataCard } from "@/components/custom/DataCard";
 import { ProfileStat } from "@/services/api/aiTask";
 import LogDialog from "@/components/codeblock/LogDialog";
-import { PodNamespacedName } from "@/components/codeblock/PodContainerDialog";
+import { NamespacedName } from "@/components/codeblock/PodContainerDialog";
 import ResourceBadges from "@/components/label/ResourceBadges";
 import { ConfigDialog } from "@/components/codeblock/ConfigDialog";
 
@@ -113,9 +113,7 @@ export const Component = () => {
   const [refetchInterval, setRefetchInterval] = useState(5000); // Manage interval state
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [namespacedName, setNamespacedName] = useState<
-    PodNamespacedName | undefined
-  >();
+  const [namespacedName, setNamespacedName] = useState<NamespacedName>();
 
   const { data: taskInfo, isLoading } = useQuery({
     queryKey: ["job", "detail", jobName],
