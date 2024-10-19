@@ -13,6 +13,7 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/samber/lo"
 	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -290,6 +291,7 @@ type (
 		Namespace          string         `json:"namespace"`
 		Username           string         `json:"username"`
 		JobName            string         `json:"jobName"`
+		JobType            model.JobType  `json:"jobType"`
 		Queue              string         `json:"queue"`
 		Status             batch.JobPhase `json:"status"`
 		CreationTimestamp  metav1.Time    `json:"createdAt"`
@@ -298,12 +300,13 @@ type (
 	}
 
 	PodDetail struct {
-		Name     string      `json:"name"`
-		NodeName string      `json:"nodename"`
-		IP       string      `json:"ip"`
-		Port     string      `json:"port"`
-		Resource string      `json:"resource"`
-		Status   v1.PodPhase `json:"status"`
+		Name      string          `json:"name"`
+		Namespace string          `json:"namespace"`
+		NodeName  *string         `json:"nodename"`
+		IP        string          `json:"ip"`
+		Port      string          `json:"port"`
+		Resource  v1.ResourceList `json:"resource"`
+		Phase     v1.PodPhase     `json:"phase"`
 	}
 )
 
@@ -347,6 +350,7 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		Namespace:          job.Attributes.Data().Namespace,
 		Username:           job.User.Nickname,
 		JobName:            job.JobName,
+		JobType:            job.JobType,
 		Queue:              job.Queue.Nickname,
 		Status:             job.Status,
 		CreationTimestamp:  metav1.NewTime(job.CreationTimestamp),
@@ -406,31 +410,38 @@ func (mgr *VolcanojobMgr) GetJobPods(c *gin.Context) {
 	PodDetails := []PodDetail{}
 	for i := range podList.Items {
 		pod := &podList.Items[i]
-		// assume one pod running one container
-		if pod.Status.Phase == v1.PodRunning {
-			portStr := ""
-			for _, port := range pod.Spec.Containers[0].Ports {
-				portStr += fmt.Sprintf("%s:%d,", port.Name, port.ContainerPort)
+
+		// resource
+		resources := make(v1.ResourceList, 0)
+		for j := range pod.Spec.Containers {
+			container := &pod.Spec.Containers[j]
+			for name, quantity := range container.Resources.Requests {
+				if v, ok := resources[name]; !ok {
+					resources[name] = quantity
+				} else {
+					v.Add(quantity)
+					resources[name] = v
+				}
 			}
-			if portStr != "" {
-				portStr = portStr[:len(portStr)-1]
-			}
-			podDetail := PodDetail{
-				Name:     pod.Name,
-				NodeName: pod.Spec.NodeName,
-				IP:       pod.Status.PodIP,
-				Port:     portStr,
-				Resource: model.ResourceListToJSON(pod.Spec.Containers[0].Resources.Requests),
-				Status:   pod.Status.Phase,
-			}
-			PodDetails = append(PodDetails, podDetail)
-		} else {
-			podDetail := PodDetail{
-				Name:   pod.Name,
-				Status: pod.Status.Phase,
-			}
-			PodDetails = append(PodDetails, podDetail)
 		}
+
+		portStr := ""
+		for _, port := range pod.Spec.Containers[0].Ports {
+			portStr += fmt.Sprintf("%s:%d,", port.Name, port.ContainerPort)
+		}
+		if portStr != "" {
+			portStr = portStr[:len(portStr)-1]
+		}
+		podDetail := PodDetail{
+			Name:      pod.Name,
+			Namespace: pod.Namespace,
+			NodeName:  lo.ToPtr(pod.Spec.NodeName),
+			IP:        pod.Status.PodIP,
+			Port:      portStr,
+			Resource:  resources,
+			Phase:     pod.Status.Phase,
+		}
+		PodDetails = append(PodDetails, podDetail)
 	}
 
 	resputil.Success(c, PodDetails)
@@ -488,10 +499,20 @@ func (mgr *VolcanojobMgr) GetJobYaml(c *gin.Context) {
 	// remove status field
 	delete(prunedJob, "status")
 
-	JobYaml, err := yaml.Marshal(prunedJob)
+	JobYaml, err := marshalYAMLWithIndent(prunedJob, 2)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	resputil.Success(c, string(JobYaml))
+}
+
+func marshalYAMLWithIndent(v any, indent int) ([]byte, error) {
+	var buf bytes.Buffer
+	encoder := yaml.NewEncoder(&buf)
+	encoder.SetIndent(indent)
+	if err := encoder.Encode(v); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }

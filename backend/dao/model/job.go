@@ -22,6 +22,8 @@ const (
 	Pytorch    JobType = "pytorch"
 	Tensorflow JobType = "tensorflow"
 	KubeRay    JobType = "kuberay"
+	DeepSpeed  JobType = "deepspeed"
+	OpenMPI    JobType = "openmpi"
 	Custom     JobType = "custom"
 )
 
