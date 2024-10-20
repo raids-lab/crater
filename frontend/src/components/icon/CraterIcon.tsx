@@ -31,4 +31,5 @@ const SvgComponent = (
   </svg>
 );
 const ForwardRef = forwardRef(SvgComponent);
+ForwardRef.displayName = "CraterIcon";
 export default ForwardRef;

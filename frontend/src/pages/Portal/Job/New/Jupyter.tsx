@@ -283,7 +283,7 @@ export const Component = () => {
         <form
           // eslint-disable-next-line @typescript-eslint/no-misused-promises
           onSubmit={form.handleSubmit(onSubmit)}
-          className="grid flex-1 items-start gap-4 md:col-span-3 md:gap-x-6 lg:grid-cols-3"
+          className="grid items-start gap-4 md:col-span-3 md:gap-x-6 lg:grid-cols-3"
         >
           <div className="items-centor flex flex-row justify-between lg:col-span-3">
             <div className="flex flex-row items-center gap-3">
@@ -296,7 +296,7 @@ export const Component = () => {
               >
                 <ChevronLeftIcon className="h-4 w-4" />
               </Button>
-              <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
+              <h1 className="shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
                 Jupyter Lab
               </h1>
             </div>

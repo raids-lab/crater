@@ -1,31 +1,19 @@
-import { Sidebar, SidebarItem, SidebarMenu } from "@/components/layout/Sidebar";
 import { Outlet, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import CraterIcon from "@/components/icon/CraterIcon";
-import CraterText from "@/components/icon/CraterText";
-import AccountSwitcher from "@/components/layout/AccountSwitcher";
 import { NavBreadcrumb } from "@/components/layout/NavBreadcrumb";
-import { UserDropdownMenu } from "@/components/layout/UserDropdownMenu";
-import { useMemo, useState } from "react";
-import SidebarSheet from "./SidebarSheet";
-import { PanelLeft } from "lucide-react";
-import { useAtomValue } from "jotai";
-import { globalAccount } from "@/utils/store";
-import { Role } from "@/services/api/auth";
+import { useMemo } from "react";
 
-const DashboardLayout = ({
-  sidebarItems: items,
-  sidebarMenus,
-}: {
-  sidebarItems: SidebarItem[];
-  sidebarMenus: SidebarMenu[];
-}) => {
+import { AppSidebar } from "@/components/sidebar/app-sidebar";
+import { Separator } from "@/components/ui/separator";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { NavGroupProps } from "../sidebar/nav-main";
+
+const DashboardLayout = ({ groups }: { groups: NavGroupProps[] }) => {
   const { pathname: rawPath } = useLocation();
-  const [open, setOpen] = useState(false);
-  const currentAccount = useAtomValue(globalAccount);
 
   // 特殊规则，网盘路由切换时，不启用过渡动画
   const motionKey = useMemo(() => {
@@ -36,72 +24,28 @@ const DashboardLayout = ({
     return rawPath;
   }, [rawPath]);
 
-  // 特殊规则，portal 个人账户或者非管理员角色，隐藏账户管理菜单
-  const sidebarItems = useMemo(() => {
-    if (
-      rawPath.startsWith("/portal") &&
-      currentAccount.roleQueue !== Role.Admin
-    ) {
-      return items.filter((item) => item.path !== "account");
-    }
-    return items;
-  }, [items, currentAccount, rawPath]);
-
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40 dark:bg-muted/30">
-      <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background shadow md:flex xl:w-48">
-        <nav className="flex flex-col items-center gap-3 md:py-5">
-          <Link
-            to="/portal"
-            className="group flex h-7 w-full shrink-0 items-center justify-center gap-1"
-          >
-            <CraterIcon className="flex h-7 w-7 group-hover:scale-110" />
-            <CraterText className="hidden h-3.5 xl:flex" />
-            <span className="sr-only">Crater</span>
-          </Link>
-          <Sidebar sidebarItems={sidebarItems} sidebarMenus={sidebarMenus} />
-        </nav>
-      </aside>
-      <div className="flex flex-col md:gap-4 md:py-4 md:pl-14 xl:pl-48">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 md:static md:h-auto md:border-0 md:bg-transparent md:px-8">
-          <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>
-              <Button size="icon" variant="outline" className="md:hidden">
-                <PanelLeft className="h-5 w-5" />
-                <span className="sr-only">Toggle Menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="md:max-w-xs">
-              <Link
-                to="/portal"
-                className="group flex h-10 w-full shrink-0 items-center justify-center gap-1"
-              >
-                <CraterIcon className="flex h-7 w-7 group-hover:scale-110" />
-                <CraterText className="h-3.5 xl:flex" />
-                <span className="sr-only">Crater</span>
-              </Link>
-              <SidebarSheet
-                sidebarItems={sidebarItems}
-                sidebarMenus={sidebarMenus}
-                closeSidebar={() => setOpen(false)}
-              />
-            </SheetContent>
-          </Sheet>
-          <NavBreadcrumb className="hidden md:flex" />
-          <AccountSwitcher className="relative ml-auto flex-1 md:grow-0" />
-          <UserDropdownMenu />
+    <SidebarProvider>
+      <AppSidebar groups={groups} />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+          <div className="flex items-center gap-2 px-6">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            <NavBreadcrumb className="hidden md:flex" />
+          </div>
         </header>
         <motion.div
           key={motionKey}
           initial={{ opacity: 0, y: "3vh" }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", duration: 1.2 }}
-          className="grid flex-1 items-start gap-4 p-4 md:gap-x-6 md:gap-y-8 md:px-8 md:py-0 lg:grid-cols-3"
+          className="flex flex-col gap-6 p-6 pt-0"
         >
           <Outlet />
         </motion.div>
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 };
 

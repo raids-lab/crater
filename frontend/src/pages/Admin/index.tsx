@@ -9,6 +9,7 @@ import { User } from "./User";
 import Resource from "./Cluster/Resource";
 import UserProjectManagement from "./Account/ProjectUser";
 import {
+  BookOpenIcon,
   BoxIcon,
   DatabaseIcon,
   FileTextIcon,
@@ -20,6 +21,7 @@ import {
 } from "lucide-react";
 import { Account } from "./Account";
 import admindatasetRoutes from "./Data";
+import { NavGroupProps } from "@/components/sidebar/nav-main";
 const sidebarItems: SidebarItem[] = [
   {
     path: "cluster",
@@ -143,6 +145,108 @@ const sidebarMenus: SidebarMenu[] = [
   },
 ];
 
+const adminSidebarGroups: NavGroupProps[] = [
+  {
+    title: "作业与服务",
+    items: [
+      {
+        title: "集群管理",
+        isActive: true,
+        url: "cluster",
+        icon: ServerIcon,
+        items: [
+          {
+            title: "节点信息",
+            url: "cluster/node",
+          },
+          {
+            title: "节点标签",
+            url: "cluster/label",
+          },
+          {
+            title: "资源列表",
+            url: "cluster/resource",
+          },
+        ],
+      },
+      {
+        title: "作业管理",
+        url: "job",
+        icon: FlaskConicalIcon,
+      },
+    ],
+  },
+  {
+    title: "用户与账户",
+    items: [
+      {
+        title: "用户管理",
+        url: "user",
+        icon: UserRoundIcon,
+      },
+      {
+        title: "账户管理",
+        url: "account",
+        icon: UsersRoundIcon,
+      },
+    ],
+  },
+  {
+    title: "数据与镜像",
+    items: [
+      {
+        title: "镜像管理",
+        url: "image",
+        icon: BoxIcon,
+        items: [
+          {
+            title: "公共镜像",
+            url: "image/public",
+          },
+          {
+            title: "私有镜像",
+            url: "image/personal",
+          },
+        ],
+      },
+      {
+        title: "数据管理",
+        url: "data",
+        icon: DatabaseIcon,
+        items: [
+          {
+            title: "用户文件",
+            url: "data/user",
+          },
+          {
+            title: "账户文件",
+            url: "data/queue",
+          },
+          {
+            title: "数据集",
+            url: "data/dataset",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    title: "其他",
+    items: [
+      {
+        title: "文档编辑",
+        url: "docs",
+        icon: BookOpenIcon,
+      },
+      {
+        title: "问题反馈",
+        icon: MessageSquareMoreIcon,
+        url: "feedback",
+      },
+    ],
+  },
+];
+
 const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
   const isAuthenticated = useAuth(Role.Admin);
   return isAuthenticated ? children : <Navigate to="/login" replace />;
@@ -153,10 +257,7 @@ export const adminRoute: RouteObject = {
   element: (
     <Suspense fallback={<h2>Loading...</h2>}>
       <AuthedRouter>
-        <DashboardLayout
-          sidebarItems={sidebarItems}
-          sidebarMenus={sidebarMenus}
-        />
+        <DashboardLayout groups={adminSidebarGroups} />
       </AuthedRouter>
     </Suspense>
   ),
