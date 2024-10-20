@@ -110,10 +110,16 @@ type (
 		MountPath string `json:"mountPath"`
 	}
 
+	DatasetMount struct {
+		DatasetID uint   `json:"datasetID"`
+		MountPath string `json:"mountPath"`
+	}
+
 	CreateJobCommon struct {
-		VolumeMounts   []VolumeMount                `json:"volumeMounts"`
-		Envs           []v1.EnvVar                  `json:"envs"`
-		Selectors      []v1.NodeSelectorRequirement `json:"selectors"`
+		VolumeMounts   []VolumeMount                `json:"volumeMounts,omitempty"`
+		DatasetMounts  []DatasetMount               `json:"datasetMounts,omitempty"`
+		Envs           []v1.EnvVar                  `json:"envs,omitempty"`
+		Selectors      []v1.NodeSelectorRequirement `json:"selectors,omitempty"`
 		UseTensorBoard bool                         `json:"useTensorBoard"`
 	}
 )

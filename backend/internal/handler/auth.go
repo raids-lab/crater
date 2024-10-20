@@ -354,27 +354,6 @@ func (mgr *AuthMgr) normalAuth(c *gin.Context, username, password string) error 
 	return nil
 }
 
-// curl --location '***REMOVED***' \
-// --header 'Chameleon-Key: ***REMOVED***' \
-// --header 'Content-Type: application/json' \
-//
-//	--data '{
-//	    "token": "3a719d68-4c83-4ae2-aec9-7afe59c1916c",
-//	    "stamp": "2024-10-17T09:33:09.681Z",
-//	    "sign": "13uVNLrIwwtMUXiRT0Bp3dgDjw/v9/D5rTlD0j+EYgQ="
-//	}'
-//
-//	{
-//	    "data": {
-//	        "account": "liyilong",
-//	        "name": "李亦龙",
-//	        "email": "liyilong@***REMOVED***",
-//	        "teacher": "沃天宇",
-//	        "group": "云计算",
-//	        "ad_expire": "2026-08-01"
-//	    },
-//	    "sign": "e3efIcpnmep6gmJiQQKCX6vOzjRk5o/O4qaEUlc40+4="
-//	}
 type (
 	ActAPIAuthReq struct {
 		Token string `json:"token"`
