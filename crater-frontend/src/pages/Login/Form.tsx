@@ -29,10 +29,10 @@ const formSchema = z.object({
   username: z
     .string()
     .min(1, {
-      message: "Username can not be empty.",
+      message: "用户名不能为空",
     })
     .max(20, {
-      message: "Username must be at most 20 characters.",
+      message: "用户名最多 20 个字符",
     })
     .refine(
       (value) => {
@@ -46,10 +46,10 @@ const formSchema = z.object({
   password: z
     .string()
     .min(1, {
-      message: "Password can not be empty.",
+      message: "密码不能为空",
     })
     .max(20, {
-      message: "Password must be at most 20 characters.",
+      message: "密码最多 20 个字符",
     }),
 });
 
@@ -63,6 +63,30 @@ export function LoginForm() {
   const { resetAll } = useResetStore();
 
   const lastView = useAtomValue(globalLastView);
+
+  // 1. Define your form.
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+    },
+  });
+  const currentValues = form.watch();
+
+  // 2. Define a submit handler.
+  const onSubmit = (values: z.infer<typeof formSchema>) => {
+    // Do something with the form values.
+    // ✅ This will be type-safe and validated.
+    if (status !== "pending") {
+      resetAll();
+      loginUser({
+        username: values.username,
+        password: values.password,
+        auth: "act-ldap",
+      });
+    }
+  };
 
   const { mutate: loginUser, status } = useMutation({
     mutationFn: (values: {
@@ -94,6 +118,12 @@ export function LoginForm() {
           : "/portal/overview";
       navigate(dashboard, { replace: true });
     },
+    onError: () => {
+      form.setError("password", {
+        type: "manual",
+        message: "用户名或密码错误",
+      });
+    },
   });
 
   useEffect(() => {
@@ -106,30 +136,6 @@ export function LoginForm() {
       });
     }
   }, [location, loginUser]);
-
-  // 1. Define your form.
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      username: "",
-      password: "",
-    },
-  });
-  const currentValues = form.watch();
-
-  // 2. Define a submit handler.
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
-    if (status !== "pending") {
-      resetAll();
-      loginUser({
-        username: values.username,
-        password: values.password,
-        auth: "act-ldap",
-      });
-    }
-  };
 
   return (
     <Form {...form}>
