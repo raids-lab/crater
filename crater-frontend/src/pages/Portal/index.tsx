@@ -13,10 +13,13 @@ import {
   MessageSquareMoreIcon,
   UsersRoundIcon,
   SettingsIcon,
+  EditIcon,
 } from "lucide-react";
 import batchRoutes from "./Job/Batch";
 import interactiveRoutes from "./Job/Interactive";
 import datasetRoutes from "./Data";
+import { NavGroupProps } from "@/components/sidebar/nav-main";
+
 const sidebarItems: SidebarItem[] = [
   {
     path: "overview",
@@ -135,14 +138,118 @@ const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
+const userSidebarGroups: NavGroupProps[] = [
+  {
+    title: "作业与服务",
+    items: [
+      {
+        title: "集群概览",
+        url: "overview",
+        icon: BarChartBigIcon,
+      },
+      {
+        title: "我的作业",
+        url: "job",
+        icon: FlaskConicalIcon,
+        isActive: true,
+        items: [
+          {
+            title: "批处理作业",
+            url: "job/batch",
+          },
+          {
+            title: "交互式作业",
+            url: "job/inter",
+          },
+        ],
+      },
+      {
+        title: "我的服务",
+        url: "service",
+        icon: BriefcaseIcon,
+        items: [
+          {
+            title: "微服务",
+            url: "service/microservice",
+          },
+          {
+            title: "无服务",
+            url: "service/serverless",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    title: "数据与镜像",
+    items: [
+      {
+        title: "我的镜像",
+        url: "image",
+        icon: BoxIcon,
+        items: [
+          {
+            title: "镜像制作",
+            url: "image/createimage",
+          },
+          {
+            title: "镜像列表",
+            url: "image/uploadimage",
+          },
+        ],
+      },
+      {
+        title: "数据管理",
+        url: "data",
+        icon: DatabaseIcon,
+        items: [
+          {
+            title: "文件系统",
+            url: "data/filesystem",
+          },
+          {
+            title: "数据集",
+            url: "data/dataset",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    title: "其他",
+    items: [
+      {
+        title: "账户管理",
+        url: "account",
+        icon: UsersRoundIcon,
+        items: [
+          {
+            title: "成员管理",
+            url: "account/member",
+          },
+        ],
+      },
+      {
+        title: "系统设置",
+        url: "setting",
+        icon: SettingsIcon, // 假设你有一个系统设置的图标
+        items: [],
+      },
+      {
+        title: "问题反馈",
+        url: "feedback",
+        icon: EditIcon, // 假设你有一个问题反馈的图标
+        items: [],
+      },
+    ],
+  },
+];
+
 export const portalRoute: RouteObject = {
   path: "/portal",
   element: (
     <AuthedRouter>
-      <DashboardLayout
-        sidebarItems={sidebarItems}
-        sidebarMenus={sidebarMenus}
-      />
+      <DashboardLayout groups={userSidebarGroups} />
     </AuthedRouter>
   ),
   children: [

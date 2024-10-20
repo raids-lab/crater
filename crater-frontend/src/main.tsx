@@ -9,7 +9,6 @@ import "./index.css";
 import Login from "./pages/Login";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import Signup from "./pages/Signup";
 import { portalRoute } from "./pages/Portal";
 import { Toaster } from "@/components/ui-custom/sonner";
 import { ThemeProvider } from "./utils/theme";
@@ -24,10 +23,6 @@ const router = createBrowserRouter([
   {
     path: "/login",
     element: <Login />,
-  },
-  {
-    path: "/signup",
-    element: <Signup />,
   },
   portalRoute,
   adminRoute,

@@ -7,11 +7,11 @@ export const craterPath: PathInfo = {
     {
       path: "overview",
       title: "集群概览",
-      titleNav: "GPU 集群管理系统",
+      titleNav: "异构云资源混合调度与运维平台",
     },
     {
       path: "job",
-      title: "作业管理",
+      title: "我的作业",
       children: [
         {
           path: "batch",
@@ -53,7 +53,7 @@ export const craterPath: PathInfo = {
     },
     {
       path: "service",
-      title: "服务管理",
+      title: "我的服务",
       children: [
         {
           path: "microservice",
@@ -67,7 +67,7 @@ export const craterPath: PathInfo = {
     },
     {
       path: "image",
-      title: "镜像管理",
+      title: "我的镜像",
       children: [
         {
           path: "createimage",
