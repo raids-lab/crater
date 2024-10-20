@@ -11,22 +11,16 @@ import (
 
 	docs "github.com/raids-lab/crater/docs"
 	"github.com/raids-lab/crater/internal/handler"
-	"github.com/raids-lab/crater/internal/handler/aijob"
-	_ "github.com/raids-lab/crater/internal/handler/operations"
-	"github.com/raids-lab/crater/internal/handler/spjob"
-	_ "github.com/raids-lab/crater/internal/handler/tool"
+
 	"github.com/raids-lab/crater/internal/middleware"
-	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/constants"
-	"github.com/raids-lab/crater/pkg/crclient"
-	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 type Backend struct {
 	R *gin.Engine
 }
 
-func Register(registerConfig handler.RegisterConfig, aitaskCtrl aitaskctl.TaskControllerInterface) *Backend {
+func Register(registerConfig handler.RegisterConfig) *Backend {
 	s := new(Backend)
 	s.R = gin.Default()
 
@@ -38,7 +32,7 @@ func Register(registerConfig handler.RegisterConfig, aitaskCtrl aitaskctl.TaskCo
 	})
 
 	// Register custom routes
-	s.RegisterService(registerConfig, aitaskCtrl)
+	s.RegisterService(registerConfig)
 
 	// Swagger
 	// todo: DisablingWrapHandler https://github.com/swaggo/gin-swagger/blob/master/swagger.go#L205
@@ -53,10 +47,7 @@ func Register(registerConfig handler.RegisterConfig, aitaskCtrl aitaskctl.TaskCo
 	return s
 }
 
-func (b *Backend) RegisterService(
-	conf handler.RegisterConfig,
-	aitaskCtrl aitaskctl.TaskControllerInterface,
-) {
+func (b *Backend) RegisterService(conf handler.RegisterConfig) {
 	// Enable CORS for http://localhost:XXXX in debug mode
 	if gin.Mode() == gin.DebugMode {
 		fe := os.Getenv("CRATER_FE_PORT")
@@ -70,22 +61,8 @@ func (b *Backend) RegisterService(
 		}
 	}
 
-	// Init Clients and Configs
-	logClient := crclient.LogClient{Client: conf.Client, KubeClient: conf.KubeClient}
-	harborClient := crclient.NewHarborClient()
+	managers := registerManagers(conf)
 
-	// Init Handlers
-	imagepackMgr := handler.NewImagePackMgr(&logClient, &crclient.ImagePackController{Client: conf.Client}, &harborClient)
-	aijobMgr := aijob.NewAITaskMgr(aitaskCtrl, conf.Client, conf.KubeClient, &logClient)
-	sparseMgr := spjob.NewSparseJobMgr(conf.Client, &logClient)
-
-	var managers = []handler.Manager{}
-
-	for _, register := range handler.Registers {
-		manager := register(conf)
-		managers = append(managers, manager)
-		logutils.Log.Infof("Registering %s", manager.GetName())
-	}
 	///////////////////////////////////////
 	//// Public routers, no need login ////
 	///////////////////////////////////////
@@ -103,10 +80,6 @@ func (b *Backend) RegisterService(
 	protectedRouter := b.R.Group(constants.APIPrefix)
 	protectedRouter.Use(middleware.AuthProtected())
 
-	imagepackMgr.RegisterProtected(protectedRouter.Group("/images"))
-	aijobMgr.RegisterProtected(protectedRouter.Group("/aijobs"))
-	sparseMgr.RegisterProtected(protectedRouter.Group("/spjobs"))
-
 	for _, mgr := range managers {
 		mgr.RegisterProtected(protectedRouter.Group(mgr.GetName()))
 	}
@@ -117,10 +90,6 @@ func (b *Backend) RegisterService(
 
 	adminRouter := b.R.Group(constants.APIPrefix + "/admin")
 	adminRouter.Use(middleware.AuthProtected(), middleware.AuthAdmin())
-
-	imagepackMgr.RegisterAdmin(adminRouter.Group("/images"))
-	aijobMgr.RegisterAdmin(adminRouter.Group("/aijobs"))
-	sparseMgr.RegisterAdmin(adminRouter.Group("/spjobs"))
 
 	for _, mgr := range managers {
 		mgr.RegisterAdmin(adminRouter.Group(mgr.GetName()))

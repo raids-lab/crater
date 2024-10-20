@@ -19,10 +19,28 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/logutils"
-	payload "github.com/raids-lab/crater/pkg/server/payload"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+//nolint:gochecknoinits // This is the standard way to register a gin handler.
+func init() {
+	Registers = append(Registers, NewImagePackMgr)
+}
+
+type ImagePackMgr struct {
+	name            string
+	imagepackClient *crclient.ImagePackController
+	harborClient    *crclient.HarborClient
+}
+
+func NewImagePackMgr(conf RegisterConfig) Manager {
+	harborClient := crclient.NewHarborClient()
+	return &ImagePackMgr{
+		name:            "images",
+		imagepackClient: &crclient.ImagePackController{Client: conf.Client},
+		harborClient:    &harborClient,
+	}
+}
 
 type (
 	ImagePackCreateRequest struct {
@@ -144,26 +162,6 @@ var (
 	DefaultQuotaSize = int64(20 * math.Pow(2, 30))
 )
 
-type ImagePackMgr struct {
-	name            string
-	logClient       *crclient.LogClient
-	imagepackClient *crclient.ImagePackController
-	harborClient    *crclient.HarborClient
-}
-
-func NewImagePackMgr(
-	logClient *crclient.LogClient,
-	imagepackClient *crclient.ImagePackController,
-	harborClient *crclient.HarborClient,
-) Manager {
-	return &ImagePackMgr{
-		name:            "images",
-		logClient:       logClient,
-		imagepackClient: imagepackClient,
-		harborClient:    harborClient,
-	}
-}
-
 func (mgr *ImagePackMgr) GetName() string { return mgr.name }
 
 func (mgr *ImagePackMgr) RegisterPublic(_ *gin.RouterGroup) {}
@@ -177,7 +175,6 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.POST("/params", mgr.UpdateParams)
 	g.POST("/getbyname", mgr.GetImagePackByName)
 	g.GET("/get", mgr.GetImagePackByID)
-	g.GET("/log", mgr.GetImagePackLogByName)
 	g.POST("/quota", mgr.UpdateProjectQuota)
 }
 
@@ -185,7 +182,6 @@ func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("/list", mgr.AdminListAll)
 	g.POST("/create", mgr.AdminCreate)
 	g.POST("/delete", mgr.DeleteByID)
-	g.GET("/log", mgr.GetImagePackLogByName)
 }
 
 // UserCreate godoc
@@ -580,6 +576,10 @@ func (mgr *ImagePackMgr) updateImagePackStatus(c *gin.Context, imagepack *model.
 	}
 }
 
+type GetImagesResp struct {
+	Images []string `json:"images"`
+}
+
 // ListAvailableImages godoc
 // @Summary 用户在运行作业时选择镜像需要调用此接口，来获取可以用的镜像
 // @Description 用queueID来过滤已完成的镜像
@@ -635,7 +635,7 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 		imageLinks[i+len(imagepacks)] = imageuploads[i].ImageLink
 	}
 
-	resp := payload.GetImagesResp{Images: imageLinks}
+	resp := GetImagesResp{Images: imageLinks}
 	resputil.Success(c, resp)
 }
 
@@ -790,47 +790,6 @@ func (mgr *ImagePackMgr) GetImagePackByID(c *gin.Context) {
 		Params:        imagepack.Params,
 	}
 	resputil.Success(c, imageGetResponse)
-}
-
-// GetImagePackLogByName godoc
-// @Summary 获取imagepack的日志信息，展示在镜像详情页
-// @Description 获取imagepackname，搜索到imagepack
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param imagepackname query string true "获取ImagePack的name"
-// @Router /v1/images/log [GET]
-func (mgr *ImagePackMgr) GetImagePackLogByName(c *gin.Context) {
-	var req ImagePackLogRequest
-	var kanikoPod *corev1.Pod
-	var err error
-	var podLogs string
-	if err = c.ShouldBindQuery(&req); err != nil {
-		msg := fmt.Sprintf("validate list parameters failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
-		return
-	}
-	imagepackQuery := query.ImagePack
-	imagepack, _ := imagepackQuery.WithContext(c).
-		Where(imagepackQuery.ID.Eq(req.ID)).
-		First()
-	if kanikoPod, err = mgr.imagepackClient.GetImagePackPod(c, imagepack.ImagePackName, UserNameSpace); err != nil {
-		msg := fmt.Sprintf("couldn't fetch imagepack pod by podName %s, pod maybe deleted", imagepack.ImagePackName)
-		logResponse := ImagePackLogResponse{Content: msg}
-		resputil.Success(c, logResponse)
-		return
-	}
-	if podLogs, err = mgr.logClient.GetPodLogs(kanikoPod); err != nil {
-		msg := "couldn't fetch logs of imagepack pod"
-		logResponse := ImagePackLogResponse{Content: msg}
-		resputil.Success(c, logResponse)
-		return
-	}
-	logResponse := ImagePackLogResponse{
-		Content: podLogs,
-	}
-	resputil.Success(c, logResponse)
 }
 
 func (mgr *ImagePackMgr) checkExistProject(c *gin.Context, token util.JWTMessage) error {

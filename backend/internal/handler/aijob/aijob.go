@@ -29,7 +29,6 @@ import (
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	"github.com/raids-lab/crater/pkg/config"
-	"github.com/raids-lab/crater/pkg/crclient"
 	tasksvc "github.com/raids-lab/crater/pkg/db/task"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
@@ -37,24 +36,26 @@ import (
 	"github.com/raids-lab/crater/pkg/util"
 )
 
+//nolint:gochecknoinits // This is the standard way to register a gin handler.
+func init() {
+	handler.Registers = append(handler.Registers, NewAITaskMgr)
+}
+
 type AIJobMgr struct {
 	name           string
 	client         client.Client
 	kubeClient     kubernetes.Interface
 	taskService    tasksvc.DBService
-	logClient      *crclient.LogClient
 	taskController aitaskctl.TaskControllerInterface
 }
 
-func NewAITaskMgr(taskController aitaskctl.TaskControllerInterface, cl client.Client,
-	kc kubernetes.Interface, logClient *crclient.LogClient) handler.Manager {
+func NewAITaskMgr(conf handler.RegisterConfig) handler.Manager {
 	return &AIJobMgr{
 		name:           "aijobs",
-		client:         cl,
-		kubeClient:     kc,
+		client:         conf.Client,
+		kubeClient:     conf.KubeClient,
 		taskService:    tasksvc.NewDBService(),
-		logClient:      logClient,
-		taskController: taskController,
+		taskController: conf.AITaskCtrl,
 	}
 }
 
@@ -69,7 +70,6 @@ func (mgr *AIJobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("quota", mgr.GetQuota)
 	g.DELETE(":id", mgr.Delete)
 
-	g.GET(":id/log", mgr.GetLogs)
 	g.GET(":id/yaml", mgr.GetJobYaml)
 	g.GET(":id/detail", mgr.Get)
 
@@ -232,6 +232,10 @@ type (
 		Resource              v1.ResourceList `json:"resource"`
 		Image                 string          `json:"image" binding:"required"`
 	}
+
+	CreateTaskReq struct {
+		models.TaskAttr
+	}
 )
 
 func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
@@ -242,7 +246,7 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 		return
 	}
 
-	var req payload.CreateTaskReq
+	var req CreateTaskReq
 
 	req.TaskName = vcReq.Name
 	req.Namespace = config.GetConfig().Workspace.Namespace
@@ -377,7 +381,7 @@ func (mgr *AIJobMgr) Create(c *gin.Context) {
 		return
 	}
 
-	var req payload.CreateTaskReq
+	var req CreateTaskReq
 
 	token := interutil.GetToken(c)
 	req.TaskName = vcReq.Name
@@ -611,53 +615,6 @@ type AIJobLogResp struct {
 	Logs map[string]string `json:"logs"`
 }
 
-// GetLogs godoc
-// @Summary Get AI job logs
-// @Description Get AI job logs by client-go
-// @Tags AIJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param id path uint true "Job ID"
-// @Success 200 {object} resputil.Response[any] "AI Job Logs"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/aijobs/{id}/log [get]
-func (mgr *AIJobMgr) GetLogs(c *gin.Context) {
-	var req AIJobLogReq
-	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-	token := interutil.GetToken(c)
-	taskModel, err := mgr.taskService.GetByQueueAndID(token.QueueName, req.JobID)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
-		return
-	}
-	// get log
-	pods, err := mgr.logClient.GetPodsWithLabel(taskModel.Namespace, taskModel.JobName)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("get task log failed, err %v", err), resputil.NotSpecified)
-		return
-	}
-	logs := make(map[string]string, len(pods))
-	for i := range pods {
-		pod := &pods[i]
-		podLog, err := mgr.logClient.GetPodLogs(pod)
-		if err != nil {
-			resputil.Error(c, fmt.Sprintf("get task log failed, err %v", err), resputil.NotSpecified)
-			return
-		}
-		logs[pod.Name] = podLog
-	}
-	resp := AIJobLogResp{
-		Logs: logs,
-	}
-	logutils.Log.Infof("get task success, taskID: %d", req.JobID)
-	resputil.Success(c, resp)
-}
-
 // Delete godoc
 // @Summary Delete an AI job
 // @Description Delete an AI job by client-go
@@ -697,9 +654,14 @@ func (mgr *AIJobMgr) Delete(c *gin.Context) {
 	resputil.Success(c, "")
 }
 
+type UpdateTaskSLOReq struct {
+	TaskID uint `json:"taskID" binding:"required"`
+	SLO    uint `json:"slo"` // change the slo of the task
+}
+
 func (mgr *AIJobMgr) UpdateSLO(c *gin.Context) {
 	logutils.Log.Infof("Task Update, url: %s", c.Request.URL)
-	var req payload.UpdateTaskSLOReq
+	var req UpdateTaskSLOReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate update parameters failed, err %v", err), resputil.NotSpecified)
 		return
@@ -719,19 +681,6 @@ func (mgr *AIJobMgr) UpdateSLO(c *gin.Context) {
 	mgr.NotifyTaskUpdate(req.TaskID, token.Username, util.UpdateTask)
 	logutils.Log.Infof("update task success, taskID: %d", req.TaskID)
 	resputil.Success(c, "")
-}
-
-func (mgr *AIJobMgr) GetTaskStats(c *gin.Context) {
-	token := interutil.GetToken(c)
-	taskCountList, err := mgr.taskService.GetUserTaskStatusCount(token.Username)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("get task count statistic failed, err %v", err), resputil.NotSpecified)
-		return
-	}
-	resp := payload.AITaskStatistic{
-		TaskCount: taskCountList,
-	}
-	resputil.Success(c, resp)
 }
 
 func convertJobPhase(aijobStatus string) batch.JobPhase {
