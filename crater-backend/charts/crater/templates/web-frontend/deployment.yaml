@@ -1,0 +1,32 @@
+# nginx-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crater-web-frontend
+  namespace: crater
+  labels:
+    app: crater-web-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: crater-web-frontend
+  template:
+    metadata:
+      labels:
+        app: crater-web-frontend
+    spec:
+      containers:
+        - name: crater-web-frontend-container
+          image: {{ .Values.web.frontend.image.repository }}:{{ .Values.web.frontend.image.tag }}
+          pullPolicy: {{ .Values.web.frontend.image.pullPolicy }}
+          ports:
+            - containerPort: 80
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: nvidia.com/gpu.present
+                    operator: Exists
+              topologyKey: kubernetes.io/hostname

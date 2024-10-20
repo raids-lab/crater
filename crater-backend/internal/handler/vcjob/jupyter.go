@@ -22,6 +22,10 @@ import (
 	bus "volcano.sh/apis/pkg/apis/bus/v1alpha1"
 )
 
+const (
+	ThreeDaySeconds int32 = 259200
+)
+
 type (
 	CreateJupyterReq struct {
 		CreateJobCommon `json:",inline"`
@@ -149,9 +153,11 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 			Annotations: annotations,
 		},
 		Spec: batch.JobSpec{
-			MinAvailable:  1,
-			SchedulerName: VolcanoSchedulerName,
-			Queue:         token.QueueName,
+			// 3 days
+			TTLSecondsAfterFinished: lo.ToPtr(ThreeDaySeconds),
+			MinAvailable:            1,
+			SchedulerName:           VolcanoSchedulerName,
+			Queue:                   token.QueueName,
 			Policies: []batch.LifecyclePolicy{
 				{
 					Action: bus.RestartJobAction,
