@@ -231,8 +231,9 @@ func main() {
 		Kubeconfig:       cfg,
 		KubeClient:       clientset,
 		PrometheusClient: prometheusClient,
+		AITaskCtrl:       taskCtrl,
 	}
-	backend := internal.Register(registerConfig, taskCtrl)
+	backend := internal.Register(registerConfig)
 	if err := backend.R.Run(backendConfig.ServerAddr); err != nil {
 		setupLog.Error(err, "problem running server")
 		os.Exit(1)

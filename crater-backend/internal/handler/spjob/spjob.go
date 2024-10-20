@@ -16,14 +16,17 @@ import (
 	recommenddljobapi "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
-	"github.com/raids-lab/crater/pkg/server/payload"
 	utils "github.com/raids-lab/crater/pkg/util"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 )
+
+//nolint:gochecknoinits // This is the standard way to register a gin handler.
+func init() {
+	handler.Registers = append(handler.Registers, NewSparseJobMgr)
+}
 
 const AnnotationKeyTaskName = "crater.raids.io/task-name"
 
@@ -39,14 +42,12 @@ var jobStatusMap = map[corev1.PodPhase]batch.JobPhase{
 type SparseJobMgr struct {
 	name      string
 	jobclient *crclient.RecommendDLJobController
-	logClient *crclient.LogClient
 }
 
-func NewSparseJobMgr(crClient client.Client, logClient *crclient.LogClient) handler.Manager {
+func NewSparseJobMgr(conf handler.RegisterConfig) handler.Manager {
 	return &SparseJobMgr{
 		name:      "spjobs",
-		jobclient: &crclient.RecommendDLJobController{Client: crClient},
-		logClient: logClient,
+		jobclient: &crclient.RecommendDLJobController{Client: conf.Client},
 	}
 }
 
@@ -59,7 +60,6 @@ func (mgr *SparseJobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("all", mgr.List)
 	g.DELETE(":name", mgr.Delete)
 
-	g.GET(":name/log", mgr.GetLogs)
 	g.GET(":name/detail", mgr.GetByName)
 	g.GET(":name/yaml", mgr.GetYaml)
 
@@ -351,46 +351,6 @@ func (mgr *SparseJobMgr) GetPodsByName(c *gin.Context, name string) []*corev1.Po
 		return nil
 	}
 	return podList
-}
-
-func (mgr *SparseJobMgr) GetLogs(c *gin.Context) {
-	var req GetRecommendDLJobReq
-	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-
-	var err error
-	if _, err = mgr.jobclient.GetRecommendDLJob(c, req.Name, dlNamespace); err != nil {
-		resputil.Error(c, fmt.Sprintf("get recommenddljob failed, err:%v", err), resputil.NotSpecified)
-		return
-	}
-
-	var podList []*corev1.Pod
-	if podList, err = mgr.jobclient.GetRecommendDLJobPodList(c, req.Name, dlNamespace); err != nil {
-		resputil.Error(c, fmt.Sprintf("get recommenddljob pods failed, err:%v", err), resputil.NotSpecified)
-		return
-	}
-
-	// Get the logs of the job pod
-	var logs []string
-	for i := range podList {
-		pod := podList[i]
-		if pod.Status.Phase != corev1.PodRunning {
-			continue
-		}
-		podLog, err := mgr.logClient.GetPodLogs(pod)
-		if err != nil {
-			resputil.Error(c, fmt.Sprintf("get task log failed, err %v", err), resputil.NotSpecified)
-			return
-		}
-		logs = append(logs, podLog)
-	}
-	resp := payload.GetTaskLogResp{
-		Logs: logs,
-	}
-
-	resputil.Success(c, resp)
 }
 
 func (mgr *SparseJobMgr) GetYaml(c *gin.Context) {
