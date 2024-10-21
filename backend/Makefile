@@ -68,8 +68,8 @@ build: fmt # generate vet ## Build manager binary.
 
 .PHONY: run
 run: fmt # manifests generate vet ## Run a controller from your host.
-	export KUBECONFIG=$(KUBECONFIG_PATH) && \
-	go run main.go --config-file $(CONFIG_FILE) --server-port $(SERVER_PORT)
+	export KUBECONFIG="$(KUBECONFIG_PATH)" && \
+	go run main.go --config-file "$(CONFIG_FILE)" --server-port $(SERVER_PORT)
 
 # If you wish built the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
