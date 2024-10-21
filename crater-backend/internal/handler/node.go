@@ -112,7 +112,7 @@ func (mgr *NodeMgr) GetNode(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param name query string false "节点名称"
-// @Success 200 {object} resputil.Response[payload.ClusterNodePodInfo] "成功返回值描述"
+// @Success 200 {object} resputil.Response[any] "成功返回值描述"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/nodes/{name}/pod/ [get]

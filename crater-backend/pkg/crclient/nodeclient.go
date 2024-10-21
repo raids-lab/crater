@@ -6,6 +6,7 @@ import (
 
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/server/payload"
+	"github.com/raids-lab/crater/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -150,52 +151,32 @@ func (nc *NodeClient) GetNode(ctx context.Context, name string) (payload.Cluster
 	return nodeInfo, nil
 }
 
-func (nc *NodeClient) GetPodsForNode(ctx context.Context, name string) (*payload.ClusterNodePodInfo, error) {
-	node := &corev1.Node{}
-
-	err := nc.Get(ctx, client.ObjectKey{
-		Namespace: "",
-		Name:      name,
-	}, node)
-	if err != nil {
-		return nil, err
-	}
-
-	// 初始化节点信息
-	nodeInfo := payload.ClusterNodePodInfo{
-		Pods: []payload.Pod{},
-	}
-
-	// 使用KubeClient获取当前节点上的所有Pods
-	podList, err := nc.KubeClient.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{
-		FieldSelector: "spec.nodeName=" + node.Name,
+func (nc *NodeClient) GetPodsForNode(ctx context.Context, nodeName string) ([]payload.Pod, error) {
+	// Get Pods for the node, which is a costly operation
+	// TODO(zhangry): Add a cache for this? Or query from Prometheus?
+	podList, err := nc.KubeClient.CoreV1().Pods("").List(ctx, metav1.ListOptions{
+		FieldSelector: "spec.nodeName=" + nodeName,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	// 遍历当前节点的Pods，收集所需信息
+	// Initialize the return value
+	pods := make([]payload.Pod, len(podList.Items))
 	for i := range podList.Items {
 		pod := &podList.Items[i]
-		ownerKind := ""
-		for _, owner := range pod.OwnerReferences {
-			ownerKind = owner.Kind
+		pods[i] = payload.Pod{
+			Name:           pod.Name,
+			Namespace:      pod.Namespace,
+			IP:             pod.Status.PodIP,
+			CreateTime:     pod.CreationTimestamp,
+			Status:         pod.Status.Phase,
+			OwnerReference: pod.OwnerReferences,
+			Resources:      utils.CalculateRequsetsByContainers(pod.Spec.Containers),
 		}
-		podInfo := payload.Pod{
-			Name:       pod.Name,
-			Namespace:  pod.Namespace,
-			IP:         pod.Status.PodIP,
-			CreateTime: pod.CreationTimestamp.String(),
-			Status:     string(pod.Status.Phase),
-			CPU:        nc.PrometheusClient.QueryPodCPUUsage(pod.Name),
-			Mem:        fomatMemoryLoad(nc.PrometheusClient.QueryPodMemoryUsage(pod.Name)),
-			OwnerKind:  ownerKind,
-		}
-
-		nodeInfo.Pods = append(nodeInfo.Pods, podInfo)
 	}
 
-	return &nodeInfo, nil
+	return pods, nil
 }
 
 func (nc *NodeClient) GetNodeGPUInfo(name string) (payload.GPUInfo, error) {
