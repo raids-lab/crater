@@ -181,6 +181,13 @@ func (nc *NodeClient) GetPodsForNode(ctx context.Context, name string) (*payload
 		for _, owner := range pod.OwnerReferences {
 			ownerKind = owner.Kind
 		}
+		podResource := make(map[string]int)
+		podResource["cpu"] = nc.PrometheusClient.QueryPodCPUAllocate(pod.Name, pod.Namespace)
+		podResource["memory"] = 1
+		gpuAllocate := nc.PrometheusClient.QueryPodGPUAllocate(pod.Name, pod.Namespace)
+		for key, value := range gpuAllocate {
+			podResource[key] = value
+		}
 		podInfo := payload.Pod{
 			Name:       pod.Name,
 			Namespace:  pod.Namespace,
@@ -190,6 +197,7 @@ func (nc *NodeClient) GetPodsForNode(ctx context.Context, name string) (*payload
 			CPU:        nc.PrometheusClient.QueryPodCPUUsage(pod.Name),
 			Mem:        fomatMemoryLoad(nc.PrometheusClient.QueryPodMemoryUsage(pod.Name)),
 			OwnerKind:  ownerKind,
+			Resource:   podResource,
 		}
 
 		nodeInfo.Pods = append(nodeInfo.Pods, podInfo)
