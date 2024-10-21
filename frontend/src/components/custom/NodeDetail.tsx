@@ -9,7 +9,6 @@ import {
   apiGetNodePods,
   IClusterPodInfo,
 } from "@/services/api/cluster";
-import { apiGetNodeGPU } from "@/services/api/cluster";
 import { TableDate } from "@/components/custom/TableDate";
 import {
   DropdownMenu,
@@ -26,7 +25,6 @@ import {
   CardContent,
   CardDescription,
   CardFooter,
-  CardHeader,
 } from "@/components/ui/card";
 import { useNavigate, useParams } from "react-router-dom";
 import { ExternalLink, Undo2 } from "lucide-react";
@@ -39,6 +37,7 @@ import {
   PodNamespacedName,
 } from "../codeblock/PodContainerDialog";
 import LogDialog from "../codeblock/LogDialog";
+import ResourceBadges from "../label/ResourceBadges";
 
 type CardDemoProps = React.ComponentProps<typeof Card> & {
   nodeInfo?: {
@@ -53,8 +52,7 @@ type CardDemoProps = React.ComponentProps<typeof Card> & {
   };
 };
 
-const job_monitor = import.meta.env.VITE_GRAFANA_JOB_MONITOR;
-const pod_memory = import.meta.env.VITE_GRAFANA_POD_MEMORY;
+const POD_MONITOR = import.meta.env.VITE_GRAFANA_POD_MEMORY;
 
 // CardDemo 组件
 export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
@@ -116,66 +114,22 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
   );
 }
 
-export function GPUDetails({ nodeName }: { nodeName: string }) {
-  // const nodeName = nodeInfo.name; // Now properly typed as string
-
-  const {
-    data: gpuInfo,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["admin", "nodes", nodeName, "gpu"],
-    queryFn: () => apiGetNodeGPU(nodeName),
-    select: (res) => res.data.data,
-    enabled: !!nodeName,
-    refetchInterval: 5000,
-  });
-
-  if (isLoading || error || !gpuInfo || !gpuInfo.haveGPU) return <></>; // 如果没有 GPU 数据或节点不包含 GPU，不显示组件
-  return (
-    <Card className="mt-4">
-      <CardHeader>
-        <CardTitle>节点GPU情况</CardTitle>
-        <CardDescription>显示节点的 GPU 数量和利用率</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <div className="mb-2 flex justify-between">
-          <p className="text-xs">GPU 数量:</p>
-          <p className="text-sm font-medium">{gpuInfo.gpuCount}</p>
-        </div>
-        {Object.entries(gpuInfo.gpuUtil).map(([id, util]) => {
-          const jobUrl = `${job_monitor}?orgId=1&var-job=${gpuInfo.relateJobs[parseInt(id)]}`;
-
-          return (
-            <>
-              <div className="mb-2 flex justify-between" key={id}>
-                <p className="text-xs">GPU {id} 利用率:</p>
-                <p
-                  className={`text-sm font-medium ${util > 0 ? "text-green-500" : ""}`}
-                >
-                  {util}%
-                </p>
-              </div>
-              <div className="mb-2 flex justify-between" key={id}>
-                <p className="text-xs">关联Job:</p>
-                <p className="text-sm font-medium">
-                  <a
-                    href={jobUrl}
-                    className="hover:underline"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {gpuInfo.relateJobs[parseInt(id)]}
-                  </a>
-                </p>
-              </div>
-            </>
-          );
-        })}
-      </CardContent>
-    </Card>
-  );
-}
+const getHeader = (name: string): string => {
+  switch (name) {
+    case "type":
+      return "类型";
+    case "name":
+      return "Pod 名称";
+    case "status":
+      return "状态";
+    case "createTime":
+      return "创建于";
+    case "resources":
+      return "资源预算";
+    default:
+      return name;
+  }
+};
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -190,22 +144,22 @@ const toolbarConfig: DataTableToolbarConfig = {
       defaultValues: ["Running"],
     },
     {
-      key: "ownerKind",
+      key: "type",
       title: "类型",
       option: [
         {
-          value: "Job",
+          value: "batch.volcano.sh/v1alpha1/Job",
           label: "BASE",
         },
         {
-          value: "AIJob",
+          value: "aisystem.github.com/v1alpha1/AIJob",
           label: "EMIAS",
         },
       ],
-      defaultValues: ["Job"],
+      defaultValues: ["batch.volcano.sh/v1alpha1/Job"],
     },
   ],
-  getHeader: (x) => x,
+  getHeader: getHeader,
 };
 
 const getColumns = (
@@ -213,14 +167,22 @@ const getColumns = (
   handleShowPodLog: (namespacedName: PodNamespacedName) => void,
 ): ColumnDef<IClusterPodInfo>[] => [
   {
-    accessorKey: "ownerKind",
+    accessorKey: "type",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"从属"} />
+      <DataTableColumnHeader column={column} title={getHeader("type")} />
     ),
     cell: ({ row }) => {
+      if (!row.getValue("type")) return null;
+      const splitValue = row.getValue<string>("type").split("/");
+      const apiVersion = splitValue.slice(0, splitValue.length - 1).join("/");
+      const kind = splitValue[splitValue.length - 1];
       return (
-        <Badge variant="outline" className="font-mono font-normal">
-          {row.getValue("ownerKind")}
+        <Badge
+          variant="outline"
+          className="cursor-help font-mono font-normal"
+          title={apiVersion}
+        >
+          {kind}
         </Badge>
       );
     },
@@ -231,16 +193,16 @@ const getColumns = (
   {
     accessorKey: "name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"Pod 名称"} />
+      <DataTableColumnHeader column={column} title={getHeader("name")} />
     ),
     cell: ({ row }) => {
-      const podName = encodeURIComponent(row.getValue("name"));
-      const link = `${pod_memory}?orgId=1&var-node_name=${nodeName}&var-pod_name=${podName}&from=now-1h&to=now`;
+      const podName = row.getValue<string>("name");
+      const link = `${POD_MONITOR}?orgId=1&var-node_name=${nodeName}&var-pod_name=${podName}&from=now-1h&to=now`;
       return (
         <div className="font-mono">
           <a
             href={link}
-            className="hover:underline"
+            className="underline-offset-4 hover:underline"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -254,7 +216,7 @@ const getColumns = (
   {
     accessorKey: "status",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"状态"} />
+      <DataTableColumnHeader column={column} title={getHeader("status")} />
     ),
     cell: ({ row }) => (
       <div className="flex flex-row items-center justify-start">
@@ -266,45 +228,24 @@ const getColumns = (
     },
   },
   {
+    accessorKey: "resources",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={getHeader("resources")} />
+    ),
+    cell: ({ row }) => {
+      return <ResourceBadges resources={row.getValue("resources")} />;
+    },
+  },
+  {
     accessorKey: "createTime",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"创建于"} />
+      <DataTableColumnHeader column={column} title={getHeader("createTime")} />
     ),
     cell: ({ row }) => {
       return <TableDate date={row.getValue("createTime")}></TableDate>;
     },
     enableSorting: false,
   },
-  {
-    accessorKey: "cpu",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"CPU"} />
-    ),
-    cell: ({ row }) => {
-      const cpuValue = row.getValue("cpu");
-      return (
-        <div className="font-mono">
-          {typeof cpuValue === "number" ? cpuValue.toFixed(3) : "N/A"}
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: "memory",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"Memory"} />
-    ),
-    cell: ({ row }) => (
-      <div className="font-mono">{row.getValue("memory")}</div>
-    ),
-  },
-  // {
-  //   accessorKey: "gpu",
-  //   header: ({ column }) => (
-  //     <DataTableColumnHeader column={column} title={"GPU 分配"} />
-  //   ),
-  //   cell: () => <div className="font-mono">TODO</div>,
-  // },
   {
     id: "actions",
     enableHiding: false,
@@ -354,7 +295,14 @@ export const NodeDetail: FC = () => {
     queryKey: ["nodes", nodeName, "pods"],
     queryFn: () => apiGetNodePods(`${nodeName}`),
     select: (res) =>
-      res.data.data?.pods.sort((a, b) => a.name.localeCompare(b.name)),
+      res.data.data
+        ?.sort((a, b) => a.name.localeCompare(b.name))
+        .map((p) => {
+          if (p.ownerReference && p.ownerReference.length > 0) {
+            p.type = `${p.ownerReference[0].apiVersion}/${p.ownerReference[0].kind}`;
+          }
+          return p;
+        }),
     enabled: !!nodeName,
   });
 
@@ -372,7 +320,6 @@ export const NodeDetail: FC = () => {
     <div className="col-span-3 grid gap-8 md:grid-cols-7">
       <div className="col-span-2 flex-none">
         <CardDemo nodeInfo={nodeDetail} />
-        {nodeName && <GPUDetails nodeName={nodeName} />}
       </div>
       <div className="md:col-span-5">
         <DataTable

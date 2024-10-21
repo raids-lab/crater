@@ -18,15 +18,24 @@ export interface IClusterNodeInfo {
   allocated: KubernetesResource;
 }
 
+export interface IOwnerReference {
+  apiVersion: string;
+  kind: string;
+  name: string;
+  uid: string;
+}
+
 export interface IClusterPodInfo {
+  // from backend
   name: string;
   namespace: string;
-  cpu: string;
-  memory: string;
+  ownerReference: IOwnerReference[];
   ip: string;
   createTime: string;
   status: string;
-  ownerKind: string;
+  resources: Record<string, string>;
+  // added by frontend
+  type?: string;
 }
 
 export interface IClusterNodeDetail {
@@ -40,10 +49,6 @@ export interface IClusterNodeDetail {
   arch: string;
   kubeletVersion: string;
   containerRuntimeVersion: string;
-}
-
-export interface IClusterNodePods {
-  pods: IClusterPodInfo[];
 }
 
 // GPU 信息接口定义
@@ -66,7 +71,7 @@ export const apiGetNodeDetail = (name: string) =>
   instance.get<IResponse<IClusterNodeDetail>>(VERSION + `/nodes/${name}`);
 
 export const apiGetNodePods = (name: string) =>
-  instance.get<IResponse<IClusterNodePods>>(VERSION + `/nodes/${name}/pods`);
+  instance.get<IResponse<IClusterPodInfo[]>>(VERSION + `/nodes/${name}/pods`);
 
 // 获取节点的 GPU 详情
 export const apiGetNodeGPU = (name: string) =>
