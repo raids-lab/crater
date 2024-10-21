@@ -27,8 +27,17 @@ type PrometheusInterface interface {
 	// QueryPodCPURatio queries the CPU ratio of a pod
 	QueryPodCPUUsage(podName string) float32
 
+	// QueryPodCPUAllocate queries the CPU allocate of a pod
+	QueryPodCPUAllocate(podName string, namespace string) int
+
 	// QueryPodMemoryRatio queries the memory ratio of a pod
 	QueryPodMemoryUsage(podName string) int
+
+	// QueryPodMemoryAllocate queries the memory allocate of a pod
+	QueryPodMemoryAllocate(podName string, namespace string) int
+
+	// QueryPodGPUAllocate queries the GPU allocate of a pod
+	QueryPodGPUAllocate(podName string, namespace string) map[string]int
 
 	// QueryPodProfileMetric queries the profile metric of a pod (used for AiJob)
 	QueryPodProfileMetric(namespace, podname string) (PodUtil, error)
