@@ -25,6 +25,7 @@ import ContainerStatusLabel, {
   ContainerStatus,
 } from "../label/ContainerStatusLabel";
 import { useNamespacedState } from "@/hooks/useNamespacedState";
+import LoadingCircleIcon from "../icon/LoadingCircleIcon";
 
 export interface PodNamespacedName {
   namespace: string;
@@ -208,7 +209,7 @@ function Content({
   const { data: containers } = useQuery({
     queryKey: ["log", "containers", namespace, podName],
     queryFn: () => apiGetPodContainers(namespace, podName),
-    select: (res) => res.data.data.containers,
+    select: (res) => res.data.data.containers.filter((c) => c.name !== ""),
     enabled: !!namespace && !!podName,
   });
 
@@ -224,10 +225,6 @@ function Content({
     }
   }, [containers, queryClient]);
 
-  if (!containers || !selectedContainer) {
-    return <></>;
-  }
-
   return (
     <>
       <DialogHeader>
@@ -235,28 +232,32 @@ function Content({
           <span className="font-mono">{podName}</span>
         </DialogTitle>
       </DialogHeader>
-      <div className="grid h-[calc(100vh_-190px)] w-[calc(100vw_-154px)] gap-6 md:grid-cols-3 xl:grid-cols-4">
-        {namespacedName && selectedContainer && (
-          <ActionComponent
-            namespacedName={namespacedName}
-            selectedContainer={selectedContainer}
-          />
-        )}
-        <div className="space-y-4">
-          <ContainerSelect
-            currentContainer={selectedContainer}
-            setCurrentContainer={setSelectedContainer}
-            containers={containers}
-          />
+      {!containers || !selectedContainer ? (
+        <LoadingCircleIcon />
+      ) : (
+        <div className="grid h-[calc(100vh_-190px)] w-[calc(100vw_-154px)] gap-6 md:grid-cols-3 xl:grid-cols-4">
+          {namespacedName && selectedContainer && (
+            <ActionComponent
+              namespacedName={namespacedName}
+              selectedContainer={selectedContainer}
+            />
+          )}
+          <div className="space-y-4">
+            <ContainerSelect
+              currentContainer={selectedContainer}
+              setCurrentContainer={setSelectedContainer}
+              containers={containers}
+            />
 
-          <fieldset className="hidden h-[calc(100vh_-264px)] max-h-full gap-6 overflow-y-auto rounded-lg border border-input p-4 shadow-sm md:grid">
-            <legend className="-ml-1 px-2 text-sm font-medium">
-              {selectedContainer.isInitContainer ? "初始化容器" : "容器信息"}
-            </legend>
-            <TableCellForm selectedContainer={selectedContainer} />
-          </fieldset>
+            <fieldset className="hidden h-[calc(100vh_-264px)] max-h-full gap-6 overflow-y-auto rounded-lg border border-input p-4 shadow-sm md:grid">
+              <legend className="-ml-1 px-2 text-sm font-medium">
+                {selectedContainer.isInitContainer ? "初始化容器" : "容器信息"}
+              </legend>
+              <TableCellForm selectedContainer={selectedContainer} />
+            </fieldset>
+          </div>
         </div>
-      </div>
+      )}
     </>
   );
 }
