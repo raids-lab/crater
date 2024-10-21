@@ -118,6 +118,20 @@ func (p *PrometheusClient) QueryPodCPUUsage(podName string) float32 {
 	return sum
 }
 
+func (p *PrometheusClient) QueryPodCPUAllocate(podName, namespace string) int {
+	query := fmt.Sprintf("kube_pod_container_resource_requests{pod=%q, namespace=%q, resource=\"cpu\"}", podName, namespace)
+	data, err := p.intMapQuery(query, "")
+	if err != nil {
+		logutils.Log.Errorf("QueryPodCPUAllocate error: %v", err)
+		return -1
+	}
+	var sum int
+	for _, v := range data {
+		sum += v
+	}
+	return sum
+}
+
 func (p *PrometheusClient) QueryPodMemoryUsage(podName string) int {
 	query := fmt.Sprintf("container_memory_usage_bytes{pod=%q}", podName)
 	data, err := p.intMapQuery(query, "")
@@ -130,6 +144,30 @@ func (p *PrometheusClient) QueryPodMemoryUsage(podName string) int {
 		sum += v
 	}
 	return sum
+}
+
+func (p *PrometheusClient) QueryPodMemoryAllocate(podName, namespace string) int {
+	query := fmt.Sprintf("kube_pod_container_resource_requests{pod=%q, namespace=%q, resource=\"memory\"}", podName, namespace)
+	data, err := p.intMapQuery(query, "")
+	if err != nil {
+		logutils.Log.Errorf("QueryPodCPUAllocate error: %v", err)
+		return -1
+	}
+	var sum int
+	for _, v := range data {
+		sum += v
+	}
+	return sum
+}
+
+func (p *PrometheusClient) QueryPodGPUAllocate(podName, namespace string) map[string]int {
+	query := fmt.Sprintf("kube_pod_container_resource_requests{pod=%q, namespace=%q, resource!=\"cpu\", resource!=\"memory\"}", podName, namespace)
+	data, err := p.intMapQuery(query, "resource")
+	if err != nil {
+		logutils.Log.Errorf("QueryPodCPUAllocate error: %v", err)
+		return nil
+	}
+	return data
 }
 
 func (p *PrometheusClient) QueryPodGPU() []PodGPUAllocate {

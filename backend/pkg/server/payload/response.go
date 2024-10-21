@@ -2,7 +2,8 @@ package payload
 
 import (
 	"github.com/raids-lab/crater/pkg/models"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type CreateTaskResp struct {
@@ -16,25 +17,24 @@ type AllocatedInfo struct {
 }
 
 type ClusterNodeInfo struct {
-	Type     string            `json:"type"`
-	Name     string            `json:"name"`
-	Role     string            `json:"role"`
-	Labels   map[string]string `json:"labels"`
-	IsReady  bool              `json:"isReady"`
-	Capacity v1.ResourceList   `json:"capacity"`
+	Type     string              `json:"type"`
+	Name     string              `json:"name"`
+	Role     string              `json:"role"`
+	Labels   map[string]string   `json:"labels"`
+	IsReady  bool                `json:"isReady"`
+	Capacity corev1.ResourceList `json:"capacity"`
 	// Alocated v1.ResourceList   `json:"allocated"`
 	Allocated AllocatedInfo `json:"allocated"`
 }
 
 type Pod struct {
-	Name       string  `json:"name"`
-	Namespace  string  `json:"namespace"`
-	CPU        float32 `json:"cpu"`
-	Mem        string  `json:"memory"`
-	IP         string  `json:"ip"`
-	CreateTime string  `json:"createTime"`
-	Status     string  `json:"status"`
-	OwnerKind  string  `json:"ownerKind"`
+	Name           string                  `json:"name"`
+	Namespace      string                  `json:"namespace"`
+	OwnerReference []metav1.OwnerReference `json:"ownerReference"`
+	IP             string                  `json:"ip"`
+	CreateTime     metav1.Time             `json:"createTime"`
+	Status         corev1.PodPhase         `json:"status"`
+	Resources      corev1.ResourceList     `json:"resources"`
 }
 
 type ClusterNodeDetail struct {
@@ -50,16 +50,8 @@ type ClusterNodeDetail struct {
 	ContainerRuntimeVersion string `json:"containerRuntimeVersion"`
 }
 
-type ClusterNodePodInfo struct {
-	Pods []Pod `json:"pods"`
-}
-
 type ListNodeResp struct {
 	Rows []ClusterNodeInfo `json:"rows"`
-}
-
-type ListNodePodResp struct {
-	Rows []ClusterNodePodInfo `json:"rows"`
 }
 
 type GPUInfo struct {
