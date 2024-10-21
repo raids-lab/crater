@@ -29,8 +29,6 @@ type ClusterNodeInfo struct {
 type Pod struct {
 	Name       string         `json:"name"`
 	Namespace  string         `json:"namespace"`
-	CPU        float32        `json:"cpu"`
-	Mem        string         `json:"memory"`
 	IP         string         `json:"ip"`
 	CreateTime string         `json:"createTime"`
 	Status     string         `json:"status"`
