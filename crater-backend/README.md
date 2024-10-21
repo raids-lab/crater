@@ -200,6 +200,17 @@ git push origin v0.x.x
 
 由于项目处于频繁更新期，我们可能会经常清理过时的标签，**请一定不要通过 `git push origin --tag` 的方式提交！这可能会上传本地存在但在远程仓库已被删除的标签！**
 
+### 3.3 通过 Helm 部署到集群
+
+```shell
+helm upgrade --install crater ./charts/crater \
+--namespace crater \
+--create-namespace \
+--set-string tls.cert="$(cat ***REMOVED***/fullchain.cer)" \
+--set-string tls.key="$(cat ***REMOVED***/***REMOVED***.key)" \
+--dry-run
+```
+
 ### 3.3 证书过期
 
 ACT 的 HTTPS 证书每 3 个月更新一次，证书更新方法见 Web Frontend 项目。

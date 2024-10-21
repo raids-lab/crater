@@ -2,12 +2,12 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "3a1af9bb"
+      tag: "079ce7f9"
       pullPolicy: "IfNotPresent"
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "100f83f1"
+      tag: "f97f3224"
       pullPolicy: "IfNotPresent"
 
 backendConfig:
@@ -17,21 +17,29 @@ backendConfig:
     enableProfiling: true
     prometheusAPI: ***REMOVED***
     profilingTimeout: 120
-    serverAddr: ":8088"
-    metricsAddr: ":8080"
-    probeAddr: ":8081"
+    serverAddr: :8088
+    metricsAddr: :8080
+    probeAddr: :8081
     monitoringPort: 9443
     postgres:
-      host: postgres-cluster.crater
-      port: 5432
+      host: ***REMOVED***
+      port: 30841
       dbname: crater
-      sslmode: require
+      user: postgres
+      password: ***REMOVED***
+      sslmode: disable
       TimeZone: Asia/Shanghai
     workspace:
       namespace: crater-workspace
       pvcName: crater-storage
       ingressName: crater-jobs-ingress
       imageNameSpace: crater-images
+    act:
+      image:
+        registryServer: ***REMOVED***
+        registryUser: ***REMOVED***
+        registryPass: ***REMOVED***
+        registryProject: crater-images
 
 # Usage:
 # helm install crater ./charts/crater \

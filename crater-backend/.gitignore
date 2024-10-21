@@ -30,3 +30,6 @@ __debug_*
 
 # Kubernetes Config
 kubeconfig*
+
+# certs
+***REMOVED***

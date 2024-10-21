@@ -1,15 +1,8 @@
 enableLeaderElection: false
 leaderElectionID: ***REMOVED***
 enableProfiling: true
-prometheusAPI: "http://8.141.83.224:32618/"
+prometheusAPI: ***REMOVED***
 profilingTimeout: 120
-dbHost: mycluster.jupyter
-dbPort: 3306
-dbUser: root
-dbPassword: buaak8sportal@2023mysql
-dbName: ai_portal
-dbCharset: utf8mb4
-dbConnTimeout: 10
 serverAddr: :8088
 metricsAddr: :8080
 probeAddr: :8081
