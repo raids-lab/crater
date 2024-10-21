@@ -13,6 +13,7 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/utils"
 	"github.com/samber/lo"
 	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
@@ -418,18 +419,7 @@ func (mgr *VolcanojobMgr) GetJobPods(c *gin.Context) {
 		pod := &podList.Items[i]
 
 		// resource
-		resources := make(v1.ResourceList, 0)
-		for j := range pod.Spec.Containers {
-			container := &pod.Spec.Containers[j]
-			for name, quantity := range container.Resources.Requests {
-				if v, ok := resources[name]; !ok {
-					resources[name] = quantity
-				} else {
-					v.Add(quantity)
-					resources[name] = v
-				}
-			}
-		}
+		resources := utils.CalculateRequsetsByContainers(pod.Spec.Containers)
 
 		portStr := ""
 		for _, port := range pod.Spec.Containers[0].Ports {
