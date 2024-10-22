@@ -178,7 +178,7 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 	}
 
 	// Check if the user exists
-	user, err := createOrUpdateUser(c, &req, &attributes)
+	user, err := shouldCreateOrUpdateUser(c, &req, &attributes)
 	if err != nil {
 		l.Error("create or update user", err)
 		resputil.Error(c, "Create or update user failed", resputil.NotSpecified)
@@ -239,13 +239,17 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 	resputil.Success(c, loginResponse)
 }
 
-func createOrUpdateUser(
+func shouldCreateOrUpdateUser(
 	c context.Context,
 	req *LoginReq,
 	attr *model.UserAttribute,
 ) (*model.User, error) {
-	if attr.Name == "" {
+	// initialize user attributes
+	if attr.Name == "" && req.Username != nil {
 		attr.Name = *req.Username
+	}
+	if attr.Nickname == "" && req.Username != nil {
+		attr.Nickname = *req.Username
 	}
 
 	u := query.User
@@ -262,14 +266,17 @@ func createOrUpdateUser(
 		}
 	}
 
-	// If need to update user attributes
+	// If don't need to update the user, return directly
 	newAttr := datatypes.NewJSONType(*attr)
-	if attr.Nickname == nil || reflect.DeepEqual(user.Attributes, newAttr) {
+	if attr.Email == nil || reflect.DeepEqual(user.Attributes, newAttr) {
 		return user, nil
 	}
 
 	if _, err := u.WithContext(c).Where(u.ID.Eq(user.ID)).
-		Update(u.Attributes, datatypes.NewJSONType(*attr)); err != nil {
+		Updates(map[string]any{
+			"attributes": datatypes.NewJSONType(*attr),
+			"nickname":   attr.Nickname,
+		}); err != nil {
 		return nil, err
 	}
 
@@ -403,7 +410,7 @@ func (mgr *AuthMgr) actAPIAuth(_ context.Context, token string, attr *model.User
 	// TODO(liyilong): 验证返回的签名
 
 	attr.Name = result.Data.Account
-	attr.Nickname = &result.Data.Name
+	attr.Nickname = result.Data.Name
 	attr.Email = &result.Data.Email
 	attr.Teacher = &result.Data.Teacher
 	attr.Group = &result.Data.Group

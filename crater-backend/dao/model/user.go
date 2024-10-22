@@ -9,8 +9,9 @@ const ImageQuotaInfinity = -1
 
 // Optional fields for user
 type UserAttribute struct {
-	Name      string  `json:"name,omitempty"`      // 账号
-	Nickname  *string `json:"nickname,omitempty"`  // 昵称
+	Name     string `json:"name,omitempty"`     // 账号
+	Nickname string `json:"nickname,omitempty"` // 昵称，如果没有指定，则与账号相同
+
 	Email     *string `json:"email,omitempty"`     // 邮箱
 	Teacher   *string `json:"teacher,omitempty"`   // 老师
 	Group     *string `json:"group,omitempty"`     // 课题组
