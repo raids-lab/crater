@@ -96,7 +96,7 @@ const formSchema = z.object({
       message: "账户名称最多16个字符",
     }),
   resources: resourceSchema,
-  expiredDay: z.date().optional(),
+  expiredAt: z.date().optional(),
   admins: z.array(z.string()),
 });
 
@@ -202,7 +202,7 @@ export const ProjectSheet = ({
                   />
                   <FormField
                     control={form.control}
-                    name="expiredDay"
+                    name="expiredAt"
                     render={({ field }) => (
                       <FormItem className="col-span-1 flex flex-col space-y-2">
                         <FormLabel className="pb-1">过期时间</FormLabel>
