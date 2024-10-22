@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/model"
@@ -151,6 +152,7 @@ type (
 		Deserved       v1.ResourceList `json:"deserved" binding:"required"`
 		Capability     v1.ResourceList `json:"capacity" binding:"required"`
 		WithoutVolcano bool            `json:"withoutVolcano"`
+		ExpiredAt      time.Time       `json:"ExpiredAt"`
 	}
 
 	ProjectCreateResp struct {
@@ -215,6 +217,7 @@ func (mgr *AccountMgr) CreateAccount(c *gin.Context) {
 			Deserved:   req.Deserved,
 			Capability: req.Capability,
 		})
+		queue.ExpiredAt = req.ExpiredAt
 		if _, err := q.WithContext(c).Where(q.ID.Eq(queue.ID)).Updates(&queue); err != nil {
 			return err
 		}
@@ -279,6 +282,7 @@ type UpdateQuotaReq struct {
 	Deserved       v1.ResourceList `json:"deserved" binding:"required"`
 	Capability     v1.ResourceList `json:"capacity" binding:"required"`
 	WithoutVolcano bool            `json:"withoutVolcano"`
+	ExpiredAt      time.Time       `json:"ExpiredAt"`
 }
 
 type ProjectNameReq struct {
@@ -324,6 +328,9 @@ func (mgr *AccountMgr) UpdateQuota(c *gin.Context) {
 		Deserved:   req.Deserved,
 		Capability: req.Capability,
 	})
+	if !req.ExpiredAt.IsZero() {
+		queue.ExpiredAt = req.ExpiredAt
+	}
 	if _, err := q.WithContext(c).Where(q.ID.Eq(queue.ID)).Updates(queue); err != nil {
 		resputil.Error(c, fmt.Sprintf("update project failed, detail: %v", err), resputil.NotSpecified)
 		return
