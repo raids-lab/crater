@@ -11,9 +11,9 @@ const (
 )
 
 type QueueQuota struct {
-	Guaranteed v1.ResourceList `json:"guaranteed"`
-	Deserved   v1.ResourceList `json:"deserved"`
-	Capability v1.ResourceList `json:"capability"`
+	Guaranteed v1.ResourceList `json:"guaranteed,omitempty"`
+	Deserved   v1.ResourceList `json:"deserved,omitempty"`
+	Capability v1.ResourceList `json:"capability,omitempty"`
 }
 
 type Queue struct {

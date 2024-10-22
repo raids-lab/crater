@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"gorm.io/datatypes"
 
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/pkg/logutils"
@@ -39,11 +40,11 @@ func (mgr *UserMgr) RegisterAdmin(users *gin.RouterGroup) {
 }
 
 type UserResp struct {
-	ID     uint         `json:"id"`     // 用户ID
-	Name   string       `json:"name"`   // 用户名称
-	Role   model.Role   `json:"role"`   // 用户角色
-	Status model.Status `json:"status"` // 用户状态
-
+	ID         uint                                    `json:"id"`         // 用户ID
+	Name       string                                  `json:"name"`       // 用户名称
+	Role       model.Role                              `json:"role"`       // 用户角色
+	Status     model.Status                            `json:"status"`     // 用户状态
+	Attributes datatypes.JSONType[model.UserAttribute] `json:"attributes"` // 用户额外属性
 }
 
 type UpdateRoleReq struct {
@@ -87,14 +88,14 @@ func (mgr *UserMgr) DeleteUser(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Success 200 {object} resputil.Response[[]UserResp] "成功获取用户信息"
+// @Success 200 {object} resputil.Response[any] "成功获取用户信息"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/admin/users [get]
 func (mgr *UserMgr) ListUser(c *gin.Context) {
 	var users []UserResp
 	u := query.User
-	err := u.WithContext(c).Select(u.ID, u.Name, u.Role, u.Status).Scan(&users)
+	err := u.WithContext(c).Select(u.ID, u.Name, u.Role, u.Status, u.Attributes).Scan(&users)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("list users failed, detail: %v", err), resputil.NotSpecified)
 		return

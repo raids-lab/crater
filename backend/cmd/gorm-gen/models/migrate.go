@@ -320,6 +320,7 @@ func main() {
 			Name:     "default",
 			Nickname: "公共资源池",
 			Space:    "/public",
+			Quota:    datatypes.NewJSONType(model.QueueQuota{}),
 		}
 
 		res := tx.Create(&queue)
