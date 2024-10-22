@@ -25,6 +25,7 @@ export interface ICreateProject {
   guaranteed: Record<string, string | number>;
   deserved: Record<string, string | number>;
   capacity: Record<string, string | number>;
+  expiredAt: Date | undefined;
   withoutVolcano: boolean;
 }
 
