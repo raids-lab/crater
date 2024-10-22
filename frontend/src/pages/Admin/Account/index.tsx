@@ -102,7 +102,7 @@ const formSchema = z.object({
       message: "账户名称最多16个字符",
     }),
   resources: resourceSchema,
-  expiredDay: z.date().optional(),
+  expiredAt: z.date().optional(),
   admins: z.array(z.string()),
 });
 
@@ -167,6 +167,7 @@ export const Account = () => {
         guaranteed: convertResourcesToMap(values.resources, "guaranteed"),
         deserved: convertResourcesToMap(values.resources, "deserved"),
         capacity: convertResourcesToMap(values.resources, "capacity"),
+        expiredAt: values.expiredAt,
         withoutVolcano: scheduler !== "volcano",
       }),
     onSuccess: async (_, { name }) => {
@@ -240,7 +241,7 @@ export const Account = () => {
           const defaultValues: FormSchema = {
             name: proj.nickname,
             resources: [],
-            expiredDay: undefined,
+            expiredAt: undefined,
             admins: [],
           };
           const nameRecord = {} as Record<string, Resource>;
@@ -359,7 +360,7 @@ export const Account = () => {
         capacity: "",
       },
     ],
-    expiredDay: undefined,
+    expiredAt: undefined,
     admins: [],
   };
 
@@ -386,6 +387,7 @@ export const Account = () => {
         guaranteed: convertResourcesToMap(values.resources, "guaranteed"),
         deserved: convertResourcesToMap(values.resources, "deserved"),
         capacity: convertResourcesToMap(values.resources, "capacity"),
+        expiredAt: values.expiredAt,
         withoutVolcano: scheduler !== "volcano",
       }),
     onSuccess: async (_, { name }) => {
