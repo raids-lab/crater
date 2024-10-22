@@ -53,6 +53,12 @@ type Config struct {
 			Address  string `yaml:"address"`
 			SearchDN string `yaml:"searchDN"`
 		} `yaml:"auth"`
+		SMTP struct {
+			Host     string `yaml:"host"`
+			Port     string `yaml:"port"`
+			User     string `yaml:"user"`
+			Password string `yaml:"password"`
+		} `yaml:"smtp"`
 		OpenAPI ACTOpenAPI `yaml:"openAPI"`
 	} `yaml:"act"`
 }
