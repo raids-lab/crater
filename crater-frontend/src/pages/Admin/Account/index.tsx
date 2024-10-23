@@ -200,7 +200,9 @@ export const Account = () => {
           />
         ),
         cell: ({ row }) => {
-          const quota = row.getValue<Record<string, string>>("guaranteed");
+          const quota = row.getValue<Record<string, string> | undefined>(
+            "guaranteed",
+          );
           return <ResourceBadges resources={quota} />;
         },
         enableSorting: false,
@@ -214,7 +216,9 @@ export const Account = () => {
           />
         ),
         cell: ({ row }) => {
-          const quota = row.getValue<Record<string, string>>("deserved");
+          const quota = row.getValue<Record<string, string> | undefined>(
+            "deserved",
+          );
           return <ResourceBadges resources={quota} />;
         },
         enableSorting: false,
@@ -228,7 +232,9 @@ export const Account = () => {
           />
         ),
         cell: ({ row }) => {
-          const quota = row.getValue<Record<string, string>>("capacity");
+          const quota = row.getValue<Record<string, string> | undefined>(
+            "capacity",
+          );
           return <ResourceBadges resources={quota} />;
         },
         enableSorting: false,
@@ -245,7 +251,7 @@ export const Account = () => {
             admins: [],
           };
           const nameRecord = {} as Record<string, Resource>;
-          Object.entries(proj.guaranteed).map(([key, value]) =>
+          Object.entries(proj.guaranteed ?? {}).map(([key, value]) =>
             nameRecord[key]
               ? (nameRecord[key].guaranteed = value)
               : (nameRecord[key] = {
@@ -255,7 +261,7 @@ export const Account = () => {
                   capacity: "",
                 } as Resource),
           );
-          Object.entries(proj.deserved).map(([key, value]) =>
+          Object.entries(proj.deserved ?? {}).map(([key, value]) =>
             nameRecord[key]
               ? (nameRecord[key].deserved = value)
               : (nameRecord[key] = {
@@ -265,7 +271,7 @@ export const Account = () => {
                   capacity: "",
                 } as Resource),
           );
-          Object.entries(proj.capacity).map(([key, value]) =>
+          Object.entries(proj.capacity ?? {}).map(([key, value]) =>
             nameRecord[key]
               ? (nameRecord[key].capacity = value)
               : (nameRecord[key] = {

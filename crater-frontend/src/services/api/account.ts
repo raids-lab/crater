@@ -38,9 +38,9 @@ export interface IProject {
   name: string;
   nickname: string;
   space: string;
-  guaranteed: Record<string, string>;
-  deserved: Record<string, string>;
-  capacity: Record<string, string>;
+  guaranteed?: Record<string, string>;
+  deserved?: Record<string, string>;
+  capacity?: Record<string, string>;
 }
 
 export const apiAdminAccountList = () =>
