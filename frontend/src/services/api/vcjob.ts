@@ -25,7 +25,7 @@ export interface IJobInfo {
   startedAt: string;
   completedAt: string;
   nodes: string[];
-  resources: Record<string, string>;
+  resources?: Record<string, string>;
 }
 
 export const apiAdminTaskListByType = () =>

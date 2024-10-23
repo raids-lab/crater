@@ -164,7 +164,9 @@ export const Component: FC = () => {
           />
         ),
         cell: ({ row }) => {
-          const resources = row.getValue<Record<string, string>>("resources");
+          const resources = row.getValue<Record<string, string> | undefined>(
+            "resources",
+          );
           return <ResourceBadges resources={resources} />;
         },
       },
@@ -313,7 +315,7 @@ export const Component: FC = () => {
       .reduce(
         (acc, item) => {
           const resources = item.resources;
-          for (const [k, value] of Object.entries(resources)) {
+          for (const [k, value] of Object.entries(resources ?? {})) {
             if (k.startsWith("nvidia.com")) {
               const key = k.replace("nvidia.com/", "");
               if (!acc[key]) {

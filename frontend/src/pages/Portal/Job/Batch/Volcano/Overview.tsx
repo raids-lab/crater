@@ -168,7 +168,9 @@ const VolcanoOverview = () => {
           />
         ),
         cell: ({ row }) => {
-          const resources = row.getValue<Record<string, string>>("resources");
+          const resources = row.getValue<Record<string, string> | undefined>(
+            "resources",
+          );
           return <ResourceBadges resources={resources} />;
         },
       },
