@@ -22,6 +22,7 @@ import {
 import { Account } from "./Account";
 import admindatasetRoutes from "./Data";
 import { NavGroupProps } from "@/components/sidebar/nav-main";
+
 const sidebarItems: SidebarItem[] = [
   {
     path: "cluster",
@@ -29,8 +30,8 @@ const sidebarItems: SidebarItem[] = [
     children: [
       {
         route: {
-          path: "node/*",
-          lazy: () => import("./Cluster/Node"),
+          path: "node",
+          element: <h1>WIP</h1>,
         },
       },
       {
@@ -264,7 +265,7 @@ export const adminRoute: RouteObject = {
   children: [
     {
       index: true,
-      element: <Navigate to="cluster/node" replace={true} />,
+      element: <Navigate to="account" replace={true} />,
     },
     ...sidebarItems.map((item) => {
       return (

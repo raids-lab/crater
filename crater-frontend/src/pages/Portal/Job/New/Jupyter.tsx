@@ -20,7 +20,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiJupyterCreate, apiJTaskImageList } from "@/services/api/vcjob";
 import { cn } from "@/lib/utils";
-import { getAiKResource } from "@/utils/resource";
+import { convertToK8sResources } from "@/utils/resource";
 import { toast } from "sonner";
 import {
   ChevronLeftIcon,
@@ -153,17 +153,20 @@ export const Component = () => {
   const user = useAtomValue(globalUserInfo);
 
   const { mutate: createTask, isPending } = useMutation({
-    mutationFn: (values: FormSchema) =>
-      apiJupyterCreate({
+    mutationFn: (values: FormSchema) => {
+      const others: Record<string, string> = {};
+      if (values.gpu.model) {
+        others[values.gpu.model] = `${values.gpu.count}`;
+      } else {
+        others["nvidia.com/gpu"] = `${values.gpu.count}`;
+      }
+      return apiJupyterCreate({
         name: values.taskname,
-        resource: getAiKResource(
-          {
-            gpu: values.gpu.count,
-            memory: `${values.memory}Gi`,
-            cpu: values.cpu,
-          },
-          values.gpu.model ?? undefined,
-        ),
+        resource: convertToK8sResources({
+          cpu: values.cpu,
+          memory: values.memory,
+          others,
+        }),
         image: values.image,
         volumeMounts: values.volumeMounts,
         envs: values.envs,
@@ -177,7 +180,8 @@ export const Component = () => {
               },
             ]
           : undefined,
-      }),
+      });
+    },
     onSuccess: async (_, { taskname }) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["job"] }),
@@ -336,7 +340,7 @@ export const Component = () => {
                   type="file"
                   className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                 />
-                <CircleArrowDown className="-ml-0.5 mr-1.5 h-4 w-4" />
+                <CircleArrowDown className="h-4 w-4" />
                 导入配置
               </Button>
               <Button
@@ -362,11 +366,11 @@ export const Component = () => {
                     });
                 }}
               >
-                <CircleArrowUp className="-ml-0.5 mr-1.5 h-4 w-4" />
+                <CircleArrowUp className="h-4 w-4" />
                 导出配置
               </Button>
               <Button type="submit" className="h-8">
-                <CirclePlus className="-ml-0.5 mr-1.5 h-4 w-4" />
+                <CirclePlus className="h-4 w-4" />
                 提交作业
               </Button>
             </div>
@@ -611,7 +615,7 @@ export const Component = () => {
                     })
                   }
                 >
-                  <CirclePlus className="-ml-0.5 mr-1.5 h-4 w-4" />
+                  <CirclePlus className="h-4 w-4" />
                   添加{DataMountCard}
                 </Button>
               </div>
@@ -681,7 +685,7 @@ export const Component = () => {
                     })
                   }
                 >
-                  <CirclePlus className="-ml-0.5 mr-1.5 h-4 w-4" />
+                  <CirclePlus className="h-4 w-4" />
                   添加{EnvCard}
                 </Button>
               </div>

@@ -112,7 +112,6 @@ function Directory({
         <ChevronRightIcon
           className={`mr-2 h-4 w-4 opacity-50 ${isOpen ? "rotate-90" : ""}`}
         />
-
         <FolderIcon className="mr-2 h-4 w-4 text-sky-600 opacity-50" />
         {name}
       </Button>

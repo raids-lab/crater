@@ -74,6 +74,15 @@ export default function PodIngressDialog({
     },
   });
 
+  const handleAdd = () => {
+    form.reset({
+      id: "",
+      name: "",
+      podPort: 0,
+    });
+    setIsEditDialogOpen(true);
+  };
+
   const handleEdit = (ingress: IngressRule) => {
     form.reset(ingress);
     setIsEditDialogOpen(true);
@@ -84,15 +93,6 @@ export default function PodIngressDialog({
       ...prevState,
       ingress: prevState.ingress.filter((ingress) => ingress.id !== id),
     }));
-  };
-
-  const handleAdd = () => {
-    form.reset({
-      id: "",
-      name: "",
-      podPort: 0,
-    });
-    setIsEditDialogOpen(true);
   };
 
   const onSubmit = (data: IngressRule) => {

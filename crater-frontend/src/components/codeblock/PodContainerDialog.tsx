@@ -18,7 +18,7 @@ import { apiGetPodContainers, ContainerInfo } from "@/services/api/tool";
 import { toast } from "sonner";
 import ResourceBadges from "../label/ResourceBadges";
 import { cn } from "@/lib/utils";
-import { TableDate } from "../custom/TableDate";
+import { TimeDistance } from "../custom/TimeDistance";
 import { shortenImageName, shortestImageName } from "@/utils/formatter";
 import { BoxIcon } from "lucide-react";
 import ContainerStatusLabel, {
@@ -157,11 +157,13 @@ const TableCellForm = ({
           )}
           <div className="text-muted-foreground">开始时间</div>
           <div className="col-span-2">
-            <TableDate date={selectedContainer.state.terminated.startedAt} />
+            <TimeDistance date={selectedContainer.state.terminated.startedAt} />
           </div>
           <div className="text-muted-foreground">结束时间</div>
           <div className="col-span-2">
-            <TableDate date={selectedContainer.state.terminated.finishedAt} />
+            <TimeDistance
+              date={selectedContainer.state.terminated.finishedAt}
+            />
           </div>
         </>
       )}

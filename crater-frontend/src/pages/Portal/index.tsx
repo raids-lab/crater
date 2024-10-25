@@ -1,4 +1,4 @@
-import { SidebarItem, SidebarMenu } from "@/components/layout/Sidebar";
+import { SidebarItem } from "@/components/layout/Sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { FC, PropsWithChildren } from "react";
 import { Navigate, RouteObject } from "react-router-dom";
@@ -20,7 +20,7 @@ import interactiveRoutes from "./Job/Interactive";
 import datasetRoutes from "./Data";
 import { NavGroupProps } from "@/components/sidebar/nav-main";
 
-const sidebarItems: SidebarItem[] = [
+const portalRoutes: SidebarItem[] = [
   {
     path: "overview",
     icon: BarChartBigIcon,
@@ -111,12 +111,10 @@ const sidebarItems: SidebarItem[] = [
       },
     ],
   },
-];
-
-const sidebarMenus: SidebarMenu[] = [
   {
     path: "setting",
     icon: SettingsIcon,
+    children: [],
     route: {
       path: "setting",
       lazy: () => import("./Setting"),
@@ -125,6 +123,7 @@ const sidebarMenus: SidebarMenu[] = [
   {
     path: "feedback",
     icon: MessageSquareMoreIcon,
+    children: [],
     route: {
       path: "feedback",
       lazy: () => import("./Feedback"),
@@ -257,7 +256,7 @@ export const portalRoute: RouteObject = {
       index: true,
       element: <Navigate to="overview" replace />,
     },
-    ...sidebarItems.map((item) => {
+    ...portalRoutes.map((item) => {
       return (
         item.route ?? {
           path: item.path,
@@ -265,7 +264,6 @@ export const portalRoute: RouteObject = {
         }
       );
     }),
-    ...sidebarMenus.map((item) => item.route),
     {
       path: "*",
       element: <h1>404</h1>,

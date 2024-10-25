@@ -37,6 +37,7 @@ import {
   apiAdminUserDelete,
   apiAdminUserList,
   apiAdminUserUpdateRole,
+  IUserAttributes,
 } from "@/services/api/admin/user";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
@@ -49,12 +50,17 @@ interface TUser {
   name: string;
   role: string;
   status: string;
+  attributes: IUserAttributes;
 }
 
 const getHeader = (key: string): string => {
   switch (key) {
     case "name":
-      return "用户名";
+      return "用户";
+    case "group":
+      return "组别";
+    case "teacher":
+      return "导师";
     case "role":
       return "权限";
     case "status":
@@ -119,6 +125,7 @@ export const User = () => {
         name: item.name,
         role: item.role.toString(),
         status: item.status.toString(),
+        attributes: item.attributes,
       })),
   });
 
@@ -167,7 +174,32 @@ export const User = () => {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("name")} />
         ),
-        cell: ({ row }) => <div>{row.getValue("name")}</div>,
+        cell: ({ row }) => {
+          return (
+            <div className="grid flex-1 text-left text-sm leading-tight">
+              <span className="truncate font-semibold">
+                {row.original.attributes.nickname ?? row.original.name}
+              </span>
+              <span className="truncate text-xs text-muted-foreground">
+                {row.original.name}
+              </span>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "group",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("group")} />
+        ),
+        cell: ({ row }) => <div>{row.original.attributes.group}</div>,
+      },
+      {
+        accessorKey: "teacher",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("teacher")} />
+        ),
+        cell: ({ row }) => <div>{row.original.attributes.teacher}</div>,
       },
       {
         accessorKey: "role",

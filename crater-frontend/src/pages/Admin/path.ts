@@ -3,10 +3,12 @@ import { PathInfo } from "@/utils/title";
 export const adminPath: PathInfo = {
   path: "admin",
   title: "Admin",
+  isEmpty: true,
   children: [
     {
       path: "cluster",
       title: "集群管理",
+      isEmpty: true,
       children: [
         {
           path: "node",
@@ -37,6 +39,7 @@ export const adminPath: PathInfo = {
     {
       path: "image",
       title: "镜像管理",
+      isEmpty: true,
       children: [
         {
           path: "public",
@@ -51,6 +54,7 @@ export const adminPath: PathInfo = {
     {
       path: "data",
       title: "数据管理",
+      isEmpty: true,
       children: [
         {
           path: "user",

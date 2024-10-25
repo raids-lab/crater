@@ -11,7 +11,7 @@ import { useAtomValue } from "jotai";
 import { globalBreadCrumb } from "@/utils/store";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
+import useBreadcrumb from "@/hooks/useBreadcrumb";
 
 export const NavBreadcrumb = ({ className }: { className: string }) => {
   useBreadcrumb();
@@ -26,7 +26,7 @@ export const NavBreadcrumb = ({ className }: { className: string }) => {
               {index !== 0 && (
                 <BreadcrumbSeparator key={`bread-separator-${index}`} />
               )}
-              {index === 0 && (
+              {item.isEmpty && (
                 <BreadcrumbPage
                   className={cn({
                     "text-muted-foreground": breadcrumb.length > 1,
@@ -35,7 +35,7 @@ export const NavBreadcrumb = ({ className }: { className: string }) => {
                   {item.title}
                 </BreadcrumbPage>
               )}
-              {index !== 0 && (
+              {!item.isEmpty && (
                 <BreadcrumbItem key={`bread-item-${index}`}>
                   {item.path && index !== breadcrumb.length - 1 ? (
                     <BreadcrumbLink asChild>

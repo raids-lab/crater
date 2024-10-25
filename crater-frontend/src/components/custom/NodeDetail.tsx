@@ -9,7 +9,7 @@ import {
   apiGetNodePods,
   IClusterPodInfo,
 } from "@/services/api/cluster";
-import { TableDate } from "@/components/custom/TableDate";
+import { TimeDistance } from "@/components/custom/TimeDistance";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,9 +26,9 @@ import {
   CardDescription,
   CardFooter,
 } from "@/components/ui/card";
-import { useNavigate, useParams } from "react-router-dom";
-import { ExternalLink, Undo2 } from "lucide-react";
-import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
+import { useParams } from "react-router-dom";
+import { ExternalLink } from "lucide-react";
+import useBreadcrumb from "@/hooks/useBreadcrumb";
 import PodPhaseLabel, { podPhases } from "@/components/label/PodPhaseLabel";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "../ui/badge";
@@ -56,7 +56,6 @@ const POD_MONITOR = import.meta.env.VITE_GRAFANA_POD_MEMORY;
 
 // CardDemo 组件
 export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
-  const navigate = useNavigate();
   return (
     <Card className={className} {...props}>
       {/* <CardHeader className="mb-6 border-b bg-muted/50 dark:bg-muted/25">
@@ -103,13 +102,7 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
           {nodeInfo?.containerRuntimeVersion}
         </p>
       </CardContent>
-      <CardFooter className="flex justify-center">
-        <div className="w-full">
-          <Button className="w-full" onClick={() => navigate(-1)}>
-            <Undo2 className="mr-2 h-4 w-4" /> 返回集群节点列表
-          </Button>
-        </div>
-      </CardFooter>
+      <CardFooter className="flex justify-center"></CardFooter>
     </Card>
   );
 }
@@ -242,7 +235,7 @@ const getColumns = (
       <DataTableColumnHeader column={column} title={getHeader("createTime")} />
     ),
     cell: ({ row }) => {
-      return <TableDate date={row.getValue("createTime")}></TableDate>;
+      return <TimeDistance date={row.getValue("createTime")}></TimeDistance>;
     },
     enableSorting: false,
   },

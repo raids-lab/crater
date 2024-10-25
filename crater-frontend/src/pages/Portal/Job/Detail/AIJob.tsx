@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
+import useBreadcrumb from "@/hooks/useBreadcrumb";
 import {
   FileSlidersIcon,
   FileTextIcon,
@@ -50,7 +50,7 @@ import {
   PodDetail,
 } from "@/services/api/vcjob";
 import JobPhaseLabel from "@/components/label/JobPhaseLabel";
-import { TableDate } from "@/components/custom/TableDate";
+import { TimeDistance } from "@/components/custom/TimeDistance";
 import { SmallDataCard } from "@/components/custom/DataCard";
 import { ProfileStat } from "@/services/api/aiTask";
 import LogDialog from "@/components/codeblock/LogDialog";
@@ -219,7 +219,7 @@ export const Component = () => {
                 <TableCell>{data.username}</TableCell>
                 <TableCell>{data.namespace}</TableCell>
                 <TableCell>
-                  <TableDate date={data.createdAt} />
+                  <TimeDistance date={data.createdAt} />
                 </TableCell>
                 <TableCell>{data.runtime}</TableCell>
                 <TableCell>{data.retry}</TableCell>

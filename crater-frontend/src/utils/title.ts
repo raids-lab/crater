@@ -5,6 +5,7 @@ export type PathInfo = {
   path: string; // router path
   title: string; // title in sidebar
   titleNav?: string; // title in navibar (if not set, use title)
+  isEmpty?: boolean; // if true, will disable the return in breadcrumb
   children?: PathInfo[]; // children path info
 };
 
@@ -16,13 +17,17 @@ const pathDict: PathInfo[] = [craterPath, adminPath];
  */
 export const getBreadcrumbByPath = (
   path: string[],
-): { path: string; title: string }[] | null => {
+): { path: string; title: string; isEmpty?: boolean }[] | null => {
   const result = [];
   let currentPath = pathDict;
   for (let i = 0; i < path.length; i++) {
     const item = currentPath.find((item) => item.path === path[i]);
     if (item) {
-      result.push({ title: item.titleNav ?? item.title, path: item.path });
+      result.push({
+        title: item.titleNav ?? item.title,
+        path: item.path,
+        isEmpty: item.isEmpty,
+      });
       currentPath = item.children || [];
     } else {
       break;

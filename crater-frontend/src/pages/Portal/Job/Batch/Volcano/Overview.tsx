@@ -26,7 +26,7 @@ import { DataTable } from "@/components/custom/DataTable";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { Link, useNavigate } from "react-router-dom";
-import { TableDate } from "@/components/custom/TableDate";
+import { TimeDistance } from "@/components/custom/TimeDistance";
 import { toast } from "sonner";
 import { getHeader, jobToolbarConfig } from "@/pages/Portal/Job/statuses";
 import { logger } from "@/utils/loglevel";
@@ -183,7 +183,7 @@ const VolcanoOverview = () => {
           />
         ),
         cell: ({ row }) => {
-          return <TableDate date={row.getValue("createdAt")}></TableDate>;
+          return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
         },
         sortingFn: "datetime",
       },
@@ -196,7 +196,7 @@ const VolcanoOverview = () => {
           />
         ),
         cell: ({ row }) => {
-          return <TableDate date={row.getValue("startedAt")}></TableDate>;
+          return <TimeDistance date={row.getValue("startedAt")}></TimeDistance>;
         },
         sortingFn: "datetime",
       },
@@ -209,7 +209,9 @@ const VolcanoOverview = () => {
           />
         ),
         cell: ({ row }) => {
-          return <TableDate date={row.getValue("completedAt")}></TableDate>;
+          return (
+            <TimeDistance date={row.getValue("completedAt")}></TimeDistance>
+          );
         },
         sortingFn: "datetime",
       },

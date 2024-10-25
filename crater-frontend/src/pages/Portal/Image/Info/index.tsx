@@ -2,14 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, type FC } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useParams } from "react-router-dom";
-import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
+import useBreadcrumb from "@/hooks/useBreadcrumb";
 import {
   apiUserImageCreateGet,
   apiUserImageCreateLog,
   imagepackStatuses,
   imagepackTaskType,
 } from "@/services/api/imagepack";
-import { TableDate } from "@/components/custom/TableDate";
+import { TimeDistance } from "@/components/custom/TimeDistance";
 import { cn } from "@/lib/utils";
 
 type ImageCreateInfoCard = React.ComponentProps<typeof Card> & {
@@ -96,11 +96,11 @@ function ImageCreateInfo({
             {/* <p className="ml-2 text-sm font-medium">{imagecreateinfo?.createdAt}</p> */}
             <p className="ml-2 text-sm font-medium">
               {
-                <TableDate
+                <TimeDistance
                   date={
                     imagecreateinfo?.createdAt ?? "2024-05-16T11:02:34.293433Z"
                   }
-                ></TableDate>
+                ></TimeDistance>
               }
             </p>
           </div>

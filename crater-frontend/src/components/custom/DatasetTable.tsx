@@ -6,7 +6,7 @@ import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableCo
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { Button } from "@/components/ui/button";
-import { TableDate } from "@/components/custom/TableDate";
+import { TimeDistance } from "@/components/custom/TimeDistance";
 // import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import {
   AlertDialog,
@@ -131,7 +131,7 @@ export function DatasetTable({ apiGetDataset }: DatesetTableProps) {
           />
         ),
         cell: ({ row }) => {
-          return <TableDate date={row.getValue("createdAt")}></TableDate>;
+          return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
         },
         //sortingFn: "datetime",
         enableSorting: false,

@@ -281,7 +281,7 @@ export const Component = () => {
                   type="file"
                   className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                 />
-                <CircleArrowDown className="-ml-0.5 mr-1.5 h-4 w-4" />
+                <CircleArrowDown className="h-4 w-4" />
                 导入配置
               </Button>
               <Button
@@ -307,11 +307,11 @@ export const Component = () => {
                     });
                 }}
               >
-                <CircleArrowUp className="-ml-0.5 mr-1.5 h-4 w-4" />
+                <CircleArrowUp className="h-4 w-4" />
                 导出配置
               </Button>
               <Button type="submit">
-                <CirclePlus className="-ml-0.5 mr-1.5 h-4 w-4" />
+                <CirclePlus className="h-4 w-4" />
                 提交作业
               </Button>
             </div>
@@ -623,7 +623,7 @@ export const Component = () => {
                     })
                   }
                 >
-                  <CirclePlus className="-ml-0.5 mr-1.5 h-4 w-4" />
+                  <CirclePlus className="h-4 w-4" />
                   添加{DataMountCard}
                 </Button>
               </div>
@@ -693,7 +693,7 @@ export const Component = () => {
                     })
                   }
                 >
-                  <CirclePlus className="-ml-0.5 mr-1.5 h-4 w-4" />
+                  <CirclePlus className="h-4 w-4" />
                   添加{EnvCard}
                 </Button>
               </div>
