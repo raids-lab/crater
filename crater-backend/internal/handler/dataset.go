@@ -11,6 +11,7 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/logutils"
+	"gorm.io/datatypes"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -791,7 +792,7 @@ func (mgr *DatasetMgr) ListUsersOutOfDataset(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("Failed to scan user IDs: %v", err), resputil.NotSpecified)
 		return
 	}
-	var resp []UserDatasetGetResp
+	var resp []UserResp
 	exec := u.WithContext(c).Where(u.ID.NotIn(uids...)).Distinct()
 	if err := exec.Scan(&resp); err != nil {
 		resputil.Error(c, fmt.Sprintf("Get UserDataset failed, detail: %v", err), resputil.NotSpecified)
@@ -801,9 +802,10 @@ func (mgr *DatasetMgr) ListUsersOutOfDataset(c *gin.Context) {
 }
 
 type UserDatasetResp struct {
-	ID      uint   `json:"id"`
-	Name    string `json:"name"`
-	IsOwner bool   `json:"isowner"`
+	ID         uint                                    `json:"id"`
+	Name       string                                  `json:"name"`
+	IsOwner    bool                                    `json:"isowner"`
+	Attributes datatypes.JSONType[model.UserAttribute] `json:"attributes"`
 }
 
 // 函数名称 ListUserOfDataset
@@ -814,7 +816,7 @@ type UserDatasetResp struct {
 // @Produce json
 // @Security Bearer
 // @Param req path DatasetGetReq true "数据集ID"
-// @Success 200 {object} resputil.Response[UserDatasetResp[]] "成功返回值描述"
+// @Success 200 {object} resputil.Response[any] "成功返回值描述"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/{datasetId}/usersIn [get]
