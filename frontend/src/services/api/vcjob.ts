@@ -1,4 +1,4 @@
-import { KubernetesResourceList } from "@/utils/resource";
+import { K8sResources } from "@/utils/resource";
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
 import { globalJobUrl, store } from "@/utils/store";
@@ -113,7 +113,7 @@ export interface NodeSelectorRequirement {
 
 export interface IJupyterCreate {
   name: string;
-  resource: KubernetesResourceList;
+  resource: K8sResources;
   image: string;
   volumeMounts: VolumeMount[];
   envs: Env[];
@@ -141,7 +141,7 @@ export interface ITensorflowCreate {
   tasks: {
     name: string;
     replicas: number;
-    resource: KubernetesResourceList;
+    resource: K8sResources;
     image: string;
     command?: string;
     workingDir?: string;

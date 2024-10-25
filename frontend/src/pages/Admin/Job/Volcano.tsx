@@ -11,7 +11,7 @@ import JobPhaseLabel, { jobPhases } from "@/components/label/JobPhaseLabel";
 import { JobPhase } from "@/services/api/vcjob";
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
-import { TableDate } from "@/components/custom/TableDate";
+import { TimeDistance } from "@/components/custom/TimeDistance";
 import {
   CircleIcon,
   ClockIcon,
@@ -229,7 +229,7 @@ const Volcano = () => {
         <DataTableColumnHeader column={column} title={getHeader("createdAt")} />
       ),
       cell: ({ row }) => {
-        return <TableDate date={row.getValue("createdAt")}></TableDate>;
+        return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
       },
       sortingFn: "datetime",
     },
@@ -239,7 +239,7 @@ const Volcano = () => {
         <DataTableColumnHeader column={column} title={getHeader("startedAt")} />
       ),
       cell: ({ row }) => {
-        return <TableDate date={row.getValue("startedAt")} />;
+        return <TimeDistance date={row.getValue("startedAt")} />;
       },
       sortingFn: "datetime",
     },
@@ -252,7 +252,7 @@ const Volcano = () => {
         />
       ),
       cell: ({ row }) => {
-        return <TableDate date={row.getValue("completedAt")}></TableDate>;
+        return <TimeDistance date={row.getValue("completedAt")}></TimeDistance>;
       },
       sortingFn: "datetime",
     },

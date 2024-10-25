@@ -23,7 +23,7 @@ import {
 } from "@/components/ui-custom/alert-dialog";
 import { toast } from "sonner";
 import { logger } from "@/utils/loglevel";
-import { TableDate } from "@/components/custom/TableDate";
+import { TimeDistance } from "@/components/custom/TimeDistance";
 import {
   ImagePackInfo,
   getHeader,
@@ -229,7 +229,7 @@ export const Component: FC = () => {
         <DataTableColumnHeader column={column} title={getHeader("createdAt")} />
       ),
       cell: ({ row }) => {
-        return <TableDate date={row.getValue("createdAt")}></TableDate>;
+        return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
       },
       sortingFn: "datetime",
     },

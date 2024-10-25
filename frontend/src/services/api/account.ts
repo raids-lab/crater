@@ -20,11 +20,9 @@ export interface ProjectBasic {
   accessmode: Access;
 }
 
-export interface ICreateProject {
+export interface ICreateOrUpdateAccount {
   name: string;
-  guaranteed: Record<string, string | number>;
-  deserved: Record<string, string | number>;
-  capacity: Record<string, string | number>;
+  quota: IQuota;
   expiredAt: Date | undefined;
   withoutVolcano: boolean;
 }
@@ -33,41 +31,42 @@ export interface ICreateProjectResponse {
   id: number;
 }
 
-export interface IProject {
+export interface IQuota {
+  guaranteed?: Record<string, string>;
+  deserved?: Record<string, string>;
+  capability?: Record<string, string>;
+}
+
+export interface IAccount {
   id: number;
   name: string;
   nickname: string;
   space: string;
-  guaranteed?: Record<string, string>;
-  deserved?: Record<string, string>;
-  capacity?: Record<string, string>;
+  quota: IQuota;
+  expiredAt?: string;
 }
 
 export const apiAdminAccountList = () =>
-  instance.get<IResponse<IProject[]>>(`${VERSION}/admin/projects`);
+  instance.get<IResponse<IAccount[]>>(`${VERSION}/admin/projects`);
 
-export const apiProjectCreate = (project: ICreateProject) =>
+export const apiAccountCreate = (account: ICreateOrUpdateAccount) =>
   instance.post<IResponse<ICreateProjectResponse>>(
     VERSION + "/admin/projects",
-    project,
+    account,
   );
 
-export const apiProjectUpdate = (project: ICreateProject) =>
+export const apiAccountUpdate = (id: number, account: ICreateOrUpdateAccount) =>
   instance.put<IResponse<ICreateProjectResponse>>(
-    VERSION + "/admin/projects/" + project.name + "/quotas",
-    project,
+    `${VERSION}/admin/projects/${id}`,
+    account,
   );
-
-export interface IDeleteProjectReq {
-  id: string;
-}
 
 export interface IDeleteProjectResp {
   name: string;
 }
-export const apiProjectDelete = (project: IDeleteProjectReq) =>
+export const apiProjectDelete = (id: number) =>
   instance.delete<IResponse<IDeleteProjectResp>>(
-    VERSION + "/admin/projects/" + project.id,
+    `${VERSION}/admin/projects/${id}`,
   );
 
 export interface User {

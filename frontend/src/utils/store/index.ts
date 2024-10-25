@@ -26,6 +26,7 @@ export const VITE_UI_THEME_KEY = "vite_ui_theme";
 export type BreadCrumbItem = {
   title: string;
   path?: string;
+  isEmpty?: boolean;
 };
 export const globalBreadCrumb = atom([] as BreadCrumbItem[]);
 

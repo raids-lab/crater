@@ -21,7 +21,7 @@ import {
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { Link } from "react-router-dom";
-import { TableDate } from "@/components/custom/TableDate";
+import { TimeDistance } from "@/components/custom/TimeDistance";
 import { toast } from "sonner";
 import { getHeader } from "@/pages/Portal/Job/statuses";
 import { logger } from "@/utils/loglevel";
@@ -335,7 +335,7 @@ const ColocateOverview = () => {
           />
         ),
         cell: ({ row }) => {
-          return <TableDate date={row.getValue("createdAt")}></TableDate>;
+          return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
         },
         sortingFn: "datetime",
       },
@@ -348,7 +348,7 @@ const ColocateOverview = () => {
           />
         ),
         cell: ({ row }) => {
-          return <TableDate date={row.getValue("startedAt")}></TableDate>;
+          return <TimeDistance date={row.getValue("startedAt")}></TimeDistance>;
         },
         sortingFn: "datetime",
       },

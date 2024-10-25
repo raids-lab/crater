@@ -30,14 +30,14 @@ import {
   cancelSharedQueueResp,
 } from "@/services/api/dataset";
 import { Pencil, User, Users, X } from "lucide-react";
-import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
+import useBreadcrumb from "@/hooks/useBreadcrumb";
 import { QueueNotInSelect } from "@/components/custom/QueueNotInSelect";
 import { AxiosResponse } from "axios";
 import { IResponse } from "@/services/types";
 import { DataTable } from "./DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "./DataTable/DataTableColumnHeader";
-import { TableDate } from "./TableDate";
+import { TimeDistance } from "./TimeDistance";
 import { Input } from "../ui/input";
 interface QueueOption {
   value: string;
@@ -320,7 +320,7 @@ export function DatasetShareTable({
           />
         ),
         cell: ({ row }) => {
-          return <TableDate date={row.getValue("createdAt")}></TableDate>;
+          return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
         },
         //sortingFn: "datetime",
         enableSorting: false,

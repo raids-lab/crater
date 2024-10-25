@@ -18,9 +18,9 @@ export interface ClusterNodeInfo {
   name: string;
   isReady: boolean;
   role: string;
-  cpu: ResourceInfo;
-  memory: ResourceInfo;
-  gpu: ResourceInfo;
+  cpu?: ResourceInfo;
+  memory?: ResourceInfo;
+  gpu?: ResourceInfo;
   labels: Record<string, string>;
 }
 
@@ -33,9 +33,9 @@ export const toolbarConfig: DataTableToolbarConfig = {
   getHeader: (x) => x,
 };
 
-export const UsageCell: FC<{ value: ResourceInfo }> = ({ value }) => {
-  if (value.description === "") {
-    return <div />;
+export const UsageCell: FC<{ value?: ResourceInfo }> = ({ value }) => {
+  if (!value || isNaN(value.percent)) {
+    return <></>;
   }
 
   return (
@@ -124,10 +124,12 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title={"CPU"} />
     ),
-    cell: ({ row }) => <UsageCell value={row.getValue<ResourceInfo>("cpu")} />,
+    cell: ({ row }) => {
+      return <UsageCell value={row.original.cpu} />;
+    },
     sortingFn: (rowA, rowB) => {
-      const a = rowA.original.cpu.percent;
-      const b = rowB.original.cpu.percent;
+      const a = rowA.original.cpu?.percent ?? 0;
+      const b = rowB.original.cpu?.percent ?? 0;
       return a - b;
     },
   },
@@ -137,11 +139,11 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
       <DataTableColumnHeader column={column} title={"Memory"} />
     ),
     cell: ({ row }) => (
-      <UsageCell value={row.getValue<ResourceInfo>("memory")} />
+      <UsageCell value={row.getValue<ResourceInfo | undefined>("memory")} />
     ),
     sortingFn: (rowA, rowB) => {
-      const a = rowA.original.memory.percent;
-      const b = rowB.original.memory.percent;
+      const a = rowA.original.memory?.percent ?? 0;
+      const b = rowB.original.memory?.percent ?? 0;
       return a - b;
     },
   },
@@ -152,17 +154,8 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
     ),
     cell: ({ row }) => <UsageCell value={row.getValue<ResourceInfo>("gpu")} />,
     sortingFn: (rowA, rowB) => {
-      if (!rowA.original.gpu.description && rowB.original.gpu.description) {
-        return 1;
-      } else if (
-        rowA.original.gpu.description &&
-        !rowB.original.gpu.description
-      ) {
-        return -1;
-      }
-
-      const a = rowA.original.gpu.percent;
-      const b = rowB.original.gpu.percent;
+      const a = rowA.original.gpu?.percent ?? 0;
+      const b = rowB.original.gpu?.percent ?? 0;
       return a - b;
     },
   },

@@ -8,7 +8,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { TableDate } from "@/components/custom/TableDate";
+import { TimeDistance } from "@/components/custom/TimeDistance";
 import { FileSizeComponent } from "@/components/custom/FileSize";
 import {
   DownloadIcon,
@@ -160,7 +160,9 @@ export const Component: FC = () => {
           />
         ),
         cell: ({ row }) => {
-          return <TableDate date={row.getValue("modifytime")}></TableDate>;
+          return (
+            <TimeDistance date={row.getValue("modifytime")}></TimeDistance>
+          );
         },
         //sortingFn: "datetime",
         enableSorting: false,

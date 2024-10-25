@@ -1,14 +1,26 @@
 import instance, { VERSION } from "@/services/axios";
 import { IResponse } from "@/services/types";
-import { KubernetesResource } from "@/utils/resource";
+import { K8sResources } from "@/utils/resource";
 import { Role } from "../auth";
 import { ProjectStatus } from "../account";
+
+export interface IUserAttributes {
+  name: string;
+  nickname: string;
+  email?: string;
+  teacher?: string;
+  group?: string;
+  expiredAt?: string;
+  phone?: string;
+  avatar?: string;
+}
 
 export interface IUser {
   id: number;
   name: string;
   role: Role;
   status: ProjectStatus;
+  attributes: IUserAttributes;
 }
 
 export const apiAdminUserList = () =>
@@ -19,7 +31,7 @@ export const apiAdminUserDelete = (userName: string) =>
 
 export interface IAdminUserUpdate {
   userName: string;
-  hardQuota: KubernetesResource;
+  hardQuota: K8sResources;
 }
 
 export const apiAdminUserUpdateQuota = (data: IAdminUserUpdate) =>

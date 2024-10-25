@@ -74,7 +74,7 @@ import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTabl
 import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
 import { Role } from "@/services/api/auth";
 import { z } from "zod";
-import useBreadcrumb from "@/hooks/useDetailBreadcrumb";
+import useBreadcrumb from "@/hooks/useBreadcrumb";
 
 const formSchema = z.object({
   index: z.string().min(1, {

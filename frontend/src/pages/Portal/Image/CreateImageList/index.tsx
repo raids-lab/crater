@@ -17,7 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ImageCreateForm } from "./CreateForm";
-import { TableDate } from "@/components/custom/TableDate";
+import { TimeDistance } from "@/components/custom/TimeDistance";
 import {
   ImagePackInfo,
   apiUserImagePackDelete,
@@ -209,7 +209,7 @@ export const ImageTable: FC = () => {
         <DataTableColumnHeader column={column} title={getHeader("createdAt")} />
       ),
       cell: ({ row }) => {
-        return <TableDate date={row.getValue("createdAt")}></TableDate>;
+        return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
       },
       sortingFn: "datetime",
     },

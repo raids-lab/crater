@@ -3,6 +3,7 @@ import { PathInfo } from "@/utils/title";
 export const craterPath: PathInfo = {
   path: "portal",
   title: "Portal",
+  isEmpty: true,
   children: [
     {
       path: "overview",
@@ -12,6 +13,7 @@ export const craterPath: PathInfo = {
     {
       path: "job",
       title: "我的作业",
+      isEmpty: true,
       children: [
         {
           path: "batch",
@@ -54,6 +56,7 @@ export const craterPath: PathInfo = {
     {
       path: "service",
       title: "我的服务",
+      isEmpty: true,
       children: [
         {
           path: "microservice",
@@ -68,6 +71,7 @@ export const craterPath: PathInfo = {
     {
       path: "image",
       title: "我的镜像",
+      isEmpty: true,
       children: [
         {
           path: "createimage",
@@ -82,6 +86,7 @@ export const craterPath: PathInfo = {
     {
       path: "data",
       title: "数据管理",
+      isEmpty: true,
       children: [
         {
           path: "filesystem",
@@ -96,6 +101,7 @@ export const craterPath: PathInfo = {
     {
       path: "account",
       title: "账户管理",
+      isEmpty: true,
       children: [
         {
           path: "member",

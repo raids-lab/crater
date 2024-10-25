@@ -17,7 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { NewTaskForm } from "./Form";
-import { TableDate } from "@/components/custom/TableDate";
+import { TimeDistance } from "@/components/custom/TimeDistance";
 import {
   ImagePackInfo,
   getHeader,
@@ -242,7 +242,7 @@ export const Component: FC = () => {
         <DataTableColumnHeader column={column} title={getHeader("createdAt")} />
       ),
       cell: ({ row }) => {
-        return <TableDate date={row.getValue("createdAt")}></TableDate>;
+        return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
       },
       sortingFn: "datetime",
     },

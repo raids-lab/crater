@@ -1,6 +1,6 @@
 import instance, { VERSION } from "@/services/axios";
 import { IResponse } from "@/services/types";
-import { KubernetesResource } from "@/utils/resource";
+import { K8sResources } from "@/utils/resource";
 
 export enum NodeType {
   Hygon = "hygon",
@@ -14,8 +14,8 @@ export interface IClusterNodeInfo {
   role: string;
   labels: Record<string, string>;
   isReady: boolean;
-  capacity: KubernetesResource;
-  allocated: KubernetesResource;
+  capacity: K8sResources;
+  allocated: K8sResources;
 }
 
 export interface IOwnerReference {

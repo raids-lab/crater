@@ -4,11 +4,19 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { getDateDiff } from "@/utils/formatter";
 import { Badge } from "../ui/badge";
+import { format, formatDistanceToNow } from "date-fns";
+import { zhCN } from "date-fns/locale";
 
-export const TableDate = ({ date }: { date: string }) => {
-  const createdAt = new Date(date);
+export const TimeDistance = ({ date }: { date: string }) => {
+  if (!date) {
+    return null;
+  }
+  const startTime = new Date(date);
+  const timeDifference = formatDistanceToNow(startTime, {
+    locale: zhCN,
+    addSuffix: true,
+  });
   return (
     <TooltipProvider delayDuration={10}>
       <Tooltip>
@@ -17,13 +25,11 @@ export const TableDate = ({ date }: { date: string }) => {
             className="border-none p-0 text-sm font-normal"
             variant="outline"
           >
-            {getDateDiff(date)}
+            {timeDifference}
           </Badge>
         </TooltipTrigger>
         <TooltipContent className="border bg-background text-foreground">
-          {createdAt.toLocaleString("zh-CN", {
-            timeZone: "Asia/Shanghai",
-          })}
+          {format(startTime, "PPPp", { locale: zhCN })}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

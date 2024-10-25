@@ -1,4 +1,4 @@
-import { KubernetesResource } from "@/utils/resource";
+import { K8sResources } from "@/utils/resource";
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
 import { showErrorToast } from "@/utils/toast";
@@ -71,7 +71,7 @@ export interface AiTask {
   duration: number;
   jct: number;
   image: string;
-  resourceRequest: KubernetesResource;
+  resourceRequest: K8sResources;
   workingDir: string;
   ShareDirs: string[];
   command: string;
@@ -90,7 +90,7 @@ export const convertAiTask = (task: IAiTask): AiTask => {
   try {
     const aiTaskINfo: AiTask = {
       ...task,
-      resourceRequest: JSON.parse(task.resourceRequest) as KubernetesResource,
+      resourceRequest: JSON.parse(task.resourceRequest) as K8sResources,
       profileStat:
         task.profileStat === ""
           ? undefined

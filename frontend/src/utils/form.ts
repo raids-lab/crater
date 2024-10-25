@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { KubernetesResourceList } from "./resource";
+import { K8sResources } from "./resource";
 
 export const resourceSchema = z.object({
   cpu: z.number().int().min(0, {
@@ -187,13 +187,13 @@ export const importFromJson = async <T>(
 
 export const convertToResourceList = (
   resource: ResourceSchema,
-): KubernetesResourceList => {
-  const k8sResource: KubernetesResourceList = {
-    cpu: resource.cpu,
+): K8sResources => {
+  const k8sResource: K8sResources = {
+    cpu: `${resource.cpu}`,
     memory: `${resource.memory}Gi`,
   };
   if (resource.gpu.model) {
-    k8sResource[resource.gpu.model] = resource.gpu.count;
+    k8sResource[resource.gpu.model] = `${resource.gpu.count}`;
   }
   return k8sResource;
 };

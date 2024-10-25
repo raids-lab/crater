@@ -14,12 +14,13 @@ const useBreadcrumb = () => {
     const titles = getBreadcrumbByPath(pathParts);
     if (titles) {
       let url = "";
-      const ans = [];
+      const ans: BreadCrumbItem[] = [];
       for (let i = 0; i < titles.length; i++) {
         url += `/${titles[i].path}`;
         ans.push({
           title: titles[i].title,
           path: url,
+          isEmpty: titles[i].isEmpty,
         });
       }
       if (detail) {

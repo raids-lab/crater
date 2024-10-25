@@ -11,9 +11,9 @@ import { apiGetNodes } from "@/services/api/node";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { nodeColumns, ClusterNodeInfo } from "@/components/custom/NodeList";
-import { getAiResource } from "@/utils/resource";
+import { convertKResourceToResource } from "@/utils/resource";
 import { getHeader } from "@/pages/Admin/Job/Volcano";
-import { TableDate } from "@/components/custom/TableDate";
+import { TimeDistance } from "@/components/custom/TimeDistance";
 import { JobPhase } from "@/services/api/vcjob";
 import JobPhaseLabel, {
   aijobPhases,
@@ -91,32 +91,59 @@ export const Component: FC = () => {
       res.data.data.rows
         .sort((a, b) => a.name.localeCompare(b.name))
         .map((x) => {
-          const capacity = getAiResource(x.capacity);
-          const allocated = getAiResource(x.allocated);
-          return {
+          const cpuCapacity = convertKResourceToResource(
+            "cpu",
+            x.capacity && x.capacity.cpu,
+          );
+          const cpuAllocated = convertKResourceToResource(
+            "cpu",
+            x.allocated && x.allocated.cpu,
+          );
+          const memCapacity = convertKResourceToResource(
+            "memory",
+            x.capacity && x.capacity.memory,
+          );
+          const memAllocated = convertKResourceToResource(
+            "memory",
+            x.allocated && x.allocated.memory,
+          );
+          const gpuCapacity = convertKResourceToResource(
+            "nvidia.com/gpu",
+            x.capacity && x.capacity["nvidia.com/gpu"],
+          );
+          const gpuAllocated = convertKResourceToResource(
+            "nvidia.com/gpu",
+            x.allocated && x.allocated["nvidia.com/gpu"],
+          );
+
+          const info: ClusterNodeInfo = {
             type: x.type,
             name: x.name,
             isReady: x.isReady,
             role: x.role,
-            cpu: {
-              percent: (allocated.cpu ?? 0) / (capacity.cpu ?? 1) / 10,
-              description: `${((allocated.cpu ?? 0) / 1000).toFixed(1)}/${capacity.cpu ?? 1}`,
-            },
-            memory: {
-              percent:
-                ((allocated.memoryNum ?? 0) / (capacity.memoryNum ?? 1)) * 100,
-              description: `${(allocated.memoryNum ?? 0).toFixed(1)}/${(capacity.memoryNum ?? 1).toFixed(0)}Gi`,
-            },
-            gpu: {
-              percent: capacity.gpu
-                ? ((allocated.gpu ?? 0) / (capacity.gpu ?? 1)) * 100
-                : 0,
-              description: capacity.gpu
-                ? `${(allocated.gpu ?? 0).toFixed(0)}/${capacity.gpu ?? 1}`
-                : "",
-            },
             labels: x.labels,
-          } as ClusterNodeInfo;
+          };
+
+          if (cpuCapacity !== undefined && cpuAllocated !== undefined) {
+            info.cpu = {
+              percent: (cpuAllocated / cpuCapacity) * 100,
+              description: `${cpuAllocated.toFixed(1)}/${cpuCapacity.toFixed(0)}`,
+            };
+          }
+          if (memCapacity !== undefined && memAllocated !== undefined) {
+            info.memory = {
+              percent: (memAllocated / memCapacity) * 100,
+              description: `${memAllocated.toFixed(1)}/${memCapacity.toFixed(0)}`,
+            };
+          }
+          if (gpuCapacity !== undefined && gpuAllocated !== undefined) {
+            info.gpu = {
+              percent: (gpuAllocated / gpuCapacity) * 100,
+              description: `${gpuAllocated}/${gpuCapacity}`,
+            };
+          }
+
+          return info;
         }),
   });
 
@@ -191,7 +218,7 @@ export const Component: FC = () => {
           />
         ),
         cell: ({ row }) => {
-          return <TableDate date={row.getValue("createdAt")}></TableDate>;
+          return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
         },
         sortingFn: "datetime",
       },
@@ -204,7 +231,7 @@ export const Component: FC = () => {
           />
         ),
         cell: ({ row }) => {
-          return <TableDate date={row.getValue("startedAt")}></TableDate>;
+          return <TimeDistance date={row.getValue("startedAt")}></TimeDistance>;
         },
         sortingFn: "datetime",
       },
@@ -217,7 +244,9 @@ export const Component: FC = () => {
           />
         ),
         cell: ({ row }) => {
-          return <TableDate date={row.getValue("completedAt")}></TableDate>;
+          return (
+            <TimeDistance date={row.getValue("completedAt")}></TimeDistance>
+          );
         },
         sortingFn: "datetime",
       },

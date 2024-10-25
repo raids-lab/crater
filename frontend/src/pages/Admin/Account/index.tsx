@@ -1,172 +1,125 @@
-import { DataTableColumnHeader } from "@/components/custom/PagenationDataTable/DataTableColumnHeader";
 import {
-  IProject,
   apiAdminAccountList,
-  apiProjectCreate,
-  apiProjectUpdate,
+  apiAccountCreate,
+  apiAccountUpdate,
+  IAccount,
 } from "@/services/api/account";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import {
-  PencilIcon,
-  PlusCircleIcon,
-  TrashIcon,
-  UserRoundIcon,
-} from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui-custom/alert-dialog";
-import { useMemo } from "react";
-import { ColumnDef } from "@tanstack/react-table";
+import { PlusCircleIcon } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { z } from "zod";
-import { toast } from "sonner";
 import { apiProjectDelete } from "@/services/api/account";
-import { useNavigate } from "react-router-dom";
 import { useAtomValue } from "jotai";
 import { globalSettings } from "@/utils/store";
 import { DataTable } from "@/components/custom/DataTable";
-import ResourceBadges from "@/components/label/ResourceBadges";
-import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { apiResourceList } from "@/services/api/resource";
-import { ProjectSheet } from "./AccountForm";
+import { AccountFormSchema, formSchema } from "./account-form";
+import { getColumns, toolbarConfig } from "./account-table";
+import { Button } from "@/components/ui/button";
+import {
+  CalendarIcon,
+  CircleArrowDown,
+  CircleArrowUp,
+  CirclePlusIcon,
+  XIcon,
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { useFieldArray, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import FormLabelMust from "@/components/custom/FormLabelMust";
+import LoadableButton from "@/components/custom/LoadableButton";
+import { z } from "zod";
+import { toast } from "sonner";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import useResizeObserver from "use-resize-observer";
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { exportToJson, importFromJson } from "@/utils/form";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { zhCN } from "date-fns/locale";
+import { convertFormToQuota, convertQuotaToForm } from "@/utils/quota";
+import SelectBox from "@/components/custom/SelectBox";
+import { apiAdminUserList } from "@/services/api/admin/user";
+import { logger } from "@/utils/loglevel";
 
-function convertResourcesToMap(
-  resources: Resource[],
-  field: keyof Resource,
-): {
-  [key: string]: string;
-} {
-  const resourceMap: { [key: string]: string } = {};
-  resources.forEach((resource) => {
-    if (resource[field] !== "") {
-      resourceMap[resource.name] = resource[field] as string;
-    }
-  });
-  return resourceMap;
-}
-
-const resourceSchema = z.array(
-  z.object({
-    name: z.string().min(1, {
-      message: "资源名称不能为空",
-    }),
-    guaranteed: z
-      .union([
-        z.string().min(0, {
-          message: "资源不能为空",
-        }),
-        z.number().int().min(0, {
-          message: "资源至少为0",
-        }),
-      ])
-      .default("null"),
-    deserved: z
-      .union([
-        z.string().min(0, {
-          message: "资源不能为空",
-        }),
-        z.number().int().min(0, {
-          message: "资源至少为0",
-        }),
-      ])
-      .default("null"),
-    capacity: z
-      .union([
-        z.string().min(0, {
-          message: "资源不能为空",
-        }),
-        z.number().int().min(0, {
-          message: "资源至少为0",
-        }),
-      ])
-      .default("null"),
-  }),
-);
-
-const formSchema = z.object({
-  name: z
-    .string()
-    .min(1, {
-      message: "账户名称不能为空",
-    })
-    .max(16, {
-      message: "账户名称最多16个字符",
-    }),
-  resources: resourceSchema,
-  expiredAt: z.date().optional(),
-  admins: z.array(z.string()),
-});
-
-type FormSchema = z.infer<typeof formSchema>;
-
-interface Resource {
-  name: string;
-  guaranteed: number | string;
-  deserved: number | string;
-  capacity: number | string;
-}
-
-const getHeader = (key: string): string => {
-  switch (key) {
-    case "nickname":
-      return "账户名称";
-    case "deserved":
-      return "应得";
-    case "guaranteed":
-      return "保证";
-    case "capacity":
-      return "上限";
-    default:
-      return key;
-  }
-};
-
-const toolbarConfig: DataTableToolbarConfig = {
-  filterInput: {
-    key: "name",
-    placeholder: "搜索账户名称",
-  },
-  filterOptions: [],
-  getHeader: getHeader,
-};
+const VERSION = "20240623";
+const JOB_TYPE = "queue";
 
 export const Account = () => {
-  const navigate = useNavigate();
-
+  const [users, setUsers] = useState<string[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const { scheduler } = useAtomValue(globalSettings);
   const queryClient = useQueryClient();
+
+  const { data: userList } = useQuery({
+    queryKey: ["admin", "userlist"],
+    queryFn: apiAdminUserList,
+    select: (res) =>
+      res.data.data.map((user) => ({
+        value: user.id.toString(),
+        label: user.attributes.nickname || user.name,
+      })),
+  });
+
   const query = useQuery({
     queryKey: ["admin", "accounts"],
     queryFn: () => apiAdminAccountList(),
     select: (res) => res.data.data,
   });
 
-  const { mutate: deleteProject } = useMutation({
-    mutationFn: (projectId: string) => apiProjectDelete({ id: projectId }),
-    onSuccess: async (_, projectName) => {
+  const { mutate: deleteAccount } = useMutation({
+    mutationFn: (account: IAccount) => apiProjectDelete(account.id),
+    onSuccess: async (_, account) => {
       await queryClient.invalidateQueries({
         queryKey: ["admin", "accounts"],
       });
-      toast.success(`账户 ${projectName} 已删除`);
+      toast.success(`账户 ${account.nickname} 已删除`);
     },
   });
 
-  const { scheduler } = useAtomValue(globalSettings);
-  const { mutate: updateProject, isPending } = useMutation({
-    mutationFn: (values: z.infer<typeof formSchema>) =>
-      apiProjectUpdate({
+  const { mutate: createAccount, isPending: isCreatePending } = useMutation({
+    mutationFn: (values: AccountFormSchema) =>
+      apiAccountCreate({
         name: values.name,
-        guaranteed: convertResourcesToMap(values.resources, "guaranteed"),
-        deserved: convertResourcesToMap(values.resources, "deserved"),
-        capacity: convertResourcesToMap(values.resources, "capacity"),
+        quota: convertFormToQuota(values.resources),
+        expiredAt: values.expiredAt,
+        withoutVolcano: scheduler !== "volcano",
+      }),
+    onSuccess: async (_, { name }) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["admin", "accounts"],
+      });
+      toast.success(`账户 ${name} 新建成功`);
+      setIsOpen(false);
+    },
+  });
+
+  const { mutate: updateAccount, isPending: isUpdatePending } = useMutation({
+    mutationFn: (values: AccountFormSchema) =>
+      apiAccountUpdate(values.id ?? 0, {
+        name: values.name,
+        quota: convertFormToQuota(values.resources),
         expiredAt: values.expiredAt,
         withoutVolcano: scheduler !== "volcano",
       }),
@@ -175,248 +128,422 @@ export const Account = () => {
         queryKey: ["admin", "accounts"],
       });
       toast.success(`账户 ${name} 更新成功`);
+      setIsOpen(false);
     },
   });
 
-  const columns = useMemo<ColumnDef<IProject>[]>(
-    () => [
-      {
-        accessorKey: "nickname",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("nickname")}
-          />
-        ),
-        cell: ({ row }) => <div>{row.getValue("nickname")}</div>,
-        enableSorting: false,
-      },
-      {
-        accessorKey: "guaranteed",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("guaranteed")}
-          />
-        ),
-        cell: ({ row }) => {
-          const quota = row.getValue<Record<string, string> | undefined>(
-            "guaranteed",
-          );
-          return <ResourceBadges resources={quota} />;
-        },
-        enableSorting: false,
-      },
-      {
-        accessorKey: "deserved",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("deserved")}
-          />
-        ),
-        cell: ({ row }) => {
-          const quota = row.getValue<Record<string, string> | undefined>(
-            "deserved",
-          );
-          return <ResourceBadges resources={quota} />;
-        },
-        enableSorting: false,
-      },
-      {
-        accessorKey: "capacity",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("capacity")}
-          />
-        ),
-        cell: ({ row }) => {
-          const quota = row.getValue<Record<string, string> | undefined>(
-            "capacity",
-          );
-          return <ResourceBadges resources={quota} />;
-        },
-        enableSorting: false,
-      },
-      {
-        id: "actions",
-        enableHiding: false,
-        cell: ({ row }) => {
-          const proj = row.original;
-          const defaultValues: FormSchema = {
-            name: proj.nickname,
-            resources: [],
-            expiredAt: undefined,
-            admins: [],
-          };
-          const nameRecord = {} as Record<string, Resource>;
-          Object.entries(proj.guaranteed ?? {}).map(([key, value]) =>
-            nameRecord[key]
-              ? (nameRecord[key].guaranteed = value)
-              : (nameRecord[key] = {
-                  name: key,
-                  guaranteed: value,
-                  deserved: "",
-                  capacity: "",
-                } as Resource),
-          );
-          Object.entries(proj.deserved ?? {}).map(([key, value]) =>
-            nameRecord[key]
-              ? (nameRecord[key].deserved = value)
-              : (nameRecord[key] = {
-                  name: key,
-                  deserved: value,
-                  guaranteed: "",
-                  capacity: "",
-                } as Resource),
-          );
-          Object.entries(proj.capacity ?? {}).map(([key, value]) =>
-            nameRecord[key]
-              ? (nameRecord[key].capacity = value)
-              : (nameRecord[key] = {
-                  name: key,
-                  capacity: value,
-                  guaranteed: "",
-                  deserved: "",
-                } as Resource),
-          );
-          const resourcesData = Object.entries(nameRecord).map(
-            ([, value]) => value,
-          );
+  const { data: resourceDemension } = useQuery({
+    queryKey: ["resources", "list"],
+    queryFn: () => apiResourceList(false),
+    select: (res) => {
+      return res.data.data
+        .map((item) => item.name)
+        .filter(
+          (name) =>
+            name != "ephemeral-storage" &&
+            name != "hugepages-1Gi" &&
+            name != "hugepages-2Mi" &&
+            name != "pods",
+        )
+        .sort(
+          // cpu > memory > xx/xx > pods
+          (a, b) => {
+            if (a === "cpu") {
+              return -1;
+            }
+            if (b === "cpu") {
+              return 1;
+            }
+            if (a === "memory") {
+              return -1;
+            }
+            if (b === "memory") {
+              return 1;
+            }
+            return a.localeCompare(b);
+          },
+        );
+    },
+  });
 
-          return (
-            <div className="flex flex-row items-center justify-center gap-1">
-              <Button
-                title="管理用户"
-                onClick={() => navigate(`${proj.id}`)}
-                variant="outline"
-                className="h-8 w-8"
-                size="icon"
-              >
-                <UserRoundIcon className="h-4 w-4" />
-              </Button>
-              <ProjectSheet
-                formData={defaultValues}
-                isPending={isPending}
-                resourcesData={resourcesData}
-                apiProjcet={updateProject}
-              >
-                <Button
-                  title="修改配额"
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8"
-                >
-                  <PencilIcon className="h-4 w-4" />
-                </Button>
-              </ProjectSheet>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    title="删除账户"
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>删除账户</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      账户 {proj?.nickname} 将被删除，请谨慎操作。
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>取消</AlertDialogCancel>
-                    <AlertDialogAction
-                      variant="destructive"
-                      onClick={() => {
-                        deleteProject(String(proj.id));
-                      }}
-                    >
-                      删除
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          );
-        },
-      },
-    ],
-    [deleteProject, isPending, navigate, updateProject],
-  );
+  const { ref: refRoot, width, height } = useResizeObserver();
 
-  const defaultValues: FormSchema = {
-    name: "",
-    resources: [
-      {
-        name: "cpu",
-        guaranteed: "",
-        deserved: "",
-        capacity: "",
-      },
-      {
-        name: "memory",
-        guaranteed: "",
-        deserved: "",
-        capacity: "",
-      },
-    ],
-    expiredAt: undefined,
-    admins: [],
+  // 1. Define your form.
+  const form = useForm<AccountFormSchema>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      resources: [{ name: "cpu" }, { name: "memory" }],
+      expiredAt: undefined,
+      admins: [],
+    },
+  });
+
+  const currentValues = form.watch();
+
+  const {
+    fields: resourcesFields,
+    append: resourcesAppend,
+    remove: resourcesRemove,
+  } = useFieldArray<AccountFormSchema>({
+    name: "resources",
+    control: form.control,
+  });
+
+  // 2. Define a submit handler.
+  const onSubmit = (values: z.infer<typeof formSchema>) => {
+    // Do something with the form values.
+    // ✅ This will be type-safe and validated.
+    if (values.id) {
+      updateAccount(values);
+    } else {
+      createAccount(values);
+    }
   };
 
-  const { data: resourcesData } = useQuery({
-    queryKey: ["resources", "list"],
-    queryFn: () => apiResourceList(true),
-    select: (res) => {
-      return res.data.data.map(
-        (item) =>
-          ({
-            name: item.name,
-            guaranteed: "",
-            deserved: "",
-            capacity: "",
-          }) as Resource,
-      );
-    },
-  });
+  const handleCreate = useCallback(() => {
+    form.reset({
+      name: "",
+      resources: resourceDemension?.map((name) => ({ name })) || [],
+      expiredAt: undefined,
+      admins: [],
+    });
+    setIsOpen(true);
+  }, [form, resourceDemension]);
 
-  const { mutate: createNewProject, isPending: isCreatePending } = useMutation({
-    mutationFn: (values: z.infer<typeof formSchema>) =>
-      apiProjectCreate({
-        name: values.name,
-        guaranteed: convertResourcesToMap(values.resources, "guaranteed"),
-        deserved: convertResourcesToMap(values.resources, "deserved"),
-        capacity: convertResourcesToMap(values.resources, "capacity"),
-        expiredAt: values.expiredAt,
-        withoutVolcano: scheduler !== "volcano",
-      }),
-    onSuccess: async (_, { name }) => {
-      await queryClient.invalidateQueries({
-        queryKey: ["admin", "accounts"],
+  const handleEdit = useCallback(
+    (account: IAccount) => {
+      // open the sheet
+      const resources = convertQuotaToForm(account.quota, resourceDemension);
+      form.reset({
+        id: account.id,
+        name: account.nickname,
+        resources: resources,
+        expiredAt: account.expiredAt ? new Date(account.expiredAt) : undefined,
+        admins: [],
       });
-      toast.success(`账户 ${name} 创建成功`);
+      setIsOpen(true);
     },
-  });
+    [resourceDemension, form],
+  );
+
+  const columns = useMemo(() => {
+    return getColumns(handleEdit, deleteAccount);
+  }, [handleEdit, deleteAccount]);
 
   return (
-    <DataTable query={query} columns={columns} toolbarConfig={toolbarConfig}>
-      <ProjectSheet
-        formData={defaultValues}
-        isPending={isCreatePending}
-        resourcesData={resourcesData}
-        apiProjcet={createNewProject}
-      >
-        <Button className="h-8">
-          <PlusCircleIcon className="-ml-0.5 mr-2 h-4 w-4" />
+    <>
+      <DataTable query={query} columns={columns} toolbarConfig={toolbarConfig}>
+        <Button className="h-8" onClick={handleCreate}>
+          <PlusCircleIcon className="h-4 w-4" />
           新建账户
         </Button>
-      </ProjectSheet>
-    </DataTable>
+      </DataTable>
+      <Sheet open={isOpen} onOpenChange={setIsOpen}>
+        <SheetContent className="flex flex-col gap-6 px-0 sm:max-w-4xl">
+          <SheetHeader>
+            <SheetTitle className="pl-6">
+              {form.getValues("id") ? "编辑" : "新建"}账户
+            </SheetTitle>
+          </SheetHeader>
+
+          <Form {...form}>
+            <div ref={refRoot} className="h-full w-full">
+              <ScrollArea style={{ width, height }}>
+                <form
+                  // eslint-disable-next-line @typescript-eslint/no-misused-promises
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="grid gap-4 px-6"
+                >
+                  <div className="flex flex-row items-start justify-between gap-4">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem className="col-span-1 flex-grow">
+                          <FormLabel>
+                            账户名称
+                            <FormLabelMust />
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              autoComplete="off"
+                              {...field}
+                              className="w-full"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            账户名称最多16个字符，可以包含汉字，但必须是唯一的
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="expiredAt"
+                      render={({ field }) => (
+                        <FormItem className="col-span-1 flex flex-col space-y-2">
+                          <FormLabel className="pb-1 pt-1.5">
+                            过期时间
+                          </FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-[240px] pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground",
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(field.value, "PPP", { locale: zhCN })
+                                  ) : (
+                                    <span>请选择日期</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              className="w-auto p-0"
+                              align="start"
+                            >
+                              <Calendar
+                                mode="single"
+                                locale={zhCN}
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) => date < new Date()}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormDescription>
+                            若不填写，账户将永不过期
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="admins"
+                    render={() => (
+                      <FormItem className="col-span-1 flex-grow">
+                        <FormLabel>账户管理员 [WIP]</FormLabel>
+                        <FormControl>
+                          <SelectBox
+                            className="col-span-4 h-8"
+                            options={userList ?? []}
+                            inputPlaceholder="搜索用户"
+                            placeholder="选择用户"
+                            value={users}
+                            onChange={setUsers}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          指定账户管理员后，账户内的用户管理、资源分配等操作，将由账户管理员负责
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="space-y-2">
+                    {resourcesFields.length > 0 && (
+                      <FormLabel>资源配额</FormLabel>
+                    )}
+                    {resourcesFields.map(({ id }, index) => (
+                      <div key={id} className="flex flex-row gap-2">
+                        <FormField
+                          control={form.control}
+                          name={`resources.${index}.name`}
+                          render={({ field }) => (
+                            <FormItem className="w-fit">
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  placeholder="资源"
+                                  className="font-mono"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`resources.${index}.guaranteed`}
+                          render={() => (
+                            <FormItem>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="保证"
+                                  className="font-mono"
+                                  {...form.register(
+                                    `resources.${index}.guaranteed`,
+                                    { valueAsNumber: true },
+                                  )}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`resources.${index}.deserved`}
+                          render={() => (
+                            <FormItem>
+                              <FormControl>
+                                <Input
+                                  type="string"
+                                  placeholder="应得"
+                                  className="font-mono"
+                                  {...form.register(
+                                    `resources.${index}.deserved`,
+                                    { valueAsNumber: true },
+                                  )}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`resources.${index}.capability`}
+                          render={() => (
+                            <FormItem>
+                              <FormControl>
+                                <Input
+                                  type="string"
+                                  placeholder="上限"
+                                  className="font-mono"
+                                  {...form.register(
+                                    `resources.${index}.capability`,
+                                    { valueAsNumber: true },
+                                  )}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <div>
+                          <Button
+                            size="icon"
+                            type="button"
+                            variant="outline"
+                            onClick={() => resourcesRemove(index)}
+                          >
+                            <XIcon className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {resourcesFields.length > 0 && (
+                      <FormDescription>
+                        请输入整数，CPU 资源单位为核数，Memory 资源单位为
+                        GB。如果不填写，则保证和应得为 0，上限为无穷大
+                      </FormDescription>
+                    )}
+
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() =>
+                        resourcesAppend({
+                          name: "",
+                        })
+                      }
+                    >
+                      <CirclePlusIcon className="mr-2 h-4 w-4" />
+                      添加配额维度
+                    </Button>
+                  </div>
+                </form>
+              </ScrollArea>
+            </div>
+            <SheetFooter className="px-6">
+              <Button
+                variant="outline"
+                type="button"
+                className="relative cursor-pointer"
+              >
+                <Input
+                  onChange={(e) => {
+                    importFromJson<AccountFormSchema>(
+                      VERSION,
+                      JOB_TYPE,
+                      e.target.files?.[0],
+                    )
+                      .then((data) => {
+                        // preserve the name
+                        const name = currentValues.name;
+                        form.reset(data);
+                        form.setValue("name", name);
+                        toast.success(`导入配置成功`);
+                      })
+                      .catch(() => {
+                        toast.error(`解析错误，导入配置失败`);
+                      });
+                  }}
+                  type="file"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                />
+                <CircleArrowDown className="h-4 w-4" />
+                导入配置
+              </Button>
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => {
+                  form
+                    .trigger()
+                    .then((isValid) => {
+                      isValid &&
+                        exportToJson(
+                          {
+                            version: VERSION,
+                            type: JOB_TYPE,
+                            data: currentValues,
+                          },
+                          currentValues.name + ".json",
+                        );
+                    })
+                    .catch((error) => {
+                      toast.error((error as Error).message);
+                    });
+                }}
+              >
+                <CircleArrowUp className="h-4 w-4" />
+                导出配置
+              </Button>
+              <LoadableButton
+                isLoading={isCreatePending || isUpdatePending}
+                type="submit"
+                onClick={() => {
+                  form
+                    .trigger()
+                    .then(() => {
+                      if (form.formState.isValid) {
+                        onSubmit(form.getValues());
+                      }
+                    })
+                    .catch((e) => logger.debug(e));
+                }}
+              >
+                <CirclePlusIcon className="h-4 w-4" />
+                {form.getValues("id") ? "更新账户" : "新建账户"}
+              </LoadableButton>
+            </SheetFooter>
+          </Form>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 };
