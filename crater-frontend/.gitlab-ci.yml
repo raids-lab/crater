@@ -20,10 +20,6 @@ build_frontend:
     - pnpm build
   only:
     - main
-  # Only run when files in src/ are changed
-  rules:
-    - changes:
-        - src/**/*
   cache:
     key: "crater-web-frontend"
     paths:
