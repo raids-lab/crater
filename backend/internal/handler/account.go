@@ -47,7 +47,7 @@ func (mgr *AccountMgr) RegisterProtected(g *gin.RouterGroup) {
 func (mgr *AccountMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.ListAllForAdmin)
 	g.POST("", mgr.CreateAccount)
-	g.PUT("/:name/quotas", mgr.UpdateQuota)
+	g.PUT("/:pid", mgr.UpdateAccount)
 	g.DELETE("/:pid", mgr.DeleteAccount)
 	g.POST("/add/:pid/:uid", mgr.AddUserProject)
 	g.POST("/update/:pid/:uid", mgr.UpdateUserProject)
@@ -96,13 +96,12 @@ type (
 
 	// Swagger 不支持范型嵌套，定义别名
 	ListAllResp struct {
-		ID         uint            `json:"id"`
-		Name       string          `json:"name"`
-		Nickname   string          `json:"nickname"`
-		Space      string          `json:"space"`
-		Guaranteed v1.ResourceList `json:"guaranteed"`
-		Deserved   v1.ResourceList `json:"deserved"`
-		Capacity   v1.ResourceList `json:"capacity"`
+		ID        uint             `json:"id"`
+		Name      string           `json:"name"`
+		Nickname  string           `json:"nickname"`
+		Space     string           `json:"space"`
+		Quota     model.QueueQuota `json:"quota"`
+		ExpiredAt *time.Time       `json:"expiredAt"`
 	}
 )
 
@@ -127,32 +126,34 @@ func (mgr *AccountMgr) ListAllForAdmin(c *gin.Context) {
 		return
 	}
 
-	var lists []ListAllResp
-	for _, q := range queues {
-		lists = append(lists,
-			ListAllResp{
-				ID:         q.ID,
-				Name:       q.Name,
-				Nickname:   q.Nickname,
-				Space:      q.Space,
-				Guaranteed: q.Quota.Data().Guaranteed,
-				Deserved:   q.Quota.Data().Deserved,
-				Capacity:   q.Quota.Data().Capability,
-			},
-		)
+	lists := make([]ListAllResp, len(queues))
+	for i := range queues {
+		queue := queues[i]
+		lists[i] = ListAllResp{
+			ID:       queue.ID,
+			Name:     queue.Name,
+			Nickname: queue.Nickname,
+			Space:    queue.Space,
+			Quota:    queue.Quota.Data(),
+		}
+		if !queue.ExpiredAt.IsZero() {
+			lists[i].ExpiredAt = &queue.ExpiredAt
+		}
 	}
 
 	resputil.Success(c, lists)
 }
 
 type (
-	ProjectCreateReq struct {
-		Name           string          `json:"name" binding:"required"`
-		Guaranteed     v1.ResourceList `json:"guaranteed" binding:"required"`
-		Deserved       v1.ResourceList `json:"deserved" binding:"required"`
-		Capability     v1.ResourceList `json:"capacity" binding:"required"`
-		WithoutVolcano bool            `json:"withoutVolcano"`
-		ExpiredAt      time.Time       `json:"ExpiredAt"`
+	AccountCreateOrUpdateReq struct {
+		Nickname string `json:"name" binding:"required"`
+		Quota    struct {
+			Guaranteed v1.ResourceList `json:"guaranteed"`
+			Deserved   v1.ResourceList `json:"deserved"`
+			Capability v1.ResourceList `json:"capability"`
+		} `json:"quota"`
+		WithoutVolcano bool      `json:"withoutVolcano"`
+		ExpiredAt      time.Time `json:"ExpiredAt"`
 	}
 
 	ProjectCreateResp struct {
@@ -175,7 +176,7 @@ type (
 func (mgr *AccountMgr) CreateAccount(c *gin.Context) {
 	token := util.GetToken(c)
 
-	var req ProjectCreateReq
+	var req AccountCreateOrUpdateReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		resputil.Error(c, err.Error(), resputil.InvalidRequest)
 		return
@@ -192,7 +193,7 @@ func (mgr *AccountMgr) CreateAccount(c *gin.Context) {
 
 		// Create a queue Queue
 		queue := model.Queue{
-			Nickname: req.Name,
+			Nickname: req.Nickname,
 		}
 		if err := q.WithContext(c).Create(&queue); err != nil {
 			return err
@@ -213,9 +214,9 @@ func (mgr *AccountMgr) CreateAccount(c *gin.Context) {
 		queue.Name = fmt.Sprintf("q-%d", queue.ID)
 		queue.Space = fmt.Sprintf("/q-%d", queue.ID)
 		queue.Quota = datatypes.NewJSONType(model.QueueQuota{
-			Guaranteed: req.Guaranteed,
-			Deserved:   req.Deserved,
-			Capability: req.Capability,
+			Guaranteed: req.Quota.Guaranteed,
+			Deserved:   req.Quota.Deserved,
+			Capability: req.Quota.Capability,
 		})
 		queue.ExpiredAt = req.ExpiredAt
 		if _, err := q.WithContext(c).Where(q.ID.Eq(queue.ID)).Updates(&queue); err != nil {
@@ -250,7 +251,7 @@ const (
 )
 
 func (mgr *AccountMgr) CreateVolcanoQueue(c *gin.Context, token *util.JWTMessage, queue *model.Queue,
-	req *ProjectCreateReq) error {
+	req *AccountCreateOrUpdateReq) error {
 	// Create a new queue, and set the user as the admin in user_queue
 	namespace := config.GetConfig().Workspace.Namespace
 	labels := map[string]string{
@@ -264,9 +265,9 @@ func (mgr *AccountMgr) CreateVolcanoQueue(c *gin.Context, token *util.JWTMessage
 			Labels:    labels,
 		},
 		Spec: scheduling.QueueSpec{
-			Guarantee:  scheduling.Guarantee{Resource: req.Guaranteed},
-			Capability: req.Capability,
-			Deserved:   req.Deserved,
+			Guarantee:  scheduling.Guarantee{Resource: req.Quota.Guaranteed},
+			Capability: req.Quota.Capability,
+			Deserved:   req.Quota.Deserved,
 		},
 	}
 
@@ -277,45 +278,36 @@ func (mgr *AccountMgr) CreateVolcanoQueue(c *gin.Context, token *util.JWTMessage
 	return nil
 }
 
-type UpdateQuotaReq struct {
-	Guaranteed     v1.ResourceList `json:"guaranteed" binding:"required"`
-	Deserved       v1.ResourceList `json:"deserved" binding:"required"`
-	Capability     v1.ResourceList `json:"capacity" binding:"required"`
-	WithoutVolcano bool            `json:"withoutVolcano"`
-	ExpiredAt      time.Time       `json:"ExpiredAt"`
+type AccountIDReq struct {
+	ID uint `uri:"pid" binding:"required"`
 }
 
-type ProjectNameReq struct {
-	Name string `uri:"name" binding:"required"`
-}
-
-// UpdateQuota godoc
+// UpdateAccount godoc
 // @Summary 更新配额
 // @Description 更新配额
 // @Tags Project
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param name path ProjectNameReq true "projectname"
+// @Param pid path AccountIDReq true "projectname"
 // @Param data body any true "更新quota"
 // @Success 200 {object} resputil.Response[string] "成功更新配额"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/admin/projects/{name}/quotas [put]
-func (mgr *AccountMgr) UpdateQuota(c *gin.Context) {
-	var req UpdateQuotaReq
-	var nameReq ProjectNameReq
+// @Router /v1/admin/projects/{pid} [put]
+func (mgr *AccountMgr) UpdateAccount(c *gin.Context) {
+	var req AccountCreateOrUpdateReq
+	var uriReq AccountIDReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate update parameters failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
-	if err := c.ShouldBindUri(&nameReq); err != nil {
+	if err := c.ShouldBindUri(&uriReq); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate update parameters failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
-	name := nameReq.Name
 	q := query.Queue
-	queue, err := q.WithContext(c).Where(q.Nickname.Eq(name)).First()
+	queue, err := q.WithContext(c).Where(q.ID.Eq(uriReq.ID)).First()
 
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("find project failed, detail: %v", err), resputil.NotSpecified)
@@ -324,13 +316,14 @@ func (mgr *AccountMgr) UpdateQuota(c *gin.Context) {
 
 	// update db
 	queue.Quota = datatypes.NewJSONType(model.QueueQuota{
-		Guaranteed: req.Guaranteed,
-		Deserved:   req.Deserved,
-		Capability: req.Capability,
+		Guaranteed: req.Quota.Guaranteed,
+		Deserved:   req.Quota.Deserved,
+		Capability: req.Quota.Capability,
 	})
 	if !req.ExpiredAt.IsZero() {
 		queue.ExpiredAt = req.ExpiredAt
 	}
+	queue.Nickname = req.Nickname
 	if _, err := q.WithContext(c).Where(q.ID.Eq(queue.ID)).Updates(queue); err != nil {
 		resputil.Error(c, fmt.Sprintf("update project failed, detail: %v", err), resputil.NotSpecified)
 		return
@@ -338,7 +331,7 @@ func (mgr *AccountMgr) UpdateQuota(c *gin.Context) {
 
 	// update queue
 	if req.WithoutVolcano {
-		resputil.Success(c, fmt.Sprintf("update capability of %s", name))
+		resputil.Success(c, fmt.Sprintf("update capability of %s", queue.Name))
 		return
 	}
 
@@ -347,10 +340,10 @@ func (mgr *AccountMgr) UpdateQuota(c *gin.Context) {
 		return
 	}
 
-	resputil.Success(c, fmt.Sprintf("update capability of %s", name))
+	resputil.Success(c, fmt.Sprintf("update capability of %s", queue.Name))
 }
 
-func (mgr *AccountMgr) updateVolcanoQueue(c *gin.Context, queue *model.Queue, req *UpdateQuotaReq) error {
+func (mgr *AccountMgr) updateVolcanoQueue(c *gin.Context, queue *model.Queue, req *AccountCreateOrUpdateReq) error {
 	vcQueue := &scheduling.Queue{}
 	namespace := config.GetConfig().Workspace.Namespace
 	err := mgr.client.Get(c, client.ObjectKey{Name: queue.Name, Namespace: namespace}, vcQueue)
@@ -358,9 +351,9 @@ func (mgr *AccountMgr) updateVolcanoQueue(c *gin.Context, queue *model.Queue, re
 		return err
 	}
 
-	vcQueue.Spec.Guarantee = scheduling.Guarantee{Resource: req.Guaranteed}
-	vcQueue.Spec.Deserved = req.Deserved
-	vcQueue.Spec.Capability = req.Capability
+	vcQueue.Spec.Guarantee = scheduling.Guarantee{Resource: req.Quota.Guaranteed}
+	vcQueue.Spec.Deserved = req.Quota.Deserved
+	vcQueue.Spec.Capability = req.Quota.Capability
 
 	if err := mgr.client.Update(c, vcQueue); err != nil {
 		return err
@@ -399,6 +392,19 @@ func (mgr *AccountMgr) DeleteAccount(c *gin.Context) {
 	db := query.Use(query.GetDB())
 
 	queueID := req.ID
+
+	uq := query.UserQueue
+
+	// get user-queues relationship without quota limit
+
+	if userQueues, err := uq.WithContext(c).Where(uq.QueueID.Eq(queueID)).Find(); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	} else if len(userQueues) > 0 {
+		resputil.Error(c, "Still have members", resputil.InvalidRequest)
+		return
+	}
+
 	var queueName string
 
 	err := db.Transaction(func(tx *query.Query) error {
@@ -418,8 +424,10 @@ func (mgr *AccountMgr) DeleteAccount(c *gin.Context) {
 			return err
 		}
 
-		if _, err := uq.WithContext(c).Delete(userQueues...); err != nil {
-			return err
+		if len(userQueues) > 0 {
+			if _, err := uq.WithContext(c).Delete(userQueues...); err != nil {
+				return err
+			}
 		}
 
 		if _, err := q.WithContext(c).Delete(queue); err != nil {
