@@ -151,7 +151,7 @@ export const Component = () => {
             <div className="flex h-5 items-center space-x-2">
               <ConfigDialog getConfig={apiJobGetYaml} jobName={jobName}>
                 <Button variant="ghost" size="sm">
-                  <FileSlidersIcon className="mr-2 h-4 w-4" />
+                  <FileSlidersIcon className="h-4 w-4" />
                   作业 YAML
                 </Button>
               </ConfigDialog>
@@ -165,7 +165,7 @@ export const Component = () => {
                   window.open(url, "_blank");
                 }}
               >
-                <GaugeIcon className="mr-2 h-4 w-4" />
+                <GaugeIcon className="h-4 w-4" />
                 资源监控
               </Button>
             </div>
@@ -183,7 +183,7 @@ export const Component = () => {
                       }, 500);
                     }}
                   >
-                    <ExternalLinkIcon className="mr-2 h-4 w-4" />
+                    <ExternalLinkIcon className="h-4 w-4" />
                     交互式页面
                   </Button>
                 )}
@@ -191,7 +191,7 @@ export const Component = () => {
                 <AlertDialogTrigger asChild>
                   <div>
                     <Button variant="destructive" size="sm" title="删除作业">
-                      <TrashIcon className="mr-2 h-4 w-4" />
+                      <TrashIcon className="h-4 w-4" />
                       删除作业
                     </Button>
                   </div>

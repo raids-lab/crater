@@ -30,8 +30,8 @@ const sidebarItems: SidebarItem[] = [
     children: [
       {
         route: {
-          path: "node",
-          element: <h1>WIP</h1>,
+          path: "node/*",
+          lazy: () => import("./Cluster/Node"),
         },
       },
       {
