@@ -27,6 +27,7 @@ import {
   ImageDeleteRequest,
   imagepackTaskType,
   ImagePackListType,
+  imagepackPublicPersonalStatus,
 } from "@/services/api/imagepack";
 import { logger } from "@/utils/loglevel";
 import { toast } from "sonner";
@@ -201,6 +202,19 @@ export const ImageTable: FC = () => {
         );
         const type: JobType = tasktype?.label as JobType;
         return <JobTypeLabel jobType={type} />;
+      },
+    },
+    {
+      accessorKey: "ispublic",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeader("ispublic")} />
+      ),
+      cell: ({ row }) => {
+        const imagePublicPersonalStatus = imagepackPublicPersonalStatus.find(
+          (imagePublicPersonalStatus) =>
+            imagePublicPersonalStatus.value === row.getValue("ispublic"),
+        );
+        return imagePublicPersonalStatus?.label;
       },
     },
     {
