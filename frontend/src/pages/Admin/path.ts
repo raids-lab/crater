@@ -42,12 +42,12 @@ export const adminPath: PathInfo = {
       isEmpty: true,
       children: [
         {
-          path: "public",
-          title: "公共镜像",
+          path: "create",
+          title: "镜像制作",
         },
         {
-          path: "personal",
-          title: "私有镜像",
+          path: "upload",
+          title: "镜像列表",
         },
       ],
     },

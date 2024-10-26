@@ -78,6 +78,10 @@ export const getHeader = (key: string): string => {
       return "创建时间";
     case "tasktype":
       return "任务类型";
+    case "imagetype":
+      return "镜像类型";
+    case "ispublic":
+      return "公私类型";
     default:
       return key;
   }
@@ -160,6 +164,36 @@ export const imagepackTaskType: {
   {
     value: 8,
     label: "training",
+  },
+];
+export type imagepackSourceTypeValue = 1 | 2;
+
+export const imagepackSourceType: {
+  value: imagepackSourceTypeValue;
+  label: string;
+}[] = [
+  {
+    value: 1,
+    label: "镜像制作",
+  },
+  {
+    value: 2,
+    label: "镜像上传",
+  },
+];
+
+export type imagepackPublicPersonalStatusValue = false | true;
+export const imagepackPublicPersonalStatus: {
+  value: imagepackPublicPersonalStatusValue;
+  label: string;
+}[] = [
+  {
+    value: false,
+    label: "私有",
+  },
+  {
+    value: true,
+    label: "公共",
   },
 ];
 
