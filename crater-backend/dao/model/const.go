@@ -71,4 +71,12 @@ const (
 	Unknown            // Unknown worker
 )
 
-//go:generate stringer -type=Role,Status,AccessMode,JobStatus,ImageTaskType,WorkerType -output=const_string.go
+type ImageSourceType uint8
+
+const (
+	_               ImageSourceType = iota
+	ImageCreateType                 // 镜像制造
+	ImageUploadType                 // 镜像上传
+)
+
+//go:generate stringer -type=Role,Status,AccessMode,JobStatus,ImageTaskType,WorkerType,ImageSourceType -output=const_string.go
