@@ -1,6 +1,10 @@
 import instance, { VERSION } from "@/services/axios";
 import { IResponse } from "@/services/types";
-import { ImagePackCreate, ImagePackListResponse } from "../imagepack";
+import {
+  ImageDeleteRequest,
+  ImagePackCreate,
+  ImagePackListResponse,
+} from "../imagepack";
 
 export const apiAdminImagepackCreate = async (imagepack: ImagePackCreate) => {
   const response = await instance.post<IResponse<string>>(
@@ -12,20 +16,28 @@ export const apiAdminImagepackCreate = async (imagepack: ImagePackCreate) => {
 
 export const apiAdminImagePackList = (type: number) =>
   instance.get<IResponse<ImagePackListResponse>>(
-    VERSION + "/admin/images/list",
-    {
-      params: {
-        type,
-      },
-    },
+    `${VERSION}/admin/images/list?type=${type}`,
   );
 
-export const apiAdminImagePackDelete = async (id: number) => {
+export const apiAdminImagePackDelete = async (req: ImageDeleteRequest) => {
   const response = await instance.post<IResponse<string>>(
     VERSION + "/admin/images/delete",
-    {
-      id,
-    },
+    req,
+  );
+  return response.data;
+};
+
+export interface UpdateImagePublicStatusRequest {
+  id: number;
+  imagetype: number;
+}
+
+export const apiAdminImagePublicStatusChange = async (
+  req: UpdateImagePublicStatusRequest,
+) => {
+  const response = await instance.post<IResponse<string>>(
+    VERSION + "/admin/images/change",
+    req,
   );
   return response.data;
 };

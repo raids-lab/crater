@@ -91,14 +91,14 @@ const sidebarItems: SidebarItem[] = [
     children: [
       {
         route: {
-          path: "public",
-          lazy: () => import("./Image/Public"),
+          path: "create",
+          lazy: () => import("./Image/Create"),
         },
       },
       {
         route: {
-          path: "personal",
-          lazy: () => import("./Image/Personal"),
+          path: "upload",
+          lazy: () => import("./Image/Upload"),
         },
       },
     ],

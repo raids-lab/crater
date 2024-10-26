@@ -5,10 +5,11 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
 import { DataTable } from "@/components/custom/OldDataTable";
 import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
 import {
   apiAdminImagePackDelete,
   apiAdminImagePackList,
+  apiAdminImagePublicStatusChange,
+  UpdateImagePublicStatusRequest,
 } from "@/services/api/admin/imagepack";
 import {
   AlertDialog,
@@ -25,20 +26,17 @@ import { toast } from "sonner";
 import { logger } from "@/utils/loglevel";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import {
+  ImageDeleteRequest,
   ImagePackInfo,
+  ImagePackListType,
   getHeader,
-  imagepackStatuses,
+  imagepackPublicPersonalStatus,
+  imagepackSourceType,
   imagepackTaskType,
 } from "@/services/api/imagepack";
 import { Button } from "@/components/ui/button";
-import { Trash2, UserRoundMinus } from "lucide-react";
+import { ToggleLeft, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import JobTypeLabel from "@/components/custom/JobTypeLabel";
 import { JobType } from "@/services/api/vcjob";
 
@@ -55,7 +53,7 @@ export const Component: FC = () => {
   const queryClient = useQueryClient();
   const imagePackInfo = useQuery({
     queryKey: ["imagepack", "list"],
-    queryFn: () => apiAdminImagePackList(0),
+    queryFn: () => apiAdminImagePackList(ImagePackListType.Upload),
     select: (res) => res.data.data.imagepacklist,
   });
   const data: ImagePackInfo[] = useMemo(() => {
@@ -86,10 +84,18 @@ export const Component: FC = () => {
     }
   };
   const { mutate: deleteAdminImagePack } = useMutation({
-    mutationFn: (id: number) => apiAdminImagePackDelete(id),
+    mutationFn: (req: ImageDeleteRequest) => apiAdminImagePackDelete(req),
     onSuccess: async () => {
       await refetchImagePackList();
       toast.success("镜像已删除");
+    },
+  });
+  const { mutate: changeImagePublicStatus } = useMutation({
+    mutationFn: (req: UpdateImagePublicStatusRequest) =>
+      apiAdminImagePublicStatusChange(req),
+    onSuccess: async () => {
+      await refetchImagePackList();
+      toast.success("镜像状态更新");
     },
   });
   const columns: ColumnDef<ImagePackInfo>[] = [
@@ -121,44 +127,7 @@ export const Component: FC = () => {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeader("nametag")} />
       ),
-      cell: ({ row }) => (
-        //     params: {
-        //       Convs: 0,
-        //       Activations: 0,
-        //       Denses: 0,
-        //       Others: 0,
-        //       GFLOPs: 0,
-        //       BatchSize: 0,
-        //       Params: 0,
-        //       ModelSize: 0,
-        //     },
-        <TooltipProvider delayDuration={0}>
-          <Tooltip>
-            <TooltipTrigger>{row.getValue("nametag")}</TooltipTrigger>
-            <TooltipContent className="grid grid-cols-2 gap-1 p-4 font-mono">
-              <div className="col-span-2 pb-2 text-sm font-bold">
-                Profile 信息
-              </div>
-              <div>Convs: </div>
-              <div>{row.original.params.Convs}</div>
-              <div>Activations: </div>
-              <div>{row.original.params.Activations}</div>
-              <div>Denses: </div>
-              <div>{row.original.params.Denses}</div>
-              <div>Others: </div>
-              <div>{row.original.params.Others}</div>
-              <div>GFLOPs: </div>
-              <div>{row.original.params.GFLOPs.toFixed(2)}</div>
-              <div>BatchSize: </div>
-              <div>{row.original.params.BatchSize}</div>
-              <div>Params: </div>
-              <div>{row.original.params.Params}</div>
-              <div>ModelSize: </div>
-              <div>{row.original.params.ModelSize.toFixed(2)}</div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      ),
+      cell: ({ row }) => <div>{row.getValue("nametag")}</div>,
     },
     {
       accessorKey: "link",
@@ -172,43 +141,23 @@ export const Component: FC = () => {
       ),
     },
     {
+      accessorKey: "imagetype",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeader("imagetype")} />
+      ),
+      cell: ({ row }) => {
+        const imagetype = imagepackSourceType.find(
+          (imagetype) => imagetype.value === row.getValue("imagetype"),
+        );
+        return imagetype?.label;
+      },
+    },
+    {
       accessorKey: "username",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeader("username")} />
       ),
       cell: ({ row }) => <div>{row.getValue("username")}</div>,
-    },
-    {
-      accessorKey: "status",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("status")} />
-      ),
-      cell: ({ row }) => {
-        const status = imagepackStatuses.find(
-          (status) => status.value === row.getValue("status"),
-        );
-        if (!status) {
-          return null;
-        }
-        return (
-          <div className="flex flex-row items-center justify-start">
-            <div
-              className={cn("flex h-3 w-3 rounded-full", {
-                "bg-purple-500 hover:bg-purple-400": status.value === "Initial",
-                "bg-slate-500 hover:bg-slate-400": status.value === "Pending",
-                "bg-sky-500 hover:bg-sky-400": status.value === "Running",
-                "bg-red-500 hover:bg-red-400": status.value === "Failed",
-                "bg-emerald-500 hover:bg-emerald-400":
-                  status.value === "Finished",
-              })}
-            ></div>
-            <div className="ml-1.5">{status.label}</div>
-          </div>
-        );
-      },
-      filterFn: (row, id, value) => {
-        return (value as string[]).includes(row.getValue(id));
-      },
     },
     {
       accessorKey: "tasktype",
@@ -221,6 +170,19 @@ export const Component: FC = () => {
         );
         const type: JobType = tasktype?.label as JobType;
         return <JobTypeLabel jobType={type} />;
+      },
+    },
+    {
+      accessorKey: "ispublic",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeader("ispublic")} />
+      ),
+      cell: ({ row }) => {
+        const imagePublicPersonalStatus = imagepackPublicPersonalStatus.find(
+          (imagePublicPersonalStatus) =>
+            imagePublicPersonalStatus.value === row.getValue("ispublic"),
+        );
+        return imagePublicPersonalStatus?.label;
       },
     },
     {
@@ -266,7 +228,10 @@ export const Component: FC = () => {
                     variant="destructive"
                     onClick={() => {
                       // check if browser support clipboard
-                      deleteAdminImagePack(imagepackInfo.id);
+                      deleteAdminImagePack({
+                        id: imagepackInfo.id,
+                        imagetype: imagepackInfo.imagetype,
+                      });
                     }}
                   >
                     删除
@@ -279,37 +244,34 @@ export const Component: FC = () => {
                 <div>
                   <Button
                     variant="outline"
-                    className="h-8 w-8 p-0 hover:text-blue-700"
-                    title="profile数据"
+                    className="hover:text-default h-8 w-8 p-0"
+                    title="更新公私状态"
                   >
-                    <UserRoundMinus size={16} strokeWidth={2} />
+                    <ToggleLeft size={16} strokeWidth={2} />
                   </Button>
                 </div>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Profile参数</AlertDialogTitle>
+                  <AlertDialogTitle>更新公私状态</AlertDialogTitle>
                   <AlertDialogDescription>
-                    <div className="grid grid-cols-2 gap-1 p-4 font-mono text-lg">
-                      <div>Convs: {imagepackInfo?.params.Convs}</div>
-                      <div>
-                        Activations: {imagepackInfo?.params.Activations}
-                      </div>
-                      <div>Denses: {imagepackInfo?.params.Denses}</div>
-                      <div>Others: {imagepackInfo?.params.Others}</div>
-                      <div>
-                        GFLOPs: {imagepackInfo?.params.GFLOPs.toFixed(2)}
-                      </div>
-                      <div>BatchSize: {imagepackInfo?.params.BatchSize}</div>
-                      <div>Params: {imagepackInfo?.params.Params}</div>
-                      <div>
-                        ModelSize: {imagepackInfo?.params.ModelSize.toFixed(2)}
-                      </div>
-                    </div>
+                    镜像「{imagepackInfo?.nametag}
+                    」状态将更新
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>关闭</AlertDialogCancel>
+                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="default"
+                    onClick={() => {
+                      changeImagePublicStatus({
+                        id: imagepackInfo.id,
+                        imagetype: imagepackInfo.imagetype,
+                      });
+                    }}
+                  >
+                    确认
+                  </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
