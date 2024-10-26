@@ -49,7 +49,7 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
                     );
                   }}
                 >
-                  <GaugeIcon className="mb-0.5 mr-2 h-4 w-4" />
+                  <GaugeIcon className="h-4 w-4" />
                   <div className="font-mono">{node}</div>
                 </Button>
               ))}

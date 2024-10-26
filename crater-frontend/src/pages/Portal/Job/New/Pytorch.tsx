@@ -585,7 +585,7 @@ export const Component = () => {
                     variant="secondary"
                     onClick={() => psPortAppend({ name: "", port: 0 })}
                   >
-                    <CirclePlusIcon className="mr-2 h-4 w-4" />
+                    <CirclePlusIcon className="h-4 w-4" />
                     添加端口
                   </Button>
                 </div>
@@ -818,7 +818,7 @@ export const Component = () => {
                     variant="secondary"
                     onClick={() => workerPortAppend({ name: "", port: 0 })}
                   >
-                    <CirclePlusIcon className="mr-2 h-4 w-4" />
+                    <CirclePlusIcon className="h-4 w-4" />
                     添加端口
                   </Button>
                 </div>

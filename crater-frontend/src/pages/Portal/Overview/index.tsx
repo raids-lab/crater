@@ -7,11 +7,9 @@ import {
 } from "@/components/ui/card";
 import { DataTable } from "@/components/custom/DataTable";
 import { useQuery } from "@tanstack/react-query";
-import { apiGetNodes } from "@/services/api/node";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import { nodeColumns, ClusterNodeInfo } from "@/components/custom/NodeList";
-import { convertKResourceToResource } from "@/utils/resource";
+import { nodeColumns } from "@/components/custom/NodeList";
 import { getHeader } from "@/pages/Admin/Job/Volcano";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import { JobPhase } from "@/services/api/vcjob";
@@ -35,6 +33,7 @@ import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
 import { globalJobUrl, globalSettings } from "@/utils/store";
 import NodeDetail from "@/components/custom/NodeDetail";
+import useNodeQuery from "@/hooks/query/useNodeQuery";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -84,68 +83,7 @@ export const Component: FC = () => {
   const jobType = useAtomValue(globalJobUrl);
   const { scheduler } = useAtomValue(globalSettings);
 
-  const nodeQuery = useQuery({
-    queryKey: ["overview", "nodes"],
-    queryFn: apiGetNodes,
-    select: (res) =>
-      res.data.data.rows
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map((x) => {
-          const cpuCapacity = convertKResourceToResource(
-            "cpu",
-            x.capacity && x.capacity.cpu,
-          );
-          const cpuAllocated = convertKResourceToResource(
-            "cpu",
-            x.allocated && x.allocated.cpu,
-          );
-          const memCapacity = convertKResourceToResource(
-            "memory",
-            x.capacity && x.capacity.memory,
-          );
-          const memAllocated = convertKResourceToResource(
-            "memory",
-            x.allocated && x.allocated.memory,
-          );
-          const gpuCapacity = convertKResourceToResource(
-            "nvidia.com/gpu",
-            x.capacity && x.capacity["nvidia.com/gpu"],
-          );
-          const gpuAllocated = convertKResourceToResource(
-            "nvidia.com/gpu",
-            x.allocated && x.allocated["nvidia.com/gpu"],
-          );
-
-          const info: ClusterNodeInfo = {
-            type: x.type,
-            name: x.name,
-            isReady: x.isReady,
-            role: x.role,
-            labels: x.labels,
-          };
-
-          if (cpuCapacity !== undefined && cpuAllocated !== undefined) {
-            info.cpu = {
-              percent: (cpuAllocated / cpuCapacity) * 100,
-              description: `${cpuAllocated.toFixed(1)}/${cpuCapacity.toFixed(0)}`,
-            };
-          }
-          if (memCapacity !== undefined && memAllocated !== undefined) {
-            info.memory = {
-              percent: (memAllocated / memCapacity) * 100,
-              description: `${memAllocated.toFixed(1)}/${memCapacity.toFixed(0)}`,
-            };
-          }
-          if (gpuCapacity !== undefined && gpuAllocated !== undefined) {
-            info.gpu = {
-              percent: (gpuAllocated / gpuCapacity) * 100,
-              description: `${gpuAllocated}/${gpuCapacity}`,
-            };
-          }
-
-          return info;
-        }),
-  });
+  const nodeQuery = useNodeQuery();
 
   const vcJobColumns = useMemo<ColumnDef<IJobInfo>[]>(
     () => [
@@ -419,7 +357,7 @@ export const Component: FC = () => {
               onClick={() => navigate("/portal/image/createimage")}
               className="hidden xl:flex"
             >
-              <BoxIcon className="mr-2 h-4 w-4" />
+              <BoxIcon className="h-4 w-4" />
               镜像制作
             </Button>
             <Button
@@ -429,7 +367,7 @@ export const Component: FC = () => {
               }
               className="hidden lg:flex"
             >
-              <FileTextIcon className="mr-2 h-4 w-4" />
+              <FileTextIcon className="h-4 w-4" />
               使用说明
             </Button>
           </CardFooter>
@@ -479,7 +417,7 @@ export const Component: FC = () => {
         }}
         query={nodeQuery}
         columns={nodeColumns}
-      ></DataTable>
+      />
     </>
   );
 
@@ -495,6 +433,4 @@ export const Component: FC = () => {
   ]);
 
   return <>{routes}</>;
-
-  return mainElement;
 };

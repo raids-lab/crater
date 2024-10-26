@@ -165,7 +165,7 @@ export default function PodIngressDialog({
         <DialogFooter>
           {/* focus when open dialog */}
           <Button onClick={handleAdd} autoFocus>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="h-4 w-4" />
             添加规则
           </Button>
         </DialogFooter>

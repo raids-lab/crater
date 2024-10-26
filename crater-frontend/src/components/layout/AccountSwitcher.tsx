@@ -82,7 +82,7 @@ export default function AccountSwitcher({ className }: AccountSwitcherProps) {
           >
             {currentQueue && currentQueue.name !== "" ? (
               <>
-                <Avatar className="mr-2 h-5 w-5">
+                <Avatar className="h-5 w-5">
                   <AvatarFallback className="bg-primary/15 font-normal text-primary">
                     {currentQueue.name.slice(0, 1).toUpperCase()}
                   </AvatarFallback>
@@ -91,7 +91,7 @@ export default function AccountSwitcher({ className }: AccountSwitcherProps) {
               </>
             ) : (
               <>
-                <Avatar className="mr-2 h-5 w-5">
+                <Avatar className="h-5 w-5">
                   <AvatarFallback className="bg-primary/15 font-normal text-primary" />
                 </Avatar>
                 <p className="text-muted-foreground">未选择账户</p>
@@ -125,7 +125,7 @@ export default function AccountSwitcher({ className }: AccountSwitcherProps) {
                       }}
                       className="text-sm"
                     >
-                      <Avatar className="mr-2 h-5 w-5">
+                      <Avatar className="h-5 w-5">
                         <AvatarFallback className="bg-primary font-normal text-primary-foreground">
                           {team.name.slice(0, 1).toUpperCase()}
                         </AvatarFallback>
