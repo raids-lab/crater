@@ -201,12 +201,12 @@ const adminSidebarGroups: NavGroupProps[] = [
         icon: BoxIcon,
         items: [
           {
-            title: "公共镜像",
-            url: "image/public",
+            title: "镜像制作",
+            url: "image/create",
           },
           {
-            title: "私有镜像",
-            url: "image/personal",
+            title: "镜像列表",
+            url: "image/upload",
           },
         ],
       },
