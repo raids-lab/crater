@@ -151,7 +151,7 @@ export const imagepackTaskType: {
   },
   {
     value: 5,
-    label: "ray",
+    label: "kuberay",
   },
   {
     value: 6,
@@ -163,9 +163,10 @@ export const imagepackTaskType: {
   },
   {
     value: 8,
-    label: "training",
+    label: "custom",
   },
 ];
+
 export type imagepackSourceTypeValue = 1 | 2;
 
 export const imagepackSourceType: {
