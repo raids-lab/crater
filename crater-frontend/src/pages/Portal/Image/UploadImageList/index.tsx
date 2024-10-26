@@ -25,6 +25,8 @@ import {
   ImageDeleteRequest,
   imagepackTaskType,
   ImagePackListType,
+  imagepackSourceType,
+  imagepackPublicPersonalStatus,
 } from "@/services/api/imagepack";
 import { logger } from "@/utils/loglevel";
 import { toast } from "sonner";
@@ -139,6 +141,18 @@ export const Component: FC = () => {
       ),
     },
     {
+      accessorKey: "imagetype",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeader("imagetype")} />
+      ),
+      cell: ({ row }) => {
+        const imagetype = imagepackSourceType.find(
+          (imagetype) => imagetype.value === row.getValue("imagetype"),
+        );
+        return imagetype?.label;
+      },
+    },
+    {
       accessorKey: "username",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeader("username")} />
@@ -156,6 +170,19 @@ export const Component: FC = () => {
         );
         const type: JobType = tasktype?.label as JobType;
         return <JobTypeLabel jobType={type} />;
+      },
+    },
+    {
+      accessorKey: "ispublic",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeader("ispublic")} />
+      ),
+      cell: ({ row }) => {
+        const imagePublicPersonalStatus = imagepackPublicPersonalStatus.find(
+          (imagePublicPersonalStatus) =>
+            imagePublicPersonalStatus.value === row.getValue("ispublic"),
+        );
+        return imagePublicPersonalStatus?.label;
       },
     },
     {
@@ -211,45 +238,6 @@ export const Component: FC = () => {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-            {/* <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <div>
-                  <Button
-                    variant="outline"
-                    className="h-8 w-8 p-0 hover:text-blue-700"
-                    title="profile数据"
-                  >
-                    <UserRoundMinus size={16} strokeWidth={2} />
-                  </Button>
-                </div>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Profile参数</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    <div className="grid grid-cols-2 gap-1 p-4 font-mono text-lg">
-                      <div>Convs: {imagepackInfo?.params.Convs}</div>
-                      <div>
-                        Activations: {imagepackInfo?.params.Activations}
-                      </div>
-                      <div>Denses: {imagepackInfo?.params.Denses}</div>
-                      <div>Others: {imagepackInfo?.params.Others}</div>
-                      <div>
-                        GFLOPs: {imagepackInfo?.params.GFLOPs.toFixed(2)}
-                      </div>
-                      <div>BatchSize: {imagepackInfo?.params.BatchSize}</div>
-                      <div>Params: {imagepackInfo?.params.Params}</div>
-                      <div>
-                        ModelSize: {imagepackInfo?.params.ModelSize.toFixed(2)}
-                      </div>
-                    </div>
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>关闭</AlertDialogCancel>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog> */}
           </div>
         );
       },
