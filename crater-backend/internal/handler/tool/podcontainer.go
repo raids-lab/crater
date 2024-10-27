@@ -2,6 +2,7 @@ package tool
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -33,6 +34,22 @@ type APIServerMgr struct {
 	kubeClient kubernetes.Interface
 }
 
+type (
+	// PodIngress represents an ingress rule for a pod
+	PodIngress struct {
+		Name   string `json:"name" binding:"required"` // Rule name
+		Port   int32  `json:"port" binding:"required"` // Port to expose
+		Prefix string `json:"prefix"`                  // Unique prefix for access
+	}
+
+	// PodIngressResp represents the response for ingress operations
+	PodIngressResp struct {
+		Ingresses []PodIngress `json:"ingresses"` // List of ingress rules
+	}
+)
+
+const IngressLabelKey = "ingress.crater.raids.io/"
+
 func NewAPIServerMgr(conf handler.RegisterConfig) handler.Manager {
 	return &APIServerMgr{
 		name:       "namespaces",
@@ -50,6 +67,190 @@ func (mgr *APIServerMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET(":namespace/pods/:name/containers", mgr.GetPodContainers)
 	g.GET(":namespace/pods/:name/containers/:container/log", mgr.GetPodContainerLog)
 	g.GET(":namespace/pods/:name/containers/:container/terminal", mgr.GetPodContainerTerminal)
+
+	// New ingress routes
+	g.GET(":namespace/pods/:name/ingresses", mgr.GetPodIngresses)
+	g.POST(":namespace/pods/:name/ingresses", mgr.CreatePodIngress)
+	g.DELETE(":namespace/pods/:name/ingresses", mgr.DeletePodIngress)
+}
+
+// GetPodIngresses retrieves the ingress rules for a pod
+// GetPodIngresses godoc
+// @Summary 获取Pod的Ingress规则
+// @Description 通过Pod注解获取相关的Ingress规则
+// @Tags Pod
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param namespace path string true "命名空间"
+// @Param name path string true "Pod名称"
+// @Success 200 {object} resputil.Response[PodIngressResp] "Pod Ingress规则列表"
+// @Failure 400 {object} resputil.Response[any] "请求参数错误"
+// @Failure 404 {object} resputil.Response[any] "Pod未找到"
+// @Failure 500 {object} resputil.Response[any] "其他错误"
+// @Router /v1/namespaces/{namespace}/pods/{name}/ingresses [get]
+func (mgr *APIServerMgr) GetPodIngresses(c *gin.Context) {
+	var req PodContainerReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	// Retrieve annotations from the pod
+	var pod v1.Pod
+	if err := mgr.client.Get(c, client.ObjectKey{Namespace: req.Namespace, Name: req.PodName}, &pod); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	// Extract ingress rules from pod annotations
+	var ingressRules []PodIngress
+	for key, value := range pod.Annotations {
+		if strings.HasPrefix(key, IngressLabelKey) {
+			// Parse the value (expected to be JSON or a similar format)
+			var rule PodIngress
+			if err := json.Unmarshal([]byte(value), &rule); err == nil {
+				ingressRules = append(ingressRules, rule)
+			}
+		}
+	}
+
+	resputil.Success(c, PodIngressResp{Ingresses: ingressRules})
+}
+
+// CreatePodIngress creates a new ingress rule for a pod
+// CreatePodIngress godoc
+// @Summary 创建新的Pod Ingress规则
+// @Description 为指定Pod创建新的Ingress规则，规则名称和端口号必须唯一
+// @Tags Pod
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param namespace path string true "命名空间"
+// @Param name path string true "Pod名称"
+// @Param body body PodIngress true "Ingress规则内容"
+// @Success 200 {object} resputil.Response[PodIngress] "成功创建的Ingress规则"
+// @Failure 400 {object} resputil.Response[any] "请求参数错误或规则冲突"
+// @Failure 404 {object} resputil.Response[any] "Pod未找到"
+// @Failure 500 {object} resputil.Response[any] "其他错误"
+// @Router /v1/namespaces/{namespace}/pods/{name}/ingresses [post]
+func (mgr *APIServerMgr) CreatePodIngress(c *gin.Context) {
+	var req PodContainerReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	var ingress PodIngress
+	if err := c.ShouldBindJSON(&ingress); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	// Validate if the port or rule name already exists
+	var pod v1.Pod
+	if err := mgr.client.Get(c, client.ObjectKey{Namespace: req.Namespace, Name: req.PodName}, &pod); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	for key, value := range pod.Annotations {
+		if strings.HasPrefix(key, IngressLabelKey) {
+			var existingRule PodIngress
+			if err := json.Unmarshal([]byte(value), &existingRule); err == nil {
+				if existingRule.Port == ingress.Port || existingRule.Name == ingress.Name {
+					resputil.BadRequestError(c, "Ingress rule with the same port or name already exists")
+					return
+				}
+			}
+		}
+	}
+
+	// Generate a unique prefix for the ingress rule
+	ingress.Prefix = generateUniquePrefix() // Implement this function to generate a unique string
+	ingressJSON, _ := json.Marshal(ingress)
+	pod.Annotations[IngressLabelKey+ingress.Prefix] = string(ingressJSON)
+
+	if err := mgr.client.Update(c, &pod); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, ingress)
+}
+
+// DeletePodIngress deletes an ingress rule for a pod
+// DeletePodIngress godoc
+// @Summary 删除Pod的Ingress规则
+// @Description 根据规则名称删除指定的Ingress规则
+// @Tags Pod
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param namespace path string true "命名空间"
+// @Param name path string true "Pod名称"
+// @Param body body PodIngress true "要删除的Ingress规则名称"
+// @Success 200 {object} resputil.Response[string] "Ingress规则删除成功"
+// @Failure 400 {object} resputil.Response[any] "请求参数错误或Ingress规则未找到"
+// @Failure 404 {object} resputil.Response[any] "Pod未找到"
+// @Failure 500 {object} resputil.Response[any] "其他错误"
+// @Router /v1/namespaces/{namespace}/pods/{name}/ingresses [delete]
+func (mgr *APIServerMgr) DeletePodIngress(c *gin.Context) {
+	var req PodContainerReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	var ingress PodIngress
+	if err := c.ShouldBindJSON(&ingress); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	// Fetch the pod
+	var pod v1.Pod
+	if err := mgr.client.Get(c, client.ObjectKey{Namespace: req.Namespace, Name: req.PodName}, &pod); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	// Check if the ingress rule exists
+	existingKey := ""
+	for key := range pod.Annotations {
+		if strings.HasPrefix(key, IngressLabelKey) {
+			var existingRule PodIngress
+			if err := json.Unmarshal([]byte(pod.Annotations[key]), &existingRule); err == nil {
+				if existingRule.Name == ingress.Name {
+					// Found the rule to delete
+					existingKey = key
+					break
+				}
+			}
+		}
+	}
+
+	if existingKey == "" {
+		resputil.BadRequestError(c, "Ingress rule not found")
+		return
+	}
+
+	// Delete the ingress rule from annotations
+	delete(pod.Annotations, existingKey)
+
+	// Apply the update to the pod
+	if err := mgr.client.Update(c, &pod); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, "Ingress rule deleted successfully")
+}
+
+// Generate a unique prefix for ingress rules
+func generateUniquePrefix() string {
+	// Implement a logic to generate a unique string (e.g., using UUID or timestamp)
+	return fmt.Sprintf("%d", time.Now().UnixNano())
 }
 
 func (mgr *APIServerMgr) RegisterAdmin(_ *gin.RouterGroup) {}
@@ -86,7 +287,7 @@ type (
 // @Success 200 {object} resputil.Response[any] "Pod容器列表"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/namepaces/{namespace}/pods/{name}/containers [get]
+// @Router /v1/namespaces/{namespace}/pods/{name}/containers [get]
 func (mgr *APIServerMgr) GetPodContainers(c *gin.Context) {
 	var req PodContainerReq
 	if err := c.ShouldBindUri(&req); err != nil {
