@@ -240,16 +240,15 @@ export const Account = () => {
         </Button>
       </DataTable>
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent className="flex flex-col gap-6 px-0 sm:max-w-4xl">
-          <SheetHeader>
-            <SheetTitle className="pl-6">
+        <SheetContent className="flex flex-col gap-0 px-0 pb-0 sm:max-w-4xl">
+          <SheetHeader className="flex-none">
+            <SheetTitle className="mb-6 h-6 pl-6">
               {form.getValues("id") ? "编辑" : "新建"}账户
             </SheetTitle>
           </SheetHeader>
-
-          <Form {...form}>
-            <div ref={refRoot} className="h-full w-full">
-              <ScrollArea style={{ width, height }}>
+          <div ref={refRoot} className="flex-grow">
+            <ScrollArea style={{ width, height }}>
+              <Form {...form}>
                 <form
                   // eslint-disable-next-line @typescript-eslint/no-misused-promises
                   onSubmit={form.handleSubmit(onSubmit)}
@@ -466,82 +465,83 @@ export const Account = () => {
                     </Button>
                   </div>
                 </form>
-              </ScrollArea>
-            </div>
-            <SheetFooter className="px-6">
-              <Button
-                variant="outline"
-                type="button"
-                className="relative cursor-pointer"
-              >
-                <Input
-                  onChange={(e) => {
-                    importFromJson<AccountFormSchema>(
-                      VERSION,
-                      JOB_TYPE,
-                      e.target.files?.[0],
-                    )
-                      .then((data) => {
-                        // preserve the name
-                        const name = currentValues.name;
-                        form.reset(data);
-                        form.setValue("name", name);
-                        toast.success(`导入配置成功`);
+              </Form>
+
+              <SheetFooter className="flex-none gap-2 p-6">
+                <Button
+                  variant="outline"
+                  type="button"
+                  className="relative cursor-pointer"
+                >
+                  <Input
+                    onChange={(e) => {
+                      importFromJson<AccountFormSchema>(
+                        VERSION,
+                        JOB_TYPE,
+                        e.target.files?.[0],
+                      )
+                        .then((data) => {
+                          // preserve the name
+                          const name = currentValues.name;
+                          form.reset(data);
+                          form.setValue("name", name);
+                          toast.success(`导入配置成功`);
+                        })
+                        .catch(() => {
+                          toast.error(`解析错误，导入配置失败`);
+                        });
+                    }}
+                    type="file"
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  />
+                  <CircleArrowDown className="h-4 w-4" />
+                  导入配置
+                </Button>
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => {
+                    form
+                      .trigger()
+                      .then((isValid) => {
+                        isValid &&
+                          exportToJson(
+                            {
+                              version: VERSION,
+                              type: JOB_TYPE,
+                              data: currentValues,
+                            },
+                            currentValues.name + ".json",
+                          );
                       })
-                      .catch(() => {
-                        toast.error(`解析错误，导入配置失败`);
+                      .catch((error) => {
+                        toast.error((error as Error).message);
                       });
                   }}
-                  type="file"
-                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                />
-                <CircleArrowDown className="h-4 w-4" />
-                导入配置
-              </Button>
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => {
-                  form
-                    .trigger()
-                    .then((isValid) => {
-                      isValid &&
-                        exportToJson(
-                          {
-                            version: VERSION,
-                            type: JOB_TYPE,
-                            data: currentValues,
-                          },
-                          currentValues.name + ".json",
-                        );
-                    })
-                    .catch((error) => {
-                      toast.error((error as Error).message);
-                    });
-                }}
-              >
-                <CircleArrowUp className="h-4 w-4" />
-                导出配置
-              </Button>
-              <LoadableButton
-                isLoading={isCreatePending || isUpdatePending}
-                type="submit"
-                onClick={() => {
-                  form
-                    .trigger()
-                    .then(() => {
-                      if (form.formState.isValid) {
-                        onSubmit(form.getValues());
-                      }
-                    })
-                    .catch((e) => logger.debug(e));
-                }}
-              >
-                <CirclePlusIcon className="h-4 w-4" />
-                {form.getValues("id") ? "更新账户" : "新建账户"}
-              </LoadableButton>
-            </SheetFooter>
-          </Form>
+                >
+                  <CircleArrowUp className="h-4 w-4" />
+                  导出配置
+                </Button>
+                <LoadableButton
+                  isLoading={isCreatePending || isUpdatePending}
+                  type="submit"
+                  onClick={() => {
+                    form
+                      .trigger()
+                      .then(() => {
+                        if (form.formState.isValid) {
+                          onSubmit(form.getValues());
+                        }
+                      })
+                      .catch((e) => logger.debug(e));
+                  }}
+                >
+                  <CirclePlusIcon className="h-4 w-4" />
+                  {form.getValues("id") ? "更新账户" : "新建账户"}
+                </LoadableButton>
+              </SheetFooter>
+            </ScrollArea>
+          </div>
         </SheetContent>
       </Sheet>
     </>
