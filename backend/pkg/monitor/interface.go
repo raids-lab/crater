@@ -42,6 +42,8 @@ type PrometheusInterface interface {
 	// QueryPodProfileMetric queries the profile metric of a pod (used for AiJob)
 	QueryPodProfileMetric(namespace, podname string) (PodUtil, error)
 
+	GetPodOwner(podName string) string
+
 	///////////// Job Related //////////////
 
 	// GetJobPodsList returns the job pods list
