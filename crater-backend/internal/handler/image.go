@@ -559,6 +559,7 @@ func (mgr *ImagePackMgr) generateImageListResponseFromImageUpload(imageupload *m
 		TaskType:    imageupload.TaskType,
 		Params:      model.ImageProfileParams{},
 		ImageType:   uint(model.ImageUploadType),
+		IsPublic:    imageupload.IsPublic,
 	}
 }
 
