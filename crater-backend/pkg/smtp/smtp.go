@@ -1,4 +1,4 @@
-package smtp
+package mysmtp
 
 import (
 	"fmt"
@@ -42,7 +42,7 @@ func (a *loginAuth) Next(fromServer []byte, more bool) ([]byte, error) {
 
 // 可以通过下面例子调用函数发送邮件
 //
-//	 err := smtp.SendEmail("邮箱", "主体", "内容")
+//	 err := mysmtp.SendEmail("邮箱", "主体", "内容")
 //		if err != nil {
 //			fmt.Println(err)
 //		}
