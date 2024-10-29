@@ -9,6 +9,8 @@ const ImageQuotaInfinity = -1
 
 // Optional fields for user
 type UserAttribute struct {
+	ID uint `json:"id,omitempty"` // ID
+
 	Name     string `json:"name,omitempty"`     // 账号
 	Nickname string `json:"nickname,omitempty"` // 昵称，如果没有指定，则与账号相同
 

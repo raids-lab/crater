@@ -266,6 +266,8 @@ func shouldCreateOrUpdateUser(
 		}
 	}
 
+	attr.ID = user.ID
+
 	// If don't need to update the user, return directly
 	newAttr := datatypes.NewJSONType(*attr)
 	if attr.Email == nil || reflect.DeepEqual(user.Attributes, newAttr) {
