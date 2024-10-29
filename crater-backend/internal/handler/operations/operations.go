@@ -12,6 +12,7 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/monitor"
+	mysmtp "github.com/raids-lab/crater/pkg/smtp"
 	"github.com/samber/lo"
 	"gorm.io/datatypes"
 	"k8s.io/client-go/kubernetes"
@@ -181,6 +182,9 @@ func (mgr *OperationsMgr) DeleteUnUsedJobList(c *gin.Context) {
 			fmt.Printf("Job %s is in the white list\n", job)
 			continue
 		}
+		if err := mgr.SendGPUAlarm(c, job); err != nil {
+			fmt.Println("Send Alarm Email failed:", err)
+		}
 		if err := mgr.deleteJobByName(c, job); err != nil {
 			fmt.Printf("Delete job %s failed\n", job)
 			fmt.Println(err)
@@ -222,4 +226,24 @@ func (mgr *OperationsMgr) getLeastUsedGPUJobs(duration, util int) []string {
 		}
 	}
 	return leastUsedJobs
+}
+
+func (mgr *OperationsMgr) SendGPUAlarm(c *gin.Context, jobname string) error {
+	j := query.Job
+	u := query.User
+	job, err := j.WithContext(c).Where(j.JobName.Eq(jobname)).First()
+	if err != nil {
+		return err
+	}
+	user, err := u.WithContext(c).Where(u.ID.Eq(job.UserID)).First()
+	if err != nil {
+		return err
+	}
+	subject := "Crater平台Job删除告警"
+	body := fmt.Sprintf("用户：%s您好,您的job:%s由于占用了gpu资源,但gpu资源利用率太低,平台即将删除该job", user.Name, jobname)
+	err = mysmtp.SendEmail(*user.Attributes.Data().Email, subject, body)
+	if err != nil {
+		return err
+	}
+	return nil
 }
