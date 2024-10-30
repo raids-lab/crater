@@ -47,6 +47,7 @@ func (mgr *AccountMgr) RegisterProtected(g *gin.RouterGroup) {
 func (mgr *AccountMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.ListAllForAdmin)
 	g.POST("", mgr.CreateAccount)
+	g.GET("/:pid", mgr.GetAccountByID)
 	g.PUT("/:pid", mgr.UpdateAccount)
 	g.DELETE("/:pid", mgr.DeleteAccount)
 	g.POST("/add/:pid/:uid", mgr.AddUserProject)
@@ -142,6 +143,50 @@ func (mgr *AccountMgr) ListAllForAdmin(c *gin.Context) {
 	}
 
 	resputil.Success(c, lists)
+}
+
+type AccountIDReq struct {
+	ID uint `uri:"pid" binding:"required"`
+}
+
+// GetAccountByID godoc
+// @Summary 获取指定项目
+// @Description 根据项目ID获取项目的信息
+// @Tags Project
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param pid path AccountIDReq true "projectname"
+// @Success 200 {object} resputil.Response[any] "项目信息"
+// @Failure 400 {object} resputil.Response[any] "请求参数错误"
+// @Failure 500 {object} resputil.Response[any] "其他错误"
+// @Router /v1/admin/projects/{pid} [get]
+func (mgr *AccountMgr) GetAccountByID(c *gin.Context) {
+	var uriReq AccountIDReq
+	if err := c.ShouldBindUri(&uriReq); err != nil {
+		resputil.Error(c, fmt.Sprintf("invalid request, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+	q := query.Queue
+	queue, err := q.WithContext(c).Where(q.ID.Eq(uriReq.ID)).First()
+
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("find project failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	resp := ListAllResp{
+		ID:       queue.ID,
+		Name:     queue.Name,
+		Nickname: queue.Nickname,
+		Space:    queue.Space,
+		Quota:    queue.Quota.Data(),
+	}
+	if !queue.ExpiredAt.IsZero() {
+		resp.ExpiredAt = &queue.ExpiredAt
+	}
+
+	resputil.Success(c, resp)
 }
 
 type (
@@ -276,10 +321,6 @@ func (mgr *AccountMgr) CreateVolcanoQueue(c *gin.Context, token *util.JWTMessage
 	}
 
 	return nil
-}
-
-type AccountIDReq struct {
-	ID uint `uri:"pid" binding:"required"`
 }
 
 // UpdateAccount godoc
