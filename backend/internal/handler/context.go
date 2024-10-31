@@ -12,6 +12,7 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/samber/lo"
+	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -164,10 +165,9 @@ func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 
 type (
 	UserInfoResp struct {
-		Nickname string `json:"nickname"`
-		Email    string `json:"email"`
-		Avatar   string `json:"avatar"`
-		Phone    string `json:"phone"`
+		ID        uint                                    `json:"id"`
+		Name      string                                  `json:"name"`
+		Attribute datatypes.JSONType[model.UserAttribute] `json:"attributes"`
 	}
 )
 
@@ -178,7 +178,7 @@ type (
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Success 200 {object} resputil.Response[UserInfoResp] "user information"
+// @Success 200 {object} resputil.Response[any] "user information"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/context/info [get]
@@ -191,7 +191,11 @@ func (mgr *ContextMgr) GetUserInfo(c *gin.Context) {
 		return
 	}
 
-	userAttr := user.Attributes.Data()
+	userAttr := UserInfoResp{
+		ID:        user.ID,
+		Name:      user.Name,
+		Attribute: user.Attributes,
+	}
 	resputil.Success(c, userAttr)
 }
 
