@@ -759,6 +759,14 @@ type UserDatasetGetResp struct {
 	Name string `json:"name"`
 }
 
+type UserOutOfDatasetResp struct {
+	ID         uint                                    `json:"id"`       // 用户ID
+	Name       string                                  `json:"name"`     // 用户名称
+	Role       model.Role                              `json:"role"`     // 用户角色
+	Status     model.Status                            `json:"status"`   // 用户状态
+	Attributes datatypes.JSONType[model.UserAttribute] `json:"userInfo"` // 用户额外属性
+}
+
 // ListUsersOutOfDataset godoc
 // @Summary 没有该数据集权限的用户列表
 // @Description 没有该数据集权限的用户列表
@@ -767,7 +775,7 @@ type UserDatasetGetResp struct {
 // @Produce json
 // @Security Bearer
 // @Param req path DatasetGetReq true "数据集ID"
-// @Success 200 {object} resputil.Response[UserDatasetGetResp[]] "成功返回值描述"
+// @Success 200 {object} resputil.Response[any] "成功返回值描述"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/{datasetId}/usersNotIn [get]
@@ -792,7 +800,7 @@ func (mgr *DatasetMgr) ListUsersOutOfDataset(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("Failed to scan user IDs: %v", err), resputil.NotSpecified)
 		return
 	}
-	var resp []UserResp
+	var resp []UserOutOfDatasetResp
 	exec := u.WithContext(c).Where(u.ID.NotIn(uids...)).Distinct()
 	if err := exec.Scan(&resp); err != nil {
 		resputil.Error(c, fmt.Sprintf("Get UserDataset failed, detail: %v", err), resputil.NotSpecified)
@@ -801,11 +809,11 @@ func (mgr *DatasetMgr) ListUsersOutOfDataset(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
-type UserDatasetResp struct {
-	ID         uint                                    `json:"id"`
-	Name       string                                  `json:"name"`
-	IsOwner    bool                                    `json:"isowner"`
-	Attributes datatypes.JSONType[model.UserAttribute] `json:"attributes"`
+type UserOfDatasetResp struct {
+	ID       uint                                    `json:"id"`
+	Name     string                                  `json:"name"`
+	IsOwner  bool                                    `json:"isowner"`
+	UserInfo datatypes.JSONType[model.UserAttribute] `json:"userInfo"`
 }
 
 // 函数名称 ListUserOfDataset
@@ -840,16 +848,17 @@ func (mgr *DatasetMgr) ListUserOfDataset(c *gin.Context) {
 		return
 	}
 
-	var resp []UserDatasetResp
+	var resp []UserOfDatasetResp
 	for i := range uids {
 		user, err := u.WithContext(c).Where(u.ID.Eq(uids[i])).First()
 		if err != nil {
 			resputil.Error(c, fmt.Sprintf("Can't find user :%v", err), resputil.InvalidRequest)
 		}
-		res := UserDatasetResp{
-			ID:      uids[i],
-			IsOwner: uids[i] == dataset.UserID,
-			Name:    user.Name,
+		res := UserOfDatasetResp{
+			ID:       uids[i],
+			IsOwner:  uids[i] == dataset.UserID,
+			Name:     user.Name,
+			UserInfo: user.Attributes,
 		}
 		resp = append(resp, res)
 	}
@@ -858,8 +867,9 @@ func (mgr *DatasetMgr) ListUserOfDataset(c *gin.Context) {
 }
 
 type QueueDatasetGetResp struct {
-	ID       uint   `json:"id"`
-	Nickname string `json:"name"`
+	ID         uint                                    `json:"id"`
+	Nickname   string                                  `json:"name"`
+	Attributes datatypes.JSONType[model.UserAttribute] `json:"attributes"`
 }
 
 // ListQueuesOutOfDataset godoc
@@ -870,7 +880,7 @@ type QueueDatasetGetResp struct {
 // @Produce json
 // @Security Bearer
 // @Param req path DatasetGetReq true "数据集ID"
-// @Success 200 {object} resputil.Response[QueueDatasetGetResp[]] "成功返回值描述"
+// @Success 200 {object} resputil.Response[any] "成功返回值描述"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/{datasetId}/queuesNotIn [get]
@@ -912,7 +922,7 @@ func (mgr *DatasetMgr) ListQueuesOutOfDataset(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param req path DatasetGetReq true "数据集ID"
-// @Success 200 {object} resputil.Response[QueueDatasetGetResp[]] "成功返回值描述"
+// @Success 200 {object} resputil.Response[any] "成功返回值描述"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/{datasetId}/queuesIn [get]
