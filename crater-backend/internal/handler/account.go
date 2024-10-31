@@ -630,10 +630,11 @@ type ProjectGetReq struct {
 }
 
 type UserProjectGetResp struct {
-	ID         uint   `json:"id"`
-	Name       string `json:"name"`
-	Role       string `json:"role"`
-	AccessMode string `json:"accessmode" gorm:"access_mode"`
+	ID         uint                                    `json:"id"`
+	Name       string                                  `json:"name"`
+	Role       string                                  `json:"role"`
+	AccessMode string                                  `json:"accessmode" gorm:"access_mode"`
+	Attributes datatypes.JSONType[model.UserAttribute] `json:"userInfo"`
 }
 
 // / GetUserInProject godoc
@@ -644,10 +645,10 @@ type UserProjectGetResp struct {
 // @Produce json
 // @Security Bearer
 // @Param pid path uint true "pid"
-// @Success 200 {object} resputil.Response[UserProjectGetResp[]] "userQueue条目"
+// @Success 200 {object} resputil.Response[any] "userQueue条目"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/projects/userIn/{pid} [post]
+// @Router /v1/admin/projects/userIn/{pid} [get]
 func (mgr *AccountMgr) GetUserInProject(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -666,7 +667,7 @@ func (mgr *AccountMgr) GetUserInProject(c *gin.Context) {
 	uq := query.UserQueue
 	var resp []UserProjectGetResp
 	exec := u.WithContext(c).Join(uq, uq.UserID.EqCol(u.ID)).Where(uq.DeletedAt.IsNull())
-	exec = exec.Select(u.ID, u.Name, uq.Role, uq.AccessMode, uq.QueueID)
+	exec = exec.Select(u.ID, u.Name, uq.Role, uq.AccessMode, uq.QueueID, u.Attributes)
 	if err := exec.Where(uq.QueueID.Eq(queue.ID)).Distinct().Scan(&resp); err != nil {
 		resputil.Error(c, fmt.Sprintf("Get UserProject failed, detail: %v", err), resputil.NotSpecified)
 		return
@@ -683,10 +684,10 @@ func (mgr *AccountMgr) GetUserInProject(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param pid path uint true "pid"
-// @Success 200 {object} resputil.Response[UserProjectGetResp[]] "userQueue条目"
+// @Success 200 {object} resputil.Response[any] "userQueue条目"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/projects/userOutOf/{pid} [post]
+// @Router /v1/admin/projects/userOutOf/{pid} [get]
 func (mgr *AccountMgr) GetUserOutOfProject(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
