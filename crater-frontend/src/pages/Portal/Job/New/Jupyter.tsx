@@ -155,10 +155,12 @@ export const Component = () => {
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) => {
       const others: Record<string, string> = {};
-      if (values.gpu.model) {
-        others[values.gpu.model] = `${values.gpu.count}`;
-      } else {
-        others["nvidia.com/gpu"] = `${values.gpu.count}`;
+      if (values.gpu.count > 0) {
+        if (values.gpu.model) {
+          others[values.gpu.model] = `${values.gpu.count}`;
+        } else {
+          others["nvidia.com/gpu"] = `${values.gpu.count}`;
+        }
       }
       return apiJupyterCreate({
         name: values.taskname,
