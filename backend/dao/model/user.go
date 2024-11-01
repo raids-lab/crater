@@ -5,6 +5,7 @@ import (
 	"gorm.io/gorm"
 )
 
+const InvalidUserID = 0
 const ImageQuotaInfinity = -1
 
 // Optional fields for user
