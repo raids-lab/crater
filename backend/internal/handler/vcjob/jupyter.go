@@ -11,6 +11,7 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/samber/lo"
 	v1 "k8s.io/api/core/v1"
@@ -44,6 +45,11 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		return
 	}
 
+	exceededResources := aitaskctl.CheckResourcesBeforeCreateJob(c, token.UserID, token.QueueID, req.Resource)
+	if len(exceededResources) > 0 {
+		resputil.Error(c, fmt.Sprintf("%v", exceededResources), resputil.NotSpecified)
+		return
+	}
 	// Ingress base URL
 	baseURL := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
 	jobName := fmt.Sprintf("jupyter-%s", baseURL)

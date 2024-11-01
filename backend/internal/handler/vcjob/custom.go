@@ -9,6 +9,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/samber/lo"
 	v1 "k8s.io/api/core/v1"
@@ -47,6 +48,12 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	var req CreateCustomReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	exceededResources := aitaskctl.CheckResourcesBeforeCreateJob(c, token.UserID, token.QueueID, req.Resource)
+	if len(exceededResources) > 0 {
+		resputil.Error(c, fmt.Sprintf("%v", exceededResources), resputil.NotSpecified)
 		return
 	}
 
