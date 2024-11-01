@@ -516,8 +516,9 @@ type (
 	}
 
 	UpdateUserProjectReq struct {
-		AccessMode string `json:"accessmode" binding:"required"`
-		Role       string `json:"role" binding:"required"`
+		AccessMode string          `json:"accessmode" binding:"required"`
+		Role       string          `json:"role" binding:"required"`
+		Quota      v1.ResourceList `json:"quota"`
 	}
 )
 
@@ -586,6 +587,9 @@ func (mgr *AccountMgr) AddUserProject(c *gin.Context) {
 			//nolint:gosec // TODO(wanggz): refactor this
 			AccessMode: model.AccessMode(access),
 		}
+		userQueue.Quota = datatypes.NewJSONType(model.QueueQuota{
+			Capability: reqBody.Quota,
+		})
 
 		if err := uq.WithContext(c).Create(&userQueue); err != nil {
 			resputil.Error(c, fmt.Sprintf("create UserProject failed, detail: %v", err), resputil.NotSpecified)
@@ -657,6 +661,10 @@ func (mgr *AccountMgr) UpdateUserProject(c *gin.Context) {
 		userQueue.Role = model.Role(role)
 		//nolint:gosec // TODO(wanggz): refactor this
 		userQueue.AccessMode = model.AccessMode(access)
+
+		userQueue.Quota = datatypes.NewJSONType(model.QueueQuota{
+			Capability: req.Quota,
+		})
 		if _, err := uq.WithContext(c).Updates(userQueue); err != nil {
 			resputil.Error(c, fmt.Sprintf("update UserProject failed, detail: %v", err), resputil.NotSpecified)
 			return
@@ -676,6 +684,7 @@ type UserProjectGetResp struct {
 	Role       string                                  `json:"role"`
 	AccessMode string                                  `json:"accessmode" gorm:"access_mode"`
 	Attributes datatypes.JSONType[model.UserAttribute] `json:"userInfo"`
+	Quota      datatypes.JSONType[model.QueueQuota]    `json:"quota"`
 }
 
 // / GetUserInProject godoc
@@ -706,9 +715,10 @@ func (mgr *AccountMgr) GetUserInProject(c *gin.Context) {
 
 	u := query.User
 	uq := query.UserQueue
+
 	var resp []UserProjectGetResp
 	exec := u.WithContext(c).Join(uq, uq.UserID.EqCol(u.ID)).Where(uq.DeletedAt.IsNull())
-	exec = exec.Select(u.ID, u.Name, uq.Role, uq.AccessMode, uq.QueueID, u.Attributes)
+	exec = exec.Select(u.ID, u.Name, uq.Role, uq.AccessMode, uq.QueueID, u.Attributes, uq.Quota)
 	if err := exec.Where(uq.QueueID.Eq(queue.ID)).Distinct().Scan(&resp); err != nil {
 		resputil.Error(c, fmt.Sprintf("Get UserProject failed, detail: %v", err), resputil.NotSpecified)
 		return
