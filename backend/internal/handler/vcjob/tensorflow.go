@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,6 +56,16 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	var req CreateTensorflowReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	jobResources := v1.ResourceList{}
+	for i := range len(req.Tasks) {
+		jobResources = aitaskctl.AddResourceList(jobResources, req.Tasks[i].Resource)
+	}
+	exceededResources := aitaskctl.CheckResourcesBeforeCreateJob(c, token.UserID, token.QueueID, jobResources)
+	if len(exceededResources) > 0 {
+		resputil.Error(c, fmt.Sprintf("%v", exceededResources), resputil.NotSpecified)
 		return
 	}
 
