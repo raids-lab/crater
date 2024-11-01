@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
@@ -62,7 +63,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	// 4. Labels and Annotations
 	namespace := config.GetConfig().Workspace.Namespace
 	labels := map[string]string{
-		LabelKeyTaskType: "training",
+		LabelKeyTaskType: string(model.JobTypeCustom),
 		LabelKeyTaskUser: token.Username,
 		LabelKeyBaseURL:  baseURL,
 	}

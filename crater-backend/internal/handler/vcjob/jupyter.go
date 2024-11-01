@@ -341,7 +341,7 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 		return
 	}
 
-	if job.JobType != model.Jupyter {
+	if job.JobType != model.JobTypeJupyter {
 		resputil.Error(c, "Job type is not Jupyter", resputil.NotSpecified)
 		return
 	}

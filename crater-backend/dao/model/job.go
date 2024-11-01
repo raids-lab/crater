@@ -17,14 +17,14 @@ const (
 type JobType string
 
 const (
-	Jupyter    JobType = "jupyter"
-	WebIDE     JobType = "webide"
-	Pytorch    JobType = "pytorch"
-	Tensorflow JobType = "tensorflow"
-	KubeRay    JobType = "kuberay"
-	DeepSpeed  JobType = "deepspeed"
-	OpenMPI    JobType = "openmpi"
-	Custom     JobType = "custom"
+	JobTypeJupyter    JobType = "jupyter"
+	JobTypeWebIDE     JobType = "webide"
+	JobTypePytorch    JobType = "pytorch"
+	JobTypeTensorflow JobType = "tensorflow"
+	JobTypeKubeRay    JobType = "kuberay"
+	JobTypeDeepSpeed  JobType = "deepspeed"
+	JobTypeOpenMPI    JobType = "openmpi"
+	JobTypeCustom     JobType = "custom"
 )
 
 type Job struct {

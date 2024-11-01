@@ -270,7 +270,8 @@ func shouldCreateOrUpdateUser(
 
 	// If don't need to update the user, return directly
 	newAttr := datatypes.NewJSONType(*attr)
-	if attr.Email == nil || reflect.DeepEqual(user.Attributes, newAttr) {
+	if user.Attributes.Data().ID != model.InvalidUserID &&
+		(attr.Email == nil || reflect.DeepEqual(user.Attributes, newAttr)) {
 		return user, nil
 	}
 
