@@ -36,10 +36,17 @@ type APIServerMgr struct {
 
 type (
 	// PodIngress represents an ingress rule for a pod
+	// 获取时的结构
 	PodIngress struct {
 		Name   string `json:"name" binding:"required"` // Rule name
 		Port   int32  `json:"port" binding:"required"` // Port to expose
 		Prefix string `json:"prefix"`                  // Unique prefix for access
+	}
+
+	// 创建和删除时的结构
+	PodIngressMgr struct {
+		Name string `json:"name" binding:"required"` // Rule name
+		Port int32  `json:"port" binding:"required"` // Port to expose
 	}
 
 	// PodIngressResp represents the response for ingress operations
@@ -128,7 +135,7 @@ func (mgr *APIServerMgr) GetPodIngresses(c *gin.Context) {
 // @Security Bearer
 // @Param namespace path string true "命名空间"
 // @Param name path string true "Pod名称"
-// @Param body body PodIngress true "Ingress规则内容"
+// @Param body body PodIngressMgr true "Ingress规则内容"
 // @Success 200 {object} resputil.Response[PodIngress] "成功创建的Ingress规则"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误或规则冲突"
 // @Failure 404 {object} resputil.Response[any] "Pod未找到"
@@ -141,8 +148,8 @@ func (mgr *APIServerMgr) CreatePodIngress(c *gin.Context) {
 		return
 	}
 
-	var ingress PodIngress
-	if err := c.ShouldBindJSON(&ingress); err != nil {
+	var ingressMgr PodIngressMgr
+	if err := c.ShouldBindJSON(&ingressMgr); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
@@ -158,7 +165,7 @@ func (mgr *APIServerMgr) CreatePodIngress(c *gin.Context) {
 		if strings.HasPrefix(key, IngressLabelKey) {
 			var existingRule PodIngress
 			if err := json.Unmarshal([]byte(value), &existingRule); err == nil {
-				if existingRule.Port == ingress.Port || existingRule.Name == ingress.Name {
+				if existingRule.Port == ingressMgr.Port || existingRule.Name == ingressMgr.Name {
 					resputil.BadRequestError(c, "Ingress rule with the same port or name already exists")
 					return
 				}
@@ -166,8 +173,11 @@ func (mgr *APIServerMgr) CreatePodIngress(c *gin.Context) {
 		}
 	}
 
+	var ingress PodIngress
+	ingress.Name = ingressMgr.Name
+	ingress.Port = ingressMgr.Port
 	// Generate a unique prefix for the ingress rule
-	ingress.Prefix = generateUniquePrefix() // Implement this function to generate a unique string
+	ingress.Prefix = generateUniquePrefix()
 	ingressJSON, _ := json.Marshal(ingress)
 	pod.Annotations[IngressLabelKey+ingress.Prefix] = string(ingressJSON)
 
@@ -189,7 +199,7 @@ func (mgr *APIServerMgr) CreatePodIngress(c *gin.Context) {
 // @Security Bearer
 // @Param namespace path string true "命名空间"
 // @Param name path string true "Pod名称"
-// @Param body body PodIngress true "要删除的Ingress规则名称"
+// @Param body body PodIngressMgr true "要删除的Ingress规则"
 // @Success 200 {object} resputil.Response[string] "Ingress规则删除成功"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误或Ingress规则未找到"
 // @Failure 404 {object} resputil.Response[any] "Pod未找到"
@@ -202,8 +212,8 @@ func (mgr *APIServerMgr) DeletePodIngress(c *gin.Context) {
 		return
 	}
 
-	var ingress PodIngress
-	if err := c.ShouldBindJSON(&ingress); err != nil {
+	var ingressMgr PodIngressMgr
+	if err := c.ShouldBindJSON(&ingressMgr); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
@@ -221,7 +231,7 @@ func (mgr *APIServerMgr) DeletePodIngress(c *gin.Context) {
 		if strings.HasPrefix(key, IngressLabelKey) {
 			var existingRule PodIngress
 			if err := json.Unmarshal([]byte(pod.Annotations[key]), &existingRule); err == nil {
-				if existingRule.Name == ingress.Name {
+				if existingRule.Name == ingressMgr.Name {
 					// Found the rule to delete
 					existingKey = key
 					break
