@@ -57,3 +57,45 @@ export const apiGetPodContainerLog = (
     },
   );
 };
+
+export interface PodIngress {
+  name: string;
+  port: number;
+  prefix: string;
+}
+
+export interface PodIngressMgr {
+  name: string;
+  port: number;
+}
+
+export interface PodIngressesList {
+  ingresses: PodIngress[];
+}
+
+export const apiGetPodIngresses = (namespace: string, podName: string) =>
+  instance.get<IResponse<PodIngressesList>>(
+    `${VERSION}/namespaces/${namespace}/pods/${podName}/ingresses`,
+  );
+
+export const apiCreatePodIngress = (
+  namespace: string,
+  podName: string,
+  ingressMgr: PodIngressMgr,
+) =>
+  instance.post<IResponse<PodIngress>>(
+    `${VERSION}/namespaces/${namespace}/pods/${podName}/ingresses`,
+    ingressMgr,
+  );
+
+export const apiDeletePodIngress = (
+  namespace: string,
+  podName: string,
+  ingressMgr: PodIngressMgr,
+) =>
+  instance.delete<IResponse<string>>(
+    `${VERSION}/namespaces/${namespace}/pods/${podName}/ingresses`,
+    {
+      data: ingressMgr,
+    },
+  );

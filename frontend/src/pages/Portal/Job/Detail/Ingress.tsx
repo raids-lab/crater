@@ -20,16 +20,30 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Trash2, Edit, Plus, ExternalLink, CircleHelpIcon } from "lucide-react";
-import { PodContainerDialogProps } from "@/components/codeblock/PodContainerDialog";
+import { Trash2, Plus, ExternalLink, CircleHelpIcon } from "lucide-react";
+import {
+  NamespacedName,
+  PodContainerDialogProps,
+} from "@/components/codeblock/PodContainerDialog";
 import { useNamespacedState } from "@/hooks/useNamespacedState";
 import FormLabelMust from "@/components/custom/FormLabelMust";
 import { toast } from "sonner";
 import TooltipButton from "@/components/custom/TooltipButton";
+import {
+  apiGetPodIngresses,
+  apiCreatePodIngress,
+  apiDeletePodIngress,
+} from "@/services/api/tool";
+import {
+  TooltipProvider,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import { useQuery } from "@tanstack/react-query";
+import { PodIngress, PodIngressMgr } from "@/services/api/tool";
 
 const ingressFormSchema = z.object({
-  id: z.string().optional(),
-  // 只能包含小写字母，不超过20个字符。
   name: z
     .string()
     .min(1)
@@ -37,13 +51,11 @@ const ingressFormSchema = z.object({
     .regex(/^[a-z]+$/, {
       message: "只能包含小写字母",
     }),
-  podPort: z.number().int().positive(),
+  port: z.number().int().positive(),
 });
 
-type IngressRule = z.infer<typeof ingressFormSchema>;
-
 type PodInfo = {
-  ingress: IngressRule[];
+  ingress: PodIngress[];
 };
 
 export default function PodIngressDialog({
@@ -54,58 +66,64 @@ export default function PodIngressDialog({
     namespacedName,
     setNamespacedName,
   );
-  const [podInfo, setPodInfo] = useState<PodInfo>({
-    ingress: [
-      {
-        id: "1",
-        name: "notebook",
-        podPort: 8888,
-      },
-    ],
-  });
-
+  const [podInfo, setPodInfo] = useState<PodInfo>({ ingress: [] });
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  const form = useForm<IngressRule>({
+  const form = useForm<PodIngressMgr>({
     resolver: zodResolver(ingressFormSchema),
     defaultValues: {
       name: "",
-      podPort: 0,
+      port: 0,
     },
   });
 
+  const fetchIngresses = async (namespacedName: NamespacedName) => {
+    if (!namespacedName) return [];
+    const response = await apiGetPodIngresses(
+      namespacedName.namespace,
+      namespacedName.name,
+    );
+    return response.data.data.ingresses;
+  };
+
+  const { data: ingressData, refetch } = useQuery({
+    queryKey: ["fetchIngresses", namespacedName],
+    queryFn: () => fetchIngresses(namespacedName),
+    select: (data) => data || [],
+    enabled: !!namespacedName,
+  });
+
+  // 更新 podInfo
+  if (ingressData && ingressData !== podInfo.ingress) {
+    setPodInfo({ ingress: ingressData });
+  }
+
   const handleAdd = () => {
-    form.reset({
-      id: "",
-      name: "",
-      podPort: 0,
-    });
+    form.reset({ name: "", port: 0 });
     setIsEditDialogOpen(true);
   };
 
-  const handleEdit = (ingress: IngressRule) => {
-    form.reset(ingress);
-    setIsEditDialogOpen(true);
+  const handleDelete = (data: PodIngressMgr) => {
+    if (namespacedName) {
+      apiDeletePodIngress(namespacedName.namespace, namespacedName.name, data)
+        .then(() => {
+          void refetch();
+          toast.success("删除成功");
+        })
+        .catch(() => {});
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setPodInfo((prevState) => ({
-      ...prevState,
-      ingress: prevState.ingress.filter((ingress) => ingress.id !== id),
-    }));
-  };
-
-  const onSubmit = (data: IngressRule) => {
-    setPodInfo((prevState) => {
-      const newIngress = prevState.ingress.filter((i) => i.id !== data.id);
-      if (data.id) {
-        newIngress.push(data);
-      } else {
-        newIngress.push({ ...data, id: Date.now().toString() });
-      }
-      return { ...prevState, ingress: newIngress };
-    });
-    setIsEditDialogOpen(false);
+  const onSubmit = (data: PodIngressMgr) => {
+    if (namespacedName) {
+      apiCreatePodIngress(namespacedName.namespace, namespacedName.name, data)
+        .then(() => {
+          void refetch();
+          toast.success("添加成功");
+          setIsEditDialogOpen(false);
+        })
+        .catch(() => {});
+    }
   };
 
   return (
@@ -114,21 +132,32 @@ export default function PodIngressDialog({
         <DialogHeader>
           <DialogTitle className="flex flex-row items-center justify-start">
             外部访问规则
-            <CircleHelpIcon className="ml-1 h-4 w-4 text-muted-foreground" />
+            <TooltipProvider delayDuration={10}>
+              <Tooltip>
+                <TooltipTrigger>
+                  <CircleHelpIcon className="ml-1 h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent className="border bg-background text-foreground">
+                  支持用户自定义 Ingress
+                  <br />
+                  将容器端口转发至外部访问
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
             {podInfo.ingress.map((ingress) => (
               <div
-                key={ingress.id}
+                key={ingress.name}
                 className="flex items-center space-x-2 rounded bg-secondary p-3"
               >
                 <div className="ml-2 flex flex-grow flex-col items-start justify-start gap-0.5">
                   <p>{ingress.name}</p>
                   <div className="flex flex-row text-xs text-muted-foreground">
-                    {ingress.podPort}
-                    {" → crater.act.buaa.edu.cn/ingress/xxx"}
+                    {ingress.port}{" "}
+                    {" → crater.act.buaa.edu.cn/ingress/" + ingress.prefix}
                   </div>
                 </div>
                 <TooltipButton
@@ -140,20 +169,12 @@ export default function PodIngressDialog({
                 >
                   <ExternalLink className="h-4 w-4" />
                 </TooltipButton>
-                <TooltipButton
-                  variant="ghost"
-                  size="icon"
-                  className="hover:text-orange-500"
-                  onClick={() => handleEdit(ingress)}
-                  tooltipContent="编辑"
-                >
-                  <Edit className="h-4 w-4" />
-                </TooltipButton>
+
                 <TooltipButton
                   variant="ghost"
                   size="icon"
                   className="hover:text-destructive"
-                  onClick={() => ingress.id && handleDelete(ingress.id)}
+                  onClick={() => handleDelete(ingress)}
                   tooltipContent="删除"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -163,7 +184,6 @@ export default function PodIngressDialog({
           </div>
         </div>
         <DialogFooter>
-          {/* focus when open dialog */}
           <Button onClick={handleAdd} autoFocus>
             <Plus className="h-4 w-4" />
             添加规则
@@ -174,13 +194,15 @@ export default function PodIngressDialog({
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>
-              {form.getValues("id") ? "编辑" : "添加"}规则
-            </DialogTitle>
+            <DialogTitle>添加规则</DialogTitle>
           </DialogHeader>
           <Form {...form}>
-            {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form
+              onSubmit={(e) => {
+                void form.handleSubmit(onSubmit)(e);
+              }}
+              className="space-y-4"
+            >
               <FormField
                 control={form.control}
                 name="name"
@@ -202,7 +224,7 @@ export default function PodIngressDialog({
               />
               <FormField
                 control={form.control}
-                name="podPort"
+                name="port"
                 render={() => (
                   <FormItem>
                     <FormLabel>
@@ -212,7 +234,7 @@ export default function PodIngressDialog({
                     <FormControl>
                       <Input
                         type="number"
-                        {...form.register("podPort", {
+                        {...form.register("port", {
                           valueAsNumber: true,
                         })}
                       />
