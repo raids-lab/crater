@@ -3,10 +3,14 @@ package vcjob
 import (
 	"context"
 
+	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/samber/lo"
 	v1 "k8s.io/api/core/v1"
 )
+
+const FileType = 1
+const DatasetType = 2
 
 func GenerateVolumeMounts(
 	_ context.Context,
@@ -54,6 +58,79 @@ func GenerateVolumeMounts(
 	return pvc, volumeMounts, nil
 }
 
+func GenerateNewVolumeMounts(
+	c context.Context,
+	userID uint,
+	volumes []VolumeMount,
+) (pvc []v1.Volume, volumeMounts []v1.VolumeMount, err error) {
+	pvc = []v1.Volume{
+		{
+			Name: VolumeCache,
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{
+					Medium: v1.StorageMediumMemory,
+				},
+			},
+		},
+	}
+
+	if len(volumes) > 0 {
+		fs := v1.Volume{
+			Name: VolumeData,
+			VolumeSource: v1.VolumeSource{
+				PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+					ClaimName: config.GetConfig().Workspace.PVCName,
+				},
+			},
+		}
+		pvc = append(pvc, fs)
+	}
+
+	volumeMounts = make([]v1.VolumeMount, len(volumes)+1)
+
+	volumeMounts[0] = v1.VolumeMount{
+		Name:      VolumeCache,
+		MountPath: "/dev/shm",
+	}
+
+	for i, vm := range volumes {
+		var subPath string
+		if vm.Type == FileType {
+			subPath = vm.SubPath
+		} else if vm.Type == DatasetType {
+			subPath, err = GetSubPathByDatasetVolume(c, userID, vm.DatasetID)
+			if err != nil {
+				return nil, nil, err
+			}
+		} else {
+			return nil, nil, err
+		}
+
+		volumeMounts[i+1] = v1.VolumeMount{
+			Name:      VolumeData,
+			SubPath:   subPath,
+			MountPath: vm.MountPath,
+			ReadOnly:  vm.Type == DatasetType,
+		}
+	}
+
+	return pvc, volumeMounts, nil
+}
+
+func GetSubPathByDatasetVolume(c context.Context,
+	userID, datasetID uint) (string, error) {
+	ud := query.UserDataset
+	d := query.Dataset
+	_, err := ud.WithContext(c).Where(ud.UserID.Eq(userID), ud.DatasetID.Eq(datasetID)).First()
+	if err != nil {
+		return "", err
+	}
+	dataset, err := d.WithContext(c).Where(d.ID.Eq(datasetID)).First()
+	if err != nil {
+		return "", err
+	}
+	return dataset.URL, nil
+}
 func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement) (affinity *v1.Affinity) {
 	if len(expressions) > 0 {
 		affinity = lo.ToPtr(v1.Affinity{
