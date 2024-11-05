@@ -46,6 +46,8 @@ import { DataMountCard, EnvCard, TensorboardCard, OtherCard } from "./Custom";
 const VERSION = "20240528";
 const JOB_TYPE = "jupyter";
 
+const FileType = 1;
+const DatasetType = 2;
 const formSchema = z.object({
   taskname: z
     .string()
@@ -96,9 +98,11 @@ const formSchema = z.object({
   ),
   volumeMounts: z.array(
     z.object({
+      type: z.number().int(),
       subPath: z.string().min(1, {
         message: "挂载源不能为空",
       }),
+      datasetID: z.number().int().nonnegative().optional(),
       mountPath: z
         .string()
         .min(1, {
@@ -210,7 +214,7 @@ export const Component = () => {
     queryFn: () => apiGetDataset(),
     select: (res) => {
       return res.data.data.map((item) => ({
-        value: item.url.replace(/^\/+/, ""),
+        value: item.id.toString(),
         label: item.name,
       }));
     },
@@ -242,7 +246,13 @@ export const Component = () => {
       },
       memory: 2,
       image: "",
-      volumeMounts: [{ subPath: user.space, mountPath: "/home/" + user.name }],
+      volumeMounts: [
+        {
+          type: FileType,
+          subPath: user.space,
+          mountPath: "/home/" + user.name,
+        },
+      ],
       envs: [],
       observability: {
         tbEnable: false,
@@ -252,6 +262,13 @@ export const Component = () => {
       },
     },
   });
+  const resetVolumeMountsFields = (index: number, type: number) => {
+    form.setValue(`volumeMounts.${index}`, {
+      subPath: "",
+      type: type,
+      mountPath: "",
+    });
+  };
 
   const currentValues = form.watch();
 
@@ -542,12 +559,22 @@ export const Component = () => {
                             <FormControl>
                               <Tabs defaultValue="file" className="w-full">
                                 <TabsList className="grid w-full grid-cols-2">
-                                  <TabsTrigger value="file">
+                                  <TabsTrigger
+                                    value="file"
+                                    onClick={() =>
+                                      resetVolumeMountsFields(index, FileType)
+                                    }
+                                  >
                                     文件系统
                                   </TabsTrigger>
                                   <TabsTrigger
                                     value="dataset"
-                                    // onClick={handleTabClick}
+                                    onClick={() =>
+                                      resetVolumeMountsFields(
+                                        index,
+                                        DatasetType,
+                                      )
+                                    }
                                   >
                                     数据集
                                   </TabsTrigger>
@@ -557,6 +584,10 @@ export const Component = () => {
                                     value={field.value.split("/").pop()}
                                     handleSubmit={(item) => {
                                       field.onChange(item.id);
+                                      form.setValue(
+                                        `volumeMounts.${index}.type`,
+                                        FileType,
+                                      );
                                       form.setValue(
                                         `volumeMounts.${index}.mountPath`,
                                         `/mnt/${item.name}`,
@@ -570,6 +601,14 @@ export const Component = () => {
                                     current={field.value}
                                     handleSelect={(value) => {
                                       field.onChange(value);
+                                      form.setValue(
+                                        `volumeMounts.${index}.type`,
+                                        DatasetType,
+                                      );
+                                      form.setValue(
+                                        `volumeMounts.${index}.datasetID`,
+                                        Number(value),
+                                      );
                                       form.setValue(
                                         `volumeMounts.${index}.mountPath`,
                                         `/mnt/${value.split("/").pop()}`,
@@ -612,6 +651,7 @@ export const Component = () => {
                   className="w-full"
                   onClick={() =>
                     volumeMountAppend({
+                      type: FileType,
                       subPath: "",
                       mountPath: "",
                     })
