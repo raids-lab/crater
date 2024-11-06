@@ -71,13 +71,13 @@ func (mgr *AccountMgr) RegisterAdmin(g *gin.RouterGroup) {
 func (mgr *AccountMgr) ListAllForUser(c *gin.Context) { // Check if the user exists
 	token := util.GetToken(c)
 
-	q := query.Queue
-	uq := query.UserQueue
+	q := query.Account
+	uq := query.UserAccount
 
 	// Get all projects for the user
 	var projects []payload.ProjectResp
 	err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID)).Select(q.ID, q.Name, uq.Role, uq.AccessMode).
-		Join(q, q.ID.EqCol(uq.QueueID)).Order(q.ID.Desc()).Scan(&projects)
+		Join(q, q.ID.EqCol(uq.AccountID)).Order(q.ID.Desc()).Scan(&projects)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -119,7 +119,7 @@ type (
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/admin/projects [get]
 func (mgr *AccountMgr) ListAllForAdmin(c *gin.Context) {
-	q := query.Queue
+	q := query.Account
 
 	queues, err := q.WithContext(c).Order(q.ID.Asc()).Find()
 	if err != nil {
@@ -167,7 +167,7 @@ func (mgr *AccountMgr) GetAccountByID(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("invalid request, detail: %v", err), resputil.NotSpecified)
 		return
 	}
-	q := query.Queue
+	q := query.Account
 	queue, err := q.WithContext(c).Where(q.ID.Eq(uriReq.ID)).First()
 
 	if err != nil {
@@ -233,11 +233,11 @@ func (mgr *AccountMgr) CreateAccount(c *gin.Context) {
 	var queueID uint
 
 	err := db.Transaction(func(tx *query.Query) error {
-		q := tx.Queue
-		uq := tx.UserQueue
+		q := tx.Account
+		uq := tx.UserAccount
 
 		// Create a queue Queue
-		queue := model.Queue{
+		queue := model.Account{
 			Nickname: req.Nickname,
 		}
 		if err := q.WithContext(c).Create(&queue); err != nil {
@@ -245,9 +245,9 @@ func (mgr *AccountMgr) CreateAccount(c *gin.Context) {
 		}
 
 		// Create a user-project relationship without quota limit
-		userQueue := model.UserQueue{
+		userQueue := model.UserAccount{
 			UserID:     token.UserID,
-			QueueID:    queue.ID,
+			AccountID:  queue.ID,
 			Role:       model.RoleAdmin, // Set the user as the admin
 			AccessMode: model.AccessModeRW,
 		}
@@ -295,7 +295,7 @@ const (
 	LabelKeyQueueCreatedBy = "crater.raids.io/queue-created-by"
 )
 
-func (mgr *AccountMgr) CreateVolcanoQueue(c *gin.Context, token *util.JWTMessage, queue *model.Queue,
+func (mgr *AccountMgr) CreateVolcanoQueue(c *gin.Context, token *util.JWTMessage, queue *model.Account,
 	req *AccountCreateOrUpdateReq) error {
 	// Create a new queue, and set the user as the admin in user_queue
 	namespace := config.GetConfig().Workspace.Namespace
@@ -347,7 +347,7 @@ func (mgr *AccountMgr) UpdateAccount(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("validate update parameters failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
-	q := query.Queue
+	q := query.Account
 	queue, err := q.WithContext(c).Where(q.ID.Eq(uriReq.ID)).First()
 
 	if err != nil {
@@ -384,7 +384,7 @@ func (mgr *AccountMgr) UpdateAccount(c *gin.Context) {
 	resputil.Success(c, fmt.Sprintf("update capability of %s", queue.Name))
 }
 
-func (mgr *AccountMgr) updateVolcanoQueue(c *gin.Context, queue *model.Queue, req *AccountCreateOrUpdateReq) error {
+func (mgr *AccountMgr) updateVolcanoQueue(c *gin.Context, queue *model.Account, req *AccountCreateOrUpdateReq) error {
 	vcQueue := &scheduling.Queue{}
 	namespace := config.GetConfig().Workspace.Namespace
 	err := mgr.client.Get(c, client.ObjectKey{Name: queue.Name, Namespace: namespace}, vcQueue)
@@ -434,11 +434,11 @@ func (mgr *AccountMgr) DeleteAccount(c *gin.Context) {
 
 	queueID := req.ID
 
-	uq := query.UserQueue
+	uq := query.UserAccount
 
 	// get user-queues relationship without quota limit
 
-	if userQueues, err := uq.WithContext(c).Where(uq.QueueID.Eq(queueID)).Find(); err != nil {
+	if userQueues, err := uq.WithContext(c).Where(uq.AccountID.Eq(queueID)).Find(); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	} else if len(userQueues) > 0 {
@@ -449,8 +449,8 @@ func (mgr *AccountMgr) DeleteAccount(c *gin.Context) {
 	var queueName string
 
 	err := db.Transaction(func(tx *query.Query) error {
-		q := tx.Queue
-		uq := tx.UserQueue
+		q := tx.Account
+		uq := tx.UserAccount
 
 		// get queue in db
 		queue, err := q.WithContext(c).Where(q.ID.Eq(queueID)).First()
@@ -460,7 +460,7 @@ func (mgr *AccountMgr) DeleteAccount(c *gin.Context) {
 		queueName = queue.Nickname
 
 		// get user-queues relationship without quota limit
-		userQueues, err := uq.WithContext(c).Where(uq.QueueID.Eq(queue.ID)).Find()
+		userQueues, err := uq.WithContext(c).Where(uq.AccountID.Eq(queue.ID)).Find()
 		if err != nil {
 			return err
 		}
@@ -543,7 +543,7 @@ func (mgr *AccountMgr) AddUserProject(c *gin.Context) {
 		return
 	}
 
-	q := query.Queue
+	q := query.Account
 	queue, err := q.WithContext(c).Where(q.ID.Eq(req.QueueID)).First()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Get Project failed, detail: %v", err), resputil.NotSpecified)
@@ -555,9 +555,9 @@ func (mgr *AccountMgr) AddUserProject(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("Get Project failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
-	uq := query.UserQueue
+	uq := query.UserAccount
 
-	if _, err := uq.WithContext(c).Where(uq.QueueID.Eq(req.QueueID), uq.UserID.Eq(req.UserID)).Find(); err != nil {
+	if _, err := uq.WithContext(c).Where(uq.AccountID.Eq(req.QueueID), uq.UserID.Eq(req.UserID)).Find(); err != nil {
 		resputil.Error(c, fmt.Sprintf("Get UserProject failed, detail: %v", err), resputil.NotSpecified)
 		return
 	} else {
@@ -579,9 +579,9 @@ func (mgr *AccountMgr) AddUserProject(c *gin.Context) {
 			return
 		}
 
-		userQueue := model.UserQueue{
-			UserID:  req.UserID,
-			QueueID: req.QueueID,
+		userQueue := model.UserAccount{
+			UserID:    req.UserID,
+			AccountID: req.QueueID,
 			//nolint:gosec // TODO(wanggz): refactor this
 			Role: model.Role(role),
 			//nolint:gosec // TODO(wanggz): refactor this
@@ -621,7 +621,7 @@ func (mgr *AccountMgr) UpdateUserProject(c *gin.Context) {
 		return
 	}
 
-	q := query.Queue
+	q := query.Account
 	queue, err := q.WithContext(c).Where(q.ID.Eq(req.QueueID)).First()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Get Project failed, detail: %v", err), resputil.NotSpecified)
@@ -633,8 +633,8 @@ func (mgr *AccountMgr) UpdateUserProject(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("Get Project failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
-	uq := query.UserQueue
-	userQueue, err := uq.WithContext(c).Where(uq.QueueID.Eq(req.QueueID), uq.UserID.Eq(req.UserID)).First()
+	uq := query.UserAccount
+	userQueue, err := uq.WithContext(c).Where(uq.AccountID.Eq(req.QueueID), uq.UserID.Eq(req.UserID)).First()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Get UserProject failed, detail: %v", err), resputil.NotSpecified)
 		return
@@ -706,7 +706,7 @@ func (mgr *AccountMgr) GetUserInProject(c *gin.Context) {
 		return
 	}
 
-	q := query.Queue
+	q := query.Account
 	queue, err := q.WithContext(c).Where(q.ID.Eq(req.ID)).First()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Get Project failed, detail: %v", err), resputil.NotSpecified)
@@ -714,12 +714,12 @@ func (mgr *AccountMgr) GetUserInProject(c *gin.Context) {
 	}
 
 	u := query.User
-	uq := query.UserQueue
+	uq := query.UserAccount
 
 	var resp []UserProjectGetResp
 	exec := u.WithContext(c).Join(uq, uq.UserID.EqCol(u.ID)).Where(uq.DeletedAt.IsNull())
-	exec = exec.Select(u.ID, u.Name, uq.Role, uq.AccessMode, uq.QueueID, u.Attributes, uq.Quota)
-	if err := exec.Where(uq.QueueID.Eq(queue.ID)).Distinct().Scan(&resp); err != nil {
+	exec = exec.Select(u.ID, u.Name, uq.Role, uq.AccessMode, uq.AccountID, u.Attributes, uq.Quota)
+	if err := exec.Where(uq.AccountID.Eq(queue.ID)).Distinct().Scan(&resp); err != nil {
 		resputil.Error(c, fmt.Sprintf("Get UserProject failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
@@ -746,7 +746,7 @@ func (mgr *AccountMgr) GetUserOutOfProject(c *gin.Context) {
 		return
 	}
 
-	q := query.Queue
+	q := query.Account
 	queue, err := q.WithContext(c).Where(q.ID.Eq(req.ID)).First()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Get Project failed, detail: %v", err), resputil.NotSpecified)
@@ -754,10 +754,10 @@ func (mgr *AccountMgr) GetUserOutOfProject(c *gin.Context) {
 	}
 
 	u := query.User
-	uq := query.UserQueue
+	uq := query.UserAccount
 	var uids []uint
 
-	if err := uq.WithContext(c).Select(uq.UserID).Where(uq.QueueID.Eq(queue.ID)).Scan(&uids); err != nil {
+	if err := uq.WithContext(c).Select(uq.UserID).Where(uq.AccountID.Eq(queue.ID)).Scan(&uids); err != nil {
 		resputil.Error(c, fmt.Sprintf("Failed to scan user IDs: %v", err), resputil.NotSpecified)
 		return
 	}
@@ -792,7 +792,7 @@ func (mgr *AccountMgr) DeleteUserProject(c *gin.Context) {
 		return
 	}
 
-	q := query.Queue
+	q := query.Account
 	queue, err := q.WithContext(c).Where(q.ID.Eq(req.QueueID)).First()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Get Project failed, detail: %v", err), resputil.NotSpecified)
@@ -804,8 +804,8 @@ func (mgr *AccountMgr) DeleteUserProject(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("Get Project failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
-	uq := query.UserQueue
-	userQueue, err := uq.WithContext(c).Where(uq.QueueID.Eq(queue.ID), uq.UserID.Eq(user.ID)).First()
+	uq := query.UserAccount
+	userQueue, err := uq.WithContext(c).Where(uq.AccountID.Eq(queue.ID), uq.UserID.Eq(user.ID)).First()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("delete UserProject failed, detail: %v", err), resputil.NotSpecified)
 		return

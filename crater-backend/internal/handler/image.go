@@ -243,7 +243,7 @@ func (mgr *ImagePackMgr) UserUpload(c *gin.Context) {
 		logutils.Log.Errorf("fetch user failed, params: %+v err:%v", req, err)
 		return
 	}
-	queueQuery := query.Queue
+	queueQuery := query.Account
 	queue, err := queueQuery.WithContext(c).Where(queueQuery.ID.Eq(token.QueueID)).First()
 	if err != nil {
 		logutils.Log.Errorf("fetch queue failed, params: %+v err:%v", req, err)
@@ -252,8 +252,8 @@ func (mgr *ImagePackMgr) UserUpload(c *gin.Context) {
 	imageUploadEntity := &model.ImageUpload{
 		UserID:      token.UserID,
 		User:        *user,
-		QueueID:     token.QueueID,
-		Queue:       *queue,
+		AccountID:   token.QueueID,
+		Account:     *queue,
 		ImageLink:   req.ImageLink,
 		Status:      ImagePackFinished,
 		NameTag:     fmt.Sprintf("%s:%s", req.ImageName, req.ImageTag),
@@ -312,7 +312,7 @@ func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateReq
 		logutils.Log.Errorf("fetch user failed, params: %+v err:%v", req, err)
 		return
 	}
-	queueQuery := query.Queue
+	queueQuery := query.Account
 	queue, err := queueQuery.WithContext(c).Where(queueQuery.ID.Eq(token.QueueID)).First()
 	if err != nil {
 		logutils.Log.Errorf("fetch queue failed, params: %+v err:%v", req, err)
@@ -348,8 +348,8 @@ func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *ImagePackCreateReq
 	imagepackEntity := &model.ImagePack{
 		UserID:        token.UserID,
 		User:          *user,
-		QueueID:       token.QueueID,
-		Queue:         *queue,
+		AccountID:     token.QueueID,
+		Account:       *queue,
 		ImagePackName: imagepackName,
 		ImageLink:     imageLink,
 		NameSpace:     UserNameSpace,

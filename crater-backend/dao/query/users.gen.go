@@ -40,10 +40,10 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.AccessMode = field.NewUint8(tableName, "access_mode")
 	_user.ImageQuota = field.NewInt64(tableName, "image_quota")
 	_user.Attributes = field.NewField(tableName, "attributes")
-	_user.UserQueues = userHasManyUserQueues{
+	_user.UserAccounts = userHasManyUserAccounts{
 		db: db.Session(&gorm.Session{}),
 
-		RelationField: field.NewRelation("UserQueues", "model.UserQueue"),
+		RelationField: field.NewRelation("UserAccounts", "model.UserAccount"),
 	}
 
 	_user.UserDatasets = userHasManyUserDatasets{
@@ -60,21 +60,21 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 type user struct {
 	userDo userDo
 
-	ALL        field.Asterisk
-	ID         field.Uint
-	CreatedAt  field.Time
-	UpdatedAt  field.Time
-	DeletedAt  field.Field
-	Name       field.String
-	Nickname   field.String
-	Password   field.String
-	Role       field.Uint8
-	Status     field.Uint8
-	Space      field.String
-	AccessMode field.Uint8
-	ImageQuota field.Int64
-	Attributes field.Field
-	UserQueues userHasManyUserQueues
+	ALL          field.Asterisk
+	ID           field.Uint
+	CreatedAt    field.Time
+	UpdatedAt    field.Time
+	DeletedAt    field.Field
+	Name         field.String
+	Nickname     field.String
+	Password     field.String
+	Role         field.Uint8
+	Status       field.Uint8
+	Space        field.String
+	AccessMode   field.Uint8
+	ImageQuota   field.Int64
+	Attributes   field.Field
+	UserAccounts userHasManyUserAccounts
 
 	UserDatasets userHasManyUserDatasets
 
@@ -157,13 +157,13 @@ func (u user) replaceDB(db *gorm.DB) user {
 	return u
 }
 
-type userHasManyUserQueues struct {
+type userHasManyUserAccounts struct {
 	db *gorm.DB
 
 	field.RelationField
 }
 
-func (a userHasManyUserQueues) Where(conds ...field.Expr) *userHasManyUserQueues {
+func (a userHasManyUserAccounts) Where(conds ...field.Expr) *userHasManyUserAccounts {
 	if len(conds) == 0 {
 		return &a
 	}
@@ -176,27 +176,27 @@ func (a userHasManyUserQueues) Where(conds ...field.Expr) *userHasManyUserQueues
 	return &a
 }
 
-func (a userHasManyUserQueues) WithContext(ctx context.Context) *userHasManyUserQueues {
+func (a userHasManyUserAccounts) WithContext(ctx context.Context) *userHasManyUserAccounts {
 	a.db = a.db.WithContext(ctx)
 	return &a
 }
 
-func (a userHasManyUserQueues) Session(session *gorm.Session) *userHasManyUserQueues {
+func (a userHasManyUserAccounts) Session(session *gorm.Session) *userHasManyUserAccounts {
 	a.db = a.db.Session(session)
 	return &a
 }
 
-func (a userHasManyUserQueues) Model(m *model.User) *userHasManyUserQueuesTx {
-	return &userHasManyUserQueuesTx{a.db.Model(m).Association(a.Name())}
+func (a userHasManyUserAccounts) Model(m *model.User) *userHasManyUserAccountsTx {
+	return &userHasManyUserAccountsTx{a.db.Model(m).Association(a.Name())}
 }
 
-type userHasManyUserQueuesTx struct{ tx *gorm.Association }
+type userHasManyUserAccountsTx struct{ tx *gorm.Association }
 
-func (a userHasManyUserQueuesTx) Find() (result []*model.UserQueue, err error) {
+func (a userHasManyUserAccountsTx) Find() (result []*model.UserAccount, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a userHasManyUserQueuesTx) Append(values ...*model.UserQueue) (err error) {
+func (a userHasManyUserAccountsTx) Append(values ...*model.UserAccount) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -204,7 +204,7 @@ func (a userHasManyUserQueuesTx) Append(values ...*model.UserQueue) (err error) 
 	return a.tx.Append(targetValues...)
 }
 
-func (a userHasManyUserQueuesTx) Replace(values ...*model.UserQueue) (err error) {
+func (a userHasManyUserAccountsTx) Replace(values ...*model.UserAccount) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -212,7 +212,7 @@ func (a userHasManyUserQueuesTx) Replace(values ...*model.UserQueue) (err error)
 	return a.tx.Replace(targetValues...)
 }
 
-func (a userHasManyUserQueuesTx) Delete(values ...*model.UserQueue) (err error) {
+func (a userHasManyUserAccountsTx) Delete(values ...*model.UserAccount) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -220,11 +220,11 @@ func (a userHasManyUserQueuesTx) Delete(values ...*model.UserQueue) (err error) 
 	return a.tx.Delete(targetValues...)
 }
 
-func (a userHasManyUserQueuesTx) Clear() error {
+func (a userHasManyUserAccountsTx) Clear() error {
 	return a.tx.Clear()
 }
 
-func (a userHasManyUserQueuesTx) Count() int64 {
+func (a userHasManyUserAccountsTx) Count() int64 {
 	return a.tx.Count()
 }
 

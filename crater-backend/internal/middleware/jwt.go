@@ -38,7 +38,7 @@ func AuthProtected() gin.HandlerFunc {
 		// 如果查询方法不是 GET (e.g. POST, PUT, DELETE), 从数据库中校验权限
 		if c.Request.Method != "GET" {
 			u := query.User
-			uq := query.UserQueue
+			uq := query.UserAccount
 
 			// check platform role
 			user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
@@ -53,7 +53,7 @@ func AuthProtected() gin.HandlerFunc {
 				return
 			}
 
-			userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID), uq.QueueID.Eq(token.QueueID)).First()
+			userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID), uq.AccountID.Eq(token.QueueID)).First()
 			if err != nil {
 				resputil.HTTPError(c, http.StatusUnauthorized, "UserQueue not found", resputil.TokenInvalid)
 				c.Abort()

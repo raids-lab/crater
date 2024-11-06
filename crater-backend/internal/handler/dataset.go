@@ -186,8 +186,8 @@ func (mgr *DatasetMgr) GetAllDataset(c *gin.Context) {
 
 func (mgr *DatasetMgr) generateQueueDataseResponse(c *gin.Context, queueid uint, data map[uint]DatasetResp) error {
 	d := query.Dataset
-	qd := query.QueueDataset
-	queueDataset, err := qd.WithContext(c).Where(qd.QueueID.Eq(queueid)).Find()
+	qd := query.AccountDataset
+	queueDataset, err := qd.WithContext(c).Where(qd.AccountID.Eq(queueid)).Find()
 	if err != nil {
 		return err
 	}
@@ -527,8 +527,8 @@ func (mgr *DatasetMgr) AdminShareDatasetWithQueue(c *gin.Context) {
 }
 
 func (mgr *DatasetMgr) shareWithQueue(c *gin.Context, queueReq SharedQueueReq) error {
-	q := query.Queue
-	qd := query.QueueDataset
+	q := query.Account
+	qd := query.AccountDataset
 	if len(queueReq.QueueIDs) == 0 {
 		return fmt.Errorf("need to choose queues to share")
 	}
@@ -537,12 +537,12 @@ func (mgr *DatasetMgr) shareWithQueue(c *gin.Context, queueReq SharedQueueReq) e
 		if err != nil {
 			return fmt.Errorf("queue not exist")
 		}
-		hqd, _ := qd.WithContext(c).Where(qd.QueueID.Eq(QueueID), qd.DatasetID.Eq(queueReq.DatasetID)).First()
+		hqd, _ := qd.WithContext(c).Where(qd.AccountID.Eq(QueueID), qd.DatasetID.Eq(queueReq.DatasetID)).First()
 		if hqd != nil {
 			return fmt.Errorf("queue has shared dataset")
 		}
-		queuedataset := model.QueueDataset{
-			QueueID:   QueueID,
+		queuedataset := model.AccountDataset{
+			AccountID: QueueID,
 			DatasetID: queueReq.DatasetID,
 		}
 		if err := qd.WithContext(c).Create(&queuedataset); err != nil {
@@ -624,13 +624,13 @@ func (mgr *DatasetMgr) AdmincancelShareDatasetWithQueue(c *gin.Context) {
 }
 
 func (mgr *DatasetMgr) cancelShareWithQueue(c *gin.Context, cancelQueueReq cancelSharedQueueReq) error {
-	q := query.Queue
-	qd := query.QueueDataset
+	q := query.Account
+	qd := query.AccountDataset
 	_, err := q.WithContext(c).Where(q.ID.Eq(cancelQueueReq.QueueID)).First()
 	if err != nil {
 		return fmt.Errorf("queue not exist")
 	}
-	hqd, _ := qd.WithContext(c).Where(qd.QueueID.Eq(cancelQueueReq.QueueID), qd.DatasetID.Eq(cancelQueueReq.DatasetID)).First()
+	hqd, _ := qd.WithContext(c).Where(qd.AccountID.Eq(cancelQueueReq.QueueID), qd.DatasetID.Eq(cancelQueueReq.DatasetID)).First()
 	if hqd == nil {
 		return fmt.Errorf("the dataset was not shared with the queue")
 	}
@@ -667,7 +667,7 @@ func (mgr *DatasetMgr) DeleteDataset(c *gin.Context) {
 	err := db.Transaction(func(tx *query.Query) error {
 		d := tx.Dataset
 		ud := tx.UserDataset
-		qd := tx.QueueDataset
+		qd := tx.AccountDataset
 		dataset, err := d.WithContext(c).Where(d.ID.Eq(req.ID)).First()
 		if err != nil {
 			return err
@@ -898,10 +898,10 @@ func (mgr *DatasetMgr) ListQueuesOutOfDataset(c *gin.Context) {
 		resputil.Error(c, "this dataset not exist", resputil.InvalidRequest)
 		return
 	}
-	q := query.Queue
-	qd := query.QueueDataset
+	q := query.Account
+	qd := query.AccountDataset
 	var qids []uint
-	if err := qd.WithContext(c).Select(qd.QueueID).Where(qd.DatasetID.Eq(dataset.ID)).Scan(&qids); err != nil {
+	if err := qd.WithContext(c).Select(qd.AccountID).Where(qd.DatasetID.Eq(dataset.ID)).Scan(&qids); err != nil {
 		resputil.Error(c, fmt.Sprintf("Failed to scan queue IDs: %v", err), resputil.NotSpecified)
 		return
 	}
@@ -933,15 +933,15 @@ func (mgr *DatasetMgr) ListQueueOfDataset(c *gin.Context) {
 		return
 	}
 	d := query.Dataset
-	q := query.Queue
-	qd := query.QueueDataset
+	q := query.Account
+	qd := query.AccountDataset
 	dataset, err := d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).First()
 	if err != nil {
 		resputil.Error(c, "this dataset not exist", resputil.InvalidRequest)
 		return
 	}
 	var qids []uint
-	if err := qd.WithContext(c).Select(qd.QueueID).Where(qd.DatasetID.Eq(dataset.ID)).Distinct().Scan(&qids); err != nil {
+	if err := qd.WithContext(c).Select(qd.AccountID).Where(qd.DatasetID.Eq(dataset.ID)).Distinct().Scan(&qids); err != nil {
 		resputil.Error(c, fmt.Sprintf("Failed to scan queue IDs: %v", err), resputil.NotSpecified)
 		return
 	}

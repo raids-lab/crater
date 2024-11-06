@@ -6,8 +6,8 @@ type ImagePack struct {
 	gorm.Model
 	UserID        uint
 	User          User
-	QueueID       uint
-	Queue         Queue
+	AccountID     uint
+	Account       Account
 	ImagePackName string             `gorm:"column:imagepackname;uniqueIndex:imagepackname;type:varchar(128);not null" json:"imagepackname"`
 	ImageLink     string             `gorm:"column:imagelink;type:varchar(128);not null" json:"imagelink"`
 	NameSpace     string             `gorm:"column:namespace;type:varchar(128);not null" json:"namespace"`
@@ -27,8 +27,8 @@ type ImageUpload struct {
 	gorm.Model
 	UserID      uint
 	User        User
-	QueueID     uint
-	Queue       Queue
+	AccountID   uint
+	Account     Account
 	ImageLink   string        `gorm:"column:imagelink;type:varchar(128);not null" json:"imagelink"`
 	Status      string        `gorm:"column:status;type:varchar(128);not null" json:"status"`
 	NameTag     string        `gorm:"column:nametag;type:varchar(128);not null" json:"nametag"`

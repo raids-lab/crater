@@ -16,89 +16,89 @@ import (
 )
 
 var (
-	Q            = new(Query)
-	Dataset      *dataset
-	ImagePack    *imagePack
-	ImageUpload  *imageUpload
-	Job          *job
-	Label        *label
-	Queue        *queue
-	QueueDataset *queueDataset
-	Resource     *resource
-	User         *user
-	UserDataset  *userDataset
-	UserQueue    *userQueue
-	Whitelist    *whitelist
+	Q              = new(Query)
+	Account        *account
+	AccountDataset *accountDataset
+	Dataset        *dataset
+	ImagePack      *imagePack
+	ImageUpload    *imageUpload
+	Job            *job
+	Label          *label
+	Resource       *resource
+	User           *user
+	UserAccount    *userAccount
+	UserDataset    *userDataset
+	Whitelist      *whitelist
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
+	Account = &Q.Account
+	AccountDataset = &Q.AccountDataset
 	Dataset = &Q.Dataset
 	ImagePack = &Q.ImagePack
 	ImageUpload = &Q.ImageUpload
 	Job = &Q.Job
 	Label = &Q.Label
-	Queue = &Q.Queue
-	QueueDataset = &Q.QueueDataset
 	Resource = &Q.Resource
 	User = &Q.User
+	UserAccount = &Q.UserAccount
 	UserDataset = &Q.UserDataset
-	UserQueue = &Q.UserQueue
 	Whitelist = &Q.Whitelist
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:           db,
-		Dataset:      newDataset(db, opts...),
-		ImagePack:    newImagePack(db, opts...),
-		ImageUpload:  newImageUpload(db, opts...),
-		Job:          newJob(db, opts...),
-		Label:        newLabel(db, opts...),
-		Queue:        newQueue(db, opts...),
-		QueueDataset: newQueueDataset(db, opts...),
-		Resource:     newResource(db, opts...),
-		User:         newUser(db, opts...),
-		UserDataset:  newUserDataset(db, opts...),
-		UserQueue:    newUserQueue(db, opts...),
-		Whitelist:    newWhitelist(db, opts...),
+		db:             db,
+		Account:        newAccount(db, opts...),
+		AccountDataset: newAccountDataset(db, opts...),
+		Dataset:        newDataset(db, opts...),
+		ImagePack:      newImagePack(db, opts...),
+		ImageUpload:    newImageUpload(db, opts...),
+		Job:            newJob(db, opts...),
+		Label:          newLabel(db, opts...),
+		Resource:       newResource(db, opts...),
+		User:           newUser(db, opts...),
+		UserAccount:    newUserAccount(db, opts...),
+		UserDataset:    newUserDataset(db, opts...),
+		Whitelist:      newWhitelist(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	Dataset      dataset
-	ImagePack    imagePack
-	ImageUpload  imageUpload
-	Job          job
-	Label        label
-	Queue        queue
-	QueueDataset queueDataset
-	Resource     resource
-	User         user
-	UserDataset  userDataset
-	UserQueue    userQueue
-	Whitelist    whitelist
+	Account        account
+	AccountDataset accountDataset
+	Dataset        dataset
+	ImagePack      imagePack
+	ImageUpload    imageUpload
+	Job            job
+	Label          label
+	Resource       resource
+	User           user
+	UserAccount    userAccount
+	UserDataset    userDataset
+	Whitelist      whitelist
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:           db,
-		Dataset:      q.Dataset.clone(db),
-		ImagePack:    q.ImagePack.clone(db),
-		ImageUpload:  q.ImageUpload.clone(db),
-		Job:          q.Job.clone(db),
-		Label:        q.Label.clone(db),
-		Queue:        q.Queue.clone(db),
-		QueueDataset: q.QueueDataset.clone(db),
-		Resource:     q.Resource.clone(db),
-		User:         q.User.clone(db),
-		UserDataset:  q.UserDataset.clone(db),
-		UserQueue:    q.UserQueue.clone(db),
-		Whitelist:    q.Whitelist.clone(db),
+		db:             db,
+		Account:        q.Account.clone(db),
+		AccountDataset: q.AccountDataset.clone(db),
+		Dataset:        q.Dataset.clone(db),
+		ImagePack:      q.ImagePack.clone(db),
+		ImageUpload:    q.ImageUpload.clone(db),
+		Job:            q.Job.clone(db),
+		Label:          q.Label.clone(db),
+		Resource:       q.Resource.clone(db),
+		User:           q.User.clone(db),
+		UserAccount:    q.UserAccount.clone(db),
+		UserDataset:    q.UserDataset.clone(db),
+		Whitelist:      q.Whitelist.clone(db),
 	}
 }
 
@@ -112,51 +112,51 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:           db,
-		Dataset:      q.Dataset.replaceDB(db),
-		ImagePack:    q.ImagePack.replaceDB(db),
-		ImageUpload:  q.ImageUpload.replaceDB(db),
-		Job:          q.Job.replaceDB(db),
-		Label:        q.Label.replaceDB(db),
-		Queue:        q.Queue.replaceDB(db),
-		QueueDataset: q.QueueDataset.replaceDB(db),
-		Resource:     q.Resource.replaceDB(db),
-		User:         q.User.replaceDB(db),
-		UserDataset:  q.UserDataset.replaceDB(db),
-		UserQueue:    q.UserQueue.replaceDB(db),
-		Whitelist:    q.Whitelist.replaceDB(db),
+		db:             db,
+		Account:        q.Account.replaceDB(db),
+		AccountDataset: q.AccountDataset.replaceDB(db),
+		Dataset:        q.Dataset.replaceDB(db),
+		ImagePack:      q.ImagePack.replaceDB(db),
+		ImageUpload:    q.ImageUpload.replaceDB(db),
+		Job:            q.Job.replaceDB(db),
+		Label:          q.Label.replaceDB(db),
+		Resource:       q.Resource.replaceDB(db),
+		User:           q.User.replaceDB(db),
+		UserAccount:    q.UserAccount.replaceDB(db),
+		UserDataset:    q.UserDataset.replaceDB(db),
+		Whitelist:      q.Whitelist.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	Dataset      IDatasetDo
-	ImagePack    IImagePackDo
-	ImageUpload  IImageUploadDo
-	Job          IJobDo
-	Label        ILabelDo
-	Queue        IQueueDo
-	QueueDataset IQueueDatasetDo
-	Resource     IResourceDo
-	User         IUserDo
-	UserDataset  IUserDatasetDo
-	UserQueue    IUserQueueDo
-	Whitelist    IWhitelistDo
+	Account        IAccountDo
+	AccountDataset IAccountDatasetDo
+	Dataset        IDatasetDo
+	ImagePack      IImagePackDo
+	ImageUpload    IImageUploadDo
+	Job            IJobDo
+	Label          ILabelDo
+	Resource       IResourceDo
+	User           IUserDo
+	UserAccount    IUserAccountDo
+	UserDataset    IUserDatasetDo
+	Whitelist      IWhitelistDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		Dataset:      q.Dataset.WithContext(ctx),
-		ImagePack:    q.ImagePack.WithContext(ctx),
-		ImageUpload:  q.ImageUpload.WithContext(ctx),
-		Job:          q.Job.WithContext(ctx),
-		Label:        q.Label.WithContext(ctx),
-		Queue:        q.Queue.WithContext(ctx),
-		QueueDataset: q.QueueDataset.WithContext(ctx),
-		Resource:     q.Resource.WithContext(ctx),
-		User:         q.User.WithContext(ctx),
-		UserDataset:  q.UserDataset.WithContext(ctx),
-		UserQueue:    q.UserQueue.WithContext(ctx),
-		Whitelist:    q.Whitelist.WithContext(ctx),
+		Account:        q.Account.WithContext(ctx),
+		AccountDataset: q.AccountDataset.WithContext(ctx),
+		Dataset:        q.Dataset.WithContext(ctx),
+		ImagePack:      q.ImagePack.WithContext(ctx),
+		ImageUpload:    q.ImageUpload.WithContext(ctx),
+		Job:            q.Job.WithContext(ctx),
+		Label:          q.Label.WithContext(ctx),
+		Resource:       q.Resource.WithContext(ctx),
+		User:           q.User.WithContext(ctx),
+		UserAccount:    q.UserAccount.WithContext(ctx),
+		UserDataset:    q.UserDataset.WithContext(ctx),
+		Whitelist:      q.Whitelist.WithContext(ctx),
 	}
 }
 

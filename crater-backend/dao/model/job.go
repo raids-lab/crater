@@ -33,8 +33,8 @@ type Job struct {
 	JobName            string                              `gorm:"uniqueIndex;type:varchar(256);not null;comment:作业名称"`
 	UserID             uint                                `gorm:"primaryKey"`
 	User               User                                `gorm:"foreignKey:UserID"`
-	QueueID            uint                                `gorm:"primaryKey"`
-	Queue              Queue                               `gorm:"foreignKey:QueueID"`
+	AccountID          uint                                `gorm:"primaryKey"`
+	Account            Account                             `gorm:"foreignKey:AccountID"`
 	JobType            JobType                             `gorm:"not null;comment:作业类型"`
 	Status             batch.JobPhase                      `gorm:"index:status;not null;comment:作业状态"`
 	CreationTimestamp  time.Time                           `gorm:"not null;comment:作业创建时间"`

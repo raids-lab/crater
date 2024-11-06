@@ -25,7 +25,7 @@ import (
 
 // TaskController 调度task
 type TaskControllerInterface interface {
-	AddOrUpdateQuotaInfo(queue *model.Queue) (added bool, quotaInfo *QuotaInfo)
+	AddOrUpdateQuotaInfo(queue *model.Account) (added bool, quotaInfo *QuotaInfo)
 	DeleteQuotaInfo(namespace string)
 	GetQuotaInfo(username string) *QuotaInfo
 	GetQuotaInfoSnapshotByUsername(username string) *QuotaInfoSnapshot
@@ -72,7 +72,7 @@ func (c *TaskController) SetProfiler(srcProfiler *profiler.Profiler) {
 // Init init taskQueue And quotaInfos
 func (c *TaskController) Init() error {
 	// init quotas
-	q := query.Queue
+	q := query.Account
 	quotas, err := q.WithContext(context.Background()).Find()
 	if err != nil {
 		logutils.Log.Errorf("list all quotas failed, err: %v", err)

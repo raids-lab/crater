@@ -29,10 +29,10 @@ func main() {
 				// so side effects are prevented if the original struct changes during the time
 				type ImagePack struct {
 					gorm.Model
-					UserID  uint
-					User    model.User
-					QueueID uint
-					Queue   model.Queue
+					UserID    uint
+					User      model.User
+					AccountID uint
+					Queue     model.Account
 					//nolint:lll // need these description
 					ImagePackName string                   `gorm:"column:imagepackname;uniqueIndex:imagepackname;type:varchar(128);not null" json:"imagepackname"`
 					ImageLink     string                   `gorm:"column:imagelink;type:varchar(128);not null" json:"imagelink"`
@@ -73,7 +73,7 @@ func main() {
 
 				type QueueDataset struct {
 					gorm.Model
-					QueueID   uint `gorm:"primaryKey"`
+					AccountID uint `gorm:"primaryKey"`
 					DatasetID uint `gorm:"primaryKey"`
 				}
 
@@ -301,10 +301,10 @@ func main() {
 			&model.ImagePack{},
 			&model.ImageUpload{},
 			&model.Label{},
-			&model.Queue{},
-			&model.UserQueue{},
+			&model.Account{},
+			&model.UserAccount{},
 			&model.Dataset{},
-			&model.QueueDataset{},
+			&model.AccountDataset{},
 			&model.UserDataset{},
 			&model.Resource{},
 			&model.Job{},
@@ -315,22 +315,22 @@ func main() {
 			return err
 		}
 
-		// create default queue
-		queue := model.Queue{
+		// create default account
+		account := model.Account{
 			Name:     "default",
-			Nickname: "公共资源池",
+			Nickname: "公共队列",
 			Space:    "/public",
 			Quota:    datatypes.NewJSONType(model.QueueQuota{}),
 		}
 
-		res := tx.Create(&queue)
+		res := tx.Create(&account)
 		if res.Error != nil {
 			return res.Error
 		}
 
 		// create default admin user, add to default queue
 		// 1. generate a random name and password
-		name := fmt.Sprintf("admin-%s", uuid.New().String()[:5])
+		name := fmt.Sprintf("admin%s", uuid.New().String()[:5])
 		password := uuid.New().String()[:8]
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		if err != nil {
@@ -339,11 +339,11 @@ func main() {
 		// 2. create a user with the name and password
 		user := model.User{
 			Name:       name,
-			Nickname:   "初始管理员",
+			Nickname:   "管理员",
 			Password:   lo.ToPtr(string(hashedPassword)),
 			Role:       model.RoleAdmin, // todo: change to model.RoleUser
 			Status:     model.StatusActive,
-			Space:      fmt.Sprintf("u-%s", uuid.New().String()[:8]),
+			Space:      fmt.Sprintf("u-%s", name),
 			Attributes: datatypes.NewJSONType(model.UserAttribute{}),
 		}
 
@@ -353,9 +353,9 @@ func main() {
 		}
 
 		// 3. add the user to the default queue
-		userQueue := model.UserQueue{
+		userQueue := model.UserAccount{
 			UserID:     user.ID,
-			QueueID:    queue.ID,
+			AccountID:  account.ID,
 			Role:       model.RoleAdmin,
 			AccessMode: model.AccessModeRW,
 		}
@@ -377,9 +377,4 @@ func main() {
 	if err := m.Migrate(); err != nil {
 		panic(fmt.Errorf("could not migrate: %w", err))
 	}
-
-	// for emias scheduler
-	// if err := aitask.InitMigration(); err != nil {
-	// 	panic(fmt.Errorf("could not init migration: %w", err))
-	// }
 }

@@ -11,8 +11,8 @@ type Dataset struct {
 	Describe string `gorm:"type:text;comment:数据集描述"`
 	UserID   uint
 
-	UserDatasets  []UserDataset
-	QueueDatasets []QueueDataset
+	UserDatasets    []UserDataset
+	AccountDatasets []AccountDataset
 }
 
 type UserDataset struct {
@@ -21,8 +21,8 @@ type UserDataset struct {
 	DatasetID uint `gorm:"primaryKey"`
 }
 
-type QueueDataset struct {
+type AccountDataset struct {
 	gorm.Model
-	QueueID   uint `gorm:"primaryKey"`
+	AccountID uint `gorm:"primaryKey"`
 	DatasetID uint `gorm:"primaryKey"`
 }
