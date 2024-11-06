@@ -13,7 +13,7 @@ postgres:
   dbname: crater
   user: postgres
   password: ***REMOVED***
-  sslmode: require
+  sslmode: disable
   TimeZone: Asia/Shanghai
 workspace:
   namespace: crater-workspace

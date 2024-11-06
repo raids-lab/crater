@@ -37,6 +37,6 @@ type User struct {
 	ImageQuota int64      `gorm:"type:bigint;default:-1;comment:用户在镜像仓库的配额"`
 
 	Attributes   datatypes.JSONType[UserAttribute] `gorm:"comment:用户的额外属性 (昵称、邮箱、电话、头像等)"`
-	UserQueues   []UserQueue
+	UserAccounts []UserAccount
 	UserDatasets []UserDataset
 }

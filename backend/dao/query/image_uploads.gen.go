@@ -32,7 +32,7 @@ func newImageUpload(db *gorm.DB, opts ...gen.DOOption) imageUpload {
 	_imageUpload.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_imageUpload.DeletedAt = field.NewField(tableName, "deleted_at")
 	_imageUpload.UserID = field.NewUint(tableName, "user_id")
-	_imageUpload.QueueID = field.NewUint(tableName, "queue_id")
+	_imageUpload.AccountID = field.NewUint(tableName, "account_id")
 	_imageUpload.ImageLink = field.NewString(tableName, "imagelink")
 	_imageUpload.Status = field.NewString(tableName, "status")
 	_imageUpload.NameTag = field.NewString(tableName, "nametag")
@@ -45,10 +45,10 @@ func newImageUpload(db *gorm.DB, opts ...gen.DOOption) imageUpload {
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("User", "model.User"),
-		UserQueues: struct {
+		UserAccounts: struct {
 			field.RelationField
 		}{
-			RelationField: field.NewRelation("User.UserQueues", "model.UserQueue"),
+			RelationField: field.NewRelation("User.UserAccounts", "model.UserAccount"),
 		},
 		UserDatasets: struct {
 			field.RelationField
@@ -57,19 +57,19 @@ func newImageUpload(db *gorm.DB, opts ...gen.DOOption) imageUpload {
 		},
 	}
 
-	_imageUpload.Queue = imageUploadBelongsToQueue{
+	_imageUpload.Account = imageUploadBelongsToAccount{
 		db: db.Session(&gorm.Session{}),
 
-		RelationField: field.NewRelation("Queue", "model.Queue"),
-		UserQueues: struct {
+		RelationField: field.NewRelation("Account", "model.Account"),
+		UserAccounts: struct {
 			field.RelationField
 		}{
-			RelationField: field.NewRelation("Queue.UserQueues", "model.UserQueue"),
+			RelationField: field.NewRelation("Account.UserAccounts", "model.UserAccount"),
 		},
-		QueueDatasets: struct {
+		AccountDatasets: struct {
 			field.RelationField
 		}{
-			RelationField: field.NewRelation("Queue.QueueDatasets", "model.QueueDataset"),
+			RelationField: field.NewRelation("Account.AccountDatasets", "model.AccountDataset"),
 		},
 	}
 
@@ -87,7 +87,7 @@ type imageUpload struct {
 	UpdatedAt   field.Time
 	DeletedAt   field.Field
 	UserID      field.Uint
-	QueueID     field.Uint
+	AccountID   field.Uint
 	ImageLink   field.String
 	Status      field.String
 	NameTag     field.String
@@ -98,7 +98,7 @@ type imageUpload struct {
 	IsPublic    field.Bool
 	User        imageUploadBelongsToUser
 
-	Queue imageUploadBelongsToQueue
+	Account imageUploadBelongsToAccount
 
 	fieldMap map[string]field.Expr
 }
@@ -120,7 +120,7 @@ func (i *imageUpload) updateTableName(table string) *imageUpload {
 	i.UpdatedAt = field.NewTime(table, "updated_at")
 	i.DeletedAt = field.NewField(table, "deleted_at")
 	i.UserID = field.NewUint(table, "user_id")
-	i.QueueID = field.NewUint(table, "queue_id")
+	i.AccountID = field.NewUint(table, "account_id")
 	i.ImageLink = field.NewString(table, "imagelink")
 	i.Status = field.NewString(table, "status")
 	i.NameTag = field.NewString(table, "nametag")
@@ -161,7 +161,7 @@ func (i *imageUpload) fillFieldMap() {
 	i.fieldMap["updated_at"] = i.UpdatedAt
 	i.fieldMap["deleted_at"] = i.DeletedAt
 	i.fieldMap["user_id"] = i.UserID
-	i.fieldMap["queue_id"] = i.QueueID
+	i.fieldMap["account_id"] = i.AccountID
 	i.fieldMap["imagelink"] = i.ImageLink
 	i.fieldMap["status"] = i.Status
 	i.fieldMap["nametag"] = i.NameTag
@@ -188,7 +188,7 @@ type imageUploadBelongsToUser struct {
 
 	field.RelationField
 
-	UserQueues struct {
+	UserAccounts struct {
 		field.RelationField
 	}
 	UserDatasets struct {
@@ -261,20 +261,20 @@ func (a imageUploadBelongsToUserTx) Count() int64 {
 	return a.tx.Count()
 }
 
-type imageUploadBelongsToQueue struct {
+type imageUploadBelongsToAccount struct {
 	db *gorm.DB
 
 	field.RelationField
 
-	UserQueues struct {
+	UserAccounts struct {
 		field.RelationField
 	}
-	QueueDatasets struct {
+	AccountDatasets struct {
 		field.RelationField
 	}
 }
 
-func (a imageUploadBelongsToQueue) Where(conds ...field.Expr) *imageUploadBelongsToQueue {
+func (a imageUploadBelongsToAccount) Where(conds ...field.Expr) *imageUploadBelongsToAccount {
 	if len(conds) == 0 {
 		return &a
 	}
@@ -287,27 +287,27 @@ func (a imageUploadBelongsToQueue) Where(conds ...field.Expr) *imageUploadBelong
 	return &a
 }
 
-func (a imageUploadBelongsToQueue) WithContext(ctx context.Context) *imageUploadBelongsToQueue {
+func (a imageUploadBelongsToAccount) WithContext(ctx context.Context) *imageUploadBelongsToAccount {
 	a.db = a.db.WithContext(ctx)
 	return &a
 }
 
-func (a imageUploadBelongsToQueue) Session(session *gorm.Session) *imageUploadBelongsToQueue {
+func (a imageUploadBelongsToAccount) Session(session *gorm.Session) *imageUploadBelongsToAccount {
 	a.db = a.db.Session(session)
 	return &a
 }
 
-func (a imageUploadBelongsToQueue) Model(m *model.ImageUpload) *imageUploadBelongsToQueueTx {
-	return &imageUploadBelongsToQueueTx{a.db.Model(m).Association(a.Name())}
+func (a imageUploadBelongsToAccount) Model(m *model.ImageUpload) *imageUploadBelongsToAccountTx {
+	return &imageUploadBelongsToAccountTx{a.db.Model(m).Association(a.Name())}
 }
 
-type imageUploadBelongsToQueueTx struct{ tx *gorm.Association }
+type imageUploadBelongsToAccountTx struct{ tx *gorm.Association }
 
-func (a imageUploadBelongsToQueueTx) Find() (result *model.Queue, err error) {
+func (a imageUploadBelongsToAccountTx) Find() (result *model.Account, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a imageUploadBelongsToQueueTx) Append(values ...*model.Queue) (err error) {
+func (a imageUploadBelongsToAccountTx) Append(values ...*model.Account) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -315,7 +315,7 @@ func (a imageUploadBelongsToQueueTx) Append(values ...*model.Queue) (err error) 
 	return a.tx.Append(targetValues...)
 }
 
-func (a imageUploadBelongsToQueueTx) Replace(values ...*model.Queue) (err error) {
+func (a imageUploadBelongsToAccountTx) Replace(values ...*model.Account) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -323,7 +323,7 @@ func (a imageUploadBelongsToQueueTx) Replace(values ...*model.Queue) (err error)
 	return a.tx.Replace(targetValues...)
 }
 
-func (a imageUploadBelongsToQueueTx) Delete(values ...*model.Queue) (err error) {
+func (a imageUploadBelongsToAccountTx) Delete(values ...*model.Account) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -331,11 +331,11 @@ func (a imageUploadBelongsToQueueTx) Delete(values ...*model.Queue) (err error) 
 	return a.tx.Delete(targetValues...)
 }
 
-func (a imageUploadBelongsToQueueTx) Clear() error {
+func (a imageUploadBelongsToAccountTx) Clear() error {
 	return a.tx.Clear()
 }
 
-func (a imageUploadBelongsToQueueTx) Count() int64 {
+func (a imageUploadBelongsToAccountTx) Count() int64 {
 	return a.tx.Count()
 }
 

@@ -14,7 +14,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	ldap "github.com/go-ldap/ldap/v3"
-	"github.com/google/uuid"
 	imrocreq "github.com/imroc/req/v3"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
@@ -191,8 +190,8 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		return
 	}
 
-	q := query.Queue
-	uq := query.UserQueue
+	q := query.Account
+	uq := query.UserAccount
 	lastUserQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID)).Last()
 	if err != nil {
 		l.Error("user has no queue", err)
@@ -200,7 +199,7 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		return
 	}
 
-	lastQueue, err := q.WithContext(c).Where(q.ID.Eq(lastUserQueue.QueueID)).First()
+	lastQueue, err := q.WithContext(c).Where(q.ID.Eq(lastUserQueue.AccountID)).First()
 	if err != nil {
 		l.Error("user has no queue", err)
 		resputil.Error(c, "User must has at least one queue", resputil.UserNotAllowed)
@@ -290,18 +289,32 @@ func shouldCreateOrUpdateUser(
 // createUser is called when the user is not found in the database
 func createUser(c context.Context, name string, password *string) (*model.User, error) {
 	u := query.User
+	uq := query.UserAccount
+
 	user := model.User{
 		Name:     name,
 		Nickname: name,
 		Password: password,
 		Role:     model.RoleAdmin, // todo: change to model.RoleUser
 		Status:   model.StatusActive,
-		Space:    fmt.Sprintf("u-%s", uuid.New().String()[:8]),
+		Space:    fmt.Sprintf("u-%s", name),
 		Attributes: datatypes.NewJSONType(model.UserAttribute{
 			Email: lo.ToPtr(name + "@***REMOVED***"),
 		}),
 	}
 	if err := u.WithContext(c).Create(&user); err != nil {
+		return nil, err
+	}
+
+	// add default user queue
+	userAccount := model.UserAccount{
+		UserID:     user.ID,
+		AccountID:  model.DefaultAccountID,
+		Role:       model.RoleUser,
+		AccessMode: model.AccessModeRO,
+	}
+
+	if err := uq.WithContext(c).Create(&userAccount); err != nil {
 		return nil, err
 	}
 
@@ -484,7 +497,6 @@ func (mgr *AuthMgr) Signup(c *gin.Context) {
 	})
 
 	u := query.User
-	uq := query.UserQueue
 
 	_, err := u.WithContext(c).Where(u.Name.Eq(req.Username)).First()
 	if err == nil {
@@ -503,26 +515,13 @@ func (mgr *AuthMgr) Signup(c *gin.Context) {
 		return
 	}
 
-	user, err := createUser(c, req.Username, lo.ToPtr(string(hashedPassword)))
+	_, err = createUser(c, req.Username, lo.ToPtr(string(hashedPassword)))
 	if err != nil {
 		l.Error("create new user", err)
 		resputil.Error(c, "Create user failed", resputil.NotSpecified)
 		return
 	}
 
-	// add default user queue
-	userQueue := model.UserQueue{
-		UserID:     user.ID,
-		QueueID:    1,
-		Role:       model.RoleUser,
-		AccessMode: model.AccessModeRW,
-	}
-	err = uq.WithContext(c).Create(&userQueue)
-	if err != nil {
-		l.Error("create user queue", err)
-		resputil.Error(c, "Create user queue failed", resputil.NotSpecified)
-		return
-	}
 	resputil.Success(c, "Signup successful")
 }
 
@@ -595,8 +594,8 @@ func (mgr *AuthMgr) SwitchQueue(c *gin.Context) {
 	token := util.GetToken(c)
 
 	// Check queue
-	q := query.Queue
-	uq := query.UserQueue
+	q := query.Account
+	uq := query.UserAccount
 
 	queue, err := q.WithContext(c).Where(q.Name.Eq(req.Queue)).First()
 	if err != nil {
@@ -604,7 +603,7 @@ func (mgr *AuthMgr) SwitchQueue(c *gin.Context) {
 		return
 	}
 
-	userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID), uq.QueueID.Eq(queue.ID)).First()
+	userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID), uq.AccountID.Eq(queue.ID)).First()
 	if err != nil {
 		resputil.Error(c, "Queue not found", resputil.NotSpecified)
 		return
@@ -614,7 +613,7 @@ func (mgr *AuthMgr) SwitchQueue(c *gin.Context) {
 	jwtMessage := util.JWTMessage{
 		UserID:           token.UserID,
 		Username:         token.Username,
-		QueueID:          userQueue.QueueID,
+		QueueID:          userQueue.AccountID,
 		QueueName:        req.Queue,
 		RoleQueue:        userQueue.Role,
 		RolePlatform:     token.RolePlatform,

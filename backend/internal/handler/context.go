@@ -222,12 +222,12 @@ type (
 func (mgr *ContextMgr) ListUserQueue(c *gin.Context) {
 	token := util.GetToken(c)
 
-	uq := query.UserQueue
-	q := query.Queue
+	uq := query.UserAccount
+	q := query.Account
 
 	var userQueues []UserQueueResp
 	err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID)).
-		Join(q, uq.QueueID.EqCol(q.ID)).Select(q.Name, q.Nickname, uq.Role, uq.AccessMode).Order(q.ID).Scan(&userQueues)
+		Join(q, uq.AccountID.EqCol(q.ID)).Select(q.Name, q.Nickname, uq.Role, uq.AccessMode).Order(q.ID).Scan(&userQueues)
 	if err != nil {
 		resputil.Error(c, "List user queue failed", resputil.NotSpecified)
 		return

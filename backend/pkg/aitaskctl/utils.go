@@ -64,11 +64,11 @@ func CheckResourcesBeforeCreateJob(
 	userID, accountID uint,
 	createResources v1.ResourceList,
 ) (exceededResources []v1.ResourceName) {
-	uq := query.UserQueue
+	uq := query.UserAccount
 	var userQueueQuota datatypes.JSONType[model.QueueQuota]
 	err := uq.WithContext(c).
 		Where(uq.UserID.Eq(userID)).
-		Where(uq.QueueID.Eq(accountID)).
+		Where(uq.AccountID.Eq(accountID)).
 		Select(uq.Quota).
 		Scan(&userQueueQuota)
 	if err != nil {
@@ -80,7 +80,7 @@ func CheckResourcesBeforeCreateJob(
 	j := query.Job
 	jobResources, err := j.WithContext(c).
 		Where(j.UserID.Eq(userID)).
-		Where(j.QueueID.Eq(accountID)).
+		Where(j.AccountID.Eq(accountID)).
 		Where(j.Status.In("Running", "Pending")).
 		Select(j.Resources).
 		Find()

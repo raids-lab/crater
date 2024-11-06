@@ -114,7 +114,7 @@ func (c *TaskController) GetQuotaInfo(username string) *QuotaInfo {
 	if value, ok := c.quotaInfos.Load(username); ok {
 		return value.(*QuotaInfo)
 	} else {
-		q := query.Queue
+		q := query.Account
 		quotadb, err := q.WithContext(context.Background()).Where(q.Name.Eq((username))).First()
 		if err != nil {
 			logutils.Log.Errorf("get quota from db failed, err: %v", err)
@@ -146,7 +146,7 @@ func (c *TaskController) ListQuotaInfoSnapshot() []QuotaInfoSnapshot {
 	return quotaInfos
 }
 
-func (c *TaskController) AddOrUpdateQuotaInfo(queue *model.Queue) (added bool, quotaInfo *QuotaInfo) {
+func (c *TaskController) AddOrUpdateQuotaInfo(queue *model.Account) (added bool, quotaInfo *QuotaInfo) {
 	name := queue.Name
 	quota := queue.Quota.Data()
 	if _, ok := c.quotaInfos.Load(queue.Name); !ok {

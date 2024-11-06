@@ -59,9 +59,9 @@ const (
 // @Router  /v1/token/verify [get]
 func (mgr *JWTTokenMgr) VerifyToken(c *gin.Context) {
 	token := util.GetToken(c)
-	uq := query.UserQueue
-	q := query.Queue
-	userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID), uq.QueueID.Eq(token.QueueID)).First()
+	uq := query.UserAccount
+	q := query.Account
+	userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID), uq.AccountID.Eq(token.QueueID)).First()
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return

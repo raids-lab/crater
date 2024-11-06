@@ -34,7 +34,7 @@ func newJob(db *gorm.DB, opts ...gen.DOOption) job {
 	_job.Name = field.NewString(tableName, "name")
 	_job.JobName = field.NewString(tableName, "job_name")
 	_job.UserID = field.NewUint(tableName, "user_id")
-	_job.QueueID = field.NewUint(tableName, "queue_id")
+	_job.AccountID = field.NewUint(tableName, "account_id")
 	_job.JobType = field.NewString(tableName, "job_type")
 	_job.Status = field.NewString(tableName, "status")
 	_job.CreationTimestamp = field.NewTime(tableName, "creation_timestamp")
@@ -48,10 +48,10 @@ func newJob(db *gorm.DB, opts ...gen.DOOption) job {
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("User", "model.User"),
-		UserQueues: struct {
+		UserAccounts: struct {
 			field.RelationField
 		}{
-			RelationField: field.NewRelation("User.UserQueues", "model.UserQueue"),
+			RelationField: field.NewRelation("User.UserAccounts", "model.UserAccount"),
 		},
 		UserDatasets: struct {
 			field.RelationField
@@ -60,19 +60,19 @@ func newJob(db *gorm.DB, opts ...gen.DOOption) job {
 		},
 	}
 
-	_job.Queue = jobBelongsToQueue{
+	_job.Account = jobBelongsToAccount{
 		db: db.Session(&gorm.Session{}),
 
-		RelationField: field.NewRelation("Queue", "model.Queue"),
-		UserQueues: struct {
+		RelationField: field.NewRelation("Account", "model.Account"),
+		UserAccounts: struct {
 			field.RelationField
 		}{
-			RelationField: field.NewRelation("Queue.UserQueues", "model.UserQueue"),
+			RelationField: field.NewRelation("Account.UserAccounts", "model.UserAccount"),
 		},
-		QueueDatasets: struct {
+		AccountDatasets: struct {
 			field.RelationField
 		}{
-			RelationField: field.NewRelation("Queue.QueueDatasets", "model.QueueDataset"),
+			RelationField: field.NewRelation("Account.AccountDatasets", "model.AccountDataset"),
 		},
 	}
 
@@ -92,7 +92,7 @@ type job struct {
 	Name                     field.String
 	JobName                  field.String
 	UserID                   field.Uint
-	QueueID                  field.Uint
+	AccountID                field.Uint
 	JobType                  field.String
 	Status                   field.String
 	CreationTimestamp        field.Time
@@ -104,7 +104,7 @@ type job struct {
 	Attributes               field.Field
 	User                     jobBelongsToUser
 
-	Queue jobBelongsToQueue
+	Account jobBelongsToAccount
 
 	fieldMap map[string]field.Expr
 }
@@ -128,7 +128,7 @@ func (j *job) updateTableName(table string) *job {
 	j.Name = field.NewString(table, "name")
 	j.JobName = field.NewString(table, "job_name")
 	j.UserID = field.NewUint(table, "user_id")
-	j.QueueID = field.NewUint(table, "queue_id")
+	j.AccountID = field.NewUint(table, "account_id")
 	j.JobType = field.NewString(table, "job_type")
 	j.Status = field.NewString(table, "status")
 	j.CreationTimestamp = field.NewTime(table, "creation_timestamp")
@@ -170,7 +170,7 @@ func (j *job) fillFieldMap() {
 	j.fieldMap["name"] = j.Name
 	j.fieldMap["job_name"] = j.JobName
 	j.fieldMap["user_id"] = j.UserID
-	j.fieldMap["queue_id"] = j.QueueID
+	j.fieldMap["account_id"] = j.AccountID
 	j.fieldMap["job_type"] = j.JobType
 	j.fieldMap["status"] = j.Status
 	j.fieldMap["creation_timestamp"] = j.CreationTimestamp
@@ -198,7 +198,7 @@ type jobBelongsToUser struct {
 
 	field.RelationField
 
-	UserQueues struct {
+	UserAccounts struct {
 		field.RelationField
 	}
 	UserDatasets struct {
@@ -271,20 +271,20 @@ func (a jobBelongsToUserTx) Count() int64 {
 	return a.tx.Count()
 }
 
-type jobBelongsToQueue struct {
+type jobBelongsToAccount struct {
 	db *gorm.DB
 
 	field.RelationField
 
-	UserQueues struct {
+	UserAccounts struct {
 		field.RelationField
 	}
-	QueueDatasets struct {
+	AccountDatasets struct {
 		field.RelationField
 	}
 }
 
-func (a jobBelongsToQueue) Where(conds ...field.Expr) *jobBelongsToQueue {
+func (a jobBelongsToAccount) Where(conds ...field.Expr) *jobBelongsToAccount {
 	if len(conds) == 0 {
 		return &a
 	}
@@ -297,27 +297,27 @@ func (a jobBelongsToQueue) Where(conds ...field.Expr) *jobBelongsToQueue {
 	return &a
 }
 
-func (a jobBelongsToQueue) WithContext(ctx context.Context) *jobBelongsToQueue {
+func (a jobBelongsToAccount) WithContext(ctx context.Context) *jobBelongsToAccount {
 	a.db = a.db.WithContext(ctx)
 	return &a
 }
 
-func (a jobBelongsToQueue) Session(session *gorm.Session) *jobBelongsToQueue {
+func (a jobBelongsToAccount) Session(session *gorm.Session) *jobBelongsToAccount {
 	a.db = a.db.Session(session)
 	return &a
 }
 
-func (a jobBelongsToQueue) Model(m *model.Job) *jobBelongsToQueueTx {
-	return &jobBelongsToQueueTx{a.db.Model(m).Association(a.Name())}
+func (a jobBelongsToAccount) Model(m *model.Job) *jobBelongsToAccountTx {
+	return &jobBelongsToAccountTx{a.db.Model(m).Association(a.Name())}
 }
 
-type jobBelongsToQueueTx struct{ tx *gorm.Association }
+type jobBelongsToAccountTx struct{ tx *gorm.Association }
 
-func (a jobBelongsToQueueTx) Find() (result *model.Queue, err error) {
+func (a jobBelongsToAccountTx) Find() (result *model.Account, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a jobBelongsToQueueTx) Append(values ...*model.Queue) (err error) {
+func (a jobBelongsToAccountTx) Append(values ...*model.Account) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -325,7 +325,7 @@ func (a jobBelongsToQueueTx) Append(values ...*model.Queue) (err error) {
 	return a.tx.Append(targetValues...)
 }
 
-func (a jobBelongsToQueueTx) Replace(values ...*model.Queue) (err error) {
+func (a jobBelongsToAccountTx) Replace(values ...*model.Account) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -333,7 +333,7 @@ func (a jobBelongsToQueueTx) Replace(values ...*model.Queue) (err error) {
 	return a.tx.Replace(targetValues...)
 }
 
-func (a jobBelongsToQueueTx) Delete(values ...*model.Queue) (err error) {
+func (a jobBelongsToAccountTx) Delete(values ...*model.Account) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -341,11 +341,11 @@ func (a jobBelongsToQueueTx) Delete(values ...*model.Queue) (err error) {
 	return a.tx.Delete(targetValues...)
 }
 
-func (a jobBelongsToQueueTx) Clear() error {
+func (a jobBelongsToAccountTx) Clear() error {
 	return a.tx.Clear()
 }
 
-func (a jobBelongsToQueueTx) Count() int64 {
+func (a jobBelongsToAccountTx) Count() int64 {
 	return a.tx.Count()
 }
 

@@ -32,7 +32,7 @@ func newImagePack(db *gorm.DB, opts ...gen.DOOption) imagePack {
 	_imagePack.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_imagePack.DeletedAt = field.NewField(tableName, "deleted_at")
 	_imagePack.UserID = field.NewUint(tableName, "user_id")
-	_imagePack.QueueID = field.NewUint(tableName, "queue_id")
+	_imagePack.AccountID = field.NewUint(tableName, "account_id")
 	_imagePack.ImagePackName = field.NewString(tableName, "imagepackname")
 	_imagePack.ImageLink = field.NewString(tableName, "imagelink")
 	_imagePack.NameSpace = field.NewString(tableName, "namespace")
@@ -50,10 +50,10 @@ func newImagePack(db *gorm.DB, opts ...gen.DOOption) imagePack {
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("User", "model.User"),
-		UserQueues: struct {
+		UserAccounts: struct {
 			field.RelationField
 		}{
-			RelationField: field.NewRelation("User.UserQueues", "model.UserQueue"),
+			RelationField: field.NewRelation("User.UserAccounts", "model.UserAccount"),
 		},
 		UserDatasets: struct {
 			field.RelationField
@@ -62,19 +62,19 @@ func newImagePack(db *gorm.DB, opts ...gen.DOOption) imagePack {
 		},
 	}
 
-	_imagePack.Queue = imagePackBelongsToQueue{
+	_imagePack.Account = imagePackBelongsToAccount{
 		db: db.Session(&gorm.Session{}),
 
-		RelationField: field.NewRelation("Queue", "model.Queue"),
-		UserQueues: struct {
+		RelationField: field.NewRelation("Account", "model.Account"),
+		UserAccounts: struct {
 			field.RelationField
 		}{
-			RelationField: field.NewRelation("Queue.UserQueues", "model.UserQueue"),
+			RelationField: field.NewRelation("Account.UserAccounts", "model.UserAccount"),
 		},
-		QueueDatasets: struct {
+		AccountDatasets: struct {
 			field.RelationField
 		}{
-			RelationField: field.NewRelation("Queue.QueueDatasets", "model.QueueDataset"),
+			RelationField: field.NewRelation("Account.AccountDatasets", "model.AccountDataset"),
 		},
 	}
 
@@ -92,7 +92,7 @@ type imagePack struct {
 	UpdatedAt     field.Time
 	DeletedAt     field.Field
 	UserID        field.Uint
-	QueueID       field.Uint
+	AccountID     field.Uint
 	ImagePackName field.String
 	ImageLink     field.String
 	NameSpace     field.String
@@ -108,7 +108,7 @@ type imagePack struct {
 	Size          field.Int64
 	User          imagePackBelongsToUser
 
-	Queue imagePackBelongsToQueue
+	Account imagePackBelongsToAccount
 
 	fieldMap map[string]field.Expr
 }
@@ -130,7 +130,7 @@ func (i *imagePack) updateTableName(table string) *imagePack {
 	i.UpdatedAt = field.NewTime(table, "updated_at")
 	i.DeletedAt = field.NewField(table, "deleted_at")
 	i.UserID = field.NewUint(table, "user_id")
-	i.QueueID = field.NewUint(table, "queue_id")
+	i.AccountID = field.NewUint(table, "account_id")
 	i.ImagePackName = field.NewString(table, "imagepackname")
 	i.ImageLink = field.NewString(table, "imagelink")
 	i.NameSpace = field.NewString(table, "namespace")
@@ -176,7 +176,7 @@ func (i *imagePack) fillFieldMap() {
 	i.fieldMap["updated_at"] = i.UpdatedAt
 	i.fieldMap["deleted_at"] = i.DeletedAt
 	i.fieldMap["user_id"] = i.UserID
-	i.fieldMap["queue_id"] = i.QueueID
+	i.fieldMap["account_id"] = i.AccountID
 	i.fieldMap["imagepackname"] = i.ImagePackName
 	i.fieldMap["imagelink"] = i.ImageLink
 	i.fieldMap["namespace"] = i.NameSpace
@@ -208,7 +208,7 @@ type imagePackBelongsToUser struct {
 
 	field.RelationField
 
-	UserQueues struct {
+	UserAccounts struct {
 		field.RelationField
 	}
 	UserDatasets struct {
@@ -281,20 +281,20 @@ func (a imagePackBelongsToUserTx) Count() int64 {
 	return a.tx.Count()
 }
 
-type imagePackBelongsToQueue struct {
+type imagePackBelongsToAccount struct {
 	db *gorm.DB
 
 	field.RelationField
 
-	UserQueues struct {
+	UserAccounts struct {
 		field.RelationField
 	}
-	QueueDatasets struct {
+	AccountDatasets struct {
 		field.RelationField
 	}
 }
 
-func (a imagePackBelongsToQueue) Where(conds ...field.Expr) *imagePackBelongsToQueue {
+func (a imagePackBelongsToAccount) Where(conds ...field.Expr) *imagePackBelongsToAccount {
 	if len(conds) == 0 {
 		return &a
 	}
@@ -307,27 +307,27 @@ func (a imagePackBelongsToQueue) Where(conds ...field.Expr) *imagePackBelongsToQ
 	return &a
 }
 
-func (a imagePackBelongsToQueue) WithContext(ctx context.Context) *imagePackBelongsToQueue {
+func (a imagePackBelongsToAccount) WithContext(ctx context.Context) *imagePackBelongsToAccount {
 	a.db = a.db.WithContext(ctx)
 	return &a
 }
 
-func (a imagePackBelongsToQueue) Session(session *gorm.Session) *imagePackBelongsToQueue {
+func (a imagePackBelongsToAccount) Session(session *gorm.Session) *imagePackBelongsToAccount {
 	a.db = a.db.Session(session)
 	return &a
 }
 
-func (a imagePackBelongsToQueue) Model(m *model.ImagePack) *imagePackBelongsToQueueTx {
-	return &imagePackBelongsToQueueTx{a.db.Model(m).Association(a.Name())}
+func (a imagePackBelongsToAccount) Model(m *model.ImagePack) *imagePackBelongsToAccountTx {
+	return &imagePackBelongsToAccountTx{a.db.Model(m).Association(a.Name())}
 }
 
-type imagePackBelongsToQueueTx struct{ tx *gorm.Association }
+type imagePackBelongsToAccountTx struct{ tx *gorm.Association }
 
-func (a imagePackBelongsToQueueTx) Find() (result *model.Queue, err error) {
+func (a imagePackBelongsToAccountTx) Find() (result *model.Account, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a imagePackBelongsToQueueTx) Append(values ...*model.Queue) (err error) {
+func (a imagePackBelongsToAccountTx) Append(values ...*model.Account) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -335,7 +335,7 @@ func (a imagePackBelongsToQueueTx) Append(values ...*model.Queue) (err error) {
 	return a.tx.Append(targetValues...)
 }
 
-func (a imagePackBelongsToQueueTx) Replace(values ...*model.Queue) (err error) {
+func (a imagePackBelongsToAccountTx) Replace(values ...*model.Account) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -343,7 +343,7 @@ func (a imagePackBelongsToQueueTx) Replace(values ...*model.Queue) (err error) {
 	return a.tx.Replace(targetValues...)
 }
 
-func (a imagePackBelongsToQueueTx) Delete(values ...*model.Queue) (err error) {
+func (a imagePackBelongsToAccountTx) Delete(values ...*model.Account) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -351,11 +351,11 @@ func (a imagePackBelongsToQueueTx) Delete(values ...*model.Queue) (err error) {
 	return a.tx.Delete(targetValues...)
 }
 
-func (a imagePackBelongsToQueueTx) Clear() error {
+func (a imagePackBelongsToAccountTx) Clear() error {
 	return a.tx.Clear()
 }
 
-func (a imagePackBelongsToQueueTx) Count() int64 {
+func (a imagePackBelongsToAccountTx) Count() int64 {
 	return a.tx.Count()
 }
 

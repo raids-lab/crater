@@ -183,7 +183,7 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 		}
 	}
 	u := query.User
-	q := query.Queue
+	q := query.Account
 
 	// get user and queue
 	user, err := u.WithContext(ctx).Where(u.Name.Eq(job.Labels[vcjob.LabelKeyTaskUser])).First()
@@ -199,7 +199,7 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 		Name:              job.Annotations[vcjob.AnnotationKeyTaskName],
 		JobName:           job.Name,
 		UserID:            user.ID,
-		QueueID:           queue.ID,
+		AccountID:         queue.ID,
 		JobType:           model.JobType(job.Labels[vcjob.LabelKeyTaskType]),
 		Status:            job.Status.State.Phase,
 		CreationTimestamp: job.CreationTimestamp.Time,

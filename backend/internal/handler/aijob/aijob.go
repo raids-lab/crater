@@ -106,7 +106,7 @@ func (mgr *AIJobMgr) NotifyTaskUpdate(taskID uint, userName string, op util.Task
 func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
 	token := interutil.GetToken(c)
 
-	q := query.Queue
+	q := query.Account
 	queue, err := q.WithContext(c).Where(q.Name.Eq(token.QueueName)).First()
 	if err != nil {
 		resputil.Error(c, "Queue not found", resputil.TokenInvalid)

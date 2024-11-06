@@ -234,8 +234,8 @@ func (mgr *VolcanojobMgr) GetUserJobs(c *gin.Context) {
 
 	// TODO: add indexer to list jobs by user
 	j := query.Job
-	jobs, err := j.WithContext(c).Preload(query.Job.Queue).Preload(query.Job.User).
-		Where(j.UserID.Eq(token.UserID), j.QueueID.Eq(token.QueueID)).Find()
+	jobs, err := j.WithContext(c).Preload(j.Account).Preload(j.User).
+		Where(j.UserID.Eq(token.UserID), j.AccountID.Eq(token.QueueID)).Find()
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -259,7 +259,7 @@ func (mgr *VolcanojobMgr) GetUserJobs(c *gin.Context) {
 // @Router /v1/vcjobs/all [get]
 func (mgr *VolcanojobMgr) GetAllJobs(c *gin.Context) {
 	j := query.Job
-	jobs, err := j.WithContext(c).Preload(query.Job.Queue).Preload(query.Job.User).Find()
+	jobs, err := j.WithContext(c).Preload(j.Account).Preload(query.Job.User).Find()
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -279,7 +279,7 @@ func convertJobResp(jobs []*model.Job) []JobResp {
 			JobName:            job.JobName,
 			Owner:              job.User.Nickname,
 			JobType:            string(job.JobType),
-			Queue:              job.Queue.Nickname,
+			Queue:              job.Account.Nickname,
 			Status:             string(job.Status),
 			CreationTimestamp:  metav1.NewTime(job.CreationTimestamp),
 			RunningTimestamp:   metav1.NewTime(job.RunningTimestamp),
@@ -343,10 +343,10 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 	// find from db
 	j := query.Job
 	job, err := j.WithContext(c).
-		Preload(query.Job.Queue).
+		Preload(j.Account).
 		Preload(query.Job.User).
 		Where(j.JobName.Eq(req.JobName)).
-		Where(j.QueueID.Eq(token.QueueID)).
+		Where(j.AccountID.Eq(token.QueueID)).
 		Where(j.UserID.Eq(token.UserID)).
 		First()
 	if err != nil {
@@ -360,7 +360,7 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		Username:           job.User.Nickname,
 		JobName:            job.JobName,
 		JobType:            job.JobType,
-		Queue:              job.Queue.Nickname,
+		Queue:              job.Account.Nickname,
 		Status:             job.Status,
 		CreationTimestamp:  metav1.NewTime(job.CreationTimestamp),
 		RunningTimestamp:   metav1.NewTime(job.RunningTimestamp),
@@ -392,7 +392,7 @@ func (mgr *VolcanojobMgr) GetJobPods(c *gin.Context) {
 	j := query.Job
 	job, err := j.WithContext(c).
 		Where(j.JobName.Eq(req.JobName)).
-		Where(j.QueueID.Eq(token.QueueID)).
+		Where(j.AccountID.Eq(token.QueueID)).
 		Where(j.UserID.Eq(token.UserID)).
 		First()
 	if err != nil {
@@ -468,7 +468,7 @@ func (mgr *VolcanojobMgr) GetJobYaml(c *gin.Context) {
 	j := query.Job
 	job, err := j.WithContext(c).
 		Where(j.JobName.Eq(req.JobName)).
-		Where(j.QueueID.Eq(token.QueueID)).
+		Where(j.AccountID.Eq(token.QueueID)).
 		Where(j.UserID.Eq(token.UserID)).
 		First()
 	if err != nil {
