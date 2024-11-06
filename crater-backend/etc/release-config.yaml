@@ -8,12 +8,12 @@ metricsAddr: :8080
 probeAddr: :8081
 monitoringPort: 9443
 postgres:
-  host: postgres-cluster.crater
+  host: pscluster-nodeport.crater
   port: 5432
   dbname: crater
   user: postgres
   password: ***REMOVED***
-  sslmode: require
+  sslmode: disable
   TimeZone: Asia/Shanghai
 workspace:
   namespace: crater-workspace
