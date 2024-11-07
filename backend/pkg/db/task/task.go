@@ -21,6 +21,7 @@ type DBService interface {
 	ListAll() ([]models.AITask, error)
 	GetByID(taskID uint) (*models.AITask, error)
 	GetByQueueAndID(userName string, taskID uint) (*models.AITask, error)
+	GetByJobName(jobName string) (*models.AITask, error)
 	UpdateProfilingStat(taskID uint, profileStatus uint, stat string, status string) error
 	UpdateToken(taskID uint, token string) error
 	UpdateNodePort(taskID uint, nodePort int32) error
@@ -128,6 +129,12 @@ func (s *service) ListAll() ([]models.AITask, error) {
 func (s *service) GetByID(taskID uint) (*models.AITask, error) {
 	var task models.AITask
 	err := db.Orm.First(&task, taskID).Error
+	return &task, err
+}
+
+func (s *service) GetByJobName(jobName string) (*models.AITask, error) {
+	var task models.AITask
+	err := db.Orm.Where("jobname = ?", jobName).First(&task).Error
 	return &task, err
 }
 
