@@ -75,8 +75,6 @@ func CheckResourcesBeforeCreateJob(
 		return exceededResources
 	}
 
-	uqQuota := userQueueQuota.Data().Capability
-
 	j := query.Job
 	jobResources, err := j.WithContext(c).
 		Where(j.UserID.Eq(userID)).
@@ -91,6 +89,11 @@ func CheckResourcesBeforeCreateJob(
 	const maxJobResources = 10
 	if len(jobResources) >= maxJobResources {
 		exceededResources = append(exceededResources, "作业数量超过限制")
+		return exceededResources
+	}
+
+	uqQuota := userQueueQuota.Data().Capability
+	if len(uqQuota) == 0 {
 		return exceededResources
 	}
 
