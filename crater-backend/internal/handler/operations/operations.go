@@ -3,22 +3,37 @@ package operations
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/pkg/aitaskctl"
+	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	"github.com/raids-lab/crater/pkg/config"
+	tasksvc "github.com/raids-lab/crater/pkg/db/task"
 	"github.com/raids-lab/crater/pkg/monitor"
 	mysmtp "github.com/raids-lab/crater/pkg/smtp"
 	"github.com/samber/lo"
-	"gorm.io/datatypes"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 )
+
+const (
+	VCJOBAPIVERSION = "batch.volcano.sh/v1alpha1"
+	VCJOBKIND       = "Job"
+	AIJOBAPIVERSION = "aisystem.github.com/v1alpha1"
+	AIJOBKIND       = "AIJob"
+)
+
+type JobInfo struct {
+	jobName       string
+	jobType       string
+	jobAPIVersion string
+}
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
 func init() {
@@ -26,18 +41,22 @@ func init() {
 }
 
 type OperationsMgr struct {
-	name       string
-	client     client.Client
-	kubeClient kubernetes.Interface
-	promClient monitor.PrometheusInterface
+	name           string
+	client         client.Client
+	kubeClient     kubernetes.Interface
+	promClient     monitor.PrometheusInterface
+	taskService    tasksvc.DBService
+	taskController aitaskctl.TaskControllerInterface
 }
 
 func NewOperationsMgr(conf handler.RegisterConfig) handler.Manager {
 	return &OperationsMgr{
-		name:       "operations",
-		client:     conf.Client,
-		kubeClient: conf.KubeClient,
-		promClient: conf.PrometheusClient,
+		name:           "operations",
+		client:         conf.Client,
+		kubeClient:     conf.KubeClient,
+		promClient:     conf.PrometheusClient,
+		taskService:    tasksvc.NewDBService(),
+		taskController: conf.AITaskCtrl,
 	}
 }
 
@@ -74,19 +93,33 @@ func (mgr *OperationsMgr) getJobWhiteList(c *gin.Context) ([]string, error) {
 	return cleanList, nil
 }
 
-func (mgr *OperationsMgr) deleteJobByName(c *gin.Context, jobName string) error {
-	job := &batch.Job{}
+func (mgr *OperationsMgr) deleteJobByName(c *gin.Context, jobAPIVersion, jobType, jobName string) error {
+	if jobType == VCJOBKIND && jobAPIVersion == VCJOBAPIVERSION {
+		return mgr.deleteVCJobByName(c, jobName)
+	}
+	if jobType == AIJOBKIND && jobAPIVersion == AIJOBAPIVERSION {
+		return mgr.deleteAIJobByName(c, jobName)
+	}
+	return nil
+}
+
+func (mgr *OperationsMgr) deleteAIJobByName(c *gin.Context, jobName string) error {
+	aijob := &aijobapi.AIJob{}
 	namespace := config.GetConfig().Workspace.Namespace
-	if err := mgr.client.Get(c, client.ObjectKey{Name: jobName, Namespace: namespace}, job); err != nil {
+	if err := mgr.client.Get(c, client.ObjectKey{Name: jobName, Namespace: namespace}, aijob); err != nil {
 		return err
 	}
 
-	j := query.Job
-	if _, err := j.WithContext(c).Where(j.JobName.Eq(jobName)).Updates(model.Job{
-		Status:             model.Freed,
-		CompletedTimestamp: time.Now(),
-		Nodes:              datatypes.NewJSONType([]string{}),
-	}); err != nil {
+	if err := mgr.client.Delete(c, aijob); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (mgr *OperationsMgr) deleteVCJobByName(c *gin.Context, jobName string) error {
+	job := &batch.Job{}
+	namespace := config.GetConfig().Workspace.Namespace
+	if err := mgr.client.Get(c, client.ObjectKey{Name: jobName, Namespace: namespace}, job); err != nil {
 		return err
 	}
 
@@ -173,24 +206,24 @@ func (mgr *OperationsMgr) DeleteUnUsedJobList(c *gin.Context) {
 		return
 	}
 
-	unUsedJobs := mgr.getLeastUsedGPUJobs(req.TimeRange, req.Util)
+	unUsedJobs := mgr.getLeastUsedGPUJobs(c, req.TimeRange, req.Util)
 	whiteList, _ := mgr.getJobWhiteList(c)
 	deleteJobList := []string{}
 
 	for _, job := range unUsedJobs {
-		if lo.Contains(whiteList, job) {
+		if lo.Contains(whiteList, job.jobName) {
 			fmt.Printf("Job %s is in the white list\n", job)
 			continue
 		}
-		if err := mgr.SendGPUAlarm(c, job); err != nil {
+		if err := mgr.SendGPUAlarm(c, job.jobName); err != nil {
 			fmt.Println("Send Alarm Email failed:", err)
 		}
-		if err := mgr.deleteJobByName(c, job); err != nil {
+		if err := mgr.deleteJobByName(c, job.jobAPIVersion, job.jobType, job.jobName); err != nil {
 			fmt.Printf("Delete job %s failed\n", job)
 			fmt.Println(err)
 		}
 		fmt.Printf("Delete job %s successfully\n", job)
-		deleteJobList = append(deleteJobList, job)
+		deleteJobList = append(deleteJobList, job.jobName)
 	}
 	response := map[string][]string{
 		"delete_job_list": deleteJobList,
@@ -198,8 +231,9 @@ func (mgr *OperationsMgr) DeleteUnUsedJobList(c *gin.Context) {
 	resputil.Success(c, response)
 }
 
-func (mgr *OperationsMgr) getLeastUsedGPUJobs(duration, util int) []string {
+func (mgr *OperationsMgr) getLeastUsedGPUJobs(c *gin.Context, duration, util int) []JobInfo {
 	var gpuJobPodsList map[string]string
+	namespace := config.GetConfig().Workspace.Namespace
 	gpuUtilMap := mgr.promClient.QueryNodeGPUUtil()
 	jobPodsList := mgr.promClient.GetJobPodsList()
 	gpuJobPodsList = make(map[string]string)
@@ -216,13 +250,21 @@ func (mgr *OperationsMgr) getLeastUsedGPUJobs(duration, util int) []string {
 		}
 	}
 
-	leastUsedJobs := make([]string, 0)
-	for pod, job := range gpuJobPodsList {
+	leastUsedJobs := make([]JobInfo, 0)
+	for podName, job := range gpuJobPodsList {
 		// 将time和util转换为string类型
 		_time := fmt.Sprintf("%d", duration)
 		_util := fmt.Sprintf("%d", util)
-		if mgr.promClient.GetLeastUsedGPUJobList(pod, _time, _util) > 0 {
-			leastUsedJobs = append(leastUsedJobs, job)
+		if mgr.promClient.GetLeastUsedGPUJobList(podName, _time, _util) > 0 {
+			pod, _ := mgr.kubeClient.CoreV1().Pods(namespace).Get(c, podName, metav1.GetOptions{})
+			if len(pod.OwnerReferences) == 0 {
+				continue
+			}
+			leastUsedJobs = append(leastUsedJobs, JobInfo{
+				jobName:       job,
+				jobType:       pod.OwnerReferences[0].Kind,
+				jobAPIVersion: pod.OwnerReferences[0].APIVersion,
+			})
 		}
 	}
 	return leastUsedJobs

@@ -31,6 +31,7 @@ const (
 	TaskFailedStatus    = "Failed"
 	TaskSucceededStatus = "Succeeded"
 	TaskPreemptedStatus = "Preempted"
+	TaskFreedStatus     = "Freed"
 
 	// ProfilingStatus
 	UnProfiled    = 0
