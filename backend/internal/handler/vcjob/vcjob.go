@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/model"
@@ -16,6 +17,7 @@ import (
 	"github.com/raids-lab/crater/pkg/utils"
 	"github.com/samber/lo"
 	"gopkg.in/yaml.v3"
+	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -155,10 +157,12 @@ func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
 	if err := mgr.client.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
 		if errors.IsNotFound(err) {
 			j := query.Job
-			_, err = j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Delete()
-			if err != nil {
+			if _, err = j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Updates(model.Job{
+				Status:             model.Freed,
+				CompletedTimestamp: time.Now(),
+				Nodes:              datatypes.NewJSONType([]string{}),
+			}); err != nil {
 				resputil.Error(c, err.Error(), resputil.NotSpecified)
-				return
 			}
 			resputil.Success(c, nil)
 			return
