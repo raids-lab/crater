@@ -790,7 +790,7 @@ func (mgr *DatasetMgr) ListUsersOutOfDataset(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("Failed to scan user IDs: %v", err), resputil.NotSpecified)
 		return
 	}
-	var attributes []model.UserAttributes
+	var attributes []model.UserAttributeForScan
 	if err := u.WithContext(c).Where(u.Status.Eq(uint8(model.StatusActive))).
 		Where(u.ID.NotIn(uids...)).Distinct().Select(u.Attributes).Scan(&attributes); err != nil {
 		resputil.Error(c, fmt.Sprintf("Get UserDataset failed, detail: %v", err), resputil.NotSpecified)

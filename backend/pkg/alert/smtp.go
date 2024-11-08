@@ -1,19 +1,38 @@
-package mysmtp
+package alert
 
 import (
+	"context"
 	"fmt"
 	"net/smtp"
 	"strings"
 
+	"github.com/raids-lab/crater/dao/model"
 	config "github.com/raids-lab/crater/pkg/config"
 )
+
+type SMTPAlerter struct {
+	smtpHost string
+	smtpPort string
+	smtpUser string
+	smtpPass string
+}
+
+func newSMTPAlerter() alertHandlerInterface {
+	smtpConfig := config.GetConfig()
+	return &SMTPAlerter{
+		smtpHost: smtpConfig.ACT.SMTP.Host,
+		smtpPort: smtpConfig.ACT.SMTP.Port,
+		smtpUser: smtpConfig.ACT.SMTP.User,
+		smtpPass: smtpConfig.ACT.SMTP.Password,
+	}
+}
 
 // 使用的服务器不支持tls，所以把smtpAuth相关的一些部分重写以绕过tls的检验。
 type loginAuth struct {
 	username, password string
 }
 
-func LoginAuth(username, password string) smtp.Auth {
+func getLoginAuth(username, password string) smtp.Auth {
 	return &loginAuth{username, password}
 }
 
@@ -40,22 +59,10 @@ func (a *loginAuth) Next(fromServer []byte, more bool) ([]byte, error) {
 	return nil, nil
 }
 
-// 可以通过下面例子调用函数发送邮件
-//
-//	 err := mysmtp.SendEmail("邮箱", "主体", "内容")
-//		if err != nil {
-//			fmt.Println(err)
-//		}
-func SendEmail(receiver, subject, body string) error {
-	smtpConfig := config.GetConfig()
-	smtpHost := smtpConfig.ACT.SMTP.Host
-	smtpPort := smtpConfig.ACT.SMTP.Port
-	smtpUser := smtpConfig.ACT.SMTP.User
-	smtpPass := smtpConfig.ACT.SMTP.Password
-
+func (sa *SMTPAlerter) SendMessageTo(_ context.Context, receiver *model.UserAttribute, subject, body string) error {
 	// 设置邮件发送者和接收者
 	from := ***REMOVED***
-	to := []string{receiver}
+	to := []string{*receiver.Email}
 
 	// 设置邮件消息
 	msg := []byte("To: " + to[0] + "\r\n" +
@@ -64,19 +71,19 @@ func SendEmail(receiver, subject, body string) error {
 		"\r\n" +
 		body)
 
-	conn, err := smtp.Dial(smtpHost + ":" + smtpPort)
+	conn, err := smtp.Dial(sa.smtpHost + ":" + sa.smtpPort)
 	if err != nil {
 		fmt.Println(err)
 		return err
 	}
 
-	auth := LoginAuth(smtpUser, smtpPass)
+	auth := getLoginAuth(sa.smtpUser, sa.smtpPass)
 	if err = conn.Auth(auth); err != nil {
 		fmt.Println("autherr:", err)
 		return err
 	}
 
-	err = smtp.SendMail(smtpHost+":"+smtpPort, auth, from, to, msg)
+	err = smtp.SendMail(sa.smtpHost+":"+sa.smtpPort, auth, from, to, msg)
 
 	if err != nil {
 		fmt.Println(err)

@@ -531,7 +531,7 @@ type (
 // @Security Bearer
 // @Param uid path uint true "uid"
 // @Param pid path uint true "pid"
-// @Param req body UpdateUserProjectReq true "权限角色"
+// @Param req body any true "权限角色"
 // @Success 200 {object} resputil.Response[any] "返回添加的用户名和队列名"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
@@ -609,7 +609,7 @@ func (mgr *AccountMgr) AddUserProject(c *gin.Context) {
 // @Security Bearer
 // @Param uid path uint true "uid"
 // @Param pid path uint true "pid"
-// @Param req body UpdateUserProjectReq true "权限角色"
+// @Param req body any true "权限角色"
 // @Success 200 {object} resputil.Response[any] "返回添加的用户名和队列名"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
