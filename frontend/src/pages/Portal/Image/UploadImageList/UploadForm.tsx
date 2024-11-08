@@ -14,7 +14,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
-  apiUserImagepackUpload,
+  apiUserUploadImage,
   imageLinkRegex,
   parseImageLink,
 } from "@/services/api/imagepack";
@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import FormLabelMust from "@/components/custom/FormLabelMust";
+import { JobType } from "@/services/api/vcjob";
 
 const formSchema = z.object({
   imageLink: z
@@ -34,9 +35,17 @@ const formSchema = z.object({
     .refine((value) => imageLinkRegex.test(value), {
       message: "镜像链接格式不正确",
     }),
-  alias: z.string().min(1, { message: "镜像别名不能为空" }),
   description: z.string().min(1, { message: "镜像描述不能为空" }),
-  taskType: z.enum(["1", "2", "3", "4", "5", "6", "7", "8"]),
+  taskType: z.enum([
+    JobType.Custom,
+    JobType.DeepSpeed,
+    JobType.Jupyter,
+    JobType.KubeRay,
+    JobType.OpenMPI,
+    JobType.Pytorch,
+    JobType.Tensorflow,
+    JobType.WebIDE,
+  ]),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -51,13 +60,12 @@ export function ImageUploadForm({ closeSheet }: TaskFormProps) {
   const { mutate: uploadImagePack } = useMutation({
     mutationFn: (values: FormSchema) => {
       const { imageName, imageTag } = parseImageLink(values.imageLink);
-      return apiUserImagepackUpload({
+      return apiUserUploadImage({
         imageLink: values.imageLink,
         imageName: imageName,
         imageTag: imageTag,
-        alias: values.alias,
         description: values.description,
-        taskType: Number(values.taskType),
+        taskType: values.taskType,
       });
     },
     onSuccess: async (_, { imageLink }) => {
@@ -74,7 +82,6 @@ export function ImageUploadForm({ closeSheet }: TaskFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       imageLink: "",
-      alias: "",
       description: "",
     },
   });
@@ -112,22 +119,6 @@ export function ImageUploadForm({ closeSheet }: TaskFormProps) {
           <div className="grid grid-cols-2 gap-3">
             <FormField
               control={form.control}
-              name="alias"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    镜像别名
-                    <FormLabelMust />
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} className="font-mono" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
               name="description"
               render={({ field }) => (
                 <FormItem>
@@ -163,22 +154,30 @@ export function ImageUploadForm({ closeSheet }: TaskFormProps) {
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">Jupyter交互式任务</SelectItem>
-                      <SelectItem value="2" disabled>
+                      <SelectItem value={JobType.Jupyter}>
+                        Jupyter交互式任务
+                      </SelectItem>
+                      <SelectItem value={JobType.WebIDE} disabled>
                         Web IDE任务
                       </SelectItem>
-                      <SelectItem value="3">Tensorflow任务</SelectItem>
-                      <SelectItem value="4">Pytorch任务</SelectItem>
-                      <SelectItem value="5" disabled>
+                      <SelectItem value={JobType.Tensorflow}>
+                        Tensorflow任务
+                      </SelectItem>
+                      <SelectItem value={JobType.Pytorch}>
+                        Pytorch任务
+                      </SelectItem>
+                      <SelectItem value={JobType.KubeRay} disabled>
                         Ray任务
                       </SelectItem>
-                      <SelectItem value="6" disabled>
+                      <SelectItem value={JobType.DeepSpeed} disabled>
                         DeepSpeed任务
                       </SelectItem>
-                      <SelectItem value="7" disabled>
+                      <SelectItem value={JobType.OpenMPI} disabled>
                         OpenMPI任务
                       </SelectItem>
-                      <SelectItem value="8">用户自定义任务</SelectItem>
+                      <SelectItem value={JobType.Custom}>
+                        用户自定义任务
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </FormControl>

@@ -85,24 +85,24 @@ const sidebarItems: SidebarItem[] = [
     },
     children: [],
   },
-  {
-    path: "image",
-    icon: BoxIcon,
-    children: [
-      {
-        route: {
-          path: "create",
-          lazy: () => import("./Image/Create"),
-        },
-      },
-      {
-        route: {
-          path: "upload",
-          lazy: () => import("./Image/Upload"),
-        },
-      },
-    ],
-  },
+  // {
+  //   path: "image",
+  //   icon: BoxIcon,
+  //   children: [
+  //     {
+  //       route: {
+  //         path: "create",
+  //         lazy: () => import("./Image/Create"),
+  //       },
+  //     },
+  //     {
+  //       route: {
+  //         path: "upload",
+  //         lazy: () => import("./Image/Upload"),
+  //       },
+  //     },
+  //   ],
+  // },
   {
     path: "data",
     icon: DatabaseIcon,

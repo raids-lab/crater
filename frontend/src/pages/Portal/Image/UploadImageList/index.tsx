@@ -18,15 +18,12 @@ import { Button } from "@/components/ui/button";
 import { ImageUploadForm } from "./UploadForm";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import {
-  ImagePackInfo,
-  apiUserImagePackDelete,
-  apiUserImagePackList,
   getHeader,
-  ImageDeleteRequest,
-  imagepackTaskType,
-  ImagePackListType,
-  imagepackSourceType,
   imagepackPublicPersonalStatus,
+  apiUserListImage,
+  ImageInfo,
+  apiUserChangeImagePublicStatus,
+  apiUserDeleteImage,
 } from "@/services/api/imagepack";
 import { logger } from "@/utils/loglevel";
 import { toast } from "sonner";
@@ -41,10 +38,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
-import { Trash2 } from "lucide-react";
+import { ToggleLeft, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import JobTypeLabel from "@/components/custom/JobTypeLabel";
-import { JobType } from "@/services/api/vcjob";
+import { useAtomValue } from "jotai";
+import { globalUserInfo } from "@/utils/store";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -58,28 +56,26 @@ const toolbarConfig: DataTableToolbarConfig = {
 export const Component: FC = () => {
   const queryClient = useQueryClient();
   const [openSheet, setOpenSheet] = useState(false);
-  const imagePackInfo = useQuery({
+  const user = useAtomValue(globalUserInfo);
+  const imageInfo = useQuery({
     queryKey: ["imagelink", "list"],
-    queryFn: () => apiUserImagePackList(ImagePackListType.Upload),
-    select: (res) => res.data.data.imagepacklist,
+    queryFn: () => apiUserListImage(),
+    select: (res) => res.data.data.imagelist,
   });
-  const data: ImagePackInfo[] = useMemo(() => {
-    if (!imagePackInfo.data) {
+  const data: ImageInfo[] = useMemo(() => {
+    if (!imageInfo.data) {
       return [];
     }
-    return imagePackInfo.data.map((item) => ({
+    return imageInfo.data.map((item) => ({
       id: item.ID,
       link: item.imagelink,
-      username: item.creatername,
       status: item.status,
       createdAt: item.createdAt,
-      nametag: item.nametag,
-      params: item.params,
-      imagetype: item.imagetype,
       tasktype: item.tasktype,
       ispublic: item.ispublic,
+      creatorname: item.creatorname,
     }));
-  }, [imagePackInfo.data]);
+  }, [imageInfo.data]);
   const refetchImagePackList = async () => {
     try {
       // 并行发送所有异步请求
@@ -90,15 +86,21 @@ export const Component: FC = () => {
       logger.error("更新查询失败", error);
     }
   };
-  const { mutate: deleteUserImagePack } = useMutation({
-    mutationFn: (req: ImageDeleteRequest) => apiUserImagePackDelete(req),
+  const { mutate: deleteUserImage } = useMutation({
+    mutationFn: (id: number) => apiUserDeleteImage(id),
     onSuccess: async () => {
       await refetchImagePackList();
       toast.success("镜像已删除");
     },
   });
-
-  const columns: ColumnDef<ImagePackInfo>[] = [
+  const { mutate: changeImagePublicStatus } = useMutation({
+    mutationFn: (id: number) => apiUserChangeImagePublicStatus(id),
+    onSuccess: async () => {
+      await refetchImagePackList();
+      toast.success("镜像状态更新");
+    },
+  });
+  const columns: ColumnDef<ImageInfo>[] = [
     {
       id: "select",
       header: ({ table }) => (
@@ -123,13 +125,6 @@ export const Component: FC = () => {
       enableHiding: false,
     },
     {
-      accessorKey: "nametag",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("nametag")} />
-      ),
-      cell: ({ row }) => <div>{row.getValue("nametag")}</div>,
-    },
-    {
       accessorKey: "link",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeader("link")} />
@@ -141,23 +136,14 @@ export const Component: FC = () => {
       ),
     },
     {
-      accessorKey: "imagetype",
+      accessorKey: "creatorname",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("imagetype")} />
+        <DataTableColumnHeader
+          column={column}
+          title={getHeader("creatorname")}
+        />
       ),
-      cell: ({ row }) => {
-        const imagetype = imagepackSourceType.find(
-          (imagetype) => imagetype.value === row.getValue("imagetype"),
-        );
-        return imagetype?.label;
-      },
-    },
-    {
-      accessorKey: "username",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("username")} />
-      ),
-      cell: ({ row }) => <div>{row.getValue("username")}</div>,
+      cell: ({ row }) => <div>{row.getValue("creatorname")}</div>,
     },
     {
       accessorKey: "tasktype",
@@ -165,11 +151,7 @@ export const Component: FC = () => {
         <DataTableColumnHeader column={column} title={getHeader("tasktype")} />
       ),
       cell: ({ row }) => {
-        const tasktype = imagepackTaskType.find(
-          (tasktype) => tasktype.value === row.getValue("tasktype"),
-        );
-        const type: JobType = tasktype?.label as JobType;
-        return <JobTypeLabel jobType={type} />;
+        return <JobTypeLabel jobType={row.getValue("tasktype")} />;
       },
     },
     {
@@ -199,16 +181,20 @@ export const Component: FC = () => {
       id: "actions",
       enableHiding: false,
       cell: ({ row }) => {
-        const imagepackInfo = row.original;
+        const imageInfo = row.original;
         return (
           <div className="flex flex-row space-x-1">
             <AlertDialog>
-              <AlertDialogTrigger asChild>
+              <AlertDialogTrigger
+                disabled={imageInfo.creatorname === user.name}
+                asChild
+              >
                 <div>
                   <Button
                     variant="outline"
                     className="h-8 w-8 p-0 hover:text-destructive"
                     title="删除镜像"
+                    disabled={imageInfo.creatorname === user.name}
                   >
                     <Trash2 size={16} strokeWidth={2} />
                   </Button>
@@ -218,7 +204,7 @@ export const Component: FC = () => {
                 <AlertDialogHeader>
                   <AlertDialogTitle>删除镜像</AlertDialogTitle>
                   <AlertDialogDescription>
-                    镜像「{imagepackInfo?.nametag}
+                    镜像「{imageInfo?.link}
                     」将删除
                   </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -227,13 +213,43 @@ export const Component: FC = () => {
                   <AlertDialogAction
                     variant="destructive"
                     onClick={() => {
-                      deleteUserImagePack({
-                        id: imagepackInfo.id,
-                        imagetype: imagepackInfo.imagetype,
-                      });
+                      deleteUserImage(imageInfo.id);
                     }}
                   >
                     删除
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <div>
+                  <Button
+                    variant="outline"
+                    className="hover:text-default h-8 w-8 p-0"
+                    title="更新公私状态"
+                  >
+                    <ToggleLeft size={16} strokeWidth={2} />
+                  </Button>
+                </div>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>更新公私状态</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    镜像「{imageInfo?.link}
+                    」状态将更新
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="default"
+                    onClick={() => {
+                      changeImagePublicStatus(imageInfo.id);
+                    }}
+                  >
+                    确认
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -249,7 +265,7 @@ export const Component: FC = () => {
       data={data}
       columns={columns}
       toolbarConfig={toolbarConfig}
-      loading={imagePackInfo.isLoading}
+      loading={imageInfo.isLoading}
       className="col-span-3"
     >
       <Sheet open={openSheet} onOpenChange={setOpenSheet}>
