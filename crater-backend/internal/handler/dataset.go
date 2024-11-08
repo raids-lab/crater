@@ -771,8 +771,6 @@ type UserDatasetGetResp struct {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/{datasetId}/usersNotIn [get]
-//
-//nolint:dupl // there exists mini diff between these logic
 func (mgr *DatasetMgr) ListUsersOutOfDataset(c *gin.Context) {
 	var req DatasetGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -880,8 +878,6 @@ type QueueDatasetGetResp struct {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/{datasetId}/queuesNotIn [get]
-//
-//nolint:dupl // there exists mini diff between these logic
 func (mgr *DatasetMgr) ListQueuesOutOfDataset(c *gin.Context) {
 	var req DatasetGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
