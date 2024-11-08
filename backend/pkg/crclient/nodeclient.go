@@ -3,6 +3,7 @@ package crclient
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/server/payload"
@@ -21,13 +22,37 @@ type NodeClient struct {
 }
 
 // https://stackoverflow.com/questions/67630551/how-to-use-client-go-to-get-the-node-status
-func isNodeReady(node *corev1.Node) bool {
+/*func isNodeReady(node *corev1.Node) bool {
 	for _, condition := range node.Status.Conditions {
 		if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
 			return true
 		}
 	}
 	return false
+}*/
+func isNodeReady(node *corev1.Node) string {
+	if node.Spec.Unschedulable {
+		return "Unschedulable"
+	}
+	for _, condition := range node.Status.Conditions {
+		if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
+			return "true"
+		}
+	}
+	return "false"
+}
+
+// taintsToString将节点的taint转化成字符串
+func taintToString(taint corev1.Taint) string {
+	return fmt.Sprintf("%s=%s:%s", taint.Key, taint.Value, taint.Effect)
+}
+
+func taintsToString(taints []corev1.Taint) string {
+	var taintStrings []string
+	for _, taint := range taints {
+		taintStrings = append(taintStrings, taintToString(taint))
+	}
+	return strings.Join(taintStrings, ",")
 }
 
 // getNodeRole 获取节点角色
@@ -113,6 +138,7 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 		nodeInfos[i] = payload.ClusterNodeInfo{
 			Type:      nodeType, // 添加节点类型
 			Name:      node.Name,
+			Taint:     taintsToString(node.Spec.Taints),
 			Role:      getNodeRole(node),
 			Labels:    node.Labels,
 			IsReady:   isNodeReady(node),
@@ -140,6 +166,7 @@ func (nc *NodeClient) GetNode(ctx context.Context, name string) (payload.Cluster
 		Name:                    node.Name,
 		Role:                    getNodeRole(node),
 		IsReady:                 isNodeReady(node),
+		Taint:                   taintsToString(node.Spec.Taints),
 		Time:                    node.CreationTimestamp.String(),
 		Address:                 node.Status.Addresses[0].Address,
 		Os:                      node.Status.NodeInfo.OperatingSystem,
@@ -150,7 +177,96 @@ func (nc *NodeClient) GetNode(ctx context.Context, name string) (payload.Cluster
 	}
 	return nodeInfo, nil
 }
+func (nc *NodeClient) UpdateNodeunschedule(ctx context.Context, name string) error {
+	node, err := nc.KubeClient.CoreV1().Nodes().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	node.Spec.Unschedulable = !node.Spec.Unschedulable
+	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
+	return err
+}
+func stringToTaint(taintString string) (corev1.Taint, error) {
+	// 拆分字符串
+	parts := strings.Split(taintString, "=")
+	if len(parts) != 2 {
+		return corev1.Taint{}, fmt.Errorf("invalid taint format: %s", taintString)
+	}
 
+	key := parts[0]
+	valueEffect := strings.Split(parts[1], ":")
+	if len(valueEffect) != 2 {
+		return corev1.Taint{}, fmt.Errorf("invalid taint format: %s", taintString)
+	}
+
+	value := valueEffect[0]
+	effect := valueEffect[1]
+
+	// 创建 Taint 结构体
+	taint := corev1.Taint{
+		Key:    key,
+		Value:  value,
+		Effect: corev1.TaintEffect(effect),
+	}
+
+	return taint, nil
+}
+func (nc *NodeClient) AddNodetaint(ctx context.Context, name, taint string) error {
+	node, err := nc.KubeClient.CoreV1().Nodes().Get(ctx, name, metav1.GetOptions{})
+	var Taint corev1.Taint
+	Taint, err1 := stringToTaint(taint)
+	if err != nil {
+		return err
+	}
+	if err1 != nil {
+		return err
+	}
+	// 检查污点是否已经存在
+	for _, existingTaint := range node.Spec.Taints {
+		if existingTaint.MatchTaint(&Taint) {
+			return fmt.Errorf("taint %v already exists on node %s", taint, name)
+		}
+	}
+	// 添加新的污点
+	node.Spec.Taints = append(node.Spec.Taints, Taint)
+
+	// 更新节点
+	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
+	if err != nil {
+		return err
+	}
+	return err
+}
+func (nc *NodeClient) DeleteNodetaint(ctx context.Context, name, taint string) error {
+	node, err := nc.KubeClient.CoreV1().Nodes().Get(ctx, name, metav1.GetOptions{})
+	var Taint corev1.Taint
+	Taint, err1 := stringToTaint(taint)
+	if err != nil {
+		return err
+	}
+	if err1 != nil {
+		return err
+	}
+	// 从现有污点列表中删除指定的污点
+	newTaints := []corev1.Taint{}
+	for _, existingTaint := range node.Spec.Taints {
+		if !existingTaint.MatchTaint(&Taint) {
+			newTaints = append(newTaints, existingTaint)
+		}
+	}
+	// 如果污点列表没有变化，则不需要更新
+	if len(newTaints) == len(node.Spec.Taints) {
+		return fmt.Errorf("taint %v not found on node %s", taint, name)
+	}
+	// 更新污点列表
+	node.Spec.Taints = newTaints
+	// 更新节点
+	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
+	if err != nil {
+		return err
+	}
+	return err
+}
 func (nc *NodeClient) GetPodsForNode(ctx context.Context, nodeName string) ([]payload.Pod, error) {
 	// Get Pods for the node, which is a costly operation
 	// TODO(zhangry): Add a cache for this? Or query from Prometheus?
