@@ -1,6 +1,7 @@
 package vcjob
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/samber/lo"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -25,6 +27,7 @@ import (
 
 const (
 	ThreeDaySeconds int32 = 259200
+	IngressLabelKey       = "ingress.crater.raids.io" // Annotation Ingress Key
 )
 
 type (
@@ -114,9 +117,26 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		LabelKeyTaskUser: token.Username,
 		LabelKeyBaseURL:  baseURL,
 	}
+
+	// 设置 notebook 的 Annotation 信息
+	notebookIngress := crclient.PodIngress{
+		Name:   "notebook",
+		Port:   8888,                                // Notebook 在容器内的默认端口
+		Prefix: fmt.Sprintf("/jupyter/%s", baseURL), // 设置唯一的 URL 前缀
+	}
+
+	// 将 Ingress 转换为 JSON 字符串并添加到 annotations
+	ingressJSON, err := json.Marshal(notebookIngress)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to marshal ingress: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	// 初始化 annotations 并添加 notebookIngress Annotation
 	annotations := map[string]string{
-		AnnotationKeyTaskName:       req.Name,
-		AnnotationKeyUseTensorBoard: useTensorboard,
+		AnnotationKeyTaskName:                  req.Name,
+		AnnotationKeyUseTensorBoard:            useTensorboard,
+		IngressLabelKey + notebookIngress.Name: string(ingressJSON), // 添加 notebookIngress Annotation
 	}
 
 	// 5. Create the pod spec
@@ -185,14 +205,6 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		},
 	}
 
-	// 添加 TensorBoard 端口映射
-	if req.UseTensorBoard {
-		podSpec.Containers[0].Ports = append(podSpec.Containers[0].Ports, v1.ContainerPort{
-			ContainerPort: TensorBoardPort, // TensorBoard 默认端口
-			Name:          "tb-port",
-			Protocol:      v1.ProtocolTCP,
-		})
-	}
 	if err = mgr.client.Create(c, &job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -226,16 +238,6 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 			SessionAffinity: v1.ServiceAffinityNone,
 			Type:            v1.ServiceTypeClusterIP,
 		},
-	}
-
-	// 更新 Service：如果使用TensorBoard，添加额外的端口映射
-	if req.UseTensorBoard {
-		svc.Spec.Ports = append(svc.Spec.Ports, v1.ServicePort{
-			Name:       "tensorboard",
-			Port:       81,
-			Protocol:   v1.ProtocolTCP,
-			TargetPort: intstr.FromInt(TensorBoardPort),
-		})
 	}
 
 	err = mgr.client.Create(c, svc)
@@ -296,23 +298,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		},
 	}
 
-	if req.UseTensorBoard {
-		tensorboardPath := networkingv1.HTTPIngressPath{
-			Path:     fmt.Sprintf("/tensorboard/%s", jobName),
-			PathType: func(s networkingv1.PathType) *networkingv1.PathType { return &s }(networkingv1.PathTypePrefix),
-			Backend: networkingv1.IngressBackend{
-				Service: &networkingv1.IngressServiceBackend{
-					Name: jobName,
-					Port: networkingv1.ServiceBackendPort{
-						Number: 81,
-					},
-				},
-			},
-		}
-		ingress.Spec.Rules[0].HTTP.Paths = append(ingress.Spec.Rules[0].HTTP.Paths, tensorboardPath)
-	}
-
-	if err := mgr.client.Create(c, ingress); err != nil {
+	if err = mgr.client.Create(c, ingress); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}

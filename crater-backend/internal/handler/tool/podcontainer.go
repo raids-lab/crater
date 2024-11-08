@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/pkg/crclient"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -55,7 +57,7 @@ type (
 	}
 )
 
-const IngressLabelKey = "ingress.crater.raids.io/"
+const IngressLabelKey = "ingress.crater.raids.io"
 
 func NewAPIServerMgr(conf handler.RegisterConfig) handler.Manager {
 	return &APIServerMgr{
@@ -79,6 +81,24 @@ func (mgr *APIServerMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET(":namespace/pods/:name/ingresses", mgr.GetPodIngresses)
 	g.POST(":namespace/pods/:name/ingresses", mgr.CreatePodIngress)
 	g.DELETE(":namespace/pods/:name/ingresses", mgr.DeletePodIngress)
+}
+
+// GetJobNameFromPod retrieves the job name from a pod's owner references
+func (mgr *APIServerMgr) GetJobNameFromPod(c *gin.Context, namespace, podName string) (string, error) {
+	// Fetch the pod details
+	var pod v1.Pod
+	if err := mgr.client.Get(c, client.ObjectKey{Namespace: namespace, Name: podName}, &pod); err != nil {
+		return "", fmt.Errorf("failed to get pod: %w", err)
+	}
+
+	// Loop through the owner references to find the Job
+	for _, owner := range pod.OwnerReferences {
+		if owner.Kind == "Job" {
+			return owner.Name, nil
+		}
+	}
+
+	return "", fmt.Errorf("pod does not belong to a Job")
 }
 
 // GetPodIngresses retrieves the ingress rules for a pod
@@ -161,6 +181,13 @@ func (mgr *APIServerMgr) CreatePodIngress(c *gin.Context) {
 		return
 	}
 
+	// 获取 "crater.raids.io/task-user" 标签值作为 jobName
+	userName, ok := pod.Labels["crater.raids.io/task-user"]
+	if !ok {
+		resputil.Error(c, "Label crater.raids.io/task-user not found", resputil.NotSpecified)
+		return
+	}
+
 	for key, value := range pod.Annotations {
 		if strings.HasPrefix(key, IngressLabelKey) {
 			var existingRule PodIngress
@@ -177,11 +204,23 @@ func (mgr *APIServerMgr) CreatePodIngress(c *gin.Context) {
 	ingress.Name = ingressMgr.Name
 	ingress.Port = ingressMgr.Port
 	// Generate a unique prefix for the ingress rule
-	ingress.Prefix = generateUniquePrefix()
-	ingressJSON, _ := json.Marshal(ingress)
-	pod.Annotations[IngressLabelKey+ingress.Prefix] = string(ingressJSON)
+	ingress.Prefix = fmt.Sprintf("/ingress/%s-%s", userName, uuid.New().String()[:5])
 
-	if err := mgr.client.Update(c, &pod); err != nil {
+	// 从 gin.Context 获取 context.Context
+	ctx := c.Request.Context()
+
+	// 将 ingress 转换为 crclient.PodIngress 类型
+	crclientIngress := crclient.PodIngress(ingress)
+
+	// 调用 CreateCustomForwardingRule 函数
+	err := crclient.CreateCustomForwardingRule(
+		ctx,
+		mgr.client, // Kubernetes client 实例
+		&pod,
+		crclientIngress,
+	)
+
+	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
@@ -255,12 +294,6 @@ func (mgr *APIServerMgr) DeletePodIngress(c *gin.Context) {
 	}
 
 	resputil.Success(c, "Ingress rule deleted successfully")
-}
-
-// Generate a unique prefix for ingress rules
-func generateUniquePrefix() string {
-	// Implement a logic to generate a unique string (e.g., using UUID or timestamp)
-	return fmt.Sprintf("%d", time.Now().UnixNano())
 }
 
 func (mgr *APIServerMgr) RegisterAdmin(_ *gin.RouterGroup) {}
