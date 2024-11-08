@@ -18,7 +18,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiJTaskImageList, apiTensorflowCreate } from "@/services/api/vcjob";
+import {
+  apiJTaskImageList,
+  apiTensorflowCreate,
+  JobType,
+} from "@/services/api/vcjob";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -49,7 +53,6 @@ import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
 import { Textarea } from "@/components/ui/textarea";
 import { apiGetDataset } from "@/services/api/dataset";
-import { ImageTaskType } from "@/services/api/imagepack";
 
 const VERSION = "20240528";
 const JOB_TYPE = "tensorflow";
@@ -139,7 +142,7 @@ export const Component = () => {
   });
   const imagesInfo = useQuery({
     queryKey: ["jupyter", "images"],
-    queryFn: () => apiJTaskImageList(ImageTaskType.TensorflowTask),
+    queryFn: () => apiJTaskImageList(JobType.Tensorflow),
     select: (res) => {
       return res.data.data.images.map((item) => ({
         value: item,
