@@ -20,6 +20,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ITrainingCreate,
+  JobType,
   apiJTaskImageList,
   apiTrainingCreate,
 } from "@/services/api/vcjob";
@@ -60,7 +61,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ImageTaskType } from "@/services/api/imagepack";
 import { DataMountCard, EnvCard, TensorboardCard, OtherCard } from "./Custom";
 
 const VERSION = "20240528";
@@ -146,7 +146,7 @@ export const Component = () => {
   });
   const imagesInfo = useQuery({
     queryKey: ["jupyter", "images"],
-    queryFn: () => apiJTaskImageList(ImageTaskType.UserDefineTask),
+    queryFn: () => apiJTaskImageList(JobType.Custom),
     select: (res) => {
       return res.data.data.images.map((item) => ({
         value: item,

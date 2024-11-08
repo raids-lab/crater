@@ -18,7 +18,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiJupyterCreate, apiJTaskImageList } from "@/services/api/vcjob";
+import {
+  apiJupyterCreate,
+  apiJTaskImageList,
+  JobType,
+} from "@/services/api/vcjob";
 import { cn } from "@/lib/utils";
 import { convertToK8sResources } from "@/utils/resource";
 import { toast } from "sonner";
@@ -38,7 +42,6 @@ import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { apiResourceList } from "@/services/api/resource";
 import { apiGetDataset } from "@/services/api/dataset";
-import { ImageTaskType } from "@/services/api/imagepack";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
 import { DataMountCard, EnvCard, TensorboardCard, OtherCard } from "./Custom";
@@ -201,7 +204,7 @@ export const Component = () => {
 
   const imagesInfo = useQuery({
     queryKey: ["jupyter", "images"],
-    queryFn: () => apiJTaskImageList(ImageTaskType.JupyterTask),
+    queryFn: () => apiJTaskImageList(JobType.Jupyter),
     select: (res) => {
       return res.data.data.images.map((item) => ({
         value: item,
