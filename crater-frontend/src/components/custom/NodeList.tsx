@@ -16,7 +16,7 @@ interface ResourceInfo {
 export interface ClusterNodeInfo {
   type: NodeType;
   name: string;
-  isReady: boolean;
+  isReady: string;
   role: string;
   cpu?: ResourceInfo;
   memory?: ResourceInfo;
@@ -93,13 +93,15 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
       <div className="flex flex-row items-center justify-start">
         <div
           className={cn("flex h-3 w-3 rounded-full", {
-            "bg-red-500 hover:bg-red-400": !row.getValue("isReady"),
+            "bg-red-500 hover:bg-red-400": !(
+              row.getValue("isReady") === "true"
+            ),
             "bg-emerald-500 hover:bg-emerald-400":
-              row.getValue("isReady") === true,
+              row.getValue("isReady") === "true",
           })}
         />
         <div className="ml-1.5">
-          {row.getValue("isReady") === true ? "运行中" : "异常"}
+          {row.getValue("isReady") === "true" ? "运行中" : "异常"}
         </div>
       </div>
     ),
