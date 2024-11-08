@@ -19,15 +19,11 @@ import { cn } from "@/lib/utils";
 import { ImageCreateForm } from "./CreateForm";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import {
-  ImagePackInfo,
-  apiUserImagePackDelete,
-  apiUserImagePackList,
+  apiUserDeleteKaniko,
+  apiUserListKaniko,
   getHeader,
   imagepackStatuses,
-  ImageDeleteRequest,
-  imagepackTaskType,
-  ImagePackListType,
-  imagepackPublicPersonalStatus,
+  KanikoInfo,
 } from "@/services/api/imagepack";
 import { logger } from "@/utils/loglevel";
 import { toast } from "sonner";
@@ -44,10 +40,7 @@ import {
 } from "@/components/ui-custom/alert-dialog";
 import { Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useNavigate, useRoutes } from "react-router-dom";
-import ImageCreateDetail from "../Info";
-import JobTypeLabel from "@/components/custom/JobTypeLabel";
-import { JobType } from "@/services/api/vcjob";
+import { useRoutes } from "react-router-dom";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -60,30 +53,23 @@ const toolbarConfig: DataTableToolbarConfig = {
 
 export const ImageTable: FC = () => {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [openSheet, setOpenSheet] = useState(false);
-  const imagePackInfo = useQuery({
+  const kanikoInfo = useQuery({
     queryKey: ["imagepack", "list"],
-    queryFn: () => apiUserImagePackList(ImagePackListType.Create),
-    select: (res) => res.data.data.imagepacklist,
+    queryFn: () => apiUserListKaniko(),
+    select: (res) => res.data.data.kanikolist,
   });
-  const data: ImagePackInfo[] = useMemo(() => {
-    if (!imagePackInfo.data) {
+  const data: KanikoInfo[] = useMemo(() => {
+    if (!kanikoInfo.data) {
       return [];
     }
-    return imagePackInfo.data.map((item) => ({
+    return kanikoInfo.data.map((item) => ({
       id: item.ID,
       link: item.imagelink,
-      username: item.creatername,
       status: item.status,
       createdAt: item.createdAt,
-      nametag: item.nametag,
-      params: item.params,
-      imagetype: item.imagetype,
-      tasktype: item.tasktype,
-      ispublic: item.ispublic,
     }));
-  }, [imagePackInfo.data]);
+  }, [kanikoInfo.data]);
   const refetchImagePackList = async () => {
     try {
       // 并行发送所有异步请求
@@ -94,15 +80,15 @@ export const ImageTable: FC = () => {
       logger.error("更新查询失败", error);
     }
   };
-  const { mutate: deleteUserImagePack } = useMutation({
-    mutationFn: (req: ImageDeleteRequest) => apiUserImagePackDelete(req),
+  const { mutate: userDeleteKaniko } = useMutation({
+    mutationFn: (id: number) => apiUserDeleteKaniko(id),
     onSuccess: async () => {
       await refetchImagePackList();
       toast.success("镜像已删除");
     },
   });
 
-  const columns: ColumnDef<ImagePackInfo>[] = [
+  const columns: ColumnDef<KanikoInfo>[] = [
     {
       id: "select",
       header: ({ table }) => (
@@ -127,21 +113,6 @@ export const ImageTable: FC = () => {
       enableHiding: false,
     },
     {
-      accessorKey: "nametag",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("nametag")} />
-      ),
-      cell: ({ row }) => (
-        <Button
-          onClick={() => navigate(`${row.original.id}`)}
-          variant={"link"}
-          className="h-8 px-0 text-left font-normal text-secondary-foreground"
-        >
-          {row.getValue("nametag")}
-        </Button>
-      ),
-    },
-    {
       accessorKey: "link",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeader("link")} />
@@ -151,13 +122,6 @@ export const ImageTable: FC = () => {
           {row.getValue("link")}
         </Badge>
       ),
-    },
-    {
-      accessorKey: "username",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("username")} />
-      ),
-      cell: ({ row }) => <div>{row.getValue("username")}</div>,
     },
     {
       accessorKey: "status",
@@ -192,32 +156,6 @@ export const ImageTable: FC = () => {
       },
     },
     {
-      accessorKey: "tasktype",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("tasktype")} />
-      ),
-      cell: ({ row }) => {
-        const tasktype = imagepackTaskType.find(
-          (tasktype) => tasktype.value === row.getValue("tasktype"),
-        );
-        const type: JobType = tasktype?.label as JobType;
-        return <JobTypeLabel jobType={type} />;
-      },
-    },
-    {
-      accessorKey: "ispublic",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("ispublic")} />
-      ),
-      cell: ({ row }) => {
-        const imagePublicPersonalStatus = imagepackPublicPersonalStatus.find(
-          (imagePublicPersonalStatus) =>
-            imagePublicPersonalStatus.value === row.getValue("ispublic"),
-        );
-        return imagePublicPersonalStatus?.label;
-      },
-    },
-    {
       accessorKey: "createdAt",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeader("createdAt")} />
@@ -231,7 +169,7 @@ export const ImageTable: FC = () => {
       id: "actions",
       enableHiding: false,
       cell: ({ row }) => {
-        const imagepackInfo = row.original;
+        const kanikoInfo = row.original;
         return (
           <div className="flex flex-row space-x-1">
             <AlertDialog>
@@ -250,7 +188,7 @@ export const ImageTable: FC = () => {
                 <AlertDialogHeader>
                   <AlertDialogTitle>删除镜像</AlertDialogTitle>
                   <AlertDialogDescription>
-                    镜像「{imagepackInfo?.nametag}
+                    镜像「{kanikoInfo?.link}
                     」将删除
                   </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -259,10 +197,7 @@ export const ImageTable: FC = () => {
                   <AlertDialogAction
                     variant="destructive"
                     onClick={() => {
-                      deleteUserImagePack({
-                        id: imagepackInfo.id,
-                        imagetype: imagepackInfo.imagetype,
-                      });
+                      userDeleteKaniko(kanikoInfo.id);
                     }}
                   >
                     删除
@@ -281,7 +216,7 @@ export const ImageTable: FC = () => {
       data={data}
       columns={columns}
       toolbarConfig={toolbarConfig}
-      loading={imagePackInfo.isLoading}
+      loading={kanikoInfo.isLoading}
       className="col-span-3"
     >
       <Sheet open={openSheet} onOpenChange={setOpenSheet}>
@@ -307,10 +242,10 @@ export const Component = () => {
       index: true,
       element: <ImageTable />,
     },
-    {
-      path: ":id",
-      element: <ImageCreateDetail />,
-    },
+    // {
+    //   path: ":id",
+    //   element: <ImageCreateDetail />,
+    // },
   ]);
 
   return <>{routes}</>;
