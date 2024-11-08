@@ -61,10 +61,7 @@ export const Component = () => {
         </CardDescription>
       </CardHeader>
       <Form {...form}>
-        <form
-          // eslint-disable-next-line @typescript-eslint/no-misused-promises
-          onSubmit={form.handleSubmit(handleSubmit)}
-        >
+        <form onSubmit={form.handleSubmit(handleSubmit)}>
           <CardContent>
             <FormField
               control={form.control}

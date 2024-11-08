@@ -12,7 +12,7 @@ export const showErrorToast = (error: unknown) => {
         } else {
           toast.error(`${error.message}`);
         }
-      } catch (e) {
+      } catch {
         toast.error(`${error.message}`);
       }
     } else {

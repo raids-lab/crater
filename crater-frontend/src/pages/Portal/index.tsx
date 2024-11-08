@@ -1,8 +1,5 @@
 import { SidebarItem } from "@/components/layout/Sidebar";
-import { useAuth } from "@/hooks/useAuth";
-import { FC, PropsWithChildren } from "react";
 import { Navigate, RouteObject } from "react-router-dom";
-import { Role } from "@/services/api/auth";
 import DashboardLayout from "@/components/layout/Dashboard";
 import {
   BarChartBigIcon,
@@ -19,6 +16,7 @@ import batchRoutes from "./Job/Batch";
 import interactiveRoutes from "./Job/Interactive";
 import datasetRoutes from "./Data";
 import { NavGroupProps } from "@/components/sidebar/nav-main";
+import AuthedRouter from "./AuthedRouter";
 
 const portalRoutes: SidebarItem[] = [
   {
@@ -130,12 +128,6 @@ const portalRoutes: SidebarItem[] = [
     },
   },
 ];
-
-const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
-  const isAuthenticated = useAuth(Role.User);
-  // const isAuthenticated = true;
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
-};
 
 const userSidebarGroups: NavGroupProps[] = [
   {

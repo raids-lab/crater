@@ -1,15 +1,12 @@
-import { z } from "zod";
 import { showErrorToast } from "./toast";
 
 export type K8sResources = Record<string, string> | undefined;
 
-const resourceSchema = z.object({
-  cpu: z.number().optional(), // cpu 核数
-  memory: z.number().optional(), // Gi
-  others: z.record(z.string()).optional(),
-});
-
-export type Resources = z.infer<typeof resourceSchema>;
+export type Resources = {
+  cpu?: number;
+  memory?: number;
+  others?: Record<string, string>;
+};
 
 export const convertKResourceToResource = (
   key: string,

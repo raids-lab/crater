@@ -74,7 +74,7 @@ instance.interceptors.response.use(
         const token = await refreshTokenFn();
         instance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
         return instance(originalRequest);
-      } catch (refreshError) {
+      } catch {
         window.location.href = "/login";
       }
     } else if (errorCode === ERROR_TOKEN_INVALID) {

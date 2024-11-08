@@ -1,4 +1,3 @@
-/* eslint-disable */
 /* tslint:disable */
 
 /**
@@ -8,7 +7,7 @@
  * - Please do NOT serve this file on production.
  */
 
-const PACKAGE_VERSION = "2.5.1";
+const PACKAGE_VERSION = "2.6.2";
 const INTEGRITY_CHECKSUM = "07a8241b182f8a246a7cd39894799a9e";
 const IS_MOCKED_RESPONSE = Symbol("isMockedResponse");
 const activeClientIds = new Set();
