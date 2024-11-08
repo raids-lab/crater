@@ -238,7 +238,10 @@ export const Component = () => {
   const onSubmit = (values: FormSchema) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
-    !isPending && createTask(values);
+    if (isPending) {
+      return;
+    }
+    createTask(values);
     if (isPending) {
       toast.info("请勿重复提交");
     }
@@ -248,7 +251,6 @@ export const Component = () => {
     <>
       <Form {...form}>
         <form
-          // eslint-disable-next-line @typescript-eslint/no-misused-promises
           onSubmit={form.handleSubmit(onSubmit)}
           className="grid flex-1 items-start gap-4 md:gap-x-6 lg:col-span-3 lg:grid-cols-3"
         >
@@ -311,15 +313,17 @@ export const Component = () => {
                   form
                     .trigger()
                     .then((isValid) => {
-                      isValid &&
-                        exportToJson(
-                          {
-                            version: VERSION,
-                            type: JOB_TYPE,
-                            data: currentValues,
-                          },
-                          currentValues.jobName + ".json",
-                        );
+                      if (!isValid) {
+                        return;
+                      }
+                      exportToJson(
+                        {
+                          version: VERSION,
+                          type: JOB_TYPE,
+                          data: currentValues,
+                        },
+                        currentValues.jobName + ".json",
+                      );
                     })
                     .catch((error) => {
                       toast.error((error as Error).message);

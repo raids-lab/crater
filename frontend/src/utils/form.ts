@@ -180,7 +180,7 @@ export const importFromJson = async <T>(
       throw new Error("配置类型不匹配");
     }
     return jobInfo.data;
-  } catch (error) {
+  } catch {
     throw new Error("Invalid JSON file");
   }
 };

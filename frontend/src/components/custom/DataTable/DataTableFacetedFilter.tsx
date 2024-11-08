@@ -47,7 +47,9 @@ export function DataTableFacetedFilter<TData, TValue>({
 
   // set default filter option
   useEffect(() => {
-    defaultValues && column?.setFilterValue(defaultValues);
+    if (defaultValues) {
+      column?.setFilterValue(defaultValues);
+    }
   }, [defaultValues, column]);
 
   return (

@@ -198,7 +198,7 @@ export const Component: FC = () => {
         <Card className="col-span-1 flex flex-col justify-between">
           <CardHeader>
             <CardTitle>节点类型</CardTitle>
-            <CardDescription className=" leading-6">
+            <CardDescription className="leading-6">
               部署 Nvidia GPU Operator 后，
               <span className="rounded-md border px-1 py-0.5 font-mono">
                 nvidia.com/gpu.product

@@ -250,7 +250,6 @@ export const Account = () => {
             <ScrollArea style={{ width, height }}>
               <Form {...form}>
                 <form
-                  // eslint-disable-next-line @typescript-eslint/no-misused-promises
                   onSubmit={form.handleSubmit(onSubmit)}
                   className="grid gap-4 px-6"
                 >
@@ -504,15 +503,17 @@ export const Account = () => {
                     form
                       .trigger()
                       .then((isValid) => {
-                        isValid &&
-                          exportToJson(
-                            {
-                              version: VERSION,
-                              type: JOB_TYPE,
-                              data: currentValues,
-                            },
-                            currentValues.name + ".json",
-                          );
+                        if (!isValid) {
+                          return;
+                        }
+                        exportToJson(
+                          {
+                            version: VERSION,
+                            type: JOB_TYPE,
+                            data: currentValues,
+                          },
+                          currentValues.name + ".json",
+                        );
                       })
                       .catch((error) => {
                         toast.error((error as Error).message);

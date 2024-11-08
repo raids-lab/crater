@@ -80,7 +80,6 @@ export function UpdateResourceForm({
       </DialogHeader>
       <Form {...form}>
         <form
-          // eslint-disable-next-line @typescript-eslint/no-misused-promises
           onSubmit={form.handleSubmit(onUpdateSubmit)}
           className="grid gap-4"
         >

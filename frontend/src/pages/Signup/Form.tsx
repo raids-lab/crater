@@ -69,12 +69,14 @@ export function SignupForm() {
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
-    !isPending && loginUser(values);
+    if (isPending) {
+      return;
+    }
+    loginUser(values);
   };
 
   return (
     <Form {...form}>
-      {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
         <FormField
           control={form.control}

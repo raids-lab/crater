@@ -105,7 +105,6 @@ export function NewTaskForm({ closeSheet }: TaskFormProps) {
   return (
     <Form {...form}>
       <form
-        // eslint-disable-next-line @typescript-eslint/no-misused-promises
         onSubmit={form.handleSubmit(onSubmit)}
         className="mt-6 flex flex-col space-y-4"
       >
