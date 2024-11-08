@@ -256,7 +256,7 @@ func shouldCreateOrUpdateUser(
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// User exists in the auth method but not in the database, create a new user
-			user, err = createUser(c, attr.Name, req.Password)
+			user, err = createUser(c, attr.Name, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -291,10 +291,20 @@ func createUser(c context.Context, name string, password *string) (*model.User, 
 	u := query.User
 	uq := query.UserAccount
 
+	var hashedPassword *string
+	if password != nil {
+		passwordStr := *password
+		hashed, err := bcrypt.GenerateFromPassword([]byte(passwordStr), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, err
+		}
+		hashedPassword = lo.ToPtr(string(hashed))
+	}
+
 	user := model.User{
 		Name:     name,
 		Nickname: name,
-		Password: password,
+		Password: hashedPassword,
 		Role:     model.RoleAdmin, // todo: change to model.RoleUser
 		Status:   model.StatusActive,
 		Space:    fmt.Sprintf("u-%s", name),
@@ -509,13 +519,7 @@ func (mgr *AuthMgr) Signup(c *gin.Context) {
 		return
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	_, err = createUser(c, req.Username, lo.ToPtr(string(hashedPassword)))
+	_, err = createUser(c, req.Username, &req.Password)
 	if err != nil {
 		l.Error("create new user", err)
 		resputil.Error(c, "Create user failed", resputil.NotSpecified)

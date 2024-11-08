@@ -8,6 +8,11 @@ import (
 const InvalidUserID = 0
 const ImageQuotaInfinity = -1
 
+// UserAttributes is a collection of user attributes
+type UserAttributes struct {
+	Attributes datatypes.JSONType[UserAttribute]
+}
+
 // Optional fields for user
 type UserAttribute struct {
 	ID uint `json:"id,omitempty"` // ID

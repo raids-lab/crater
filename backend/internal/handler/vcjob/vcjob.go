@@ -152,17 +152,14 @@ func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
 		return
 	}
 
+	j := query.Job
 	job := &batch.Job{}
 	namespace := config.GetConfig().Workspace.Namespace
 	if err := mgr.client.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
 		if errors.IsNotFound(err) {
-			j := query.Job
-			if _, err = j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Updates(model.Job{
-				Status:             model.Freed,
-				CompletedTimestamp: time.Now(),
-				Nodes:              datatypes.NewJSONType([]string{}),
-			}); err != nil {
+			if _, err = j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Delete(); err != nil {
 				resputil.Error(c, err.Error(), resputil.NotSpecified)
+				return
 			}
 			resputil.Success(c, nil)
 			return
@@ -174,6 +171,16 @@ func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
 	token := util.GetToken(c)
 	if job.Labels[LabelKeyTaskUser] != token.Username {
 		resputil.Error(c, "Job not found", resputil.NotSpecified)
+		return
+	}
+
+	// update job status as deleted
+	if _, err := j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Updates(model.Job{
+		Status:             model.Deleted,
+		CompletedTimestamp: time.Now(),
+		Nodes:              datatypes.NewJSONType([]string{}),
+	}); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
