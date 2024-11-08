@@ -29,7 +29,8 @@ export function ShareDatasetToUserDialog({
       return res.data.data.map((user) => {
         return {
           value: user.id.toString(),
-          label: user.name,
+          label: user.nickname,
+          labelNote: user.name,
         };
       });
     },

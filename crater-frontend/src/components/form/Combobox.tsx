@@ -12,6 +12,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import { Check, ChevronsUpDown } from "lucide-react";
 // import { ScrollArea } from "@/components/ui/scroll-area";
@@ -70,33 +71,34 @@ const Combobox = ({
       >
         <Command>
           <CommandInput placeholder={`查找${formTitle}`} className="h-9" />
-          <CommandEmpty>未找到匹配的{formTitle}</CommandEmpty>
-
-          <CommandGroup>
-            <ScrollArea>
-              <div className="max-h-48">
-                {items.map((image) => (
-                  <CommandItem
-                    value={image.label}
-                    key={image.value}
-                    onSelect={() => {
-                      handleSelect(image.value);
-                      setOpen(false);
-                    }}
-                    className="flex w-full flex-row items-center justify-between"
-                  >
-                    {image.label}
-                    <Check
-                      className={cn(
-                        "ml-auto h-4 w-4",
-                        image.value === current ? "opacity-100" : "opacity-0",
-                      )}
-                    />
-                  </CommandItem>
-                ))}
-              </div>
-            </ScrollArea>
-          </CommandGroup>
+          <CommandList>
+            <CommandEmpty>未找到匹配的{formTitle}</CommandEmpty>
+            <CommandGroup>
+              <ScrollArea>
+                <div className="max-h-48">
+                  {items.map((image) => (
+                    <CommandItem
+                      value={image.label}
+                      key={image.value}
+                      onSelect={() => {
+                        handleSelect(image.value);
+                        setOpen(false);
+                      }}
+                      className="flex w-full flex-row items-center justify-between"
+                    >
+                      {image.label}
+                      <Check
+                        className={cn(
+                          "ml-auto h-4 w-4",
+                          image.value === current ? "opacity-100" : "opacity-0",
+                        )}
+                      />
+                    </CommandItem>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CommandGroup>
+          </CommandList>
         </Command>
       </PopoverContent>
     </Popover>

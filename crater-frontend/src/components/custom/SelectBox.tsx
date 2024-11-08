@@ -25,6 +25,7 @@ import { ChevronsUpDown, XIcon } from "lucide-react";
 interface Option {
   value: string;
   label: string;
+  labelNote?: string;
 }
 
 interface SelectBoxProps {
@@ -88,7 +89,7 @@ const SelectBox = React.forwardRef<HTMLInputElement, SelectBoxProps>(
                   ?.map((option) => (
                     <span
                       key={option.value}
-                      className="inline-flex items-center gap-1 rounded-md border py-0.5 pl-2 pr-1 text-xs font-medium text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      className="inline-flex items-center gap-1 rounded-md border bg-secondary py-0.5 pl-2 pr-1 text-xs font-medium text-secondary-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                     >
                       <span>{option.label}</span>
                       <span
@@ -175,7 +176,13 @@ const SelectBox = React.forwardRef<HTMLInputElement, SelectBoxProps>(
                             >
                               <CheckIcon />
                             </div>
-                            <span>{option.label}</span>
+                            <span>
+                              {option.label}
+                              <span className="ml-2 text-muted-foreground">
+                                {"@"}
+                                {option.labelNote}
+                              </span>
+                            </span>
                           </CommandItem>
                         );
                       })}

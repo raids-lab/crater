@@ -16,13 +16,15 @@ export default tseslint.config({
   files: ["**/*.{ts,tsx}"],
   ignores: [
     "**/dist",
-    "**/.eslintrc.cjs",
     "**/postcss.config.js",
     "**/tailwind.config.js",
     "**/vite.config.ts",
     "**/commitlint.config.cjs",
+    // shadcn
     "src/components/ui/*",
     "src/components/ui-custom/*",
+    "src/hooks/use-mobile.tsx",
+    // msw
     "public/mockServiceWorker.js",
   ],
   languageOptions: {

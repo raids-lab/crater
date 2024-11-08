@@ -5,6 +5,7 @@ import { Role } from "../auth";
 import { ProjectStatus } from "../account";
 
 export interface IUserAttributes {
+  id: number;
   name: string;
   nickname: string;
   email?: string;
