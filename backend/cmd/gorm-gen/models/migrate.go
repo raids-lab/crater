@@ -293,6 +293,45 @@ func main() {
 				return tx.Migrator().DropColumn(&User{}, "ImageQuota")
 			},
 		},
+		{
+			// create `jobs` table
+			ID: "202410311449",
+			Migrate: func(tx *gorm.DB) error {
+				// it's a good practice to copy the struct inside the function,
+				// so side effects are prevented if the original struct changes during the time
+				return tx.Migrator().CreateTable(&model.Kaniko{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("kanikos")
+			},
+		},
+		{
+			// create `jobs` table
+			ID: "202410311450",
+			Migrate: func(tx *gorm.DB) error {
+				// it's a good practice to copy the struct inside the function,
+				// so side effects are prevented if the original struct changes during the time
+				return tx.Migrator().CreateTable(&model.Image{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("images")
+			},
+		},
+		{
+			ID: "202411071606",
+			Migrate: func(tx *gorm.DB) error {
+				type Image struct {
+					ImagePackName string `gorm:"uniqueIndex:imagepackname;type:varchar(128);not null;comment:ImagePack CRD名称"`
+				}
+				return tx.Migrator().AddColumn(&Image{}, "ImagePackName")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Image struct {
+					ImagePackName string `gorm:"uniqueIndex:imagepackname;type:varchar(128);not null;comment:ImagePack CRD名称"`
+				}
+				return tx.Migrator().DropColumn(&Image{}, "ImagePackName")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -310,6 +349,8 @@ func main() {
 			&model.Job{},
 			&models.AITask{},
 			&model.Whitelist{},
+			&model.Kaniko{},
+			&model.Image{},
 		)
 		if err != nil {
 			return err
