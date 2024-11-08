@@ -8,8 +8,14 @@ import (
 const InvalidUserID = 0
 const ImageQuotaInfinity = -1
 
-// UserAttributes is a collection of user attributes
-type UserAttributes struct {
+// UserAttributeForScan is used for scan.
+// For example:
+//
+//	var attributes []model.UserAttributeForScan
+//	if err := u.WithContext(c).Select(u.Attributes).Scan(&attributes); err != nil {
+//		return err
+//	}
+type UserAttributeForScan struct {
 	Attributes datatypes.JSONType[UserAttribute]
 }
 
