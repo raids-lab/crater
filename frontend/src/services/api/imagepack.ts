@@ -7,61 +7,52 @@ import {
   CrossCircledIcon,
   StopwatchIcon,
 } from "@radix-ui/react-icons";
+import { JobType } from "./vcjob";
 
-export type ImagePackListResponse = {
-  imagepacklist: ImagePackInfoResponse[];
+export type ListKanikoResponse = {
+  kanikolist: KanikoInfoResponse[];
   totalsize: number;
 };
-
-type ImagePackInfoResponse = {
+type KanikoInfoResponse = {
   ID: number;
   // name: string;
   imagelink: string;
   status: string;
   createdAt: string;
-  nametag: string;
-  creatername: string;
-  imagetype: number;
-  description: string;
-  alias: string;
-  tasktype: number;
   ispublic: boolean;
-  params: {
-    Convs: number;
-    Activations: number;
-    Denses: number;
-    Others: number;
-    GFLOPs: number;
-    BatchSize: number;
-    Params: number;
-    ModelSize: number;
-  };
 };
-
-export type ImagePackLogResponse = {
-  content: string;
-};
-
-export type ImagePackInfo = {
+export type KanikoInfo = {
   id: number;
-  nametag: string;
   link: string;
-  username: string;
   status: string;
   createdAt: string;
-  imagetype: number;
-  tasktype: number;
+};
+
+export type ListImageResponse = {
+  imagelist: ImageInfoResponse[];
+};
+type ImageInfoResponse = {
+  ID: number;
+  // name: string;
+  imagelink: string;
+  status: string;
+  createdAt: string;
   ispublic: boolean;
-  params: {
-    Convs: number;
-    Activations: number;
-    Denses: number;
-    Others: number;
-    GFLOPs: number;
-    BatchSize: number;
-    Params: number;
-    ModelSize: number;
-  };
+  tasktype: JobType;
+  creatorname: string;
+};
+export type ImageInfo = {
+  id: number;
+  link: string;
+  status: string;
+  createdAt: string;
+  ispublic: boolean;
+  tasktype: JobType;
+  creatorname: string;
+};
+
+export type KanikoLogResponse = {
+  content: string;
 };
 
 export const getHeader = (key: string): string => {
@@ -70,7 +61,7 @@ export const getHeader = (key: string): string => {
       return "名称";
     case "link":
       return "镜像地址";
-    case "username":
+    case "creatorname":
       return "提交者";
     case "status":
       return "状态";
@@ -198,7 +189,7 @@ export const imagepackPublicPersonalStatus: {
   },
 ];
 
-export interface ImagePackCreate {
+export interface KanikoCreate {
   gitRepository: string;
   accessToken: string;
   dockerfile: string;
@@ -208,19 +199,15 @@ export interface ImagePackCreate {
   registryProject: string;
   imageName: string;
   imageTag: string;
-  needProfile: boolean;
-  alias: string;
   description: string;
-  taskType: number;
 }
 
-export interface ImagePackUpload {
+export interface ImageUpload {
   imageLink: string;
   imageName: string;
   imageTag: string;
-  alias: string;
   description: string;
-  taskType: number;
+  taskType: JobType;
 }
 
 export const ImageTaskType = {
@@ -252,51 +239,39 @@ export function parseImageLink(imageLink: string) {
   return { imageName: "", imageTag: "" };
 }
 
-export const apiUserImagepackCreate = async (imagepack: ImagePackCreate) => {
+export const apiUserListKaniko = () =>
+  instance.get<IResponse<ListKanikoResponse>>(`${VERSION}/images/kaniko`);
+
+export const apiUserCreateKaniko = async (imagepack: KanikoCreate) => {
   const response = await instance.post<IResponse<string>>(
-    VERSION + "/images/create",
+    VERSION + "/images/kaniko",
     imagepack,
   );
   return response.data;
 };
 
-export const apiUserImagepackUpload = async (imageupload: ImagePackUpload) => {
+export const apiUserDeleteKaniko = (id: number) =>
+  instance.delete<IResponse<string>>(VERSION + `/images/kaniko/${id}`);
+
+export const apiUserGetKaniko = (id: string) =>
+  instance.get<IResponse<KanikoInfoResponse>>(`${VERSION}/images/get?id=${id}`);
+
+export const apiUserLogKaniko = (id: string) =>
+  instance.get<IResponse<KanikoLogResponse>>(`${VERSION}/images/log?id=${id}`);
+
+export const apiUserListImage = () =>
+  instance.get<IResponse<ListImageResponse>>(`${VERSION}/images/image`);
+
+export const apiUserChangeImagePublicStatus = (id: number) =>
+  instance.post<IResponse<string>>(VERSION + `/images/change/${id}`);
+
+export const apiUserUploadImage = async (imageupload: ImageUpload) => {
   const response = await instance.post<IResponse<string>>(
-    VERSION + "/images/upload",
+    VERSION + "/images/image",
     imageupload,
   );
   return response.data;
 };
 
-export enum ImagePackListType {
-  Create = 1,
-  Upload,
-}
-
-export const apiUserImagePackList = (type: number) =>
-  instance.get<IResponse<ImagePackListResponse>>(
-    `${VERSION}/images/list?type=${type}`,
-  );
-
-export const apiUserImageCreateGet = (id: string) =>
-  instance.get<IResponse<ImagePackInfoResponse>>(
-    `${VERSION}/images/get?id=${id}`,
-  );
-
-export const apiUserImageCreateLog = (id: string) =>
-  instance.get<IResponse<ImagePackLogResponse>>(
-    `${VERSION}/images/log?id=${id}`,
-  );
-
-export interface ImageDeleteRequest {
-  id: number;
-  imagetype: number;
-}
-
-export const apiUserImagePackDelete = async (req: ImageDeleteRequest) => {
-  const response = await instance.post<IResponse<string>>(
-    VERSION + "/images/delete",
-    req,
-  );
-  return response.data;
-};
+export const apiUserDeleteImage = (id: number) =>
+  instance.delete<IResponse<string>>(VERSION + `/images/image/${id}`);

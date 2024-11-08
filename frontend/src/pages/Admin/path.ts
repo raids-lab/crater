@@ -36,21 +36,21 @@ export const adminPath: PathInfo = {
       path: "job",
       title: "作业管理",
     },
-    {
-      path: "image",
-      title: "镜像管理",
-      isEmpty: true,
-      children: [
-        {
-          path: "create",
-          title: "镜像制作",
-        },
-        {
-          path: "upload",
-          title: "镜像列表",
-        },
-      ],
-    },
+    // {
+    //   path: "image",
+    //   title: "镜像管理",
+    //   isEmpty: true,
+    //   children: [
+    //     {
+    //       path: "create",
+    //       title: "镜像制作",
+    //     },
+    //     {
+    //       path: "upload",
+    //       title: "镜像列表",
+    //     },
+    //   ],
+    // },
     {
       path: "data",
       title: "数据管理",

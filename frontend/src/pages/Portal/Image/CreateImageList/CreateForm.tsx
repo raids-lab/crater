@@ -13,7 +13,7 @@ import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { apiUserImagepackCreate } from "@/services/api/imagepack";
+import { apiUserCreateKaniko } from "@/services/api/imagepack";
 import {
   Select,
   SelectContent,
@@ -35,10 +35,7 @@ const formSchema = z.object({
   // registryProject: z.string().optional(),
   imageName: z.string().min(1, { message: "镜像名不能为空" }),
   imageTag: z.string().min(1, { message: "标签不能为空" }),
-  alias: z.string().min(1, { message: "镜像别名不能为空" }),
   description: z.string().min(1, { message: "镜像描述不能为空" }),
-  taskType: z.enum(["1", "2", "3", "4", "5", "6", "7", "8"]),
-  needProfile: z.boolean().default(false),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -52,7 +49,7 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
 
   const { mutate: createImagePack } = useMutation({
     mutationFn: (values: FormSchema) =>
-      apiUserImagepackCreate({
+      apiUserCreateKaniko({
         gitRepository: values.gitRepository ? values.gitRepository : "",
         accessToken: values.accessToken ? values.accessToken : "",
         dockerfile: values.dockerfile ? values.dockerfile : "",
@@ -62,10 +59,7 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
         registryProject: "",
         imageName: values.imageName,
         imageTag: values.imageTag,
-        needProfile: values.needProfile,
-        alias: values.alias,
         description: values.description,
-        taskType: Number(values.taskType),
       }),
     onSuccess: async (_, { imageName, imageTag }) => {
       await queryClient.invalidateQueries({
@@ -90,8 +84,6 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
       // registryProject: "",
       imageName: "",
       imageTag: "",
-      needProfile: false,
-      alias: "",
       description: "",
     },
   });
@@ -300,22 +292,6 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
             />
             <FormField
               control={form.control}
-              name="alias"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    镜像别名
-                    <FormLabelMust />
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} className="font-mono" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
               name="description"
               render={({ field }) => (
                 <FormItem>
@@ -332,7 +308,7 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
             />
           </div>
         </div>
-        <div>
+        {/* <div>
           <FormField
             control={form.control}
             name="taskType"
@@ -374,7 +350,7 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
               </FormItem>
             )}
           />
-        </div>
+        </div> */}
         {/* <div>
           <FormField
             control={form.control}
