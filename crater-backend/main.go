@@ -193,6 +193,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	imagePackReconciler := reconciler.NewImagePackReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+	)
+	err = imagePackReconciler.SetupWithManager(mgr)
+	if err != nil {
+		setupLog.Error(err, "unable to set up imagepack controller")
+		os.Exit(1)
+	}
+
 	stopCh := ctrl.SetupSignalHandler()
 
 	// 4. start manager
