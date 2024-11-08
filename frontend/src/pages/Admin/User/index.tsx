@@ -181,7 +181,7 @@ export const User = () => {
                 {row.original.attributes.nickname ?? row.original.name}
               </span>
               <span className="truncate text-xs text-muted-foreground">
-                {row.original.name}
+                @{row.original.name}
               </span>
             </div>
           );

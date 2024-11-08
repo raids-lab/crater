@@ -1,5 +1,6 @@
 import instance, { VERSION } from "../axios";
 import { IResponse } from "@/services/types";
+import { IUserAttributes } from "./admin/user";
 
 export interface Dataset {
   id: number;
@@ -28,11 +29,6 @@ export interface DatasetReq {
 
 export interface DatasetReanmeReq {
   datasetID: number;
-  name: string;
-}
-
-export interface UserDatasetGetResp {
-  id: string;
   name: string;
 }
 
@@ -87,7 +83,7 @@ export const apiAdminShareDatasetwithQueue = (qd: QueueDataset) =>
   instance.post<IResponse<string>>(VERSION + "/admin/dataset/share/queue", qd);
 
 export const apiListUsersNotInDataset = (datasetID: number) =>
-  instance.get<IResponse<UserDatasetGetResp[]>>(
+  instance.get<IResponse<IUserAttributes[]>>(
     VERSION + `/dataset/${datasetID}/usersNotIn`,
   );
 
