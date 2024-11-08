@@ -20,9 +20,11 @@ var (
 	Account        *account
 	AccountDataset *accountDataset
 	Dataset        *dataset
+	Image          *image
 	ImagePack      *imagePack
 	ImageUpload    *imageUpload
 	Job            *job
+	Kaniko         *kaniko
 	Label          *label
 	Resource       *resource
 	User           *user
@@ -36,9 +38,11 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	Account = &Q.Account
 	AccountDataset = &Q.AccountDataset
 	Dataset = &Q.Dataset
+	Image = &Q.Image
 	ImagePack = &Q.ImagePack
 	ImageUpload = &Q.ImageUpload
 	Job = &Q.Job
+	Kaniko = &Q.Kaniko
 	Label = &Q.Label
 	Resource = &Q.Resource
 	User = &Q.User
@@ -53,9 +57,11 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		Account:        newAccount(db, opts...),
 		AccountDataset: newAccountDataset(db, opts...),
 		Dataset:        newDataset(db, opts...),
+		Image:          newImage(db, opts...),
 		ImagePack:      newImagePack(db, opts...),
 		ImageUpload:    newImageUpload(db, opts...),
 		Job:            newJob(db, opts...),
+		Kaniko:         newKaniko(db, opts...),
 		Label:          newLabel(db, opts...),
 		Resource:       newResource(db, opts...),
 		User:           newUser(db, opts...),
@@ -71,9 +77,11 @@ type Query struct {
 	Account        account
 	AccountDataset accountDataset
 	Dataset        dataset
+	Image          image
 	ImagePack      imagePack
 	ImageUpload    imageUpload
 	Job            job
+	Kaniko         kaniko
 	Label          label
 	Resource       resource
 	User           user
@@ -90,9 +98,11 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		Account:        q.Account.clone(db),
 		AccountDataset: q.AccountDataset.clone(db),
 		Dataset:        q.Dataset.clone(db),
+		Image:          q.Image.clone(db),
 		ImagePack:      q.ImagePack.clone(db),
 		ImageUpload:    q.ImageUpload.clone(db),
 		Job:            q.Job.clone(db),
+		Kaniko:         q.Kaniko.clone(db),
 		Label:          q.Label.clone(db),
 		Resource:       q.Resource.clone(db),
 		User:           q.User.clone(db),
@@ -116,9 +126,11 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		Account:        q.Account.replaceDB(db),
 		AccountDataset: q.AccountDataset.replaceDB(db),
 		Dataset:        q.Dataset.replaceDB(db),
+		Image:          q.Image.replaceDB(db),
 		ImagePack:      q.ImagePack.replaceDB(db),
 		ImageUpload:    q.ImageUpload.replaceDB(db),
 		Job:            q.Job.replaceDB(db),
+		Kaniko:         q.Kaniko.replaceDB(db),
 		Label:          q.Label.replaceDB(db),
 		Resource:       q.Resource.replaceDB(db),
 		User:           q.User.replaceDB(db),
@@ -132,9 +144,11 @@ type queryCtx struct {
 	Account        IAccountDo
 	AccountDataset IAccountDatasetDo
 	Dataset        IDatasetDo
+	Image          IImageDo
 	ImagePack      IImagePackDo
 	ImageUpload    IImageUploadDo
 	Job            IJobDo
+	Kaniko         IKanikoDo
 	Label          ILabelDo
 	Resource       IResourceDo
 	User           IUserDo
@@ -148,9 +162,11 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		Account:        q.Account.WithContext(ctx),
 		AccountDataset: q.AccountDataset.WithContext(ctx),
 		Dataset:        q.Dataset.WithContext(ctx),
+		Image:          q.Image.WithContext(ctx),
 		ImagePack:      q.ImagePack.WithContext(ctx),
 		ImageUpload:    q.ImageUpload.WithContext(ctx),
 		Job:            q.Job.WithContext(ctx),
+		Kaniko:         q.Kaniko.WithContext(ctx),
 		Label:          q.Label.WithContext(ctx),
 		Resource:       q.Resource.WithContext(ctx),
 		User:           q.User.WithContext(ctx),
