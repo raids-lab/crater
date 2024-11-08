@@ -36,7 +36,7 @@ func newImageUpload(db *gorm.DB, opts ...gen.DOOption) imageUpload {
 	_imageUpload.ImageLink = field.NewString(tableName, "imagelink")
 	_imageUpload.Status = field.NewString(tableName, "status")
 	_imageUpload.NameTag = field.NewString(tableName, "nametag")
-	_imageUpload.TaskType = field.NewUint8(tableName, "tasktype")
+	_imageUpload.TaskType = field.NewString(tableName, "tasktype")
 	_imageUpload.Alias_ = field.NewString(tableName, "alias")
 	_imageUpload.Description = field.NewString(tableName, "description")
 	_imageUpload.CreatorName = field.NewString(tableName, "creatorname")
@@ -91,7 +91,7 @@ type imageUpload struct {
 	ImageLink   field.String
 	Status      field.String
 	NameTag     field.String
-	TaskType    field.Uint8
+	TaskType    field.String
 	Alias_      field.String
 	Description field.String
 	CreatorName field.String
@@ -124,7 +124,7 @@ func (i *imageUpload) updateTableName(table string) *imageUpload {
 	i.ImageLink = field.NewString(table, "imagelink")
 	i.Status = field.NewString(table, "status")
 	i.NameTag = field.NewString(table, "nametag")
-	i.TaskType = field.NewUint8(table, "tasktype")
+	i.TaskType = field.NewString(table, "tasktype")
 	i.Alias_ = field.NewString(table, "alias")
 	i.Description = field.NewString(table, "description")
 	i.CreatorName = field.NewString(table, "creatorname")

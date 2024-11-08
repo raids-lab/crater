@@ -50,7 +50,6 @@ type ImagePackSpec struct {
 	RegistryProject string `json:"registryProject"`
 	ImageName       string `json:"imageName"`
 	ImageTag        string `json:"imageTag"`
-	NeedProfile     bool   `json:"needProfile"`
 	// Template v1.PodTemplateSpec `json:"template,omitempty"`
 }
 
