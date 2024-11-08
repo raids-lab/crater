@@ -213,7 +213,7 @@ export const apiJobGetPods = (jobName: string) =>
 export const apiJobGetYaml = (jobName: string) =>
   instance.get<IResponse<string>>(`${VERSION}/${JOB_URL}/${jobName}/yaml`);
 
-export const apiJTaskImageList = (imageTaskType: number) =>
+export const apiJTaskImageList = (imageTaskType: string) =>
   instance.get<
     IResponse<{
       images: string[];
