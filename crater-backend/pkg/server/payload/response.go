@@ -21,7 +21,8 @@ type ClusterNodeInfo struct {
 	Name     string              `json:"name"`
 	Role     string              `json:"role"`
 	Labels   map[string]string   `json:"labels"`
-	IsReady  bool                `json:"isReady"`
+	IsReady  string              `json:"isReady"`
+	Taint    string              `json:"taint"`
 	Capacity corev1.ResourceList `json:"capacity"`
 	// Alocated v1.ResourceList   `json:"allocated"`
 	Allocated AllocatedInfo `json:"allocated"`
@@ -40,7 +41,8 @@ type Pod struct {
 type ClusterNodeDetail struct {
 	Name                    string `json:"name"`
 	Role                    string `json:"role"`
-	IsReady                 bool   `json:"isReady"`
+	IsReady                 string `json:"isReady"`
+	Taint                   string `json:"taint"`
 	Time                    string `json:"time"`
 	Address                 string `json:"address"`
 	Os                      string `json:"os"`

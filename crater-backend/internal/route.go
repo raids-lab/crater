@@ -11,7 +11,6 @@ import (
 
 	docs "github.com/raids-lab/crater/docs"
 	"github.com/raids-lab/crater/internal/handler"
-
 	"github.com/raids-lab/crater/internal/middleware"
 	"github.com/raids-lab/crater/pkg/constants"
 )
