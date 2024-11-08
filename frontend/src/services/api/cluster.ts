@@ -13,7 +13,7 @@ export interface IClusterNodeInfo {
   name: string;
   role: string;
   labels: Record<string, string>;
-  isReady: boolean;
+  isReady: string;
   capacity: K8sResources;
   allocated: K8sResources;
 }
@@ -41,7 +41,7 @@ export interface IClusterPodInfo {
 export interface IClusterNodeDetail {
   name: string;
   role: string;
-  isReady: boolean;
+  isReady: string;
   time: string;
   address: string;
   os: string;
