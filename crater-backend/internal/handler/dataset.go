@@ -759,14 +759,6 @@ type UserDatasetGetResp struct {
 	Name string `json:"name"`
 }
 
-type UserOutOfDatasetResp struct {
-	ID         uint                                    `json:"id"`       // 用户ID
-	Name       string                                  `json:"name"`     // 用户名称
-	Role       model.Role                              `json:"role"`     // 用户角色
-	Status     model.Status                            `json:"status"`   // 用户状态
-	Attributes datatypes.JSONType[model.UserAttribute] `json:"userInfo"` // 用户额外属性
-}
-
 // ListUsersOutOfDataset godoc
 // @Summary 没有该数据集权限的用户列表
 // @Description 没有该数据集权限的用户列表
@@ -800,11 +792,15 @@ func (mgr *DatasetMgr) ListUsersOutOfDataset(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("Failed to scan user IDs: %v", err), resputil.NotSpecified)
 		return
 	}
-	var resp []UserOutOfDatasetResp
-	exec := u.WithContext(c).Where(u.ID.NotIn(uids...)).Distinct()
-	if err := exec.Scan(&resp); err != nil {
+	var attributes []model.UserAttributes
+	if err := u.WithContext(c).Where(u.Status.Eq(uint8(model.StatusActive))).
+		Where(u.ID.NotIn(uids...)).Distinct().Select(u.Attributes).Scan(&attributes); err != nil {
 		resputil.Error(c, fmt.Sprintf("Get UserDataset failed, detail: %v", err), resputil.NotSpecified)
 		return
+	}
+	resp := make([]model.UserAttribute, len(attributes))
+	for i := range attributes {
+		resp[i] = attributes[i].Attributes.Data()
 	}
 	resputil.Success(c, resp)
 }
