@@ -41,7 +41,6 @@ func (mgr *ContextMgr) GetName() string { return mgr.name }
 func (mgr *ContextMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *ContextMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.GET("queues", mgr.ListUserQueue)
 	g.GET("quota", mgr.GetQuota)
 	g.GET("info", mgr.GetUserInfo)
 }
@@ -201,37 +200,9 @@ func (mgr *ContextMgr) GetUserInfo(c *gin.Context) {
 
 type (
 	UserQueueResp struct {
-		Name       string           `json:"id"`
-		Nickname   string           `json:"name"`
+		Name       string           `json:"name"`
+		Nickname   string           `json:"nickname"`
 		Role       model.Role       `json:"role"`
 		AccessMode model.AccessMode `json:"access"`
 	}
 )
-
-// ListUserQueue godoc
-// @Summary list user queues
-// @Description list user queues by user id
-// @Tags Queue
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Success 200 {object} resputil.Response[[]UserQueueResp] "User queue list"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/queues [get]
-func (mgr *ContextMgr) ListUserQueue(c *gin.Context) {
-	token := util.GetToken(c)
-
-	uq := query.UserAccount
-	q := query.Account
-
-	var userQueues []UserQueueResp
-	err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID)).
-		Join(q, uq.AccountID.EqCol(q.ID)).Select(q.Name, q.Nickname, uq.Role, uq.AccessMode).Order(q.ID).Scan(&userQueues)
-	if err != nil {
-		resputil.Error(c, "List user queue failed", resputil.NotSpecified)
-		return
-	}
-
-	resputil.Success(c, userQueues)
-}
