@@ -2,7 +2,9 @@ package handler
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -12,9 +14,11 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/samber/lo"
 	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 )
@@ -31,7 +35,7 @@ type AccountMgr struct {
 
 func NewAccountMgr(conf RegisterConfig) Manager {
 	return &AccountMgr{
-		name:   "projects",
+		name:   "accounts",
 		client: conf.Client,
 	}
 }
@@ -41,43 +45,54 @@ func (mgr *AccountMgr) GetName() string { return mgr.name }
 func (mgr *AccountMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *AccountMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.GET("", mgr.ListAllForUser) // 获取该用户的所有项目
+	g.GET("", mgr.ListForUser) // 获取当前用户可访问的账户
 }
 
 func (mgr *AccountMgr) RegisterAdmin(g *gin.RouterGroup) {
-	g.GET("", mgr.ListAllForAdmin)
+	g.GET("", mgr.ListForAdmin)
 	g.POST("", mgr.CreateAccount)
-	g.GET("/:pid", mgr.GetAccountByID)
-	g.PUT("/:pid", mgr.UpdateAccount)
-	g.DELETE("/:pid", mgr.DeleteAccount)
-	g.POST("/add/:pid/:uid", mgr.AddUserProject)
-	g.POST("/update/:pid/:uid", mgr.UpdateUserProject)
-	g.GET("/userIn/:pid", mgr.GetUserInProject)
-	g.GET("/userOutOf/:pid", mgr.GetUserOutOfProject)
-	g.DELETE("/:pid/:uid", mgr.DeleteUserProject)
+	g.GET(":aid", mgr.GetAccountByID)
+	g.GET(":aid/quota", mgr.GetQuota)
+	g.PUT(":aid", mgr.UpdateAccount)
+	g.DELETE(":aid", mgr.DeleteAccount)
+	g.POST("add/:aid/:uid", mgr.AddUserProject)
+	g.POST("update/:aid/:uid", mgr.UpdateUserProject)
+	g.GET("userIn/:aid", mgr.GetUserInProject)
+	g.GET("userOutOf/:aid", mgr.GetUserOutOfProject)
+	g.DELETE(":aid/:uid", mgr.DeleteUserProject)
 }
 
-// ListAllForUser godoc
-// @Summary 获取用户的所有项目
-// @Description 连接用户项目表和项目表，获取用户的所有项目的摘要信息
+type (
+	AccountResp struct {
+		Name       string           `json:"name"`
+		Nickname   string           `json:"nickname"`
+		Role       model.Role       `json:"role"`
+		AccessMode model.AccessMode `json:"access"`
+		ExpiredAt  *time.Time       `json:"expiredAt"`
+	}
+)
+
+// ListForUser godoc
+// @Summary 获取用户的所有账户
+// @Description 连接用户账户表和账户表，获取用户的所有账户的摘要信息
 // @Tags Project
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Success 200 {object} resputil.Response[[]payload.ProjectResp] "成功返回值描述"
+// @Success 200 {object} resputil.Response[[]AccountResp] "成功返回值描述"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/projects [get]
-func (mgr *AccountMgr) ListAllForUser(c *gin.Context) { // Check if the user exists
+func (mgr *AccountMgr) ListForUser(c *gin.Context) {
 	token := util.GetToken(c)
 
-	q := query.Account
-	uq := query.UserAccount
+	a := query.Account
+	ua := query.UserAccount
 
 	// Get all projects for the user
-	var projects []payload.ProjectResp
-	err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID)).Select(q.ID, q.Name, uq.Role, uq.AccessMode).
-		Join(q, q.ID.EqCol(uq.AccountID)).Order(q.ID.Desc()).Scan(&projects)
+	var projects []AccountResp
+	err := ua.WithContext(c).Where(ua.UserID.Eq(token.UserID)).Select(a.Name, a.Nickname, ua.Role, ua.AccessMode, a.ExpiredAt).
+		Join(a, a.ID.EqCol(ua.AccountID)).Order(a.ID.Desc()).Scan(&projects)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -90,7 +105,7 @@ type (
 	ListAllReq struct {
 		PageIndex *int           `form:"pageIndex" binding:"required"` // 第几页（从0开始）
 		PageSize  *int           `form:"pageSize" binding:"required"`  // 每页大小
-		NameLike  *string        `form:"nameLike"`                     // 部分匹配项目名称
+		NameLike  *string        `form:"nameLike"`                     // 部分匹配账户名称
 		OrderCol  *string        `form:"orderCol"`                     // 排序字段
 		Order     *payload.Order `form:"order"`                        // 排序方式（升序、降序）
 	}
@@ -106,19 +121,19 @@ type (
 	}
 )
 
-// ListAllForAdmin godoc
-// @Summary 获取所有项目
-// @Description 获取所有项目的摘要信息，支持筛选条件、分页和排序
+// ListForAdmin godoc
+// @Summary 获取所有账户
+// @Description 获取所有账户的摘要信息，支持筛选条件、分页和排序
 // @Tags Project
 // @Accept json
 // @Produce json
 // @Security Bearer
 // @Param page query ListAllReq true "分页参数"
-// @Success 200 {object} resputil.Response[any] "项目列表"
+// @Success 200 {object} resputil.Response[any] "账户列表"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/admin/projects [get]
-func (mgr *AccountMgr) ListAllForAdmin(c *gin.Context) {
+func (mgr *AccountMgr) ListForAdmin(c *gin.Context) {
 	q := query.Account
 
 	queues, err := q.WithContext(c).Order(q.ID.Asc()).Find()
@@ -131,14 +146,12 @@ func (mgr *AccountMgr) ListAllForAdmin(c *gin.Context) {
 	for i := range queues {
 		queue := queues[i]
 		lists[i] = ListAllResp{
-			ID:       queue.ID,
-			Name:     queue.Name,
-			Nickname: queue.Nickname,
-			Space:    queue.Space,
-			Quota:    queue.Quota.Data(),
-		}
-		if !queue.ExpiredAt.IsZero() {
-			lists[i].ExpiredAt = &queue.ExpiredAt
+			ID:        queue.ID,
+			Name:      queue.Name,
+			Nickname:  queue.Nickname,
+			Space:     queue.Space,
+			Quota:     queue.Quota.Data(),
+			ExpiredAt: queue.ExpiredAt,
 		}
 	}
 
@@ -146,21 +159,21 @@ func (mgr *AccountMgr) ListAllForAdmin(c *gin.Context) {
 }
 
 type AccountIDReq struct {
-	ID uint `uri:"pid" binding:"required"`
+	ID uint `uri:"aid" binding:"required"`
 }
 
 // GetAccountByID godoc
-// @Summary 获取指定项目
-// @Description 根据项目ID获取项目的信息
+// @Summary 获取指定账户
+// @Description 根据账户ID获取账户的信息
 // @Tags Project
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param pid path AccountIDReq true "projectname"
-// @Success 200 {object} resputil.Response[any] "项目信息"
+// @Param aid path AccountIDReq true "projectname"
+// @Success 200 {object} resputil.Response[any] "账户信息"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/admin/projects/{pid} [get]
+// @Router /v1/admin/projects/{aid} [get]
 func (mgr *AccountMgr) GetAccountByID(c *gin.Context) {
 	var uriReq AccountIDReq
 	if err := c.ShouldBindUri(&uriReq); err != nil {
@@ -176,17 +189,132 @@ func (mgr *AccountMgr) GetAccountByID(c *gin.Context) {
 	}
 
 	resp := ListAllResp{
-		ID:       queue.ID,
-		Name:     queue.Name,
-		Nickname: queue.Nickname,
-		Space:    queue.Space,
-		Quota:    queue.Quota.Data(),
-	}
-	if !queue.ExpiredAt.IsZero() {
-		resp.ExpiredAt = &queue.ExpiredAt
+		ID:        queue.ID,
+		Name:      queue.Name,
+		Nickname:  queue.Nickname,
+		Space:     queue.Space,
+		Quota:     queue.Quota.Data(),
+		ExpiredAt: queue.ExpiredAt,
 	}
 
 	resputil.Success(c, resp)
+}
+
+//nolint:gocyclo // TODO(liyilong): delete other duplicated code
+func (mgr *AccountMgr) GetQuota(c *gin.Context) {
+	var uriReq AccountIDReq
+	if err := c.ShouldBindUri(&uriReq); err != nil {
+		resputil.Error(c, fmt.Sprintf("invalid request, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	a := query.Account
+	account, err := a.WithContext(c).Where(a.ID.Eq(uriReq.ID)).First()
+	if err != nil {
+		resputil.Error(c, "Account not found", resputil.NotSpecified)
+		return
+	}
+
+	queue := scheduling.Queue{}
+
+	if err = mgr.client.Get(c, types.NamespacedName{
+		Name:      account.Name,
+		Namespace: config.GetConfig().Workspace.Namespace,
+	}, &queue); err != nil {
+		resputil.Error(c, "Queue not found", resputil.TokenInvalid)
+		return
+	}
+
+	allocated := queue.Status.Allocated
+	guarantee := queue.Spec.Guarantee.Resource
+	deserved := queue.Spec.Deserved
+	capability := queue.Spec.Capability
+
+	// resources is a map, key is the resource name, value is the resource amount
+	resources := make(map[v1.ResourceName]payload.ResourceResp)
+
+	for name, quantity := range allocated {
+		if name == v1.ResourceCPU || name == v1.ResourceMemory || strings.Contains(string(name), "/") {
+			resources[name] = payload.ResourceResp{
+				Label: string(name),
+				Allocated: lo.ToPtr(payload.ResourceBase{
+					Amount: quantity.Value(),
+					Format: string(quantity.Format),
+				}),
+			}
+		}
+	}
+	for name, quantity := range guarantee {
+		if v, ok := resources[name]; ok {
+			v.Guarantee = lo.ToPtr(payload.ResourceBase{
+				Amount: quantity.Value(),
+				Format: string(quantity.Format),
+			})
+			resources[name] = v
+		}
+	}
+	for name, quantity := range deserved {
+		if v, ok := resources[name]; ok {
+			v.Deserved = lo.ToPtr(payload.ResourceBase{
+				Amount: quantity.Value(),
+				Format: string(quantity.Format),
+			})
+			resources[name] = v
+		}
+	}
+	for name, quantity := range capability {
+		if v, ok := resources[name]; ok {
+			v.Capability = lo.ToPtr(payload.ResourceBase{
+				Amount: quantity.Value(),
+				Format: string(quantity.Format),
+			})
+			resources[name] = v
+		}
+	}
+
+	// if capability is not set, read max from db
+	r := query.Resource
+	for name, resource := range resources {
+		if resource.Capability == nil {
+			resouece, err := r.WithContext(c).Where(r.ResourceName.Eq(string(name))).First()
+			if err != nil {
+				continue
+			}
+			resource.Capability = &payload.ResourceBase{
+				Amount: resouece.Amount,
+				Format: resouece.Format,
+			}
+			resources[name] = resource
+		}
+	}
+
+	// map contains cpu, memory, gpus, get them from the map
+	cpu := resources[v1.ResourceCPU]
+	cpu.Label = "cpu"
+	memory := resources[v1.ResourceMemory]
+	memory.Label = "mem"
+	var gpus []payload.ResourceResp
+	for name, resource := range resources {
+		if strings.Contains(string(name), "/") {
+			// convert nvidia.com/v100 to v100
+			split := strings.Split(string(name), "/")
+			if len(split) == 2 {
+				resourceType := split[1]
+				label := resourceType
+				resource.Label = label
+			}
+			gpus = append(gpus, resource)
+		}
+	}
+	sort.Slice(gpus, func(i, j int) bool {
+		return gpus[i].Label < gpus[j].Label
+	})
+
+	resputil.Success(c, payload.QuotaResp{
+		CPU:    cpu,
+		Memory: memory,
+		GPUs:   gpus,
+	})
 }
 
 type (
@@ -207,16 +335,16 @@ type (
 )
 
 // CreateAccount godoc
-// @Summary 创建团队项目
-// @Description 从请求中获取项目名称、描述和配额，以当前用户为管理员，创建一个团队项目
+// @Summary 创建团队账户
+// @Description 从请求中获取账户名称、描述和配额，以当前用户为管理员，创建一个团队账户
 // @Tags Project
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param data body any true "项目信息"
-// @Success 200 {object} resputil.Response[ProjectCreateResp] "成功创建项目，返回项目ID"
+// @Param data body any true "账户信息"
+// @Success 200 {object} resputil.Response[ProjectCreateResp] "成功创建账户，返回账户ID"
 // @Failure 400 {object} resputil.Response[any]	"请求参数错误"
-// @Failure 500 {object} resputil.Response[any]	"项目创建失败，返回错误信息"
+// @Failure 500 {object} resputil.Response[any]	"账户创建失败，返回错误信息"
 // @Router /v1/projects [post]
 func (mgr *AccountMgr) CreateAccount(c *gin.Context) {
 	token := util.GetToken(c)
@@ -263,7 +391,9 @@ func (mgr *AccountMgr) CreateAccount(c *gin.Context) {
 			Deserved:   req.Quota.Deserved,
 			Capability: req.Quota.Capability,
 		})
-		queue.ExpiredAt = req.ExpiredAt
+		if !req.ExpiredAt.IsZero() {
+			queue.ExpiredAt = &req.ExpiredAt
+		}
 		if _, err := q.WithContext(c).Where(q.ID.Eq(queue.ID)).Updates(&queue); err != nil {
 			return err
 		}
@@ -330,12 +460,12 @@ func (mgr *AccountMgr) CreateVolcanoQueue(c *gin.Context, token *util.JWTMessage
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param pid path AccountIDReq true "projectname"
+// @Param aid path AccountIDReq true "projectname"
 // @Param data body any true "更新quota"
 // @Success 200 {object} resputil.Response[string] "成功更新配额"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/admin/projects/{pid} [put]
+// @Router /v1/admin/projects/{aid} [put]
 func (mgr *AccountMgr) UpdateAccount(c *gin.Context) {
 	var req AccountCreateOrUpdateReq
 	var uriReq AccountIDReq
@@ -362,7 +492,7 @@ func (mgr *AccountMgr) UpdateAccount(c *gin.Context) {
 		Capability: req.Quota.Capability,
 	})
 	if !req.ExpiredAt.IsZero() {
-		queue.ExpiredAt = req.ExpiredAt
+		queue.ExpiredAt = &req.ExpiredAt
 	}
 	queue.Nickname = req.Nickname
 	if _, err := q.WithContext(c).Where(q.ID.Eq(queue.ID)).Updates(queue); err != nil {
@@ -404,7 +534,7 @@ func (mgr *AccountMgr) updateVolcanoQueue(c *gin.Context, queue *model.Account, 
 }
 
 type DeleteProjectReq struct {
-	ID uint `uri:"pid" binding:"required"`
+	ID uint `uri:"aid" binding:"required"`
 }
 
 type DeleteProjectResp struct {
@@ -412,17 +542,17 @@ type DeleteProjectResp struct {
 }
 
 // / DeleteAccount godoc
-// @Summary 删除项目
-// @Description 删除项目record和队列crd
+// @Summary 删除账户
+// @Description 删除账户record和队列crd
 // @Tags Project
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param pid path DeleteProjectReq true "pid"
+// @Param aid path DeleteProjectReq true "aid"
 // @Success 200 {object} resputil.Response[DeleteProjectResp] "删除的队列名"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/projects/{pid} [delete]
+// @Router /v1/admin/projects/{aid} [delete]
 func (mgr *AccountMgr) DeleteAccount(c *gin.Context) {
 	var req DeleteProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -511,7 +641,7 @@ func (mgr *AccountMgr) DeleteQueue(c *gin.Context, qName string) error {
 
 type (
 	UserProjectReq struct {
-		QueueID uint `uri:"pid" binding:"required"`
+		QueueID uint `uri:"aid" binding:"required"`
 		UserID  uint `uri:"uid" binding:"required"`
 	}
 
@@ -523,19 +653,19 @@ type (
 )
 
 // / AddUserProject godoc
-// @Summary 向项目中添加用户
+// @Summary 向账户中添加用户
 // @Description 创建一个userproject
 // @Tags Project
 // @Accept json
 // @Produce json
 // @Security Bearer
 // @Param uid path uint true "uid"
-// @Param pid path uint true "pid"
+// @Param aid path uint true "aid"
 // @Param req body any true "权限角色"
 // @Success 200 {object} resputil.Response[any] "返回添加的用户名和队列名"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/projects/add/{pid}/{uid} [post]
+// @Router /v1/admin/projects/add/{aid}/{uid} [post]
 func (mgr *AccountMgr) AddUserProject(c *gin.Context) {
 	var req UserProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -601,19 +731,19 @@ func (mgr *AccountMgr) AddUserProject(c *gin.Context) {
 }
 
 // / UpdateUserProject godoc
-// @Summary 更新项目用户
+// @Summary 更新账户用户
 // @Description 创建一个userQueue条目
 // @Tags Project
 // @Accept json
 // @Produce json
 // @Security Bearer
 // @Param uid path uint true "uid"
-// @Param pid path uint true "pid"
+// @Param aid path uint true "aid"
 // @Param req body any true "权限角色"
 // @Success 200 {object} resputil.Response[any] "返回添加的用户名和队列名"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/projects/update/{pid}/{uid} [post]
+// @Router /v1/admin/projects/update/{aid}/{uid} [post]
 func (mgr *AccountMgr) UpdateUserProject(c *gin.Context) {
 	var req UserProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -675,7 +805,7 @@ func (mgr *AccountMgr) UpdateUserProject(c *gin.Context) {
 }
 
 type ProjectGetReq struct {
-	ID uint `uri:"pid" binding:"required"`
+	ID uint `uri:"aid" binding:"required"`
 }
 
 type UserProjectGetResp struct {
@@ -688,17 +818,17 @@ type UserProjectGetResp struct {
 }
 
 // / GetUserInProject godoc
-// @Summary 获取项目下的用户
+// @Summary 获取账户下的用户
 // @Description sql查询-join
 // @Tags Project
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param pid path uint true "pid"
+// @Param aid path uint true "aid"
 // @Success 200 {object} resputil.Response[any] "userQueue条目"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/projects/userIn/{pid} [get]
+// @Router /v1/admin/projects/userIn/{aid} [get]
 func (mgr *AccountMgr) GetUserInProject(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -728,17 +858,17 @@ func (mgr *AccountMgr) GetUserInProject(c *gin.Context) {
 }
 
 // / GetUserOutOfProject godoc
-// @Summary 获取项目外的用户
+// @Summary 获取账户外的用户
 // @Description sql查询-subquery
 // @Tags Project
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param pid path uint true "pid"
+// @Param aid path uint true "aid"
 // @Success 200 {object} resputil.Response[any] "userQueue条目"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/projects/userOutOf/{pid} [get]
+// @Router /v1/admin/projects/userOutOf/{aid} [get]
 func (mgr *AccountMgr) GetUserOutOfProject(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -773,18 +903,18 @@ func (mgr *AccountMgr) GetUserOutOfProject(c *gin.Context) {
 }
 
 // / DeleteUserProject godoc
-// @Summary 删除项目用户
+// @Summary 删除账户用户
 // @Description 删除对应userQueue条目
 // @Tags Project
 // @Accept json
 // @Produce json
 // @Security Bearer
 // @Param uid path uint true "uid"
-// @Param pid path uint true "pid"
+// @Param aid path uint true "aid"
 // @Success 200 {object} resputil.Response[any] "返回添加的用户名和队列名"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/projects/update/{pid}/{uid} [delete]
+// @Router /v1/admin/projects/update/{aid}/{uid} [delete]
 func (mgr *AccountMgr) DeleteUserProject(c *gin.Context) {
 	var req UserProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {

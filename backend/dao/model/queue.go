@@ -23,7 +23,7 @@ type Account struct {
 	Name      string                         `gorm:"uniqueIndex;type:varchar(32);not null;comment:账户名称 (对应 Volcano Queue CRD)"`
 	Nickname  string                         `gorm:"type:varchar(128);not null;comment:账户别名 (用于显示)"`
 	Space     string                         `gorm:"uniqueIndex;type:varchar(512);not null;comment:账户空间绝对路径"`
-	ExpiredAt time.Time                      `gorm:"comment:账户过期时间"`
+	ExpiredAt *time.Time                     `gorm:"comment:账户过期时间"`
 	Quota     datatypes.JSONType[QueueQuota] `gorm:"comment:账户对应队列的资源配额"`
 
 	UserAccounts    []UserAccount
