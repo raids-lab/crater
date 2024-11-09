@@ -12,7 +12,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,6 +43,7 @@ import { globalUserInfo } from "@/utils/store";
 import { Role } from "@/services/api/auth";
 import { ProjectStatus } from "@/services/api/account";
 import { Badge } from "@/components/ui/badge";
+import UserLabel from "@/components/label/UserLabel";
 
 interface TUser {
   id: number;
@@ -149,43 +149,11 @@ export const User = () => {
   const columns = useMemo<ColumnDef<TUser>[]>(
     () => [
       {
-        id: "select",
-        header: ({ table }) => (
-          <Checkbox
-            checked={table.getIsAllPageRowsSelected()}
-            onCheckedChange={(value) =>
-              table.toggleAllPageRowsSelected(!!value)
-            }
-            aria-label="Select all"
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
-          />
-        ),
-        enableSorting: false,
-        enableHiding: false,
-      },
-      {
         accessorKey: "name",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("name")} />
         ),
-        cell: ({ row }) => {
-          return (
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-semibold">
-                {row.original.attributes.nickname ?? row.original.name}
-              </span>
-              <span className="truncate text-xs text-muted-foreground">
-                @{row.original.name}
-              </span>
-            </div>
-          );
-        },
+        cell: ({ row }) => <UserLabel attributes={row.original.attributes} />,
       },
       {
         accessorKey: "group",

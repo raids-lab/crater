@@ -25,6 +25,14 @@ import { showErrorToast } from "@/utils/toast";
 import { Avatar } from "@radix-ui/react-avatar";
 import Identicon from "@polkadot/react-identicon";
 import { stringToSS58 } from "@/utils/ss58";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
+import { format, formatDistanceToNow } from "date-fns";
+import { zhCN } from "date-fns/locale";
 
 export function TeamSwitcher() {
   const { isMobile } = useSidebar();
@@ -45,12 +53,24 @@ export function TeamSwitcher() {
   });
 
   const currentQueue = useMemo(() => {
-    return queues?.find((p) => p.id === account.queue);
+    return queues?.find((p) => p.name === account.queue);
   }, [queues, account]);
 
+  const [currentExpiredAt, currentExpiredDiff] = useMemo(() => {
+    if (
+      !currentQueue ||
+      currentQueue.expiredAt === null ||
+      currentQueue.expiredAt === undefined
+    ) {
+      return [null, 0];
+    }
+    const expiredAt = new Date(currentQueue.expiredAt);
+    return [expiredAt, expiredAt.getTime() - Date.now()];
+  }, [currentQueue]);
+
   const { mutate: switchQueue } = useMutation({
-    mutationFn: (project: QueueBasic) => apiQueueSwitch(project.id),
-    onSuccess: ({ context }, { name }) => {
+    mutationFn: (project: QueueBasic) => apiQueueSwitch(project.name),
+    onSuccess: ({ context }, { nickname: name }) => {
       setAccount(context);
       toast.success(`已切换至账户 ${name}`);
       void queryClient.invalidateQueries();
@@ -70,9 +90,9 @@ export function TeamSwitcher() {
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-full">
-                {currentQueue?.id && (
+                {currentQueue?.name && (
                   <Identicon
-                    value={stringToSS58(currentQueue?.id)}
+                    value={stringToSS58(currentQueue?.name)}
                     size={32}
                     // 'beachball' | 'empty' | 'ethereum' | 'jdenticon' | 'polkadot' | 'substrate'
                     theme="substrate"
@@ -82,9 +102,40 @@ export function TeamSwitcher() {
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">
-                  {currentQueue?.name}
+                  {currentQueue?.nickname}
                 </span>
-                <span className="truncate text-xs">{currentQueue?.id}</span>
+                {currentExpiredAt && (
+                  <span className="truncate text-xs">
+                    <TooltipProvider delayDuration={10}>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <span className="text-xs text-muted-foreground">
+                            {currentExpiredDiff < 0 ? (
+                              <>已过期</>
+                            ) : (
+                              <>
+                                {formatDistanceToNow(currentExpiredAt, {
+                                  locale: zhCN,
+                                  addSuffix: true,
+                                })}
+                                有效
+                              </>
+                            )}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="right"
+                          className="border bg-background text-foreground"
+                        >
+                          {format(currentExpiredAt, "PPP", {
+                            locale: zhCN,
+                          })}
+                          过期
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </span>
+                )}
               </div>
               <ChevronsUpDown className="ml-auto" />
             </SidebarMenuButton>
@@ -100,9 +151,9 @@ export function TeamSwitcher() {
             </DropdownMenuLabel>
             {queues?.map((queue) => (
               <DropdownMenuItem
-                key={queue.name}
+                key={queue.nickname}
                 onClick={() => {
-                  if (currentQueue?.id !== queue.id) {
+                  if (currentQueue?.name !== queue.name) {
                     switchQueue(queue);
                   }
                 }}
@@ -110,13 +161,13 @@ export function TeamSwitcher() {
               >
                 <div className="size-6 overflow-hidden">
                   <Identicon
-                    value={stringToSS58(queue.id)}
+                    value={stringToSS58(queue.name)}
                     size={24}
                     theme="substrate"
                     className="!cursor-pointer"
                   />
                 </div>
-                <span className="truncate">{queue.name}</span>
+                <span className="truncate">{queue.nickname}</span>
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

@@ -7,7 +7,7 @@ import DashboardLayout from "@/components/layout/Dashboard";
 import { User } from "./User";
 // import Volcano from "./Job/Volcano";
 import Resource from "./Cluster/Resource";
-import UserProjectManagement from "./Account/ProjectUser";
+import AccountDetail from "./Account/Detail";
 import {
   BookOpenIcon,
   BoxIcon,
@@ -60,7 +60,7 @@ const sidebarItems: SidebarItem[] = [
         },
         {
           path: ":id",
-          element: <UserProjectManagement />,
+          element: <AccountDetail />,
         },
       ],
     },
@@ -80,8 +80,7 @@ const sidebarItems: SidebarItem[] = [
     icon: FlaskConicalIcon,
     route: {
       path: "job/*",
-      // element: <Volcano />,
-      lazy: () => import("./Job/Volcano"),
+      lazy: () => import("./Job"),
     },
     children: [],
   },
@@ -265,7 +264,7 @@ export const adminRoute: RouteObject = {
   children: [
     {
       index: true,
-      element: <Navigate to="account" replace={true} />,
+      element: <Navigate to="cluster/node" replace={true} />,
     },
     ...sidebarItems.map((item) => {
       return (

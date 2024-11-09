@@ -259,7 +259,6 @@ const Volcano = () => {
     // 添加删除列
     {
       id: "actions",
-      header: "操作",
       cell: ({ row }) => {
         return (
           <TooltipProvider>

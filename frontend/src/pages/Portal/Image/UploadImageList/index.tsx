@@ -4,7 +4,6 @@ import { useMemo, type FC, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
 import { DataTable } from "@/components/custom/OldDataTable";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Sheet,
   SheetContent,
@@ -101,29 +100,6 @@ export const Component: FC = () => {
     },
   });
   const columns: ColumnDef<ImageInfo>[] = [
-    {
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-          className="ml-2"
-        />
-      ),
-      cell: ({ row }) => (
-        <>
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
-            className="ml-2"
-          />
-        </>
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
     {
       accessorKey: "link",
       header: ({ column }) => (

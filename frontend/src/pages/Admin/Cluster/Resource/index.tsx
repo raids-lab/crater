@@ -1,6 +1,6 @@
-import { DataTable } from "@/components/custom/OldDataTable";
-import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
-import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
+import { DataTable } from "@/components/custom/DataTable";
+import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
+import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { type FC, useState } from "react";
@@ -141,7 +141,7 @@ const columns: ColumnDef<Resource>[] = [
 export const Component: FC = () => {
   const queryClient = useQueryClient();
 
-  const { data: resourceList, isLoading } = useQuery({
+  const query = useQuery({
     queryKey: ["resource", "list"],
     queryFn: () => apiResourceList(false),
     select: (res) => {
@@ -160,16 +160,11 @@ export const Component: FC = () => {
   });
 
   return (
-    <DataTable
-      columns={columns}
-      data={resourceList || []}
-      loading={isLoading}
-      toolbarConfig={toolbarConfig}
-    >
+    <DataTable query={query} columns={columns} toolbarConfig={toolbarConfig}>
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button className="h-8">
-            <RefreshCcwIcon className="mr-1.5 h-4 w-4" />
+            <RefreshCcwIcon className="h-4 w-4" />
             同步资源列表
           </Button>
         </AlertDialogTrigger>

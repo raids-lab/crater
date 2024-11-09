@@ -88,7 +88,7 @@ export const Component = () => {
   }, [setBreadcrumb]);
 
   if (isLoading || !data) {
-    return <div>Loading...</div>;
+    return <></>;
   }
 
   return (

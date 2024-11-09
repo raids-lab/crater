@@ -1,6 +1,6 @@
-import { DataTable } from "@/components/custom/OldDataTable";
-import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
-import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
+import { DataTable } from "@/components/custom/DataTable";
+import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
+import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import {
   LabelInfo,
   LabelType,
@@ -9,7 +9,7 @@ import {
 } from "@/services/api/nodelabel";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
-import { useMemo, type FC, useState } from "react";
+import { type FC, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -174,7 +174,8 @@ export const Component: FC = () => {
   const query = useQuery({
     queryKey: ["label", "list"],
     queryFn: apiNodeLabelsList,
-    select: (res) => res.data.data,
+    select: (res) =>
+      res.data.data.sort((a, b) => b.label.localeCompare(a.label)),
   });
 
   const { mutate: syncNvidiaLabel } = useMutation({
@@ -185,19 +186,12 @@ export const Component: FC = () => {
     },
   });
 
-  const data: LabelInfo[] = useMemo(() => {
-    if (!query.data) {
-      return [];
-    }
-    return query.data.sort((a, b) => b.label.localeCompare(a.label));
-  }, [query.data]);
-
   return (
     <>
       <div className="grid gap-4 lg:col-span-3 lg:grid-cols-2 lg:gap-6">
         <Card className="col-span-1 flex flex-col justify-between">
           <CardHeader>
-            <CardTitle>节点类型</CardTitle>
+            <CardTitle>节点标签</CardTitle>
             <CardDescription className="leading-6">
               部署 Nvidia GPU Operator 后，
               <span className="rounded-md border px-1 py-0.5 font-mono">
@@ -210,7 +204,7 @@ export const Component: FC = () => {
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button>
-                  <RefreshCcwIcon className="mr-1.5 h-4 w-4" />
+                  <RefreshCcwIcon className="h-4 w-4" />
                   同步 Nvidia 节点
                 </Button>
               </AlertDialogTrigger>
@@ -241,10 +235,9 @@ export const Component: FC = () => {
       </div>
       <DataTable
         columns={columns}
-        data={data}
-        loading={query.isLoading}
+        query={query}
         toolbarConfig={toolbarConfig}
-      ></DataTable>
+      />
     </>
   );
 };
