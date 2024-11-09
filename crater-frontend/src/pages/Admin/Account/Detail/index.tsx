@@ -1,9 +1,5 @@
 import { Button } from "@/components/ui/button";
-import {
-  DotsHorizontalIcon,
-  StarFilledIcon,
-  StarIcon,
-} from "@radix-ui/react-icons";
+import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import {
   Form,
   FormDescription,
@@ -17,7 +13,6 @@ import FormLabelMust from "@/components/custom/FormLabelMust";
 import { DialogTrigger, Dialog, DialogClose } from "@/components/ui/dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-
 import {
   SelectValue,
   SelectTrigger,
@@ -60,21 +55,28 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import {
-  User,
+  IUserInAccount,
   apiAddUser,
   apiUpdateUser,
   apiRemoveUser,
   apiUserInProjectList,
   apiUserOutOfProjectList,
   Access,
+  IUserInAccountCreate,
+  apiAccountGet,
 } from "@/services/api/account";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "@/components/custom/OldDataTable";
-import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
-import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
-import { Role } from "@/services/api/auth";
+import { DataTable } from "@/components/custom/DataTable";
+import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
+import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { z } from "zod";
 import useBreadcrumb from "@/hooks/useBreadcrumb";
+import UserRoleBadge, { userRoles } from "@/components/label/UserRoleBadge";
+import UserAccessBadge from "@/components/label/UserAccessBadge";
+import ResourceBadges from "@/components/label/ResourceBadges";
+import UserLabel from "@/components/label/UserLabel";
+import { UserRoundPlusIcon } from "lucide-react";
+import Quota from "./AccountQuota";
 
 const formSchema = z.object({
   index: z.string().min(1, {
@@ -90,27 +92,16 @@ const formSchema = z.object({
 
 type FormSchema = z.infer<typeof formSchema>;
 
-const roles = [
-  {
-    label: "普通用户",
-    value: Role.User.toString(),
-    icon: StarIcon,
-  },
-  {
-    label: "管理员",
-    value: Role.Admin.toString(),
-    icon: StarFilledIcon,
-  },
-];
-
 const getHeader = (key: string): string => {
   switch (key) {
     case "name":
       return "用户名";
     case "role":
-      return "权限";
+      return "账户权限";
     case "accessmode":
       return "读写权限";
+    case "capability":
+      return "资源上限";
     default:
       return key;
   }
@@ -120,32 +111,41 @@ const accessmodes = [
   {
     label: "只读",
     value: Access.RO.toString(),
-    icon: StarIcon,
   },
   {
     label: "读写",
     value: Access.RW.toString(),
-    icon: StarFilledIcon,
   },
 ];
 
-const UserProjectManagement = () => {
+const AccountDetail = () => {
   const { id } = useParams();
-
-  const setBreadcrumb = useBreadcrumb();
-
-  // 修改 BreadCrumb
-  useEffect(() => {
-    setBreadcrumb([{ title: `${id}` }]);
-  }, [setBreadcrumb, id]);
-
   const queryClient = useQueryClient();
   const pid = useMemo(() => Number(id), [id]);
 
-  const [usersInProject, setUsersInProject] = useState<User[]>([]);
+  const setBreadcrumb = useBreadcrumb();
+
+  const accountUsersQuery = useQuery({
+    queryKey: ["usersInProject", pid],
+    queryFn: () => apiUserInProjectList(pid),
+    select: (res) => res.data.data,
+  });
+
+  const { data: accountInfo } = useQuery({
+    queryKey: ["admin", "accounts", pid],
+    queryFn: () => apiAccountGet(pid),
+    select: (res) => res.data.data,
+    enabled: !!pid,
+  });
+
+  // 修改 BreadCrumb
+  useEffect(() => {
+    if (!accountInfo) return;
+    setBreadcrumb([{ title: accountInfo?.nickname }]);
+  }, [setBreadcrumb, accountInfo]);
 
   const { mutate: addUser } = useMutation({
-    mutationFn: (user: User) => apiAddUser(pid, user),
+    mutationFn: (user: IUserInAccountCreate) => apiAddUser(pid, user),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["usersInProject", pid],
@@ -154,7 +154,7 @@ const UserProjectManagement = () => {
   });
 
   const { mutate: updateUser } = useMutation({
-    mutationFn: (user: User) => apiUpdateUser(pid, user),
+    mutationFn: (user: IUserInAccountCreate) => apiUpdateUser(pid, user),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["usersInProject", pid],
@@ -162,24 +162,12 @@ const UserProjectManagement = () => {
     },
   });
 
-  const { data: usersInProjectData, isLoading } = useQuery({
-    queryKey: ["usersInProject", pid],
-    queryFn: () => apiUserInProjectList(pid),
-    select: (res) => res.data.data,
-    refetchInterval: 5000,
-  });
-
-  useEffect(() => {
-    if (isLoading) return;
-    if (!usersInProjectData) return;
-    const tableData: User[] = usersInProjectData;
-    setUsersInProject(tableData);
-  }, [usersInProjectData, isLoading]);
-
-  const [usersOutOfProject, setUsersOutOfProject] = useState<User[]>([]);
+  const [usersOutOfProject, setUsersOutOfProject] = useState<IUserInAccount[]>(
+    [],
+  );
 
   const { mutate: deleteUser } = useMutation({
-    mutationFn: (user: User) => apiRemoveUser(pid, user),
+    mutationFn: (user: IUserInAccountCreate) => apiRemoveUser(pid, user),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["usersOutOfProject", pid],
@@ -192,7 +180,6 @@ const UserProjectManagement = () => {
       queryKey: ["usersOutOfProject", pid],
       queryFn: () => apiUserOutOfProjectList(pid),
       select: (res) => res.data.data,
-      refetchInterval: 5000,
     });
 
   useEffect(() => {
@@ -201,14 +188,14 @@ const UserProjectManagement = () => {
     setUsersOutOfProject(usersOutOfProjectData);
   }, [usersOutOfProjectData, isLoadingUsersOutOfProject]);
 
-  const columns = useMemo<ColumnDef<User>[]>(
+  const columns = useMemo<ColumnDef<IUserInAccount>[]>(
     () => [
       {
         accessorKey: "name",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("name")} />
         ),
-        cell: ({ row }) => <div>{row.getValue("name")}</div>,
+        cell: ({ row }) => <UserLabel attributes={row.original.userInfo} />,
       },
       {
         accessorKey: "role",
@@ -216,20 +203,7 @@ const UserProjectManagement = () => {
           <DataTableColumnHeader column={column} title={getHeader("role")} />
         ),
         cell: ({ row }) => {
-          const role = roles.find(
-            (role) => role.value === row.getValue("role"),
-          );
-          if (!role) {
-            return null;
-          }
-          return (
-            <div className="flex items-center">
-              {role.icon && (
-                <role.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-              )}
-              <span>{role.label}</span>
-            </div>
-          );
+          return <UserRoleBadge role={row.getValue("role")} />;
         },
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id));
@@ -243,25 +217,25 @@ const UserProjectManagement = () => {
             title={getHeader("accessmode")}
           />
         ),
-        cell: ({ row }) => {
-          const status = accessmodes.find(
-            (status) => status.value === row.getValue("accessmode"),
-          );
-          if (!status) {
-            return null;
-          }
-          return (
-            <div className="flex items-center">
-              {status.icon && (
-                <status.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-              )}
-              <span>{status.label}</span>
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <UserAccessBadge access={row.getValue("accessmode")} />
+        ),
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id));
         },
+      },
+      {
+        accessorKey: "capability",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("capability")}
+          />
+        ),
+        cell: ({ row }) => {
+          return <ResourceBadges resources={row.original.quota.capability} />;
+        },
+        enableSorting: false,
       },
       {
         id: "actions",
@@ -287,7 +261,7 @@ const UserProjectManagement = () => {
                       <DropdownMenuSubTrigger>角色</DropdownMenuSubTrigger>
                       <DropdownMenuSubContent>
                         <DropdownMenuRadioGroup value={`${user.role}`}>
-                          {roles.map((role) => (
+                          {userRoles.map((role) => (
                             <DropdownMenuRadioItem
                               key={role.value}
                               value={`${role.value}`}
@@ -372,7 +346,7 @@ const UserProjectManagement = () => {
       {
         key: "role",
         title: "角色",
-        option: roles,
+        option: userRoles,
       },
       {
         key: "accessmode",
@@ -409,16 +383,18 @@ const UserProjectManagement = () => {
   };
 
   return (
-    <>
+    <div className="grid gap-6 lg:grid-cols-4">
       <DataTable
-        data={usersInProject}
+        query={accountUsersQuery}
         columns={columns}
         toolbarConfig={toolbarConfig}
-        loading={isLoading}
       >
         <Dialog open={openSheet} onOpenChange={setOpenSheet}>
           <DialogTrigger asChild>
-            <Button className="h-8">添加用户</Button>
+            <Button className="h-8">
+              <UserRoundPlusIcon className="h-4 w-4" />
+              添加用户
+            </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -543,8 +519,11 @@ const UserProjectManagement = () => {
           </DialogContent>
         </Dialog>
       </DataTable>
-    </>
+      <div className="flex flex-col gap-3 lg:pt-10">
+        <Quota accountID={pid} />
+      </div>
+    </div>
   );
 };
 
-export default UserProjectManagement;
+export default AccountDetail;

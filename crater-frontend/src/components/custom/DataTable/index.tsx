@@ -2,7 +2,6 @@ import {
   ColumnDef,
   ColumnFiltersState,
   PaginationState,
-  Row,
   SortingState,
   VisibilityState,
   flexRender,
@@ -22,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DataTablePagination } from "./DataTablePagination";
+import { DataTablePagination, MultipleHandler } from "./DataTablePagination";
 import { DataTableToolbar, DataTableToolbarConfig } from "./DataTableToolbar";
 import {
   Card,
@@ -36,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { UseQueryResult } from "@tanstack/react-query";
 import { CardTitle } from "@/components/ui-custom/card";
 import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface DataTableProps<TData, TValue>
   extends React.HTMLAttributes<HTMLDivElement> {
@@ -47,7 +47,7 @@ interface DataTableProps<TData, TValue>
   query: UseQueryResult<TData[], Error>;
   columns: ColumnDef<TData, TValue>[];
   toolbarConfig?: DataTableToolbarConfig;
-  handleMultipleDelete?: (rows: Row<TData>[]) => void;
+  multipleHandlers?: MultipleHandler<TData>[];
   className?: string;
 }
 
@@ -56,7 +56,7 @@ export function DataTable<TData, TValue>({
   query,
   columns,
   toolbarConfig,
-  handleMultipleDelete,
+  multipleHandlers,
   children,
   className,
 }: DataTableProps<TData, TValue>) {
@@ -80,9 +80,41 @@ export function DataTable<TData, TValue>({
     return queryData;
   }, [queryData, isLoading]);
 
+  const columnsWithSelection = useMemo(() => {
+    if (!multipleHandlers || !columns || multipleHandlers.length === 0) {
+      return columns;
+    }
+    return [
+      {
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            onCheckedChange={(value) =>
+              table.toggleAllPageRowsSelected(!!value)
+            }
+            aria-label="Select all"
+          />
+        ),
+        cell: ({ row }) => (
+          <div>
+            <Checkbox
+              checked={row.getIsSelected()}
+              onCheckedChange={(value) => row.toggleSelected(!!value)}
+              aria-label="Select row"
+            />
+          </div>
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      },
+      ...columns,
+    ];
+  }, [columns, multipleHandlers]);
+
   const table = useReactTable({
     data: data,
-    columns,
+    columns: columnsWithSelection,
     state: {
       sorting,
       columnVisibility,
@@ -133,10 +165,7 @@ export function DataTable<TData, TValue>({
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow
-                  key={headerGroup.id}
-                  className="bg-accent hover:bg-accent"
-                >
+                <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
                     return (
                       <TableHead key={header.id} colSpan={header.colSpan}>
@@ -192,17 +221,13 @@ export function DataTable<TData, TValue>({
             </TableBody>
           </Table>
         </CardContent>
-        <CardFooter
-          className={cn(
-            "flex flex-row space-x-2 border-t bg-muted/50 px-6 py-4 dark:bg-muted/25",
-          )}
-        >
+        <CardFooter className={cn("flex flex-row space-x-2 px-6")}>
           {table.getRowModel().rows?.length > 0 && (
             <DataTablePagination
               table={table}
               refetch={() => void refetch()}
               updatedAt={updatedAt}
-              handleDelete={handleMultipleDelete}
+              multipleHandlers={multipleHandlers}
             />
           )}
         </CardFooter>

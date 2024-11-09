@@ -42,7 +42,6 @@ import { globalJobUrl, globalUserInfo } from "@/utils/store";
 import { useAtomValue } from "jotai";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ExternalLink, SquareIcon, Trash2Icon } from "lucide-react";
 
 export const priorities = [
@@ -210,29 +209,6 @@ const ColocateOverview = () => {
 
   const batchColumns = useMemo<ColumnDef<ColocateJobInfo>[]>(
     () => [
-      {
-        id: "select",
-        header: ({ table }) => (
-          <Checkbox
-            checked={table.getIsAllPageRowsSelected()}
-            onCheckedChange={(value) =>
-              table.toggleAllPageRowsSelected(!!value)
-            }
-            aria-label="Select all"
-          />
-        ),
-        cell: ({ row }) => (
-          <div>
-            <Checkbox
-              checked={row.getIsSelected()}
-              onCheckedChange={(value) => row.toggleSelected(!!value)}
-              aria-label="Select row"
-            />
-          </div>
-        ),
-        enableSorting: false,
-        enableHiding: false,
-      },
       {
         accessorKey: "jobType",
         header: ({ column }) => (
@@ -485,12 +461,18 @@ const ColocateOverview = () => {
         query={batchQuery}
         columns={batchColumns}
         toolbarConfig={toolbarConfig}
-        handleMultipleDelete={(rows) => {
-          rows.forEach((row) => {
-            deleteTask(row.original.id.toString());
-          });
-          void refetchTaskList();
-        }}
+        multipleHandlers={[
+          {
+            title: "批量删除作业",
+            description: "选中的作业将被释放或删除，确认要继续操作吗？",
+            icon: <Trash2Icon className="text-destructive" />,
+            handleSubmit: (rows) => {
+              rows.forEach((row) => {
+                deleteTask(row.original.jobName);
+              });
+            },
+          },
+        ]}
       ></DataTable>
     </>
   );

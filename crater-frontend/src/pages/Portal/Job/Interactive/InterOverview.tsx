@@ -10,7 +10,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -91,29 +90,6 @@ const InterOverview = () => {
 
   const interColumns = useMemo<ColumnDef<IJobInfo>[]>(
     () => [
-      {
-        id: "select",
-        header: ({ table }) => (
-          <Checkbox
-            checked={table.getIsAllPageRowsSelected()}
-            onCheckedChange={(value) =>
-              table.toggleAllPageRowsSelected(!!value)
-            }
-            aria-label="Select all"
-          />
-        ),
-        cell: ({ row }) => (
-          <div>
-            <Checkbox
-              checked={row.getIsSelected()}
-              onCheckedChange={(value) => row.toggleSelected(!!value)}
-              aria-label="Select row"
-            />
-          </div>
-        ),
-        enableSorting: false,
-        enableHiding: false,
-      },
       {
         accessorKey: "jobType",
         header: ({ column }) => (
@@ -321,7 +297,7 @@ const InterOverview = () => {
 
   return (
     <>
-      <div className="grid gap-5 lg:col-span-3 lg:grid-cols-4">
+      <div className="grid gap-5 lg:grid-cols-4">
         <Card className="row-span-2 flex flex-col justify-between lg:col-span-2">
           <CardHeader>
             <CardTitle>交互式作业</CardTitle>
@@ -352,11 +328,18 @@ const InterOverview = () => {
         query={interactiveQuery}
         columns={interColumns}
         toolbarConfig={jobToolbarConfig}
-        handleMultipleDelete={(rows) => {
-          rows.forEach((row) => {
-            deleteTask(row.original.jobName);
-          });
-        }}
+        multipleHandlers={[
+          {
+            title: "批量删除作业",
+            description: "选中的作业将被释放或删除，确认要继续操作吗？",
+            icon: <Trash2Icon className="text-destructive" />,
+            handleSubmit: (rows) => {
+              rows.forEach((row) => {
+                deleteTask(row.original.jobName);
+              });
+            },
+          },
+        ]}
       ></DataTable>
     </>
   );

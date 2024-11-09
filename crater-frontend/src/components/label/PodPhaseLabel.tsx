@@ -46,7 +46,7 @@ const getPodPhaseLabel = (
   } else {
     return {
       label: "未知",
-      color: "#808080",
+      color: "text-slate-500 border-0 bg-slate-500/10",
       description: "由于某些原因无法获取 Pod 的状态信息",
     };
   }

@@ -14,9 +14,7 @@ import {
   ChevronsLeftIcon,
   ChevronsRightIcon,
   RefreshCcw,
-  Trash2,
 } from "lucide-react";
-import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,73 +26,83 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
+import TooltipButton from "../TooltipButton";
+
+export interface MultipleHandler<TData> {
+  title: string;
+  description: string;
+  handleSubmit: (rows: Row<TData>[]) => void;
+  icon: React.ReactNode;
+  isDanger?: boolean;
+}
 
 interface DataTablePaginationProps<TData> {
   updatedAt: string;
   refetch: () => void;
   table: Table<TData>;
-  handleDelete?: (rows: Row<TData>[]) => void;
+  multipleHandlers?: MultipleHandler<TData>[];
 }
 
 export function DataTablePagination<TData>({
   updatedAt,
   refetch,
   table,
-  handleDelete,
+  multipleHandlers,
 }: DataTablePaginationProps<TData>) {
   return (
     <div className="flex w-full items-center justify-between">
       <div className="flex flex-row items-center space-x-1.5 text-xs">
-        {table.getFilteredSelectedRowModel().rows.length > 0 && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-7 w-7"
-                title="删除"
-              >
-                <Trash2 className="h-3.5 w-3.5 text-destructive" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>批量删除作业</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    选中的作业将被删除，此操作不可撤销。
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>取消</AlertDialogCancel>
-                  <AlertDialogAction
-                    variant="destructive"
-                    onClick={() => {
-                      if (handleDelete) {
-                        handleDelete(table.getFilteredSelectedRowModel().rows);
+        {table.getFilteredSelectedRowModel().rows.length > 0 &&
+          multipleHandlers &&
+          multipleHandlers?.length > 0 &&
+          multipleHandlers.map((multipleHandler) => (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <TooltipButton
+                  variant="outline"
+                  size="icon"
+                  className="h-7 w-7"
+                  tooltipContent={multipleHandler.title}
+                >
+                  {multipleHandler.icon}
+                </TooltipButton>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{multipleHandler.title}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {multipleHandler.description}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>取消</AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="destructive"
+                      onClick={() => {
+                        multipleHandler.handleSubmit(
+                          table.getFilteredSelectedRowModel().rows,
+                        );
                         // cancel selection
                         table.resetRowSelection();
-                      } else {
-                        toast.warning("批量删除功能开发中");
-                      }
-                    }}
-                  >
-                    删除
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
-        <Button
+                      }}
+                    >
+                      删除
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </>
+              </AlertDialogContent>
+            </AlertDialog>
+          ))}
+        <TooltipButton
           variant="outline"
           size="icon"
           className="h-7 w-7"
-          title="刷新"
+          tooltipContent="刷新"
           onClick={refetch}
         >
           <RefreshCcw className="h-3.5 w-3.5" />
-        </Button>
+        </TooltipButton>
         <Select
           value={`${table.getState().pagination.pageSize}`}
           onValueChange={(value) => {

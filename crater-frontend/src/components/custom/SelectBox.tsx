@@ -178,10 +178,12 @@ const SelectBox = React.forwardRef<HTMLInputElement, SelectBoxProps>(
                             </div>
                             <span>
                               {option.label}
-                              <span className="ml-2 text-muted-foreground">
-                                {"@"}
-                                {option.labelNote}
-                              </span>
+                              {option.labelNote && (
+                                <span className="ml-2 text-muted-foreground">
+                                  {"@"}
+                                  {option.labelNote}
+                                </span>
+                              )}
                             </span>
                           </CommandItem>
                         );

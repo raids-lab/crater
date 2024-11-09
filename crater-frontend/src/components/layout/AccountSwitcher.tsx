@@ -48,12 +48,12 @@ export default function AccountSwitcher({ className }: AccountSwitcherProps) {
   });
 
   const currentQueue = useMemo(() => {
-    return queues?.find((p) => p.id === account.queue);
+    return queues?.find((p) => p.name === account.queue);
   }, [queues, account]);
 
   const { mutate: switchQueue } = useMutation({
-    mutationFn: (project: QueueBasic) => apiQueueSwitch(project.id),
-    onSuccess: ({ context }, { name }) => {
+    mutationFn: (project: QueueBasic) => apiQueueSwitch(project.name),
+    onSuccess: ({ context }, { nickname: name }) => {
       setAccount(context);
       setOpen(false);
       toast.success(`已切换至账户 ${name}`);
@@ -80,14 +80,14 @@ export default function AccountSwitcher({ className }: AccountSwitcherProps) {
               },
             )}
           >
-            {currentQueue && currentQueue.name !== "" ? (
+            {currentQueue && currentQueue.nickname !== "" ? (
               <>
                 <Avatar className="h-5 w-5">
                   <AvatarFallback className="bg-primary/15 font-normal text-primary">
-                    {currentQueue.name.slice(0, 1).toUpperCase()}
+                    {currentQueue.nickname.slice(0, 1).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <p className="capitalize">{currentQueue.name}</p>
+                <p className="capitalize">{currentQueue.nickname}</p>
               </>
             ) : (
               <>
@@ -115,9 +115,9 @@ export default function AccountSwitcher({ className }: AccountSwitcherProps) {
                 <CommandGroup>
                   {queues.map((team) => (
                     <CommandItem
-                      key={`team-${team.id}`}
+                      key={`team-${team.name}`}
                       onSelect={() => {
-                        if (currentQueue?.id !== team.id) {
+                        if (currentQueue?.name !== team.name) {
                           switchQueue(team);
                         } else {
                           setOpen(false);
@@ -127,14 +127,14 @@ export default function AccountSwitcher({ className }: AccountSwitcherProps) {
                     >
                       <Avatar className="h-5 w-5">
                         <AvatarFallback className="bg-primary font-normal text-primary-foreground">
-                          {team.name.slice(0, 1).toUpperCase()}
+                          {team.nickname.slice(0, 1).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <p className="capitalize">{team.name}</p>
+                      <p className="capitalize">{team.nickname}</p>
                       <CheckIcon
                         className={cn(
                           "ml-auto h-4 w-4",
-                          currentQueue?.id === team.id
+                          currentQueue?.name === team.name
                             ? "opacity-100"
                             : "opacity-0",
                         )}

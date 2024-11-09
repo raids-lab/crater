@@ -1,12 +1,9 @@
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
+import { IUserAttributes } from "./admin/user";
 import { Role } from "./auth";
+import { QuotaResp } from "./context";
 
-// const (
-// 	StatusPending  Status = iota // Pending status, not yet activated
-// 	StatusActive                 // Active status
-// 	StatusInactive               // Inactive status
-// )
 export enum ProjectStatus {
   Pending = 1,
   Active,
@@ -47,17 +44,17 @@ export interface IAccount {
 }
 
 export const apiAdminAccountList = () =>
-  instance.get<IResponse<IAccount[]>>(`${VERSION}/admin/projects`);
+  instance.get<IResponse<IAccount[]>>(`${VERSION}/admin/accounts`);
 
 export const apiAccountCreate = (account: ICreateOrUpdateAccount) =>
   instance.post<IResponse<ICreateProjectResponse>>(
-    VERSION + "/admin/projects",
+    VERSION + "/admin/accounts",
     account,
   );
 
 export const apiAccountUpdate = (id: number, account: ICreateOrUpdateAccount) =>
   instance.put<IResponse<ICreateProjectResponse>>(
-    `${VERSION}/admin/projects/${id}`,
+    `${VERSION}/admin/accounts/${id}`,
     account,
   );
 
@@ -66,15 +63,20 @@ export interface IDeleteProjectResp {
 }
 export const apiProjectDelete = (id: number) =>
   instance.delete<IResponse<IDeleteProjectResp>>(
-    `${VERSION}/admin/projects/${id}`,
+    `${VERSION}/admin/accounts/${id}`,
   );
 
-export interface User {
+export interface IUserInAccountCreate {
   id: number;
   name: string;
   role: string;
   accessmode: string;
 }
+
+export type IUserInAccount = IUserInAccountCreate & {
+  userInfo: IUserAttributes;
+  quota: IQuota;
+};
 
 export enum Access {
   NA = 1,
@@ -83,25 +85,39 @@ export enum Access {
   AO,
 }
 
-export const apiAddUser = async (pid: number, user: User) =>
-  instance.post<IResponse<User>>(
-    VERSION + "/admin/projects/add/" + pid + "/" + user.id,
+export const apiAddUser = async (pid: number, user: IUserInAccountCreate) =>
+  instance.post<IResponse<IUserInAccount>>(
+    VERSION + "/admin/accounts/add/" + pid + "/" + user.id,
     { role: user.role, accessmode: user.accessmode },
   );
 
-export const apiUpdateUser = async (pid: number, user: User) =>
-  instance.post<IResponse<User>>(
-    VERSION + "/admin/projects/update/" + pid + "/" + user.id,
+export const apiUpdateUser = async (pid: number, user: IUserInAccountCreate) =>
+  instance.post<IResponse<IUserInAccount>>(
+    VERSION + "/admin/accounts/update/" + pid + "/" + user.id,
     { role: user.role, accessmode: user.accessmode },
   );
 
-export const apiRemoveUser = async (pid: number, user: User) =>
-  instance.delete<IResponse<User>>(
-    VERSION + "/admin/projects/" + pid + "/" + user.id,
+export const apiRemoveUser = async (pid: number, user: IUserInAccountCreate) =>
+  instance.delete<IResponse<IUserInAccount>>(
+    VERSION + "/admin/accounts/" + pid + "/" + user.id,
   );
 
 export const apiUserInProjectList = (pid: number) =>
-  instance.get<IResponse<User[]>>(VERSION + "/admin/projects/userIn/" + pid);
+  instance.get<IResponse<IUserInAccount[]>>(
+    VERSION + "/admin/accounts/userIn/" + pid,
+  );
 
 export const apiUserOutOfProjectList = (pid: number) =>
-  instance.get<IResponse<User[]>>(VERSION + "/admin/projects/userOutOf/" + pid);
+  instance.get<IResponse<IUserInAccount[]>>(
+    VERSION + "/admin/accounts/userOutOf/" + pid,
+  );
+
+export const apiAccountQuotaGet = (pid: number) => {
+  return instance.get<IResponse<QuotaResp>>(
+    `${VERSION}/admin/accounts/${pid}/quota`,
+  );
+};
+
+export const apiAccountGet = (pid: number) => {
+  return instance.get<IResponse<IAccount>>(`${VERSION}/admin/accounts/${pid}`);
+};
