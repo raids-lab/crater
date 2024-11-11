@@ -56,7 +56,7 @@ export const ImageTable: FC = () => {
   const kanikoInfo = useQuery({
     queryKey: ["imagepack", "list"],
     queryFn: () => apiUserListKaniko(),
-    select: (res) => res.data.data.kanikolist,
+    select: (res) => res.data.data.kanikoList,
   });
   const data: KanikoInfo[] = useMemo(() => {
     if (!kanikoInfo.data) {
@@ -64,7 +64,7 @@ export const ImageTable: FC = () => {
     }
     return kanikoInfo.data.map((item) => ({
       id: item.ID,
-      link: item.imagelink,
+      imageLink: item.imageLink,
       status: item.status,
       createdAt: item.createdAt,
     }));
@@ -89,13 +89,13 @@ export const ImageTable: FC = () => {
 
   const columns: ColumnDef<KanikoInfo>[] = [
     {
-      accessorKey: "link",
+      accessorKey: "imageLink",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("link")} />
+        <DataTableColumnHeader column={column} title={getHeader("imageLink")} />
       ),
       cell: ({ row }) => (
         <Badge className="font-mono font-normal" variant="outline">
-          {row.getValue("link")}
+          {row.getValue("imageLink")}
         </Badge>
       ),
     },
@@ -164,7 +164,7 @@ export const ImageTable: FC = () => {
                 <AlertDialogHeader>
                   <AlertDialogTitle>删除镜像</AlertDialogTitle>
                   <AlertDialogDescription>
-                    镜像「{kanikoInfo?.link}
+                    镜像「{kanikoInfo?.imageLink}
                     」将删除
                   </AlertDialogDescription>
                 </AlertDialogHeader>
