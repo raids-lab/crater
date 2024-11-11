@@ -59,7 +59,7 @@ export const Component: FC = () => {
   const imageInfo = useQuery({
     queryKey: ["imagelink", "list"],
     queryFn: () => apiUserListImage(),
-    select: (res) => res.data.data.imagelist,
+    select: (res) => res.data.data.imageList,
   });
   const data: ImageInfo[] = useMemo(() => {
     if (!imageInfo.data) {
@@ -67,12 +67,12 @@ export const Component: FC = () => {
     }
     return imageInfo.data.map((item) => ({
       id: item.ID,
-      link: item.imagelink,
+      imageLink: item.imageLink,
       status: item.status,
       createdAt: item.createdAt,
-      tasktype: item.tasktype,
-      ispublic: item.ispublic,
-      creatorname: item.creatorname,
+      taskType: item.taskType,
+      isPublic: item.isPublic,
+      creatorName: item.creatorName,
     }));
   }, [imageInfo.data]);
   const refetchImagePackList = async () => {
@@ -101,44 +101,44 @@ export const Component: FC = () => {
   });
   const columns: ColumnDef<ImageInfo>[] = [
     {
-      accessorKey: "link",
+      accessorKey: "imageLink",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("link")} />
+        <DataTableColumnHeader column={column} title={getHeader("imageLink")} />
       ),
       cell: ({ row }) => (
         <Badge className="font-mono font-normal" variant="outline">
-          {row.getValue("link")}
+          {row.getValue("imageLink")}
         </Badge>
       ),
     },
     {
-      accessorKey: "creatorname",
+      accessorKey: "creatorName",
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
-          title={getHeader("creatorname")}
+          title={getHeader("creatorName")}
         />
       ),
-      cell: ({ row }) => <div>{row.getValue("creatorname")}</div>,
+      cell: ({ row }) => <div>{row.getValue("creatorName")}</div>,
     },
     {
-      accessorKey: "tasktype",
+      accessorKey: "taskType",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("tasktype")} />
+        <DataTableColumnHeader column={column} title={getHeader("taskType")} />
       ),
       cell: ({ row }) => {
-        return <JobTypeLabel jobType={row.getValue("tasktype")} />;
+        return <JobTypeLabel jobType={row.getValue("taskType")} />;
       },
     },
     {
-      accessorKey: "ispublic",
+      accessorKey: "isPublic",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("ispublic")} />
+        <DataTableColumnHeader column={column} title={getHeader("isPublic")} />
       ),
       cell: ({ row }) => {
         const imagePublicPersonalStatus = imagepackPublicPersonalStatus.find(
           (imagePublicPersonalStatus) =>
-            imagePublicPersonalStatus.value === row.getValue("ispublic"),
+            imagePublicPersonalStatus.value === row.getValue("isPublic"),
         );
         return imagePublicPersonalStatus?.label;
       },
@@ -162,7 +162,7 @@ export const Component: FC = () => {
           <div className="flex flex-row space-x-1">
             <AlertDialog>
               <AlertDialogTrigger
-                disabled={imageInfo.creatorname === user.name}
+                disabled={imageInfo.creatorName === user.name}
                 asChild
               >
                 <div>
@@ -170,7 +170,7 @@ export const Component: FC = () => {
                     variant="outline"
                     className="h-8 w-8 p-0 hover:text-destructive"
                     title="删除镜像"
-                    disabled={imageInfo.creatorname === user.name}
+                    disabled={imageInfo.creatorName === user.name}
                   >
                     <Trash2 size={16} strokeWidth={2} />
                   </Button>
@@ -180,7 +180,7 @@ export const Component: FC = () => {
                 <AlertDialogHeader>
                   <AlertDialogTitle>删除镜像</AlertDialogTitle>
                   <AlertDialogDescription>
-                    镜像「{imageInfo?.link}
+                    镜像「{imageInfo?.imageLink}
                     」将删除
                   </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -213,7 +213,7 @@ export const Component: FC = () => {
                 <AlertDialogHeader>
                   <AlertDialogTitle>更新公私状态</AlertDialogTitle>
                   <AlertDialogDescription>
-                    镜像「{imageInfo?.link}
+                    镜像「{imageInfo?.imageLink}
                     」状态将更新
                   </AlertDialogDescription>
                 </AlertDialogHeader>
