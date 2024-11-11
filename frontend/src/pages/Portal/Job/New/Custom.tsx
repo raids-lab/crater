@@ -140,8 +140,8 @@ export const Component = () => {
     queryFn: () => apiJTaskImageList(JobType.Custom),
     select: (res) => {
       return res.data.data.images.map((item) => ({
-        value: item,
-        label: item,
+        value: item.imageLink,
+        label: item.imageLink,
       }));
     },
   });

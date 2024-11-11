@@ -2,6 +2,7 @@ import { K8sResources } from "@/utils/resource";
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
 import { globalJobUrl, store } from "@/utils/store";
+import { ImageInfoResponse } from "./imagepack";
 
 export enum JobType {
   Jupyter = "jupyter",
@@ -214,11 +215,9 @@ export const apiJobGetYaml = (jobName: string) =>
   instance.get<IResponse<string>>(`${VERSION}/${JOB_URL}/${jobName}/yaml`);
 
 export const apiJTaskImageList = (imageTaskType: string) =>
-  instance.get<
-    IResponse<{
-      images: string[];
-    }>
-  >(`${VERSION}/images/available?type=${imageTaskType}`);
+  instance.get<IResponse<{ images: ImageInfoResponse[] }>>(
+    `${VERSION}/images/available?type=${imageTaskType}`,
+  );
 
 export const apiJupyterTokenGet = (jobName: string) =>
   instance.get<
