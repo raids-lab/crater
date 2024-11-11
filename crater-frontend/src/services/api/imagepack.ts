@@ -10,45 +10,45 @@ import {
 import { JobType } from "./vcjob";
 
 export type ListKanikoResponse = {
-  kanikolist: KanikoInfoResponse[];
-  totalsize: number;
+  kanikoList: KanikoInfoResponse[];
+  totalSize: number;
 };
 type KanikoInfoResponse = {
   ID: number;
   // name: string;
-  imagelink: string;
+  imageLink: string;
   status: string;
   createdAt: string;
-  ispublic: boolean;
+  isPublic: boolean;
 };
 export type KanikoInfo = {
   id: number;
-  link: string;
+  imageLink: string;
   status: string;
   createdAt: string;
 };
 
 export type ListImageResponse = {
-  imagelist: ImageInfoResponse[];
+  imageList: ImageInfoResponse[];
 };
-type ImageInfoResponse = {
+export type ImageInfoResponse = {
   ID: number;
   // name: string;
-  imagelink: string;
+  imageLink: string;
   status: string;
   createdAt: string;
-  ispublic: boolean;
-  tasktype: JobType;
-  creatorname: string;
+  isPublic: boolean;
+  taskType: JobType;
+  creatorName: string;
 };
 export type ImageInfo = {
   id: number;
-  link: string;
+  imageLink: string;
   status: string;
   createdAt: string;
-  ispublic: boolean;
-  tasktype: JobType;
-  creatorname: string;
+  isPublic: boolean;
+  taskType: JobType;
+  creatorName: string;
 };
 
 export type KanikoLogResponse = {
@@ -57,21 +57,19 @@ export type KanikoLogResponse = {
 
 export const getHeader = (key: string): string => {
   switch (key) {
-    case "nametag":
-      return "名称";
-    case "link":
+    case "imageLink":
       return "镜像地址";
-    case "creatorname":
+    case "creatorName":
       return "提交者";
     case "status":
       return "状态";
     case "createdAt":
       return "创建时间";
-    case "tasktype":
+    case "taskType":
       return "任务类型";
-    case "imagetype":
+    case "imageType":
       return "镜像类型";
-    case "ispublic":
+    case "isPublic":
       return "公私类型";
     default:
       return key;
@@ -115,46 +113,6 @@ export const imagepackStatuses: {
     value: "Failed",
     label: "失败",
     icon: CrossCircledIcon,
-  },
-];
-
-export type imagepackTaskTypeValue = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
-
-export const imagepackTaskType: {
-  value: imagepackTaskTypeValue;
-  label: string;
-}[] = [
-  {
-    value: 1,
-    label: "jupyter",
-  },
-  {
-    value: 2,
-    label: "webide",
-  },
-  {
-    value: 3,
-    label: "tensorflow",
-  },
-  {
-    value: 4,
-    label: "pytorch",
-  },
-  {
-    value: 5,
-    label: "kuberay",
-  },
-  {
-    value: 6,
-    label: "deepspeed",
-  },
-  {
-    value: 7,
-    label: "openmpi",
-  },
-  {
-    value: 8,
-    label: "custom",
   },
 ];
 
