@@ -42,6 +42,17 @@ import {
 } from "@/components/ui/tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { PodIngress, PodIngressMgr } from "@/services/api/tool";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui-custom/alert-dialog";
 
 const ingressFormSchema = z.object({
   name: z
@@ -157,28 +168,57 @@ export default function PodIngressDialog({
                   <p>{ingress.name}</p>
                   <div className="flex flex-row text-xs text-muted-foreground">
                     {ingress.port}{" "}
-                    {" → crater.act.buaa.edu.cn/ingress/" + ingress.prefix}
+                    {" → crater.act.buaa.edu.cn" + ingress.prefix}
                   </div>
                 </div>
                 <TooltipButton
                   variant="ghost"
                   size="icon"
                   className="hover:text-primary"
-                  onClick={() => toast.warning("功能开发中")}
+                  onClick={() => {
+                    const url =
+                      "https://crater.act.buaa.edu.cn" + ingress.prefix;
+                    window.location.href = url;
+                  }}
                   tooltipContent="访问链接"
                 >
                   <ExternalLink className="h-4 w-4" />
                 </TooltipButton>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <TooltipButton
+                      variant="ghost"
+                      size="icon"
+                      className="hover:text-destructive"
+                      tooltipContent="删除"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </TooltipButton>
+                  </AlertDialogTrigger>
 
-                <TooltipButton
-                  variant="ghost"
-                  size="icon"
-                  className="hover:text-destructive"
-                  onClick={() => handleDelete(ingress)}
-                  tooltipContent="删除"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </TooltipButton>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>删除外部访问规则</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        外部访问规则「{ingress.name}」
+                        <br />
+                        {ingress.port}{" "}
+                        {" → crater.act.buaa.edu.cn" + ingress.prefix}
+                        <br />
+                        将被删除，请谨慎操作。
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>取消</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        onClick={() => handleDelete(ingress)}
+                      >
+                        删除
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             ))}
           </div>
