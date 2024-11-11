@@ -90,39 +90,39 @@ type (
 type (
 	KanikoInfo struct {
 		ID        uint                   `json:"ID"`
-		ImageLink string                 `json:"imagelink"`
+		ImageLink string                 `json:"imageLink"`
 		Status    imagepackv1.PackStatus `json:"status"`
 		CreatedAt time.Time              `json:"createdAt"`
 		Size      int64                  `json:"size"`
 	}
 	ListKanikoResponse struct {
-		KanikoInfoList []KanikoInfo `json:"kanikolist"`
-		TotalSize      int64        `json:"totalsize"`
+		KanikoInfoList []KanikoInfo `json:"kanikoList"`
+		TotalSize      int64        `json:"totalSize"`
 	}
 
 	ImageInfo struct {
 		ID          uint          `json:"ID"`
-		ImageLink   string        `json:"imagelink"`
+		ImageLink   string        `json:"imageLink"`
 		CreatedAt   time.Time     `json:"createdAt"`
-		TaskType    model.JobType `json:"tasktype"`
-		IsPublic    bool          `json:"ispublic"`
-		CreatorName string        `json:"creatorname"`
+		TaskType    model.JobType `json:"taskType"`
+		IsPublic    bool          `json:"isPublic"`
+		CreatorName string        `json:"creatorName"`
 	}
 	ListImageResponse struct {
-		ImageInfoList []ImageInfo `json:"imagelist"`
+		ImageInfoList []ImageInfo `json:"imageList"`
 	}
 
 	GetKanikoResponse struct {
 		ID            uint                   `json:"ID"`
-		ImageLink     string                 `json:"imagelink"`
+		ImageLink     string                 `json:"imageLink"`
 		Status        imagepackv1.PackStatus `json:"status"`
 		CreatedAt     time.Time              `json:"createdAt"`
-		ImagePackName string                 `json:"imagepackname"`
+		ImagePackName string                 `json:"imagepackName"`
 		Description   string                 `json:"description"`
 	}
 
 	ListAvailableImageResponse struct {
-		Images []string `json:"images"`
+		Images []ImageInfo `json:"images"`
 	}
 )
 
@@ -404,7 +404,7 @@ func (mgr *ImagePackMgr) AdminListKaniko(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param data body ListAvailableImageRequest true "包含了镜像类型"
+// @Param type query ListAvailableImageRequest true "包含了镜像类型"
 // @Router /v1/images/available [GET]
 func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	token := util.GetToken(c)
@@ -418,6 +418,7 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	imageQuery := query.Image
 	var images []*model.Image
 	if images, err = imageQuery.WithContext(c).
+		Preload(query.Image.User).
 		Where(imageQuery.UserID.Eq(token.UserID)).
 		Where(imageQuery.TaskType.Eq(string(req.Type))).
 		Or(imageQuery.IsPublic).
@@ -427,11 +428,20 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 		resputil.Error(c, "fetch available image failed", resputil.NotSpecified)
 		return
 	}
-	imageLinks := make([]string, len(images))
+	imageInfos := []ImageInfo{}
 	for i := range images {
-		imageLinks[i] = images[i].ImageLink
+		image := images[i]
+		imageInfo := ImageInfo{
+			ID:          image.ID,
+			ImageLink:   image.ImageLink,
+			CreatedAt:   image.CreatedAt,
+			IsPublic:    image.IsPublic,
+			TaskType:    image.TaskType,
+			CreatorName: image.User.Name,
+		}
+		imageInfos = append(imageInfos, imageInfo)
 	}
-	resp := ListAvailableImageResponse{Images: imageLinks}
+	resp := ListAvailableImageResponse{Images: imageInfos}
 	resputil.Success(c, resp)
 }
 
