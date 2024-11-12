@@ -332,6 +332,21 @@ func main() {
 				return tx.Migrator().DropColumn(&Image{}, "ImagePackName")
 			},
 		},
+		{
+			ID: "202411112020",
+			Migrate: func(tx *gorm.DB) error {
+				type Job struct {
+					Reminded bool `gorm:"comment:是否已经处于发送了提醒的状态"`
+				}
+				return tx.Migrator().AddColumn(&Job{}, "Reminded")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Job struct {
+					Reminded bool `gorm:"comment:是否已经处于发送了提醒的状态"`
+				}
+				return tx.Migrator().DropColumn(&Job{}, "Reminded")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
