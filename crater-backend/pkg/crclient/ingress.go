@@ -169,6 +169,12 @@ func CreateIngress(ctx context.Context, kubeClient client.Client, pod *v1.Pod, s
 					},
 				},
 			},
+			TLS: []networkingv1.IngressTLS{
+				{
+					Hosts:      []string{"crater.***REMOVED***"}, // 需要 TLS 的主机名
+					SecretName: "crater-tls-secret",                // TLS 证书的 Secret 名称
+				},
+			},
 		},
 	}
 
