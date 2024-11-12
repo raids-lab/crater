@@ -1,6 +1,7 @@
 package vcjob
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -16,7 +17,9 @@ import (
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/samber/lo"
 	v1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 	bus "volcano.sh/apis/pkg/apis/bus/v1alpha1"
@@ -116,10 +119,25 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		LabelKeyBaseURL:  baseURL,
 	}
 
+	// 设置 notebook 的 Annotation 信息
+	notebookIngress := crclient.PodIngress{
+		Name:   "notebook",
+		Port:   8888,                                // Notebook 在容器内的默认端口
+		Prefix: fmt.Sprintf("/ingress/%s", baseURL), // 设置唯一的 URL 前缀
+	}
+
+	// 将 Ingress 转换为 JSON 字符串并添加到 annotations
+	ingressJSON, err := json.Marshal(notebookIngress)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to marshal ingress: %v", err), resputil.NotSpecified)
+		return
+	}
+
 	// 初始化 annotations 并添加 notebookIngress Annotation
 	annotations := map[string]string{
-		AnnotationKeyTaskName:       req.Name,
-		AnnotationKeyUseTensorBoard: useTensorboard,
+		AnnotationKeyTaskName:                  req.Name,
+		AnnotationKeyUseTensorBoard:            useTensorboard,
+		IngressLabelKey + notebookIngress.Name: string(ingressJSON), // 添加 notebookIngress Annotation
 	}
 
 	// 5. Create the pod spec
@@ -189,6 +207,99 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	}
 
 	if err = mgr.client.Create(c, &job); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	// create service
+	svc := &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      jobName,
+			Namespace: namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "batch.volcano.sh/v1alpha1",
+					Kind:               "Job",
+					Name:               jobName,
+					UID:                job.UID,
+					BlockOwnerDeletion: lo.ToPtr(true),
+				},
+			},
+		},
+		Spec: v1.ServiceSpec{
+			Selector: labels,
+			Ports: []v1.ServicePort{
+				{
+					Name:       jobName,
+					Port:       80,
+					Protocol:   v1.ProtocolTCP,
+					TargetPort: intstr.FromInt(JupyterPort),
+				},
+			},
+			SessionAffinity: v1.ServiceAffinityNone,
+			Type:            v1.ServiceTypeClusterIP,
+		},
+	}
+
+	err = mgr.client.Create(c, svc)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	// 创建 Ingress，添加 OwnerReference
+	ingress := &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			// 每个作业的 Service 创建单独的 Ingress
+			Name:      jobName,
+			Namespace: namespace,
+			Annotations: map[string]string{
+				// 启用 SSL 重定向
+				"nginx.ingress.kubernetes.io/ssl-redirect": "true",
+				// 设置请求体的最大大小
+				"nginx.ingress.kubernetes.io/proxy-body-size": "20480m",
+			},
+			// 添加 OwnerReference
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(&job, batch.SchemeGroupVersion.WithKind("Job")),
+			},
+		},
+		Spec: networkingv1.IngressSpec{
+			// 指定 Ingress 控制器为 nginx
+			IngressClassName: func(s string) *string { return &s }("nginx"),
+			Rules: []networkingv1.IngressRule{
+				{
+					Host: "crater.***REMOVED***", // 设置 Host
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{
+								{
+									Path:     fmt.Sprintf("/ingress/%s", baseURL),
+									PathType: func(s networkingv1.PathType) *networkingv1.PathType { return &s }(networkingv1.PathTypePrefix),
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: jobName,
+											Port: networkingv1.ServiceBackendPort{
+												Number: 80,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			TLS: []networkingv1.IngressTLS{
+				{
+					Hosts:      []string{"crater.***REMOVED***"}, // 需要 TLS 的主机名
+					SecretName: "crater-tls-secret",                // TLS 证书的 Secret 名称
+				},
+			},
+		},
+	}
+
+	if err = mgr.client.Create(c, ingress); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
@@ -291,25 +402,6 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 	// Cache the jupyter token in the job annotations
 	vcjob.Annotations[AnnotationKeyJupyter] = jupyterToken
 	if err := mgr.client.Update(c, vcjob); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	// 创建 jupyter-notebook 的 svc 和 ingress
-	ctx := c.Request.Context()
-	notebookIngress := crclient.PodIngress{
-		Name:   "notebook",
-		Port:   8888,                                // Notebook 在容器内的默认端口
-		Prefix: fmt.Sprintf("/ingress/%s", baseURL), // 设置唯一的 URL 前缀
-	}
-
-	var pod v1.Pod
-	if err := mgr.client.Get(c, client.ObjectKey{Namespace: namespace, Name: podName}, &pod); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	if err := crclient.CreateCustomForwardingRule(ctx, mgr.client, &pod, notebookIngress); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
