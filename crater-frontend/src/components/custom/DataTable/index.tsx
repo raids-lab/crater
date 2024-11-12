@@ -36,6 +36,7 @@ import { UseQueryResult } from "@tanstack/react-query";
 import { CardTitle } from "@/components/ui-custom/card";
 import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
 import { Checkbox } from "@/components/ui/checkbox";
+import { GridIcon } from "lucide-react";
 
 interface DataTableProps<TData, TValue>
   extends React.HTMLAttributes<HTMLDivElement> {
@@ -207,14 +208,17 @@ export function DataTable<TData, TValue>({
                       </TableCell>
                     </TableRow>
                   ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={columns.length}
-                        className="h-60 text-center text-muted-foreground"
-                      >
-                        暂无数据
-                      </TableCell>
-                    </TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-60 text-center text-muted-foreground/85 hover:bg-transparent"
+                    >
+                      <div className="flex flex-col items-center justify-center py-16">
+                        <div className="mb-4 rounded-full bg-muted p-3">
+                          <GridIcon className="h-6 w-6" />
+                        </div>
+                        <p className="select-none">暂无数据</p>
+                      </div>
+                    </TableCell>
                   )}
                 </>
               )}

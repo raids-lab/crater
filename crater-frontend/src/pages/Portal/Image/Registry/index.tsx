@@ -1,18 +1,16 @@
-import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
+import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, type FC, useState } from "react";
+import { type FC, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
-import { DataTable } from "@/components/custom/OldDataTable";
+import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
+import { DataTable } from "@/components/custom/DataTable";
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ImageCreateForm } from "./CreateForm";
@@ -37,9 +35,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
-import { Trash2 } from "lucide-react";
+import { Database, LockIcon, PackagePlusIcon, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useRoutes } from "react-router-dom";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -53,22 +52,20 @@ const toolbarConfig: DataTableToolbarConfig = {
 export const ImageTable: FC = () => {
   const queryClient = useQueryClient();
   const [openSheet, setOpenSheet] = useState(false);
-  const kanikoInfo = useQuery({
+  const imageQuery = useQuery({
     queryKey: ["imagepack", "list"],
     queryFn: () => apiUserListKaniko(),
-    select: (res) => res.data.data.kanikoList,
+    select: (res) =>
+      res.data.data.kanikoList.map(
+        (item) =>
+          ({
+            id: item.ID,
+            imageLink: item.imageLink,
+            status: item.status,
+            createdAt: item.createdAt,
+          }) as KanikoInfo,
+      ),
   });
-  const data: KanikoInfo[] = useMemo(() => {
-    if (!kanikoInfo.data) {
-      return [];
-    }
-    return kanikoInfo.data.map((item) => ({
-      id: item.ID,
-      imageLink: item.imageLink,
-      status: item.status,
-      createdAt: item.createdAt,
-    }));
-  }, [kanikoInfo.data]);
   const refetchImagePackList = async () => {
     try {
       // 并行发送所有异步请求
@@ -188,27 +185,69 @@ export const ImageTable: FC = () => {
   ];
 
   return (
-    <DataTable
-      data={data}
-      columns={columns}
-      toolbarConfig={toolbarConfig}
-      loading={kanikoInfo.isLoading}
-      className="col-span-3"
-    >
-      <Sheet open={openSheet} onOpenChange={setOpenSheet}>
-        <SheetTrigger asChild>
-          <Button className="h-8 min-w-fit">创建镜像</Button>
-        </SheetTrigger>
-        <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
-          <SheetHeader>
-            <SheetTitle>创建镜像</SheetTitle>
-            <SheetDescription>创建一个新的训练作业镜像</SheetDescription>
-          </SheetHeader>
-          <Separator className="mt-4" />
-          <ImageCreateForm closeSheet={() => setOpenSheet(false)} />
-        </SheetContent>
-      </Sheet>
-    </DataTable>
+    <div className="grid flex-1 grid-cols-[1fr,300px] gap-6">
+      <main>
+        <DataTable
+          query={imageQuery}
+          columns={columns}
+          toolbarConfig={toolbarConfig}
+        >
+          <Sheet open={openSheet} onOpenChange={setOpenSheet}>
+            <SheetTrigger asChild>
+              <Button className="h-8 min-w-fit">
+                <PackagePlusIcon />
+                制作镜像
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
+              <SheetHeader>
+                <SheetTitle>制作镜像</SheetTitle>
+              </SheetHeader>
+              <ImageCreateForm closeSheet={() => setOpenSheet(false)} />
+            </SheetContent>
+          </Sheet>
+        </DataTable>
+      </main>
+      <aside className="space-y-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <LockIcon className="h-4 w-4 text-muted-foreground" />
+                <h2 className="font-semibold">Access Method</h2>
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter className="gap-2">
+            <Badge variant="outline" className="bg-transparent">
+              Repo
+            </Badge>
+            <Badge variant="outline" className="bg-transparent">
+              Project
+            </Badge>
+            <Badge variant="outline" className="bg-transparent">
+              Password
+            </Badge>
+          </CardFooter>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Database className="h-4 w-4 text-muted-foreground" />
+                <h2 className="font-semibold">Quota used</h2>
+              </div>
+            </div>
+            <div className="text-2xl font-bold">
+              0Byte
+              <span className="ml-2 text-sm text-muted-foreground">
+                of 20GiB
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </aside>
+    </div>
   );
 };
 

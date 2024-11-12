@@ -42,12 +42,12 @@ export const craterPath: PathInfo = {
           title: "交互式作业",
           children: [
             {
-              path: "new-jupyter-vcjob",
-              title: "新建作业",
+              path: "new-jupyter-vcjobs",
+              title: "新建 Jupyter Lab",
             },
             {
-              path: "new-jupyter-aijob",
-              title: "新建作业",
+              path: "new-jupyter-aijobs",
+              title: "新建 Jupyter Lab",
             },
           ],
         },
@@ -75,7 +75,7 @@ export const craterPath: PathInfo = {
       children: [
         {
           path: "createimage",
-          title: "镜像制作",
+          title: "镜像仓库",
         },
         {
           path: "uploadimage",

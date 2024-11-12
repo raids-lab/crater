@@ -138,6 +138,7 @@ export function DatasetShareTable({
       toast.success("已取消共享");
     },
   });
+
   useEffect(() => {
     setBreadcrumb([{ title: "共享情况" }]);
   }, [setBreadcrumb]);
