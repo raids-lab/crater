@@ -69,13 +69,13 @@ const portalRoutes: SidebarItem[] = [
       {
         route: {
           path: "createimage/*",
-          lazy: () => import("./Image/CreateImageList"),
+          lazy: () => import("./Image/Registry"),
         },
       },
       {
         route: {
           path: "uploadimage/*",
-          lazy: () => import("./Image/UploadImageList"),
+          lazy: () => import("./Image/Image"),
         },
       },
     ],

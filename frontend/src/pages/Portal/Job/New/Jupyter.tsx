@@ -27,7 +27,6 @@ import { cn } from "@/lib/utils";
 import { convertToK8sResources } from "@/utils/resource";
 import { toast } from "sonner";
 import {
-  ChevronLeftIcon,
   CircleArrowDown,
   CircleArrowUp,
   CirclePlus,
@@ -212,6 +211,7 @@ export const Component = () => {
       }));
     },
   });
+
   const datasetInfo = useQuery({
     queryKey: ["datsets"],
     queryFn: () => apiGetDataset(),
@@ -309,97 +309,81 @@ export const Component = () => {
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="grid items-start gap-4 md:col-span-3 md:gap-x-6 lg:grid-cols-3"
+          className="grid items-start gap-4 md:gap-x-6 lg:grid-cols-3"
         >
-          <div className="items-centor flex flex-row justify-between lg:col-span-3">
-            <div className="flex flex-row items-center gap-3">
-              <Button
-                variant="outline"
-                size="icon"
-                type="button"
-                className="h-8 w-8"
-                onClick={() => navigate(-1)}
-              >
-                <ChevronLeftIcon className="h-4 w-4" />
-              </Button>
-              <h1 className="shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
-                Jupyter Lab
-              </h1>
-            </div>
-            <div className="flex flex-row gap-3">
-              <Button
-                variant="outline"
-                type="button"
-                className="relative h-8 cursor-pointer"
-              >
-                <Input
-                  onChange={(e) => {
-                    importFromJson<FormSchema>(
-                      VERSION,
-                      JOB_TYPE,
-                      e.target.files?.[0],
-                    )
-                      .then((data) => {
-                        form.reset(data);
-                        if (data.volumeMounts.length > 0) {
-                          setDataMountOpen(DataMountCard);
-                        }
-                        if (data.envs.length > 0) {
-                          setEnvOpen(EnvCard);
-                        }
-                        if (data.observability.tbEnable) {
-                          setTensorboardOpen(TensorboardCard);
-                        }
-                        if (data.nodeSelector.enable) {
-                          setOtherOpen(OtherCard);
-                        }
-                        toast.success(`导入配置成功`);
-                      })
-                      .catch(() => {
-                        toast.error(`解析错误，导入配置失败`);
-                      });
-                  }}
-                  type="file"
-                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                />
-                <CircleArrowDown className="h-4 w-4" />
-                导入配置
-              </Button>
-              <Button
-                variant="outline"
-                type="button"
-                className="h-8"
-                onClick={() => {
-                  form
-                    .trigger()
-                    .then((isValid) => {
-                      if (!isValid) {
-                        return;
+          <div className="items-centor flex flex-row justify-end gap-3 lg:col-span-3">
+            <Button
+              variant="outline"
+              type="button"
+              className="relative h-8 cursor-pointer lg:-translate-y-12"
+            >
+              <Input
+                onChange={(e) => {
+                  importFromJson<FormSchema>(
+                    VERSION,
+                    JOB_TYPE,
+                    e.target.files?.[0],
+                  )
+                    .then((data) => {
+                      form.reset(data);
+                      if (data.volumeMounts.length > 0) {
+                        setDataMountOpen(DataMountCard);
                       }
-                      exportToJson(
-                        {
-                          version: VERSION,
-                          type: JOB_TYPE,
-                          data: currentValues,
-                        },
-                        currentValues.taskname + ".json",
-                      );
+                      if (data.envs.length > 0) {
+                        setEnvOpen(EnvCard);
+                      }
+                      if (data.observability.tbEnable) {
+                        setTensorboardOpen(TensorboardCard);
+                      }
+                      if (data.nodeSelector.enable) {
+                        setOtherOpen(OtherCard);
+                      }
+                      toast.success(`导入配置成功`);
                     })
-                    .catch((error) => {
-                      toast.error((error as Error).message);
+                    .catch(() => {
+                      toast.error(`解析错误，导入配置失败`);
                     });
                 }}
-              >
-                <CircleArrowUp className="h-4 w-4" />
-                导出配置
-              </Button>
-              <Button type="submit" className="h-8">
-                <CirclePlus className="h-4 w-4" />
-                提交作业
-              </Button>
-            </div>
+                type="file"
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              />
+              <CircleArrowDown className="h-4 w-4" />
+              导入配置
+            </Button>
+            <Button
+              variant="outline"
+              type="button"
+              className="h-8 lg:-translate-y-12"
+              onClick={() => {
+                form
+                  .trigger()
+                  .then((isValid) => {
+                    if (!isValid) {
+                      return;
+                    }
+                    exportToJson(
+                      {
+                        version: VERSION,
+                        type: JOB_TYPE,
+                        data: currentValues,
+                      },
+                      currentValues.taskname + ".json",
+                    );
+                  })
+                  .catch((error) => {
+                    toast.error((error as Error).message);
+                  });
+              }}
+            >
+              <CircleArrowUp className="h-4 w-4" />
+              导出配置
+            </Button>
+            <Button type="submit" className="h-8 lg:-translate-y-12">
+              <CirclePlus className="h-4 w-4" />
+              提交作业
+            </Button>
           </div>
-          <Card className="lg:col-span-2">
+          <Card className="lg:col-span-2 lg:-translate-y-12">
             <CardHeader>
               <CardTitle>基本设置</CardTitle>
             </CardHeader>
@@ -532,7 +516,7 @@ export const Component = () => {
               />
             </CardContent>
           </Card>
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 lg:-translate-y-12">
             <AccordionCard
               cardTitle={DataMountCard}
               value={dataMountOpen}
