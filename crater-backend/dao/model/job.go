@@ -44,6 +44,7 @@ type Job struct {
 	Resources          datatypes.JSONType[v1.ResourceList] `gorm:"comment:作业的资源需求"`
 
 	KeepWhenLowResourceUsage bool `gorm:"comment:当资源利用率低时是否保留"`
+	Reminded                 bool `gorm:"comment:是否已经处于发送了提醒的状态"`
 
 	Attributes datatypes.JSONType[*batch.Job] `gorm:"comment:作业的原始属性"`
 }
