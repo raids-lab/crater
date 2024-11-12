@@ -2,10 +2,8 @@ package operations
 
 import (
 	"fmt"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/resputil"
@@ -33,6 +31,10 @@ type JobInfo struct {
 	jobName       string
 	jobType       string
 	jobAPIVersion string
+}
+
+type SetKeepRequest struct {
+	Name string `uri:"name" binding:"required"`
 }
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -70,9 +72,9 @@ func (mgr *OperationsMgr) RegisterProtected(_ *gin.RouterGroup) {
 }
 
 func (mgr *OperationsMgr) RegisterAdmin(g *gin.RouterGroup) {
-	g.POST("/whitelist", mgr.AddJobWhiteList)
 	g.GET("/whitelist", mgr.GetWhiteList)
 	g.DELETE("/job", mgr.DeleteUnUsedJobList)
+	g.PUT("/keep/:name", mgr.SetKeepWhenLowResourceUsage)
 }
 
 type JobFreRequest struct {
@@ -82,13 +84,13 @@ type JobFreRequest struct {
 
 func (mgr *OperationsMgr) getJobWhiteList(c *gin.Context) ([]string, error) {
 	var cleanList []string
-	wlDB := query.Whitelist
-	data, err := wlDB.WithContext(c).Find()
+	jobDB := query.Job
+	data, err := jobDB.WithContext(c).Where(jobDB.KeepWhenLowResourceUsage).Find()
 	if err != nil {
 		return nil, err
 	}
 	for _, item := range data {
-		cleanList = append(cleanList, item.Name)
+		cleanList = append(cleanList, item.JobName)
 	}
 	return cleanList, nil
 }
@@ -149,37 +151,36 @@ func (mgr *OperationsMgr) GetWhiteList(c *gin.Context) {
 	resputil.Success(c, whiteList)
 }
 
-var newEntries struct {
-	Entries []string `json:"white_list"`
-}
-
-// AddJobWhiteList godoc
-// @Summary Add job white list
-// @Description add job white list
+// SetKeepWhenLowResourceUsage godoc
+// @Summary set KeepWhenLowResourceUsage of the job to the opposite value
+// @Description set KeepWhenLowResourceUsage of the job to the opposite value
 // @Tags Operations
 // @Accept json
 // @Produce json
-// @param newEntries body []string true "white list"
 // @Success 200 {object} resputil.Response[any] "Success"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/operations/whitelist [post]
-func (mgr *OperationsMgr) AddJobWhiteList(c *gin.Context) {
-	if err := c.ShouldBindJSON(&newEntries); err != nil {
-		resputil.HTTPError(c, http.StatusBadRequest, err.Error(), resputil.InvalidRequest)
+// @Router /v1/operations/keep/{name} [put]
+func (mgr *OperationsMgr) SetKeepWhenLowResourceUsage(c *gin.Context) {
+	var req SetKeepRequest
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
 		return
 	}
-	wlDB := query.Whitelist
-	lists := []*model.Whitelist{}
-	for _, job := range newEntries.Entries {
-		lists = append(lists, &model.Whitelist{Name: job})
-	}
-	err := wlDB.WithContext(c).CreateInBatches(lists, 2)
+
+	jobDB := query.Job
+	j, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(req.Name)).First()
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
-	resputil.Success(c, "White list updated successfully")
+	pre := j.KeepWhenLowResourceUsage
+	if _, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(req.Name)).Update(jobDB.KeepWhenLowResourceUsage, !pre); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	message := fmt.Sprintf("Set %s keepWhenLowResourceUsage to %t", req.Name, !j.KeepWhenLowResourceUsage)
+	resputil.Success(c, message)
 }
 
 // DeleteUnUsedJobList godoc
@@ -208,6 +209,15 @@ func (mgr *OperationsMgr) DeleteUnUsedJobList(c *gin.Context) {
 
 	unUsedJobs := mgr.getLeastUsedGPUJobs(c, req.TimeRange, req.Util)
 	whiteList, _ := mgr.getJobWhiteList(c)
+
+	jobDB := query.Job
+	remindedJobs, _ := jobDB.WithContext(c).Where(jobDB.Reminded).Find()
+	remindMap := make(map[string]bool)
+	for _, item := range remindedJobs {
+		remindMap[item.JobName] = item.Reminded
+	}
+	// todo: including other job types
+
 	deleteJobList := []string{}
 
 	for _, job := range unUsedJobs {
@@ -215,15 +225,32 @@ func (mgr *OperationsMgr) DeleteUnUsedJobList(c *gin.Context) {
 			fmt.Printf("Job %s is in the white list\n", job)
 			continue
 		}
-		if err := alert.GetAlertMgr().JobFreed(c, job.jobName, nil); err != nil {
-			fmt.Println("Send Alarm Email failed:", err)
+
+		if remind, ok := remindMap[job.jobName]; ok && remind {
+			// if remind is true, then delete job
+			if err := mgr.deleteJobByName(c, job.jobAPIVersion, job.jobType, job.jobName); err != nil {
+				fmt.Printf("Delete job %s failed\n", job)
+			}
+			deleteJobList = append(deleteJobList, job.jobName)
+			// remove from remindMap
+			delete(remindMap, job.jobName)
+		} else {
+			// if remind is false, then send alarm email, and set remind to true
+			if err := alert.GetAlertMgr().JobFreed(c, job.jobName, nil); err != nil {
+				fmt.Println("Send Alarm Email failed:", err)
+			}
+			// set remind to true
+			if _, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(job.jobName)).Update(jobDB.Reminded, true); err != nil {
+				fmt.Printf("Update job %s remind failed\n", job)
+			}
 		}
-		if err := mgr.deleteJobByName(c, job.jobAPIVersion, job.jobType, job.jobName); err != nil {
-			fmt.Printf("Delete job %s failed\n", job)
-			fmt.Println(err)
+	}
+
+	// for the jobs remaining in remindMap, set remind to false
+	for jobName := range remindMap {
+		if _, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(jobName)).Update(jobDB.Reminded, false); err != nil {
+			fmt.Printf("Update job %s remind failed\n", jobName)
 		}
-		fmt.Printf("Delete job %s successfully\n", job)
-		deleteJobList = append(deleteJobList, job.jobName)
 	}
 	response := map[string][]string{
 		"delete_job_list": deleteJobList,
