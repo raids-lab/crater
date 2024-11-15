@@ -127,7 +127,7 @@ const TableCellForm = ({
       </p>
       {!!selectedContainer.resources && (
         <>
-          <div className="text-muted-foreground">资源预算</div>
+          <div className="text-muted-foreground">申请资源</div>
           <div className="col-span-2">
             <ResourceBadges resources={selectedContainer.resources} />
           </div>

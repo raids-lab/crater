@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { nodeColumns } from "@/components/custom/NodeList";
-import { getHeader } from "@/pages/Admin/Job";
+import { getHeader } from "@/pages/Admin/Job/Overview";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import { JobPhase } from "@/services/api/vcjob";
 import JobPhaseLabel, {

@@ -161,20 +161,15 @@ export const Component: FC = () => {
         return (
           <div className="flex flex-row space-x-1">
             <AlertDialog>
-              <AlertDialogTrigger
-                disabled={imageInfo.creatorName === user.name}
-                asChild
-              >
-                <div>
-                  <Button
-                    variant="outline"
-                    className="h-8 w-8 p-0 hover:text-destructive"
-                    title="删除镜像"
-                    disabled={imageInfo.creatorName === user.name}
-                  >
-                    <Trash2 size={16} strokeWidth={2} />
-                  </Button>
-                </div>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-8 w-8 p-0 hover:text-destructive"
+                  title="删除镜像"
+                  disabled={imageInfo.creatorName === user.name}
+                >
+                  <Trash2 size={16} strokeWidth={2} />
+                </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>

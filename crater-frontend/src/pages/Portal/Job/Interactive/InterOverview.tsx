@@ -34,7 +34,14 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui-custom/card";
-import { ExternalLink, SquareIcon, Trash2Icon } from "lucide-react";
+import {
+  ExternalLink,
+  InfoIcon,
+  LockIcon,
+  RedoDotIcon,
+  SquareIcon,
+  Trash2Icon,
+} from "lucide-react";
 import SplitButton from "@/components/custom/SplitButton";
 import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
@@ -44,6 +51,15 @@ import NodeBadges from "@/components/label/NodeBadges";
 import ResourceBadges from "@/components/label/ResourceBadges";
 import JobTypeLabel from "@/components/custom/JobTypeLabel";
 import TooltipButton from "@/components/custom/TooltipButton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { DotsHorizontalIcon } from "@radix-ui/react-icons";
+import { Button } from "@/components/ui/button";
 
 const InterOverview = () => {
   const jobType = useAtomValue(globalJobUrl);
@@ -107,18 +123,14 @@ const InterOverview = () => {
         cell: ({ row }) => (
           <Link
             to={row.original.jobName}
-            className="underline-offset-4 hover:underline"
+            className="flex flex-row items-center hover:text-primary"
           >
             {row.getValue("name")}
+            {row.original.keepWhenLowUsage && (
+              <LockIcon className="ml-1 h-4 w-4 text-muted-foreground" />
+            )}
           </Link>
         ),
-      },
-      {
-        accessorKey: "owner",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("owner")} />
-        ),
-        cell: ({ row }) => <div>{row.getValue("owner")}</div>,
       },
       {
         accessorKey: "status",
@@ -203,10 +215,13 @@ const InterOverview = () => {
         enableHiding: false,
         cell: ({ row }) => {
           const jobInfo = row.original;
+          const shouldDisable = jobInfo.status !== "Running";
+          const shouldStop =
+            jobInfo.status !== "Deleted" && jobInfo.status !== "Freed";
           return (
             <div className="flex flex-row space-x-1">
               <TooltipButton
-                variant="outline"
+                variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-primary hover:bg-primary/10 hover:text-primary/90"
                 tooltipContent="跳转至 Jupyter Lab"
@@ -216,75 +231,64 @@ const InterOverview = () => {
                     getPortToken(jobInfo.jobName);
                   }, 500);
                 }}
-                disabled={jobInfo.status !== "Running"}
+                disabled={shouldDisable}
               >
                 <ExternalLink className="h-4 w-4" />
               </TooltipButton>
               <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  {jobInfo.status == "Deleted" || jobInfo.status == "Freed" ? (
-                    <TooltipButton
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 text-red-600 hover:bg-destructive/10 hover:text-destructive/90"
-                      tooltipContent="删除作业"
-                    >
-                      <Trash2Icon className="h-4 w-4" />
-                    </TooltipButton>
-                  ) : (
-                    <TooltipButton
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 text-orange-500 hover:bg-orange-500/10 hover:text-orange-500/90"
-                      tooltipContent="停止作业"
-                    >
-                      <SquareIcon className="h-3.5 w-3.5" strokeWidth={"2.5"} />
-                    </TooltipButton>
-                  )}
-                </AlertDialogTrigger>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <span className="sr-only">操作</span>
+                      <DotsHorizontalIcon className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>操作</DropdownMenuLabel>
+                    <Link to={`${jobInfo.jobName}`}>
+                      <DropdownMenuItem>
+                        <InfoIcon className="text-emerald-600 dark:text-emerald-500" />
+                        详情
+                      </DropdownMenuItem>
+                    </Link>
+                    <Link to={`new-jupyter-vcjobs?fromJob=${jobInfo.jobName}`}>
+                      <DropdownMenuItem>
+                        <RedoDotIcon className="text-purple-600 dark:text-purple-500" />
+                        再建
+                      </DropdownMenuItem>
+                    </Link>
+                    <AlertDialogTrigger asChild>
+                      <DropdownMenuItem className="group">
+                        {shouldStop ? (
+                          <SquareIcon className="text-orange-600 dark:text-orange-500" />
+                        ) : (
+                          <Trash2Icon className="text-destructive" />
+                        )}
+                        {shouldStop ? "停止" : "删除"}
+                      </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <AlertDialogContent>
-                  {jobInfo.status == "Deleted" || jobInfo.status == "Freed" ? (
-                    <>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>删除作业</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          作业「{jobInfo?.name}
-                          」将被删除，所有元数据都将被清理。
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>取消</AlertDialogCancel>
-                        <AlertDialogAction
-                          variant="destructive"
-                          onClick={() => deleteTask(jobInfo.jobName)}
-                        >
-                          删除
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </>
-                  ) : (
-                    <>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>停止作业</AlertDialogTitle>
-                        <AlertDialogDescription className="text-balance">
-                          作业 {jobInfo?.name} 将停止，除{" "}
-                          <span className="font-mono">
-                            /home/{jobInfo.owner}
-                          </span>{" "}
-                          及其他挂载目录之外的文件将无法恢复，请确认已经保存好所需数据。
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>取消</AlertDialogCancel>
-                        <AlertDialogAction
-                          variant="destructive"
-                          onClick={() => deleteTask(jobInfo.jobName)}
-                        >
-                          停止
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </>
-                  )}
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {shouldStop ? "停止作业" : "删除作业"}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {shouldStop
+                        ? `作业 ${jobInfo?.name} 将停止，除挂载目录之外的文件将无法恢复，请确认已经保存好所需数据。`
+                        : `作业 ${jobInfo?.name} 将被删除，所有元数据都将被清理。`}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>取消</AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="destructive"
+                      onClick={() => deleteTask(jobInfo.jobName)}
+                    >
+                      {shouldStop ? "停止" : "删除"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
             </div>
@@ -330,14 +334,20 @@ const InterOverview = () => {
         toolbarConfig={jobToolbarConfig}
         multipleHandlers={[
           {
-            title: "批量删除作业",
-            description: "选中的作业将被释放或删除，确认要继续操作吗？",
+            title: (rows) => `停止或删除 ${rows.length} 个作业`,
+            description: (rows) => (
+              <>
+                作业 {rows.map((row) => row.original.name).join(", ")}{" "}
+                将被停止或删除，确认要继续吗？
+              </>
+            ),
             icon: <Trash2Icon className="text-destructive" />,
             handleSubmit: (rows) => {
               rows.forEach((row) => {
                 deleteTask(row.original.jobName);
               });
             },
+            isDanger: true,
           },
         ]}
       ></DataTable>

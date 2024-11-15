@@ -118,7 +118,7 @@ const getHeader = (name: string): string => {
     case "createTime":
       return "创建于";
     case "resources":
-      return "资源预算";
+      return "申请资源";
     default:
       return name;
   }

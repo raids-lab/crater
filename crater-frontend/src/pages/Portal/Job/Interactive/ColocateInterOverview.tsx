@@ -463,14 +463,20 @@ const ColocateOverview = () => {
         toolbarConfig={toolbarConfig}
         multipleHandlers={[
           {
-            title: "批量删除作业",
-            description: "选中的作业将被释放或删除，确认要继续操作吗？",
+            title: (rows) => `停止或删除 ${rows.length} 个作业`,
+            description: (rows) => (
+              <>
+                作业 {rows.map((row) => row.original.name).join(", ")}{" "}
+                将被停止或删除，确认要继续吗？
+              </>
+            ),
             icon: <Trash2Icon className="text-destructive" />,
             handleSubmit: (rows) => {
               rows.forEach((row) => {
                 deleteTask(row.original.jobName);
               });
             },
+            isDanger: true,
           },
         ]}
       ></DataTable>

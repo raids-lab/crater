@@ -56,8 +56,8 @@ const job_monitor = import.meta.env.VITE_GRAFANA_JOB_MONITOR;
 // .VITE_GRAFANA_K8S_VGPU_SCHEDULER_DASHBOARD;
 
 export const Component = () => {
-  const { id } = useParams<string>();
-  const jobName = "" + id;
+  const { name } = useParams<string>();
+  const jobName = "" + name;
   const setBreadcrumb = useBreadcrumb();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -84,8 +84,11 @@ export const Component = () => {
   });
 
   useEffect(() => {
-    setBreadcrumb([{ title: "作业详情" }]);
-  }, [setBreadcrumb]);
+    if (!data) {
+      return;
+    }
+    setBreadcrumb([{ title: data.name }]);
+  }, [setBreadcrumb, data]);
 
   if (isLoading || !data) {
     return <></>;
@@ -94,7 +97,7 @@ export const Component = () => {
   return (
     <>
       <Card className="col-span-3">
-        <CardContent className="flex items-center justify-between bg-muted/50 p-6 dark:bg-muted/25">
+        <CardContent className="flex items-center justify-between p-6">
           <div className="flex flex-col items-start gap-2">
             <CardTitle>{data.name}</CardTitle>
           </div>

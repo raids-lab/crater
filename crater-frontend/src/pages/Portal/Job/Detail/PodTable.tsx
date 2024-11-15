@@ -28,7 +28,7 @@ const getHeader = (key: string): string => {
     case "port":
       return "端口";
     case "resource":
-      return "资源预算";
+      return "申请资源";
     case "phase":
       return "状态";
     default:

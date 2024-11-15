@@ -94,6 +94,7 @@ export function DataTable<TData, TValue>({
             onCheckedChange={(value) =>
               table.toggleAllPageRowsSelected(!!value)
             }
+            hidden={table.getRowModel().rows.length === 0}
             aria-label="Select all"
           />
         ),
@@ -226,14 +227,12 @@ export function DataTable<TData, TValue>({
           </Table>
         </CardContent>
         <CardFooter className={cn("flex flex-row space-x-2 px-6")}>
-          {table.getRowModel().rows?.length > 0 && (
-            <DataTablePagination
-              table={table}
-              refetch={() => void refetch()}
-              updatedAt={updatedAt}
-              multipleHandlers={multipleHandlers}
-            />
-          )}
+          <DataTablePagination
+            table={table}
+            refetch={() => void refetch()}
+            updatedAt={updatedAt}
+            multipleHandlers={multipleHandlers}
+          />
         </CardFooter>
       </Card>
     </div>
