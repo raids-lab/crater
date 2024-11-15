@@ -19,7 +19,7 @@ const interactiveRoutes: RouteObject[] = [
     lazy: () => import("../New/ColocateJupyter"),
   },
   {
-    path: ":id",
+    path: ":name",
     lazy: () => import("../Detail/Base"),
   },
 ];

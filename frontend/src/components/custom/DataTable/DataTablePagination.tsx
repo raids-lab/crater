@@ -27,10 +27,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
 import TooltipButton from "../TooltipButton";
+import React from "react";
 
 export interface MultipleHandler<TData> {
-  title: string;
-  description: string;
+  title: (rows: Row<TData>[]) => string;
+  description: (rows: Row<TData>[]) => React.ReactNode;
   handleSubmit: (rows: Row<TData>[]) => void;
   icon: React.ReactNode;
   isDanger?: boolean;
@@ -62,7 +63,9 @@ export function DataTablePagination<TData>({
                   variant="outline"
                   size="icon"
                   className="h-7 w-7"
-                  tooltipContent={multipleHandler.title}
+                  tooltipContent={multipleHandler.title(
+                    table.getFilteredSelectedRowModel().rows,
+                  )}
                 >
                   {multipleHandler.icon}
                 </TooltipButton>
@@ -70,15 +73,23 @@ export function DataTablePagination<TData>({
               <AlertDialogContent>
                 <>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>{multipleHandler.title}</AlertDialogTitle>
+                    <AlertDialogTitle>
+                      {multipleHandler.title(
+                        table.getFilteredSelectedRowModel().rows,
+                      )}
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
-                      {multipleHandler.description}
+                      {multipleHandler.description(
+                        table.getFilteredSelectedRowModel().rows,
+                      )}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>取消</AlertDialogCancel>
                     <AlertDialogAction
-                      variant="destructive"
+                      variant={
+                        multipleHandler.isDanger ? "destructive" : "default"
+                      }
                       onClick={() => {
                         multipleHandler.handleSubmit(
                           table.getFilteredSelectedRowModel().rows,
@@ -87,7 +98,7 @@ export function DataTablePagination<TData>({
                         table.resetRowSelection();
                       }}
                     >
-                      删除
+                      确认
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </>

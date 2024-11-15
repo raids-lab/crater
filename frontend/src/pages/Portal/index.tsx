@@ -17,6 +17,7 @@ import interactiveRoutes from "./Job/Interactive";
 import datasetRoutes from "./Data";
 import { NavGroupProps } from "@/components/sidebar/nav-main";
 import AuthedRouter from "./AuthedRouter";
+import NotFound from "@/components/layout/NotFound";
 
 const portalRoutes: SidebarItem[] = [
   {
@@ -258,7 +259,7 @@ export const portalRoute: RouteObject = {
     }),
     {
       path: "*",
-      element: <h1>404</h1>,
+      element: <NotFound />,
     },
   ],
 };

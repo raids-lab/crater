@@ -22,6 +22,8 @@ import {
 import { Account } from "./Account";
 import admindatasetRoutes from "./Data";
 import { NavGroupProps } from "@/components/sidebar/nav-main";
+import AdminJob from "./Job";
+import NotFound from "@/components/layout/NotFound";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -80,7 +82,7 @@ const sidebarItems: SidebarItem[] = [
     icon: FlaskConicalIcon,
     route: {
       path: "job/*",
-      lazy: () => import("./Job"),
+      element: <AdminJob />,
     },
     children: [],
   },
@@ -249,7 +251,7 @@ const adminSidebarGroups: NavGroupProps[] = [
 
 const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
   const isAuthenticated = useAuth(Role.Admin);
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  return isAuthenticated ? children : <Navigate to="/portal" replace />;
 };
 
 export const adminRoute: RouteObject = {
@@ -277,7 +279,7 @@ export const adminRoute: RouteObject = {
     ...sidebarMenus.map((item) => item.route),
     {
       path: "*",
-      element: <h1>404</h1>,
+      element: <NotFound />,
     },
   ],
 };

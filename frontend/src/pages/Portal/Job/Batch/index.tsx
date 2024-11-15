@@ -10,7 +10,7 @@ const batchRoutes: RouteObject[] = [
     element: jobType === "aijobs" ? <ColocateOverview /> : <VolcanoOverview />,
   },
   {
-    path: ":id",
+    path: ":name",
     lazy:
       jobType === "aijobs"
         ? () => import("../Detail/AIJob")

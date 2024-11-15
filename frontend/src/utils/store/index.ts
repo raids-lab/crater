@@ -106,14 +106,12 @@ export const globalJobUrl = atom((get) => {
  */
 export const useResetStore = () => {
   const resetUserInfo = useResetAtom(globalUserInfo);
-  const resetLastView = useResetAtom(globalLastView);
   const resetProject = useResetAtom(globalAccount);
   const resetSettings = useResetAtom(globalSettings);
 
   const resetAll = () => {
     // Jotai
     resetUserInfo();
-    resetLastView();
     resetProject();
     resetSettings();
   };

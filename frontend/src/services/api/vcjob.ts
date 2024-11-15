@@ -4,6 +4,8 @@ import { IResponse } from "../types";
 import { globalJobUrl, store } from "@/utils/store";
 import { ImageInfoResponse } from "./imagepack";
 
+const JOB_URL = store.get(globalJobUrl);
+
 export enum JobType {
   Jupyter = "jupyter",
   WebIDE = "webide",
@@ -27,20 +29,19 @@ export interface IJobInfo {
   completedAt: string;
   nodes: string[];
   resources?: Record<string, string>;
+  keepWhenLowUsage: boolean;
 }
 
-export const apiAdminTaskListByType = () =>
+export const apiAdminGetJobList = () =>
   instance.get<IResponse<IJobInfo[]>>(`${VERSION}/admin/${JOB_URL}`);
 
-export const apiJobAllList = () =>
-  instance.get<IResponse<IJobInfo[]>>(`${VERSION}/${JOB_URL}/all`);
-
-export const apiJupyterGetAdminDetail = (jobName: string) =>
+export const apiAdminGetJobDetail = (jobName: string) =>
   instance.get<IResponse<IJupyterDetail>>(
     `${VERSION}/admin/${JOB_URL}/${jobName}/detail`,
   );
 
-const JOB_URL = store.get(globalJobUrl);
+export const apiJobAllList = () =>
+  instance.get<IResponse<IJobInfo[]>>(`${VERSION}/${JOB_URL}/all`);
 
 export enum JobPhase {
   Pending = "Pending",

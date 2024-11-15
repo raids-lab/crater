@@ -46,6 +46,7 @@ import ResourceBadges from "@/components/label/ResourceBadges";
 import JobTypeLabel from "@/components/custom/JobTypeLabel";
 import { globalJobUrl } from "@/utils/store";
 import { useAtomValue } from "jotai";
+import { Trash2Icon } from "lucide-react";
 
 const VolcanoOverview = () => {
   const queryClient = useQueryClient();
@@ -105,13 +106,6 @@ const VolcanoOverview = () => {
             {row.getValue("name")}
           </Link>
         ),
-      },
-      {
-        accessorKey: "owner",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("owner")} />
-        ),
-        cell: ({ row }) => <div>{row.getValue("owner")}</div>,
       },
       {
         accessorKey: "status",
@@ -297,7 +291,25 @@ const VolcanoOverview = () => {
         query={batchQuery}
         columns={batchColumns}
         toolbarConfig={jobToolbarConfig}
-      ></DataTable>
+        multipleHandlers={[
+          {
+            title: (rows) => `停止或删除 ${rows.length} 个作业`,
+            description: (rows) => (
+              <>
+                作业 {rows.map((row) => row.original.name).join(", ")}{" "}
+                将被停止或删除，确认要继续吗？
+              </>
+            ),
+            icon: <Trash2Icon className="text-destructive" />,
+            handleSubmit: (rows) => {
+              rows.forEach((row) => {
+                deleteTask(row.original.jobName);
+              });
+            },
+            isDanger: true,
+          },
+        ]}
+      />
     </>
   );
 };

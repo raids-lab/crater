@@ -106,8 +106,8 @@ const k8s_vgpu_scheduler_dashboard = import.meta.env
   .VITE_GRAFANA_K8S_VGPU_SCHEDULER_DASHBOARD;
 
 export const Component = () => {
-  const { id } = useParams<string>();
-  const jobName = "" + id;
+  const { name } = useParams<string>();
+  const jobName = "" + name;
   const setBreadcrumb = useBreadcrumb();
   const [data, setData] = useState<AIjobDetail>(initial);
   const [refetchInterval, setRefetchInterval] = useState(5000); // Manage interval state

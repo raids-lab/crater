@@ -31,12 +31,13 @@ import {
   globalUserInfo,
   useResetStore,
 } from "@/utils/store";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/utils/theme";
 import { toast } from "sonner";
 import { Role } from "@/services/api/auth";
 import { stringToSS58 } from "@/utils/ss58";
+import { useIsAdmin } from "@/hooks/useAdmin";
 
 export function NavUser() {
   const { isMobile } = useSidebar();
@@ -45,12 +46,9 @@ export function NavUser() {
   const user = useAtomValue(globalUserInfo);
   const account = useAtomValue(globalAccount);
   const navigate = useNavigate();
-  const location = useLocation();
   const { theme, setTheme } = useTheme();
   const setLastView = useSetAtom(globalLastView);
-
-  const pathParts = location.pathname.split("/").filter(Boolean);
-  const isAdminView = pathParts[0] === "admin";
+  const isAdminView = useIsAdmin();
 
   return (
     <SidebarMenu>
@@ -149,7 +147,7 @@ export function NavUser() {
             <DropdownMenuItem
               className="focus:bg-destructive focus:text-destructive-foreground"
               onClick={() => {
-                setLastView(pathParts[0]);
+                setLastView(isAdminView ? "admin" : "portal");
                 queryClient.clear();
                 resetAll();
                 toast.success("已退出");

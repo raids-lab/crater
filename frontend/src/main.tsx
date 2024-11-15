@@ -18,6 +18,7 @@ import Jupyter from "./pages/Job/Jupyter";
 import { logger } from "./utils/loglevel";
 import Website from "./pages/Website";
 import { Provider as JotaiProvider } from "jotai";
+import NotFound from "./components/layout/NotFound";
 
 const router = createBrowserRouter([
   {
@@ -45,7 +46,7 @@ const router = createBrowserRouter([
   },
   {
     path: "*",
-    element: <Navigate to="/portal" replace />,
+    element: <NotFound />,
   },
 ]);
 
