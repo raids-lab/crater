@@ -2,6 +2,7 @@ package vcjob
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -226,6 +227,7 @@ type (
 		CompletedTimestamp metav1.Time     `json:"completedAt"`
 		Nodes              []string        `json:"nodes"`
 		Resources          v1.ResourceList `json:"resources"`
+		KeepWhenLowUsage   bool            `json:"keepWhenLowUsage"`
 	}
 )
 
@@ -297,6 +299,7 @@ func convertJobResp(jobs []*model.Job) []JobResp {
 			CompletedTimestamp: metav1.NewTime(job.CompletedTimestamp),
 			Nodes:              job.Nodes.Data(),
 			Resources:          job.Resources.Data(),
+			KeepWhenLowUsage:   job.KeepWhenLowResourceUsage,
 		}
 	}
 	sort.Slice(jobList, func(i, j int) bool {
@@ -352,14 +355,7 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 	token := util.GetToken(c)
 
 	// find from db
-	j := query.Job
-	job, err := j.WithContext(c).
-		Preload(j.Account).
-		Preload(query.Job.User).
-		Where(j.JobName.Eq(req.JobName)).
-		Where(j.AccountID.Eq(token.QueueID)).
-		Where(j.UserID.Eq(token.UserID)).
-		First()
+	job, err := getJob(c, req.JobName, &token)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -378,6 +374,25 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		CompletedTimestamp: metav1.NewTime(job.CompletedTimestamp),
 	}
 	resputil.Success(c, jobDetail)
+}
+
+func getJob(c context.Context, name string, token *util.JWTMessage) (*model.Job, error) {
+	j := query.Job
+	if token.RolePlatform == model.RoleAdmin {
+		return j.WithContext(c).
+			Preload(j.Account).
+			Preload(j.User).
+			Where(j.JobName.Eq(name)).
+			First()
+	} else {
+		return j.WithContext(c).
+			Preload(j.Account).
+			Preload(j.User).
+			Where(j.JobName.Eq(name)).
+			Where(j.AccountID.Eq(token.QueueID)).
+			Where(j.UserID.Eq(token.UserID)).
+			First()
+	}
 }
 
 // GetJobPods godoc
@@ -400,12 +415,9 @@ func (mgr *VolcanojobMgr) GetJobPods(c *gin.Context) {
 	}
 
 	token := util.GetToken(c)
-	j := query.Job
-	job, err := j.WithContext(c).
-		Where(j.JobName.Eq(req.JobName)).
-		Where(j.AccountID.Eq(token.QueueID)).
-		Where(j.UserID.Eq(token.UserID)).
-		First()
+
+	// find from db
+	job, err := getJob(c, req.JobName, &token)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -476,12 +488,8 @@ func (mgr *VolcanojobMgr) GetJobYaml(c *gin.Context) {
 	}
 
 	token := util.GetToken(c)
-	j := query.Job
-	job, err := j.WithContext(c).
-		Where(j.JobName.Eq(req.JobName)).
-		Where(j.AccountID.Eq(token.QueueID)).
-		Where(j.UserID.Eq(token.UserID)).
-		First()
+	// find from db
+	job, err := getJob(c, req.JobName, &token)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
