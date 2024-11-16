@@ -14,7 +14,7 @@ export const formSchema = z.object({
     }),
   resources: quotaSchema,
   expiredAt: z.date().optional(),
-  admins: z.array(z.string()),
+  admins: z.array(z.string()).optional(),
 });
 
 export type AccountFormSchema = z.infer<typeof formSchema>;

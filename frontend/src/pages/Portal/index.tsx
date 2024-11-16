@@ -18,6 +18,7 @@ import datasetRoutes from "./Data";
 import { NavGroupProps } from "@/components/sidebar/nav-main";
 import AuthedRouter from "./AuthedRouter";
 import NotFound from "@/components/layout/NotFound";
+import UserSettings from "./Feedback";
 
 const portalRoutes: SidebarItem[] = [
   {
@@ -125,7 +126,7 @@ const portalRoutes: SidebarItem[] = [
     children: [],
     route: {
       path: "feedback",
-      lazy: () => import("./Feedback"),
+      element: <UserSettings />,
     },
   },
 ];
@@ -135,7 +136,7 @@ const userSidebarGroups: NavGroupProps[] = [
     title: "作业与服务",
     items: [
       {
-        title: "集群概览",
+        title: "平台概览",
         url: "overview",
         icon: BarChartBigIcon,
       },
@@ -224,7 +225,7 @@ const userSidebarGroups: NavGroupProps[] = [
       {
         title: "系统设置",
         url: "setting",
-        icon: SettingsIcon, // 假设你有一个系统设置的图标
+        icon: SettingsIcon, // 假设你有一个设置的图标
         items: [],
       },
       {

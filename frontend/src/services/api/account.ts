@@ -22,6 +22,7 @@ export interface ICreateOrUpdateAccount {
   quota: IQuota;
   expiredAt: Date | undefined;
   withoutVolcano: boolean;
+  admins?: number[];
 }
 
 export interface ICreateProjectResponse {

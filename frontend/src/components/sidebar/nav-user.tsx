@@ -3,12 +3,12 @@ import {
   ChevronsUpDown,
   LogOut,
   Moon,
-  Settings2,
+  SettingsIcon,
   Sparkles,
   Sun,
 } from "lucide-react";
 import Identicon from "@polkadot/react-identicon";
-import { Avatar } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,14 +59,16 @@ export function NavUser() {
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <Avatar className="h-8 w-8 rounded-full">
-                <Identicon
-                  value={stringToSS58(user.name)}
-                  size={32}
-                  // 'beachball' | 'empty' | 'ethereum' | 'jdenticon' | 'polkadot' | 'substrate'
-                  theme="beachball"
-                  className="!cursor-pointer"
-                />
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={user.avatar} alt="Avatar preview" />
+                <AvatarFallback>
+                  <Identicon
+                    value={stringToSS58(user.name)}
+                    size={32}
+                    theme="beachball"
+                    className="!cursor-default"
+                  />
+                </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">{user.nickname}</span>
@@ -83,13 +85,16 @@ export function NavUser() {
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-full">
-                  <Identicon
-                    value={stringToSS58(user.name)}
-                    size={32}
-                    theme="beachball"
-                    className="!cursor-default"
-                  />
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user.avatar} alt="Avatar preview" />
+                  <AvatarFallback>
+                    <Identicon
+                      value={stringToSS58(user.name)}
+                      size={32}
+                      theme="beachball"
+                      className="!cursor-default"
+                    />
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">
@@ -132,7 +137,7 @@ export function NavUser() {
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link to="/portal/setting">
-                  <Settings2 />
+                  <SettingsIcon />
                   系统设置
                 </Link>
               </DropdownMenuItem>

@@ -35,7 +35,9 @@ export const handlers = [
               space: "",
             },
             user: {
+              id: 0,
               name: "",
+              nickname: "",
             },
           },
           code: 0,

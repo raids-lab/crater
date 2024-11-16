@@ -67,7 +67,6 @@ const VERSION = "20240623";
 const JOB_TYPE = "queue";
 
 export const Account = () => {
-  const [users, setUsers] = useState<string[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const { scheduler } = useAtomValue(globalSettings);
   const queryClient = useQueryClient();
@@ -105,6 +104,7 @@ export const Account = () => {
         name: values.name,
         quota: convertFormToQuota(values.resources),
         expiredAt: values.expiredAt,
+        admins: values.admins?.map((id) => parseInt(id)),
         withoutVolcano: scheduler !== "volcano",
       }),
     onSuccess: async (_, { name }) => {
@@ -122,6 +122,7 @@ export const Account = () => {
         name: values.name,
         quota: convertFormToQuota(values.resources),
         expiredAt: values.expiredAt,
+        admins: values.admins?.map((id) => parseInt(id)),
         withoutVolcano: scheduler !== "volcano",
       }),
     onSuccess: async (_, { name }) => {
@@ -221,7 +222,6 @@ export const Account = () => {
         name: account.nickname,
         resources: resources,
         expiredAt: account.expiredAt ? new Date(account.expiredAt) : undefined,
-        admins: [],
       });
       setIsOpen(true);
     },
@@ -331,29 +331,36 @@ export const Account = () => {
                         )}
                       />
                     </div>
-                    <FormField
-                      control={form.control}
-                      name="admins"
-                      render={() => (
-                        <FormItem className="col-span-1 flex-grow">
-                          <FormLabel>账户管理员 [WIP]</FormLabel>
-                          <FormControl>
-                            <SelectBox
-                              className="col-span-4 h-8"
-                              options={userList ?? []}
-                              inputPlaceholder="搜索用户"
-                              placeholder="选择用户"
-                              value={users}
-                              onChange={setUsers}
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            指定账户管理员后，账户内的用户管理、资源分配等操作，将由账户管理员负责
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {!form.getValues("id") && (
+                      <FormField
+                        control={form.control}
+                        name="admins"
+                        render={() => (
+                          <FormItem className="col-span-1 flex-grow">
+                            <FormLabel>
+                              账户管理员
+                              <FormLabelMust />
+                            </FormLabel>
+                            <FormControl>
+                              <SelectBox
+                                className="col-span-4 h-8"
+                                options={userList ?? []}
+                                inputPlaceholder="搜索用户"
+                                placeholder="选择用户"
+                                value={currentValues.admins}
+                                onChange={(value) =>
+                                  form.setValue("admins", value)
+                                }
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              指定账户管理员后，账户内的用户管理、资源分配等操作，将由账户管理员负责
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                     <div className="space-y-2">
                       {resourcesFields.length > 0 && (
                         <FormLabel>资源配额</FormLabel>

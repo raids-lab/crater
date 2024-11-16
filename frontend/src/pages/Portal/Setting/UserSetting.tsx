@@ -98,38 +98,41 @@ export default function UserSettings() {
       <Separator />
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-8">
-            <Avatar className="h-20 w-20">
-              <AvatarImage src={avatarPreview} alt="Avatar preview" />
-              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <FormField
-              control={form.control}
-              name="avatar"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>头像</FormLabel>
-                  <FormControl>
-                    <div className="flex items-center space-x-4">
-                      <Input
-                        {...field}
-                        value={field.value || ""}
-                        placeholder="Avatar URL"
-                        className="font-mono"
-                        onChange={(e) => {
-                          field.onChange(e);
-                          setAvatarPreview(e.target.value);
-                        }}
-                      />
-                    </div>
-                  </FormControl>
-                  <FormDescription>
-                    通过图床上传图片，然后将图片链接粘贴到此处
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <CardContent className="space-y-8 pt-6">
+            <div className="flex flex-row items-center gap-6">
+              <FormField
+                control={form.control}
+                name="avatar"
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>头像</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center space-x-4">
+                        <Input
+                          {...field}
+                          value={field.value || ""}
+                          placeholder="Avatar URL"
+                          className="font-mono"
+                          onChange={(e) => {
+                            field.onChange(e);
+                            setAvatarPreview(e.target.value);
+                          }}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormDescription>
+                      通过图床上传图片，然后将图片链接粘贴到此处
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Avatar className="h-20 w-20">
+                <AvatarImage src={avatarPreview} alt="Avatar preview" />
+                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+            </div>
+
             <FormField
               control={form.control}
               name="email"
