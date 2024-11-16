@@ -7,7 +7,7 @@ export const craterPath: PathInfo = {
   children: [
     {
       path: "overview",
-      title: "集群概览",
+      title: "平台概览",
       titleNav: "异构云资源混合调度与运维平台",
     },
     {

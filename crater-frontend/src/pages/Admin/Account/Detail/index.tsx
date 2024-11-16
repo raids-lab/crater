@@ -77,6 +77,7 @@ import ResourceBadges from "@/components/label/ResourceBadges";
 import UserLabel from "@/components/label/UserLabel";
 import { UserRoundPlusIcon } from "lucide-react";
 import Quota from "./AccountQuota";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   index: z.string().min(1, {
@@ -126,7 +127,7 @@ const AccountDetail = () => {
   const setBreadcrumb = useBreadcrumb();
 
   const accountUsersQuery = useQuery({
-    queryKey: ["usersInProject", pid],
+    queryKey: ["account", pid, "users"],
     queryFn: () => apiUserInProjectList(pid),
     select: (res) => res.data.data,
   });
@@ -148,7 +149,7 @@ const AccountDetail = () => {
     mutationFn: (user: IUserInAccountCreate) => apiAddUser(pid, user),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ["usersInProject", pid],
+        queryKey: ["account", pid, "users"],
       });
     },
   });
@@ -156,8 +157,9 @@ const AccountDetail = () => {
   const { mutate: updateUser } = useMutation({
     mutationFn: (user: IUserInAccountCreate) => apiUpdateUser(pid, user),
     onSuccess: async () => {
+      toast.success("用户信息已更新");
       await queryClient.invalidateQueries({
-        queryKey: ["usersInProject", pid],
+        queryKey: ["account", pid, "users"],
       });
     },
   });
@@ -169,8 +171,9 @@ const AccountDetail = () => {
   const { mutate: deleteUser } = useMutation({
     mutationFn: (user: IUserInAccountCreate) => apiRemoveUser(pid, user),
     onSuccess: async () => {
+      toast.success("用户已删除");
       await queryClient.invalidateQueries({
-        queryKey: ["usersOutOfProject", pid],
+        queryKey: ["account", pid, "users"],
       });
     },
   });
@@ -500,7 +503,6 @@ const AccountDetail = () => {
                           </SelectGroup>
                         </SelectContent>
                       </Select>
-
                       <FormDescription>
                         设置用户在账户空间的访问权限
                       </FormDescription>

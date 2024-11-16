@@ -1,11 +1,7 @@
 import { atom, createStore } from "jotai";
 import { atomWithStorage, useResetAtom } from "jotai/utils";
-import {
-  AccessMode,
-  Role,
-  AccountContext,
-  UserContext,
-} from "@/services/api/auth";
+import { AccessMode, Role, AccountContext } from "@/services/api/auth";
+import { IUserAttributes } from "@/services/api/admin/user";
 
 export const store = createStore();
 
@@ -33,10 +29,12 @@ export const globalBreadCrumb = atom([] as BreadCrumbItem[]);
 /**
  * User Info
  */
-const defaultUserContext: UserContext & {
+const defaultUserContext: IUserAttributes & {
   space: string;
 } = {
+  id: 0,
   name: "",
+  nickname: "",
   space: "",
 };
 

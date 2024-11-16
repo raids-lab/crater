@@ -1,6 +1,7 @@
 import instance, { VERSION } from "../axios";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/utils/store";
 import { IResponse } from "../types";
+import { IUserAttributes } from "./admin/user";
 
 /**
  * Signup
@@ -46,21 +47,10 @@ export interface AccountContext {
   space: string;
 }
 
-export interface UserContext {
-  name: string;
-  nickname?: string;
-  email?: string;
-  teacher?: string;
-  group?: string;
-  expire?: string;
-  phone?: string;
-  avatar?: string;
-}
-
 export interface IAuthResponse {
   accessToken: string;
   refreshToken: string;
-  user: UserContext;
+  user: IUserAttributes;
   context: AccountContext;
 }
 
