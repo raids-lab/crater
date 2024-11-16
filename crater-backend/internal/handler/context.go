@@ -42,7 +42,7 @@ func (mgr *ContextMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *ContextMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("quota", mgr.GetQuota)
-	g.GET("info", mgr.GetUserInfo)
+	g.PUT("attributes", mgr.UpdateUserAttributes)
 }
 
 func (mgr *ContextMgr) RegisterAdmin(_ *gin.RouterGroup) {}
@@ -170,39 +170,39 @@ type (
 	}
 )
 
-// GetUserInfo godoc
-// @Summary Get user information
-// @Description Get user information from the database
+// UpdateUserAttributes godoc
+// @Summary Update user attributes
+// @Description Update the attributes of the current user
 // @Tags Context
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Success 200 {object} resputil.Response[any] "user information"
+// @Param attributes body model.UserAttribute true "User attributes"
+// @Success 200 {object} resputil.Response[any] "User attributes updated"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/context/info [get]
-func (mgr *ContextMgr) GetUserInfo(c *gin.Context) {
+// @Router /v1/context/attributes [put]
+func (mgr *ContextMgr) UpdateUserAttributes(c *gin.Context) {
 	token := util.GetToken(c)
 	u := query.User
+
+	var attributes model.UserAttribute
+	if err := c.ShouldBindJSON(&attributes); err != nil {
+		resputil.BadRequestError(c, "Invalid request body")
+		return
+	}
+
 	user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
 	if err != nil {
 		resputil.Error(c, "User not found", resputil.NotSpecified)
 		return
 	}
 
-	userAttr := UserInfoResp{
-		ID:        user.ID,
-		Name:      user.Name,
-		Attribute: user.Attributes,
+	user.Attributes = datatypes.NewJSONType(attributes)
+	if err := u.WithContext(c).Save(user); err != nil {
+		resputil.Error(c, "Failed to update user attributes", resputil.NotSpecified)
+		return
 	}
-	resputil.Success(c, userAttr)
-}
 
-type (
-	UserQueueResp struct {
-		Name       string           `json:"name"`
-		Nickname   string           `json:"nickname"`
-		Role       model.Role       `json:"role"`
-		AccessMode model.AccessMode `json:"access"`
-	}
-)
+	resputil.Success(c, "User attributes updated successfully")
+}
