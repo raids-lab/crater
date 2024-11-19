@@ -14,7 +14,7 @@ import (
 func ConnectPostgres() *gorm.DB {
 	// Connect to the database
 	dsn := `host=192.168.5.60 user=postgres password=DcNuWzUh0kI2k7tZSl3Uf84LwDm0cRMSWqwcYtTbgK35g56rjenpXfUzOjy7N0zz 
-		dbname=crater port=30432 sslmode=require TimeZone=Asia/Shanghai`
+		dbname=crater port=30432 sslmode=disable TimeZone=Asia/Shanghai`
 	db, err := gorm.Open(postgres.Open(dsn))
 	if err != nil {
 		panic(fmt.Errorf("connect to postgres: %w", err))
@@ -37,15 +37,11 @@ func main() {
 
 	// 从连接的数据库为所有表生成 Model 结构体和 CRUD 代码
 	g.ApplyBasic(
-		model.Project{},
 		model.User{},
-		model.UserProject{},
-		model.Space{},
-		model.ProjectSpace{},
-		model.Queue{},
-		model.UserQueue{},
+		model.Account{},
+		model.UserAccount{},
 		model.Dataset{},
-		model.QueueDataset{},
+		model.AccountDataset{},
 		model.UserDataset{},
 	)
 

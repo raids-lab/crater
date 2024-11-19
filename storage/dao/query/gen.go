@@ -16,79 +16,59 @@ import (
 )
 
 var (
-	Q            = new(Query)
-	Dataset      *dataset
-	Project      *project
-	ProjectSpace *projectSpace
-	Queue        *queue
-	QueueDataset *queueDataset
-	Space        *space
-	User         *user
-	UserDataset  *userDataset
-	UserProject  *userProject
-	UserQueue    *userQueue
+	Q              = new(Query)
+	Account        *account
+	AccountDataset *accountDataset
+	Dataset        *dataset
+	User           *user
+	UserAccount    *userAccount
+	UserDataset    *userDataset
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
+	Account = &Q.Account
+	AccountDataset = &Q.AccountDataset
 	Dataset = &Q.Dataset
-	Project = &Q.Project
-	ProjectSpace = &Q.ProjectSpace
-	Queue = &Q.Queue
-	QueueDataset = &Q.QueueDataset
-	Space = &Q.Space
 	User = &Q.User
+	UserAccount = &Q.UserAccount
 	UserDataset = &Q.UserDataset
-	UserProject = &Q.UserProject
-	UserQueue = &Q.UserQueue
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:           db,
-		Dataset:      newDataset(db, opts...),
-		Project:      newProject(db, opts...),
-		ProjectSpace: newProjectSpace(db, opts...),
-		Queue:        newQueue(db, opts...),
-		QueueDataset: newQueueDataset(db, opts...),
-		Space:        newSpace(db, opts...),
-		User:         newUser(db, opts...),
-		UserDataset:  newUserDataset(db, opts...),
-		UserProject:  newUserProject(db, opts...),
-		UserQueue:    newUserQueue(db, opts...),
+		db:             db,
+		Account:        newAccount(db, opts...),
+		AccountDataset: newAccountDataset(db, opts...),
+		Dataset:        newDataset(db, opts...),
+		User:           newUser(db, opts...),
+		UserAccount:    newUserAccount(db, opts...),
+		UserDataset:    newUserDataset(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	Dataset      dataset
-	Project      project
-	ProjectSpace projectSpace
-	Queue        queue
-	QueueDataset queueDataset
-	Space        space
-	User         user
-	UserDataset  userDataset
-	UserProject  userProject
-	UserQueue    userQueue
+	Account        account
+	AccountDataset accountDataset
+	Dataset        dataset
+	User           user
+	UserAccount    userAccount
+	UserDataset    userDataset
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:           db,
-		Dataset:      q.Dataset.clone(db),
-		Project:      q.Project.clone(db),
-		ProjectSpace: q.ProjectSpace.clone(db),
-		Queue:        q.Queue.clone(db),
-		QueueDataset: q.QueueDataset.clone(db),
-		Space:        q.Space.clone(db),
-		User:         q.User.clone(db),
-		UserDataset:  q.UserDataset.clone(db),
-		UserProject:  q.UserProject.clone(db),
-		UserQueue:    q.UserQueue.clone(db),
+		db:             db,
+		Account:        q.Account.clone(db),
+		AccountDataset: q.AccountDataset.clone(db),
+		Dataset:        q.Dataset.clone(db),
+		User:           q.User.clone(db),
+		UserAccount:    q.UserAccount.clone(db),
+		UserDataset:    q.UserDataset.clone(db),
 	}
 }
 
@@ -102,45 +82,33 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:           db,
-		Dataset:      q.Dataset.replaceDB(db),
-		Project:      q.Project.replaceDB(db),
-		ProjectSpace: q.ProjectSpace.replaceDB(db),
-		Queue:        q.Queue.replaceDB(db),
-		QueueDataset: q.QueueDataset.replaceDB(db),
-		Space:        q.Space.replaceDB(db),
-		User:         q.User.replaceDB(db),
-		UserDataset:  q.UserDataset.replaceDB(db),
-		UserProject:  q.UserProject.replaceDB(db),
-		UserQueue:    q.UserQueue.replaceDB(db),
+		db:             db,
+		Account:        q.Account.replaceDB(db),
+		AccountDataset: q.AccountDataset.replaceDB(db),
+		Dataset:        q.Dataset.replaceDB(db),
+		User:           q.User.replaceDB(db),
+		UserAccount:    q.UserAccount.replaceDB(db),
+		UserDataset:    q.UserDataset.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	Dataset      IDatasetDo
-	Project      IProjectDo
-	ProjectSpace IProjectSpaceDo
-	Queue        IQueueDo
-	QueueDataset IQueueDatasetDo
-	Space        ISpaceDo
-	User         IUserDo
-	UserDataset  IUserDatasetDo
-	UserProject  IUserProjectDo
-	UserQueue    IUserQueueDo
+	Account        IAccountDo
+	AccountDataset IAccountDatasetDo
+	Dataset        IDatasetDo
+	User           IUserDo
+	UserAccount    IUserAccountDo
+	UserDataset    IUserDatasetDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		Dataset:      q.Dataset.WithContext(ctx),
-		Project:      q.Project.WithContext(ctx),
-		ProjectSpace: q.ProjectSpace.WithContext(ctx),
-		Queue:        q.Queue.WithContext(ctx),
-		QueueDataset: q.QueueDataset.WithContext(ctx),
-		Space:        q.Space.WithContext(ctx),
-		User:         q.User.WithContext(ctx),
-		UserDataset:  q.UserDataset.WithContext(ctx),
-		UserProject:  q.UserProject.WithContext(ctx),
-		UserQueue:    q.UserQueue.WithContext(ctx),
+		Account:        q.Account.WithContext(ctx),
+		AccountDataset: q.AccountDataset.WithContext(ctx),
+		Dataset:        q.Dataset.WithContext(ctx),
+		User:           q.User.WithContext(ctx),
+		UserAccount:    q.UserAccount.WithContext(ctx),
+		UserDataset:    q.UserDataset.WithContext(ctx),
 	}
 }
 
