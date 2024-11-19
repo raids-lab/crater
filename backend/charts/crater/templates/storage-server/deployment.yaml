@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webdav-deployment
+  namespace: crater-workspace
+  labels:
+    app: webdav-crater
+spec:
+  selector:
+    matchLabels:
+      app: webdav-crater
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: webdav-crater
+    spec:
+      serviceAccountName: default
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values:
+                      - dell-66
+                      - dell-67
+                      - dell-68
+      containers:
+        - name: webdav
+          image: {{ .Values.web.storage.image.repository }}:{{ .Values.web.storage.image.tag }}
+          imagePullPolicy: {{ .Values.web.storage.image.pullPolicy }}
+          resources:
+            limits:
+              memory: 10Gi
+              cpu: "1"
+            requests:
+              memory: 256Mi
+              cpu: "0.2"
+          ports:
+            - containerPort: 7320
+          volumeMounts:
+            - name: mypvc
+              mountPath: /crater
+      volumes:
+        - name: mypvc
+          persistentVolumeClaim:
+            claimName: crater-storage

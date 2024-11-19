@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: webdav-service
+  namespace: crater-workspace
+  labels:
+    name: webdav-service
+spec:
+  selector:
+    app: webdav-crater
+  type: ClusterIP
+  ports:
+    - port: 7320
+      targetPort: 7320
+      protocol: TCP
