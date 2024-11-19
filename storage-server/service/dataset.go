@@ -107,8 +107,7 @@ func UncompressDir(srcZip, destDir string) error {
 		if err != nil {
 			return err
 		}
-
-		_, err = io.CopyN(outFile, inFile, int64(file.UncompressedSize64))
+		_, err = io.CopyN(outFile, inFile, int64(file.UncompressedSize64)) //nolint:gosec //使用copy会有转换溢出或dos漏洞问题，目前不清楚怎么解决
 		outFile.Close()
 		inFile.Close()
 

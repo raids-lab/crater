@@ -62,22 +62,18 @@ func main() {
 
 	m.InitSchema(func(tx *gorm.DB) error {
 		err := tx.AutoMigrate(
-			&model.Project{},
-			&model.Space{},
 			&model.User{},
-			&model.UserProject{},
-			&model.ProjectSpace{},
-			&model.Queue{},
-			&model.UserQueue{},
+			&model.Account{},
+			&model.UserAccount{},
 			&model.Dataset{},
-			&model.QueueDataset{},
+			&model.AccountDataset{},
 			&model.UserDataset{},
 		)
 		if err != nil {
 			return err
 		}
 
-		queue := model.Queue{
+		queue := model.Account{
 			Name:     "default",
 			Nickname: "公共队列",
 			Space:    "/public",

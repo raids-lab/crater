@@ -41,10 +41,10 @@ func newDataset(db *gorm.DB, opts ...gen.DOOption) dataset {
 		RelationField: field.NewRelation("UserDatasets", "model.UserDataset"),
 	}
 
-	_dataset.QueueDatasets = datasetHasManyQueueDatasets{
+	_dataset.AccountDatasets = datasetHasManyAccountDatasets{
 		db: db.Session(&gorm.Session{}),
 
-		RelationField: field.NewRelation("QueueDatasets", "model.QueueDataset"),
+		RelationField: field.NewRelation("AccountDatasets", "model.AccountDataset"),
 	}
 
 	_dataset.fillFieldMap()
@@ -66,7 +66,7 @@ type dataset struct {
 	UserID       field.Uint
 	UserDatasets datasetHasManyUserDatasets
 
-	QueueDatasets datasetHasManyQueueDatasets
+	AccountDatasets datasetHasManyAccountDatasets
 
 	fieldMap map[string]field.Expr
 }
@@ -208,13 +208,13 @@ func (a datasetHasManyUserDatasetsTx) Count() int64 {
 	return a.tx.Count()
 }
 
-type datasetHasManyQueueDatasets struct {
+type datasetHasManyAccountDatasets struct {
 	db *gorm.DB
 
 	field.RelationField
 }
 
-func (a datasetHasManyQueueDatasets) Where(conds ...field.Expr) *datasetHasManyQueueDatasets {
+func (a datasetHasManyAccountDatasets) Where(conds ...field.Expr) *datasetHasManyAccountDatasets {
 	if len(conds) == 0 {
 		return &a
 	}
@@ -227,27 +227,27 @@ func (a datasetHasManyQueueDatasets) Where(conds ...field.Expr) *datasetHasManyQ
 	return &a
 }
 
-func (a datasetHasManyQueueDatasets) WithContext(ctx context.Context) *datasetHasManyQueueDatasets {
+func (a datasetHasManyAccountDatasets) WithContext(ctx context.Context) *datasetHasManyAccountDatasets {
 	a.db = a.db.WithContext(ctx)
 	return &a
 }
 
-func (a datasetHasManyQueueDatasets) Session(session *gorm.Session) *datasetHasManyQueueDatasets {
+func (a datasetHasManyAccountDatasets) Session(session *gorm.Session) *datasetHasManyAccountDatasets {
 	a.db = a.db.Session(session)
 	return &a
 }
 
-func (a datasetHasManyQueueDatasets) Model(m *model.Dataset) *datasetHasManyQueueDatasetsTx {
-	return &datasetHasManyQueueDatasetsTx{a.db.Model(m).Association(a.Name())}
+func (a datasetHasManyAccountDatasets) Model(m *model.Dataset) *datasetHasManyAccountDatasetsTx {
+	return &datasetHasManyAccountDatasetsTx{a.db.Model(m).Association(a.Name())}
 }
 
-type datasetHasManyQueueDatasetsTx struct{ tx *gorm.Association }
+type datasetHasManyAccountDatasetsTx struct{ tx *gorm.Association }
 
-func (a datasetHasManyQueueDatasetsTx) Find() (result []*model.QueueDataset, err error) {
+func (a datasetHasManyAccountDatasetsTx) Find() (result []*model.AccountDataset, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a datasetHasManyQueueDatasetsTx) Append(values ...*model.QueueDataset) (err error) {
+func (a datasetHasManyAccountDatasetsTx) Append(values ...*model.AccountDataset) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -255,7 +255,7 @@ func (a datasetHasManyQueueDatasetsTx) Append(values ...*model.QueueDataset) (er
 	return a.tx.Append(targetValues...)
 }
 
-func (a datasetHasManyQueueDatasetsTx) Replace(values ...*model.QueueDataset) (err error) {
+func (a datasetHasManyAccountDatasetsTx) Replace(values ...*model.AccountDataset) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -263,7 +263,7 @@ func (a datasetHasManyQueueDatasetsTx) Replace(values ...*model.QueueDataset) (e
 	return a.tx.Replace(targetValues...)
 }
 
-func (a datasetHasManyQueueDatasetsTx) Delete(values ...*model.QueueDataset) (err error) {
+func (a datasetHasManyAccountDatasetsTx) Delete(values ...*model.AccountDataset) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -271,11 +271,11 @@ func (a datasetHasManyQueueDatasetsTx) Delete(values ...*model.QueueDataset) (er
 	return a.tx.Delete(targetValues...)
 }
 
-func (a datasetHasManyQueueDatasetsTx) Clear() error {
+func (a datasetHasManyAccountDatasetsTx) Clear() error {
 	return a.tx.Clear()
 }
 
-func (a datasetHasManyQueueDatasetsTx) Count() int64 {
+func (a datasetHasManyAccountDatasetsTx) Count() int64 {
 	return a.tx.Count()
 }
 
