@@ -9,6 +9,11 @@ web:
       repository: ***REMOVED***
       tag: "f97f3224"
       pullPolicy: "IfNotPresent"
+  storage:
+    images:
+      repository: ***REMOVED***
+      tag: "jg5s886d"
+      pullPolicy: "IfNotPresent"
 
 backendConfig:
   content: |

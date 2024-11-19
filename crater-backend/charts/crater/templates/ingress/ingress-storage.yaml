@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: storage-server-ingress
+  namespace: crater-workspace
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "1000m"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - crater.***REMOVED***
+      secretName: crater-tls-secret
+  rules:
+    - host: crater.***REMOVED***
+      http:
+        paths:
+          - path: /api/ss
+            pathType: Prefix
+            backend:
+              service:
+                name: webdav-service
+                port:
+                  number: 7320
