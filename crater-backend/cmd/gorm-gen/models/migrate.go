@@ -347,6 +347,21 @@ func main() {
 				return tx.Migrator().DropColumn(&Job{}, "Reminded")
 			},
 		},
+		{
+			ID: "202411182330",
+			Migrate: func(tx *gorm.DB) error {
+				type Job struct {
+					Template string `gorm:"type:text;comment:作业的模板配置"`
+				}
+				return tx.Migrator().AddColumn(&Job{}, "Template")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Job struct {
+					Template string `gorm:"type:text;comment:作业的模板配置"`
+				}
+				return tx.Migrator().DropColumn(&Job{}, "Template")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {

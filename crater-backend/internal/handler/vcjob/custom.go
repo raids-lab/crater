@@ -27,6 +27,7 @@ type (
 		Image           string          `json:"image" binding:"required"`
 		Command         string          `json:"command" binding:"required"`
 		WorkingDir      string          `json:"workingDir" binding:"required"`
+		Template        string          `json:"template"`
 	}
 )
 
@@ -76,6 +77,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	}
 	annotations := map[string]string{
 		AnnotationKeyTaskName:       req.Name,
+		AnnotationKeyTaskTemplate:   req.Template,
 		AnnotationKeyUseTensorBoard: useTensorboard,
 	}
 

@@ -58,6 +58,7 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET(":name/detail", mgr.GetJobDetail)
 	g.GET(":name/yaml", mgr.GetJobYaml)
 	g.GET(":name/pods", mgr.GetJobPods)
+	g.GET(":name/template", mgr.GetJobTemplate)
 
 	// jupyter
 	g.POST("jupyter", mgr.CreateJupyterJob)
@@ -85,6 +86,7 @@ const (
 	LabelKeyBaseURL  = "crater.raids.io/base-url"
 
 	AnnotationKeyTaskName       = "crater.raids.io/task-name"
+	AnnotationKeyTaskTemplate   = "crater.raids.io/task-template"
 	AnnotationKeyJupyter        = "crater.raids.io/jupyter-token"
 	AnnotationKeyUseTensorBoard = "crater.raids.io/use-tensorboard"
 
@@ -340,7 +342,7 @@ type (
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param jobname query string true "vcjob-name"
+// @Param name path string true "Job Name"
 // @Success 200 {object} resputil.Response[any] "任务描述"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
@@ -402,7 +404,7 @@ func getJob(c context.Context, name string, token *util.JWTMessage) (*model.Job,
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param jobname query string true "vcjob-name"
+// @Param name path string true "Job Name"
 // @Success 200 {object} resputil.Response[any] "Pod列表"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
@@ -475,7 +477,7 @@ func (mgr *VolcanojobMgr) GetJobPods(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param jobname query string true "vcjob-name"
+// @Param name path string true "Job Name"
 // @Success 200 {object} resputil.Response[any] "任务yaml"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
@@ -532,4 +534,31 @@ func marshalYAMLWithIndent(v any, indent int) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// GetJobTemplate godoc
+// @Summary 获取任务的 template
+// @Description 获取任务的 template
+// @Tags VolcanoJob
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param name path string true "Job Name"
+// @Success 200 {object} resputil.Response[any] "Success"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/vcjobs/{name}/template [get]
+func (mgr *VolcanojobMgr) GetJobTemplate(c *gin.Context) {
+	var req JobActionReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+	db := query.Job
+	job, err := db.WithContext(c).Where(db.JobName.Eq(req.JobName)).First()
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, job.Template)
 }
