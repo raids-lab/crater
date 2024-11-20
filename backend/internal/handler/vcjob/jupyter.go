@@ -37,6 +37,7 @@ type (
 		Name            string          `json:"name" binding:"required"`
 		Resource        v1.ResourceList `json:"resource"`
 		Image           string          `json:"image" binding:"required"`
+		Template        string          `json:"template"`
 	}
 )
 
@@ -136,6 +137,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	// 初始化 annotations 并添加 notebookIngress Annotation
 	annotations := map[string]string{
 		AnnotationKeyTaskName:                  req.Name,
+		AnnotationKeyTaskTemplate:              req.Template,
 		AnnotationKeyUseTensorBoard:            useTensorboard,
 		IngressLabelKey + notebookIngress.Name: string(ingressJSON), // 添加 notebookIngress Annotation
 	}

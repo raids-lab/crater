@@ -47,4 +47,5 @@ type Job struct {
 	Reminded                 bool `gorm:"comment:是否已经处于发送了提醒的状态"`
 
 	Attributes datatypes.JSONType[*batch.Job] `gorm:"comment:作业的原始属性"`
+	Template   string                         `gorm:"type:text;comment:作业的模板配置"`
 }
