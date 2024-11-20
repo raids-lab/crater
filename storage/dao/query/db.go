@@ -25,6 +25,7 @@ func InitDB() error {
 	sslMode := dbConfig.Postgres.SSLMode
 	timeZone := dbConfig.Postgres.TimeZone
 
+	fmt.Println("Starting init postgres ")
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=%s",
 		host, user, password, dbName, port, sslMode, timeZone)
 	var err error
