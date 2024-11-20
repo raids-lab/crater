@@ -205,6 +205,7 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 		CreationTimestamp: job.CreationTimestamp.Time,
 		Resources:         datatypes.NewJSONType(resources),
 		Attributes:        datatypes.NewJSONType(job),
+		Template:          job.Annotations[vcjob.AnnotationKeyTaskTemplate],
 	}, nil
 }
 
