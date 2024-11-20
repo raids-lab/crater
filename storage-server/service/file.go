@@ -14,7 +14,6 @@ import (
 	"webdav/dao/model"
 	"webdav/dao/query"
 	"webdav/logutils"
-	"webdav/orm"
 	"webdav/response"
 	"webdav/util"
 
@@ -50,25 +49,6 @@ func checkfs() {
 	})
 }
 
-func CheckFilePermission(userID, projectID uint) model.FilePermission {
-	db := orm.DB()
-	var UserPro model.UserProject
-	err := db.Model(&model.UserProject{}).Where("user_id = ? AND project_id = ?", userID, projectID).First(&UserPro).Error
-	if err != nil || UserPro.ID == 0 {
-		fmt.Println("user has no this project, ", err)
-		return model.NotAllowed
-	}
-	switch UserPro.Role {
-	case model.RoleAdmin:
-		return model.ReadWrite
-	case model.RoleGuest:
-		return model.NotAllowed
-	case model.RoleUser:
-		return model.ReadOnly
-	}
-	return model.NotAllowed
-}
-
 func CheckJWTToken(c *gin.Context) (util.JWTMessage, error) {
 	var tmp util.JWTMessage
 	authHeader := c.Request.Header.Get("Authorization")
@@ -94,7 +74,8 @@ func GetPermissionFromToken(token util.JWTMessage) model.FilePermission {
 	}
 }
 
-func ListCurrentProjects(userID, queueID uint, c *gin.Context) []string {
+// 实际上是列出用户当前账户、公共账户和自己用户空间的地址
+func ListMySpace(userID, accountID uint, c *gin.Context) []string {
 	u := query.User
 	user, err := u.WithContext(c).Where(u.ID.Eq(userID)).First()
 	if err != nil {
@@ -105,41 +86,43 @@ func ListCurrentProjects(userID, queueID uint, c *gin.Context) []string {
 	if user.Space != "" {
 		data = append(data, user.Space)
 	}
-	q := query.Queue
-	publicqueue, err := q.WithContext(c).Where(q.ID.Eq(1)).First()
+	a := query.Account
+	publicaccount, err := a.WithContext(c).Where(a.ID.Eq(1)).First()
 	if err != nil {
-		fmt.Println("can't find public queue, ", err)
+		fmt.Println("can't find public account, ", err)
 		return data
 	}
-	data = append(data, publicqueue.Space)
-	if queueID != 0 && queueID != 1 {
-		queue, err := q.WithContext(c).Where(q.ID.Eq(queueID)).First()
+	data = append(data, publicaccount.Space)
+	if accountID != 0 && accountID != 1 {
+		account, err := a.WithContext(c).Where(a.ID.Eq(accountID)).First()
 		if err != nil {
-			fmt.Println("user has no project, ", err)
+			fmt.Println("user has no account, ", err)
 			return data
 		}
-		data = append(data, queue.Space)
+		data = append(data, account.Space)
 	}
 	return data
 }
 
-func ListQueueProjects(c *gin.Context) []string {
+// 获取所有账户空间位置
+func ListAllAccountSpaces(c *gin.Context) []string {
 	var data []string
-	q := query.Queue
-	queues, err := q.WithContext(c).Where(q.ID.IsNotNull()).Find()
-	if err != nil || len(queues) == 0 {
-		fmt.Println("can't find queue, ", err)
+	a := query.Account
+	accounts, err := a.WithContext(c).Where(a.ID.IsNotNull()).Find()
+	if err != nil || len(accounts) == 0 {
+		fmt.Println("can't find account, ", err)
 		return data
 	}
-	for i := range queues {
-		if queues[i].Space != "" {
-			data = append(data, queues[i].Space)
+	for i := range accounts {
+		if accounts[i].Space != "" {
+			data = append(data, accounts[i].Space)
 		}
 	}
 	return data
 }
 
-func ListUserProjects(c *gin.Context) []string {
+// 获取所有用户空间位置
+func ListAllUserSpaces(c *gin.Context) []string {
 	var data []string
 	u := query.User
 	user, err := u.WithContext(c).Where(u.ID.IsNotNull()).Find()
@@ -155,66 +138,6 @@ func ListUserProjects(c *gin.Context) []string {
 	return data
 }
 
-func ListMyProjects(userID uint, c *gin.Context) []string {
-	u := query.User
-	user, err := u.WithContext(c).Where(u.ID.Eq(userID)).First()
-	if err != nil {
-		fmt.Println("can't find user")
-		return nil
-	}
-	var data []string
-	ftmp := user.Space
-	if ftmp != "" {
-		data = append(data, ftmp)
-	}
-	uq := query.UserQueue
-	q := query.Queue
-	userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(userID)).Find()
-	if err != nil || userQueue[0].ID == 0 {
-		fmt.Println("user has no project, ", err)
-		return data
-	}
-	for i := range userQueue {
-		var tmp string
-		queue, err := q.WithContext(c).Where(q.ID.Eq(userQueue[i].QueueID)).First()
-		if err == nil {
-			tmp = queue.Space
-		}
-		if tmp != "" {
-			data = append(data, tmp)
-		}
-	}
-	return data
-}
-
-func GetMyProject(userID uint) model.Project {
-	db := orm.DB()
-	var UserPro []model.UserProject
-	err := db.Model(&model.UserProject{}).Where("user_id = ?", userID).Find(&UserPro).Error
-	if err != nil || UserPro[0].ID == 0 {
-		fmt.Println("user has no project, ", err)
-		return model.Project{}
-	}
-	for i := range UserPro {
-		var project model.Project
-		err := db.Model(&model.Project{}).Where("id = ? AND is_personal = ?", UserPro[i].ProjectID, true).First(&project).Error
-		if err == nil && project.ID != 0 {
-			return project
-		}
-	}
-	return model.Project{}
-}
-
-func GetSpaceByProjectID(pid uint) string {
-	db := orm.DB()
-	var space model.Space
-	err := db.Model(&model.Space{}).Where("project_id = ?", pid).First(&space).Error
-	if err != nil && space.ID != 0 {
-		return ""
-	}
-	return space.Path
-}
-
 func WebDav(c *gin.Context) {
 	AlloweOption(c)
 	checkfs()
@@ -223,8 +146,8 @@ func WebDav(c *gin.Context) {
 		response.Error(c, err.Error(), response.NotSpecified)
 		return
 	}
-
-	permission := GetPermissionFromToken(jwttoken)
+	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss")
+	permission := GetPermission(param, jwttoken, c)
 	if permission == model.NotAllowed {
 		c.String(http.StatusUnauthorized, "Unauthorized 1")
 		return
@@ -291,26 +214,25 @@ func containsString(slice []string, s string) bool {
 	return false
 }
 
-func GetFilesByPaths(paths []string, c *gin.Context) ([]Files, error) {
+func GetFilesByPaths(paths []string, c *gin.Context) []Files {
 	var data []Files
 	data = nil
 	for _, p := range paths {
 		fi, err := fs.FileSystem.Stat(c.Request.Context(), p)
-		if err != nil {
-			fmt.Println("cann't find file:", err)
-			return nil, err
+		if err == nil {
+			var tmp Files
+			tmp.IsDir = fi.IsDir()
+			tmp.ModifyTime = fi.ModTime()
+			tmp.Name = fi.Name()
+			tmp.Size = fi.Size()
+			tmp.Sys = fi.Sys()
+			data = append(data, tmp)
 		}
-		var tmp Files
-		tmp.IsDir = fi.IsDir()
-		tmp.ModifyTime = fi.ModTime()
-		tmp.Name = fi.Name()
-		tmp.Size = fi.Size()
-		tmp.Sys = fi.Sys()
-		data = append(data, tmp)
 	}
-	return data, nil
+	return data
 }
 
+// 用户获取文件
 func GetFiles(c *gin.Context) {
 	AlloweOption(c)
 	checkfs()
@@ -327,13 +249,8 @@ func GetFiles(c *gin.Context) {
 		return
 	}
 	if param == "" || param == "/" {
-		paths := ListCurrentProjects(jwttoken.UserID, jwttoken.QueueID, c)
-		fmt.Println(paths)
-		data, err = GetFilesByPaths(paths, c)
-		if err != nil {
-			response.Error(c, "no project or porject has no dir", response.NotSpecified)
-			return
-		}
+		paths := ListMySpace(jwttoken.UserID, jwttoken.QueueID, c)
+		data = GetFilesByPaths(paths, c)
 		response.Success(c, data)
 	} else {
 		data, err = handleDirsList(fs.FileSystem, param)
@@ -345,6 +262,7 @@ func GetFiles(c *gin.Context) {
 	}
 }
 
+// admin获取文件
 func GetAllFiles(c *gin.Context) {
 	AlloweOption(c)
 	checkfs()
@@ -374,18 +292,14 @@ func GetAllFiles(c *gin.Context) {
 	if param == "" || param == "/" {
 		var paths []string
 		if queueFlag == 1 {
-			paths = ListQueueProjects(c)
+			paths = ListAllAccountSpaces(c)
 		} else if queueFlag == 2 {
-			paths = ListUserProjects(c)
+			paths = ListAllUserSpaces(c)
 		} else {
 			response.BadRequestError(c, "error url")
 			return
 		}
-		data, err = GetFilesByPaths(paths, c)
-		if err != nil {
-			response.Error(c, "no project or porject has no dir", response.NotSpecified)
-			return
-		}
+		data = GetFilesByPaths(paths, c)
 		response.Success(c, data)
 	} else {
 		data, err = handleDirsList(fs.FileSystem, param)
@@ -498,16 +412,16 @@ func getDirSize(path string) (int64, error) {
 
 func checkSpace() {
 	u := query.User
-	q := query.Queue
+	a := query.Account
 	ctx := context.Background()
 	user, err := u.WithContext(ctx).Where(u.ID.IsNotNull()).Find()
 	if err != nil {
 		fmt.Println("can't get user")
 		return
 	}
-	queue, err := q.WithContext(ctx).Where(q.ID.IsNotNull()).Find()
+	account, err := a.WithContext(ctx).Where(a.ID.IsNotNull()).Find()
 	if err != nil {
-		fmt.Println("can't get queue")
+		fmt.Println("can't get account")
 		return
 	}
 	for _, us := range user {
@@ -523,14 +437,14 @@ func checkSpace() {
 			}
 		}
 	}
-	for _, que := range queue {
-		_, err := fs.FileSystem.Stat(ctx, que.Space)
+	for _, acc := range account {
+		_, err := fs.FileSystem.Stat(ctx, acc.Space)
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				fmt.Println("create dir:", que.Space)
-				err = fs.FileSystem.Mkdir(ctx, que.Space, os.FileMode(defaultFolderPerm))
+				fmt.Println("create dir:", acc.Space)
+				err = fs.FileSystem.Mkdir(ctx, acc.Space, os.FileMode(defaultFolderPerm))
 				if err != nil {
-					fmt.Println("can't create dir:", que.Space)
+					fmt.Println("can't create dir:", acc.Space)
 					return
 				}
 			}
@@ -564,6 +478,9 @@ func DeleteFile(c *gin.Context) {
 func GetPermission(path string, token util.JWTMessage, c *gin.Context) model.FilePermission {
 	path = strings.TrimLeft(path, "/")
 	cleanedPath := filepath.Clean(path)
+	if path == "" {
+		return model.ReadOnly
+	}
 	part := strings.Split(cleanedPath, "/")
 	if token.RolePlatform == model.RoleAdmin {
 		return model.ReadWrite
@@ -589,7 +506,7 @@ func CheckUser(userid uint, space string, c *gin.Context) error {
 	return err
 }
 
-const defaultTime = 120
+const defaultTime = 60
 
 func StartCheckSpace() {
 	checkfs()
@@ -603,9 +520,9 @@ type UserSpaceResp struct {
 	Username string `json:"username"`
 	Space    string `json:"space"`
 }
-type QueueSpaceResp struct {
-	Queuename string `json:"queuename"`
-	Space     string `json:"space"`
+type AccountSpaceResp struct {
+	Accountname string `json:"queuename"`
+	Space       string `json:"space"`
 }
 
 func GetUserSpace(c *gin.Context) {
@@ -636,7 +553,7 @@ func GetUserSpace(c *gin.Context) {
 	response.Success(c, userSpaceResp)
 }
 
-func GetQueueSpace(c *gin.Context) {
+func GetAccountSpace(c *gin.Context) {
 	AlloweOption(c)
 	checkfs()
 	jwttoken, err := CheckJWTToken(c)
@@ -644,8 +561,8 @@ func GetQueueSpace(c *gin.Context) {
 		response.Error(c, err.Error(), response.NotSpecified)
 		return
 	}
-	q := query.Queue
-	queue, err := q.WithContext(c).Where(q.ID.IsNotNull()).Find()
+	a := query.Account
+	account, err := a.WithContext(c).Where(a.ID.IsNotNull()).Find()
 	if err != nil {
 		response.Error(c, err.Error(), response.NotSpecified)
 		return
@@ -654,14 +571,14 @@ func GetQueueSpace(c *gin.Context) {
 		response.Error(c, "has no permission to get queue", response.InvalidRole)
 		return
 	}
-	var queueSpaceResp []QueueSpaceResp
-	for i := range queue {
-		var queuespace QueueSpaceResp
-		queuespace.Queuename = queue[i].Name
-		queuespace.Space = queue[i].Space
-		queueSpaceResp = append(queueSpaceResp, queuespace)
+	var accountSpaceResp []AccountSpaceResp
+	for i := range account {
+		var accountspace AccountSpaceResp
+		accountspace.Accountname = account[i].Name
+		accountspace.Space = account[i].Space
+		accountSpaceResp = append(accountSpaceResp, accountspace)
 	}
-	response.Success(c, queueSpaceResp)
+	response.Success(c, accountSpaceResp)
 }
 
 func RegisterFile(r *gin.Engine) {
@@ -675,5 +592,5 @@ func RegisterFile(r *gin.Engine) {
 	r.Handle("GET", "/api/ss/dirsize/*path", GetDirSize)
 	r.Handle("DELETE", "/api/ss/delete/*path", DeleteFile)
 	r.Handle("GET", "/api/ss/userspace", GetUserSpace)
-	r.Handle("GET", "/api/ss/queuespace", GetQueueSpace)
+	r.Handle("GET", "/api/ss/queuespace", GetAccountSpace)
 }

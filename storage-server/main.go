@@ -15,7 +15,7 @@ func main() {
 	r := gin.Default()
 	err := query.InitDB()
 	if err != nil {
-		fmt.Println("err init")
+		fmt.Println("err init:", err)
 		os.Exit(1)
 	}
 

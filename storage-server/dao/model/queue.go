@@ -1,25 +1,41 @@
 package model
 
-import "gorm.io/gorm"
+import (
+	"time"
 
-const (
-	DefaultQueueID = 1
+	"gorm.io/datatypes"
+	"gorm.io/gorm"
+	v1 "k8s.io/api/core/v1"
 )
 
-type Queue struct {
-	gorm.Model
-	Name     string `gorm:"uniqueIndex;type:varchar(32);not null;comment:队列名称 (对应 Volcano Queue CRD)"`
-	Nickname string `gorm:"type:varchar(128);not null;comment:队列别名 (用于显示)"`
-	Space    string `gorm:"uniqueIndex;type:varchar(512);not null;comment:队列空间绝对路径"`
+const (
+	DefaultAccountID = 1
+)
 
-	UserQueues    []UserQueue
-	QueueDatasets []QueueDataset
+type QueueQuota struct {
+	Guaranteed v1.ResourceList `json:"guaranteed,omitempty"`
+	Deserved   v1.ResourceList `json:"deserved,omitempty"`
+	Capability v1.ResourceList `json:"capability,omitempty"`
 }
 
-type UserQueue struct {
+type Account struct {
+	gorm.Model
+	Name      string                         `gorm:"uniqueIndex;type:varchar(32);not null;comment:账户名称 (对应 Volcano Queue CRD)"`
+	Nickname  string                         `gorm:"type:varchar(128);not null;comment:账户别名 (用于显示)"`
+	Space     string                         `gorm:"uniqueIndex;type:varchar(512);not null;comment:账户空间绝对路径"`
+	ExpiredAt time.Time                      `gorm:"comment:账户过期时间"`
+	Quota     datatypes.JSONType[QueueQuota] `gorm:"comment:账户对应队列的资源配额"`
+
+	UserAccounts    []UserAccount
+	AccountDatasets []AccountDataset
+}
+
+type UserAccount struct {
 	gorm.Model
 	UserID     uint       `gorm:"primaryKey"`
-	QueueID    uint       `gorm:"primaryKey"`
-	Role       Role       `gorm:"not null;comment:用户在队列中的角色 (user, admin)"`
-	AccessMode AccessMode `gorm:"not null;comment:用户在队列空间的访问模式 (ro, rw)"`
+	AccountID  uint       `gorm:"primaryKey"`
+	Role       Role       `gorm:"not null;comment:用户在账户中的角色 (user, admin)"`
+	AccessMode AccessMode `gorm:"not null;comment:用户在账户空间的访问模式 (na, ro, rw)"`
+
+	Quota datatypes.JSONType[QueueQuota] `gorm:"comment:用户在账户中的资源配额"`
 }
