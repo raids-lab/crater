@@ -28,8 +28,12 @@ func initAlertMgr() *alertMgr {
 	// 初始化选择具体要使用的 alert handler
 	// 目前只支持 SMTP，下一步支持 WPS Robot
 	// 后续可以考虑从 Config 中进行配置
+	smtpHandler, err := newSMTPAlerter()
+	if err != nil {
+		panic(err)
+	}
 	return &alertMgr{
-		handler: newSMTPAlerter(),
+		handler: smtpHandler,
 	}
 }
 
