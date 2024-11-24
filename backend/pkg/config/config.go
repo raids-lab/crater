@@ -33,6 +33,7 @@ type Config struct {
 	MetricsAddr    string `yaml:"metricsAddr"` // "The address the metric endpoint binds to."
 	ProbeAddr      string `yaml:"probeAddr"`   // "The address the probe endpoint binds to."
 	MonitoringPort int    `yaml:"monitoringPort"`
+	JYCache        bool   `yaml:"jycache"`
 	// Workspace Settings
 	Workspace struct {
 		Namespace      string `yaml:"namespace"`
