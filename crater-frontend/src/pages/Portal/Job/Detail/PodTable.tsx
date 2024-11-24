@@ -72,7 +72,7 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
         const pod = row.original;
         return pod.name ? (
           <a
-            href={`http://8.141.83.224:31120/d/MhnFUFLSz/pod_monitor?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`}
+            href={`http://10.109.80.1:31121/d/MhnFUFLSz/pod_memory?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`}
             className="font-mono underline-offset-4 hover:underline"
             target="_blank"
             rel="noopener noreferrer"

@@ -70,7 +70,7 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
             className="h-8 w-8"
             onClick={() => {
               window.open(
-                `http://8.141.83.224:31120/d/Oxed_c6Wz1/node_monitor?orgId=1&var-node=${nodeInfo?.name}&from=now-30m&to=now`,
+                `http://http://10.109.80.1:31121/d/Apibib7Nz/node_monitor?orgId=1&var-node=${nodeInfo?.name}&from=now-30m&to=now`,
               );
             }}
             disabled={
