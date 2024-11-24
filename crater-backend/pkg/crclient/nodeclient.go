@@ -130,7 +130,7 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 			capacity_["nvidia.com/gpu"] = *resource.NewQuantity(int64(gpuCount), resource.DecimalSI)
 		}
 		// TODO: remove
-		if node.Name == "zjlab-5" || node.Name == "zjlab-6" {
+		if node.Name == "zjlab-gpu1" || node.Name == "zjlab-gpu2" {
 			capacity_["nvidia.com/gpu"] = *resource.NewQuantity(int64(2), resource.DecimalSI)
 		}
 		// 获取节点类型

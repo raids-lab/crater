@@ -122,7 +122,7 @@ func (s *service) ListByQueue(queue string) ([]models.AITask, error) {
 
 func (s *service) ListAll() ([]models.AITask, error) {
 	var tasks []models.AITask
-	err := db.Orm.Find(&tasks).Error
+	err := db.Orm.Where("is_deleted = ?", false).Find(&tasks).Error
 	return tasks, err
 }
 
