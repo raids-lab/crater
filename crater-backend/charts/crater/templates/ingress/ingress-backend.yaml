@@ -5,7 +5,7 @@ metadata:
   name: crater-web-backend-ingress
   namespace: crater
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
   ingressClassName: nginx
@@ -22,5 +22,5 @@ spec:
                 name: crater-web-backend-svc
                 port:
                   number: 80
-            path: /api/(.*)
+            path: /api/(?!(ss/))(.*) 
             pathType: Prefix
