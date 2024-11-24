@@ -58,10 +58,6 @@ const POD_MONITOR = import.meta.env.VITE_GRAFANA_POD_MEMORY;
 export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
   return (
     <Card className={className} {...props}>
-      {/* <CardHeader className="mb-6 border-b bg-muted/50 dark:bg-muted/25">
-        <CardTitle>{nodeInfo?.name}</CardTitle>
-        <CardDescription>节点属性</CardDescription>
-      </CardHeader> */}
       <CardContent className="flex items-center justify-between bg-muted/50 p-6">
         <div className="flex flex-col items-start gap-2">
           <CardTitle>{nodeInfo?.name}</CardTitle>
@@ -77,7 +73,11 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
                 `http://8.141.83.224:31120/d/Oxed_c6Wz1/node_monitor?orgId=1&var-node=${nodeInfo?.name}&from=now-30m&to=now`,
               );
             }}
-            disabled={nodeInfo?.name == "zjlab-sw"}
+            disabled={
+              nodeInfo?.name == "zjlab-sw" ||
+              nodeInfo?.name == "ali-2" ||
+              nodeInfo?.name == "ali-3"
+            }
           >
             <ExternalLink className="h-3.5 w-3.5" />
           </Button>

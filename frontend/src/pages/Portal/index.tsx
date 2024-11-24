@@ -18,7 +18,7 @@ import datasetRoutes from "./Data";
 import { NavGroupProps } from "@/components/sidebar/nav-main";
 import AuthedRouter from "./AuthedRouter";
 import NotFound from "@/components/layout/NotFound";
-import UserSettings from "./Feedback";
+import FeedBack from "./Feedback";
 
 const portalRoutes: SidebarItem[] = [
   {
@@ -126,7 +126,7 @@ const portalRoutes: SidebarItem[] = [
     children: [],
     route: {
       path: "feedback",
-      element: <UserSettings />,
+      element: <FeedBack />,
     },
   },
 ];

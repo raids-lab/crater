@@ -11,6 +11,9 @@ import { useMemo } from "react";
 
 export const TimeDistance = ({ date }: { date: string }) => {
   const [startTime, timeDiff] = useMemo(() => {
+    if (!date) {
+      return [null, ""];
+    }
     const startTime = new Date(date);
     const timeDifference = formatDistanceToNow(startTime, {
       locale: zhCN,
@@ -22,7 +25,7 @@ export const TimeDistance = ({ date }: { date: string }) => {
     return [startTime, timeDiff];
   }, [date]);
 
-  if (!date) {
+  if (!startTime) {
     return null;
   }
 
