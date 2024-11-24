@@ -73,7 +73,6 @@ func GenerateNewVolumeMounts(
 			},
 		},
 	}
-
 	if len(volumes) > 0 {
 		fs := v1.Volume{
 			Name: VolumeData,
@@ -86,8 +85,27 @@ func GenerateNewVolumeMounts(
 		pvc = append(pvc, fs)
 	}
 
-	volumeMounts = make([]v1.VolumeMount, len(volumes)+1)
-
+	if config.GetConfig().JYCache {
+		volumeMounts = make([]v1.VolumeMount, len(volumes)+2)
+		var hostPathType = v1.HostPathDirectoryOrCreate
+		jycache := v1.Volume{
+			Name: JYCache,
+			VolumeSource: v1.VolumeSource{
+				HostPath: &v1.HostPathVolumeSource{
+					Path: "/home/zjlab/renfeng/JYcache/mnt",
+					Type: &hostPathType,
+				},
+			},
+		}
+		pvc = append(pvc, jycache)
+		n := len(volumes)
+		volumeMounts[n+1] = v1.VolumeMount{
+			Name:      JYCache,
+			MountPath: "/home/renfeng/JYcache/mnt",
+		}
+	} else {
+		volumeMounts = make([]v1.VolumeMount, len(volumes)+1)
+	}
 	volumeMounts[0] = v1.VolumeMount{
 		Name:      VolumeCache,
 		MountPath: "/dev/shm",

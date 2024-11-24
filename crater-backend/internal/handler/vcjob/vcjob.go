@@ -92,6 +92,7 @@ const (
 
 	VolumeData  = "crater-workspace"
 	VolumeCache = "crater-cache"
+	JYCache     = "jycache"
 
 	JupyterPort     = 8888
 	TensorBoardPort = 6006
