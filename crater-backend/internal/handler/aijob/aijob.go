@@ -72,6 +72,7 @@ func (mgr *AIJobMgr) RegisterProtected(g *gin.RouterGroup) {
 
 	g.GET(":id/yaml", mgr.GetJobYaml)
 	g.GET(":id/detail", mgr.Get)
+	g.GET(":id/pods", mgr.GetJobPods)
 
 	g.POST("training", mgr.Create)
 	g.POST("jupyter", mgr.CreateJupyterJob)
@@ -353,6 +354,48 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 		TaskID: taskModel.ID,
 	}
 	resputil.Success(c, resp)
+}
+
+// GetJobPods godoc
+// @Summary 获取任务的Pod列表
+// @Description 获取任务的Pod列表
+// @Tags VolcanoJob
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param name path string true "Job Name"
+// @Success 200 {object} resputil.Response[any] "Pod列表"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/vcjobs/{name}/pods [get]
+func (mgr *AIJobMgr) GetJobPods(c *gin.Context) {
+	var req AIJobDetailReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+	token := interutil.GetToken(c)
+	taskModel, err := mgr.taskService.GetByQueueAndID(token.QueueName, req.JobID)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+
+	var podDetails []vcjob.PodDetail
+	podName := fmt.Sprintf("%s-0", taskModel.JobName)
+	pod, err := mgr.kubeClient.CoreV1().Pods(taskModel.Namespace).Get(c, podName, metav1.GetOptions{})
+	if err == nil {
+		podDetails = []vcjob.PodDetail{{
+			Name:      pod.Name,
+			Namespace: pod.Namespace,
+			NodeName:  lo.ToPtr(pod.Spec.NodeName),
+			IP:        pod.Status.PodIP,
+			Resource:  pod.Spec.Containers[0].Resources.Requests,
+			Phase:     pod.Status.Phase,
+		}}
+	}
+
+	resputil.Success(c, podDetails)
 }
 
 type (
@@ -800,7 +843,7 @@ func (mgr *AIJobMgr) GetJupyterToken(c *gin.Context) {
 		return
 	}
 
-	baseURL := fmt.Sprintf("http://8.141.83.224:%d", int(svc.Spec.Ports[0].NodePort))
+	baseURL := fmt.Sprintf("http://10.109.80.1:%d", int(svc.Spec.Ports[0].NodePort))
 
 	// Get the logs of the job pod
 	var jupyterToken string
