@@ -59,8 +59,8 @@ const getJobTypeLabel = (
       };
     default:
       return {
-        label: "未知",
-        color: "text-slate-500 bg-slate-500/10",
+        label: "Custom",
+        color: "text-purple-600 bg-purple-500/10",
       };
   }
 };
