@@ -45,7 +45,7 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
                   className="flex h-8 w-full flex-row justify-start px-2 pb-1 font-normal"
                   onClick={() => {
                     window.open(
-                      `${GRAFANA_NODE}?orgId=1&refresh=5m&var-datasource=prometheus&var-instance=${node}`,
+                      `${GRAFANA_NODE}?orgId=1&refresh=5m&var-datasource=prometheus&var-node=${node}`,
                     );
                   }}
                 >
