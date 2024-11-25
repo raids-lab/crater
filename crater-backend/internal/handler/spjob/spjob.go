@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -16,7 +15,10 @@ import (
 	recommenddljobapi "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/raids-lab/crater/pkg/logutils"
 	utils "github.com/raids-lab/crater/pkg/util"
+	craterUtils "github.com/raids-lab/crater/pkg/utils"
+	"github.com/samber/lo"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,6 +64,7 @@ func (mgr *SparseJobMgr) RegisterProtected(g *gin.RouterGroup) {
 
 	g.GET(":name/detail", mgr.GetByName)
 	g.GET(":name/yaml", mgr.GetYaml)
+	g.GET(":name/pods", mgr.GetJobPods)
 
 	g.POST("training", mgr.Create)
 
@@ -185,7 +188,12 @@ func (mgr *SparseJobMgr) List(c *gin.Context) {
 		if !mgr.rolePermit(&token, spjob.Spec.Username) {
 			continue
 		}
-		pod := mgr.GetPodsByName(c, spjob.Name)[0]
+		pods := mgr.GetPodsByName(c, spjob.Name)
+		if pods == nil || len(pods) < 1 {
+			logutils.Log.Printf("skip spjob %q", spjob.Name)
+			continue
+		}
+		pod := pods[0]
 		conditions := pod.Status.Conditions
 		var runningTimestamp v1.Time
 		var completedTimestamp v1.Time
@@ -226,32 +234,95 @@ type (
 		Name string `uri:"name" binding:"required"`
 	}
 	JobDetailResp struct {
-		Name              string      `json:"name"`
-		Namespace         string      `json:"namespace"`
-		Username          string      `json:"username"`
-		JobName           string      `json:"jobName"`
-		Retry             string      `json:"retry"`
-		Queue             string      `json:"queue"`
-		Status            string      `json:"status"`
-		CreationTimestamp v1.Time     `json:"createdAt"`
-		RunningTimestamp  v1.Time     `json:"startedAt"`
-		Duration          string      `json:"runtime"`
-		PodDetails        []PodDetail `json:"podDetails"`
-		UseTensorBoard    bool        `json:"useTensorBoard"`
+		Name               string        `json:"name"`
+		Namespace          string        `json:"namespace"`
+		Username           string        `json:"username"`
+		JobName            string        `json:"jobName"`
+		JobType            model.JobType `json:"jobType"`
+		Queue              string        `json:"queue"`
+		Status             string        `json:"status"`
+		CreationTimestamp  v1.Time       `json:"createdAt"`
+		RunningTimestamp   v1.Time       `json:"startedAt"`
+		CompletedTimestamp v1.Time       `json:"completedAt"`
 	}
 
 	PodDetail struct {
-		Name     string `json:"name"`
-		NodeName string `json:"nodename"`
-		IP       string `json:"ip"`
-		Port     string `json:"port"`
-		Resource string `json:"resource"`
-		Status   string `json:"status"`
+		Name      string              `json:"name"`
+		Namespace string              `json:"namespace"`
+		NodeName  *string             `json:"nodename"`
+		IP        string              `json:"ip"`
+		Port      string              `json:"port"`
+		Resource  corev1.ResourceList `json:"resource"`
+		Phase     corev1.PodPhase     `json:"phase"`
 	}
 )
 
 func (mgr *SparseJobMgr) GetByName(c *gin.Context) {
 	token := util.GetToken(c)
+	req := &GetRecommendDLJobReq{}
+	if err := c.ShouldBindUri(req); err != nil {
+		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), resputil.NotSpecified)
+		return
+	}
+	var job *recommenddljobapi.RecommendDLJob
+	var err error
+	if job, err = mgr.jobclient.GetRecommendDLJob(c, req.Name, dlNamespace); err != nil {
+		resputil.Error(c, fmt.Sprintf("get recommenddljob failed, err:%v", err), resputil.NotSpecified)
+		return
+	}
+
+	var pods []*corev1.Pod
+
+	if pods = mgr.GetPodsByName(c, job.Name); pods == nil {
+		resputil.Error(c, "get recommenddljob failed, err: nil pods", resputil.NotSpecified)
+		return
+	}
+	pod := pods[0]
+	conditions := pod.Status.Conditions
+
+	var runningTimestamp v1.Time
+	for _, condition := range conditions {
+		if condition.Type == corev1.PodReady {
+			runningTimestamp = condition.LastTransitionTime
+		} else {
+			runningTimestamp = v1.Time{}
+		}
+	}
+	completeTimestamp := v1.Time{}
+	if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
+		completeTimestamp = pod.Status.ContainerStatuses[0].State.Terminated.FinishedAt
+	}
+
+	ret := JobDetailResp{
+		Name:               job.Name,
+		JobName:            job.Name,
+		Username:           token.Username,
+		Namespace:          dlNamespace,
+		Queue:              token.QueueName,
+		Status:             string(jobStatusMap[pod.Status.Phase]),
+		CreationTimestamp:  job.CreationTimestamp,
+		RunningTimestamp:   runningTimestamp,
+		CompletedTimestamp: completeTimestamp,
+	}
+
+	resputil.Success(c, ret)
+}
+
+type GetRecommendDLJobPodListReq struct {
+	Name string `form:"name" binding:"required"`
+}
+
+func (mgr *SparseJobMgr) GetPodsByName(c *gin.Context, name string) []*corev1.Pod {
+	var err error
+	var podList []*corev1.Pod
+	if podList, err = mgr.jobclient.GetRecommendDLJobPodList(c, name, dlNamespace); err != nil {
+		resputil.Error(c, fmt.Sprintf("get recommenddljob pods failed, err:%v", err), resputil.NotSpecified)
+		return nil
+	}
+	return podList
+}
+
+func (mgr *SparseJobMgr) GetJobPods(c *gin.Context) {
 	req := &GetRecommendDLJobReq{}
 	if err := c.ShouldBindUri(req); err != nil {
 		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), resputil.NotSpecified)
@@ -271,86 +342,32 @@ func (mgr *SparseJobMgr) GetByName(c *gin.Context) {
 		resputil.Error(c, "get recommenddljob failed, err: nil pods", resputil.NotSpecified)
 		return
 	}
-	pod := pods[0]
-	conditions := pod.Status.Conditions
-
-	var runningTimestamp v1.Time
-	var duration string
-	for _, condition := range conditions {
-		if condition.Type == corev1.PodReady {
-			runningTimestamp = condition.LastTransitionTime
-			duration = time.Since(runningTimestamp.Time).Truncate(time.Second).String()
-		} else {
-			runningTimestamp = v1.Time{}
-			duration = "0s"
-		}
-	}
-
-	retryAmount := -1
-	for _, condition := range conditions {
-		if condition.Type == corev1.ContainersReady {
-			retryAmount += 1
-		}
-	}
 
 	for _, pod := range pods {
 		// assume one pod running one container
-		if pod.Status.Phase == corev1.PodRunning {
-			portStr := ""
-			for _, port := range pod.Spec.Containers[0].Ports {
-				portStr += fmt.Sprintf("%s:%d,", port.Name, port.ContainerPort)
-			}
-			if portStr != "" {
-				portStr = portStr[:len(portStr)-1]
-			}
-			podDetail := PodDetail{
-				Name:     pod.Name,
-				NodeName: pod.Spec.NodeName,
-				IP:       pod.Status.PodIP,
-				Port:     portStr,
-				Resource: model.ResourceListToJSON(pod.Spec.Containers[0].Resources.Requests),
-				Status:   string(pod.Status.Phase),
-			}
-			PodDetails = append(PodDetails, podDetail)
-		} else {
-			podDetail := PodDetail{
-				Name:   pod.Name,
-				Status: string(pod.Status.Phase),
-			}
-			PodDetails = append(PodDetails, podDetail)
+
+		resources := craterUtils.CalculateRequsetsByContainers(pod.Spec.Containers)
+
+		portStr := ""
+		for _, port := range pod.Spec.Containers[0].Ports {
+			portStr += fmt.Sprintf("%s:%d,", port.Name, port.ContainerPort)
 		}
+		if portStr != "" {
+			portStr = portStr[:len(portStr)-1]
+		}
+		podDetail := PodDetail{
+			Name:      pod.Name,
+			Namespace: pod.Namespace,
+			NodeName:  lo.ToPtr(pod.Spec.NodeName),
+			IP:        pod.Status.PodIP,
+			Port:      portStr,
+			Resource:  resources,
+			Phase:     pod.Status.Phase,
+		}
+		PodDetails = append(PodDetails, podDetail)
 	}
 
-	ret := JobDetailResp{
-		Name:              job.Name,
-		JobName:           job.Name,
-		Username:          token.Username,
-		Namespace:         dlNamespace,
-		Queue:             token.QueueName,
-		Status:            string(jobStatusMap[pod.Status.Phase]),
-		CreationTimestamp: job.CreationTimestamp,
-		RunningTimestamp:  runningTimestamp,
-		Duration:          duration,
-		Retry:             fmt.Sprintf("%d", retryAmount),
-		PodDetails:        PodDetails,
-		UseTensorBoard:    false,
-	}
-
-	resputil.Success(c, ret)
-}
-
-type GetRecommendDLJobPodListReq struct {
-	Name string `form:"name" binding:"required"`
-}
-
-func (mgr *SparseJobMgr) GetPodsByName(c *gin.Context, name string) []*corev1.Pod {
-	var err error
-	var podList []*corev1.Pod
-	if podList, err = mgr.jobclient.GetRecommendDLJobPodList(c, name, dlNamespace); err != nil {
-		resputil.Error(c, fmt.Sprintf("get recommenddljob pods failed, err:%v", err), resputil.NotSpecified)
-		return nil
-	}
-	return podList
+	resputil.Success(c, PodDetails)
 }
 
 func (mgr *SparseJobMgr) GetYaml(c *gin.Context) {
@@ -482,7 +499,7 @@ func (mgr *SparseJobMgr) AnalyzeResourceUsage(c *gin.Context) {
 		req.EmbeddingTableCount = 0
 	}
 	analyzeResp := &ResourceAnalyzeWebhookResponse{}
-	if err := utils.PostJSON(c, "http://***REMOVED***:30500", "/api/v1/task/analyze/end2end", map[string]any{
+	if err := utils.PostJSON(c, "***REMOVED***", "/api/v1/task/analyze/end2end", map[string]any{
 		"embedding_table_count": req.EmbeddingTableCount,
 		"embedding_dim_total":   req.EmbeddingDimTotal,
 		"embedding_size_total":  req.EmbeddingSizeTotal / 1e4,
