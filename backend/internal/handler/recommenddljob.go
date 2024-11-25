@@ -133,7 +133,7 @@ func (mgr *RecommendDLJobMgr) AnalyzeResourceUsage(c *gin.Context) {
 		req.EmbeddingTableCount = 0
 	}
 	analyzeResp := &ResourceAnalyzeWebhookResponse{}
-	if err := utils.PostJSON(c, "http://***REMOVED***:30500", "/api/v1/task/analyze/end2end", map[string]any{
+	if err := utils.PostJSON(c, "***REMOVED***", "/api/v1/task/analyze/end2end", map[string]any{
 		"embedding_table_count": req.EmbeddingTableCount,
 		"embedding_dim_total":   req.EmbeddingDimTotal,
 		"embedding_size_total":  req.EmbeddingSizeTotal / 1e4,
