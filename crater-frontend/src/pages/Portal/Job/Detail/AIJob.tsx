@@ -3,10 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import useBreadcrumb from "@/hooks/useBreadcrumb";
 import {
   FileSlidersIcon,
-  FileTextIcon,
   PieChartIcon,
   RefreshCcwIcon,
-  SquareTerminalIcon,
   TrashIcon,
 } from "lucide-react";
 import {
@@ -53,10 +51,8 @@ import JobPhaseLabel from "@/components/label/JobPhaseLabel";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import { SmallDataCard } from "@/components/custom/DataCard";
 import { ProfileStat } from "@/services/api/aiTask";
-import LogDialog from "@/components/codeblock/LogDialog";
-import { NamespacedName } from "@/components/codeblock/PodContainerDialog";
-import ResourceBadges from "@/components/label/ResourceBadges";
 import { ConfigDialog } from "@/components/codeblock/ConfigDialog";
+import { PodTable } from "./PodTable";
 
 export interface Resource {
   [key: string]: string;
@@ -101,9 +97,6 @@ const initial: AIjobDetail = {
 };
 
 const job_monitor = import.meta.env.VITE_GRAFANA_JOB_MONITOR;
-const pod_memory = import.meta.env.VITE_GRAFANA_POD_MEMORY;
-const k8s_vgpu_scheduler_dashboard = import.meta.env
-  .VITE_GRAFANA_K8S_VGPU_SCHEDULER_DASHBOARD;
 
 export const Component = () => {
   const { name } = useParams<string>();
@@ -113,7 +106,6 @@ export const Component = () => {
   const [refetchInterval, setRefetchInterval] = useState(5000); // Manage interval state
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [namespacedName, setNamespacedName] = useState<NamespacedName>();
 
   const { data: taskInfo, isLoading } = useQuery({
     queryKey: ["job", "detail", jobName],
@@ -302,97 +294,6 @@ export const Component = () => {
           </div>
         </CardContent>
       </Card>
-      <Card className="col-span-3">
-        <CardHeader>
-          <CardTitle>Pod 详情</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table className="w-full">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-xs">序号</TableHead>
-                <TableHead className="text-xs">Pod 名称</TableHead>
-                <TableHead className="text-xs">已分配节点</TableHead>
-                <TableHead className="text-xs">IP</TableHead>
-                <TableHead className="text-xs">端口</TableHead>
-                <TableHead className="text-xs">资源</TableHead>
-                <TableHead className="text-xs">状态</TableHead>
-                <TableHead className="text-xs"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.podDetails &&
-                Array.isArray(data.podDetails) &&
-                data.podDetails.map((pod, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>
-                      {pod.name ? (
-                        <a
-                          href={`${pod_memory}?orgId=1&var-node_name=${pod.nodename}&var-pod_name=${pod.name}`}
-                          className="underline-offset-4 hover:underline"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {pod.name}
-                        </a>
-                      ) : (
-                        "---"
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {pod.nodename ? (
-                        <a
-                          href={`${k8s_vgpu_scheduler_dashboard}?orgId=1&var-node_name=${pod.nodename}`}
-                          className="hover:underline"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {pod.nodename}
-                        </a>
-                      ) : (
-                        "---"
-                      )}
-                    </TableCell>
-                    <TableCell>{pod.ip || "---"}</TableCell>
-                    <TableCell>{pod.port || "---"}</TableCell>
-                    <TableCell>
-                      <ResourceBadges resources={pod.resource} />
-                    </TableCell>
-                    <TableCell>{pod.phase || "---"}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-center space-x-1">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8 text-primary hover:text-primary/90"
-                          title="打开终端"
-                          onClick={() => toast.warning("Web 终端功能开发中")}
-                        >
-                          <SquareTerminalIcon className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          title="查看日志"
-                          onClick={() => {
-                            setNamespacedName({
-                              namespace: data.namespace,
-                              name: pod.name,
-                            });
-                          }}
-                        >
-                          <FileTextIcon className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
       {profileStat && (
         <Card className="col-span-full">
           <CardHeader>
@@ -455,10 +356,7 @@ export const Component = () => {
           </CardContent>
         </Card>
       )}
-      <LogDialog
-        namespacedName={namespacedName}
-        setNamespacedName={setNamespacedName}
-      />
+      <PodTable jobName={jobName} />
     </>
   );
 };
