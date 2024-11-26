@@ -99,3 +99,46 @@ export const apiDeletePodIngress = (
       data: ingressMgr,
     },
   );
+
+export interface PodNodeport {
+  name: string;
+  containerPort: number;
+  address: string;
+  nodePort: number;
+}
+
+export interface PodNodeportMgr {
+  name: string;
+  containerPort: number;
+}
+
+export interface PodNodeportsList {
+  nodeports: PodNodeport[];
+}
+
+export const apiGetPodNodeports = (namespace: string, podName: string) =>
+  instance.get<IResponse<PodNodeportsList>>(
+    `${VERSION}/namespaces/${namespace}/pods/${podName}/nodeports`,
+  );
+
+export const apiCreatePodNodeport = (
+  namespace: string,
+  podName: string,
+  nodeportMgr: PodNodeportMgr,
+) =>
+  instance.post<IResponse<PodIngress>>(
+    `${VERSION}/namespaces/${namespace}/pods/${podName}/nodeports`,
+    nodeportMgr,
+  );
+
+export const apiDeletePodNodeport = (
+  namespace: string,
+  podName: string,
+  nodeportMgr: PodNodeportMgr,
+) =>
+  instance.delete<IResponse<string>>(
+    `${VERSION}/namespaces/${namespace}/pods/${podName}/nodeports`,
+    {
+      data: nodeportMgr,
+    },
+  );
