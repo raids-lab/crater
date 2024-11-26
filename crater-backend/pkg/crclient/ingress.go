@@ -110,6 +110,68 @@ func CreateService(ctx context.Context, kubeClient client.Client, pod *v1.Pod, m
 	return serviceName, nil
 }
 
+func CreateServiceForNodePort(ctx context.Context, kubeClient client.Client, pod *v1.Pod,
+	ruleName string, containerPort int32) (int32, error) {
+	// 生成唯一的 Service 名称
+	serviceName := fmt.Sprintf("%s-%s", pod.Name, ruleName)
+
+	// 构造 OwnerReference
+	var ownerRef metav1.OwnerReference
+	if len(pod.OwnerReferences) > 0 {
+		ownerRef = metav1.OwnerReference{
+			APIVersion:         pod.OwnerReferences[0].APIVersion,
+			Kind:               pod.OwnerReferences[0].Kind,
+			Name:               pod.OwnerReferences[0].Name,
+			UID:                pod.OwnerReferences[0].UID,
+			BlockOwnerDeletion: lo.ToPtr(true),
+		}
+	} else {
+		ownerRef = metav1.OwnerReference{
+			APIVersion: "v1",
+			Kind:       "Pod",
+			Name:       pod.Name,
+			UID:        pod.UID,
+		}
+	}
+
+	// 创建 NodePort 类型的 Service
+	svc := &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            serviceName,
+			Namespace:       pod.Namespace,
+			OwnerReferences: []metav1.OwnerReference{ownerRef},
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{
+					Name:       fmt.Sprintf("port-%d", containerPort),
+					Port:       containerPort,
+					TargetPort: intstr.FromInt(int(containerPort)),
+					Protocol:   v1.ProtocolTCP,
+				},
+			},
+			Type:     v1.ServiceTypeNodePort,
+			Selector: pod.Labels, // 使用 Pod 的 Labels 作为 Selector
+		},
+	}
+
+	// 调用 Kubernetes API 创建 Service
+	if err := kubeClient.Create(ctx, svc); err != nil {
+		return 0, fmt.Errorf("failed to create NodePort service: %w", err)
+	}
+
+	// 获取分配的 NodePort
+	var nodePort int32
+	for _, port := range svc.Spec.Ports {
+		if port.Port == containerPort {
+			nodePort = port.NodePort
+			break
+		}
+	}
+
+	return nodePort, nil
+}
+
 // CreateIngress 创建新的 Ingress
 func CreateIngress(ctx context.Context, kubeClient client.Client, pod *v1.Pod, serviceName string, mapping PortMapping) error {
 	ingressName := fmt.Sprintf("%s-%s", pod.Name, uuid.New().String()[:5])
