@@ -88,6 +88,19 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 		return
 	}
 
+	if len(req.Selectors) > 0 {
+		firstSelector := req.Selectors[0]
+		if firstSelector.Key == "kubernetes.io/hostname" && firstSelector.Values[0] == "zjlab-sw" {
+			toleration := v1.Toleration{
+				Key:      "key",
+				Value:    "value",
+				Effect:   "NoSchedule",
+				Operator: "Equal",
+			}
+
+			podSpec.Tolerations = append(podSpec.Tolerations, toleration)
+		}
+	}
 	// 6. Create volcano job
 	job := batch.Job{
 		ObjectMeta: metav1.ObjectMeta{
