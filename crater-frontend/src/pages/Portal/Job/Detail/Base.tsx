@@ -164,7 +164,7 @@ export const Component = () => {
                 size="sm"
                 onClick={() => {
                   // const url = generateMetricsUrl(data.podDetails);
-                  const url = `${job_monitor}?orgId=1&var-job=${data.jobName}`;
+                  const url = `${job_monitor}?orgId=1&var-job=${data.jobName}&from=now-1h&to=now`;
                   window.open(url, "_blank");
                 }}
               >
