@@ -69,15 +69,21 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
             size="icon"
             className="h-8 w-8"
             onClick={() => {
-              window.open(
-                `http://10.109.80.1:31121/d/Apibib7Nz/node_monitor?orgId=1&var-node=${nodeInfo?.name}&from=now-30m&to=now`,
-              );
+              if (nodeInfo?.name == "ali-2") {
+                window.open(
+                  `https://ecs.console.aliyun.com/server/i-2zefsgw9xfdks1gjro5l/monitor?regionId=cn-beijing`,
+                );
+              } else if (nodeInfo?.name == "ali-3") {
+                window.open(
+                  `https://ecs.console.aliyun.com/server/i-2ze5e0maafu6vn80d2ek/monitor?regionId=cn-beijing`,
+                );
+              } else {
+                window.open(
+                  `http://10.109.80.1:31121/d/Apibib7Nz/node_monitor?orgId=1&var-node=${nodeInfo?.name}&from=now-30m&to=now`,
+                );
+              }
             }}
-            disabled={
-              nodeInfo?.name == "zjlab-sw" ||
-              nodeInfo?.name == "ali-2" ||
-              nodeInfo?.name == "ali-3"
-            }
+            disabled={nodeInfo?.name == "zjlab-sw"}
           >
             <ExternalLink className="h-3.5 w-3.5" />
           </Button>
