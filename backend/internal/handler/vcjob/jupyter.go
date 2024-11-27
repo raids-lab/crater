@@ -276,7 +276,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 						HTTP: &networkingv1.HTTPIngressRuleValue{
 							Paths: []networkingv1.HTTPIngressPath{
 								{
-									Path:     fmt.Sprintf("/ingress/%s/", baseURL),
+									Path:     fmt.Sprintf("/ingress/%s", baseURL),
 									PathType: func(s networkingv1.PathType) *networkingv1.PathType { return &s }(networkingv1.PathTypePrefix),
 									Backend: networkingv1.IngressBackend{
 										Service: &networkingv1.IngressServiceBackend{
