@@ -11,8 +11,8 @@ const useNodeQuery = () => {
       res.data.data.rows
         .sort((a, b) => a.name.localeCompare(b.name))
         .sort((a, b) => {
-          // 按照 type 排序，优先 hygon => shenwei => yitian
-          const typeOrder = ["hygon", "shenwei", "yitian"];
+          // 按照 type 排序，优先 hygon => shenwei => yitian => 空字符串
+          const typeOrder = ["hygon", "shenwei", "yitian", ""];
           return typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type);
         })
         .map((x) => {
