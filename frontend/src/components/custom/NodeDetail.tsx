@@ -39,6 +39,10 @@ import {
 import LogDialog from "../codeblock/LogDialog";
 import ResourceBadges from "../label/ResourceBadges";
 
+import yitianURL from "/nodes/yitian.png";
+import hygonURL from "/nodes/hygon.png";
+import shenweiURL from "/nodes/sw.png";
+
 type CardDemoProps = React.ComponentProps<typeof Card> & {
   nodeInfo?: {
     name: string;
@@ -61,11 +65,11 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
     if (!name) return null;
     // if contains ali
     if (name.includes("ali")) {
-      return "/public/nodes/yitian.png";
+      return yitianURL;
     } else if (name.includes("hygon")) {
-      return "/public/nodes/hygon.png";
+      return hygonURL;
     } else if (name.includes("sw")) {
-      return "/public/nodes/sw.png";
+      return shenweiURL;
     } else {
       return null;
     }
