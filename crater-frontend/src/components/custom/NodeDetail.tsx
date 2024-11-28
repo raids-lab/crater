@@ -56,6 +56,21 @@ const POD_MONITOR = import.meta.env.VITE_GRAFANA_POD_MEMORY;
 
 // CardDemo 组件
 export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
+  const imageURL = useMemo(() => {
+    const name = nodeInfo?.name;
+    if (!name) return null;
+    // if contains ali
+    if (name.includes("ali")) {
+      return "/public/nodes/yitian.png";
+    } else if (name.includes("hygon")) {
+      return "/public/nodes/hygon.png";
+    } else if (name.includes("sw")) {
+      return "/public/nodes/sw.png";
+    } else {
+      return null;
+    }
+  }, [nodeInfo?.name]);
+
   return (
     <Card className={className} {...props}>
       <CardContent className="flex items-center justify-between bg-muted/50 p-6">
@@ -108,7 +123,11 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
           {nodeInfo?.containerRuntimeVersion}
         </p>
       </CardContent>
-      <CardFooter className="flex justify-center"></CardFooter>
+      <CardFooter className="flex justify-center">
+        {imageURL && (
+          <img src={imageURL} alt="节点提供方 LOGO" className="h-16 w-auto" />
+        )}
+      </CardFooter>
     </Card>
   );
 }

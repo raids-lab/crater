@@ -10,6 +10,11 @@ const useNodeQuery = () => {
     select: (res) =>
       res.data.data.rows
         .sort((a, b) => a.name.localeCompare(b.name))
+        .sort((a, b) => {
+          // 按照 type 排序，优先 hygon => shenwei => yitian
+          const typeOrder = ["hygon", "shenwei", "yitian"];
+          return typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type);
+        })
         .map((x) => {
           const cpuCapacity = convertKResourceToResource(
             "cpu",
