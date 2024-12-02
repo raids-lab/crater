@@ -1,0 +1,8 @@
+{
+  "label": "设置外部访问规则",
+  "position": 1,
+  "link": {
+    "type": "generated-index",
+    "description": "本功能允许您为 Kubernetes 集群中的服务配置外部访问规则。通过 Ingress 规则 和 NodePort 规则，您可以灵活地设置外部访问路径和端口，便于外部用户或应用访问集群内的服务。以下是该功能的详细介绍和使用示例。"
+  }
+}
