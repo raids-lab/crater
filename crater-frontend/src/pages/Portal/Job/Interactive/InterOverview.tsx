@@ -254,7 +254,7 @@ const InterOverview = () => {
                     <Link to={`new-jupyter-vcjobs?fromJob=${jobInfo.jobName}`}>
                       <DropdownMenuItem>
                         <RedoDotIcon className="text-purple-600 dark:text-purple-500" />
-                        再建
+                        克隆
                       </DropdownMenuItem>
                     </Link>
                     <AlertDialogTrigger asChild>
