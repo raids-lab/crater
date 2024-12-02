@@ -121,6 +121,7 @@ export interface IJupyterCreate {
   envs: Env[];
   useTensorBoard: boolean;
   selectors?: NodeSelectorRequirement[];
+  template: string;
 }
 
 export interface ITrainingCreate extends IJupyterCreate {
@@ -214,6 +215,9 @@ export const apiJobGetPods = (jobName: string) =>
 
 export const apiJobGetYaml = (jobName: string) =>
   instance.get<IResponse<string>>(`${VERSION}/${JOB_URL}/${jobName}/yaml`);
+
+export const apiJobTemplate = (jobName: string) =>
+  instance.get<IResponse<string>>(`${VERSION}/${JOB_URL}/${jobName}/template`);
 
 export const apiJTaskImageList = (imageTaskType: string) =>
   instance.get<IResponse<{ images: ImageInfoResponse[] }>>(
