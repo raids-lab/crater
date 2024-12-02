@@ -239,7 +239,8 @@ export default function PodIngressDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[625px]">
+      {/* prettier-ignore */}
+      <DialogContent className="flex flex-col sm:h-auto min-h-[50vh] max-h-[50vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex flex-row items-center justify-start">
             外部访问规则
@@ -258,150 +259,180 @@ export default function PodIngressDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Tab内容 */}
-        <Tabs
-          defaultValue="ingress"
-          value={activeTab}
-          onValueChange={(value) =>
-            setActiveTab(value as "ingress" | "nodeport")
-          }
-          className="w-full"
-        >
-          <TabsList className="flex border-b">
-            <TabsTrigger value="ingress" className="flex-1 px-4 py-2">
-              Ingress规则
-            </TabsTrigger>
-            <TabsTrigger value="nodeport" className="flex-1 px-4 py-2">
-              NodePort规则
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="ingress" className="grid gap-4 py-4">
-            <div className="space-y-2">
-              {podInfo.ingress.map((ingress) => (
-                <div
-                  key={ingress.name}
-                  className="flex items-center space-x-2 rounded bg-secondary p-3"
-                >
-                  <div className="ml-2 flex flex-grow flex-col items-start justify-start gap-0.5">
-                    <p>{ingress.name}</p>
-                    <div className="flex flex-row text-xs text-muted-foreground">
-                      {ingress.port} → crater.act.buaa.edu.cn{ingress.prefix}
-                    </div>
-                  </div>
-                  <TooltipButton
-                    variant="ghost"
-                    size="icon"
-                    className="hover:text-primary"
-                    onClick={() => {
-                      const url =
-                        "https://crater.act.buaa.edu.cn" + ingress.prefix;
-                      window.open(url, "_blank");
-                    }}
-                    tooltipContent="访问链接"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </TooltipButton>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <TooltipButton
-                        variant="ghost"
-                        size="icon"
-                        className="hover:text-destructive"
-                        tooltipContent="删除"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </TooltipButton>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>删除外部访问规则</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          外部访问规则「{ingress.name}」<br />
+        <div className="flex-grow overflow-y-auto">
+          <Tabs
+            defaultValue="ingress"
+            value={activeTab}
+            onValueChange={(value) =>
+              setActiveTab(value as "ingress" | "nodeport")
+            }
+            className="w-full"
+          >
+            <TabsList className="flex border-b">
+              <TabsTrigger value="ingress" className="flex-1 px-4 py-2">
+                Ingress规则
+              </TabsTrigger>
+              <TabsTrigger value="nodeport" className="flex-1 px-4 py-2">
+                NodePort规则
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Ingress Tab Content */}
+            <TabsContent
+              value="ingress"
+              className="grid gap-4 py-4"
+              style={{ display: activeTab === "ingress" ? "block" : "none" }}
+            >
+              <div className="space-y-2">
+                {podInfo.ingress.length === 0 ? (
+                  <p className="text-center text-muted-foreground">
+                    暂无 Ingress 规则
+                  </p>
+                ) : (
+                  podInfo.ingress.map((ingress) => (
+                    <div
+                      key={ingress.name}
+                      className="flex items-center space-x-2 rounded bg-secondary p-3"
+                    >
+                      <div className="ml-2 flex flex-grow flex-col items-start justify-start gap-0.5">
+                        <p>{ingress.name}</p>
+                        <div className="flex flex-row text-xs text-muted-foreground">
                           {ingress.port} → crater.act.buaa.edu.cn
                           {ingress.prefix}
-                          <br />
-                          将被删除，请谨慎操作。
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>取消</AlertDialogCancel>
-                        <AlertDialogAction
-                          variant="destructive"
-                          onClick={() => handleDeleteIngress(ingress)}
-                        >
-                          删除
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              ))}
-            </div>
-          </TabsContent>
-          <TabsContent value="nodeport" className="grid gap-4 py-4">
-            <div className="space-y-2">
-              {podInfo.nodeport.map((nodeport) => (
-                <div
-                  key={nodeport.name}
-                  className="flex items-center space-x-2 rounded bg-secondary p-3"
-                >
-                  <div className="ml-2 flex flex-grow flex-col items-start justify-start gap-0.5">
-                    <p>{nodeport.name}</p>
-                    <div className="flex flex-row text-xs text-muted-foreground">
-                      {nodeport.containerPort} → {nodeport.address}:
-                      {nodeport.nodePort}
-                    </div>
-                  </div>
-                  <TooltipButton
-                    variant="ghost"
-                    size="icon"
-                    className="hover:text-primary"
-                    onClick={() => {
-                      const url = `http://${nodeport.address}:${nodeport.nodePort}`;
-                      window.open(url, "_blank");
-                    }}
-                    tooltipContent="访问链接"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </TooltipButton>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
+                        </div>
+                      </div>
                       <TooltipButton
                         variant="ghost"
                         size="icon"
-                        className="hover:text-destructive"
-                        tooltipContent="删除"
+                        className="hover:text-primary"
+                        onClick={() => {
+                          const url =
+                            "https://crater.act.buaa.edu.cn" + ingress.prefix;
+                          window.open(url, "_blank");
+                        }}
+                        tooltipContent="访问链接"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <ExternalLink className="h-4 w-4" />
                       </TooltipButton>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>删除外部访问规则</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          外部访问规则「{nodeport.name}」<br />
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <TooltipButton
+                            variant="ghost"
+                            size="icon"
+                            className="hover:text-destructive"
+                            tooltipContent="删除"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </TooltipButton>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              删除外部访问规则
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              外部访问规则「{ingress.name}」<br />
+                              {ingress.port} → crater.act.buaa.edu.cn
+                              {ingress.prefix}
+                              <br />
+                              将被删除，请谨慎操作。
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>取消</AlertDialogCancel>
+                            <AlertDialogAction
+                              variant="destructive"
+                              onClick={() => handleDeleteIngress(ingress)}
+                            >
+                              删除
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  ))
+                )}
+              </div>
+            </TabsContent>
+
+            {/* NodePort Tab Content */}
+            <TabsContent
+              value="nodeport"
+              className="grid gap-4 py-4"
+              style={{ display: activeTab === "nodeport" ? "block" : "none" }}
+            >
+              <div className="space-y-2">
+                {podInfo.nodeport.length === 0 ? (
+                  <p className="text-center text-muted-foreground">
+                    暂无 NodePort 规则
+                  </p>
+                ) : (
+                  podInfo.nodeport.map((nodeport) => (
+                    <div
+                      key={nodeport.name}
+                      className="flex items-center space-x-2 rounded bg-secondary p-3"
+                    >
+                      <div className="ml-2 flex flex-grow flex-col items-start justify-start gap-0.5">
+                        <p>{nodeport.name}</p>
+                        <div className="flex flex-row text-xs text-muted-foreground">
                           {nodeport.containerPort} → {nodeport.address}:
                           {nodeport.nodePort}
-                          <br />
-                          将被删除，请谨慎操作。
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>取消</AlertDialogCancel>
-                        <AlertDialogAction
-                          variant="destructive"
-                          onClick={() => handleDeleteNodeport(nodeport)}
-                        >
-                          删除
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              ))}
-            </div>
-          </TabsContent>
-        </Tabs>
+                        </div>
+                      </div>
+                      <TooltipButton
+                        variant="ghost"
+                        size="icon"
+                        className="hover:text-primary"
+                        onClick={() => {
+                          const url = `http://${nodeport.address}:${nodeport.nodePort}`;
+                          window.open(url, "_blank");
+                        }}
+                        tooltipContent="访问链接"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </TooltipButton>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <TooltipButton
+                            variant="ghost"
+                            size="icon"
+                            className="hover:text-destructive"
+                            tooltipContent="删除"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </TooltipButton>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              删除外部访问规则
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              外部访问规则「{nodeport.name}」<br />
+                              {nodeport.containerPort} → {nodeport.address}:
+                              {nodeport.nodePort}
+                              <br />
+                              将被删除，请谨慎操作。
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>取消</AlertDialogCancel>
+                            <AlertDialogAction
+                              variant="destructive"
+                              onClick={() => handleDeleteNodeport(nodeport)}
+                            >
+                              删除
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  ))
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
 
         <DialogFooter>
           {activeTab === "ingress" && (
@@ -418,7 +449,6 @@ export default function PodIngressDialog({
           )}
         </DialogFooter>
       </DialogContent>
-
       <Dialog
         open={isEditIngressDialogOpen}
         onOpenChange={setIsEditIngressDialogOpen}
@@ -465,8 +495,19 @@ export default function PodIngressDialog({
                     <FormControl>
                       <Input
                         {...field}
-                        type="number"
-                        onChange={(e) => field.onChange(Number(e.target.value))} // 强制转换为数字
+                        type="text"
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === "") {
+                            field.onChange(null);
+                          } else {
+                            const parsed = parseInt(value, 10);
+                            if (!isNaN(parsed)) {
+                              field.onChange(parsed);
+                            }
+                          }
+                        }}
+                        value={field.value ?? ""}
                       />
                     </FormControl>
                     <FormDescription>
@@ -527,8 +568,19 @@ export default function PodIngressDialog({
                     <FormControl>
                       <Input
                         {...field}
-                        type="number"
-                        onChange={(e) => field.onChange(Number(e.target.value))} // 强制转换为数字
+                        type="text"
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === "") {
+                            field.onChange(null);
+                          } else {
+                            const parsed = parseInt(value, 10);
+                            if (!isNaN(parsed)) {
+                              field.onChange(parsed);
+                            }
+                          }
+                        }}
+                        value={field.value ?? ""}
                       />
                     </FormControl>
                     <FormDescription>
