@@ -22,6 +22,7 @@ import {
   ITrainingCreate,
   JobType,
   apiJTaskImageList,
+  apiJobTemplate,
   apiTrainingCreate,
 } from "@/services/api/vcjob";
 import { cn } from "@/lib/utils";
@@ -47,7 +48,7 @@ import {
   convertToResourceList,
   nodeSelectorSchema,
 } from "@/utils/form";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { apiResourceList } from "@/services/api/resource";
 import { useAtomValue } from "jotai";
@@ -118,6 +119,15 @@ export const Component = () => {
               },
             ]
           : undefined,
+        template: JSON.stringify(
+          {
+            version: VERSION,
+            type: JOB_TYPE,
+            data: currentValues,
+          },
+          null,
+          2,
+        ),
       } as ITrainingCreate),
     onSuccess: async (_, { jobName }) => {
       await Promise.all([
@@ -194,6 +204,37 @@ export const Component = () => {
       },
     },
   });
+
+  const { mutate: fetchJobTemplate } = useMutation({
+    mutationFn: (jobName: string) => apiJobTemplate(jobName),
+    onSuccess: (response) => {
+      const jobInfo = JSON.parse(response.data.data);
+      form.reset(jobInfo.data);
+      if (jobInfo.data.volumeMounts.length > 0) {
+        setDataMountOpen(DataMountCard);
+      }
+      if (jobInfo.data.envs.length > 0) {
+        setEnvOpen(EnvCard);
+      }
+      if (jobInfo.data.observability.tbEnable) {
+        setTensorboardOpen(TensorboardCard);
+      }
+      if (jobInfo.data.nodeSelector.enable) {
+        setOtherOpen(OtherCard);
+      }
+    },
+    onError: () => {
+      toast.error(`解析错误，导入配置失败`);
+    },
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const fromJob = params.get("fromJob");
+    if (fromJob) {
+      fetchJobTemplate(fromJob);
+    }
+  }, [fetchJobTemplate]);
 
   const currentValues = form.watch();
 
