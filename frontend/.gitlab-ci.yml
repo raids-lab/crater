@@ -7,14 +7,13 @@ variables:
   HUSKY: "0" # avoid installing Git Hooks on CI servers
   HARBOR_REGISTRY_IMAGE: "${HARBOR_REGISTRY}/crater/web-frontend"
 
-# Build frontend and generate artifacts
-
-build_frontend:
+# Build frontend and generate artifacts for main branch
+build_frontend_main:
   stage: build_frontend
   image: harbor.act.buaa.edu.cn/crater/node-pnpm:21
   script:
-    - sed -i "s/VITE_APP_VERSION=\".*\"/VITE_APP_VERSION=\"${CI_COMMIT_SHORT_SHA}\"/" .env
-    - pnpm config set store-dir .pnpm-store
+    - sed -i "s/VITE_APP_VERSION=\".*\"/VITE_APP_VERSION=\"${CI_COMMIT_SHORT_SHA}\"/".env
+    - pnpm config set store-dir.pnpm-store
     - pnpm config set registry https://registry.npmmirror.com
     - pnpm install
     - pnpm build
@@ -22,16 +21,36 @@ build_frontend:
     - main
   cache:
     key: "crater-web-frontend"
-    paths:
-      - .pnpm-store/
+    paths: -.pnpm-store/
       - node_modules/
   artifacts:
     paths:
       - dist/
     expire_in: 1 week
 
-# Build Docker image and push to harbor registry
-build_image:
+# Build frontend and generate artifacts for develop branch
+build_frontend_develop:
+  stage: build_frontend
+  image: harbor.act.buaa.edu.cn/crater/node-pnpm:21
+  script:
+    - sed -i "s/VITE_APP_VERSION=\".*\"/VITE_APP_VERSION=\"${CI_COMMIT_SHORT_SHA}\"/".env
+    - pnpm config set store-dir.pnpm-store
+    - pnpm config set registry https://registry.npmmirror.com
+    - pnpm install
+    - pnpm build-testing # 使用 pnpm build-testing 进行打包，符合 develop 分支要求
+  only:
+    - develop
+  cache:
+    key: "crater-web-frontend"
+    paths: -.pnpm-store/
+      - node_modules/
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
+
+# Build Docker image and push to harbor registry for main branch
+build_image_main:
   stage: build_image
   image:
     name: harbor.act.buaa.edu.cn/crater/kaniko-executor:debug
@@ -48,10 +67,30 @@ build_image:
   only:
     - main
   dependencies:
-    - build_frontend
+    - build_frontend_main
 
-# Deploy to Kubernetes cluster
-deploy:
+# Build Docker image and push to harbor registry for develop branch
+build_image_develop:
+  stage: build_image
+  image:
+    name: harbor.act.buaa.edu.cn/crater/kaniko-executor:debug
+    entrypoint: [""]
+  script:
+    # Since GitLab container registry is not enabled, we need to set up harbor registry manually.
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${HARBOR_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${HARBOR_REGISTRY_USER}" "${HARBOR_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+    - >-
+      /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
+      --destination "${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}"
+  only:
+    - develop
+  dependencies:
+    - build_frontend_develop
+
+# Deploy to Kubernetes cluster for develop branch
+deploy_develop:
   stage: deploy
   image:
     name: harbor.act.buaa.edu.cn/crater/bitnami-kubectl:240302
@@ -60,6 +99,6 @@ deploy:
     - kubectl config use-context raids/resource-scheduling/crater/web-frontend:crater-cluster
     - kubectl set image deployment/crater-web-frontend crater-web-frontend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -n crater
   only:
-    - main
+    - develop
   dependencies:
-    - build_image
+    - build_image_develop

@@ -21,14 +21,14 @@ const Jupyter: FC = () => {
 
   const url = useMemo(() => {
     if (jupyterInfo) {
-      return `https://crater.act.buaa.edu.cn/ingress/${jupyterInfo.baseURL}?token=${jupyterInfo.token}`;
+      return `https://${import.meta.env.VITE_HOST}/ingress/${jupyterInfo.baseURL}?token=${jupyterInfo.token}`;
     } else {
       return "";
     }
   }, [jupyterInfo]);
 
   // set jupyter notebook icon as current page icon
-  // icon url: `https://crater.act.buaa.edu.cn/ingress/${jupyterInfo.baseURL}/static/favicons/favicon.ico`
+  // icon url: `https://${import.meta.env.VITE_HOST}/ingress/${jupyterInfo.baseURL}/static/favicons/favicon.ico`
   // set title to jupyter base url
   useEffect(() => {
     if (jupyterInfo?.baseURL) {
@@ -36,7 +36,7 @@ const Jupyter: FC = () => {
         "link[rel='website icon']",
       ) as HTMLLinkElement;
       if (link) {
-        link.href = `https://crater.act.buaa.edu.cn/ingress/${jupyterInfo.baseURL}/static/favicons/favicon.ico`;
+        link.href = `https://${import.meta.env.VITE_HOST}/ingress/${jupyterInfo.baseURL}/static/favicons/favicon.ico`;
         link.type = "image/x-icon";
       }
       document.title = jupyterInfo.baseURL;

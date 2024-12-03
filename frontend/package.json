@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsc && vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
+    "build-testing": "tsc && vite build --mode testing",
     "lint": "tsc && eslint .",
     "eslint": "eslint . --max-warnings 0",
     "preview": "vite preview",

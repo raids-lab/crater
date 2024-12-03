@@ -297,7 +297,7 @@ export default function PodIngressDialog({
                       <div className="ml-2 flex flex-grow flex-col items-start justify-start gap-0.5">
                         <p>{ingress.name}</p>
                         <div className="flex flex-row text-xs text-muted-foreground">
-                          {ingress.port} → crater.act.buaa.edu.cn
+                          {ingress.port} → {import.meta.env.VITE_HOST}
                           {ingress.prefix}
                         </div>
                       </div>
@@ -306,8 +306,7 @@ export default function PodIngressDialog({
                         size="icon"
                         className="hover:text-primary"
                         onClick={() => {
-                          const url =
-                            "https://crater.act.buaa.edu.cn" + ingress.prefix;
+                          const url = `https://${import.meta.env.VITE_HOST}${ingress.prefix}`;
                           window.open(url, "_blank");
                         }}
                         tooltipContent="访问链接"
@@ -332,7 +331,7 @@ export default function PodIngressDialog({
                             </AlertDialogTitle>
                             <AlertDialogDescription>
                               外部访问规则「{ingress.name}」<br />
-                              {ingress.port} → crater.act.buaa.edu.cn
+                              {ingress.port} → {import.meta.env.VITE_HOST}
                               {ingress.prefix}
                               <br />
                               将被删除，请谨慎操作。

@@ -272,7 +272,7 @@ export const Component: FC = () => {
                         className="h-8 w-8 p-0 hover:text-sky-700"
                         title="下载文件"
                         onClick={() => {
-                          const link = `https://crater.act.buaa.edu.cn/api/ss/download${path}/${row.original.name}`;
+                          const link = `${import.meta.env.VITE_API_BASE_URL}ss/download${path}/${row.original.name}`;
                           const o = new XMLHttpRequest();
                           o.open("GET", link);
                           o.responseType = "blob";
@@ -351,7 +351,7 @@ export const Component: FC = () => {
                         className="h-8 w-8 p-0 hover:text-sky-700"
                         title="下载文件"
                         onClick={() => {
-                          const link = `https://crater.act.buaa.edu.cn/api/ss/download${path}/${row.original.name}`;
+                          const link = `${import.meta.env.VITE_API_BASE_URL}ss/download${path}/${row.original.name}`;
                           const o = new XMLHttpRequest();
                           o.open("GET", link);
                           o.responseType = "blob";
