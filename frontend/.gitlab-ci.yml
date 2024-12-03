@@ -12,8 +12,8 @@ build_frontend_main:
   stage: build_frontend
   image: harbor.act.buaa.edu.cn/crater/node-pnpm:21
   script:
-    - sed -i "s/VITE_APP_VERSION=\".*\"/VITE_APP_VERSION=\"${CI_COMMIT_SHORT_SHA}\"/".env
-    - pnpm config set store-dir.pnpm-store
+    - sed -i "s/VITE_APP_VERSION=\".*\"/VITE_APP_VERSION=\"${CI_COMMIT_SHORT_SHA}\"/" .env
+    - pnpm config set store-dir .pnpm-store
     - pnpm config set registry https://registry.npmmirror.com
     - pnpm install
     - pnpm build
@@ -34,8 +34,8 @@ build_frontend_develop:
   stage: build_frontend
   image: harbor.act.buaa.edu.cn/crater/node-pnpm:21
   script:
-    - sed -i "s/VITE_APP_VERSION=\".*\"/VITE_APP_VERSION=\"${CI_COMMIT_SHORT_SHA}\"/".env
-    - pnpm config set store-dir.pnpm-store
+    - sed -i "s/VITE_APP_VERSION=\".*\"/VITE_APP_VERSION=\"${CI_COMMIT_SHORT_SHA}\"/" .env
+    - pnpm config set store-dir .pnpm-store
     - pnpm config set registry https://registry.npmmirror.com
     - pnpm install
     - pnpm build-testing # 使用 pnpm build-testing 进行打包，符合 develop 分支要求
