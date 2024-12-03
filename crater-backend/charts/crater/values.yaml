@@ -70,6 +70,16 @@ backendConfig:
         user: notify
         password: ***REMOVED***
 
+ssConfig:
+  content: |
+    postgres:
+      host: ***REMOVED***
+      port: 5432
+      dbname: crater
+      user: crater
+      password: ***REMOVED***
+      sslmode: disable
+      TimeZone: Asia/Shanghai
 # Usage:
 # helm install crater ./charts/crater \
 # --set-string tls.cert="$(cat path/to/tls.crt)"\
