@@ -269,6 +269,8 @@ func shouldCreateOrUpdateUser(
 
 	// If don't need to update the user, return directly
 	currentAttr := user.Attributes.Data()
+
+	attr.Avatar = currentAttr.Avatar
 	newAttr := datatypes.NewJSONType(*attr)
 	if currentAttr.ID != model.InvalidUserID &&
 		(attr.Email == nil || reflect.DeepEqual(user.Attributes, newAttr)) {
@@ -313,7 +315,7 @@ func createUser(c context.Context, name string, password *string) (*model.User, 
 		Password: hashedPassword,
 		Role:     model.RoleAdmin, // todo: change to model.RoleUser
 		Status:   model.StatusActive,
-		Space:    fmt.Sprintf("u-%s", name),
+		Space:    name,
 		Attributes: datatypes.NewJSONType(model.UserAttribute{
 			Email: lo.ToPtr(name + "@***REMOVED***"),
 		}),
