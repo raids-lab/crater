@@ -1,0 +1,23 @@
+# nginx-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crater-website
+  namespace: crater
+  labels:
+    app: crater-website
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: crater-website
+  template:
+    metadata:
+      labels:
+        app: crater-website
+    spec:
+      containers:
+        - name: crater-website-container
+          image: ***REMOVED***/crater/website:v0.1.2
+          ports:
+            - containerPort: 80

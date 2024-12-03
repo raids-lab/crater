@@ -180,7 +180,6 @@ func main() {
 	err = jobReconciler.SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to set up job controller")
-		os.Exit(1)
 	}
 
 	vcjobReconciler := reconciler.NewVcJobReconciler(
@@ -190,7 +189,6 @@ func main() {
 	err = vcjobReconciler.SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to set up vcjob controller")
-		os.Exit(1)
 	}
 
 	imagePackReconciler := reconciler.NewImagePackReconciler(
@@ -200,7 +198,6 @@ func main() {
 	err = imagePackReconciler.SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to set up imagepack controller")
-		os.Exit(1)
 	}
 
 	stopCh := ctrl.SetupSignalHandler()

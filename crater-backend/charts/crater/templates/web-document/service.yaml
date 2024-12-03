@@ -1,0 +1,14 @@
+# nginx-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: crater-website-svc
+  namespace: crater
+spec:
+  selector:
+    app: crater-website
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8888
+  type: ClusterIP
