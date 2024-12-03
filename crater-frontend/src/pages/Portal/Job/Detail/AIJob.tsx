@@ -40,7 +40,6 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
-  apiJupyterTokenGet,
   JobPhase,
   apiJobDelete,
   apiJobGetDetail,
@@ -131,14 +130,6 @@ export const Component = () => {
     onSuccess: () => {
       navigate("/jupyter");
       toast.success("作业已删除");
-    },
-  });
-
-  const { mutate: goToTensorboardPage } = useMutation({
-    mutationFn: (jobName: string) => apiJupyterTokenGet(jobName),
-
-    onSuccess: (_, jobName) => {
-      window.open(`https://crater.act.buaa.edu.cn/tensorboard/${jobName}`);
     },
   });
 
@@ -239,25 +230,6 @@ export const Component = () => {
                 <PieChartIcon className="h-4 w-4" />
                 资源监控
               </Button>
-              {data.useTensorBoard && (
-                <>
-                  <Separator orientation="vertical" />
-                  <Button
-                    className="text-primary"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      toast.info("即将跳转至 TensorBoard 页面");
-                      setTimeout(() => {
-                        goToTensorboardPage(jobName);
-                      }, 500);
-                    }}
-                    disabled={data.status !== JobPhase.Running}
-                  >
-                    Go to TensorBoard Page
-                  </Button>
-                </>
-              )}
             </div>
             <div className="flex flex-row gap-2">
               <AlertDialog>

@@ -363,7 +363,9 @@ export const Component: FC = () => {
             <Button
               variant="secondary"
               onClick={() =>
-                window.open("https://crater.act.buaa.edu.cn/website/docs/intro")
+                window.open(
+                  `https://${import.meta.env.VITE_HOST}/website/docs/intro`,
+                )
               }
               className="hidden lg:flex"
             >
