@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/raids-lab/crater/pkg/config"
 	"github.com/samber/lo"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -41,7 +42,6 @@ type PodIngress struct {
 const (
 	startingPort    = int32(81)                  // 起始端口
 	maxPort         = int32(65535)               // 最大端口
-	hostName        = "crater.***REMOVED***"   // Ingress 规则的 Host
 	IngressLabelKey = "ingress.crater.raids.io/" // Annotation Ingress Key
 	NotebookPort    = 8888
 )
@@ -210,7 +210,7 @@ func CreateIngress(ctx context.Context, kubeClient client.Client, pod *v1.Pod, s
 			IngressClassName: func(s string) *string { return &s }("nginx"),
 			Rules: []networkingv1.IngressRule{
 				{
-					Host: hostName,
+					Host: config.GetConfig().Host,
 					IngressRuleValue: networkingv1.IngressRuleValue{
 						HTTP: &networkingv1.HTTPIngressRuleValue{
 							Paths: []networkingv1.HTTPIngressPath{
@@ -233,8 +233,8 @@ func CreateIngress(ctx context.Context, kubeClient client.Client, pod *v1.Pod, s
 			},
 			TLS: []networkingv1.IngressTLS{
 				{
-					Hosts:      []string{"crater.***REMOVED***"}, // 需要 TLS 的主机名
-					SecretName: "crater-tls-secret",                // TLS 证书的 Secret 名称
+					Hosts:      []string{config.GetConfig().Host}, // 需要 TLS 的主机名
+					SecretName: "crater-tls-secret",               // TLS 证书的 Secret 名称
 				},
 			},
 		},

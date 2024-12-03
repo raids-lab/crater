@@ -9,10 +9,10 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - crater.***REMOVED***
+        - {{ .Values.web.ingress.host }}
       secretName: crater-tls-secret
   rules:
-    - host: crater.***REMOVED***
+    - host: {{ .Values.web.ingress.host }}
       http:
         paths:
           - path: /website

@@ -1,11 +1,12 @@
 <h1 align="center">Crater Web Backend</h1>
 
  [![Pipeline Status](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-backend/badges/main/pipeline.svg) ](https://gitlab.***REMOVED***/raids/resource-scheduling/crater/web-backend/-/commits/main)
- [![Release Version](https://img.shields.io/badge/Release-0.1.0-blue) ](https://crater.***REMOVED***/)
+ [![Develop Version](https://img.shields.io/badge/Develop-0.1.0-blue) ](https://crater.***REMOVED***/)
+ [![Release Version](https://img.shields.io/badge/Release-0.1.0-blue) ](https://***REMOVED***/)
 
 Crater 是一个基于 Kubernetes 的 GPU 集群管理系统，提供了一站式的 GPU 集群管理解决方案。
 
-- 网站访问：https://crater.***REMOVED***/
+- 网站访问：https://***REMOVED***/
 - 需求分析：[GPU 集群管理与作业调度 Portal 设计和任务分解](***REMOVED***)
 - 任务排期：[Crater Group Milestone](https://gitlab.***REMOVED***/groups/raids/resource-scheduling/crater/-/milestones)
 

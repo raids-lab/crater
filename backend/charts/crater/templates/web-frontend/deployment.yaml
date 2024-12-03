@@ -22,11 +22,5 @@ spec:
           pullPolicy: {{ .Values.web.frontend.image.pullPolicy }}
           ports:
             - containerPort: 80
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchExpressions:
-                  - key: nvidia.com/gpu.present
-                    operator: Exists
-              topologyKey: kubernetes.io/hostname
+      nodeSelector: {{ .Values.nodeSelector | toYaml | nindent 8 }}
+      tolerations: {{ .Values.tolerations | toYaml | nindent 8 }}
