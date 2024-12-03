@@ -147,6 +147,7 @@ func (r *ImagePackReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		Where(kanikoQuery.ImagePackName.Eq(imagepack.Name)).
 		Update(kanikoQuery.Status, imagepack.Status.Stage); err != nil {
 		logger.Error(err, "kaniko entity status updated failed")
+		return ctrl.Result{Requeue: true}, nil
 	}
 	logger.Info(fmt.Sprintf("kakino pod: %s , new stage: %s", imagepack.Name, imagepack.Status.Stage))
 
@@ -156,13 +157,13 @@ func (r *ImagePackReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Where(kanikoQuery.ImagePackName.Eq(imagepack.Name)).
 			Update(kanikoQuery.Size, size); err != nil {
 			logger.Error(err, "kaniko entity size updated failed")
+			return ctrl.Result{Requeue: true}, err
 		}
 		imageQuery := query.Image
 		// avoid duplicatedly creating image entity result from the same one finished kaniko crd
 		if _, err = imageQuery.WithContext(ctx).
 			Where(imageQuery.ImagePackName.Eq(kaniko.ImagePackName)).
 			First(); errors.Is(err, gorm.ErrRecordNotFound) {
-			logger.Info("create new image entity with kaniko name: " + kaniko.ImagePackName)
 			image := &model.Image{
 				User:          kaniko.User,
 				UserID:        kaniko.User.ID,
@@ -174,9 +175,15 @@ func (r *ImagePackReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				ImageSource:   model.ImageCreateType,
 				Size:          size,
 			}
-			if err = imageQuery.WithContext(ctx).Create(image); err != nil {
-				logger.Error(err, "image entity size update failed")
+			err = imageQuery.WithContext(ctx).Create(image)
+			if err != nil {
+				logger.Error(err, "image entity created failed")
+				return ctrl.Result{Requeue: true}, err
+			} else {
+				logger.Info("kaniko entity created successfully: " + kaniko.ImagePackName)
 			}
+		} else if err == nil {
+			logger.Error(err, "image entity already existed")
 		}
 	}
 	return ctrl.Result{}, nil

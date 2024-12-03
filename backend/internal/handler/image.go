@@ -18,6 +18,7 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/logutils"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -74,6 +75,10 @@ type (
 		ID uint `form:"id" binding:"required"`
 	}
 
+	GetKanikoPodRequest struct {
+		ID uint `form:"id" binding:"required"`
+	}
+
 	ListAvailableImageRequest struct {
 		Type model.JobType `form:"type" binding:"required"`
 	}
@@ -121,6 +126,11 @@ type (
 		Description   string                 `json:"description"`
 	}
 
+	GetKanikoPodResponse struct {
+		PodName      string `json:"name"`
+		PodNameSpace string `json:"namespace"`
+	}
+
 	ListAvailableImageResponse struct {
 		Images []ImageInfo `json:"images"`
 	}
@@ -152,6 +162,8 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/getbyid", mgr.GetKanikoByID)
 	g.POST("/quota", mgr.UpdateProjectQuota)
 	g.POST("/change/:id", mgr.UpdateImagePublicStatus)
+
+	g.GET("/podname", mgr.GetImagepackPodName)
 }
 
 func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -285,10 +297,7 @@ func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *CreateKanikoReques
 			Dockerfile:      req.Dockerfile,
 		},
 	}
-	if err := mgr.imagepackClient.CreateImagePack(c, imagepackCRD); err != nil {
-		logutils.Log.Errorf("create imagepack CRD failed, params: %+v err:%v", imagepackCRD, err)
-		return
-	}
+
 	kanikoQuery := query.Kaniko
 	imageLink := fmt.Sprintf("%s/%s/%s:%s", req.RegistryServer, req.RegistryProject, req.ImageName, req.ImageTag)
 	kanikoEntity := &model.Kaniko{
@@ -303,6 +312,11 @@ func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *CreateKanikoReques
 
 	if err := kanikoQuery.WithContext(c).Create(kanikoEntity); err != nil {
 		logutils.Log.Errorf("create imagepack entity failed, params: %+v", kanikoEntity)
+	}
+
+	if err := mgr.imagepackClient.CreateImagePack(c, imagepackCRD); err != nil {
+		logutils.Log.Errorf("create imagepack CRD failed, params: %+v err:%v", imagepackCRD, err)
+		return
 	}
 }
 
@@ -658,4 +672,35 @@ func (mgr *ImagePackMgr) UpdateImagePublicStatus(c *gin.Context) {
 	}
 
 	resputil.Success(c, "")
+}
+
+func (mgr *ImagePackMgr) GetImagepackPodName(c *gin.Context) {
+	kanikoQuery := query.Kaniko
+	var req GetKanikoPodRequest
+	var err error
+	if err = c.ShouldBindQuery(&req); err != nil {
+		msg := fmt.Sprintf("validate image get parameters failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		return
+	}
+	var kaniko *model.Kaniko
+	if kaniko, err = kanikoQuery.WithContext(c).
+		Where(kanikoQuery.ID.Eq(req.ID)).
+		First(); err != nil {
+		msg := fmt.Sprintf("fetch kaniko by name failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		return
+	}
+	var pod *corev1.Pod
+	pod, err = mgr.imagepackClient.GetImagePackPod(c, kaniko.ImagePackName, UserNameSpace)
+	if err != nil {
+		msg := fmt.Sprintf("fetch kaniko pod by name failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		return
+	}
+	resp := GetKanikoPodResponse{
+		PodName:      pod.Name,
+		PodNameSpace: UserNameSpace,
+	}
+	resputil.Success(c, resp)
 }
