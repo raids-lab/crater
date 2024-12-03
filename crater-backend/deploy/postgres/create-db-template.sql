@@ -1,2 +1,0 @@
--- Active: 1727092988627@@10.8.0.6@5432
-CREATE DATABASE crater;

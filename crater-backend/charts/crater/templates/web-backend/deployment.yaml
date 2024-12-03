@@ -42,11 +42,5 @@ spec:
             items:
               - key: config.yaml
                 path: config.yaml
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchExpressions:
-                  - key: nvidia.com/gpu.present
-                    operator: Exists
-              topologyKey: kubernetes.io/hostname
+      nodeSelector: {{ .Values.nodeSelector | toYaml | nindent 8 }}
+      tolerations: {{ .Values.tolerations | toYaml | nindent 8 }}

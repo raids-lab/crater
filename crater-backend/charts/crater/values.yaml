@@ -2,7 +2,7 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "37352a97"
+      tag: "1825c87d"
       pullPolicy: "IfNotPresent"
   frontend:
     image:
@@ -10,10 +10,20 @@ web:
       tag: "5af85d86"
       pullPolicy: "IfNotPresent"
   storage:
-    images:
+    image:
       repository: ***REMOVED***
       tag: "jg5s886d"
       pullPolicy: "IfNotPresent"
+  ingress:
+    host: ***REMOVED***
+
+nodeSelector:
+  node-role.kubernetes.io/control-plane: ""
+
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
 
 backendConfig:
   content: |
@@ -28,9 +38,9 @@ backendConfig:
     monitoringPort: 9443
     postgres:
       host: ***REMOVED***
-      port: 30841
+      port: 5432
       dbname: crater
-      user: postgres
+      user: crater
       password: ***REMOVED***
       sslmode: disable
       TimeZone: Asia/Shanghai
@@ -44,7 +54,21 @@ backendConfig:
         registryServer: ***REMOVED***
         registryUser: ***REMOVED***
         registryPass: ***REMOVED***
-        registryProject: crater-images
+        registryProject: crater
+      openAPI:
+        url: ***REMOVED***
+        chameleonKey: ***REMOVED***
+        accessToken: ***REMOVED***
+      auth:
+        userName: ***REMOVED***
+        password: ***REMOVED***
+        address: ***REMOVED***
+        searchDN: OU=Lab,OU=ACT,DC=lab,DC=act,DC=buaa,Dc=edu,DC=cn
+      smtp:
+        host: ***REMOVED***
+        port: 25
+        user: notify
+        password: ***REMOVED***
 
 # Usage:
 # helm install crater ./charts/crater \

@@ -21,3 +21,5 @@ spec:
           image: ***REMOVED***/crater/website:v0.1.2
           ports:
             - containerPort: 80
+      nodeSelector: {{ .Values.nodeSelector | toYaml | nindent 8 }}
+      tolerations: {{ .Values.tolerations | toYaml | nindent 8 }}

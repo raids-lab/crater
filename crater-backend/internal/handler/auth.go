@@ -357,7 +357,7 @@ func (mgr *AuthMgr) CreatePersonalDir(c *gin.Context, user *model.User) error {
 	if err != nil {
 		return errors.New("create token err:" + err.Error())
 	}
-	baseurl := "http://crater.***REMOVED***/api/ss/"
+	baseurl := fmt.Sprintf("https://%s/api/ss/", config.GetConfig().Host)
 	uRL := baseurl + user.Space
 	// 创建请求
 	req, err := http.NewRequestWithContext(c.Request.Context(), "MKCOL", uRL, http.NoBody)

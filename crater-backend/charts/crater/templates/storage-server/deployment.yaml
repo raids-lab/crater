@@ -16,17 +16,8 @@ spec:
         app: webdav-crater
     spec:
       serviceAccountName: default
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: kubernetes.io/hostname
-                    operator: NotIn
-                    values:
-                      - dell-66
-                      - dell-67
-                      - dell-68
+      nodeSelector: {{ .Values.nodeSelector | toYaml | nindent 8 }}
+      tolerations: {{ .Values.tolerations | toYaml | nindent 8 }}
       containers:
         - name: webdav
           image: {{ .Values.web.storage.image.repository }}:{{ .Values.web.storage.image.tag }}

@@ -29,6 +29,7 @@ type Config struct {
 		TimeZone string `yaml:"TimeZone"`
 	} `yaml:"postgres"`
 	// Port Settings
+	Host           string `yaml:"host"`        // "The domain name of the server."
 	ServerAddr     string `yaml:"serverAddr"`  // "The address the server endpoint binds to."
 	MetricsAddr    string `yaml:"metricsAddr"` // "The address the metric endpoint binds to."
 	ProbeAddr      string `yaml:"probeAddr"`   // "The address the probe endpoint binds to."

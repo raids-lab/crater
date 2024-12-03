@@ -271,7 +271,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 			IngressClassName: func(s string) *string { return &s }("nginx"),
 			Rules: []networkingv1.IngressRule{
 				{
-					Host: "crater.***REMOVED***", // 设置 Host
+					Host: config.GetConfig().Host, // 设置 Host
 					IngressRuleValue: networkingv1.IngressRuleValue{
 						HTTP: &networkingv1.HTTPIngressRuleValue{
 							Paths: []networkingv1.HTTPIngressPath{
@@ -294,8 +294,8 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 			},
 			TLS: []networkingv1.IngressTLS{
 				{
-					Hosts:      []string{"crater.***REMOVED***"}, // 需要 TLS 的主机名
-					SecretName: "crater-tls-secret",                // TLS 证书的 Secret 名称
+					Hosts:      []string{config.GetConfig().Host}, // 需要 TLS 的主机名
+					SecretName: "crater-tls-secret",               // TLS 证书的 Secret 名称
 				},
 			},
 		},
