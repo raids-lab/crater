@@ -30,7 +30,7 @@ type Kaniko struct {
 	gorm.Model
 	UserID        uint
 	User          User
-	ImagePackName string                 `gorm:"uniqueIndex:imagepackname;type:varchar(128);not null;comment:ImagePack CRD名称"`
+	ImagePackName string                 `gorm:"uniqueIndex;type:varchar(128);not null;comment:ImagePack CRD名称"`
 	ImageLink     string                 `gorm:"type:varchar(128);not null;comment:镜像链接"`
 	NameSpace     string                 `gorm:"type:varchar(128);not null;comment:命名空间"`
 	Status        imagepackv1.PackStatus `gorm:"not null;comment:构建状态"`
@@ -43,7 +43,7 @@ type Image struct {
 	UserID        uint
 	User          User
 	ImageLink     string          `gorm:"type:varchar(128);not null;comment:镜像链接"`
-	ImagePackName string          `gorm:"uniqueIndex:imagepackname;type:varchar(128);not null;comment:ImagePack CRD名称"`
+	ImagePackName string          `gorm:"uniqueIndex;type:varchar(128);not null;comment:ImagePack CRD名称"`
 	Description   *string         `gorm:"type:varchar(512);comment:描述"`
 	IsPublic      bool            `gorm:"type:boolean;default:false;comment:是否公共"`
 	TaskType      JobType         `gorm:"not null;comment:镜像任务类型"`
