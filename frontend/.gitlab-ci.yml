@@ -21,7 +21,8 @@ build_frontend_main:
     - main
   cache:
     key: "crater-web-frontend"
-    paths: -.pnpm-store/
+    paths:
+      - .pnpm-store/
       - node_modules/
   artifacts:
     paths:
@@ -42,7 +43,8 @@ build_frontend_develop:
     - develop
   cache:
     key: "crater-web-frontend"
-    paths: -.pnpm-store/
+    paths:
+      - .pnpm-store/
       - node_modules/
   artifacts:
     paths:
