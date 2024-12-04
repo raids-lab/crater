@@ -60,7 +60,7 @@ func main() {
 				// so side effects are prevented if the original struct changes during the time
 				type Dataset struct {
 					gorm.Model
-					Name     string `gorm:"uniqueIndex;type:varchar(256);not null;comment:数据集名"`
+					Name     string `gorm:"type:varchar(256);not null;comment:数据集名"`
 					URL      string `gorm:"type:varchar(512);not null;comment:数据集空间路径"`
 					Describe string `gorm:"type:text;comment:数据集描述"`
 					UserID   uint
@@ -409,13 +409,17 @@ func main() {
 		}
 		// 2. create a user with the name and password
 		user := model.User{
-			Name:       name,
-			Nickname:   "管理员",
-			Password:   lo.ToPtr(string(hashedPassword)),
-			Role:       model.RoleAdmin, // todo: change to model.RoleUser
-			Status:     model.StatusActive,
-			Space:      fmt.Sprintf("u-%s", name),
-			Attributes: datatypes.NewJSONType(model.UserAttribute{}),
+			Name:     name,
+			Nickname: "管理员",
+			Password: lo.ToPtr(string(hashedPassword)),
+			Role:     model.RoleAdmin, // todo: change to model.RoleUser
+			Status:   model.StatusActive,
+			Space:    fmt.Sprintf("u-%s", name),
+			Attributes: datatypes.NewJSONType(model.UserAttribute{
+				Name:     name,
+				Nickname: "管理员",
+				ID:       1,
+			}),
 		}
 
 		res = tx.Create(&user)
