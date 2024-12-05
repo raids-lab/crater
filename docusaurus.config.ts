@@ -7,7 +7,7 @@ import tailwindPlugin from "./plugins/tailwind-config.cjs";
 
 const config: Config = {
   title: "Crater",
-  tagline: "Dinosaurs are cool",
+  tagline: "A GPU Resource Scheduling System based on Kubernetes",
   favicon: "img/logo.svg",
 
   // Set the production url of your site here
@@ -42,8 +42,8 @@ const config: Config = {
           sidebarPath: "./sidebars.ts",
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          editUrl:
-            "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/",
+          // editUrl:
+          //   "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/",
         },
         blog: {
           showReadingTime: true,
@@ -53,8 +53,8 @@ const config: Config = {
           },
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          editUrl:
-            "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/",
+          // editUrl:
+          //   "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/",
           // Useful options to enforce blogging best practices
           onInlineTags: "warn",
           onInlineAuthors: "warn",
@@ -83,9 +83,9 @@ const config: Config = {
           position: "left",
           label: "文档",
         },
-        { to: "/blog", label: "资讯", position: "left" },
+        // { to: "/blog", label: "资讯", position: "left" },
         {
-          href: "https://crater.act.buaa.edu.cn/portal",
+          href: "https://gpu.act.buaa.edu.cn/portal",
           label: "立即体验",
           position: "right",
         },
@@ -100,46 +100,42 @@ const config: Config = {
       style: "dark",
       links: [
         {
-          title: "Docs",
+          title: "文档",
           items: [
             {
-              label: "Tutorial",
+              label: "文档",
               to: "/docs/intro",
             },
           ],
         },
         {
-          title: "Community",
+          title: "社区",
           items: [
             {
-              label: "Stack Overflow",
-              href: "https://stackoverflow.com/questions/tagged/docusaurus",
+              label: "档案",
+              href: "https://docs.qq.com/desktop/mydoc/folder/XnmrOEBITHOs",
             },
             {
-              label: "Discord",
-              href: "https://discordapp.com/invite/docusaurus",
+              label: "月报",
+              href: "https://docs.qq.com/aio/DUHplWVB6cVJqSlFZ",
             },
             {
-              label: "X",
-              href: "https://x.com/docusaurus",
+              label: "资讯",
+              to: "/blog",
             },
           ],
         },
         {
-          title: "More",
+          title: "更多",
           items: [
             {
-              label: "Blog",
-              to: "/blog",
-            },
-            {
-              label: "GitHub",
-              href: "https://github.com/facebook/docusaurus",
+              label: "Gitlab",
+              href: "https://gitlab.act.buaa.edu.cn/groups/raids/resource-scheduling/crater",
             },
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} My Project, Inc. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} ACT RAIDS Lab. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,

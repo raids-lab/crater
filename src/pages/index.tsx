@@ -1,39 +1,91 @@
-import clsx from "clsx";
 import Link from "@docusaurus/Link";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import Layout from "@theme/Layout";
-import Heading from "@theme/Heading";
-
-import DemoImg from "@site/static/img/undraw_read_notes_gqmq.svg";
-
-import styles from "./index.module.css";
-import { Zap, BarChart, Box } from "lucide-react";
+import HeroSvg from "@site/static/img/undraw_read_notes_gqmq.svg";
+import DocusaurusImageUrl from "@site/static/img/docusaurus.png";
+import wechatQrCode from "@site/static/img/qrcode.png";
+import {
+  Zap,
+  BarChart,
+  Box,
+  HelpCircle,
+  MessageCircle,
+  HandHelping,
+  MessageCircleQuestion,
+} from "lucide-react";
 import TestimonialCard from "./TestimonialCard";
 
 const testimonials = [
   {
-    text: "GPUCluster彻底改变了我们的研究工作流程。我们的模型训练速度提高了5倍，使我们能够更快地迭代并推动AI的边界。",
-    name: "陈博士",
-    title: "AI研究主管，科技创新公司",
-    imageUrl: "https://github.com/mondaycha.png",
+    text: "Crater 彻底改变了我们的研究工作流程。我们的模型训练速度提高了 5 倍，使我们能够更快地迭代并推动 AI 的边界。",
+    name: "周博士",
+    title: "AI 研究主管，科技创新公司",
+    imageUrl: DocusaurusImageUrl,
   },
   {
-    text: "作为一家初创公司，GPUCluster对我们来说是一个游戏规则的改变者。该平台的易用性和强大功能使我们能够在AI领域与大公司竞争。",
-    name: "李明",
-    title: "首席技术官，AI初创公司",
-    imageUrl: "https://github.com/mondaycha.png",
+    text: "Crater 是我们团队的必备工具。我们的研究人员和开发人员都喜欢使用它，因为它提供了一个简单而强大的方式来管理我们的深度学习任务。",
+    name: "周同学",
+    title: "AI 研究员，大学",
+    imageUrl: DocusaurusImageUrl,
   },
   {
-    text: "GPUCluster彻底改变了我们的研究工作流程。我们的模型训练速度提高了5倍，使我们能够更快地迭代并推动AI的边界。",
-    name: "陈博士",
-    title: "AI研究主管，科技创新公司",
-    imageUrl: "https://github.com/mondaycha.png",
+    text: "从 Slurm 到 Kubernetes，Crater 为我们提供了一个统一的平台，使我们能够在不同的集群上运行我们的深度学习任务。",
+    name: "周工程师",
+    title: "AI 工程师，科技公司",
+    imageUrl: DocusaurusImageUrl,
   },
   {
-    text: "作为一家初创公司，GPUCluster对我们来说是一个游戏规则的改变者。该平台的易用性和强大功能使我们能够在AI领域与大公司竞争。",
-    name: "李明",
-    title: "首席技术官，AI初创公司",
-    imageUrl: "https://github.com/mondaycha.png",
+    text: "作为一家初创公司，Crater 对我们来说是一个游戏规则的改变者。该平台的易用性和强大功能使我们能够在 AI 领域与大公司竞争。",
+    name: "周明",
+    title: "首席技术官，AI 初创公司",
+    imageUrl: DocusaurusImageUrl,
+  },
+];
+
+const questions = [
+  {
+    question: "如何使用 Crater 运行深度学习任务？",
+    answer:
+      "您可以在我们的文档中找到有关如何使用 Crater 运行深度学习任务的详细说明。",
+  },
+  {
+    question: "Crater 支持哪些深度学习框架？",
+    answer: "Crater 支持 TensorFlow、PyTorch、MXNet 等流行的深度学习框架。",
+  },
+  {
+    question: "我可以在 Crater 上运行多任务吗？",
+    answer: "是的，您可以在 Crater 上同时运行多个深度学习任务。",
+  },
+  {
+    question: "Crater 如何保证我的任务的安全性？",
+    answer: "Crater 使用容器技术隔离您的任务，确保您的任务在安全的环境中运行。",
+  },
+  {
+    question: "Crater 如何保证我的任务的性能？",
+    answer: "Crater 提供了高性能的 GPU 集群，确保您的任务获得最佳的性能。",
+  },
+  {
+    question: "Crater 如何收费？",
+    answer:
+      "Crater 目前处于内测阶段，我们提供免费试用。请联系我们获取更多信息。",
+  },
+  {
+    question: "我如何联系 Crater 的技术支持团队？",
+    answer:
+      "您可以通过微信群或邮件联系我们的技术支持团队。我们会尽快回复您的问题。",
+  },
+  {
+    question: "Crater 支持哪些集群管理系统？",
+    answer: "Crater 支持 Slurm、Kubernetes 等流行的集群管理系统。",
+  },
+  {
+    question: "我如何加入 Crater 内测？",
+    answer:
+      "您可以通过我们的网站申请加入 Crater 内测。我们会尽快审核您的申请。",
+  },
+  {
+    question: "Crater 如何保证我的数据的隐私？",
+    answer: "Crater 严格遵守数据隐私法规，确保您的数据不会被泄露。",
   },
 ];
 
@@ -72,7 +124,7 @@ function LandingPage() {
               </div>
             </div>
             <div className="lg:max-w-lg lg:w-full md:w-1/2 w-5/6">
-              <DemoImg className="object-cover object-center w-full" />
+              <HeroSvg className="object-cover object-center w-full text-white dark:text-gray-900" />
             </div>
           </div>
         </section>
@@ -81,11 +133,11 @@ function LandingPage() {
         <section className="text-gray-600 dark:text-gray-300 body-font bg-gray-100 dark:bg-gray-800 transition-colors duration-200">
           <div className="container px-5 py-24 mx-auto">
             <div className="text-center mb-20">
-              <h2 className="sm:text-3xl text-2xl font-medium title-font text-gray-900 dark:text-white mb-4">
-                为AI研究人员和开发者提供强大功能
+              <h2 className="sm:text-3xl text-2xl font-medium title-font text-gray-900 dark:text-white mb-3">
+                为 AI 研究人员和开发者提供强大功能
               </h2>
               <p className="text-base leading-relaxed xl:w-2/4 lg:w-3/4 mx-auto text-gray-500 dark:text-gray-400">
-                我们的平台提供全面的工具和功能，以简化您的深度学习工作流程。
+                我们的平台提供全面的工具和功能，以简化您的深度学习工作流程
               </p>
               <div className="flex mt-6 justify-center">
                 <div className="w-16 h-1 rounded-full bg-sky-600 inline-flex"></div>
@@ -145,10 +197,13 @@ function LandingPage() {
         <section className="text-gray-600 dark:text-gray-300 body-font bg-white dark:bg-gray-900 transition-colors duration-200">
           <div className="container px-5 py-24 mx-auto">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-medium title-font text-gray-900 dark:text-white mb-6 text-center">
+              <h2 className="sm:text-3xl text-2xl font-medium title-font text-gray-900 dark:text-white mb-3">
                 用户评价
               </h2>
-              <div className="flex justify-center">
+              <p className="text-base leading-relaxed xl:w-2/4 lg:w-3/4 mx-auto text-gray-500 dark:text-gray-400">
+                来自不是我们的用户的虚假评价
+              </p>
+              <div className="flex mt-6 justify-center">
                 <div className="w-16 h-1 rounded-full bg-sky-600 inline-flex"></div>
               </div>
             </div>
@@ -165,30 +220,90 @@ function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* Feedback Section */}
+        <section className="text-gray-600 dark:text-gray-300 body-font bg-gray-100 dark:bg-gray-800 transition-colors duration-200">
+          <div className="container px-5 py-24 mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-medium title-font text-gray-900 dark:text-white mb-6 text-center">
+                意见反馈
+              </h2>
+              <div className="flex justify-center">
+                <div className="w-16 h-1 rounded-full bg-sky-600 inline-flex"></div>
+              </div>
+            </div>
+            <div className="flex flex-wrap -m-4">
+              <div className="p-4 w-full flex justify-center">
+                <div className="h-full bg-gray-100 dark:bg-gray-800 p-8 rounded flex flex-col items-center">
+                  <div className="flex-1 text-center">
+                    <p className="leading-relaxed mb-6">
+                      我们非常重视您的意见和建议。如果您有任何问题或建议，请随时联系我们。
+                    </p>
+                  </div>
+                  <div className="inline-flex items-center mt-4 flex-col">
+                    <img
+                      alt="QR Code"
+                      src={wechatQrCode}
+                      className="w-48 h-48 flex-shrink-0 object-cover object-center"
+                    />
+                    <span className="flex-grow flex flex-col items-center mt-4">
+                      <span className="title-font font-medium text-gray-900 dark:text-white">
+                        微信群二维码
+                      </span>
+                      <span className="text-gray-500 dark:text-gray-400 text-sm">
+                        扫描二维码加入内测用户交流群
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 常见问题 Section */}
+        <section className="text-gray-600 dark:text-gray-300 body-font bg-white dark:bg-gray-900 transition-colors duration-200">
+          <div className="container px-5 py-24 mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-medium title-font text-gray-900 dark:text-white mb-6 text-center">
+                常见问题
+              </h2>
+              <p className="text-base leading-relaxed xl:w-2/4 lg:w-3/4 mx-auto text-gray-500 dark:text-gray-400">
+                目前全是用 AI 生成的问题和答案
+              </p>
+              <div className="flex justify-center">
+                <div className="w-16 h-1 rounded-full bg-sky-600 inline-flex"></div>
+              </div>
+            </div>
+            <div className="flex flex-wrap -m-4">
+              {/* 10个常见问题，卡片形式 */}
+              {questions.map((question, index) => (
+                <div key={index} className="p-4 md:w-1/2 w-full">
+                  <div className="h-full bg-gray-100 dark:bg-gray-800 p-8 rounded flex flex-col">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 inline-flex items-center justify-center rounded-full bg-sky-200 dark:bg-sky-800 text-sky-600 dark:text-sky-300 flex-shrink-0 font-semibold">
+                        Q
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                        {question.question}
+                      </h3>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 inline-flex items-center justify-center rounded-full bg-emerald-200 dark:bg-emerald-800 text-emerald-600 dark:text-emerald-300 flex-shrink-0 font-semibold">
+                        A
+                      </div>
+                      <p className="leading-relaxed text-gray-500 dark:text-gray-400">
+                        {question.answer}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       </main>
     </div>
-  );
-}
-
-function HomepageHeader() {
-  const { siteConfig } = useDocusaurusContext();
-  return (
-    <header className={clsx("hero hero--primary", styles.heroBanner)}>
-      <div className="container">
-        <Heading as="h1" className="hero__title">
-          {siteConfig.title}
-        </Heading>
-        <p className="hero__subtitle">{siteConfig.tagline}</p>
-        <div className={styles.buttons}>
-          <Link
-            className="button button--secondary button--lg"
-            to="/docs/intro"
-          >
-            Docusaurus Tutorial - 5min ⏱️
-          </Link>
-        </div>
-      </div>
-    </header>
   );
 }
 

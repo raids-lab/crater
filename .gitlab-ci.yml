@@ -2,13 +2,24 @@ stages:
   - deploy
 
 # Deploy to Kubernetes cluster
-deploy:
+deploy-develop:
   stage: deploy
   image:
     name: harbor.act.buaa.edu.cn/crater/bitnami-kubectl:240302
     entrypoint: [""]
   script:
     - kubectl config use-context raids/resource-scheduling/crater/web-frontend:crater-cluster
+    - kubectl rollout restart deployment crater-website -n crater
+  only:
+    - main
+
+deploy-release:
+  stage: deploy
+  image:
+    name: harbor.act.buaa.edu.cn/crater/bitnami-kubectl:240302
+    entrypoint: [""]
+  script:
+    - kubectl config use-context raids/resource-scheduling/crater/web-frontend:actgpu-cluster
     - kubectl rollout restart deployment crater-website -n crater
   only:
     - main

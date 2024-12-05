@@ -11,8 +11,8 @@
     <path
         d="m813.90439,480.39801H11.12674c-6.13535,0-11.12674-4.99167-11.12674-11.12675V11.12674C0,4.99168,4.99139,0,11.12674,0h802.77765c6.13537,0,11.127,4.99168,11.127,11.12674v458.14456c0,6.13508-4.99171,11.12675-11.127,11.12675v-.00004Z"
         fill="#2f2e41" stroke-width="0" />
-    <rect x="20.30667" y="19.72662" width="785.57844" height="443.26583" fill="#fff" stroke-width="0" />
-    <rect x="150.90939" y="134.38655" width="207" height="59" fill="#255aa6" stroke-width="0" />
+    <rect x="20.30667" y="19.72662" width="785.57844" height="443.26583" fill="currentColor" stroke-width="0" />
+    <rect x="150.90939" y="134.38655" width="207" height="59" fill="#3a71bf" stroke-width="0" />
     <line x1="169.40939" y1="146.88655" x2="200.76646" y2="146.88655" fill="none" stroke="#000" stroke-miterlimit="10"
         stroke-width="2" />
     <line x1="169.40939" y1="163.88655" x2="338.40939" y2="163.88655" fill="none" stroke="#000" stroke-miterlimit="10"
