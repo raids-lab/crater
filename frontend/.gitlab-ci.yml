@@ -104,3 +104,17 @@ deploy_develop:
     - develop
   dependencies:
     - build_image_develop
+
+# Deploy to Kubernetes cluster for main branch
+deploy_main:
+  stage: deploy
+  image:
+    name: harbor.act.buaa.edu.cn/crater/bitnami-kubectl:240302
+    entrypoint: [""]
+  script:
+    - kubectl config use-context raids/resource-scheduling/crater/web-frontend:actgpu-cluster
+    - kubectl set image deployment/crater-web-frontend crater-web-frontend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -n crater
+  only:
+    - main
+  dependencies:
+    - build_image_main
