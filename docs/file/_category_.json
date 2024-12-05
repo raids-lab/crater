@@ -1,6 +1,6 @@
 {
-  "label": "文件系统和数据集",
-  "position": 1,
+  "label": "文件管理",
+  "position": 3,
   "link": {
     "type": "generated-index",
     "description": "怎么使用文件系统和数据集"

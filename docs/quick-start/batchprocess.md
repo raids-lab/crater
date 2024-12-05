@@ -1,11 +1,16 @@
-# 单机训练作业实现--以PyToch手写识别为例
+---
+sidebar_position: 4
+---
+
+# 批处理作业
 
 ## 上传代码
+
 ### 在本地创建代码
 
 在本地创建好要执行的代码文件。鉴于批处理系统在代码调试环节存在诸多不便之处，建议仅将在本地已成功调试且可正常执行的代码，应用于批处理系统之中，以保障整体业务流程的顺畅推进与稳定性。
 
-```
+```python
 #本代码参考github PyToch手写识别GPU训练任务实例
 import argparse
 import torch
@@ -163,10 +168,9 @@ if __name__ == '__main__':
 
 ![image-20241122155705293](./assets/image-20241122155705293-1732262227132-4.png)
 
-本示例中将train.py文件导入到mnist文件夹中
+本示例中将 train.py 文件导入到 mnist 文件夹中
 
 ![image-20241122160500989](./assets/image-20241122160500989-1732262702522-11.png)
-
 
 ## 作业提交
 
@@ -193,11 +197,12 @@ docker run -it --entrypoint /bin/bash nvcr.io/nvidia/k8s/container-toolkit:v1.17
 ```
 
 在这个示例中：
+
 - `--entrypoint /bin/bash`：覆盖了镜像的默认入口点，使用 `/bin/bash` 作为新的入口点。
 
 - `-c "command1; command2; command3"`：传递一个包含多行命令的字符串，使用 `;` 分隔每个命令。
 
-**在本系统中启动命令中需要填的内容即为command1; command2; command3**
+**在本系统中启动命令中需要填的内容即为 command1; command2; command3**
 
 #### 示例命令
 
@@ -206,8 +211,8 @@ cd /mnt/mnist;
 python train.py
 ```
 
-1. 打开/mnt/mnist文件夹
-2. 用python 运行train.py
+1. 打开/mnt/mnist 文件夹
+2. 用 python 运行 train.py
 
 #### 注意事项
 
@@ -222,7 +227,7 @@ python train.py
 
 ![image-20241119140509768](./assets/image-20241119140509768.png)
 
-如，导入用户空间下的mnist文件夹，可通过cd /mnt/mnist;指令来访问该文件夹
+如，导入用户空间下的 mnist 文件夹，可通过 cd /mnt/mnist;指令来访问该文件夹
 
 ![image-20241119141208401](./assets/image-20241119141208401.png)
 
@@ -231,7 +236,6 @@ python train.py
 ![image-20241119141512895](./assets/image-20241119141512895.png)
 
 ![image-20241119141915285](./assets/image-20241119141915285.png)
-
 
 ## 作业运行状况查看
 
@@ -255,7 +259,7 @@ python train.py
 
 #### 其他查看作业运行情况的方法
 
-同时，在新建批处理作业的时候可能遇到一些环境问题，可通过在**启动命令**中添加sleep指令，来进行调试。如：
+同时，在新建批处理作业的时候可能遇到一些环境问题，可通过在**启动命令**中添加 sleep 指令，来进行调试。如：
 
 ```
 sleep 600;//让程序暂停10分钟
@@ -267,11 +271,10 @@ sleep 600;//让程序暂停10分钟
 
 ## 作业结果保存
 
-在执行文件中保存在镜像空间的当前文件夹下的内容会保存到用户空间的源文件夹中，如在示例代码中，运行后会将mnist_cnn.pt保存到train.py所在的源文件夹mnist中
+在执行文件中保存在镜像空间的当前文件夹下的内容会保存到用户空间的源文件夹中，如在示例代码中，运行后会将 mnist_cnn.pt 保存到 train.py 所在的源文件夹 mnist 中
 
 ```
 torch.save(model.state_dict(), "mnist_cnn.pt")
 ```
 
 ![image-20241122162517287](./assets/image-20241122162517287-1732263918878-16.png)
-

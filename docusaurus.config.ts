@@ -1,15 +1,17 @@
 import { themes as prismThemes } from "prism-react-renderer";
 import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
+import tailwindPlugin from "./plugins/tailwind-config.cjs";
+
+// This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
   title: "Crater",
-  tagline:
-    "Crater 是一个基于 Kubernetes 的 GPU 集群管理平台，提供了一站式的多租户 GPU 集群管理解决方案。",
+  tagline: "Dinosaurs are cool",
   favicon: "img/logo.svg",
 
   // Set the production url of your site here
-  url: "https://your-docusaurus-site.example.com",
+  url: "https://gpu.act.buaa.edu.cn",
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: "/website/",
@@ -17,10 +19,12 @@ const config: Config = {
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
   organizationName: "radis-lab", // Usually your GitHub org/user name.
-  projectName: "document", // Usually your repo name.
+  projectName: "crater-document", // Usually your repo name.
 
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "warn",
+
+  plugins: [tailwindPlugin],
 
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you
@@ -43,10 +47,18 @@ const config: Config = {
         },
         blog: {
           showReadingTime: true,
+          feedOptions: {
+            type: ["rss", "atom"],
+            xslt: true,
+          },
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
             "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/",
+          // Useful options to enforce blogging best practices
+          onInlineTags: "warn",
+          onInlineAuthors: "warn",
+          onUntruncatedBlogPosts: "warn",
         },
         theme: {
           customCss: "./src/css/custom.css",
@@ -61,7 +73,7 @@ const config: Config = {
     navbar: {
       title: "Crater",
       logo: {
-        alt: "My Site Logo",
+        alt: "Crater Logo",
         src: "img/logo.svg",
       },
       items: [
@@ -69,12 +81,12 @@ const config: Config = {
           type: "docSidebar",
           sidebarId: "tutorialSidebar",
           position: "left",
-          label: "Tutorial",
+          label: "文档",
         },
-        { to: "/blog", label: "Blog", position: "left" },
+        { to: "/blog", label: "资讯", position: "left" },
         {
           href: "https://crater.act.buaa.edu.cn/portal",
-          label: "Try Now",
+          label: "立即体验",
           position: "right",
         },
         {
@@ -108,8 +120,8 @@ const config: Config = {
               href: "https://discordapp.com/invite/docusaurus",
             },
             {
-              label: "Twitter",
-              href: "https://twitter.com/docusaurus",
+              label: "X",
+              href: "https://x.com/docusaurus",
             },
           ],
         },

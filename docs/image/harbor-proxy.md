@@ -1,15 +1,18 @@
-# Harbor镜像仓库代理简介
+# 镜像代理
 
 ## 为什么需要镜像仓库代理
 
 #### 科学上网
-由于科学上网的缘故，国内无法直接访问到外网的一些镜像仓库（如gcr.io、docker.io等），实验室Harbor配置了代理，因此用户可以借助Harbor的代理来拉取到外网的镜像
+
+由于科学上网的缘故，国内无法直接访问到外网的一些镜像仓库（如 gcr.io、docker.io 等），实验室 Harbor 配置了代理，因此用户可以借助 Harbor 的代理来拉取到外网的镜像
+
 #### 避免封禁
-实验室可能会经常使用某些镜像，而用户频繁的拉取可能会被某些仓库封禁（如nvcr.io），因此缓存到本地能避免此问题
+
+实验室可能会经常使用某些镜像，而用户频繁的拉取可能会被某些仓库封禁（如 nvcr.io），因此缓存到本地能避免此问题
+
 #### 加速拉取
-对于外网镜像，通过Harbor先拉取到本地进行缓存，用户使用时走实验室内网拉取镜像更快
 
-
+对于外网镜像，通过 Harbor 先拉取到本地进行缓存，用户使用时走实验室内网拉取镜像更快
 
 ## 提供镜像代理的仓库
 
@@ -26,12 +29,10 @@
 | quay.io           | https://quay.io           |
 | docker.io         | https://hub.docker.com    |
 
-
-
 ## 使用方法
 
-使用时，直接在原镜像URL前加上：`crater-harbor.act.buaa.edu.cn`即可，例：
+使用时，直接在原镜像 URL 前加上：`crater-harbor.act.buaa.edu.cn`即可，例：
 
-原URL：`docker.io/library/ubuntu:latest`
+原 URL：`docker.io/library/ubuntu:latest`
 
 增加代理后：`crater-harbor.act.buaa.edu.cn/docker.io/library/ubuntu:latest`
