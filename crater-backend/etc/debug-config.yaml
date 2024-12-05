@@ -10,9 +10,9 @@ monitoringPort: 0
 jycache: true
 postgres:
   host: ***REMOVED***
-  port: 30345
+  port: 30432
   dbname: crater
-  user: crater
+  user: postgres
   password: ***REMOVED***
   sslmode: disable
   TimeZone: Asia/Shanghai
