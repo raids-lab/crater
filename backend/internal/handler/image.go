@@ -158,7 +158,6 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.DELETE("/image/:id", mgr.DeleteImageByID)
 
 	g.GET("/available", mgr.ListAvailableImages)
-	g.POST("/getbyname", mgr.GetImagePackByName)
 	g.GET("/getbyid", mgr.GetKanikoByID)
 	g.POST("/quota", mgr.UpdateProjectQuota)
 	g.POST("/change/:id", mgr.UpdateImagePublicStatus)
@@ -531,29 +530,6 @@ func (mgr *ImagePackMgr) DeleteImageByID(c *gin.Context) {
 		resputil.Error(c, "failed to delete image", resputil.NotSpecified)
 	}
 	resputil.Success(c, "")
-}
-
-// GetImagePackByName godoc
-// @Summary 获取imagepack的详细信息，主要用于调试
-// @Description 获取imagepackname，搜索到imagepack
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param imagepackname query string true "获取ImagePack的name"
-// @Router /v1/images/getbyname [GET]
-func (mgr *ImagePackMgr) GetImagePackByName(c *gin.Context) {
-	imagepackQuery := query.ImagePack
-	imagePackName := c.DefaultQuery("imagepackname", "")
-	imagepack, err := imagepackQuery.WithContext(c).
-		Where(imagepackQuery.ImagePackName.Eq(imagePackName)).
-		First()
-	if err != nil {
-		msg := fmt.Sprintf("fetch imagepack by name failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
-		return
-	}
-	resputil.Success(c, imagepack)
 }
 
 // GetKanikoByID godoc

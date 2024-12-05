@@ -91,3 +91,17 @@ deploy:
     - main
   dependencies:
     - build_image
+
+# Deploy to Kubernetes cluster
+deploy-release:
+  stage: deploy
+  image:
+    name: ***REMOVED***/crater/bitnami-kubectl:240302
+    entrypoint: [""]
+  script:
+    - kubectl config use-context raids/resource-scheduling/crater/web-frontend:actgpu-cluster
+    - kubectl set image deployment/crater-web-backend crater-web-backend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -n crater
+  only:
+    - main
+  dependencies:
+    - build_image

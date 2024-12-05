@@ -5,8 +5,10 @@ import (
 	"gorm.io/gorm"
 )
 
-const InvalidUserID = 0
-const ImageQuotaInfinity = -1
+const (
+	InvalidUserID      = 0
+	ImageQuotaInfinity = -1
+)
 
 // UserAttributeForScan is used for scan.
 // For example:
@@ -33,6 +35,10 @@ type UserAttribute struct {
 
 	Phone  *string `json:"phone,omitempty"`  // 电话
 	Avatar *string `json:"avatar,omitempty"` // 头像
+
+	// UID and GID are used for Filesystem
+	UID *string `json:"uid,omitempty"` // UID
+	GID *string `json:"gid,omitempty"` // GID
 }
 
 // User is the basic entity of the system

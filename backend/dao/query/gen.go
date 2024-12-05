@@ -21,8 +21,6 @@ var (
 	AccountDataset *accountDataset
 	Dataset        *dataset
 	Image          *image
-	ImagePack      *imagePack
-	ImageUpload    *imageUpload
 	Job            *job
 	Kaniko         *kaniko
 	Label          *label
@@ -39,8 +37,6 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	AccountDataset = &Q.AccountDataset
 	Dataset = &Q.Dataset
 	Image = &Q.Image
-	ImagePack = &Q.ImagePack
-	ImageUpload = &Q.ImageUpload
 	Job = &Q.Job
 	Kaniko = &Q.Kaniko
 	Label = &Q.Label
@@ -58,8 +54,6 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		AccountDataset: newAccountDataset(db, opts...),
 		Dataset:        newDataset(db, opts...),
 		Image:          newImage(db, opts...),
-		ImagePack:      newImagePack(db, opts...),
-		ImageUpload:    newImageUpload(db, opts...),
 		Job:            newJob(db, opts...),
 		Kaniko:         newKaniko(db, opts...),
 		Label:          newLabel(db, opts...),
@@ -78,8 +72,6 @@ type Query struct {
 	AccountDataset accountDataset
 	Dataset        dataset
 	Image          image
-	ImagePack      imagePack
-	ImageUpload    imageUpload
 	Job            job
 	Kaniko         kaniko
 	Label          label
@@ -99,8 +91,6 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		AccountDataset: q.AccountDataset.clone(db),
 		Dataset:        q.Dataset.clone(db),
 		Image:          q.Image.clone(db),
-		ImagePack:      q.ImagePack.clone(db),
-		ImageUpload:    q.ImageUpload.clone(db),
 		Job:            q.Job.clone(db),
 		Kaniko:         q.Kaniko.clone(db),
 		Label:          q.Label.clone(db),
@@ -127,8 +117,6 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		AccountDataset: q.AccountDataset.replaceDB(db),
 		Dataset:        q.Dataset.replaceDB(db),
 		Image:          q.Image.replaceDB(db),
-		ImagePack:      q.ImagePack.replaceDB(db),
-		ImageUpload:    q.ImageUpload.replaceDB(db),
 		Job:            q.Job.replaceDB(db),
 		Kaniko:         q.Kaniko.replaceDB(db),
 		Label:          q.Label.replaceDB(db),
@@ -145,8 +133,6 @@ type queryCtx struct {
 	AccountDataset IAccountDatasetDo
 	Dataset        IDatasetDo
 	Image          IImageDo
-	ImagePack      IImagePackDo
-	ImageUpload    IImageUploadDo
 	Job            IJobDo
 	Kaniko         IKanikoDo
 	Label          ILabelDo
@@ -163,8 +149,6 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		AccountDataset: q.AccountDataset.WithContext(ctx),
 		Dataset:        q.Dataset.WithContext(ctx),
 		Image:          q.Image.WithContext(ctx),
-		ImagePack:      q.ImagePack.WithContext(ctx),
-		ImageUpload:    q.ImageUpload.WithContext(ctx),
 		Job:            q.Job.WithContext(ctx),
 		Kaniko:         q.Kaniko.WithContext(ctx),
 		Label:          q.Label.WithContext(ctx),
