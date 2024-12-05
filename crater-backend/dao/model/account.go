@@ -6,10 +6,20 @@ import (
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 const (
 	DefaultAccountID = 1
+)
+
+var (
+	DefaultQuota = QueueQuota{
+		Capability: v1.ResourceList{
+			v1.ResourceCPU:    resource.MustParse("80"),
+			v1.ResourceMemory: resource.MustParse("160Gi"),
+		},
+	}
 )
 
 type QueueQuota struct {

@@ -17,6 +17,7 @@ const (
 type JobType string
 
 const (
+	JobTypeAll        JobType = "all"
 	JobTypeJupyter    JobType = "jupyter"
 	JobTypeWebIDE     JobType = "webide"
 	JobTypePytorch    JobType = "pytorch"

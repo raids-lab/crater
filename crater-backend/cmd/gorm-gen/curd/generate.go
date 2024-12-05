@@ -23,8 +23,6 @@ func main() {
 	// 从连接的数据库为所有表生成 Model 结构体和 CRUD 代码
 	g.ApplyBasic(
 		model.User{},
-		model.ImagePack{},
-		model.ImageUpload{},
 		model.Label{},
 		model.Account{},
 		model.UserAccount{},

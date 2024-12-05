@@ -313,7 +313,7 @@ func createUser(c context.Context, name string, password *string) (*model.User, 
 		Name:     name,
 		Nickname: name,
 		Password: hashedPassword,
-		Role:     model.RoleAdmin, // todo: change to model.RoleUser
+		Role:     model.RoleUser,
 		Status:   model.StatusActive,
 		Space:    name,
 		Attributes: datatypes.NewJSONType(model.UserAttribute{
@@ -330,6 +330,7 @@ func createUser(c context.Context, name string, password *string) (*model.User, 
 		AccountID:  model.DefaultAccountID,
 		Role:       model.RoleUser,
 		AccessMode: model.AccessModeRO,
+		Quota:      datatypes.NewJSONType(model.DefaultQuota),
 	}
 
 	if err := uq.WithContext(c).Create(&userAccount); err != nil {

@@ -2,12 +2,12 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "1825c87d"
+      tag: "1236680e"
       pullPolicy: "IfNotPresent"
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "5af85d86"
+      tag: "73bfde5a"
       pullPolicy: "IfNotPresent"
   storage:
     image:
@@ -36,6 +36,7 @@ backendConfig:
     metricsAddr: :8080
     probeAddr: :8081
     monitoringPort: 9443
+    host: ***REMOVED***
     postgres:
       host: ***REMOVED***
       port: 5432
@@ -80,6 +81,7 @@ ssConfig:
       password: ***REMOVED***
       sslmode: disable
       TimeZone: Asia/Shanghai
+
 # Usage:
 # helm install crater ./charts/crater \
 # --set-string tls.cert="$(cat path/to/tls.crt)"\
