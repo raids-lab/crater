@@ -307,6 +307,7 @@ func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *CreateKanikoReques
 		NameSpace:     UserNameSpace,
 		Status:        imagepackv1.PackJobInitial,
 		Description:   &req.Description,
+		Dockerfile:    &req.Dockerfile,
 	}
 
 	if err := kanikoQuery.WithContext(c).Create(kanikoEntity); err != nil {
