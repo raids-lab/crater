@@ -166,7 +166,7 @@ export const Component: FC = () => {
                   variant="outline"
                   className="h-8 w-8 p-0 hover:text-destructive"
                   title="删除镜像"
-                  disabled={imageInfo.creatorName === user.name}
+                  disabled={imageInfo.creatorName !== user.name}
                 >
                   <Trash2 size={16} strokeWidth={2} />
                 </Button>
