@@ -15,6 +15,12 @@ import { apiUserSignup } from "@/services/api/auth";
 import LoadableButton from "@/components/custom/LoadableButton";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { isAxiosError } from "axios";
+import { IErrorResponse } from "@/services/types";
+import {
+  ERROR_REGISTER_NOT_FOUND,
+  ERROR_REGISTER_TIMEOUT,
+} from "@/services/error_code";
 
 const formSchema = z
   .object({
@@ -52,6 +58,21 @@ export function SignupForm() {
     onSuccess: () => {
       toast.success("注册成功");
       navigate("/login");
+    },
+    onError: (error) => {
+      if (isAxiosError<IErrorResponse>(error)) {
+        const errorCode = error.response?.data.code;
+        switch (errorCode) {
+          case ERROR_REGISTER_TIMEOUT:
+            toast.error("新用户注册访问 UID Server 超时，请联系管理员");
+            return;
+          case ERROR_REGISTER_NOT_FOUND:
+            toast.error("新用户注册访问 UID Server 失败，请联系管理员");
+            return;
+        }
+      } else {
+        toast.error("登录失败，请稍后重试");
+      }
     },
   });
 

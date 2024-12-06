@@ -18,12 +18,31 @@ import {
   globalUserInfo,
   useResetStore,
 } from "@/utils/store";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Role, apiUserLogin } from "@/services/api/auth";
 import LoadableButton from "@/components/custom/LoadableButton";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { isAxiosError } from "axios";
+import { IErrorResponse } from "@/services/types";
+import {
+  ERROR_INVALID_CREDENTIALS,
+  ERROR_MUST_REGISTER,
+  ERROR_REGISTER_NOT_FOUND,
+  ERROR_REGISTER_TIMEOUT,
+} from "@/services/error_code";
+import { ExternalLink } from "lucide-react";
 
 const formSchema = z.object({
   username: z
@@ -36,11 +55,12 @@ const formSchema = z.object({
     })
     .refine(
       (value) => {
-        const regex = /^[a-z0-9]+$/;
+        // 首字符必须小写字母，包含小写字母、数字、中划线
+        const regex = /^[a-z][a-z0-9-]*[a-z0-9]$/;
         return regex.test(value);
       },
       {
-        message: "只能包含小写字母和数字",
+        message: "只能包含小写字母和数字，中划线可作为连接符",
       },
     ),
   password: z
@@ -54,14 +74,13 @@ const formSchema = z.object({
 });
 
 export function LoginForm() {
+  const [open, setOpen] = useState(false);
   const location = useLocation();
-
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const setUserState = useSetAtom(globalUserInfo);
   const setAccount = useSetAtom(globalAccount);
   const { resetAll } = useResetStore();
-
   const lastView = useAtomValue(globalLastView);
 
   // 1. Define your form.
@@ -118,11 +137,29 @@ export function LoginForm() {
           : "/portal/overview";
       navigate(dashboard, { replace: true });
     },
-    onError: () => {
-      form.setError("password", {
-        type: "manual",
-        message: "用户名或密码错误",
-      });
+    onError: (error) => {
+      if (isAxiosError<IErrorResponse>(error)) {
+        const errorCode = error.response?.data.code;
+        switch (errorCode) {
+          case ERROR_INVALID_CREDENTIALS:
+            form.setError("password", {
+              type: "manual",
+              message: "用户名或密码错误",
+            });
+            return;
+          case ERROR_MUST_REGISTER:
+            setOpen(true);
+            return;
+          case ERROR_REGISTER_TIMEOUT:
+            toast.error("新用户注册访问 UID Server 超时，请联系管理员");
+            return;
+          case ERROR_REGISTER_NOT_FOUND:
+            toast.error("新用户注册访问 UID Server 失败，请联系管理员");
+            return;
+        }
+      } else {
+        toast.error("登录失败，请稍后重试");
+      }
     },
   });
 
@@ -138,74 +175,105 @@ export function LoginForm() {
   }, [location, loginUser]);
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>账号</FormLabel>
-              <FormControl>
-                <Input autoComplete="username" {...field} />
-                {/* <Input placeholder="shadcn" {...field} /> */}
-              </FormControl>
-              {/* <FormDescription>密码</FormDescription> */}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <div className="flex items-center justify-between">
-                <FormLabel>密码</FormLabel>
-                <button
-                  className="p-0 text-sm text-muted-foreground underline"
-                  type="button"
-                  onClick={() => toast.info("请联系 ACT 实验室账号管理员")}
-                >
-                  忘记密码？
-                </button>
-              </div>
-              <FormControl>
-                <Input
-                  type="password"
-                  autoComplete="current-password"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <LoadableButton
-          type="submit"
-          className="w-full"
-          isLoading={status === "pending"}
-        >
-          ACT 登录
-        </LoadableButton>
-        <Button
-          className="w-full"
-          type="button"
-          variant="outline"
-          onClick={() => {
-            if (status !== "pending") {
-              resetAll();
-              loginUser({
-                username: currentValues.username,
-                password: currentValues.password,
-                auth: "normal",
-              });
-            }
-          }}
-        >
-          其他登录方式
-        </Button>
-      </form>
-    </Form>
+    <>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="username"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>账号</FormLabel>
+                <FormControl>
+                  <Input autoComplete="username" {...field} />
+                  {/* <Input placeholder="shadcn" {...field} /> */}
+                </FormControl>
+                {/* <FormDescription>密码</FormDescription> */}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <div className="flex items-center justify-between">
+                  <FormLabel>密码</FormLabel>
+                  <button
+                    className="p-0 text-sm text-muted-foreground underline"
+                    type="button"
+                    onClick={() => toast.info("请联系 ACT 实验室账号管理员")}
+                  >
+                    忘记密码？
+                  </button>
+                </div>
+                <FormControl>
+                  <Input
+                    type="password"
+                    autoComplete="current-password"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <LoadableButton
+            type="submit"
+            className="w-full"
+            isLoading={status === "pending"}
+          >
+            ACT 登录
+          </LoadableButton>
+          <Button
+            className="w-full"
+            type="button"
+            variant="outline"
+            onClick={() => {
+              if (status !== "pending") {
+                resetAll();
+                loginUser({
+                  username: currentValues.username,
+                  password: currentValues.password,
+                  auth: "normal",
+                });
+              }
+            }}
+          >
+            其他登录方式
+          </Button>
+        </form>
+      </Form>
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>登录失败</AlertDialogTitle>
+            <AlertDialogDescription>
+              当前用户未取得集群访问权限，请参考「
+              <a
+                href={`https://${import.meta.env.VITE_HOST}/website/docs/quick-start/login`}
+              >
+                平台访问指南
+              </a>
+              」申请。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                window.open(
+                  `https://${import.meta.env.VITE_HOST}/website/docs/quick-start/login`,
+                )
+              }
+            >
+              <ExternalLink />
+              阅读文档
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
