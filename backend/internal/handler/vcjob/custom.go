@@ -14,7 +14,6 @@ import (
 	"github.com/samber/lo"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 	bus "volcano.sh/apis/pkg/apis/bus/v1alpha1"
 )
@@ -58,15 +57,12 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 		return
 	}
 
-	// Ingress base URL
+	// base URL
 	baseURL := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
 	jobName := fmt.Sprintf("single-%s", baseURL)
 
 	// useTensorBoard
 	useTensorboard := fmt.Sprintf("%t", req.UseTensorBoard)
-
-	// 2. Env Vars (Skip)
-	// 3. TODO: Node Affinity for ARM64 Nodes
 
 	// 4. Labels and Annotations
 	namespace := config.GetConfig().Workspace.Namespace
@@ -88,19 +84,6 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 		return
 	}
 
-	if len(req.Selectors) > 0 {
-		firstSelector := req.Selectors[0]
-		if firstSelector.Key == "kubernetes.io/hostname" && firstSelector.Values[0] == "zjlab-sw" {
-			toleration := v1.Toleration{
-				Key:      "key",
-				Value:    "value",
-				Effect:   "NoSchedule",
-				Operator: "Equal",
-			}
-
-			podSpec.Tolerations = append(podSpec.Tolerations, toleration)
-		}
-	}
 	// 6. Create volcano job
 	job := batch.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -110,9 +93,11 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 			Annotations: annotations,
 		},
 		Spec: batch.JobSpec{
-			MinAvailable:  1,
-			SchedulerName: VolcanoSchedulerName,
-			Queue:         token.AccountName,
+			TTLSecondsAfterFinished: lo.ToPtr(ThreeDaySeconds),
+			MinAvailable:            1,
+			MaxRetry:                1,
+			SchedulerName:           VolcanoSchedulerName,
+			Queue:                   token.AccountName,
 			Policies: []batch.LifecyclePolicy{
 				{
 					Action: bus.RestartJobAction,
@@ -138,56 +123,6 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 				},
 			},
 		},
-	}
-
-	// 添加 TensorBoard 端口映射
-	if req.UseTensorBoard {
-		podSpec.Containers[0].Ports = append(podSpec.Containers[0].Ports, v1.ContainerPort{
-			ContainerPort: TensorBoardPort, // TensorBoard 默认端口
-			Name:          "tb-port",
-			Protocol:      v1.ProtocolTCP,
-		})
-	}
-	if err = mgr.client.Create(c, &job); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	// create service
-	svc := &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      jobName,
-			Namespace: namespace,
-		},
-		Spec: v1.ServiceSpec{
-			Selector: labels,
-			Ports: []v1.ServicePort{
-				{
-					Name:       jobName,
-					Port:       80,
-					Protocol:   v1.ProtocolTCP,
-					TargetPort: intstr.FromInt(JupyterPort),
-				},
-			},
-			SessionAffinity: v1.ServiceAffinityNone,
-			Type:            v1.ServiceTypeClusterIP,
-		},
-	}
-
-	// 更新 Service：如果使用TensorBoard，添加额外的端口映射
-	if req.UseTensorBoard {
-		svc.Spec.Ports = append(svc.Spec.Ports, v1.ServicePort{
-			Name:       "tensorboard",
-			Port:       81,
-			Protocol:   v1.ProtocolTCP,
-			TargetPort: intstr.FromInt(TensorBoardPort),
-		})
-	}
-
-	err = mgr.client.Create(c, svc)
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
 	}
 
 	resputil.Success(c, job)
@@ -220,9 +155,8 @@ func GenerateCustomPodSpec(
 				Env:   custom.Envs,
 				Ports: []v1.ContainerPort{},
 				SecurityContext: &v1.SecurityContext{
-					AllowPrivilegeEscalation: lo.ToPtr(true),
-					RunAsUser:                lo.ToPtr(int64(0)),
-					RunAsGroup:               lo.ToPtr(int64(0)),
+					RunAsUser:  lo.ToPtr(int64(0)),
+					RunAsGroup: lo.ToPtr(int64(0)),
 				},
 				TerminationMessagePath:   "/dev/termination-log",
 				TerminationMessagePolicy: v1.TerminationMessageReadFile,

@@ -26,8 +26,8 @@ import (
 )
 
 const (
-	ThreeDaySeconds int32 = 259200
-	IngressLabelKey       = "ingress.crater.raids.io" // Annotation Ingress Key
+	ThreeDaySeconds    int32 = 259200
+	IngressLabelPrefix       = "ingress.crater.raids.io/" // Annotation Ingress Key
 
 )
 
@@ -116,7 +116,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		return
 	}
 
-	//nolint:mnd // 4 is the number of default envs
+	//nolint:mnd // 5 is the number of default envs
 	envs := make([]v1.EnvVar, len(req.Envs)+5)
 	envs[0] = v1.EnvVar{Name: "GRANT_SUDO", Value: "1"}
 	envs[1] = v1.EnvVar{Name: "CHOWN_HOME", Value: "1"}
@@ -154,10 +154,10 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 
 	// 初始化 annotations 并添加 notebookIngress Annotation
 	annotations := map[string]string{
-		AnnotationKeyTaskName:                  req.Name,
-		AnnotationKeyTaskTemplate:              req.Template,
-		AnnotationKeyUseTensorBoard:            useTensorboard,
-		IngressLabelKey + notebookIngress.Name: string(ingressJSON), // 添加 notebookIngress Annotation
+		AnnotationKeyTaskName:                     req.Name,
+		AnnotationKeyTaskTemplate:                 req.Template,
+		AnnotationKeyUseTensorBoard:               useTensorboard,
+		IngressLabelPrefix + notebookIngress.Name: string(ingressJSON), // 添加 notebookIngress Annotation
 	}
 
 	// 5. Create the pod spec
@@ -180,15 +180,15 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 					{ContainerPort: JupyterPort, Name: "notebook-port", Protocol: v1.ProtocolTCP},
 				},
 				SecurityContext: &v1.SecurityContext{
-					AllowPrivilegeEscalation: lo.ToPtr(true),
-					RunAsUser:                lo.ToPtr(int64(0)),
-					RunAsGroup:               lo.ToPtr(int64(0)),
+					RunAsUser:  lo.ToPtr(int64(0)),
+					RunAsGroup: lo.ToPtr(int64(0)),
 				},
 				TerminationMessagePath:   "/dev/termination-log",
 				TerminationMessagePolicy: v1.TerminationMessageReadFile,
 				VolumeMounts:             volumeMounts,
 			},
 		},
+		RestartPolicy: v1.RestartPolicyNever,
 	}
 
 	// 6. Create volcano job
@@ -203,6 +203,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 			// 3 days
 			TTLSecondsAfterFinished: lo.ToPtr(ThreeDaySeconds),
 			MinAvailable:            1,
+			MaxRetry:                1,
 			SchedulerName:           VolcanoSchedulerName,
 			Queue:                   token.AccountName,
 			Policies: []batch.LifecyclePolicy{
