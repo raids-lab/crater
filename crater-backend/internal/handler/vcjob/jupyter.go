@@ -99,12 +99,26 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	}
 
 	// 2. Env Vars
+	u := query.User
+	user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	userAttr := user.Attributes.Data()
+	if userAttr.UID == nil || userAttr.GID == nil {
+		resputil.Error(c, "UID or GID not found", resputil.NotSpecified)
+		return
+	}
+
 	//nolint:mnd // 4 is the number of default envs
-	envs := make([]v1.EnvVar, len(req.Envs)+4)
+	envs := make([]v1.EnvVar, len(req.Envs)+5)
 	envs[0] = v1.EnvVar{Name: "GRANT_SUDO", Value: "1"}
 	envs[1] = v1.EnvVar{Name: "CHOWN_HOME", Value: "1"}
-	envs[2] = v1.EnvVar{Name: "NB_UID", Value: "1001"}
-	envs[3] = v1.EnvVar{Name: "NB_USER", Value: token.Username}
+	envs[2] = v1.EnvVar{Name: "NB_UID", Value: *userAttr.UID}
+	envs[3] = v1.EnvVar{Name: "NB_GID", Value: *userAttr.GID}
+	envs[4] = v1.EnvVar{Name: "NB_USER", Value: token.Username}
 	for i, env := range req.Envs {
 		envs[i+4] = env
 	}

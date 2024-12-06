@@ -51,6 +51,8 @@ backendConfig:
       ingressName: crater-jobs-ingress
       imageNameSpace: crater-images
     act:
+      strictRegisterMode: true
+      uidServerURL: ***REMOVED***
       image:
         registryServer: ***REMOVED***
         registryUser: ***REMOVED***

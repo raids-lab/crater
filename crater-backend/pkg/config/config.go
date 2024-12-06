@@ -61,7 +61,9 @@ type Config struct {
 			User     string `yaml:"user"`
 			Password string `yaml:"password"`
 		} `yaml:"smtp"`
-		OpenAPI ACTOpenAPI `yaml:"openAPI"`
+		OpenAPI            ACTOpenAPI `yaml:"openAPI"`            // The Token configuration for ACT OpenAPI
+		StrictRegisterMode bool       `yaml:"strictRegisterMode"` // If true, the user must sign up with token.
+		UIDServerURL       string     `yaml:"uidServerURL"`       // The URL of the UID server
 	} `yaml:"act"`
 }
 
