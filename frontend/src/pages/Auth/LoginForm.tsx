@@ -203,7 +203,7 @@ export function LoginForm() {
                   <button
                     className="p-0 text-sm text-muted-foreground underline"
                     type="button"
-                    onClick={() => toast.info("请联系 ACT 实验室账号管理员")}
+                    onClick={() => toast.info("请联系 G512 杜英杰老师")}
                   >
                     忘记密码？
                   </button>
@@ -224,10 +224,10 @@ export function LoginForm() {
             className="w-full"
             isLoading={status === "pending"}
           >
-            ACT 登录
+            ACT 认证登录
           </LoadableButton>
           <Button
-            className="w-full"
+            className="w-full border"
             type="button"
             variant="outline"
             onClick={() => {
