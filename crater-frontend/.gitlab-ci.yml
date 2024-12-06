@@ -40,7 +40,7 @@ build_frontend_develop:
     - pnpm install
     - pnpm build-testing # 使用 pnpm build-testing 进行打包，符合 develop 分支要求
   only:
-    - main
+    - develop
   cache:
     key: "crater-web-frontend"
     paths:
@@ -87,23 +87,9 @@ build_image_develop:
       --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
       --destination "${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}"
   only:
-    - main
+    - develop
   dependencies:
     - build_frontend_develop
-
-# Deploy to Kubernetes cluster for develop branch
-deploy_develop:
-  stage: deploy
-  image:
-    name: harbor.act.buaa.edu.cn/crater/bitnami-kubectl:240302
-    entrypoint: [""]
-  script:
-    - kubectl config use-context raids/resource-scheduling/crater/web-frontend:crater-cluster
-    - kubectl set image deployment/crater-web-frontend crater-web-frontend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -n crater
-  only:
-    - main
-  dependencies:
-    - build_image_develop
 
 # Deploy to Kubernetes cluster for main branch
 deploy_main:
@@ -118,3 +104,17 @@ deploy_main:
     - main
   dependencies:
     - build_image_main
+
+# Deploy to Kubernetes cluster for develop branch
+deploy_develop:
+  stage: deploy
+  image:
+    name: harbor.act.buaa.edu.cn/crater/bitnami-kubectl:240302
+    entrypoint: [""]
+  script:
+    - kubectl config use-context raids/resource-scheduling/crater/web-frontend:crater-cluster
+    - kubectl set image deployment/crater-web-frontend crater-web-frontend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -n crater
+  only:
+    - develop
+  dependencies:
+    - build_image_develop
