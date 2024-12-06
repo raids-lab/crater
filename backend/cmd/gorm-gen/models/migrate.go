@@ -88,7 +88,7 @@ func main() {
 			Password: lo.ToPtr(string(hashedPassword)),
 			Role:     model.RoleAdmin, // todo: change to model.RoleUser
 			Status:   model.StatusActive,
-			Space:    fmt.Sprintf("u-%s", name),
+			Space:    "u-admin",
 			Attributes: datatypes.NewJSONType(model.UserAttribute{
 				ID:       1,
 				Name:     name,
