@@ -9,14 +9,14 @@ const (
 	UserIDKey   = "x-user-id"
 	UsernameKey = "x-user-name"
 
-	QueueIDKey   = "x-queue-id"
-	QueueNameKey = "x-queue-name"
+	AccountIDKey   = "x-queue-id"
+	AccountNameKey = "x-queue-name"
 
-	RoleQueueKey    = "x-role-queue"
+	RoleAccountKey  = "x-role-queue"
 	RolePlatformKey = "x-role-platform"
 
-	AccessModeKey       = "x-access-mode"
-	PublicAccessModeKey = "x-public-access-mode"
+	AccountAccessModeKey = "x-access-mode"
+	PublicAccessModeKey  = "x-public-access-mode"
 )
 
 const (
@@ -31,12 +31,12 @@ func SetJWTContext(
 	c.Set(UserIDKey, msg.UserID)
 	c.Set(UsernameKey, msg.Username)
 
-	c.Set(QueueIDKey, msg.QueueID)
-	c.Set(QueueNameKey, msg.QueueName)
+	c.Set(AccountIDKey, msg.AccountID)
+	c.Set(AccountNameKey, msg.AccountName)
 
-	c.Set(RoleQueueKey, msg.RoleQueue)
+	c.Set(RoleAccountKey, msg.RoleAccount)
 	c.Set(RolePlatformKey, msg.RolePlatform)
-	c.Set(AccessModeKey, msg.AccessMode)
+	c.Set(AccountAccessModeKey, msg.AccountAccessMode)
 	c.Set(PublicAccessModeKey, msg.PublicAccessMode)
 }
 
@@ -45,16 +45,16 @@ func GetToken(ctx *gin.Context) JWTMessage {
 	msg.UserID = ctx.GetUint(UserIDKey)
 	msg.Username = ctx.GetString(UsernameKey)
 
-	msg.QueueID = ctx.GetUint(QueueIDKey)
-	msg.QueueName = ctx.GetString(QueueNameKey)
+	msg.AccountID = ctx.GetUint(AccountIDKey)
+	msg.AccountName = ctx.GetString(AccountNameKey)
 
-	roleQueue, _ := ctx.Get(RoleQueueKey)
-	msg.RoleQueue = roleQueue.(model.Role)
+	roleQueue, _ := ctx.Get(RoleAccountKey)
+	msg.RoleAccount = roleQueue.(model.Role)
 
 	rolePlatform, _ := ctx.Get(RolePlatformKey)
 	msg.RolePlatform = rolePlatform.(model.Role)
-	accessModeKey, _ := ctx.Get(AccessModeKey)
-	msg.AccessMode = accessModeKey.(model.AccessMode)
+	accessModeKey, _ := ctx.Get(AccountAccessModeKey)
+	msg.AccountAccessMode = accessModeKey.(model.AccessMode)
 	publicAcessModeKey, _ := ctx.Get(PublicAccessModeKey)
 	msg.PublicAccessMode = publicAcessModeKey.(model.AccessMode)
 	return msg

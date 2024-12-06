@@ -8,6 +8,7 @@ metricsAddr: :8090
 probeAddr: :8091
 monitoringPort: 0
 jycache: true
+host: ***REMOVED***
 postgres:
   host: ***REMOVED***
   port: 30432

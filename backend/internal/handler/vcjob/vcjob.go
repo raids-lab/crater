@@ -302,7 +302,7 @@ func (mgr *VolcanojobMgr) GetUserJobs(c *gin.Context) {
 	// TODO: add indexer to list jobs by user
 	j := query.Job
 	jobs, err := j.WithContext(c).Preload(j.Account).Preload(j.User).
-		Where(j.UserID.Eq(token.UserID), j.AccountID.Eq(token.QueueID)).Find()
+		Where(j.UserID.Eq(token.UserID), j.AccountID.Eq(token.AccountID)).Find()
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -443,7 +443,7 @@ func getJob(c context.Context, name string, token *util.JWTMessage) (*model.Job,
 			Preload(j.Account).
 			Preload(j.User).
 			Where(j.JobName.Eq(name)).
-			Where(j.AccountID.Eq(token.QueueID)).
+			Where(j.AccountID.Eq(token.AccountID)).
 			Where(j.UserID.Eq(token.UserID)).
 			First()
 	}

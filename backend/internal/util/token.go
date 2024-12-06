@@ -25,14 +25,14 @@ type (
 		jwt.RegisteredClaims
 	}
 	JWTMessage struct {
-		UserID           uint             `json:"userID"`           // User ID
-		QueueID          uint             `json:"queueID"`          // Queue ID
-		Username         string           `json:"username"`         // Username
-		QueueName        string           `json:"queueName"`        // Queue name
-		RoleQueue        model.Role       `json:"roleQueue"`        // Role in queue (e.g. user, admin)
-		AccessMode       model.AccessMode `json:"accessMode"`       // AccessMode in queue
-		PublicAccessMode model.AccessMode `json:"publicaccessmode"` // Public Accessmode
-		RolePlatform     model.Role       `json:"rolePlatform"`     // Role in platform (e.g. guest, user, admin)
+		UserID            uint             `json:"userID"`           // User ID
+		AccountID         uint             `json:"queueID"`          // Queue ID
+		Username          string           `json:"username"`         // Username
+		AccountName       string           `json:"queueName"`        // Queue name
+		RoleAccount       model.Role       `json:"roleQueue"`        // Role in queue (e.g. user, admin)
+		AccountAccessMode model.AccessMode `json:"accessMode"`       // AccessMode in account
+		PublicAccessMode  model.AccessMode `json:"publicaccessmode"` // Public Accessmode
+		RolePlatform      model.Role       `json:"rolePlatform"`     // Role in platform (e.g. guest, user, admin)
 	}
 )
 
@@ -71,12 +71,12 @@ func (tm *TokenManager) createToken(msg *JWTMessage, ttl int) (string, error) {
 
 	claims := &JWTClaims{
 		UserID:           msg.UserID,
-		QueueID:          msg.QueueID,
+		QueueID:          msg.AccountID,
 		Username:         msg.Username,
-		QueueName:        msg.QueueName,
-		RoleQueue:        msg.RoleQueue,
+		QueueName:        msg.AccountName,
+		RoleQueue:        msg.RoleAccount,
 		RolePlatform:     msg.RolePlatform,
-		AccessMode:       msg.AccessMode,
+		AccessMode:       msg.AccountAccessMode,
 		PublicAccessMode: msg.PublicAccessMode,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
@@ -109,13 +109,13 @@ func (tm *TokenManager) CheckToken(requestToken string) (JWTMessage, error) {
 		return []byte(tm.secretKey), nil
 	})
 	return JWTMessage{
-		UserID:           claims.UserID,
-		QueueID:          claims.QueueID,
-		Username:         claims.Username,
-		QueueName:        claims.QueueName,
-		RoleQueue:        claims.RoleQueue,
-		RolePlatform:     claims.RolePlatform,
-		AccessMode:       claims.AccessMode,
-		PublicAccessMode: claims.PublicAccessMode,
+		UserID:            claims.UserID,
+		AccountID:         claims.QueueID,
+		Username:          claims.Username,
+		AccountName:       claims.QueueName,
+		RoleAccount:       claims.RoleQueue,
+		RolePlatform:      claims.RolePlatform,
+		AccountAccessMode: claims.AccessMode,
+		PublicAccessMode:  claims.PublicAccessMode,
 	}, err
 }

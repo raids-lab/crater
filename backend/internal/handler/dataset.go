@@ -104,8 +104,8 @@ func (mgr *DatasetMgr) GetMyDataset(c *gin.Context) {
 		resputil.Error(c, "Can't get public datasets", resputil.NotSpecified)
 		return
 	}
-	if token.QueueID != 0 && token.QueueID != 1 {
-		err = mgr.generateQueueDataseResponse(c, token.QueueID, datasets)
+	if token.AccountID != 0 && token.AccountID != 1 {
+		err = mgr.generateQueueDataseResponse(c, token.AccountID, datasets)
 		if err != nil {
 			resputil.Error(c, "Can't get queue datasets", resputil.NotSpecified)
 			return
