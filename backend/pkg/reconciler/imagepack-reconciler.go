@@ -169,7 +169,7 @@ func (r *ImagePackReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				UserID:        kaniko.User.ID,
 				ImageLink:     kaniko.ImageLink,
 				Description:   kaniko.Description,
-				ImagePackName: kaniko.ImagePackName,
+				ImagePackName: &kaniko.ImagePackName,
 				IsPublic:      false,
 				TaskType:      model.JobTypeCustom,
 				ImageSource:   model.ImageCreateType,

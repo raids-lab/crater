@@ -15,6 +15,7 @@ type Kaniko struct {
 	Status        imagepackv1.PackStatus `gorm:"not null;comment:构建状态"`
 	Description   *string                `gorm:"type:varchar(512);comment:描述"`
 	Size          int64                  `gorm:"type:bigint;default:0;comment:镜像大小"`
+	Dockerfile    *string                `gorm:"type:text;comment:Dockerfile内容"`
 }
 
 type Image struct {
@@ -22,7 +23,7 @@ type Image struct {
 	UserID        uint
 	User          User
 	ImageLink     string          `gorm:"type:varchar(128);not null;comment:镜像链接"`
-	ImagePackName string          `gorm:"uniqueIndex;type:varchar(128);not null;comment:ImagePack CRD 名称"`
+	ImagePackName *string         `gorm:"uniqueIndex;type:varchar(128);null;comment:ImagePack CRD 名称"`
 	Description   *string         `gorm:"type:varchar(512);comment:描述"`
 	IsPublic      bool            `gorm:"type:boolean;default:false;comment:是否公共"`
 	TaskType      JobType         `gorm:"not null;comment:镜像任务类型"`
