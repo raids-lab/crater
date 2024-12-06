@@ -20,7 +20,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Trash2, Plus, ExternalLink, CircleHelpIcon } from "lucide-react";
+import {
+  Trash2,
+  Plus,
+  ExternalLink,
+  CircleHelpIcon,
+  GridIcon,
+} from "lucide-react";
 import {
   NamespacedName,
   PodContainerDialogProps,
@@ -268,31 +274,35 @@ export default function PodIngressDialog({
             }
             className="w-full"
           >
-            <TabsList className="flex border-b">
-              <TabsTrigger value="ingress" className="flex-1 px-4 py-2">
-                Ingress规则
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="ingress">
+                Ingress 规则
               </TabsTrigger>
-              <TabsTrigger value="nodeport" className="flex-1 px-4 py-2">
-                NodePort规则
+              <TabsTrigger value="nodeport">
+                NodePort 规则
               </TabsTrigger>
             </TabsList>
-
             {/* Ingress Tab Content */}
             <TabsContent
               value="ingress"
-              className="grid gap-4 py-4"
+              className="grid gap-4"
               style={{ display: activeTab === "ingress" ? "block" : "none" }}
             >
               <div className="space-y-2">
                 {podInfo.ingress.length === 0 ? (
-                  <p className="text-center text-muted-foreground">
-                    暂无 Ingress 规则
-                  </p>
+                  <div className="text-center text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center pt-8">
+                      <div className="mb-4 rounded-full bg-muted p-3">
+                        <GridIcon className="h-6 w-6" />
+                      </div>
+                      <p className="select-none">暂无数据</p>
+                    </div>
+                  </div>
                 ) : (
                   podInfo.ingress.map((ingress) => (
                     <div
                       key={ingress.name}
-                      className="flex items-center space-x-2 rounded bg-secondary p-3"
+                      className="flex items-center space-x-2 rounded-md bg-secondary p-3"
                     >
                       <div className="ml-2 flex flex-grow flex-col items-start justify-start gap-0.5">
                         <p>{ingress.name}</p>
@@ -362,9 +372,14 @@ export default function PodIngressDialog({
             >
               <div className="space-y-2">
                 {podInfo.nodeport.length === 0 ? (
-                  <p className="text-center text-muted-foreground">
-                    暂无 NodePort 规则
-                  </p>
+                  <div className="text-center text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center pt-8">
+                      <div className="mb-4 rounded-full bg-muted p-3">
+                        <GridIcon className="h-6 w-6" />
+                      </div>
+                      <p className="select-none">暂无数据</p>
+                    </div>
+                  </div>
                 ) : (
                   podInfo.nodeport.map((nodeport) => (
                     <div

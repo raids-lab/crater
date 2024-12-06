@@ -147,7 +147,7 @@ export function TeamSwitcher() {
             sideOffset={4}
           >
             <DropdownMenuLabel className="text-xs text-muted-foreground">
-              资源组
+              账户
             </DropdownMenuLabel>
             {queues?.map((queue) => (
               <DropdownMenuItem

@@ -28,7 +28,6 @@ import NotFound from "@/components/layout/NotFound";
 const sidebarItems: SidebarItem[] = [
   {
     path: "cluster",
-    icon: ServerIcon,
     children: [
       {
         route: {
@@ -52,7 +51,6 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     path: "account",
-    icon: UsersRoundIcon,
     route: {
       path: "account/*",
       children: [
@@ -70,7 +68,6 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     path: "user",
-    icon: UserRoundIcon,
     children: [],
     route: {
       path: "user",
@@ -79,7 +76,6 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     path: "job",
-    icon: FlaskConicalIcon,
     route: {
       path: "job/*",
       element: <AdminJob />,
@@ -106,7 +102,6 @@ const sidebarItems: SidebarItem[] = [
   // },
   {
     path: "data",
-    icon: DatabaseIcon,
     children: [
       {
         route: {

@@ -23,7 +23,7 @@ import { CardTitle } from "@/components/ui-custom/card";
 import NivoPie from "@/components/chart/NivoPie";
 import SplitButton from "@/components/custom/SplitButton";
 import { Button } from "@/components/ui/button";
-import { BoxIcon, FileTextIcon } from "lucide-react";
+import { BookOpenIcon, BoxIcon } from "lucide-react";
 import { useNavigate, useRoutes } from "react-router-dom";
 import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
 import ResourceBadges from "@/components/label/ResourceBadges";
@@ -34,6 +34,13 @@ import { useAtomValue } from "jotai";
 import { globalJobUrl, globalSettings } from "@/utils/store";
 import NodeDetail from "@/components/custom/NodeDetail";
 import useNodeQuery from "@/hooks/query/useNodeQuery";
+import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -58,10 +65,16 @@ const toolbarConfig: DataTableToolbarConfig = {
 
 interface PieCardProps extends React.HTMLAttributes<HTMLDivElement> {
   cardTitle: string;
+  cardDescription: string;
   isLoading?: boolean;
 }
 
-const PieCard = ({ children, cardTitle, isLoading }: PieCardProps) => {
+const PieCard = ({
+  children,
+  cardTitle,
+  cardDescription,
+  isLoading,
+}: PieCardProps) => {
   return (
     <Card className="relative">
       {isLoading && (
@@ -70,7 +83,19 @@ const PieCard = ({ children, cardTitle, isLoading }: PieCardProps) => {
         </div>
       )}
       <CardHeader className="pb-3">
-        <CardTitle>{cardTitle}</CardTitle>
+        <CardTitle className="flex flex-row gap-1">
+          {cardTitle}
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <QuestionMarkCircledIcon className="h-4 w-4 text-muted-foreground hover:cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent className="border bg-background text-foreground">
+                {cardDescription}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </CardTitle>
       </CardHeader>
       <div className="flex h-44 items-center justify-center px-2">
         {children}
@@ -83,7 +108,7 @@ export const Component: FC = () => {
   const jobType = useAtomValue(globalJobUrl);
   const { scheduler } = useAtomValue(globalSettings);
 
-  const nodeQuery = useNodeQuery();
+  const nodeQuery = useNodeQuery(true);
 
   const vcJobColumns = useMemo<ColumnDef<IJobInfo>[]>(
     () => [
@@ -231,11 +256,11 @@ export const Component: FC = () => {
       .filter((job) => job.status == "Running")
       .reduce(
         (acc, item) => {
-          const queue = item.queue;
-          if (!acc[queue]) {
-            acc[queue] = 0;
+          const owner = item.owner;
+          if (!acc[owner]) {
+            acc[owner] = 0;
           }
-          acc[queue] += 1;
+          acc[owner] += 1;
           return acc;
         },
         {} as Record<string, number>,
@@ -369,12 +394,16 @@ export const Component: FC = () => {
               }
               className="hidden lg:flex"
             >
-              <FileTextIcon className="h-4 w-4" />
-              使用说明
+              <BookOpenIcon className="h-4 w-4" />
+              平台文档
             </Button>
           </CardFooter>
         </Card>
-        <PieCard cardTitle="作业统计" isLoading={jobQuery.isLoading}>
+        <PieCard
+          cardTitle="作业统计"
+          cardDescription="查看集群所有作业的状态统计"
+          isLoading={jobQuery.isLoading}
+        >
           <NivoPie
             data={jobStatus}
             margin={{ top: 25, bottom: 30 }}
@@ -385,17 +414,29 @@ export const Component: FC = () => {
             arcLabelsTextColor="#ffffff"
           />
         </PieCard>
-        <PieCard cardTitle="账户统计" isLoading={jobQuery.isLoading}>
+        <PieCard
+          cardTitle="用户统计"
+          cardDescription="当前正在运行作业所属的用户"
+          isLoading={jobQuery.isLoading}
+        >
           <NivoPie data={queueStatus} margin={{ top: 25, bottom: 30 }} />
         </PieCard>
-        <PieCard cardTitle="类型统计" isLoading={jobQuery.isLoading}>
+        <PieCard
+          cardTitle="类型统计"
+          cardDescription="当前正在运行作业所属的类型"
+          isLoading={jobQuery.isLoading}
+        >
           <NivoPie
             data={typeStatus}
             margin={{ top: 25, bottom: 30 }}
             colors={{ scheme: "set2" }}
           />
         </PieCard>
-        <PieCard cardTitle="已申请 GPU" isLoading={jobQuery.isLoading}>
+        <PieCard
+          cardTitle="使用中 GPU"
+          cardDescription="正在使用的 GPU 资源"
+          isLoading={jobQuery.isLoading}
+        >
           <NivoPie
             data={gpuStatus}
             margin={{ top: 25, bottom: 30 }}

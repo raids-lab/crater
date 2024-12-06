@@ -1,9 +1,9 @@
 import {
   BadgeCheck,
+  BookOpenIcon,
   ChevronsUpDown,
   LogOut,
   Moon,
-  SettingsIcon,
   Sparkles,
   Sun,
 } from "lucide-react";
@@ -130,16 +130,18 @@ export function NavUser() {
             )}
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link to="/portal/setting">
+                <Link to="/portal/setting/user">
                   <BadgeCheck />
                   个人主页
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/portal/setting">
-                  <SettingsIcon />
-                  系统设置
-                </Link>
+              <DropdownMenuItem
+                onClick={() =>
+                  window.open(`https://${import.meta.env.VITE_HOST}/website`)
+                }
+              >
+                <BookOpenIcon />
+                平台文档
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}

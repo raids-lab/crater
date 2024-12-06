@@ -83,7 +83,7 @@ const initial: AIjobDetail = {
   jobName: "",
   retry: "",
   queue: "",
-  status: JobPhase.Unknown,
+  status: JobPhase.Init,
   createdAt: "",
   startedAt: "",
   runtime: "",
