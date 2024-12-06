@@ -1,0 +1,43 @@
+enableLeaderElection: false
+leaderElectionID: ***REMOVED***
+enableProfiling: true
+prometheusAPI: ***REMOVED***
+profilingTimeout: 120
+serverAddr: :8098
+metricsAddr: :8090
+probeAddr: :8091
+monitoringPort: 0
+jycache: true
+postgres:
+  host: ***REMOVED***
+  port: 31052
+  dbname: crater
+  user: crater
+  password: ***REMOVED***
+  sslmode: disable
+  TimeZone: Asia/Shanghai
+workspace:
+  namespace: crater-workspace
+  pvcName: crater-storage
+  ingressName: crater-jobs-ingress
+  imageNameSpace: crater-images
+act:
+  image:
+    registryServer: ***REMOVED***
+    registryUser: ***REMOVED***
+    registryPass: ***REMOVED***
+    registryProject: crater
+  openAPI:
+    url: ***REMOVED***
+    chameleonKey: ***REMOVED***
+    accessToken: ***REMOVED***
+  auth:
+    userName: ***REMOVED***
+    password: ***REMOVED***
+    address: ***REMOVED***
+    searchDN: OU=Lab,OU=ACT,DC=lab,DC=act,DC=buaa,Dc=edu,DC=cn
+  smtp:
+    host: ***REMOVED***
+    port: 25
+    user: notify
+    password: ***REMOVED***

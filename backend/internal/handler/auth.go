@@ -610,7 +610,7 @@ func (mgr *AuthMgr) Signup(c *gin.Context) {
 		return
 	}
 
-	if !config.GetConfig().ACT.StrictRegisterMode {
+	if config.GetConfig().ACT.StrictRegisterMode {
 		resputil.Error(c, "User must sign up with token", resputil.UserNotAllowed)
 		return
 	}
