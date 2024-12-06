@@ -53,13 +53,13 @@ func AuthProtected() gin.HandlerFunc {
 				return
 			}
 
-			userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID), uq.AccountID.Eq(token.QueueID)).First()
+			userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID), uq.AccountID.Eq(token.AccountID)).First()
 			if err != nil {
 				resputil.HTTPError(c, http.StatusUnauthorized, "UserQueue not found", resputil.TokenInvalid)
 				c.Abort()
 				return
 			}
-			if userQueue.Role != token.RoleQueue || userQueue.AccessMode != token.AccessMode {
+			if userQueue.Role != token.RoleAccount || userQueue.AccessMode != token.AccountAccessMode {
 				resputil.HTTPError(c, http.StatusUnauthorized, "Queue role not match", resputil.TokenInvalid)
 				c.Abort()
 				return

@@ -233,14 +233,14 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 
 	// Generate JWT tokens
 	jwtMessage := util.JWTMessage{
-		UserID:           user.ID,
-		Username:         user.Name,
-		QueueID:          lastQueue.ID,
-		QueueName:        lastQueue.Name,
-		RoleQueue:        lastUserQueue.Role,
-		AccessMode:       lastUserQueue.AccessMode,
-		PublicAccessMode: user.AccessMode,
-		RolePlatform:     user.Role,
+		UserID:            user.ID,
+		Username:          user.Name,
+		AccountID:         lastQueue.ID,
+		AccountName:       lastQueue.Name,
+		RoleAccount:       lastUserQueue.Role,
+		AccountAccessMode: lastUserQueue.AccessMode,
+		PublicAccessMode:  user.AccessMode,
+		RolePlatform:      user.Role,
 	}
 	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
 	if err != nil {
@@ -427,14 +427,14 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string)
 func (mgr *AuthMgr) CreatePersonalDir(c *gin.Context, user *model.User) error {
 	client := mgr.client
 	jwtMessage := util.JWTMessage{
-		UserID:           user.ID,
-		Username:         user.Name,
-		QueueID:          util.QueueIDNull,
-		QueueName:        util.QueueNameNull,
-		RoleQueue:        model.RoleGuest,
-		RolePlatform:     user.Role,
-		AccessMode:       model.AccessModeRW,
-		PublicAccessMode: model.AccessModeRO,
+		UserID:            user.ID,
+		Username:          user.Name,
+		AccountID:         util.QueueIDNull,
+		AccountName:       util.QueueNameNull,
+		RoleAccount:       model.RoleGuest,
+		RolePlatform:      user.Role,
+		AccountAccessMode: model.AccessModeRW,
+		PublicAccessMode:  model.AccessModeRO,
 	}
 	accessToken, _, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
 	if err != nil {
@@ -711,14 +711,14 @@ func (mgr *AuthMgr) SwitchQueue(c *gin.Context) {
 
 	// Generate new JWT tokens
 	jwtMessage := util.JWTMessage{
-		UserID:           token.UserID,
-		Username:         token.Username,
-		QueueID:          userQueue.AccountID,
-		QueueName:        req.Queue,
-		RoleQueue:        userQueue.Role,
-		RolePlatform:     token.RolePlatform,
-		AccessMode:       userQueue.AccessMode,
-		PublicAccessMode: token.PublicAccessMode,
+		UserID:            token.UserID,
+		Username:          token.Username,
+		AccountID:         userQueue.AccountID,
+		AccountName:       req.Queue,
+		RoleAccount:       userQueue.Role,
+		RolePlatform:      token.RolePlatform,
+		AccountAccessMode: userQueue.AccessMode,
+		PublicAccessMode:  token.PublicAccessMode,
 	}
 	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
 	if err != nil {

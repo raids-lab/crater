@@ -5,18 +5,17 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
+	"gorm.io/datatypes"
+	v1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
+
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/payload"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
-	"github.com/raids-lab/crater/pkg/config"
-	"github.com/samber/lo"
-	"gorm.io/datatypes"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -58,26 +57,38 @@ func (mgr *ContextMgr) RegisterAdmin(_ *gin.RouterGroup) {}
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "other errors"
 // @Router /v1/context/queue [get]
-//
-//nolint:gocyclo // TODO: refactor
 func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 	token := util.GetToken(c)
 
-	queue := scheduling.Queue{}
-	err := mgr.client.Get(c, types.NamespacedName{Name: token.QueueName, Namespace: config.GetConfig().Workspace.Namespace}, &queue)
+	// Get jobs from database for current user and account
+	j := query.Job
+	jobs, err := j.WithContext(c).Where(
+		j.UserID.Eq(token.UserID),
+		j.AccountID.Eq(token.AccountID),
+		j.Status.In(string(batch.Running), string(batch.Pending)),
+	).Find()
 	if err != nil {
-		resputil.Error(c, "Queue not found", resputil.TokenInvalid)
+		resputil.Error(c, "Failed to query jobs", resputil.NotSpecified)
 		return
 	}
 
-	allocated := queue.Status.Allocated
-	guarantee := queue.Spec.Guarantee.Resource
-	deserved := queue.Spec.Deserved
-	capability := queue.Spec.Capability
+	// Calculate allocated resources from running jobs
+	allocated := v1.ResourceList{}
+	for _, job := range jobs {
+		for name, quantity := range job.Resources.Data() {
+			if existing, exists := allocated[name]; exists {
+				existing.Add(quantity)
+				allocated[name] = existing
+			} else {
+				allocated[name] = quantity
+			}
+		}
+	}
 
-	// resources is a map, key is the resource name, value is the resource amount
+	// Query resource limits from user database
 	resources := make(map[v1.ResourceName]payload.ResourceResp)
 
+	// Process allocated resources
 	for name, quantity := range allocated {
 		if name == v1.ResourceCPU || name == v1.ResourceMemory || strings.Contains(string(name), "/") {
 			resources[name] = payload.ResourceResp{
@@ -89,51 +100,29 @@ func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 			}
 		}
 	}
-	for name, quantity := range guarantee {
-		if v, ok := resources[name]; ok {
-			v.Guarantee = lo.ToPtr(payload.ResourceBase{
-				Amount: quantity.Value(),
-				Format: string(quantity.Format),
-			})
-			resources[name] = v
-		}
+
+	// Get resource limits from database user
+	ua := query.UserAccount
+	userAccount, err := ua.WithContext(c).Where(ua.AccountID.Eq(token.AccountID), ua.UserID.Eq(token.UserID)).First()
+	if err != nil {
+		resputil.Error(c, "Failed to query user account", resputil.NotSpecified)
+		return
 	}
-	for name, quantity := range deserved {
-		if v, ok := resources[name]; ok {
-			v.Deserved = lo.ToPtr(payload.ResourceBase{
-				Amount: quantity.Value(),
-				Format: string(quantity.Format),
-			})
-			resources[name] = v
+	capability := userAccount.Quota.Data().Capability
+	for name := range resources {
+		v, exists := capability[name]
+		if !exists {
+			continue
 		}
-	}
-	for name, quantity := range capability {
-		if v, ok := resources[name]; ok {
-			v.Capability = lo.ToPtr(payload.ResourceBase{
-				Amount: quantity.Value(),
-				Format: string(quantity.Format),
-			})
-			resources[name] = v
-		}
+		resource := resources[name]
+		resource.Capability = lo.ToPtr(payload.ResourceBase{
+			Amount: v.Value(),
+			Format: string(v.Format),
+		})
+		resources[name] = resource
 	}
 
-	// if capability is not set, read max from db
-	r := query.Resource
-	for name, resource := range resources {
-		if resource.Capability == nil {
-			resouece, err := r.WithContext(c).Where(r.ResourceName.Eq(string(name))).First()
-			if err != nil {
-				continue
-			}
-			resource.Capability = &payload.ResourceBase{
-				Amount: resouece.Amount,
-				Format: resouece.Format,
-			}
-			resources[name] = resource
-		}
-	}
-
-	// map contains cpu, memory, gpus, get them from the map
+	// Extract CPU, memory and GPU resources
 	cpu := resources[v1.ResourceCPU]
 	cpu.Label = "cpu"
 	memory := resources[v1.ResourceMemory]
@@ -141,12 +130,9 @@ func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 	var gpus []payload.ResourceResp
 	for name, resource := range resources {
 		if strings.Contains(string(name), "/") {
-			// convert nvidia.com/v100 to v100
 			split := strings.Split(string(name), "/")
 			if len(split) == 2 {
-				resourceType := split[1]
-				label := resourceType
-				resource.Label = label
+				resource.Label = split[1]
 			}
 			gpus = append(gpus, resource)
 		}

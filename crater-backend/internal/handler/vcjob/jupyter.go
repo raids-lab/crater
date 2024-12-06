@@ -50,7 +50,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		return
 	}
 
-	exceededResources := aitaskctl.CheckResourcesBeforeCreateJob(c, token.UserID, token.QueueID, req.Resource)
+	exceededResources := aitaskctl.CheckResourcesBeforeCreateJob(c, token.UserID, token.AccountID, req.Resource)
 	if len(exceededResources) > 0 {
 		resputil.Error(c, fmt.Sprintf("%v", exceededResources), resputil.NotSpecified)
 		return
@@ -204,7 +204,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 			TTLSecondsAfterFinished: lo.ToPtr(ThreeDaySeconds),
 			MinAvailable:            1,
 			SchedulerName:           VolcanoSchedulerName,
-			Queue:                   token.QueueName,
+			Queue:                   token.AccountName,
 			Policies: []batch.LifecyclePolicy{
 				{
 					Action: bus.RestartJobAction,

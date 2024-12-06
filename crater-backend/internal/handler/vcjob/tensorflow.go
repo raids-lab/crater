@@ -63,7 +63,7 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	for i := range len(req.Tasks) {
 		jobResources = aitaskctl.AddResourceList(jobResources, req.Tasks[i].Resource)
 	}
-	exceededResources := aitaskctl.CheckResourcesBeforeCreateJob(c, token.UserID, token.QueueID, jobResources)
+	exceededResources := aitaskctl.CheckResourcesBeforeCreateJob(c, token.UserID, token.AccountID, jobResources)
 	if len(exceededResources) > 0 {
 		resputil.Error(c, fmt.Sprintf("%v", exceededResources), resputil.NotSpecified)
 		return
@@ -157,7 +157,7 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 					Event:  bus.PodEvictedEvent,
 				},
 			},
-			Queue: token.QueueName,
+			Queue: token.AccountName,
 			Tasks: tasks,
 		},
 	}

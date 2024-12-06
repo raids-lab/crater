@@ -108,7 +108,7 @@ func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
 	token := interutil.GetToken(c)
 
 	q := query.Account
-	queue, err := q.WithContext(c).Where(q.Name.Eq(token.QueueName)).First()
+	queue, err := q.WithContext(c).Where(q.Name.Eq(token.AccountName)).First()
 	if err != nil {
 		resputil.Error(c, "Queue not found", resputil.TokenInvalid)
 		return
@@ -123,7 +123,7 @@ func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
 	// resources is a map, key is the resource name, value is the resource amount
 	resources := make(map[v1.ResourceName]interpayload.ResourceResp)
 
-	usedQuota := mgr.taskController.GetQuotaInfoSnapshotByUsername(token.QueueName)
+	usedQuota := mgr.taskController.GetQuotaInfoSnapshotByUsername(token.AccountName)
 
 	for name, quantity := range deserved {
 		if name == v1.ResourceCPU || name == v1.ResourceMemory || strings.Contains(string(name), "/") {
@@ -251,7 +251,7 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 
 	req.TaskName = vcReq.Name
 	req.Namespace = config.GetConfig().Workspace.Namespace
-	req.UserName = token.QueueName
+	req.UserName = token.AccountName
 	req.SLO = 1
 	req.TaskType = "jupyter"
 	req.Image = vcReq.Image
@@ -375,7 +375,7 @@ func (mgr *AIJobMgr) GetJobPods(c *gin.Context) {
 		return
 	}
 	token := interutil.GetToken(c)
-	taskModel, err := mgr.taskService.GetByQueueAndID(token.QueueName, req.JobID)
+	taskModel, err := mgr.taskService.GetByQueueAndID(token.AccountName, req.JobID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
@@ -429,7 +429,7 @@ func (mgr *AIJobMgr) Create(c *gin.Context) {
 	token := interutil.GetToken(c)
 	req.TaskName = vcReq.Name
 	req.Namespace = config.GetConfig().Workspace.Namespace
-	req.UserName = token.QueueName
+	req.UserName = token.AccountName
 	req.SLO = vcReq.SLO
 	req.TaskType = "training"
 	req.Image = vcReq.Image
@@ -480,7 +480,7 @@ type AIJobResp struct {
 // @Router /v1/aijobs [get]
 func (mgr *AIJobMgr) List(c *gin.Context) {
 	token := interutil.GetToken(c)
-	taskModels, err := mgr.taskService.ListByQueue(token.QueueName)
+	taskModels, err := mgr.taskService.ListByQueue(token.AccountName)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("list task failed, err %v", err), resputil.NotSpecified)
 		return
@@ -591,7 +591,7 @@ func (mgr *AIJobMgr) Get(c *gin.Context) {
 		return
 	}
 	token := interutil.GetToken(c)
-	taskModel, err := mgr.taskService.GetByQueueAndID(token.QueueName, req.JobID)
+	taskModel, err := mgr.taskService.GetByQueueAndID(token.AccountName, req.JobID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
@@ -680,14 +680,14 @@ func (mgr *AIJobMgr) Delete(c *gin.Context) {
 	token := interutil.GetToken(c)
 
 	// check if user is authorized to delete the task
-	_, err := mgr.taskService.GetByQueueAndID(token.QueueName, req.JobID)
+	_, err := mgr.taskService.GetByQueueAndID(token.AccountName, req.JobID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
-	mgr.NotifyTaskUpdate(req.JobID, token.QueueName, util.DeleteTask)
+	mgr.NotifyTaskUpdate(req.JobID, token.AccountName, util.DeleteTask)
 
-	err = mgr.taskService.DeleteByUserAndID(token.QueueName, req.JobID)
+	err = mgr.taskService.DeleteByUserAndID(token.AccountName, req.JobID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("delete task failed, err %v", err), resputil.NotSpecified)
 		return
@@ -710,7 +710,7 @@ func (mgr *AIJobMgr) UpdateSLO(c *gin.Context) {
 		return
 	}
 	token := interutil.GetToken(c)
-	task, err := mgr.taskService.GetByQueueAndID(token.QueueName, req.TaskID)
+	task, err := mgr.taskService.GetByQueueAndID(token.AccountName, req.TaskID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
@@ -763,13 +763,13 @@ func (mgr *AIJobMgr) GetJobYaml(c *gin.Context) {
 	}
 
 	token := interutil.GetToken(c)
-	taskModel, err := mgr.taskService.GetByQueueAndID(token.QueueName, req.JobID)
+	taskModel, err := mgr.taskService.GetByQueueAndID(token.AccountName, req.JobID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 
-	if taskModel.UserName != token.QueueName {
+	if taskModel.UserName != token.AccountName {
 		resputil.Error(c, "Job not found", resputil.NotSpecified)
 		return
 	}
@@ -815,13 +815,13 @@ func (mgr *AIJobMgr) GetJupyterToken(c *gin.Context) {
 	}
 
 	token := interutil.GetToken(c)
-	taskModel, err := mgr.taskService.GetByQueueAndID(token.QueueName, req.JobID)
+	taskModel, err := mgr.taskService.GetByQueueAndID(token.AccountName, req.JobID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
 
-	if taskModel.UserName != token.QueueName {
+	if taskModel.UserName != token.AccountName {
 		resputil.Error(c, "Job not found", resputil.NotSpecified)
 		return
 	}

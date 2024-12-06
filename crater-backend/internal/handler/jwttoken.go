@@ -61,12 +61,12 @@ func (mgr *JWTTokenMgr) VerifyToken(c *gin.Context) {
 	token := util.GetToken(c)
 	uq := query.UserAccount
 	q := query.Account
-	userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID), uq.AccountID.Eq(token.QueueID)).First()
+	userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID), uq.AccountID.Eq(token.AccountID)).First()
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
-	queue, err := q.WithContext(c).Where(q.ID.Eq(token.QueueID)).First()
+	queue, err := q.WithContext(c).Where(q.ID.Eq(token.AccountID)).First()
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
