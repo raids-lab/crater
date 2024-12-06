@@ -76,6 +76,8 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 
 func (mgr *VolcanojobMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.GetAllJobs)
+	// delete job
+	g.DELETE(":name", mgr.DeleteJobForAdmin)
 }
 
 const (
@@ -145,10 +147,6 @@ type (
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/vcjobs/{name} [delete]
-
-// 简化 DeleteJob 方法
-// 无需显式删除 Ingress 和 Service
-// OwnerReference 会自动处理
 func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -189,6 +187,59 @@ func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
 	}
 
 	// 直接删除 Job，OwnerReference 会自动删除 Ingress 和 Service
+	if err := mgr.client.Delete(c, job); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, nil)
+}
+
+// DeleteJobForAdmin godoc
+// @Summary Admin delete the job
+// @Description 管理员删除用户作业
+// @Tags VolcanoJob
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param name path string true "Job Name"
+// @Success 200 {object} resputil.Response[any] "Success"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/admin/vcjobs/{name} [delete]
+func (mgr *VolcanojobMgr) DeleteJobForAdmin(c *gin.Context) {
+	var req JobActionReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	j := query.Job
+	job := &batch.Job{}
+	namespace := config.GetConfig().Workspace.Namespace
+	if err := mgr.client.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
+		if errors.IsNotFound(err) {
+			if _, err = j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Delete(); err != nil {
+				resputil.Error(c, err.Error(), resputil.NotSpecified)
+				return
+			}
+			resputil.Success(c, nil)
+			return
+		}
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	// update job status as deleted
+	if _, err := j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Updates(model.Job{
+		Status:             model.Deleted,
+		CompletedTimestamp: time.Now(),
+		Nodes:              datatypes.NewJSONType([]string{}),
+	}); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
 	if err := mgr.client.Delete(c, job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
