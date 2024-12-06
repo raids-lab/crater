@@ -38,6 +38,7 @@ func newKaniko(db *gorm.DB, opts ...gen.DOOption) kaniko {
 	_kaniko.Status = field.NewString(tableName, "status")
 	_kaniko.Description = field.NewString(tableName, "description")
 	_kaniko.Size = field.NewInt64(tableName, "size")
+	_kaniko.Dockerfile = field.NewString(tableName, "dockerfile")
 	_kaniko.User = kanikoBelongsToUser{
 		db: db.Session(&gorm.Session{}),
 
@@ -74,6 +75,7 @@ type kaniko struct {
 	Status        field.String
 	Description   field.String
 	Size          field.Int64
+	Dockerfile    field.String
 	User          kanikoBelongsToUser
 
 	fieldMap map[string]field.Expr
@@ -102,6 +104,7 @@ func (k *kaniko) updateTableName(table string) *kaniko {
 	k.Status = field.NewString(table, "status")
 	k.Description = field.NewString(table, "description")
 	k.Size = field.NewInt64(table, "size")
+	k.Dockerfile = field.NewString(table, "dockerfile")
 
 	k.fillFieldMap()
 
@@ -126,7 +129,7 @@ func (k *kaniko) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (k *kaniko) fillFieldMap() {
-	k.fieldMap = make(map[string]field.Expr, 12)
+	k.fieldMap = make(map[string]field.Expr, 13)
 	k.fieldMap["id"] = k.ID
 	k.fieldMap["created_at"] = k.CreatedAt
 	k.fieldMap["updated_at"] = k.UpdatedAt
@@ -138,6 +141,7 @@ func (k *kaniko) fillFieldMap() {
 	k.fieldMap["status"] = k.Status
 	k.fieldMap["description"] = k.Description
 	k.fieldMap["size"] = k.Size
+	k.fieldMap["dockerfile"] = k.Dockerfile
 
 }
 
