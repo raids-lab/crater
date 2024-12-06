@@ -107,6 +107,10 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	}
 
 	userAttr := user.Attributes.Data()
+	if !config.GetConfig().ACT.StrictRegisterMode {
+		userAttr.UID = lo.ToPtr("1001")
+		userAttr.GID = lo.ToPtr("1001")
+	}
 	if userAttr.UID == nil || userAttr.GID == nil {
 		resputil.Error(c, "UID or GID not found", resputil.NotSpecified)
 		return
