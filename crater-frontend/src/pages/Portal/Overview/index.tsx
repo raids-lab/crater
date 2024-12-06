@@ -9,7 +9,7 @@ import { DataTable } from "@/components/custom/DataTable";
 import { useQuery } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import { nodeColumns } from "@/components/custom/NodeList";
+import { nodeColumns } from "@/components/custom/Node/NodeList";
 import { getHeader } from "@/pages/Admin/Job/Overview";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import { JobPhase } from "@/services/api/vcjob";
@@ -32,7 +32,7 @@ import JobTypeLabel, { jobTypes } from "@/components/custom/JobTypeLabel";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
 import { globalJobUrl, globalSettings } from "@/utils/store";
-import NodeDetail from "@/components/custom/NodeDetail";
+import NodeDetail from "@/components/custom/Node/NodeDetail";
 import useNodeQuery from "@/hooks/query/useNodeQuery";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import {

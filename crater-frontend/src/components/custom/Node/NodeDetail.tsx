@@ -31,13 +31,13 @@ import { ExternalLink } from "lucide-react";
 import useBreadcrumb from "@/hooks/useBreadcrumb";
 import PodPhaseLabel, { podPhases } from "@/components/label/PodPhaseLabel";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "../ui/badge";
+import { Badge } from "../../ui/badge";
 import {
   NamespacedName,
   PodNamespacedName,
-} from "../codeblock/PodContainerDialog";
-import LogDialog from "../codeblock/LogDialog";
-import ResourceBadges from "../label/ResourceBadges";
+} from "../../codeblock/PodContainerDialog";
+import LogDialog from "../../codeblock/LogDialog";
+import ResourceBadges from "../../label/ResourceBadges";
 
 import yitianURL from "/nodes/yitian.png";
 import hygonURL from "/nodes/hygon.png";
