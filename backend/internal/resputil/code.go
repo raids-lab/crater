@@ -5,9 +5,12 @@ type ErrorCode int
 const (
 	OK ErrorCode = 0
 
-	InvalidRequest ErrorCode = 40001
-	TokenExpired   ErrorCode = 40101
-	TokenInvalid   ErrorCode = 40102
+	InvalidRequest    ErrorCode = 40001
+	TokenExpired      ErrorCode = 40101
+	TokenInvalid      ErrorCode = 40102
+	MustRegister      ErrorCode = 40103
+	UIDServerTimeout  ErrorCode = 40104
+	UIDServerNotFound ErrorCode = 40105
 
 	// User is not allowed to access the resource
 	UserNotAllowed ErrorCode = 40301

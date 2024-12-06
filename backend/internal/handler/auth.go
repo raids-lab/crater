@@ -44,7 +44,7 @@ func NewAuthMgr(_ RegisterConfig) Manager {
 	return &AuthMgr{
 		name:     "auth",
 		client:   &http.Client{},
-		req:      imrocreq.C().DevMode(),
+		req:      imrocreq.C(),
 		tokenMgr: util.GetTokenMgr(),
 		openAPI:  config.GetConfig().ACT.OpenAPI,
 	}
@@ -95,6 +95,8 @@ const (
 	AuthMethodNormal  AuthMethod = "normal"
 	AuthMethodACTLDAP AuthMethod = "act-ldap"
 	AuthMethodACTAPI  AuthMethod = "act-api"
+
+	UserNamePattern = `^[a-z][a-z0-9-]*$`
 )
 
 // Login godoc
@@ -138,8 +140,8 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		}
 		username = *req.Username
 		password = *req.Password
-		// Username can only contain lowercase letters, numbers
-		if !regexp.MustCompile(`^[a-z0-9]+$`).MatchString(username) {
+		// Username must start with lowercase letter and can only contain lowercase letters, numbers, and hyphens
+		if !regexp.MustCompile(UserNamePattern).MatchString(username) {
 			l.Error("invalid username")
 			resputil.HTTPError(c, http.StatusBadRequest, "Invalid username", resputil.InvalidRequest)
 			return
@@ -151,6 +153,7 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 
 	// Check if request auth method is valid
 	var attributes model.UserAttribute
+	allowRegister := false
 	switch req.AuthMethod {
 	case AuthMethodACTAPI:
 		if err := mgr.actAPIAuth(c, token, &attributes); err != nil {
@@ -158,12 +161,14 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid token", resputil.NotSpecified)
 			return
 		}
+		allowRegister = true
 	case AuthMethodACTLDAP:
 		if err := mgr.actLDAPAuth(c, username, password); err != nil {
 			l.Error("invalid credentials: ", err)
 			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.NotSpecified)
 			return
 		}
+		allowRegister = !config.GetConfig().ACT.StrictRegisterMode
 	case AuthMethodNormal:
 		if err := mgr.normalAuth(c, username, password); err != nil {
 			l.Error("invalid credentials: ", err)
@@ -176,9 +181,29 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		return
 	}
 
-	// Check if the user exists
-	user, err := shouldCreateOrUpdateUser(c, &req, &attributes)
+	// Check if the user exists, and should create user or return error
+	user, err := mgr.getOrCreateUser(c, &req, &attributes, allowRegister)
 	if err != nil {
+		if errors.Is(err, ErrorMustRegister) {
+			l.Error("user must register before login")
+			resputil.Error(c, "User must register before login", resputil.MustRegister)
+			return
+		} else if errors.Is(err, ErrorUIDServerConnect) {
+			l.Error("can't connect to UID server")
+			resputil.Error(c, "Can't connect to UID server", resputil.UIDServerTimeout)
+			return
+		} else if errors.Is(err, ErrorUIDServerNotFound) {
+			l.Error("UID not found")
+			resputil.Error(c, "UID not found", resputil.UIDServerNotFound)
+			return
+		} else {
+			l.Error("create or update user", err)
+			resputil.Error(c, "Create or update user failed", resputil.NotSpecified)
+			return
+		}
+	}
+
+	if err = updateUserIfNeeded(c, user, &attributes); err != nil {
 		l.Error("create or update user", err)
 		resputil.Error(c, "Create or update user failed", resputil.NotSpecified)
 		return
@@ -238,12 +263,19 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 	resputil.Success(c, loginResponse)
 }
 
-func shouldCreateOrUpdateUser(
+var (
+	ErrorMustRegister      = errors.New("user must be registered before login")
+	ErrorUIDServerConnect  = errors.New("can't connect to UID server")
+	ErrorUIDServerNotFound = errors.New("UID not found")
+)
+
+func (mgr *AuthMgr) getOrCreateUser(
 	c context.Context,
 	req *LoginReq,
 	attr *model.UserAttribute,
+	allowCreate bool,
 ) (*model.User, error) {
-	// initialize user attributes
+	// initialize username and nickname
 	if attr.Name == "" && req.Username != nil {
 		attr.Name = *req.Username
 	}
@@ -253,28 +285,47 @@ func shouldCreateOrUpdateUser(
 
 	u := query.User
 	user, err := u.WithContext(c).Where(u.Name.Eq(attr.Name)).First()
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// User exists in the auth method but not in the database, create a new user
-			user, err = createUser(c, attr.Name, nil)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, err
-		}
+	if err == nil {
+		return user, nil
 	}
 
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+
+	// User not found in the database
+	if allowCreate {
+		// User exists in the auth method but not in the database, create a new user
+		return mgr.createUser(c, attr.Name, nil)
+	}
+
+	return nil, ErrorMustRegister
+}
+
+// updateUserIfNeeded updates the user attributes if they have changed.
+// It takes a context, a user model, and the new attributes to be updated.
+// It returns an error if the update fails.
+func updateUserIfNeeded(
+	c context.Context,
+	user *model.User,
+	attr *model.UserAttribute,
+) error {
+	// Return early if user attributes do not need updating
 	attr.ID = user.ID
 
 	// If don't need to update the user, return directly
 	currentAttr := user.Attributes.Data()
 
 	attr.Avatar = currentAttr.Avatar
+	attr.UID = currentAttr.UID
+	attr.GID = currentAttr.GID
+
 	newAttr := datatypes.NewJSONType(*attr)
+
+	// if attr contains email, this attr may be from act-api
 	if currentAttr.ID != model.InvalidUserID &&
-		(attr.Email == nil || reflect.DeepEqual(user.Attributes, newAttr)) {
-		return user, nil
+		(attr.Email == nil || reflect.DeepEqual(currentAttr, *attr)) {
+		return nil
 	}
 
 	// dont update email if it has been set
@@ -282,22 +333,51 @@ func shouldCreateOrUpdateUser(
 		attr.Email = currentAttr.Email
 	}
 
-	if _, err := u.WithContext(c).Where(u.ID.Eq(user.ID)).
+	if currentAttr.ID != model.InvalidUserID &&
+		(attr.Email == nil || reflect.DeepEqual(user.Attributes, newAttr)) {
+		return nil
+	}
+
+	u := query.User
+	if _, err := u.WithContext(c).
+		Where(u.ID.Eq(user.ID)).
 		Updates(map[string]any{
 			"attributes": datatypes.NewJSONType(*attr),
 			"nickname":   attr.Nickname,
 		}); err != nil {
-		return nil, err
+		return err
 	}
 
 	user.Attributes = newAttr
-	return user, nil
+	return nil
 }
 
+type (
+	ActUIDServerSuccessResp struct {
+		GID string `json:"gid"`
+		UID string `json:"uid"`
+	}
+
+	ActUIDServerErrorResp struct {
+		Error string `json:"error"`
+	}
+)
+
 // createUser is called when the user is not found in the database
-func createUser(c context.Context, name string, password *string) (*model.User, error) {
+func (mgr *AuthMgr) createUser(c context.Context, name string, password *string) (*model.User, error) {
 	u := query.User
 	uq := query.UserAccount
+
+	uidServerURL := config.GetConfig().ACT.UIDServerURL // http://192.168.5.59:5000/get_user_id
+	var result ActUIDServerSuccessResp
+	var errorResult ActUIDServerErrorResp
+	if _, err := mgr.req.R().SetQueryParam("username", name).SetSuccessResult(&result).
+		SetErrorResult(&errorResult).Get(uidServerURL); err != nil {
+		if errorResult.Error != "" {
+			return nil, ErrorUIDServerNotFound
+		}
+		return nil, ErrorUIDServerConnect
+	}
 
 	var hashedPassword *string
 	if password != nil {
@@ -318,6 +398,8 @@ func createUser(c context.Context, name string, password *string) (*model.User, 
 		Space:    name,
 		Attributes: datatypes.NewJSONType(model.UserAttribute{
 			Email: lo.ToPtr(name + "@***REMOVED***"),
+			UID:   lo.ToPtr(result.UID),
+			GID:   lo.ToPtr(result.GID),
 		}),
 	}
 	if err := u.WithContext(c).Create(&user); err != nil {
@@ -330,7 +412,7 @@ func createUser(c context.Context, name string, password *string) (*model.User, 
 		AccountID:  model.DefaultAccountID,
 		Role:       model.RoleUser,
 		AccessMode: model.AccessModeRO,
-		Quota:      datatypes.NewJSONType(model.DefaultQuota),
+		// Quota:      datatypes.NewJSONType(model.DefaultQuota),
 	}
 
 	if err := uq.WithContext(c).Create(&userAccount); err != nil {
@@ -528,7 +610,12 @@ func (mgr *AuthMgr) Signup(c *gin.Context) {
 		return
 	}
 
-	_, err = createUser(c, req.Username, &req.Password)
+	if !config.GetConfig().ACT.StrictRegisterMode {
+		resputil.Error(c, "User must sign up with token", resputil.UserNotAllowed)
+		return
+	}
+
+	_, err = mgr.createUser(c, req.Username, &req.Password)
 	if err != nil {
 		l.Error("create new user", err)
 		resputil.Error(c, "Create user failed", resputil.NotSpecified)
