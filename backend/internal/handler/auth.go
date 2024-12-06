@@ -165,14 +165,14 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 	case AuthMethodACTLDAP:
 		if err := mgr.actLDAPAuth(c, username, password); err != nil {
 			l.Error("invalid credentials: ", err)
-			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.NotSpecified)
+			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.InvalidCredentials)
 			return
 		}
 		allowRegister = !config.GetConfig().ACT.StrictRegisterMode
 	case AuthMethodNormal:
 		if err := mgr.normalAuth(c, username, password); err != nil {
 			l.Error("invalid credentials: ", err)
-			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.NotSpecified)
+			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.InvalidCredentials)
 			return
 		}
 	default:
@@ -190,11 +190,11 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 			return
 		} else if errors.Is(err, ErrorUIDServerConnect) {
 			l.Error("can't connect to UID server")
-			resputil.Error(c, "Can't connect to UID server", resputil.UIDServerTimeout)
+			resputil.Error(c, "Can't connect to UID server", resputil.RegisterTimeout)
 			return
 		} else if errors.Is(err, ErrorUIDServerNotFound) {
 			l.Error("UID not found")
-			resputil.Error(c, "UID not found", resputil.UIDServerNotFound)
+			resputil.Error(c, "UID not found", resputil.RegisterNotFound)
 			return
 		} else {
 			l.Error("create or update user", err)
@@ -373,10 +373,10 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string)
 	var errorResult ActUIDServerErrorResp
 	if _, err := mgr.req.R().SetQueryParam("username", name).SetSuccessResult(&result).
 		SetErrorResult(&errorResult).Get(uidServerURL); err != nil {
-		if errorResult.Error != "" {
-			return nil, ErrorUIDServerNotFound
-		}
 		return nil, ErrorUIDServerConnect
+	}
+	if errorResult.Error != "" {
+		return nil, ErrorUIDServerNotFound
 	}
 
 	var hashedPassword *string
@@ -597,6 +597,11 @@ func (mgr *AuthMgr) Signup(c *gin.Context) {
 		"username": req.Username,
 	})
 
+	if config.GetConfig().ACT.StrictRegisterMode {
+		resputil.Error(c, "User must sign up with token", resputil.NotSpecified)
+		return
+	}
+
 	u := query.User
 
 	_, err := u.WithContext(c).Where(u.Name.Eq(req.Username)).First()
@@ -610,13 +615,17 @@ func (mgr *AuthMgr) Signup(c *gin.Context) {
 		return
 	}
 
-	if config.GetConfig().ACT.StrictRegisterMode {
-		resputil.Error(c, "User must sign up with token", resputil.UserNotAllowed)
-		return
-	}
-
 	_, err = mgr.createUser(c, req.Username, &req.Password)
 	if err != nil {
+		if errors.Is(err, ErrorUIDServerConnect) {
+			l.Error("can't connect to UID server")
+			resputil.Error(c, "Can't connect to UID server", resputil.RegisterTimeout)
+			return
+		} else if errors.Is(err, ErrorUIDServerNotFound) {
+			l.Error("UID not found")
+			resputil.Error(c, "UID not found", resputil.RegisterNotFound)
+			return
+		}
 		l.Error("create new user", err)
 		resputil.Error(c, "Create user failed", resputil.NotSpecified)
 		return

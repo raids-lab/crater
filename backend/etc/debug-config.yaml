@@ -23,6 +23,8 @@ workspace:
   ingressName: crater-jobs-ingress
   imageNameSpace: crater-images
 act:
+  strictRegisterMode: false
+  uidServerURL: ***REMOVED***
   image:
     registryServer: ***REMOVED***
     registryUser: ***REMOVED***
