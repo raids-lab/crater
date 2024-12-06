@@ -56,7 +56,7 @@ export enum JobPhase {
   Failed = "Failed",
   Deleted = "Deleted",
   Freed = "Freed",
-  Unknown = "",
+  Init = "",
 }
 
 export const apiJobBatchList = () =>

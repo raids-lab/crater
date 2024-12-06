@@ -99,6 +99,12 @@ export const aijobPhases = [
 
 export const getJobPhaseLabel = (phase: JobPhase): PhaseLabelData => {
   switch (phase) {
+    case JobPhase.Init:
+      return {
+        label: "已创建",
+        color: "text-slate-500 border-0 bg-slate-500/10",
+        description: "作业已提交到集群，等待信息同步",
+      };
     case JobPhase.Pending:
       return {
         label: "等待中",

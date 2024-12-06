@@ -3,7 +3,6 @@ import {
   JobType,
   apiAdminGetJobList as apiAdminGetJobList,
   apiJobDeleteForAdmin,
-  apiJupyterTokenGet,
 } from "@/services/api/vcjob";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
@@ -39,16 +38,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui-custom/alert-dialog"; // 导入 AlertDialog 组件
-import {
-  ExternalLink,
-  InfoIcon,
-  LockIcon,
-  RedoDotIcon,
-  SquareIcon,
-  Trash2Icon,
-} from "lucide-react";
-import TooltipButton from "@/components/custom/TooltipButton";
+} from "@/components/ui-custom/alert-dialog";
+import { InfoIcon, LockIcon, SquareIcon, Trash2Icon } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -189,13 +180,6 @@ const AdminJobOverview = () => {
     },
   });
 
-  const { mutate: getPortToken } = useMutation({
-    mutationFn: (jobName: string) => apiJupyterTokenGet(jobName),
-    onSuccess: (_, jobName) => {
-      window.open(`/job/jupyter/${jobName}`);
-    },
-  });
-
   const vcjobColumns = useMemo<ColumnDef<IJobInfo>[]>(
     () => [
       {
@@ -317,26 +301,10 @@ const AdminJobOverview = () => {
         enableHiding: false,
         cell: ({ row }) => {
           const jobInfo = row.original;
-          const shouldDisable = jobInfo.status !== "Running";
           const shouldStop =
             jobInfo.status !== "Deleted" && jobInfo.status !== "Freed";
           return (
             <div className="flex flex-row space-x-1">
-              <TooltipButton
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-primary hover:bg-primary/10 hover:text-primary/90"
-                tooltipContent="跳转至 Jupyter Lab"
-                onClick={() => {
-                  toast.info("即将跳转至 Jupyter 页面");
-                  setTimeout(() => {
-                    getPortToken(jobInfo.jobName);
-                  }, 500);
-                }}
-                disabled={shouldDisable}
-              >
-                <ExternalLink className="h-4 w-4" />
-              </TooltipButton>
               <AlertDialog>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -351,12 +319,6 @@ const AdminJobOverview = () => {
                       <DropdownMenuItem>
                         <InfoIcon className="text-emerald-600 dark:text-emerald-500" />
                         详情
-                      </DropdownMenuItem>
-                    </Link>
-                    <Link to={`new-jupyter-vcjobs?fromJob=${jobInfo.jobName}`}>
-                      <DropdownMenuItem>
-                        <RedoDotIcon className="text-purple-600 dark:text-purple-500" />
-                        再建
                       </DropdownMenuItem>
                     </Link>
                     <AlertDialogTrigger asChild>
@@ -398,7 +360,7 @@ const AdminJobOverview = () => {
         },
       },
     ],
-    [deleteTask, getPortToken],
+    [deleteTask],
   );
 
   return (
@@ -406,6 +368,24 @@ const AdminJobOverview = () => {
       query={vcjobQuery}
       columns={vcjobColumns}
       toolbarConfig={toolbarConfig}
+      multipleHandlers={[
+        {
+          title: (rows) => `停止或删除 ${rows.length} 个作业`,
+          description: (rows) => (
+            <>
+              作业 {rows.map((row) => row.original.name).join(", ")}{" "}
+              将被停止或删除，确认要继续吗？
+            </>
+          ),
+          icon: <Trash2Icon className="text-destructive" />,
+          handleSubmit: (rows) => {
+            rows.forEach((row) => {
+              deleteTask(row.original.jobName);
+            });
+          },
+          isDanger: true,
+        },
+      ]}
     />
   );
 };

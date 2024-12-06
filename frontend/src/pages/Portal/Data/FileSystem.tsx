@@ -71,10 +71,8 @@ const getFolderDescription = (folder: string) => {
     return "平台上所有用户都可以访问，如需获取上传权限，请联系管理员。";
   } else if (folder.startsWith("q-")) {
     return "账户共享空间，仅限账户内用户访问，如需获取上传权限，请联系账户管理员。";
-  } else if (folder.startsWith("u-")) {
-    return "个人空间，仅限当前用户访问，拥有完全的读写权限。";
   }
-  return folder;
+  return "个人空间，仅限当前用户访问，拥有完全的读写权限。";
 };
 
 const getHeader = (key: string): string => {
@@ -121,6 +119,7 @@ export const Component: FC = () => {
         return {
           title: "数据管理",
           path: "/portal/data",
+          isEmpty: true,
         };
       } else if (index == 2 && value == "filesystem") {
         return {

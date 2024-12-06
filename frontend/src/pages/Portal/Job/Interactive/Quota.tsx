@@ -54,7 +54,7 @@ const QuotaCard = ({
           </div>
           {resource?.label}
         </CardDescription>
-        <p className="font-sans text-xs text-muted-foreground">
+        <div className="font-sans text-xs text-muted-foreground">
           已用
           <span
             className={cn("mx-0.5 font-mono text-xl font-bold text-primary", {
@@ -64,7 +64,7 @@ const QuotaCard = ({
             {showAmount(allocated, resource?.label)}
           </span>
           {showUnit(resource?.label)}
-        </p>
+        </div>
       </CardHeader>
       <CardFooter className="flex flex-col gap-2">
         <Progress
@@ -72,29 +72,37 @@ const QuotaCard = ({
           aria-label={resource?.label}
           className={cn({ "bg-orange-500/20 [&>*]:bg-orange-400": overflow })}
         />
-        <div className="flex w-full flex-row-reverse items-center justify-between text-xs">
-          {resource?.capability?.amount !== undefined && (
-            <p className="text-orange-500">
-              上限: {showAmount(resource?.capability?.amount, resource?.label)}
-            </p>
+        {!!resource?.capability &&
+          !!resource?.guarantee &&
+          !!resource?.deserved && (
+            <div className="flex w-full flex-row-reverse items-center justify-between text-xs">
+              {resource?.capability?.amount !== undefined && (
+                <p className="text-orange-500">
+                  上限:{" "}
+                  {showAmount(resource?.capability?.amount, resource?.label)}
+                </p>
+              )}
+              {resource?.deserved?.amount !== undefined && (
+                <p className="text-teal-500">
+                  应得:{" "}
+                  {showAmount(resource?.deserved?.amount, resource?.label)}
+                </p>
+              )}
+              {resource?.allocated?.amount !== undefined && (
+                <p className="text-sky-500">
+                  已用:{" "}
+                  {showAmount(resource?.allocated?.amount, resource?.label)}
+                </p>
+              )}
+              {resource?.guarantee?.amount !== undefined &&
+                resource?.guarantee?.amount > 0 && (
+                  <p className="text-slate-500">
+                    保证:{" "}
+                    {showAmount(resource?.guarantee?.amount, resource?.label)}
+                  </p>
+                )}
+            </div>
           )}
-          {resource?.deserved?.amount !== undefined && (
-            <p className="text-teal-500">
-              应得: {showAmount(resource?.deserved?.amount, resource?.label)}
-            </p>
-          )}
-          {resource?.allocated?.amount !== undefined && (
-            <p className="text-sky-500">
-              已用: {showAmount(resource?.allocated?.amount, resource?.label)}
-            </p>
-          )}
-          {resource?.guarantee?.amount !== undefined &&
-            resource?.guarantee?.amount > 0 && (
-              <p className="text-slate-500">
-                保证: {showAmount(resource?.guarantee?.amount, resource?.label)}
-              </p>
-            )}
-        </div>
       </CardFooter>
     </Card>
   );

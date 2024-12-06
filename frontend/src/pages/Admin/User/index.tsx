@@ -42,8 +42,9 @@ import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
 import { Role } from "@/services/api/auth";
 import { ProjectStatus } from "@/services/api/account";
-import { Badge } from "@/components/ui/badge";
 import UserLabel from "@/components/label/UserLabel";
+import UserRoleBadge from "@/components/label/UserRoleBadge";
+import UserStatusBadge from "@/components/label/UserStatusBadge";
 
 interface TUser {
   id: number;
@@ -87,7 +88,7 @@ const statuses = [
     value: ProjectStatus.Active.toString(),
   },
   {
-    label: "未激活",
+    label: "已禁用",
     value: ProjectStatus.Inactive.toString(),
   },
 ];
@@ -169,27 +170,14 @@ export const User = () => {
         ),
         cell: ({ row }) => <div>{row.original.attributes.teacher}</div>,
       },
+
       {
         accessorKey: "role",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("role")} />
         ),
         cell: ({ row }) => {
-          const role = roles.find(
-            (role) => role.value === row.getValue("role"),
-          );
-          if (!role) {
-            return null;
-          }
-          return (
-            <Badge
-              variant={
-                role.value === Role.User.toString() ? "outline" : "default"
-              }
-            >
-              {role.label}
-            </Badge>
-          );
+          return <UserRoleBadge role={row.getValue("role")} />;
         },
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id));
@@ -201,23 +189,7 @@ export const User = () => {
           <DataTableColumnHeader column={column} title={getHeader("status")} />
         ),
         cell: ({ row }) => {
-          const status = statuses.find(
-            (status) => status.value === row.getValue("status"),
-          );
-          if (!status) {
-            return null;
-          }
-          return (
-            <Badge
-              variant={
-                status.value === ProjectStatus.Active.toString()
-                  ? "outline"
-                  : "secondary"
-              }
-            >
-              {status.label}
-            </Badge>
-          );
+          return <UserStatusBadge status={row.getValue("status")} />;
         },
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id));
@@ -266,7 +238,9 @@ export const User = () => {
                     </DropdownMenuSub>
                     <DropdownMenuSeparator />
                     <AlertDialogTrigger asChild>
-                      <DropdownMenuItem>删除</DropdownMenuItem>
+                      <DropdownMenuItem className="focus:bg-destructive focus:text-destructive-foreground">
+                        删除
+                      </DropdownMenuItem>
                     </AlertDialogTrigger>
                   </DropdownMenuContent>
                 </DropdownMenu>

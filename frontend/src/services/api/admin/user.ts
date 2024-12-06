@@ -14,6 +14,8 @@ export interface IUserAttributes {
   expiredAt?: string;
   phone?: string;
   avatar?: string;
+  uid?: string;
+  gid?: string;
 }
 
 export interface IUser {

@@ -8,9 +8,7 @@ import {
   DatabaseIcon,
   FlaskConicalIcon,
   MessageSquareMoreIcon,
-  UsersRoundIcon,
   SettingsIcon,
-  EditIcon,
 } from "lucide-react";
 import batchRoutes from "./Job/Batch";
 import interactiveRoutes from "./Job/Interactive";
@@ -19,11 +17,11 @@ import { NavGroupProps } from "@/components/sidebar/nav-main";
 import AuthedRouter from "./AuthedRouter";
 import NotFound from "@/components/layout/NotFound";
 import FeedBack from "./Feedback";
+import UserSettings from "./Setting/UserSetting";
 
 const portalRoutes: SidebarItem[] = [
   {
     path: "overview",
-    icon: BarChartBigIcon,
     children: [],
     route: {
       path: "overview/*",
@@ -32,7 +30,6 @@ const portalRoutes: SidebarItem[] = [
   },
   {
     path: "job",
-    icon: FlaskConicalIcon,
     children: [
       {
         route: {
@@ -50,23 +47,23 @@ const portalRoutes: SidebarItem[] = [
   },
   {
     path: "service",
-    icon: BriefcaseIcon,
     children: [
       {
         route: {
-          path: "microservice/*",
+          path: "tensorboard/*",
+          element: <>TODO</>,
         },
       },
       {
         route: {
-          path: "serverless/*",
+          path: "model/*",
+          element: <>TODO</>,
         },
       },
     ],
   },
   {
     path: "image",
-    icon: BoxIcon,
     children: [
       {
         route: {
@@ -84,7 +81,6 @@ const portalRoutes: SidebarItem[] = [
   },
   {
     path: "data",
-    icon: DatabaseIcon,
     children: [
       {
         route: {
@@ -102,7 +98,6 @@ const portalRoutes: SidebarItem[] = [
   },
   {
     path: "account",
-    icon: UsersRoundIcon,
     children: [
       {
         route: {
@@ -113,16 +108,23 @@ const portalRoutes: SidebarItem[] = [
   },
   {
     path: "setting",
-    icon: SettingsIcon,
-    children: [],
-    route: {
-      path: "setting",
-      lazy: () => import("./Setting"),
-    },
+    children: [
+      {
+        route: {
+          path: "user",
+          element: <UserSettings />,
+        },
+      },
+      {
+        route: {
+          path: "platform",
+          lazy: () => import("./Setting"),
+        },
+      },
+    ],
   },
   {
     path: "feedback",
-    icon: MessageSquareMoreIcon,
     children: [],
     route: {
       path: "feedback",
@@ -162,12 +164,12 @@ const userSidebarGroups: NavGroupProps[] = [
         icon: BriefcaseIcon,
         items: [
           {
-            title: "微服务",
-            url: "service/microservice",
+            title: "Tensorboard",
+            url: "service/tensorboard",
           },
           {
-            title: "无服务",
-            url: "service/serverless",
+            title: "模型托管",
+            url: "service/model",
           },
         ],
       },
@@ -177,7 +179,7 @@ const userSidebarGroups: NavGroupProps[] = [
     title: "数据与镜像",
     items: [
       {
-        title: "我的镜像",
+        title: "镜像管理",
         url: "image",
         icon: BoxIcon,
         items: [
@@ -212,27 +214,24 @@ const userSidebarGroups: NavGroupProps[] = [
     title: "其他",
     items: [
       {
-        title: "账户管理",
-        url: "account",
-        icon: UsersRoundIcon,
+        title: "设置",
+        url: "setting",
+        icon: SettingsIcon,
         items: [
           {
-            title: "成员管理",
-            url: "account/member",
+            title: "用户设置",
+            url: "setting/user",
+          },
+          {
+            title: "平台设置",
+            url: "setting/platform",
           },
         ],
       },
       {
-        title: "系统设置",
-        url: "setting",
-        icon: SettingsIcon, // 假设你有一个设置的图标
-        items: [],
-      },
-      {
-        title: "问题反馈",
+        title: "帮助与反馈",
         url: "feedback",
-        icon: EditIcon, // 假设你有一个问题反馈的图标
-        items: [],
+        icon: MessageSquareMoreIcon,
       },
     ],
   },

@@ -151,7 +151,7 @@ const formSchema = z.object({
 type FormSchema = z.infer<typeof formSchema>;
 
 export const Component = () => {
-  const [dataMountOpen, setDataMountOpen] = useState<string>();
+  const [dataMountOpen, setDataMountOpen] = useState<string>(DataMountCard);
   const [envOpen, setEnvOpen] = useState<string>();
   const [tensorboardOpen, setTensorboardOpen] = useState<string>();
   const [otherOpen, setOtherOpen] = useState<string>();
@@ -243,7 +243,7 @@ export const Component = () => {
         })
         .map((item) => ({
           value: item.name,
-          label: `${item.amountSingleMax}卡 · ${item.label}`,
+          label: `单机 ${item.amountSingleMax} 卡 · ${item.label.toUpperCase()}`,
         }));
     },
   });

@@ -3,7 +3,7 @@ import { apiGetNodes } from "@/services/api/cluster";
 import { convertKResourceToResource } from "@/utils/resource";
 import { ClusterNodeInfo } from "@/components/custom/NodeList";
 
-const useNodeQuery = () => {
+const useNodeQuery = (onlyWorker?: boolean) => {
   return useQuery({
     queryKey: ["overview", "nodes"],
     queryFn: apiGetNodes,
@@ -15,6 +15,7 @@ const useNodeQuery = () => {
           const typeOrder = ["hygon", "shenwei", "yitian", ""];
           return typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type);
         })
+        .filter((x) => !onlyWorker || x.role === "worker")
         .map((x) => {
           const cpuCapacity = convertKResourceToResource(
             "cpu",

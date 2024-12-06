@@ -7,7 +7,6 @@ export type SidebarSubItem = {
 
 export type SidebarItem = {
   path: string;
-  icon: React.ElementType;
   children: SidebarSubItem[];
   route?: RouteObject;
 };

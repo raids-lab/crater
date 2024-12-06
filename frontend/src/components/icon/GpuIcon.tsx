@@ -7,23 +7,26 @@ const SvgComponent = (
     xmlns="http://www.w3.org/2000/svg"
     width={24}
     height={24}
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    strokeWidth={2}
+    aria-hidden="true"
+    viewBox="0 0 16 16"
     ref={ref}
     {...props}
   >
-    <title>{"Layer 1"}</title>
-    <path
-      stroke="null"
-      d="M22.094 14.906V6.187a1.938 2.019 90 0 0-2.019-1.937H3.925a1.938 2.019 90 0 0-2.019 1.937v11.625a1.938 2.019 90 0 0 2.019 1.938h13.122l5.047-4.844zM1.875 2.844v18.312"
-    />
-    <circle cx={12} cy={12} r={5} />
-    <path d="M12 17a2.5 2.5 0 0 0 0-5 2.5 2.5 0 0 1 0-5" />
-    <path d="M7 12a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 1 5 0" />
+    <g fill="none">
+      <g clipPath="url(#a)">
+        <path
+          fill="currentColor"
+          fillRule="evenodd"
+          d="M0 1.25A.75.75 0 0 1 .75.5h.5A2.25 2.25 0 0 1 3.5 2.75V3H13a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3H3.5v1.25a.75.75 0 0 1-1.5 0V2.75A.75.75 0 0 0 1.25 2h-.5A.75.75 0 0 1 0 1.25M13 4.5H3.5v7H13a1.5 1.5 0 0 0 1.5-1.5V6A1.5 1.5 0 0 0 13 4.5M8.5 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0M10 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"
+          clipRule="evenodd"
+        />
+      </g>
+      <defs>
+        <clipPath id="a">
+          <path fill="currentColor" d="M0 0h16v16H0z" />
+        </clipPath>
+      </defs>
+    </g>
   </svg>
 );
 const ForwardRef = forwardRef(SvgComponent);
