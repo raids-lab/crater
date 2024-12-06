@@ -2,7 +2,7 @@ import {
   IJobInfo,
   JobType,
   apiAdminGetJobList as apiAdminGetJobList,
-  apiJobDelete,
+  apiJobDeleteForAdmin,
 } from "@/services/api/vcjob";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
@@ -150,7 +150,7 @@ const toolbarConfig: DataTableToolbarConfig = {
 const AdminJobOverview = () => {
   const queryClient = useQueryClient(); // 将 useQueryClient 放在组件顶层
   const { mutate: deleteJob } = useMutation({
-    mutationFn: (jobId: string) => apiJobDelete(jobId),
+    mutationFn: (jobId: string) => apiJobDeleteForAdmin(jobId),
     onSuccess: async (_, variables) => {
       await queryClient.invalidateQueries({
         queryKey: ["admin", "tasklist", "volcanoJob"],
