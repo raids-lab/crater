@@ -1,7 +1,7 @@
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
-import NodeDetail from "@/components/custom/NodeDetail";
-import { nodeColumns } from "@/components/custom/NodeList";
+import NodeDetail from "@/components/custom/Node/NodeDetail";
+import { nodeColumns } from "@/components/custom/Node/NodeList";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

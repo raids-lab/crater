@@ -7,6 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import NodeTypeLabel from "@/components/label/NodeTypeLabel";
 import { NodeType } from "@/services/api/cluster";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { NvidiaGpuInfoCard } from "./GPUInfo";
 
 interface ResourceInfo {
   percent: number;
@@ -173,13 +180,22 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
           {Object.keys(labels)
             .filter((k) => k.includes("nvidia.com/gpu.product"))
             .map((key) => (
-              <Badge
-                key={key}
-                className="text-xs font-normal"
-                variant={"outline"}
-              >
-                {labels[key]}
-              </Badge>
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Badge
+                      key={key}
+                      className="text-xs font-normal"
+                      variant={"outline"}
+                    >
+                      {labels[key]}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent asChild>
+                    <NvidiaGpuInfoCard labels={labels} />
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             ))}
         </div>
       );
