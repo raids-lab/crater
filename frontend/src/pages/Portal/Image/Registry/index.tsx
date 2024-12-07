@@ -35,10 +35,25 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
-import { Database, LockIcon, PackagePlusIcon, Trash2 } from "lucide-react";
+import {
+  Database,
+  InfoIcon,
+  LockIcon,
+  PackagePlusIcon,
+  Trash2Icon,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useRoutes } from "react-router-dom";
+import { useNavigate, useRoutes } from "react-router-dom";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import KanikoDetail from "../Info";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -52,6 +67,7 @@ const toolbarConfig: DataTableToolbarConfig = {
 export const ImageTable: FC = () => {
   const queryClient = useQueryClient();
   const [openSheet, setOpenSheet] = useState(false);
+  const navigate = useNavigate();
   const imageQuery = useQuery({
     queryKey: ["imagepack", "list"],
     queryFn: () => apiUserListKaniko(),
@@ -63,6 +79,8 @@ export const ImageTable: FC = () => {
             imageLink: item.imageLink,
             status: item.status,
             createdAt: item.createdAt,
+            podName: item.podName,
+            podNameSpace: item.podNameSpace,
           }) as KanikoInfo,
       ),
   });
@@ -91,9 +109,13 @@ export const ImageTable: FC = () => {
         <DataTableColumnHeader column={column} title={getHeader("imageLink")} />
       ),
       cell: ({ row }) => (
-        <Badge className="font-mono font-normal" variant="outline">
+        <Button
+          onClick={() => navigate(`${row.original.id}`)}
+          variant={"link"}
+          className="h-8 px-0 text-left font-normal text-secondary-foreground"
+        >
           {row.getValue("imageLink")}
-        </Badge>
+        </Button>
       ),
     },
     {
@@ -146,15 +168,30 @@ export const ImageTable: FC = () => {
         return (
           <div className="flex flex-row space-x-1">
             <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="h-8 w-8 p-0 hover:text-destructive"
-                  title="删除镜像"
-                >
-                  <Trash2 size={16} strokeWidth={2} />
-                </Button>
-              </AlertDialogTrigger>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="h-8 w-8 p-0">
+                    <span className="sr-only">操作</span>
+                    <DotsHorizontalIcon className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>操作</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={() => navigate(`${kanikoInfo.id}`)}
+                  >
+                    <InfoIcon className="text-emerald-600 dark:text-emerald-500" />
+                    详情
+                  </DropdownMenuItem>
+
+                  <AlertDialogTrigger asChild>
+                    <DropdownMenuItem>
+                      <Trash2Icon className="text-destructive" />
+                      删除
+                    </DropdownMenuItem>
+                  </AlertDialogTrigger>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>删除镜像</AlertDialogTitle>
@@ -255,10 +292,10 @@ export const Component = () => {
       index: true,
       element: <ImageTable />,
     },
-    // {
-    //   path: ":id",
-    //   element: <ImageCreateDetail />,
-    // },
+    {
+      path: ":id",
+      element: <KanikoDetail />,
+    },
   ]);
 
   return <>{routes}</>;
