@@ -44,7 +44,9 @@ const NodeForAdmin = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>操作</DropdownMenuLabel>
+                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                  操作
+                </DropdownMenuLabel>
                 <DropdownMenuItem>
                   <TagsIcon className="h-4 w-4" />
                   编辑标签

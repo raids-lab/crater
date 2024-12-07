@@ -339,9 +339,9 @@ const ColocateOverview = () => {
                 variant="outline"
                 size="icon"
                 className="h-8 w-8 text-primary hover:text-primary/90"
-                title="跳转至 Jupyter Lab"
+                title="打开 Jupyter Lab"
                 onClick={() => {
-                  toast.info("即将跳转至 Jupyter 页面");
+                  toast.info("即将打开 Jupyter 页面");
                   setTimeout(() => {
                     getPortToken(`${jobInfo.id}`);
                   }, 500);

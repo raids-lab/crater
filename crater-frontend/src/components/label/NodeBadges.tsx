@@ -5,12 +5,20 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { GaugeIcon } from "lucide-react";
-import { Button } from "../ui/button";
+import GpuIcon from "@/components/icon/GpuIcon";
+import { Button } from "@/components/ui/button";
+import { CpuIcon } from "lucide-react";
+import { DropdownMenuLabel } from "../ui/dropdown-menu";
+import { InfoCircledIcon } from "@radix-ui/react-icons";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const GRAFANA_NODE = import.meta.env.VITE_GRAFANA_NODE;
 
 const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
+  const navigate = useNavigate();
+
   if (!nodes || nodes.length === 0) {
     return <></>;
   }
@@ -34,24 +42,53 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
           </Badge>
         </TooltipTrigger>
         <TooltipContent className="border bg-background p-0 text-foreground">
-          <div className="flex flex-col gap-1 p-1">
+          <div className="flex flex-row">
             {nodes
               .sort((a, b) => a.localeCompare(b))
-              .map((node) => (
-                <Button
-                  variant="ghost"
-                  key={node}
-                  title="查看节点资源监控"
-                  className="flex h-8 w-full flex-row justify-start px-2 pb-1 font-normal"
-                  onClick={() => {
-                    window.open(
-                      `${GRAFANA_NODE}?orgId=1&refresh=5m&var-datasource=prometheus&var-node=${node}`,
-                    );
-                  }}
+              .map((node, i) => (
+                <div
+                  className={cn("flex flex-col p-1", {
+                    "border-l": i > 0,
+                  })}
                 >
-                  <GaugeIcon className="h-4 w-4" />
-                  <div className="font-mono">{node}</div>
-                </Button>
+                  <DropdownMenuLabel
+                    key={node}
+                    className="text-xs text-muted-foreground"
+                  >
+                    {node}
+                  </DropdownMenuLabel>
+                  {/* 按钮 */}
+                  <Button
+                    variant="ghost"
+                    className="justify-start px-2 py-1"
+                    onClick={() => navigate(`/portal/overview/${node}`)}
+                  >
+                    <InfoCircledIcon className="text-emerald-600 dark:text-emerald-500" />
+                    <span className="truncate font-normal">节点详情</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="justify-start px-2 py-1"
+                    onClick={() => {
+                      window.open(
+                        `${GRAFANA_NODE}?orgId=1&refresh=5m&var-datasource=prometheus&var-node=${node}`,
+                      );
+                    }}
+                  >
+                    <CpuIcon className="text-purple-600 dark:text-purple-500" />
+                    <span className="truncate font-normal">节点监控</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="justify-start px-2 py-1"
+                    onClick={() =>
+                      toast.warning("TODO(zhangry): add GPU monitoring")
+                    }
+                  >
+                    <GpuIcon className="text-orange-600 dark:text-orange-500" />
+                    <span className="truncate font-normal">加速卡监控</span>
+                  </Button>
+                </div>
               ))}
           </div>
         </TooltipContent>

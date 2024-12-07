@@ -120,7 +120,9 @@ const columns: ColumnDef<Resource>[] = [
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>操作</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                操作
+              </DropdownMenuLabel>
               <DialogTrigger asChild>
                 <DropdownMenuItem>编辑资源列表</DropdownMenuItem>
               </DialogTrigger>

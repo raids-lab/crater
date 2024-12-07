@@ -76,6 +76,7 @@ export const Component: FC = () => {
         return {
           title: "数据管理",
           path: "/admin/data",
+          isEmpty: true,
         };
       } else if (index == 2 && value == "user") {
         return {

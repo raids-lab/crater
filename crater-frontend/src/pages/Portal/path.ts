@@ -111,11 +111,21 @@ export const craterPath: PathInfo = {
     },
     {
       path: "setting",
-      title: "系统设置",
+      title: "设置",
+      children: [
+        {
+          path: "user",
+          title: "用户设置",
+        },
+        {
+          path: "platform",
+          title: "平台设置",
+        },
+      ],
     },
     {
       path: "feedback",
-      title: "问题反馈",
+      title: "帮助与反馈",
     },
   ],
 };
