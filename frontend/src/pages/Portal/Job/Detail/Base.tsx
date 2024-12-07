@@ -1,12 +1,19 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import useBreadcrumb from "@/hooks/useBreadcrumb";
 import {
+  ActivityIcon,
+  CalendarIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  CreditCardIcon,
   ExternalLinkIcon,
   FileSlidersIcon,
+  FlaskConicalIcon,
   GaugeIcon,
   RefreshCcwIcon,
   TrashIcon,
+  UserRoundIcon,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -23,14 +30,6 @@ import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
-import {
-  TableHead,
-  TableRow,
-  TableHeader,
-  TableCell,
-  TableBody,
-  Table,
-} from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
@@ -45,7 +44,6 @@ import JobPhaseLabel from "@/components/label/JobPhaseLabel";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import { PodTable } from "./PodTable";
 import { ConfigDialog } from "@/components/codeblock/ConfigDialog";
-import { CardTitle } from "@/components/ui-custom/card";
 export interface Resource {
   [key: string]: string;
 }
@@ -96,10 +94,16 @@ export const Component = () => {
 
   return (
     <>
-      <Card className="col-span-3">
+      <Card>
         <CardContent className="flex items-center justify-between p-6">
-          <div className="flex flex-col items-start gap-2">
-            <CardTitle>{data.name}</CardTitle>
+          <div className="flex items-center gap-2">
+            <FlaskConicalIcon className="h-6 w-6 text-muted-foreground" />
+            <CardTitle>
+              {data.name}
+              <span className="ml-2 text-muted-foreground">
+                ({data.jobName})
+              </span>
+            </CardTitle>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -112,49 +116,61 @@ export const Component = () => {
                 })
               }
             >
-              <RefreshCcwIcon className="h-3.5 w-3.5" />
+              <RefreshCcwIcon className="h-4 w-4" />
             </Button>
           </div>
         </CardContent>
         <Separator />
-        <CardContent className="flex flex-col gap-4 p-7">
-          <Table className="w-full">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-xs">作业名称</TableHead>
-                <TableHead className="text-xs">状态</TableHead>
-                <TableHead className="text-xs">账户</TableHead>
-                <TableHead className="text-xs">用户</TableHead>
-                <TableHead className="text-xs">创建于</TableHead>
-                <TableHead className="text-xs">开始于</TableHead>
-                <TableHead className="text-xs">完成于</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell className="font-mono">{data.jobName}</TableCell>
-                <TableCell>
-                  <JobPhaseLabel jobPhase={data.status} />
-                </TableCell>
-                <TableCell>{data.queue}</TableCell>
-                <TableCell>{data.username}</TableCell>
-                <TableCell>
-                  <TimeDistance date={data.createdAt} />
-                </TableCell>
-                <TableCell>
-                  <TimeDistance date={data.startedAt} />
-                </TableCell>
-                <TableCell>
-                  <TimeDistance date={data.completedAt} />
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-          <div className="mt-4 flex items-center justify-between">
-            <div className="flex h-5 items-center space-x-2">
+        <CardContent className="p-6 text-sm">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+            <div className="flex items-center">
+              <CreditCardIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">
+                账户：
+              </span>
+              <span>{data.queue}</span>
+            </div>
+            <div className="flex items-center">
+              <UserRoundIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">
+                用户：
+              </span>
+              <span>{data.username}</span>
+            </div>
+            <div className="flex items-center">
+              <ActivityIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">
+                状态：
+              </span>
+              <JobPhaseLabel jobPhase={data.status} />
+            </div>
+            <div className="flex items-center">
+              <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">
+                创建于：
+              </span>
+              <TimeDistance date={data.createdAt} />
+            </div>
+            <div className="flex items-center">
+              <ClockIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">
+                开始于：
+              </span>
+              <TimeDistance date={data.startedAt} />
+            </div>
+            <div className="flex items-center">
+              <CheckCircleIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">
+                完成于：
+              </span>
+              <TimeDistance date={data.completedAt} />
+            </div>
+          </div>
+          <div className="mt-6 flex items-center justify-between">
+            <div className="flex items-center space-x-2">
               <ConfigDialog getConfig={apiJobGetYaml} jobName={jobName}>
                 <Button variant="ghost" size="sm">
-                  <FileSlidersIcon className="h-4 w-4" />
+                  <FileSlidersIcon className="mr-1 h-4 w-4" />
                   作业 YAML
                 </Button>
               </ConfigDialog>
@@ -163,30 +179,29 @@ export const Component = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  // const url = generateMetricsUrl(data.podDetails);
                   const url = `${job_monitor}?orgId=1&var-job=${data.jobName}&from=now-1h&to=now`;
                   window.open(url, "_blank");
                 }}
               >
-                <GaugeIcon className="h-4 w-4" />
+                <GaugeIcon className="mr-1 h-4 w-4" />
                 资源监控
               </Button>
             </div>
-            <div className="flex flex-row gap-2">
+            <div className="flex items-center space-x-2">
               {(data.jobType === JobType.Jupyter ||
                 data.jobType === JobType.WebIDE) &&
                 data.status === JobPhase.Running && (
                   <Button
                     size="sm"
-                    title="跳转至交互式页面"
+                    title="打开交互式页面"
                     onClick={() => {
-                      toast.info("即将跳转至交互式页面");
+                      toast.info("即将打开交互式页面");
                       setTimeout(() => {
                         getPortToken(jobName);
                       }, 500);
                     }}
                   >
-                    <ExternalLinkIcon className="h-4 w-4" />
+                    <ExternalLinkIcon className="mr-1 h-4 w-4" />
                     交互式页面
                   </Button>
                 )}
@@ -194,7 +209,7 @@ export const Component = () => {
                 <AlertDialogTrigger asChild>
                   <div>
                     <Button variant="destructive" size="sm" title="删除作业">
-                      <TrashIcon className="h-4 w-4" />
+                      <TrashIcon className="mr-1 h-4 w-4" />
                       删除作业
                     </Button>
                   </div>
@@ -203,8 +218,7 @@ export const Component = () => {
                   <AlertDialogHeader>
                     <AlertDialogTitle>删除作业</AlertDialogTitle>
                     <AlertDialogDescription>
-                      作业「{data.name}
-                      」将停止，请确认已经保存好所需数据。
+                      作业「{data.name}」将停止，请确认已经保存好所需数据。
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

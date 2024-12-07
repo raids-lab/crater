@@ -22,7 +22,6 @@ import {
   StopwatchIcon,
   StopIcon,
   DotsHorizontalIcon,
-  Cross1Icon,
 } from "@radix-ui/react-icons";
 import { Link } from "react-router-dom";
 import ResourceBadges from "@/components/label/ResourceBadges";
@@ -45,8 +44,8 @@ import {
   InfoIcon,
   LockIcon,
   SquareIcon,
-  SquareMenuIcon,
   Trash2Icon,
+  UnlockIcon,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -330,13 +329,26 @@ const AdminJobOverview = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>操作</DropdownMenuLabel>
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">
+                      操作
+                    </DropdownMenuLabel>
                     <Link to={`${jobInfo.jobName}`}>
                       <DropdownMenuItem>
                         <InfoIcon className="text-emerald-600 dark:text-emerald-500" />
                         详情
                       </DropdownMenuItem>
                     </Link>
+                    <DropdownMenuItem
+                      onClick={() => keepTask(jobInfo.jobName)}
+                      title="设置作业自动清除策略"
+                    >
+                      {row.original.keepWhenLowUsage ? (
+                        <UnlockIcon className="text-purple-600 dark:text-purple-500" />
+                      ) : (
+                        <LockIcon className="text-purple-600 dark:text-purple-500" />
+                      )}
+                      {row.original.keepWhenLowUsage ? "解锁" : "锁定"}
+                    </DropdownMenuItem>
                     <AlertDialogTrigger asChild>
                       <DropdownMenuItem className="group">
                         {shouldStop ? (
@@ -347,16 +359,6 @@ const AdminJobOverview = () => {
                         {shouldStop ? "停止" : "删除"}
                       </DropdownMenuItem>
                     </AlertDialogTrigger>
-                    <DropdownMenuItem onClick={() => keepTask(jobInfo.jobName)}>
-                      {row.original.keepWhenLowUsage ? (
-                        <Cross1Icon className="text-gray-600 dark:text-gray-600" />
-                      ) : (
-                        <SquareMenuIcon className="text-gray-600 dark:text-gray-600" />
-                      )}
-                      {row.original.keepWhenLowUsage
-                        ? "取消白名单"
-                        : "加入白名单"}
-                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <AlertDialogContent>

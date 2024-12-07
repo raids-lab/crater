@@ -151,7 +151,9 @@ const columns: ColumnDef<LabelInfo>[] = [
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>操作</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                操作
+              </DropdownMenuLabel>
               <DialogTrigger asChild>
                 <DropdownMenuItem>编辑标签</DropdownMenuItem>
               </DialogTrigger>

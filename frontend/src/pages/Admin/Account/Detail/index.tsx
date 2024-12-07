@@ -259,7 +259,9 @@ const AccountDetail = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>操作</DropdownMenuLabel>
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">
+                      操作
+                    </DropdownMenuLabel>
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger>角色</DropdownMenuSubTrigger>
                       <DropdownMenuSubContent>

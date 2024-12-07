@@ -283,7 +283,9 @@ const getColumns = (
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>操作</DropdownMenuLabel>
+            <DropdownMenuLabel className="text-xs text-muted-foreground">
+              操作
+            </DropdownMenuLabel>
             <DropdownMenuItem>监控</DropdownMenuItem>
             <DropdownMenuItem
               onClick={() =>

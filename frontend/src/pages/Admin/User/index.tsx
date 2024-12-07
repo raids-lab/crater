@@ -214,7 +214,9 @@ export const User = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>操作</DropdownMenuLabel>
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">
+                      操作
+                    </DropdownMenuLabel>
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger>权限</DropdownMenuSubTrigger>
                       <DropdownMenuSubContent>

@@ -36,7 +36,6 @@ import {
 import { CardTitle } from "@/components/ui-custom/card";
 import {
   ExternalLink,
-  InfoIcon,
   LockIcon,
   RedoDotIcon,
   SquareIcon,
@@ -58,7 +57,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DotsHorizontalIcon } from "@radix-ui/react-icons";
+import { DotsHorizontalIcon, InfoCircledIcon } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
 
 const InterOverview = () => {
@@ -224,9 +223,9 @@ const InterOverview = () => {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-primary hover:bg-primary/10 hover:text-primary/90"
-                tooltipContent="跳转至 Jupyter Lab"
+                tooltipContent="打开 Jupyter Lab"
                 onClick={() => {
-                  toast.info("即将跳转至 Jupyter 页面");
+                  toast.info("即将打开 Jupyter 页面");
                   setTimeout(() => {
                     getPortToken(jobInfo.jobName);
                   }, 500);
@@ -244,10 +243,12 @@ const InterOverview = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>操作</DropdownMenuLabel>
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">
+                      操作
+                    </DropdownMenuLabel>
                     <Link to={`${jobInfo.jobName}`}>
                       <DropdownMenuItem>
-                        <InfoIcon className="text-emerald-600 dark:text-emerald-500" />
+                        <InfoCircledIcon className="text-emerald-600 dark:text-emerald-500" />
                         详情
                       </DropdownMenuItem>
                     </Link>

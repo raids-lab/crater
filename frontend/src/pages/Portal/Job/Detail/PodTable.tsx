@@ -2,7 +2,6 @@ import { ColumnDef } from "@tanstack/react-table";
 import { apiJobGetPods, PodDetail } from "@/services/api/vcjob";
 import ResourceBadges from "@/components/label/ResourceBadges";
 import PodPhaseLabel, { podPhases } from "@/components/label/PodPhaseLabel";
-import TooltipButton from "@/components/custom/TooltipButton";
 import { EthernetPort, LogsIcon, TerminalIcon } from "lucide-react";
 import { DataTable } from "@/components/custom/DataTable";
 import { useQuery } from "@tanstack/react-query";
@@ -14,6 +13,15 @@ import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableCo
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import NodeBadges from "@/components/label/NodeBadges";
 import PodIngressDialog from "./Ingress";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 
 const POD_MONITOR = import.meta.env.VITE_GRAFANA_POD_MEMORY;
 
@@ -128,52 +136,54 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
       cell: ({ row }) => {
         const pod = row.original;
         return (
-          <div className="flex items-center justify-center space-x-1">
-            <TooltipButton
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 text-primary hover:bg-primary/10 hover:text-primary/90"
-              tooltipContent="打开终端"
-              disabled={pod.phase !== "Running"}
-              onClick={() => {
-                setShowTerminal({
-                  namespace: pod.namespace,
-                  name: pod.name,
-                });
-              }}
-            >
-              <TerminalIcon className="h-4 w-4 text-primary" />
-            </TooltipButton>
-            <TooltipButton
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 text-purple-500 hover:bg-purple-500/10 hover:text-purple-500/90"
-              tooltipContent="设置外部访问规则"
-              disabled={pod.phase !== "Running"}
-              onClick={() => {
-                setShowIngress({
-                  namespace: pod.namespace,
-                  name: pod.name,
-                });
-              }}
-            >
-              <EthernetPort className="h-4 w-4" />
-            </TooltipButton>
-            <TooltipButton
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 text-orange-500 hover:bg-orange-500/10 hover:text-orange-500/90"
-              tooltipContent="查看日志"
-              onClick={() => {
-                setShowLog({
-                  namespace: pod.namespace,
-                  name: pod.name,
-                });
-              }}
-            >
-              <LogsIcon className="h-4 w-4" />
-            </TooltipButton>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">更多操作</span>
+                <DotsHorizontalIcon className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                操作
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                disabled={pod.phase !== "Running"}
+                onClick={() => {
+                  setShowTerminal({
+                    namespace: pod.namespace,
+                    name: pod.name,
+                  });
+                }}
+              >
+                <TerminalIcon className="text-primary" />
+                Terminal
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={pod.phase !== "Running"}
+                onClick={() => {
+                  setShowIngress({
+                    namespace: pod.namespace,
+                    name: pod.name,
+                  });
+                }}
+              >
+                <EthernetPort className="text-purple-600 dark:text-purple-500" />
+                外部访问
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setShowLog({
+                    namespace: pod.namespace,
+                    name: pod.name,
+                  });
+                }}
+              >
+                <LogsIcon className="text-orange-600 dark:text-orange-500" />
+                日志与诊断
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         );
       },
     },
