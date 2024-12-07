@@ -3,6 +3,7 @@ import {
   JobType,
   apiAdminGetJobList as apiAdminGetJobList,
   apiJobDeleteForAdmin,
+  apiJobKeepForAdmin,
 } from "@/services/api/vcjob";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
@@ -21,6 +22,7 @@ import {
   StopwatchIcon,
   StopIcon,
   DotsHorizontalIcon,
+  Cross1Icon,
 } from "@radix-ui/react-icons";
 import { Link } from "react-router-dom";
 import ResourceBadges from "@/components/label/ResourceBadges";
@@ -39,7 +41,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
-import { InfoIcon, LockIcon, SquareIcon, Trash2Icon } from "lucide-react";
+import {
+  InfoIcon,
+  LockIcon,
+  SquareIcon,
+  SquareMenuIcon,
+  Trash2Icon,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -174,6 +182,14 @@ const AdminJobOverview = () => {
 
   const { mutate: deleteTask } = useMutation({
     mutationFn: apiJobDeleteForAdmin,
+    onSuccess: async () => {
+      await refetchTaskList();
+      toast.success("操作成功");
+    },
+  });
+
+  const { mutate: keepTask } = useMutation({
+    mutationFn: apiJobKeepForAdmin,
     onSuccess: async () => {
       await refetchTaskList();
       toast.success("操作成功");
@@ -331,6 +347,16 @@ const AdminJobOverview = () => {
                         {shouldStop ? "停止" : "删除"}
                       </DropdownMenuItem>
                     </AlertDialogTrigger>
+                    <DropdownMenuItem onClick={() => keepTask(jobInfo.jobName)}>
+                      {row.original.keepWhenLowUsage ? (
+                        <Cross1Icon className="text-gray-600 dark:text-gray-600" />
+                      ) : (
+                        <SquareMenuIcon className="text-gray-600 dark:text-gray-600" />
+                      )}
+                      {row.original.keepWhenLowUsage
+                        ? "取消白名单"
+                        : "加入白名单"}
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <AlertDialogContent>
