@@ -154,7 +154,10 @@ func (p *PrometheusClient) getNodeGPUUtil(expression string) ([]NodeGPUUtil, err
 			job := metric["job"]
 			modelName := metric["modelName"]
 			namespace := metric["namespace"]
-			pod := metric["pod"]
+			var pod model.LabelValue
+			if exportedPod, ok := metric["exported_pod"]; ok {
+				pod = exportedPod
+			}
 			service := metric["service"]
 			util := float32(sample.Value)
 
