@@ -212,6 +212,13 @@ export const apiJobDeleteForAdmin = async (jobName: string) => {
   return response.data;
 };
 
+export const apiJobKeepForAdmin = async (jobName: string) => {
+  const response = await instance.put<IResponse<string>>(
+    `${VERSION}/admin/operations/keep/${jobName}`,
+  );
+  return response.data;
+};
+
 export const apiJobGetDetail = (jobName: string) =>
   instance.get<IResponse<IJupyterDetail>>(
     `${VERSION}/${JOB_URL}/${jobName}/detail`,
