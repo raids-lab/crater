@@ -15,17 +15,21 @@ export type ListKanikoResponse = {
 };
 type KanikoInfoResponse = {
   ID: number;
-  // name: string;
   imageLink: string;
   status: string;
   createdAt: string;
-  isPublic: boolean;
+  dockerfile: string;
+  description: string;
+  podName: string;
+  podNameSpace: string;
 };
 export type KanikoInfo = {
   id: number;
   imageLink: string;
   status: string;
   createdAt: string;
+  podName: string;
+  podNameSpace: string;
 };
 
 export type ListImageResponse = {
@@ -212,7 +216,9 @@ export const apiUserDeleteKaniko = (id: number) =>
   instance.delete<IResponse<string>>(VERSION + `/images/kaniko/${id}`);
 
 export const apiUserGetKaniko = (id: string) =>
-  instance.get<IResponse<KanikoInfoResponse>>(`${VERSION}/images/get?id=${id}`);
+  instance.get<IResponse<KanikoInfoResponse>>(
+    `${VERSION}/images/getbyid?id=${id}`,
+  );
 
 export const apiUserLogKaniko = (id: string) =>
   instance.get<IResponse<KanikoLogResponse>>(`${VERSION}/images/log?id=${id}`);
