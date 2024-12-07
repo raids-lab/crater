@@ -15,6 +15,8 @@ import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableT
 import NodeBadges from "@/components/label/NodeBadges";
 import PodIngressDialog from "./Ingress";
 
+const POD_MONITOR = import.meta.env.VITE_GRAFANA_POD_MEMORY;
+
 const getHeader = (key: string): string => {
   switch (key) {
     case "name":
@@ -72,7 +74,7 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
         const pod = row.original;
         return pod.name ? (
           <a
-            href={`http://10.109.80.1:31121/d/MhnFUFLSz/pod_memory?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`}
+            href={`${POD_MONITOR}?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`}
             className="font-mono underline-offset-4 hover:underline"
             target="_blank"
             rel="noopener noreferrer"
