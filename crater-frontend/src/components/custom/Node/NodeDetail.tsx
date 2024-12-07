@@ -57,6 +57,7 @@ type CardDemoProps = React.ComponentProps<typeof Card> & {
 };
 
 const POD_MONITOR = import.meta.env.VITE_GRAFANA_POD_MEMORY;
+const GRAFANA_NODE = import.meta.env.VITE_GRAFANA_NODE;
 
 // CardDemo 组件
 export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
@@ -98,7 +99,7 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
                 );
               } else {
                 window.open(
-                  `http://10.109.80.1:31121/d/Apibib7Nz/node_monitor?orgId=1&var-node=${nodeInfo?.name}&from=now-30m&to=now`,
+                  `${GRAFANA_NODE}?orgId=1&var-node=${nodeInfo?.name}&from=now-30m&to=now`,
                 );
               }
             }}
