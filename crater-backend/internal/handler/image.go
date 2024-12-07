@@ -124,6 +124,9 @@ type (
 		CreatedAt     time.Time              `json:"createdAt"`
 		ImagePackName string                 `json:"imagepackName"`
 		Description   string                 `json:"description"`
+		Dockerfile    string                 `json:"dockerfile"`
+		PodName       string                 `json:"podName"`
+		PodNameSpace  string                 `json:"podNameSpace"`
 	}
 
 	GetKanikoPodResponse struct {
@@ -559,6 +562,7 @@ func (mgr *ImagePackMgr) GetKanikoByID(c *gin.Context) {
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
+	podName, podNameSpace := mgr.getPodName(c, req.ID)
 	getKanikoResponse := GetKanikoResponse{
 		ID:            kaniko.ID,
 		ImageLink:     kaniko.ImageLink,
@@ -566,6 +570,9 @@ func (mgr *ImagePackMgr) GetKanikoByID(c *gin.Context) {
 		CreatedAt:     kaniko.CreatedAt,
 		ImagePackName: kaniko.ImagePackName,
 		Description:   *kaniko.Description,
+		Dockerfile:    *kaniko.Dockerfile,
+		PodName:       podName,
+		PodNameSpace:  podNameSpace,
 	}
 	resputil.Success(c, getKanikoResponse)
 }
@@ -652,7 +659,6 @@ func (mgr *ImagePackMgr) UpdateImagePublicStatus(c *gin.Context) {
 }
 
 func (mgr *ImagePackMgr) GetImagepackPodName(c *gin.Context) {
-	kanikoQuery := query.Kaniko
 	var req GetKanikoPodRequest
 	var err error
 	if err = c.ShouldBindQuery(&req); err != nil {
@@ -660,24 +666,31 @@ func (mgr *ImagePackMgr) GetImagepackPodName(c *gin.Context) {
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
+	podName, podNameSpace := mgr.getPodName(c, req.ID)
+	resp := GetKanikoPodResponse{
+		PodName:      podName,
+		PodNameSpace: podNameSpace,
+	}
+	resputil.Success(c, resp)
+}
+
+func (mgr *ImagePackMgr) getPodName(c *gin.Context, kanikoID uint) (name, ns string) {
 	var kaniko *model.Kaniko
+	var err error
+	kanikoQuery := query.Kaniko
 	if kaniko, err = kanikoQuery.WithContext(c).
-		Where(kanikoQuery.ID.Eq(req.ID)).
+		Where(kanikoQuery.ID.Eq(kanikoID)).
 		First(); err != nil {
 		msg := fmt.Sprintf("fetch kaniko by name failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
-		return
+		return "", UserNameSpace
 	}
 	var pod *corev1.Pod
 	pod, err = mgr.imagepackClient.GetImagePackPod(c, kaniko.ImagePackName, UserNameSpace)
 	if err != nil {
 		msg := fmt.Sprintf("fetch kaniko pod by name failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
-		return
+		return "", UserNameSpace
 	}
-	resp := GetKanikoPodResponse{
-		PodName:      pod.Name,
-		PodNameSpace: UserNameSpace,
-	}
-	resputil.Success(c, resp)
+	return pod.Name, UserNameSpace
 }
