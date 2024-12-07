@@ -52,7 +52,6 @@ func main() {
 			&model.Resource{},
 			&model.Job{},
 			&models.AITask{},
-			&model.Whitelist{},
 			&model.Kaniko{},
 			&model.Image{},
 		)
@@ -96,8 +95,8 @@ func main() {
 				Email:    lo.ToPtr("***REMOVED***"),
 				Teacher:  lo.ToPtr("管理员"),
 				Group:    lo.ToPtr("管理员"),
-				UID:      lo.ToPtr("0"),
-				GID:      lo.ToPtr("0"),
+				UID:      lo.ToPtr("1001"),
+				GID:      lo.ToPtr("1001"),
 			}),
 		}
 

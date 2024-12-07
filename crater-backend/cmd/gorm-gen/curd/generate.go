@@ -30,7 +30,6 @@ func main() {
 		model.AccountDataset{},
 		model.UserDataset{},
 		model.Resource{},
-		model.Whitelist{},
 		model.Job{},
 		model.Image{},
 		model.Kaniko{},
