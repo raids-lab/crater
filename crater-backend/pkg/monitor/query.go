@@ -217,7 +217,7 @@ func (p *PrometheusClient) GetPodOwner(podName string) string {
 }
 
 func (p *PrometheusClient) GetLeastUsedGPUJobList(podName, time, util string) int {
-	query := fmt.Sprintf("max_over_time(DCGM_FI_DEV_GPU_UTIL{pod=%q}[%vm]) <= %v and DCGM_FI_DEV_GPU_UTIL{pod=%q} offset %vm", podName, time, util, podName, time)
+	query := fmt.Sprintf("max_over_time(DCGM_FI_DEV_GPU_UTIL{exported_pod=%q}[%vm]) <= %v and DCGM_FI_DEV_GPU_UTIL{exported_pod=%q} offset %vm", podName, time, util, podName, time)
 	data, err := p.checkGPUUsed(query)
 	if err != nil {
 		logutils.Log.Errorf("GetLeastUsedGPUJobList error: %v", err)
