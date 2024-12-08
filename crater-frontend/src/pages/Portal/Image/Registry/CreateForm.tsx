@@ -94,7 +94,7 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="mt-6 flex flex-col space-y-4"
+        className="flex flex-col space-y-4 px-6"
       >
         <div className="grid grid-cols-2 gap-3">
           <FormField

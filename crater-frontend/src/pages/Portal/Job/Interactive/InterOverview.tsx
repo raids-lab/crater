@@ -29,12 +29,13 @@ import JobPhaseLabel from "@/components/label/JobPhaseLabel";
 import { Link } from "react-router-dom";
 import {
   Card,
+  CardTitle,
   CardDescription,
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
-import { CardTitle } from "@/components/ui-custom/card";
 import {
+  ArrowRightLeftIcon,
   ExternalLink,
   LockIcon,
   RedoDotIcon,
@@ -305,7 +306,9 @@ const InterOverview = () => {
       <div className="grid gap-5 lg:grid-cols-4">
         <Card className="row-span-2 flex flex-col justify-between lg:col-span-2">
           <CardHeader>
-            <CardTitle>交互式作业</CardTitle>
+            <CardTitle className="flex flex-row items-center justify-start gap-2">
+              <ArrowRightLeftIcon className="text-primary" /> 交互式作业
+            </CardTitle>
             <CardDescription className="text-balance pt-2 leading-relaxed">
               提供开箱即用的 Jupyter Lab 或 Web IDE， 可用于代码编写、调试等。
             </CardDescription>

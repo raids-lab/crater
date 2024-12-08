@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { K8sResources } from "./resource";
+import { MetadataFormType } from "@/components/form/types";
 
 export const resourceSchema = z.object({
   cpu: z.number().int().min(0, {
@@ -147,8 +148,8 @@ export interface JobSubmitJson<T> {
   data: T;
 }
 
-// exportToJson convert T to JSON and save it to file and download it.
-export const exportToJson = (
+// exportToJsonFile convert T to JSON and save it to file and download it.
+export const exportToJsonFile = (
   data: JobSubmitJson<unknown>,
   filename = "data.json",
 ) => {
@@ -162,8 +163,20 @@ export const exportToJson = (
   URL.revokeObjectURL(url);
 };
 
-// usage: importFromJson<FormData>(file)
-export const importFromJson = async <T>(
+export const exportToJsonString = (
+  metadata: MetadataFormType,
+  data: unknown,
+): string => {
+  const jobInfo: JobSubmitJson<unknown> = {
+    version: metadata.version,
+    type: metadata.type,
+    data,
+  };
+  return JSON.stringify(jobInfo, null, 2);
+};
+
+// usage: importFromJson<FormData>(version, type, file)
+export const importFromJsonFile = async <T>(
   version: string,
   type: string,
   file?: File,
@@ -182,6 +195,23 @@ export const importFromJson = async <T>(
     return jobInfo.data;
   } catch {
     throw new Error("Invalid JSON file");
+  }
+};
+
+export const importFromJsonString = <T>(
+  metadata: MetadataFormType,
+  text: string,
+): T => {
+  try {
+    const jobInfo = JSON.parse(text) as JobSubmitJson<T>;
+    if (jobInfo.version !== metadata.version) {
+      throw new Error("版本不匹配");
+    } else if (jobInfo.type !== metadata.type) {
+      throw new Error("配置类型不匹配");
+    }
+    return jobInfo.data;
+  } catch {
+    throw new Error("Invalid JSON string");
   }
 };
 

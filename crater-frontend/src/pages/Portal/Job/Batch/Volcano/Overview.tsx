@@ -33,11 +33,11 @@ import Quota from "../../Interactive/Quota";
 import JobPhaseLabel from "@/components/label/JobPhaseLabel";
 import {
   Card,
+  CardTitle,
   CardDescription,
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
-import { CardTitle } from "@/components/ui-custom/card";
 import SplitButton from "@/components/custom/SplitButton";
 import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
@@ -46,7 +46,7 @@ import ResourceBadges from "@/components/label/ResourceBadges";
 import JobTypeLabel from "@/components/custom/JobTypeLabel";
 import { globalJobUrl } from "@/utils/store";
 import { useAtomValue } from "jotai";
-import { Trash2Icon } from "lucide-react";
+import { FlaskConicalIcon, Trash2Icon } from "lucide-react";
 
 const VolcanoOverview = () => {
   const queryClient = useQueryClient();
@@ -243,7 +243,9 @@ const VolcanoOverview = () => {
       <div className="grid gap-5 lg:col-span-3 lg:grid-cols-4">
         <Card className="row-span-2 flex flex-col justify-between lg:col-span-2">
           <CardHeader>
-            <CardTitle>批处理作业</CardTitle>
+            <CardTitle className="flex flex-row items-center justify-start gap-2">
+              <FlaskConicalIcon className="text-primary" /> 批处理作业
+            </CardTitle>
             <CardDescription className="text-balance pt-2 leading-relaxed">
               指无须人工干预而执行系列程序的作业，包含单机作业、Pytorch
               分布式训练作业、 Tensorflow 分布式训练作业、Ray 分布式训练作业、

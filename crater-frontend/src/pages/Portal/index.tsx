@@ -184,7 +184,7 @@ const userSidebarGroups: NavGroupProps[] = [
         icon: BoxIcon,
         items: [
           {
-            title: "镜像制作",
+            title: "镜像仓库",
             url: "image/createimage",
           },
           {
