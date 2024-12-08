@@ -27,9 +27,9 @@ import {
 import { cn } from "@/lib/utils";
 import { convertToK8sResources } from "@/utils/resource";
 import { toast } from "sonner";
-import { ChartNoAxesColumn, CirclePlus, XIcon } from "lucide-react";
+import { BoxIcon, ChartNoAxesColumn, CirclePlus, XIcon } from "lucide-react";
 import FormLabelMust from "@/components/custom/FormLabelMust";
-import Combobox from "@/components/form/Combobox";
+import Combobox, { ComboboxItem } from "@/components/form/Combobox";
 import AccordionCard from "@/components/custom/AccordionCard";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -47,6 +47,8 @@ import { DataMountCard, EnvCard, OtherCard } from "./Custom";
 import FormExportButton from "@/components/form/FormExportButton";
 import FormImportButton from "@/components/form/FormImportButton";
 import { MetadataFormJupyter } from "@/components/form/types";
+import { ImageInfoResponse } from "@/services/api/imagepack";
+import { shortenImageName } from "@/utils/formatter";
 
 const FileType = 1;
 const DatasetType = 2;
@@ -205,10 +207,19 @@ export const Component = () => {
     queryKey: ["jupyter", "images"],
     queryFn: () => apiJTaskImageList(JobType.Jupyter),
     select: (res) => {
-      return res.data.data.images.map((item) => ({
-        value: item.imageLink,
-        label: item.imageLink,
-      }));
+      const items = Array.from(
+        new Map(
+          res.data.data.images.map((item) => [item.imageLink, item]),
+        ).values(),
+      ).map(
+        (item) =>
+          ({
+            value: item.imageLink,
+            label: shortenImageName(item.imageLink),
+            detail: item,
+          }) as ComboboxItem<ImageInfoResponse>,
+      );
+      return items;
     },
   });
 
@@ -487,7 +498,7 @@ export const Component = () => {
               </div>
               <FormField
                 control={form.control}
-                name={`image`}
+                name={"image"}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
@@ -499,6 +510,36 @@ export const Component = () => {
                         items={imagesInfo.data ?? []}
                         current={field.value}
                         handleSelect={(value) => field.onChange(value)}
+                        renderLabel={(item) => (
+                          <div className="flex items-center gap-3 text-muted-foreground">
+                            <div
+                              className={cn(
+                                "flex size-8 items-center justify-center rounded-full font-normal",
+                                {
+                                  "bg-primary/15 text-primary":
+                                    item.detail?.isPublic,
+                                  "bg-purple-500/15 text-purple-500":
+                                    !item.detail?.isPublic,
+                                },
+                              )}
+                            >
+                              <BoxIcon className="size-5" />
+                            </div>
+                            <div className="flex flex-col items-start gap-0.5">
+                              {item.detail?.description && (
+                                <p className="text-foreground">
+                                  {item.detail?.description}
+                                </p>
+                              )}
+                              <p
+                                className="truncate font-mono text-xs"
+                                data-description
+                              >
+                                {shortenImageName(item.detail?.imageLink ?? "")}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                         formTitle="镜像"
                       />
                     </FormControl>
