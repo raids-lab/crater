@@ -19,26 +19,29 @@ import { Check, ChevronsUpDown } from "lucide-react";
 import { useState } from "react";
 import { ScrollArea } from "../ui/scroll-area";
 
-export interface ComboboxItem {
+export interface ComboboxItem<T> {
   label: string;
   value: string;
+  detail?: T;
 }
 
-type ComboboxProps = React.HTMLAttributes<HTMLDivElement> & {
+type ComboboxProps<T> = React.HTMLAttributes<HTMLDivElement> & {
   formTitle: string;
-  items: ComboboxItem[];
+  items: ComboboxItem<T>[];
   current: string;
   handleSelect: (value: string) => void;
+  renderLabel?: (item: ComboboxItem<T>) => React.ReactNode;
   className?: string;
 };
 
-const Combobox = ({
+function Combobox<T>({
   formTitle,
   items,
   current,
   handleSelect,
+  renderLabel,
   className,
-}: ComboboxProps) => {
+}: ComboboxProps<T>) {
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -76,21 +79,21 @@ const Combobox = ({
             <CommandGroup>
               <ScrollArea>
                 <div className="max-h-48">
-                  {items.map((image) => (
+                  {items.map((item) => (
                     <CommandItem
-                      value={image.label}
-                      key={image.value}
+                      value={item.label}
+                      key={item.value}
                       onSelect={() => {
-                        handleSelect(image.value);
+                        handleSelect(item.value);
                         setOpen(false);
                       }}
                       className="flex w-full flex-row items-center justify-between"
                     >
-                      {image.label}
+                      {renderLabel ? renderLabel(item) : <>{item.label}</>}
                       <Check
                         className={cn(
                           "ml-auto h-4 w-4",
-                          image.value === current ? "opacity-100" : "opacity-0",
+                          item.value === current ? "opacity-100" : "opacity-0",
                         )}
                       />
                     </CommandItem>
@@ -103,6 +106,6 @@ const Combobox = ({
       </PopoverContent>
     </Popover>
   );
-};
+}
 
 export default Combobox;

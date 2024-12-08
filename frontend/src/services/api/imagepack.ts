@@ -39,6 +39,7 @@ export type ImageInfoResponse = {
   ID: number;
   // name: string;
   imageLink: string;
+  description: string;
   status: string;
   createdAt: string;
   isPublic: boolean;
