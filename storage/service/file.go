@@ -92,7 +92,7 @@ func ListMySpace(userID, accountID uint, c *gin.Context) []string {
 		fmt.Println("can't find public account, ", err)
 		return data
 	}
-	data = append(data, publicaccount.Space)
+	data = append(data, strings.TrimLeft(publicaccount.Space, "/"))
 	if accountID != 0 && accountID != 1 {
 		account, err := a.WithContext(c).Where(a.ID.Eq(accountID)).First()
 		if err != nil {
@@ -149,12 +149,12 @@ func WebDav(c *gin.Context) {
 	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss")
 	permission := GetPermission(param, jwttoken, c)
 	if permission == model.NotAllowed {
-		c.String(http.StatusUnauthorized, "Unauthorized 1")
+		c.String(http.StatusUnauthorized, "Your permission is notAllowed")
 		return
 	}
 	rwMethods := []string{"PROPPATCH", "MKCOL", "PUT", "MOVE", "LOCK", "UNLOCK", "DELETE"}
 	if permission == model.ReadOnly && containsString(rwMethods, c.Request.Method) {
-		c.String(http.StatusUnauthorized, "Unauthorized 2")
+		c.String(http.StatusUnauthorized, "You have no permission to do this")
 		return
 	}
 	http.StripPrefix("/api/ss", fs)
@@ -186,7 +186,7 @@ func Download(c *gin.Context) {
 	path := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/download/")
 	permission := GetPermission(path, jwttoken, c)
 	if permission == model.NotAllowed {
-		c.String(http.StatusUnauthorized, "Unauthorized 1")
+		c.String(http.StatusUnauthorized, "Your permission is notAllowed")
 		return
 	}
 
@@ -243,16 +243,21 @@ func GetFiles(c *gin.Context) {
 		return
 	}
 	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/files")
+	token := getFirstToken(param)
 	permission := GetPermission(param, jwttoken, c)
 	if permission == model.NotAllowed {
-		c.String(http.StatusUnauthorized, "Unauthorized 1")
+		c.String(http.StatusUnauthorized, "Your permission is notAllowed")
 		return
 	}
-	if param == "" || param == "/" {
-		paths := ListMySpace(jwttoken.UserID, jwttoken.QueueID, c)
+	paths := ListMySpace(jwttoken.UserID, jwttoken.QueueID, c)
+	if token == "" {
 		data = GetFilesByPaths(paths, c)
 		response.Success(c, data)
 	} else {
+		if !containsString(paths, token) {
+			response.Error(c, "You have no permission to access this file", response.NotSpecified)
+			return
+		}
 		data, err = handleDirsList(fs.FileSystem, param)
 		if err != nil {
 			response.Error(c, err.Error(), response.NotSpecified)
@@ -260,6 +265,16 @@ func GetFiles(c *gin.Context) {
 		}
 		response.Success(c, data)
 	}
+}
+
+func getFirstToken(path string) string {
+	path = strings.TrimLeft(path, "/")
+	cleanedPath := filepath.Clean(path)
+	tokens := strings.Split(cleanedPath, "\\")
+	if len(tokens) > 0 && tokens[0] != "." {
+		return tokens[0]
+	}
+	return ""
 }
 
 // admin获取文件
@@ -273,7 +288,7 @@ func GetAllFiles(c *gin.Context) {
 		return
 	}
 	if jwttoken.RolePlatform != model.RoleAdmin {
-		c.String(http.StatusUnauthorized, "Unauthorized 3")
+		c.String(http.StatusUnauthorized, "Your RolePlatform is not RoleAdmin")
 		return
 	}
 	var queueFlag int
@@ -288,8 +303,8 @@ func GetAllFiles(c *gin.Context) {
 		response.BadRequestError(c, "error url")
 		return
 	}
-
-	if param == "" || param == "/" {
+	token := getFirstToken(param)
+	if token == "" {
 		var paths []string
 		if queueFlag == 1 {
 			paths = ListAllAccountSpaces(c)
@@ -376,12 +391,13 @@ func GetDirSize(c *gin.Context) {
 		return
 	}
 	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/dirsize")
+	token := getFirstToken(param)
 	permission := GetPermission(param, jwttoken, c)
 	if permission == model.NotAllowed {
-		c.String(http.StatusUnauthorized, "Unauthorized 1")
+		c.String(http.StatusUnauthorized, "Your permission is notAllowed")
 		return
 	}
-	if param == "" || param == "/" {
+	if token == "" {
 		response.BadRequestError(c, "Can't get size of all dirs")
 		return
 	}
@@ -463,7 +479,7 @@ func DeleteFile(c *gin.Context) {
 	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/delete/")
 	permission := GetPermission(param, jwttoken, c)
 	if permission == model.NotAllowed || permission == model.ReadOnly {
-		c.String(http.StatusUnauthorized, "Unauthorized 1")
+		c.String(http.StatusUnauthorized, "You have no permission to delete file")
 		return
 	}
 	path := strings.TrimLeft(param, "/")
