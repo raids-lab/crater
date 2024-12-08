@@ -108,6 +108,7 @@ type (
 	ImageInfo struct {
 		ID          uint          `json:"ID"`
 		ImageLink   string        `json:"imageLink"`
+		Description *string       `json:"description"`
 		CreatedAt   time.Time     `json:"createdAt"`
 		TaskType    model.JobType `json:"taskType"`
 		IsPublic    bool          `json:"isPublic"`
@@ -387,6 +388,7 @@ func (mgr *ImagePackMgr) UserListImage(c *gin.Context) {
 		imageInfo := ImageInfo{
 			ID:          image.ID,
 			ImageLink:   image.ImageLink,
+			Description: image.Description,
 			CreatedAt:   image.CreatedAt,
 			IsPublic:    image.IsPublic,
 			TaskType:    image.TaskType,
@@ -451,6 +453,7 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 		imageInfo := ImageInfo{
 			ID:          image.ID,
 			ImageLink:   image.ImageLink,
+			Description: image.Description,
 			CreatedAt:   image.CreatedAt,
 			IsPublic:    image.IsPublic,
 			TaskType:    image.TaskType,
