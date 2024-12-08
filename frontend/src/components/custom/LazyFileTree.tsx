@@ -28,10 +28,8 @@ export const getFolderTitle = (folder: string) => {
     return "公共空间";
   } else if (folder.startsWith("q-")) {
     return "账户空间";
-  } else if (folder.startsWith("u-")) {
-    return "用户空间";
   }
-  return folder;
+  return "用户空间";
 };
 
 type TreeProps = React.HTMLAttributes<HTMLDivElement> & {

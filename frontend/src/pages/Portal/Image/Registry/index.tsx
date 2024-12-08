@@ -4,16 +4,8 @@ import { type FC, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTable } from "@/components/custom/DataTable";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ImageCreateForm } from "./CreateForm";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import {
   apiUserDeleteKaniko,
@@ -36,15 +28,25 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
 import {
-  Database,
+  BookOpenIcon,
+  BoxIcon,
   InfoIcon,
-  LockIcon,
   PackagePlusIcon,
+  PieChartIcon,
   Trash2Icon,
+  HardDriveIcon,
+  KeyIcon,
+  UserRoundIcon,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { useNavigate, useRoutes } from "react-router-dom";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import KanikoDetail from "../Info";
 import {
   DropdownMenu,
@@ -54,6 +56,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
+import { DockerfileSheet } from "./DockerfileSheet";
+import { shortestImageName } from "@/utils/formatter";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -114,7 +118,7 @@ export const ImageTable: FC = () => {
           variant={"link"}
           className="h-8 px-0 text-left font-normal text-secondary-foreground"
         >
-          {row.getValue("imageLink")}
+          {shortestImageName(row.getValue("imageLink"))}
         </Button>
       ),
     },
@@ -222,68 +226,81 @@ export const ImageTable: FC = () => {
   ];
 
   return (
-    <div className="grid flex-1 grid-cols-[1fr,300px] gap-6">
-      <main>
-        <DataTable
-          query={imageQuery}
-          columns={columns}
-          toolbarConfig={toolbarConfig}
-        >
-          <Sheet open={openSheet} onOpenChange={setOpenSheet}>
-            <SheetTrigger asChild>
-              <Button className="h-8 min-w-fit">
-                <PackagePlusIcon />
-                制作镜像
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
-              <SheetHeader>
-                <SheetTitle>制作镜像</SheetTitle>
-              </SheetHeader>
-              <ImageCreateForm closeSheet={() => setOpenSheet(false)} />
-            </SheetContent>
-          </Sheet>
-        </DataTable>
-      </main>
-      <aside className="space-y-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="mb-6 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <LockIcon className="h-4 w-4 text-muted-foreground" />
-                <h2 className="font-semibold">Access Method</h2>
-              </div>
+    <div className="grid gap-x-4 gap-y-6 lg:grid-cols-2">
+      <Card className="flex flex-col justify-between">
+        <CardHeader>
+          <CardTitle className="flex flex-row items-center justify-start gap-2">
+            <BoxIcon className="text-primary" /> 镜像仓库
+          </CardTitle>
+          <CardDescription className="text-balance pt-2 leading-relaxed">
+            通过 Kaniko 制作镜像，支持 Dockerfile 和低代码方式制作镜像
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="flex flex-row gap-3">
+          <Button className="h-8 min-w-fit" onClick={() => setOpenSheet(true)}>
+            <PackagePlusIcon />
+            镜像制作
+          </Button>
+          <Button variant="secondary" className="h-8 min-w-fit">
+            <BookOpenIcon />
+            查看文档
+          </Button>
+        </CardFooter>
+      </Card>
+      <Card className="flex flex-col justify-between">
+        <CardHeader>
+          <CardTitle className="flex flex-row items-center gap-2">
+            <PieChartIcon className="text-primary" />
+            使用情况
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="flex items-center">
+              <BoxIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium text-muted-foreground">
+                镜像总数:
+              </h4>
+              <p className="ml-2 font-bold">3</p>
             </div>
-          </CardContent>
-          <CardFooter className="gap-2">
-            <Badge variant="outline" className="bg-transparent">
-              Repo
-            </Badge>
-            <Badge variant="outline" className="bg-transparent">
-              Project
-            </Badge>
-            <Badge variant="outline" className="bg-transparent">
-              Password
-            </Badge>
-          </CardFooter>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="mb-6 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Database className="h-4 w-4 text-muted-foreground" />
-                <h2 className="font-semibold">Quota used</h2>
-              </div>
+            <div className="flex items-center">
+              <HardDriveIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium text-muted-foreground">
+                存储用量:
+              </h4>
+              <p className="ml-2 font-bold">20GiB / 50GiB</p>
             </div>
-            <div className="text-2xl font-bold">
-              0Byte
-              <span className="ml-2 text-sm text-muted-foreground">
-                of 20GiB
-              </span>
+            <div className="flex items-center">
+              <UserRoundIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium text-muted-foreground">
+                仓库项目:
+              </h4>
+              <p className="ml-2 font-bold">user-admin</p>
             </div>
-          </CardContent>
-        </Card>
-      </aside>
+            <div className="flex items-center">
+              <KeyIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium text-muted-foreground">
+                访问凭据:
+              </h4>
+              <Button variant="link">获取初始账户密码</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      <DataTable
+        query={imageQuery}
+        columns={columns}
+        toolbarConfig={toolbarConfig}
+        className="lg:col-span-2"
+      />
+      <DockerfileSheet
+        isOpen={openSheet}
+        onOpenChange={setOpenSheet}
+        title="镜像制作"
+        description="基于平台提供的基础镜像，快速制作自定义镜像"
+        className="sm:max-w-3xl"
+        closeSheet={() => setOpenSheet(false)}
+      />
     </div>
   );
 };

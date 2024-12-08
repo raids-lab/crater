@@ -27,27 +27,26 @@ import {
 import { cn } from "@/lib/utils";
 import { convertToK8sResources } from "@/utils/resource";
 import { toast } from "sonner";
-import {
-  CircleArrowDown,
-  CircleArrowUp,
-  CirclePlus,
-  XIcon,
-} from "lucide-react";
+import { ChartNoAxesColumn, CirclePlus, XIcon } from "lucide-react";
 import FormLabelMust from "@/components/custom/FormLabelMust";
 import Combobox from "@/components/form/Combobox";
 import AccordionCard from "@/components/custom/AccordionCard";
 import { Separator } from "@/components/ui/separator";
-import { exportToJson, importFromJson, nodeSelectorSchema } from "@/utils/form";
+import {
+  exportToJsonString,
+  importFromJsonString,
+  nodeSelectorSchema,
+} from "@/utils/form";
 import { useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { apiResourceList } from "@/services/api/resource";
 import { apiGetDataset } from "@/services/api/dataset";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
-import { DataMountCard, EnvCard, TensorboardCard, OtherCard } from "./Custom";
-
-const VERSION = "20240528";
-const JOB_TYPE = "jupyter";
+import { DataMountCard, EnvCard, OtherCard } from "./Custom";
+import FormExportButton from "@/components/form/FormExportButton";
+import FormImportButton from "@/components/form/FormImportButton";
+import { MetadataFormJupyter } from "@/components/form/types";
 
 const FileType = 1;
 const DatasetType = 2;
@@ -153,7 +152,6 @@ type FormSchema = z.infer<typeof formSchema>;
 export const Component = () => {
   const [dataMountOpen, setDataMountOpen] = useState<string>(DataMountCard);
   const [envOpen, setEnvOpen] = useState<string>();
-  const [tensorboardOpen, setTensorboardOpen] = useState<string>();
   const [otherOpen, setOtherOpen] = useState<string>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -189,15 +187,7 @@ export const Component = () => {
               },
             ]
           : undefined,
-        template: JSON.stringify(
-          {
-            version: VERSION,
-            type: JOB_TYPE,
-            data: currentValues,
-          },
-          null,
-          2,
-        ),
+        template: exportToJsonString(MetadataFormJupyter, values),
       });
     },
     onSuccess: async (_, { taskname }) => {
@@ -253,11 +243,11 @@ export const Component = () => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       taskname: "",
-      cpu: 1,
+      cpu: 2,
       gpu: {
         count: 0,
       },
-      memory: 2,
+      memory: 4,
       image: "",
       volumeMounts: [
         {
@@ -279,18 +269,18 @@ export const Component = () => {
   const { mutate: fetchJobTemplate } = useMutation({
     mutationFn: (jobName: string) => apiJobTemplate(jobName),
     onSuccess: (response) => {
-      const jobInfo = JSON.parse(response.data.data);
-      form.reset(jobInfo.data);
-      if (jobInfo.data.volumeMounts.length > 0) {
+      const jobInfo = importFromJsonString<FormSchema>(
+        MetadataFormJupyter,
+        response.data.data,
+      );
+      form.reset(jobInfo);
+      if (jobInfo.volumeMounts.length > 0) {
         setDataMountOpen(DataMountCard);
       }
-      if (jobInfo.data.envs.length > 0) {
+      if (jobInfo.envs.length > 0) {
         setEnvOpen(EnvCard);
       }
-      if (jobInfo.data.observability.tbEnable) {
-        setTensorboardOpen(TensorboardCard);
-      }
-      if (jobInfo.data.nodeSelector.enable) {
+      if (jobInfo.nodeSelector.enable) {
         setOtherOpen(OtherCard);
       }
     },
@@ -351,81 +341,31 @@ export const Component = () => {
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="grid items-start gap-4 md:gap-x-6 lg:grid-cols-3"
+          className="relative grid items-start gap-4 md:gap-x-6 lg:grid-cols-3"
         >
-          <div className="items-centor flex flex-row justify-end gap-3 lg:col-span-3">
-            <Button
-              variant="outline"
-              type="button"
-              className="relative h-8 cursor-pointer lg:-translate-y-12"
-            >
-              <Input
-                onChange={(e) => {
-                  importFromJson<FormSchema>(
-                    VERSION,
-                    JOB_TYPE,
-                    e.target.files?.[0],
-                  )
-                    .then((data) => {
-                      form.reset(data);
-                      if (data.volumeMounts.length > 0) {
-                        setDataMountOpen(DataMountCard);
-                      }
-                      if (data.envs.length > 0) {
-                        setEnvOpen(EnvCard);
-                      }
-                      if (data.observability.tbEnable) {
-                        setTensorboardOpen(TensorboardCard);
-                      }
-                      if (data.nodeSelector.enable) {
-                        setOtherOpen(OtherCard);
-                      }
-                      toast.success(`导入配置成功`);
-                    })
-                    .catch(() => {
-                      toast.error(`解析错误，导入配置失败`);
-                    });
-                }}
-                type="file"
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-              />
-              <CircleArrowDown className="h-4 w-4" />
-              导入配置
-            </Button>
-            <Button
-              variant="outline"
-              type="button"
-              className="h-8 lg:-translate-y-12"
-              onClick={() => {
-                form
-                  .trigger()
-                  .then((isValid) => {
-                    if (!isValid) {
-                      return;
-                    }
-                    exportToJson(
-                      {
-                        version: VERSION,
-                        type: JOB_TYPE,
-                        data: currentValues,
-                      },
-                      currentValues.taskname + ".json",
-                    );
-                  })
-                  .catch((error) => {
-                    toast.error((error as Error).message);
-                  });
+          <div className="items-centor absolute right-0 top-0 flex w-fit -translate-y-12 flex-row justify-end gap-3 lg:col-span-3">
+            <FormImportButton
+              metadata={MetadataFormJupyter}
+              form={form}
+              afterImport={(data) => {
+                if (data.volumeMounts.length > 0) {
+                  setDataMountOpen(DataMountCard);
+                }
+                if (data.envs.length > 0) {
+                  setEnvOpen(EnvCard);
+                }
+                if (data.nodeSelector.enable) {
+                  setOtherOpen(OtherCard);
+                }
               }}
-            >
-              <CircleArrowUp className="h-4 w-4" />
-              导出配置
-            </Button>
-            <Button type="submit" className="h-8 lg:-translate-y-12">
+            />
+            <FormExportButton metadata={MetadataFormJupyter} form={form} />
+            <Button type="submit">
               <CirclePlus className="h-4 w-4" />
               提交作业
             </Button>
           </div>
-          <Card className="lg:col-span-2 lg:-translate-y-12">
+          <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle>基本设置</CardTitle>
             </CardHeader>
@@ -471,6 +411,29 @@ export const Component = () => {
                 />
                 <FormField
                   control={form.control}
+                  name="memory"
+                  render={() => (
+                    <FormItem>
+                      <FormLabel>
+                        内存 (GiB)
+                        <FormLabelMust />
+                      </FormLabel>
+                      <FormControl>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            {...form.register("memory", {
+                              valueAsNumber: true,
+                            })}
+                          />
+                        </FormControl>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
                   name="gpu.count"
                   render={() => (
                     <FormItem>
@@ -485,29 +448,6 @@ export const Component = () => {
                             valueAsNumber: true,
                           })}
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="memory"
-                  render={() => (
-                    <FormItem>
-                      <FormLabel>
-                        内存 (GB)
-                        <FormLabelMust />
-                      </FormLabel>
-                      <FormControl>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            {...form.register("memory", {
-                              valueAsNumber: true,
-                            })}
-                          />
-                        </FormControl>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -535,6 +475,16 @@ export const Component = () => {
                   </FormItem>
                 )}
               />
+              <div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => toast.warning("TODO: 为用户提供资源申请分析")}
+                >
+                  <ChartNoAxesColumn className="h-4 w-4" />
+                  资源分析
+                </Button>
+              </div>
               <FormField
                 control={form.control}
                 name={`image`}
@@ -558,7 +508,7 @@ export const Component = () => {
               />
             </CardContent>
           </Card>
-          <div className="flex flex-col gap-4 lg:-translate-y-12">
+          <div className="flex flex-col gap-4">
             <AccordionCard
               cardTitle={DataMountCard}
               value={dataMountOpen}
@@ -764,17 +714,19 @@ export const Component = () => {
               </div>
             </AccordionCard>
             <AccordionCard
-              cardTitle={TensorboardCard}
-              value={tensorboardOpen}
-              setValue={setTensorboardOpen}
+              cardTitle={OtherCard}
+              value={otherOpen}
+              setValue={setOtherOpen}
             >
-              <div className="mt-3 space-y-2">
+              <div className="mt-3 space-y-3">
                 <FormField
                   control={form.control}
                   name={`observability.tbEnable`}
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between space-x-0 space-y-0">
-                      <FormLabel>启用 Tensorboard</FormLabel>
+                      <FormLabel className="font-normal">
+                        接收状态通知
+                      </FormLabel>
                       <FormControl>
                         <Switch
                           checked={field.value}
@@ -786,37 +738,12 @@ export const Component = () => {
                 />
                 <FormField
                   control={form.control}
-                  name={`observability.tbLogDir`}
-                  render={({ field }) => (
-                    <FormItem
-                      className={cn({
-                        hidden: !currentValues.observability.tbEnable,
-                      })}
-                    >
-                      <FormControl>
-                        <Input {...field} className="font-mono" />
-                      </FormControl>
-                      <FormDescription>
-                        日志路径（仅支持采集个人文件夹下日志）
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </AccordionCard>
-            <AccordionCard
-              cardTitle={OtherCard}
-              value={otherOpen}
-              setValue={setOtherOpen}
-            >
-              <div className="mt-3 space-y-2">
-                <FormField
-                  control={form.control}
                   name={`nodeSelector.enable`}
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between space-x-0 space-y-0">
-                      <FormLabel>启用节点选择功能</FormLabel>
+                      <FormLabel className="font-normal">
+                        启用节点选择功能
+                      </FormLabel>
                       <FormControl>
                         <Switch
                           checked={field.value}

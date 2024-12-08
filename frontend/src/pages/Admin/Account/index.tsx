@@ -16,13 +16,7 @@ import { apiResourceList } from "@/services/api/resource";
 import { AccountFormSchema, formSchema } from "./account-form";
 import { getColumns, toolbarConfig } from "./account-table";
 import { Button } from "@/components/ui/button";
-import {
-  CalendarIcon,
-  CircleArrowDown,
-  CircleArrowUp,
-  CirclePlusIcon,
-  XIcon,
-} from "lucide-react";
+import { CalendarIcon, CirclePlusIcon, XIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Form,
@@ -39,16 +33,6 @@ import FormLabelMust from "@/components/custom/FormLabelMust";
 import LoadableButton from "@/components/custom/LoadableButton";
 import { z } from "zod";
 import { toast } from "sonner";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import useResizeObserver from "use-resize-observer";
-import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { exportToJson, importFromJson } from "@/utils/form";
 import {
   Popover,
   PopoverContent,
@@ -62,14 +46,16 @@ import { convertFormToQuota, convertQuotaToForm } from "@/utils/quota";
 import SelectBox from "@/components/custom/SelectBox";
 import { apiAdminUserList } from "@/services/api/admin/user";
 import { logger } from "@/utils/loglevel";
-
-const VERSION = "20240623";
-const JOB_TYPE = "queue";
+import SandwichSheet from "@/components/sheet/SandwichSheet";
+import FormImportButton from "@/components/form/FormImportButton";
+import FormExportButton from "@/components/form/FormExportButton";
+import { MetadataFormAccount } from "@/components/form/types";
 
 export const Account = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { scheduler } = useAtomValue(globalSettings);
   const queryClient = useQueryClient();
+  const [cachedFormName, setCachedFormName] = useState<string | null>(null);
 
   const { data: userList } = useQuery({
     queryKey: ["admin", "userlist"],
@@ -168,8 +154,6 @@ export const Account = () => {
     },
   });
 
-  const { ref: refRoot, width, height } = useResizeObserver();
-
   // 1. Define your form.
   const form = useForm<AccountFormSchema>({
     resolver: zodResolver(formSchema),
@@ -240,323 +224,263 @@ export const Account = () => {
           新建账户
         </Button>
       </DataTable>
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent className="p-0 sm:max-w-4xl">
-          <div className="relative -z-10 h-screen">
-            <SheetHeader className="">
-              <SheetTitle className="my-6 h-6 pl-6">
-                {form.getValues("id") ? "编辑" : "新建"}账户
-              </SheetTitle>
-            </SheetHeader>
-            <div ref={refRoot} className="h-[calc(100vh-_156px)]">
-              <ScrollArea style={{ width, height }}>
-                <Form {...form}>
-                  <form
-                    onSubmit={form.handleSubmit(onSubmit)}
-                    className="grid gap-4 px-6"
-                  >
-                    <div className="flex flex-row items-start justify-between gap-4">
-                      <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem className="col-span-1 flex-grow">
-                            <FormLabel>
-                              账户名称
-                              <FormLabelMust />
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                autoComplete="off"
-                                {...field}
-                                className="w-full"
-                                autoFocus={true}
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              账户名称最多16个字符，可以包含汉字，但必须是唯一的
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+      <SandwichSheet
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+        title={form.getValues("id") ? "编辑账户" : "新建账户"}
+        description="账户可包含多名用户，每个账户可设置资源配额和过期时间"
+        className="sm:max-w-4xl"
+        footer={
+          <>
+            <FormImportButton
+              form={form}
+              metadata={MetadataFormAccount}
+              beforeImport={(data) => {
+                setCachedFormName(data.name);
+              }}
+              afterImport={() => {
+                if (cachedFormName) {
+                  form.setValue("name", cachedFormName);
+                  form.setValue("expiredAt", undefined);
+                }
+                setCachedFormName(null);
+              }}
+            />
+            <FormExportButton form={form} metadata={MetadataFormAccount} />
+            <LoadableButton
+              isLoading={isCreatePending || isUpdatePending}
+              type="submit"
+              onClick={() => {
+                form
+                  .trigger()
+                  .then(() => {
+                    if (form.formState.isValid) {
+                      onSubmit(form.getValues());
+                    }
+                  })
+                  .catch((e) => logger.debug(e));
+              }}
+            >
+              <CirclePlusIcon className="h-4 w-4" />
+              {form.getValues("id") ? "更新账户" : "新建账户"}
+            </LoadableButton>
+          </>
+        }
+      >
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="grid gap-4 px-6"
+          >
+            <div className="flex flex-row items-start justify-between gap-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem className="col-span-1 flex-grow">
+                    <FormLabel>
+                      账户名称
+                      <FormLabelMust />
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        autoComplete="off"
+                        {...field}
+                        className="w-full"
+                        autoFocus={true}
                       />
-                      <FormField
-                        control={form.control}
-                        name="expiredAt"
-                        render={({ field }) => (
-                          <FormItem className="col-span-1 flex flex-col space-y-2">
-                            <FormLabel className="pb-1 pt-1.5">
-                              过期时间
-                            </FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                      "w-[240px] pl-3 text-left font-normal",
-                                      !field.value && "text-muted-foreground",
-                                    )}
-                                  >
-                                    {field.value ? (
-                                      format(field.value, "PPP", {
-                                        locale: zhCN,
-                                      })
-                                    ) : (
-                                      <span>请选择日期</span>
-                                    )}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                className="w-auto p-0"
-                                align="start"
-                              >
-                                <Calendar
-                                  mode="single"
-                                  locale={zhCN}
-                                  selected={field.value}
-                                  onSelect={field.onChange}
-                                  disabled={(date) => date < new Date()}
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
-                            <FormDescription>
-                              若不填写，账户将永不过期
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    {!form.getValues("id") && (
-                      <FormField
-                        control={form.control}
-                        name="admins"
-                        render={() => (
-                          <FormItem className="col-span-1 flex-grow">
-                            <FormLabel>
-                              账户管理员
-                              <FormLabelMust />
-                            </FormLabel>
-                            <FormControl>
-                              <SelectBox
-                                className="col-span-4 h-8"
-                                options={userList ?? []}
-                                inputPlaceholder="搜索用户"
-                                placeholder="选择用户"
-                                value={currentValues.admins}
-                                onChange={(value) =>
-                                  form.setValue("admins", value)
-                                }
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              指定账户管理员后，账户内的用户管理、资源分配等操作，将由账户管理员负责
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-                    <div className="space-y-2">
-                      {resourcesFields.length > 0 && (
-                        <FormLabel>资源配额</FormLabel>
-                      )}
-                      {resourcesFields.map(({ id }, index) => (
-                        <div key={id} className="flex flex-row gap-2">
-                          <FormField
-                            control={form.control}
-                            name={`resources.${index}.name`}
-                            render={({ field }) => (
-                              <FormItem className="w-fit">
-                                <FormControl>
-                                  <Input
-                                    {...field}
-                                    placeholder="资源"
-                                    className="font-mono"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
+                    </FormControl>
+                    <FormDescription>
+                      账户名称最多16个字符，可以包含汉字，但必须是唯一的
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="expiredAt"
+                render={({ field }) => (
+                  <FormItem className="col-span-1 flex flex-col space-y-2">
+                    <FormLabel className="pb-1 pt-1.5">过期时间</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-[240px] pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground",
                             )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name={`resources.${index}.guaranteed`}
-                            render={() => (
-                              <FormItem>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    placeholder="保证"
-                                    className="font-mono"
-                                    {...form.register(
-                                      `resources.${index}.guaranteed`,
-                                      { valueAsNumber: true },
-                                    )}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP", {
+                                locale: zhCN,
+                              })
+                            ) : (
+                              <span>请选择日期</span>
                             )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name={`resources.${index}.deserved`}
-                            render={() => (
-                              <FormItem>
-                                <FormControl>
-                                  <Input
-                                    type="string"
-                                    placeholder="应得"
-                                    className="font-mono"
-                                    {...form.register(
-                                      `resources.${index}.deserved`,
-                                      { valueAsNumber: true },
-                                    )}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name={`resources.${index}.capability`}
-                            render={() => (
-                              <FormItem>
-                                <FormControl>
-                                  <Input
-                                    type="string"
-                                    placeholder="上限"
-                                    className="font-mono"
-                                    {...form.register(
-                                      `resources.${index}.capability`,
-                                      { valueAsNumber: true },
-                                    )}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <div>
-                            <Button
-                              size="icon"
-                              type="button"
-                              variant="outline"
-                              onClick={() => resourcesRemove(index)}
-                            >
-                              <XIcon className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                      {resourcesFields.length > 0 && (
-                        <FormDescription>
-                          请输入整数，CPU 资源单位为核数，Memory 资源单位为
-                          GB。如果不填写，则保证和应得为 0，上限为无穷大
-                        </FormDescription>
-                      )}
-
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={() =>
-                          resourcesAppend({
-                            name: "",
-                          })
-                        }
-                      >
-                        <CirclePlusIcon className="mr-2 h-4 w-4" />
-                        添加配额维度
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </ScrollArea>
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          locale={zhCN}
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) => date < new Date()}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormDescription>若不填写，账户将永不过期</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
-            <SheetFooter className="absolute bottom-0 left-0 right-0 gap-2 p-6">
+            {!form.getValues("id") && (
+              <FormField
+                control={form.control}
+                name="admins"
+                render={() => (
+                  <FormItem className="col-span-1 flex-grow">
+                    <FormLabel>
+                      账户管理员
+                      <FormLabelMust />
+                    </FormLabel>
+                    <FormControl>
+                      <SelectBox
+                        className="col-span-4 h-8"
+                        options={userList ?? []}
+                        inputPlaceholder="搜索用户"
+                        placeholder="选择用户"
+                        value={currentValues.admins}
+                        onChange={(value) => form.setValue("admins", value)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      指定账户管理员后，账户内的用户管理、资源分配等操作，将由账户管理员负责
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+            <div className="space-y-2">
+              {resourcesFields.length > 0 && <FormLabel>资源配额</FormLabel>}
+              {resourcesFields.map(({ id }, index) => (
+                <div key={id} className="flex flex-row gap-2">
+                  <FormField
+                    control={form.control}
+                    name={`resources.${index}.name`}
+                    render={({ field }) => (
+                      <FormItem className="w-fit">
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="资源"
+                            className="font-mono"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`resources.${index}.guaranteed`}
+                    render={() => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="保证"
+                            className="font-mono"
+                            {...form.register(`resources.${index}.guaranteed`, {
+                              valueAsNumber: true,
+                            })}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`resources.${index}.deserved`}
+                    render={() => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            type="string"
+                            placeholder="应得"
+                            className="font-mono"
+                            {...form.register(`resources.${index}.deserved`, {
+                              valueAsNumber: true,
+                            })}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`resources.${index}.capability`}
+                    render={() => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            type="string"
+                            placeholder="上限"
+                            className="font-mono"
+                            {...form.register(`resources.${index}.capability`, {
+                              valueAsNumber: true,
+                            })}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div>
+                    <Button
+                      size="icon"
+                      type="button"
+                      variant="outline"
+                      onClick={() => resourcesRemove(index)}
+                    >
+                      <XIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {resourcesFields.length > 0 && (
+                <FormDescription>
+                  请输入整数，CPU 资源单位为核数，Memory 资源单位为
+                  GB。如果不填写，则保证和应得为 0，上限为无穷大
+                </FormDescription>
+              )}
+
               <Button
-                variant="outline"
                 type="button"
-                className="relative cursor-pointer"
-              >
-                <Input
-                  onChange={(e) => {
-                    importFromJson<AccountFormSchema>(
-                      VERSION,
-                      JOB_TYPE,
-                      e.target.files?.[0],
-                    )
-                      .then((data) => {
-                        // preserve the name
-                        const name = currentValues.name;
-                        form.reset(data);
-                        form.setValue("name", name);
-                        toast.success(`导入配置成功`);
-                      })
-                      .catch(() => {
-                        toast.error(`解析错误，导入配置失败`);
-                      });
-                  }}
-                  type="file"
-                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                />
-                <CircleArrowDown className="h-4 w-4" />
-                导入配置
-              </Button>
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => {
-                  form
-                    .trigger()
-                    .then((isValid) => {
-                      if (!isValid) {
-                        return;
-                      }
-                      exportToJson(
-                        {
-                          version: VERSION,
-                          type: JOB_TYPE,
-                          data: currentValues,
-                        },
-                        currentValues.name + ".json",
-                      );
-                    })
-                    .catch((error) => {
-                      toast.error((error as Error).message);
-                    });
-                }}
-              >
-                <CircleArrowUp className="h-4 w-4" />
-                导出配置
-              </Button>
-              <LoadableButton
-                isLoading={isCreatePending || isUpdatePending}
-                type="submit"
-                onClick={() => {
-                  form
-                    .trigger()
-                    .then(() => {
-                      if (form.formState.isValid) {
-                        onSubmit(form.getValues());
-                      }
-                    })
-                    .catch((e) => logger.debug(e));
-                }}
+                variant="secondary"
+                onClick={() =>
+                  resourcesAppend({
+                    name: "",
+                  })
+                }
               >
                 <CirclePlusIcon className="h-4 w-4" />
-                {form.getValues("id") ? "更新账户" : "新建账户"}
-              </LoadableButton>
-            </SheetFooter>
-          </div>
-        </SheetContent>
-      </Sheet>
+                添加资源配额维度
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </SandwichSheet>
     </>
   );
 };

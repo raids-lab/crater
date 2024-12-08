@@ -11,6 +11,7 @@ const nonNegativeNumberSchema = z
       message: "资源配额至少为 0",
     }),
     z.nan(),
+    z.nullable(z.undefined()),
   ])
   .optional();
 

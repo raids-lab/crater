@@ -38,8 +38,8 @@ import Combobox from "@/components/form/Combobox";
 import AccordionCard from "@/components/custom/AccordionCard";
 import { Separator } from "@/components/ui/separator";
 import {
-  exportToJson,
-  importFromJson,
+  exportToJsonFile,
+  importFromJsonFile,
   observabilitySchema,
   volumeMountsSchema,
   envsSchema,
@@ -280,7 +280,7 @@ export const Component = () => {
               >
                 <Input
                   onChange={(e) => {
-                    importFromJson<FormSchema>(
+                    importFromJsonFile<FormSchema>(
                       VERSION,
                       JOB_TYPE,
                       e.target.files?.[0],
@@ -319,7 +319,7 @@ export const Component = () => {
                       if (!isValid) {
                         return;
                       }
-                      exportToJson(
+                      exportToJsonFile(
                         {
                           version: VERSION,
                           type: JOB_TYPE,

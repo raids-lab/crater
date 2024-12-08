@@ -128,7 +128,7 @@ export const imagepackSourceType: {
 }[] = [
   {
     value: 1,
-    label: "镜像制作",
+    label: "镜像仓库",
   },
   {
     value: 2,

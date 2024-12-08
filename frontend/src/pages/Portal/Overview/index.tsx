@@ -383,7 +383,7 @@ export const Component: FC = () => {
               className="hidden xl:flex"
             >
               <BoxIcon className="h-4 w-4" />
-              镜像制作
+              镜像仓库
             </Button>
             <Button
               variant="secondary"
