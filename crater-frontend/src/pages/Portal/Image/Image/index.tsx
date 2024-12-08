@@ -1,9 +1,9 @@
-import { DataTableToolbarConfig } from "@/components/custom/OldDataTable/DataTableToolbar";
+import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, type FC, useState } from "react";
+import { type FC, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTableColumnHeader } from "@/components/custom/OldDataTable/DataTableColumnHeader";
-import { DataTable } from "@/components/custom/OldDataTable";
+import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
+import { DataTable } from "@/components/custom/DataTable";
 import {
   Sheet,
   SheetContent,
@@ -59,22 +59,18 @@ export const Component: FC = () => {
   const imageInfo = useQuery({
     queryKey: ["imagelink", "list"],
     queryFn: () => apiUserListImage(),
-    select: (res) => res.data.data.imageList,
+    select: (res) =>
+      res.data.data.imageList.map((item) => ({
+        id: item.ID,
+        imageLink: item.imageLink,
+        status: item.status,
+        createdAt: item.createdAt,
+        taskType: item.taskType,
+        isPublic: item.isPublic,
+        creatorName: item.creatorName,
+      })),
   });
-  const data: ImageInfo[] = useMemo(() => {
-    if (!imageInfo.data) {
-      return [];
-    }
-    return imageInfo.data.map((item) => ({
-      id: item.ID,
-      imageLink: item.imageLink,
-      status: item.status,
-      createdAt: item.createdAt,
-      taskType: item.taskType,
-      isPublic: item.isPublic,
-      creatorName: item.creatorName,
-    }));
-  }, [imageInfo.data]);
+
   const refetchImagePackList = async () => {
     try {
       // 并行发送所有异步请求
@@ -233,10 +229,9 @@ export const Component: FC = () => {
 
   return (
     <DataTable
-      data={data}
+      query={imageInfo}
       columns={columns}
       toolbarConfig={toolbarConfig}
-      loading={imageInfo.isLoading}
       className="col-span-3"
     >
       <Sheet open={openSheet} onOpenChange={setOpenSheet}>
