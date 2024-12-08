@@ -184,6 +184,11 @@ func (mgr *ContextMgr) UpdateUserAttributes(c *gin.Context) {
 		return
 	}
 
+	// Fix UID and GID are not allowed to be updated
+	attributes.ID = user.Attributes.Data().ID
+	attributes.UID = user.Attributes.Data().UID
+	attributes.GID = user.Attributes.Data().GID
+
 	user.Attributes = datatypes.NewJSONType(attributes)
 	if err := u.WithContext(c).Save(user); err != nil {
 		resputil.Error(c, "Failed to update user attributes", resputil.NotSpecified)
