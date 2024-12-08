@@ -32,11 +32,11 @@ import {
   BoxIcon,
   InfoIcon,
   PackagePlusIcon,
-  PieChartIcon,
   Trash2Icon,
   HardDriveIcon,
   KeyIcon,
   UserRoundIcon,
+  ChartColumnIcon,
 } from "lucide-react";
 import { useNavigate, useRoutes } from "react-router-dom";
 import {
@@ -241,7 +241,11 @@ export const ImageTable: FC = () => {
             <PackagePlusIcon />
             镜像制作
           </Button>
-          <Button variant="secondary" className="h-8 min-w-fit">
+          <Button
+            variant="secondary"
+            className="h-8 min-w-fit"
+            onClick={() => toast.warning("TODO(huangsy): 补充镜像文档")}
+          >
             <BookOpenIcon />
             查看文档
           </Button>
@@ -250,7 +254,7 @@ export const ImageTable: FC = () => {
       <Card className="flex flex-col justify-between">
         <CardHeader>
           <CardTitle className="flex flex-row items-center gap-2">
-            <PieChartIcon className="text-primary" />
+            <ChartColumnIcon className="text-primary" />
             使用情况
           </CardTitle>
         </CardHeader>
@@ -282,7 +286,14 @@ export const ImageTable: FC = () => {
               <h4 className="text-sm font-medium text-muted-foreground">
                 访问凭据:
               </h4>
-              <Button variant="link">获取初始账户密码</Button>
+              <Button
+                variant="link"
+                onClick={() =>
+                  toast.warning("TODO(huangsy): 提供 Harbor Project 账户密码")
+                }
+              >
+                获取初始凭据
+              </Button>
             </div>
           </div>
         </CardContent>

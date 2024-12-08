@@ -46,7 +46,7 @@ import ResourceBadges from "@/components/label/ResourceBadges";
 import JobTypeLabel from "@/components/custom/JobTypeLabel";
 import { globalJobUrl } from "@/utils/store";
 import { useAtomValue } from "jotai";
-import { FlaskConicalIcon, Trash2Icon } from "lucide-react";
+import { Trash2Icon, WaypointsIcon } from "lucide-react";
 
 const VolcanoOverview = () => {
   const queryClient = useQueryClient();
@@ -244,7 +244,7 @@ const VolcanoOverview = () => {
         <Card className="row-span-2 flex flex-col justify-between lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex flex-row items-center justify-start gap-2">
-              <FlaskConicalIcon className="text-primary" /> 批处理作业
+              <WaypointsIcon className="text-primary" /> 批处理作业
             </CardTitle>
             <CardDescription className="text-balance pt-2 leading-relaxed">
               指无须人工干预而执行系列程序的作业，包含单机作业、Pytorch
