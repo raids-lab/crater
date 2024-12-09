@@ -4,6 +4,10 @@ sidebar_position: 4
 
 # 批处理作业
 
+## 提交一个PyToch手写识别GPU训练作业
+
+Crater的 **单机批处理任务** 用于在一个特定环境下按既定的指令执行并获得结果。
+
 ## 上传代码
 
 ### 在本地创建代码
@@ -187,22 +191,6 @@ if __name__ == '__main__':
 可以选择公共镜像，也可选择自己的镜像，关于公共镜像的介绍以及如何创建自己的镜像在相关文档中
 
 ### 启动命令
-
-在 Docker 中，可以通过 `docker run` 命令的 `-c` 或 `--entrypoint` 选项来覆盖镜像的默认启动命令 **此系统的启动命令就是需要覆盖的命令。** 如果你需要执行多行命令，可以使用 `;` 将它们连接起来。
-
-以下是一个示例，展示如何使用 `docker run` 命令覆盖镜像的启动命令，并通过 `;` 拆分多行命令：
-
-```bash
-docker run -it --entrypoint /bin/bash nvcr.io/nvidia/k8s/container-toolkit:v1.17.1-ubuntu20.04 -c "command1; command2; command3"
-```
-
-在这个示例中：
-
-- `--entrypoint /bin/bash`：覆盖了镜像的默认入口点，使用 `/bin/bash` 作为新的入口点。
-
-- `-c "command1; command2; command3"`：传递一个包含多行命令的字符串，使用 `;` 分隔每个命令。
-
-**在本系统中启动命令中需要填的内容即为 command1; command2; command3**
 
 #### 示例命令
 
