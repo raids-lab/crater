@@ -90,7 +90,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		volumeMounts = append(volumeMounts, v1.VolumeMount{
 			Name:      "bash-script-volume",
 			MountPath: "/usr/bin/start.sh",
-			ReadOnly:  false,
+			ReadOnly:  true,
 			SubPath:   "start.sh",
 		})
 
