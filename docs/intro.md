@@ -2,46 +2,34 @@
 sidebar_position: 1
 ---
 
-# 简介
+# 用户手册
+## ACT Crater用户手册
+### 平台简介
 
-Let's discover **Docusaurus in less than 5 minutes**.
+Crater 是一款北航自主研发，专门用于集群管理的强大平台，为集群用户提供了高效、便捷的集群资源管理解决方案。它整合了先进的技术，能够对集群中的计算资源、存储资源、网络资源等进行统一的调度和管理，确保集群的稳定运行和资源的优化利用。
 
-## Getting Started
+1. **直观的界面设计**
+   - Crater提供了简洁、易用的用户界面，用户可以通过图形化的操作界面轻松完成各种集群管理任务。例如，直观的资源仪表盘能够实时展示集群资源的使用情况，包括CPU使用率、内存占用、存储容量等关键指标，让用户一目了然。
+   - 任务管理界面清晰地呈现正在运行的任务、任务队列以及任务历史记录，方便用户随时查看任务状态和进行操作。
+   
+2. **高效的资源调度**
+   - 平台采用智能的资源调度算法，根据任务的优先级、资源需求等因素，自动分配最优的资源给任务。例如，当有多个任务同时请求资源时，Crater能够快速分析并将资源分配给最紧急、最关键的任务，提高整体执行效率。
+   - 动态资源调整功能允许用户根据实际需求灵活增加或减少资源分配，确保资源的合理利用，避免资源浪费。
+   
+3. **强大的监控与报警功能**
+   - 实时监控集群中各个节点和服务的运行状态，一旦发现异常情况，如节点故障、服务中断、资源超阈值等，立即向用户发送报警通知。用户可以通过邮件方式接收通知，确保能够及时响应。
+   
+   - 详细的监控数据和日志记录为用户提供了深入了解集群运行情况的依据，方便用户进行故障排查和性能优化。 
 
-Get started by **creating a new site**.
+### 目录
+本手册可帮助集群用户学习如何访问平台，使用交互式作业和批处理作业、提交数据、制作镜像以及VSCode扩展访问等功能
+1. [平台访问](./quick-start/login.md)
+2. [交互式作业](./quick-start/interactive.md)
+3. [批处理作业](./quick-start/batchprocess.md)
+4. [文件系统](./file/file.md)
+5. [数据集](./file/dataset.md)
+6. [镜像制作](./image/imagebuild.md)
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+---
 
-### What you'll need
-
-- [Node.js](https://nodejs.org/en/download/) version 18.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
-
-## Generate a new site
-
-Generate a new Docusaurus site using the **classic template**.
-
-The classic template will automatically be added to your project after you run the command:
-
-```bash
-npm init docusaurus@latest my-website classic
-```
-
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
-
-The command also installs all necessary dependencies you need to run Docusaurus.
-
-## Start your site
-
-Run the development server:
-
-```bash
-cd my-website
-npm run start
-```
-
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
-
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
-
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+希望本手册能帮助你充分利用集群平台的功能！
