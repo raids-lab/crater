@@ -176,7 +176,7 @@ export const ImageTable: FC = () => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="h-8 w-8 p-0">
                     <span className="sr-only">操作</span>
-                    <DotsHorizontalIcon className="h-4 w-4" />
+                    <DotsHorizontalIcon className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -261,28 +261,28 @@ export const ImageTable: FC = () => {
         <CardContent>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="flex items-center">
-              <BoxIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <BoxIcon className="mr-2 size-4 text-muted-foreground" />
               <h4 className="text-sm font-medium text-muted-foreground">
                 镜像总数:
               </h4>
               <p className="ml-2 font-bold">3</p>
             </div>
             <div className="flex items-center">
-              <HardDriveIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <HardDriveIcon className="mr-2 size-4 text-muted-foreground" />
               <h4 className="text-sm font-medium text-muted-foreground">
                 存储用量:
               </h4>
               <p className="ml-2 font-bold">20GiB / 50GiB</p>
             </div>
             <div className="flex items-center">
-              <UserRoundIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <UserRoundIcon className="mr-2 size-4 text-muted-foreground" />
               <h4 className="text-sm font-medium text-muted-foreground">
                 仓库项目:
               </h4>
               <p className="ml-2 font-bold">user-admin</p>
             </div>
             <div className="flex items-center">
-              <KeyIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <KeyIcon className="mr-2 size-4 text-muted-foreground" />
               <h4 className="text-sm font-medium text-muted-foreground">
                 访问凭据:
               </h4>
@@ -307,7 +307,7 @@ export const ImageTable: FC = () => {
       <DockerfileSheet
         isOpen={openSheet}
         onOpenChange={setOpenSheet}
-        title="镜像制作"
+        title="镜像制作 (当前不可用)"
         description="基于平台提供的基础镜像，快速制作自定义镜像"
         className="sm:max-w-3xl"
         closeSheet={() => setOpenSheet(false)}

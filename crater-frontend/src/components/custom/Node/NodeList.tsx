@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { NvidiaGpuInfoCard } from "./GPUInfo";
+import NodeStatusBadge from "@/components/label/NodeStatusBadge";
 
 interface ResourceInfo {
   percent: number;
@@ -98,36 +99,21 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
       <DataTableColumnHeader column={column} title={"状态"} />
     ),
     cell: ({ row }) => {
-      const isReady = row.getValue("isReady");
-      let bgColor = "";
-      let statusText = "";
-      if (isReady === "true") {
-        bgColor = "bg-emerald-500 hover:bg-emerald-400";
-        statusText = "运行中";
-      } else if (isReady === "false") {
-        bgColor = "bg-red-500 hover:bg-red-400";
-        statusText = "异常";
-      } else if (isReady === "Unschedulable") {
-        bgColor = "bg-black hover:bg-gray-800";
-        statusText = "不可调度";
-      }
-      const taint = row.original.taint || "";
-      const equalCount = taint.split("=").length - 1;
+      const taints = row.original.taint.split(",");
       return (
         <div className="flex flex-row items-center justify-start gap-1">
-          <div className={`flex h-3 w-3 rounded-full ${bgColor}`} />
-          <div className="ml-1.5">{statusText}</div>
-          {equalCount > 0 && (
+          <NodeStatusBadge status={row.getValue<string>("isReady")} />
+          {row.original.taint && (
             <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex h-4 w-4 items-center justify-center rounded bg-black text-xs text-white">
-                  {equalCount}
-                </div>
+              <TooltipTrigger className="flex size-4 items-center justify-center rounded-full bg-slate-600 text-xs text-white">
+                {taints.length}
               </TooltipTrigger>
-              <TooltipContent>
-                <div className="rounded bg-gray-800 p-2 text-white">
-                  {taint}
-                </div>
+              <TooltipContent className="border bg-muted font-mono text-muted-foreground">
+                {taints.map((taint, index) => (
+                  <p key={index} className="text-xs">
+                    {taint}
+                  </p>
+                ))}
               </TooltipContent>
             </Tooltip>
           )}

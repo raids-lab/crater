@@ -266,7 +266,7 @@ export const Component = () => {
                 className="h-8 w-8"
                 onClick={() => navigate(-1)}
               >
-                <ChevronLeftIcon className="h-4 w-4" />
+                <ChevronLeftIcon className="size-4" />
               </Button>
               <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
                 Tensorflow 分布式训练作业
@@ -305,7 +305,7 @@ export const Component = () => {
                   type="file"
                   className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                 />
-                <CircleArrowDown className="h-4 w-4" />
+                <CircleArrowDown className="size-4" />
                 导入配置
               </Button>
               <Button
@@ -333,11 +333,11 @@ export const Component = () => {
                     });
                 }}
               >
-                <CircleArrowUp className="h-4 w-4" />
+                <CircleArrowUp className="size-4" />
                 导出配置
               </Button>
               <Button type="submit">
-                <CirclePlus className="h-4 w-4" />
+                <CirclePlus className="size-4" />
                 提交作业
               </Button>
             </div>
@@ -583,7 +583,7 @@ export const Component = () => {
                         type="button"
                         onClick={() => psPortRemove(index)}
                       >
-                        <XIcon className="h-4 w-4" />
+                        <XIcon className="size-4" />
                       </Button>
                     </div>
                   ))}
@@ -592,7 +592,7 @@ export const Component = () => {
                     variant="secondary"
                     onClick={() => psPortAppend({ name: "", port: 0 })}
                   >
-                    <CirclePlusIcon className="h-4 w-4" />
+                    <CirclePlusIcon className="size-4" />
                     添加端口
                   </Button>
                 </div>
@@ -816,7 +816,7 @@ export const Component = () => {
                         variant="outline"
                         onClick={() => workerPortRemove(index)}
                       >
-                        <XIcon className="h-4 w-4" />
+                        <XIcon className="size-4" />
                       </Button>
                     </div>
                   ))}
@@ -825,7 +825,7 @@ export const Component = () => {
                     variant="secondary"
                     onClick={() => workerPortAppend({ name: "", port: 0 })}
                   >
-                    <CirclePlusIcon className="h-4 w-4" />
+                    <CirclePlusIcon className="size-4" />
                     添加端口
                   </Button>
                 </div>
@@ -859,7 +859,7 @@ export const Component = () => {
                               onClick={() => volumeMountRemove(index)}
                               className="absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
                             >
-                              <XIcon className="h-4 w-4" />
+                              <XIcon className="size-4" />
                               <span className="sr-only">Close</span>
                             </button>
                             <FormControl>
@@ -937,7 +937,7 @@ export const Component = () => {
                     })
                   }
                 >
-                  <CirclePlus className="h-4 w-4" />
+                  <CirclePlus className="size-4" />
                   添加{DataMountCard}
                 </Button>
               </div>
@@ -964,7 +964,7 @@ export const Component = () => {
                               onClick={() => envRemove(index)}
                               className="absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
                             >
-                              <XIcon className="h-4 w-4" />
+                              <XIcon className="size-4" />
                               <span className="sr-only">Close</span>
                             </button>
                             <FormLabel>
@@ -1008,7 +1008,7 @@ export const Component = () => {
                     })
                   }
                 >
-                  <CirclePlus className="h-4 w-4" />
+                  <CirclePlus className="size-4" />
                   添加{EnvCard}
                 </Button>
               </div>

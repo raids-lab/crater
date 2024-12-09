@@ -2,7 +2,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { apiJobGetPods, PodDetail } from "@/services/api/vcjob";
 import ResourceBadges from "@/components/label/ResourceBadges";
 import PodPhaseLabel, { podPhases } from "@/components/label/PodPhaseLabel";
-import { EthernetPort, LogsIcon, TerminalIcon } from "lucide-react";
+import { EthernetPort, GaugeIcon, LogsIcon, TerminalIcon } from "lucide-react";
 import { DataTable } from "@/components/custom/DataTable";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -21,6 +21,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 
 const POD_MONITOR = import.meta.env.VITE_GRAFANA_POD_MEMORY;
@@ -81,14 +87,23 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
       cell: ({ row }) => {
         const pod = row.original;
         return pod.name ? (
-          <a
-            href={`${POD_MONITOR}?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`}
-            className="font-mono underline-offset-4 hover:underline"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {pod.name}
-          </a>
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <a
+                  href={`${POD_MONITOR}?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`}
+                  className="font-mono underline-offset-4 hover:underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {pod.name}
+                </a>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-44 border bg-background text-foreground">
+                查看 Pod 监控
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         ) : (
           "---"
         );
@@ -140,7 +155,7 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
                 <span className="sr-only">更多操作</span>
-                <DotsHorizontalIcon className="h-4 w-4" />
+                <DotsHorizontalIcon className="size-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -156,9 +171,22 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
                   });
                 }}
               >
-                <TerminalIcon className="text-primary" />
-                Terminal
+                <GaugeIcon className="text-green-600 dark:text-green-500" />
+                Pod 监控
               </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={pod.phase !== "Running"}
+                onClick={() => {
+                  setShowTerminal({
+                    namespace: pod.namespace,
+                    name: pod.name,
+                  });
+                }}
+              >
+                <TerminalIcon className="text-primary" />
+                Web 终端
+              </DropdownMenuItem>
+
               <DropdownMenuItem
                 disabled={pod.phase !== "Running"}
                 onClick={() => {

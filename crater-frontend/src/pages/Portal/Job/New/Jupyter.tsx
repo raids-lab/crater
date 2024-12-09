@@ -28,7 +28,7 @@ import { convertToK8sResources } from "@/utils/resource";
 import { toast } from "sonner";
 import { ChartNoAxesColumn, CirclePlus, XIcon } from "lucide-react";
 import FormLabelMust from "@/components/custom/FormLabelMust";
-import Combobox from "@/components/form/Combobox";
+import Combobox, { ComboboxItem } from "@/components/form/Combobox";
 import AccordionCard from "@/components/custom/AccordionCard";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -39,7 +39,7 @@ import {
 import { useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { apiResourceList } from "@/services/api/resource";
-import { apiGetDataset } from "@/services/api/dataset";
+import { apiGetDataset, Dataset } from "@/services/api/dataset";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
 import { DataMountCard, EnvCard, OtherCard } from "./Custom";
@@ -48,6 +48,7 @@ import FormImportButton from "@/components/form/FormImportButton";
 import { MetadataFormJupyter } from "@/components/form/types";
 import ImageItem from "@/components/form/ImageItem";
 import useImageQuery from "@/hooks/query/useImageQuery";
+import DatasetItem from "@/components/form/DatasetItem";
 
 const FileType = 1;
 const DatasetType = 2;
@@ -208,10 +209,14 @@ export const Component = () => {
     queryKey: ["datsets"],
     queryFn: () => apiGetDataset(),
     select: (res) => {
-      return res.data.data.map((item) => ({
-        value: item.id.toString(),
-        label: item.name,
-      }));
+      return res.data.data.map(
+        (item) =>
+          ({
+            value: item.id.toString(),
+            label: item.name,
+            detail: item,
+          }) as ComboboxItem<Dataset>,
+      );
     },
   });
 
@@ -245,7 +250,7 @@ export const Component = () => {
         {
           type: FileType,
           subPath: user.space,
-          mountPath: "/home/" + user.name,
+          mountPath: `/home/${user.name}`,
         },
       ],
       envs: [],
@@ -353,7 +358,7 @@ export const Component = () => {
             />
             <FormExportButton metadata={MetadataFormJupyter} form={form} />
             <Button type="submit">
-              <CirclePlus className="h-4 w-4" />
+              <CirclePlus className="size-4" />
               提交作业
             </Button>
           </div>
@@ -473,7 +478,7 @@ export const Component = () => {
                   variant="secondary"
                   onClick={() => toast.warning("TODO: 为用户提供资源申请分析")}
                 >
-                  <ChartNoAxesColumn className="h-4 w-4" />
+                  <ChartNoAxesColumn className="size-4" />
                   资源分析
                 </Button>
               </div>
@@ -517,104 +522,137 @@ export const Component = () => {
                       <FormField
                         control={form.control}
                         name={`volumeMounts.${index}.subPath`}
-                        render={({ field }) => (
-                          <FormItem className="relative">
-                            <FormLabel>
-                              挂载源 {index + 1}
-                              <FormLabelMust />
-                            </FormLabel>
-                            <button
-                              onClick={() => volumeMountRemove(index)}
-                              className="absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
-                            >
-                              <XIcon className="h-4 w-4" />
-                              <span className="sr-only">Close</span>
-                            </button>
-                            <FormControl>
-                              <Tabs defaultValue="file" className="w-full">
-                                <TabsList className="grid w-full grid-cols-2">
-                                  <TabsTrigger
-                                    value="file"
-                                    onClick={() =>
-                                      resetVolumeMountsFields(index, FileType)
-                                    }
-                                  >
-                                    文件系统
-                                  </TabsTrigger>
-                                  <TabsTrigger
-                                    value="dataset"
-                                    onClick={() =>
-                                      resetVolumeMountsFields(
-                                        index,
-                                        DatasetType,
-                                      )
-                                    }
-                                  >
-                                    数据集
-                                  </TabsTrigger>
-                                </TabsList>
-                                <TabsContent value="file">
-                                  <FileSelectDialog
-                                    value={field.value.split("/").pop()}
-                                    handleSubmit={(item) => {
-                                      field.onChange(item.id);
-                                      form.setValue(
-                                        `volumeMounts.${index}.type`,
-                                        FileType,
-                                      );
-                                      form.setValue(
-                                        `volumeMounts.${index}.mountPath`,
-                                        `/mnt/${item.name}`,
-                                      );
-                                    }}
-                                  />
-                                </TabsContent>
-                                <TabsContent value="dataset">
-                                  <Combobox
-                                    items={datasetInfo.data ?? []}
-                                    current={field.value}
-                                    handleSelect={(value) => {
-                                      field.onChange(value);
-                                      form.setValue(
-                                        `volumeMounts.${index}.type`,
-                                        DatasetType,
-                                      );
-                                      form.setValue(
-                                        `volumeMounts.${index}.datasetID`,
-                                        Number(value),
-                                      );
-                                      form.setValue(
-                                        `volumeMounts.${index}.mountPath`,
-                                        `/mnt/${value.split("/").pop()}`,
-                                      );
-                                    }}
-                                    formTitle="数据集"
-                                  />
-                                </TabsContent>
-                              </Tabs>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                        render={({ field }) => {
+                          const disabled =
+                            form.getValues(
+                              `volumeMounts.${index}.mountPath`,
+                            ) === `/home/${user.name}`;
+                          return (
+                            <FormItem className="relative">
+                              <FormLabel>
+                                挂载源 {index + 1}
+                                <FormLabelMust />
+                              </FormLabel>
+                              <button
+                                onClick={() => volumeMountRemove(index)}
+                                className="absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+                              >
+                                <XIcon className="size-4" />
+                                <span className="sr-only">Close</span>
+                              </button>
+                              <FormControl>
+                                <Tabs defaultValue="file" className="w-full">
+                                  <TabsList className="grid w-full grid-cols-3">
+                                    <TabsTrigger
+                                      value="file"
+                                      onClick={() =>
+                                        resetVolumeMountsFields(index, FileType)
+                                      }
+                                      disabled={disabled}
+                                    >
+                                      文件
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                      value="dataset"
+                                      onClick={() =>
+                                        resetVolumeMountsFields(
+                                          index,
+                                          DatasetType,
+                                        )
+                                      }
+                                      disabled={disabled}
+                                    >
+                                      数据集
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                      value="model"
+                                      onClick={() =>
+                                        resetVolumeMountsFields(
+                                          index,
+                                          DatasetType,
+                                        )
+                                      }
+                                      disabled={true}
+                                    >
+                                      模型
+                                    </TabsTrigger>
+                                  </TabsList>
+                                  <TabsContent value="file">
+                                    <FileSelectDialog
+                                      value={field.value.split("/").pop()}
+                                      handleSubmit={(item) => {
+                                        field.onChange(item.id);
+                                        form.setValue(
+                                          `volumeMounts.${index}.type`,
+                                          FileType,
+                                        );
+                                        form.setValue(
+                                          `volumeMounts.${index}.mountPath`,
+                                          `/data/${item.name}`,
+                                        );
+                                      }}
+                                      disabled={disabled}
+                                    />
+                                  </TabsContent>
+                                  <TabsContent value="dataset">
+                                    <Combobox
+                                      items={datasetInfo.data ?? []}
+                                      current={field.value}
+                                      disabled={disabled}
+                                      renderLabel={(item) => (
+                                        <DatasetItem item={item} />
+                                      )}
+                                      handleSelect={(value) => {
+                                        field.onChange(value);
+                                        form.setValue(
+                                          `volumeMounts.${index}.type`,
+                                          DatasetType,
+                                        );
+                                        form.setValue(
+                                          `volumeMounts.${index}.datasetID`,
+                                          Number(value),
+                                        );
+                                        form.setValue(
+                                          `volumeMounts.${index}.mountPath`,
+                                          `/data/datasets-${value.split("/").pop()}`,
+                                        );
+                                      }}
+                                      formTitle="数据集"
+                                    />
+                                  </TabsContent>
+                                </Tabs>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
                       />
                       <FormField
                         control={form.control}
                         name={`volumeMounts.${index}.mountPath`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>
-                              挂载点 {index + 1}
-                              <FormLabelMust />
-                            </FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormDescription>
-                              挂载到容器中的路径
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                        render={({ field }) => {
+                          const disabled =
+                            form.getValues(
+                              `volumeMounts.${index}.mountPath`,
+                            ) === `/home/${user.name}`;
+                          return (
+                            <FormItem autoFocus={false}>
+                              <FormLabel>
+                                挂载点 {index + 1}
+                                <FormLabelMust />
+                              </FormLabel>
+                              <FormControl>
+                                <Input {...field} disabled={disabled} />
+                              </FormControl>
+                              <FormDescription>
+                                {disabled
+                                  ? "默认持久化主目录，请谨慎修改"
+                                  : "可修改容器中的挂载路径"}
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
                       />
                     </div>
                   </div>
@@ -631,7 +669,7 @@ export const Component = () => {
                     })
                   }
                 >
-                  <CirclePlus className="h-4 w-4" />
+                  <CirclePlus className="size-4" />
                   添加{DataMountCard}
                 </Button>
               </div>
@@ -657,7 +695,7 @@ export const Component = () => {
                               onClick={() => envRemove(index)}
                               className="absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
                             >
-                              <XIcon className="h-4 w-4" />
+                              <XIcon className="size-4" />
                               <span className="sr-only">Close</span>
                             </button>
                             <FormLabel>
@@ -701,7 +739,7 @@ export const Component = () => {
                     })
                   }
                 >
-                  <CirclePlus className="h-4 w-4" />
+                  <CirclePlus className="size-4" />
                   添加{EnvCard}
                 </Button>
               </div>

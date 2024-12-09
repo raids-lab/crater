@@ -196,7 +196,7 @@ const VolcanoOverview = () => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="h-8 w-8 p-0">
                     <span className="sr-only">操作</span>
-                    <DotsHorizontalIcon className="h-4 w-4" />
+                    <DotsHorizontalIcon className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">

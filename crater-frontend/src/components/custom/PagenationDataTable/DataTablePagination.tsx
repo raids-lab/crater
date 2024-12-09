@@ -69,7 +69,7 @@ export function DataTablePagination<TData>({
                 disabled={!table.getCanPreviousPage()}
                 title="前往首页"
               >
-                <DoubleArrowLeftIcon className="h-4 w-4" />
+                <DoubleArrowLeftIcon className="size-4" />
               </Button>
               <Button
                 variant="outline"
@@ -79,7 +79,7 @@ export function DataTablePagination<TData>({
                 title="前往上一页"
               >
                 <span className="sr-only">Go to previous page</span>
-                <ChevronLeftIcon className="h-4 w-4" />
+                <ChevronLeftIcon className="size-4" />
               </Button>
               <Button
                 variant="outline"
@@ -89,7 +89,7 @@ export function DataTablePagination<TData>({
                 title="前往下一页"
               >
                 <span className="sr-only">Go to next page</span>
-                <ChevronRightIcon className="h-4 w-4" />
+                <ChevronRightIcon className="size-4" />
               </Button>
               <Button
                 variant="outline"
@@ -99,7 +99,7 @@ export function DataTablePagination<TData>({
                 title="前往尾页"
               >
                 <span className="sr-only">Go to last page</span>
-                <DoubleArrowRightIcon className="h-4 w-4" />
+                <DoubleArrowRightIcon className="size-4" />
               </Button>
             </div>
           </div>

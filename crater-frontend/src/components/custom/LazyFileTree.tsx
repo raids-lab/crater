@@ -180,7 +180,7 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
                   }}
                 >
                   <item.icon
-                    className="mr-2 h-4 w-4 shrink-0 text-accent-foreground/50"
+                    className="mr-2 size-4 shrink-0 text-accent-foreground/50"
                     aria-hidden="true"
                   />
                   <span className="truncate text-sm">{item.name}</span>
@@ -235,7 +235,7 @@ const Leaf = React.forwardRef<
       {...props}
     >
       <item.icon
-        className="mr-2 h-4 w-4 shrink-0 text-accent-foreground/50"
+        className="mr-2 size-4 shrink-0 text-accent-foreground/50"
         aria-hidden="true"
       />
       <span className="flex-grow truncate text-sm">{item.name}</span>
@@ -260,7 +260,7 @@ const AccordionTrigger = React.forwardRef<
       {...props}
     >
       {children}
-      <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-accent-foreground/50 transition-transform duration-200" />
+      <ChevronRight className="ml-auto size-4 shrink-0 text-accent-foreground/50 transition-transform duration-200" />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ));

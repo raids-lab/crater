@@ -253,7 +253,7 @@ export default function PodIngressDialog({
             <TooltipProvider delayDuration={10}>
               <Tooltip>
                 <TooltipTrigger>
-                  <CircleHelpIcon className="ml-1 h-4 w-4 text-muted-foreground" />
+                  <CircleHelpIcon className="ml-1 size-4 text-muted-foreground" />
                 </TooltipTrigger>
                 <TooltipContent className="border bg-background text-foreground">
                   支持用户自定义 Ingress
@@ -321,7 +321,7 @@ export default function PodIngressDialog({
                         }}
                         tooltipContent="访问链接"
                       >
-                        <ExternalLink className="h-4 w-4" />
+                        <ExternalLink className="size-4" />
                       </TooltipButton>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -331,7 +331,7 @@ export default function PodIngressDialog({
                             className="hover:text-destructive"
                             tooltipContent="删除"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="size-4" />
                           </TooltipButton>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
@@ -403,7 +403,7 @@ export default function PodIngressDialog({
                         }}
                         tooltipContent="访问链接"
                       >
-                        <ExternalLink className="h-4 w-4" />
+                        <ExternalLink className="size-4" />
                       </TooltipButton>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -413,7 +413,7 @@ export default function PodIngressDialog({
                             className="hover:text-destructive"
                             tooltipContent="删除"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="size-4" />
                           </TooltipButton>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
@@ -451,13 +451,13 @@ export default function PodIngressDialog({
         <DialogFooter>
           {activeTab === "ingress" && (
             <Button onClick={handleAddIngress} autoFocus>
-              <Plus className="h-4 w-4" />
+              <Plus className="size-4" />
               添加 Ingress 规则
             </Button>
           )}
           {activeTab === "nodeport" && (
             <Button onClick={handleAddNodeport} autoFocus>
-              <Plus className="h-4 w-4" />
+              <Plus className="size-4" />
               添加 NodePort 规则
             </Button>
           )}

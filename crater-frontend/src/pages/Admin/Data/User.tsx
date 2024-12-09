@@ -144,7 +144,7 @@ export const Component: FC = () => {
           if (row.original.isdir) {
             return (
               <div style={{ display: "flex", alignItems: "center" }}>
-                <Folder className="mr-2 h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                <Folder className="mr-2 size-5 text-yellow-600 dark:text-yellow-400" />
                 <Button
                   onClick={() => {
                     // setFilepath(filepath + "/" + row.original.name);
@@ -164,7 +164,7 @@ export const Component: FC = () => {
           } else {
             return (
               <div style={{ display: "flex", alignItems: "center" }}>
-                <File className="mr-2 h-5 w-5 text-muted-foreground" />
+                <File className="mr-2 size-5 text-muted-foreground" />
                 <span className="text-secondary-foreground">
                   {row.getValue("name")}
                 </span>
@@ -241,7 +241,7 @@ export const Component: FC = () => {
                     toast.info("正在下载该文件");
                   }}
                 >
-                  <DownloadIcon className="h-4 w-4" />
+                  <DownloadIcon className="size-4" />
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>

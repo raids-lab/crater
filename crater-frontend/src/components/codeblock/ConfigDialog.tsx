@@ -70,9 +70,9 @@ function Content({
           size="icon"
         >
           {copiedText ? (
-            <CopyCheckIcon className="h-4 w-4" />
+            <CopyCheckIcon className="size-4" />
           ) : (
-            <CopyIcon className="h-4 w-4" />
+            <CopyIcon className="size-4" />
           )}
         </Button>
       </Card>

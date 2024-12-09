@@ -19,9 +19,11 @@ import { cn } from "@/lib/utils";
 export const FileSelectDialog = ({
   value,
   handleSubmit,
+  disabled,
 }: {
   value?: string;
   handleSubmit: (path: TreeDataItem) => void;
+  disabled?: boolean;
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [content, setContent] = useState<TreeDataItem | undefined>();
@@ -44,12 +46,13 @@ export const FileSelectDialog = ({
             variant="outline"
             role="file-select"
             className={cn(
-              "w-full justify-between text-ellipsis whitespace-nowrap pl-3 pr-4 font-normal",
+              "w-full justify-between text-ellipsis whitespace-nowrap pl-3 pr-4 font-normal focus:outline-primary",
               !value && "text-muted-foreground",
             )}
+            disabled={disabled}
           >
             {!isDialogOpen && value ? value : "选择文件或文件夹"}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
           </Button>
         </DialogTrigger>
         <DialogContent>

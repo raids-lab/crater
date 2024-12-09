@@ -88,7 +88,7 @@ const PieCard = ({
           <TooltipProvider delayDuration={100}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <QuestionMarkCircledIcon className="h-4 w-4 text-muted-foreground hover:cursor-help" />
+                <QuestionMarkCircledIcon className="size-4 text-muted-foreground hover:cursor-help" />
               </TooltipTrigger>
               <TooltipContent className="border bg-background text-foreground">
                 {cardDescription}
@@ -382,7 +382,7 @@ export const Component: FC = () => {
               onClick={() => navigate("/portal/image/createimage")}
               className="hidden xl:flex"
             >
-              <BoxIcon className="h-4 w-4" />
+              <BoxIcon className="size-4" />
               镜像仓库
             </Button>
             <Button
@@ -394,7 +394,7 @@ export const Component: FC = () => {
               }
               className="hidden lg:flex"
             >
-              <BookOpenIcon className="h-4 w-4" />
+              <BookOpenIcon className="size-4" />
               平台文档
             </Button>
           </CardFooter>

@@ -29,6 +29,7 @@ type ComboboxProps<T> = React.HTMLAttributes<HTMLDivElement> & {
   formTitle: string;
   items: ComboboxItem<T>[];
   current: string;
+  disabled?: boolean;
   handleSelect: (value: string) => void;
   renderLabel?: (item: ComboboxItem<T>) => React.ReactNode;
   className?: string;
@@ -38,6 +39,7 @@ function Combobox<T>({
   formTitle,
   items,
   current,
+  disabled,
   handleSelect,
   renderLabel,
   className,
@@ -57,11 +59,14 @@ function Combobox<T>({
               !current && "text-muted-foreground",
               className,
             )}
+            disabled={disabled}
           >
-            {current
-              ? items.find((dataset) => dataset.value === current)?.label
-              : `选择${formTitle}`}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <p className="truncate">
+              {current
+                ? items.find((dataset) => dataset.value === current)?.label
+                : `选择${formTitle}`}
+            </p>
+            <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
           </Button>
         </FormControl>
       </PopoverTrigger>
@@ -92,7 +97,7 @@ function Combobox<T>({
                       {renderLabel ? renderLabel(item) : <>{item.label}</>}
                       <Check
                         className={cn(
-                          "ml-auto h-4 w-4",
+                          "ml-auto size-4",
                           item.value === current ? "opacity-100" : "opacity-0",
                         )}
                       />

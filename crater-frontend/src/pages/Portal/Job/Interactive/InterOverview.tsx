@@ -127,7 +127,7 @@ const InterOverview = () => {
           >
             {row.getValue("name")}
             {row.original.keepWhenLowUsage && (
-              <LockIcon className="ml-1 h-4 w-4 text-muted-foreground" />
+              <LockIcon className="ml-1 size-4 text-muted-foreground" />
             )}
           </Link>
         ),
@@ -233,14 +233,14 @@ const InterOverview = () => {
                 }}
                 disabled={shouldDisable}
               >
-                <ExternalLink className="h-4 w-4" />
+                <ExternalLink className="size-4" />
               </TooltipButton>
               <AlertDialog>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
                       <span className="sr-only">操作</span>
-                      <DotsHorizontalIcon className="h-4 w-4" />
+                      <DotsHorizontalIcon className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">

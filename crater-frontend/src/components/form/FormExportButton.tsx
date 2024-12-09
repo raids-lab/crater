@@ -54,7 +54,7 @@ function FormExportButton<T extends FieldValues>({
           });
       }}
     >
-      <CircleArrowUp className="h-4 w-4" />
+      <CircleArrowUp className="size-4" />
       {buttonText}
     </Button>
   );

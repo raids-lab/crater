@@ -31,7 +31,7 @@ export function DataTableViewOptions<TData>({
           size="sm"
           className={cn("ml-auto flex h-8", className)}
         >
-          <MixerHorizontalIcon className="h-4 w-4" />
+          <MixerHorizontalIcon className="size-4" />
           <span className="sr-only sm:not-sr-only sm:ml-2">视图</span>
         </Button>
       </DropdownMenuTrigger>
