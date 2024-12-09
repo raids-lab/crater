@@ -24,6 +24,7 @@ export interface ClusterNodeInfo {
   type: NodeType;
   name: string;
   isReady: string;
+  taint: string;
   role: string;
   cpu?: ResourceInfo;
   memory?: ResourceInfo;
@@ -96,22 +97,43 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title={"状态"} />
     ),
-    cell: ({ row }) => (
-      <div className="flex flex-row items-center justify-start">
-        <div
-          className={cn("flex h-3 w-3 rounded-full", {
-            "bg-red-500 hover:bg-red-400": !(
-              row.getValue("isReady") === "true"
-            ),
-            "bg-emerald-500 hover:bg-emerald-400":
-              row.getValue("isReady") === "true",
-          })}
-        />
-        <div className="ml-1.5">
-          {row.getValue("isReady") === "true" ? "运行中" : "异常"}
+    cell: ({ row }) => {
+      const isReady = row.getValue("isReady");
+      let bgColor = "";
+      let statusText = "";
+      if (isReady === "true") {
+        bgColor = "bg-emerald-500 hover:bg-emerald-400";
+        statusText = "运行中";
+      } else if (isReady === "false") {
+        bgColor = "bg-red-500 hover:bg-red-400";
+        statusText = "异常";
+      } else if (isReady === "Unschedulable") {
+        bgColor = "bg-black hover:bg-gray-800";
+        statusText = "不可调度";
+      }
+      const taint = row.original.taint || "";
+      const equalCount = taint.split("=").length - 1;
+      return (
+        <div className="flex flex-row items-center justify-start gap-1">
+          <div className={`flex h-3 w-3 rounded-full ${bgColor}`} />
+          <div className="ml-1.5">{statusText}</div>
+          {equalCount > 0 && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex h-4 w-4 items-center justify-center rounded bg-black text-xs text-white">
+                  {equalCount}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="rounded bg-gray-800 p-2 text-white">
+                  {taint}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
-      </div>
-    ),
+      );
+    },
   },
   {
     accessorKey: "role",

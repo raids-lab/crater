@@ -46,6 +46,7 @@ const useNodeQuery = (onlyWorker?: boolean) => {
             type: x.type,
             name: x.name,
             isReady: x.isReady,
+            taint: x.taint,
             role: x.role,
             labels: x.labels,
           };
