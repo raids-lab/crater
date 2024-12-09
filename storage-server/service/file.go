@@ -270,7 +270,7 @@ func GetFiles(c *gin.Context) {
 func getFirstToken(path string) string {
 	path = strings.TrimLeft(path, "/")
 	cleanedPath := filepath.Clean(path)
-	tokens := strings.Split(cleanedPath, "\\")
+	tokens := strings.Split(cleanedPath, "/")
 	if len(tokens) > 0 && tokens[0] != "." {
 		return tokens[0]
 	}
