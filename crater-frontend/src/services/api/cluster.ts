@@ -14,6 +14,7 @@ export interface IClusterNodeInfo {
   role: string;
   labels: Record<string, string>;
   isReady: string;
+  taint: string;
   capacity: K8sResources;
   allocated: K8sResources;
 }
