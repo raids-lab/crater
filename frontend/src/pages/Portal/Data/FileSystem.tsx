@@ -204,7 +204,7 @@ export const Component: FC = () => {
           if (row.original.isdir) {
             return (
               <div style={{ display: "flex", alignItems: "center" }}>
-                <Folder className="mr-2 h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                <Folder className="mr-2 size-5 text-yellow-600 dark:text-yellow-400" />
                 <Button
                   onClick={() => {
                     // setFilepath(filepath + "/" + row.original.name);
@@ -220,7 +220,7 @@ export const Component: FC = () => {
           } else {
             return (
               <div style={{ display: "flex", alignItems: "center" }}>
-                <File className="mr-2 h-5 w-5 text-muted-foreground" />
+                <File className="mr-2 size-5 text-muted-foreground" />
                 <span className="text-secondary-foreground">
                   {row.getValue("name")}
                 </span>
@@ -300,7 +300,7 @@ export const Component: FC = () => {
                           toast.info("正在下载该文件");
                         }}
                       >
-                        <DownloadIcon className="h-4 w-4" />
+                        <DownloadIcon className="size-4" />
                       </Button>
                     </div>
                   )}
@@ -379,7 +379,7 @@ export const Component: FC = () => {
                           toast.info("正在下载该文件");
                         }}
                       >
-                        <DownloadIcon className="h-4 w-4" />
+                        <DownloadIcon className="size-4" />
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -507,7 +507,7 @@ export const Component: FC = () => {
               </CardHeader>
               <CardFooter>
                 <Button onClick={() => navigate(r.name)}>
-                  <LogInIcon className="mr-2 h-4 w-4" />
+                  <LogInIcon className="mr-2 size-4" />
                   查看{getFolderTitle(r.name)}
                 </Button>
               </CardFooter>
@@ -530,7 +530,7 @@ export const Component: FC = () => {
             disabled={isRoot}
             title="返回上一级"
           >
-            <ArrowLeftIcon className="h-4 w-4" />
+            <ArrowLeftIcon className="size-4" />
           </Button>
           <Button
             onClick={() => {
@@ -542,7 +542,7 @@ export const Component: FC = () => {
             disabled={isRoot}
             title="上传文件"
           >
-            <UploadIcon className="h-4 w-4" />
+            <UploadIcon className="size-4" />
           </Button>
           <input
             type="file"
@@ -560,7 +560,7 @@ export const Component: FC = () => {
                 disabled={isRoot}
                 title="创建文件夹"
               >
-                <FolderPlusIcon className="h-4 w-4" />
+                <FolderPlusIcon className="size-4" />
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">

@@ -351,7 +351,7 @@ const ColocateOverview = () => {
                   userInfo.name !== jobInfo.owner
                 }
               >
-                <ExternalLink className="h-4 w-4" />
+                <ExternalLink className="size-4" />
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -362,7 +362,7 @@ const ColocateOverview = () => {
                       className="h-8 w-8 text-red-600 hover:text-destructive/90"
                       title="删除 Jupyter Lab"
                     >
-                      <Trash2Icon className="h-4 w-4" />
+                      <Trash2Icon className="size-4" />
                     </Button>
                   ) : (
                     <Button

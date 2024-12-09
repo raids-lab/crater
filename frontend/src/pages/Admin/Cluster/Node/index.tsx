@@ -40,7 +40,7 @@ const NodeForAdmin = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0">
                   <span className="sr-only">操作</span>
-                  <DotsHorizontalIcon className="h-4 w-4" />
+                  <DotsHorizontalIcon className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -48,15 +48,15 @@ const NodeForAdmin = () => {
                   操作
                 </DropdownMenuLabel>
                 <DropdownMenuItem>
-                  <TagsIcon className="h-4 w-4" />
+                  <TagsIcon className="size-4" />
                   编辑标签
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <PaintbrushIcon className="h-4 w-4" />
+                  <PaintbrushIcon className="size-4" />
                   编辑污点
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <BanIcon className="h-4 w-4" />
+                  <BanIcon className="size-4" />
                   禁止调度
                 </DropdownMenuItem>
               </DropdownMenuContent>

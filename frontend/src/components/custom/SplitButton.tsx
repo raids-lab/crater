@@ -31,14 +31,14 @@ const SplitButton = ({ urls, title }: { urls: URL[]; title: string }) => {
         className="pr-3 shadow-none"
         onClick={() => navigate(`/${position}`)}
       >
-        <PlusCircleIcon className="h-4 w-4" />
+        <PlusCircleIcon className="size-4" />
         新建{urls.find((url) => url.url === position)?.name}
       </Button>
       <Separator orientation="vertical" className="h-[20px]" />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button className="pl-2 pr-3 shadow-none focus:ring-0">
-            <ChevronDownIcon className="h-4 w-4 text-primary-foreground" />
+            <ChevronDownIcon className="size-4 text-primary-foreground" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent

@@ -39,7 +39,7 @@ export function DataTableToolbar<TData>({
       <div className="flex flex-row items-center space-x-2">
         {children}
         <div className="relative ml-auto h-8 flex-1 md:grow-0">
-          <Search className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-2 top-2 size-4 text-muted-foreground" />
           <Input
             placeholder={"查找" + getHeader(searchKey)}
             value={
@@ -71,7 +71,7 @@ export function DataTableToolbar<TData>({
             onClick={() => table.resetColumnFilters()}
             className="h-8 w-8 border-dashed"
           >
-            <Cross2Icon className="h-4 w-4" />
+            <Cross2Icon className="size-4" />
           </Button>
         )}
       </div>
@@ -97,7 +97,7 @@ export function DataTableToolbarRight<TData>({
           onClick={() => table.resetColumnFilters()}
           className="h-7 w-7 border-dashed"
         >
-          <Cross2Icon className="h-4 w-4" />
+          <Cross2Icon className="size-4" />
         </Button>
       )}
       {filterOptions.map(
@@ -112,7 +112,7 @@ export function DataTableToolbarRight<TData>({
           ),
       )}
       <div className="relative ml-auto h-8">
-        <Search className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-2 top-2 size-4 text-muted-foreground" />
         <Input
           placeholder={"查找" + getHeader(searchKey)}
           value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}

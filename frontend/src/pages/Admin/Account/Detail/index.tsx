@@ -255,7 +255,7 @@ const AccountDetail = () => {
                       className="h-8 w-8 p-0"
                       title="更多选项"
                     >
-                      <DotsHorizontalIcon className="h-4 w-4" />
+                      <DotsHorizontalIcon className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -398,7 +398,7 @@ const AccountDetail = () => {
           <Dialog open={openSheet} onOpenChange={setOpenSheet}>
             <DialogTrigger asChild>
               <Button className="h-8">
-                <UserRoundPlusIcon className="h-4 w-4" />
+                <UserRoundPlusIcon className="size-4" />
                 添加用户
               </Button>
             </DialogTrigger>

@@ -110,9 +110,9 @@ function Directory({
         onClick={toggleOpen}
       >
         <ChevronRightIcon
-          className={`mr-2 h-4 w-4 opacity-50 ${isOpen ? "rotate-90" : ""}`}
+          className={`mr-2 size-4 opacity-50 ${isOpen ? "rotate-90" : ""}`}
         />
-        <FolderIcon className="mr-2 h-4 w-4 text-sky-600 opacity-50" />
+        <FolderIcon className="mr-2 size-4 text-sky-600 opacity-50" />
         {name}
       </Button>
       {isLoading && <LoadingIndicator />} {/* 使用自定义LoadingIndicator组件 */}
@@ -180,10 +180,10 @@ export function FileSelect({
     <div className="left-0 flex h-[410px] w-[590px] max-w-screen-sm flex-col">
       {/* ...保留FileSelect组件的其他部分代码 */}
       <div className="bg-slate-150 left-0 flex h-[50px] w-full items-center gap-2.5 rounded-lg border-2 px-1 py-2.5">
-        <ChevronRightIcon className="h-4 w-4" />
+        <ChevronRightIcon className="size-4" />
         <div className="flex-1">{selectedPath || ""}</div>
         <Button aria-label="Refresh" size="icon" onClick={handleRefreshClick}>
-          <RefreshCwIcon className="h-4 w-4" />
+          <RefreshCwIcon className="size-4" />
         </Button>
       </div>
       <div className="w-[590px] flex-1 overflow-auto">

@@ -42,7 +42,7 @@ export function DataTableToolbar<TData>({
       <div className="flex flex-row items-center space-x-2">
         {children}
         <div className="relative ml-auto h-8 flex-1 md:grow-0">
-          <SearchIcon className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+          <SearchIcon className="absolute left-2 top-2 size-4 text-muted-foreground" />
           <Input
             placeholder={filterInput.placeholder}
             value={
@@ -78,7 +78,7 @@ export function DataTableToolbar<TData>({
             onClick={() => table.resetColumnFilters()}
             className="h-8 w-8 border-dashed"
           >
-            <XIcon className="h-4 w-4" />
+            <XIcon className="size-4" />
           </Button>
         )}
       </div>

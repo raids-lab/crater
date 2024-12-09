@@ -54,18 +54,18 @@ export default function FloatingBall({
                 }
               }}
             >
-              <MoreVertical className="h-4 w-4" />
+              <MoreVertical className="size-4" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="left">
             <DropdownMenuItem onClick={handleShowLog}>
-              <FileText className="mr-2 h-4 w-4" />
+              <FileText className="mr-2 size-4" />
               <span>日志</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => toast.warning("环境保存功能开发中")}
             >
-              <Save className="mr-2 h-4 w-4" />
+              <Save className="mr-2 size-4" />
               <span>保存</span>
             </DropdownMenuItem>
           </DropdownMenuContent>

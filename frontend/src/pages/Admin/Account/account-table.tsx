@@ -162,7 +162,7 @@ export const getColumns = (
                 className="h-8 w-8"
                 size="icon"
               >
-                <UserRoundIcon className="h-4 w-4" />
+                <UserRoundIcon className="size-4" />
               </Button>
             </Link>
             <Button
@@ -172,7 +172,7 @@ export const getColumns = (
               className="h-8 w-8"
               onClick={() => handleEdit(row.original)}
             >
-              <PencilIcon className="h-4 w-4" />
+              <PencilIcon className="size-4" />
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -182,7 +182,7 @@ export const getColumns = (
                   size="icon"
                   className="h-8 w-8"
                 >
-                  <TrashIcon className="h-4 w-4" />
+                  <TrashIcon className="size-4" />
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>

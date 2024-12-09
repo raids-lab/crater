@@ -18,7 +18,7 @@ export function NvidiaGpuInfoCard({ labels }: NvidiaGpuInfoProps) {
         <div className="mt-4 grid grid-cols-2 gap-4">
           <div className="flex flex-col space-y-2">
             <div className="flex items-center space-x-2 text-muted-foreground">
-              <Memory className="h-4 w-4" />
+              <Memory className="size-4" />
               <span className="text-sm font-medium">显存</span>
             </div>
             <span className="text-lg font-bold">
@@ -27,7 +27,7 @@ export function NvidiaGpuInfoCard({ labels }: NvidiaGpuInfoProps) {
           </div>
           <div className="flex flex-col space-y-2">
             <div className="flex items-center space-x-2 text-muted-foreground">
-              <Grid className="h-4 w-4" />
+              <Grid className="size-4" />
               <span className="text-sm font-medium">GPU 数量</span>
             </div>
             <span className="text-lg font-bold">
@@ -36,7 +36,7 @@ export function NvidiaGpuInfoCard({ labels }: NvidiaGpuInfoProps) {
           </div>
           <div className="flex flex-col space-y-2">
             <div className="flex items-center space-x-2 text-muted-foreground">
-              <Layers className="h-4 w-4" />
+              <Layers className="size-4" />
               <span className="text-sm font-medium">架构</span>
             </div>
             <span className="text-lg font-bold capitalize">
@@ -45,7 +45,7 @@ export function NvidiaGpuInfoCard({ labels }: NvidiaGpuInfoProps) {
           </div>
           <div className="flex flex-col space-y-2">
             <div className="flex items-center space-x-2 text-muted-foreground">
-              <Cable className="h-4 w-4" />
+              <Cable className="size-4" />
               <span className="text-sm font-medium">驱动版本</span>
             </div>
             <span className="text-lg font-bold">

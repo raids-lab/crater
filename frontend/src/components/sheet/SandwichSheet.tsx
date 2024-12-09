@@ -57,7 +57,7 @@ const SandwichSheet = ({
                 <TooltipProvider delayDuration={100}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <QuestionMarkCircledIcon className="ml-1 h-4 w-4 text-muted-foreground hover:cursor-help" />
+                      <QuestionMarkCircledIcon className="ml-1 size-4 text-muted-foreground hover:cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent className="border bg-background text-foreground">
                       {description}

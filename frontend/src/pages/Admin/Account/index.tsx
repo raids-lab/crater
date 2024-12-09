@@ -220,7 +220,7 @@ export const Account = () => {
     <>
       <DataTable query={query} columns={columns} toolbarConfig={toolbarConfig}>
         <Button className="h-8" onClick={handleCreate}>
-          <PlusCircleIcon className="h-4 w-4" />
+          <PlusCircleIcon className="size-4" />
           新建账户
         </Button>
       </DataTable>
@@ -261,7 +261,7 @@ export const Account = () => {
                   .catch((e) => logger.debug(e));
               }}
             >
-              <CirclePlusIcon className="h-4 w-4" />
+              <CirclePlusIcon className="size-4" />
               {form.getValues("id") ? "更新账户" : "新建账户"}
             </LoadableButton>
           </>
@@ -320,7 +320,7 @@ export const Account = () => {
                             ) : (
                               <span>请选择日期</span>
                             )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            <CalendarIcon className="ml-auto size-4 opacity-50" />
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
@@ -453,7 +453,7 @@ export const Account = () => {
                       variant="outline"
                       onClick={() => resourcesRemove(index)}
                     >
-                      <XIcon className="h-4 w-4" />
+                      <XIcon className="size-4" />
                     </Button>
                   </div>
                 </div>
@@ -474,7 +474,7 @@ export const Account = () => {
                   })
                 }
               >
-                <CirclePlusIcon className="h-4 w-4" />
+                <CirclePlusIcon className="size-4" />
                 添加资源配额维度
               </Button>
             </div>

@@ -51,7 +51,7 @@ function FormImportButton<T extends FieldValues>({
         type="file"
         className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
       />
-      <CircleArrowDown className="h-4 w-4" />
+      <CircleArrowDown className="size-4" />
       {buttonText}
     </Button>
   );

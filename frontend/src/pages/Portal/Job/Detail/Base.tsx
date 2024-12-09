@@ -116,7 +116,7 @@ export const Component = () => {
                 })
               }
             >
-              <RefreshCcwIcon className="h-4 w-4" />
+              <RefreshCcwIcon className="size-4" />
             </Button>
           </div>
         </CardContent>
@@ -124,42 +124,42 @@ export const Component = () => {
         <CardContent className="p-6 text-sm">
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
             <div className="flex items-center">
-              <CreditCardIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <CreditCardIcon className="mr-2 size-4 text-muted-foreground" />
               <span className="text-sm font-medium text-muted-foreground">
                 账户：
               </span>
               <span>{data.queue}</span>
             </div>
             <div className="flex items-center">
-              <UserRoundIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <UserRoundIcon className="mr-2 size-4 text-muted-foreground" />
               <span className="text-sm font-medium text-muted-foreground">
                 用户：
               </span>
               <span>{data.username}</span>
             </div>
             <div className="flex items-center">
-              <ActivityIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <ActivityIcon className="mr-2 size-4 text-muted-foreground" />
               <span className="text-sm font-medium text-muted-foreground">
                 状态：
               </span>
               <JobPhaseLabel jobPhase={data.status} />
             </div>
             <div className="flex items-center">
-              <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <CalendarIcon className="mr-2 size-4 text-muted-foreground" />
               <span className="text-sm font-medium text-muted-foreground">
                 创建于：
               </span>
               <TimeDistance date={data.createdAt} />
             </div>
             <div className="flex items-center">
-              <ClockIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <ClockIcon className="mr-2 size-4 text-muted-foreground" />
               <span className="text-sm font-medium text-muted-foreground">
                 开始于：
               </span>
               <TimeDistance date={data.startedAt} />
             </div>
             <div className="flex items-center">
-              <CheckCircleIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <CheckCircleIcon className="mr-2 size-4 text-muted-foreground" />
               <span className="text-sm font-medium text-muted-foreground">
                 完成于：
               </span>
@@ -170,7 +170,7 @@ export const Component = () => {
             <div className="flex items-center space-x-2">
               <ConfigDialog getConfig={apiJobGetYaml} jobName={jobName}>
                 <Button variant="ghost" size="sm">
-                  <FileSlidersIcon className="mr-1 h-4 w-4" />
+                  <FileSlidersIcon className="mr-1 size-4" />
                   作业 YAML
                 </Button>
               </ConfigDialog>
@@ -183,7 +183,7 @@ export const Component = () => {
                   window.open(url, "_blank");
                 }}
               >
-                <GaugeIcon className="mr-1 h-4 w-4" />
+                <GaugeIcon className="mr-1 size-4" />
                 资源监控
               </Button>
             </div>
@@ -201,7 +201,7 @@ export const Component = () => {
                       }, 500);
                     }}
                   >
-                    <ExternalLinkIcon className="mr-1 h-4 w-4" />
+                    <ExternalLinkIcon className="mr-1 size-4" />
                     交互式页面
                   </Button>
                 )}
@@ -209,7 +209,7 @@ export const Component = () => {
                 <AlertDialogTrigger asChild>
                   <div>
                     <Button variant="destructive" size="sm" title="删除作业">
-                      <TrashIcon className="mr-1 h-4 w-4" />
+                      <TrashIcon className="mr-1 size-4" />
                       删除作业
                     </Button>
                   </div>

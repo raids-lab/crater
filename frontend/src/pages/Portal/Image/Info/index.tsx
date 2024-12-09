@@ -129,7 +129,7 @@ function KanikoInfo({ kanikoInfo: kanikoInfo, ...props }: KanikoCard) {
       <Card className="h-auto border-none shadow-lg">
         <CardHeader className="space-y-4 pb-4">
           <CardTitle className="flex items-center gap-2 text-xl font-semibold">
-            <Info className="h-5 w-5 text-primary" />
+            <Info className="size-5 text-primary" />
             镜像基础信息
           </CardTitle>
         </CardHeader>
@@ -137,22 +137,22 @@ function KanikoInfo({ kanikoInfo: kanikoInfo, ...props }: KanikoCard) {
           <div className="rounded-lg bg-card p-6 shadow-inner">
             <div className="grid gap-4 md:grid-cols-2">
               <InfoItem
-                icon={<Hash className="h-4 w-4" />}
+                icon={<Hash className="size-4" />}
                 label="ID"
                 value={kanikoInfo?.ID}
               />
               <InfoItem
-                icon={<FileText className="h-4 w-4" />}
+                icon={<FileText className="size-4" />}
                 label="描述"
                 value={kanikoInfo?.description}
               />
               <InfoItem
-                icon={<Clock className="h-4 w-4" />}
+                icon={<Clock className="size-4" />}
                 label="创建时间"
                 value={kanikoInfo?.createdAt}
               />
               <div className="flex items-start gap-3">
-                <CheckCircle className="mt-0.5 h-4 w-4 text-emerald-500" />
+                <CheckCircle className="mt-0.5 size-4 text-emerald-500" />
                 <div>
                   <span className="text-sm font-medium text-muted-foreground">
                     状态:
@@ -173,7 +173,7 @@ function KanikoInfo({ kanikoInfo: kanikoInfo, ...props }: KanikoCard) {
               </div>
 
               <InfoItem
-                icon={<Link2 className="h-4 w-4" />}
+                icon={<Link2 className="size-4" />}
                 label="URL"
                 value={kanikoInfo?.imageLink}
                 className="break-all"
@@ -186,7 +186,7 @@ function KanikoInfo({ kanikoInfo: kanikoInfo, ...props }: KanikoCard) {
       <Card className="h-auto overflow-hidden border-none shadow-lg" {...props}>
         <CardHeader className="space-y-1 pb-4">
           <CardTitle className="flex items-center gap-2 text-xl font-semibold">
-            <Terminal className="h-5 w-5 text-primary" />
+            <Terminal className="size-5 text-primary" />
             Dockerfile内容
           </CardTitle>
         </CardHeader>
@@ -200,7 +200,7 @@ function KanikoInfo({ kanikoInfo: kanikoInfo, ...props }: KanikoCard) {
                 onClick={() => copyToClipboard(kanikoInfo?.dockerfile ?? "")}
                 disabled={copying}
               >
-                <Copy className="h-4 w-4" />
+                <Copy className="size-4" />
               </Button>
               <pre className="text-sm text-zinc-100">
                 <code>{kanikoInfo?.dockerfile}</code>

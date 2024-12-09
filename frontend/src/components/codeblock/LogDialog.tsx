@@ -184,7 +184,7 @@ function LogCard({
               size="icon"
               title="刷新"
             >
-              <RefreshCcw className="h-4 w-4" />
+              <RefreshCcw className="size-4" />
             </Button>
             <Button
               onClick={() => setTimestamps((prev) => !prev)}
@@ -194,9 +194,9 @@ function LogCard({
               title="显示时间戳"
             >
               {timestamps ? (
-                <CalendarOff className="h-4 w-4" />
+                <CalendarOff className="size-4" />
               ) : (
-                <CalendarArrowDown className="h-4 w-4" />
+                <CalendarArrowDown className="size-4" />
               )}
             </Button>
             <Button
@@ -207,9 +207,9 @@ function LogCard({
               title="复制"
             >
               {copied ? (
-                <CopyCheckIcon className="h-4 w-4" />
+                <CopyCheckIcon className="size-4" />
               ) : (
-                <CopyIcon className="h-4 w-4" />
+                <CopyIcon className="size-4" />
               )}
             </Button>
             <Button
@@ -218,7 +218,7 @@ function LogCard({
               variant="ghost"
               size="icon"
             >
-              <DownloadIcon className="h-4 w-4" />
+              <DownloadIcon className="size-4" />
             </Button>
           </ButtonGroup>
         </>
