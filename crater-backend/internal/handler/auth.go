@@ -390,12 +390,13 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string)
 	}
 
 	user := model.User{
-		Name:     name,
-		Nickname: name,
-		Password: hashedPassword,
-		Role:     model.RoleUser,
-		Status:   model.StatusActive,
-		Space:    name,
+		Name:       name,
+		Nickname:   name,
+		Password:   hashedPassword,
+		Role:       model.RoleUser,
+		Status:     model.StatusActive,
+		AccessMode: model.AccessModeRO,
+		Space:      name,
 		Attributes: datatypes.NewJSONType(model.UserAttribute{
 			Email: lo.ToPtr(name + "@***REMOVED***"),
 			UID:   lo.ToPtr(result.UID),
