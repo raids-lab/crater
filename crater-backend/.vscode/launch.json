@@ -11,7 +11,9 @@
             "mode": "auto",
             "program": "${workspaceFolder}/main.go",
             "env": {
-                "KUBECONFIG": "${workspaceFolder}/kubeconfig"
+                "KUBECONFIG": "${workspaceFolder}/kubeconfig",
+                //"AIJOB_UNPLUGIN": "true",
+                //"SPJOB_UNPLUGIN": "true",
             },
             "args": [
                 "--config-file",
