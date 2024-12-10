@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -185,13 +186,14 @@ func (mgr *ContextMgr) UpdateUserAttributes(c *gin.Context) {
 	}
 
 	// Fix UID and GID are not allowed to be updated
-	attributes.ID = user.Attributes.Data().ID
-	attributes.UID = user.Attributes.Data().UID
-	attributes.GID = user.Attributes.Data().GID
+	oldAttributes := user.Attributes.Data()
+	attributes.ID = oldAttributes.ID
+	attributes.UID = lo.ToPtr(*oldAttributes.UID)
+	attributes.GID = lo.ToPtr(*oldAttributes.GID)
 
 	user.Attributes = datatypes.NewJSONType(attributes)
 	if err := u.WithContext(c).Save(user); err != nil {
-		resputil.Error(c, "Failed to update user attributes", resputil.NotSpecified)
+		resputil.Error(c, fmt.Sprintf("Failed to update user attributes:  %v", err), resputil.NotSpecified)
 		return
 	}
 
