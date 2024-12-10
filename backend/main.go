@@ -47,6 +47,7 @@ import (
 	recommenddljob "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
 	"github.com/raids-lab/crater/pkg/config"
 	db "github.com/raids-lab/crater/pkg/db/orm"
+	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/profiler"
 	"github.com/raids-lab/crater/pkg/reconciler"
@@ -61,18 +62,11 @@ import (
 // @name Authorization
 // @description 访问 /login 并获取 TOKEN 后，填入 'Bearer ${TOKEN}' 以访问受保护的接口
 //
-//nolint:gocyclo // TODO: refactor main function
+//nolint:gocyclo // todo: split register crd funtions
 func main() {
+	//-------------------backend----------------------
 	// set global timezone
 	time.Local = time.UTC
-	// set ctrl inner logger
-	opts := zap.Options{
-		Development:     true,
-		StacktraceLevel: zapcore.DPanicLevel,
-	}
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-	// create new ctrl logger with specific name
-	setupLog := ctrl.Log.WithName("setup")
 	// load backend config from file
 	backendConfig := config.GetConfig()
 	// variable changes in local development
@@ -97,19 +91,41 @@ func main() {
 		backendConfig.MetricsAddr = ":" + ms
 		backendConfig.ServerAddr = ":" + be
 	}
-
-	// 0. create manager
-	scheme := runtime.NewScheme()
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(schedulerpluginsv1alpha1.AddToScheme(scheme))
-	utilruntime.Must(aisystemv1alpha1.AddToScheme(scheme))
-	utilruntime.Must(recommenddljob.AddToScheme(scheme))
-	utilruntime.Must(imagepackv1.AddToScheme(scheme))
-	utilruntime.Must(scheduling.AddToScheme(scheme))
-	utilruntime.Must(batch.AddToScheme(scheme))
-
 	// get k8s config via ./kubeconfig
 	cfg := ctrl.GetConfigOrDie()
+	// kube clientset
+	clientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		panic(err.Error())
+	}
+	// init db
+	err = db.InitDB()
+	if err != nil {
+		logutils.Log.Errorf("unable to init db:%q", err)
+		os.Exit(1)
+	}
+
+	query.SetDefault(query.GetDB())
+	// init promeClient
+	prometheusClient := monitor.NewPrometheusClient(backendConfig.PrometheusAPI)
+	//-------------------ctrl manager----------------------
+	// init stopCh
+	stopCh := ctrl.SetupSignalHandler()
+	// set ctrl inner logger
+	opts := zap.Options{
+		Development:     true,
+		StacktraceLevel: zapcore.DPanicLevel,
+	}
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	// create new ctrl logger with specific name
+	setupLog := ctrl.Log.WithName("setup")
+
+	// create manager
+	scheme := runtime.NewScheme()
+
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(schedulerpluginsv1alpha1.AddToScheme(scheme))
+
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme,
 		Cache: cache.Options{
@@ -127,10 +143,78 @@ func main() {
 		// Namespace:              namespace,
 	})
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
+		setupLog.Error(err, "unable to create manager")
 		os.Exit(1)
 	}
+	//-------------------add custom to ctrl manager----------------------
+	//-------aijob-------
+	//todo: refactor taskctrl nil
+	var taskCtrl aitaskctl.TaskControllerInterface
+	if os.Getenv("AIJOB_UNPLUGIN") == "" {
+		utilruntime.Must(aisystemv1alpha1.AddToScheme(mgr.GetScheme()))
+		// 1. init task controller
+		// taskUpdateChan := make(chan util.TaskUpdateChan)
+		jobStatusChan := make(chan util.JobStatusChan)
 
+		taskCtrl = aitaskctl.NewTaskController(
+			mgr.GetClient(),
+			clientset,
+			jobStatusChan,
+		)
+		err = taskCtrl.Init()
+		if err != nil {
+			setupLog.Error(err, "unable to set up task controller")
+			os.Exit(1)
+		}
+		setupLog.Info("task controller init success")
+
+		// 2. init job controller
+		jobReconciler := reconciler.NewAIJobReconciler(
+			mgr.GetClient(),
+			mgr.GetScheme(),
+			jobStatusChan,
+		)
+		err = jobReconciler.SetupWithManager(mgr)
+		if err != nil {
+			setupLog.Error(err, "unable to set up job controller")
+		}
+
+		// 3. profiler config
+		if backendConfig.EnableProfiling {
+			aijobProfiler := profiler.NewProfiler(mgr, prometheusClient, backendConfig.ProfilingTimeout)
+			taskCtrl.SetProfiler(aijobProfiler)
+			// todo: start profiling
+			aijobProfiler.Start(stopCh)
+			setupLog.Info("enable profiling success")
+		}
+
+		err = taskCtrl.Start(stopCh)
+		if err != nil {
+			setupLog.Error(err, "unable to start task controller")
+			os.Exit(1)
+		}
+	} else {
+		setupLog.Info("aijob unplugin")
+	}
+	//-------spjob-------
+	if os.Getenv("SPJOB_UNPLUGIN") == "" {
+		utilruntime.Must(recommenddljob.AddToScheme(mgr.GetScheme()))
+	} else {
+		setupLog.Info("spjob unplugin")
+	}
+	//-------imagepacker-------
+	utilruntime.Must(imagepackv1.AddToScheme(mgr.GetScheme()))
+	imagePackReconciler := reconciler.NewImagePackReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+	)
+	err = imagePackReconciler.SetupWithManager(mgr)
+	if err != nil {
+		setupLog.Error(err, "unable to set up imagepack controller")
+	}
+	//-------volcano-------
+	utilruntime.Must(scheduling.AddToScheme(mgr.GetScheme()))
+	utilruntime.Must(batch.AddToScheme(mgr.GetScheme()))
 	// Create a new field indexer
 	if err = mgr.GetFieldIndexer().IndexField(context.Background(), &batch.Job{}, "spec.queue", func(rawObj client.Object) []string {
 		// Extract the `spec.queue` field from the Job object
@@ -140,48 +224,6 @@ func main() {
 		setupLog.Error(err, "unable to index field spec.queue")
 		os.Exit(1)
 	}
-
-	clientset, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	// 1. init db (Used for aijob)
-	err = db.InitDB()
-	if err != nil {
-		setupLog.Error(err, "unable to init db")
-		os.Exit(1)
-	}
-
-	query.SetDefault(query.GetDB())
-
-	// 2. init task controller
-	// taskUpdateChan := make(chan util.TaskUpdateChan)
-	jobStatusChan := make(chan util.JobStatusChan)
-
-	taskCtrl := aitaskctl.NewTaskController(
-		mgr.GetClient(),
-		clientset,
-		jobStatusChan,
-	)
-	err = taskCtrl.Init()
-	if err != nil {
-		setupLog.Error(err, "unable to set up task controller")
-		os.Exit(1)
-	}
-	setupLog.Info("task controller init success")
-
-	// 3. init job controller
-	jobReconciler := reconciler.NewAIJobReconciler(
-		mgr.GetClient(),
-		mgr.GetScheme(),
-		jobStatusChan,
-	)
-	err = jobReconciler.SetupWithManager(mgr)
-	if err != nil {
-		setupLog.Error(err, "unable to set up job controller")
-	}
-
 	vcjobReconciler := reconciler.NewVcJobReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
@@ -191,18 +233,7 @@ func main() {
 		setupLog.Error(err, "unable to set up vcjob controller")
 	}
 
-	imagePackReconciler := reconciler.NewImagePackReconciler(
-		mgr.GetClient(),
-		mgr.GetScheme(),
-	)
-	err = imagePackReconciler.SetupWithManager(mgr)
-	if err != nil {
-		setupLog.Error(err, "unable to set up imagepack controller")
-	}
-
-	stopCh := ctrl.SetupSignalHandler()
-
-	// 4. start manager
+	// start manager
 	setupLog.Info("starting manager")
 	go func() {
 		startErr := mgr.Start(stopCh)
@@ -215,23 +246,7 @@ func main() {
 	mgr.GetCache().WaitForCacheSync(stopCh)
 	setupLog.Info("cache sync success")
 
-	// profiler config
-	prometheusClient := monitor.NewPrometheusClient(backendConfig.PrometheusAPI)
-	if backendConfig.EnableProfiling {
-		aijobProfiler := profiler.NewProfiler(mgr, prometheusClient, backendConfig.ProfilingTimeout)
-		taskCtrl.SetProfiler(aijobProfiler)
-		// todo: start profiling
-		aijobProfiler.Start(stopCh)
-		setupLog.Info("enable profiling success")
-	}
-
-	err = taskCtrl.Start(stopCh)
-	if err != nil {
-		setupLog.Error(err, "unable to start task controller")
-		os.Exit(1)
-	}
-
-	// 5. start server
+	// start server
 	setupLog.Info("starting server")
 	registerConfig := handler.RegisterConfig{
 		Client:           mgr.GetClient(),
