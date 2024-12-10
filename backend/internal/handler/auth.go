@@ -217,6 +217,7 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 
 	q := query.Account
 	uq := query.UserAccount
+
 	lastUserQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID)).Last()
 	if err != nil {
 		l.Error("user has no queue", err)
@@ -231,6 +232,12 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		return
 	}
 
+	publicAccessMode := model.AccessModeNA
+	defaultUserQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID), uq.AccountID.Eq(model.DefaultAccountID)).First()
+	if err == nil {
+		publicAccessMode = defaultUserQueue.AccessMode
+	}
+
 	// Generate JWT tokens
 	jwtMessage := util.JWTMessage{
 		UserID:            user.ID,
@@ -239,7 +246,7 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		AccountName:       lastQueue.Name,
 		RoleAccount:       lastUserQueue.Role,
 		AccountAccessMode: lastUserQueue.AccessMode,
-		PublicAccessMode:  user.AccessMode,
+		PublicAccessMode:  publicAccessMode,
 		RolePlatform:      user.Role,
 	}
 	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
@@ -255,7 +262,7 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 			RoleQueue:    lastUserQueue.Role,
 			RolePlatform: user.Role,
 			AccessQueue:  lastUserQueue.AccessMode,
-			AccessPublic: user.AccessMode,
+			AccessPublic: publicAccessMode,
 			Space:        user.Space,
 		},
 		User: user.Attributes.Data(),
@@ -390,13 +397,12 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string)
 	}
 
 	user := model.User{
-		Name:       name,
-		Nickname:   name,
-		Password:   hashedPassword,
-		Role:       model.RoleUser,
-		Status:     model.StatusActive,
-		AccessMode: model.AccessModeRO,
-		Space:      name,
+		Name:     name,
+		Nickname: name,
+		Password: hashedPassword,
+		Role:     model.RoleUser,
+		Status:   model.StatusActive,
+		Space:    name,
 		Attributes: datatypes.NewJSONType(model.UserAttribute{
 			Email: lo.ToPtr(name + "@***REMOVED***"),
 			UID:   lo.ToPtr(result.UID),

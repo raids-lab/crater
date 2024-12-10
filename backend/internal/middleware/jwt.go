@@ -47,7 +47,7 @@ func AuthProtected() gin.HandlerFunc {
 				c.Abort()
 				return
 			}
-			if user.Role != token.RolePlatform || user.AccessMode != token.PublicAccessMode {
+			if user.Role != token.RolePlatform {
 				resputil.HTTPError(c, http.StatusUnauthorized, "Platform token not match", resputil.TokenInvalid)
 				c.Abort()
 				return
