@@ -95,7 +95,10 @@ func (mgr *UserMgr) DeleteUser(c *gin.Context) {
 func (mgr *UserMgr) ListUser(c *gin.Context) {
 	var users []UserResp
 	u := query.User
-	err := u.WithContext(c).Select(u.ID, u.Name, u.Role, u.Status, u.Attributes).Scan(&users)
+	err := u.WithContext(c).
+		Select(u.ID, u.Name, u.Role, u.Status, u.Attributes).
+		Order(u.ID.Desc()).
+		Scan(&users)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("list users failed, detail: %v", err), resputil.NotSpecified)
 		return
