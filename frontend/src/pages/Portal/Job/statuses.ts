@@ -1,6 +1,6 @@
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
-import { jobPhases } from "@/components/label/JobPhaseLabel";
-import { jobTypes } from "@/components/custom/JobTypeLabel";
+import { jobPhases } from "@/components/badge/JobPhaseBadge";
+import { jobTypes } from "@/components/badge/JobTypeBadge";
 
 export const getHeader = (key: string): string => {
   switch (key) {

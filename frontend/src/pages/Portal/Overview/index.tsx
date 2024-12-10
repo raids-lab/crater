@@ -1,6 +1,7 @@
 import { useMemo, type FC } from "react";
 import {
   Card,
+  CardTitle,
   CardDescription,
   CardFooter,
   CardHeader,
@@ -9,38 +10,38 @@ import { DataTable } from "@/components/custom/DataTable";
 import { useQuery } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import { nodeColumns } from "@/components/custom/Node/NodeList";
+import { nodeColumns } from "@/components/node/NodeList";
 import { getHeader } from "@/pages/Admin/Job/Overview";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import { JobPhase } from "@/services/api/vcjob";
 import JobPhaseLabel, {
   aijobPhases,
   jobPhases,
-} from "@/components/label/JobPhaseLabel";
+} from "@/components/badge/JobPhaseBadge";
 import { IJobInfo, JobType, apiJobAllList } from "@/services/api/vcjob";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
-import { CardTitle } from "@/components/ui-custom/card";
 import NivoPie from "@/components/chart/NivoPie";
 import SplitButton from "@/components/custom/SplitButton";
 import { Button } from "@/components/ui/button";
-import { BookOpenIcon, BoxIcon } from "lucide-react";
+import {
+  BookOpenIcon,
+  BoxIcon,
+  FlaskConicalIcon,
+  LayoutGridIcon,
+  UserRoundIcon,
+  ZapIcon,
+} from "lucide-react";
 import { useNavigate, useRoutes } from "react-router-dom";
-import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
-import ResourceBadges from "@/components/label/ResourceBadges";
-import NodeBadges from "@/components/label/NodeBadges";
-import JobTypeLabel, { jobTypes } from "@/components/custom/JobTypeLabel";
+import ResourceBadges from "@/components/badge/ResourceBadges";
+import NodeBadges from "@/components/badge/NodeBadges";
+import JobTypeLabel, { jobTypes } from "@/components/badge/JobTypeBadge";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
 import { globalJobUrl, globalSettings } from "@/utils/store";
-import NodeDetail from "@/components/custom/Node/NodeDetail";
+import NodeDetail from "@/components/node/NodeDetail";
 import useNodeQuery from "@/hooks/query/useNodeQuery";
-import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import GpuIcon from "@/components/icon/GpuIcon";
+import PieCard from "@/components/chart/PieCard";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -61,47 +62,6 @@ const toolbarConfig: DataTableToolbarConfig = {
     },
   ],
   getHeader: getHeader,
-};
-
-interface PieCardProps extends React.HTMLAttributes<HTMLDivElement> {
-  cardTitle: string;
-  cardDescription: string;
-  isLoading?: boolean;
-}
-
-const PieCard = ({
-  children,
-  cardTitle,
-  cardDescription,
-  isLoading,
-}: PieCardProps) => {
-  return (
-    <Card className="relative">
-      {isLoading && (
-        <div className="absolute bottom-0 left-0 right-0 top-0 z-10 flex items-center justify-center">
-          <LoadingCircleIcon />
-        </div>
-      )}
-      <CardHeader className="pb-3">
-        <CardTitle className="flex flex-row gap-1">
-          {cardTitle}
-          <TooltipProvider delayDuration={100}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <QuestionMarkCircledIcon className="size-4 text-muted-foreground hover:cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent className="border bg-background text-foreground">
-                {cardDescription}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </CardTitle>
-      </CardHeader>
-      <div className="flex h-44 items-center justify-center px-2">
-        {children}
-      </div>
-    </Card>
-  );
 };
 
 export const Component: FC = () => {
@@ -247,7 +207,7 @@ export const Component: FC = () => {
     }));
   }, [jobQuery.data]);
 
-  const queueStatus = useMemo(() => {
+  const userStatus = useMemo(() => {
     if (!jobQuery.data) {
       return [];
     }
@@ -334,7 +294,10 @@ export const Component: FC = () => {
       <div className="grid gap-4 md:gap-6 lg:col-span-3 lg:grid-cols-3">
         <Card className="col-span-2 flex flex-col justify-between lg:col-span-2">
           <CardHeader>
-            <CardTitle>快速开始</CardTitle>
+            <CardTitle className="flex flex-row items-center">
+              <ZapIcon className="mr-1 text-primary" />
+              快速开始
+            </CardTitle>
             <CardDescription className="text-balance pt-2 leading-relaxed">
               在 Crater 启动批处理或交互式计算作业、定制镜像、启动微服务或
               Serverless 等。
@@ -400,7 +363,8 @@ export const Component: FC = () => {
           </CardFooter>
         </Card>
         <PieCard
-          cardTitle="作业统计"
+          icon={FlaskConicalIcon}
+          cardTitle="作业状态"
           cardDescription="查看集群所有作业的状态统计"
           isLoading={jobQuery.isLoading}
         >
@@ -415,14 +379,16 @@ export const Component: FC = () => {
           />
         </PieCard>
         <PieCard
+          icon={UserRoundIcon}
           cardTitle="用户统计"
           cardDescription="当前正在运行作业所属的用户"
           isLoading={jobQuery.isLoading}
         >
-          <NivoPie data={queueStatus} margin={{ top: 25, bottom: 30 }} />
+          <NivoPie data={userStatus} margin={{ top: 25, bottom: 30 }} />
         </PieCard>
         <PieCard
-          cardTitle="类型统计"
+          icon={LayoutGridIcon}
+          cardTitle="作业类型"
           cardDescription="当前正在运行作业所属的类型"
           isLoading={jobQuery.isLoading}
         >
@@ -433,6 +399,7 @@ export const Component: FC = () => {
           />
         </PieCard>
         <PieCard
+          icon={GpuIcon}
           cardTitle="使用中 GPU"
           cardDescription="正在使用的 GPU 资源"
           isLoading={jobQuery.isLoading}

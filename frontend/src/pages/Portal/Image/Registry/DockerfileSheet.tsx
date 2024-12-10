@@ -22,7 +22,7 @@ import { PackagePlusIcon } from "lucide-react";
 import FormImportButton from "@/components/form/FormImportButton";
 import FormExportButton from "@/components/form/FormExportButton";
 import { MetadataFormDockerfile } from "@/components/form/types";
-import FormLabelMust from "@/components/custom/FormLabelMust";
+import FormLabelMust from "@/components/form/FormLabelMust";
 import { JobType } from "@/services/api/vcjob";
 import Combobox from "@/components/form/Combobox";
 import ImageItem from "@/components/form/ImageItem";

@@ -9,7 +9,7 @@ import {
   FormMessage,
   FormControl,
 } from "@/components/ui/form";
-import FormLabelMust from "@/components/custom/FormLabelMust";
+import FormLabelMust from "@/components/form/FormLabelMust";
 import { DialogTrigger, Dialog, DialogClose } from "@/components/ui/dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -71,9 +71,9 @@ import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableCo
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { z } from "zod";
 import useBreadcrumb from "@/hooks/useBreadcrumb";
-import UserRoleBadge, { userRoles } from "@/components/label/UserRoleBadge";
-import UserAccessBadge from "@/components/label/UserAccessBadge";
-import ResourceBadges from "@/components/label/ResourceBadges";
+import UserRoleBadge, { userRoles } from "@/components/badge/UserRoleBadge";
+import UserAccessBadge from "@/components/badge/UserAccessBadge";
+import ResourceBadges from "@/components/badge/ResourceBadges";
 import UserLabel from "@/components/label/UserLabel";
 import { UserRoundPlusIcon } from "lucide-react";
 import Quota from "./AccountQuota";

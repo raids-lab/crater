@@ -3,7 +3,7 @@ import { CardTitle } from "@/components/ui-custom/card";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { FileSelectDialog } from "@/components/custom/FileSelectDialog";
+import { FileSelectDialog } from "@/components/file/FileSelectDialog";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -33,9 +33,9 @@ import {
   CirclePlusIcon,
   XIcon,
 } from "lucide-react";
-import FormLabelMust from "@/components/custom/FormLabelMust";
+import FormLabelMust from "@/components/form/FormLabelMust";
 import Combobox from "@/components/form/Combobox";
-import AccordionCard from "@/components/custom/AccordionCard";
+import AccordionCard from "@/components/form/AccordionCard";
 import { Separator } from "@/components/ui/separator";
 import {
   exportToJsonFile,

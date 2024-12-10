@@ -39,7 +39,7 @@ import {
 } from "@/components/ui-custom/alert-dialog";
 import { ToggleLeft, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import JobTypeLabel from "@/components/custom/JobTypeLabel";
+import JobTypeLabel from "@/components/badge/JobTypeBadge";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
 

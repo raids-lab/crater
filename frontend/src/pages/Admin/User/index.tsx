@@ -43,8 +43,8 @@ import { globalUserInfo } from "@/utils/store";
 import { Role } from "@/services/api/auth";
 import { ProjectStatus } from "@/services/api/account";
 import UserLabel from "@/components/label/UserLabel";
-import UserRoleBadge from "@/components/label/UserRoleBadge";
-import UserStatusBadge from "@/components/label/UserStatusBadge";
+import UserRoleBadge from "@/components/badge/UserRoleBadge";
+import UserStatusBadge from "@/components/badge/UserStatusBadge";
 
 interface TUser {
   id: number;

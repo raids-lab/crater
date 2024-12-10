@@ -1,4 +1,4 @@
-import { PhaseLabel } from "./PhaseLabel";
+import { PhaseBadge } from "./PhaseBadge";
 
 export const nodeStatuses = [
   {
@@ -41,7 +41,7 @@ const getNodeStatusLabel = (
 };
 
 const NodeStatusBadge = ({ status }: { status: string }) => {
-  return <PhaseLabel phase={status} getPhaseLabel={getNodeStatusLabel} />;
+  return <PhaseBadge phase={status} getPhaseLabel={getNodeStatusLabel} />;
 };
 
 export default NodeStatusBadge;

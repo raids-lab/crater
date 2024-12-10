@@ -14,8 +14,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { apiDatasetCreate } from "@/services/api/dataset";
-import { FileSelectDialog } from "@/components/custom/FileSelectDialog";
-import FormLabelMust from "@/components/custom/FormLabelMust";
+import { FileSelectDialog } from "@/components/file/FileSelectDialog";
+import FormLabelMust from "@/components/form/FormLabelMust";
 
 const formSchema = z.object({
   datasetName: z

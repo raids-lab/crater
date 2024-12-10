@@ -4,8 +4,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Link } from "react-router-dom";
-import NodeTypeLabel from "@/components/label/NodeTypeLabel";
+import NodeTypeBadge from "@/components/badge/NodeTypeBadge";
 import { NodeType } from "@/services/api/cluster";
 import {
   Tooltip,
@@ -14,7 +13,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { NvidiaGpuInfoCard } from "./GPUInfo";
-import NodeStatusBadge from "@/components/label/NodeStatusBadge";
+import NodeStatusBadge from "@/components/badge/NodeStatusBadge";
+import TooltipLink from "../label/TooltipLink";
 
 interface ResourceInfo {
   percent: number;
@@ -76,7 +76,7 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
       <DataTableColumnHeader column={column} title={"类型"} />
     ),
     cell: ({ row }) => (
-      <NodeTypeLabel nodeType={row.getValue<NodeType>("type")} />
+      <NodeTypeBadge nodeType={row.getValue<NodeType>("type")} />
     ),
   },
   {
@@ -85,12 +85,11 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
       <DataTableColumnHeader column={column} title={"名称"} />
     ),
     cell: ({ row }) => (
-      <Link
-        className="h-8 px-0 text-left font-normal text-secondary-foreground underline-offset-2 hover:underline"
-        to={`${row.original.name}`}
-      >
-        <p>{row.getValue("name")}</p>
-      </Link>
+      <TooltipLink
+        name={row.getValue("name")}
+        to={row.getValue("name")}
+        tooltip={`查看 ${row.original.name} 节点详情`}
+      />
     ),
   },
   {

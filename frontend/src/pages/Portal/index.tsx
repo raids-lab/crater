@@ -219,7 +219,7 @@ const userSidebarGroups: NavGroupProps[] = [
         icon: SettingsIcon,
         items: [
           {
-            title: "用户设置",
+            title: "个人主页",
             url: "setting/user",
           },
           {

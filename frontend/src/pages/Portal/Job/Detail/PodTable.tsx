@@ -1,7 +1,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { apiJobGetPods, PodDetail } from "@/services/api/vcjob";
-import ResourceBadges from "@/components/label/ResourceBadges";
-import PodPhaseLabel, { podPhases } from "@/components/label/PodPhaseLabel";
+import ResourceBadges from "@/components/badge/ResourceBadges";
+import PodPhaseLabel, { podPhases } from "@/components/badge/PodPhaseBadge";
 import { EthernetPort, GaugeIcon, LogsIcon, TerminalIcon } from "lucide-react";
 import { DataTable } from "@/components/custom/DataTable";
 import { useQuery } from "@tanstack/react-query";
@@ -11,7 +11,7 @@ import LogDialog from "@/components/codeblock/LogDialog";
 import TerminalDialog from "@/components/codeblock/TerminalDialog";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
-import NodeBadges from "@/components/label/NodeBadges";
+import NodeBadges from "@/components/badge/NodeBadges";
 import PodIngressDialog from "./Ingress";
 import {
   DropdownMenu,
@@ -21,13 +21,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
+import TooltipLink from "@/components/label/TooltipLink";
 
 const POD_MONITOR = import.meta.env.VITE_GRAFANA_POD_MEMORY;
 
@@ -87,23 +82,12 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
       cell: ({ row }) => {
         const pod = row.original;
         return pod.name ? (
-          <TooltipProvider delayDuration={100}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <a
-                  href={`${POD_MONITOR}?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`}
-                  className="font-mono underline-offset-4 hover:underline"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {pod.name}
-                </a>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-44 border bg-background text-foreground">
-                查看 Pod 监控
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <TooltipLink
+            name={pod.name}
+            to={`${POD_MONITOR}?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`}
+            tooltip={`查看 Pod 监控`}
+            className="font-mono"
+          />
         ) : (
           "---"
         );

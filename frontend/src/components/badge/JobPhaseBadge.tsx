@@ -1,5 +1,5 @@
 import { JobPhase } from "@/services/api/vcjob";
-import { PhaseLabel, PhaseLabelData } from "./PhaseLabel";
+import { PhaseBadge, PhaseBadgeData } from "./PhaseBadge";
 
 export const jobPhases = [
   {
@@ -97,7 +97,7 @@ export const aijobPhases = [
   },
 ];
 
-export const getJobPhaseLabel = (phase: JobPhase): PhaseLabelData => {
+export const getJobPhaseLabel = (phase: JobPhase): PhaseBadgeData => {
   switch (phase) {
     case JobPhase.Init:
       return {
@@ -188,7 +188,7 @@ export const getJobPhaseLabel = (phase: JobPhase): PhaseLabelData => {
 };
 
 const JobPhaseLabel = ({ jobPhase }: { jobPhase: JobPhase }) => {
-  return <PhaseLabel phase={jobPhase} getPhaseLabel={getJobPhaseLabel} />;
+  return <PhaseBadge phase={jobPhase} getPhaseLabel={getJobPhaseLabel} />;
 };
 
 export default JobPhaseLabel;

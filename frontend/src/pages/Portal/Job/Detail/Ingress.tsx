@@ -32,7 +32,7 @@ import {
   PodContainerDialogProps,
 } from "@/components/codeblock/PodContainerDialog";
 import { useNamespacedState } from "@/hooks/useNamespacedState";
-import FormLabelMust from "@/components/custom/FormLabelMust";
+import FormLabelMust from "@/components/form/FormLabelMust";
 import { toast } from "sonner";
 import TooltipButton from "@/components/custom/TooltipButton";
 import {

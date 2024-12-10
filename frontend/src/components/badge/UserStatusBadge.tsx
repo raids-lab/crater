@@ -1,4 +1,4 @@
-import { PhaseLabel } from "./PhaseLabel";
+import { PhaseBadge } from "./PhaseBadge";
 import { ProjectStatus } from "@/services/api/account";
 
 export const userAccesses = [
@@ -36,7 +36,7 @@ const getUserStatusLabel = (
 };
 
 const UserStatusBadge = ({ status }: { status: string }) => {
-  return <PhaseLabel phase={status} getPhaseLabel={getUserStatusLabel} />;
+  return <PhaseBadge phase={status} getPhaseLabel={getUserStatusLabel} />;
 };
 
 export default UserStatusBadge;

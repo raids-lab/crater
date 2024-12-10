@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import { getHeader, jobToolbarConfig } from "@/pages/Portal/Job/statuses";
 import { logger } from "@/utils/loglevel";
 import Quota from "./Quota";
-import JobPhaseLabel from "@/components/label/JobPhaseLabel";
+import JobPhaseLabel from "@/components/badge/JobPhaseBadge";
 import { Link } from "react-router-dom";
 import {
   Card,
@@ -47,9 +47,9 @@ import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
 import { globalJobUrl } from "@/utils/store";
-import NodeBadges from "@/components/label/NodeBadges";
-import ResourceBadges from "@/components/label/ResourceBadges";
-import JobTypeLabel from "@/components/custom/JobTypeLabel";
+import NodeBadges from "@/components/badge/NodeBadges";
+import ResourceBadges from "@/components/badge/ResourceBadges";
+import JobTypeLabel from "@/components/badge/JobTypeBadge";
 import TooltipButton from "@/components/custom/TooltipButton";
 import {
   DropdownMenu,
@@ -60,6 +60,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DotsHorizontalIcon, InfoCircledIcon } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
+import TooltipLink from "@/components/label/TooltipLink";
 
 const InterOverview = () => {
   const jobType = useAtomValue(globalJobUrl);
@@ -121,15 +122,23 @@ const InterOverview = () => {
           <DataTableColumnHeader column={column} title={getHeader("name")} />
         ),
         cell: ({ row }) => (
-          <Link
+          <TooltipLink
+            name={
+              <div className="flex flex-row items-center">
+                {row.getValue("name")}
+                {row.original.keepWhenLowUsage && (
+                  <LockIcon className="ml-1 size-4 text-muted-foreground" />
+                )}
+              </div>
+            }
             to={row.original.jobName}
-            className="flex flex-row items-center hover:text-primary"
-          >
-            {row.getValue("name")}
-            {row.original.keepWhenLowUsage && (
-              <LockIcon className="ml-1 size-4 text-muted-foreground" />
-            )}
-          </Link>
+            tooltip={
+              `查看 ${row.getValue("name")} 作业详情` +
+              (row.original.keepWhenLowUsage
+                ? "（已锁定，低利用率仍保留）"
+                : "")
+            }
+          />
         ),
       },
       {

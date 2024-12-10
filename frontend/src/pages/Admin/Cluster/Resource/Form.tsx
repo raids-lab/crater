@@ -21,7 +21,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import FormLabelMust from "@/components/custom/FormLabelMust";
+import FormLabelMust from "@/components/form/FormLabelMust";
 import { Resource, apiAdminResourceUpdate } from "@/services/api/resource";
 
 interface UpdateTaskFormProps extends React.HTMLAttributes<HTMLDivElement> {

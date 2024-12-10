@@ -22,7 +22,7 @@ import { toast } from "sonner";
 import { LabelInfo, apiNodeLabelsUpdate } from "@/services/api/nodelabel";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import FormLabelMust from "@/components/custom/FormLabelMust";
+import FormLabelMust from "@/components/form/FormLabelMust";
 
 interface UpdateTaskFormProps extends React.HTMLAttributes<HTMLDivElement> {
   closeSheet: () => void;

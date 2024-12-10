@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiGetNodes } from "@/services/api/cluster";
 import { convertKResourceToResource } from "@/utils/resource";
-import { ClusterNodeInfo } from "@/components/custom/Node/NodeList";
+import { ClusterNodeInfo } from "@/components/node/NodeList";
 
 const useNodeQuery = (onlyWorker?: boolean) => {
   return useQuery({

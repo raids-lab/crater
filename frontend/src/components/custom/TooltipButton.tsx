@@ -8,11 +8,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-export interface LoadableButtonProps extends ButtonProps {
+interface TooltipButtonProps extends ButtonProps {
   tooltipContent: string;
 }
 
-const TooltipButton = React.forwardRef<HTMLButtonElement, LoadableButtonProps>(
+const TooltipButton = React.forwardRef<HTMLButtonElement, TooltipButtonProps>(
   function LoadableButton(
     { className, variant, size, tooltipContent, children, ...props },
     ref,
