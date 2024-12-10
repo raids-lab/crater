@@ -46,7 +46,7 @@ import {
   apiJobGetYaml,
   PodDetail,
 } from "@/services/api/vcjob";
-import JobPhaseLabel from "@/components/label/JobPhaseLabel";
+import JobPhaseLabel from "@/components/badge/JobPhaseBadge";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import { SmallDataCard } from "@/components/custom/DataCard";
 import { ProfileStat } from "@/services/api/aiTask";

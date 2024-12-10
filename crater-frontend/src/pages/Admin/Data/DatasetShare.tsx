@@ -4,7 +4,7 @@ import {
   apiAdminShareDatasetwithQueue,
   apiAdminShareDatasetwithUser,
 } from "@/services/api/dataset";
-import { DatasetShareTable } from "@/components/custom/DatasetShareTable";
+import { DatasetShareTable } from "@/components/file/DatasetShareTable";
 
 export const Component = () => {
   return (

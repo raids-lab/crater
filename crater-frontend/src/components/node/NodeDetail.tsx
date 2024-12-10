@@ -29,19 +29,20 @@ import {
 import { useParams } from "react-router-dom";
 import { ExternalLink } from "lucide-react";
 import useBreadcrumb from "@/hooks/useBreadcrumb";
-import PodPhaseLabel, { podPhases } from "@/components/label/PodPhaseLabel";
+import PodPhaseLabel, { podPhases } from "@/components/badge/PodPhaseBadge";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "../../ui/badge";
+import { Badge } from "../ui/badge";
 import {
   NamespacedName,
   PodNamespacedName,
-} from "../../codeblock/PodContainerDialog";
-import LogDialog from "../../codeblock/LogDialog";
-import ResourceBadges from "../../label/ResourceBadges";
+} from "../codeblock/PodContainerDialog";
+import LogDialog from "../codeblock/LogDialog";
+import ResourceBadges from "../badge/ResourceBadges";
 
 import yitianURL from "/nodes/yitian.png";
 import hygonURL from "/nodes/hygon.png";
 import shenweiURL from "/nodes/sw.png";
+import TooltipLink from "../label/TooltipLink";
 
 type CardDemoProps = React.ComponentProps<typeof Card> & {
   nodeInfo?: {
@@ -222,16 +223,12 @@ const getColumns = (
       const podName = row.getValue<string>("name");
       const link = `${POD_MONITOR}?orgId=1&var-node_name=${nodeName}&var-pod_name=${podName}&from=now-1h&to=now`;
       return (
-        <div className="font-mono">
-          <a
-            href={link}
-            className="underline-offset-4 hover:underline"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {podName}
-          </a>
-        </div>
+        <TooltipLink
+          name={podName}
+          to={link}
+          tooltip={`查看 Pod 监控`}
+          className="font-mono"
+        />
       );
     },
     enableSorting: false,

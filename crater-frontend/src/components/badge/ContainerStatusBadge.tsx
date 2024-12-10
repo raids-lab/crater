@@ -1,4 +1,4 @@
-import { PhaseLabel } from "./PhaseLabel";
+import { PhaseBadge } from "./PhaseBadge";
 
 export enum ContainerStatus {
   Waiting = "Waiting",
@@ -48,17 +48,17 @@ const getContainerStatusLabel = (
   }
 };
 
-const ContainerStatusLabel = ({
+const ContainerStatusBadge = ({
   containerStatus,
 }: {
   containerStatus: string;
 }) => {
   return (
-    <PhaseLabel
+    <PhaseBadge
       phase={containerStatus}
       getPhaseLabel={getContainerStatusLabel}
     />
   );
 };
 
-export default ContainerStatusLabel;
+export default ContainerStatusBadge;

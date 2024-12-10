@@ -7,21 +7,21 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-export interface PhaseLabelData {
+export interface PhaseBadgeData {
   label: string;
   color: string;
   description: string;
 }
 
-interface PhaseLabelProps<T> {
+interface PhaseBadgeProps<T> {
   phase: T;
-  getPhaseLabel: (phase: T) => PhaseLabelData;
+  getPhaseLabel: (phase: T) => PhaseBadgeData;
 }
 
-export const PhaseLabel = <T,>({
+export const PhaseBadge = <T,>({
   phase,
   getPhaseLabel,
-}: PhaseLabelProps<T>) => {
+}: PhaseBadgeProps<T>) => {
   const data = getPhaseLabel(phase);
 
   return (

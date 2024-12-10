@@ -115,7 +115,7 @@ export const craterPath: PathInfo = {
       children: [
         {
           path: "user",
-          title: "用户设置",
+          title: "个人主页",
         },
         {
           path: "platform",

@@ -8,7 +8,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import JobPhaseLabel, { jobPhases } from "@/components/label/JobPhaseLabel";
+import JobPhaseLabel, { jobPhases } from "@/components/badge/JobPhaseBadge";
 import { JobPhase } from "@/services/api/vcjob";
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
@@ -24,9 +24,9 @@ import {
   DotsHorizontalIcon,
 } from "@radix-ui/react-icons";
 import { Link } from "react-router-dom";
-import ResourceBadges from "@/components/label/ResourceBadges";
-import NodeBadges from "@/components/label/NodeBadges";
-import JobTypeLabel from "@/components/custom/JobTypeLabel";
+import ResourceBadges from "@/components/badge/ResourceBadges";
+import NodeBadges from "@/components/badge/NodeBadges";
+import JobTypeLabel from "@/components/badge/JobTypeBadge";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,6 +46,7 @@ import {
   SquareIcon,
   Trash2Icon,
   UnlockIcon,
+  UserRoundIcon,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -56,6 +57,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { logger } from "@/utils/loglevel";
 import { useMemo } from "react";
+import CronPolicy from "./CronPolicy";
+import NivoPie from "@/components/chart/NivoPie";
+import PieCard from "@/components/chart/PieCard";
 
 export type StatusValue =
   | "Queueing"
@@ -388,33 +392,72 @@ const AdminJobOverview = () => {
         },
       },
     ],
-    [deleteTask],
+    [deleteTask, keepTask],
   );
 
-  return (
-    <DataTable
-      query={vcjobQuery}
-      columns={vcjobColumns}
-      toolbarConfig={toolbarConfig}
-      multipleHandlers={[
-        {
-          title: (rows) => `停止或删除 ${rows.length} 个作业`,
-          description: (rows) => (
-            <>
-              作业 {rows.map((row) => row.original.name).join(", ")}{" "}
-              将被停止或删除，确认要继续吗？
-            </>
-          ),
-          icon: <Trash2Icon className="text-destructive" />,
-          handleSubmit: (rows) => {
-            rows.forEach((row) => {
-              deleteTask(row.original.jobName);
-            });
-          },
-          isDanger: true,
+  const userStatus = useMemo(() => {
+    if (!vcjobQuery.data) {
+      return [];
+    }
+    const data = vcjobQuery.data;
+    const counts = data
+      .filter((job) => job.status == "Running")
+      .reduce(
+        (acc, item) => {
+          const owner = item.owner;
+          if (!acc[owner]) {
+            acc[owner] = 0;
+          }
+          acc[owner] += 1;
+          return acc;
         },
-      ]}
-    />
+        {} as Record<string, number>,
+      );
+    return Object.entries(counts).map(([phase, count]) => ({
+      id: phase,
+      label: phase,
+      value: count,
+    }));
+  }, [vcjobQuery.data]);
+
+  return (
+    <>
+      <div className="grid gap-4 lg:grid-cols-7">
+        <CronPolicy className="lg:col-span-4" />
+        <PieCard
+          icon={UserRoundIcon}
+          cardTitle="用户统计"
+          cardDescription="当前正在运行作业所属的用户"
+          isLoading={vcjobQuery.isLoading}
+          className="lg:col-span-3"
+        >
+          <NivoPie data={userStatus} margin={{ top: 25, bottom: 30 }} />
+        </PieCard>
+      </div>
+      <DataTable
+        query={vcjobQuery}
+        columns={vcjobColumns}
+        toolbarConfig={toolbarConfig}
+        multipleHandlers={[
+          {
+            title: (rows) => `停止或删除 ${rows.length} 个作业`,
+            description: (rows) => (
+              <>
+                作业 {rows.map((row) => row.original.name).join(", ")}{" "}
+                将被停止或删除，确认要继续吗？
+              </>
+            ),
+            icon: <Trash2Icon className="text-destructive" />,
+            handleSubmit: (rows) => {
+              rows.forEach((row) => {
+                deleteTask(row.original.jobName);
+              });
+            },
+            isDanger: true,
+          },
+        ]}
+      />
+    </>
   );
 };
 

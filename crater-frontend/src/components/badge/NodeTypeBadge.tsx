@@ -17,7 +17,7 @@ export const nodeTypes = [
   },
 ];
 
-const getNodeTypeLabel = (
+const getNodeTypeBadge = (
   phase: NodeType,
 ): {
   label: string;
@@ -47,8 +47,8 @@ const getNodeTypeLabel = (
   }
 };
 
-const NodeTypeLabel = ({ nodeType }: { nodeType: NodeType }) => {
-  const data = getNodeTypeLabel(nodeType);
+const NodeTypeBadge = ({ nodeType }: { nodeType: NodeType }) => {
+  const data = getNodeTypeBadge(nodeType);
 
   return (
     <Badge className={cn("border-none", data.color)} variant="outline">
@@ -57,4 +57,4 @@ const NodeTypeLabel = ({ nodeType }: { nodeType: NodeType }) => {
   );
 };
 
-export default NodeTypeLabel;
+export default NodeTypeBadge;

@@ -34,10 +34,10 @@ import useBreadcrumb from "@/hooks/useBreadcrumb";
 import { QueueNotInSelect } from "@/components/custom/QueueNotInSelect";
 import { AxiosResponse } from "axios";
 import { IResponse } from "@/services/types";
-import { DataTable } from "./DataTable";
+import { DataTable } from "../custom/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTableColumnHeader } from "./DataTable/DataTableColumnHeader";
-import { TimeDistance } from "./TimeDistance";
+import { DataTableColumnHeader } from "../custom/DataTable/DataTableColumnHeader";
+import { TimeDistance } from "../custom/TimeDistance";
 import { Input } from "../ui/input";
 interface QueueOption {
   value: string;

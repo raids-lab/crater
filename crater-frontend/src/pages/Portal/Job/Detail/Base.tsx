@@ -40,7 +40,7 @@ import {
   JobType,
   JobPhase,
 } from "@/services/api/vcjob";
-import JobPhaseLabel from "@/components/label/JobPhaseLabel";
+import JobPhaseLabel from "@/components/badge/JobPhaseBadge";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import { PodTable } from "./PodTable";
 import { ConfigDialog } from "@/components/codeblock/ConfigDialog";

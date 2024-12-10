@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/form";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import FormLabelMust from "@/components/custom/FormLabelMust";
+import FormLabelMust from "@/components/form/FormLabelMust";
 import LoadableButton from "@/components/custom/LoadableButton";
 import { z } from "zod";
 import { toast } from "sonner";

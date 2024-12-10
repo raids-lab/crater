@@ -10,7 +10,7 @@ import {
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DialogTrigger } from "@radix-ui/react-dialog";
-import { Tree, TreeDataItem } from "@/components/custom/LazyFileTree";
+import { Tree, TreeDataItem } from "@/components/file/LazyFileTree";
 import { ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";

@@ -16,14 +16,14 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiGetPodContainers, ContainerInfo } from "@/services/api/tool";
 import { toast } from "sonner";
-import ResourceBadges from "../label/ResourceBadges";
+import ResourceBadges from "../badge/ResourceBadges";
 import { cn } from "@/lib/utils";
 import { TimeDistance } from "../custom/TimeDistance";
 import { shortenImageName, shortestImageName } from "@/utils/formatter";
 import { BoxIcon } from "lucide-react";
-import ContainerStatusLabel, {
+import ContainerStatusBadge, {
   ContainerStatus,
-} from "../label/ContainerStatusLabel";
+} from "../badge/ContainerStatusBadge";
 import { useNamespacedState } from "@/hooks/useNamespacedState";
 import LoadingCircleIcon from "../icon/LoadingCircleIcon";
 
@@ -114,7 +114,7 @@ const TableCellForm = ({
     <div className="grid grid-cols-3 content-start gap-4 px-1 text-sm">
       <p className="text-muted-foreground">状态</p>
       <div className="group col-span-2 flex flex-row items-center justify-start gap-1">
-        <ContainerStatusLabel containerStatus={containerStatus} />
+        <ContainerStatusBadge containerStatus={containerStatus} />
       </div>
       <p className="text-muted-foreground">名称</p>
       <p className="col-span-2 font-mono">{selectedContainer.name}</p>

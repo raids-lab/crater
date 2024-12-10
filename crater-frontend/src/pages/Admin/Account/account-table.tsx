@@ -14,7 +14,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
 import { ColumnDef } from "@tanstack/react-table";
-import ResourceBadges from "@/components/label/ResourceBadges";
+import ResourceBadges from "@/components/badge/ResourceBadges";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { Link } from "react-router-dom";
 import Identicon from "@polkadot/react-identicon";

@@ -1,5 +1,5 @@
 import { Role } from "@/services/api/auth";
-import { PhaseLabel } from "./PhaseLabel";
+import { PhaseBadge } from "./PhaseBadge";
 
 export const userRoles = [
   {
@@ -36,7 +36,7 @@ const getUserRoleLabel = (
 };
 
 const UserRoleBadge = ({ role }: { role: string }) => {
-  return <PhaseLabel phase={role} getPhaseLabel={getUserRoleLabel} />;
+  return <PhaseBadge phase={role} getPhaseLabel={getUserRoleLabel} />;
 };
 
 export default UserRoleBadge;

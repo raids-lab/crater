@@ -1,4 +1,4 @@
-import { PhaseLabel } from "./PhaseLabel";
+import { PhaseBadge } from "./PhaseBadge";
 
 export const podPhases = [
   {
@@ -53,7 +53,7 @@ const getPodPhaseLabel = (
 };
 
 const PodPhaseLabel = ({ podPhase }: { podPhase: string }) => {
-  return <PhaseLabel phase={podPhase} getPhaseLabel={getPodPhaseLabel} />;
+  return <PhaseBadge phase={podPhase} getPhaseLabel={getPodPhaseLabel} />;
 };
 
 export default PodPhaseLabel;

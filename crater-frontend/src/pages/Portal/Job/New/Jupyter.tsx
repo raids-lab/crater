@@ -3,7 +3,7 @@ import { CardTitle } from "@/components/ui-custom/card";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { FileSelectDialog } from "@/components/custom/FileSelectDialog";
+import { FileSelectDialog } from "@/components/file/FileSelectDialog";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -27,9 +27,9 @@ import { cn } from "@/lib/utils";
 import { convertToK8sResources } from "@/utils/resource";
 import { toast } from "sonner";
 import { ChartNoAxesColumn, CirclePlus, XIcon } from "lucide-react";
-import FormLabelMust from "@/components/custom/FormLabelMust";
+import FormLabelMust from "@/components/form/FormLabelMust";
 import Combobox, { ComboboxItem } from "@/components/form/Combobox";
-import AccordionCard from "@/components/custom/AccordionCard";
+import AccordionCard from "@/components/form/AccordionCard";
 import { Separator } from "@/components/ui/separator";
 import {
   exportToJsonString,
@@ -542,7 +542,7 @@ export const Component = () => {
                               </button>
                               <FormControl>
                                 <Tabs defaultValue="file" className="w-full">
-                                  <TabsList className="grid w-full grid-cols-3">
+                                  <TabsList className="grid w-full grid-cols-2">
                                     <TabsTrigger
                                       value="file"
                                       onClick={() =>
@@ -563,18 +563,6 @@ export const Component = () => {
                                       disabled={disabled}
                                     >
                                       数据集
-                                    </TabsTrigger>
-                                    <TabsTrigger
-                                      value="model"
-                                      onClick={() =>
-                                        resetVolumeMountsFields(
-                                          index,
-                                          DatasetType,
-                                        )
-                                      }
-                                      disabled={true}
-                                    >
-                                      模型
                                     </TabsTrigger>
                                   </TabsList>
                                   <TabsContent value="file">
@@ -636,17 +624,17 @@ export const Component = () => {
                               `volumeMounts.${index}.mountPath`,
                             ) === `/home/${user.name}`;
                           return (
-                            <FormItem autoFocus={false}>
+                            <FormItem>
                               <FormLabel>
                                 挂载点 {index + 1}
                                 <FormLabelMust />
                               </FormLabel>
                               <FormControl>
-                                <Input {...field} disabled={disabled} />
+                                <Input {...field} />
                               </FormControl>
                               <FormDescription>
                                 {disabled
-                                  ? "默认持久化主目录，请谨慎修改"
+                                  ? "默认持久化用户主目录，请谨慎修改"
                                   : "可修改容器中的挂载路径"}
                               </FormDescription>
                               <FormMessage />

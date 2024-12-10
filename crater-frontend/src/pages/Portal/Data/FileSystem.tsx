@@ -9,7 +9,7 @@ import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableT
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { TimeDistance } from "@/components/custom/TimeDistance";
-import { FileSizeComponent } from "@/components/custom/FileSize";
+import { FileSizeComponent } from "@/components/file/FileSize";
 import {
   Dialog,
   DialogContent,
@@ -50,7 +50,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui-custom/card";
-import { getFolderTitle } from "@/components/custom/LazyFileTree";
+import { getFolderTitle } from "@/components/file/LazyFileTree";
 import {
   AlertDialog,
   AlertDialogAction,

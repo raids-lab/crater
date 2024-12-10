@@ -30,7 +30,7 @@ import { toast } from "sonner";
 import { getHeader, jobToolbarConfig } from "@/pages/Portal/Job/statuses";
 import { logger } from "@/utils/loglevel";
 import Quota from "../../Interactive/Quota";
-import JobPhaseLabel from "@/components/label/JobPhaseLabel";
+import JobPhaseLabel from "@/components/badge/JobPhaseBadge";
 import {
   Card,
   CardTitle,
@@ -41,9 +41,9 @@ import {
 import SplitButton from "@/components/custom/SplitButton";
 import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
-import NodeBadges from "@/components/label/NodeBadges";
-import ResourceBadges from "@/components/label/ResourceBadges";
-import JobTypeLabel from "@/components/custom/JobTypeLabel";
+import NodeBadges from "@/components/badge/NodeBadges";
+import ResourceBadges from "@/components/badge/ResourceBadges";
+import JobTypeLabel from "@/components/badge/JobTypeBadge";
 import { globalJobUrl } from "@/utils/store";
 import { useAtomValue } from "jotai";
 import { Trash2Icon, WaypointsIcon } from "lucide-react";
