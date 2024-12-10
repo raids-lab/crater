@@ -166,25 +166,25 @@ if __name__ == '__main__':
 
 在系统中打开数据管理的文件系统并进入用户空间
 
-![1732252562040](./assets/1732252562040-1732252573212-2.png)
+![openuserspace](./assets/openuserspace.png)
 
 可以通过为项目单独新建一个文件夹，然后将相关文件导入。
 
-![image-20241122155705293](./assets/image-20241122155705293-1732262227132-4.png)
+![createfile](./assets/createfile.png)
 
 本示例中将 train.py 文件导入到 mnist 文件夹中
 
-![image-20241122160500989](./assets/image-20241122160500989-1732262702522-11.png)
+![uploadfile](./assets/uploadfile.png)
 
 ## 作业提交
 
 在批处理作业中选择自定义单机批处理作业
 
-![image-20241119133142195](./assets/image-20241119133142195.png)
+![selectbatchprocess](./assets/selectbatchprocess.png)
 
 ### 填写作业信息
 
-![image-20241122160836571](./assets/image-20241122160836571-1732262918457-14.png)
+![filljobinfo](./assets/filljobinfo.png)
 
 ### 容器镜像选择
 
@@ -213,37 +213,37 @@ python train.py
 
 初始状态是挂载整个用户文件系统。一般来说，文件系统和数据集都会挂载到/mnt/文件夹下
 
-![image-20241119140509768](./assets/image-20241119140509768.png)
+![mount](./assets/mount.png)
 
 如，导入用户空间下的 mnist 文件夹，可通过 cd /mnt/mnist;指令来访问该文件夹
 
-![image-20241119141208401](./assets/image-20241119141208401.png)
+![filemount](./assets/filemount.png)
 
 与文件夹情况类似，数据集挂载其实是将包含数据集的文件夹整体挂载到/mnt/文件夹下，具体如下
 
-![image-20241119141512895](./assets/image-20241119141512895.png)
+![datasetmount](./assets/datasetmount.png)
 
-![image-20241119141915285](./assets/image-20241119141915285.png)
+![opendataset](./assets/opendataset.png)
 
 ## 作业运行状况查看
 
 在成功创建作业后，会在批处理作业列表中看到刚刚创建的作业，点击作业名称可查看详情
 
-![image-20241122220421910](./assets/image-20241122220421910-1732284263455-4.png)
+![openjob](./assets/openjob.png)
 
-![image-20241122220503969](./assets/image-20241122220503969-1732284305164-8.png)
+![checkjob](./assets/checkjob.png)
 
 作业运行过程中，可能会报错，比如因为无法打开相对应的文件夹，或者程序执行过程中出现问题，可通过查看日志查看作业运行情况
 
-![image-20241122220746557](./assets/image-20241122220746557-1732284467578-11.png)
+![checklog](./assets/checklog.png)
 
 此时表示程序正在下载数据集，因系统代理问题可能下载速度较慢，可提前下载数据集上传
 
-![image-20241122220816423](./assets/image-20241122220816423-1732284498017-13.png)
+![checkjobincmd](./assets/checkjobincmd.png)
 
 状态变**已完成**表示批处理作业已顺利执行成功，失败则表示存在问题，可通过日志查看
 
-![image-20241122222058803](./assets/image-20241122222058803-1732285261109-15.png)
+![jobstatus](./assets/jobstatus.png)
 
 #### 其他查看作业运行情况的方法
 
@@ -255,7 +255,7 @@ sleep 600;//让程序暂停10分钟
 
 然后通过终端和日志查看你想查看的信息
 
-![image-20241119134756273](./assets/image-20241119134756273.png)
+![openterminal](./assets/openterminal.png)
 
 ## 作业结果保存
 
@@ -265,4 +265,4 @@ sleep 600;//让程序暂停10分钟
 torch.save(model.state_dict(), "mnist_cnn.pt")
 ```
 
-![image-20241122162517287](./assets/image-20241122162517287-1732263918878-16.png)
+![jobsave](./assets/jobsave.png)
