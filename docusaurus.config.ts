@@ -83,7 +83,7 @@ const config: Config = {
           position: "left",
           label: "文档",
         },
-        // { to: "/blog", label: "资讯", position: "left" },
+        { to: "/blog", label: "资讯", position: "left" },
         {
           href: "https://gpu.act.buaa.edu.cn/portal",
           label: "立即体验",
@@ -142,6 +142,17 @@ const config: Config = {
       darkTheme: prismThemes.dracula,
     },
   } satisfies Preset.ThemeConfig,
+
+  // ... Your other configurations.
+  themes: [
+    [
+      require.resolve("@easyops-cn/docusaurus-search-local"),
+      /** @type {import("@easyops-cn/docusaurus-search-local").PluginOptions} */
+      {
+        hashed: true,
+      },
+    ],
+  ],
 };
 
 export default config;
