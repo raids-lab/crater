@@ -43,7 +43,7 @@ export const adminPath: PathInfo = {
     //   children: [
     //     {
     //       path: "create",
-    //       title: "镜像仓库",
+    //       title: "镜像制作",
     //     },
     //     {
     //       path: "upload",

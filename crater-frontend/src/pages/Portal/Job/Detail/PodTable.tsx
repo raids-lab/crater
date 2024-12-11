@@ -62,6 +62,10 @@ const toolbarConfig: DataTableToolbarConfig = {
   getHeader: getHeader,
 };
 
+const getPodMonitorUrl = (pod: PodDetail) => {
+  return `${POD_MONITOR}?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`;
+};
+
 export const PodTable = ({ jobName }: { jobName: string }) => {
   const [showLog, setShowLog] = useState<NamespacedName>();
   const [showTerminal, setShowTerminal] = useState<NamespacedName>();
@@ -84,7 +88,7 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
         return pod.name ? (
           <TooltipLink
             name={pod.name}
-            to={`${POD_MONITOR}?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`}
+            to={getPodMonitorUrl(pod)}
             tooltip={`查看 Pod 监控`}
             className="font-mono"
           />
@@ -155,22 +159,9 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
                   });
                 }}
               >
-                <GaugeIcon className="text-green-600 dark:text-green-500" />
-                Pod 监控
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={pod.phase !== "Running"}
-                onClick={() => {
-                  setShowTerminal({
-                    namespace: pod.namespace,
-                    name: pod.name,
-                  });
-                }}
-              >
                 <TerminalIcon className="text-primary" />
-                Web 终端
+                网页终端
               </DropdownMenuItem>
-
               <DropdownMenuItem
                 disabled={pod.phase !== "Running"}
                 onClick={() => {
@@ -183,6 +174,17 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
                 <EthernetPort className="text-purple-600 dark:text-purple-500" />
                 外部访问
               </DropdownMenuItem>
+              <DropdownMenuItem asChild disabled={pod.phase !== "Running"}>
+                <a
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  href={getPodMonitorUrl(pod)}
+                  className="w-full"
+                >
+                  <GaugeIcon className="text-green-600 dark:text-green-500" />
+                  资源监控
+                </a>
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
                   setShowLog({
@@ -192,7 +194,7 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
                 }}
               >
                 <LogsIcon className="text-orange-600 dark:text-orange-500" />
-                日志与诊断
+                日志诊断
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

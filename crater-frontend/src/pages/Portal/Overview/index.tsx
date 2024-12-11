@@ -45,8 +45,8 @@ import PieCard from "@/components/chart/PieCard";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
-    placeholder: "搜索账户名称",
-    key: "queue",
+    placeholder: "搜索用户名称",
+    key: "owner",
   },
   filterOptions: [
     {
@@ -346,7 +346,7 @@ export const Component: FC = () => {
               className="hidden xl:flex"
             >
               <BoxIcon className="size-4" />
-              镜像仓库
+              镜像制作
             </Button>
             <Button
               variant="secondary"
