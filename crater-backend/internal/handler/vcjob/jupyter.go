@@ -124,7 +124,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	envs[3] = v1.EnvVar{Name: "NB_GID", Value: *userAttr.GID}
 	envs[4] = v1.EnvVar{Name: "NB_USER", Value: token.Username}
 	for i, env := range req.Envs {
-		envs[i+4] = env
+		envs[i+5] = env
 	}
 
 	// 3. TODO: Node Affinity for ARM64 Nodes
