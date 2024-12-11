@@ -24,8 +24,8 @@ export default function TooltipLink({
   return (
     <TooltipProvider delayDuration={50}>
       <Tooltip>
-        <TooltipTrigger asChild>
-          {to.startsWith("http") ? (
+        {to.startsWith("http") ? (
+          <TooltipTrigger asChild>
             <a
               href={to}
               className={cn(
@@ -37,15 +37,17 @@ export default function TooltipLink({
             >
               {name}
             </a>
-          ) : (
+          </TooltipTrigger>
+        ) : (
+          <TooltipTrigger>
             <Link
               className={cn("font-normal hover:text-primary", className)}
               to={to}
             >
               {name}
             </Link>
-          )}
-        </TooltipTrigger>
+          </TooltipTrigger>
+        )}
         <TooltipContent className="border bg-muted text-foreground">
           {tooltip}
         </TooltipContent>

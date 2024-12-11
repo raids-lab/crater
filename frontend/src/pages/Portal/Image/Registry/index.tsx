@@ -58,6 +58,7 @@ import {
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { DockerfileSheet } from "./DockerfileSheet";
 import { shortestImageName } from "@/utils/formatter";
+import WIPBadge from "@/components/badge/WIPBadge";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -230,7 +231,7 @@ export const ImageTable: FC = () => {
       <Card className="flex flex-col justify-between">
         <CardHeader>
           <CardTitle className="flex flex-row items-center justify-start gap-2">
-            <BoxIcon className="text-primary" /> 镜像仓库
+            <BoxIcon className="text-primary" /> 镜像制作
           </CardTitle>
           <CardDescription className="text-balance pt-2 leading-relaxed">
             通过 Kaniko 制作镜像，支持 Dockerfile 和低代码方式制作镜像
@@ -307,7 +308,12 @@ export const ImageTable: FC = () => {
       <DockerfileSheet
         isOpen={openSheet}
         onOpenChange={setOpenSheet}
-        title="镜像制作 (当前不可用)"
+        title={
+          <p className="flex flex-row items-center gap-1.5">
+            <WIPBadge className="h-5" />
+            镜像制作
+          </p>
+        }
         description="基于平台提供的基础镜像，快速制作自定义镜像"
         className="sm:max-w-3xl"
         closeSheet={() => setOpenSheet(false)}

@@ -20,7 +20,7 @@ import { ReactNode } from "react";
 export interface SandwichSheetProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  title: string;
+  title: ReactNode;
   description?: ReactNode;
   className?: string;
 }
@@ -28,7 +28,7 @@ export interface SandwichSheetProps {
 interface SheetProps extends SandwichSheetProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  title: string;
+  title: ReactNode;
   description?: ReactNode;
   className?: string;
   children: ReactNode;

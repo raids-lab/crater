@@ -75,7 +75,7 @@ export const craterPath: PathInfo = {
       children: [
         {
           path: "createimage",
-          title: "镜像仓库",
+          title: "镜像制作",
         },
         {
           path: "uploadimage",

@@ -43,6 +43,9 @@ const Jupyter: FC = () => {
     }
   }, [jupyterInfo]);
 
+  // drag the floating ball to show log dialog
+  const [isDragging, setIsDragging] = useState(false);
+
   return (
     <div className="relative h-screen w-screen">
       <iframe
@@ -50,7 +53,13 @@ const Jupyter: FC = () => {
         src={url}
         className="absolute bottom-0 left-0 right-0 top-0 h-screen w-screen"
       />
+      {/* Transparent overlay */}
+      {isDragging && (
+        <div className="fixed inset-0 z-50" style={{ cursor: "move" }} />
+      )}
       <FloatingBall
+        jobName={id ?? ""}
+        setIsDragging={setIsDragging}
         handleShowLog={() =>
           jupyterInfo &&
           setNamespacedName({

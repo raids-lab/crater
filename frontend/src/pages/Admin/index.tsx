@@ -24,6 +24,7 @@ import admindatasetRoutes from "./Data";
 import { NavGroupProps } from "@/components/sidebar/nav-main";
 import AdminJob from "./Job";
 import NotFound from "@/components/layout/NotFound";
+import UserDetail from "@/components/custom/UserDetail";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -70,8 +71,17 @@ const sidebarItems: SidebarItem[] = [
     path: "user",
     children: [],
     route: {
-      path: "user",
-      element: <User />,
+      path: "user/*",
+      children: [
+        {
+          index: true,
+          element: <User />,
+        },
+        {
+          path: ":name",
+          element: <UserDetail />,
+        },
+      ],
     },
   },
   {
@@ -197,7 +207,7 @@ const adminSidebarGroups: NavGroupProps[] = [
         icon: BoxIcon,
         items: [
           {
-            title: "镜像仓库",
+            title: "镜像制作",
             url: "image/create",
           },
           {

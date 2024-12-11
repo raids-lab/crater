@@ -27,11 +27,55 @@ import { JobType } from "@/services/api/vcjob";
 import Combobox from "@/components/form/Combobox";
 import ImageItem from "@/components/form/ImageItem";
 import useImageQuery from "@/hooks/query/useImageQuery";
+import { Input } from "@/components/ui/input";
 
 export const dockerfileFormSchema = z.object({
-  baseImage: z.string().min(1, "Base image is required"),
-  requirements: z.string().min(1, "Requirements are required"),
+  baseImage: z.string().min(1, "基础镜像是必填项"),
+  requirements: z
+    .string()
+    .optional()
+    .refine(
+      (v) => {
+        if (v) {
+          try {
+            v.split("\n").forEach((line) => {
+              if (line.trim().startsWith("#")) {
+                return;
+              }
+              if (!line.trim()) {
+                return;
+              }
+              // relation:
+              // ==：等于
+              // >：大于版本
+              // >=：大于等于
+              // <：小于版本
+              // <=：小于等于版本
+              // ~=：兼容版本
+
+              // 基于 relation 将每一行的内容进行分割，分割后的内容为：name, relation, version
+              // 可以只有 name
+              const regex = /([a-zA-Z0-9_]+)([<>=!~]+)?([a-zA-Z0-9_.]+)?/;
+              const match = line.match(regex);
+              if (!match) {
+                throw new Error("Invalid requirement format");
+              }
+              if (match.length < 2) {
+                throw new Error("Invalid requirement format");
+              }
+            });
+          } catch {
+            return false;
+          }
+        }
+        return true;
+      },
+      {
+        message: "requirements.txt 文件格式无效",
+      },
+    ),
   aptPackages: z.string().optional(),
+  description: z.string().optional(),
 });
 
 export type DockerfileFormValues = z.infer<typeof dockerfileFormSchema>;
@@ -96,7 +140,7 @@ function DockerfileSheetContent({
             <FormControl>
               <Textarea
                 placeholder="粘贴 requirements.txt 文件内容到此处"
-                className="h-40"
+                className="h-24"
                 {...field}
               />
             </FormControl>
@@ -117,12 +161,28 @@ function DockerfileSheetContent({
             <FormControl>
               <Textarea
                 placeholder="e.g. git curl"
-                className="h-40"
+                className="h-24"
                 {...field}
               />
             </FormControl>
             <FormDescription>
               输入要安装的 APT 包，例如 git、curl 等。使用空格分隔多个包。
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="description"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>备注</FormLabel>
+            <FormControl>
+              <Input {...field} />
+            </FormControl>
+            <FormDescription>
+              关于此镜像的简短描述，如包含的软件版本、用途等。
             </FormDescription>
             <FormMessage />
           </FormItem>
