@@ -2,11 +2,21 @@ package buildkit
 
 import (
 	"context"
-
-	"github.com/raids-lab/crater/dao/model"
 )
 
-// PrometheusClient is a client for Prometheus
-type BuildkitSubmitterInterface interface {
-	CreateFromDockerfile(ctx context.Context, user *model.User, dockerfile string) (string, error)
+type BuildKitData struct {
+	Namespace  string
+	JobName    string
+	Dockerfile string
+
+	RegistryServer  string
+	RegistryUser    string
+	RegistryPass    string
+	RegistryProject string
+
+	ImageLink string
+}
+
+type BuildKitInterface interface {
+	CreateFromDockerfile(ctx context.Context, data *BuildKitData) error
 }
