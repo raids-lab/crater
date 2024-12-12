@@ -12,12 +12,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/samber/lo"
 	"gopkg.in/yaml.v2"
 	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
@@ -132,7 +132,7 @@ func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
 		if name == v1.ResourceCPU || name == v1.ResourceMemory || strings.Contains(string(name), "/") {
 			resources[name] = interpayload.ResourceResp{
 				Label: string(name),
-				Deserved: lo.ToPtr(interpayload.ResourceBase{
+				Deserved: ptr.To(interpayload.ResourceBase{
 					Amount: quantity.Value(),
 					Format: string(quantity.Format),
 				}),
@@ -142,7 +142,7 @@ func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
 
 	for name, quantity := range usedQuota.HardUsed {
 		if v, ok := resources[name]; ok {
-			v.Allocated = lo.ToPtr(interpayload.ResourceBase{
+			v.Allocated = ptr.To(interpayload.ResourceBase{
 				Amount: quantity.Value(),
 				Format: string(quantity.Format),
 			})
@@ -157,7 +157,7 @@ func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
 			} else {
 				amount = quantity.Value()
 			}
-			v.Allocated = lo.ToPtr(interpayload.ResourceBase{
+			v.Allocated = ptr.To(interpayload.ResourceBase{
 				Amount: amount,
 				Format: string(quantity.Format),
 			})
@@ -166,7 +166,7 @@ func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
 	}
 	for name, quantity := range guarantee {
 		if v, ok := resources[name]; ok {
-			v.Guarantee = lo.ToPtr(interpayload.ResourceBase{
+			v.Guarantee = ptr.To(interpayload.ResourceBase{
 				Amount: quantity.Value(),
 				Format: string(quantity.Format),
 			})
@@ -176,7 +176,7 @@ func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
 
 	for name, quantity := range capability {
 		if v, ok := resources[name]; ok {
-			v.Capability = lo.ToPtr(interpayload.ResourceBase{
+			v.Capability = ptr.To(interpayload.ResourceBase{
 				Amount: quantity.Value(),
 				Format: string(quantity.Format),
 			})
@@ -283,7 +283,7 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 						Name: "jupyter-start-configmap",
 					},
 					//nolint:mnd // 0755 is the default mode
-					DefaultMode: lo.ToPtr(int32(0755)),
+					DefaultMode: ptr.To(int32(0755)),
 				},
 			},
 		})
@@ -332,9 +332,9 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 					{ContainerPort: vcjob.JupyterPort, Name: "notebook-port", Protocol: v1.ProtocolTCP},
 				},
 				SecurityContext: &v1.SecurityContext{
-					AllowPrivilegeEscalation: lo.ToPtr(true),
-					RunAsUser:                lo.ToPtr(int64(0)),
-					RunAsGroup:               lo.ToPtr(int64(0)),
+					AllowPrivilegeEscalation: ptr.To(true),
+					RunAsUser:                ptr.To(int64(0)),
+					RunAsGroup:               ptr.To(int64(0)),
 				},
 				TerminationMessagePath:   "/dev/termination-log",
 				TerminationMessagePolicy: v1.TerminationMessageReadFile,
@@ -391,7 +391,7 @@ func (mgr *AIJobMgr) GetJobPods(c *gin.Context) {
 		podDetails = []vcjob.PodDetail{{
 			Name:      pod.Name,
 			Namespace: pod.Namespace,
-			NodeName:  lo.ToPtr(pod.Spec.NodeName),
+			NodeName:  ptr.To(pod.Spec.NodeName),
 			IP:        pod.Status.PodIP,
 			Resource:  pod.Spec.Containers[0].Resources.Requests,
 			Phase:     pod.Status.Phase,
@@ -624,7 +624,7 @@ func (mgr *AIJobMgr) Get(c *gin.Context) {
 		podDetail = []vcjob.PodDetail{{
 			Name:      pod.Name,
 			Namespace: pod.Namespace,
-			NodeName:  lo.ToPtr(pod.Spec.NodeName),
+			NodeName:  ptr.To(pod.Spec.NodeName),
 			IP:        pod.Status.PodIP,
 			Resource:  pod.Spec.Containers[0].Resources.Requests,
 			Phase:     pod.Status.Phase,

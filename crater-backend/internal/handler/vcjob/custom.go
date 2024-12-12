@@ -6,9 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/samber/lo"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 	bus "volcano.sh/apis/pkg/apis/bus/v1alpha1"
 
@@ -94,7 +94,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 			Annotations: annotations,
 		},
 		Spec: batch.JobSpec{
-			TTLSecondsAfterFinished: lo.ToPtr(ThreeDaySeconds),
+			TTLSecondsAfterFinished: ptr.To(ThreeDaySeconds),
 			MinAvailable:            1,
 			MaxRetry:                1,
 			SchedulerName:           VolcanoSchedulerName,
@@ -156,8 +156,8 @@ func GenerateCustomPodSpec(
 				Env:   custom.Envs,
 				Ports: []v1.ContainerPort{},
 				SecurityContext: &v1.SecurityContext{
-					RunAsUser:  lo.ToPtr(int64(0)),
-					RunAsGroup: lo.ToPtr(int64(0)),
+					RunAsUser:  ptr.To(int64(0)),
+					RunAsGroup: ptr.To(int64(0)),
 				},
 				TerminationMessagePath:   "/dev/termination-log",
 				TerminationMessagePolicy: v1.TerminationMessageReadFile,

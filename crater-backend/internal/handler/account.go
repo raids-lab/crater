@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/samber/lo"
 	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 
@@ -238,7 +238,7 @@ func (mgr *AccountMgr) GetQuota(c *gin.Context) {
 		if name == v1.ResourceCPU || name == v1.ResourceMemory || strings.Contains(string(name), "/") {
 			resources[name] = payload.ResourceResp{
 				Label: string(name),
-				Allocated: lo.ToPtr(payload.ResourceBase{
+				Allocated: ptr.To(payload.ResourceBase{
 					Amount: quantity.Value(),
 					Format: string(quantity.Format),
 				}),
@@ -247,7 +247,7 @@ func (mgr *AccountMgr) GetQuota(c *gin.Context) {
 	}
 	for name, quantity := range guarantee {
 		if v, ok := resources[name]; ok {
-			v.Guarantee = lo.ToPtr(payload.ResourceBase{
+			v.Guarantee = ptr.To(payload.ResourceBase{
 				Amount: quantity.Value(),
 				Format: string(quantity.Format),
 			})
@@ -256,7 +256,7 @@ func (mgr *AccountMgr) GetQuota(c *gin.Context) {
 	}
 	for name, quantity := range deserved {
 		if v, ok := resources[name]; ok {
-			v.Deserved = lo.ToPtr(payload.ResourceBase{
+			v.Deserved = ptr.To(payload.ResourceBase{
 				Amount: quantity.Value(),
 				Format: string(quantity.Format),
 			})
@@ -265,7 +265,7 @@ func (mgr *AccountMgr) GetQuota(c *gin.Context) {
 	}
 	for name, quantity := range capability {
 		if v, ok := resources[name]; ok {
-			v.Capability = lo.ToPtr(payload.ResourceBase{
+			v.Capability = ptr.To(payload.ResourceBase{
 				Amount: quantity.Value(),
 				Format: string(quantity.Format),
 			})

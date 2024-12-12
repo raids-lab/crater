@@ -8,10 +8,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
-	"github.com/samber/lo"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"k8s.io/utils/ptr"
 
 	"github.com/raids-lab/crater/pkg/models"
 )
@@ -84,7 +84,7 @@ func main() {
 		user := model.User{
 			Name:     name,
 			Nickname: "管理员",
-			Password: lo.ToPtr(string(hashedPassword)),
+			Password: ptr.To(string(hashedPassword)),
 			Role:     model.RoleAdmin, // todo: change to model.RoleUser
 			Status:   model.StatusActive,
 			Space:    "u-admin",
@@ -92,11 +92,11 @@ func main() {
 				ID:       1,
 				Name:     name,
 				Nickname: "管理员",
-				Email:    lo.ToPtr("***REMOVED***"),
-				Teacher:  lo.ToPtr("管理员"),
-				Group:    lo.ToPtr("管理员"),
-				UID:      lo.ToPtr("1001"),
-				GID:      lo.ToPtr("1001"),
+				Email:    ptr.To("***REMOVED***"),
+				Teacher:  ptr.To("管理员"),
+				Group:    ptr.To("管理员"),
+				UID:      ptr.To("1001"),
+				GID:      ptr.To("1001"),
 			}),
 		}
 

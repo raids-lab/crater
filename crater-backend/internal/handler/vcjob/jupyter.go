@@ -15,11 +15,11 @@ import (
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
-	"github.com/samber/lo"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 	bus "volcano.sh/apis/pkg/apis/bus/v1alpha1"
@@ -83,7 +83,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 						Name: "jupyter-start-configmap",
 					},
 					//nolint:mnd // 0755 is the default mode
-					DefaultMode: lo.ToPtr(int32(0755)),
+					DefaultMode: ptr.To(int32(0755)),
 				},
 			},
 		})
@@ -108,8 +108,8 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 
 	userAttr := user.Attributes.Data()
 	if !config.GetConfig().ACT.StrictRegisterMode {
-		userAttr.UID = lo.ToPtr("1001")
-		userAttr.GID = lo.ToPtr("1001")
+		userAttr.UID = ptr.To("1001")
+		userAttr.GID = ptr.To("1001")
 	}
 	if userAttr.UID == nil || userAttr.GID == nil {
 		resputil.Error(c, "UID or GID not found", resputil.NotSpecified)
@@ -180,8 +180,8 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 					{ContainerPort: JupyterPort, Name: "notebook-port", Protocol: v1.ProtocolTCP},
 				},
 				SecurityContext: &v1.SecurityContext{
-					RunAsUser:  lo.ToPtr(int64(0)),
-					RunAsGroup: lo.ToPtr(int64(0)),
+					RunAsUser:  ptr.To(int64(0)),
+					RunAsGroup: ptr.To(int64(0)),
 				},
 				TerminationMessagePath:   "/dev/termination-log",
 				TerminationMessagePolicy: v1.TerminationMessageReadFile,
@@ -201,7 +201,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		},
 		Spec: batch.JobSpec{
 			// 3 days
-			TTLSecondsAfterFinished: lo.ToPtr(ThreeDaySeconds),
+			TTLSecondsAfterFinished: ptr.To(ThreeDaySeconds),
 			MinAvailable:            1,
 			MaxRetry:                1,
 			SchedulerName:           VolcanoSchedulerName,
@@ -243,7 +243,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 					Kind:               "Job",
 					Name:               jobName,
 					UID:                job.UID,
-					BlockOwnerDeletion: lo.ToPtr(true),
+					BlockOwnerDeletion: ptr.To(true),
 				},
 			},
 		},

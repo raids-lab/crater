@@ -11,11 +11,11 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
-	"github.com/samber/lo"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -255,7 +255,7 @@ func (c *JobControl) createJupyterJobFromTask(task *models.AITask) (jobname stri
 					Kind:               "AIJob",
 					Name:               job.Name,
 					UID:                job.UID,
-					BlockOwnerDeletion: lo.ToPtr(true),
+					BlockOwnerDeletion: ptr.To(true),
 				},
 			},
 		},

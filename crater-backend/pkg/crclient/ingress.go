@@ -8,12 +8,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/raids-lab/crater/pkg/config"
-	"github.com/samber/lo"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -72,7 +72,7 @@ func CreateService(ctx context.Context, kubeClient client.Client, pod *v1.Pod, m
 			Kind:               pod.OwnerReferences[0].Kind,
 			Name:               pod.OwnerReferences[0].Name,
 			UID:                pod.OwnerReferences[0].UID,
-			BlockOwnerDeletion: lo.ToPtr(true),
+			BlockOwnerDeletion: ptr.To(true),
 		}
 	} else {
 		ownerRef = metav1.OwnerReference{
@@ -123,7 +123,7 @@ func CreateServiceForNodePort(ctx context.Context, kubeClient client.Client, pod
 			Kind:               pod.OwnerReferences[0].Kind,
 			Name:               pod.OwnerReferences[0].Name,
 			UID:                pod.OwnerReferences[0].UID,
-			BlockOwnerDeletion: lo.ToPtr(true),
+			BlockOwnerDeletion: ptr.To(true),
 		}
 	} else {
 		ownerRef = metav1.OwnerReference{
@@ -184,7 +184,7 @@ func CreateIngress(ctx context.Context, kubeClient client.Client, pod *v1.Pod, s
 			Kind:               pod.OwnerReferences[0].Kind,
 			Name:               pod.OwnerReferences[0].Name,
 			UID:                pod.OwnerReferences[0].UID,
-			BlockOwnerDeletion: lo.ToPtr(true),
+			BlockOwnerDeletion: ptr.To(true),
 		}
 	} else {
 		ownerRef = metav1.OwnerReference{

@@ -5,8 +5,8 @@ import (
 
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/config"
-	"github.com/samber/lo"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 )
 
 const FileType = 1
@@ -132,9 +132,9 @@ func GetSubPathByDatasetVolume(c context.Context,
 
 func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement) (affinity *v1.Affinity) {
 	if len(expressions) > 0 {
-		affinity = lo.ToPtr(v1.Affinity{
-			NodeAffinity: lo.ToPtr(v1.NodeAffinity{
-				RequiredDuringSchedulingIgnoredDuringExecution: lo.ToPtr(v1.NodeSelector{
+		affinity = ptr.To(v1.Affinity{
+			NodeAffinity: ptr.To(v1.NodeAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: ptr.To(v1.NodeSelector{
 					NodeSelectorTerms: []v1.NodeSelectorTerm{
 						{
 							MatchExpressions: expressions,
@@ -169,9 +169,9 @@ func generatePodSpec(
 				Env:   envs,
 				Ports: ports,
 				SecurityContext: &v1.SecurityContext{
-					AllowPrivilegeEscalation: lo.ToPtr(true),
-					RunAsUser:                lo.ToPtr(int64(0)),
-					RunAsGroup:               lo.ToPtr(int64(0)),
+					AllowPrivilegeEscalation: ptr.To(true),
+					RunAsUser:                ptr.To(int64(0)),
+					RunAsGroup:               ptr.To(int64(0)),
 				},
 				TerminationMessagePath:   "/dev/termination-log",
 				TerminationMessagePolicy: v1.TerminationMessageReadFile,

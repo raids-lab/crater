@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/samber/lo"
 	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
@@ -94,7 +94,7 @@ func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 		if name == v1.ResourceCPU || name == v1.ResourceMemory || strings.Contains(string(name), "/") {
 			resources[name] = payload.ResourceResp{
 				Label: string(name),
-				Allocated: lo.ToPtr(payload.ResourceBase{
+				Allocated: ptr.To(payload.ResourceBase{
 					Amount: quantity.Value(),
 					Format: string(quantity.Format),
 				}),
@@ -116,7 +116,7 @@ func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 			continue
 		}
 		resource := resources[name]
-		resource.Capability = lo.ToPtr(payload.ResourceBase{
+		resource.Capability = ptr.To(payload.ResourceBase{
 			Amount: v.Value(),
 			Format: string(v.Format),
 		})
@@ -188,8 +188,8 @@ func (mgr *ContextMgr) UpdateUserAttributes(c *gin.Context) {
 	// Fix UID and GID are not allowed to be updated
 	oldAttributes := user.Attributes.Data()
 	attributes.ID = oldAttributes.ID
-	attributes.UID = lo.ToPtr(*oldAttributes.UID)
-	attributes.GID = lo.ToPtr(*oldAttributes.GID)
+	attributes.UID = ptr.To(*oldAttributes.UID)
+	attributes.GID = ptr.To(*oldAttributes.GID)
 
 	user.Attributes = datatypes.NewJSONType(attributes)
 	if err := u.WithContext(c).Save(user); err != nil {
