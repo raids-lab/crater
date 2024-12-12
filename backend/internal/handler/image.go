@@ -11,13 +11,13 @@ import (
 	"github.com/google/uuid"
 	harbormodelv2 "github.com/mittwald/goharbor-client/v5/apiv2/model"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
+	"github.com/raids-lab/crater/pkg/buildkit"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/logutils"
@@ -45,18 +45,10 @@ func NewImagePackMgr(conf RegisterConfig) Manager {
 
 type (
 	CreateKanikoRequest struct {
-		GitRepository   string        `json:"gitRepository"`
-		AccessToken     string        `json:"accessToken"`
-		RegistryServer  string        `json:"registryServer"`
-		RegistryUser    string        `json:"registryUser"`
-		RegistryPass    string        `json:"registryPass"`
-		RegistryProject string        `json:"registryProject"`
-		ImageName       string        `json:"imageName"`
-		ImageTag        string        `json:"imageTag"`
-		NeedProfile     bool          `json:"needProfile"`
-		TaskType        model.JobType `json:"taskType"`
-		Description     string        `json:"description"`
-		Dockerfile      string        `json:"dockerfile"`
+		SourceImage        string `json:"image"`
+		PythonRequirements string `json:"requirements"`
+		APTPackages        string `json:"packages"`
+		Description        string `json:"description"`
 	}
 
 	UploadImageRequest struct {
@@ -194,8 +186,8 @@ func (mgr *ImagePackMgr) UserCreateKaniko(c *gin.Context) {
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
-	mgr.requestDefaultValue(req, token.Username)
-	mgr.createImagePack(c, req, token)
+	dockerfile := mgr.generateDockerfile(req)
+	mgr.createImagePack(c, req, token, dockerfile)
 
 	resputil.Success(c, "")
 }
@@ -256,72 +248,68 @@ func (mgr *ImagePackMgr) AdminCreate(c *gin.Context) {
 		return
 	}
 	logutils.Log.Infof("create params: %+v", req)
-	mgr.requestDefaultValue(req, token.Username)
-	mgr.createImagePack(c, req, token)
+	dockerfile := mgr.generateDockerfile(req)
+	mgr.createImagePack(c, req, token, dockerfile)
 	resputil.Success(c, "")
 }
 
-func (mgr *ImagePackMgr) requestDefaultValue(req *CreateKanikoRequest, userName string) {
-	if req.RegistryServer == "" {
-		req.RegistryServer = mgr.harborClient.RegistryServer
-		req.RegistryUser = mgr.harborClient.RegistryUser
-		req.RegistryPass = mgr.harborClient.RegistryPass
-		req.RegistryProject = fmt.Sprintf("user-%s", userName)
-	}
+func (mgr *ImagePackMgr) generateDockerfile(req *CreateKanikoRequest) string {
+	// TODO: lzy
+	fmt.Printf("%+v", req)
+	return `
+			# 使用ubuntu作为基础镜像
+			FROM ***REMOVED***/docker.io/library/ubuntu:latest
+			# 安装Python3和pip3
+			RUN apt  update \
+				&&  apt -y install python3 
+
+	# 设置工作目录
+	WORKDIR /app
+	# 容器启动时执行的命令，可以根据需要修改
+	CMD ["bash"]
+	`
 }
 
-func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *CreateKanikoRequest, token util.JWTMessage) {
+func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *CreateKanikoRequest, token util.JWTMessage, dockerfile string) {
 	if err := mgr.checkExistProject(c, token); err != nil {
 		logutils.Log.Errorf("check project exist failed")
 		return
 	}
-	userQuery := query.User
-	user, err := userQuery.WithContext(c).Where(userQuery.ID.Eq(token.UserID)).First()
+	imageName, _ := GetImageNameAndTag(req.SourceImage)
+	registryProject := fmt.Sprintf("user-%s", token.Username)
+	imagepackName := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
+	now := time.Now()
+	imageTag := fmt.Sprintf("%d%d-%d%d-%s", now.Month(), now.Day(), now.Hour(), now.Minute(), uuid.New().String()[:4])
+	imageLink := fmt.Sprintf("%s/%s/%s:%s", mgr.harborClient.RegistryServer, registryProject, imageName, imageTag)
+	// create ImagePack CRD
+	buildkitData := &buildkit.BuildKitData{
+		JobName:         imagepackName,
+		Namespace:       UserNameSpace,
+		RegistryServer:  mgr.harborClient.RegistryServer,
+		RegistryUser:    mgr.harborClient.RegistryUser,
+		RegistryPass:    mgr.harborClient.RegistryPass,
+		RegistryProject: registryProject,
+		Dockerfile:      dockerfile,
+		ImageLink:       imageLink,
+	}
+	err := buildkit.GetBuildKitMgr(mgr.imagepackClient.Client).CreateFromDockerfile(c, buildkitData)
 	if err != nil {
-		logutils.Log.Errorf("fetch user failed, params: %+v err:%v", req, err)
+		logutils.Log.Errorf("create buildkit job failed, params: %+v err:%v", req, err)
 		return
 	}
-	imagepackName := fmt.Sprintf("%s-%s", user.Name, uuid.New().String()[:5])
-	// create ImagePack CRD
-	imagepackCRD := &imagepackv1.ImagePack{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      imagepackName,
-			Namespace: UserNameSpace,
-		},
-		Spec: imagepackv1.ImagePackSpec{
-			GitRepository:   req.GitRepository,
-			AccessToken:     req.AccessToken,
-			RegistryServer:  req.RegistryServer,
-			RegistryUser:    req.RegistryUser,
-			RegistryPass:    req.RegistryPass,
-			RegistryProject: req.RegistryProject,
-			UserName:        user.Nickname,
-			ImageName:       req.ImageName,
-			ImageTag:        req.ImageTag,
-			Dockerfile:      req.Dockerfile,
-		},
-	}
-
 	kanikoQuery := query.Kaniko
-	imageLink := fmt.Sprintf("%s/%s/%s:%s", req.RegistryServer, req.RegistryProject, req.ImageName, req.ImageTag)
 	kanikoEntity := &model.Kaniko{
 		UserID:        token.UserID,
-		User:          *user,
 		ImagePackName: imagepackName,
 		ImageLink:     imageLink,
 		NameSpace:     UserNameSpace,
 		Status:        imagepackv1.PackJobInitial,
+		Dockerfile:    &dockerfile,
 		Description:   &req.Description,
-		Dockerfile:    &req.Dockerfile,
 	}
 
 	if err := kanikoQuery.WithContext(c).Create(kanikoEntity); err != nil {
 		logutils.Log.Errorf("create imagepack entity failed, params: %+v", kanikoEntity)
-	}
-
-	if err := mgr.imagepackClient.CreateImagePack(c, imagepackCRD); err != nil {
-		logutils.Log.Errorf("create imagepack CRD failed, params: %+v err:%v", imagepackCRD, err)
-		return
 	}
 }
 
