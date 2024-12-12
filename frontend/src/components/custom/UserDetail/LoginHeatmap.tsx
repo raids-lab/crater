@@ -1,16 +1,26 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNivoTheme } from "@/hooks/useNivoTheme";
-import { ResponsiveCalendar } from "@nivo/calendar";
+import { ResponsiveTimeRange } from "@nivo/calendar";
+import { subDays, format } from "date-fns";
 
-const data = [
-  { day: "2024-03-01", value: 3 },
-  { day: "2024-03-02", value: 5 },
-  { day: "2024-03-03", value: 2 },
-  { day: "2024-05-21", value: 4 },
-  // ... 添加更多数据点
-];
+const generateRandomData = (days: number) => {
+  const data = [];
+  const today = new Date();
 
+  for (let i = 0; i < days; i++) {
+    const date = subDays(today, i);
+    const formattedDate = format(date, "yyyy-MM-dd");
+    const value = Math.floor(Math.random() * 10) - 7; // 生成0到5之间的随机值
+    if (value < 0) {
+      continue;
+    }
+    data.push({ day: formattedDate, value });
+  }
+
+  return data;
+};
 export default function LoginHeatmap() {
+  const data = generateRandomData(365);
   const { nivoTheme, theme } = useNivoTheme();
   return (
     <Card>
@@ -18,20 +28,17 @@ export default function LoginHeatmap() {
         <CardTitle>用户活跃度</CardTitle>
       </CardHeader>
       <CardContent>
-        <div style={{ height: "400px" }}>
-          <ResponsiveCalendar
+        <div style={{ height: "200px" }}>
+          <ResponsiveTimeRange
             data={data}
-            from="2023-12-11"
-            to="2024-12-11"
-            emptyColor={theme === "dark" ? "#2d3748" : "#eeeeee"}
+            from="2023-12-13"
+            to="2024-12-13"
+            emptyColor={theme === "dark" ? "#18181b" : "#eeeeee"}
             colors={["#61cdbb", "#97e3d5", "#e8c1a0", "#f47560"]}
-            margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-            yearSpacing={40}
-            monthSpacing={16}
-            monthLegend={(_, month) => `${month + 1}月`}
-            monthBorderColor={theme === "dark" ? "#1a202c" : "#fdfdfd"}
+            margin={{ top: 40, right: 20, bottom: 20, left: 20 }}
             dayBorderWidth={2}
-            dayBorderColor={theme === "dark" ? "#0d1017" : "#ffffff"}
+            dayBorderColor={theme === "dark" ? "#000000" : "#ffffff"}
+            firstWeekday="monday"
             theme={nivoTheme}
           />
         </div>
