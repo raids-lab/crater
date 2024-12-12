@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: crater-grafana-proxy-ingress
+  namespace: crater
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - gpu-grafana.***REMOVED***
+      secretName: crater-tls-secret
+  rules:
+    - host: gpu-grafana.***REMOVED***
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana-proxy
+                port:
+                  number: 80

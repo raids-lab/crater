@@ -1,7 +1,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: nginx-config
+  name: grafana-proxy-conf
+  namespace: crater
 data:
   nginx.conf: |
     worker_processes 1;
@@ -14,17 +15,14 @@ data:
       tcp_nodelay on;
       keepalive_timeout 65;
       types_hash_max_size 2048;
-
       include /etc/nginx/mime.types;
       default_type application/octet-stream;
-
       server {
-        listen 8080;
+        listen 80;
         server_name localhost;
-
         location / {
-          proxy_pass http://***REMOVED***:31120/;  # 替换为Grafana 地址
-          proxy_set_header Authorization "Bearer eyJrIjoiRm85WkNEcHd0YTRqaHlGOERsbWVjU1JTMU9CMlhmQzYiLCJuIjoidmlldy1vbmx5IiwiaWQiOjF9"; # 替换为Grafana Token
+          proxy_pass http://prometheus-grafana.monitoring;  # 替换为Grafana 地址
+          proxy_set_header Authorization "Bearer glsa_I2Vr0WKByHT4fOyUkHBw8TOEEubBFIEo_e4e91dbd"; # 替换为Grafana Token
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

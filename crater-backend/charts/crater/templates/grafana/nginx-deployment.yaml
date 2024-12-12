@@ -1,7 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx-deployment
+  name: grafana-proxy
+  namespace: crater
 spec:
   replicas: 1
   selector:
@@ -14,9 +15,9 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: nginx:latest
+        image: ***REMOVED***/docker.io/library/nginx:1.27.3-bookworm
         ports:
-        - containerPort: 8080
+        - containerPort: 80
         volumeMounts:
         - name: config-volume
           mountPath: /etc/nginx/nginx.conf
@@ -24,4 +25,4 @@ spec:
       volumes:
       - name: config-volume
         configMap:
-          name: nginx-config
+          name: grafana-proxy-conf
