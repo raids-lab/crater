@@ -34,6 +34,16 @@ spec:
             requests:
               cpu: 100m
               memory: 128Mi
+          ports:
+            - containerPort: 8088
+              name: docusaurus
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /swagger/index.html
+              port: 8088
+            initialDelaySeconds: 10
+            periodSeconds: 5
       serviceAccountName: crater-web-backend
       volumes:
         - name: backend-conf

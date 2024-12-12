@@ -8,5 +8,5 @@ spec:
     - ReadWriteMany
   resources:
     requests:
-      storage: 2Ti
-  storageClassName: rook-cephfs
+      storage: 400Gi
+  storageClassName: ceph-rbd
