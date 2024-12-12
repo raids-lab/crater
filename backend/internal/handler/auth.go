@@ -21,10 +21,10 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
-	"github.com/samber/lo"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"k8s.io/utils/ptr"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -393,7 +393,7 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string)
 		if err != nil {
 			return nil, err
 		}
-		hashedPassword = lo.ToPtr(string(hashed))
+		hashedPassword = ptr.To(string(hashed))
 	}
 
 	user := model.User{
@@ -404,9 +404,9 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string)
 		Status:   model.StatusActive,
 		Space:    name,
 		Attributes: datatypes.NewJSONType(model.UserAttribute{
-			Email: lo.ToPtr(name + "@***REMOVED***"),
-			UID:   lo.ToPtr(result.UID),
-			GID:   lo.ToPtr(result.GID),
+			Email: ptr.To(name + "@***REMOVED***"),
+			UID:   ptr.To(result.UID),
+			GID:   ptr.To(result.GID),
 		}),
 	}
 	if err := u.WithContext(c).Create(&user); err != nil {

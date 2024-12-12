@@ -16,13 +16,13 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/utils"
-	"github.com/samber/lo"
 	"gopkg.in/yaml.v3"
 	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 )
@@ -326,6 +326,7 @@ func (mgr *VolcanojobMgr) GetUserJobs(c *gin.Context) {
 // @Router /v1/vcjobs/all [get]
 func (mgr *VolcanojobMgr) GetAllJobs(c *gin.Context) {
 	j := query.Job
+	// TODO(liyilong): j.WithContext(c).Unscoped().Preload(j.Account).Preload(query.Job.User).Find()
 	jobs, err := j.WithContext(c).Preload(j.Account).Preload(query.Job.User).Find()
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
@@ -510,7 +511,7 @@ func (mgr *VolcanojobMgr) GetJobPods(c *gin.Context) {
 		podDetail := PodDetail{
 			Name:      pod.Name,
 			Namespace: pod.Namespace,
-			NodeName:  lo.ToPtr(pod.Spec.NodeName),
+			NodeName:  ptr.To(pod.Spec.NodeName),
 			IP:        pod.Status.PodIP,
 			Port:      portStr,
 			Resource:  resources,

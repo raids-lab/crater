@@ -8,6 +8,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
+
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
@@ -19,11 +25,6 @@ import (
 	"github.com/raids-lab/crater/pkg/logutils"
 	utils "github.com/raids-lab/crater/pkg/util"
 	craterUtils "github.com/raids-lab/crater/pkg/utils"
-	"github.com/samber/lo"
-	"gopkg.in/yaml.v2"
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -361,7 +362,7 @@ func (mgr *SparseJobMgr) GetJobPods(c *gin.Context) {
 		podDetail := PodDetail{
 			Name:      pod.Name,
 			Namespace: pod.Namespace,
-			NodeName:  lo.ToPtr(pod.Spec.NodeName),
+			NodeName:  ptr.To(pod.Spec.NodeName),
 			IP:        pod.Status.PodIP,
 			Port:      portStr,
 			Resource:  resources,
