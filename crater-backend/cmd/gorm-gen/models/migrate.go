@@ -38,6 +38,21 @@ func main() {
 		// 		return tx.Migrator().DropColumn(&Job{}, "Template")
 		// 	},
 		// },
+		{
+			ID: "202412131147",
+			Migrate: func(tx *gorm.DB) error {
+				type Kaniko struct {
+					BuildSource model.BuildSource `gorm:"type:varchar(128);not null;default:buildkit;comment:构建来源"`
+				}
+				return tx.Migrator().AddColumn(&Kaniko{}, "BuildSource")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Kaniko struct {
+					BuildSource model.BuildSource `gorm:"type:varchar(128);not null;default:buildkit;comment:构建来源"`
+				}
+				return tx.Migrator().DropColumn(&Kaniko{}, "BuildSource")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
