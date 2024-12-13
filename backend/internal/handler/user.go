@@ -21,7 +21,7 @@ type UserMgr struct {
 	name string
 }
 
-func NewUserMgr(_ RegisterConfig) Manager {
+func NewUserMgr(_ *RegisterConfig) Manager {
 	return &UserMgr{
 		name: "users",
 	}

@@ -51,7 +51,7 @@ type OperationsMgr struct {
 	taskController aitaskctl.TaskControllerInterface
 }
 
-func NewOperationsMgr(conf handler.RegisterConfig) handler.Manager {
+func NewOperationsMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &OperationsMgr{
 		name:           "operations",
 		client:         conf.Client,

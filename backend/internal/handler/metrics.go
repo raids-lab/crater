@@ -15,7 +15,7 @@ type MetricsMgr struct {
 	name string
 }
 
-func NewMetricsMgr(_ RegisterConfig) Manager {
+func NewMetricsMgr(_ *RegisterConfig) Manager {
 	return &MetricsMgr{
 		name: "metrics",
 	}

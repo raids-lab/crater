@@ -38,7 +38,7 @@ type VolcanojobMgr struct {
 	kubeClient kubernetes.Interface
 }
 
-func NewVolcanojobMgr(conf handler.RegisterConfig) handler.Manager {
+func NewVolcanojobMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &VolcanojobMgr{
 		name:       "vcjobs",
 		client:     conf.Client,

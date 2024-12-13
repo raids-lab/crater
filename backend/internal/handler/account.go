@@ -34,7 +34,7 @@ type AccountMgr struct {
 	client client.Client
 }
 
-func NewAccountMgr(conf RegisterConfig) Manager {
+func NewAccountMgr(conf *RegisterConfig) Manager {
 	return &AccountMgr{
 		name:   "accounts",
 		client: conf.Client,

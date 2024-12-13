@@ -78,7 +78,7 @@ type (
 const IngressLabelKey = "ingress.crater.raids.io"
 const NodePortLabelKey = "nodeport.crater.raids.io"
 
-func NewAPIServerMgr(conf handler.RegisterConfig) handler.Manager {
+func NewAPIServerMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &APIServerMgr{
 		name:       "namespaces",
 		config:     conf.Kubeconfig,

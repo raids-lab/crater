@@ -21,7 +21,7 @@ type LabelMgr struct {
 	kubeClient kubernetes.Interface
 }
 
-func NewLabelMgr(conf RegisterConfig) Manager {
+func NewLabelMgr(conf *RegisterConfig) Manager {
 	return &LabelMgr{
 		name:       "labels",
 		kubeClient: conf.KubeClient,

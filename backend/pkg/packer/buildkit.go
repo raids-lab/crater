@@ -1,9 +1,8 @@
-package buildkit
+package packer
 
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -11,20 +10,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type buildkitMgr struct {
+type imagePacker struct {
 	client client.Client
-	BuildKitInterface
 }
 
 var (
-	once             sync.Once
-	b                *buildkitMgr
 	runAsUerNumber   int64 = 1000
 	runAsGroupNumber int64 = 1000
 	fsAsGroupNumber  int64 = 1000
 
-	buildkitSecretName   string = "buildkit-secret"
-	buildkitCachePVCName string = "buildkit-cache"
+	buildkitSecretName string = "buildkit-secret"
 
 	JobCleanTime       int32 = 259200
 	BackoffLimitNumber int32 = 0
@@ -32,16 +27,14 @@ var (
 	ParallelismNumber  int32 = 1
 )
 
-func GetBuildKitMgr(cli client.Client) BuildKitInterface {
-	once.Do(func() {
-		b = &buildkitMgr{
-			client: cli,
-		}
-	})
+func GetImagePackerMgr(cli client.Client) ImagePackerInterface {
+	b := &imagePacker{
+		client: cli,
+	}
 	return b
 }
 
-func (b *buildkitMgr) CreateFromDockerfile(c context.Context, data *BuildKitData) error {
+func (b *imagePacker) CreateFromDockerfile(c context.Context, data *BuildKitReq) error {
 	initContainer := b.generateInitContainer(data)
 	buildkitContainer := b.generateBuildKitContainer(data)
 	volumes := b.generateVolumes()
@@ -90,7 +83,7 @@ func (b *buildkitMgr) CreateFromDockerfile(c context.Context, data *BuildKitData
 	return err
 }
 
-func (b *buildkitMgr) generateInitContainer(data *BuildKitData) []corev1.Container {
+func (b *imagePacker) generateInitContainer(data *BuildKitReq) []corev1.Container {
 	dockerfileSource := fmt.Sprintf("echo '%s' > /workspace/Dockerfile", data.Dockerfile)
 	initContainer := []corev1.Container{
 		{
@@ -110,7 +103,7 @@ func (b *buildkitMgr) generateInitContainer(data *BuildKitData) []corev1.Contain
 	return initContainer
 }
 
-func (b *buildkitMgr) generateVolumes() []corev1.Volume {
+func (b *imagePacker) generateVolumes() []corev1.Volume {
 	volumes := []corev1.Volume{
 		{
 			Name: "workspace",
@@ -138,27 +131,17 @@ func (b *buildkitMgr) generateVolumes() []corev1.Volume {
 				},
 			},
 		},
-		{
-			Name: "cache",
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: buildkitCachePVCName,
-				},
-			},
-		},
 	}
 	return volumes
 }
 
-func (b *buildkitMgr) generateBuildKitContainer(data *BuildKitData) []corev1.Container {
+func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Container {
 	output := fmt.Sprintf("type=image,name=%s,push=true", data.ImageLink)
 	buildArgs := []string{
 		"build",
 		"--frontend", "dockerfile.v0",
 		"--local", "context=/workspace",
 		"--local", "dockerfile=/workspace",
-		"--export-cache", "type=local,dest=/cache",
-		"--import-cache", "type=local,src=/cache",
 		"--output", output,
 	}
 	buildkitContainer := []corev1.Container{
@@ -197,10 +180,6 @@ func (b *buildkitMgr) generateBuildKitContainer(data *BuildKitData) []corev1.Con
 				{
 					Name:      "secret",
 					MountPath: "/.docker",
-				},
-				{
-					Name:      "cache",
-					MountPath: "/cache",
 				},
 			},
 		},

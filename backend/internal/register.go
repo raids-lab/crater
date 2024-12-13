@@ -11,7 +11,7 @@ import (
 )
 
 // registerManagers registers all the managers.
-func registerManagers(config handler.RegisterConfig) []handler.Manager {
+func registerManagers(config *handler.RegisterConfig) []handler.Manager {
 	var managers []handler.Manager
 	for _, register := range handler.Registers {
 		manager := register(config)

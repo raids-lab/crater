@@ -19,7 +19,7 @@ type Backend struct {
 	R *gin.Engine
 }
 
-func Register(registerConfig handler.RegisterConfig) *Backend {
+func Register(registerConfig *handler.RegisterConfig) *Backend {
 	s := new(Backend)
 	s.R = gin.Default()
 
@@ -46,7 +46,7 @@ func Register(registerConfig handler.RegisterConfig) *Backend {
 	return s
 }
 
-func (b *Backend) RegisterService(conf handler.RegisterConfig) {
+func (b *Backend) RegisterService(conf *handler.RegisterConfig) {
 	// Enable CORS for http://localhost:XXXX in debug mode
 	if gin.Mode() == gin.DebugMode {
 		fe := os.Getenv("CRATER_FE_PORT")

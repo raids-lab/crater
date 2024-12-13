@@ -40,7 +40,7 @@ type AuthMgr struct {
 	tokenMgr *util.TokenManager
 }
 
-func NewAuthMgr(_ RegisterConfig) Manager {
+func NewAuthMgr(_ *RegisterConfig) Manager {
 	return &AuthMgr{
 		name:     "auth",
 		client:   &http.Client{},

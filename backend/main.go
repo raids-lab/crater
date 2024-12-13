@@ -43,12 +43,12 @@ import (
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	aisystemv1alpha1 "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
-	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
 	recommenddljob "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
 	"github.com/raids-lab/crater/pkg/config"
 	db "github.com/raids-lab/crater/pkg/db/orm"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/monitor"
+	"github.com/raids-lab/crater/pkg/packer"
 	"github.com/raids-lab/crater/pkg/profiler"
 	"github.com/raids-lab/crater/pkg/reconciler"
 	"github.com/raids-lab/crater/pkg/util"
@@ -140,7 +140,6 @@ func main() {
 		HealthProbeBindAddress: backendConfig.ProbeAddr,
 		LeaderElection:         backendConfig.EnableLeaderElection,
 		LeaderElectionID:       backendConfig.LeaderElectionID,
-		// Namespace:              namespace,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to create manager")
@@ -202,8 +201,7 @@ func main() {
 	} else {
 		setupLog.Info("spjob unplugin")
 	}
-	//-------buildkit-------
-	utilruntime.Must(imagepackv1.AddToScheme(mgr.GetScheme()))
+	//-------imagepacker-------
 	buildkitReconciler := reconciler.NewBuildKitReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
@@ -254,8 +252,9 @@ func main() {
 		KubeClient:       clientset,
 		PrometheusClient: prometheusClient,
 		AITaskCtrl:       taskCtrl,
+		ImagePacker:      packer.GetImagePackerMgr(mgr.GetClient()),
 	}
-	backend := internal.Register(registerConfig)
+	backend := internal.Register(&registerConfig)
 	if err := backend.R.Run(backendConfig.ServerAddr); err != nil {
 		setupLog.Error(err, "problem running server")
 		os.Exit(1)
