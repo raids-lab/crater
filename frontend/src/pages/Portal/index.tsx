@@ -115,12 +115,6 @@ const portalRoutes: SidebarItem[] = [
           element: <UserSettings />,
         },
       },
-      {
-        route: {
-          path: "platform",
-          lazy: () => import("./Setting"),
-        },
-      },
     ],
   },
   {
@@ -219,12 +213,8 @@ const userSidebarGroups: NavGroupProps[] = [
         icon: SettingsIcon,
         items: [
           {
-            title: "个人主页",
+            title: "用户设置",
             url: "setting/user",
-          },
-          {
-            title: "平台设置",
-            url: "setting/platform",
           },
         ],
       },

@@ -26,6 +26,7 @@ import {
   ExternalLink,
   CircleHelpIcon,
   GridIcon,
+  BookOpenIcon,
 } from "lucide-react";
 import {
   NamespacedName,
@@ -449,6 +450,17 @@ export default function PodIngressDialog({
         </div>
 
         <DialogFooter>
+          <Button variant="secondary"
+            onClick={() =>
+              window.open(
+                activeTab === "ingress" ? 
+                `https://${import.meta.env.VITE_HOST}/website/docs/toolbox/external-access/ingress-rule` 
+                : `https://${import.meta.env.VITE_HOST}/website/docs/toolbox/external-access/nodeport-rule`,
+              )
+            }>
+              <BookOpenIcon />
+              帮助文档
+              </Button>
           {activeTab === "ingress" && (
             <Button onClick={handleAddIngress} autoFocus>
               <Plus className="size-4" />
@@ -469,7 +481,7 @@ export default function PodIngressDialog({
       >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>添加Ingress规则</DialogTitle>
+            <DialogTitle>添加 Ingress 规则</DialogTitle>
           </DialogHeader>
           <Form {...ingressForm}>
             <form
@@ -542,7 +554,7 @@ export default function PodIngressDialog({
       >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>添加NodePort规则</DialogTitle>
+            <DialogTitle>添加 NodePort 规则</DialogTitle>
           </DialogHeader>
           <Form {...nodeportForm}>
             <form

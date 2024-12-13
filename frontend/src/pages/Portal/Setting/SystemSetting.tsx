@@ -29,6 +29,7 @@ import { useAtom } from "jotai";
 import { globalSettings } from "@/utils/store";
 import { Separator } from "@/components/ui/separator";
 import { FileCogIcon } from "lucide-react";
+import WarningAlert from "@/components/custom/WarningAlert";
 
 const formSchema = z.object({
   scheduler: z.enum(["volcano", "colocate", "sparse"], {
@@ -55,58 +56,64 @@ const SystemSetting = () => {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>调度算法</CardTitle>
-        <CardDescription>
-          为您的工作负载选取最佳资源分配和调度策略
-        </CardDescription>
-      </CardHeader>
-      <Separator />
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)}>
-          <CardContent className="pt-6">
-            <FormField
-              control={form.control}
-              name="scheduler"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <SelectTrigger className="">
-                        <SelectValue placeholder="请选择" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="volcano">
-                          BASE - 原生调度算法
-                        </SelectItem>
-                        <SelectItem value="colocate">
-                          EMIAS - 面向多租户可抢占异构资源场景的调度算法
-                        </SelectItem>
-                        <SelectItem value="sparse">
-                          SEACS - 面向混合机器学习任务的调度算法
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-          <Separator />
-          <CardFooter className="px-6 py-4">
-            <Button type="submit">
-              <FileCogIcon />
-              更新调度算法
-            </Button>
-          </CardFooter>
-        </form>
-      </Form>
-    </Card>
+    <>
+      <WarningAlert
+        title={"注意"}
+        description={"中期演示使用，目前仅 BASE 原生调度算法可用，请勿切换"}
+      />
+      <Card>
+        <CardHeader>
+          <CardTitle>调度算法</CardTitle>
+          <CardDescription>
+            为您的工作负载选取最佳资源分配和调度策略
+          </CardDescription>
+        </CardHeader>
+        <Separator />
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)}>
+            <CardContent className="pt-6">
+              <FormField
+                control={form.control}
+                name="scheduler"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <SelectTrigger className="">
+                          <SelectValue placeholder="请选择" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="volcano">
+                            BASE - 原生调度算法
+                          </SelectItem>
+                          <SelectItem value="colocate">
+                            EMIAS - 面向多租户可抢占异构资源场景的调度算法
+                          </SelectItem>
+                          <SelectItem value="sparse">
+                            SEACS - 面向混合机器学习任务的调度算法
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+            <Separator />
+            <CardFooter className="px-6 py-4">
+              <Button type="submit">
+                <FileCogIcon />
+                更新调度算法
+              </Button>
+            </CardFooter>
+          </form>
+        </Form>
+      </Card>
+    </>
   );
 };
 
