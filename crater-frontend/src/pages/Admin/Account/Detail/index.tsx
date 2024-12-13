@@ -74,10 +74,10 @@ import useBreadcrumb from "@/hooks/useBreadcrumb";
 import UserRoleBadge, { userRoles } from "@/components/badge/UserRoleBadge";
 import UserAccessBadge from "@/components/badge/UserAccessBadge";
 import ResourceBadges from "@/components/badge/ResourceBadges";
-import UserLabel from "@/components/label/UserLabel";
 import { UserRoundPlusIcon } from "lucide-react";
 import Quota from "./AccountQuota";
 import { toast } from "sonner";
+import TooltipUser from "@/components/label/TooltipUser";
 
 const formSchema = z.object({
   index: z.string().min(1, {
@@ -198,7 +198,7 @@ const AccountDetail = () => {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("name")} />
         ),
-        cell: ({ row }) => <UserLabel attributes={row.original.userInfo} />,
+        cell: ({ row }) => <TooltipUser attributes={row.original.userInfo} />,
       },
       {
         accessorKey: "role",

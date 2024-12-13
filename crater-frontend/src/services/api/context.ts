@@ -31,3 +31,12 @@ export const apiContextQuota = () => {
 
 export const apiContextUpdateUserAttributes = (data: IUserAttributes) =>
   instance.put<IResponse<string>>(`${VERSION}/context/attributes`, data);
+
+// apiSendVerificationEmail,
+// apiVerifyEmailCode,
+
+export const apiSendVerificationEmail = (email: string) =>
+  instance.post<IResponse<string>>(`${VERSION}/context/email/send`, { email });
+
+export const apiVerifyEmailCode = (code: string) =>
+  instance.post<IResponse<string>>(`${VERSION}/context/email/verify`, { code });
