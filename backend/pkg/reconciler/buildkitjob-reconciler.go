@@ -26,11 +26,12 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler"
-	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
+	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"gorm.io/gen"
 	"gorm.io/gorm"
+	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -41,7 +42,7 @@ import (
 )
 
 // VcJobReconciler reconciles a AIJob object
-type ImagePackReconciler struct {
+type BuildKitReconciler struct {
 	client.Client
 	Scheme       *runtime.Scheme
 	log          logr.Logger
@@ -49,24 +50,28 @@ type ImagePackReconciler struct {
 }
 
 // NewVcJobReconciler returns a new reconcile.Reconciler
-func NewImagePackReconciler(crClient client.Client, scheme *runtime.Scheme) *ImagePackReconciler {
+func NewBuildKitReconciler(crClient client.Client, scheme *runtime.Scheme) *BuildKitReconciler {
 	harborClient := crclient.NewHarborClient()
-	return &ImagePackReconciler{
+	return &BuildKitReconciler{
 		Client:       crClient,
 		Scheme:       scheme,
-		log:          ctrl.Log.WithName("imagepack-reconciler"),
+		log:          ctrl.Log.WithName("BuildKit-reconciler"),
 		harborClient: &harborClient,
 	}
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ImagePackReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *BuildKitReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&imagepackv1.ImagePack{}).
+		For(&batchv1.Job{}).
 		Owns(&v1.Pod{}).
 		WithOptions(controller.Options{}).
 		Complete(r)
 }
+
+var (
+	ImageSpace = config.GetConfig().Workspace.ImageNameSpace
+)
 
 //nolint:lll // kubebuilder rbac declares
 //+kubebuilder:rbac:groups=hsy.hsy.crd;"",resources=imagepacks;pods;secrets;persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
@@ -86,16 +91,19 @@ func (r *ImagePackReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // Reconcile 主要用于同步 ImagePack 的状态到数据库中
 //
 //nolint:gocyclo // refactor later
-func (r *ImagePackReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	kanikoQuery := query.Kaniko
 
 	// TODO(user): your logic here
-	var imagepack imagepackv1.ImagePack
-	err := r.Get(ctx, req.NamespacedName, &imagepack)
+	if req.Namespace != ImageSpace {
+		return ctrl.Result{}, nil
+	}
+	var job batchv1.Job
 
+	err := r.Get(ctx, req.NamespacedName, &job)
 	if err != nil && !k8serrors.IsNotFound(err) {
-		logger.Error(err, "unable to fetch ImagePack")
+		logger.Error(err, "unable to fetch job")
 		return ctrl.Result{}, nil
 	}
 
@@ -112,7 +120,7 @@ func (r *ImagePackReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, nil
 		}
 
-		if kaniko.Status == imagepackv1.PackJobFailed || kaniko.Status == imagepackv1.PackJobFinished {
+		if kaniko.Status == model.BuildJobFailed || kaniko.Status == model.BuildJobFinished {
 			return ctrl.Result{}, nil
 		}
 
@@ -131,7 +139,7 @@ func (r *ImagePackReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// create or update db record
 	// if kaniko not found, return
 	var kaniko *model.Kaniko
-	kaniko, err = kanikoQuery.WithContext(ctx).Preload(query.Kaniko.User).Where(kanikoQuery.ImagePackName.Eq(imagepack.Name)).First()
+	kaniko, err = kanikoQuery.WithContext(ctx).Preload(query.Kaniko.User).Where(kanikoQuery.ImagePackName.Eq(job.Name)).First()
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		logger.Error(err, "unable to fetch kaniko entity in database")
 		return ctrl.Result{Requeue: true}, err
@@ -142,19 +150,21 @@ func (r *ImagePackReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
+	jobStatus := r.getJobBuildStatus(&job)
+
 	// if kaniko found, update the status and decide whether to create image
 	if _, err = kanikoQuery.WithContext(ctx).
-		Where(kanikoQuery.ImagePackName.Eq(imagepack.Name)).
-		Update(kanikoQuery.Status, imagepack.Status.Stage); err != nil {
+		Where(kanikoQuery.ImagePackName.Eq(job.Name)).
+		Update(kanikoQuery.Status, jobStatus); err != nil {
 		logger.Error(err, "kaniko entity status updated failed")
 		return ctrl.Result{Requeue: true}, nil
 	}
-	logger.Info(fmt.Sprintf("kakino pod: %s , new stage: %s", imagepack.Name, imagepack.Status.Stage))
+	logger.Info(fmt.Sprintf("buildkit pod: %s , new stage: %s", job.Name, jobStatus))
 
-	if imagepack.Status.Stage == imagepackv1.PackJobFinished {
+	if jobStatus == model.BuildJobFinished {
 		size := r.getKankikoSize(ctx, kaniko)
 		if _, err = kanikoQuery.WithContext(ctx).
-			Where(kanikoQuery.ImagePackName.Eq(imagepack.Name)).
+			Where(kanikoQuery.ImagePackName.Eq(job.Name)).
 			Update(kanikoQuery.Size, size); err != nil {
 			logger.Error(err, "kaniko entity size updated failed")
 			return ctrl.Result{Requeue: true}, err
@@ -189,7 +199,7 @@ func (r *ImagePackReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return ctrl.Result{}, nil
 }
 
-func (r *ImagePackReconciler) getKankikoSize(ctx context.Context, kaniko *model.Kaniko) int64 {
+func (r *BuildKitReconciler) getKankikoSize(ctx context.Context, kaniko *model.Kaniko) int64 {
 	var imageArtifact *harbormodelv2.Artifact
 	var err error
 	projectName := fmt.Sprintf("user-%s", kaniko.User.Name)
@@ -199,4 +209,18 @@ func (r *ImagePackReconciler) getKankikoSize(ctx context.Context, kaniko *model.
 		return 0
 	}
 	return imageArtifact.Size
+}
+
+func (r *BuildKitReconciler) getJobBuildStatus(job *batchv1.Job) model.BuildStatus {
+	var status model.BuildStatus
+	if job.Status.Succeeded == 1 {
+		status = model.BuildJobFinished
+	} else if job.Status.Failed == 1 {
+		status = model.BuildJobFailed
+	} else if job.Status.Active == 1 {
+		status = model.BuildJobRunning
+	} else {
+		status = model.BuildJobPending
+	}
+	return status
 }

@@ -16,7 +16,6 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
-	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
 	"github.com/raids-lab/crater/pkg/buildkit"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
@@ -87,11 +86,11 @@ type (
 
 type (
 	KanikoInfo struct {
-		ID        uint                   `json:"ID"`
-		ImageLink string                 `json:"imageLink"`
-		Status    imagepackv1.PackStatus `json:"status"`
-		CreatedAt time.Time              `json:"createdAt"`
-		Size      int64                  `json:"size"`
+		ID        uint              `json:"ID"`
+		ImageLink string            `json:"imageLink"`
+		Status    model.BuildStatus `json:"status"`
+		CreatedAt time.Time         `json:"createdAt"`
+		Size      int64             `json:"size"`
 	}
 	ListKanikoResponse struct {
 		KanikoInfoList []KanikoInfo `json:"kanikoList"`
@@ -112,15 +111,15 @@ type (
 	}
 
 	GetKanikoResponse struct {
-		ID            uint                   `json:"ID"`
-		ImageLink     string                 `json:"imageLink"`
-		Status        imagepackv1.PackStatus `json:"status"`
-		CreatedAt     time.Time              `json:"createdAt"`
-		ImagePackName string                 `json:"imagepackName"`
-		Description   string                 `json:"description"`
-		Dockerfile    string                 `json:"dockerfile"`
-		PodName       string                 `json:"podName"`
-		PodNameSpace  string                 `json:"podNameSpace"`
+		ID            uint              `json:"ID"`
+		ImageLink     string            `json:"imageLink"`
+		Status        model.BuildStatus `json:"status"`
+		CreatedAt     time.Time         `json:"createdAt"`
+		ImagePackName string            `json:"imagepackName"`
+		Description   string            `json:"description"`
+		Dockerfile    string            `json:"dockerfile"`
+		PodName       string            `json:"podName"`
+		PodNameSpace  string            `json:"podNameSpace"`
 	}
 
 	GetKanikoPodResponse struct {
@@ -292,24 +291,26 @@ func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *CreateKanikoReques
 		Dockerfile:      dockerfile,
 		ImageLink:       imageLink,
 	}
-	err := buildkit.GetBuildKitMgr(mgr.imagepackClient.Client).CreateFromDockerfile(c, buildkitData)
-	if err != nil {
-		logutils.Log.Errorf("create buildkit job failed, params: %+v err:%v", req, err)
-		return
-	}
 	kanikoQuery := query.Kaniko
 	kanikoEntity := &model.Kaniko{
 		UserID:        token.UserID,
 		ImagePackName: imagepackName,
 		ImageLink:     imageLink,
 		NameSpace:     UserNameSpace,
-		Status:        imagepackv1.PackJobInitial,
+		Status:        model.BuildJobInitial,
 		Dockerfile:    &dockerfile,
 		Description:   &req.Description,
+		BuildSource:   model.BuildKit,
 	}
 
 	if err := kanikoQuery.WithContext(c).Create(kanikoEntity); err != nil {
 		logutils.Log.Errorf("create imagepack entity failed, params: %+v", kanikoEntity)
+	}
+
+	err := buildkit.GetBuildKitMgr(mgr.imagepackClient.Client).CreateFromDockerfile(c, buildkitData)
+	if err != nil {
+		logutils.Log.Errorf("create buildkit job failed, params: %+v err:%v", req, err)
+		return
 	}
 }
 
@@ -485,7 +486,7 @@ func (mgr *ImagePackMgr) DeleteKanikoByID(c *gin.Context) {
 		resputil.Error(c, "failed to delete kaniko", resputil.NotSpecified)
 		return
 	}
-	if kaniko.Status == imagepackv1.PackJobFinished {
+	if kaniko.Status == model.BuildJobFinished {
 		projectName := fmt.Sprintf("user-%s", token.Username)
 		name, tag := GetImageNameAndTag(kaniko.ImageLink)
 		if err = mgr.harborClient.DeleteArtifact(c, projectName, name, tag); err != nil {
