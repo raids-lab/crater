@@ -9,7 +9,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	harbormodelv2 "github.com/mittwald/goharbor-client/v5/apiv2/model"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/raids-lab/crater/dao/model"
@@ -18,6 +17,7 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/raids-lab/crater/pkg/imageregistry"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/packer"
 )
@@ -30,17 +30,44 @@ func init() {
 type ImagePackMgr struct {
 	name            string
 	imagepackClient *crclient.ImagePackController
-	harborClient    *crclient.HarborClient
 	imagePacker     packer.ImagePackerInterface
+	imageRegistry   imageregistry.ImageRegistryInterface
+}
+
+func (mgr *ImagePackMgr) GetName() string { return mgr.name }
+
+func (mgr *ImagePackMgr) RegisterPublic(_ *gin.RouterGroup) {}
+
+func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
+	g.GET("/kaniko", mgr.UserListKaniko)
+	g.POST("/kaniko", mgr.UserCreateKaniko)
+	g.DELETE("/kaniko/:id", mgr.DeleteKanikoByID)
+
+	g.GET("/image", mgr.UserListImage)
+	g.POST("/image", mgr.UserUploadImage)
+	g.DELETE("/image/:id", mgr.DeleteImageByID)
+
+	g.GET("/available", mgr.ListAvailableImages)
+	g.GET("/getbyid", mgr.GetKanikoByID)
+	g.POST("/quota", mgr.UpdateProjectQuota)
+	g.POST("/change/:id", mgr.UpdateImagePublicStatus)
+
+	g.GET("/podname", mgr.GetImagepackPodName)
+}
+
+func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
+	g.GET("/kaniko", mgr.AdminListKaniko)
+	g.POST("/kaniko", mgr.AdminCreate)
+	g.DELETE("/kaniko/:id", mgr.DeleteKanikoByID)
+	g.POST("/change/:id", mgr.UpdateImagePublicStatus)
 }
 
 func NewImagePackMgr(conf *RegisterConfig) Manager {
-	harborClient := crclient.NewHarborClient()
 	return &ImagePackMgr{
 		name:            "images",
 		imagepackClient: &crclient.ImagePackController{Client: conf.Client},
-		harborClient:    &harborClient,
 		imagePacker:     conf.ImagePacker,
+		imageRegistry:   conf.ImageRegistry,
 	}
 }
 
@@ -142,34 +169,6 @@ var (
 	ImageLinkRegExp  = `([^/]+/){2}([^:]+):([^/]+)$`
 )
 
-func (mgr *ImagePackMgr) GetName() string { return mgr.name }
-
-func (mgr *ImagePackMgr) RegisterPublic(_ *gin.RouterGroup) {}
-
-func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.GET("/kaniko", mgr.UserListKaniko)
-	g.POST("/kaniko", mgr.UserCreateKaniko)
-	g.DELETE("/kaniko/:id", mgr.DeleteKanikoByID)
-
-	g.GET("/image", mgr.UserListImage)
-	g.POST("/image", mgr.UserUploadImage)
-	g.DELETE("/image/:id", mgr.DeleteImageByID)
-
-	g.GET("/available", mgr.ListAvailableImages)
-	g.GET("/getbyid", mgr.GetKanikoByID)
-	g.POST("/quota", mgr.UpdateProjectQuota)
-	g.POST("/change/:id", mgr.UpdateImagePublicStatus)
-
-	g.GET("/podname", mgr.GetImagepackPodName)
-}
-
-func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
-	g.GET("/kaniko", mgr.AdminListKaniko)
-	g.POST("/kaniko", mgr.AdminCreate)
-	g.DELETE("/kaniko/:id", mgr.DeleteKanikoByID)
-	g.POST("/change/:id", mgr.UpdateImagePublicStatus)
-}
-
 // UserCreateKaniko godoc
 // @Summary 创建ImagePack CRD和数据库Kaniko entity
 // @Description 获取参数，生成变量，调用接口
@@ -195,7 +194,7 @@ func (mgr *ImagePackMgr) UserCreateKaniko(c *gin.Context) {
 
 // UserUploadImage godoc
 // @Summary 用户上传镜像链接
-// @Description 获取上传镜像的参数，生成变量，调用接口
+// @Description 获取上传镜像的参数，生成变量，调用接�?
 // @Tags ImagePack
 // @Accept json
 // @Produce json
@@ -266,22 +265,23 @@ func (mgr *ImagePackMgr) generateDockerfile(req *CreateKanikoRequest) string {
 
 	# 设置工作目录
 	WORKDIR /app
-	# 容器启动时执行的命令，可以根据需要修改
+	# 容器启动时执行的命令，可以根据需要修�?
 	CMD ["bash"]
 	`
 }
 
 func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, req *CreateKanikoRequest, token util.JWTMessage, dockerfile string) {
-	if err := mgr.checkExistProject(c, token); err != nil {
+	if err := mgr.imageRegistry.CheckOrCreateProjectForUser(c, token.Username); err != nil {
 		logutils.Log.Errorf("check project exist failed")
 		return
 	}
 	imageName, _ := GetImageNameAndTag(req.SourceImage)
+	registryServer := config.GetConfig().ACT.Image.RegistryServer
 	registryProject := fmt.Sprintf("user-%s", token.Username)
 	imagepackName := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
 	now := time.Now()
 	imageTag := fmt.Sprintf("%d%d-%d%d-%s", now.Month(), now.Day(), now.Hour(), now.Minute(), uuid.New().String()[:4])
-	imageLink := fmt.Sprintf("%s/%s/%s:%s", mgr.harborClient.RegistryServer, registryProject, imageName, imageTag)
+	imageLink := fmt.Sprintf("%s/%s/%s:%s", registryServer, registryProject, imageName, imageTag)
 	// create ImagePack CRD
 	buildkitData := &packer.BuildKitReq{
 		JobName:    imagepackName,
@@ -301,6 +301,7 @@ func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, req *CreateKanikoRe
 		BuildSource:   model.BuildKit,
 	}
 
+	// TODO(huangsy): 不要在这里更新数据库，所有更新都放到 Reconciler 里面
 	if err := kanikoQuery.WithContext(c).Create(kanikoEntity); err != nil {
 		logutils.Log.Errorf("create imagepack entity failed, params: %+v", kanikoEntity)
 	}
@@ -351,7 +352,7 @@ func (mgr *ImagePackMgr) UserListKaniko(c *gin.Context) {
 }
 
 // UserListImage godoc
-// @Summary 用户获取所有镜像数据
+// @Summary 用户获取�?有镜像数�?
 // @Description 返回该用户所有的镜像数据
 // @Tags ImagePack
 // @Accept json
@@ -405,13 +406,13 @@ func (mgr *ImagePackMgr) AdminListKaniko(c *gin.Context) {
 }
 
 // ListAvailableImages godoc
-// @Summary 用户在运行作业时选择镜像需要调用此接口，来获取可以用的镜像
-// @Description 用userID & jobType 来过滤已完成的镜像
+// @Summary 用户在运行作业时选择镜像�?要调用此接口，来获取可以用的镜像
+// @Description 用userID & jobType 来过滤已完成的镜�?
 // @Tags ImagePack
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param type query ListAvailableImageRequest true "包含了镜像类型"
+// @Param type query ListAvailableImageRequest true "包含了镜像类�?"
 // @Router /v1/images/available [GET]
 func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	token := util.GetToken(c)
@@ -465,7 +466,7 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 func (mgr *ImagePackMgr) DeleteKanikoByID(c *gin.Context) {
 	token := util.GetToken(c)
 	var err error
-	deleteKanikoRequest := &DeleteKanikoByIDRequest{}
+	var deleteKanikoRequest DeleteKanikoByIDRequest
 	if err = c.ShouldBindUri(deleteKanikoRequest); err != nil {
 		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
@@ -473,21 +474,20 @@ func (mgr *ImagePackMgr) DeleteKanikoByID(c *gin.Context) {
 	}
 	kanikoID := deleteKanikoRequest.ID
 	var kaniko *model.Kaniko
-	kanikoQuery := query.Kaniko
-	if kaniko, err = kanikoQuery.WithContext(c).Where(kanikoQuery.ID.Eq(kanikoID)).First(); err != nil {
+	k := query.Kaniko
+	if kaniko, err = k.WithContext(c).Where(k.ID.Eq(kanikoID)).
+		Where(k.UserID.Eq(token.UserID)).First(); err != nil {
 		logutils.Log.Errorf("image not exist or have no permission%+v", err)
 		resputil.Error(c, "failed to find imagepack or entity", resputil.NotSpecified)
 		return
 	}
-	if _, err = kanikoQuery.WithContext(c).Delete(kaniko); err != nil {
+	if _, err = k.WithContext(c).Delete(kaniko); err != nil {
 		logutils.Log.Errorf("delete kaniko entity failed! err:%v", err)
 		resputil.Error(c, "failed to delete kaniko", resputil.NotSpecified)
 		return
 	}
 	if kaniko.Status == model.BuildJobFinished {
-		projectName := fmt.Sprintf("user-%s", token.Username)
-		name, tag := GetImageNameAndTag(kaniko.ImageLink)
-		if err = mgr.harborClient.DeleteArtifact(c, projectName, name, tag); err != nil {
+		if err = mgr.imageRegistry.DeleteImageFromProject(c, kaniko.ImageLink); err != nil {
 			logutils.Log.Errorf("delete imagepack artifact failed! err:%+v", err)
 		}
 	}
@@ -528,7 +528,7 @@ func (mgr *ImagePackMgr) DeleteImageByID(c *gin.Context) {
 }
 
 // GetKanikoByID godoc
-// @Summary 获取imagepack的详细信息
+// @Summary 获取imagepack的详细信�?
 // @Description 获取imagepackname，搜索到imagepack
 // @Tags ImagePack
 // @Accept json
@@ -568,38 +568,14 @@ func (mgr *ImagePackMgr) GetKanikoByID(c *gin.Context) {
 	resputil.Success(c, getKanikoResponse)
 }
 
-func (mgr *ImagePackMgr) checkExistProject(c *gin.Context, token util.JWTMessage) error {
-	projectName := fmt.Sprintf("user-%s", token.Username)
-	if exist, _ := mgr.harborClient.ProjectExists(c, projectName); !exist {
-		projectRequest := &harbormodelv2.ProjectReq{
-			ProjectName:  projectName,
-			Public:       &ProjectIsPublic,
-			StorageLimit: &DefaultQuotaSize,
-		}
-		userQuery := query.User
-		var err error
-		if _, err = userQuery.WithContext(c).
-			Where(userQuery.ID.Eq(token.UserID)).
-			Update(userQuery.ImageQuota, DefaultQuotaSize); err != nil {
-			logutils.Log.Errorf("save user imageQuota failed, err:%v", err)
-			return err
-		}
-		if err = mgr.harborClient.NewProject(c, projectRequest); err != nil {
-			logutils.Log.Errorf("create harbor project failed! err:%+v", err)
-			return err
-		}
-	}
-	return nil
-}
-
 // UpdateProjectQuota godoc
-// @Summary 更新project的配额
-// @Description 传入int64参数，查找用户的project，并更新镜像存储的配额
+// @Summary 更新project的配�?
+// @Description 传入int64参数，查找用户的project，并更新镜像存储的配�?
 // @Tags ImagePack
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param req body UpdateProjectQuotaRequest true "更新镜像的ID和存储大小"
+// @Param req body UpdateProjectQuotaRequest true "更新镜像的ID和存储大�?"
 // @Router /v1/images/quota [POST]
 func (mgr *ImagePackMgr) UpdateProjectQuota(c *gin.Context) {
 	req := &UpdateProjectQuotaRequest{}
@@ -610,19 +586,14 @@ func (mgr *ImagePackMgr) UpdateProjectQuota(c *gin.Context) {
 		return
 	}
 	projectName := fmt.Sprintf("user-%s", token.Username)
-	var err error
-	var project *harbormodelv2.Project
-	if project, err = mgr.harborClient.GetProject(c, projectName); err != nil {
-		resputil.Error(c, "get harbor project failed", resputil.NotSpecified)
-	}
-	if err = mgr.harborClient.UpdateStorageQuotaByProjectID(c, int64(project.ProjectID), DefaultQuotaSize); err != nil {
+	if err := mgr.imageRegistry.UpdateQuotaForProject(c, projectName, DefaultQuotaSize); err != nil {
 		resputil.Error(c, "update harbor project quota failed", resputil.NotSpecified)
 	}
 	resputil.Success(c, "")
 }
 
 // UpdateImagePublicStatus godoc
-// @Summary 更新镜像的公共或私有状态
+// @Summary 更新镜像的公共或私有状�??
 // @Description 传入uint参数
 // @Tags ImagePack
 // @Accept json

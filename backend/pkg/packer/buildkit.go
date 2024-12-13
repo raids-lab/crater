@@ -7,32 +7,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-type imagePacker struct {
-	client client.Client
-}
-
-var (
-	runAsUerNumber   int64 = 1000
-	runAsGroupNumber int64 = 1000
-	fsAsGroupNumber  int64 = 1000
-
-	buildkitSecretName string = "buildkit-secret"
-
-	JobCleanTime       int32 = 259200
-	BackoffLimitNumber int32 = 0
-	CompletionNumber   int32 = 1
-	ParallelismNumber  int32 = 1
-)
-
-func GetImagePackerMgr(cli client.Client) ImagePackerInterface {
-	b := &imagePacker{
-		client: cli,
-	}
-	return b
-}
 
 func (b *imagePacker) CreateFromDockerfile(c context.Context, data *BuildKitReq) error {
 	initContainer := b.generateInitContainer(data)

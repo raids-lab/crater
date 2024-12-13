@@ -1,4 +1,4 @@
-package crclient
+package imageregistry
 
 import (
 	"fmt"

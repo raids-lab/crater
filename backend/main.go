@@ -46,6 +46,7 @@ import (
 	recommenddljob "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
 	"github.com/raids-lab/crater/pkg/config"
 	db "github.com/raids-lab/crater/pkg/db/orm"
+	"github.com/raids-lab/crater/pkg/imageregistry"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/packer"
@@ -202,9 +203,11 @@ func main() {
 		setupLog.Info("spjob unplugin")
 	}
 	//-------imagepacker-------
+	imageRegistry := imageregistry.NewImageRegistry()
 	buildkitReconciler := reconciler.NewBuildKitReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
+		imageRegistry,
 	)
 	err = buildkitReconciler.SetupWithManager(mgr)
 	if err != nil {
@@ -253,6 +256,7 @@ func main() {
 		PrometheusClient: prometheusClient,
 		AITaskCtrl:       taskCtrl,
 		ImagePacker:      packer.GetImagePackerMgr(mgr.GetClient()),
+		ImageRegistry:    imageRegistry,
 	}
 	backend := internal.Register(&registerConfig)
 	if err := backend.R.Run(backendConfig.ServerAddr); err != nil {
