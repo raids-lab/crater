@@ -23,7 +23,7 @@ type DatasetMgr struct {
 	name string
 }
 
-func NewDatasetMgr(_ RegisterConfig) Manager {
+func NewDatasetMgr(_ *RegisterConfig) Manager {
 	return &DatasetMgr{
 		name: "dataset",
 	}

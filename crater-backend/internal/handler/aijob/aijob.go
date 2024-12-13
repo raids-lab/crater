@@ -52,7 +52,7 @@ type AIJobMgr struct {
 	taskController aitaskctl.TaskControllerInterface
 }
 
-func NewAITaskMgr(conf handler.RegisterConfig) handler.Manager {
+func NewAITaskMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &AIJobMgr{
 		name:           "aijobs",
 		client:         conf.Client,

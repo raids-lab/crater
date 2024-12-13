@@ -29,7 +29,7 @@ type ContextMgr struct {
 	client client.Client
 }
 
-func NewContextMgr(conf RegisterConfig) Manager {
+func NewContextMgr(conf *RegisterConfig) Manager {
 	return &ContextMgr{
 		name:   "context",
 		client: conf.Client,

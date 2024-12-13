@@ -34,7 +34,7 @@ type NodePodDelete struct {
 	Taint string `json:"taint" binding:"required"`
 }
 
-func NewNodeMgr(conf RegisterConfig) Manager {
+func NewNodeMgr(conf *RegisterConfig) Manager {
 	return &NodeMgr{
 		name: "nodes",
 		nodeClient: &crclient.NodeClient{

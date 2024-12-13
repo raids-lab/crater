@@ -23,7 +23,7 @@ type ResourceMgr struct {
 	kubeClient kubernetes.Interface
 }
 
-func NewResourceMgr(conf RegisterConfig) Manager {
+func NewResourceMgr(conf *RegisterConfig) Manager {
 	return &ResourceMgr{
 		name:       "resources",
 		kubeClient: conf.KubeClient,

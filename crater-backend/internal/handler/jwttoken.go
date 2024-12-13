@@ -16,7 +16,7 @@ type JWTTokenMgr struct {
 	name string
 }
 
-func NewJWTTokenMgr(_ RegisterConfig) Manager {
+func NewJWTTokenMgr(_ *RegisterConfig) Manager {
 	return &JWTTokenMgr{
 		name: "storage",
 	}

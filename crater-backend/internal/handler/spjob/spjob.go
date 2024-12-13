@@ -50,7 +50,7 @@ type SparseJobMgr struct {
 	jobclient *crclient.RecommendDLJobController
 }
 
-func NewSparseJobMgr(conf handler.RegisterConfig) handler.Manager {
+func NewSparseJobMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &SparseJobMgr{
 		name:      "spjobs",
 		jobclient: &crclient.RecommendDLJobController{Client: conf.Client},

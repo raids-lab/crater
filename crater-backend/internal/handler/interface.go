@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/monitor"
+	"github.com/raids-lab/crater/pkg/packer"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -33,8 +34,11 @@ type RegisterConfig struct {
 
 	// AITaskCtrl is the aitask controller.
 	AITaskCtrl aitaskctl.TaskControllerInterface
+
+	// ImagePacker is the image packer.
+	ImagePacker packer.ImagePackerInterface
 }
 
 // Registers is a slice of Manager Init functions.
 // Each Manager should register itself by appending its Init function to this slice.
-var Registers = []func(config RegisterConfig) Manager{}
+var Registers = []func(config *RegisterConfig) Manager{}

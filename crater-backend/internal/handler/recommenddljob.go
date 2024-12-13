@@ -21,7 +21,7 @@ type RecommendDLJobMgr struct {
 	jobclient *crclient.RecommendDLJobController
 }
 
-func NewRecommendDLJobMgr(conf RegisterConfig) Manager {
+func NewRecommendDLJobMgr(conf *RegisterConfig) Manager {
 	return &RecommendDLJobMgr{
 		name:      "recommenddljob",
 		jobclient: &crclient.RecommendDLJobController{Client: conf.Client},

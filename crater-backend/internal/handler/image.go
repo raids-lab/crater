@@ -16,10 +16,10 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
-	"github.com/raids-lab/crater/pkg/buildkit"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/logutils"
+	"github.com/raids-lab/crater/pkg/packer"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -31,14 +31,16 @@ type ImagePackMgr struct {
 	name            string
 	imagepackClient *crclient.ImagePackController
 	harborClient    *crclient.HarborClient
+	imagePacker     packer.ImagePackerInterface
 }
 
-func NewImagePackMgr(conf RegisterConfig) Manager {
+func NewImagePackMgr(conf *RegisterConfig) Manager {
 	harborClient := crclient.NewHarborClient()
 	return &ImagePackMgr{
 		name:            "images",
 		imagepackClient: &crclient.ImagePackController{Client: conf.Client},
 		harborClient:    &harborClient,
+		imagePacker:     conf.ImagePacker,
 	}
 }
 
@@ -186,7 +188,7 @@ func (mgr *ImagePackMgr) UserCreateKaniko(c *gin.Context) {
 		return
 	}
 	dockerfile := mgr.generateDockerfile(req)
-	mgr.createImagePack(c, req, token, dockerfile)
+	mgr.buildFromDockerfile(c, req, token, dockerfile)
 
 	resputil.Success(c, "")
 }
@@ -248,7 +250,7 @@ func (mgr *ImagePackMgr) AdminCreate(c *gin.Context) {
 	}
 	logutils.Log.Infof("create params: %+v", req)
 	dockerfile := mgr.generateDockerfile(req)
-	mgr.createImagePack(c, req, token, dockerfile)
+	mgr.buildFromDockerfile(c, req, token, dockerfile)
 	resputil.Success(c, "")
 }
 
@@ -269,7 +271,7 @@ func (mgr *ImagePackMgr) generateDockerfile(req *CreateKanikoRequest) string {
 	`
 }
 
-func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *CreateKanikoRequest, token util.JWTMessage, dockerfile string) {
+func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, req *CreateKanikoRequest, token util.JWTMessage, dockerfile string) {
 	if err := mgr.checkExistProject(c, token); err != nil {
 		logutils.Log.Errorf("check project exist failed")
 		return
@@ -281,15 +283,11 @@ func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *CreateKanikoReques
 	imageTag := fmt.Sprintf("%d%d-%d%d-%s", now.Month(), now.Day(), now.Hour(), now.Minute(), uuid.New().String()[:4])
 	imageLink := fmt.Sprintf("%s/%s/%s:%s", mgr.harborClient.RegistryServer, registryProject, imageName, imageTag)
 	// create ImagePack CRD
-	buildkitData := &buildkit.BuildKitData{
-		JobName:         imagepackName,
-		Namespace:       UserNameSpace,
-		RegistryServer:  mgr.harborClient.RegistryServer,
-		RegistryUser:    mgr.harborClient.RegistryUser,
-		RegistryPass:    mgr.harborClient.RegistryPass,
-		RegistryProject: registryProject,
-		Dockerfile:      dockerfile,
-		ImageLink:       imageLink,
+	buildkitData := &packer.BuildKitReq{
+		JobName:    imagepackName,
+		Namespace:  UserNameSpace,
+		Dockerfile: dockerfile,
+		ImageLink:  imageLink,
 	}
 	kanikoQuery := query.Kaniko
 	kanikoEntity := &model.Kaniko{
@@ -307,7 +305,7 @@ func (mgr *ImagePackMgr) createImagePack(c *gin.Context, req *CreateKanikoReques
 		logutils.Log.Errorf("create imagepack entity failed, params: %+v", kanikoEntity)
 	}
 
-	err := buildkit.GetBuildKitMgr(mgr.imagepackClient.Client).CreateFromDockerfile(c, buildkitData)
+	err := mgr.imagePacker.CreateFromDockerfile(c, buildkitData)
 	if err != nil {
 		logutils.Log.Errorf("create buildkit job failed, params: %+v err:%v", req, err)
 		return
