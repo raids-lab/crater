@@ -13,6 +13,8 @@ spec:
       labels:
         app: nginx
     spec:
+      nodeSelector: {{ .Values.nodeSelector | toYaml | nindent 8 }}
+      tolerations: {{ .Values.tolerations | toYaml | nindent 8 }}
       containers:
       - name: nginx
         image: ***REMOVED***/docker.io/library/nginx:1.27.3-bookworm
