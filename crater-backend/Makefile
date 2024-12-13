@@ -40,13 +40,13 @@ migrate: ## Migrate database.
 	@echo "Migrating database..."
 	go run cmd/gorm-gen/models/migrate.go
 
-.PHONY: swagger
+.PHONY: api-docs
 swagger: ## Generate swagger docs.
 	@echo "Generating swagger docs..."
-	swag init
+	$(SWAGGO) init
 
 .PHONY: run
-run: fmt swagger  ## Run a controller from your host.
+run: fmt api-docs  ## Run a controller from your host.
 	export KUBECONFIG="$(KUBECONFIG_PATH)" && \
 	go run main.go --config-file "$(CONFIG_FILE)"
 
@@ -78,13 +78,21 @@ $(LOCATION):
 
 ## Tool Binaries
 GOLANGCI_LINT ?= $(LOCATION)/golangci-lint
+SWAGGO ?= $(LOCATION)/swag
 HACK_DIR ?= $(PWD)/hack
 
 ## Tool Versions
 GOLANGCI_LINT_VERSION ?= v1.61.0
+SWAGGO_VERSION ?= v1.16.3
 
 .PHONY: golangci-lint
 golangci-lint: $(GOLANGCI_LINT) ## Install golangci-lint
 $(GOLANGCI_LINT): $(LOCATION)
 	@echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."
 	GOBIN=$(LOCATION) go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+
+.PHONY: swaggo
+swaggo: $(SWAGGO) ## Install swaggo
+$(SWAGGO): $(LOCATION)
+	@echo "Installing swag $(SWAGGO_VERSION)..."
+	GOBIN=$(LOCATION) go install github.com/swaggo/swag/cmd/swag@$(SWAGGO_VERSION)
