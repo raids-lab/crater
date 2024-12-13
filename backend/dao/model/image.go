@@ -1,21 +1,38 @@
 package model
 
 import (
-	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
 	"gorm.io/gorm"
+)
+
+type BuildStatus string
+
+const (
+	BuildJobInitial  BuildStatus = "Initial"
+	BuildJobPending  BuildStatus = "Pending"
+	BuildJobRunning  BuildStatus = "Running"
+	BuildJobFinished BuildStatus = "Finished"
+	BuildJobFailed   BuildStatus = "Failed"
+)
+
+type BuildSource string
+
+const (
+	BuildKit BuildSource = "buildkit"
+	Snapshot BuildSource = "snapshot"
 )
 
 type Kaniko struct {
 	gorm.Model
 	UserID        uint
 	User          User
-	ImagePackName string                 `gorm:"uniqueIndex;type:varchar(128);not null;comment:ImagePack CRD 名称"`
-	ImageLink     string                 `gorm:"type:varchar(128);not null;comment:镜像链接"`
-	NameSpace     string                 `gorm:"type:varchar(128);not null;comment:命名空间"`
-	Status        imagepackv1.PackStatus `gorm:"not null;comment:构建状态"`
-	Description   *string                `gorm:"type:varchar(512);comment:描述"`
-	Size          int64                  `gorm:"type:bigint;default:0;comment:镜像大小"`
-	Dockerfile    *string                `gorm:"type:text;comment:Dockerfile内容"`
+	ImagePackName string      `gorm:"uniqueIndex;type:varchar(128);not null;comment:ImagePack CRD 名称"`
+	ImageLink     string      `gorm:"type:varchar(128);not null;comment:镜像链接"`
+	NameSpace     string      `gorm:"type:varchar(128);not null;comment:命名空间"`
+	Status        BuildStatus `gorm:"not null;comment:构建状态"`
+	Description   *string     `gorm:"type:varchar(512);comment:描述"`
+	Size          int64       `gorm:"type:bigint;default:0;comment:镜像大小"`
+	Dockerfile    *string     `gorm:"type:text;comment:Dockerfile内容"`
+	BuildSource   BuildSource `gorm:"type:varchar(128);not null;default:buildkit;comment:构建来源"`
 }
 
 type Image struct {

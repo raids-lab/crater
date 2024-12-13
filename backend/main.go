@@ -202,15 +202,15 @@ func main() {
 	} else {
 		setupLog.Info("spjob unplugin")
 	}
-	//-------imagepacker-------
+	//-------buildkit-------
 	utilruntime.Must(imagepackv1.AddToScheme(mgr.GetScheme()))
-	imagePackReconciler := reconciler.NewImagePackReconciler(
+	buildkitReconciler := reconciler.NewBuildKitReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
 	)
-	err = imagePackReconciler.SetupWithManager(mgr)
+	err = buildkitReconciler.SetupWithManager(mgr)
 	if err != nil {
-		setupLog.Error(err, "unable to set up imagepack controller")
+		setupLog.Error(err, "unable to set up buildkit controller")
 	}
 	//-------volcano-------
 	utilruntime.Must(scheduling.AddToScheme(mgr.GetScheme()))
