@@ -22,14 +22,10 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	harbormodelv2 "github.com/mittwald/goharbor-client/v5/apiv2/model"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/pkg/config"
-	"github.com/raids-lab/crater/pkg/crclient"
-	"github.com/raids-lab/crater/pkg/logutils"
-	"gorm.io/gen"
+	"github.com/raids-lab/crater/pkg/imageregistry"
 	"gorm.io/gorm"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
@@ -44,19 +40,19 @@ import (
 // VcJobReconciler reconciles a AIJob object
 type BuildKitReconciler struct {
 	client.Client
-	Scheme       *runtime.Scheme
-	log          logr.Logger
-	harborClient *crclient.HarborClient
+	Scheme        *runtime.Scheme
+	log           logr.Logger
+	imageRegistry imageregistry.ImageRegistryInterface
 }
 
 // NewVcJobReconciler returns a new reconcile.Reconciler
-func NewBuildKitReconciler(crClient client.Client, scheme *runtime.Scheme) *BuildKitReconciler {
-	harborClient := crclient.NewHarborClient()
+func NewBuildKitReconciler(crClient client.Client, scheme *runtime.Scheme,
+	imageRegistry imageregistry.ImageRegistryInterface) *BuildKitReconciler {
 	return &BuildKitReconciler{
-		Client:       crClient,
-		Scheme:       scheme,
-		log:          ctrl.Log.WithName("BuildKit-reconciler"),
-		harborClient: &harborClient,
+		Client:        crClient,
+		Scheme:        scheme,
+		log:           ctrl.Log.WithName("BuildKit-reconciler"),
+		imageRegistry: imageRegistry,
 	}
 }
 
@@ -89,57 +85,30 @@ var (
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 
 // Reconcile 主要用于同步 ImagePack 的状态到数据库中
-//
-//nolint:gocyclo // refactor later
 func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	kanikoQuery := query.Kaniko
+	k := query.Kaniko
 
 	// TODO(user): your logic here
 	if req.Namespace != ImageSpace {
 		return ctrl.Result{}, nil
 	}
+
 	var job batchv1.Job
 
-	err := r.Get(ctx, req.NamespacedName, &job)
-	if err != nil && !k8serrors.IsNotFound(err) {
-		logger.Error(err, "unable to fetch job")
-		return ctrl.Result{}, nil
-	}
-
-	if k8serrors.IsNotFound(err) {
-		// set job status to deleted
-		var kaniko *model.Kaniko
-		kaniko, err = kanikoQuery.WithContext(ctx).Where(kanikoQuery.ImagePackName.Eq(req.Name)).First()
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			logger.Error(err, "unable to fetch kaniko entity")
+	if err := r.Get(ctx, req.NamespacedName, &job); err != nil {
+		if k8serrors.IsNotFound(err) {
+			// if job record in db is not finished, update the status to canceled
+			return r.handleJobNotFound(ctx, req.Name)
+		} else {
+			logger.Error(err, "unable to fetch job")
 			return ctrl.Result{Requeue: true}, err
 		}
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			logger.Info("kaniko not found in database")
-			return ctrl.Result{}, nil
-		}
-
-		if kaniko.Status == model.BuildJobFailed || kaniko.Status == model.BuildJobFinished {
-			return ctrl.Result{}, nil
-		}
-
-		var info gen.ResultInfo
-		info, err = kanikoQuery.WithContext(ctx).Where(kanikoQuery.ImagePackName.Eq(req.Name)).Delete()
-		if err != nil {
-			logger.Error(err, "unable to delete kaniko entity in database")
-			return ctrl.Result{Requeue: true}, err
-		}
-		if info.RowsAffected == 0 {
-			logger.Info("kaniko not found in database")
-		}
-		return ctrl.Result{}, nil
 	}
 
 	// create or update db record
 	// if kaniko not found, return
-	var kaniko *model.Kaniko
-	kaniko, err = kanikoQuery.WithContext(ctx).Preload(query.Kaniko.User).Where(kanikoQuery.ImagePackName.Eq(job.Name)).First()
+	kaniko, err := k.WithContext(ctx).Preload(query.Kaniko.User).Where(k.ImagePackName.Eq(job.Name)).First()
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		logger.Error(err, "unable to fetch kaniko entity in database")
 		return ctrl.Result{Requeue: true}, err
@@ -153,26 +122,30 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	jobStatus := r.getJobBuildStatus(&job)
 
 	// if kaniko found, update the status and decide whether to create image
-	if _, err = kanikoQuery.WithContext(ctx).
-		Where(kanikoQuery.ImagePackName.Eq(job.Name)).
-		Update(kanikoQuery.Status, jobStatus); err != nil {
+	if _, err = k.WithContext(ctx).
+		Where(k.ImagePackName.Eq(job.Name)).
+		Update(k.Status, jobStatus); err != nil {
 		logger.Error(err, "kaniko entity status updated failed")
 		return ctrl.Result{Requeue: true}, nil
 	}
 	logger.Info(fmt.Sprintf("buildkit pod: %s , new stage: %s", job.Name, jobStatus))
 
 	if jobStatus == model.BuildJobFinished {
-		size := r.getKankikoSize(ctx, kaniko)
-		if _, err = kanikoQuery.WithContext(ctx).
-			Where(kanikoQuery.ImagePackName.Eq(job.Name)).
-			Update(kanikoQuery.Size, size); err != nil {
+		size, err := r.imageRegistry.GetImageSize(ctx, kaniko.ImageLink)
+		if err != nil {
+			logger.Error(err, "get image size failed")
+			return ctrl.Result{Requeue: true}, err
+		}
+		if _, err = k.WithContext(ctx).
+			Where(k.ImagePackName.Eq(job.Name)).
+			Update(k.Size, size); err != nil {
 			logger.Error(err, "kaniko entity size updated failed")
 			return ctrl.Result{Requeue: true}, err
 		}
-		imageQuery := query.Image
+		im := query.Image
 		// avoid duplicatedly creating image entity result from the same one finished kaniko crd
-		if _, err = imageQuery.WithContext(ctx).
-			Where(imageQuery.ImagePackName.Eq(kaniko.ImagePackName)).
+		if _, err = im.WithContext(ctx).
+			Where(im.ImagePackName.Eq(kaniko.ImagePackName)).
 			First(); errors.Is(err, gorm.ErrRecordNotFound) {
 			image := &model.Image{
 				User:          kaniko.User,
@@ -185,7 +158,7 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 				ImageSource:   model.ImageCreateType,
 				Size:          size,
 			}
-			err = imageQuery.WithContext(ctx).Create(image)
+			err = im.WithContext(ctx).Create(image)
 			if err != nil {
 				logger.Error(err, "image entity created failed")
 				return ctrl.Result{Requeue: true}, err
@@ -199,16 +172,30 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	return ctrl.Result{}, nil
 }
 
-func (r *BuildKitReconciler) getKankikoSize(ctx context.Context, kaniko *model.Kaniko) int64 {
-	var imageArtifact *harbormodelv2.Artifact
-	var err error
-	projectName := fmt.Sprintf("user-%s", kaniko.User.Name)
-	name, tag := handler.GetImageNameAndTag(kaniko.ImageLink)
-	if imageArtifact, err = r.harborClient.GetArtifact(ctx, projectName, name, tag); err != nil {
-		logutils.Log.Errorf("get imagepack artifact failed! err:%+v", err)
-		return 0
+func (r *BuildKitReconciler) handleJobNotFound(ctx context.Context, jobName string) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+	k := query.Kaniko
+	kaniko, err := k.WithContext(ctx).Where(k.ImagePackName.Eq(jobName)).First()
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logger.Info("kaniko not found in database")
+			return ctrl.Result{}, nil
+		} else {
+			logger.Error(err, "unable to fetch kaniko entity")
+			return ctrl.Result{Requeue: true}, err
+		}
 	}
-	return imageArtifact.Size
+
+	// if kaniko status is finished or failed, do nothing
+	if kaniko.Status == model.BuildJobFailed || kaniko.Status == model.BuildJobFinished {
+		return ctrl.Result{}, nil
+	}
+
+	if _, err := k.WithContext(ctx).Where(k.ImagePackName.Eq(jobName)).UpdateColumn(k.Status, model.BuildJobCanceled); err != nil {
+		logger.Error(err, "unable to update kaniko entity status")
+		return ctrl.Result{Requeue: true}, err
+	}
+	return ctrl.Result{}, nil
 }
 
 func (r *BuildKitReconciler) getJobBuildStatus(job *batchv1.Job) model.BuildStatus {

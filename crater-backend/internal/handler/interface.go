@@ -3,6 +3,7 @@ package handler
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
+	"github.com/raids-lab/crater/pkg/imageregistry"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/packer"
 	"k8s.io/client-go/kubernetes"
@@ -37,6 +38,9 @@ type RegisterConfig struct {
 
 	// ImagePacker is the image packer.
 	ImagePacker packer.ImagePackerInterface
+
+	// ImageRegistry is the image registry.
+	ImageRegistry imageregistry.ImageRegistryInterface
 }
 
 // Registers is a slice of Manager Init functions.

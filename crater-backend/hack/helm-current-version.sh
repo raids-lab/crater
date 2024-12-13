@@ -1,4 +1,6 @@
 #!/bin/bash
+
+# Usage: bash hack/helm-current-version.sh
 set -e
 
 # 定义命名空间

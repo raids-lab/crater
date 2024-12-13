@@ -12,6 +12,7 @@ const (
 	BuildJobRunning  BuildStatus = "Running"
 	BuildJobFinished BuildStatus = "Finished"
 	BuildJobFailed   BuildStatus = "Failed"
+	BuildJobCanceled BuildStatus = "Canceled"
 )
 
 type BuildSource string
