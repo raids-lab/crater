@@ -56,13 +56,13 @@ func (mgr *NodeMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.PUT("/:name", mgr.UpdateNodeunschedule)
 	g.GET("/:name", mgr.GetNode)
 	g.GET("/:name/pods", mgr.GetPodsForNode)
-	g.GET("/:name/gpu", mgr.ListNodeGPUUtil)
+	g.GET("/:name/gpu", mgr.ListNodeGPUInfo)
 }
 
 func (mgr *NodeMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.ListNode)
 	g.GET("/:name/pods", mgr.GetPodsForNode)
-	g.GET("/:name/gpu", mgr.ListNodeGPUUtil)
+	g.GET("/:name/gpu", mgr.ListNodeGPUInfo)
 }
 
 // ListNode godoc
@@ -244,7 +244,7 @@ func (mgr *NodeMgr) GetPodsForNode(c *gin.Context) {
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/nodes/{name}/gpu/ [get]
-func (mgr *NodeMgr) ListNodeGPUUtil(c *gin.Context) {
+func (mgr *NodeMgr) ListNodeGPUInfo(c *gin.Context) {
 	var req NodePodRequest
 	if err := c.ShouldBindUri(&req); err != nil {
 		return
