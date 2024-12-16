@@ -305,11 +305,16 @@ func (nc *NodeClient) GetNodeGPUInfo(name string) (payload.GPUInfo, error) {
 
 	// 初始化返回值
 	gpuInfo := payload.GPUInfo{
-		Name:       name,
-		HaveGPU:    false,
-		GPUCount:   0,
-		GPUUtil:    make(map[string]float32),
-		RelateJobs: make(map[string][]string),
+		Name:        name,
+		HaveGPU:     false,
+		GPUCount:    0,
+		GPUUtil:     make(map[string]float32),
+		RelateJobs:  make(map[string][]string),
+		GPUMemory:   "",
+		GPUArch:     "",
+		GPUDriver:   "",
+		CudaVersion: "",
+		GPUProduct:  "",
 	}
 
 	// 首先查询当前节点是否有GPU
@@ -318,17 +323,20 @@ func (nc *NodeClient) GetNodeGPUInfo(name string) (payload.GPUInfo, error) {
 		if node.Name != name {
 			continue
 		}
-		// if _, ok := node.Status.Capacity["nvidia.com/gpu"]; ok {
-		if nc.getNodeGPUCount(name) > 0 {
+		gpuCountValue, ok := node.Labels["nvidia.com/gpu.count"]
+		if ok {
+			gpuCount := 0
+			_, err := fmt.Sscanf(gpuCountValue, "%d", &gpuCount)
+			if err != nil {
+				return payload.GPUInfo{}, err
+			}
+			gpuInfo.GPUCount = gpuCount
 			gpuInfo.HaveGPU = true
-			gpuInfo.GPUCount = nc.getNodeGPUCount(name)
-			GPUCheckTag := 10
-			if gpuInfo.GPUCount >= GPUCheckTag {
-				gpuInfo.GPUCount /= GPUCheckTag
-			}
-			for i := 0; i < gpuInfo.GPUCount; i++ {
-				gpuInfo.GPUUtil[fmt.Sprintf("%d", i)] = 0
-			}
+			gpuInfo.GPUMemory = node.Labels["nvidia.com/gpu.memory"]
+			gpuInfo.GPUArch = node.Labels["nvidia.com/gpu.family"]
+			gpuInfo.GPUDriver = node.Labels["nvidia.com/cuda.driver-version.full"]
+			gpuInfo.CudaVersion = node.Labels["nvidia.com/cuda.runtime-version.full"]
+			gpuInfo.GPUProduct = node.Labels["nvidia.com/gpu.product"]
 			break
 		}
 	}

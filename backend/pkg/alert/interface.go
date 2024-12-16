@@ -2,6 +2,7 @@ package alert
 
 import (
 	"context"
+	"time"
 
 	"github.com/raids-lab/crater/dao/model"
 )
@@ -15,7 +16,8 @@ import (
 //  4. 作业因低利用率已经被释放通知
 //  5. 作业异常的资源使用警告
 type AlertInterface interface {
-	JobFreed(ctx context.Context, jobName string, extra map[string]any) error
+	DeleteJob(ctx context.Context, jobName string, extra map[string]any) error
+	RemindLowUsageJob(ctx context.Context, jobName string, deleteTime time.Time, extra map[string]any) error
 }
 
 // alertHandlerInterface 是具体的通知组件对外部提供的接口，WPS Robot 或者 SMTP 邮件通知都应该实现这两个接口
