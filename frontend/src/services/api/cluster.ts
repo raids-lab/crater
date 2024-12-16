@@ -59,6 +59,11 @@ export interface IClusterNodeGPU {
   gpuCount: number;
   gpuUtil: Record<string, number>;
   relateJobs: string[];
+  gpuMemory: string;
+  gpuArch: string;
+  gpuDriver: string;
+  cudaVersion: string;
+  gpuProduct: string;
 }
 
 export const apiGetNodes = () =>
