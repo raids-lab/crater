@@ -50,6 +50,9 @@ type ClusterNodeDetail struct {
 	Arch                    string `json:"arch"`
 	KubeletVersion          string `json:"kubeletVersion"`
 	ContainerRuntimeVersion string `json:"containerRuntimeVersion"`
+	GPUMemory               string `json:"gpuMemory"`
+	GPUCount                int    `json:"gpuCount"`
+	GPUArch                 string `json:"gpuArch"`
 }
 
 type ListNodeResp struct {
@@ -57,11 +60,16 @@ type ListNodeResp struct {
 }
 
 type GPUInfo struct {
-	Name       string              `json:"name"`
-	HaveGPU    bool                `json:"haveGPU"`
-	GPUCount   int                 `json:"gpuCount"`
-	GPUUtil    map[string]float32  `json:"gpuUtil"`
-	RelateJobs map[string][]string `json:"relateJobs"`
+	Name        string              `json:"name"`
+	HaveGPU     bool                `json:"haveGPU"`
+	GPUCount    int                 `json:"gpuCount"`
+	GPUUtil     map[string]float32  `json:"gpuUtil"`
+	RelateJobs  map[string][]string `json:"relateJobs"`
+	GPUMemory   string              `json:"gpuMemory"`
+	GPUArch     string              `json:"gpuArch"`
+	GPUDriver   string              `json:"gpuDriver"`
+	CudaVersion string              `json:"cudaVersion"`
+	GPUProduct  string              `json:"gpuProduct"`
 }
 
 type GetTaskResp struct {
