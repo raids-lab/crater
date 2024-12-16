@@ -2,6 +2,7 @@ package operations
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/query"
@@ -65,6 +66,7 @@ func NewOperationsMgr(conf *handler.RegisterConfig) handler.Manager {
 func (mgr *OperationsMgr) GetName() string { return mgr.name }
 
 func (mgr *OperationsMgr) RegisterPublic(g *gin.RouterGroup) {
+	g.DELETE("/auto", mgr.AutoDelete)
 	g.DELETE("/job", mgr.DeleteUnUsedJobList)
 }
 
@@ -73,13 +75,16 @@ func (mgr *OperationsMgr) RegisterProtected(_ *gin.RouterGroup) {
 
 func (mgr *OperationsMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("/whitelist", mgr.GetWhiteList)
-	g.DELETE("/job", mgr.DeleteUnUsedJobList)
+	g.DELETE("/auto", mgr.AutoDelete)
 	g.PUT("/keep/:name", mgr.SetKeepWhenLowResourceUsage)
+	g.DELETE("/job", mgr.DeleteUnUsedJobList)
 }
 
-type JobFreRequest struct {
-	TimeRange int `form:"timeRange" binding:"required"`
-	Util      int `form:"util"`
+type FreeJobRequest struct {
+	TimeRange int  `form:"timeRange" binding:"required"`
+	WaitTime  int  `form:"waitTime"`
+	Util      int  `form:"util"`
+	Confirm   bool `form:"confirm"`
 }
 
 func (mgr *OperationsMgr) getJobWhiteList(c *gin.Context) ([]string, error) {
@@ -183,6 +188,45 @@ func (mgr *OperationsMgr) SetKeepWhenLowResourceUsage(c *gin.Context) {
 	resputil.Success(c, message)
 }
 
+// AutoDelete godoc
+// @Summary Auto delete not using gpu job list
+// @Description check job list and delete not using gpu job
+// @Tags Operations
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param use query FreeJobRequest true "timeRange util"
+// @Success 200 {object} resputil.Response[any] "Success"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/operations/auto [delete]
+func (mgr *OperationsMgr) AutoDelete(c *gin.Context) {
+	var req FreeJobRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	if req.TimeRange <= 0 || req.WaitTime <= 0 {
+		resputil.BadRequestError(c, "timeRange and waitTime must be greater than 0")
+		return
+	}
+
+	// delete time: 即当前时间+waitTime
+	deleteTime := time.Now().Add(time.Duration(req.WaitTime) * time.Minute)
+
+	// remind
+	reminded := mgr.remindLeastUsedGPUJobs(c, req.TimeRange, req.Util, deleteTime)
+
+	// delete
+	deleted := mgr.deleteLeastUsedGPUJobs(c, req.TimeRange+req.WaitTime, req.Util, true)
+
+	resputil.Success(c, map[string][]string{
+		"reminded": reminded,
+		"deleted":  deleted,
+	})
+}
+
 // DeleteUnUsedJobList godoc
 // @Summary Delete not using gpu job list
 // @Description check job list and delete not using gpu job
@@ -190,13 +234,13 @@ func (mgr *OperationsMgr) SetKeepWhenLowResourceUsage(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param use query JobFreRequest true "timeRange util"
+// @Param use query FreeJobRequest true "timeRange util"
 // @Success 200 {object} resputil.Response[any] "Success"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/operations/job [delete]
 func (mgr *OperationsMgr) DeleteUnUsedJobList(c *gin.Context) {
-	var req JobFreRequest
+	var req FreeJobRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
@@ -207,42 +251,52 @@ func (mgr *OperationsMgr) DeleteUnUsedJobList(c *gin.Context) {
 		return
 	}
 
-	unUsedJobs := mgr.getLeastUsedGPUJobs(c, req.TimeRange, req.Util)
-	whiteList, _ := mgr.getJobWhiteList(c)
+	deleted := mgr.deleteLeastUsedGPUJobs(c, req.TimeRange, req.Util, req.Confirm)
 
+	resputil.Success(c, deleted)
+}
+
+func (mgr *OperationsMgr) deleteLeastUsedGPUJobs(c *gin.Context, duration, util int, confirm bool) []string {
+	toDeleteJobs := mgr.filterJobsToKeep(c, mgr.getLeastUsedGPUJobs(c, duration, util))
+	deletedJobList := []string{}
+	for _, job := range toDeleteJobs {
+		if confirm {
+			if err := mgr.deleteJobByName(c, job.jobAPIVersion, job.jobType, job.jobName); err != nil {
+				fmt.Printf("Delete job %s failed\n", job)
+			}
+			if err := alert.GetAlertMgr().DeleteJob(c, job.jobName, nil); err != nil {
+				fmt.Println("Send Alarm Email failed:", err)
+			}
+		}
+		deletedJobList = append(deletedJobList, job.jobName)
+	}
+	return deletedJobList
+}
+
+func (mgr *OperationsMgr) remindLeastUsedGPUJobs(c *gin.Context, duration, util int, deleteTime time.Time) []string {
 	jobDB := query.Job
+
+	toRemindJobs := mgr.filterJobsToKeep(c, mgr.getLeastUsedGPUJobs(c, duration, util))
+
+	remindedJobList := []string{}
+
 	remindedJobs, _ := jobDB.WithContext(c).Where(jobDB.Reminded).Find()
 	remindMap := make(map[string]bool)
 	for _, item := range remindedJobs {
 		remindMap[item.JobName] = item.Reminded
 	}
-	// todo: including other job types
 
-	deleteJobList := []string{}
-
-	for _, job := range unUsedJobs {
-		if lo.Contains(whiteList, job.jobName) {
-			fmt.Printf("Job %s is in the white list\n", job)
-			continue
-		}
-
-		if remind, ok := remindMap[job.jobName]; ok && remind {
-			// if remind is true, then delete job
-			if err := mgr.deleteJobByName(c, job.jobAPIVersion, job.jobType, job.jobName); err != nil {
-				fmt.Printf("Delete job %s failed\n", job)
-			}
-			deleteJobList = append(deleteJobList, job.jobName)
-			// remove from remindMap
-			delete(remindMap, job.jobName)
-		} else {
+	for _, job := range toRemindJobs {
+		if remind, ok := remindMap[job.jobName]; ok && !remind {
 			// if remind is false, then send alarm email, and set remind to true
-			if err := alert.GetAlertMgr().JobFreed(c, job.jobName, nil); err != nil {
+			if err := alert.GetAlertMgr().RemindLowUsageJob(c, job.jobName, deleteTime, nil); err != nil {
 				fmt.Println("Send Alarm Email failed:", err)
 			}
 			// set remind to true
 			if _, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(job.jobName)).Update(jobDB.Reminded, true); err != nil {
 				fmt.Printf("Update job %s remind failed\n", job)
 			}
+			remindedJobList = append(remindedJobList, job.jobName)
 		}
 	}
 
@@ -252,10 +306,19 @@ func (mgr *OperationsMgr) DeleteUnUsedJobList(c *gin.Context) {
 			fmt.Printf("Update job %s remind failed\n", jobName)
 		}
 	}
-	response := map[string][]string{
-		"delete_job_list": deleteJobList,
+	return remindedJobList
+}
+
+// 过滤掉在whitelist中的job
+func (mgr *OperationsMgr) filterJobsToKeep(c *gin.Context, jobs []JobInfo) []JobInfo {
+	whiteList, _ := mgr.getJobWhiteList(c)
+	var filteredJobs []JobInfo
+	for _, job := range jobs {
+		if !lo.Contains(whiteList, job.jobName) {
+			filteredJobs = append(filteredJobs, job)
+		}
 	}
-	resputil.Success(c, response)
+	return filteredJobs
 }
 
 func (mgr *OperationsMgr) getLeastUsedGPUJobs(c *gin.Context, duration, util int) []JobInfo {
