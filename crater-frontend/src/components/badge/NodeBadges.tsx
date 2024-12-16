@@ -11,10 +11,10 @@ import { CpuIcon } from "lucide-react";
 import { DropdownMenuLabel } from "../ui/dropdown-menu";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const GRAFANA_NODE = import.meta.env.VITE_GRAFANA_NODE;
+const DCGM_EXPORTER = import.meta.env.VITE_GRAFANA_K8S_VGPU_SCHEDULER_DASHBOARD;
 
 const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
   const navigate = useNavigate();
@@ -81,9 +81,11 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
                   <Button
                     variant="ghost"
                     className="justify-start px-2 py-1"
-                    onClick={() =>
-                      toast.warning("TODO(zhangry): add GPU monitoring")
-                    }
+                    onClick={() => {
+                      window.open(
+                        `${DCGM_EXPORTER}?orgId=1&refresh=5m&var-datasource=prometheus&var-node=${node}`,
+                      );
+                    }}
                   >
                     <GpuIcon className="text-orange-600 dark:text-orange-500" />
                     <span className="truncate font-normal">加速卡监控</span>

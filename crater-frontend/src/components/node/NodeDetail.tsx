@@ -8,6 +8,7 @@ import {
   apiGetNodeDetail,
   apiGetNodePods,
   IClusterPodInfo,
+  apiGetNodeGPU,
 } from "@/services/api/cluster";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import {
@@ -19,15 +20,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
-import {
-  Card,
-  CardTitle,
-  CardContent,
-  CardDescription,
-  CardFooter,
-} from "@/components/ui/card";
+import { Card, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { useParams } from "react-router-dom";
-import { ExternalLink } from "lucide-react";
+import {
+  CpuIcon,
+  MemoryStickIcon as Memory,
+  Grid,
+  Layers,
+  Cable,
+} from "lucide-react";
+import GpuIcon from "@/components/icon/GpuIcon";
 import useBreadcrumb from "@/hooks/useBreadcrumb";
 import PodPhaseLabel, { podPhases } from "@/components/badge/PodPhaseBadge";
 import { Separator } from "@/components/ui/separator";
@@ -57,8 +59,81 @@ type CardDemoProps = React.ComponentProps<typeof Card> & {
   };
 };
 
+type GpuDemoProps = React.ComponentProps<typeof Card> & {
+  gpuInfo?: {
+    nodeName: string | undefined;
+    haveGPU: boolean;
+    gpuCount: number;
+    gpuUtil: Record<string, number>;
+    relateJobs: string[];
+    gpuMemory: string;
+    gpuArch: string;
+    gpuDriver: string;
+    cudaVersion: string;
+    gpuProduct: string;
+  };
+};
+
 const POD_MONITOR = import.meta.env.VITE_GRAFANA_POD_MEMORY;
 const GRAFANA_NODE = import.meta.env.VITE_GRAFANA_NODE;
+const DCGM_EXPORTER = import.meta.env.VITE_GRAFANA_K8S_VGPU_SCHEDULER_DASHBOARD;
+
+export function GpuCardDemo({ gpuInfo }: GpuDemoProps) {
+  if (!gpuInfo?.haveGPU) return null;
+  else
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-between bg-muted/50 p-6">
+          <div className="flex flex-col items-start gap-2">
+            <CardTitle className="text-lg font-bold text-primary">
+              {gpuInfo?.gpuProduct}
+            </CardTitle>
+          </div>
+        </CardContent>
+        <Separator />
+        <CardContent className="mt-6 grid grid-flow-col grid-rows-4 gap-x-2 gap-y-3 text-xs">
+          <div className="flex items-center space-x-2 text-muted-foreground">
+            <Memory className="h-6 w-6" />
+            <span className="text-sm font-bold">显存</span>
+          </div>
+
+          <div className="flex items-center space-x-2 text-muted-foreground">
+            <Grid className="h-6 w-6" />
+            <span className="text-sm font-bold">GPU数量</span>
+          </div>
+
+          <div className="flex items-center space-x-2 text-muted-foreground">
+            <Layers className="h-6 w-6" />
+            <span className="text-sm font-bold">架构</span>
+          </div>
+
+          <div className="flex items-center space-x-2 text-muted-foreground">
+            <Cable className="h-6 w-6" />
+            <span className="text-sm font-bold">驱动版本</span>
+          </div>
+          <p className="text-lg font-bold">
+            {parseInt(gpuInfo?.gpuMemory) / 1024} GB
+          </p>
+          <p className="text-lg font-bold">{gpuInfo?.gpuCount}</p>
+          <p className="text-lg font-bold">{gpuInfo?.gpuArch}</p>
+          <p className="text-lg font-bold">{gpuInfo?.cudaVersion}</p>
+        </CardContent>
+        <CardFooter className="flex justify-center">
+          <Button
+            variant="outline"
+            onClick={() => {
+              window.open(
+                `${DCGM_EXPORTER}?orgId=1&refresh=5m&var-datasource=prometheus&var-node=${gpuInfo?.nodeName}`,
+              );
+            }}
+          >
+            <GpuIcon className="text-purple-600 dark:text-purple-500" />
+            <span className="truncate font-normal">加速卡监控</span>
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+}
 
 // CardDemo 组件
 export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
@@ -81,33 +156,9 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
     <Card className={className} {...props}>
       <CardContent className="flex items-center justify-between bg-muted/50 p-6">
         <div className="flex flex-col items-start gap-2">
-          <CardTitle>{nodeInfo?.name}</CardTitle>
-          <CardDescription>节点属性</CardDescription>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => {
-              if (nodeInfo?.name == "ali-2") {
-                window.open(
-                  `https://ecs.console.aliyun.com/server/i-2zefsgw9xfdks1gjro5l/monitor?regionId=cn-beijing`,
-                );
-              } else if (nodeInfo?.name == "ali-3") {
-                window.open(
-                  `https://ecs.console.aliyun.com/server/i-2ze5e0maafu6vn80d2ek/monitor?regionId=cn-beijing`,
-                );
-              } else {
-                window.open(
-                  `${GRAFANA_NODE}?orgId=1&var-node=${nodeInfo?.name}&from=now-30m&to=now`,
-                );
-              }
-            }}
-            disabled={nodeInfo?.name == "zjlab-sw"}
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-          </Button>
+          <CardTitle className="text-lg font-bold text-primary">
+            {nodeInfo?.name}
+          </CardTitle>
         </div>
       </CardContent>
       <Separator />
@@ -133,6 +184,28 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
         {imageURL && (
           <img src={imageURL} alt="节点提供方 LOGO" className="h-16 w-auto" />
         )}
+        <Button
+          variant="outline"
+          onClick={() => {
+            if (nodeInfo?.name == "ali-2") {
+              window.open(
+                `https://ecs.console.aliyun.com/server/i-2zefsgw9xfdks1gjro5l/monitor?regionId=cn-beijing`,
+              );
+            } else if (nodeInfo?.name == "ali-3") {
+              window.open(
+                `https://ecs.console.aliyun.com/server/i-2ze5e0maafu6vn80d2ek/monitor?regionId=cn-beijing`,
+              );
+            } else {
+              window.open(
+                `${GRAFANA_NODE}?orgId=1&var-node=${nodeInfo?.name}&from=now-30m&to=now`,
+              );
+            }
+          }}
+          disabled={nodeInfo?.name == "zjlab-sw"}
+        >
+          <CpuIcon className="text-purple-600 dark:text-purple-500" />
+          <span className="truncate font-normal">节点监控</span>
+        </Button>
       </CardFooter>
     </Card>
   );
@@ -313,6 +386,12 @@ export const NodeDetail: FC = () => {
     enabled: !!nodeName,
   });
 
+  const { data: gpuDetail } = useQuery({
+    queryKey: ["gpu", nodeName, "detail"],
+    queryFn: () => apiGetNodeGPU(`${nodeName}`),
+    select: (res) => res.data.data,
+  });
+
   const podsQuery = useQuery({
     queryKey: ["nodes", nodeName, "pods"],
     queryFn: () => apiGetNodePods(`${nodeName}`),
@@ -342,6 +421,26 @@ export const NodeDetail: FC = () => {
     <div className="col-span-3 grid gap-8 md:grid-cols-7">
       <div className="col-span-2 flex-none">
         <CardDemo nodeInfo={nodeDetail} />
+        <div>
+          <GpuCardDemo
+            gpuInfo={
+              gpuDetail
+                ? {
+                    nodeName: nodeName,
+                    haveGPU: gpuDetail.haveGPU,
+                    gpuCount: gpuDetail.gpuCount,
+                    gpuUtil: gpuDetail.gpuUtil,
+                    relateJobs: gpuDetail.relateJobs,
+                    gpuMemory: gpuDetail.gpuMemory,
+                    gpuArch: gpuDetail.gpuArch,
+                    gpuDriver: gpuDetail.gpuDriver,
+                    cudaVersion: gpuDetail.cudaVersion,
+                    gpuProduct: gpuDetail.gpuProduct,
+                  }
+                : undefined
+            }
+          />
+        </div>
       </div>
       <div className="md:col-span-5">
         <DataTable
