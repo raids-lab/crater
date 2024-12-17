@@ -67,7 +67,7 @@ const getFolderDescription = (folder: string) => {
   // public: 公共空间
   // q-*: 账户共享空间
   // u-*: 用户私有空间
-  if (folder === "public") {
+  if (folder === "sugon-gpu-incoming") {
     return "平台上所有用户都可以访问，如需获取上传权限，请联系管理员。";
   } else if (folder.startsWith("q-")) {
     return "账户共享空间，仅限账户内用户访问，如需获取上传权限，请联系账户管理员。";
@@ -127,10 +127,18 @@ export const Component: FC = () => {
           path: "/portal/data/filesystem",
         };
       } else if (index == 3) {
-        return {
-          title: getFolderTitle(value),
-          path: `/portal/data/filesystem/${value}`,
-        };
+        if (value == "user" || value.startsWith("q-")) {
+          return {
+            title: getFolderTitle(value),
+            path: `/portal/data/filesystem/${value}`,
+            isEmpty: true,
+          };
+        } else {
+          return {
+            title: getFolderTitle(value),
+            path: `/portal/data/filesystem/${value}`,
+          };
+        }
       }
       return {
         title: value,
@@ -326,7 +334,8 @@ export const Component: FC = () => {
                           <AlertDialogHeader>
                             <AlertDialogTitle>删除文件夹</AlertDialogTitle>
                             <AlertDialogDescription>
-                              文件将删除
+                              文件夹{row.original.name}
+                              将删除，请确认是否删除该文件夹
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -397,7 +406,8 @@ export const Component: FC = () => {
                           <AlertDialogHeader>
                             <AlertDialogTitle>删除文件</AlertDialogTitle>
                             <AlertDialogDescription>
-                              文件将删除
+                              文件{row.original.name}
+                              将删除，请确认是否删除该文件
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -490,6 +500,23 @@ export const Component: FC = () => {
     },
   });
 
+  const handleTitleNavigation = (name: string) => {
+    if (name == "sugon-gpu-incoming") {
+      navigate(pathname + "/public");
+    } else if (name.startsWith("q-")) {
+      navigate(`${pathname}/account/${name}`);
+    } else {
+      navigate(`${pathname}/user/${name}`);
+    }
+  };
+  const handleReturnNavigation = (backpath: string) => {
+    if (backpath == "/portal/data/filesystem/user") {
+      navigate("/portal/data/filesystem");
+    } else {
+      navigate(backpath);
+    }
+  };
+
   return (
     <>
       {isRoot ? (
@@ -506,7 +533,7 @@ export const Component: FC = () => {
                 </CardDescription>
               </CardHeader>
               <CardFooter>
-                <Button onClick={() => navigate(r.name)}>
+                <Button onClick={() => handleTitleNavigation(r.name)}>
                   <LogInIcon className="mr-2 size-4" />
                   查看{getFolderTitle(r.name)}
                 </Button>
@@ -524,7 +551,7 @@ export const Component: FC = () => {
             variant="outline"
             size="icon"
             onClick={() => {
-              navigate(backpath);
+              handleReturnNavigation(backpath);
             }}
             className="h-8 w-8"
             disabled={isRoot}

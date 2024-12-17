@@ -58,7 +58,7 @@ export const Component: FC = () => {
   const [dirName, setDirName] = useState<string>("");
   const setBreadcrumb = useSetAtom(globalBreadCrumb);
   const path = useMemo(
-    () => pathname.replace(/^\/admin\/data\/queue/, ""),
+    () => pathname.replace(/^\/admin\/data/, ""),
     [pathname],
   );
 
@@ -76,10 +76,10 @@ export const Component: FC = () => {
           path: "/admin/data",
           isEmpty: true,
         };
-      } else if (index == 2 && value == "queue") {
+      } else if (index == 2 && value == "account") {
         return {
           title: "账户文件",
-          path: "/admin/data/queue",
+          path: "/admin/data/account",
         };
       }
       return {
@@ -102,7 +102,7 @@ export const Component: FC = () => {
     return pathname.replace(/\/[^/]+$/, "");
   }, [pathname]);
   const data = useQuery({
-    queryKey: ["data", "queuefiles", path],
+    queryKey: ["data", "accountfiles", path],
     queryFn: () => apiGetQueueFiles(`${path}`),
     select: (res) => res.data.data ?? [],
   });
@@ -111,7 +111,7 @@ export const Component: FC = () => {
     onSuccess: async () => {
       toast.success("删除成功");
       await queryClient.invalidateQueries({
-        queryKey: ["data", "filesystem", path],
+        queryKey: ["data", "accountfiles", path],
       });
     },
   });
@@ -328,7 +328,7 @@ export const Component: FC = () => {
     onSuccess: () => {
       toast.success("文件已上传");
       void queryClient.invalidateQueries({
-        queryKey: ["data", "queuefiles", path],
+        queryKey: ["data", "accountfiles", path],
       });
     },
   });
@@ -380,7 +380,7 @@ export const Component: FC = () => {
     mutationFn: () => clientCreateDir(path),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: ["data", "queuefiles", path],
+        queryKey: ["data", "accountfiles", path],
       });
     },
   });
@@ -400,7 +400,7 @@ export const Component: FC = () => {
           navigate(backpath);
         }}
         className="h-8 w-8"
-        disabled={pathname === "/admin/data/queue"}
+        disabled={pathname === "/admin/data/account"}
       >
         <ArrowLeftIcon />
       </Button>
@@ -411,7 +411,7 @@ export const Component: FC = () => {
         size="icon"
         variant="outline"
         className="h-8 w-8 p-0"
-        disabled={pathname === "/admin/data/queue"}
+        disabled={pathname === "/admin/data/account"}
       >
         <UploadIcon />
       </Button>
@@ -428,7 +428,7 @@ export const Component: FC = () => {
             variant="outline"
             className="h-8 w-8"
             size="icon"
-            disabled={pathname === "/admin/data/queue"}
+            disabled={pathname === "/admin/data/account"}
           >
             <PlusIcon />
           </Button>

@@ -61,7 +61,7 @@ export const adminPath: PathInfo = {
           title: "用户文件",
         },
         {
-          path: "queue",
+          path: "account",
           title: "账户文件",
         },
         {
