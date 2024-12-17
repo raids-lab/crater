@@ -185,42 +185,34 @@ export const importFromJsonFile = async <T>(
     throw new Error("无效的配置文件");
   }
   const text = await file.text();
-  try {
-    const jobInfo = JSON.parse(text) as JobSubmitJson<T>;
-    if (jobInfo.version !== version) {
-      throw new Error(
-        `当前配置版本为 ${version}，导入配置版本为 ${jobInfo.version}，无法导入，请手动创建新配置`,
-      );
-    } else if (jobInfo.type !== type) {
-      throw new Error(
-        `当前配置类型为 ${type}，导入配置类型为 ${jobInfo.type}，无法导入，请手动创建新配置`,
-      );
-    }
-    return jobInfo.data;
-  } catch {
-    throw new Error("无效的配置文件");
+  const jobInfo = JSON.parse(text) as JobSubmitJson<T>;
+  if (jobInfo.version !== version) {
+    throw new Error(
+      `当前配置版本为 ${version}，导入配置版本为 ${jobInfo.version}，无法导入，请手动创建新配置`,
+    );
+  } else if (jobInfo.type !== type) {
+    throw new Error(
+      `当前配置类型为 ${type}，导入配置类型为 ${jobInfo.type}，无法导入，请手动创建新配置`,
+    );
   }
+  return jobInfo.data;
 };
 
 export const importFromJsonString = <T>(
   metadata: MetadataFormType,
   text: string,
 ): T => {
-  try {
-    const jobInfo = JSON.parse(text) as JobSubmitJson<T>;
-    if (jobInfo.version !== metadata.version) {
-      throw new Error(
-        `当前配置版本为 ${metadata.version}，导入配置版本为 ${jobInfo.version}，无法导入，请手动创建新配置`,
-      );
-    } else if (jobInfo.type !== metadata.type) {
-      throw new Error(
-        `当前配置类型为 ${metadata.type}，导入配置类型为 ${jobInfo.type}，无法导入，请手动创建新配置`,
-      );
-    }
-    return jobInfo.data;
-  } catch {
-    throw new Error("Invalid JSON string");
+  const jobInfo = JSON.parse(text) as JobSubmitJson<T>;
+  if (jobInfo.version !== metadata.version) {
+    throw new Error(
+      `当前配置版本为 ${metadata.version}，导入配置版本为 ${jobInfo.version}，无法导入，请手动创建新配置`,
+    );
+  } else if (jobInfo.type !== metadata.type) {
+    throw new Error(
+      `当前配置类型为 ${metadata.type}，导入配置类型为 ${jobInfo.type}，无法导入，请手动创建新配置`,
+    );
   }
+  return jobInfo.data;
 };
 
 export const convertToResourceList = (
