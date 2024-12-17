@@ -341,7 +341,15 @@ export const Component = () => {
       form.setError("gpu.model", {
         type: "manual",
         message:
-          "已申请 GPU，建议结合节点资源分配情况，妥善调整 CPU 和内存申请，避免作业被 OOM Kill",
+          "建议结合节点资源分配情况，妥善调整 CPU 和内存资源申请，避免作业被 OOM Kill",
+      });
+      form.setError("cpu", {
+        type: "manual",
+        message: "请增加 CPU 核数",
+      });
+      form.setError("memory", {
+        type: "manual",
+        message: "请增加内存大小",
       });
       return;
     }
