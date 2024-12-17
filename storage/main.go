@@ -25,7 +25,6 @@ func main() {
 	methods := []string{
 		"PUT",
 		"MKCOL",
-		"MOVE", "COPY",
 		"PROPFIND",
 		"PROPPATCH",
 	}
