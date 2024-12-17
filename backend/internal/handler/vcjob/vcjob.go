@@ -92,7 +92,7 @@ const (
 	AnnotationKeyJupyter        = "crater.raids.io/jupyter-token"
 	AnnotationKeyUseTensorBoard = "crater.raids.io/use-tensorboard"
 
-	VolumeData  = "crater-workspace"
+	// VolumeData  = "crater-rw-workspace"
 	VolumeCache = "crater-cache"
 	JYCache     = "jycache"
 
