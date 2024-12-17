@@ -2,6 +2,8 @@ package vcjob
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/config"
@@ -11,6 +13,9 @@ import (
 
 const FileType = 1
 const DatasetType = 2
+const userSpacePrefix = "***REMOVED***"
+const accountSpacePrefix = "***REMOVED***"
+const publicSpacePrefix = "***REMOVED***"
 
 func GenerateVolumeMounts(
 	_ context.Context,
@@ -48,9 +53,22 @@ func GenerateVolumeMounts(
 	}
 
 	for i, vm := range volumes {
+		subPath := vm.SubPath
+		if strings.HasPrefix(subPath, "public") {
+			tmp := strings.TrimPrefix(subPath, "public")
+			subPath = publicSpacePrefix + tmp
+		} else if strings.HasPrefix(subPath, "user") {
+			tmp := strings.TrimPrefix(subPath, "user")
+			subPath = userSpacePrefix + tmp
+		} else if strings.HasPrefix(subPath, "account") {
+			tmp := strings.TrimPrefix(subPath, "account")
+			subPath = accountSpacePrefix + tmp
+		} else {
+			return nil, nil, fmt.Errorf("mount path error")
+		}
 		volumeMounts[i+1] = v1.VolumeMount{
 			Name:      VolumeData,
-			SubPath:   vm.SubPath,
+			SubPath:   subPath,
 			MountPath: vm.MountPath,
 		}
 	}
@@ -103,7 +121,18 @@ func GenerateNewVolumeMounts(
 		} else {
 			return nil, nil, err
 		}
-
+		if strings.HasPrefix(subPath, "public") {
+			tmp := strings.TrimPrefix(subPath, "public")
+			subPath = publicSpacePrefix + tmp
+		} else if strings.HasPrefix(subPath, "user") {
+			tmp := strings.TrimPrefix(subPath, "user")
+			subPath = userSpacePrefix + tmp
+		} else if strings.HasPrefix(subPath, "account") {
+			tmp := strings.TrimPrefix(subPath, "account")
+			subPath = accountSpacePrefix + tmp
+		} else {
+			return nil, nil, fmt.Errorf("mount path error")
+		}
 		volumeMounts[i+1] = v1.VolumeMount{
 			Name:      VolumeData,
 			SubPath:   subPath,
