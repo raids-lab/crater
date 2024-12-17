@@ -24,7 +24,7 @@ export const getFolderTitle = (folder: string) => {
   // public: 公共空间
   // q-*: 账户共享空间
   // u-*: 用户私有空间
-  if (folder === "public") {
+  if (folder === "sugon-gpu-incoming" || folder === "public") {
     return "公共空间";
   } else if (folder.startsWith("q-")) {
     return "账户空间";

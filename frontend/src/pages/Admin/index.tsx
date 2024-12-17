@@ -115,7 +115,7 @@ const sidebarItems: SidebarItem[] = [
     children: [
       {
         route: {
-          path: "queue/*",
+          path: "account/*",
           lazy: () => import("./Data/Queue"),
         },
       },
@@ -227,7 +227,7 @@ const adminSidebarGroups: NavGroupProps[] = [
           },
           {
             title: "账户文件",
-            url: "data/queue",
+            url: "data/account",
           },
           {
             title: "数据集",
