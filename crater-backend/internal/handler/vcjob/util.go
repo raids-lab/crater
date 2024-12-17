@@ -22,6 +22,7 @@ func GenerateVolumeMounts(
 	_ uint,
 	volumes []VolumeMount,
 ) (pvc []v1.Volume, volumeMounts []v1.VolumeMount, err error) {
+	VolumeData := config.GetConfig().Workspace.PVCName
 	pvc = []v1.Volume{
 		{
 			Name: VolumeCache,
@@ -81,6 +82,7 @@ func GenerateNewVolumeMounts(
 	userID uint,
 	volumes []VolumeMount,
 ) (pvc []v1.Volume, volumeMounts []v1.VolumeMount, err error) {
+	VolumeData := config.GetConfig().Workspace.PVCName
 	pvc = []v1.Volume{
 		{
 			Name: VolumeCache,

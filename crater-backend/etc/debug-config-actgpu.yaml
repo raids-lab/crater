@@ -19,7 +19,7 @@ postgres:
   TimeZone: Asia/Shanghai
 workspace:
   namespace: crater-workspace
-  pvcName: crater-storage
+  pvcName: crater-rw-storage
   ingressName: crater-jobs-ingress
   imageNameSpace: crater-images
 act:
