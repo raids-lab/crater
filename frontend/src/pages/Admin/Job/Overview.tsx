@@ -26,7 +26,7 @@ import {
 import { Link } from "react-router-dom";
 import ResourceBadges from "@/components/badge/ResourceBadges";
 import NodeBadges from "@/components/badge/NodeBadges";
-import JobTypeLabel from "@/components/badge/JobTypeBadge";
+import JobTypeLabel, { jobTypes } from "@/components/badge/JobTypeBadge";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -152,9 +152,15 @@ const toolbarConfig: DataTableToolbarConfig = {
   },
   filterOptions: [
     {
+      key: "jobType",
+      title: "类型",
+      option: jobTypes,
+    },
+    {
       key: "status",
-      title: "作业状态",
+      title: "状态",
       option: jobPhases,
+      defaultValues: ["Running"],
     },
   ],
   getHeader: getHeader,

@@ -23,7 +23,7 @@ export interface IJobInfo {
   owner: string;
   jobType: JobType;
   queue: string;
-  status: string;
+  status: JobPhase;
   createdAt: string;
   startedAt: string;
   completedAt: string;
