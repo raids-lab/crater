@@ -257,7 +257,9 @@ export const Component = () => {
       },
       memory: 2,
       image: "",
-      volumeMounts: [{ subPath: user.space, mountPath: "/home/" + user.name }],
+      volumeMounts: [
+        { subPath: "user/" + user.space, mountPath: "/home/" + user.name },
+      ],
       envs: [],
       observability: {
         tbEnable: false,
