@@ -4,15 +4,9 @@ import Layout from "@theme/Layout";
 import HeroSvg from "@site/static/img/undraw_read_notes_gqmq.svg";
 import DocusaurusImageUrl from "@site/static/img/docusaurus.png";
 import wechatQrCode from "@site/static/img/qrcode.png";
-import {
-  Zap,
-  BarChart,
-  Box,
-  HelpCircle,
-  MessageCircle,
-  HandHelping,
-  MessageCircleQuestion,
-} from "lucide-react";
+import CraterLight from "@site/static/img/crater-light.webp";
+import CraterDark from "@site/static/img/crater-dark.webp";
+import { Zap, BarChart, Box } from "lucide-react";
 import TestimonialCard from "./TestimonialCard";
 
 const testimonials = [
@@ -95,37 +89,42 @@ function LandingPage() {
     <div className="flex flex-col min-h-screen">
       <main>
         {/* Hero Section */}
-        <section className="text-gray-600 dark:text-gray-300 body-font bg-white dark:bg-gray-900 transition-colors duration-200">
-          <div className="container mx-auto flex px-5 py-24 md:flex-row flex-col items-center h-[calc(100vh_-_60px)]">
-            <div className="lg:flex-grow md:w-1/2 lg:pr-24 md:pr-16 flex flex-col md:items-start md:text-left mb-16 md:mb-0 items-center text-center">
-              <h1 className="title-font leading-tight text-4xl mb-4 font-semibold text-gray-900 dark:text-white">
-                使用异构集群管理平台
-                <br className="hidden lg:inline-block" />
-                加速您的科研工作
-              </h1>
-              <p className="mb-8 leading-relaxed">
-                在 GPU 集群上运行您的深度学习训练和推理任务。
-                <br className="hidden lg:inline-block" />
-                轻松扩展您的 AI 项目，加快研究和开发速度。
-              </p>
-              <div className="flex justify-center">
-                <Link
-                  to={`${siteConfig.url}/portal`}
-                  className="flex-shrink-0 text-white hover:no-underline hover:text-white bg-sky-700 border-0 py-2 px-8 focus:outline-none hover:bg-sky-600 rounded text-lg mt-10 sm:mt-0"
-                >
-                  立即体验
-                </Link>
-                <Link
-                  className="ml-4 inline-flex text-gray-700 bg-gray-100 py-2 px-8 border-0 focus:outline-none hover:no-underline hover:text-black hover:bg-gray-200 rounded text-lg"
-                  to="/docs/intro"
-                >
-                  使用教程
-                </Link>
-              </div>
+        <section className="mx-auto px-4 pt-32 pb-32 max-w-6xl space-y-32">
+          <div className="text-center mx-auto space-y-12">
+            {/* Gradient Heading */}
+            <h1 className="text-5xl md:text-7xl font-bold">
+              使用异构集群管理平台
+              <br className="hidden lg:inline-block" />
+              加速您的科研工作
+            </h1>
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link
+                to={`${siteConfig.url}/portal`}
+                className="flex-shrink-0 text-white hover:no-underline hover:text-white bg-sky-700 border-0 py-2 px-8 focus:outline-none hover:bg-sky-600 rounded text-lg mt-10 sm:mt-0"
+              >
+                立即体验
+              </Link>
+              <Link
+                className="ml-4 inline-flex text-gray-700 bg-gray-100 py-2 px-8 border-0 focus:outline-none hover:no-underline hover:text-black hover:bg-gray-200 rounded text-lg"
+                to="/docs/intro"
+              >
+                使用教程
+              </Link>
             </div>
-            <div className="lg:max-w-lg lg:w-full md:w-1/2 w-5/6">
-              <HeroSvg className="object-cover object-center w-full text-white dark:text-gray-900" />
-            </div>
+          </div>
+          {/* Screenshot */}
+          <div className="relative w-full aspect-video">
+            <img
+              src={CraterLight}
+              alt="AI IDE Interface"
+              className="rounded-lg shadow-2xl dark:hidden"
+            />
+            <img
+              src={CraterDark}
+              alt="AI IDE Interface"
+              className="rounded-lg shadow-2xl hidden dark:block"
+            />
           </div>
         </section>
 
@@ -244,16 +243,8 @@ function LandingPage() {
                     <img
                       alt="QR Code"
                       src={wechatQrCode}
-                      className="w-48 h-48 flex-shrink-0 object-cover object-center"
+                      className="w-72 flex-shrink-0 object-cover object-center"
                     />
-                    <span className="flex-grow flex flex-col items-center mt-4">
-                      <span className="title-font font-medium text-gray-900 dark:text-white">
-                        微信群二维码
-                      </span>
-                      <span className="text-gray-500 dark:text-gray-400 text-sm">
-                        扫描二维码加入内测用户交流群
-                      </span>
-                    </span>
                   </div>
                 </div>
               </div>
