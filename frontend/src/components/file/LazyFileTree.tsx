@@ -21,9 +21,6 @@ interface TreeDataItem {
 }
 
 export const getFolderTitle = (folder: string) => {
-  // public: 公共空间
-  // q-*: 账户共享空间
-  // u-*: 用户私有空间
   if (folder === "sugon-gpu-incoming" || folder === "public") {
     return "公共空间";
   } else if (folder.startsWith("q-")) {
@@ -139,9 +136,24 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
 
     const [children, setChildren] = React.useState<FileItem[]>([]);
     const [childrenInitialized, setChildrenInitialized] = React.useState(false);
+    const GetFiles = async (path: string, level: number) => {
+      if (level === 0) {
+        const folderTitle = getFolderTitle(path);
+        if (folderTitle === "公共空间") {
+          path = `public`;
+        } else if (folderTitle === "用户空间") {
+          path = `user/${data.name}`;
+        } else if (folderTitle === "账户空间") {
+          path = `account/${data.name}`;
+        }
+      }
+
+      const response = await apiGetFiles(path);
+      return response;
+    };
 
     const { mutate: getChildren } = useMutation({
-      mutationFn: () => apiGetFiles(currentPath),
+      mutationFn: () => GetFiles(currentPath, level),
       onSuccess: (fileList) => {
         const children =
           fileList.data.data?.sort((a, b) => {
@@ -187,16 +199,34 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
                 </AccordionTrigger>
                 <AccordionContent className="pl-6">
                   <ul>
-                    {children.map((data, index) => (
-                      <TreeItem
-                        level={level + 1}
-                        key={index}
-                        data={data}
-                        currentPath={`${currentPath}/${data.name}`}
-                        selectedItemId={selectedItemId}
-                        handleSelectChange={handleSelectChange}
-                      />
-                    ))}
+                    {children.map((data, index) => {
+                      let newCurrentPath;
+
+                      if (level === 0) {
+                        const folderTitle = getFolderTitle(currentPath);
+                        if (folderTitle === "公共空间") {
+                          newCurrentPath = `public/${data.name}`;
+                        } else if (folderTitle === "用户空间") {
+                          newCurrentPath = `user/${currentPath}/${data.name}`;
+                        } else if (folderTitle === "账户空间") {
+                          newCurrentPath = `account/${currentPath}/${data.name}`;
+                        } else {
+                          newCurrentPath = `${currentPath}/${data.name}`;
+                        }
+                      } else {
+                        newCurrentPath = `${currentPath}/${data.name}`;
+                      }
+                      return (
+                        <TreeItem
+                          level={level + 1}
+                          key={index}
+                          data={data}
+                          currentPath={newCurrentPath}
+                          selectedItemId={selectedItemId}
+                          handleSelectChange={handleSelectChange}
+                        />
+                      );
+                    })}
                   </ul>
                 </AccordionContent>
               </AccordionPrimitive.Item>
