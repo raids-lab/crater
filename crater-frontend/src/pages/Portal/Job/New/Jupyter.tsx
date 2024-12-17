@@ -49,9 +49,11 @@ import { MetadataFormJupyter } from "@/components/form/types";
 import ImageItem from "@/components/form/ImageItem";
 import useImageQuery from "@/hooks/query/useImageQuery";
 import DatasetItem from "@/components/form/DatasetItem";
+import { showErrorToast } from "@/utils/toast";
 
 const FileType = 1;
 const DatasetType = 2;
+
 const formSchema = z.object({
   taskname: z
     .string()
@@ -266,26 +268,31 @@ export const Component = () => {
   const { mutate: fetchJobTemplate } = useMutation({
     mutationFn: (jobName: string) => apiJobTemplate(jobName),
     onSuccess: (response) => {
-      const jobInfo = importFromJsonString<FormSchema>(
-        MetadataFormJupyter,
-        response.data.data,
-      );
-      form.reset(jobInfo);
-      if (jobInfo.volumeMounts.length > 0) {
-        setDataMountOpen(DataMountCard);
-      }
-      if (jobInfo.envs.length > 0) {
-        setEnvOpen(EnvCard);
-      }
-      if (jobInfo.nodeSelector.enable) {
-        setOtherOpen(OtherCard);
+      try {
+        const jobInfo = importFromJsonString<FormSchema>(
+          MetadataFormJupyter,
+          response.data.data,
+        );
+        form.reset(jobInfo);
+        if (jobInfo.volumeMounts.length > 0) {
+          setDataMountOpen(DataMountCard);
+        }
+        if (jobInfo.envs.length > 0) {
+          setEnvOpen(EnvCard);
+        }
+        if (jobInfo.nodeSelector.enable) {
+          setOtherOpen(OtherCard);
+        }
+      } catch (error) {
+        showErrorToast(error);
       }
     },
     onError: () => {
-      toast.error(`解析错误，导入配置失败`);
+      toast.error("获取作业模板失败");
     },
   });
 
+  // 检查是否有来自作业模板的参数，如果有则加载模板
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const fromJob = params.get("fromJob");
@@ -329,6 +336,13 @@ export const Component = () => {
     if (isPending) {
       toast.info("请勿重复提交");
       return;
+    }
+    if (values.gpu.count > 0 && values.cpu <= 2 && values.memory <= 4) {
+      form.setError("gpu.model", {
+        type: "manual",
+        message:
+          "已申请 GPU，建议结合节点资源分配情况，妥善调整 CPU 和内存申请，避免作业被 OOM Kill",
+      });
     }
     createTask(values);
   };
