@@ -185,7 +185,9 @@ export const Component = () => {
         workingDir: "/home/" + user.name,
         ports: [],
       },
-      volumeMounts: [{ subPath: user.space, mountPath: "/home/" + user.name }],
+      volumeMounts: [
+        { subPath: "user/" + user.space, mountPath: "/home/" + user.name },
+      ],
       envs: [],
       observability: {
         tbEnable: false,

@@ -249,7 +249,7 @@ export const Component = () => {
       volumeMounts: [
         {
           type: FileType,
-          subPath: user.space,
+          subPath: `user/${user.space}`,
           mountPath: `/home/${user.name}`,
         },
       ],
