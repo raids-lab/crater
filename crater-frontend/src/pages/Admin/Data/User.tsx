@@ -60,7 +60,7 @@ export const Component: FC = () => {
   const [dirName, setDirName] = useState<string>("");
   const setBreadcrumb = useSetAtom(globalBreadCrumb);
   const path = useMemo(
-    () => pathname.replace(/^\/admin\/data\/user/, ""),
+    () => pathname.replace(/^\/admin\/data/, ""),
     [pathname],
   );
 
@@ -129,7 +129,7 @@ export const Component: FC = () => {
     onSuccess: async () => {
       toast.success("删除成功");
       await queryClient.invalidateQueries({
-        queryKey: ["data", "filesystem", path],
+        queryKey: ["data", "userfiles", path],
       });
     },
   });
