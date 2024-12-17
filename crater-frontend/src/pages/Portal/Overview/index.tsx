@@ -189,17 +189,21 @@ export const Component: FC = () => {
       return [];
     }
     const data = jobQuery.data;
-    const counts = data.reduce(
-      (acc, item) => {
-        const phase = item.status;
-        if (!acc[phase]) {
-          acc[phase] = 0;
-        }
-        acc[phase] += 1;
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
+    const counts = data
+      .filter(
+        (d) => d.status !== JobPhase.Deleted && d.status !== JobPhase.Freed,
+      )
+      .reduce(
+        (acc, item) => {
+          const phase = item.status;
+          if (!acc[phase]) {
+            acc[phase] = 0;
+          }
+          acc[phase] += 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
     return Object.entries(counts).map(([phase, count]) => ({
       id: phase,
       label: phase,
