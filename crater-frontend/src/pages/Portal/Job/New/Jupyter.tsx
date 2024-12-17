@@ -343,6 +343,7 @@ export const Component = () => {
         message:
           "已申请 GPU，建议结合节点资源分配情况，妥善调整 CPU 和内存申请，避免作业被 OOM Kill",
       });
+      return;
     }
     createTask(values);
   };
