@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"regexp"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,6 +19,7 @@ import (
 	"github.com/raids-lab/crater/pkg/imageregistry"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/packer"
+	"github.com/raids-lab/crater/pkg/utils"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -166,7 +166,6 @@ var (
 	ProjectIsPublic = true
 	//nolint:mnd // default project quota: 20GB
 	DefaultQuotaSize = int64(20 * math.Pow(2, 30))
-	ImageLinkRegExp  = `([^/]+/){2}([^:]+):([^/]+)$`
 )
 
 // UserCreateKaniko godoc
@@ -188,13 +187,11 @@ func (mgr *ImagePackMgr) UserCreateKaniko(c *gin.Context) {
 	}
 	dockerfile := mgr.generateDockerfile(req)
 	mgr.buildFromDockerfile(c, req, token, dockerfile)
-
-	resputil.Success(c, "")
 }
 
 // UserUploadImage godoc
 // @Summary 用户上传镜像链接
-// @Description 获取上传镜像的参数，生成变量，调用接�?
+// @Description 获取上传镜像的参数，生成变量，调用接口
 // @Tags ImagePack
 // @Accept json
 // @Produce json
@@ -250,7 +247,6 @@ func (mgr *ImagePackMgr) AdminCreate(c *gin.Context) {
 	logutils.Log.Infof("create params: %+v", req)
 	dockerfile := mgr.generateDockerfile(req)
 	mgr.buildFromDockerfile(c, req, token, dockerfile)
-	resputil.Success(c, "")
 }
 
 func (mgr *ImagePackMgr) generateDockerfile(req *CreateKanikoRequest) string {
@@ -265,24 +261,23 @@ func (mgr *ImagePackMgr) generateDockerfile(req *CreateKanikoRequest) string {
 
 	# 设置工作目录
 	WORKDIR /app
-	# 容器启动时执行的命令，可以根据需要修�?
+	# 容器启动时执行的命令，可以根据需要修改
 	CMD ["bash"]
 	`
 }
 
 func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, req *CreateKanikoRequest, token util.JWTMessage, dockerfile string) {
 	if err := mgr.imageRegistry.CheckOrCreateProjectForUser(c, token.Username); err != nil {
-		logutils.Log.Errorf("check project exist failed")
+		resputil.Error(c, "create harbor project failed", resputil.NotSpecified)
 		return
 	}
-	imageName, _ := GetImageNameAndTag(req.SourceImage)
-	registryServer := config.GetConfig().ACT.Image.RegistryServer
-	registryProject := fmt.Sprintf("user-%s", token.Username)
 	imagepackName := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
-	loc, _ := time.LoadLocation("Asia/Shanghai")
-	now := time.Now().In(loc)
-	imageTag := fmt.Sprintf("%d%d-%d%d-%s", now.Month(), now.Day(), now.Hour(), now.Minute(), uuid.New().String()[:4])
-	imageLink := fmt.Sprintf("%s/%s/%s:%s", registryServer, registryProject, imageName, imageTag)
+	imageLink, err := utils.GenerateNewImageLink(req.SourceImage, token.Username)
+	if err != nil {
+		resputil.Error(c, "generate new image link failed", resputil.NotSpecified)
+		return
+	}
+
 	// create ImagePack CRD
 	buildkitData := &packer.BuildKitReq{
 		JobName:     imagepackName,
@@ -293,11 +288,12 @@ func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, req *CreateKanikoRe
 		Description: &req.Description,
 	}
 
-	err := mgr.imagePacker.CreateFromDockerfile(c, buildkitData)
-	if err != nil {
-		logutils.Log.Errorf("create buildkit job failed, params: %+v err:%v", req, err)
+	if err := mgr.imagePacker.CreateFromDockerfile(c, buildkitData); err != nil {
+		resputil.Error(c, "create imagepack failed", resputil.NotSpecified)
 		return
 	}
+
+	resputil.Success(c, "")
 }
 
 // UserListKaniko godoc
@@ -339,7 +335,7 @@ func (mgr *ImagePackMgr) UserListKaniko(c *gin.Context) {
 }
 
 // UserListImage godoc
-// @Summary 用户获取�?有镜像数�?
+// @Summary 用户获取所有镜像数据
 // @Description 返回该用户所有的镜像数据
 // @Tags ImagePack
 // @Accept json
@@ -393,13 +389,13 @@ func (mgr *ImagePackMgr) AdminListKaniko(c *gin.Context) {
 }
 
 // ListAvailableImages godoc
-// @Summary 用户在运行作业时选择镜像�?要调用此接口，来获取可以用的镜像
-// @Description 用userID & jobType 来过滤已完成的镜�?
+// @Summary 用户在运行作业时选择镜像需要调用此接口，来获取可以用的镜像
+// @Description 用userID & jobType 来过滤已完成的镜像
 // @Tags ImagePack
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param type query ListAvailableImageRequest true "包含了镜像类�?"
+// @Param type query ListAvailableImageRequest true "包含了镜像类型"
 // @Router /v1/images/available [GET]
 func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	token := util.GetToken(c)
@@ -481,13 +477,6 @@ func (mgr *ImagePackMgr) DeleteKanikoByID(c *gin.Context) {
 	resputil.Success(c, "")
 }
 
-func GetImageNameAndTag(imageLink string) (name, tag string) {
-	re := regexp.MustCompile(ImageLinkRegExp)
-	matches := re.FindStringSubmatch(imageLink)
-	name, tag = matches[2], matches[3]
-	return name, tag
-}
-
 // DeleteImageByID godoc
 // @Summary 根据ID删除Image
 // @Description 根据ID更新Image的状态为Deleted，起到删除的功能
@@ -515,7 +504,7 @@ func (mgr *ImagePackMgr) DeleteImageByID(c *gin.Context) {
 }
 
 // GetKanikoByID godoc
-// @Summary 获取imagepack的详细信�?
+// @Summary 获取imagepack的详细信息
 // @Description 获取imagepackname，搜索到imagepack
 // @Tags ImagePack
 // @Accept json
@@ -556,13 +545,13 @@ func (mgr *ImagePackMgr) GetKanikoByID(c *gin.Context) {
 }
 
 // UpdateProjectQuota godoc
-// @Summary 更新project的配�?
-// @Description 传入int64参数，查找用户的project，并更新镜像存储的配�?
+// @Summary 更新project的配额
+// @Description 传入int64参数，查找用户的project，并更新镜像存储的配额
 // @Tags ImagePack
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param req body UpdateProjectQuotaRequest true "更新镜像的ID和存储大�?"
+// @Param req body UpdateProjectQuotaRequest true "更新镜像的ID和存储大小"
 // @Router /v1/images/quota [POST]
 func (mgr *ImagePackMgr) UpdateProjectQuota(c *gin.Context) {
 	req := &UpdateProjectQuotaRequest{}
@@ -580,7 +569,7 @@ func (mgr *ImagePackMgr) UpdateProjectQuota(c *gin.Context) {
 }
 
 // UpdateImagePublicStatus godoc
-// @Summary 更新镜像的公共或私有状�??
+// @Summary 更新镜像的公共或私有状态
 // @Description 传入uint参数
 // @Tags ImagePack
 // @Accept json

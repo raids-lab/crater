@@ -2,7 +2,9 @@ package packer
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/google/uuid"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -14,11 +16,17 @@ import (
 func (b *imagePacker) CreateFromSnapshot(c context.Context, data *SnapshotReq) error {
 	container := b.generateSnapshotContainer(data)
 	volumes := b.generateSnapshotVolumes()
-	jobName := data.PodName + "-snapshot"
+	jobName := data.PodName + "-snapshot" + uuid.New().String()[:4]
 
 	jobMeta := metav1.ObjectMeta{
 		Name:      jobName,
 		Namespace: data.Namespace,
+		Annotations: map[string]string{
+			"buildkit-data/UserID":      fmt.Sprint(data.UserID),
+			"buildkit-data/ImageLink":   data.ImageLink,
+			"buildkit-data/Dockerfile":  "",
+			"buildkit-data/Description": data.Description,
+		},
 	}
 
 	jobSpec := batchv1.JobSpec{

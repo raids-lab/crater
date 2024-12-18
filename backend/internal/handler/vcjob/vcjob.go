@@ -15,6 +15,7 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/packer"
 	"github.com/raids-lab/crater/pkg/utils"
 	"gopkg.in/yaml.v3"
 	"gorm.io/datatypes"
@@ -33,16 +34,18 @@ func init() {
 }
 
 type VolcanojobMgr struct {
-	name       string
-	client     client.Client
-	kubeClient kubernetes.Interface
+	name        string
+	client      client.Client
+	kubeClient  kubernetes.Interface
+	imagePacker packer.ImagePackerInterface
 }
 
 func NewVolcanojobMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &VolcanojobMgr{
-		name:       "vcjobs",
-		client:     conf.Client,
-		kubeClient: conf.KubeClient,
+		name:        "vcjobs",
+		client:      conf.Client,
+		kubeClient:  conf.KubeClient,
+		imagePacker: conf.ImagePacker,
 	}
 }
 
@@ -64,6 +67,7 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	// jupyter
 	g.POST("jupyter", mgr.CreateJupyterJob)
 	g.GET(":name/token", mgr.GetJobToken)
+	g.POST("jupyter/:name/snapshot", mgr.CreateJupyterSnapshot)
 
 	// training
 	g.POST("training", mgr.CreateTrainingJob)
