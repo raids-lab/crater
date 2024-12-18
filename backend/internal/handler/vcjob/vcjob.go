@@ -645,8 +645,8 @@ func (mgr *VolcanojobMgr) GetJobEvents(c *gin.Context) {
 	}
 	vcjob := job.Attributes.Data()
 
-	// get events
-	events, err := mgr.kubeClient.CoreV1().Events(vcjob.Namespace).List(c, metav1.ListOptions{
+	// get job events
+	jobEvents, err := mgr.kubeClient.CoreV1().Events(vcjob.Namespace).List(c, metav1.ListOptions{
 		FieldSelector: fmt.Sprintf("involvedObject.name=%s", vcjob.Name),
 		TypeMeta:      metav1.TypeMeta{Kind: "Job", APIVersion: "batch.volcano.sh/v1alpha1"},
 	})
@@ -654,6 +654,34 @@ func (mgr *VolcanojobMgr) GetJobEvents(c *gin.Context) {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
+	events := jobEvents.Items
 
-	resputil.Success(c, events.Items)
+	// get pod events
+	var podList = &v1.PodList{}
+	if value, ok := vcjob.Labels[LabelKeyBaseURL]; !ok {
+		resputil.Error(c, "label not found", resputil.NotSpecified)
+		return
+	} else {
+		labels := client.MatchingLabels{LabelKeyBaseURL: value}
+		err = mgr.client.List(c, podList, client.InNamespace(vcjob.Namespace), labels)
+		if err != nil {
+			resputil.Error(c, err.Error(), resputil.NotSpecified)
+			return
+		}
+	}
+
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		podEvents, err := mgr.kubeClient.CoreV1().Events(vcjob.Namespace).List(c, metav1.ListOptions{
+			FieldSelector: fmt.Sprintf("involvedObject.name=%s", pod.Name),
+			TypeMeta:      metav1.TypeMeta{Kind: "Pod"},
+		})
+		if err != nil {
+			resputil.Error(c, err.Error(), resputil.NotSpecified)
+			return
+		}
+		events = append(events, podEvents.Items...)
+	}
+
+	resputil.Success(c, events)
 }
