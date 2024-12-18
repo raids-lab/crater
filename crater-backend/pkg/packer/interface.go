@@ -24,9 +24,11 @@ type BuildKitReq struct {
 }
 
 type SnapshotReq struct {
+	UserID        uint
 	Namespace     string
 	PodName       string
 	ContainerName string
+	Description   string
 
 	NodeName string
 

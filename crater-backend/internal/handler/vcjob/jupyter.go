@@ -15,6 +15,8 @@ import (
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/raids-lab/crater/pkg/packer"
+	"github.com/raids-lab/crater/pkg/utils"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -432,4 +434,99 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 		PodName:   podName,
 		Namespace: namespace,
 	})
+}
+
+// CreateJupyterSnapshot godoc
+// @Summary Create a snapshot of the jupyter notebook
+// @Description Create nerdctl docker commit to snapshot the jupyter notebook
+// @Tags VolcanoJob
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param name path string true "Job Name"
+// @Success 200 {object} resputil.Response[JobTokenResp] "Success"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/vcjobs/jupyter/{name}/snapshot [post]
+func (mgr *VolcanojobMgr) CreateJupyterSnapshot(c *gin.Context) {
+	var req JobActionReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	token := util.GetToken(c)
+
+	// find from db
+	job, err := getJob(c, req.JobName, &token)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	vcjob := job.Attributes.Data()
+	nodes := job.Nodes.Data()
+
+	if len(nodes) != 1 {
+		resputil.Error(c, "invalid node", resputil.NotSpecified)
+		return
+	}
+
+	nodeName := nodes[0]
+
+	// get pod events
+	var podList = &v1.PodList{}
+	if value, ok := vcjob.Labels[LabelKeyBaseURL]; !ok {
+		resputil.Error(c, "label not found", resputil.NotSpecified)
+		return
+	} else {
+		labels := client.MatchingLabels{LabelKeyBaseURL: value}
+		err = mgr.client.List(c, podList, client.InNamespace(vcjob.Namespace), labels)
+		if err != nil {
+			resputil.Error(c, err.Error(), resputil.NotSpecified)
+			return
+		}
+	}
+
+	if len(podList.Items) != 1 {
+		resputil.Error(c, "invalid pod", resputil.NotSpecified)
+		return
+	}
+
+	pod := podList.Items[0]
+	if pod.Status.Phase != v1.PodRunning {
+		resputil.Error(c, "pod not running", resputil.NotSpecified)
+		return
+	}
+
+	// get container name
+	if len(pod.Spec.Containers) != 1 {
+		resputil.Error(c, "invalid container", resputil.NotSpecified)
+		return
+	}
+
+	containerName := pod.Spec.Containers[0].Name
+
+	// generate image link
+	currentImageName := pod.Spec.Containers[0].Image
+	imageLink, err := utils.GenerateNewImageLink(currentImageName, token.Username)
+	if err != nil {
+		resputil.Error(c, "generate new image link failed", resputil.NotSpecified)
+		return
+	}
+
+	err = mgr.imagePacker.CreateFromSnapshot(c, &packer.SnapshotReq{
+		UserID:        token.UserID,
+		Namespace:     vcjob.Namespace,
+		PodName:       pod.Name,
+		ContainerName: containerName,
+		NodeName:      nodeName,
+		Description:   fmt.Sprintf("Snapshot of %s", job.JobName),
+		ImageLink:     imageLink,
+	})
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, imageLink)
 }
