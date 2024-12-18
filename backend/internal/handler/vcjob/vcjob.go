@@ -59,6 +59,7 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET(":name/yaml", mgr.GetJobYaml)
 	g.GET(":name/pods", mgr.GetJobPods)
 	g.GET(":name/template", mgr.GetJobTemplate)
+	g.GET(":name/event", mgr.GetJobEvents)
 
 	// jupyter
 	g.POST("jupyter", mgr.CreateJupyterJob)
@@ -614,4 +615,45 @@ func (mgr *VolcanojobMgr) GetJobTemplate(c *gin.Context) {
 		return
 	}
 	resputil.Success(c, job.Template)
+}
+
+// GetJobEvents godoc
+// @Summary 获取任务的事件
+// @Description 获取任务的事件
+// @Tags VolcanoJob
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param name path string true "Job Name"
+// @Success 200 {object} resputil.Response[any] "Success"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/vcjobs/{name}/event [get]
+func (mgr *VolcanojobMgr) GetJobEvents(c *gin.Context) {
+	var req JobActionReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	token := util.GetToken(c)
+	// find from db
+	job, err := getJob(c, req.JobName, &token)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	vcjob := job.Attributes.Data()
+
+	// get events
+	events, err := mgr.kubeClient.CoreV1().Events(vcjob.Namespace).List(c, metav1.ListOptions{
+		FieldSelector: fmt.Sprintf("involvedObject.name=%s", vcjob.Name),
+		TypeMeta:      metav1.TypeMeta{Kind: "Job", APIVersion: "batch.volcano.sh/v1alpha1"},
+	})
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, events.Items)
 }

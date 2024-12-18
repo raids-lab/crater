@@ -28,7 +28,6 @@ import (
 const (
 	ThreeDaySeconds    int32 = 259200
 	IngressLabelPrefix       = "ingress.crater.raids.io/" // Annotation Ingress Key
-
 )
 
 type (
