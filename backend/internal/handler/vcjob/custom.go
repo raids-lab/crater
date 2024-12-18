@@ -126,6 +126,11 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 		},
 	}
 
+	if err = mgr.client.Create(c, &job); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
 	resputil.Success(c, job)
 }
 

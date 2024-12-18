@@ -92,6 +92,8 @@ func (mgr *APIServerMgr) GetName() string { return mgr.name }
 func (mgr *APIServerMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *APIServerMgr) RegisterProtected(g *gin.RouterGroup) {
+	g.GET(":namespace/pods/:name/events", mgr.GetPodEvents)
+
 	g.GET(":namespace/pods/:name/containers", mgr.GetPodContainers)
 	g.GET(":namespace/pods/:name/containers/:container/log", mgr.GetPodContainerLog)
 	g.GET(":namespace/pods/:name/containers/:container/terminal", mgr.GetPodContainerTerminal)
@@ -767,4 +769,38 @@ func (mgr *APIServerMgr) GetPodContainerTerminal(c *gin.Context) {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
+}
+
+// GetPodEvents godoc
+// @Summary 获取Pod的事件
+// @Description 获取Pod的事件
+// @Tags Pod
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param namespace path string true "命名空间"
+// @Param name path string true "任务名称"
+// @Success 200 {object} resputil.Response[any] "Pod事件列表"
+// @Failure 400 {object} resputil.Response[any] "请求参数错误"
+// @Failure 404 {object} resputil.Response[any] "任务未找到"
+// @Failure 500 {object} resputil.Response[any] "其他错误"
+// @Router /v1/namespaces/{namespace}/pods/{name}/events [get]
+func (mgr *APIServerMgr) GetPodEvents(c *gin.Context) {
+	var req PodContainerReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	// get events
+	events, err := mgr.kubeClient.CoreV1().Events(req.Namespace).List(c, metav1.ListOptions{
+		FieldSelector: fmt.Sprintf("involvedObject.name=%s", req.PodName),
+		TypeMeta:      metav1.TypeMeta{Kind: "Pod"},
+	})
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, events.Items)
 }
