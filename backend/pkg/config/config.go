@@ -40,7 +40,7 @@ type Config struct {
 		Namespace      string `yaml:"namespace"`
 		PVCName        string `yaml:"pvcName"`
 		IngressName    string `yaml:"ingressName"`
-		ImageNameSpace string `yaml:"imageNameSpace"`
+		ImageNamespace string `yaml:"imageNameSpace"`
 	} `yaml:"workspace"`
 	ACT struct {
 		Image struct {
