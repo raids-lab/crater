@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/raids-lab/crater/pkg/config"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -20,7 +21,7 @@ func (b *imagePacker) CreateFromSnapshot(c context.Context, data *SnapshotReq) e
 
 	jobMeta := metav1.ObjectMeta{
 		Name:      jobName,
-		Namespace: data.Namespace,
+		Namespace: config.GetConfig().Workspace.ImageNamespace,
 		Annotations: map[string]string{
 			"buildkit-data/UserID":      fmt.Sprint(data.UserID),
 			"buildkit-data/ImageLink":   data.ImageLink,
@@ -33,7 +34,7 @@ func (b *imagePacker) CreateFromSnapshot(c context.Context, data *SnapshotReq) e
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      jobName,
-				Namespace: data.Namespace,
+				Namespace: config.GetConfig().Workspace.ImageNamespace,
 			},
 			Spec: corev1.PodSpec{
 				Containers:    []corev1.Container{container},

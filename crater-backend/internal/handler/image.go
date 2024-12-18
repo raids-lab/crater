@@ -162,7 +162,7 @@ type (
 )
 
 var (
-	UserNameSpace   = config.GetConfig().Workspace.ImageNameSpace
+	UserNameSpace   = config.GetConfig().Workspace.ImageNamespace
 	ProjectIsPublic = true
 	//nolint:mnd // default project quota: 20GB
 	DefaultQuotaSize = int64(20 * math.Pow(2, 30))

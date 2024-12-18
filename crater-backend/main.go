@@ -132,7 +132,7 @@ func main() {
 		Cache: cache.Options{
 			DefaultNamespaces: map[string]cache.Config{
 				config.GetConfig().Workspace.Namespace:      {},
-				config.GetConfig().Workspace.ImageNameSpace: {},
+				config.GetConfig().Workspace.ImageNamespace: {},
 			},
 		},
 		Metrics: metricsserver.Options{
