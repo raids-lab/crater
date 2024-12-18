@@ -40,11 +40,6 @@ func (b *imagePacker) CreateFromSnapshot(c context.Context, data *SnapshotReq) e
 				Containers:    []corev1.Container{container},
 				Volumes:       volumes,
 				RestartPolicy: corev1.RestartPolicyNever,
-				SecurityContext: &corev1.PodSecurityContext{
-					RunAsUser:  &runAsUerNumber,
-					RunAsGroup: &runAsGroupNumber,
-					FSGroup:    &fsAsGroupNumber,
-				},
 				Affinity: ptr.To(corev1.Affinity{
 					NodeAffinity: ptr.To(corev1.NodeAffinity{
 						RequiredDuringSchedulingIgnoredDuringExecution: ptr.To(corev1.NodeSelector{
