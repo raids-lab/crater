@@ -9,7 +9,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { useMemo } from "react";
 
-export const TimeDistance = ({ date }: { date: string }) => {
+export const TimeDistance = ({ date }: { date?: string }) => {
   const [startTime, timeDiff] = useMemo(() => {
     if (!date) {
       return [null, ""];

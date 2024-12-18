@@ -229,11 +229,6 @@ function Content({
 
   return (
     <>
-      <DialogHeader>
-        <DialogTitle className="font-semibold">
-          <span className="font-mono">{podName}</span>
-        </DialogTitle>
-      </DialogHeader>
       {!containers || !selectedContainer ? (
         <LoadingCircleIcon />
       ) : (
@@ -286,6 +281,11 @@ export function PodContainerDialog({
         className="h-[calc(100vh_-104px)] w-[calc(100vw_-104px)] max-w-full gap-5"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
+        <DialogHeader>
+          <DialogTitle className="font-semibold">
+            <span className="font-mono">{namespacedName?.name}</span>
+          </DialogTitle>
+        </DialogHeader>
         <Content
           namespacedName={namespacedName}
           ActionComponent={ActionComponent}

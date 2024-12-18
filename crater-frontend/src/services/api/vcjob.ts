@@ -3,6 +3,7 @@ import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
 import { globalJobUrl, store } from "@/utils/store";
 import { ImageInfoResponse } from "./imagepack";
+import { Event as KubernetesEvent } from "kubernetes-types/core/v1";
 
 const JOB_URL = store.get(globalJobUrl);
 
@@ -229,6 +230,11 @@ export const apiJobGetPods = (jobName: string) =>
 
 export const apiJobGetYaml = (jobName: string) =>
   instance.get<IResponse<string>>(`${VERSION}/${JOB_URL}/${jobName}/yaml`);
+
+export const apiJobGetEvent = (jobName: string) =>
+  instance.get<IResponse<KubernetesEvent[]>>(
+    `${VERSION}/${JOB_URL}/${jobName}/event`,
+  );
 
 export const apiJobTemplate = (jobName: string) =>
   instance.get<IResponse<string>>(`${VERSION}/${JOB_URL}/${jobName}/template`);
