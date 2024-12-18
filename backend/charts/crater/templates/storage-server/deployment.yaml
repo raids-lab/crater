@@ -28,7 +28,7 @@ spec:
               cpu: "1"
             requests:
               memory: 256Mi
-              cpu: "0.2"
+              cpu: "200m"
           ports:
             - containerPort: 7320
           volumeMounts:
@@ -40,7 +40,7 @@ spec:
       volumes:
         - name: mypvc
           persistentVolumeClaim:
-            claimName: crater-storage
+            claimName: {{ .Values.storage.rwName }}
         - name: ss-conf
           configMap:
             name: ss-config
