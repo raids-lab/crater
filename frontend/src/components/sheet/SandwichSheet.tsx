@@ -4,6 +4,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetFooter,
+  SheetTrigger,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -18,21 +19,22 @@ import {
 import { ReactNode } from "react";
 
 export interface SandwichSheetProps {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
   title: ReactNode;
   description?: ReactNode;
   className?: string;
 }
 
 interface SheetProps extends SandwichSheetProps {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
   title: ReactNode;
   description?: ReactNode;
   className?: string;
   children: ReactNode;
   footer?: ReactNode;
+  trigger?: ReactNode;
 }
 
 const SandwichSheet = ({
@@ -43,11 +45,16 @@ const SandwichSheet = ({
   className,
   children,
   footer,
+  trigger,
 }: SheetProps) => {
   const { ref: refRoot, width, height } = useResizeObserver();
 
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+    <Sheet
+      open={trigger ? undefined : isOpen}
+      onOpenChange={trigger ? undefined : onOpenChange}
+    >
+      {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
       <SheetContent className={cn("p-0", className)}>
         <div className="relative -z-10 h-screen">
           <SheetHeader className="h-[72px] pb-4 pl-6 pt-6">

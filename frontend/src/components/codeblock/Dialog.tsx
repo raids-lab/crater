@@ -1,14 +1,8 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { IResponse } from "@/services/types";
 import { useQuery } from "@tanstack/react-query";
 import { AxiosResponse } from "axios";
 import TipBadge from "../badge/TipBadge";
+import SandwichSheet from "../sheet/SandwichSheet";
 
 interface FetchContentProps<T> {
   name: string;
@@ -42,7 +36,7 @@ function CodeContent<T>({
   return <>{renderData(data)}</>;
 }
 
-export function FetchDialog<T>({
+export function FetchSheet<T>({
   trigger,
   name,
   type,
@@ -50,58 +44,22 @@ export function FetchDialog<T>({
   renderData,
 }: FetchDialogProps<T>) {
   return (
-    <Dialog>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="h-[calc(100vh_-200px)] w-[calc(100vw_-200px)] max-w-full gap-5">
-        <DialogHeader>
-          <DialogTitle className="flex flex-row items-center gap-1 font-semibold">
-            <span className="font-mono">{name}</span>
-            <TipBadge title={type} />
-          </DialogTitle>
-        </DialogHeader>
-        <div className="relative h-[calc(100vh_-292px)] w-[calc(100vw_-252px)]">
-          <CodeContent
-            name={name}
-            type={type}
-            fetchData={fetchData}
-            renderData={renderData}
-          />
+    <SandwichSheet
+      title={
+        <div className="flex items-center gap-1.5">
+          {name}
+          <TipBadge title={type} />
         </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-interface NormalDialogProps {
-  trigger: React.ReactNode;
-  name: string;
-  type: string;
-  content: React.ReactNode;
-}
-
-export function NormalDialog({
-  trigger,
-  name,
-  type,
-  content,
-}: NormalDialogProps) {
-  return (
-    <Dialog>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent
-        className="h-[calc(100vh_-200px)] w-[calc(100vw_-200px)] max-w-full gap-5"
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
-        <DialogHeader>
-          <DialogTitle className="flex flex-row items-center gap-1.5 font-semibold">
-            <span className="font-mono">{name}</span>
-            <TipBadge title={type} />
-          </DialogTitle>
-        </DialogHeader>
-        <div className="relative h-[calc(100vh_-292px)] w-[calc(100vw_-252px)] overflow-y-auto">
-          {content}
-        </div>
-      </DialogContent>
-    </Dialog>
+      }
+      trigger={trigger}
+      className="sm:max-w-3xl"
+    >
+      <CodeContent
+        name={name}
+        type={type}
+        fetchData={fetchData}
+        renderData={renderData}
+      />
+    </SandwichSheet>
   );
 }
