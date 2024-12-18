@@ -1,5 +1,6 @@
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
+import { Event as KubernetesEvent } from "kubernetes-types/core/v1";
 
 export interface ContainerInfo {
   name: string;
@@ -31,10 +32,14 @@ export interface ContainerStatusResponse {
   containers: ContainerInfo[];
 }
 
-// http://localhost:8092/v1/pods/jupyter-liyilong-3885b-default0-0/containers
 export const apiGetPodContainers = (namespace?: string, podName?: string) =>
   instance.get<IResponse<ContainerStatusResponse>>(
     `${VERSION}/namespaces/${namespace}/pods/${podName}/containers`,
+  );
+
+export const apiGetPodEvents = (namespace?: string, podName?: string) =>
+  instance.get<IResponse<KubernetesEvent[]>>(
+    `${VERSION}/namespaces/${namespace}/pods/${podName}/events`,
   );
 
 export interface PodContainerLogQueryReq {

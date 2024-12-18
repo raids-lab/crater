@@ -8,8 +8,15 @@ import { Badge } from "../ui/badge";
 import { format, formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { useMemo } from "react";
+import { cn } from "@/lib/utils";
 
-export const TimeDistance = ({ date }: { date?: string }) => {
+export const TimeDistance = ({
+  date,
+  className,
+}: {
+  date?: string;
+  className?: string;
+}) => {
   const [startTime, timeDiff] = useMemo(() => {
     if (!date) {
       return [null, ""];
@@ -34,7 +41,7 @@ export const TimeDistance = ({ date }: { date?: string }) => {
       <Tooltip>
         <TooltipTrigger>
           <Badge
-            className="border-none p-0 text-sm font-normal"
+            className={cn("border-none p-0 text-sm font-normal", className)}
             variant="outline"
           >
             {timeDiff}

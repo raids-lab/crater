@@ -26,6 +26,7 @@ import ContainerStatusBadge, {
 } from "../badge/ContainerStatusBadge";
 import { useNamespacedState } from "@/hooks/useNamespacedState";
 import LoadingCircleIcon from "../icon/LoadingCircleIcon";
+import TipBadge from "../badge/TipBadge";
 
 export interface PodNamespacedName {
   namespace: string;
@@ -245,7 +246,6 @@ function Content({
               setCurrentContainer={setSelectedContainer}
               containers={containers}
             />
-
             <fieldset className="hidden h-[calc(100vh_-264px)] max-h-full gap-6 overflow-y-auto rounded-lg border border-input p-4 shadow-sm md:grid">
               <legend className="-ml-1 px-2 text-sm font-medium">
                 {selectedContainer.isInitContainer ? "初始化容器" : "容器信息"}
@@ -264,11 +264,13 @@ export function PodContainerDialog({
   namespacedName,
   setNamespacedName,
   ActionComponent,
+  type,
 }: PodContainerDialogProps & {
   ActionComponent: React.ComponentType<{
     namespacedName: PodNamespacedName;
     selectedContainer: ContainerInfo;
   }>;
+  type: string;
 }) {
   const [isOpen, setIsOpen] = useNamespacedState(
     namespacedName,
@@ -282,8 +284,9 @@ export function PodContainerDialog({
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle className="font-semibold">
+          <DialogTitle className="flex flex-row items-center gap-1.5 font-semibold">
             <span className="font-mono">{namespacedName?.name}</span>
+            <TipBadge title={type} />
           </DialogTitle>
         </DialogHeader>
         <Content

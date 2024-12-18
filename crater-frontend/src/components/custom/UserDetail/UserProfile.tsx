@@ -1,4 +1,4 @@
-import WIPBadge from "@/components/badge/WIPBadge";
+import TipBadge from "@/components/badge/TipBadge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -13,7 +13,7 @@ export default function UserProfile() {
         <div>
           <CardTitle className="flex items-center gap-2 text-2xl">
             John Doe
-            <WIPBadge />
+            <TipBadge />
           </CardTitle>
           <p className="text-sm text-muted-foreground">@johndoe</p>
         </div>

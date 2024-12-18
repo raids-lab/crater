@@ -9,7 +9,7 @@ import { CopyCheckIcon, CopyIcon } from "lucide-react";
 import { toast } from "sonner";
 import useResizeObserver from "use-resize-observer";
 import { useCopyToClipboard } from "usehooks-ts";
-import { CodeDialog } from "./Dialog";
+import { FetchDialog } from "./Dialog";
 
 export interface PodNamespacedName {
   namespace: string;
@@ -79,7 +79,7 @@ export function ConfigDialog({
   getConfig,
 }: ConfigDialogProps) {
   return (
-    <CodeDialog
+    <FetchDialog
       trigger={children}
       name={jobName}
       type="yaml"

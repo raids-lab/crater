@@ -58,7 +58,7 @@ import {
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { DockerfileSheet } from "./DockerfileSheet";
 import { shortestImageName } from "@/utils/formatter";
-import WIPBadge from "@/components/badge/WIPBadge";
+import TipBadge from "@/components/badge/TipBadge";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -310,7 +310,7 @@ export const ImageTable: FC = () => {
         onOpenChange={setOpenSheet}
         title={
           <p className="flex flex-row items-center gap-1.5">
-            <WIPBadge className="h-5" />
+            <TipBadge className="h-5" />
             镜像制作
           </p>
         }
