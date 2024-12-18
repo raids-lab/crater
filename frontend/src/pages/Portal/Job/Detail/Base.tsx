@@ -189,7 +189,9 @@ export function BaseCore({ jobName }: { jobName: string }) {
                           <div className="mb-4 rounded-full bg-muted p-3">
                             <GridIcon className="h-6 w-6" />
                           </div>
-                          <p className="select-none">没有消息就是最好的消息</p>
+                          <p className="select-none text-sm">
+                            近一小时无事发生
+                          </p>
                         </div>
                       </div>
                     )}

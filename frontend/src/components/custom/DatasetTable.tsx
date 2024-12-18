@@ -185,16 +185,14 @@ export function DatasetTable({ apiGetDataset }: DatesetTableProps) {
             <div className="flex flex-row space-x-1">
               <Dialog>
                 <DialogTrigger asChild>
-                  <div>
-                    <Button
-                      variant="outline"
-                      className="h-8 w-8"
-                      size="icon"
-                      title="重命名"
-                    >
-                      <Pencil size={16} strokeWidth={2} />
-                    </Button>
-                  </div>
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8"
+                    size="icon"
+                    title="重命名"
+                  >
+                    <Pencil size={16} strokeWidth={2} />
+                  </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
