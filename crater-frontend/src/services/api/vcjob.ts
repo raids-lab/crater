@@ -253,3 +253,11 @@ export const apiJupyterTokenGet = (jobName: string) =>
       namespace: string;
     }>
   >(`${VERSION}/${JOB_URL}/${jobName}/token`);
+
+// @Router /v1/vcjobs/jupyter/{name}/snapshot [post]
+export const apiJupyterSnapshot = async (jobName: string) => {
+  const response = await instance.post<IResponse<string>>(
+    `${VERSION}/${JOB_URL}/jupyter/${jobName}/snapshot`,
+  );
+  return response.data;
+};

@@ -2,7 +2,6 @@ import React from "react";
 import { motion, useMotionValue } from "framer-motion";
 import { DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Save, GaugeIcon, LogsIcon, InfoIcon } from "lucide-react";
-import { toast } from "sonner";
 import CraterIcon from "@/components/icon/CraterIcon";
 import {
   Tooltip,
@@ -16,10 +15,12 @@ import { useNavigate } from "react-router-dom";
 export default function FloatingBall({
   jobName,
   handleShowLog,
+  handleSnapshot,
   setIsDragging,
 }: {
   jobName: string;
   handleShowLog: () => void;
+  handleSnapshot: () => void;
   setIsDragging: (isDragging: boolean) => void;
 }) {
   const navigate = useNavigate();
@@ -63,7 +64,7 @@ export default function FloatingBall({
               {/* 按钮 */}
               <Button
                 variant="ghost"
-                className="justify-start px-2 py-1"
+                className="justify-start px-2 py-1 font-normal"
                 onClick={() => navigate(`/portal/job/inter/${jobName}`)}
               >
                 <InfoIcon className="text-primary" />
@@ -71,7 +72,7 @@ export default function FloatingBall({
               </Button>
               <Button
                 variant="ghost"
-                className="justify-start px-2 py-1"
+                className="justify-start px-2 py-1 font-normal"
                 onClick={() =>
                   window.open(
                     `${import.meta.env.VITE_GRAFANA_JOB_MONITOR}?orgId=1&var-job=${jobName}&from=now-1h&to=now`,
@@ -84,7 +85,7 @@ export default function FloatingBall({
               </Button>
               <Button
                 variant="ghost"
-                className="justify-start px-2 py-1"
+                className="justify-start px-2 py-1 font-normal"
                 onClick={handleShowLog}
               >
                 <LogsIcon className="text-orange-600 dark:text-orange-500" />
@@ -92,10 +93,8 @@ export default function FloatingBall({
               </Button>
               <Button
                 variant="ghost"
-                className="justify-start px-2 py-1"
-                onClick={() =>
-                  toast.warning("TODO(liyilong): 保存功能开发中，预计12月上线")
-                }
+                className="justify-start px-2 py-1 font-normal"
+                onClick={handleSnapshot}
               >
                 <Save className="text-purple-600 dark:text-purple-500" />
                 <span>保存镜像</span>

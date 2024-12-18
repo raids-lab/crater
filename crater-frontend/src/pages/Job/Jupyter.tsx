@@ -1,16 +1,28 @@
 import type { FC } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { apiJupyterTokenGet } from "@/services/api/vcjob";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiJupyterSnapshot, apiJupyterTokenGet } from "@/services/api/vcjob";
 import LogDialog from "@/components/codeblock/LogDialog";
 import { NamespacedName } from "@/components/codeblock/PodContainerDialog";
 import FloatingBall from "./FloatingBall";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 const Jupyter: FC = () => {
   // get param from url
   const { id } = useParams();
   const [namespacedName, setNamespacedName] = useState<NamespacedName>();
+  const [isSnapshotOpen, setIsSnapshotOpen] = useState(false);
 
   const { data: jupyterInfo } = useQuery({
     queryKey: ["jupyter", id],
@@ -43,6 +55,14 @@ const Jupyter: FC = () => {
     }
   }, [jupyterInfo]);
 
+  const { mutate: snapshot } = useMutation({
+    mutationFn: (jobName: string) => apiJupyterSnapshot(jobName),
+    onSuccess: () => {
+      toast.success("已提交快照");
+      window.open("/portal/image/createimage", "_blank");
+    },
+  });
+
   // drag the floating ball to show log dialog
   const [isDragging, setIsDragging] = useState(false);
 
@@ -67,11 +87,34 @@ const Jupyter: FC = () => {
             namespace: jupyterInfo.namespace,
           })
         }
+        handleSnapshot={() => setIsSnapshotOpen(true)}
       />
       <LogDialog
         namespacedName={namespacedName}
         setNamespacedName={setNamespacedName}
       />
+      <Dialog open={isSnapshotOpen} onOpenChange={setIsSnapshotOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>保存镜像</DialogTitle>
+            <DialogDescription>
+              保存当前作业的镜像，保存期间作业将被暂停
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline">取消</Button>
+            <DialogClose>
+              <Button
+                type="submit"
+                variant="default"
+                onClick={() => snapshot(id ?? "")}
+              >
+                确认
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
