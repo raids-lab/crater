@@ -20,12 +20,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/go-logr/logr"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/imageregistry"
+	"github.com/raids-lab/crater/pkg/logutils"
 	"gorm.io/gorm"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
@@ -115,8 +117,25 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		logger.Error(err, "kaniko entity not existed in database")
-		return ctrl.Result{}, nil
+		userID, _ := strconv.Atoi(job.Annotations["buildkit-data/UserID"])
+		dockerfile := job.Annotations["buildkit-data/Dockerfile"]
+		description := job.Annotations["buildkit-data/Description"]
+		kanikoEntity := &model.Kaniko{
+			//nolint:gosec // userID is very small, integer overflow conversion won't happen
+			UserID:        uint(userID),
+			ImagePackName: job.Name,
+			ImageLink:     job.Annotations["buildkit-data/ImageLink"],
+			NameSpace:     job.Namespace,
+			Status:        model.BuildJobInitial,
+			Dockerfile:    &dockerfile,
+			Description:   &description,
+			BuildSource:   model.BuildKit,
+		}
+		if err = k.WithContext(ctx).Create(kanikoEntity); err != nil {
+			logutils.Log.Errorf("create imagepack entity failed, params: %+v", kanikoEntity)
+		}
+		logger.Info("successfully created kaniko entity")
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	jobStatus := r.getJobBuildStatus(&job)
