@@ -46,7 +46,8 @@ import JobPhaseLabel from "@/components/badge/JobPhaseBadge";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import { PodTable } from "./PodTable";
 import { ConfigDialog } from "@/components/codeblock/ConfigDialog";
-import { CodeDialog } from "@/components/codeblock/Dialog";
+import { FetchDialog } from "@/components/codeblock/Dialog";
+import { TimelineLayout } from "@/components/custom/Timeline/timeline-layout";
 export interface Resource {
   [key: string]: string;
 }
@@ -167,8 +168,8 @@ export function BaseCore({ jobName }: { jobName: string }) {
                   作业配置
                 </Button>
               </ConfigDialog>
-              <Separator orientation="vertical" />
-              <CodeDialog
+              <Separator orientation="vertical" className="h-6" />
+              <FetchDialog
                 trigger={
                   <Button variant="ghost" size="sm">
                     <ShieldEllipsisIcon className="size-4" />
@@ -180,20 +181,23 @@ export function BaseCore({ jobName }: { jobName: string }) {
                 fetchData={apiJobGetEvent}
                 renderData={(events) => (
                   <div className="flex h-full w-full flex-col items-start justify-center gap-2">
-                    {events.map((event) => (
-                      <Card key={event.message} className="w-full p-4">
-                        <div>{event.type}</div>
-                        <div>{event.message}</div>
-                        <TimeDistance date={event.lastTimestamp}></TimeDistance>
-                      </Card>
-                    ))}
+                    <TimelineLayout
+                      items={events.map((e, i) => {
+                        return {
+                          id: i,
+                          title: e.type || "Unknown",
+                          description: e.message || "Unknown",
+                          date: e.lastTimestamp || new Date().toISOString(),
+                        };
+                      })}
+                    />
                     {events.length === 0 && (
                       <div className="text-muted-foreground">暂无事件</div>
                     )}
                   </div>
                 )}
               />
-              <Separator orientation="vertical" />
+              <Separator orientation="vertical" className="h-6" />
               <Button
                 variant="ghost"
                 size="sm"

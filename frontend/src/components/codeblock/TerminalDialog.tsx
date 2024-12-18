@@ -117,6 +117,7 @@ export default function TerminalDialog({
       namespacedName={namespacedName}
       setNamespacedName={setNamespacedName}
       ActionComponent={TerminalCard}
+      type="shell"
     />
   );
 }

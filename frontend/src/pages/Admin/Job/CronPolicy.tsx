@@ -26,7 +26,7 @@ import {
 import { logger } from "@/utils/loglevel";
 import * as z from "zod";
 import { AlarmClockIcon, FileCogIcon } from "lucide-react";
-import WIPBadge from "@/components/badge/WIPBadge";
+import TipBadge from "@/components/badge/TipBadge";
 import { isValidCron } from "cron-validator";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -89,7 +89,7 @@ export default function CronPolicy({ className }: { className?: string }) {
         <CardTitle className="flex flex-row items-center gap-1.5">
           <AlarmClockIcon className="text-primary" />
           定时策略
-          <WIPBadge />
+          <TipBadge />
         </CardTitle>
       </CardHeader>
       <CardContent>

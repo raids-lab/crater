@@ -238,6 +238,7 @@ export default function LogDialog({
       namespacedName={namespacedName}
       setNamespacedName={setNamespacedName}
       ActionComponent={LogCard}
+      type="log"
     />
   );
 }
