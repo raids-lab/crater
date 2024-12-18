@@ -2,26 +2,29 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "664ea988"
+      tag: "a2cc90ad"
       pullPolicy: "IfNotPresent"
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "434dde45"
+      tag: "560e5349"
       pullPolicy: "IfNotPresent"
   storage:
     image:
       repository: ***REMOVED***
-      tag: "65sd8gd6"
+      tag: "9ioc5gs2"
       pullPolicy: "IfNotPresent"
   ingress:
     host: ***REMOVED***
+
 nodeSelector:
   node-role.kubernetes.io/control-plane: ""
+
 tolerations:
   - key: node-role.kubernetes.io/control-plane
     operator: Exists
     effect: NoSchedule
+
 backendConfig:
   content: |
     enableLeaderElection: false
@@ -44,7 +47,7 @@ backendConfig:
       TimeZone: Asia/Shanghai
     workspace:
       namespace: crater-workspace
-      pvcName: crater-storage
+      pvcName: crater-rw-storage
       ingressName: crater-jobs-ingress
       imageNameSpace: crater-images
     act:
@@ -69,6 +72,7 @@ backendConfig:
         port: 25
         user: notify
         password: ***REMOVED***
+
 ssConfig:
   content: |
     postgres:
@@ -79,6 +83,7 @@ ssConfig:
       password: ***REMOVED***
       sslmode: disable
       TimeZone: Asia/Shanghai
+
 # Usage:
 # helm install crater ./charts/crater \
 # --set-string tls.cert="$(cat path/to/tls.crt)"\

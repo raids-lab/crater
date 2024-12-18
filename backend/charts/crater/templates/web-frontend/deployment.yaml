@@ -19,7 +19,7 @@ spec:
       containers:
         - name: crater-web-frontend-container
           image: {{ .Values.web.frontend.image.repository }}:{{ .Values.web.frontend.image.tag }}
-          pullPolicy: {{ .Values.web.frontend.image.pullPolicy }}
+          imagePullPolicy: {{ .Values.web.frontend.image.pullPolicy }}
           ports:
             - containerPort: 80
       nodeSelector: {{ .Values.nodeSelector | toYaml | nindent 8 }}
