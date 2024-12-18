@@ -1,3 +1,4 @@
+import TipBadge from "@/components/badge/TipBadge";
 import { TimeDistance } from "../TimeDistance";
 import {
   Timeline,
@@ -10,36 +11,52 @@ import {
   TimelineContent,
   TimelineTime,
 } from "./timeline";
-
-export interface TimelineElement {
-  id: number;
-  title: string;
-  date: string;
-  description: string;
-}
+import { Event as KubernetesEvent } from "kubernetes-types/core/v1";
 
 interface TimelineLayoutProps {
-  items: TimelineElement[]; // Replace any[] with the actual type of items.
+  items: KubernetesEvent[]; // Replace any[] with the actual type of items.
 }
 
-export const TimelineLayout = ({ items }: TimelineLayoutProps) => {
+export const EventTimeline = ({ items }: TimelineLayoutProps) => {
   return (
     <Timeline>
-      {items.map((item, index) => (
-        <TimelineItem key={item.id} className="md:ml-16">
-          {index < items.length - 1 && <TimelineConnector />}
-          <TimelineHeader>
-            <TimelineTime>
-              <TimeDistance date={item.date} />
-            </TimelineTime>
-            <TimelineIcon />
-            <TimelineTitle>{item.title}</TimelineTitle>
-          </TimelineHeader>
-          <TimelineContent>
-            <TimelineDescription>{item.description}</TimelineDescription>
-          </TimelineContent>
-        </TimelineItem>
-      ))}
+      {items
+        .sort((a, b) => {
+          if (!a.lastTimestamp) {
+            return 1;
+          }
+          if (!b.lastTimestamp) {
+            return -1;
+          }
+          return (
+            new Date(a.lastTimestamp).getTime() -
+            new Date(b.lastTimestamp).getTime()
+          );
+        })
+        .map((item, index) => (
+          <TimelineItem key={index} className="md:ml-24">
+            {index < items.length - 1 && <TimelineConnector />}
+            <TimelineHeader>
+              <TimelineTime>
+                <TimeDistance
+                  date={item.lastTimestamp}
+                  className="text-muted-foreground"
+                />
+              </TimelineTime>
+              <TimelineIcon />
+              <TimelineTitle className="flex flex-row items-center gap-1.5">
+                <TipBadge
+                  title={item.type}
+                  className="bg-secondary capitalize text-secondary-foreground hover:bg-accent"
+                />
+                {item.involvedObject.kind} / {item.reason}
+              </TimelineTitle>
+            </TimelineHeader>
+            <TimelineContent>
+              <TimelineDescription>{item.message}</TimelineDescription>
+            </TimelineContent>
+          </TimelineItem>
+        ))}
     </Timeline>
   );
 };

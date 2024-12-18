@@ -11,6 +11,7 @@ import {
   FileSlidersIcon,
   FlaskConicalIcon,
   GaugeIcon,
+  GridIcon,
   RefreshCcwIcon,
   ShieldEllipsisIcon,
   TrashIcon,
@@ -46,8 +47,8 @@ import JobPhaseLabel from "@/components/badge/JobPhaseBadge";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import { PodTable } from "./PodTable";
 import { ConfigDialog } from "@/components/codeblock/ConfigDialog";
-import { FetchDialog } from "@/components/codeblock/Dialog";
-import { TimelineLayout } from "@/components/custom/Timeline/timeline-layout";
+import { FetchSheet } from "@/components/codeblock/Dialog";
+import { EventTimeline } from "@/components/custom/Timeline/timeline-layout";
 export interface Resource {
   [key: string]: string;
 }
@@ -169,7 +170,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
                 </Button>
               </ConfigDialog>
               <Separator orientation="vertical" className="h-6" />
-              <FetchDialog
+              <FetchSheet
                 trigger={
                   <Button variant="ghost" size="sm">
                     <ShieldEllipsisIcon className="size-4" />
@@ -180,21 +181,19 @@ export function BaseCore({ jobName }: { jobName: string }) {
                 type="event"
                 fetchData={apiJobGetEvent}
                 renderData={(events) => (
-                  <div className="flex h-full w-full flex-col items-start justify-center gap-2">
-                    <TimelineLayout
-                      items={events.map((e, i) => {
-                        return {
-                          id: i,
-                          title: e.type || "Unknown",
-                          description: e.message || "Unknown",
-                          date: e.lastTimestamp || new Date().toISOString(),
-                        };
-                      })}
-                    />
+                  <>
+                    <EventTimeline items={events} />
                     {events.length === 0 && (
-                      <div className="text-muted-foreground">暂无事件</div>
+                      <div className="flex h-[calc(100vh-_96px)] w-full items-center justify-center text-center text-muted-foreground/85 hover:bg-transparent">
+                        <div className="flex flex-col items-center justify-center">
+                          <div className="mb-4 rounded-full bg-muted p-3">
+                            <GridIcon className="h-6 w-6" />
+                          </div>
+                          <p className="select-none">没有消息就是最好的消息</p>
+                        </div>
+                      </div>
                     )}
-                  </div>
+                  </>
                 )}
               />
               <Separator orientation="vertical" className="h-6" />

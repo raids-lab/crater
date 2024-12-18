@@ -28,7 +28,7 @@ const TimelineTime = React.forwardRef<
   <p
     ref={ref}
     className={cn(
-      "absolute translate-x-36 text-sm font-semibold leading-none text-secondary-foreground md:-translate-x-16",
+      "absolute translate-x-36 text-sm font-semibold leading-none text-secondary-foreground md:-translate-x-20",
       className,
     )}
     {...props}
@@ -98,7 +98,7 @@ const TimelineDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn("max-w-sm text-sm text-muted-foreground", className)}
+    className={cn("text-sm text-muted-foreground", className)}
     {...props}
   />
 ));

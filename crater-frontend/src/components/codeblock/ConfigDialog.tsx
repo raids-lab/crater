@@ -9,7 +9,7 @@ import { CopyCheckIcon, CopyIcon } from "lucide-react";
 import { toast } from "sonner";
 import useResizeObserver from "use-resize-observer";
 import { useCopyToClipboard } from "usehooks-ts";
-import { FetchDialog } from "./Dialog";
+import { FetchSheet } from "./Dialog";
 
 export interface PodNamespacedName {
   namespace: string;
@@ -39,7 +39,7 @@ function Content({
 
   return (
     <Card
-      className="relative h-[calc(100vh_-292px)] w-[calc(100vw_-252px)] overflow-hidden bg-slate-900 p-1 text-muted-foreground dark:border"
+      className="relative m-6 mt-0 h-[calc(100vh-_96px)] overflow-hidden bg-slate-900 p-1 text-muted-foreground dark:border"
       ref={refRoot}
     >
       <ScrollArea style={{ width, height }}>
@@ -79,7 +79,7 @@ export function ConfigDialog({
   getConfig,
 }: ConfigDialogProps) {
   return (
-    <FetchDialog
+    <FetchSheet
       trigger={children}
       name={jobName}
       type="yaml"
