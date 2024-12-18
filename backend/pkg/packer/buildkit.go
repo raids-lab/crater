@@ -17,6 +17,12 @@ func (b *imagePacker) CreateFromDockerfile(c context.Context, data *BuildKitReq)
 	jobMeta := metav1.ObjectMeta{
 		Name:      data.JobName,
 		Namespace: data.Namespace,
+		Annotations: map[string]string{
+			"buildkit-data/UserID":      fmt.Sprint(data.UserID),
+			"buildkit-data/ImageLink":   data.ImageLink,
+			"buildkit-data/Dockerfile":  *data.Dockerfile,
+			"buildkit-data/Description": *data.Description,
+		},
 	}
 
 	jobSpec := batchv1.JobSpec{
@@ -59,7 +65,7 @@ func (b *imagePacker) CreateFromDockerfile(c context.Context, data *BuildKitReq)
 }
 
 func (b *imagePacker) generateInitContainer(data *BuildKitReq) []corev1.Container {
-	dockerfileSource := fmt.Sprintf("echo '%s' > /workspace/Dockerfile", data.Dockerfile)
+	dockerfileSource := fmt.Sprintf("echo '%s' > /workspace/Dockerfile", *data.Dockerfile)
 	initContainer := []corev1.Container{
 		{
 			Name:    "prepare",
