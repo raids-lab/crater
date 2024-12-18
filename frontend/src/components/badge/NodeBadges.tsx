@@ -7,9 +7,8 @@ import {
 } from "@/components/ui/tooltip";
 import GpuIcon from "@/components/icon/GpuIcon";
 import { Button } from "@/components/ui/button";
-import { CpuIcon } from "lucide-react";
+import { CpuIcon, InfoIcon } from "lucide-react";
 import { DropdownMenuLabel } from "../ui/dropdown-menu";
-import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -63,7 +62,7 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
                     className="justify-start px-2 py-1"
                     onClick={() => navigate(`/portal/overview/${node}`)}
                   >
-                    <InfoCircledIcon className="text-emerald-600 dark:text-emerald-500" />
+                    <InfoIcon className="text-emerald-600 dark:text-emerald-500" />
                     <span className="truncate font-normal">节点详情</span>
                   </Button>
                   <Button

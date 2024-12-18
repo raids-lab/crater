@@ -12,6 +12,7 @@ import {
   FlaskConicalIcon,
   GaugeIcon,
   RefreshCcwIcon,
+  ShieldEllipsisIcon,
   TrashIcon,
   UserRoundIcon,
 } from "lucide-react";
@@ -39,11 +40,13 @@ import {
   apiJobGetYaml,
   JobType,
   JobPhase,
+  apiJobGetEvent,
 } from "@/services/api/vcjob";
 import JobPhaseLabel from "@/components/badge/JobPhaseBadge";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import { PodTable } from "./PodTable";
 import { ConfigDialog } from "@/components/codeblock/ConfigDialog";
+import { CodeDialog } from "@/components/codeblock/Dialog";
 export interface Resource {
   [key: string]: string;
 }
@@ -53,10 +56,7 @@ const job_monitor = import.meta.env.VITE_GRAFANA_JOB_MONITOR;
 // const k8s_vgpu_scheduler_dashboard = import.meta.env
 // .VITE_GRAFANA_K8S_VGPU_SCHEDULER_DASHBOARD;
 
-export const Component = () => {
-  const { name } = useParams<string>();
-  const jobName = "" + name;
-  const setBreadcrumb = useBreadcrumb();
+export function BaseCore({ jobName }: { jobName: string }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -80,13 +80,6 @@ export const Component = () => {
       toast.success("作业已删除");
     },
   });
-
-  useEffect(() => {
-    if (!data) {
-      return;
-    }
-    setBreadcrumb([{ title: data.name }]);
-  }, [setBreadcrumb, data]);
 
   if (isLoading || !data) {
     return <></>;
@@ -170,10 +163,36 @@ export const Component = () => {
             <div className="flex items-center space-x-2">
               <ConfigDialog getConfig={apiJobGetYaml} jobName={jobName}>
                 <Button variant="ghost" size="sm">
-                  <FileSlidersIcon className="mr-1 size-4" />
-                  作业 YAML
+                  <FileSlidersIcon className="size-4" />
+                  作业配置
                 </Button>
               </ConfigDialog>
+              <Separator orientation="vertical" />
+              <CodeDialog
+                trigger={
+                  <Button variant="ghost" size="sm">
+                    <ShieldEllipsisIcon className="size-4" />
+                    作业事件
+                  </Button>
+                }
+                name={jobName}
+                type="event"
+                fetchData={apiJobGetEvent}
+                renderData={(events) => (
+                  <div className="flex h-full w-full flex-col items-start justify-center gap-2">
+                    {events.map((event) => (
+                      <Card key={event.message} className="w-full p-4">
+                        <div>{event.type}</div>
+                        <div>{event.message}</div>
+                        <TimeDistance date={event.lastTimestamp}></TimeDistance>
+                      </Card>
+                    ))}
+                    {events.length === 0 && (
+                      <div className="text-muted-foreground">暂无事件</div>
+                    )}
+                  </div>
+                )}
+              />
               <Separator orientation="vertical" />
               <Button
                 variant="ghost"
@@ -183,7 +202,7 @@ export const Component = () => {
                   window.open(url, "_blank");
                 }}
               >
-                <GaugeIcon className="mr-1 size-4" />
+                <GaugeIcon className="size-4" />
                 资源监控
               </Button>
             </div>
@@ -241,4 +260,19 @@ export const Component = () => {
       <PodTable jobName={jobName} />
     </>
   );
+}
+
+export const Component = () => {
+  const { name } = useParams<string>();
+  const jobName = "" + name;
+  const setBreadcrumb = useBreadcrumb();
+
+  useEffect(() => {
+    if (!jobName) {
+      return;
+    }
+    setBreadcrumb([{ title: jobName }]);
+  }, [setBreadcrumb, jobName]);
+
+  return <BaseCore jobName={jobName} />;
 };

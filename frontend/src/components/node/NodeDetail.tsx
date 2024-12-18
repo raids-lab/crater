@@ -418,29 +418,27 @@ export const NodeDetail: FC = () => {
   }, [setBreadcrumb, nodeName]);
 
   return (
-    <div className="col-span-3 grid gap-8 md:grid-cols-7">
-      <div className="col-span-2 flex-none">
+    <div className="grid gap-8 md:grid-cols-7">
+      <div className="col-span-2 flex-none space-y-4">
         <CardDemo nodeInfo={nodeDetail} />
-        <div>
-          <GpuCardDemo
-            gpuInfo={
-              gpuDetail
-                ? {
-                    nodeName: nodeName,
-                    haveGPU: gpuDetail.haveGPU,
-                    gpuCount: gpuDetail.gpuCount,
-                    gpuUtil: gpuDetail.gpuUtil,
-                    relateJobs: gpuDetail.relateJobs,
-                    gpuMemory: gpuDetail.gpuMemory,
-                    gpuArch: gpuDetail.gpuArch,
-                    gpuDriver: gpuDetail.gpuDriver,
-                    cudaVersion: gpuDetail.cudaVersion,
-                    gpuProduct: gpuDetail.gpuProduct,
-                  }
-                : undefined
-            }
-          />
-        </div>
+        <GpuCardDemo
+          gpuInfo={
+            gpuDetail
+              ? {
+                  nodeName: nodeName,
+                  haveGPU: gpuDetail.haveGPU,
+                  gpuCount: gpuDetail.gpuCount,
+                  gpuUtil: gpuDetail.gpuUtil,
+                  relateJobs: gpuDetail.relateJobs,
+                  gpuMemory: gpuDetail.gpuMemory,
+                  gpuArch: gpuDetail.gpuArch,
+                  gpuDriver: gpuDetail.gpuDriver,
+                  cudaVersion: gpuDetail.cudaVersion,
+                  gpuProduct: gpuDetail.gpuProduct,
+                }
+              : undefined
+          }
+        />
       </div>
       <div className="md:col-span-5">
         <DataTable

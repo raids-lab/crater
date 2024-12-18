@@ -37,6 +37,7 @@ import {
 import {
   ArrowRightLeftIcon,
   ExternalLink,
+  InfoIcon,
   LockIcon,
   RedoDotIcon,
   SquareIcon,
@@ -58,7 +59,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DotsHorizontalIcon, InfoCircledIcon } from "@radix-ui/react-icons";
+import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
 import TooltipLink from "@/components/label/TooltipLink";
 
@@ -258,7 +259,7 @@ const InterOverview = () => {
                     </DropdownMenuLabel>
                     <Link to={`${jobInfo.jobName}`}>
                       <DropdownMenuItem>
-                        <InfoCircledIcon className="text-emerald-600 dark:text-emerald-500" />
+                        <InfoIcon className="text-emerald-600 dark:text-emerald-500" />
                         详情
                       </DropdownMenuItem>
                     </Link>
