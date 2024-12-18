@@ -279,31 +279,18 @@ func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, req *CreateKanikoRe
 	registryServer := config.GetConfig().ACT.Image.RegistryServer
 	registryProject := fmt.Sprintf("user-%s", token.Username)
 	imagepackName := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
-	now := time.Now()
+	loc, _ := time.LoadLocation("Asia/Shanghai")
+	now := time.Now().In(loc)
 	imageTag := fmt.Sprintf("%d%d-%d%d-%s", now.Month(), now.Day(), now.Hour(), now.Minute(), uuid.New().String()[:4])
 	imageLink := fmt.Sprintf("%s/%s/%s:%s", registryServer, registryProject, imageName, imageTag)
 	// create ImagePack CRD
 	buildkitData := &packer.BuildKitReq{
-		JobName:    imagepackName,
-		Namespace:  UserNameSpace,
-		Dockerfile: dockerfile,
-		ImageLink:  imageLink,
-	}
-	kanikoQuery := query.Kaniko
-	kanikoEntity := &model.Kaniko{
-		UserID:        token.UserID,
-		ImagePackName: imagepackName,
-		ImageLink:     imageLink,
-		NameSpace:     UserNameSpace,
-		Status:        model.BuildJobInitial,
-		Dockerfile:    &dockerfile,
-		Description:   &req.Description,
-		BuildSource:   model.BuildKit,
-	}
-
-	// TODO(huangsy): 不要在这里更新数据库，所有更新都放到 Reconciler 里面
-	if err := kanikoQuery.WithContext(c).Create(kanikoEntity); err != nil {
-		logutils.Log.Errorf("create imagepack entity failed, params: %+v", kanikoEntity)
+		JobName:     imagepackName,
+		Namespace:   UserNameSpace,
+		Dockerfile:  &dockerfile,
+		ImageLink:   imageLink,
+		UserID:      token.UserID,
+		Description: &req.Description,
 	}
 
 	err := mgr.imagePacker.CreateFromDockerfile(c, buildkitData)
