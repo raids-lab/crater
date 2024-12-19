@@ -153,7 +153,6 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		size, err := r.imageRegistry.GetImageSize(ctx, kaniko.ImageLink)
 		if err != nil {
 			logger.Error(err, "get image size failed")
-			return ctrl.Result{Requeue: true}, err
 		}
 		if _, err = k.WithContext(ctx).
 			Where(k.ImagePackName.Eq(job.Name)).

@@ -30,6 +30,8 @@ act:
     registryUser: ***REMOVED***
     registryPass: ***REMOVED***
     registryProject: crater
+    registryAdmin: admin
+    registryAdminPass: ***REMOVED***
   openAPI:
     url: ***REMOVED***
     chameleonKey: ***REMOVED***
