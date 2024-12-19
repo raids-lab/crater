@@ -27,6 +27,8 @@ act:
     registryUser: ***REMOVED***
     registryPass: ***REMOVED***
     registryProject: crater-images
+    registryAdmin: admin
+    registryAdminPass: ***REMOVED***
   openAPI:
     url: ***REMOVED***
     chameleonKey: ***REMOVED***

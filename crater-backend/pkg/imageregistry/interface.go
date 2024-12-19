@@ -20,6 +20,16 @@ type ImageRegistryInterface interface {
 
 	// GetImageSize gets the size of the image.
 	GetImageSize(ctx context.Context, fullImageName string) (int64, error)
+
+	CheckOrCreateUser(ctx context.Context, username string) (string, error)
+
+	CheckUserExist(ctx context.Context, username string) bool
+
+	AddProjectMember(c context.Context, username string) error
+
+	CreateUser(c context.Context, username string) (string, error)
+
+	DeleteUser(c context.Context, username string) error
 }
 
 type ImageRegistry struct {

@@ -53,6 +53,7 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.POST("/change/:id", mgr.UpdateImagePublicStatus)
 
 	g.GET("/podname", mgr.GetImagepackPodName)
+	g.POST("/credential", mgr.UserGetProjectCredential)
 }
 
 func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -158,6 +159,11 @@ type (
 
 	ListAvailableImageResponse struct {
 		Images []ImageInfo `json:"images"`
+	}
+
+	GetProjectCredentialResponse struct {
+		Name     *string `json:"name"`
+		Password *string `json:"password"`
 	}
 )
 
@@ -631,4 +637,45 @@ func (mgr *ImagePackMgr) getPodName(c *gin.Context, kanikoID uint) (name, ns str
 		return "", UserNameSpace
 	}
 	return pod.Name, UserNameSpace
+}
+
+// UserGetProjectCredential godoc
+// @Summary 创建用户的harbor项目，并返回用户的harbor项目的凭证
+// @Description 获取参数，生成变量，调用接口
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Router /v1/images/credential [POST]
+func (mgr *ImagePackMgr) UserGetProjectCredential(c *gin.Context) {
+	token := util.GetToken(c)
+	if err := mgr.imageRegistry.CheckOrCreateProjectForUser(c, token.Username); err != nil {
+		logutils.Log.Errorf("check project failed")
+		resputil.Error(c, "check or create project failed", resputil.NotSpecified)
+		return
+	}
+	if exist := mgr.imageRegistry.CheckUserExist(c, token.Username); exist {
+		err := mgr.imageRegistry.DeleteUser(c, token.Username)
+		if err != nil {
+			logutils.Log.Errorf("delete user failed")
+			resputil.Error(c, "delete user failed", resputil.NotSpecified)
+			return
+		}
+	}
+	password, err := mgr.imageRegistry.CreateUser(c, token.Username)
+	if err != nil {
+		logutils.Log.Errorf("create user failed: %+v", err)
+		resputil.Error(c, "create user failed", resputil.NotSpecified)
+		return
+	}
+	if err = mgr.imageRegistry.AddProjectMember(c, token.Username); err != nil {
+		logutils.Log.Errorf("add project member failed")
+		resputil.Error(c, "add project member failed", resputil.NotSpecified)
+		return
+	}
+	resp := GetProjectCredentialResponse{
+		Name:     &token.Username,
+		Password: &password,
+	}
+	resputil.Success(c, resp)
 }
