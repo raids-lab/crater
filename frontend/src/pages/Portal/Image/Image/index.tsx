@@ -195,6 +195,7 @@ export const Component: FC = () => {
                     variant="outline"
                     className="hover:text-default h-8 w-8 p-0"
                     title="更新公私状态"
+                    disabled={imageInfo.creatorName !== user.name}
                   >
                     <ToggleLeft size={16} strokeWidth={2} />
                   </Button>
