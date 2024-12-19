@@ -30,7 +30,7 @@ type HarborClient struct {
 func NewHarborClient() HarborClient {
 	harborConfig := config.GetConfig().ACT.Image
 	HarborAPIServer := fmt.Sprintf("https://%s/api/", harborConfig.RegistryServer)
-	restClient, err := haborapiv2.NewRESTClientForHost(HarborAPIServer, harborConfig.RegistryUser, harborConfig.RegistryPass, nil)
+	restClient, err := haborapiv2.NewRESTClientForHost(HarborAPIServer, harborConfig.RegistryAdmin, harborConfig.RegistryAdminPass, nil)
 	if err != nil {
 		logutils.Log.Errorf("establish harbor client failed, err: %+v", err)
 	}
