@@ -44,10 +44,12 @@ type Config struct {
 	} `yaml:"workspace"`
 	ACT struct {
 		Image struct {
-			RegistryServer  string `yaml:"registryServer"`
-			RegistryUser    string `yaml:"registryUser"`
-			RegistryPass    string `yaml:"registryPass"`
-			RegistryProject string `yaml:"registryProject"`
+			RegistryServer    string `yaml:"registryServer"`
+			RegistryUser      string `yaml:"registryUser"`
+			RegistryPass      string `yaml:"registryPass"`
+			RegistryProject   string `yaml:"registryProject"`
+			RegistryAdmin     string `yaml:"registryAdmin"`
+			RegistryAdminPass string `yaml:"registryAdminPass"`
 		} `yaml:"image"`
 		Auth struct {
 			UserName string `yaml:"userName"`
