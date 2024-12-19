@@ -9,10 +9,12 @@ import { cn } from "@/lib/utils";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import {
   apiUserDeleteKaniko,
+  apiUserGetCredential,
   apiUserListKaniko,
   getHeader,
   imagepackStatuses,
   KanikoInfo,
+  ProjectCredentialResponse,
 } from "@/services/api/imagepack";
 import { logger } from "@/utils/loglevel";
 import { toast } from "sonner";
@@ -37,6 +39,9 @@ import {
   KeyIcon,
   UserRoundIcon,
   ChartColumnIcon,
+  Key,
+  Copy,
+  User,
 } from "lucide-react";
 import { useNavigate, useRoutes } from "react-router-dom";
 import {
@@ -59,6 +64,16 @@ import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { DockerfileSheet } from "./DockerfileSheet";
 import { shortestImageName } from "@/utils/formatter";
 import TipBadge from "@/components/badge/TipBadge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@radix-ui/react-label";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -106,7 +121,17 @@ export const ImageTable: FC = () => {
       toast.success("镜像已删除");
     },
   });
-
+  const [credentials, setCredentials] =
+    useState<ProjectCredentialResponse | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { mutate: getProjectCredential } = useMutation({
+    mutationFn: () => apiUserGetCredential(),
+    onSuccess: async (data) => {
+      setCredentials(data.data.data);
+      setIsDialogOpen(true);
+      toast.success("凭据已生成, 请保存您的密码！");
+    },
+  });
   const columns: ColumnDef<KanikoInfo>[] = [
     {
       accessorKey: "imageLink",
@@ -287,12 +312,7 @@ export const ImageTable: FC = () => {
               <h4 className="text-sm font-medium text-muted-foreground">
                 访问凭据:
               </h4>
-              <Button
-                variant="link"
-                onClick={() =>
-                  toast.warning("TODO(huangsy): 提供 Harbor Project 账户密码")
-                }
-              >
+              <Button variant="link" onClick={() => getProjectCredential()}>
                 获取初始凭据
               </Button>
             </div>
@@ -318,8 +338,92 @@ export const ImageTable: FC = () => {
         className="sm:max-w-3xl"
         closeSheet={() => setOpenSheet(false)}
       />
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="h-6 w-6 text-blue-500" />
+              Harbor仓库用户凭据
+            </DialogTitle>
+            <DialogDescription className="text-yellow-600">
+              请保存好您的用户名和密码！
+              <br />
+              Harbor仓库地址：https://crater-harbor.act.buaa.edu.cn/
+            </DialogDescription>
+          </DialogHeader>
+          {credentials && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="username" className="text-right">
+                  Username
+                </Label>
+                <div className="col-span-3 flex items-center">
+                  <User className="mr-2 h-4 w-4 text-gray-500" />
+                  <Input
+                    id="username"
+                    value={credentials.name}
+                    readOnly
+                    className="pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="absolute right-12 hover:bg-transparent"
+                    onClick={() => copyToClipboard(credentials.name)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="password" className="text-right">
+                  Password
+                </Label>
+                <div className="col-span-3 flex items-center">
+                  <Key className="mr-2 h-4 w-4 text-gray-500" />
+                  <Input
+                    id="password"
+                    value={credentials.password}
+                    readOnly
+                    className="pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="absolute right-12 hover:bg-transparent"
+                    onClick={() => copyToClipboard(credentials.password)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="sm:justify-start">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setIsDialogOpen(false)}
+            >
+              关闭
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
+};
+
+const copyToClipboard = (text: string) => {
+  navigator.clipboard
+    .writeText(text)
+    .then(() => {
+      // 可以添加一个临时的成功提示
+      toast.success("复制成功");
+    })
+    .catch((err) => {
+      toast.error("复制失败", err);
+    });
 };
 
 export const Component = () => {
