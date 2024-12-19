@@ -129,25 +129,9 @@ const formSchema = z.object({
     }),
   ),
   // 添加 useTensorBoard 作为布尔类型的属性
-  observability: z
-    .object({
-      tbEnable: z.boolean(),
-      tbLogDir: z.string().optional(),
-    })
-    .refine(
-      (observability) => {
-        return (
-          !observability.tbEnable ||
-          (observability.tbEnable &&
-            observability.tbLogDir !== null &&
-            observability.tbLogDir !== undefined)
-        );
-      },
-      {
-        message: "TensorBoard 日志目录不能为空",
-        path: ["tbLogDir"],
-      },
-    ),
+  observability: z.object({
+    tbEnable: z.boolean(),
+  }),
   nodeSelector: nodeSelectorSchema,
 });
 
@@ -773,6 +757,7 @@ export const Component = () => {
                         <Switch
                           checked={field.value}
                           onCheckedChange={field.onChange}
+                          disabled
                         />
                       </FormControl>
                     </FormItem>
@@ -784,7 +769,7 @@ export const Component = () => {
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between space-x-0 space-y-0">
                       <FormLabel className="font-normal">
-                        启用节点选择功能
+                        指定工作节点
                       </FormLabel>
                       <FormControl>
                         <Switch
@@ -808,7 +793,7 @@ export const Component = () => {
                         <Input {...field} className="font-mono" />
                       </FormControl>
                       <FormDescription>
-                        节点名称（可通过概览页面查看）
+                        输入节点名称（可通过概览页面查看）
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
