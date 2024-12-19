@@ -2,12 +2,12 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "a2cc90ad"
+      tag: "795b2d31"
       pullPolicy: "IfNotPresent"
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "560e5349"
+      tag: "63df9aab"
       pullPolicy: "IfNotPresent"
   storage:
     image:
@@ -55,6 +55,8 @@ backendConfig:
         registryUser: ***REMOVED***
         registryPass: ***REMOVED***
         registryProject: crater
+        registryAdmin: admin
+        registryAdminPass: ***REMOVED***
       openAPI:
         url: ***REMOVED***
         chameleonKey: ***REMOVED***
