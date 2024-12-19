@@ -60,6 +60,12 @@ export type KanikoLogResponse = {
   content: string;
 };
 
+export type ProjectCredentialResponse = {
+  name: string;
+  password: string;
+  exist: boolean;
+};
+
 export const getHeader = (key: string): string => {
   switch (key) {
     case "imageLink":
@@ -240,3 +246,8 @@ export const apiUserUploadImage = async (imageupload: ImageUpload) => {
 
 export const apiUserDeleteImage = (id: number) =>
   instance.delete<IResponse<string>>(VERSION + `/images/image/${id}`);
+
+export const apiUserGetCredential = () =>
+  instance.post<IResponse<ProjectCredentialResponse>>(
+    `${VERSION}/images/credential`,
+  );
