@@ -33,7 +33,7 @@ type Kaniko struct {
 	Description   *string     `gorm:"type:varchar(512);comment:描述"`
 	Size          int64       `gorm:"type:bigint;default:0;comment:镜像大小"`
 	Dockerfile    *string     `gorm:"type:text;comment:Dockerfile内容"`
-	BuildSource   BuildSource `gorm:"type:varchar(128);not null;default:buildkit;comment:构建来源"`
+	BuildSource   BuildSource `gorm:"type:varchar(32);not null;default:buildkit;comment:构建来源"`
 }
 
 type Image struct {
