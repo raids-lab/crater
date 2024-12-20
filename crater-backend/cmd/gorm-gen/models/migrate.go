@@ -53,6 +53,29 @@ func main() {
 				return tx.Migrator().DropColumn(&Kaniko{}, "BuildSource")
 			},
 		},
+		{
+			ID: "202412162220", // 确保ID是唯一的
+			Migrate: func(tx *gorm.DB) error {
+				type Datasets struct {
+					Type  model.DataType                         `gorm:"type:varchar(32);not null;default:dataset;comment:数据类型"`
+					Extra datatypes.JSONType[model.Extracontent] `gorm:"comment:额外信息(tags、weburl等)"`
+				}
+				if err := tx.Migrator().AddColumn(&Datasets{}, "Type"); err != nil {
+					return err
+				}
+				return tx.Migrator().AddColumn(&Datasets{}, "Extra")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Datasets struct {
+					Type  model.DataType                         `gorm:"type:varchar(32);not null;default:dataset;comment:数据类型"`
+					Extra datatypes.JSONType[model.Extracontent] `gorm:"comment:额外信息(tags、weburl等)"`
+				}
+				if err := tx.Migrator().DropColumn(&Datasets{}, "Extra"); err != nil {
+					return err
+				}
+				return tx.Migrator().DropColumn(&Datasets{}, "Type")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
