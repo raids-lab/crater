@@ -417,9 +417,7 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	if images, err = imageQuery.WithContext(c).
 		Preload(query.Image.User).
 		Where(imageQuery.UserID.Eq(token.UserID)).
-		Where(imageQuery.TaskType.Eq(string(req.Type))).
 		Or(imageQuery.IsPublic).
-		Where(imageQuery.TaskType.Eq(string(req.Type))).
 		Find(); err != nil {
 		logutils.Log.Errorf("fetch available image failed, err:%v", err)
 		resputil.Error(c, "fetch available image failed", resputil.NotSpecified)
