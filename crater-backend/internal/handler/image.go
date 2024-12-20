@@ -464,7 +464,9 @@ func (mgr *ImagePackMgr) DeleteKanikoByID(c *gin.Context) {
 	kanikoID := deleteKanikoRequest.ID
 	var kaniko *model.Kaniko
 	k := query.Kaniko
-	if kaniko, err = k.WithContext(c).Where(k.ID.Eq(kanikoID)).
+	if kaniko, err = k.WithContext(c).
+		Preload(query.Image.User).
+		Where(k.ID.Eq(kanikoID)).
 		Where(k.UserID.Eq(token.UserID)).First(); err != nil {
 		logutils.Log.Errorf("image not exist or have no permission%+v", err)
 		resputil.Error(c, "failed to find imagepack or entity", resputil.NotSpecified)
@@ -591,9 +593,12 @@ func (mgr *ImagePackMgr) UpdateImagePublicStatus(c *gin.Context) {
 		resputil.Error(c, "validate params", resputil.NotSpecified)
 		return
 	}
+	token := util.GetToken(c)
 	imageQuery := query.Image
 	if _, err = imageQuery.WithContext(c).
+		Preload(query.Image.User).
 		Where(imageQuery.ID.Eq(req.ID)).
+		Where(imageQuery.UserID.Eq(token.UserID)).
 		Update(imageQuery.IsPublic, imageQuery.IsPublic.Not()); err != nil {
 		logutils.Log.Errorf("update image image public status failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "update status failed", resputil.NotSpecified)
