@@ -87,6 +87,8 @@ var (
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 
 // Reconcile 主要用于同步 ImagePack 的状态到数据库中
+//
+//nolint:gocyclo // TODO(huangsy): refactor this function
 func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	k := query.Kaniko
@@ -120,6 +122,10 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		userID, _ := strconv.Atoi(job.Annotations["buildkit-data/UserID"])
 		dockerfile := job.Annotations["buildkit-data/Dockerfile"]
 		description := job.Annotations["buildkit-data/Description"]
+		buildSource := model.BuildKit
+		if dockerfile == "" {
+			buildSource = model.Snapshot
+		}
 		kanikoEntity := &model.Kaniko{
 			//nolint:gosec // userID is very small, integer overflow conversion won't happen
 			UserID:        uint(userID),
@@ -129,7 +135,7 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			Status:        model.BuildJobInitial,
 			Dockerfile:    &dockerfile,
 			Description:   &description,
-			BuildSource:   model.BuildKit,
+			BuildSource:   buildSource,
 		}
 		if err = k.WithContext(ctx).Create(kanikoEntity); err != nil {
 			logutils.Log.Errorf("create imagepack entity failed, params: %+v", kanikoEntity)
