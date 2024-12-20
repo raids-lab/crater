@@ -58,12 +58,14 @@ func (mgr *DatasetMgr) RegisterAdmin(g *gin.RouterGroup) {
 }
 
 type DatasetResp struct {
-	Name      string    `json:"name"`
-	ID        uint      `json:"id"`
-	UserName  string    `json:"username"`
-	URL       string    `json:"url"`
-	Describe  string    `json:"describe"`
-	CreatedAt time.Time `json:"createdAt"`
+	Name      string                                 `json:"name"`
+	ID        uint                                   `json:"id"`
+	UserName  string                                 `json:"username"`
+	URL       string                                 `json:"url"`
+	Describe  string                                 `json:"describe"`
+	CreatedAt time.Time                              `json:"createdAt"`
+	Type      model.DataType                         `json:"type"`
+	Extra     datatypes.JSONType[model.Extracontent] `json:"extra"`
 }
 
 // GetMyDataset godoc
@@ -112,8 +114,8 @@ func (mgr *DatasetMgr) GetMyDataset(c *gin.Context) {
 		}
 	}
 	result := make([]DatasetResp, 0, len(datasets))
-	for _, data := range datasets {
-		result = append(result, data)
+	for id := range datasets {
+		result = append(result, datasets[id])
 	}
 	resputil.Success(c, result)
 }
@@ -178,8 +180,8 @@ func (mgr *DatasetMgr) GetAllDataset(c *gin.Context) {
 		}
 	}
 	result := make([]DatasetResp, 0, len(datasets))
-	for _, data := range datasets {
-		result = append(result, data)
+	for i := range datasets {
+		result = append(result, datasets[i])
 	}
 	resputil.Success(c, result)
 }
@@ -219,13 +221,18 @@ func (mgr *DatasetMgr) generateDataseResponse(c *gin.Context, dataset *model.Dat
 		UserName:  user.Nickname,
 		ID:        dataset.ID,
 		CreatedAt: dataset.CreatedAt,
+		Type:      dataset.Type,
+		Extra:     dataset.Extra,
 	}, nil
 }
 
 type DatasetReq struct {
-	Name     string `json:"name" binding:"required"`
-	URL      string `json:"url" binding:"required"`
-	Describe string `json:"describe"`
+	Name     string         `json:"name" binding:"required"`
+	URL      string         `json:"url" binding:"required"`
+	Describe string         `json:"describe" binding:"required"`
+	Type     model.DataType `json:"type" binding:"required"`
+	Tags     []string       `json:"tags" binding:"required"`
+	WebURL   string         `json:"weburl" binding:"required"`
 }
 
 // CreateDataset godoc
@@ -239,13 +246,17 @@ type DatasetReq struct {
 // @Success 200 {object} resputil.Response[string] "成功返回值描述"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/dataset/create [post]
+// @Router /v1/dataset/create	[post]
 func (mgr *DatasetMgr) CreateDataset(c *gin.Context) {
 	token := util.GetToken(c)
 	var datasetReq DatasetReq
 	if err := c.ShouldBindJSON(&datasetReq); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
+	}
+	// 设置默认值
+	if datasetReq.Type == "" {
+		datasetReq.Type = "dataset"
 	}
 	regex := regexp.MustCompile("^/+")
 	url := regex.ReplaceAllString(datasetReq.URL, "")
@@ -258,6 +269,11 @@ func (mgr *DatasetMgr) CreateDataset(c *gin.Context) {
 		dataset.Describe = datasetReq.Describe
 		dataset.URL = url
 		dataset.UserID = token.UserID
+		dataset.Type = datasetReq.Type
+		dataset.Extra = datatypes.NewJSONType(model.Extracontent{
+			Tags:   datasetReq.Tags,
+			WebURL: &datasetReq.WebURL,
+		})
 		if err := d.WithContext(c).Create(&dataset); err != nil {
 			return err
 		}
