@@ -329,14 +329,19 @@ func updateUserIfNeeded(
 
 	newAttr := datatypes.NewJSONType(*attr)
 
-	// Skip unnecessary updates
+	// if attr contains email, this attr may be from act-api
 	if currentAttr.ID != model.InvalidUserID &&
-		reflect.DeepEqual(currentAttr, *attr) {
+		(attr.Email == nil || reflect.DeepEqual(currentAttr, *attr)) {
 		return nil
 	}
 
+	// dont update email if it has been set
+	if currentAttr.Email != nil {
+		attr.Email = currentAttr.Email
+	}
+
 	if currentAttr.ID != model.InvalidUserID &&
-		reflect.DeepEqual(user.Attributes, newAttr) {
+		(attr.Email == nil || reflect.DeepEqual(user.Attributes, newAttr)) {
 		return nil
 	}
 
@@ -399,7 +404,7 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string)
 		Status:   model.StatusActive,
 		Space:    name,
 		Attributes: datatypes.NewJSONType(model.UserAttribute{
-			Email: ptr.To(""),
+			Email: ptr.To(name + "@***REMOVED***"),
 			UID:   ptr.To(result.UID),
 			GID:   ptr.To(result.GID),
 		}),
@@ -530,6 +535,7 @@ func (mgr *AuthMgr) actAPIAuth(_ context.Context, token string, attr *model.User
 
 	attr.Name = result.Data.Account
 	attr.Nickname = result.Data.Name
+	attr.Email = &result.Data.Email
 	attr.Teacher = &result.Data.Teacher
 	attr.Group = &result.Data.Group
 	attr.ExpiredAt = &result.Data.AdExpire
