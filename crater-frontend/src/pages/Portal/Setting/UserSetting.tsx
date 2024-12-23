@@ -65,7 +65,7 @@ export default function UserSettings() {
   const [user, setUser] = useAtom(globalUserInfo);
   const [avatarPreview, setAvatarPreview] = useState(user.avatar || "");
   const [originalEmail, setOriginalEmail] = useState(user.email || "");
-  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
 
@@ -106,7 +106,8 @@ export default function UserSettings() {
   });
 
   const { mutate: verifyEmailCode } = useMutation({
-    mutationFn: (code: string) => apiVerifyEmailCode(code),
+    mutationFn: ({ email, code }: { email: string; code: string }) =>
+      apiVerifyEmailCode(email, code),
     onError: (error) => {
       toast.error(error.message);
     },
@@ -141,132 +142,140 @@ export default function UserSettings() {
   }
 
   return (
-    <Card className="lg:col-span-2">
-      <CardHeader>
-        <CardTitle>用户信息</CardTitle>
-        <CardDescription>
-          更新您的用户信息，以便我们更好地为您服务
-        </CardDescription>
-      </CardHeader>
-      <Separator />
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-8 pt-6">
-            <div className="flex flex-row items-center gap-6">
+    <>
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle>用户信息</CardTitle>
+          <CardDescription>
+            更新您的用户信息，以便我们更好地为您服务
+          </CardDescription>
+        </CardHeader>
+        <Separator />
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <CardContent className="space-y-8 pt-6">
+              <div className="flex flex-row items-center gap-6">
+                <FormField
+                  control={form.control}
+                  name="avatar"
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormLabel>头像</FormLabel>
+                      <FormControl>
+                        <div className="flex items-center space-x-4">
+                          <Input
+                            {...field}
+                            value={field.value || ""}
+                            placeholder="Avatar URL"
+                            className="font-mono"
+                            onChange={(e) => {
+                              field.onChange(e);
+                              setAvatarPreview(e.target.value);
+                            }}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        通过图床上传图片，然后将图片链接粘贴到此处
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={avatarPreview} alt="Avatar preview" />
+                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+              </div>
+              <Separator />
               <FormField
                 control={form.control}
-                name="avatar"
+                name="email"
                 render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormLabel>头像</FormLabel>
+                  <FormItem>
+                    <FormLabel>邮箱</FormLabel>
                     <FormControl>
-                      <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-2">
                         <Input
                           {...field}
-                          value={field.value || ""}
-                          placeholder="Avatar URL"
+                          type="email"
                           className="font-mono"
+                          value={field.value || ""}
                           onChange={(e) => {
                             field.onChange(e);
-                            setAvatarPreview(e.target.value);
+                            setIsEmailVerified(false);
                           }}
                         />
+                        {field.value !== originalEmail && (
+                          <Button
+                            variant="secondary"
+                            onClick={() => {
+                              sendVerificationEmail(field.value || "");
+                            }}
+                          >
+                            <MailPlusIcon />
+                            验证
+                          </Button>
+                        )}
                       </div>
                     </FormControl>
-                    <FormDescription>
-                      通过图床上传图片，然后将图片链接粘贴到此处
-                    </FormDescription>
+                    <FormDescription>用于接收通知的邮箱地址</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Avatar className="h-20 w-20">
-                <AvatarImage src={avatarPreview} alt="Avatar preview" />
-                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-              </Avatar>
+            </CardContent>
+            <Separator />
+            <CardFooter className="px-6 py-4">
+              <Button type="submit">
+                <UserRoundCogIcon />
+                更新用户信息
+              </Button>
+            </CardFooter>
+          </form>
+        </Form>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>验证您的邮箱</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <DialogDescription>
+                我们已向您的邮箱发送了一封验证邮件，请输入邮件中的验证码
+              </DialogDescription>
+              <InputOTP
+                maxLength={6}
+                value={verificationCode}
+                onChange={(value) => setVerificationCode(value)}
+              >
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} aria-placeholder=" " />
+                  <InputOTPSlot index={1} aria-placeholder=" " />
+                  <InputOTPSlot index={2} aria-placeholder=" " />
+                </InputOTPGroup>
+                <InputOTPSeparator />
+                <InputOTPGroup>
+                  <InputOTPSlot index={3} aria-placeholder=" " />
+                  <InputOTPSlot index={4} aria-placeholder=" " />
+                  <InputOTPSlot index={5} aria-placeholder=" " />
+                </InputOTPGroup>
+              </InputOTP>
             </div>
-
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>邮箱</FormLabel>
-                  <FormControl>
-                    <div className="flex items-center space-x-2">
-                      <Input
-                        {...field}
-                        type="email"
-                        className="font-mono"
-                        value={field.value || ""}
-                        onChange={(e) => {
-                          field.onChange(e);
-                          setIsEmailVerified(false);
-                        }}
-                      />
-                      {field.value !== originalEmail && (
-                        <Button
-                          variant="secondary"
-                          onClick={() => {
-                            sendVerificationEmail(field.value || "");
-                          }}
-                        >
-                          <MailPlusIcon />
-                          验证
-                        </Button>
-                      )}
-                    </div>
-                  </FormControl>
-                  <FormDescription>用于接收通知的邮箱地址</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-          <Separator />
-          <CardFooter className="px-6 py-4">
-            <Button type="submit">
-              <UserRoundCogIcon />
-              更新用户信息
-            </Button>
-          </CardFooter>
-        </form>
-      </Form>
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>验证您的邮箱</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <DialogDescription>
-              我们已向您的邮箱发送了一封验证邮件，请输入邮件中的验证码
-            </DialogDescription>
-            <InputOTP
-              maxLength={6}
-              value={verificationCode}
-              onChange={(value) => setVerificationCode(value)}
-            >
-              <InputOTPGroup>
-                <InputOTPSlot index={0} />
-                <InputOTPSlot index={1} />
-                <InputOTPSlot index={2} />
-              </InputOTPGroup>
-              <InputOTPSeparator />
-              <InputOTPGroup>
-                <InputOTPSlot index={3} />
-                <InputOTPSlot index={4} />
-                <InputOTPSlot index={5} />
-              </InputOTPGroup>
-            </InputOTP>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => verifyEmailCode(verificationCode)}>
-              验证
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
+            <DialogFooter>
+              <Button
+                onClick={() =>
+                  verifyEmailCode({
+                    code: verificationCode,
+                    email: form.getValues("email") ?? "",
+                  })
+                }
+              >
+                验证
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </Card>
+    </>
   );
 }
