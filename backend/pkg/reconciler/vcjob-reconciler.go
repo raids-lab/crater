@@ -26,6 +26,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
+	"github.com/raids-lab/crater/pkg/alert"
 	"github.com/raids-lab/crater/pkg/config"
 	"gorm.io/datatypes"
 	"gorm.io/gen"
@@ -158,6 +159,13 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	if err != nil {
 		logger.Error(err, "unable to update job record")
 		return ctrl.Result{Requeue: true}, err
+	}
+
+	// send email after pending
+	if job.Status.State.Phase == model.Running {
+		if err = alert.GetAlertMgr().JobRunningAlert(ctx, job.Name); err != nil {
+			logger.Error(err, "fail to send email")
+		}
 	}
 
 	return ctrl.Result{}, nil
