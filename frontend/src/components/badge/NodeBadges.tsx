@@ -13,7 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const GRAFANA_NODE = import.meta.env.VITE_GRAFANA_NODE;
-const DCGM_EXPORTER = import.meta.env.VITE_GRAFANA_K8S_VGPU_SCHEDULER_DASHBOARD;
+const DCGM_EXPORTER = import.meta.env.VITE_GRAFANA_GPU_DASHBOARD;
 
 const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
   const navigate = useNavigate();
@@ -82,7 +82,7 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
                     className="justify-start px-2 py-1"
                     onClick={() => {
                       window.open(
-                        `${DCGM_EXPORTER}?orgId=1&refresh=5m&var-datasource=prometheus&var-node=${node}`,
+                        `${DCGM_EXPORTER}?var-interval=1h&from=now-3h&to=now&timezone=browser&var-idc=prometheus&var-hostname=${node}&var-namespace=$__all`,
                       );
                     }}
                   >

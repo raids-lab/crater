@@ -74,9 +74,9 @@ type GpuDemoProps = React.ComponentProps<typeof Card> & {
   };
 };
 
-const POD_MONITOR = import.meta.env.VITE_GRAFANA_POD_MEMORY;
+const POD_MONITOR = import.meta.env.VITE_GRAFANA_POD_MONITOR;
 const GRAFANA_NODE = import.meta.env.VITE_GRAFANA_NODE;
-const DCGM_EXPORTER = import.meta.env.VITE_GRAFANA_K8S_VGPU_SCHEDULER_DASHBOARD;
+const DCGM_EXPORTER = import.meta.env.VITE_GRAFANA_GPU_DASHBOARD;
 
 export function GpuCardDemo({ gpuInfo }: GpuDemoProps) {
   if (!gpuInfo?.haveGPU) return null;
@@ -88,6 +88,9 @@ export function GpuCardDemo({ gpuInfo }: GpuDemoProps) {
             <CardTitle className="text-lg font-bold text-primary">
               {gpuInfo?.gpuProduct}
             </CardTitle>
+            <div className="mt-4 flex items-center space-x-2">
+              <Badge variant="default">CUDA {gpuInfo?.cudaVersion}</Badge>
+            </div>
           </div>
         </CardContent>
         <Separator />
@@ -116,14 +119,14 @@ export function GpuCardDemo({ gpuInfo }: GpuDemoProps) {
           </p>
           <p className="text-lg font-bold">{gpuInfo?.gpuCount}</p>
           <p className="text-lg font-bold">{gpuInfo?.gpuArch}</p>
-          <p className="text-lg font-bold">{gpuInfo?.cudaVersion}</p>
+          <p className="text-lg font-bold">{gpuInfo?.gpuDriver}</p>
         </CardContent>
         <CardFooter className="flex justify-center">
           <Button
             variant="outline"
             onClick={() => {
               window.open(
-                `${DCGM_EXPORTER}?orgId=1&refresh=5m&var-datasource=prometheus&var-node=${gpuInfo?.nodeName}`,
+                `${DCGM_EXPORTER}?var-interval=1h&from=now-3h&to=now&timezone=browser&var-idc=prometheus&var-hostname=${gpuInfo?.nodeName}&var-namespace=$__all`,
               );
             }}
           >
