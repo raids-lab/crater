@@ -1,7 +1,6 @@
 import { ComboboxItem } from "@/components/form/Combobox";
 import { ImageInfoResponse } from "@/services/api/imagepack";
 import { apiJTaskImageList, JobType } from "@/services/api/vcjob";
-import { shortenImageName } from "@/utils/formatter";
 import { useQuery } from "@tanstack/react-query";
 
 const useImageQuery = (type?: JobType) => {
@@ -17,7 +16,7 @@ const useImageQuery = (type?: JobType) => {
         (item) =>
           ({
             value: item.imageLink,
-            label: shortenImageName(item.imageLink),
+            label: item.description,
             detail: item,
           }) as ComboboxItem<ImageInfoResponse>,
       );

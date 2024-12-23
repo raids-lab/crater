@@ -35,19 +35,21 @@ import {
 import { MailPlusIcon, UserRoundCogIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSeparator,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
-import { DialogDescription } from "@radix-ui/react-dialog";
+import LoadableButton from "@/components/custom/LoadableButton";
 
 const formSchema = z.object({
   nickname: z.string().min(2, {
@@ -67,6 +69,7 @@ export default function UserSettings() {
   const [originalEmail, setOriginalEmail] = useState(user.email || "");
   const [isEmailVerified, setIsEmailVerified] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isVerifyError, setIsVerifyError] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -85,22 +88,20 @@ export default function UserSettings() {
   const { mutate: updateUser } = useMutation({
     mutationFn: (values: IUserAttributes) =>
       apiContextUpdateUserAttributes(values),
-    onError: (error) => {
-      toast.error(error.message);
-    },
     onSuccess: (_data, values) => {
-      toast.success("User information updated.");
+      toast.success("用户信息已更新");
       setUser((prev) => ({ ...prev, ...values }));
     },
   });
 
-  const { mutate: sendVerificationEmail } = useMutation({
+  const {
+    mutate: sendVerificationEmail,
+    isPending: isSendVerificationPending,
+  } = useMutation({
     mutationFn: (email: string) => apiSendVerificationEmail(email),
-    onError: (error) => {
-      toast.error(error.message);
-    },
     onSuccess: () => {
-      toast.success("Verification email sent.");
+      setIsVerifyError(false);
+      setVerificationCode("");
       setIsDialogOpen(true);
     },
   });
@@ -108,11 +109,11 @@ export default function UserSettings() {
   const { mutate: verifyEmailCode } = useMutation({
     mutationFn: ({ email, code }: { email: string; code: string }) =>
       apiVerifyEmailCode(email, code),
-    onError: (error) => {
-      toast.error(error.message);
+    onError: () => {
+      setIsVerifyError(true);
     },
     onSuccess: () => {
-      toast.success("Email verified successfully.");
+      toast.success("新邮箱已验证");
       setOriginalEmail(form.getValues("email") ?? "");
       setIsEmailVerified(true);
       setIsDialogOpen(false);
@@ -207,15 +208,18 @@ export default function UserSettings() {
                           }}
                         />
                         {field.value !== originalEmail && (
-                          <Button
+                          <LoadableButton
+                            isLoading={isSendVerificationPending}
+                            isLoadingText="验证中"
                             variant="secondary"
+                            type="button"
                             onClick={() => {
                               sendVerificationEmail(field.value || "");
                             }}
                           >
                             <MailPlusIcon />
                             验证
-                          </Button>
+                          </LoadableButton>
                         )}
                       </div>
                     </FormControl>
@@ -234,15 +238,23 @@ export default function UserSettings() {
             </CardFooter>
           </form>
         </Form>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>验证您的邮箱</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <DialogDescription>
-                我们已向您的邮箱发送了一封验证邮件，请输入邮件中的验证码
-              </DialogDescription>
+        <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>验证您的邮箱</AlertDialogTitle>
+
+              {isVerifyError ? (
+                <AlertDialogDescription className="text-destructive">
+                  验证码错误，请重新检查
+                </AlertDialogDescription>
+              ) : (
+                <AlertDialogDescription>
+                  我们向<span>{form.getValues("email")}</span>
+                  发送了一封验证邮件，请输入邮件中的验证码
+                </AlertDialogDescription>
+              )}
+            </AlertDialogHeader>
+            <div className="flex items-center justify-center">
               <InputOTP
                 maxLength={6}
                 value={verificationCode}
@@ -261,7 +273,8 @@ export default function UserSettings() {
                 </InputOTPGroup>
               </InputOTP>
             </div>
-            <DialogFooter>
+            <AlertDialogFooter>
+              <AlertDialogCancel>取消</AlertDialogCancel>
               <Button
                 onClick={() =>
                   verifyEmailCode({
@@ -272,9 +285,9 @@ export default function UserSettings() {
               >
                 验证
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </Card>
     </>
   );

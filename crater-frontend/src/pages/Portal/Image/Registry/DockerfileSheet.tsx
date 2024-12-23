@@ -227,6 +227,7 @@ export function DockerfileSheet({
             <FormExportButton metadata={MetadataFormDockerfile} form={form} />
             <LoadableButton
               isLoading={isLoading}
+              isLoadingText="正在提交"
               type="submit"
               onClick={() => {
                 form
@@ -240,7 +241,7 @@ export function DockerfileSheet({
               }}
             >
               <PackagePlusIcon />
-              {isLoading ? "正在提交" : "开始制作"}
+              开始制作
             </LoadableButton>
           </>
         }

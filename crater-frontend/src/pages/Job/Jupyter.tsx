@@ -8,15 +8,15 @@ import { NamespacedName } from "@/components/codeblock/PodContainerDialog";
 import FloatingBall from "./FloatingBall";
 import { toast } from "sonner";
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const Jupyter: FC = () => {
   // get param from url
@@ -93,28 +93,22 @@ const Jupyter: FC = () => {
         namespacedName={namespacedName}
         setNamespacedName={setNamespacedName}
       />
-      <Dialog open={isSnapshotOpen} onOpenChange={setIsSnapshotOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>保存镜像</DialogTitle>
-            <DialogDescription>
+      <AlertDialog open={isSnapshotOpen} onOpenChange={setIsSnapshotOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>保存镜像</AlertDialogTitle>
+            <AlertDialogDescription>
               保存当前作业的镜像，保存期间作业将被暂停
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline">取消</Button>
-            <DialogClose>
-              <Button
-                type="submit"
-                variant="default"
-                onClick={() => snapshot(id ?? "")}
-              >
-                确认
-              </Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={() => snapshot(id ?? "")}>
+              保存
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
