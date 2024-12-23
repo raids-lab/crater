@@ -34,6 +34,8 @@ func newDataset(db *gorm.DB, opts ...gen.DOOption) dataset {
 	_dataset.Name = field.NewString(tableName, "name")
 	_dataset.URL = field.NewString(tableName, "url")
 	_dataset.Describe = field.NewString(tableName, "describe")
+	_dataset.Type = field.NewString(tableName, "type")
+	_dataset.Extra = field.NewField(tableName, "extra")
 	_dataset.UserID = field.NewUint(tableName, "user_id")
 	_dataset.UserDatasets = datasetHasManyUserDatasets{
 		db: db.Session(&gorm.Session{}),
@@ -63,6 +65,8 @@ type dataset struct {
 	Name         field.String
 	URL          field.String
 	Describe     field.String
+	Type         field.String
+	Extra        field.Field
 	UserID       field.Uint
 	UserDatasets datasetHasManyUserDatasets
 
@@ -90,6 +94,8 @@ func (d *dataset) updateTableName(table string) *dataset {
 	d.Name = field.NewString(table, "name")
 	d.URL = field.NewString(table, "url")
 	d.Describe = field.NewString(table, "describe")
+	d.Type = field.NewString(table, "type")
+	d.Extra = field.NewField(table, "extra")
 	d.UserID = field.NewUint(table, "user_id")
 
 	d.fillFieldMap()
@@ -115,7 +121,7 @@ func (d *dataset) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (d *dataset) fillFieldMap() {
-	d.fieldMap = make(map[string]field.Expr, 10)
+	d.fieldMap = make(map[string]field.Expr, 12)
 	d.fieldMap["id"] = d.ID
 	d.fieldMap["created_at"] = d.CreatedAt
 	d.fieldMap["updated_at"] = d.UpdatedAt
@@ -123,6 +129,8 @@ func (d *dataset) fillFieldMap() {
 	d.fieldMap["name"] = d.Name
 	d.fieldMap["url"] = d.URL
 	d.fieldMap["describe"] = d.Describe
+	d.fieldMap["type"] = d.Type
+	d.fieldMap["extra"] = d.Extra
 	d.fieldMap["user_id"] = d.UserID
 
 }
