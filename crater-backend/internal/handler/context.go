@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/exp/rand"
 	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
@@ -17,7 +18,11 @@ import (
 	"github.com/raids-lab/crater/internal/payload"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/alert"
 )
+
+// 邮箱验证码缓存
+var verifyCodeCache = make(map[string]string)
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
 func init() {
@@ -43,9 +48,21 @@ func (mgr *ContextMgr) RegisterPublic(_ *gin.RouterGroup) {}
 func (mgr *ContextMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("quota", mgr.GetQuota)
 	g.PUT("attributes", mgr.UpdateUserAttributes)
+	g.POST("email/code", mgr.SendUserVerificationCode)
+	g.POST("email/update", mgr.UpdateUserEmail)
 }
 
 func (mgr *ContextMgr) RegisterAdmin(_ *gin.RouterGroup) {}
+
+type (
+	SendCodeReq struct {
+		Email string `json:"email"`
+	}
+	CheckCodeReq struct {
+		Email string `json:"email"`
+		Code  string `json:"code"`
+	}
+)
 
 // GetQuota godoc
 // @Summary Get the queue information
@@ -198,4 +215,87 @@ func (mgr *ContextMgr) UpdateUserAttributes(c *gin.Context) {
 	}
 
 	resputil.Success(c, "User attributes updated successfully")
+}
+
+// SendUserVerificationCode godoc
+// @Summary Send User Verification Code for email
+// @Description generate random code and save, send it to the user's email
+// @Tags Context
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} resputil.Response[any] "Successfully send email verification code to user"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "other errors"
+// @Router /v1/context/email/code [post]
+func (mgr *ContextMgr) SendUserVerificationCode(c *gin.Context) {
+	token := util.GetToken(c)
+	u := query.User
+	user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
+	if err != nil {
+		resputil.Error(c, "User not found", resputil.NotSpecified)
+		return
+	}
+	var req SendCodeReq
+	if err = c.ShouldBind(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+	receiver := user.Attributes.Data()
+	receiver.Email = &req.Email
+	verifyCode := fmt.Sprintf("%06d", getRandomCode())
+	verifyCodeCache[req.Email] = verifyCode
+	if err = alert.GetAlertMgr().SendVerificationCode(c, verifyCode, &receiver); err != nil {
+		fmt.Println("Send Alarm Email failed:", err)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, "Successfully send email verification code to user")
+}
+
+func getRandomCode() int {
+	RANGE := 1000000
+	return rand.Intn(RANGE)
+}
+
+// UpdateUserEmail godoc
+// @Summary Update after judging Verification Code for email
+// @Description judge code and update email for user
+// @Tags Context
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} resputil.Response[any] "User email updated successfully"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "other errors"
+// @Router /v1/context/email/update [post]
+func (mgr *ContextMgr) UpdateUserEmail(c *gin.Context) {
+	token := util.GetToken(c)
+	u := query.User
+	user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
+	if err != nil {
+		resputil.Error(c, "User not found", resputil.NotSpecified)
+		return
+	}
+
+	var req CheckCodeReq
+	if err := c.ShouldBind(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	if req.Code != verifyCodeCache[req.Email] {
+		resputil.Error(c, "Wrong verification Code", resputil.NotSpecified)
+		return
+	}
+
+	attributes := user.Attributes.Data()
+	attributes.Email = &req.Email
+	user.Attributes = datatypes.NewJSONType(attributes)
+
+	if err := u.WithContext(c).Save(user); err != nil {
+		resputil.Error(c, fmt.Sprintf("Failed to update user email:  %v", err), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, "User email updated successfully")
 }
