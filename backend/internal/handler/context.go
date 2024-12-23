@@ -279,7 +279,7 @@ func getRandomCode() int {
 func (mgr *ContextMgr) UpdateUserEmail(c *gin.Context) {
 	token := util.GetToken(c)
 	u := query.User
-	user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
+	_, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
 	if err != nil {
 		resputil.Error(c, "User not found", resputil.NotSpecified)
 		return
@@ -296,13 +296,5 @@ func (mgr *ContextMgr) UpdateUserEmail(c *gin.Context) {
 		return
 	}
 
-	attributes := user.Attributes.Data()
-	attributes.Email = &req.Email
-	user.Attributes = datatypes.NewJSONType(attributes)
-
-	if err := u.WithContext(c).Save(user); err != nil {
-		resputil.Error(c, fmt.Sprintf("Failed to update user email:  %v", err), resputil.NotSpecified)
-		return
-	}
 	resputil.Success(c, "User email updated successfully")
 }
