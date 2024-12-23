@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import TooltipLink from "@/components/label/TooltipLink";
 
-const POD_MONITOR = import.meta.env.VITE_GRAFANA_POD_MEMORY;
+const POD_MONITOR = import.meta.env.VITE_GRAFANA_POD_MONITOR;
 
 const getHeader = (key: string): string => {
   switch (key) {

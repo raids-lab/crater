@@ -36,7 +36,10 @@ export const apiContextUpdateUserAttributes = (data: IUserAttributes) =>
 // apiVerifyEmailCode,
 
 export const apiSendVerificationEmail = (email: string) =>
-  instance.post<IResponse<string>>(`${VERSION}/context/email/send`, { email });
+  instance.post<IResponse<string>>(`${VERSION}/context/email/code`, { email });
 
-export const apiVerifyEmailCode = (code: string) =>
-  instance.post<IResponse<string>>(`${VERSION}/context/email/verify`, { code });
+export const apiVerifyEmailCode = (email: string, code: string) =>
+  instance.post<IResponse<string>>(`${VERSION}/context/email/update`, {
+    code,
+    email,
+  });

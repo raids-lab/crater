@@ -54,9 +54,9 @@ export interface Resource {
 }
 
 const job_monitor = import.meta.env.VITE_GRAFANA_JOB_MONITOR;
-// const pod_memory = import.meta.env.VITE_GRAFANA_POD_MEMORY;
+// const pod_memory = import.meta.env.VITE_GRAFANA_POD_MONITOR;
 // const k8s_vgpu_scheduler_dashboard = import.meta.env
-// .VITE_GRAFANA_K8S_VGPU_SCHEDULER_DASHBOARD;
+// .VITE_GRAFANA_GPU_DASHBOARD;
 
 export function BaseCore({ jobName }: { jobName: string }) {
   const queryClient = useQueryClient();
