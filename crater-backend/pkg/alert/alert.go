@@ -50,10 +50,6 @@ func (a *alertMgr) JobRunningAlert(ctx context.Context, jobName string) error {
 	}
 	receiver := job.User.Attributes.Data()
 
-	if *receiver.Email == "" {
-		return nil
-	}
-
 	// 如果创建时间与开始时间间隔 > 10min
 	if job.RunningTimestamp.Sub(job.CreationTimestamp).Minutes() > float64(timeRangeMinite) {
 		subject := "作业开始通知"
@@ -86,11 +82,6 @@ func (a *alertMgr) sendJobMessage(ctx context.Context, jobName, subject, message
 		return err
 	}
 	receiver := job.User.Attributes.Data()
-
-	if *receiver.Email == "" {
-		// 没有验证email
-		return nil
-	}
 
 	body := fmt.Sprintf(messageTemplate, receiver.Nickname, job.Name, job.JobName)
 
