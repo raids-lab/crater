@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 )
 
@@ -36,6 +37,40 @@ func initAlertMgr() *alertMgr {
 	return &alertMgr{
 		handler: smtpHandler,
 	}
+}
+
+func (a *alertMgr) JobRunningAlert(ctx context.Context, jobName string) error {
+	timeRangeMinite := 10
+	j := query.Job
+	job, err := j.WithContext(ctx).Where(j.JobName.Eq(jobName)).Preload(j.User).First()
+	if err != nil {
+		return err
+	}
+	receiver := job.User.Attributes.Data()
+
+	// 如果创建时间与开始时间间隔 > 10min
+	if job.RunningTimestamp.Sub(job.CreationTimestamp).Minutes() > float64(timeRangeMinite) {
+		subject := "作业开始通知"
+		body := fmt.Sprintf("用户 %s 您好：您的作业 %s (%s) 已经开始运行。", job.User.Attributes.Data().Nickname, job.Name, job.JobName)
+		err = a.handler.SendMessageTo(ctx, &receiver, subject, body)
+		if err != nil {
+			return err
+		}
+	}
+
+	// TODO: 审计，留下所有发送邮件记录
+	return nil
+}
+
+func (a *alertMgr) SendVerificationCode(ctx context.Context, code string, receiver *model.UserAttribute) error {
+	subject := "crater邮箱验证码"
+	body := fmt.Sprintf("邮箱验证码为：%s", code)
+	err := a.handler.SendMessageTo(ctx, receiver, subject, body)
+	if err != nil {
+		return err
+	}
+	// TODO: 审计，留下所有发送邮件记录
+	return nil
 }
 
 func (a *alertMgr) sendJobMessage(ctx context.Context, jobName, subject, messageTemplate string) error {
