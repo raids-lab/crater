@@ -12,6 +12,7 @@ import (
 const (
 	Deleted batch.JobPhase = "Deleted"
 	Freed   batch.JobPhase = "Freed"
+	Running batch.JobPhase = "Running"
 )
 
 type JobType string
