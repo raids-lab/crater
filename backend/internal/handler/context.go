@@ -245,7 +245,14 @@ func (mgr *ContextMgr) SendUserVerificationCode(c *gin.Context) {
 	receiver.Email = &req.Email
 	verifyCode := fmt.Sprintf("%06d", getRandomCode())
 	verifyCodeCache[req.Email] = verifyCode
-	if err = alert.GetAlertMgr().SendVerificationCode(c, verifyCode, &receiver); err != nil {
+
+	alertMgr := alert.GetAlertMgr()
+	if alertMgr == nil {
+		resputil.Error(c, "Get alert Mgr error", resputil.NotSpecified)
+		return
+	}
+
+	if err = alertMgr.SendVerificationCode(c, verifyCode, &receiver); err != nil {
 		fmt.Println("Send Alarm Email failed:", err)
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return

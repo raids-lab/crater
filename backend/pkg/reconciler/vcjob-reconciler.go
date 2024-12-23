@@ -162,9 +162,12 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	// send email after pending
-	if job.Status.State.Phase == model.Running {
-		if err = alert.GetAlertMgr().JobRunningAlert(ctx, job.Name); err != nil {
-			logger.Error(err, "fail to send email")
+	if job.Status.State.Phase == batch.Running {
+		alertMgr := alert.GetAlertMgr()
+		if alertMgr != nil {
+			if err = alertMgr.JobRunningAlert(ctx, job.Name); err != nil {
+				logger.Error(err, "fail to send email")
+			}
 		}
 	}
 
