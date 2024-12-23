@@ -264,8 +264,11 @@ func (mgr *OperationsMgr) deleteLeastUsedGPUJobs(c *gin.Context, duration, util 
 			if err := mgr.deleteJobByName(c, job.jobAPIVersion, job.jobType, job.jobName); err != nil {
 				fmt.Printf("Delete job %s failed\n", job)
 			}
-			if err := alert.GetAlertMgr().DeleteJob(c, job.jobName, nil); err != nil {
-				fmt.Println("Send Alarm Email failed:", err)
+			alertMgr := alert.GetAlertMgr()
+			if alertMgr != nil {
+				if err := alertMgr.DeleteJob(c, job.jobName, nil); err != nil {
+					fmt.Println("Send Alarm Email failed:", err)
+				}
 			}
 		}
 		deletedJobList = append(deletedJobList, job.jobName)
@@ -289,8 +292,11 @@ func (mgr *OperationsMgr) remindLeastUsedGPUJobs(c *gin.Context, duration, util 
 	for _, job := range toRemindJobs {
 		if remind, ok := remindMap[job.jobName]; ok && !remind {
 			// if remind is false, then send alarm email, and set remind to true
-			if err := alert.GetAlertMgr().RemindLowUsageJob(c, job.jobName, deleteTime, nil); err != nil {
-				fmt.Println("Send Alarm Email failed:", err)
+			alertMgr := alert.GetAlertMgr()
+			if alertMgr != nil {
+				if err := alertMgr.RemindLowUsageJob(c, job.jobName, deleteTime, nil); err != nil {
+					fmt.Println("Send Alarm Email failed:", err)
+				}
 			}
 			// set remind to true
 			if _, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(job.jobName)).Update(jobDB.Reminded, true); err != nil {

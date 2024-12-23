@@ -8,6 +8,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 type alertMgr struct {
@@ -32,7 +33,8 @@ func initAlertMgr() *alertMgr {
 	// 后续可以考虑从 Config 中进行配置
 	smtpHandler, err := newSMTPAlerter()
 	if err != nil {
-		panic(err)
+		logutils.Log.Error("Init alert mgr error")
+		return nil
 	}
 	return &alertMgr{
 		handler: smtpHandler,
@@ -47,6 +49,10 @@ func (a *alertMgr) JobRunningAlert(ctx context.Context, jobName string) error {
 		return err
 	}
 	receiver := job.User.Attributes.Data()
+
+	if *receiver.Email == "" {
+		return nil
+	}
 
 	// 如果创建时间与开始时间间隔 > 10min
 	if job.RunningTimestamp.Sub(job.CreationTimestamp).Minutes() > float64(timeRangeMinite) {
@@ -80,6 +86,12 @@ func (a *alertMgr) sendJobMessage(ctx context.Context, jobName, subject, message
 		return err
 	}
 	receiver := job.User.Attributes.Data()
+
+	if *receiver.Email == "" {
+		// 没有验证email
+		return nil
+	}
+
 	body := fmt.Sprintf(messageTemplate, receiver.Nickname, job.Name, job.JobName)
 
 	err = a.handler.SendMessageTo(ctx, &receiver, subject, body)
