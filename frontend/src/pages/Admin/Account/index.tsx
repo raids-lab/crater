@@ -249,6 +249,7 @@ export const Account = () => {
             <FormExportButton form={form} metadata={MetadataFormAccount} />
             <LoadableButton
               isLoading={isCreatePending || isUpdatePending}
+              isLoadingText={form.getValues("id") ? "更新账户" : "新建账户"}
               type="submit"
               onClick={() => {
                 form

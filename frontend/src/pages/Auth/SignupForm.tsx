@@ -141,7 +141,12 @@ export function SignupForm() {
             </FormItem>
           )}
         />
-        <LoadableButton type="submit" className="w-full" isLoading={isPending}>
+        <LoadableButton
+          isLoadingText="注册中"
+          type="submit"
+          className="w-full"
+          isLoading={isPending}
+        >
           注册
         </LoadableButton>
       </form>

@@ -220,6 +220,7 @@ export function LoginForm() {
             )}
           />
           <LoadableButton
+            isLoadingText="登录中"
             type="submit"
             className="w-full"
             isLoading={status === "pending"}
