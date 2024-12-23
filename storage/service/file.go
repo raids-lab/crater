@@ -38,6 +38,7 @@ type Permissions struct {
 }
 
 const defaultFolderPerm = 0755
+const RWXFolderPerm = 0777
 const userSpacePrefix = "sugon-gpu-home-lab"
 const accountSpacePrefix = "sugon-gpu-home-lab"
 const publicSpacePrefix = "sugon-gpu-incoming"
@@ -107,6 +108,7 @@ func ListMySpace(userID, accountID uint, c *gin.Context) (allspace, allRealSpace
 		space = append(space, account.Space)
 		realSpace = append(realSpace, accountSpacePrefix+account.Space)
 	}
+	space = append(space, publicSpacePrefix)
 	return space, realSpace
 }
 
@@ -181,6 +183,25 @@ func WebDav(c *gin.Context) {
 	c.Request.URL.Path = "/api/ss/" + realPath
 	fmt.Println("newURL:", realPath)
 	fs.ServeHTTP(c.Writer, c.Request)
+	// 直接创建文件夹使用777权限也没有用，可能是因为父目录有设置SetGID位，权限是drwxr-sr-x，于是选择直接修改权限
+	if c.Request.Method == "MKCOL" || c.Request.Method == "PUT" {
+		chmod(c, RWXFolderPerm)
+	}
+}
+
+func chmod(c *gin.Context, mode os.FileMode) {
+	reqPath := strings.TrimPrefix(c.Request.URL.Path, fs.Prefix)
+	if fs.Prefix != "" && len(reqPath) == len(c.Request.URL.Path) {
+		response.Error(c, "prefix mismatch error", response.InvalidRequest)
+		return
+	}
+	var realPath string
+	dir, _ := fs.FileSystem.(webdav.Dir)
+	realPath = string(dir) + reqPath
+	if err := os.Chmod(realPath, mode); err != nil {
+		response.Error(c, err.Error(), response.NotSpecified)
+		return
+	}
 }
 
 func AlloweOption(c *gin.Context) {
@@ -281,7 +302,9 @@ func GetFiles(c *gin.Context) {
 		data = GetFilesByPaths(realSpace, c)
 		response.Success(c, data)
 	} else {
-		token = getSecondToken(param)
+		if token == "user" || token == "account" {
+			token = getSecondToken(param)
+		}
 		if token == "" || !containsString(space, token) {
 			response.Error(c, "You have no permission to access this file", response.NotSpecified)
 			return
@@ -429,7 +452,7 @@ func checkSpace() {
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				fmt.Println("create dir:", space)
-				err = fs.FileSystem.Mkdir(ctx, space, os.FileMode(defaultFolderPerm))
+				err = fs.FileSystem.Mkdir(ctx, space, os.FileMode(RWXFolderPerm))
 				if err != nil {
 					fmt.Println("can't create dir:", us.Space)
 					fmt.Println("err:", err)
@@ -444,7 +467,7 @@ func checkSpace() {
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				fmt.Println("create dir:", space)
-				err = fs.FileSystem.Mkdir(ctx, space, os.FileMode(defaultFolderPerm))
+				err = fs.FileSystem.Mkdir(ctx, space, os.FileMode(RWXFolderPerm))
 				if err != nil {
 					fmt.Println("can't create dir:", acc.Space)
 					return
