@@ -96,6 +96,10 @@ export const craterPath: PathInfo = {
           path: "dataset",
           title: "数据集",
         },
+        {
+          path: "model",
+          title: "模型",
+        },
       ],
     },
     {

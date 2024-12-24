@@ -10,7 +10,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { NavGroupProps } from "../sidebar/nav-main";
+import { NavGroupProps } from "../sidebar/types";
 
 const DashboardLayout = ({ groups }: { groups: NavGroupProps[] }) => {
   const { pathname: rawPath } = useLocation();

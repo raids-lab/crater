@@ -1,0 +1,180 @@
+import { useMemo, useState } from "react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import {
+  ArrowDownAZIcon,
+  ArrowDownZAIcon,
+  BotIcon,
+  DatabaseZapIcon,
+  EllipsisVerticalIcon,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import TipBadge from "@/components/badge/TipBadge";
+import TooltipButton from "@/components/custom/TooltipButton";
+import TooltipLink from "@/components/label/TooltipLink";
+import { IUserAttributes } from "@/services/api/admin/user";
+
+export interface DataItem {
+  id: number;
+  name: string;
+  desc: string;
+  tags: string[];
+  url?: string;
+  owner: IUserAttributes;
+}
+
+export default function DataList({
+  items,
+  title,
+  actionArea,
+}: {
+  items: DataItem[];
+  title: string;
+  actionArea?: React.ReactNode;
+}) {
+  const [sort, setSort] = useState("ascending");
+  const [modelType, setModelType] = useState("所有标签");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const tags = useMemo(() => {
+    const tags = new Set<string>();
+    items.forEach((model) => {
+      model.tags.forEach((tag) => tags.add(tag));
+    });
+    return Array.from(tags);
+  }, [items]);
+
+  const filteredItems = items
+    .sort((a, b) =>
+      sort === "ascending"
+        ? a.name.localeCompare(b.name)
+        : b.name.localeCompare(a.name),
+    )
+    .filter((item) =>
+      modelType === "所有标签"
+        ? true
+        : item.tags.includes(modelType)
+          ? true
+          : false,
+    )
+    .filter((item) =>
+      item.name.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
+
+  return (
+    <div>
+      <div className="flex flex-row items-center justify-between">
+        <div>
+          <h1 className="flex items-center text-xl font-bold tracking-tight">
+            {title}
+            <TipBadge className="ml-1.5" />
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            我们为您准备了一些常见{title}，也欢迎您上传并分享更多{title}。
+          </p>
+        </div>
+        {actionArea}
+      </div>
+      <div className="my-4 flex items-end justify-between sm:my-0 sm:items-center">
+        <div className="flex flex-col gap-4 sm:my-4 sm:flex-row">
+          <Input
+            placeholder={`搜索${title}...`}
+            className="h-9 w-40 lg:w-[250px]"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <Select value={modelType} onValueChange={setModelType}>
+            <SelectTrigger className="w-36">
+              <SelectValue>{modelType}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="所有标签">所有标签</SelectItem>
+              {tags.map((tag) => (
+                <SelectItem key={tag} value={tag}>
+                  {tag}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Select value={sort} onValueChange={setSort}>
+          <SelectTrigger className="w-16">
+            <SelectValue>
+              {sort === "ascending" ? (
+                <ArrowDownAZIcon size={16} />
+              ) : (
+                <ArrowDownZAIcon size={16} />
+              )}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent align="end">
+            <SelectItem value="ascending">
+              <div className="flex items-center gap-4">
+                <ArrowDownAZIcon size={16} />
+                <span>升序</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="descending">
+              <div className="flex items-center gap-4">
+                <ArrowDownZAIcon size={16} />
+                <span>降序</span>
+              </div>
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <Separator />
+      <ul className="faded-bottom no-scrollbar grid gap-4 overflow-auto pb-16 pt-4 md:grid-cols-2 lg:grid-cols-3">
+        {filteredItems.map((item) => (
+          <li
+            key={item.name}
+            className="flex flex-col justify-between gap-2 rounded-lg border p-4 hover:shadow-md"
+          >
+            <div className="flex flex-row items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`flex size-9 items-center justify-center rounded-lg bg-primary/10 p-1 text-primary`}
+                >
+                  {title === "模型" ? <BotIcon /> : <DatabaseZapIcon />}
+                </div>
+                <TooltipLink
+                  to={`${item.id}`}
+                  name={item.name}
+                  tooltip={`查看${title}详情`}
+                  className="font-semibold"
+                />
+              </div>
+              {item.url && (
+                <TooltipButton
+                  tooltipContent={`更多操作`}
+                  variant="ghost"
+                  size="icon"
+                >
+                  <EllipsisVerticalIcon />
+                </TooltipButton>
+              )}
+            </div>
+            <p className="line-clamp-2 text-balance text-sm text-gray-500">
+              {item.desc}
+            </p>
+            <div className="flex flex-row flex-wrap gap-1">
+              {item.tags.map((tag) => (
+                <Badge variant="outline" key={tag}>
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

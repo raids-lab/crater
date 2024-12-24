@@ -1,4 +1,4 @@
-import { NavGroup, NavGroupProps } from "@/components/sidebar/nav-main";
+import { NavGroup } from "@/components/sidebar/nav-main";
 import { NavUser } from "@/components/sidebar/nav-user";
 import { TeamSwitcher } from "@/components/sidebar/team-switcher";
 import {
@@ -14,6 +14,7 @@ import { globalAccount } from "@/utils/store";
 import { useAtomValue } from "jotai";
 import { UsersRoundIcon } from "lucide-react";
 import { useMemo } from "react";
+import { NavGroupProps } from "./types";
 
 export function AppSidebar({
   groups,
@@ -37,7 +38,6 @@ export function AppSidebar({
       groups[groups.length - 1].items = [
         {
           title: "账户管理",
-          url: "account",
           icon: UsersRoundIcon,
           items: [
             {
