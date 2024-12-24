@@ -13,11 +13,12 @@ import {
 import batchRoutes from "./Job/Batch";
 import interactiveRoutes from "./Job/Interactive";
 import datasetRoutes from "./Data";
-import { NavGroupProps } from "@/components/sidebar/nav-main";
+import { NavGroupProps } from "@/components/sidebar/types";
 import AuthedRouter from "./AuthedRouter";
 import NotFound from "@/components/layout/NotFound";
 import FeedBack from "./Feedback";
 import UserSettings from "./Setting/UserSetting";
+import Model from "./Data/Model";
 
 const portalRoutes: SidebarItem[] = [
   {
@@ -94,6 +95,12 @@ const portalRoutes: SidebarItem[] = [
           children: datasetRoutes,
         },
       },
+      {
+        route: {
+          path: "model/*",
+          element: <Model />,
+        },
+      },
     ],
   },
   {
@@ -138,9 +145,7 @@ const userSidebarGroups: NavGroupProps[] = [
       },
       {
         title: "我的作业",
-        url: "job",
         icon: FlaskConicalIcon,
-        isActive: true,
         items: [
           {
             title: "批处理作业",
@@ -154,7 +159,6 @@ const userSidebarGroups: NavGroupProps[] = [
       },
       {
         title: "我的服务",
-        url: "service",
         icon: BriefcaseIcon,
         items: [
           {
@@ -174,7 +178,6 @@ const userSidebarGroups: NavGroupProps[] = [
     items: [
       {
         title: "镜像管理",
-        url: "image",
         icon: BoxIcon,
         items: [
           {
@@ -189,7 +192,6 @@ const userSidebarGroups: NavGroupProps[] = [
       },
       {
         title: "数据管理",
-        url: "data",
         icon: DatabaseIcon,
         items: [
           {
@@ -200,6 +202,10 @@ const userSidebarGroups: NavGroupProps[] = [
             title: "数据集",
             url: "data/dataset",
           },
+          {
+            title: "模型",
+            url: "data/model",
+          },
         ],
       },
     ],
@@ -209,7 +215,6 @@ const userSidebarGroups: NavGroupProps[] = [
     items: [
       {
         title: "设置",
-        url: "setting",
         icon: SettingsIcon,
         items: [
           {

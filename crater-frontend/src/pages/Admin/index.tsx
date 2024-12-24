@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { Account } from "./Account";
 import admindatasetRoutes from "./Data";
-import { NavGroupProps } from "@/components/sidebar/nav-main";
+import { NavGroupProps } from "@/components/sidebar/types";
 import AdminJob from "./Job";
 import NotFound from "@/components/layout/NotFound";
 import UserDetail from "@/components/custom/UserDetail";
@@ -158,8 +158,6 @@ const adminSidebarGroups: NavGroupProps[] = [
     items: [
       {
         title: "集群管理",
-        isActive: true,
-        url: "cluster",
         icon: ServerIcon,
         items: [
           {
@@ -203,7 +201,6 @@ const adminSidebarGroups: NavGroupProps[] = [
     items: [
       {
         title: "镜像管理",
-        url: "image",
         icon: BoxIcon,
         items: [
           {
@@ -218,7 +215,6 @@ const adminSidebarGroups: NavGroupProps[] = [
       },
       {
         title: "数据管理",
-        url: "data",
         icon: DatabaseIcon,
         items: [
           {
