@@ -13,6 +13,7 @@ import (
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	"github.com/raids-lab/crater/pkg/config"
 	tasksvc "github.com/raids-lab/crater/pkg/db/task"
+	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/samber/lo"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -259,19 +260,38 @@ func (mgr *OperationsMgr) DeleteUnUsedJobList(c *gin.Context) {
 func (mgr *OperationsMgr) deleteLeastUsedGPUJobs(c *gin.Context, duration, util int, confirm bool) []string {
 	toDeleteJobs := mgr.filterJobsToKeep(c, mgr.getLeastUsedGPUJobs(c, duration, util))
 	deletedJobList := []string{}
+	jobDB := query.Job
 	for _, job := range toDeleteJobs {
-		if confirm {
-			if err := mgr.deleteJobByName(c, job.jobAPIVersion, job.jobType, job.jobName); err != nil {
-				fmt.Printf("Delete job %s failed\n", job)
-			}
-			alertMgr := alert.GetAlertMgr()
-			if alertMgr != nil {
-				if err := alertMgr.DeleteJob(c, job.jobName, nil); err != nil {
-					fmt.Println("Send Alarm Email failed:", err)
-				}
-			}
+		dbJob, dbErr := jobDB.WithContext(c).Where(jobDB.JobName.Eq(job.jobName)).First()
+
+		if dbErr != nil {
+			continue
 		}
+
 		deletedJobList = append(deletedJobList, job.jobName)
+
+		if !confirm {
+			// just get to delete job list
+			continue
+		}
+
+		if err := mgr.deleteJobByName(c, job.jobAPIVersion, job.jobType, job.jobName); err != nil {
+			logutils.Log.Infof("Delete job %s failed\n", job)
+		}
+
+		if !dbJob.AlertEnabled {
+			// no need to send alert
+			continue
+		}
+
+		alertMgr, alertErr := alert.GetAlertMgr()
+		if alertErr != nil {
+			logutils.Log.Infof("alert mgr failed to init for job %s", job)
+			continue
+		}
+		if err := alertMgr.DeleteJob(c, job.jobName, nil); err != nil {
+			logutils.Log.Infof("Send Alarm Email failed for job %s", job)
+		}
 	}
 	return deletedJobList
 }
@@ -283,24 +303,37 @@ func (mgr *OperationsMgr) remindLeastUsedGPUJobs(c *gin.Context, duration, util 
 
 	remindedJobList := []string{}
 
-	remindedJobs, _ := jobDB.WithContext(c).Where(jobDB.Reminded).Find()
+	// check all the running jobs
+	remindedJobs, _ := jobDB.WithContext(c).Where(jobDB.Status.Eq(string(batch.Running))).Find()
+
 	remindMap := make(map[string]bool)
 	for _, item := range remindedJobs {
 		remindMap[item.JobName] = item.Reminded
 	}
 
 	for _, job := range toRemindJobs {
+		dbJob, dbErr := jobDB.WithContext(c).Where(jobDB.JobName.Eq(job.jobName)).First()
+		if dbErr != nil {
+			continue
+		}
+
+		if !dbJob.AlertEnabled {
+			continue
+		}
+
 		if remind, ok := remindMap[job.jobName]; ok && !remind {
 			// if remind is false, then send alarm email, and set remind to true
-			alertMgr := alert.GetAlertMgr()
-			if alertMgr != nil {
+			alertMgr, alertErr := alert.GetAlertMgr()
+			if alertErr == nil {
 				if err := alertMgr.RemindLowUsageJob(c, job.jobName, deleteTime, nil); err != nil {
-					fmt.Println("Send Alarm Email failed:", err)
+					logutils.Log.Infof("Send Alarm Email failed for job %s", job.jobName)
+				} else {
+					delete(remindMap, job.jobName)
 				}
 			}
 			// set remind to true
 			if _, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(job.jobName)).Update(jobDB.Reminded, true); err != nil {
-				fmt.Printf("Update job %s remind failed\n", job)
+				logutils.Log.Infof("Update job %s remind failed\n", job)
 			}
 			remindedJobList = append(remindedJobList, job.jobName)
 		}
@@ -309,7 +342,7 @@ func (mgr *OperationsMgr) remindLeastUsedGPUJobs(c *gin.Context, duration, util 
 	// for the jobs remaining in remindMap, set remind to false
 	for jobName := range remindMap {
 		if _, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(jobName)).Update(jobDB.Reminded, false); err != nil {
-			fmt.Printf("Update job %s remind failed\n", jobName)
+			logutils.Log.Infof("Update job %s remind failed\n", jobName)
 		}
 	}
 	return remindedJobList

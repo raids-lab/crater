@@ -18,6 +18,7 @@ import (
 //  6. 发送邮箱验证码
 type AlertInterface interface {
 	JobRunningAlert(ctx context.Context, jobName string) error
+	JobFailureAlert(ctx context.Context, jobName string) error
 	DeleteJob(ctx context.Context, jobName string, extra map[string]any) error
 	RemindLowUsageJob(ctx context.Context, jobName string, deleteTime time.Time, extra map[string]any) error
 	SendVerificationCode(ctx context.Context, code string, receiver *model.UserAttribute) error

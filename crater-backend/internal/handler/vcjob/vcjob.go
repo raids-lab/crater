@@ -63,6 +63,7 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET(":name/pods", mgr.GetJobPods)
 	g.GET(":name/template", mgr.GetJobTemplate)
 	g.GET(":name/event", mgr.GetJobEvents)
+	g.PUT(":name/alert", mgr.SetAlertEnabled)
 
 	// jupyter
 	g.POST("jupyter", mgr.CreateJupyterJob)
@@ -688,4 +689,36 @@ func (mgr *VolcanojobMgr) GetJobEvents(c *gin.Context) {
 	}
 
 	resputil.Success(c, events)
+}
+
+// SetAlertEnabled godoc
+// @Summary set AlertEnabled of the job to the opposite value
+// @Description set AlertEnabled of the job to the opposite value
+// @Tags VolcanoJob
+// @Accept json
+// @Produce json
+// @Success 200 {object} resputil.Response[any] "Success"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/vcjobs/{name}/alert [put]
+func (mgr *VolcanojobMgr) SetAlertEnabled(c *gin.Context) {
+	var req JobActionReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	jobDB := query.Job
+	j, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(req.JobName)).First()
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	preStatus := j.AlertEnabled
+	if _, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(req.JobName)).Update(jobDB.AlertEnabled, !preStatus); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	message := fmt.Sprintf("Set %s AlertEnabled to %t", req.JobName, !preStatus)
+	resputil.Success(c, message)
 }
