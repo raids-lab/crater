@@ -19,7 +19,7 @@
 
 ## 启动 Jupyter 示例
 
-请参考 [交互式作业](./quick-start/interactive.md) 启动 Jupyter Lab。
+请参考 [交互式作业](../quick-start/interactive.md) 启动 Jupyter Lab。
 
 之后，您可能会在这个容器内执行一些操作，例如安装一个 Pip 包：
 
