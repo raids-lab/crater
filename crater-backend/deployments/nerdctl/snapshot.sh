@@ -9,6 +9,20 @@ show_usage() {
     exit 1
 }
 
+# Delete the committed image
+delete_image() {
+    echo "[Cleanup] Deleting image $imageurl"
+    nerdctl --namespace=k8s.io rmi "$imageurl" 2>&1
+    if [ $? -eq 0 ]; then
+        echo "Image $imageurl deleted successfully."
+    else
+        echo "Failed to delete image $imageurl."
+    fi
+}
+
+# Trap for cleanup on exit or interruption
+trap delete_image EXIT
+
 # Parse command line arguments
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -109,10 +123,25 @@ fi
 echo "Commit result: $commit_result"
 
 echo "[Step 4] Pushing the image to the registry..."
-push_result=$(nerdctl -n k8s.io push "$imageurl" 2>&1)
-if [ $? -ne 0 ]; then
-    echo "Error running push command: $push_result"
-    exit 1
-fi
+max_retries=5
+retry_delay=2
+attempt=1
+
+while [ $attempt -le $max_retries ]; do
+    push_result=$(nerdctl -n k8s.io push "$imageurl" 2>&1)
+    if [ $? -eq 0 ]; then
+        echo "Push successful."
+        break
+    fi
+    echo "Push attempt $attempt failed: $push_result"
+    if [ $attempt -eq $max_retries ]; then
+        echo "Maximum retries reached. Exiting with failure."
+        exit 1
+    fi
+    echo "Retrying in $retry_delay seconds..."
+    sleep $retry_delay
+    retry_delay=$((retry_delay * 2))
+    attempt=$((attempt + 1))
+done
 
 echo "All commands executed successfully."
