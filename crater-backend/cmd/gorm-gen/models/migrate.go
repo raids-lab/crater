@@ -76,6 +76,21 @@ func main() {
 				return tx.Migrator().DropColumn(&Datasets{}, "Type")
 			},
 		},
+		{
+			ID: "202412241200", // 确保ID是唯一的
+			Migrate: func(tx *gorm.DB) error {
+				type Job struct {
+					AlertEnabled bool `gorm:"type:boolean;default:true;comment:是否启用通知"`
+				}
+				return tx.Migrator().AddColumn(&Job{}, "AlertEnabled")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Job struct {
+					AlertEnabled bool `gorm:"type:boolean;default:true;comment:是否启用通知"`
+				}
+				return tx.Migrator().DropColumn(&Job{}, "AlertEnabled")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {

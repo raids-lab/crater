@@ -16,29 +16,30 @@ type alertMgr struct {
 }
 
 var (
-	once    sync.Once
-	alerter *alertMgr
+	once     sync.Once
+	alerter  *alertMgr
+	alertErr error
 )
 
-func GetAlertMgr() AlertInterface {
+func GetAlertMgr() (AlertInterface, error) {
 	once.Do(func() {
-		alerter = initAlertMgr()
+		alerter, alertErr = initAlertMgr()
 	})
-	return alerter
+	return alerter, alertErr
 }
 
-func initAlertMgr() *alertMgr {
+func initAlertMgr() (*alertMgr, error) {
 	// 初始化选择具体要使用的 alert handler
 	// 目前只支持 SMTP，下一步支持 WPS Robot
 	// 后续可以考虑从 Config 中进行配置
 	smtpHandler, err := newSMTPAlerter()
 	if err != nil {
 		logutils.Log.Error("Init alert mgr error")
-		return nil
+		return nil, err
 	}
 	return &alertMgr{
 		handler: smtpHandler,
-	}
+	}, nil
 }
 
 func (a *alertMgr) JobRunningAlert(ctx context.Context, jobName string) error {
@@ -58,6 +59,25 @@ func (a *alertMgr) JobRunningAlert(ctx context.Context, jobName string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	// TODO: 审计，留下所有发送邮件记录
+	return nil
+}
+
+func (a *alertMgr) JobFailureAlert(ctx context.Context, jobName string) error {
+	j := query.Job
+	job, err := j.WithContext(ctx).Where(j.JobName.Eq(jobName)).Preload(j.User).First()
+	if err != nil {
+		return err
+	}
+	receiver := job.User.Attributes.Data()
+
+	subject := "作业失败通知"
+	body := fmt.Sprintf("用户 %s 您好：您的作业 %s (%s) 运行失败。", job.User.Attributes.Data().Nickname, job.Name, job.JobName)
+	err = a.handler.SendMessageTo(ctx, &receiver, subject, body)
+	if err != nil {
+		return err
 	}
 
 	// TODO: 审计，留下所有发送邮件记录
