@@ -46,6 +46,7 @@ func newJob(db *gorm.DB, opts ...gen.DOOption) job {
 	_job.Reminded = field.NewBool(tableName, "reminded")
 	_job.Attributes = field.NewField(tableName, "attributes")
 	_job.Template = field.NewString(tableName, "template")
+	_job.AlertEnabled = field.NewBool(tableName, "alert_enabled")
 	_job.User = jobBelongsToUser{
 		db: db.Session(&gorm.Session{}),
 
@@ -106,6 +107,7 @@ type job struct {
 	Reminded                 field.Bool
 	Attributes               field.Field
 	Template                 field.String
+	AlertEnabled             field.Bool
 	User                     jobBelongsToUser
 
 	Account jobBelongsToAccount
@@ -144,6 +146,7 @@ func (j *job) updateTableName(table string) *job {
 	j.Reminded = field.NewBool(table, "reminded")
 	j.Attributes = field.NewField(table, "attributes")
 	j.Template = field.NewString(table, "template")
+	j.AlertEnabled = field.NewBool(table, "alert_enabled")
 
 	j.fillFieldMap()
 
@@ -168,7 +171,7 @@ func (j *job) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (j *job) fillFieldMap() {
-	j.fieldMap = make(map[string]field.Expr, 21)
+	j.fieldMap = make(map[string]field.Expr, 22)
 	j.fieldMap["id"] = j.ID
 	j.fieldMap["created_at"] = j.CreatedAt
 	j.fieldMap["updated_at"] = j.UpdatedAt
@@ -188,6 +191,7 @@ func (j *job) fillFieldMap() {
 	j.fieldMap["reminded"] = j.Reminded
 	j.fieldMap["attributes"] = j.Attributes
 	j.fieldMap["template"] = j.Template
+	j.fieldMap["alert_enabled"] = j.AlertEnabled
 
 }
 

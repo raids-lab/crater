@@ -153,22 +153,37 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, nil
 	}
 
-	// if job found, update the record
 	updateRecord := r.generateUpdateJobModel(ctx, &job)
+
+	// if job found: before updating, check previous status, and send email
+	dbJob, _ := j.WithContext(ctx).Where(j.JobName.Eq(job.Name)).First()
+	if dbJob.AlertEnabled {
+		alertMgr, alertErr := alert.GetAlertMgr()
+
+		// send email after pending
+		if job.Status.State.Phase == batch.Running && dbJob.Status != batch.Running {
+			if alertErr != nil {
+				if err = alertMgr.JobRunningAlert(ctx, job.Name); err != nil {
+					logger.Error(err, "fail to send email")
+				}
+			}
+		}
+
+		// alert job failure
+		if job.Status.State.Phase == batch.Failed && dbJob.Status != batch.Failed {
+			if alertErr != nil {
+				if err = alertMgr.JobFailureAlert(ctx, job.Name); err != nil {
+					logger.Error(err, "fail to send email")
+				}
+			}
+		}
+	}
+
+	// if job found, update the record
 	_, err = j.WithContext(ctx).Where(j.JobName.Eq(job.Name)).Updates(updateRecord)
 	if err != nil {
 		logger.Error(err, "unable to update job record")
 		return ctrl.Result{Requeue: true}, err
-	}
-
-	// send email after pending
-	if job.Status.State.Phase == batch.Running {
-		alertMgr := alert.GetAlertMgr()
-		if alertMgr != nil {
-			if err = alertMgr.JobRunningAlert(ctx, job.Name); err != nil {
-				logger.Error(err, "fail to send email")
-			}
-		}
 	}
 
 	return ctrl.Result{}, nil

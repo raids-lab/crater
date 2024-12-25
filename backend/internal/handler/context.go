@@ -246,8 +246,8 @@ func (mgr *ContextMgr) SendUserVerificationCode(c *gin.Context) {
 	verifyCode := fmt.Sprintf("%06d", getRandomCode())
 	verifyCodeCache[req.Email] = verifyCode
 
-	alertMgr := alert.GetAlertMgr()
-	if alertMgr == nil {
+	alertMgr, alertErr := alert.GetAlertMgr()
+	if alertErr != nil {
 		resputil.Error(c, "Get alert Mgr error", resputil.NotSpecified)
 		return
 	}
