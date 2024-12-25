@@ -7,7 +7,7 @@ web:
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "e76c4867"
+      tag: "fa99567e"
       pullPolicy: "IfNotPresent"
   storage:
     image:
