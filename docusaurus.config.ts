@@ -24,6 +24,10 @@ const config: Config = {
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "warn",
 
+  markdown: {
+    mermaid: true,
+  },
+
   plugins: [tailwindPlugin],
 
   // Even if you don't use internationalization, you can use this field to set
@@ -153,6 +157,7 @@ const config: Config = {
         language: ["en", "zh"],
       },
     ],
+    "@docusaurus/theme-mermaid",
   ],
 };
 

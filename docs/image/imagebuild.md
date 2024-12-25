@@ -1,5 +1,11 @@
 # 镜像制作
 
+:::danger
+
+这一页的内容已过时，请等待开发人员维护。
+
+:::
+
 ## 点击“制作镜像”按钮
 
 ![alt text](img/imagebuild_button.png)
