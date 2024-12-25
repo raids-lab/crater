@@ -75,12 +75,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ uploadPath, disabled }) => {
         .catch((error) => {
           toast.info(error);
         });
-      console.log("File uploaded successfully");
-    } catch (error) {
-      console.error("Error uploading file:", error);
     } finally {
       setIsUploading(false);
-      setTimeout(() => setProgress(0), 500); // 上传完成后3秒重置进度
+      setTimeout(() => setProgress(0), 500);
     }
   };
 
