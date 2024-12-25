@@ -30,7 +30,6 @@ import {
   FolderPlusIcon,
   LogInIcon,
   Trash2,
-  UploadIcon,
 } from "lucide-react";
 import { useSetAtom } from "jotai";
 import { globalBreadCrumb } from "@/utils/store";
@@ -39,7 +38,6 @@ import {
   apiFileDelete,
   apiGetFiles,
   apiMkdir,
-  apiUploadFile,
 } from "@/services/api/file";
 import { ACCESS_TOKEN_KEY } from "@/utils/store";
 import { showErrorToast } from "@/utils/toast";
@@ -62,6 +60,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
+import FileUpload from "@/components/file/FileUpload";
 
 const getFolderDescription = (folder: string) => {
   // public: 公共空间
@@ -435,44 +434,8 @@ export const Component: FC = () => {
     [navigate, deleteFile, isRoot, path, pathname],
   );
 
-  const refInput = useRef<HTMLInputElement>(null);
   const refInput2 = useRef<HTMLInputElement>(null);
 
-  const { mutate: upload } = useMutation({
-    mutationFn: (Files: File[]) => uploadFile(Files),
-    onSuccess: () => {
-      toast.success("文件已上传");
-      void queryClient.invalidateQueries({
-        queryKey: ["data", "filesystem", path],
-      });
-    },
-  });
-
-  const handleFileSelect = ({
-    currentTarget: { files },
-  }: React.ChangeEvent<HTMLInputElement>) => {
-    if (files && files.length) {
-      const Files = Array.from(files);
-      upload(Files);
-    }
-  };
-
-  const uploadFile = async (Files: File[]) => {
-    for (const file of Files) {
-      if (file.name === undefined) return null;
-      const filename = file.name.split("/").pop();
-      if (filename === undefined) return null;
-      const filedataBuffer = await file.arrayBuffer();
-      await apiUploadFile(`${path}/` + filename, filedataBuffer)
-        .then(() => {
-          toast.success("文件已上传");
-        })
-        .catch((error) => {
-          showErrorToast(error);
-        });
-    }
-    return null;
-  };
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.persist();
     setDirName(e.target.value);
@@ -559,25 +522,7 @@ export const Component: FC = () => {
           >
             <ArrowLeftIcon className="size-4" />
           </Button>
-          <Button
-            onClick={() => {
-              refInput.current?.click();
-            }}
-            size="icon"
-            variant="outline"
-            className="h-8 w-8 p-0"
-            disabled={isRoot}
-            title="上传文件"
-          >
-            <UploadIcon className="size-4" />
-          </Button>
-          <input
-            type="file"
-            ref={refInput}
-            style={{ display: "none" }}
-            multiple={true}
-            onChange={handleFileSelect}
-          />
+          <FileUpload uploadPath={path} disabled={isRoot}></FileUpload>
           <Dialog>
             <DialogTrigger asChild>
               <Button
