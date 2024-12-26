@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -256,20 +257,34 @@ func (mgr *ImagePackMgr) AdminCreate(c *gin.Context) {
 }
 
 func (mgr *ImagePackMgr) generateDockerfile(req *CreateKanikoRequest) string {
-	// TODO: lzy
-	fmt.Printf("%+v", req)
-	return `
-			# 使用ubuntu作为基础镜像
-			FROM ***REMOVED***/docker.io/library/ubuntu:latest
-			# 安装Python3和pip3
-			RUN apt  update \
-				&&  apt -y install python3 
+	// Handle APT packages
+	aptInstallSection := "\n# No APT packages specified"
+	if req.APTPackages != "" {
+		aptPackages := strings.Fields(req.APTPackages) // split by space
+		aptInstallSection = fmt.Sprintf(`
+# Install APT packages
+RUN apt-get update && apt-get install -y %s && \
+    rm -rf /var/lib/apt/lists/*`, strings.Join(aptPackages, " "))
+	}
 
-	# 设置工作目录
-	WORKDIR /app
-	# 容器启动时执行的命令，可以根据需要修改
-	CMD ["bash"]
-	`
+	// Generate requirements.txt and install Python dependencies
+	requirementsSection := "\n# No Python dependencies specified"
+	if req.PythonRequirements != "" {
+		requirementsSection = fmt.Sprintf(`
+# Install Python dependencies
+RUN echo -e "%s" > /requirements.txt && \
+    pip install --extra-index-url https://mirrors.aliyun.com/pypi/simple/ --no-cache-dir -r /requirements.txt`,
+			strings.ReplaceAll(req.PythonRequirements, "\n", "\\n"))
+	}
+
+	// Generate Dockerfile
+	dockerfile := fmt.Sprintf(`FROM %s
+USER root
+%s
+%s
+`, req.SourceImage, aptInstallSection, requirementsSection)
+
+	return dockerfile
 }
 
 func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, req *CreateKanikoRequest, token util.JWTMessage, dockerfile string) {
