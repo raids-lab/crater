@@ -10,10 +10,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { apiUserCreateKaniko } from "@/services/api/imagepack";
 import {
   Select,
   SelectContent,
@@ -42,31 +39,6 @@ interface TaskFormProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function ImageCreateForm({ closeSheet }: TaskFormProps) {
-  const queryClient = useQueryClient();
-
-  const { mutate: createImagePack } = useMutation({
-    mutationFn: (values: FormSchema) =>
-      apiUserCreateKaniko({
-        gitRepository: values.gitRepository ? values.gitRepository : "",
-        accessToken: values.accessToken ? values.accessToken : "",
-        dockerfile: values.dockerfile ? values.dockerfile : "",
-        registryServer: "",
-        registryUser: "",
-        registryPass: "",
-        registryProject: "",
-        imageName: values.imageName,
-        imageTag: values.imageTag,
-        description: values.description,
-      }),
-    onSuccess: async (_, { imageName, imageTag }) => {
-      await queryClient.invalidateQueries({
-        queryKey: ["imagepack", "list"],
-      });
-      toast.success(`镜像 ${imageName}:${imageTag} 创建成功`);
-      closeSheet();
-    },
-  });
-
   // 1. Define your form.
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
@@ -84,10 +56,12 @@ export function ImageCreateForm({ closeSheet }: TaskFormProps) {
   const currentValues = form.watch();
 
   // 2. Define a submit handler.
-  const onSubmit = (values: FormSchema) => {
+  const onSubmit = () => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
-    createImagePack(values);
+
+    // The corresponding interface has been used to create from dockerfile sheets
+    closeSheet();
   };
 
   return (
