@@ -41,8 +41,8 @@ export function DataTableToolbar<TData>({
     <div className="flex items-center justify-between">
       <div className="flex flex-row items-center space-x-2">
         {children}
-        <div className="relative ml-auto h-8 flex-1 md:grow-0">
-          <SearchIcon className="absolute left-2 top-2 size-4 text-muted-foreground" />
+        <div className="relative ml-auto h-9 flex-1 md:grow-0">
+          <SearchIcon className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
           <Input
             placeholder={filterInput.placeholder}
             value={
@@ -54,7 +54,7 @@ export function DataTableToolbar<TData>({
                 .getColumn(filterInput.key)
                 ?.setFilterValue(event.target.value)
             }
-            className="h-8 w-[150px] bg-background pl-8 lg:w-[250px]"
+            className="h-9 w-[150px] bg-background pl-8 lg:w-[250px]"
           />
         </div>
         {filterOptions.map(
@@ -76,7 +76,7 @@ export function DataTableToolbar<TData>({
             title="Clear filters"
             type="button"
             onClick={() => table.resetColumnFilters()}
-            className="h-8 w-8 border-dashed"
+            className="size-9 border-dashed"
           >
             <XIcon className="size-4" />
           </Button>

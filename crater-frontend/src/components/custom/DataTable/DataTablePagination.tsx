@@ -62,7 +62,7 @@ export function DataTablePagination<TData>({
                 <TooltipButton
                   variant="outline"
                   size="icon"
-                  className="h-7 w-7"
+                  className="size-9"
                   tooltipContent={multipleHandler.title(
                     table.getFilteredSelectedRowModel().rows,
                   )}
@@ -108,7 +108,7 @@ export function DataTablePagination<TData>({
         <TooltipButton
           variant="outline"
           size="icon"
-          className="h-7 w-7"
+          className="size-9"
           tooltipContent="刷新"
           onClick={refetch}
         >
@@ -120,7 +120,7 @@ export function DataTablePagination<TData>({
             table.setPageSize(Number(value));
           }}
         >
-          <SelectTrigger className="h-7 w-[100px] bg-background pl-3 pr-2 text-xs">
+          <SelectTrigger className="h-9 w-[100px] bg-background pl-3 pr-2 text-xs">
             <SelectValue placeholder={table.getState().pagination.pageSize} />
           </SelectTrigger>
           <SelectContent side="top">
@@ -131,7 +131,7 @@ export function DataTablePagination<TData>({
             ))}
           </SelectContent>
         </Select>
-        <p className="pl-1.5 text-muted-foreground">
+        <p className="pl-1.5 font-medium text-muted-foreground">
           更新于 <time dateTime="2023-11-23">{updatedAt}</time>，
           {table.getFilteredSelectedRowModel().rows.length === 0 ? (
             <>共 {table.getFilteredRowModel().rows.length} 条</>
@@ -151,7 +151,7 @@ export function DataTablePagination<TData>({
         <div className="flex items-center space-x-1.5">
           <Button
             variant="outline"
-            className="hidden h-7 w-7 p-0 lg:flex"
+            className="hidden size-9 p-0 lg:flex"
             onClick={() => table.setPageIndex(0)}
             disabled={!table.getCanPreviousPage()}
             title="前往首页"
@@ -160,7 +160,7 @@ export function DataTablePagination<TData>({
           </Button>
           <Button
             variant="outline"
-            className="h-7 w-7 p-0"
+            className="size-9 p-0"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
             title="前往上一页"
@@ -170,7 +170,7 @@ export function DataTablePagination<TData>({
           </Button>
           <Button
             variant="outline"
-            className="h-7 w-7 p-0"
+            className="size-9 p-0"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
             title="前往下一页"
@@ -180,7 +180,7 @@ export function DataTablePagination<TData>({
           </Button>
           <Button
             variant="outline"
-            className="hidden h-7 w-7 p-0 lg:flex"
+            className="hidden size-9 p-0 lg:flex"
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
             disabled={!table.getCanNextPage()}
             title="前往尾页"

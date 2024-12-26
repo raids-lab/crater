@@ -23,27 +23,20 @@ import {
 } from "@/components/ui/table";
 import { DataTablePagination, MultipleHandler } from "./DataTablePagination";
 import { DataTableToolbar, DataTableToolbarConfig } from "./DataTableToolbar";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { UseQueryResult } from "@tanstack/react-query";
-import { CardTitle } from "@/components/ui-custom/card";
 import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
 import { Checkbox } from "@/components/ui/checkbox";
 import { GridIcon } from "lucide-react";
+import PageTitle from "@/components/layout/PageTitle";
 
 interface DataTableProps<TData, TValue>
   extends React.HTMLAttributes<HTMLDivElement> {
   info?: {
     title: string;
     description: string;
-    children?: React.ReactNode;
   };
   query: UseQueryResult<TData[], Error>;
   columns: ColumnDef<TData, TValue>[];
@@ -99,13 +92,11 @@ export function DataTable<TData, TValue>({
           />
         ),
         cell: ({ row }) => (
-          <div>
-            <Checkbox
-              checked={row.getIsSelected()}
-              onCheckedChange={(value) => row.toggleSelected(!!value)}
-              aria-label="Select row"
-            />
-          </div>
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Select row"
+          />
         ),
         enableSorting: false,
         enableHiding: false,
@@ -139,38 +130,36 @@ export function DataTable<TData, TValue>({
   });
 
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
+    <div className={cn("flex flex-col gap-4", className)}>
+      {info && (
+        <PageTitle
+          title={info.title}
+          description={info.description}
+          actionArea={children}
+        />
+      )}
       {toolbarConfig && (
         <DataTableToolbar
           table={table}
           config={toolbarConfig}
           isLoading={query.isLoading}
         >
-          {children}
+          {!info && <>{children}</>}
         </DataTableToolbar>
       )}
-      <Card className="overflow-hidden">
-        {info ? (
-          <CardHeader className="mb-6 flex flex-row items-start border-b bg-muted/50 dark:bg-muted/25">
-            <div className="grid gap-2">
-              <CardTitle>{info.title}</CardTitle>
-              <CardDescription>{info.description}</CardDescription>
-            </div>
-            <div className="ml-auto flex items-center gap-1">
-              {info.children}
-            </div>
-          </CardHeader>
-        ) : (
-          <CardHeader className="py-3" />
-        )}
-        <CardContent>
+      <Card className="overflow-hidden rounded-md shadow-sm">
+        <CardContent className="p-0">
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
                     return (
-                      <TableHead key={header.id} colSpan={header.colSpan}>
+                      <TableHead
+                        key={header.id}
+                        colSpan={header.colSpan}
+                        className="px-4 py-2"
+                      >
                         {header.isPlaceholder
                           ? null
                           : flexRender(
@@ -191,7 +180,7 @@ export function DataTable<TData, TValue>({
                     data-state={row.getIsSelected() && "selected"}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
+                      <TableCell key={cell.id} className="pl-4">
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext(),
@@ -226,15 +215,13 @@ export function DataTable<TData, TValue>({
             </TableBody>
           </Table>
         </CardContent>
-        <CardFooter className={cn("flex flex-row space-x-2 px-6")}>
-          <DataTablePagination
-            table={table}
-            refetch={() => void refetch()}
-            updatedAt={updatedAt}
-            multipleHandlers={multipleHandlers}
-          />
-        </CardFooter>
       </Card>
+      <DataTablePagination
+        table={table}
+        refetch={() => void refetch()}
+        updatedAt={updatedAt}
+        multipleHandlers={multipleHandlers}
+      />
     </div>
   );
 }
