@@ -159,16 +159,10 @@ export const imagepackPublicPersonalStatus: {
 ];
 
 export interface KanikoCreate {
-  gitRepository: string;
-  accessToken: string;
-  dockerfile: string;
-  registryServer: string;
-  registryUser: string;
-  registryPass: string;
-  registryProject: string;
-  imageName: string;
-  imageTag: string;
   description: string;
+  image: string;
+  packages: string;
+  requirements: string;
 }
 
 export interface ImageUpload {

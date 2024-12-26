@@ -28,6 +28,8 @@ import Combobox from "@/components/form/Combobox";
 import ImageItem from "@/components/form/ImageItem";
 import useImageQuery from "@/hooks/query/useImageQuery";
 import { Input } from "@/components/ui/input";
+import { apiUserCreateKaniko } from "@/services/api/imagepack";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export const dockerfileFormSchema = z.object({
   baseImage: z.string().min(1, "基础镜像是必填项"),
@@ -133,6 +135,26 @@ function DockerfileSheetContent({
       />
       <FormField
         control={form.control}
+        name="aptPackages"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>APT Packages</FormLabel>
+            <FormControl>
+              <Textarea
+                placeholder="e.g. git curl"
+                className="h-24"
+                {...field}
+              />
+            </FormControl>
+            <FormDescription>
+              输入要安装的 APT 包，例如 git、curl 等。使用空格分隔多个包。
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
         name="requirements"
         render={({ field }) => (
           <FormItem>
@@ -147,26 +169,6 @@ function DockerfileSheetContent({
             <FormDescription>
               请粘贴 requirements.txt 文件的内容，以便安装所需的 Python
               包。点击帮助图标查看示例。
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={form.control}
-        name="aptPackages"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>APT Packages</FormLabel>
-            <FormControl>
-              <Textarea
-                placeholder="e.g. git curl"
-                className="h-24"
-                {...field}
-              />
-            </FormControl>
-            <FormDescription>
-              输入要安装的 APT 包，例如 git、curl 等。使用空格分隔多个包。
             </FormDescription>
             <FormMessage />
           </FormItem>
@@ -200,7 +202,8 @@ export function DockerfileSheet({
   closeSheet,
   ...props
 }: DockerfileSheetProps) {
-  const [isLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const queryClient = useQueryClient();
 
   const form = useForm<DockerfileFormValues>({
     resolver: zodResolver(dockerfileFormSchema),
@@ -211,10 +214,31 @@ export function DockerfileSheet({
     },
   });
 
+  const { mutate: submitDockerfileSheet } = useMutation({
+    mutationFn: (values: DockerfileFormValues) =>
+      apiUserCreateKaniko({
+        description: values.description ? values.description : "",
+        image: values.baseImage,
+        requirements: values.requirements ? values.requirements : "",
+        packages: values.aptPackages ? values.aptPackages : "",
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["imagelink", "list"],
+      });
+      closeSheet();
+      setIsLoading(false);
+      toast.success(`镜像开始制作，请在下方列表中查看制作状态`);
+    },
+    onError: (error) => {
+      setIsLoading(false);
+      toast.error(`镜像制作请求提交失败：${error.message}`);
+    },
+  });
+
   const onSubmit = (values: DockerfileFormValues) => {
-    // setIsLoading(true);
-    toast.warning("正在生成 Dockerfile... " + values.toString());
-    closeSheet();
+    setIsLoading(true);
+    submitDockerfileSheet(values);
   };
 
   return (
