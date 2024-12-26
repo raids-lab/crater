@@ -24,18 +24,9 @@ import { TimeDistance } from "@/components/custom/TimeDistance";
 import { toast } from "sonner";
 import { getHeader, jobToolbarConfig } from "@/pages/Portal/Job/statuses";
 import { logger } from "@/utils/loglevel";
-import Quota from "./Quota";
 import JobPhaseLabel from "@/components/badge/JobPhaseBadge";
 import { Link } from "react-router-dom";
 import {
-  Card,
-  CardTitle,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card";
-import {
-  ArrowRightLeftIcon,
   ExternalLink,
   InfoIcon,
   LockIcon,
@@ -62,6 +53,7 @@ import {
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
 import TooltipLink from "@/components/label/TooltipLink";
+import DocsButton from "@/components/button/DocsButton";
 
 const InterOverview = () => {
   const jobType = useAtomValue(globalJobUrl);
@@ -313,36 +305,12 @@ const InterOverview = () => {
 
   return (
     <>
-      <div className="grid gap-5 lg:grid-cols-4">
-        <Card className="row-span-2 flex flex-col justify-between lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex flex-row items-center justify-start gap-2">
-              <ArrowRightLeftIcon className="text-primary" /> 交互式作业
-            </CardTitle>
-            <CardDescription className="text-balance pt-2 leading-relaxed">
-              提供开箱即用的 Jupyter Lab 或 Web IDE， 可用于代码编写、调试等。
-            </CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <SplitButton
-              title="interactive"
-              urls={[
-                {
-                  url: `portal/job/inter/new-jupyter-${jobType}`,
-                  name: " Jupyter Lab",
-                },
-                {
-                  url: "portal/job/inter/new-webide",
-                  name: " Web IDE",
-                  disabled: true,
-                },
-              ]}
-            />
-          </CardFooter>
-        </Card>
-        <Quota />
-      </div>
       <DataTable
+        info={{
+          title: "交互式作业",
+          description:
+            "提供开箱即用的 Jupyter Lab 或 Web IDE， 可用于代码编写、调试等。",
+        }}
         query={interactiveQuery}
         columns={interColumns}
         toolbarConfig={jobToolbarConfig}
@@ -364,7 +332,25 @@ const InterOverview = () => {
             isDanger: true,
           },
         ]}
-      ></DataTable>
+      >
+        <div className="flex flex-row gap-3">
+          <DocsButton title="查看文档" url="quick-start/interactive" />
+          <SplitButton
+            title="interactive"
+            urls={[
+              {
+                url: `portal/job/inter/new-jupyter-${jobType}`,
+                name: " Jupyter Lab",
+              },
+              {
+                url: "portal/job/inter/new-webide",
+                name: " Web IDE",
+                disabled: true,
+              },
+            ]}
+          />
+        </div>
+      </DataTable>
     </>
   );
 };

@@ -58,14 +58,14 @@ export function DataTableFacetedFilter<TData, TValue>({
         <Button
           variant="outline"
           size="sm"
-          className="h-8 border-dashed"
+          className="h-9 border-dashed"
           disabled={facets?.size === 0}
         >
-          <ListFilter className="mr-1.5 size-4" />
+          <ListFilter className="size-4" />
           {title}
           {selectedValues?.size > 0 && (
             <>
-              <Separator orientation="vertical" className="mx-2 h-4" />
+              <Separator orientation="vertical" className="h-4" />
               <Badge
                 variant="secondary"
                 className="rounded-sm px-1 font-normal lg:hidden"

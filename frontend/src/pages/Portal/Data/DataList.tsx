@@ -16,10 +16,10 @@ import {
   EllipsisVerticalIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import TipBadge from "@/components/badge/TipBadge";
 import TooltipButton from "@/components/custom/TooltipButton";
 import TooltipLink from "@/components/label/TooltipLink";
 import { IUserAttributes } from "@/services/api/admin/user";
+import PageTitle from "@/components/layout/PageTitle";
 
 export interface DataItem {
   id: number;
@@ -70,18 +70,11 @@ export default function DataList({
 
   return (
     <div>
-      <div className="flex flex-row items-center justify-between">
-        <div>
-          <h1 className="flex items-center text-xl font-bold tracking-tight">
-            {title}
-            <TipBadge className="ml-1.5" />
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            我们为您准备了一些常见{title}，也欢迎您上传并分享更多{title}。
-          </p>
-        </div>
-        {actionArea}
-      </div>
+      <PageTitle
+        title={title}
+        description={`我们为您准备了一些常见${title}，也欢迎您上传并分享更多${title}。`}
+        actionArea={actionArea}
+      />
       <div className="my-4 flex items-end justify-between sm:my-0 sm:items-center">
         <div className="flex flex-col gap-4 sm:my-4 sm:flex-row">
           <Input

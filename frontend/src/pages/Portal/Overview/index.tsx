@@ -24,7 +24,6 @@ import NivoPie from "@/components/chart/NivoPie";
 import SplitButton from "@/components/custom/SplitButton";
 import { Button } from "@/components/ui/button";
 import {
-  BookOpenIcon,
   BoxIcon,
   FlaskConicalIcon,
   LayoutGridIcon,
@@ -42,6 +41,7 @@ import NodeDetail from "@/components/node/NodeDetail";
 import useNodeQuery from "@/hooks/query/useNodeQuery";
 import GpuIcon from "@/components/icon/GpuIcon";
 import PieCard from "@/components/chart/PieCard";
+import DocsButton from "@/components/button/DocsButton";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -352,18 +352,7 @@ export const Component: FC = () => {
               <BoxIcon className="size-4" />
               镜像制作
             </Button>
-            <Button
-              variant="secondary"
-              onClick={() =>
-                window.open(
-                  `https://${import.meta.env.VITE_HOST}/website/docs/intro`,
-                )
-              }
-              className="hidden lg:flex"
-            >
-              <BookOpenIcon className="size-4" />
-              平台文档
-            </Button>
+            <DocsButton title="平台文档" url="intro" />
           </CardFooter>
         </Card>
         <PieCard
