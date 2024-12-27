@@ -4,11 +4,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Badge } from "../ui/badge";
 import { format, formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { useMemo } from "react";
-import { cn } from "@/lib/utils";
 
 export const TimeDistance = ({
   date,
@@ -39,14 +37,7 @@ export const TimeDistance = ({
   return (
     <TooltipProvider delayDuration={10}>
       <Tooltip>
-        <TooltipTrigger>
-          <Badge
-            className={cn("border-none p-0 text-sm font-normal", className)}
-            variant="outline"
-          >
-            {timeDiff}
-          </Badge>
-        </TooltipTrigger>
+        <TooltipTrigger className={className}>{timeDiff}</TooltipTrigger>
         <TooltipContent className="border bg-background text-foreground">
           {format(startTime, "PPPp", { locale: zhCN })}
         </TooltipContent>

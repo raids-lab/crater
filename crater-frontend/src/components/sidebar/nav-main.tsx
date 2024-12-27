@@ -38,7 +38,8 @@ export function NavGroup({ title, items }: NavGroupProps) {
   // get href from react-router-dom
   const location = useLocation();
   const href = useMemo(
-    () => location.pathname.replace("/portal/", ""),
+    () =>
+      location.pathname.replace(/^\/portal\//, "").replace(/^\/admin\//, ""),
     [location],
   );
 

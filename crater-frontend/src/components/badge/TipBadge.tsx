@@ -1,17 +1,19 @@
 import { cn } from "@/lib/utils";
 import { Badge } from "../ui/badge";
+import { ReactNode } from "react";
 
 const TipBadge = ({
   className,
   title,
 }: {
   className?: string;
-  title?: string;
+  title?: ReactNode;
 }) => {
   return (
     <Badge
       className={cn(
-        "select-none rounded-full bg-orange-600/15 px-2 py-0 uppercase text-orange-600 shadow-none hover:bg-orange-600/25",
+        "select-none rounded-full px-2 py-0 uppercase shadow-none",
+        "bg-orange-600/15 text-orange-600 hover:bg-orange-600/25",
         className,
       )}
     >

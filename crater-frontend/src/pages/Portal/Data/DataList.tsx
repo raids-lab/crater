@@ -14,12 +14,15 @@ import {
   BotIcon,
   DatabaseZapIcon,
   EllipsisVerticalIcon,
+  SearchIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import TooltipButton from "@/components/custom/TooltipButton";
 import TooltipLink from "@/components/label/TooltipLink";
 import { IUserAttributes } from "@/services/api/admin/user";
 import PageTitle from "@/components/layout/PageTitle";
+import TipBadge from "@/components/badge/TipBadge";
+import { TimeDistance } from "@/components/custom/TimeDistance";
 
 export interface DataItem {
   id: number;
@@ -77,14 +80,17 @@ export default function DataList({
       />
       <div className="my-4 flex items-end justify-between sm:my-0 sm:items-center">
         <div className="flex flex-col gap-4 sm:my-4 sm:flex-row">
-          <Input
-            placeholder={`搜索${title}...`}
-            className="h-9 w-40 lg:w-[250px]"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          <div className="relative ml-auto h-9 flex-1 md:grow-0">
+            <SearchIcon className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+            <Input
+              placeholder={`搜索${title}...`}
+              className="h-9 w-40 pl-8 lg:w-[250px]"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
           <Select value={modelType} onValueChange={setModelType}>
-            <SelectTrigger className="w-36">
+            <SelectTrigger className="min-w-36">
               <SelectValue>{modelType}</SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -97,7 +103,6 @@ export default function DataList({
             </SelectContent>
           </Select>
         </div>
-
         <Select value={sort} onValueChange={setSort}>
           <SelectTrigger className="w-16">
             <SelectValue>
@@ -129,18 +134,18 @@ export default function DataList({
         {filteredItems.map((item) => (
           <li
             key={item.name}
-            className="flex flex-col justify-between gap-2 rounded-lg border p-4 hover:shadow-md"
+            className="flex flex-col justify-between gap-3 rounded-lg border hover:shadow-md"
           >
-            <div className="flex flex-row items-center justify-between">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-row items-center justify-between p-4 pb-0">
+              <div className="flex items-center gap-2">
                 <div
-                  className={`flex size-9 items-center justify-center rounded-lg bg-primary/10 p-1 text-primary`}
+                  className={`flex size-10 items-center justify-center rounded-lg bg-primary/10 p-1 text-primary`}
                 >
                   {title === "模型" ? <BotIcon /> : <DatabaseZapIcon />}
                 </div>
                 <TooltipLink
                   to={`${item.id}`}
-                  name={item.name}
+                  name={<p>{item.name}</p>}
                   tooltip={`查看${title}详情`}
                   className="font-semibold"
                 />
@@ -155,15 +160,27 @@ export default function DataList({
                 </TooltipButton>
               )}
             </div>
-            <p className="line-clamp-2 text-balance text-sm text-gray-500">
+
+            {item.tags.length > 0 && (
+              <div className="flex flex-row flex-wrap gap-1 px-4 pb-1">
+                {item.tags.map((tag) => (
+                  <Badge variant="secondary" key={tag} className="rounded-full">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            <p className="line-clamp-2 text-balance px-4 text-sm text-muted-foreground">
               {item.desc}
             </p>
-            <div className="flex flex-row flex-wrap gap-1">
-              {item.tags.map((tag) => (
-                <Badge variant="outline" key={tag}>
-                  {tag}
-                </Badge>
-              ))}
+            <div>
+              <div className="flex flex-row flex-wrap gap-1 p-4 pt-0">
+                <TipBadge
+                  title="李亦龙"
+                  className="bg-purple-600/15 text-purple-600 hover:bg-purple-600/25"
+                />
+                <TipBadge title={<TimeDistance date={"2023"} />} />
+              </div>
             </div>
           </li>
         ))}
