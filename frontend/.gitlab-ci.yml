@@ -33,7 +33,7 @@ build_frontend_main:
     expire_in: 1 week
 
 # Build frontend and generate artifacts for develop branch
-build_frontend_develop:
+build_frontend_testing:
   stage: build_frontend_testing
   image: harbor.act.buaa.edu.cn/crater/node-pnpm:21
   script:
@@ -75,7 +75,7 @@ build_image_main:
     - build_frontend_main
 
 # Build Docker image and push to harbor registry for develop branch
-build_image_develop:
+build_image_testing:
   stage: build_image_testing
   image:
     name: harbor.act.buaa.edu.cn/crater/kaniko-executor:debug
@@ -88,7 +88,7 @@ build_image_develop:
       /kaniko/executor
       --context "${CI_PROJECT_DIR}"
       --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
-      --destination "${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}"
+      --destination "${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}-testing"
   only:
     - main
   dependencies:
@@ -109,14 +109,14 @@ deploy_main:
     - build_image_main
 
 # Deploy to Kubernetes cluster for develop branch
-deploy_develop:
+deploy_testing:
   stage: deploy_testing
   image:
     name: harbor.act.buaa.edu.cn/crater/bitnami-kubectl:240302
     entrypoint: [""]
   script:
     - kubectl config use-context raids/resource-scheduling/crater/web-frontend:crater-cluster
-    - kubectl set image deployment/crater-web-frontend crater-web-frontend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -n crater
+    - kubectl set image deployment/crater-web-frontend crater-web-frontend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}-testing -n crater
   only:
     - main
   dependencies:
