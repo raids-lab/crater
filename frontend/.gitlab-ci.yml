@@ -32,7 +32,7 @@ build_frontend_main:
       - dist/
     expire_in: 1 week
 
-# Build frontend and generate artifacts for develop branch
+# Build frontend and generate artifacts for testing branch
 build_frontend_testing:
   stage: build_frontend_testing
   image: harbor.act.buaa.edu.cn/crater/node-pnpm:21
@@ -41,7 +41,7 @@ build_frontend_testing:
     - pnpm config set store-dir .pnpm-store
     - pnpm config set registry https://registry.npmmirror.com
     - pnpm install
-    - pnpm build-testing # 使用 pnpm build-testing 进行打包，符合 develop 分支要求
+    - pnpm build-testing # 使用 pnpm build-testing 进行打包，符合 testing 分支要求
   only:
     - main
   cache:
@@ -74,7 +74,7 @@ build_image_main:
   dependencies:
     - build_frontend_main
 
-# Build Docker image and push to harbor registry for develop branch
+# Build Docker image and push to harbor registry for testing branch
 build_image_testing:
   stage: build_image_testing
   image:
@@ -92,7 +92,7 @@ build_image_testing:
   only:
     - main
   dependencies:
-    - build_frontend_develop
+    - build_frontend_testing
 
 # Deploy to Kubernetes cluster for main branch
 deploy_main:
@@ -108,7 +108,7 @@ deploy_main:
   dependencies:
     - build_image_main
 
-# Deploy to Kubernetes cluster for develop branch
+# Deploy to Kubernetes cluster for testing branch
 deploy_testing:
   stage: deploy_testing
   image:
@@ -120,4 +120,4 @@ deploy_testing:
   only:
     - main
   dependencies:
-    - build_image_develop
+    - build_image_testing
