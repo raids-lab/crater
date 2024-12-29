@@ -101,16 +101,19 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		// set job status to deleted
 		var record *model.Job
 		record, err = j.WithContext(ctx).Where(j.JobName.Eq(req.Name)).First()
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			logger.Error(err, "unable to fetch job record")
-			return ctrl.Result{Requeue: true}, err
-		}
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			logger.Info("job not found in database")
-			return ctrl.Result{}, nil
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				logger.Info("job not found in database")
+				return ctrl.Result{}, nil
+			} else {
+				logger.Error(err, "unable to fetch job record")
+				return ctrl.Result{Requeue: true}, err
+			}
 		}
 
-		if record.Status == model.Deleted || record.Status == model.Freed {
+		if record.Status == model.Deleted || record.Status == model.Freed ||
+			record.Status == batch.Failed || record.Status == batch.Completed ||
+			record.Status == batch.Aborted || record.Status == batch.Terminated {
 			return ctrl.Result{}, nil
 		}
 
@@ -118,10 +121,9 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		info, err = j.WithContext(ctx).Where(j.JobName.Eq(req.Name)).Updates(model.Job{
 			Status:             model.Freed,
 			CompletedTimestamp: time.Now(),
-			Nodes:              datatypes.NewJSONType([]string{}),
 		})
 		if err != nil {
-			logger.Error(err, "unable to update job status to deleted")
+			logger.Error(err, "unable to update job status to freed")
 			return ctrl.Result{Requeue: true}, err
 		}
 		if info.RowsAffected == 0 {
