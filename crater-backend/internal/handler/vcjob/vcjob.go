@@ -18,7 +18,6 @@ import (
 	"github.com/raids-lab/crater/pkg/packer"
 	"github.com/raids-lab/crater/pkg/utils"
 	"gopkg.in/yaml.v3"
-	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -154,48 +153,81 @@ type (
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/vcjobs/{name} [delete]
 func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
+	mgr.deleteJob(c, true)
+}
+
+//nolint:gocyclo // refactor later
+func (mgr *VolcanojobMgr) deleteJob(c *gin.Context, shouldCheckOwner bool) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
 
+	// Get job record from database
 	j := query.Job
+	jobRecord, err := j.WithContext(c).Where(j.JobName.Eq(req.JobName)).First()
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	// If should check owner, check whether the job belongs to the current user
+	if shouldCheckOwner {
+		token := util.GetToken(c)
+		if jobRecord.UserID != token.UserID {
+			resputil.Error(c, "You are not the owner of the job", resputil.NotSpecified)
+			return
+		}
+	}
+
+	shouldDeleteRecord := false
+	shouldDeleteJob := false
+
 	job := &batch.Job{}
 	namespace := config.GetConfig().Workspace.Namespace
 	if err := mgr.client.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
 		if errors.IsNotFound(err) {
-			if _, err = j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Delete(); err != nil {
-				resputil.Error(c, err.Error(), resputil.NotSpecified)
-				return
-			}
-			resputil.Success(c, nil)
+			shouldDeleteRecord = true
+		} else {
+			resputil.Error(c, err.Error(), resputil.NotSpecified)
 			return
 		}
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
 	}
 
-	token := util.GetToken(c)
-	if job.Labels[LabelKeyTaskUser] != token.Username {
-		resputil.Error(c, "Job not found", resputil.NotSpecified)
-		return
+	// If should delete record is false, means the job currently exists
+	if !shouldDeleteRecord {
+		phase := job.Status.State.Phase
+		if phase == batch.Failed || phase == batch.Completed ||
+			phase == batch.Aborted || phase == batch.Terminated {
+			// Job is not running or pending, delete the record directly
+			shouldDeleteRecord = true
+		}
+		shouldDeleteJob = true
 	}
 
-	// update job status as deleted
-	if _, err := j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Updates(model.Job{
-		Status:             model.Deleted,
-		CompletedTimestamp: time.Now(),
-		Nodes:              datatypes.NewJSONType([]string{}),
-	}); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
+	if shouldDeleteRecord {
+		if _, err := j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Delete(); err != nil {
+			resputil.Error(c, err.Error(), resputil.NotSpecified)
+			return
+		}
+	} else {
+		// update job status as deleted
+		if _, err := j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Updates(model.Job{
+			Status:             model.Deleted,
+			CompletedTimestamp: time.Now(),
+		}); err != nil {
+			resputil.Error(c, err.Error(), resputil.NotSpecified)
+			return
+		}
 	}
 
 	// 直接删除 Job，OwnerReference 会自动删除 Ingress 和 Service
-	if err := mgr.client.Delete(c, job); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
+	if shouldDeleteJob {
+		if err := mgr.client.Delete(c, job); err != nil {
+			resputil.Error(c, err.Error(), resputil.NotSpecified)
+			return
+		}
 	}
 
 	resputil.Success(c, nil)
@@ -214,44 +246,7 @@ func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/admin/vcjobs/{name} [delete]
 func (mgr *VolcanojobMgr) DeleteJobForAdmin(c *gin.Context) {
-	var req JobActionReq
-	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-
-	j := query.Job
-	job := &batch.Job{}
-	namespace := config.GetConfig().Workspace.Namespace
-	if err := mgr.client.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
-		if errors.IsNotFound(err) {
-			if _, err = j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Delete(); err != nil {
-				resputil.Error(c, err.Error(), resputil.NotSpecified)
-				return
-			}
-			resputil.Success(c, nil)
-			return
-		}
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	// update job status as deleted
-	if _, err := j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Updates(model.Job{
-		Status:             model.Deleted,
-		CompletedTimestamp: time.Now(),
-		Nodes:              datatypes.NewJSONType([]string{}),
-	}); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	if err := mgr.client.Delete(c, job); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	resputil.Success(c, nil)
+	mgr.deleteJob(c, false)
 }
 
 func (mgr *VolcanojobMgr) getPodLog(c *gin.Context, namespace, podName string) (*bytes.Buffer, error) {
