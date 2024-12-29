@@ -309,7 +309,7 @@ const InterOverview = () => {
         info={{
           title: "交互式作业",
           description:
-            "提供开箱即用的 Jupyter Lab 或 Web IDE， 可用于代码编写、调试等。",
+            "提供开箱即用的 Jupyter Lab 或 Web IDE， 可用于测试、调试等",
         }}
         query={interactiveQuery}
         columns={interColumns}

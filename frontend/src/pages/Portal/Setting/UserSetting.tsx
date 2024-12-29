@@ -11,14 +11,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Card,
-  CardTitle,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
@@ -33,7 +26,6 @@ import {
   apiVerifyEmailCode,
 } from "@/services/api/context";
 import { MailPlusIcon, UserRoundCogIcon } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -50,6 +42,8 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import LoadableButton from "@/components/custom/LoadableButton";
+import Quota from "../Job/Interactive/Quota";
+import PageTitle from "@/components/layout/PageTitle";
 
 const formSchema = z.object({
   nickname: z.string().min(2, {
@@ -144,151 +138,157 @@ export default function UserSettings() {
 
   return (
     <>
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle>用户信息</CardTitle>
-          <CardDescription>
-            更新您的用户信息，以便我们更好地为您服务
-          </CardDescription>
-        </CardHeader>
-        <Separator />
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <CardContent className="space-y-8 pt-6">
-              <div className="flex flex-row items-center gap-6">
+      <div>
+        <PageTitle
+          title="用户配额"
+          description="用户当前配额的使用情况"
+          className="mb-4"
+        />
+        <Quota />
+      </div>
+      <div>
+        <PageTitle
+          title="用户信息"
+          description="更新您的用户信息，以便我们更好地为您服务"
+          className="mb-4"
+        />
+        <Card className="lg:col-span-2">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <CardContent className="space-y-8 pt-6">
+                <div className="flex flex-row items-center gap-6">
+                  <FormField
+                    control={form.control}
+                    name="avatar"
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormLabel>头像</FormLabel>
+                        <FormControl>
+                          <div className="flex items-center space-x-4">
+                            <Input
+                              {...field}
+                              value={field.value || ""}
+                              placeholder="Avatar URL"
+                              className="font-mono"
+                              onChange={(e) => {
+                                field.onChange(e);
+                                setAvatarPreview(e.target.value);
+                              }}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormDescription>
+                          通过图床上传图片，然后将图片链接粘贴到此处
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Avatar className="h-20 w-20">
+                    <AvatarImage src={avatarPreview} alt="Avatar preview" />
+                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                </div>
                 <FormField
                   control={form.control}
-                  name="avatar"
+                  name="email"
                   render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormLabel>头像</FormLabel>
+                    <FormItem>
+                      <FormLabel>邮箱</FormLabel>
                       <FormControl>
-                        <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-2">
                           <Input
                             {...field}
-                            value={field.value || ""}
-                            placeholder="Avatar URL"
+                            type="email"
                             className="font-mono"
+                            value={field.value || ""}
                             onChange={(e) => {
                               field.onChange(e);
-                              setAvatarPreview(e.target.value);
+                              setIsEmailVerified(false);
                             }}
                           />
+                          {field.value !== originalEmail && (
+                            <LoadableButton
+                              isLoading={isSendVerificationPending}
+                              isLoadingText="验证中"
+                              variant="secondary"
+                              type="button"
+                              onClick={() => {
+                                sendVerificationEmail(field.value || "");
+                              }}
+                            >
+                              <MailPlusIcon />
+                              验证
+                            </LoadableButton>
+                          )}
                         </div>
                       </FormControl>
-                      <FormDescription>
-                        通过图床上传图片，然后将图片链接粘贴到此处
-                      </FormDescription>
+                      <FormDescription>用于接收通知的邮箱地址</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src={avatarPreview} alt="Avatar preview" />
-                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-              </div>
-              <Separator />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>邮箱</FormLabel>
-                    <FormControl>
-                      <div className="flex items-center space-x-2">
-                        <Input
-                          {...field}
-                          type="email"
-                          className="font-mono"
-                          value={field.value || ""}
-                          onChange={(e) => {
-                            field.onChange(e);
-                            setIsEmailVerified(false);
-                          }}
-                        />
-                        {field.value !== originalEmail && (
-                          <LoadableButton
-                            isLoading={isSendVerificationPending}
-                            isLoadingText="验证中"
-                            variant="secondary"
-                            type="button"
-                            onClick={() => {
-                              sendVerificationEmail(field.value || "");
-                            }}
-                          >
-                            <MailPlusIcon />
-                            验证
-                          </LoadableButton>
-                        )}
-                      </div>
-                    </FormControl>
-                    <FormDescription>用于接收通知的邮箱地址</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-            <Separator />
-            <CardFooter className="px-6 py-4">
-              <Button type="submit">
-                <UserRoundCogIcon />
-                更新用户信息
-              </Button>
-            </CardFooter>
-          </form>
-        </Form>
-        <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>验证您的邮箱</AlertDialogTitle>
+              </CardContent>
+              <CardFooter className="px-6">
+                <Button type="submit">
+                  <UserRoundCogIcon />
+                  更新用户信息
+                </Button>
+              </CardFooter>
+            </form>
+          </Form>
+          <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>验证您的邮箱</AlertDialogTitle>
 
-              {isVerifyError ? (
-                <AlertDialogDescription className="text-destructive">
-                  验证码错误，请重新检查
-                </AlertDialogDescription>
-              ) : (
-                <AlertDialogDescription>
-                  我们向<span>{form.getValues("email")}</span>
-                  发送了一封验证邮件，请输入邮件中的验证码
-                </AlertDialogDescription>
-              )}
-            </AlertDialogHeader>
-            <div className="flex items-center justify-center">
-              <InputOTP
-                maxLength={6}
-                value={verificationCode}
-                onChange={(value) => setVerificationCode(value)}
-              >
-                <InputOTPGroup>
-                  <InputOTPSlot index={0} aria-placeholder=" " />
-                  <InputOTPSlot index={1} aria-placeholder=" " />
-                  <InputOTPSlot index={2} aria-placeholder=" " />
-                </InputOTPGroup>
-                <InputOTPSeparator />
-                <InputOTPGroup>
-                  <InputOTPSlot index={3} aria-placeholder=" " />
-                  <InputOTPSlot index={4} aria-placeholder=" " />
-                  <InputOTPSlot index={5} aria-placeholder=" " />
-                </InputOTPGroup>
-              </InputOTP>
-            </div>
-            <AlertDialogFooter>
-              <AlertDialogCancel>取消</AlertDialogCancel>
-              <Button
-                onClick={() =>
-                  verifyEmailCode({
-                    code: verificationCode,
-                    email: form.getValues("email") ?? "",
-                  })
-                }
-              >
-                验证
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </Card>
+                {isVerifyError ? (
+                  <AlertDialogDescription className="text-destructive">
+                    验证码错误，请重新检查
+                  </AlertDialogDescription>
+                ) : (
+                  <AlertDialogDescription>
+                    我们向<span>{form.getValues("email")}</span>
+                    发送了一封验证邮件，请输入邮件中的验证码
+                  </AlertDialogDescription>
+                )}
+              </AlertDialogHeader>
+              <div className="flex items-center justify-center">
+                <InputOTP
+                  maxLength={6}
+                  value={verificationCode}
+                  onChange={(value) => setVerificationCode(value)}
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} aria-placeholder=" " />
+                    <InputOTPSlot index={1} aria-placeholder=" " />
+                    <InputOTPSlot index={2} aria-placeholder=" " />
+                  </InputOTPGroup>
+                  <InputOTPSeparator />
+                  <InputOTPGroup>
+                    <InputOTPSlot index={3} aria-placeholder=" " />
+                    <InputOTPSlot index={4} aria-placeholder=" " />
+                    <InputOTPSlot index={5} aria-placeholder=" " />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel>取消</AlertDialogCancel>
+                <Button
+                  onClick={() =>
+                    verifyEmailCode({
+                      code: verificationCode,
+                      email: form.getValues("email") ?? "",
+                    })
+                  }
+                >
+                  验证
+                </Button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </Card>
+      </div>
     </>
   );
 }

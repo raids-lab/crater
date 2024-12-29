@@ -36,7 +36,7 @@ const PieCard = ({
           <TooltipProvider delayDuration={100}>
             <Tooltip>
               <TooltipTrigger className="flex cursor-help flex-row items-center">
-                <props.icon className="mr-1.5 size-5 text-muted-foreground" />
+                <props.icon className="mr-1.5 size-5 text-primary" />
                 {cardTitle}
               </TooltipTrigger>
               <TooltipContent className="border bg-background text-foreground">
@@ -46,7 +46,7 @@ const PieCard = ({
           </TooltipProvider>
         </CardTitle>
       </CardHeader>
-      <div className="flex h-44 items-center justify-center px-2">
+      <div className="flex h-52 items-center justify-center px-2">
         {children}
       </div>
     </Card>

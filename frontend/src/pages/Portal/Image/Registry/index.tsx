@@ -30,7 +30,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
 import {
-  BookOpenIcon,
   BoxIcon,
   InfoIcon,
   PackagePlusIcon,
@@ -38,20 +37,12 @@ import {
   HardDriveIcon,
   KeyIcon,
   UserRoundIcon,
-  ChartColumnIcon,
   Key,
   Copy,
   User,
 } from "lucide-react";
 import { useNavigate, useRoutes } from "react-router-dom";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import KanikoDetail from "../Info";
 import {
   DropdownMenu,
@@ -74,6 +65,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@radix-ui/react-label";
+import PageTitle from "@/components/layout/PageTitle";
+import DocsButton from "@/components/button/DocsButton";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -252,73 +245,81 @@ export const ImageTable: FC = () => {
   ];
 
   return (
-    <div className="grid gap-x-4 gap-y-6 lg:grid-cols-2">
-      <Card className="flex flex-col justify-between">
-        <CardHeader>
-          <CardTitle className="flex flex-row items-center justify-start gap-2">
-            <BoxIcon className="text-primary" /> 镜像制作
-          </CardTitle>
-          <CardDescription className="text-balance pt-2 leading-relaxed">
-            通过 Kaniko 制作镜像，支持 Dockerfile 和低代码方式制作镜像
-          </CardDescription>
-        </CardHeader>
-        <CardFooter className="flex flex-row gap-3">
-          <Button className="h-8 min-w-fit" onClick={() => setOpenSheet(true)}>
-            <PackagePlusIcon />
-            镜像制作
-          </Button>
-          <Button
-            variant="secondary"
-            className="h-8 min-w-fit"
-            onClick={() => toast.warning("TODO(huangsy): 补充镜像文档")}
-          >
-            <BookOpenIcon />
-            查看文档
-          </Button>
-        </CardFooter>
-      </Card>
-      <Card className="flex flex-col justify-between">
-        <CardHeader>
-          <CardTitle className="flex flex-row items-center gap-2">
-            <ChartColumnIcon className="text-primary" />
-            使用情况
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="flex items-center">
-              <BoxIcon className="mr-2 size-4 text-muted-foreground" />
-              <h4 className="text-sm font-medium text-muted-foreground">
-                镜像总数:
-              </h4>
-              <p className="ml-2 font-bold">3</p>
-            </div>
-            <div className="flex items-center">
-              <HardDriveIcon className="mr-2 size-4 text-muted-foreground" />
-              <h4 className="text-sm font-medium text-muted-foreground">
-                存储用量:
-              </h4>
-              <p className="ml-2 font-bold">20GiB / 50GiB</p>
-            </div>
-            <div className="flex items-center">
-              <UserRoundIcon className="mr-2 size-4 text-muted-foreground" />
-              <h4 className="text-sm font-medium text-muted-foreground">
-                仓库项目:
-              </h4>
-              <p className="ml-2 font-bold">user-admin</p>
-            </div>
-            <div className="flex items-center">
-              <KeyIcon className="mr-2 size-4 text-muted-foreground" />
-              <h4 className="text-sm font-medium text-muted-foreground">
-                访问凭据:
-              </h4>
-              <Button variant="link" onClick={() => getProjectCredential()}>
-                获取初始凭据
+    <>
+      <div>
+        <PageTitle
+          title="镜像制作"
+          description="支持 Dockerfile 、低代码、快照等方式制作镜像"
+          className="mb-4"
+          actionArea={
+            <div className="flex flex-row gap-3">
+              <DocsButton title="查看文档" url="image/imagebuild" />
+              <Button
+                className="h-8 min-w-fit"
+                onClick={() => setOpenSheet(true)}
+              >
+                <PackagePlusIcon />
+                镜像制作
               </Button>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          }
+        />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-1.5 text-base">
+                <BoxIcon className="size-5 text-primary" />
+                镜像总数
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">3</p>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-1.5 text-base">
+                <HardDriveIcon className="size-5 text-primary" />
+                存储用量
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">20GiB / 50GiB</p>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-1.5 text-base">
+                <UserRoundIcon className="size-5 text-primary" />
+                仓库项目
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">user-admin</p>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-1.5 text-base">
+                <KeyIcon className="size-5 text-primary" />
+                访问凭据
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button
+                variant="outline"
+                onClick={() => getProjectCredential()}
+                className="w-full"
+              >
+                获取初始凭据
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
       <DataTable
         query={imageQuery}
         columns={columns}
@@ -410,7 +411,7 @@ export const ImageTable: FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 };
 

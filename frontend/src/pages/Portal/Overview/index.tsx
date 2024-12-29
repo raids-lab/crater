@@ -1,11 +1,4 @@
 import { useMemo, type FC } from "react";
-import {
-  Card,
-  CardTitle,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card";
 import { DataTable } from "@/components/custom/DataTable";
 import { useQuery } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
@@ -22,26 +15,20 @@ import { IJobInfo, JobType, apiJobAllList } from "@/services/api/vcjob";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import NivoPie from "@/components/chart/NivoPie";
 import SplitButton from "@/components/custom/SplitButton";
-import { Button } from "@/components/ui/button";
-import {
-  BoxIcon,
-  FlaskConicalIcon,
-  LayoutGridIcon,
-  UserRoundIcon,
-  ZapIcon,
-} from "lucide-react";
-import { useNavigate, useRoutes } from "react-router-dom";
+import { FlaskConicalIcon, UserRoundIcon } from "lucide-react";
+import { useRoutes } from "react-router-dom";
 import ResourceBadges from "@/components/badge/ResourceBadges";
 import NodeBadges from "@/components/badge/NodeBadges";
 import JobTypeLabel, { jobTypes } from "@/components/badge/JobTypeBadge";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
-import { globalJobUrl, globalSettings } from "@/utils/store";
+import { globalJobUrl, globalSettings, globalUserInfo } from "@/utils/store";
 import NodeDetail from "@/components/node/NodeDetail";
 import useNodeQuery from "@/hooks/query/useNodeQuery";
 import GpuIcon from "@/components/icon/GpuIcon";
 import PieCard from "@/components/chart/PieCard";
 import DocsButton from "@/components/button/DocsButton";
+import PageTitle from "@/components/layout/PageTitle";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -65,6 +52,7 @@ const toolbarConfig: DataTableToolbarConfig = {
 };
 
 export const Component: FC = () => {
+  const userInfo = useAtomValue(globalUserInfo);
   const jobType = useAtomValue(globalJobUrl);
   const { scheduler } = useAtomValue(globalSettings);
 
@@ -236,31 +224,6 @@ export const Component: FC = () => {
     }));
   }, [jobQuery.data]);
 
-  const typeStatus = useMemo(() => {
-    if (!jobQuery.data) {
-      return [];
-    }
-    const data = jobQuery.data;
-    const counts = data
-      .filter((job) => job.status == "Running")
-      .reduce(
-        (acc, item) => {
-          const type = item.jobType;
-          if (!acc[type]) {
-            acc[type] = 0;
-          }
-          acc[type] += 1;
-          return acc;
-        },
-        {} as Record<string, number>,
-      );
-    return Object.entries(counts).map(([phase, count]) => ({
-      id: phase,
-      label: phase,
-      value: count,
-    }));
-  }, [jobQuery.data]);
-
   const gpuStatus = useMemo(() => {
     if (!jobQuery.data) {
       return [];
@@ -291,70 +254,55 @@ export const Component: FC = () => {
     }));
   }, [jobQuery.data]);
 
-  const navigate = useNavigate();
-
   const mainElement = (
     <>
-      <div className="grid gap-4 md:gap-6 lg:col-span-3 lg:grid-cols-3">
-        <Card className="col-span-2 flex flex-col justify-between lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex flex-row items-center">
-              <ZapIcon className="mr-1 text-primary" />
-              快速开始
-            </CardTitle>
-            <CardDescription className="text-balance pt-2 leading-relaxed">
-              在 Crater 启动批处理或交互式计算作业、定制镜像、启动微服务或
-              Serverless 等。
-            </CardDescription>
-          </CardHeader>
-          <CardFooter className="flex flex-row gap-3">
-            <SplitButton
-              title="overview"
-              urls={[
-                {
-                  url: `portal/job/inter/new-jupyter-${jobType}`,
-                  name: " Jupyter Lab",
-                },
-                {
-                  url: "portal/job/batch/new-tensorflow",
-                  name: " Tensorflow 作业",
-                },
-                {
-                  url: "portal/job/batch/new-pytorch",
-                  name: " Pytorch 作业",
-                },
-                {
-                  url: `portal/job/batch/new-${jobType}`,
-                  name: "自定义作业（单机）",
-                },
-                {
-                  url: "portal/job/batch/new-ray",
-                  name: " Ray 作业",
-                  disabled: true,
-                },
-                {
-                  url: "portal/job/batch/new-deepspeed",
-                  name: " DeepSpeed 作业",
-                  disabled: true,
-                },
-                {
-                  url: "portal/job/batch/new-openmpi",
-                  name: " OpenMPI 作业",
-                  disabled: true,
-                },
-              ]}
-            />
-            <Button
-              variant="secondary"
-              onClick={() => navigate("/portal/image/createimage")}
-              className="hidden xl:flex"
-            >
-              <BoxIcon className="size-4" />
-              镜像制作
-            </Button>
-            <DocsButton title="平台文档" url="intro" />
-          </CardFooter>
-        </Card>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <PageTitle
+          title={`欢迎回来，${userInfo.nickname}👋`}
+          description="使用异构集群管理平台 Crater 加速您的科研工作"
+          className="lg:col-span-3"
+          actionArea={
+            <div className="flex flex-row gap-3">
+              <DocsButton title="平台文档" url="intro" />
+              <SplitButton
+                title="overview"
+                urls={[
+                  {
+                    url: `portal/job/inter/new-jupyter-${jobType}`,
+                    name: " Jupyter Lab",
+                  },
+                  {
+                    url: "portal/job/batch/new-tensorflow",
+                    name: " Tensorflow 作业",
+                  },
+                  {
+                    url: "portal/job/batch/new-pytorch",
+                    name: " Pytorch 作业",
+                  },
+                  {
+                    url: `portal/job/batch/new-${jobType}`,
+                    name: "自定义作业（单机）",
+                  },
+                  {
+                    url: "portal/job/batch/new-ray",
+                    name: " Ray 作业",
+                    disabled: true,
+                  },
+                  {
+                    url: "portal/job/batch/new-deepspeed",
+                    name: " DeepSpeed 作业",
+                    disabled: true,
+                  },
+                  {
+                    url: "portal/job/batch/new-openmpi",
+                    name: " OpenMPI 作业",
+                    disabled: true,
+                  },
+                ]}
+              />
+            </div>
+          }
+        />
         <PieCard
           icon={FlaskConicalIcon}
           cardTitle="作业状态"
@@ -378,18 +326,6 @@ export const Component: FC = () => {
           isLoading={jobQuery.isLoading}
         >
           <NivoPie data={userStatus} margin={{ top: 25, bottom: 30 }} />
-        </PieCard>
-        <PieCard
-          icon={LayoutGridIcon}
-          cardTitle="作业类型"
-          cardDescription="当前正在运行作业所属的类型"
-          isLoading={jobQuery.isLoading}
-        >
-          <NivoPie
-            data={typeStatus}
-            margin={{ top: 25, bottom: 30 }}
-            colors={{ scheme: "set2" }}
-          />
         </PieCard>
         <PieCard
           icon={GpuIcon}

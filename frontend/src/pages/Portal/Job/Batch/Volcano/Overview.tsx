@@ -29,15 +29,7 @@ import { TimeDistance } from "@/components/custom/TimeDistance";
 import { toast } from "sonner";
 import { getHeader, jobToolbarConfig } from "@/pages/Portal/Job/statuses";
 import { logger } from "@/utils/loglevel";
-import Quota from "../../Interactive/Quota";
 import JobPhaseLabel from "@/components/badge/JobPhaseBadge";
-import {
-  Card,
-  CardTitle,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card";
 import SplitButton from "@/components/custom/SplitButton";
 import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
@@ -46,7 +38,8 @@ import ResourceBadges from "@/components/badge/ResourceBadges";
 import JobTypeLabel from "@/components/badge/JobTypeBadge";
 import { globalJobUrl } from "@/utils/store";
 import { useAtomValue } from "jotai";
-import { Trash2Icon, WaypointsIcon } from "lucide-react";
+import { Trash2Icon } from "lucide-react";
+import DocsButton from "@/components/button/DocsButton";
 
 const VolcanoOverview = () => {
   const queryClient = useQueryClient();
@@ -239,82 +232,71 @@ const VolcanoOverview = () => {
   );
 
   return (
-    <>
-      <div className="grid gap-5 lg:col-span-3 lg:grid-cols-4">
-        <Card className="row-span-2 flex flex-col justify-between lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex flex-row items-center justify-start gap-2">
-              <WaypointsIcon className="text-primary" /> 批处理作业
-            </CardTitle>
-            <CardDescription className="text-balance pt-2 leading-relaxed">
-              指无须人工干预而执行系列程序的作业，包含单机作业、Pytorch
-              分布式训练作业、 Tensorflow 分布式训练作业、Ray 分布式训练作业、
-              OpenMPI 分布式计算作业等。
-            </CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <SplitButton
-              title="batch"
-              urls={[
-                {
-                  url: "portal/job/batch/new-tensorflow",
-                  name: " Tensorflow 作业",
-                  disabled: jobType === "spjobs",
-                },
-                {
-                  url: "portal/job/batch/new-pytorch",
-                  name: " Pytorch 作业",
-                  disabled: jobType === "spjobs",
-                },
-                {
-                  url: "portal/job/batch/new-ray",
-                  name: " Ray 作业",
-                  disabled: true,
-                },
-                {
-                  url: "portal/job/batch/new-deepspeed",
-                  name: " DeepSpeed 作业",
-                  disabled: true,
-                },
-                {
-                  url: "portal/job/batch/new-openmpi",
-                  name: " OpenMPI 作业",
-                  disabled: true,
-                },
-                {
-                  url: "portal/job/batch/new-" + jobType,
-                  name: "自定义作业（单机）",
-                },
-              ]}
-            />
-          </CardFooter>
-        </Card>
-        <Quota />
-      </div>
-      <DataTable
-        query={batchQuery}
-        columns={batchColumns}
-        toolbarConfig={jobToolbarConfig}
-        multipleHandlers={[
-          {
-            title: (rows) => `停止或删除 ${rows.length} 个作业`,
-            description: (rows) => (
-              <>
-                作业 {rows.map((row) => row.original.name).join(", ")}{" "}
-                将被停止或删除，确认要继续吗？
-              </>
-            ),
-            icon: <Trash2Icon className="text-destructive" />,
-            handleSubmit: (rows) => {
-              rows.forEach((row) => {
-                deleteTask(row.original.jobName);
-              });
-            },
-            isDanger: true,
+    <DataTable
+      info={{
+        title: "批处理作业",
+        description: "提交无须人工干预而执行系列程序的作业",
+      }}
+      query={batchQuery}
+      columns={batchColumns}
+      toolbarConfig={jobToolbarConfig}
+      multipleHandlers={[
+        {
+          title: (rows) => `停止或删除 ${rows.length} 个作业`,
+          description: (rows) => (
+            <>
+              作业 {rows.map((row) => row.original.name).join(", ")}{" "}
+              将被停止或删除，确认要继续吗？
+            </>
+          ),
+          icon: <Trash2Icon className="text-destructive" />,
+          handleSubmit: (rows) => {
+            rows.forEach((row) => {
+              deleteTask(row.original.jobName);
+            });
           },
-        ]}
-      />
-    </>
+          isDanger: true,
+        },
+      ]}
+    >
+      <div className="flex flex-row gap-3">
+        <DocsButton title="查看文档" url="quick-start/batchprocess" />
+        <SplitButton
+          title="batch"
+          urls={[
+            {
+              url: "portal/job/batch/new-tensorflow",
+              name: " Tensorflow 作业",
+              disabled: jobType === "spjobs",
+            },
+            {
+              url: "portal/job/batch/new-pytorch",
+              name: " Pytorch 作业",
+              disabled: jobType === "spjobs",
+            },
+            {
+              url: "portal/job/batch/new-ray",
+              name: " Ray 作业",
+              disabled: true,
+            },
+            {
+              url: "portal/job/batch/new-deepspeed",
+              name: " DeepSpeed 作业",
+              disabled: true,
+            },
+            {
+              url: "portal/job/batch/new-openmpi",
+              name: " OpenMPI 作业",
+              disabled: true,
+            },
+            {
+              url: "portal/job/batch/new-" + jobType,
+              name: "自定义作业（单机）",
+            },
+          ]}
+        />
+      </div>
+    </DataTable>
   );
 };
 
