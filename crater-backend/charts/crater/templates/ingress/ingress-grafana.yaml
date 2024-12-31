@@ -5,6 +5,9 @@ metadata:
   namespace: crater
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Frame-Options: ALLOW-FROM https://***REMOVED***";
+      more_set_headers "Content-Security-Policy: frame-ancestors https://***REMOVED***";
 spec:
   ingressClassName: nginx
   tls:
