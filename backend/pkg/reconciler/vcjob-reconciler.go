@@ -160,23 +160,19 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// if job found: before updating, check previous status, and send email
 	dbJob, _ := j.WithContext(ctx).Where(j.JobName.Eq(job.Name)).First()
 	if dbJob.AlertEnabled {
-		alertMgr, alertErr := alert.GetAlertMgr()
+		alertMgr := alert.GetAlertMgr()
 
 		// send email after pending
 		if job.Status.State.Phase == batch.Running && dbJob.Status != batch.Running {
-			if alertErr != nil {
-				if err = alertMgr.JobRunningAlert(ctx, job.Name); err != nil {
-					logger.Error(err, "fail to send email")
-				}
+			if err = alertMgr.JobRunningAlert(ctx, job.Name); err != nil {
+				logger.Error(err, "fail to send email")
 			}
 		}
 
 		// alert job failure
 		if job.Status.State.Phase == batch.Failed && dbJob.Status != batch.Failed {
-			if alertErr != nil {
-				if err = alertMgr.JobFailureAlert(ctx, job.Name); err != nil {
-					logger.Error(err, "fail to send email")
-				}
+			if err = alertMgr.JobFailureAlert(ctx, job.Name); err != nil {
+				logger.Error(err, "fail to send email")
 			}
 		}
 	}
