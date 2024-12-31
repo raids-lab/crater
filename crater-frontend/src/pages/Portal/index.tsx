@@ -9,6 +9,7 @@ import {
   FlaskConicalIcon,
   MessageSquareMoreIcon,
   SettingsIcon,
+  SquareChartGanttIcon,
 } from "lucide-react";
 import batchRoutes from "./Job/Batch";
 import interactiveRoutes from "./Job/Interactive";
@@ -19,6 +20,7 @@ import NotFound from "@/components/layout/NotFound";
 import FeedBack from "./Feedback";
 import UserSettings from "./Setting/UserSetting";
 import Model from "./Data/Model";
+import Monitor from "../Embed/Monitor";
 
 const portalRoutes: SidebarItem[] = [
   {
@@ -27,6 +29,14 @@ const portalRoutes: SidebarItem[] = [
     route: {
       path: "overview/*",
       lazy: () => import("./Overview"),
+    },
+  },
+  {
+    path: "monitor",
+    children: [],
+    route: {
+      path: "monitor",
+      element: <Monitor />,
     },
   },
   {
@@ -141,6 +151,11 @@ const userSidebarGroups: NavGroupProps[] = [
       {
         title: "平台概览",
         url: "overview",
+        icon: SquareChartGanttIcon,
+      },
+      {
+        title: "平台监控",
+        url: "monitor",
         icon: BarChartBigIcon,
       },
       {
