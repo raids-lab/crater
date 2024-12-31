@@ -574,7 +574,7 @@ export const Component = () => {
                                       field.onChange(item.id);
                                       form.setValue(
                                         `volumeMounts.${index}.mountPath`,
-                                        `/mnt/${item.name}`,
+                                        `/mnt/${item.realname}`,
                                       );
                                     }}
                                   />
