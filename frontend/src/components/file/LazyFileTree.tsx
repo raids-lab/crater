@@ -12,10 +12,10 @@ import {
 import useResizeObserver from "use-resize-observer";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { FileItem, apiGetFiles } from "@/services/api/file";
-
 interface TreeDataItem {
   id: string;
   name: string;
+  realname: string;
   icon: LucideIcon;
   hasChildren: boolean;
 }
@@ -23,10 +23,19 @@ interface TreeDataItem {
 export const getFolderTitle = (folder: string) => {
   if (folder === "sugon-gpu-incoming" || folder === "public") {
     return "公共空间";
-  } else if (folder.startsWith("q-")) {
+  } else if (folder.startsWith("q") || folder.startsWith("accou")) {
     return "账户空间";
   }
   return "用户空间";
+};
+
+export const getTitleWithoutPref = (folder: string) => {
+  if (folder.startsWith("account/")) {
+    return folder.replace(/^(account\/)/, "");
+  } else if (folder.startsWith("user/")) {
+    return folder.replace(/^(user\/)/, "");
+  }
+  return folder;
 };
 
 type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
@@ -55,9 +64,27 @@ const Tree = React.forwardRef<HTMLDivElement, TreeProps>(
       queryKey: ["directory", "list"],
       queryFn: () => apiGetFiles(""),
       select: (res) =>
-        res.data.data?.sort((a, b) => {
-          return a.name.localeCompare(b.name);
-        }) ?? [],
+        res.data.data
+          ?.map((r) => {
+            let newName = r.name;
+            if (newName === "public" || newName === "sugon-gpu-incoming") {
+              newName = "public";
+            } else if (newName.startsWith("q-")) {
+              newName = "account/" + newName;
+            } else {
+              newName = "user/" + newName;
+            }
+            return {
+              name: newName,
+              modifytime: r.modifytime,
+              isdir: r.isdir,
+              size: r.size,
+              sys: r.sys,
+            };
+          })
+          .sort((a, b) => {
+            return a.name.localeCompare(b.name);
+          }) ?? [],
     });
 
     const { ref: refRoot, width, height } = useResizeObserver();
@@ -113,6 +140,7 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
       return {
         id: currentPath,
         name: level === 0 ? getFolderTitle(data.name) : data.name,
+        realname: level === 0 ? getTitleWithoutPref(data.name) : data.name,
         icon: data.isdir ? FolderIcon : FileDigitIcon,
         hasChildren: data.isdir && data.size > 0,
       };
@@ -136,24 +164,9 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
 
     const [children, setChildren] = React.useState<FileItem[]>([]);
     const [childrenInitialized, setChildrenInitialized] = React.useState(false);
-    const GetFiles = async (path: string, level: number) => {
-      if (level === 0) {
-        const folderTitle = getFolderTitle(path);
-        if (folderTitle === "公共空间") {
-          path = `public`;
-        } else if (folderTitle === "用户空间") {
-          path = `user/${data.name}`;
-        } else if (folderTitle === "账户空间") {
-          path = `account/${data.name}`;
-        }
-      }
-
-      const response = await apiGetFiles(path);
-      return response;
-    };
 
     const { mutate: getChildren } = useMutation({
-      mutationFn: () => GetFiles(currentPath, level),
+      mutationFn: () => apiGetFiles(currentPath),
       onSuccess: (fileList) => {
         const children =
           fileList.data.data?.sort((a, b) => {
@@ -200,28 +213,12 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
                 <AccordionContent className="pl-6">
                   <ul>
                     {children.map((data, index) => {
-                      let newCurrentPath;
-
-                      if (level === 0) {
-                        const folderTitle = getFolderTitle(currentPath);
-                        if (folderTitle === "公共空间") {
-                          newCurrentPath = `public/${data.name}`;
-                        } else if (folderTitle === "用户空间") {
-                          newCurrentPath = `user/${currentPath}/${data.name}`;
-                        } else if (folderTitle === "账户空间") {
-                          newCurrentPath = `account/${currentPath}/${data.name}`;
-                        } else {
-                          newCurrentPath = `${currentPath}/${data.name}`;
-                        }
-                      } else {
-                        newCurrentPath = `${currentPath}/${data.name}`;
-                      }
                       return (
                         <TreeItem
                           level={level + 1}
                           key={index}
                           data={data}
-                          currentPath={newCurrentPath}
+                          currentPath={`${currentPath}/${data.name}`}
                           selectedItemId={selectedItemId}
                           handleSelectChange={handleSelectChange}
                         />
