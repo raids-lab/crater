@@ -11,6 +11,10 @@ export const craterPath: PathInfo = {
       titleNav: "异构云资源混合调度与运维平台",
     },
     {
+      path: "monitor",
+      title: "平台监控",
+    },
+    {
       path: "job",
       title: "我的作业",
       isEmpty: true,
