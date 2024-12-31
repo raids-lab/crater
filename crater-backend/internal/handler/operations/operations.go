@@ -213,8 +213,8 @@ func (mgr *OperationsMgr) AutoDelete(c *gin.Context) {
 		return
 	}
 
-	// delete time: 即当前时间+waitTime
-	deleteTime := time.Now().Add(time.Duration(req.WaitTime) * time.Minute)
+	// delete time: 即当前时间 + waitTime
+	deleteTime := time.Now().UTC().Add(time.Duration(req.WaitTime) * time.Minute)
 
 	// remind
 	reminded := mgr.remindLeastUsedGPUJobs(c, req.TimeRange, req.Util, deleteTime)
@@ -284,11 +284,7 @@ func (mgr *OperationsMgr) deleteLeastUsedGPUJobs(c *gin.Context, duration, util 
 			continue
 		}
 
-		alertMgr, alertErr := alert.GetAlertMgr()
-		if alertErr != nil {
-			logutils.Log.Infof("alert mgr failed to init for job %s", job)
-			continue
-		}
+		alertMgr := alert.GetAlertMgr()
 		if err := alertMgr.DeleteJob(c, job.jobName, nil); err != nil {
 			logutils.Log.Infof("Send Alarm Email failed for job %s", job)
 		}
@@ -323,13 +319,9 @@ func (mgr *OperationsMgr) remindLeastUsedGPUJobs(c *gin.Context, duration, util 
 
 		if remind, ok := remindMap[job.jobName]; ok && !remind {
 			// if remind is false, then send alarm email, and set remind to true
-			alertMgr, alertErr := alert.GetAlertMgr()
-			if alertErr == nil {
-				if err := alertMgr.RemindLowUsageJob(c, job.jobName, deleteTime, nil); err != nil {
-					logutils.Log.Infof("Send Alarm Email failed for job %s", job.jobName)
-				} else {
-					delete(remindMap, job.jobName)
-				}
+			alertMgr := alert.GetAlertMgr()
+			if err := alertMgr.RemindLowUsageJob(c, job.jobName, deleteTime, nil); err != nil {
+				logutils.Log.Infof("Send Alarm Email failed for job %s", job.jobName)
 			}
 			// set remind to true
 			if _, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(job.jobName)).Update(jobDB.Reminded, true); err != nil {
@@ -337,6 +329,7 @@ func (mgr *OperationsMgr) remindLeastUsedGPUJobs(c *gin.Context, duration, util 
 			}
 			remindedJobList = append(remindedJobList, job.jobName)
 		}
+		delete(remindMap, job.jobName)
 	}
 
 	// for the jobs remaining in remindMap, set remind to false
