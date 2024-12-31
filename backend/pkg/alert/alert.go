@@ -13,36 +13,40 @@ import (
 
 type alertMgr struct {
 	handler alertHandlerInterface
+	err     error
 }
 
 var (
-	once     sync.Once
-	alerter  *alertMgr
-	alertErr error
+	once    sync.Once
+	alerter *alertMgr
 )
 
-func GetAlertMgr() (AlertInterface, error) {
+func GetAlertMgr() AlertInterface {
 	once.Do(func() {
-		alerter, alertErr = initAlertMgr()
+		alerter = initAlertMgr()
 	})
-	return alerter, alertErr
+	return alerter
 }
 
-func initAlertMgr() (*alertMgr, error) {
+func initAlertMgr() *alertMgr {
 	// 初始化选择具体要使用的 alert handler
 	// 目前只支持 SMTP，下一步支持 WPS Robot
 	// 后续可以考虑从 Config 中进行配置
 	smtpHandler, err := newSMTPAlerter()
 	if err != nil {
 		logutils.Log.Error("Init alert mgr error")
-		return nil, err
 	}
 	return &alertMgr{
 		handler: smtpHandler,
-	}, nil
+		err:     err,
+	}
 }
 
 func (a *alertMgr) JobRunningAlert(ctx context.Context, jobName string) error {
+	if a.err != nil {
+		return a.err
+	}
+
 	timeRangeMinite := 10
 	j := query.Job
 	job, err := j.WithContext(ctx).Where(j.JobName.Eq(jobName)).Preload(j.User).First()
@@ -66,6 +70,10 @@ func (a *alertMgr) JobRunningAlert(ctx context.Context, jobName string) error {
 }
 
 func (a *alertMgr) JobFailureAlert(ctx context.Context, jobName string) error {
+	if a.err != nil {
+		return a.err
+	}
+
 	j := query.Job
 	job, err := j.WithContext(ctx).Where(j.JobName.Eq(jobName)).Preload(j.User).First()
 	if err != nil {
@@ -85,6 +93,10 @@ func (a *alertMgr) JobFailureAlert(ctx context.Context, jobName string) error {
 }
 
 func (a *alertMgr) SendVerificationCode(ctx context.Context, code string, receiver *model.UserAttribute) error {
+	if a.err != nil {
+		return a.err
+	}
+
 	subject := "crater邮箱验证码"
 	body := fmt.Sprintf("邮箱验证码为：%s", code)
 	err := a.handler.SendMessageTo(ctx, receiver, subject, body)
@@ -96,6 +108,10 @@ func (a *alertMgr) SendVerificationCode(ctx context.Context, code string, receiv
 }
 
 func (a *alertMgr) sendJobMessage(ctx context.Context, jobName, subject, messageTemplate string) error {
+	if a.err != nil {
+		return a.err
+	}
+
 	j := query.Job
 	job, err := j.WithContext(ctx).Where(j.JobName.Eq(jobName)).Preload(j.User).First()
 	if err != nil {
@@ -115,12 +131,20 @@ func (a *alertMgr) sendJobMessage(ctx context.Context, jobName, subject, message
 }
 
 func (a *alertMgr) DeleteJob(ctx context.Context, jobName string, _ map[string]any) error {
+	if a.err != nil {
+		return a.err
+	}
+
 	subject := "作业删除通知"
 	messageTemplate := `用户 %s 您好：您的作业 %s (%s) 申请了 GPU 资源，但资源利用率过低，平台已经删除该作业。`
 	return a.sendJobMessage(ctx, jobName, subject, messageTemplate)
 }
 
 func (a *alertMgr) RemindLowUsageJob(ctx context.Context, jobName string, deleteTime time.Time, _ map[string]any) error {
+	if a.err != nil {
+		return a.err
+	}
+
 	subject := "作业即将删除告警"
 	deleteTimeStr := deleteTime.Format("2006-01-02 15:04:05")
 	messageTemplate := `用户 %s 您好：您的作业 %s (%s) 申请了 GPU 资源，但资源利用率过低，平台将于 %s 删除该作业。`
