@@ -126,7 +126,7 @@ export const Component: FC = () => {
           path: "/portal/data/filesystem",
         };
       } else if (index == 3) {
-        if (value == "user" || value.startsWith("q-")) {
+        if (value == "user" || value == "account") {
           return {
             title: getFolderTitle(value),
             path: `/portal/data/filesystem/${value}`,

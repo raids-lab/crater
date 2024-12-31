@@ -583,7 +583,7 @@ export const Component = () => {
                                         );
                                         form.setValue(
                                           `volumeMounts.${index}.mountPath`,
-                                          `/data/${item.name}`,
+                                          `/data/${item.realname}`,
                                         );
                                       }}
                                       disabled={disabled}
