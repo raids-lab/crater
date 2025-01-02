@@ -181,13 +181,12 @@ func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement, preferCPU bo
 			NodeAffinity: ptr.To(v1.NodeAffinity{
 				PreferredDuringSchedulingIgnoredDuringExecution: []v1.PreferredSchedulingTerm{
 					{
-						Weight: 1,
+						Weight: 100,
 						Preference: v1.NodeSelectorTerm{
 							MatchExpressions: []v1.NodeSelectorRequirement{
 								{
-									Key:      "crater.raids-lab.io/devops",
-									Operator: v1.NodeSelectorOpIn,
-									Values:   []string{"true"},
+									Key:      "nvidia.com/gpu.present",
+									Operator: v1.NodeSelectorOpDoesNotExist,
 								},
 							},
 						},
