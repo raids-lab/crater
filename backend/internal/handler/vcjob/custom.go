@@ -3,6 +3,7 @@ package vcjob
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -28,6 +29,7 @@ type (
 		Command         string          `json:"command" binding:"required"`
 		WorkingDir      string          `json:"workingDir" binding:"required"`
 		Template        string          `json:"template"`
+		AlertEnabled    bool            `json:"alertEnabled"`
 	}
 )
 
@@ -76,6 +78,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 		AnnotationKeyTaskName:       req.Name,
 		AnnotationKeyTaskTemplate:   req.Template,
 		AnnotationKeyUseTensorBoard: useTensorboard,
+		AnnotationKeyAlertEnabled:   strconv.FormatBool(req.AlertEnabled),
 	}
 
 	// 5. Create the pod spec

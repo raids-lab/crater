@@ -2,6 +2,7 @@ package vcjob
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -55,7 +56,8 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		LabelKeyBaseURL:  jobName,
 	}
 	annotations := map[string]string{
-		AnnotationKeyTaskName: req.Name,
+		AnnotationKeyTaskName:     req.Name,
+		AnnotationKeyAlertEnabled: strconv.FormatBool(req.AlertEnabled),
 	}
 
 	// 4. Create the task spec
