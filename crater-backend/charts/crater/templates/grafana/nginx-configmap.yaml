@@ -22,7 +22,7 @@ data:
         server_name localhost;
         location / {
           proxy_pass http://prometheus-grafana.monitoring;  # 替换为Grafana 地址
-          proxy_set_header Authorization "Bearer glsa_I2Vr0WKByHT4fOyUkHBw8TOEEubBFIEo_e4e91dbd"; # 替换为Grafana Token
+          proxy_set_header Authorization "Bearer ***REMOVED***"; # 替换为Grafana Token
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
