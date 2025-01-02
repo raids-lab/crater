@@ -146,6 +146,7 @@ const formSchema = z.object({
         path: ["tbLogDir"],
       },
     ),
+  alertEnabled: z.boolean().default(true),
   nodeSelector: nodeSelectorSchema,
 });
 
@@ -179,6 +180,7 @@ export const Component = () => {
         volumeMounts: values.volumeMounts,
         envs: values.envs,
         useTensorBoard: values.observability.tbEnable,
+        alertEnabled: values.alertEnabled,
         selectors: values.nodeSelector.enable
           ? [
               {
