@@ -11,9 +11,10 @@ import (
 
 	harbormodelv2 "github.com/mittwald/goharbor-client/v5/apiv2/model"
 
+	"k8s.io/apimachinery/pkg/util/intstr"
+
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/logutils"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var (

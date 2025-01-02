@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"time"
 
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 var Orm *gorm.DB

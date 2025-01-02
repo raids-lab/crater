@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/pkg/config"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
+
+	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/pkg/config"
 )
 
 const FileType = 1

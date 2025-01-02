@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	recommenddljobapi "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	recommenddljobapi "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
 )
 
 type RecommendDLJobController struct {

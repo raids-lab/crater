@@ -9,6 +9,7 @@ import (
 	_ "time/tzdata"
 
 	"github.com/google/uuid"
+
 	"github.com/raids-lab/crater/pkg/config"
 )
 

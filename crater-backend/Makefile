@@ -25,10 +25,29 @@ fmt:
 	@echo "Formatting code..."
 	go fmt ./...
 
+.PHONY: vet
+vet: fmt ## Run go vet.
+	@echo "Running go vet..."
+	go vet ./...
+
+.PHONY: imports
+imports: goimports ## Run goimports on all go files.
+	@echo "Running goimports..."
+	$(GOIMPORTS) -w -local github.com/raids-lab/crater .
+
+# if $(GOIMPORTS) -l -local github.com/raids-lab/crater .go, then error
+.PHONY: import-check
+import-check: goimports ## Check if goimports is needed.
+	@echo "Running goimports..."
+	@if [ -n "$$($(GOIMPORTS) -l -local github.com/raids-lab/crater .)" ]; then \
+		echo "goimports needs to be run, please run 'make imports'"; \
+		exit 1; \
+	fi
+
 .PHONY: lint
-lint: fmt golangci-lint ## Lint go files.
+lint: fmt import-check golangci-lint ## Lint go files.
 	@echo "Linting go files..."
-	$(GOLANGCI_LINT) run -v --timeout 5m
+	$(GOLANGCI_LINT) run --timeout 5m
 
 .PHONY: curd
 curd: ## Generate Gorm CURD code.
@@ -78,18 +97,26 @@ $(LOCATION):
 
 ## Tool Binaries
 GOLANGCI_LINT ?= $(LOCATION)/golangci-lint
+GOIMPORTS ?= $(LOCATION)/goimports
 SWAGGO ?= $(LOCATION)/swag
 HACK_DIR ?= $(PWD)/hack
 
 ## Tool Versions
 GOLANGCI_LINT_VERSION ?= v1.61.0
 SWAGGO_VERSION ?= v1.16.3
+GOIMPORTS_VERSION ?= v0.28.0
 
 .PHONY: golangci-lint
 golangci-lint: $(GOLANGCI_LINT) ## Install golangci-lint
 $(GOLANGCI_LINT): $(LOCATION)
 	@echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."
 	GOBIN=$(LOCATION) go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+
+.PHONY: goimports
+goimports: $(GOIMPORTS) ## Install goimports
+$(GOIMPORTS): $(LOCATION)
+	@echo "Installing goimports $(GOIMPORTS_VERSION)..."
+	GOBIN=$(LOCATION) go install golang.org/x/tools/cmd/goimports@$(GOIMPORTS_VERSION)
 
 .PHONY: swaggo
 swaggo: $(SWAGGO) ## Install swaggo

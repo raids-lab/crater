@@ -2,6 +2,7 @@ package util
 
 import (
 	"github.com/gin-gonic/gin"
+
 	"github.com/raids-lab/crater/dao/model"
 )
 

@@ -4,11 +4,12 @@ import (
 	"context"
 	"sync"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
-	v1 "k8s.io/api/core/v1"
 )
 
 type QuotaInfo struct {

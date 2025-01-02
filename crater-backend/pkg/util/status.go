@@ -1,9 +1,10 @@
 package util
 
 import (
-	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 )
 
 const (

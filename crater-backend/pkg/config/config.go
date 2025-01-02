@@ -5,8 +5,9 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
-	"github.com/raids-lab/crater/pkg/logutils"
 	"gopkg.in/yaml.v3"
+
+	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 type Config struct {

@@ -8,14 +8,15 @@ import (
 
 	"hash/fnv"
 
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+
 	"github.com/raids-lab/crater/pkg/crclient"
 	tasksvc "github.com/raids-lab/crater/pkg/db/task"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/models"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/util/queue"
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 const (
