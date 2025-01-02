@@ -71,6 +71,7 @@ const formSchema = z.object({
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
   observability: observabilitySchema,
+  alertEnabled: z.boolean().default(true),
   nodeSelector: nodeSelectorSchema,
 });
 
@@ -101,6 +102,7 @@ export const Component = () => {
         volumeMounts: values.volumeMounts,
         envs: values.envs,
         useTensorBoard: values.observability.tbEnable,
+        alertEnabled: values.alertEnabled,
         selectors: values.nodeSelector.enable
           ? [
               {
@@ -192,6 +194,7 @@ export const Component = () => {
       observability: {
         tbEnable: false,
       },
+      alertEnabled: true,
       nodeSelector: {
         enable: false,
       },
@@ -755,6 +758,23 @@ export const Component = () => {
               setValue={setOtherOpen}
             >
               <div className="mt-3 space-y-2">
+                <FormField
+                  control={form.control}
+                  name={`alertEnabled`}
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between space-x-0 space-y-0">
+                      <FormLabel className="font-normal">
+                        接收状态通知
+                      </FormLabel>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name={`nodeSelector.enable`}

@@ -123,6 +123,7 @@ export interface IJupyterCreate {
   useTensorBoard: boolean;
   selectors?: NodeSelectorRequirement[];
   template: string;
+  alertEnabled: boolean;
 }
 
 export interface ITrainingCreate extends IJupyterCreate {
@@ -157,6 +158,8 @@ export interface ITensorflowCreate {
   volumeMounts: VolumeMount[];
   envs: Env[];
   useTensorBoard: boolean;
+  selectors?: NodeSelectorRequirement[];
+  alertEnabled: boolean;
 }
 
 export const apiJupyterCreate = async (task: IJupyterCreate) => {
