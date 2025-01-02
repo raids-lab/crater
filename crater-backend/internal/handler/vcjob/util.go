@@ -181,7 +181,7 @@ func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement, preferCPU bo
 			NodeAffinity: ptr.To(v1.NodeAffinity{
 				PreferredDuringSchedulingIgnoredDuringExecution: []v1.PreferredSchedulingTerm{
 					{
-						Weight: 100,
+						Weight: 50,
 						Preference: v1.NodeSelectorTerm{
 							MatchExpressions: []v1.NodeSelectorRequirement{
 								{
