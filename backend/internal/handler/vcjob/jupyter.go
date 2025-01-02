@@ -131,7 +131,8 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	}
 
 	// 3. TODO: Node Affinity for ARM64 Nodes
-	affinity := GenerateNodeAffinity(req.Selectors)
+	preferCPU := !ResourceListContainsGPU(req.Resource)
+	affinity := GenerateNodeAffinity(req.Selectors, preferCPU)
 
 	// 4. Labels and Annotations
 	namespace := config.GetConfig().Workspace.Namespace
