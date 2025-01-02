@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: delete-operation-job
+  namespace: crater-workspace
+spec:
+  schedule: 0,30 * * * *
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: curl-container
+            image: ***REMOVED***/docker.io/curlimages/curl:latest
+            command:
+            - /bin/sh
+            - -c
+            - >
+              curl -X DELETE "https://***REMOVED***/api/operations/auto?timeRange=120&waitTime=30&util=0"
+          restartPolicy: OnFailure
+
+
