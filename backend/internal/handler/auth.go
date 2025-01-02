@@ -15,16 +15,17 @@ import (
 	"github.com/gin-gonic/gin"
 	ldap "github.com/go-ldap/ldap/v3"
 	imrocreq "github.com/imroc/req/v3"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/datatypes"
+	"gorm.io/gorm"
+	"k8s.io/utils/ptr"
+
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
-	"golang.org/x/crypto/bcrypt"
-	"gorm.io/datatypes"
-	"gorm.io/gorm"
-	"k8s.io/utils/ptr"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.

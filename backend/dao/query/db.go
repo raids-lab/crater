@@ -5,10 +5,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/raids-lab/crater/pkg/config"
-	"github.com/raids-lab/crater/pkg/logutils"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+
+	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 var (

@@ -6,13 +6,13 @@ import (
 
 	"github.com/go-gormigrate/gormigrate/v2"
 	"github.com/google/uuid"
-	"github.com/raids-lab/crater/dao/model"
-	"github.com/raids-lab/crater/dao/query"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"k8s.io/utils/ptr"
 
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/models"
 )
 

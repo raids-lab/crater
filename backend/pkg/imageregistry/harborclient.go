@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	haborapiv2 "github.com/mittwald/goharbor-client/v5/apiv2"
+
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
 )

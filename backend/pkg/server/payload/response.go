@@ -1,9 +1,10 @@
 package payload
 
 import (
-	"github.com/raids-lab/crater/pkg/models"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/raids-lab/crater/pkg/models"
 )
 
 type CreateTaskResp struct {

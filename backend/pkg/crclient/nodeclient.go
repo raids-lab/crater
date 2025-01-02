@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/raids-lab/crater/pkg/monitor"
-	"github.com/raids-lab/crater/pkg/server/payload"
-	"github.com/raids-lab/crater/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/raids-lab/crater/pkg/monitor"
+	"github.com/raids-lab/crater/pkg/server/payload"
+	"github.com/raids-lab/crater/pkg/utils"
 )
 
 type NodeClient struct {

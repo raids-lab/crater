@@ -4,9 +4,10 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/datatypes"
+
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
-	"gorm.io/datatypes"
 
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/pkg/logutils"

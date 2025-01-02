@@ -9,6 +9,7 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/raids-lab/crater/internal/resputil"
 )
 

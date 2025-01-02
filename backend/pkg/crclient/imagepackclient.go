@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	imagepackv1 "github.com/raids-lab/crater/pkg/apis/imagepack/v1"
 )
 
 type ImagePackController struct {
