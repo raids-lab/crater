@@ -205,7 +205,7 @@ func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement, totalRequest
 						Preference: v1.NodeSelectorTerm{
 							MatchExpressions: []v1.NodeSelectorRequirement{
 								{
-									Key:      "feature.node.kubernetes.io/pci-15b3.present=true",
+									Key:      "feature.node.kubernetes.io/pci-15b3.present",
 									Operator: v1.NodeSelectorOpDoesNotExist,
 								},
 							},
