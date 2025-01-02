@@ -146,7 +146,7 @@ func GenerateCustomPodSpec(
 	if err != nil {
 		return podSpec, err
 	}
-	affinity := GenerateNodeAffinity(custom.Selectors, false)
+	affinity := GenerateNodeAffinity(custom.Selectors, custom.Resource)
 
 	podSpec = v1.PodSpec{
 		Affinity: affinity,

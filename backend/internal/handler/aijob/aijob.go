@@ -310,7 +310,7 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 	}
 
 	// 3. TODO: Node Affinity for ARM64 Nodes
-	affinity := vcjob.GenerateNodeAffinity(vcReq.Selectors, false)
+	affinity := vcjob.GenerateNodeAffinity(vcReq.Selectors, nil)
 
 	// 5. Create the pod spec
 	podSpec := v1.PodSpec{

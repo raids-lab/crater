@@ -82,7 +82,7 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	}
 
 	// 2. TODO: Node Affinity for ARM64 Nodes
-	affinity := GenerateNodeAffinity(req.Selectors, false)
+	affinity := GenerateNodeAffinity(req.Selectors, nil)
 
 	// 3. Labels and Annotations
 	namespace := config.GetConfig().Workspace.Namespace
