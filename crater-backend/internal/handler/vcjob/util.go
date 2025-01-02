@@ -161,10 +161,12 @@ func GetSubPathByDatasetVolume(c context.Context,
 	return dataset.URL, nil
 }
 
-func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement, preferCPU bool) (affinity *v1.Affinity) {
-	// expressions will override preferredDuringSchedulingIgnoredDuringExecution
+func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement, totalRequests v1.ResourceList) (affinity *v1.Affinity) {
+	gpuCount := GetGPUCountFromResource(totalRequests)
+
+	// expressions will override prefer
 	if len(expressions) > 0 {
-		affinity = ptr.To(v1.Affinity{
+		return ptr.To(v1.Affinity{
 			NodeAffinity: ptr.To(v1.NodeAffinity{
 				RequiredDuringSchedulingIgnoredDuringExecution: ptr.To(v1.NodeSelector{
 					NodeSelectorTerms: []v1.NodeSelectorTerm{
@@ -175,9 +177,8 @@ func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement, preferCPU bo
 				}),
 			}),
 		})
-	} else if preferCPU {
-		// cpu node has label crater.raids-lab.io/devops=true
-		affinity = ptr.To(v1.Affinity{
+	} else if gpuCount == 0 {
+		return ptr.To(v1.Affinity{
 			NodeAffinity: ptr.To(v1.NodeAffinity{
 				PreferredDuringSchedulingIgnoredDuringExecution: []v1.PreferredSchedulingTerm{
 					{
@@ -194,18 +195,36 @@ func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement, preferCPU bo
 				},
 			}),
 		})
+	} else if gpuCount == 1 {
+		return ptr.To(v1.Affinity{
+			NodeAffinity: ptr.To(v1.NodeAffinity{
+				PreferredDuringSchedulingIgnoredDuringExecution: []v1.PreferredSchedulingTerm{
+					{
+						Weight: 50,
+						Preference: v1.NodeSelectorTerm{
+							MatchExpressions: []v1.NodeSelectorRequirement{
+								{
+									Key:      "feature.node.kubernetes.io/pci-15b3.present=true",
+									Operator: v1.NodeSelectorOpDoesNotExist,
+								},
+							},
+						},
+					},
+				},
+			}),
+		})
 	}
 	return affinity
 }
 
-func ResourceListContainsGPU(resources v1.ResourceList) bool {
+func GetGPUCountFromResource(resources v1.ResourceList) (gpuCount int64) {
 	// with prefix nvidia.com
-	for k := range resources {
+	for k, v := range resources {
 		if strings.HasPrefix(k.String(), "nvidia.com") {
-			return true
+			return v.Value()
 		}
 	}
-	return false
+	return 0
 }
 
 func generatePodSpec(
