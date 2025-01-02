@@ -17,3 +17,8 @@ export const MetadataFormDockerfile: MetadataFormType = {
   version: "20241208",
   type: "dockerfile",
 };
+
+export const MetadataFormPipApt: MetadataFormType = {
+  version: "20250102",
+  type: "pipapt",
+};

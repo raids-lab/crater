@@ -52,9 +52,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
-import { DockerfileSheet } from "./DockerfileSheet";
 import { shortestImageName } from "@/utils/formatter";
-import TipBadge from "@/components/badge/TipBadge";
 import {
   Dialog,
   DialogContent,
@@ -67,6 +65,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@radix-ui/react-label";
 import PageTitle from "@/components/layout/PageTitle";
 import DocsButton from "@/components/button/DocsButton";
+import { PipAptSheet } from "./PipAptSheet";
+import { DockerfileSheet } from "./DockerfileSheet";
+import SplitButton from "@/components/button/SplitButton";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -79,7 +80,8 @@ const toolbarConfig: DataTableToolbarConfig = {
 
 export const ImageTable: FC = () => {
   const queryClient = useQueryClient();
-  const [openSheet, setOpenSheet] = useState(false);
+  const [openPipAptSheet, setOpenPipAptSheet] = useState(false);
+  const [openDockerfileSheet, setOpenDockerfileSheet] = useState(false);
   const navigate = useNavigate();
   const imageQuery = useQuery({
     queryKey: ["imagepack", "list"],
@@ -254,13 +256,28 @@ export const ImageTable: FC = () => {
           actionArea={
             <div className="flex flex-row gap-3">
               <DocsButton title="查看文档" url="image/imagebuild" />
-              <Button
-                className="h-8 min-w-fit"
-                onClick={() => setOpenSheet(true)}
-              >
-                <PackagePlusIcon />
-                镜像制作
-              </Button>
+              <SplitButton
+                icon={<PackagePlusIcon />}
+                renderTitle={(title) => `基于${title}构建`}
+                itemTitle="构建方式"
+                items={[
+                  {
+                    key: "pip-apt",
+                    title: "软件包",
+                    action: () => {
+                      setOpenPipAptSheet(true);
+                    },
+                  },
+                  {
+                    key: "dockerfile",
+                    title: " Dockerfile ",
+                    action: () => {
+                      setOpenDockerfileSheet(true);
+                    },
+                  },
+                ]}
+                cacheKey="imagepack"
+              />
             </div>
           }
         />
@@ -326,18 +343,21 @@ export const ImageTable: FC = () => {
         toolbarConfig={toolbarConfig}
         className="lg:col-span-2"
       />
-      <DockerfileSheet
-        isOpen={openSheet}
-        onOpenChange={setOpenSheet}
-        title={
-          <p className="flex flex-row items-center gap-1.5">
-            <TipBadge className="h-5" />
-            镜像制作
-          </p>
-        }
+      <PipAptSheet
+        isOpen={openPipAptSheet}
+        onOpenChange={setOpenPipAptSheet}
+        title="基于软件包构建镜像"
         description="基于平台提供的基础镜像，快速制作自定义镜像"
         className="sm:max-w-3xl"
-        closeSheet={() => setOpenSheet(false)}
+        closeSheet={() => setOpenPipAptSheet(false)}
+      />
+      <DockerfileSheet
+        isOpen={openDockerfileSheet}
+        onOpenChange={setOpenDockerfileSheet}
+        title="基于 Dockerfile 构建镜像"
+        description="基于 Dockerfile 制作镜像"
+        className="sm:max-w-3xl"
+        closeSheet={() => setOpenDockerfileSheet(false)}
       />
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-md">

@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
+    "@monaco-editor/react": "^4.6.0",
     "@nivo/calendar": "^0.88.0",
     "@nivo/core": "^0.87.0",
     "@nivo/pie": "^0.87.0",

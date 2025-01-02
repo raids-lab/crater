@@ -11,6 +11,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^3.9.1
         version: 3.9.1(react-hook-form@7.54.0(react@18.3.1))
+      '@monaco-editor/react':
+        specifier: ^4.6.0
+        version: 4.6.0(monaco-editor@0.52.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@nivo/calendar':
         specifier: ^0.88.0
         version: 0.88.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -753,6 +756,18 @@ packages:
 
   '@juggle/resize-observer@3.4.0':
     resolution: {integrity: sha512-dfLbk+PwWvFzSxwk3n5ySL0hfBog779o8h68wK/7/APo/7cgyWp5jcXockbxdk5kFRkbeXWm4Fbi9FrdN381sA==}
+
+  '@monaco-editor/loader@1.4.0':
+    resolution: {integrity: sha512-00ioBig0x642hytVspPl7DbQyaSWRaolYie/UFNjoTdvoKPzo6xrXLhTk9ixgIKcLH5b5vDOjVNiGyY+uDCUlg==}
+    peerDependencies:
+      monaco-editor: '>= 0.21.0 < 1'
+
+  '@monaco-editor/react@4.6.0':
+    resolution: {integrity: sha512-RFkU9/i7cN2bsq/iTkurMWOEErmYcY6JiQI3Jn+WeR/FGISH8JbHERjpS9oRuSOPvDMJI0Z8nJeKkbOs9sBYQw==}
+    peerDependencies:
+      monaco-editor: '>= 0.25.0 < 1'
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0
 
   '@mswjs/interceptors@0.37.3':
     resolution: {integrity: sha512-USvgCL/uOGFtVa6SVyRrC8kIAedzRohxIXN5LISlg5C5vLZCn7dgMFVSNhSF9cuBEFrm/O2spDWEZeMnw4ZXYg==}
@@ -3629,6 +3644,9 @@ packages:
     resolution: {integrity: sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==}
     engines: {node: '>=16 || 14 >=14.17'}
 
+  monaco-editor@0.52.2:
+    resolution: {integrity: sha512-GEQWEZmfkOGLdd3XK8ryrfWz3AIP8YymVXiPHEdewrUq7mh0qrKrfHLNCXcbB6sTnMLnOZ3ztSiKcciFUkIJwQ==}
+
   motion-dom@11.13.0:
     resolution: {integrity: sha512-Oc1MLGJQ6nrvXccXA89lXtOqFyBmvHtaDcTRGT66o8Czl7nuA8BeHAd9MQV1pQKX0d2RHFBFaw5g3k23hQJt0w==}
 
@@ -4294,6 +4312,9 @@ packages:
 
   sprintf-js@1.0.3:
     resolution: {integrity: sha512-D9cPgkvLlV3t3IzL0D0YLvGA9Ahk4PcvVwUbN0dSGr1aP0Nrt4AEnTUbuGvquEC0mA64Gqt1fzirlRs5ibXx8g==}
+
+  state-local@1.0.7:
+    resolution: {integrity: sha512-HTEHMNieakEnoe33shBYcZ7NX83ACUjCu8c40iOGEZsngj9zRnkqS9j1pqQPXwobB0ZcVTk27REb7COQ0UR59w==}
 
   statuses@2.0.1:
     resolution: {integrity: sha512-RwNA9Z/7PrK06rYLIzFMlaF+l73iwpzsqRIFgbMLbTcLD6cOao82TaWefPXQvB2fOC4AjuYSEndS7N/mTCbkdQ==}
@@ -5249,6 +5270,18 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.5.0
 
   '@juggle/resize-observer@3.4.0': {}
+
+  '@monaco-editor/loader@1.4.0(monaco-editor@0.52.2)':
+    dependencies:
+      monaco-editor: 0.52.2
+      state-local: 1.0.7
+
+  '@monaco-editor/react@4.6.0(monaco-editor@0.52.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@monaco-editor/loader': 1.4.0(monaco-editor@0.52.2)
+      monaco-editor: 0.52.2
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
 
   '@mswjs/interceptors@0.37.3':
     dependencies:
@@ -8275,6 +8308,8 @@ snapshots:
 
   minipass@7.1.2: {}
 
+  monaco-editor@0.52.2: {}
+
   motion-dom@11.13.0: {}
 
   motion-utils@11.13.0: {}
@@ -8920,6 +8955,8 @@ snapshots:
 
   sprintf-js@1.0.3:
     optional: true
+
+  state-local@1.0.7: {}
 
   statuses@2.0.1: {}
 

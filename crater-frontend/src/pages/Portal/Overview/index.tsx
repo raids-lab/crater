@@ -14,7 +14,7 @@ import JobPhaseLabel, {
 import { IJobInfo, JobType, apiJobAllList } from "@/services/api/vcjob";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import NivoPie from "@/components/chart/NivoPie";
-import SplitButton from "@/components/custom/SplitButton";
+import SplitLinkButton from "@/components/button/SplitLinkButton";
 import { FlaskConicalIcon, UserRoundIcon } from "lucide-react";
 import { useRoutes } from "react-router-dom";
 import ResourceBadges from "@/components/badge/ResourceBadges";
@@ -264,7 +264,7 @@ export const Component: FC = () => {
           actionArea={
             <div className="flex flex-row gap-3">
               <DocsButton title="平台文档" url="intro" />
-              <SplitButton
+              <SplitLinkButton
                 title="overview"
                 urls={[
                   {

@@ -8,31 +8,56 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ChevronDownIcon, PlusCircleIcon } from "lucide-react";
+import { ChevronDownIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { useNavigate } from "react-router-dom";
 import { useLocalStorage } from "usehooks-ts";
+import { ReactNode, useEffect } from "react";
 
-interface URL {
-  url: string;
-  name: string;
+export interface SplitButtonItem {
+  key: string;
+  title: string;
+  action: () => void;
   disabled?: boolean;
 }
 
-const SplitButton = ({ urls, title }: { urls: URL[]; title: string }) => {
+interface SplitButtonProps {
+  icon: ReactNode;
+  renderTitle: (itemTitle?: string) => ReactNode;
+  itemTitle: string;
+  items: SplitButtonItem[];
+  cacheKey: string;
+}
+
+const SplitButton = ({
+  icon,
+  renderTitle,
+  itemTitle,
+  items,
+  cacheKey,
+}: SplitButtonProps) => {
   const [position, setPosition] = useLocalStorage(
-    `split-button-${title}`,
-    urls[0].url,
+    `split-button-${cacheKey}`,
+    items[0].key,
   );
-  const navigate = useNavigate();
+
+  useEffect(() => {
+    // if position is not in items, or item is disabled, set position to first not disabled
+    if (
+      !items.find((item) => item.key === position) ||
+      items.find((item) => item.key === position)?.disabled
+    ) {
+      setPosition(items.find((item) => !item.disabled)?.key || items[0].key);
+    }
+  }, [items, position, setPosition]);
+
   return (
     <div className="flex w-fit items-center space-x-1 rounded-md bg-primary text-primary-foreground">
       <Button
         className="pr-3 shadow-none"
-        onClick={() => navigate(`/${position}`)}
+        onClick={() => items.find((item) => item.key === position)?.action()}
       >
-        <PlusCircleIcon className="size-4" />
-        新建{urls.find((url) => url.url === position)?.name}
+        {icon}
+        {renderTitle(items.find((item) => item.key === position)?.title)}
       </Button>
       <Separator orientation="vertical" className="h-[20px]" />
       <DropdownMenu>
@@ -47,16 +72,18 @@ const SplitButton = ({ urls, title }: { urls: URL[]; title: string }) => {
           className="w-[200px]"
           forceMount
         >
-          <DropdownMenuLabel>作业类型</DropdownMenuLabel>
+          <DropdownMenuLabel className="text-xs text-muted-foreground">
+            {itemTitle}
+          </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuRadioGroup value={position} onValueChange={setPosition}>
-            {urls.map((url) => (
+            {items.map((item) => (
               <DropdownMenuRadioItem
-                key={url.url}
-                value={url.url}
-                disabled={url.disabled}
+                key={item.key}
+                value={item.key}
+                disabled={item.disabled}
               >
-                {url.name}
+                {item.title}
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>

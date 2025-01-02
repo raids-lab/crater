@@ -33,7 +33,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui-custom/card";
-import SplitButton from "@/components/custom/SplitButton";
+import SplitLinkButton from "@/components/button/SplitLinkButton";
 import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
 import ResourceBadges from "@/components/badge/ResourceBadges";
@@ -439,7 +439,7 @@ const ColocateOverview = () => {
             </CardDescription>
           </CardHeader>
           <CardFooter>
-            <SplitButton
+            <SplitLinkButton
               title="interactive"
               urls={[
                 {

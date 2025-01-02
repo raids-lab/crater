@@ -45,7 +45,6 @@ import { zhCN } from "date-fns/locale";
 import { convertFormToQuota, convertQuotaToForm } from "@/utils/quota";
 import SelectBox from "@/components/custom/SelectBox";
 import { apiAdminUserList } from "@/services/api/admin/user";
-import { logger } from "@/utils/loglevel";
 import SandwichSheet from "@/components/sheet/SandwichSheet";
 import FormImportButton from "@/components/form/FormImportButton";
 import FormExportButton from "@/components/form/FormExportButton";
@@ -251,15 +250,12 @@ export const Account = () => {
               isLoading={isCreatePending || isUpdatePending}
               isLoadingText={form.getValues("id") ? "更新账户" : "新建账户"}
               type="submit"
-              onClick={() => {
-                form
-                  .trigger()
-                  .then(() => {
-                    if (form.formState.isValid) {
-                      onSubmit(form.getValues());
-                    }
-                  })
-                  .catch((e) => logger.debug(e));
+              onClick={async () => {
+                // Trigger validations before submitting
+                const isValid = await form.trigger();
+                if (isValid) {
+                  form.handleSubmit(onSubmit)();
+                }
               }}
             >
               <CirclePlusIcon className="size-4" />
