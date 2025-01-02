@@ -96,6 +96,7 @@ const (
 	AnnotationKeyTaskTemplate   = "crater.raids.io/task-template"
 	AnnotationKeyJupyter        = "crater.raids.io/jupyter-token"
 	AnnotationKeyUseTensorBoard = "crater.raids.io/use-tensorboard"
+	AnnotationKeyAlertEnabled   = "crater.raids.io/alert-enabled"
 
 	// VolumeData  = "crater-rw-workspace"
 	VolumeCache = "crater-cache"

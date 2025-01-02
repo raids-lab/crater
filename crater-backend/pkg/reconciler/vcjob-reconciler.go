@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -219,6 +220,12 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 		return nil, fmt.Errorf("unable to get queue %s: %w", job.Spec.Queue, err)
 	}
 
+	// receive alert email or not
+	alertEnabled, err := strconv.ParseBool(job.Annotations[vcjob.AnnotationKeyAlertEnabled])
+	if err != nil {
+		alertEnabled = true
+	}
+
 	return &model.Job{
 		Name:              job.Annotations[vcjob.AnnotationKeyTaskName],
 		JobName:           job.Name,
@@ -230,6 +237,7 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 		Resources:         datatypes.NewJSONType(resources),
 		Attributes:        datatypes.NewJSONType(job),
 		Template:          job.Annotations[vcjob.AnnotationKeyTaskTemplate],
+		AlertEnabled:      alertEnabled,
 	}, nil
 }
 

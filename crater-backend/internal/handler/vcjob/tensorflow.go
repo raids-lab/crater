@@ -2,6 +2,7 @@ package vcjob
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -35,6 +36,7 @@ type (
 		CreateJobCommon `json:",inline"`
 		Name            string    `json:"name" binding:"required"`
 		Tasks           []TaskReq `json:"tasks"`
+		AlertEnabled    bool      `json:"alertEnabled"`
 	}
 )
 
@@ -90,7 +92,8 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 		LabelKeyBaseURL:  jobName,
 	}
 	annotations := map[string]string{
-		AnnotationKeyTaskName: req.Name,
+		AnnotationKeyTaskName:     req.Name,
+		AnnotationKeyAlertEnabled: strconv.FormatBool(req.AlertEnabled),
 	}
 
 	// 4. Create the task spec
