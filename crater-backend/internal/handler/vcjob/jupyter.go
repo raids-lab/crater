@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -39,6 +40,7 @@ type (
 		Resource        v1.ResourceList `json:"resource"`
 		Image           string          `json:"image" binding:"required"`
 		Template        string          `json:"template"`
+		AlertEnabled    bool            `json:"alertEnabled"`
 	}
 )
 
@@ -158,6 +160,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		AnnotationKeyTaskName:                     req.Name,
 		AnnotationKeyTaskTemplate:                 req.Template,
 		AnnotationKeyUseTensorBoard:               useTensorboard,
+		AnnotationKeyAlertEnabled:                 strconv.FormatBool(req.AlertEnabled),
 		IngressLabelPrefix + notebookIngress.Name: string(ingressJSON), // 添加 notebookIngress Annotation
 	}
 
