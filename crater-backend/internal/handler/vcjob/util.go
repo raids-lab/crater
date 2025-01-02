@@ -161,7 +161,8 @@ func GetSubPathByDatasetVolume(c context.Context,
 	return dataset.URL, nil
 }
 
-func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement) (affinity *v1.Affinity) {
+func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement, preferCPU bool) (affinity *v1.Affinity) {
+	// expressions will override preferredDuringSchedulingIgnoredDuringExecution
 	if len(expressions) > 0 {
 		affinity = ptr.To(v1.Affinity{
 			NodeAffinity: ptr.To(v1.NodeAffinity{
@@ -174,8 +175,38 @@ func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement) (affinity *v
 				}),
 			}),
 		})
+	} else if preferCPU {
+		// cpu node has label crater.raids-lab.io/devops=true
+		affinity = ptr.To(v1.Affinity{
+			NodeAffinity: ptr.To(v1.NodeAffinity{
+				PreferredDuringSchedulingIgnoredDuringExecution: []v1.PreferredSchedulingTerm{
+					{
+						Weight: 1,
+						Preference: v1.NodeSelectorTerm{
+							MatchExpressions: []v1.NodeSelectorRequirement{
+								{
+									Key:      "crater.raids-lab.io/devops",
+									Operator: v1.NodeSelectorOpIn,
+									Values:   []string{"true"},
+								},
+							},
+						},
+					},
+				},
+			}),
+		})
 	}
 	return affinity
+}
+
+func ResourceListContainsGPU(resources v1.ResourceList) bool {
+	// with prefix nvidia.com
+	for k := range resources {
+		if strings.HasPrefix(k.String(), "nvidia.com") {
+			return true
+		}
+	}
+	return false
 }
 
 func generatePodSpec(
