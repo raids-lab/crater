@@ -97,6 +97,7 @@ const formSchema = z.object({
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
   observability: observabilitySchema,
+  alertEnabled: z.boolean().default(true),
   nodeSelector: nodeSelectorSchema,
 });
 
@@ -122,6 +123,7 @@ export const Component = () => {
         volumeMounts: values.volumeMounts,
         envs: values.envs,
         useTensorBoard: values.observability.tbEnable,
+        alertEnabled: values.alertEnabled,
         runningType: values.runningType,
         params: values.params,
         macs: values.macs,

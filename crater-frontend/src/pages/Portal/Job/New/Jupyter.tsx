@@ -133,6 +133,7 @@ const formSchema = z.object({
     tbEnable: z.boolean(),
   }),
   nodeSelector: nodeSelectorSchema,
+  alertEnabled: z.boolean().default(true),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -166,6 +167,7 @@ export const Component = () => {
         volumeMounts: values.volumeMounts,
         envs: values.envs,
         useTensorBoard: values.observability.tbEnable,
+        alertEnabled: values.alertEnabled,
         selectors: values.nodeSelector.enable
           ? [
               {
@@ -243,6 +245,7 @@ export const Component = () => {
       observability: {
         tbEnable: false,
       },
+      alertEnabled: true,
       nodeSelector: {
         enable: false,
       },
@@ -747,7 +750,7 @@ export const Component = () => {
               <div className="mt-3 space-y-3">
                 <FormField
                   control={form.control}
-                  name={`observability.tbEnable`}
+                  name={`alertEnabled`}
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between space-x-0 space-y-0">
                       <FormLabel className="font-normal">
@@ -757,7 +760,6 @@ export const Component = () => {
                         <Switch
                           checked={field.value}
                           onCheckedChange={field.onChange}
-                          disabled
                         />
                       </FormControl>
                     </FormItem>
