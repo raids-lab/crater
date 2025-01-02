@@ -34,7 +34,7 @@ import {
   SquareIcon,
   Trash2Icon,
 } from "lucide-react";
-import SplitButton from "@/components/custom/SplitButton";
+import SplitLinkButton from "@/components/button/SplitLinkButton";
 import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
@@ -335,7 +335,7 @@ const InterOverview = () => {
       >
         <div className="flex flex-row gap-3">
           <DocsButton title="查看文档" url="quick-start/interactive" />
-          <SplitButton
+          <SplitLinkButton
             title="interactive"
             urls={[
               {

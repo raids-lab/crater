@@ -30,7 +30,7 @@ import { toast } from "sonner";
 import { getHeader, jobToolbarConfig } from "@/pages/Portal/Job/statuses";
 import { logger } from "@/utils/loglevel";
 import JobPhaseLabel from "@/components/badge/JobPhaseBadge";
-import SplitButton from "@/components/custom/SplitButton";
+import SplitLinkButton from "@/components/button/SplitLinkButton";
 import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
 import NodeBadges from "@/components/badge/NodeBadges";
@@ -261,9 +261,13 @@ const VolcanoOverview = () => {
     >
       <div className="flex flex-row gap-3">
         <DocsButton title="查看文档" url="quick-start/batchprocess" />
-        <SplitButton
+        <SplitLinkButton
           title="batch"
           urls={[
+            {
+              url: "portal/job/batch/new-" + jobType,
+              name: "自定义作业（单机）",
+            },
             {
               url: "portal/job/batch/new-tensorflow",
               name: " Tensorflow 作业",
@@ -288,10 +292,6 @@ const VolcanoOverview = () => {
               url: "portal/job/batch/new-openmpi",
               name: " OpenMPI 作业",
               disabled: true,
-            },
-            {
-              url: "portal/job/batch/new-" + jobType,
-              name: "自定义作业（单机）",
             },
           ]}
         />

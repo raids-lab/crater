@@ -50,6 +50,7 @@ import ImageItem from "@/components/form/ImageItem";
 import useImageQuery from "@/hooks/query/useImageQuery";
 import DatasetItem from "@/components/form/DatasetItem";
 import { showErrorToast } from "@/utils/toast";
+import LoadableButton from "@/components/custom/LoadableButton";
 
 const FileType = 1;
 const DatasetType = 2;
@@ -367,10 +368,14 @@ export const Component = () => {
               }}
             />
             <FormExportButton metadata={MetadataFormJupyter} form={form} />
-            <Button type="submit">
+            <LoadableButton
+              isLoading={isPending}
+              isLoadingText="提交作业"
+              type="submit"
+            >
               <CirclePlus className="size-4" />
               提交作业
-            </Button>
+            </LoadableButton>
           </div>
           <Card className="lg:col-span-2">
             <CardHeader>

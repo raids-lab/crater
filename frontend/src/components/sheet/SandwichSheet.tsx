@@ -55,42 +55,40 @@ const SandwichSheet = ({
       onOpenChange={trigger ? undefined : onOpenChange}
     >
       {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
-      <SheetContent className={cn("p-0", className)}>
-        <div className="relative -z-10 h-screen">
-          <SheetHeader className="h-[72px] pb-4 pl-6 pt-6">
-            <SheetTitle className="flex flex-row items-center">
-              {title}
-              {description && (
-                <TooltipProvider delayDuration={100}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <QuestionMarkCircledIcon className="ml-1 size-4 text-muted-foreground hover:cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent className="border bg-background text-foreground">
-                      {description}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </SheetTitle>
-          </SheetHeader>
-          <div
-            className={cn({
-              "h-[calc(100vh-_156px)]": footer,
-              "h-[calc(100vh-_72px)]": !footer,
-            })}
-            ref={refRoot}
-          >
-            <ScrollArea style={{ width, height }} className="">
-              {children}
-            </ScrollArea>
-          </div>
-          {footer && (
-            <SheetFooter className="absolute bottom-0 left-0 right-0 gap-2 p-6">
-              {footer}
-            </SheetFooter>
-          )}
+      <SheetContent className={cn("overflow-hidden p-0", className)}>
+        <SheetHeader className="h-[72px] pb-4 pl-6 pt-6">
+          <SheetTitle className="flex flex-row items-center">
+            {title}
+            {description && (
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <QuestionMarkCircledIcon className="ml-1 size-4 text-muted-foreground hover:cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="border bg-background text-foreground">
+                    {description}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </SheetTitle>
+        </SheetHeader>
+        <div
+          className={cn({
+            "h-[calc(100vh-_156px)]": footer,
+            "h-[calc(100vh-_72px)]": !footer,
+          })}
+          ref={refRoot}
+        >
+          <ScrollArea style={{ width, height }} className="">
+            {children}
+          </ScrollArea>
         </div>
+        {footer && (
+          <SheetFooter className="absolute bottom-0 left-0 right-0 gap-2 p-6">
+            {footer}
+          </SheetFooter>
+        )}
       </SheetContent>
     </Sheet>
   );
