@@ -56,8 +56,7 @@ func (c *ImagePackController) ListImagePack(ctx context.Context, namespace strin
 
 func (c *ImagePackController) GetImagePackPod(ctx context.Context, name, namespace string) (*corev1.Pod, error) {
 	var podList corev1.PodList
-	jobName := fmt.Sprintf("kaniko-%s", name)
-	err := c.List(ctx, &podList, client.MatchingLabels{"job-name": jobName}, client.InNamespace(namespace))
+	err := c.List(ctx, &podList, client.MatchingLabels{"job-name": name}, client.InNamespace(namespace))
 	if err != nil {
 		return nil, err
 	} else if len(podList.Items) > 0 {
