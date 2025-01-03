@@ -231,9 +231,9 @@ type DatasetReq struct {
 	Name     string         `json:"name" binding:"required"`
 	URL      string         `json:"url" binding:"required"`
 	Describe string         `json:"describe" binding:"required"`
-	Type     model.DataType `json:"type" binding:"required"`
-	Tags     []string       `json:"tags" binding:"required"`
-	WebURL   string         `json:"weburl" binding:"required"`
+	Type     model.DataType `json:"type" `
+	Tags     []string       `json:"tags" `
+	WebURL   string         `json:"weburl" `
 }
 
 // CreateDataset godoc
