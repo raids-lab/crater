@@ -261,48 +261,47 @@ export const Component: FC = () => {
           title={`欢迎回来，${userInfo.nickname}👋`}
           description="使用异构集群管理平台 Crater 加速您的科研工作"
           className="lg:col-span-3"
-          actionArea={
-            <div className="flex flex-row gap-3">
-              <DocsButton title="平台文档" url="intro" />
-              <SplitLinkButton
-                title="overview"
-                urls={[
-                  {
-                    url: `portal/job/inter/new-jupyter-${jobType}`,
-                    name: " Jupyter Lab",
-                  },
-                  {
-                    url: "portal/job/batch/new-tensorflow",
-                    name: " Tensorflow 作业",
-                  },
-                  {
-                    url: "portal/job/batch/new-pytorch",
-                    name: " Pytorch 作业",
-                  },
-                  {
-                    url: `portal/job/batch/new-${jobType}`,
-                    name: "自定义作业（单机）",
-                  },
-                  {
-                    url: "portal/job/batch/new-ray",
-                    name: " Ray 作业",
-                    disabled: true,
-                  },
-                  {
-                    url: "portal/job/batch/new-deepspeed",
-                    name: " DeepSpeed 作业",
-                    disabled: true,
-                  },
-                  {
-                    url: "portal/job/batch/new-openmpi",
-                    name: " OpenMPI 作业",
-                    disabled: true,
-                  },
-                ]}
-              />
-            </div>
-          }
-        />
+        >
+          <div className="flex flex-row gap-3">
+            <DocsButton title="平台文档" url="intro" />
+            <SplitLinkButton
+              title="overview"
+              urls={[
+                {
+                  url: `portal/job/inter/new-jupyter-${jobType}`,
+                  name: " Jupyter Lab",
+                },
+                {
+                  url: "portal/job/batch/new-tensorflow",
+                  name: " Tensorflow 作业",
+                },
+                {
+                  url: "portal/job/batch/new-pytorch",
+                  name: " Pytorch 作业",
+                },
+                {
+                  url: `portal/job/batch/new-${jobType}`,
+                  name: "自定义作业（单机）",
+                },
+                {
+                  url: "portal/job/batch/new-ray",
+                  name: " Ray 作业",
+                  disabled: true,
+                },
+                {
+                  url: "portal/job/batch/new-deepspeed",
+                  name: " DeepSpeed 作业",
+                  disabled: true,
+                },
+                {
+                  url: "portal/job/batch/new-openmpi",
+                  name: " OpenMPI 作业",
+                  disabled: true,
+                },
+              ]}
+            />
+          </div>
+        </PageTitle>
         <PieCard
           icon={FlaskConicalIcon}
           cardTitle="作业状态"

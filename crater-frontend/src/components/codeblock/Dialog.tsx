@@ -16,7 +16,7 @@ type FetchDialogProps<T> = React.HTMLAttributes<HTMLDivElement> &
     trigger: React.ReactNode;
   };
 
-function CodeContent<T>({
+export function LazyContent<T>({
   name,
   type,
   fetchData,
@@ -54,7 +54,7 @@ export function FetchSheet<T>({
       trigger={trigger}
       className="sm:max-w-3xl"
     >
-      <CodeContent
+      <LazyContent
         name={name}
         type={type}
         fetchData={fetchData}

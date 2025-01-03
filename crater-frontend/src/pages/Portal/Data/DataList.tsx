@@ -76,8 +76,9 @@ export default function DataList({
       <PageTitle
         title={title}
         description={`我们为您准备了一些常见${title}，也欢迎您上传并分享更多${title}。`}
-        actionArea={actionArea}
-      />
+      >
+        {actionArea}
+      </PageTitle>
       <div className="my-4 flex items-end justify-between sm:my-0 sm:items-center">
         <div className="flex flex-col gap-4 sm:my-4 sm:flex-row">
           <div className="relative ml-auto h-9 flex-1 md:grow-0">

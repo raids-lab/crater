@@ -1,22 +1,22 @@
 // Reference: https://github.com/kubesphere/console/blob/master/packages/shared/src/stores/pod.ts#L187
 import { AxiosResponse } from "axios";
 import { IResponse } from "@/services/types";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import BaseCodeBlock from "./BaseCodeBlock";
 import { Button } from "../ui/button";
 import { CopyCheckIcon, CopyIcon } from "lucide-react";
 import { toast } from "sonner";
-import useResizeObserver from "use-resize-observer";
 import { useCopyToClipboard } from "usehooks-ts";
 import { FetchSheet } from "./Dialog";
+import useResizeObserver from "use-resize-observer";
+import { ScrollArea } from "../ui/scroll-area";
 
 export interface PodNamespacedName {
   namespace: string;
   name: string;
 }
 
-function Content({
+export function CodeContent({
   data: yaml,
   language,
 }: {
@@ -39,7 +39,7 @@ function Content({
 
   return (
     <Card
-      className="relative m-6 mt-0 h-[calc(100vh-_96px)] overflow-hidden bg-slate-900 p-1 text-muted-foreground dark:border"
+      className="relative h-[calc(100vh-_304px)] overflow-hidden bg-slate-900 p-1 text-muted-foreground dark:border"
       ref={refRoot}
     >
       <ScrollArea style={{ width, height }}>
@@ -84,7 +84,7 @@ export function ConfigDialog({
       name={jobName}
       type="yaml"
       fetchData={getConfig}
-      renderData={(data) => <Content data={data} language={language} />}
+      renderData={(data) => <CodeContent data={data} language={language} />}
     />
   );
 }
