@@ -182,11 +182,9 @@ export const Component = () => {
       });
     },
     onSuccess: async (_, { taskname }) => {
-      await Promise.all([
+      await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
         queryClient.invalidateQueries({ queryKey: ["job"] }),
-        queryClient.invalidateQueries({ queryKey: ["context", "quota"] }),
-        queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
-      ]);
+      );
       toast.success(`作业 ${taskname} 创建成功`);
       navigate(-1);
     },

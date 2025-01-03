@@ -201,9 +201,9 @@ export function PipAptSheet({ closeSheet, ...props }: DockerfileSheetProps) {
         packages: values.aptPackages ?? "",
       }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["imagelink", "list"],
-      });
+      await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
+        queryClient.invalidateQueries({ queryKey: ["imagelink", "list"] }),
+      );
       closeSheet();
       toast.success(`镜像开始制作，请在下方列表中查看制作状态`);
     },
