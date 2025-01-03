@@ -128,7 +128,7 @@ func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Cont
 	buildkitContainer := []corev1.Container{
 		{
 			Name:    "buildkit",
-			Image:   "moby/buildkit:master-rootless",
+			Image:   "***REMOVED***/moby/buildkit:master-rootless",
 			Command: []string{"buildctl-daemonless.sh"},
 			Env: []corev1.EnvVar{
 				{
