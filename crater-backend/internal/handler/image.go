@@ -469,7 +469,7 @@ func (mgr *ImagePackMgr) DeleteKanikoByID(c *gin.Context) {
 	token := util.GetToken(c)
 	var err error
 	var deleteKanikoRequest DeleteKanikoByIDRequest
-	if err = c.ShouldBindUri(deleteKanikoRequest); err != nil {
+	if err = c.ShouldBindUri(&deleteKanikoRequest); err != nil {
 		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
@@ -509,8 +509,8 @@ func (mgr *ImagePackMgr) DeleteKanikoByID(c *gin.Context) {
 // @Router /v1/images/image/{id} [POST]
 func (mgr *ImagePackMgr) DeleteImageByID(c *gin.Context) {
 	var err error
-	deleteImageRequest := &DeleteImageByIDRequest{}
-	if err = c.ShouldBindUri(deleteImageRequest); err != nil {
+	var deleteImageRequest DeleteImageByIDRequest
+	if err = c.ShouldBindUri(&deleteImageRequest); err != nil {
 		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
@@ -649,9 +649,7 @@ func (mgr *ImagePackMgr) getPodName(c *gin.Context, kanikoID uint) (name, ns str
 	}
 	var pod *corev1.Pod
 	pod, err = mgr.imagepackClient.GetImagePackPod(c, kaniko.ImagePackName, UserNameSpace)
-	if err != nil {
-		msg := fmt.Sprintf("fetch kaniko pod by name failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+	if err != nil || pod == nil {
 		return "", UserNameSpace
 	}
 	return pod.Name, UserNameSpace
