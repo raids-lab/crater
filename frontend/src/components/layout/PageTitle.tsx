@@ -1,11 +1,11 @@
-import { FC } from "react";
+import { FC, ReactNode } from "react";
 import TipBadge from "../badge/TipBadge";
 import { cn } from "@/lib/utils";
 
 interface PageTitleProps {
-  title: string;
-  description: string;
-  actionArea?: React.ReactNode;
+  title: ReactNode;
+  description?: ReactNode;
+  children?: ReactNode;
   className?: string;
   isWIP?: boolean;
 }
@@ -13,7 +13,7 @@ interface PageTitleProps {
 const PageTitle: FC<PageTitleProps> = ({
   description,
   title,
-  actionArea,
+  children,
   className,
   isWIP,
 }) => {
@@ -26,9 +26,11 @@ const PageTitle: FC<PageTitleProps> = ({
           {title}
           {isWIP && <TipBadge className="ml-1.5" />}
         </h1>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        {description && (
+          <p className="text-sm text-muted-foreground">{description}</p>
+        )}
       </div>
-      {actionArea}
+      {children}
     </div>
   );
 };

@@ -132,11 +132,9 @@ export function DataTable<TData, TValue>({
   return (
     <div className={cn("flex flex-col gap-4", className)}>
       {info && (
-        <PageTitle
-          title={info.title}
-          description={info.description}
-          actionArea={children}
-        />
+        <PageTitle title={info.title} description={info.description}>
+          {children}
+        </PageTitle>
       )}
       {toolbarConfig && (
         <DataTableToolbar

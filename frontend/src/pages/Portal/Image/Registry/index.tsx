@@ -253,34 +253,33 @@ export const ImageTable: FC = () => {
           title="镜像制作"
           description="支持 Dockerfile 、低代码、快照等方式制作镜像"
           className="mb-4"
-          actionArea={
-            <div className="flex flex-row gap-3">
-              <DocsButton title="查看文档" url="image/imagebuild" />
-              <SplitButton
-                icon={<PackagePlusIcon />}
-                renderTitle={(title) => `基于${title}构建`}
-                itemTitle="构建方式"
-                items={[
-                  {
-                    key: "pip-apt",
-                    title: "软件包",
-                    action: () => {
-                      setOpenPipAptSheet(true);
-                    },
+        >
+          <div className="flex flex-row gap-3">
+            <DocsButton title="查看文档" url="image/imagebuild" />
+            <SplitButton
+              icon={<PackagePlusIcon />}
+              renderTitle={(title) => `基于${title}构建`}
+              itemTitle="构建方式"
+              items={[
+                {
+                  key: "pip-apt",
+                  title: "软件包",
+                  action: () => {
+                    setOpenPipAptSheet(true);
                   },
-                  {
-                    key: "dockerfile",
-                    title: " Dockerfile ",
-                    action: () => {
-                      setOpenDockerfileSheet(true);
-                    },
+                },
+                {
+                  key: "dockerfile",
+                  title: " Dockerfile ",
+                  action: () => {
+                    setOpenDockerfileSheet(true);
                   },
-                ]}
-                cacheKey="imagepack"
-              />
-            </div>
-          }
-        />
+                },
+              ]}
+              cacheKey="imagepack"
+            />
+          </div>
+        </PageTitle>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card className="shadow-sm">
             <CardHeader>
