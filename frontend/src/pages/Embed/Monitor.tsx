@@ -1,3 +1,4 @@
+import useFixedLayout from "@/hooks/useFixedLayout";
 import { useTheme } from "@/utils/theme";
 import { useMemo, type FC } from "react";
 
@@ -28,6 +29,7 @@ export const GrafanaIframe = ({ baseSrc }: { baseSrc: string }) => {
 };
 
 const Monitor: FC = () => {
+  useFixedLayout();
   return (
     <div className="h-[calc(100vh_-_80px)] w-full">
       <GrafanaIframe baseSrc={GPU_DASHBOARD} />

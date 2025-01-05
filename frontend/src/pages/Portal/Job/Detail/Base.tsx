@@ -9,7 +9,6 @@ import {
   ExternalLinkIcon,
   FileSlidersIcon,
   GaugeIcon,
-  GridIcon,
   LayoutGridIcon,
   ShieldEllipsisIcon,
   Trash2Icon,
@@ -46,10 +45,12 @@ import { PodTable } from "./PodTable";
 import { CodeContent } from "@/components/codeblock/ConfigDialog";
 import { LazyContent } from "@/components/codeblock/Dialog";
 import { EventTimeline } from "@/components/custom/Timeline/timeline-layout";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageTitle from "@/components/layout/PageTitle";
 import JobTypeLabel from "@/components/badge/JobTypeBadge";
 import { GrafanaIframe } from "@/pages/Embed/Monitor";
+import useFixedLayout from "@/hooks/useFixedLayout";
+import { DetailPage } from "@/components/layout/DetailPage";
+import Nothing from "@/components/placeholder/Nothing";
 export interface Resource {
   [key: string]: string;
 }
@@ -60,6 +61,7 @@ const job_monitor = import.meta.env.VITE_GRAFANA_JOB_MONITOR;
 // .VITE_GRAFANA_GPU_DASHBOARD;
 
 export function BaseCore({ jobName }: { jobName: string }) {
+  useFixedLayout();
   const navigate = useNavigate();
 
   const { data, isLoading } = useQuery({
@@ -88,8 +90,8 @@ export function BaseCore({ jobName }: { jobName: string }) {
   }
 
   return (
-    <div className="h-[calc(100vh_-_80px)] w-full space-y-6">
-      <div className="space-y-6">
+    <DetailPage
+      header={
         <PageTitle
           title={
             <div className="flex flex-row items-center gap-1.5 text-2xl">
@@ -148,100 +150,89 @@ export function BaseCore({ jobName }: { jobName: string }) {
             </AlertDialog>
           </div>
         </PageTitle>
-        <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground lg:grid-cols-3">
-          <div className="flex items-center">
-            <CreditCardIcon className="mr-1.5 size-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">账户：</span>
-            <span>{data.queue}</span>
-          </div>
-          <div className="flex items-center">
-            <UserRoundIcon className="mr-1.5 size-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">用户：</span>
-            <span>{data.username}</span>
-          </div>
-          <div className="flex items-center">
-            <ActivityIcon className="mr-1.5 size-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">状态：</span>
-            <JobPhaseLabel jobPhase={data.status} />
-          </div>
-          <div className="flex items-center">
-            <CalendarIcon className="mr-1.5 size-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">创建于：</span>
-            <TimeDistance date={data.createdAt} />
-          </div>
-          <div className="flex items-center">
-            <ClockIcon className="mr-1.5 size-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">开始于：</span>
-            <TimeDistance date={data.startedAt} />
-          </div>
-          <div className="flex items-center">
-            <CheckCircleIcon className="mr-1.5 size-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">完成于：</span>
-            <TimeDistance date={data.completedAt} />
-          </div>
-        </div>
-      </div>
-      <Tabs defaultValue="base" className="w-full">
-        <TabsList className="tabs-list-underline">
-          <TabsTrigger className="tabs-trigger-underline" value="base">
-            <LayoutGridIcon className="size-4" />
-            基本信息
-          </TabsTrigger>
-          <TabsTrigger className="tabs-trigger-underline" value="config">
-            <FileSlidersIcon className="size-4" />
-            作业配置
-          </TabsTrigger>
-          <TabsTrigger className="tabs-trigger-underline" value="event">
-            <ShieldEllipsisIcon className="size-4" />
-            作业事件
-          </TabsTrigger>
-          <TabsTrigger className="tabs-trigger-underline" value="monitor">
-            <GaugeIcon className="size-4" />
-            资源监控
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="base">
-          <PodTable jobName={jobName} />
-        </TabsContent>
-        <TabsContent value="config">
-          <LazyContent
-            name={jobName}
-            type="yaml"
-            fetchData={apiJobGetYaml}
-            renderData={(data) => <CodeContent data={data} language={"yaml"} />}
-          />
-        </TabsContent>
-        <TabsContent value="event">
-          <LazyContent
-            name={jobName}
-            type="event"
-            fetchData={apiJobGetEvent}
-            renderData={(events) => (
-              <>
-                <EventTimeline items={events} />
-                {events.length === 0 && (
-                  <div className="flex h-[calc(100vh-_304px)] w-full items-center justify-center text-center text-muted-foreground/85 hover:bg-transparent">
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="mb-4 rounded-full bg-muted p-3">
-                        <GridIcon className="h-6 w-6" />
-                      </div>
-                      <p className="select-none text-sm">近一小时无事发生</p>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          />
-        </TabsContent>
-        <TabsContent value="monitor">
-          <div className="h-[calc(100vh_-_304px)] w-full">
-            <GrafanaIframe
-              baseSrc={`${job_monitor}?orgId=1&var-job=${data.jobName}&from=now-1h&to=now`}
+      }
+      info={[
+        { title: "账户", icon: CreditCardIcon, value: data.queue },
+        { title: "用户", icon: UserRoundIcon, value: data.username },
+        {
+          title: "状态",
+          icon: ActivityIcon,
+          value: <JobPhaseLabel jobPhase={data.status} />,
+        },
+        {
+          title: "创建于",
+          icon: CalendarIcon,
+          value: <TimeDistance date={data.createdAt} />,
+        },
+        {
+          title: "开始于",
+          icon: ClockIcon,
+          value: <TimeDistance date={data.startedAt} />,
+        },
+        {
+          title: "完成于",
+          icon: CheckCircleIcon,
+          value: <TimeDistance date={data.completedAt} />,
+        },
+      ]}
+      tabs={[
+        {
+          key: "base",
+          icon: LayoutGridIcon,
+          label: "基本信息",
+          children: <PodTable jobName={jobName} />,
+          scrollable: true,
+        },
+        {
+          key: "config",
+          icon: FileSlidersIcon,
+          label: "作业配置",
+          children: (
+            <LazyContent
+              name={jobName}
+              type="yaml"
+              fetchData={apiJobGetYaml}
+              renderData={(data) => (
+                <CodeContent data={data} language={"yaml"} />
+              )}
             />
-          </div>
-        </TabsContent>
-      </Tabs>
-    </div>
+          ),
+        },
+        {
+          key: "event",
+          icon: ShieldEllipsisIcon,
+          label: "作业事件",
+          children: (
+            <LazyContent
+              name={jobName}
+              type="event"
+              fetchData={apiJobGetEvent}
+              renderData={(events) => (
+                <>
+                  <EventTimeline items={events} />
+                  {events.length === 0 && (
+                    <Nothing title={"近一小时无事发生"} />
+                  )}
+                </>
+              )}
+            />
+          ),
+          scrollable: true,
+        },
+        {
+          key: "monitor",
+          icon: GaugeIcon,
+          label: "基础监控",
+          children: (
+            <div className="h-[calc(100vh_-_304px)] w-full">
+              <GrafanaIframe
+                baseSrc={`${job_monitor}?orgId=1&var-job=${data.jobName}&from=now-1h&to=now`}
+              />
+            </div>
+          ),
+        },
+      ]}
+    />
   );
 }
 

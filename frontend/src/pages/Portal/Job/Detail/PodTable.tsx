@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import TooltipLink from "@/components/label/TooltipLink";
+import Nothing from "@/components/placeholder/Nothing";
 
 const POD_MONITOR = import.meta.env.VITE_GRAFANA_POD_MONITOR;
 
@@ -203,8 +204,12 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
     },
   ];
 
-  if (!query.data || query.data.length === 0) {
+  if (query.isLoading) {
     return <></>;
+  }
+
+  if (!query.data || query.data.length === 0) {
+    return <Nothing title="作业信息已被清理" />;
   }
 
   return (

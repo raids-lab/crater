@@ -34,7 +34,7 @@ export const EventTimeline = ({ items }: TimelineLayoutProps) => {
           );
         })
         .map((item, index) => (
-          <TimelineItem key={index} className="md:ml-24">
+          <TimelineItem key={index} className="ml-24">
             {index < items.length - 1 && <TimelineConnector />}
             <TimelineHeader>
               <TimelineTime>

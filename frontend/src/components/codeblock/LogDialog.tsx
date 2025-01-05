@@ -22,10 +22,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import LoadingCircleIcon from "../icon/LoadingCircleIcon";
+import TooltipButton from "../custom/TooltipButton";
 
 const DEFAULT_TAIL_LINES = 500;
 
-function LogCard({
+export function LogCard({
   namespacedName,
   selectedContainer,
 }: {
@@ -171,13 +172,14 @@ function LogCard({
                   </Button>
                 </div>
               )}
-              <pre className="whitespace-pre-wrap break-words px-3 py-3 text-sm text-cyan-200 dark:text-blue-300">
+              <pre className="whitespace-pre-wrap break-words px-3 py-3 text-sm text-sky-300 dark:text-blue-300">
                 {logText}
               </pre>
             </div>
           </ScrollArea>
           <ButtonGroup className="absolute right-5 top-5 rounded-md border border-input bg-background text-foreground">
-            <Button
+            <TooltipButton
+              tooltipContent="刷新"
               onClick={handleRefresh}
               className="border-0 border-r hover:text-primary focus-visible:ring-0"
               variant="ghost"
@@ -185,41 +187,42 @@ function LogCard({
               title="刷新"
             >
               <RefreshCcw className="size-4" />
-            </Button>
-            <Button
+            </TooltipButton>
+            <TooltipButton
               onClick={() => setTimestamps((prev) => !prev)}
               className="border-0 border-r hover:text-primary focus-visible:ring-0"
               variant="ghost"
               size="icon"
-              title="显示时间戳"
+              tooltipContent="显示时间戳"
             >
               {timestamps ? (
                 <CalendarOff className="size-4" />
               ) : (
                 <CalendarArrowDown className="size-4" />
               )}
-            </Button>
-            <Button
+            </TooltipButton>
+            <TooltipButton
               onClick={copyCode}
               className="border-0 border-r hover:text-primary focus-visible:ring-0"
               variant="ghost"
               size="icon"
-              title="复制"
+              tooltipContent="复制"
             >
               {copied ? (
                 <CopyCheckIcon className="size-4" />
               ) : (
                 <CopyIcon className="size-4" />
               )}
-            </Button>
-            <Button
+            </TooltipButton>
+            <TooltipButton
               onClick={handleDownload}
               className="border-0 hover:text-primary focus-visible:ring-0"
               variant="ghost"
               size="icon"
+              tooltipContent="下载"
             >
               <DownloadIcon className="size-4" />
-            </Button>
+            </TooltipButton>
           </ButtonGroup>
         </>
       ) : (
