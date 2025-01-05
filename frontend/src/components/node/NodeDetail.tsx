@@ -28,6 +28,11 @@ import {
   Grid,
   Layers,
   Cable,
+  ServerIcon,
+  BotIcon,
+  BoxIcon,
+  GaugeIcon,
+  NetworkIcon,
 } from "lucide-react";
 import GpuIcon from "@/components/icon/GpuIcon";
 import useBreadcrumb from "@/hooks/useBreadcrumb";
@@ -45,6 +50,9 @@ import yitianURL from "/nodes/yitian.png";
 import hygonURL from "/nodes/hygon.png";
 import shenweiURL from "/nodes/sw.png";
 import TooltipLink from "../label/TooltipLink";
+import { DetailPage } from "../layout/DetailPage";
+import PageTitle from "../layout/PageTitle";
+import { GrafanaIframe } from "@/pages/Embed/Monitor";
 
 type CardDemoProps = React.ComponentProps<typeof Card> & {
   nodeInfo?: {
@@ -359,7 +367,7 @@ const getColumns = (
             <DropdownMenuLabel className="text-xs text-muted-foreground">
               操作
             </DropdownMenuLabel>
-            <DropdownMenuItem>监控</DropdownMenuItem>
+            <DropdownMenuItem disabled>监控</DropdownMenuItem>
             <DropdownMenuItem
               onClick={() =>
                 handleShowPodLog({
@@ -420,41 +428,105 @@ export const NodeDetail: FC = () => {
     setBreadcrumb([{ title: nodeName ?? "" }]);
   }, [setBreadcrumb, nodeName]);
 
+  if (!nodeDetail || !gpuDetail) return null;
+
   return (
-    <div className="grid gap-8 md:grid-cols-7">
-      <div className="col-span-2 flex-none space-y-4">
-        <CardDemo nodeInfo={nodeDetail} />
-        <GpuCardDemo
-          gpuInfo={
-            gpuDetail
-              ? {
-                  nodeName: nodeName,
-                  haveGPU: gpuDetail.haveGPU,
-                  gpuCount: gpuDetail.gpuCount,
-                  gpuUtil: gpuDetail.gpuUtil,
-                  relateJobs: gpuDetail.relateJobs,
-                  gpuMemory: gpuDetail.gpuMemory,
-                  gpuArch: gpuDetail.gpuArch,
-                  gpuDriver: gpuDetail.gpuDriver,
-                  cudaVersion: gpuDetail.cudaVersion,
-                  gpuProduct: gpuDetail.gpuProduct,
-                }
-              : undefined
-          }
+    <DetailPage
+      header={
+        <PageTitle
+          title={nodeDetail?.name}
+          description={gpuDetail?.gpuProduct}
         />
-      </div>
-      <div className="md:col-span-5">
-        <DataTable
-          query={podsQuery}
-          columns={columns}
-          toolbarConfig={toolbarConfig}
-        />
-      </div>
-      <LogDialog
-        namespacedName={showLogPod}
-        setNamespacedName={setShowLogPod}
-      />
-    </div>
+      }
+      info={[
+        {
+          icon: ServerIcon,
+          title: "操作系统",
+          value: <span className="font-mono">{nodeDetail?.osVersion}</span>,
+        },
+        {
+          icon: Grid,
+          title: "架构",
+          value: (
+            <span className="font-mono uppercase">{nodeDetail?.arch}</span>
+          ),
+        },
+        {
+          icon: NetworkIcon,
+          title: "IP 地址",
+          value: <span className="font-mono">{nodeDetail?.address}</span>,
+        },
+        {
+          icon: BotIcon,
+          title: "角色",
+          value: (
+            <span className="font-mono capitalize">{nodeDetail?.role}</span>
+          ),
+        },
+        {
+          icon: CpuIcon,
+          title: "Kubelet 版本",
+          value: (
+            <span className="font-mono">{nodeDetail?.kubeletVersion}</span>
+          ),
+        },
+        {
+          icon: Layers,
+          title: "容器运行时",
+          value: (
+            <span className="font-mono">
+              {nodeDetail?.containerRuntimeVersion}
+            </span>
+          ),
+        },
+      ]}
+      tabs={[
+        {
+          key: "pods",
+          icon: BoxIcon,
+          label: "节点负载",
+          children: (
+            <>
+              <DataTable
+                query={podsQuery}
+                columns={columns}
+                toolbarConfig={toolbarConfig}
+              />
+              <LogDialog
+                namespacedName={showLogPod}
+                setNamespacedName={setShowLogPod}
+              />
+            </>
+          ),
+          scrollable: true,
+        },
+        {
+          key: "base",
+          icon: GaugeIcon,
+          label: "基础监控",
+          children: (
+            <div className="h-[calc(100vh_-_304px)] w-full">
+              <GrafanaIframe
+                baseSrc={`${GRAFANA_NODE}?orgId=1&var-node=${nodeName}&from=now-30m&to=now`}
+              />
+            </div>
+          ),
+        },
+        {
+          key: "gpu",
+          icon: GpuIcon,
+          label: "加速卡监控",
+          children: (
+            <div className="h-[calc(100vh-_304px)] w-full">
+              <GrafanaIframe
+                baseSrc={`${DCGM_EXPORTER}?var-interval=1h&from=now-3h&to=now&timezone=browser&var-idc=prometheus&var-hostname=${nodeName}&var-namespace=$__all`}
+              />
+            </div>
+          ),
+          hidden: !gpuDetail?.haveGPU,
+        },
+      ]}
+    />
   );
 };
 

@@ -35,10 +35,11 @@ import {
   apiAdminResourceSync,
   apiResourceList,
 } from "@/services/api/resource";
+import { formatBytes } from "@/utils/formatter";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
-    placeholder: "搜索资源列表名称",
+    placeholder: "搜索资源名称",
     key: "name",
   },
   filterOptions: [],
@@ -81,18 +82,26 @@ const columns: ColumnDef<Resource>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title={"总量"} />
     ),
-    cell: ({ row }) => (
-      <div className="font-mono">{row.getValue("amount")}</div>
-    ),
+    cell: ({ row }) => {
+      const amount = row.getValue<number>("amount");
+      if (amount > 1024 * 1024) {
+        return <div>{formatBytes(amount)}</div>;
+      }
+      return <div>{row.getValue("amount")}</div>;
+    },
   },
   {
     accessorKey: "amountSingleMax",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title={"单节点最大数量"} />
     ),
-    cell: ({ row }) => (
-      <div className="font-mono">{row.getValue("amountSingleMax")}</div>
-    ),
+    cell: ({ row }) => {
+      const amount = row.getValue<number>("amountSingleMax");
+      if (amount > 1024 * 1024) {
+        return <div>{formatBytes(amount)}</div>;
+      }
+      return <div>{row.getValue("amountSingleMax")}</div>;
+    },
   },
   {
     accessorKey: "format",
@@ -162,11 +171,19 @@ export const Component: FC = () => {
   });
 
   return (
-    <DataTable query={query} columns={columns} toolbarConfig={toolbarConfig}>
+    <DataTable
+      query={query}
+      columns={columns}
+      toolbarConfig={toolbarConfig}
+      info={{
+        title: "资源列表",
+        description: "资源列表用于定义集群中的资源，如 GPU、CPU、内存等",
+      }}
+    >
       <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button className="h-8">
-            <RefreshCcwIcon className="size-4" />
+          <Button>
+            <RefreshCcwIcon />
             同步资源列表
           </Button>
         </AlertDialogTrigger>

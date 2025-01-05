@@ -1,5 +1,5 @@
 import { LucideIcon } from "lucide-react";
-import { ReactNode } from "react";
+import { ReactNode, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import useFixedLayout from "@/hooks/useFixedLayout";
 import { ScrollArea } from "../ui/scroll-area";
@@ -11,6 +11,7 @@ interface DetailTabProps {
   label: string;
   children: ReactNode;
   scrollable?: boolean;
+  hidden?: boolean;
 }
 
 interface DetailInfoProps {
@@ -26,8 +27,12 @@ interface DetailPageProps {
   tabs: DetailTabProps[];
 }
 
-export function DetailPage({ header, info, tabs }: DetailPageProps) {
+export function DetailPage({ header, info, tabs: rawTabs }: DetailPageProps) {
   useFixedLayout();
+
+  const tabs = useMemo(() => {
+    return rawTabs.filter((tab) => !tab.hidden);
+  }, [rawTabs]);
 
   return (
     <div className="flex h-full w-full flex-col space-y-6">
@@ -40,7 +45,7 @@ export function DetailPage({ header, info, tabs }: DetailPageProps) {
               className={cn("flex items-center", data.className)}
             >
               <data.icon className="mr-1.5 size-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">
+              <span className="truncate text-sm text-muted-foreground">
                 {data.title}：
               </span>
               <span className="truncate">{data.value}</span>
