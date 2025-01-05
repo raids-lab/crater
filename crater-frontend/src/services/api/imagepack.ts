@@ -13,21 +13,15 @@ export type ListKanikoResponse = {
   kanikoList: KanikoInfoResponse[];
   totalSize: number;
 };
-type KanikoInfoResponse = {
+
+export type KanikoInfoResponse = {
   ID: number;
   imageLink: string;
-  status: string;
+  status: ImagePackStatus;
   createdAt: string;
+  size: number;
   dockerfile: string;
   description: string;
-  podName: string;
-  podNameSpace: string;
-};
-export type KanikoInfo = {
-  id: number;
-  imageLink: string;
-  status: string;
-  createdAt: string;
   podName: string;
   podNameSpace: string;
 };
@@ -35,6 +29,7 @@ export type KanikoInfo = {
 export type ListImageResponse = {
   imageList: ImageInfoResponse[];
 };
+
 export type ImageInfoResponse = {
   ID: number;
   // name: string;
@@ -46,6 +41,7 @@ export type ImageInfoResponse = {
   taskType: JobType;
   creatorName: string;
 };
+
 export type ImageInfo = {
   id: number;
   imageLink: string;
@@ -77,17 +73,19 @@ export const getHeader = (key: string): string => {
     case "createdAt":
       return "创建时间";
     case "taskType":
-      return "任务类型";
+      return "类型";
     case "imageType":
       return "镜像类型";
     case "isPublic":
-      return "公私类型";
+      return "可见性";
+    case "size":
+      return "大小";
     default:
       return key;
   }
 };
 
-export type ImagePackStatusValue =
+export type ImagePackStatus =
   | "Initial"
   | "Pending"
   | "Running"
@@ -96,7 +94,7 @@ export type ImagePackStatusValue =
   | "";
 
 export const imagepackStatuses: {
-  value: ImagePackStatusValue;
+  value: ImagePackStatus;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 }[] = [

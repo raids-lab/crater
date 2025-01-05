@@ -5,15 +5,14 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTable } from "@/components/custom/DataTable";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import {
   apiUserDeleteKaniko,
   apiUserGetCredential,
   apiUserListKaniko,
   getHeader,
-  imagepackStatuses,
-  KanikoInfo,
+  ImagePackStatus,
+  KanikoInfoResponse,
   ProjectCredentialResponse,
 } from "@/services/api/imagepack";
 import { logger } from "@/utils/loglevel";
@@ -52,7 +51,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
-import { shortestImageName } from "@/utils/formatter";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +66,10 @@ import DocsButton from "@/components/button/DocsButton";
 import { PipAptSheet } from "./PipAptSheet";
 import { DockerfileSheet } from "./DockerfileSheet";
 import SplitButton from "@/components/button/SplitButton";
+import TooltipLink from "@/components/label/TooltipLink";
+import ImageLabel from "@/components/label/ImageLabel";
+import ImagePhaseBadge from "@/components/badge/ImagePhaseBadge";
+import { formatBytes } from "@/utils/formatter";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -86,19 +88,9 @@ export const ImageTable: FC = () => {
   const imageQuery = useQuery({
     queryKey: ["imagepack", "list"],
     queryFn: () => apiUserListKaniko(),
-    select: (res) =>
-      res.data.data.kanikoList.map(
-        (item) =>
-          ({
-            id: item.ID,
-            imageLink: item.imageLink,
-            status: item.status,
-            createdAt: item.createdAt,
-            podName: item.podName,
-            podNameSpace: item.podNameSpace,
-          }) as KanikoInfo,
-      ),
+    select: (res) => res.data.data.kanikoList,
   });
+
   const refetchImagePackList = async () => {
     try {
       // 并行发送所有异步请求
@@ -109,6 +101,7 @@ export const ImageTable: FC = () => {
       logger.error("更新查询失败", error);
     }
   };
+
   const { mutate: userDeleteKaniko } = useMutation({
     mutationFn: (id: number) => apiUserDeleteKaniko(id),
     onSuccess: async () => {
@@ -127,53 +120,24 @@ export const ImageTable: FC = () => {
       toast.success("凭据已生成, 请保存您的密码！");
     },
   });
-  const columns: ColumnDef<KanikoInfo>[] = [
+  const columns: ColumnDef<KanikoInfoResponse>[] = [
     {
       accessorKey: "imageLink",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeader("imageLink")} />
       ),
       cell: ({ row }) => (
-        <Button
-          onClick={() => navigate(`${row.original.id}`)}
-          variant={"link"}
-          className="h-8 px-0 text-left font-normal text-secondary-foreground"
-        >
-          {shortestImageName(row.getValue("imageLink"))}
-        </Button>
+        <TooltipLink
+          name={
+            <ImageLabel
+              description={row.original.description ?? "XXX"}
+              url={row.getValue<string>("imageLink")}
+            />
+          }
+          to={`${row.original.ID}`}
+          tooltip={`查看镜像详情`}
+        />
       ),
-    },
-    {
-      accessorKey: "status",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("status")} />
-      ),
-      cell: ({ row }) => {
-        const status = imagepackStatuses.find(
-          (status) => status.value === row.getValue("status"),
-        );
-        if (!status) {
-          return null;
-        }
-        return (
-          <div className="flex flex-row items-center justify-start">
-            <div
-              className={cn("flex h-3 w-3 rounded-full", {
-                "bg-purple-500 hover:bg-purple-400": status.value === "Initial",
-                "bg-slate-500 hover:bg-slate-400": status.value === "Pending",
-                "bg-sky-500 hover:bg-sky-400": status.value === "Running",
-                "bg-red-500 hover:bg-red-400": status.value === "Failed",
-                "bg-emerald-500 hover:bg-emerald-400":
-                  status.value === "Finished",
-              })}
-            ></div>
-            <div className="ml-1.5">{status.label}</div>
-          </div>
-        );
-      },
-      filterFn: (row, id, value) => {
-        return (value as string[]).includes(row.getValue(id));
-      },
     },
     {
       accessorKey: "createdAt",
@@ -184,6 +148,29 @@ export const ImageTable: FC = () => {
         return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
       },
       sortingFn: "datetime",
+    },
+    {
+      accessorKey: "status",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeader("status")} />
+      ),
+      cell: ({ row }) => {
+        return (
+          <ImagePhaseBadge status={row.getValue<ImagePackStatus>("status")} />
+        );
+      },
+      filterFn: (row, id, value) => {
+        return (value as string[]).includes(row.getValue(id));
+      },
+    },
+    {
+      accessorKey: "size",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeader("size")} />
+      ),
+      cell: ({ row }) => {
+        return <span>{formatBytes(row.getValue("size"))}</span>;
+      },
     },
     {
       id: "actions",
@@ -205,7 +192,7 @@ export const ImageTable: FC = () => {
                     操作
                   </DropdownMenuLabel>
                   <DropdownMenuItem
-                    onClick={() => navigate(`${kanikoInfo.id}`)}
+                    onClick={() => navigate(`${kanikoInfo.ID}`)}
                   >
                     <InfoIcon className="text-emerald-600 dark:text-emerald-500" />
                     详情
@@ -232,7 +219,7 @@ export const ImageTable: FC = () => {
                   <AlertDialogAction
                     variant="destructive"
                     onClick={() => {
-                      userDeleteKaniko(kanikoInfo.id);
+                      userDeleteKaniko(kanikoInfo.ID);
                     }}
                   >
                     删除

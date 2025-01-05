@@ -38,10 +38,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
 import { ToggleLeft, Trash2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import JobTypeLabel from "@/components/badge/JobTypeBadge";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
+import ImageLabel from "@/components/label/ImageLabel";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -97,14 +97,24 @@ export const Component: FC = () => {
   });
   const columns: ColumnDef<ImageInfo>[] = [
     {
+      accessorKey: "taskType",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeader("taskType")} />
+      ),
+      cell: ({ row }) => {
+        return <JobTypeLabel jobType={row.getValue("taskType")} />;
+      },
+    },
+    {
       accessorKey: "imageLink",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeader("imageLink")} />
       ),
       cell: ({ row }) => (
-        <Badge className="font-mono font-normal" variant="outline">
-          {row.getValue("imageLink")}
-        </Badge>
+        <ImageLabel
+          description={"XXX"}
+          url={row.getValue<string>("imageLink")}
+        />
       ),
     },
     {
@@ -116,15 +126,6 @@ export const Component: FC = () => {
         />
       ),
       cell: ({ row }) => <div>{row.getValue("creatorName")}</div>,
-    },
-    {
-      accessorKey: "taskType",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("taskType")} />
-      ),
-      cell: ({ row }) => {
-        return <JobTypeLabel jobType={row.getValue("taskType")} />;
-      },
     },
     {
       accessorKey: "isPublic",

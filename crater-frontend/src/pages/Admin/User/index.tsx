@@ -160,7 +160,7 @@ export const User = () => {
             name={<UserLabel attributes={row.original.attributes} />}
             to={row.original.name}
             tooltip={`查看用户 ${row.original.name} 信息`}
-          ></TooltipLink>
+          />
         ),
       },
       {
