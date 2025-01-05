@@ -40,7 +40,7 @@ export interface PodContainerDialogProps {
   setNamespacedName: (namespacedName: NamespacedName) => void;
 }
 
-function ContainerSelect({
+export function ContainerSelect({
   currentContainer,
   setCurrentContainer,
   containers,
@@ -96,7 +96,7 @@ function ContainerSelect({
   );
 }
 
-const TableCellForm = ({
+export const TableCellForm = ({
   selectedContainer,
 }: {
   selectedContainer: ContainerInfo;
@@ -231,7 +231,9 @@ function Content({
   return (
     <>
       {!containers || !selectedContainer ? (
-        <LoadingCircleIcon />
+        <div className="flex h-[calc(100vh_-190px)] w-full items-center justify-center">
+          <LoadingCircleIcon />
+        </div>
       ) : (
         <div className="grid h-[calc(100vh_-190px)] w-[calc(100vw_-154px)] gap-6 md:grid-cols-3 xl:grid-cols-4">
           {namespacedName && selectedContainer && (

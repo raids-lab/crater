@@ -3,13 +3,13 @@ import { AxiosResponse } from "axios";
 import { IResponse } from "@/services/types";
 import { Card } from "@/components/ui/card";
 import BaseCodeBlock from "./BaseCodeBlock";
-import { Button } from "../ui/button";
 import { CopyCheckIcon, CopyIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useCopyToClipboard } from "usehooks-ts";
 import { FetchSheet } from "./Dialog";
 import useResizeObserver from "use-resize-observer";
 import { ScrollArea } from "../ui/scroll-area";
+import TooltipButton from "../custom/TooltipButton";
 
 export interface PodNamespacedName {
   namespace: string;
@@ -39,13 +39,14 @@ export function CodeContent({
 
   return (
     <Card
-      className="relative h-[calc(100vh-_304px)] overflow-hidden bg-slate-900 p-1 text-muted-foreground dark:border"
+      className="relative h-[calc(100vh-_304px)] overflow-hidden bg-slate-900 p-1 text-muted-foreground dark:border dark:bg-muted/30"
       ref={refRoot}
     >
       <ScrollArea style={{ width, height }}>
         <BaseCodeBlock code={yaml ?? ""} language={language ?? ""} />
       </ScrollArea>
-      <Button
+      <TooltipButton
+        tooltipContent="复制"
         className="absolute right-5 top-5 h-8 w-8"
         onClick={copyCode}
         variant="outline"
@@ -56,7 +57,7 @@ export function CodeContent({
         ) : (
           <CopyIcon className="size-4" />
         )}
-      </Button>
+      </TooltipButton>
     </Card>
   );
 }

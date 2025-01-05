@@ -26,6 +26,8 @@ export type BreadCrumbItem = {
 };
 export const globalBreadCrumb = atom([] as BreadCrumbItem[]);
 
+export const globalFixedLayout = atom(false);
+
 /**
  * User Info
  */

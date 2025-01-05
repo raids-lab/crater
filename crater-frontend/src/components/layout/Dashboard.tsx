@@ -11,9 +11,13 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { NavGroupProps } from "../sidebar/types";
+import { useAtomValue } from "jotai";
+import { globalFixedLayout } from "@/utils/store";
+import { cn } from "@/lib/utils";
 
 const DashboardLayout = ({ groups }: { groups: NavGroupProps[] }) => {
   const { pathname: rawPath } = useLocation();
+  const fixedLayout = useAtomValue(globalFixedLayout);
 
   // 特殊规则，网盘路由切换时，不启用过渡动画
   const motionKey = useMemo(() => {
@@ -28,7 +32,14 @@ const DashboardLayout = ({ groups }: { groups: NavGroupProps[] }) => {
     <SidebarProvider>
       <AppSidebar groups={groups} />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+        <header
+          className={cn(
+            "flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear",
+            // "group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-16",
+            fixedLayout &&
+              "header-fixed peer/header fixed z-50 w-[inherit] rounded-md",
+          )}
+        >
           <div className="flex items-center gap-2 px-6">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
@@ -40,7 +51,11 @@ const DashboardLayout = ({ groups }: { groups: NavGroupProps[] }) => {
           initial={{ opacity: 0, y: "3vh" }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", duration: 1.2 }}
-          className="flex flex-col gap-6 p-6 pt-0"
+          className={cn(
+            "flex flex-col gap-6 p-6 pt-0",
+            fixedLayout &&
+              "absolute bottom-0 left-0 right-0 top-0 w-full flex-grow overflow-hidden peer-[.header-fixed]/header:mt-16",
+          )}
         >
           <Outlet />
         </motion.div>
