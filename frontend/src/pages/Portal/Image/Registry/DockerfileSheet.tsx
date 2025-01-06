@@ -20,14 +20,14 @@ import FormImportButton from "@/components/form/FormImportButton";
 import FormExportButton from "@/components/form/FormExportButton";
 import { MetadataFormDockerfile } from "@/components/form/types";
 import { Input } from "@/components/ui/input";
-import { apiUserCreateKaniko } from "@/services/api/imagepack";
+import { apiUserCreateByDockerfile } from "@/services/api/imagepack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DockerfileEditor } from "./DockerfileEditor";
 import FormLabelMust from "@/components/form/FormLabelMust";
 
 export const dockerfileFormSchema = z.object({
   dockerfile: z.string().min(1, "Dockerfile content is required"),
-  description: z.string().optional(),
+  description: z.string().min(1, "请为镜像添加描述"),
 });
 
 export type DockerfileFormValues = z.infer<typeof dockerfileFormSchema>;
@@ -64,12 +64,15 @@ function DockerfileSheetContent({
         name="description"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>备注</FormLabel>
+            <FormLabel>
+              描述
+              <FormLabelMust />
+            </FormLabel>
             <FormControl>
               <Input {...field} />
             </FormControl>
             <FormDescription>
-              关于此镜像的简短描述，如包含的软件版本、用途等。
+              关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示。
             </FormDescription>
             <FormMessage />
           </FormItem>
@@ -94,16 +97,15 @@ export function DockerfileSheet({
     defaultValues: {
       dockerfile:
         'FROM node:14\n\nWORKDIR /app\n\nCOPY package*.json ./\n\nRUN npm install\n\nCOPY . .\n\nEXPOSE 3000\n\nCMD ["npm", "start"]',
+      description: "",
     },
   });
 
   const { mutate: submitDockerfileSheet, isPending } = useMutation({
     mutationFn: (values: DockerfileFormValues) =>
-      apiUserCreateKaniko({
-        description: values.description ? values.description : "",
-        image: "",
-        requirements: "",
-        packages: "",
+      apiUserCreateByDockerfile({
+        description: values.description,
+        dockerfile: values.dockerfile,
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({

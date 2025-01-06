@@ -130,7 +130,7 @@ export const ImageTable: FC = () => {
         <TooltipLink
           name={
             <ImageLabel
-              description={row.original.description ?? "XXX"}
+              description={row.original.description}
               url={row.getValue<string>("imageLink")}
             />
           }

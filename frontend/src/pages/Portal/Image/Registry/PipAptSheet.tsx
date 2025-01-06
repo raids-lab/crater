@@ -75,7 +75,7 @@ export const pipAptFormSchema = z.object({
       },
     ),
   aptPackages: z.string().optional(),
-  description: z.string().optional(),
+  description: z.string().min(1, "请为镜像添加描述"),
 });
 
 export type PipAptFormValues = z.infer<typeof pipAptFormSchema>;
@@ -161,12 +161,15 @@ function PipAptSheetContent({ form, onSubmit }: PipAptSheetContentProps) {
         name="description"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>备注</FormLabel>
+            <FormLabel>
+              描述
+              <FormLabelMust />
+            </FormLabel>
             <FormControl>
               <Input {...field} />
             </FormControl>
             <FormDescription>
-              关于此镜像的简短描述，如包含的软件版本、用途等。
+              关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示。
             </FormDescription>
             <FormMessage />
           </FormItem>
@@ -189,13 +192,14 @@ export function PipAptSheet({ closeSheet, ...props }: DockerfileSheetProps) {
       baseImage: "",
       requirements: "",
       aptPackages: "",
+      description: "",
     },
   });
 
   const { mutate: submitDockerfileSheet, isPending } = useMutation({
     mutationFn: (values: PipAptFormValues) =>
       apiUserCreateKaniko({
-        description: values.description ?? "",
+        description: values.description,
         image: values.baseImage,
         requirements: values.requirements ?? "",
         packages: values.aptPackages ?? "",

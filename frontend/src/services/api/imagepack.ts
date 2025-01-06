@@ -42,16 +42,6 @@ export type ImageInfoResponse = {
   creatorName: string;
 };
 
-export type ImageInfo = {
-  id: number;
-  imageLink: string;
-  status: string;
-  createdAt: string;
-  isPublic: boolean;
-  taskType: JobType;
-  creatorName: string;
-};
-
 export type KanikoLogResponse = {
   content: string;
 };
@@ -163,6 +153,11 @@ export interface KanikoCreate {
   requirements: string;
 }
 
+export interface DockerfileCreate {
+  description: string;
+  dockerfile: string;
+}
+
 export interface ImageUpload {
   imageLink: string;
   imageName: string;
@@ -207,6 +202,16 @@ export const apiUserCreateKaniko = async (imagepack: KanikoCreate) => {
   const response = await instance.post<IResponse<string>>(
     VERSION + "/images/kaniko",
     imagepack,
+  );
+  return response.data;
+};
+
+export const apiUserCreateByDockerfile = async (
+  imageDockerfile: DockerfileCreate,
+) => {
+  const response = await instance.post<IResponse<string>>(
+    VERSION + "/images/dockerfile",
+    imageDockerfile,
   );
   return response.data;
 };

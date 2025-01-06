@@ -20,9 +20,9 @@ import {
   getHeader,
   imagepackPublicPersonalStatus,
   apiUserListImage,
-  ImageInfo,
   apiUserChangeImagePublicStatus,
   apiUserDeleteImage,
+  ImageInfoResponse,
 } from "@/services/api/imagepack";
 import { logger } from "@/utils/loglevel";
 import { toast } from "sonner";
@@ -59,16 +59,7 @@ export const Component: FC = () => {
   const imageInfo = useQuery({
     queryKey: ["imagelink", "list"],
     queryFn: () => apiUserListImage(),
-    select: (res) =>
-      res.data.data.imageList.map((item) => ({
-        id: item.ID,
-        imageLink: item.imageLink,
-        status: item.status,
-        createdAt: item.createdAt,
-        taskType: item.taskType,
-        isPublic: item.isPublic,
-        creatorName: item.creatorName,
-      })),
+    select: (res) => res.data.data.imageList,
   });
 
   const refetchImagePackList = async () => {
@@ -95,7 +86,7 @@ export const Component: FC = () => {
       toast.success("镜像状态更新");
     },
   });
-  const columns: ColumnDef<ImageInfo>[] = [
+  const columns: ColumnDef<ImageInfoResponse>[] = [
     {
       accessorKey: "taskType",
       header: ({ column }) => (
@@ -112,7 +103,7 @@ export const Component: FC = () => {
       ),
       cell: ({ row }) => (
         <ImageLabel
-          description={"XXX"}
+          description={row.original.description}
           url={row.getValue<string>("imageLink")}
         />
       ),
@@ -181,7 +172,7 @@ export const Component: FC = () => {
                   <AlertDialogAction
                     variant="destructive"
                     onClick={() => {
-                      deleteUserImage(imageInfo.id);
+                      deleteUserImage(imageInfo.ID);
                     }}
                   >
                     删除
@@ -215,7 +206,7 @@ export const Component: FC = () => {
                   <AlertDialogAction
                     variant="default"
                     onClick={() => {
-                      changeImagePublicStatus(imageInfo.id);
+                      changeImagePublicStatus(imageInfo.ID);
                     }}
                   >
                     确认
