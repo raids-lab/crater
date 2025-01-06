@@ -39,9 +39,11 @@ func (mgr *ImagePackMgr) GetName() string { return mgr.name }
 
 func (mgr *ImagePackMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
+//nolint:dupl// 路由注册
 func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/kaniko", mgr.UserListKaniko)
 	g.POST("/kaniko", mgr.UserCreateKaniko)
+	g.POST("/dockerfile", mgr.UserCreateByDockerfile)
 	g.DELETE("/kaniko/:id", mgr.DeleteKanikoByID)
 
 	g.GET("/image", mgr.UserListImage)
@@ -81,6 +83,11 @@ type (
 		Description        string `json:"description"`
 	}
 
+	CreateByDockerfileRequest struct {
+		Description string `json:"description"`
+		Dockerfile  string `json:"dockerfile"`
+	}
+
 	UploadImageRequest struct {
 		ImageLink   string        `json:"imageLink"`
 		TaskType    model.JobType `json:"taskType"`
@@ -117,11 +124,12 @@ type (
 
 type (
 	KanikoInfo struct {
-		ID        uint              `json:"ID"`
-		ImageLink string            `json:"imageLink"`
-		Status    model.BuildStatus `json:"status"`
-		CreatedAt time.Time         `json:"createdAt"`
-		Size      int64             `json:"size"`
+		ID          uint              `json:"ID"`
+		ImageLink   string            `json:"imageLink"`
+		Status      model.BuildStatus `json:"status"`
+		CreatedAt   time.Time         `json:"createdAt"`
+		Size        int64             `json:"size"`
+		Description string            `json:"description"`
 	}
 	ListKanikoResponse struct {
 		KanikoInfoList []KanikoInfo `json:"kanikoList"`
@@ -193,7 +201,66 @@ func (mgr *ImagePackMgr) UserCreateKaniko(c *gin.Context) {
 		return
 	}
 	dockerfile := mgr.generateDockerfile(req)
-	mgr.buildFromDockerfile(c, req, token, dockerfile)
+	mgr.buildFromDockerfile(c, token, req.SourceImage, req.Description, dockerfile)
+}
+
+// UserCreateByDockerfile godoc
+// @Summary 接受用户传入的Dockerfile和描述，创建镜像
+// @Description 获取参数，提取Dockerfile中的基础镜像，调用接口
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param data body CreateByDockerfileRequest true "创建ImagePack CRD"
+// @Router /v1/images/dockerfile [POST]
+func (mgr *ImagePackMgr) UserCreateByDockerfile(c *gin.Context) {
+	req := &CreateByDockerfileRequest{}
+	token := util.GetToken(c)
+	if err := c.ShouldBindJSON(req); err != nil {
+		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		return
+	}
+	baseImage, err := extractBaseImageFromDockerfile(req.Dockerfile)
+	if err != nil {
+		msg := fmt.Sprintf("failed to extract base image from Dockerfile, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		return
+	}
+
+	mgr.buildFromDockerfile(c, token, baseImage, req.Description, req.Dockerfile)
+}
+
+func extractBaseImageFromDockerfile(dockerfile string) (string, error) {
+	lines := strings.Split(dockerfile, "\n")
+	for i, line := range lines {
+		line = strings.TrimSpace(line)
+
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		if strings.HasPrefix(line, "FROM") {
+			for strings.HasSuffix(line, "\\") {
+				line = line[:len(line)-1]
+				line = strings.TrimSpace(line)
+				// last line check
+				if i+1 >= len(lines) {
+					return "", fmt.Errorf("unexpected end of Dockerfile after line: %s", line)
+				}
+				nextLine := strings.TrimSpace(lines[i+1])
+				line += " " + nextLine
+				i++ // move to next line
+			}
+
+			parts := strings.Fields(line)
+			if len(parts) >= 2 {
+				return parts[1], nil
+			}
+			return "", fmt.Errorf("invalid FROM instruction: %s", line)
+		}
+	}
+	return "", fmt.Errorf("no FROM instruction found in Dockerfile")
 }
 
 // UserUploadImage godoc
@@ -253,7 +320,7 @@ func (mgr *ImagePackMgr) AdminCreate(c *gin.Context) {
 	}
 	logutils.Log.Infof("create params: %+v", req)
 	dockerfile := mgr.generateDockerfile(req)
-	mgr.buildFromDockerfile(c, req, token, dockerfile)
+	mgr.buildFromDockerfile(c, token, req.SourceImage, req.Description, dockerfile)
 }
 
 func (mgr *ImagePackMgr) generateDockerfile(req *CreateKanikoRequest) string {
@@ -287,13 +354,13 @@ USER root
 	return dockerfile
 }
 
-func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, req *CreateKanikoRequest, token util.JWTMessage, dockerfile string) {
+func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, token util.JWTMessage, sourceImage, description, dockerfile string) {
 	if err := mgr.imageRegistry.CheckOrCreateProjectForUser(c, token.Username); err != nil {
 		resputil.Error(c, "create harbor project failed", resputil.NotSpecified)
 		return
 	}
 	imagepackName := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
-	imageLink, err := utils.GenerateNewImageLink(req.SourceImage, token.Username)
+	imageLink, err := utils.GenerateNewImageLink(sourceImage, token.Username)
 	if err != nil {
 		resputil.Error(c, "generate new image link failed", resputil.NotSpecified)
 		return
@@ -306,7 +373,7 @@ func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, req *CreateKanikoRe
 		Dockerfile:  &dockerfile,
 		ImageLink:   imageLink,
 		UserID:      token.UserID,
-		Description: &req.Description,
+		Description: &description,
 	}
 
 	if err := mgr.imagePacker.CreateFromDockerfile(c, buildkitData); err != nil {
@@ -339,11 +406,12 @@ func (mgr *ImagePackMgr) UserListKaniko(c *gin.Context) {
 	for i := range kanikos {
 		kaniko := kanikos[i]
 		kanikoInfo := KanikoInfo{
-			ID:        kaniko.ID,
-			ImageLink: kaniko.ImageLink,
-			Status:    kaniko.Status,
-			CreatedAt: kaniko.CreatedAt,
-			Size:      kaniko.Size,
+			ID:          kaniko.ID,
+			ImageLink:   kaniko.ImageLink,
+			Status:      kaniko.Status,
+			CreatedAt:   kaniko.CreatedAt,
+			Size:        kaniko.Size,
+			Description: *kaniko.Description,
 		}
 		totalSize += kaniko.Size
 		kanikoInfos = append(kanikoInfos, kanikoInfo)
