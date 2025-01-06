@@ -121,6 +121,7 @@ func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Cont
 	buildArgs := []string{
 		"build",
 		"--frontend", "dockerfile.v0",
+		"--progress", "plain",
 		"--local", "context=/workspace",
 		"--local", "dockerfile=/workspace",
 		"--output", output,
