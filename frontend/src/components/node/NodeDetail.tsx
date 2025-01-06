@@ -134,7 +134,7 @@ export function GpuCardDemo({ gpuInfo }: GpuDemoProps) {
             variant="outline"
             onClick={() => {
               window.open(
-                `${DCGM_EXPORTER}?var-interval=1h&from=now-3h&to=now&timezone=browser&var-idc=prometheus&var-hostname=${gpuInfo?.nodeName}&var-namespace=$__all`,
+                `${DCGM_EXPORTER}?from=now-30m&to=now&var-datasource=prometheus&var-host=${gpuInfo?.nodeName}&var-gpu=$__all&refresh=5s`,
               );
             }}
           >
@@ -208,7 +208,7 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
               );
             } else {
               window.open(
-                `${GRAFANA_NODE}?orgId=1&var-node=${nodeInfo?.name}&from=now-30m&to=now`,
+                `${GRAFANA_NODE}?from=now-1h&to=now&var-datasource=prometheus&var-cluster=&var-resolution=30s&var-node=${nodeInfo?.name}`,
               );
             }
           }}
@@ -507,7 +507,7 @@ export const NodeDetail: FC = () => {
           children: (
             <div className="h-[calc(100vh_-_304px)] w-full">
               <GrafanaIframe
-                baseSrc={`${GRAFANA_NODE}?orgId=1&var-node=${nodeName}&from=now-30m&to=now`}
+                baseSrc={`${GRAFANA_NODE}?from=now-1h&to=now&var-datasource=prometheus&var-cluster=&var-resolution=30s&var-node=${nodeName}`}
               />
             </div>
           ),
@@ -519,7 +519,7 @@ export const NodeDetail: FC = () => {
           children: (
             <div className="h-[calc(100vh-_304px)] w-full">
               <GrafanaIframe
-                baseSrc={`${DCGM_EXPORTER}?var-interval=1h&from=now-3h&to=now&timezone=browser&var-idc=prometheus&var-hostname=${nodeName}&var-namespace=$__all`}
+                baseSrc={`${DCGM_EXPORTER}?from=now-30m&to=now&var-datasource=prometheus&var-host=${nodeName}&var-gpu=$__all&refresh=5s`}
               />
             </div>
           ),
