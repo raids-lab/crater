@@ -34,6 +34,7 @@ func (mgr *DatasetMgr) GetName() string { return mgr.name }
 
 func (mgr *DatasetMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
+//nolint:dupl// 路由注册
 func (mgr *DatasetMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/mydataset", mgr.GetMyDataset)
 	g.GET("/:datasetId/usersNotIn", mgr.ListUsersOutOfDataset)
