@@ -368,16 +368,17 @@ func convertJobResp(jobs []*model.Job) []JobResp {
 
 type (
 	JobDetailResp struct {
-		Name               string         `json:"name"`
-		Namespace          string         `json:"namespace"`
-		Username           string         `json:"username"`
-		JobName            string         `json:"jobName"`
-		JobType            model.JobType  `json:"jobType"`
-		Queue              string         `json:"queue"`
-		Status             batch.JobPhase `json:"status"`
-		CreationTimestamp  metav1.Time    `json:"createdAt"`
-		RunningTimestamp   metav1.Time    `json:"startedAt"`
-		CompletedTimestamp metav1.Time    `json:"completedAt"`
+		Name               string          `json:"name"`
+		Namespace          string          `json:"namespace"`
+		Username           string          `json:"username"`
+		JobName            string          `json:"jobName"`
+		JobType            model.JobType   `json:"jobType"`
+		Queue              string          `json:"queue"`
+		Resources          v1.ResourceList `json:"resources"`
+		Status             batch.JobPhase  `json:"status"`
+		CreationTimestamp  metav1.Time     `json:"createdAt"`
+		RunningTimestamp   metav1.Time     `json:"startedAt"`
+		CompletedTimestamp metav1.Time     `json:"completedAt"`
 	}
 
 	PodDetail struct {
@@ -427,6 +428,7 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		JobType:            job.JobType,
 		Queue:              job.Account.Nickname,
 		Status:             job.Status,
+		Resources:          job.Resources.Data(),
 		CreationTimestamp:  metav1.NewTime(job.CreationTimestamp),
 		RunningTimestamp:   metav1.NewTime(job.RunningTimestamp),
 		CompletedTimestamp: metav1.NewTime(job.CompletedTimestamp),
