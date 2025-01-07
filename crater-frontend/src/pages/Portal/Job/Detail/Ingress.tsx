@@ -276,12 +276,8 @@ export default function PodIngressDialog({
             className="w-full"
           >
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="ingress">
-                Ingress 规则
-              </TabsTrigger>
-              <TabsTrigger value="nodeport">
-                NodePort 规则
-              </TabsTrigger>
+              <TabsTrigger value="ingress">Ingress 规则</TabsTrigger>
+              <TabsTrigger value="nodeport">NodePort 规则</TabsTrigger>
             </TabsList>
             {/* Ingress Tab Content */}
             <TabsContent
@@ -326,38 +322,45 @@ export default function PodIngressDialog({
                       </TooltipButton>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <TooltipButton
-                            variant="ghost"
-                            size="icon"
-                            className="hover:text-destructive"
-                            tooltipContent="删除"
-                          >
-                            <Trash2 className="size-4" />
-                          </TooltipButton>
+                          <TooltipProvider delayDuration={10}>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <TooltipButton
+                                  variant="ghost"
+                                  size="icon"
+                                  className="hover:text-destructive"
+                                  tooltipContent="删除"
+                                  disabled={ingress.port === 8888} // 禁用按钮
+                                >
+                                  <Trash2 className="size-4" />
+                                </TooltipButton>
+                              </TooltipTrigger>
+                            </Tooltip>
+                          </TooltipProvider>
                         </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              删除外部访问规则
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              外部访问规则「{ingress.name}」<br />
-                              {ingress.port} → {import.meta.env.VITE_HOST}
-                              {ingress.prefix}
-                              <br />
-                              将被删除，请谨慎操作。
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>取消</AlertDialogCancel>
-                            <AlertDialogAction
-                              variant="destructive"
-                              onClick={() => handleDeleteIngress(ingress)}
-                            >
-                              删除
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
+                        {ingress.port !== 8888 && (
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>删除外部访问规则</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                外部访问规则「{ingress.name}」<br />
+                                {ingress.port} → {import.meta.env.VITE_HOST}
+                                {ingress.prefix}
+                                <br />
+                                将被删除，请谨慎操作。
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>取消</AlertDialogCancel>
+                              <AlertDialogAction
+                                variant="destructive"
+                                onClick={() => handleDeleteIngress(ingress)}
+                              >
+                                删除
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        )}
                       </AlertDialog>
                     </div>
                   ))
@@ -419,9 +422,7 @@ export default function PodIngressDialog({
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              删除外部访问规则
-                            </AlertDialogTitle>
+                            <AlertDialogTitle>删除外部访问规则</AlertDialogTitle>
                             <AlertDialogDescription>
                               外部访问规则「{nodeport.name}」<br />
                               {nodeport.containerPort} → {nodeport.address}:
@@ -453,14 +454,14 @@ export default function PodIngressDialog({
           <Button variant="secondary"
             onClick={() =>
               window.open(
-                activeTab === "ingress" ? 
-                `https://${import.meta.env.VITE_HOST}/website/docs/toolbox/external-access/ingress-rule` 
-                : `https://${import.meta.env.VITE_HOST}/website/docs/toolbox/external-access/nodeport-rule`,
+                activeTab === "ingress" ?
+                  `https://${import.meta.env.VITE_HOST}/website/docs/toolbox/external-access/ingress-rule`
+                  : `https://${import.meta.env.VITE_HOST}/website/docs/toolbox/external-access/nodeport-rule`,
               )
             }>
-              <BookOpenIcon />
-              帮助文档
-              </Button>
+            <BookOpenIcon />
+            帮助文档
+          </Button>
           {activeTab === "ingress" && (
             <Button onClick={handleAddIngress} autoFocus>
               <Plus className="size-4" />
