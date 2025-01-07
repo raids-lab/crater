@@ -79,6 +79,7 @@ func GetPermissionFromToken(token util.JWTMessage) model.FilePermission {
 }
 
 // 是列出用户当前账户、公共账户和自己用户空间的地址和实际地址
+// 目前用户的space没有前缀/，账户的有前缀/
 func ListMySpace(userID, accountID uint, c *gin.Context) (allspace, allRealSpace []string) {
 	u := query.User
 	user, err := u.WithContext(c).Where(u.ID.Eq(userID)).First()
@@ -105,7 +106,7 @@ func ListMySpace(userID, accountID uint, c *gin.Context) (allspace, allRealSpace
 			fmt.Println("user has no account, ", err)
 			return space, realSpace
 		}
-		space = append(space, account.Space)
+		space = append(space, strings.TrimLeft(account.Space, "/"))
 		realSpace = append(realSpace, accountSpacePrefix+account.Space)
 	}
 	space = append(space, publicSpacePrefix)
