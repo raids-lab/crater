@@ -22,7 +22,7 @@ import { DetailPage } from "@/components/layout/DetailPage";
 import PageTitle from "@/components/layout/PageTitle";
 import { shortenImageName } from "@/utils/formatter";
 import { CodeContent } from "@/components/codeblock/ConfigDialog";
-import DetailPageLog from "@/components/codeblock/DetailPageIog";
+import DetailPageLog from "@/components/codeblock/DetailPageLog";
 import ImagePhaseBadge from "@/components/badge/ImagePhaseBadge";
 import {
   AlertDialog,

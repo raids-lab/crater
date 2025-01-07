@@ -105,3 +105,10 @@ export const convertToK8sResources = (resources: Resources): K8sResources => {
 
   return k8sResource;
 };
+
+export const hasNvidiaGPU = (resources: K8sResources): boolean => {
+  // key is start with nvidia.com/, means it's a gpu resource
+  return Object.keys(resources ?? {}).some((key) =>
+    key.startsWith("nvidia.com/"),
+  );
+};

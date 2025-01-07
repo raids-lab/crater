@@ -85,6 +85,7 @@ export interface IJupyterDetail {
   retry: string;
   queue: string;
   status: JobPhase;
+  resources?: Record<string, string>;
   createdAt: string;
   startedAt: string;
   completedAt: string;

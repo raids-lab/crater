@@ -6,6 +6,7 @@ interface ImportMetaEnv {
   readonly VITE_GRAFANA_NODE: string;
   readonly VITE_GRAFANA_POD_MONITOR: string;
   readonly VITE_GRAFANA_JOB_MONITOR: string;
+  readonly VITE_GRAFANA_JOB_GPU_MONITOR: string;
   readonly VITE_GRAFANA_GPU_DASHBOARD: string;
   readonly VITE_GRAFANA_OVERVIEW: string;
 }

@@ -45,22 +45,6 @@ function DockerfileSheetContent({
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6">
       <FormField
         control={form.control}
-        name="dockerfile"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              Dockerfile
-              <FormLabelMust />
-            </FormLabel>
-            <FormControl>
-              <DockerfileEditor value={field.value} onChange={field.onChange} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={form.control}
         name="description"
         render={({ field }) => (
           <FormItem>
@@ -74,6 +58,22 @@ function DockerfileSheetContent({
             <FormDescription>
               关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示。
             </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="dockerfile"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>
+              Dockerfile
+              <FormLabelMust />
+            </FormLabel>
+            <FormControl>
+              <DockerfileEditor value={field.value} onChange={field.onChange} />
+            </FormControl>
             <FormMessage />
           </FormItem>
         )}
@@ -108,9 +108,9 @@ export function DockerfileSheet({
         dockerfile: values.dockerfile,
       }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["imagelink", "list"],
-      });
+      await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
+        queryClient.invalidateQueries({ queryKey: ["imagepack", "list"] }),
+      );
       closeSheet();
       toast.success(`镜像开始制作，请在下方列表中查看制作状态`);
     },

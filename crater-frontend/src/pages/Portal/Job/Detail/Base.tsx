@@ -25,7 +25,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
@@ -51,14 +51,14 @@ import { GrafanaIframe } from "@/pages/Embed/Monitor";
 import useFixedLayout from "@/hooks/useFixedLayout";
 import { DetailPage } from "@/components/layout/DetailPage";
 import Nothing from "@/components/placeholder/Nothing";
+import { hasNvidiaGPU } from "@/utils/resource";
+import GpuIcon from "@/components/icon/GpuIcon";
 export interface Resource {
   [key: string]: string;
 }
 
 const job_monitor = import.meta.env.VITE_GRAFANA_JOB_MONITOR;
-// const pod_memory = import.meta.env.VITE_GRAFANA_POD_MONITOR;
-// const k8s_vgpu_scheduler_dashboard = import.meta.env
-// .VITE_GRAFANA_GPU_DASHBOARD;
+const job_gpu_monitor = import.meta.env.VITE_GRAFANA_JOB_GPU_MONITOR;
 
 export function BaseCore({ jobName }: { jobName: string }) {
   useFixedLayout();
@@ -84,6 +84,13 @@ export function BaseCore({ jobName }: { jobName: string }) {
       toast.success("作业已删除");
     },
   });
+
+  const showGPUDashboard = useMemo(() => {
+    if (!data) {
+      return false;
+    }
+    return hasNvidiaGPU(data.resources);
+  }, [data]);
 
   if (isLoading || !data) {
     return <></>;
@@ -226,10 +233,23 @@ export function BaseCore({ jobName }: { jobName: string }) {
           children: (
             <div className="h-[calc(100vh_-_304px)] w-full">
               <GrafanaIframe
-                baseSrc={`${job_monitor}?orgId=1&var-job=${data.jobName}&from=now-1h&to=now`}
+                baseSrc={`${job_monitor}?var-job=${data.jobName}&from=now-1h&to=now`}
               />
             </div>
           ),
+        },
+        {
+          key: "gpu",
+          icon: GpuIcon,
+          label: "加速卡监控",
+          children: (
+            <div className="h-[calc(100vh_-_304px)] w-full">
+              <GrafanaIframe
+                baseSrc={`${job_gpu_monitor}?var-job=${data.jobName}&from=now-1h&to=now`}
+              />
+            </div>
+          ),
+          hidden: !showGPUDashboard,
         },
       ]}
     />
