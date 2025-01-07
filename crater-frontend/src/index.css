@@ -74,15 +74,30 @@
   }
 }
 
-/* 在你的全局CSS文件中添加以下样式 */
+/* XTerm */
 .custom-xterm-screen {
   @apply !p-4; /* 你可以根据需要调整padding的值 */
 }
 
+/* Tabs in the details view */
 .tabs-list-underline {
   @apply mb-4 inline-flex h-9 w-full items-center justify-start gap-6 rounded-none border-b bg-transparent p-0 text-muted-foreground;
 }
 
 .tabs-trigger-underline {
   @apply relative inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-none border-b-2 border-b-transparent bg-transparent px-0 py-1 pb-3 pt-2 text-sm font-semibold text-muted-foreground shadow-none ring-offset-background transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-b-primary data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:!shadow-none;
+}
+
+/* Scrollbar */
+/* https://github.com/shadcn-ui/ui/issues/1815#issuecomment-2259480789 */
+::-webkit-scrollbar {
+  @apply h-2.5 w-2.5;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply rounded-full border-[1px] border-solid border-transparent bg-border bg-clip-padding;
 }
