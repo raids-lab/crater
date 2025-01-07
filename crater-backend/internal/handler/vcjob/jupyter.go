@@ -144,10 +144,13 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	}
 
 	// 设置 notebook 的 Annotation 信息
-	notebookIngress := crclient.PodIngress{
-		Name:   "notebook",
-		Port:   8888,                                 // Notebook 在容器内的默认端口
-		Prefix: fmt.Sprintf("/ingress/%s/", baseURL), // 设置唯一的 URL 前缀
+	notebookIngress := crclient.PortMapping{
+		Name:          "notebook",
+		ContainerPort: 8888, // Notebook 在容器内的默认端口
+		ServicePort:   80,
+		Prefix:        fmt.Sprintf("/ingress/%s", baseURL), // 设置唯一的 URL 前缀
+		ServiceName:   jobName,
+		IngressName:   jobName,
 	}
 
 	// 将 Ingress 转换为 JSON 字符串并添加到 annotations

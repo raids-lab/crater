@@ -30,6 +30,8 @@ type PortMapping struct {
 	ContainerPort int32  // 容器内部端口
 	ServicePort   int32  // Service 暴露的端口
 	Prefix        string // Ingress 路径前缀
+	ServiceName   string // 该条规则对应的 Service 名称
+	IngressName   string // 该条规则对应的 Ingress 名称
 }
 
 // PodIngress 结构体定义
@@ -111,10 +113,11 @@ func CreateService(ctx context.Context, kubeClient client.Client, pod *v1.Pod, m
 	return serviceName, nil
 }
 
+// CreateServiceForNodePort 创建 NodePort 类型的 Service 并返回 NodePort 和 ServiceName
 func CreateServiceForNodePort(ctx context.Context, kubeClient client.Client, pod *v1.Pod,
-	ruleName string, containerPort int32) (int32, error) {
+	containerPort int32) (nodePort int32, serviceName string, err error) {
 	// 生成唯一的 Service 名称
-	serviceName := fmt.Sprintf("%s-%s", pod.Name, ruleName)
+	serviceName = fmt.Sprintf("%s-%s", pod.Name, uuid.New().String()[:5])
 
 	// 构造 OwnerReference
 	var ownerRef metav1.OwnerReference
@@ -157,12 +160,11 @@ func CreateServiceForNodePort(ctx context.Context, kubeClient client.Client, pod
 	}
 
 	// 调用 Kubernetes API 创建 Service
-	if err := kubeClient.Create(ctx, svc); err != nil {
-		return 0, fmt.Errorf("failed to create NodePort service: %w", err)
+	if err = kubeClient.Create(ctx, svc); err != nil {
+		return 0, "", fmt.Errorf("failed to create NodePort service: %w", err)
 	}
 
 	// 获取分配的 NodePort
-	var nodePort int32
 	for _, port := range svc.Spec.Ports {
 		if port.Port == containerPort {
 			nodePort = port.NodePort
@@ -170,11 +172,16 @@ func CreateServiceForNodePort(ctx context.Context, kubeClient client.Client, pod
 		}
 	}
 
-	return nodePort, nil
+	// 如果未找到 NodePort，返回错误
+	if nodePort == 0 {
+		return 0, "", fmt.Errorf("failed to retrieve NodePort for service %s", serviceName)
+	}
+
+	return nodePort, serviceName, nil
 }
 
 // CreateIngress 创建新的 Ingress
-func CreateIngress(ctx context.Context, kubeClient client.Client, pod *v1.Pod, serviceName string, mapping PortMapping) error {
+func CreateIngress(ctx context.Context, kubeClient client.Client, pod *v1.Pod, serviceName string, mapping PortMapping) (string, error) {
 	ingressName := fmt.Sprintf("%s-%s", pod.Name, uuid.New().String()[:5])
 
 	// 检查 OwnerReferences 是否为空
@@ -242,21 +249,23 @@ func CreateIngress(ctx context.Context, kubeClient client.Client, pod *v1.Pod, s
 	}
 
 	if err := kubeClient.Create(ctx, ingress); err != nil {
-		return fmt.Errorf("failed to create ingress: %w", err)
+		return "", fmt.Errorf("failed to create ingress: %w", err)
 	}
-	return nil
+
+	// 返回创建的 Ingress 名称
+	return ingressName, nil
 }
 
 // 更新 Pod 的 Annotation
-func UpdatePodAnnotation(ctx context.Context, mgr client.Client, pod *v1.Pod, ingress PodIngress) error {
+func UpdatePodAnnotation(ctx context.Context, mgr client.Client, pod *v1.Pod, mapping PortMapping) error {
 	// 将 Ingress 转换为 JSON 字符串
-	ingressJSON, err := json.Marshal(ingress)
+	ingressJSON, err := json.Marshal(mapping)
 	if err != nil {
 		return fmt.Errorf("failed to marshal ingress: %w", err)
 	}
 
 	// 设置 Pod 的 Annotation
-	pod.Annotations[IngressLabelKey+ingress.Name] = string(ingressJSON)
+	pod.Annotations[IngressLabelKey+mapping.Name] = string(ingressJSON)
 
 	// 更新 Pod 的 Annotation
 	if err := mgr.Update(ctx, pod); err != nil {
@@ -292,13 +301,17 @@ func CreateCustomForwardingRule(ctx context.Context, kubeClient client.Client, p
 	if err != nil {
 		return err
 	}
+	mapping.ServiceName = serviceName // 记录 Service 名称
+
 	// 创建 Ingress
-	if err := CreateIngress(ctx, kubeClient, pod, serviceName, mapping); err != nil {
+	ingressName, err := CreateIngress(ctx, kubeClient, pod, serviceName, mapping)
+	if err != nil {
 		return err
 	}
+	mapping.IngressName = ingressName // 记录 Ingress 名称
 
-	// 更新 Pod 的 Annotation
-	if err := UpdatePodAnnotation(ctx, kubeClient, pod, ingressRule); err != nil {
+	// 更新 Pod 的 Annotation，改为传入 mapping
+	if err := UpdatePodAnnotation(ctx, kubeClient, pod, mapping); err != nil {
 		return err
 	}
 
