@@ -46,7 +46,7 @@ function Combobox<T>({
 }: ComboboxProps<T>) {
   const [open, setOpen] = useState(false);
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover modal open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <FormControl>
           <Button
@@ -71,7 +71,7 @@ function Combobox<T>({
         </FormControl>
       </PopoverTrigger>
       <PopoverContent
-        className="p-0"
+        className="z-50 p-0"
         style={{
           width: "var(--radix-popover-trigger-width)",
           maxHeight: "var(--radix-popover-content-available-height)",

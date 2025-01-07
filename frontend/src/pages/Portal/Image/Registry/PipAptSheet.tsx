@@ -149,8 +149,7 @@ function PipAptSheetContent({ form, onSubmit }: PipAptSheetContentProps) {
               />
             </FormControl>
             <FormDescription>
-              请粘贴 requirements.txt 文件的内容，以便安装所需的 Python
-              包。点击帮助图标查看示例。
+              请粘贴 requirements.txt 文件的内容，以便安装所需的 Python 包。
             </FormDescription>
             <FormMessage />
           </FormItem>
@@ -206,7 +205,7 @@ export function PipAptSheet({ closeSheet, ...props }: DockerfileSheetProps) {
       }),
     onSuccess: async () => {
       await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
-        queryClient.invalidateQueries({ queryKey: ["imagelink", "list"] }),
+        queryClient.invalidateQueries({ queryKey: ["imagepack", "list"] }),
       );
       closeSheet();
       toast.success(`镜像开始制作，请在下方列表中查看制作状态`);
