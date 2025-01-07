@@ -249,15 +249,15 @@ export function LoginForm() {
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>登录失败</AlertDialogTitle>
+            <AlertDialogTitle>账号未激活</AlertDialogTitle>
             <AlertDialogDescription>
-              当前用户未取得集群访问权限，请参考「
+              第一次登录平台时，需要从 ACT 门户同步用户信息，请参考「
               <a
                 href={`https://${import.meta.env.VITE_HOST}/website/docs/quick-start/login`}
               >
                 平台访问指南
               </a>
-              」申请。
+              」激活您的账号。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -270,7 +270,7 @@ export function LoginForm() {
               }
             >
               <ExternalLink />
-              阅读文档
+              立即阅读
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
