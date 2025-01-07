@@ -28,6 +28,7 @@ import {
   File,
   Folder,
   FolderPlusIcon,
+  Globe,
   LogInIcon,
   Trash2,
 } from "lucide-react";
@@ -35,9 +36,11 @@ import { useSetAtom } from "jotai";
 import { globalBreadCrumb } from "@/utils/store";
 import {
   FileItem,
+  MoveFile,
   apiFileDelete,
   apiGetFiles,
   apiMkdir,
+  apiMoveFile,
 } from "@/services/api/file";
 import { ACCESS_TOKEN_KEY } from "@/utils/store";
 import { showErrorToast } from "@/utils/toast";
@@ -154,8 +157,6 @@ export const Component: FC = () => {
   }, [pathname, setBreadcrumb]);
 
   const backpath = useMemo(() => {
-    // pathname is /xxx/xxx/xxx/aaa
-    // backpath is /xxx/xxx/xxx
     return pathname.replace(/\/[^/]+$/, "");
   }, [pathname]);
 
@@ -200,6 +201,18 @@ export const Component: FC = () => {
       });
     },
   });
+
+  const { mutate: moveFile } = useMutation({
+    mutationFn: ({ fileData, path }: { fileData: MoveFile; path: string }) =>
+      apiMoveFile(fileData, path),
+    onSuccess: async () => {
+      toast.success("文件移动成功");
+      await queryClient.invalidateQueries({
+        queryKey: ["data", "filesystem", path],
+      });
+    },
+  });
+
   const columns = useMemo<ColumnDef<FileItem>[]>(
     () => [
       {
@@ -350,6 +363,58 @@ export const Component: FC = () => {
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <div>
+                            <Button
+                              variant="outline"
+                              className="h-8 w-8 p-0 hover:text-destructive"
+                              title="移动文件"
+                            >
+                              <Globe size={16} strokeWidth={2} />
+                            </Button>
+                          </div>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>选择移动位置</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              是否将文件夹{row.original.name}
+                              移动到公共空间或当前账户空间？
+                              请注意，如果进行移动，当前位置下文件夹会不再存在。
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>取消</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => {
+                                moveFile({
+                                  fileData: {
+                                    type: 1,
+                                    fileName: row.original.name,
+                                  },
+                                  path: `${path}/${row.original.name}`,
+                                });
+                              }}
+                            >
+                              移动到公共空间
+                            </AlertDialogAction>
+                            <AlertDialogAction
+                              onClick={() => {
+                                moveFile({
+                                  fileData: {
+                                    type: 2,
+                                    fileName: row.original.name,
+                                  },
+                                  path: `${path}/${row.original.name}`,
+                                });
+                              }}
+                            >
+                              移动到账户空间
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   ) : (
                     <div className="flex flex-row space-x-1">
@@ -422,6 +487,58 @@ export const Component: FC = () => {
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <div>
+                            <Button
+                              variant="outline"
+                              className="h-8 w-8 p-0 hover:text-destructive"
+                              title="公开文件"
+                            >
+                              <Globe size={16} strokeWidth={2} />
+                            </Button>
+                          </div>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>选择移动位置</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              是否将文件{row.original.name}
+                              移动到公共空间或当前账户空间？
+                              请注意，如果进行移动，当前位置下文件会不再存在。
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>取消</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => {
+                                moveFile({
+                                  fileData: {
+                                    type: 1,
+                                    fileName: row.original.name,
+                                  },
+                                  path: `${path}/${row.original.name}`,
+                                });
+                              }}
+                            >
+                              移动到公共空间
+                            </AlertDialogAction>
+                            <AlertDialogAction
+                              onClick={() => {
+                                moveFile({
+                                  fileData: {
+                                    type: 2,
+                                    fileName: row.original.name,
+                                  },
+                                  path: `${path}/${row.original.name}`,
+                                });
+                              }}
+                            >
+                              移动到账户空间
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   )}
                 </>
@@ -474,6 +591,8 @@ export const Component: FC = () => {
   };
   const handleReturnNavigation = (backpath: string) => {
     if (backpath == "/portal/data/filesystem/user") {
+      navigate("/portal/data/filesystem");
+    } else if (backpath == "/portal/data/filesystem/account") {
       navigate("/portal/data/filesystem");
     } else {
       navigate(backpath);
