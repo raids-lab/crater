@@ -17,6 +17,12 @@ export interface QeueuSpace {
   queuename: string;
   space: string;
 }
+
+export interface MoveFile {
+  type: number;
+  fileName: string;
+}
+
 export const apiGetFiles = (path: string) =>
   instance.get<IResponse<FileItem[] | undefined>>(`ss/files/${path}`);
 
@@ -44,3 +50,6 @@ export const apiGetUserSpace = () =>
 
 export const apiGetQueueSpace = () =>
   instance.get<IResponse<QeueuSpace[] | undefined>>(`ss/queuespace`);
+
+export const apiMoveFile = (req: MoveFile, path: string) =>
+  instance.post<IResponse<MoveFile>>(`ss/move/${path}`, req);
