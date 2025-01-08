@@ -2,6 +2,7 @@ package service
 
 import (
 	"archive/zip"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"webdav/dao/model"
 	"webdav/response"
+	"webdav/util"
 
 	"github.com/gin-gonic/gin"
 )
@@ -176,6 +178,103 @@ func CopyFile(c *gin.Context) {
 	fmt.Println(destDir, "Directory uncompressed successfully!")
 }
 
+type MoveFileReq struct {
+	Type     int    `json:"type"`
+	FileName string `json:"fileName"`
+}
+
+func MoveFile(c *gin.Context) {
+	AlloweOption(c)
+	checkfs()
+	jwttoken, err := CheckJWTToken(c)
+	if err != nil {
+		response.Error(c, err.Error(), response.NotSpecified)
+		return
+	}
+	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/move")
+	permission := GetPermission(param, jwttoken, c)
+	if permission == model.NotAllowed || permission == model.ReadOnly {
+		c.String(http.StatusUnauthorized, "Your have no permission to move files")
+		return
+	}
+	realPath, err := Redirect(param)
+	if err != nil {
+		response.Error(c, err.Error(), response.NotSpecified)
+		return
+	}
+	var moveFileReq MoveFileReq
+	err = c.ShouldBind(&moveFileReq)
+	if err != nil {
+		response.BadRequestError(c, err.Error())
+		return
+	}
+	dst, err := checkMoveFile(jwttoken, moveFileReq, param)
+	if err != nil {
+		response.Error(c, err.Error(), response.NotSpecified)
+		return
+	}
+	err = moveFiles(c.Request.Context(), realPath, dst, false)
+	if err != nil {
+		response.Error(c, err.Error(), response.NotSpecified)
+		return
+	}
+	response.Success(c, "move files successfully")
+}
+
+func checkMoveFile(token util.JWTMessage, moveFileReq MoveFileReq, path string) (string, error) {
+	// 1是公共空间，2是账户空间，目前只支持移动到公共空间或当前账户空间
+	if moveFileReq.Type == 1 {
+		if token.PublicAccessMode != model.AccessModeNA {
+			path = strings.TrimLeft(path, "/")
+			if strings.HasPrefix(path, "user") {
+				return publicSpacePrefix + "/" + token.Username + "/" + moveFileReq.FileName, nil
+			} else if strings.HasPrefix(path, "account") {
+				return publicSpacePrefix + "/" + token.AccountName + "/" + moveFileReq.FileName, nil
+			}
+		} else {
+			return "", fmt.Errorf("you have no public permission to move files ")
+		}
+	} else if moveFileReq.Type == 2 {
+		if token.AccountID != 1 && token.AccountAccessMode != model.AccessModeNA {
+			return accountSpacePrefix + "/" + token.AccountName + "/" + moveFileReq.FileName, nil
+		}
+		return "", fmt.Errorf("you have no this account's permission to move files ")
+	}
+	return "", fmt.Errorf("invalid Request")
+}
+
+func moveFiles(ctx context.Context, src, dst string, overwrite bool) error {
+	created := false
+	dstDir := filepath.Dir(dst)
+	if _, err := fs.FileSystem.Stat(ctx, dstDir); err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+		if err := fs.FileSystem.Mkdir(ctx, dstDir, RWXFolderPerm); err != nil {
+			return err
+		}
+		created = true
+	} else if overwrite {
+		if err := fs.FileSystem.RemoveAll(ctx, dst); err != nil {
+			return err
+		}
+	} else {
+		if stat, err := fs.FileSystem.Stat(ctx, dst); err == nil && stat.IsDir() {
+			return fmt.Errorf("destination folder %s already exists", dst)
+		} else if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	if err := fs.FileSystem.Rename(ctx, src, dst); err != nil {
+		return err
+	}
+	if created {
+		return nil
+	}
+	return nil
+}
+
 func RegisterDataset(r *gin.Engine) {
 	r.Handle("POST", "/api/ss/dataset/create/*path", CopyFile)
+	r.Handle("POST", "/api/ss/move/*path", MoveFile)
 }
