@@ -151,14 +151,28 @@ func GetSubPathByDatasetVolume(c context.Context,
 	userID, datasetID uint) (string, error) {
 	ud := query.UserDataset
 	d := query.Dataset
-	_, err := ud.WithContext(c).Where(ud.UserID.Eq(userID), ud.DatasetID.Eq(datasetID)).First()
-	if err != nil {
-		return "", err
-	}
+	ad := query.AccountDataset
+	ua := query.UserAccount
 	dataset, err := d.WithContext(c).Where(d.ID.Eq(datasetID)).First()
 	if err != nil {
 		return "", err
 	}
+	// Find()方法没找到不会报err，而是返回nil
+	accountDatasets, err := ad.WithContext(c).Where(ad.DatasetID.Eq(datasetID)).Find()
+	if err != nil {
+		return "", err
+	}
+	for _, accountDataset := range accountDatasets {
+		_, err = ua.WithContext(c).Where(ua.AccountID.Eq(accountDataset.AccountID), ua.UserID.Eq(userID)).First()
+		if err == nil {
+			return dataset.URL, nil
+		}
+	}
+	_, err = ud.WithContext(c).Where(ud.UserID.Eq(userID), ud.DatasetID.Eq(datasetID)).First()
+	if err != nil {
+		return "", err
+	}
+
 	return dataset.URL, nil
 }
 
