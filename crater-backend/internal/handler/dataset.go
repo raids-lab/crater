@@ -60,14 +60,15 @@ func (mgr *DatasetMgr) RegisterAdmin(g *gin.RouterGroup) {
 }
 
 type DatasetResp struct {
-	Name      string                                 `json:"name"`
-	ID        uint                                   `json:"id"`
-	UserName  string                                 `json:"username"`
-	URL       string                                 `json:"url"`
-	Describe  string                                 `json:"describe"`
-	CreatedAt time.Time                              `json:"createdAt"`
-	Type      model.DataType                         `json:"type"`
-	Extra     datatypes.JSONType[model.Extracontent] `json:"extra"`
+	Name      string                                  `json:"name"`
+	ID        uint                                    `json:"id"`
+	UserName  string                                  `json:"username"`
+	URL       string                                  `json:"url"`
+	Describe  string                                  `json:"describe"`
+	CreatedAt time.Time                               `json:"createdAt"`
+	Type      model.DataType                          `json:"type"`
+	Extra     datatypes.JSONType[model.Extracontent]  `json:"extra"`
+	Attribute datatypes.JSONType[model.UserAttribute] `json:"attribute"`
 }
 
 // GetMyDataset godoc
@@ -225,6 +226,7 @@ func (mgr *DatasetMgr) generateDataseResponse(c *gin.Context, dataset *model.Dat
 		CreatedAt: dataset.CreatedAt,
 		Type:      dataset.Type,
 		Extra:     dataset.Extra,
+		Attribute: user.Attributes,
 	}, nil
 }
 
