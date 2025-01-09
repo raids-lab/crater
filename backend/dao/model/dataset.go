@@ -24,6 +24,7 @@ type Dataset struct {
 	Type     DataType                         `gorm:"type:varchar(32);not null;default:dataset;comment:数据类型"`
 	Extra    datatypes.JSONType[Extracontent] `gorm:"comment:额外信息(tags、weburl等)"`
 	UserID   uint
+	User     User
 
 	UserDatasets    []UserDataset
 	AccountDatasets []AccountDataset
