@@ -9,6 +9,10 @@ export interface Dataset {
   describe: string;
   username: string;
   createdAt: string;
+  type: string;
+  tags: string[];
+  weburl: string;
+  IUserAttributes: IUserAttributes;
 }
 
 export interface UserDataset {
