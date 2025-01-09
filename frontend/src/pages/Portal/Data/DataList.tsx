@@ -28,6 +28,7 @@ export interface DataItem {
   id: number;
   name: string;
   desc: string;
+  username: string;
   tags: string[];
   url?: string;
   owner: IUserAttributes;
@@ -177,7 +178,7 @@ export default function DataList({
             <div>
               <div className="flex flex-row flex-wrap gap-1 p-4 pt-0">
                 <TipBadge
-                  title="李亦龙"
+                  title={item.owner?.name || item.username}
                   className="bg-purple-600/15 text-purple-600 hover:bg-purple-600/25"
                 />
                 <TipBadge title={<TimeDistance date={"2023"} />} />
