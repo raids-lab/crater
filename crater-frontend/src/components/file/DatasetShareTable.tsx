@@ -23,27 +23,39 @@ import {
   QueueDataset,
   UserDatasetResp,
   QueueDatasetGetResp,
-  Dataset,
   apiDatasetRename,
   apiGetDatasetByID,
   cancelSharedUserResp,
   cancelSharedQueueResp,
 } from "@/services/api/dataset";
-import { Pencil, User, Users, X } from "lucide-react";
+import {
+  Pencil,
+  User,
+  Users,
+  X,
+  UserRoundIcon,
+  MapPinIcon,
+  FileTextIcon,
+  CalendarIcon,
+} from "lucide-react";
 import useBreadcrumb from "@/hooks/useBreadcrumb";
 import { QueueNotInSelect } from "@/components/custom/QueueNotInSelect";
 import { AxiosResponse } from "axios";
 import { IResponse } from "@/services/types";
-import { DataTable } from "../custom/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "../custom/DataTable/DataTableColumnHeader";
 import { TimeDistance } from "../custom/TimeDistance";
 import { Input } from "../ui/input";
+import { DetailPage } from "@/components/layout/DetailPage";
+import PageTitle from "@/components/layout/PageTitle";
+import { DataTable } from "@/components/custom/DataTable";
+
 interface QueueOption {
   value: string;
   id: number;
   label: string;
 }
+
 interface DatesetShareTableProps {
   apiShareDatasetwithUser: (
     ud: UserDataset,
@@ -58,6 +70,7 @@ interface DatesetShareTableProps {
     csq: cancelSharedQueueResp,
   ) => Promise<AxiosResponse<IResponse<string>>>;
 }
+
 export function DatasetShareTable({
   apiShareDatasetwithUser,
   apiShareDatasetwithQueue,
@@ -157,22 +170,6 @@ export function DatasetShareTable({
       setQueueIds([]);
     },
   });
-  const getHeader = (key: string): string => {
-    switch (key) {
-      case "name":
-        return "名称";
-      case "createdAt":
-        return "创建于";
-      case "username":
-        return "创建者";
-      case "describe":
-        return "描述";
-      case "url":
-        return "数据集位置";
-      default:
-        return key;
-    }
-  };
 
   const [queueIds, setQueueIds] = useState<number[]>([]);
   const onChangeQueue = (newValue: OnChangeValue<QueueOption, true>) => {
@@ -240,6 +237,7 @@ export function DatasetShareTable({
     ],
     [cancelShareWithUser],
   );
+
   const queueDatasetColumns = useMemo<ColumnDef<QueueDatasetGetResp>[]>(
     () => [
       {
@@ -300,229 +298,186 @@ export function DatasetShareTable({
     ],
     [cancelShareWithQueue],
   );
-  const datasetColumns = useMemo<ColumnDef<Dataset>[]>(
-    () => [
-      {
-        accessorKey: "name",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("name")} />
-        ),
-        cell: ({ row }) => {
-          return <div>{row.getValue("name")}</div>;
-        },
-        enableSorting: false,
-      },
-      {
-        accessorKey: "createdAt",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("createdAt")}
-          />
-        ),
-        cell: ({ row }) => {
-          return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
-        },
-        //sortingFn: "datetime",
-        enableSorting: false,
-      },
-      {
-        accessorKey: "username",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("username")}
-          />
-        ),
-        cell: ({ row }) => {
-          return <div>{row.getValue("username")}</div>;
-        },
-      },
-      {
-        accessorKey: "describe",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("describe")}
-          />
-        ),
-        cell: ({ row }) => {
-          return (
-            <div style={{ display: "flex", alignItems: "center" }}>
-              {row.getValue("describe")}
-            </div>
-          );
-        },
-        //sortingFn: "datetime",
-        enableSorting: false,
-      },
-      {
-        accessorKey: "url",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("url")} />
-        ),
-        cell: ({ row }) => {
-          return <div>{row.getValue("url")}</div>;
-        },
-        //sortingFn: "datetime",
-        enableSorting: false,
-      },
-      {
-        id: "actions",
-        enableHiding: false,
-        cell: ({ row }) => {
-          return (
-            <div className="flex flex-row space-x-1">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <div>
-                    <Button
-                      variant="outline"
-                      className="h-8 w-8"
-                      size="icon"
-                      title="重命名"
-                    >
-                      <Pencil size={16} strokeWidth={2} />
-                    </Button>
-                  </div>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>重命名</DialogTitle>
-                    <DialogDescription>重命名数据集</DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="rename" className="text-right">
-                        数据集新名称
-                      </Label>
-                      <Input
-                        id="rename"
-                        type="text"
-                        defaultValue=""
-                        className="col-span-3"
-                        ref={refInput}
-                        onChange={handleChange}
-                        required
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <DialogClose>取消</DialogClose>
-                    <DialogClose>
-                      <Button
-                        type="submit"
-                        variant="default"
-                        onClick={() => RenameDataset(row.original.id)}
-                      >
-                        确认
-                      </Button>
-                    </DialogClose>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <div>
-                    <Button
-                      variant="outline"
-                      className="h-8 w-8 p-0 hover:text-red-700"
-                      title="用户共享"
-                    >
-                      <User size={16} strokeWidth={2} />
-                    </Button>
-                  </div>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>分享至用户</DialogTitle>
-                    <DialogDescription>
-                      和指定的用户共享数据集
-                    </DialogDescription>
-                  </DialogHeader>
-                  <ShareDatasetToUserDialog
-                    datasetId={datasetId}
-                    apiShareDatasetwithUser={apiShareDatasetwithUser}
-                  />
-                </DialogContent>
-              </Dialog>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <div>
-                    <Button
-                      variant="outline"
-                      className="h-8 w-8 p-0 hover:text-red-700"
-                      title="账户共享"
-                    >
-                      <Users size={16} strokeWidth={2} />
-                    </Button>
-                  </div>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>共享数据集</DialogTitle>
-                    <DialogDescription>和账户共享数据集</DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="queue" className="text-right">
-                        账户名称
-                      </Label>
-                      <QueueNotInSelect
-                        id={datasetId}
-                        onChange={onChangeQueue}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <DialogClose>
-                      <Button variant="outline">取消</Button>
-                    </DialogClose>
-                    <DialogClose>
-                      <Button
-                        type="submit"
-                        variant="default"
-                        onClick={() => shareWithQueue(datasetId)}
-                      >
-                        共享
-                      </Button>
-                    </DialogClose>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          );
-        },
-      },
-    ],
-    [RenameDataset, apiShareDatasetwithUser, datasetId, shareWithQueue],
-  );
   return (
-    <>
-      <DataTable
-        info={{
-          title: "数据集信息",
-          description: "",
-        }}
-        query={data}
-        columns={datasetColumns}
-      ></DataTable>
-      <DataTable
-        info={{
-          title: "数据集共享用户",
-          description: "",
-        }}
-        query={userDatasetData}
-        columns={userDatasetColumns}
-      ></DataTable>
-      <DataTable
-        info={{
-          title: "数据集共享账户",
-          description: "",
-        }}
-        query={queueDatasetData}
-        columns={queueDatasetColumns}
-      ></DataTable>
-    </>
+    <DetailPage
+      header={
+        <PageTitle
+          title={
+            <div className="flex flex-row items-center gap-1.5 text-2xl">
+              {data.data?.[0]?.name}
+            </div>
+          }
+        >
+          <div className="flex flex-row space-x-1">
+            <Dialog>
+              <DialogTrigger asChild>
+                <div>
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8"
+                    size="icon"
+                    title="重命名"
+                  >
+                    <Pencil size={16} strokeWidth={2} />
+                  </Button>
+                </div>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>重命名</DialogTitle>
+                  <DialogDescription>重命名数据集</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="rename" className="text-right">
+                      数据集新名称
+                    </Label>
+                    <Input
+                      id="rename"
+                      type="text"
+                      defaultValue=""
+                      className="col-span-3"
+                      ref={refInput}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <DialogClose>取消</DialogClose>
+                  <DialogClose>
+                    <Button
+                      type="submit"
+                      variant="default"
+                      onClick={() =>
+                        data.data?.[0]?.id && RenameDataset(data.data[0].id)
+                      }
+                    >
+                      确认
+                    </Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            <Dialog>
+              <DialogTrigger asChild>
+                <div>
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0 hover:text-red-700"
+                    title="用户共享"
+                  >
+                    <User size={16} strokeWidth={2} />
+                  </Button>
+                </div>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>分享至用户</DialogTitle>
+                  <DialogDescription>和指定的用户共享数据集</DialogDescription>
+                </DialogHeader>
+                <ShareDatasetToUserDialog
+                  datasetId={datasetId}
+                  apiShareDatasetwithUser={apiShareDatasetwithUser}
+                />
+              </DialogContent>
+            </Dialog>
+            <Dialog>
+              <DialogTrigger asChild>
+                <div>
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0 hover:text-red-700"
+                    title="账户共享"
+                  >
+                    <Users size={16} strokeWidth={2} />
+                  </Button>
+                </div>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>共享数据集</DialogTitle>
+                  <DialogDescription>和账户共享数据集</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="queue" className="text-right">
+                      账户名称
+                    </Label>
+                    <QueueNotInSelect id={datasetId} onChange={onChangeQueue} />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <DialogClose>
+                    <Button variant="outline">取消</Button>
+                  </DialogClose>
+                  <DialogClose>
+                    <Button
+                      type="submit"
+                      variant="default"
+                      onClick={() => shareWithQueue(datasetId)}
+                    >
+                      共享
+                    </Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </PageTitle>
+      }
+      info={[
+        { title: "用户", icon: UserRoundIcon, value: data.data?.[0]?.username },
+        {
+          title: "创建于",
+          icon: CalendarIcon,
+          value: <TimeDistance date={data.data?.[0]?.createdAt} />,
+        },
+        {
+          title: "数据集描述",
+          icon: FileTextIcon,
+          value: data.data?.[0]?.describe,
+        },
+        {
+          title: "数据集位置", // 位置标题
+          icon: MapPinIcon, // 位置图标
+          value: data.data?.[0]?.url, // 位置内容
+        },
+      ]}
+      tabs={[
+        {
+          key: "usershare",
+          icon: User,
+          label: "数据集共享用户",
+          children: (
+            <DataTable
+              info={{
+                title: "",
+                description: "",
+              }}
+              query={userDatasetData}
+              columns={userDatasetColumns}
+            />
+          ),
+          scrollable: true,
+        },
+        {
+          key: "accountshare",
+          icon: Users,
+          label: "数据集共享账户",
+          children: (
+            <DataTable
+              info={{
+                title: "",
+                description: "",
+              }}
+              query={queueDatasetData}
+              columns={queueDatasetColumns}
+            />
+          ),
+          scrollable: true,
+        },
+      ]}
+    />
   );
 }
