@@ -67,7 +67,10 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	useTensorboard := fmt.Sprintf("%t", req.UseTensorBoard)
 
 	// Command to start Jupyter
-	commandSchema := "start.sh jupyter lab --allow-root --notebook-dir=/home/%s --NotebookApp.base_url=/ingress/%s/"
+	commandSchema := "start.sh jupyter lab --allow-root " +
+		"--notebook-dir=/home/%s " +
+		"--NotebookApp.base_url=/ingress/%s/ " +
+		"--ResourceUseDisplay.track_cpu_percent=True"
 	command := fmt.Sprintf(commandSchema, token.Username, baseURL)
 
 	// 1. Volume Mounts
@@ -99,7 +102,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		})
 
 		commandSchema := "/usr/bin/start.sh jupyter lab --ip=0.0.0.0 --no-browser --allow-root " +
-			"--notebook-dir=/home/%s --NotebookApp.base_url=/ingress/%s/"
+			"--notebook-dir=/home/%s --NotebookApp.base_url=/ingress/%s/ --ResourceUseDisplay.track_cpu_percent=True"
 		command = fmt.Sprintf(commandSchema, token.Username, baseURL)
 	}
 
@@ -122,14 +125,18 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	}
 
 	//nolint:mnd // 5 is the number of default envs
-	envs := make([]v1.EnvVar, len(req.Envs)+5)
+	envs := make([]v1.EnvVar, len(req.Envs)+7)
 	envs[0] = v1.EnvVar{Name: "GRANT_SUDO", Value: "1"}
 	envs[1] = v1.EnvVar{Name: "CHOWN_HOME", Value: "1"}
 	envs[2] = v1.EnvVar{Name: "NB_UID", Value: *userAttr.UID}
 	envs[3] = v1.EnvVar{Name: "NB_GID", Value: *userAttr.GID}
 	envs[4] = v1.EnvVar{Name: "NB_USER", Value: token.Username}
+	cpuLimit := req.Resource.Cpu().Value()
+	envs[5] = v1.EnvVar{Name: "CPU_LIMIT", Value: strconv.FormatInt(cpuLimit, 10)}
+	memoryLimit := req.Resource.Memory().Value()
+	envs[6] = v1.EnvVar{Name: "MEM_LIMIT", Value: strconv.FormatInt(memoryLimit, 10)}
 	for i, env := range req.Envs {
-		envs[i+5] = env
+		envs[i+7] = env
 	}
 
 	// 3. TODO: Node Affinity for ARM64 Nodes
