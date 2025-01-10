@@ -36,7 +36,7 @@ data:
     fi
     # Set PYTHONUSERBASE
     if [ -z "${PYTHONUSERBASE}" ]; then
-        if! command -v conda >/dev/null 2>&1; then
+        if ! command -v conda >/dev/null 2>&1; then
             PYTHONUSERBASE=/usr/local
         fi
     fi
