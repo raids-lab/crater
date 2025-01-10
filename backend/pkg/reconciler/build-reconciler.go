@@ -113,7 +113,7 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	// create or update db record
 	// if kaniko not found, return
-	kaniko, err := k.WithContext(ctx).Preload(query.Kaniko.User).Where(k.ImagePackName.Eq(job.Name)).First()
+	kaniko, err := k.WithContext(ctx).Where(k.ImagePackName.Eq(job.Name)).First()
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		logger.Error(err, "unable to fetch kaniko entity in database")
 		return ctrl.Result{Requeue: true}, err
@@ -127,7 +127,7 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		if dockerfile == "" {
 			buildSource = model.Snapshot
 		}
-		kanikoEntity := &model.Kaniko{
+		kanikoEntity := model.Kaniko{
 			//nolint:gosec // userID is very small, integer overflow conversion won't happen
 			UserID:        uint(userID),
 			ImagePackName: job.Name,
@@ -138,10 +138,11 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			Description:   &description,
 			BuildSource:   buildSource,
 		}
-		if err = k.WithContext(ctx).Create(kanikoEntity); err != nil {
-			logutils.Log.Errorf("create imagepack entity failed, params: %+v", kanikoEntity)
+		if err = k.WithContext(ctx).Create(&kanikoEntity); err != nil {
+			logutils.Log.Errorf("create imagepack entity failed, params: %+v, %+v", kanikoEntity, err)
+		} else {
+			logger.Info("successfully created kaniko entity")
 		}
-		logger.Info("successfully created kaniko entity")
 		return ctrl.Result{Requeue: true}, nil
 	}
 
