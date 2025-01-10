@@ -93,22 +93,24 @@ func (b *imagePacker) generateVolumes() []corev1.Volume {
 			},
 		},
 		{
-			Name: "buildkitd",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
-		{
-			Name: "secret",
+			Name: "harborcredits",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: buildkitSecretName,
+					SecretName: harborCreditSecretName,
 					Items: []corev1.KeyToPath{
 						{
 							Key:  ".dockerconfigjson",
 							Path: "config.json",
 						},
 					},
+				},
+			},
+		},
+		{
+			Name: "buildkitcerts",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: buildkitClientSecretName,
 				},
 			},
 		},
@@ -119,6 +121,10 @@ func (b *imagePacker) generateVolumes() []corev1.Volume {
 func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Container {
 	output := fmt.Sprintf("type=image,name=%s,push=true", data.ImageLink)
 	buildArgs := []string{
+		"--addr", "tcp://buildkitd.crater-images:1234",
+		"--tlscacert=/certs/ca.pem",
+		"--tlscert=/certs/cert.pem",
+		"--tlskey=/certs/key.pem",
 		"build",
 		"--frontend", "dockerfile.v0",
 		"--progress", "plain",
@@ -128,26 +134,14 @@ func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Cont
 	}
 	buildkitContainer := []corev1.Container{
 		{
-			Name:    "buildkit",
-			Image:   "***REMOVED***/moby/buildkit:master-rootless",
-			Command: []string{"buildctl-daemonless.sh"},
+			Name:  "buildkit",
+			Image: "***REMOVED***/user-huangsy/buildkit/buildctl:v0.18.2",
+			Args:  buildArgs,
 			Env: []corev1.EnvVar{
-				{
-					Name:  "BUILDKITD_FLAGS",
-					Value: "--oci-worker-no-process-sandbox",
-				},
 				{
 					Name:  "DOCKER_CONFIG",
 					Value: "/.docker",
 				},
-			},
-			Args: buildArgs,
-			SecurityContext: &corev1.SecurityContext{
-				SeccompProfile: &corev1.SeccompProfile{
-					Type: corev1.SeccompProfileTypeUnconfined,
-				},
-				RunAsUser:  &runAsUerNumber,
-				RunAsGroup: &runAsGroupNumber,
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
@@ -156,11 +150,11 @@ func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Cont
 					ReadOnly:  true,
 				},
 				{
-					Name:      "buildkitd",
-					MountPath: "/home/user/.local/share/buildkit",
+					Name:      "buildkitcerts",
+					MountPath: "/certs",
 				},
 				{
-					Name:      "secret",
+					Name:      "harborcredits",
 					MountPath: "/.docker",
 				},
 			},

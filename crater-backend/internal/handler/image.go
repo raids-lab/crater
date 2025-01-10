@@ -377,6 +377,7 @@ func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, token util.JWTMessa
 	}
 
 	if err := mgr.imagePacker.CreateFromDockerfile(c, buildkitData); err != nil {
+		logutils.Log.Errorf("create imagepack failed, err:%+v", err)
 		resputil.Error(c, "create imagepack failed", resputil.NotSpecified)
 		return
 	}
@@ -546,7 +547,7 @@ func (mgr *ImagePackMgr) DeleteKanikoByID(c *gin.Context) {
 	var kaniko *model.Kaniko
 	k := query.Kaniko
 	if kaniko, err = k.WithContext(c).
-		Preload(query.Image.User).
+		Preload(query.Kaniko.User).
 		Where(k.ID.Eq(kanikoID)).
 		Where(k.UserID.Eq(token.UserID)).First(); err != nil {
 		logutils.Log.Errorf("image not exist or have no permission%+v", err)

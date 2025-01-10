@@ -137,7 +137,7 @@ func (b *imagePacker) generateSnapshotVolumes() []corev1.Volume {
 			Name: "secret",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: buildkitSecretName,
+					SecretName: harborCreditSecretName,
 					Items: []corev1.KeyToPath{
 						{
 							Key:  ".dockerconfigjson",
