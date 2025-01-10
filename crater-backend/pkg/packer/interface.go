@@ -51,7 +51,8 @@ var (
 	runAsGroupNumber int64 = 1000
 	fsAsGroupNumber  int64 = 1000
 
-	buildkitSecretName string = "buildkit-secret"
+	harborCreditSecretName   string = "buildkit-secret"
+	buildkitClientSecretName string = "buildkit-client-certs"
 
 	JobCleanTime       int32 = 259200
 	BackoffLimitNumber int32 = 0
