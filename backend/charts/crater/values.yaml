@@ -2,7 +2,7 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "e8ca0b46"
+      tag: "33aff40a"
       pullPolicy: "IfNotPresent"
   frontend:
     image:
@@ -44,7 +44,8 @@ backendConfig:
       TimeZone: Asia/Shanghai
     workspace:
       namespace: crater-workspace
-      pvcName: crater-rw-storage
+      rwxpvcName: crater-rw-storage
+      roxpvcName: crater-ro-storage
       ingressName: crater-jobs-ingress
       imageNameSpace: crater-images
     act:

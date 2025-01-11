@@ -122,10 +122,10 @@ type (
 
 type (
 	VolumeMount struct {
-		Type      uint   `json:"type"`
-		DatasetID uint   `json:"datasetID"`
-		SubPath   string `json:"subPath"`
-		MountPath string `json:"mountPath"`
+		Type      VolumeType `json:"type"`
+		DatasetID uint       `json:"datasetID"`
+		SubPath   string     `json:"subPath"`
+		MountPath string     `json:"mountPath"`
 	}
 
 	DatasetMount struct {

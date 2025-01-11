@@ -14,75 +14,20 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 )
 
-const FileType = 1
-const DatasetType = 2
+type VolumeType uint
+
+const (
+	_ VolumeType = iota
+	FileType
+	DatasetType
+)
+
 const userSpacePrefix = "***REMOVED***"
 const accountSpacePrefix = "***REMOVED***"
 const publicSpacePrefix = "***REMOVED***"
 
 func GenerateVolumeMounts(
-	_ context.Context,
-	_ uint,
-	volumes []VolumeMount,
-) (pvc []v1.Volume, volumeMounts []v1.VolumeMount, err error) {
-	VolumeData := config.GetConfig().Workspace.RWXPVCName
-	pvc = []v1.Volume{
-		{
-			Name: VolumeCache,
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{
-					Medium: v1.StorageMediumMemory,
-				},
-			},
-		},
-	}
-
-	if len(volumes) > 0 {
-		fs := v1.Volume{
-			Name: VolumeData,
-			VolumeSource: v1.VolumeSource{
-				PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-					ClaimName: config.GetConfig().Workspace.RWXPVCName,
-				},
-			},
-		}
-		pvc = append(pvc, fs)
-	}
-
-	volumeMounts = make([]v1.VolumeMount, len(volumes)+1)
-
-	volumeMounts[0] = v1.VolumeMount{
-		Name:      VolumeCache,
-		MountPath: "/dev/shm",
-	}
-
-	for i, vm := range volumes {
-		subPath := vm.SubPath
-		if strings.HasPrefix(subPath, "public") {
-			tmp := strings.TrimPrefix(subPath, "public")
-			subPath = publicSpacePrefix + tmp
-		} else if strings.HasPrefix(subPath, "user") {
-			tmp := strings.TrimPrefix(subPath, "user")
-			subPath = userSpacePrefix + tmp
-		} else if strings.HasPrefix(subPath, "account") {
-			tmp := strings.TrimPrefix(subPath, "account")
-			subPath = accountSpacePrefix + tmp
-		} else {
-			return nil, nil, fmt.Errorf("mount path error")
-		}
-		volumeMounts[i+1] = v1.VolumeMount{
-			Name:      VolumeData,
-			SubPath:   subPath,
-			MountPath: vm.MountPath,
-		}
-	}
-
-	return pvc, volumeMounts, nil
-}
-
-func GenerateNewVolumeMounts(
 	c context.Context,
-	userID uint,
 	volumes []VolumeMount,
 	token util.JWTMessage, // 传入 token 信息
 ) (pvc []v1.Volume, volumeMounts []v1.VolumeMount, err error) {
@@ -107,12 +52,7 @@ func GenerateNewVolumeMounts(
 
 	// 遍历 volumes，根据权限动态创建 PVC
 	for _, vm := range volumes {
-		subPath, isPublic, err := resolveSubPathAndSpaceType(c, userID, vm)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		volumeName, readOnly, err := determineAccessMode(token, isPublic)
+		subPath, volumeName, readOnly, err := resolveSubPathAndSpaceType(c, token, vm)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -136,63 +76,57 @@ func GenerateNewVolumeMounts(
 }
 
 // 解析 SubPath 和空间类型（公共空间或个人空间）
-func resolveSubPathAndSpaceType(c context.Context, userID uint, vm VolumeMount) (subPath string, isPublic bool, err error) {
-	if vm.Type == FileType {
-		subPath = vm.SubPath
-	} else if vm.Type == DatasetType {
-		subPath, err = GetSubPathByDatasetVolume(c, userID, vm.DatasetID)
-		if err != nil {
-			return "", false, err
-		}
-	} else {
-		return "", false, fmt.Errorf("unknown volume type")
-	}
-
-	if strings.HasPrefix(subPath, "public") {
-		tmp := strings.TrimPrefix(subPath, "public")
-		subPath = publicSpacePrefix + tmp
-		isPublic = true
-	} else if strings.HasPrefix(subPath, "user") {
-		tmp := strings.TrimPrefix(subPath, "user")
-		subPath = userSpacePrefix + tmp
-		isPublic = false
-	} else if strings.HasPrefix(subPath, "account") {
-		tmp := strings.TrimPrefix(subPath, "account")
-		subPath = accountSpacePrefix + tmp
-	} else {
-		return "", false, fmt.Errorf("mount path error")
-	}
-
-	return subPath, isPublic, nil
-}
-
-// 根据权限模式判断 Volume 名称和只读属性
-func determineAccessMode(token util.JWTMessage, isPublic bool) (volumeName string, readOnly bool, err error) {
+func resolveSubPathAndSpaceType(c context.Context, token util.JWTMessage, vm VolumeMount) (
+	subPath, volumeName string, readOnly bool, err error,
+) {
 	rwxPVCName := config.GetConfig().Workspace.RWXPVCName
 	roxPVCName := config.GetConfig().Workspace.ROXPVCName
 
-	if isPublic {
-		switch token.PublicAccessMode {
-		case model.AccessModeNA:
-			return "", false, fmt.Errorf("access to public directory is not allowed")
-		case model.AccessModeRO, model.AccessModeAO:
-			return roxPVCName, true, nil
-		case model.AccessModeRW:
-			return rwxPVCName, false, nil
-		default:
-			return "", false, fmt.Errorf("unknown access mode for public directory")
+	switch vm.Type {
+	case FileType:
+		subPath = vm.SubPath
+	case DatasetType:
+		subPath, err = GetSubPathByDatasetVolume(c, token.UserID, vm.DatasetID)
+		if err != nil {
+			return "", "", false, err
 		}
-	} else {
-		switch token.AccountAccessMode {
-		case model.AccessModeNA:
-			return "", false, fmt.Errorf("access to user directory is not allowed")
-		case model.AccessModeRO, model.AccessModeAO:
-			return roxPVCName, true, nil
-		case model.AccessModeRW:
-			return rwxPVCName, false, nil
-		default:
-			return "", false, fmt.Errorf("unknown access mode for user directory")
-		}
+		return subPath, roxPVCName, true, nil
+	default:
+		return "", "", false, fmt.Errorf("unknown volume type")
+	}
+
+	// Type 为 FileType 时，解析 SubPath
+	switch {
+	case strings.HasPrefix(subPath, "public"):
+		subPath = publicSpacePrefix + strings.TrimPrefix(subPath, "public")
+		return determineAccessMode(subPath, token.PublicAccessMode)
+	case strings.HasPrefix(subPath, "account"):
+		subPath = accountSpacePrefix + strings.TrimPrefix(subPath, "account")
+		return determineAccessMode(subPath, token.AccountAccessMode)
+	case strings.HasPrefix(subPath, "user"):
+		subPath = userSpacePrefix + strings.TrimPrefix(subPath, "user")
+		return subPath, rwxPVCName, false, nil
+	default:
+		return "", "", false, fmt.Errorf("mount path error")
+	}
+}
+
+// 根据权限模式判断 Volume 名称和只读属性
+func determineAccessMode(subPath string, accessModel model.AccessMode) (
+	volumeSubPath, volumeName string, readOnly bool, err error,
+) {
+	rwxPVCName := config.GetConfig().Workspace.RWXPVCName
+	roxPVCName := config.GetConfig().Workspace.ROXPVCName
+
+	switch accessModel {
+	case model.AccessModeNA:
+		return "", "", false, fmt.Errorf("access to public directory is not allowed")
+	case model.AccessModeRO, model.AccessModeAO:
+		return subPath, roxPVCName, true, nil
+	case model.AccessModeRW:
+		return subPath, rwxPVCName, false, nil
+	default:
+		return "", "", false, fmt.Errorf("unknown access mode for public directory")
 	}
 }
 

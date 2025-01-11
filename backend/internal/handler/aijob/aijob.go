@@ -267,7 +267,7 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 	command := fmt.Sprintf(commandSchema, token.Username)
 
 	// 1. Volume Mounts
-	volumes, volumeMounts, err := vcjob.GenerateVolumeMounts(c, token.UserID, vcReq.VolumeMounts)
+	volumes, volumeMounts, err := vcjob.GenerateVolumeMounts(c, vcReq.VolumeMounts, token)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -441,7 +441,7 @@ func (mgr *AIJobMgr) Create(c *gin.Context) {
 	req.WorkingDir = vcReq.WorkingDir
 
 	taskModel := models.FormatTaskAttrToModel(&req.TaskAttr)
-	podSpec, err := vcjob.GenerateCustomPodSpec(c, token.UserID, &vcReq.CreateCustomReq)
+	podSpec, err := vcjob.GenerateCustomPodSpec(c, token, &vcReq.CreateCustomReq)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("generate pod spec failed, err %v", err), resputil.NotSpecified)
 		return
