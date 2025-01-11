@@ -82,7 +82,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	}
 
 	// 5. Create the pod spec
-	podSpec, err := GenerateCustomPodSpec(c, token.UserID, &req)
+	podSpec, err := GenerateCustomPodSpec(c, token, &req)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -139,10 +139,10 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 
 func GenerateCustomPodSpec(
 	ctx context.Context,
-	userID uint,
+	token util.JWTMessage,
 	custom *CreateCustomReq,
 ) (podSpec v1.PodSpec, err error) {
-	volumes, volumeMounts, err := GenerateVolumeMounts(ctx, userID, custom.VolumeMounts)
+	volumes, volumeMounts, err := GenerateVolumeMounts(ctx, custom.VolumeMounts, token)
 	if err != nil {
 		return podSpec, err
 	}
