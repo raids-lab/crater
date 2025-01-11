@@ -74,7 +74,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	command := fmt.Sprintf(commandSchema, token.Username, baseURL)
 
 	// 1. Volume Mounts
-	volumes, volumeMounts, err := GenerateNewVolumeMounts(c, token.UserID, req.VolumeMounts)
+	volumes, volumeMounts, err := GenerateNewVolumeMounts(c, token.UserID, req.VolumeMounts, token)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
