@@ -39,7 +39,8 @@ type Config struct {
 	// Workspace Settings
 	Workspace struct {
 		Namespace      string `yaml:"namespace"`
-		PVCName        string `yaml:"pvcName"`
+		RWXPVCName     string `yaml:"rwxpvcName"`
+		ROXPVCName     string `yaml:"roxpvcName"`
 		IngressName    string `yaml:"ingressName"`
 		ImageNamespace string `yaml:"imageNameSpace"`
 	} `yaml:"workspace"`
