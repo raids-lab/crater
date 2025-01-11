@@ -19,8 +19,8 @@ import AuthedRouter from "./AuthedRouter";
 import NotFound from "@/components/layout/NotFound";
 import FeedBack from "./Feedback";
 import UserSettings from "./Setting/UserSetting";
-import Model from "./Data/Model";
 import Monitor from "../Embed/Monitor";
+import modelRoutes from "./Data/modelindex";
 
 const portalRoutes: SidebarItem[] = [
   {
@@ -108,7 +108,7 @@ const portalRoutes: SidebarItem[] = [
       {
         route: {
           path: "model/*",
-          element: <Model />,
+          children: modelRoutes,
         },
       },
     ],
