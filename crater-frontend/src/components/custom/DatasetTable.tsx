@@ -32,14 +32,16 @@ export function DatasetTable({ apiGetDataset }: DatesetTableProps) {
   return (
     <DataList
       items={
-        data.data?.map((dataset) => ({
-          id: dataset.id,
-          name: dataset.name,
-          desc: dataset.describe,
-          tags: dataset.tags || [], // Add appropriate tags if available
-          owner: dataset.IUserAttributes, // Adjust to match IUserAttributes structure
-          username: dataset.username,
-        })) || []
+        data.data
+          ?.filter((dataset) => dataset.type === "dataset")
+          .map((dataset) => ({
+            id: dataset.id,
+            name: dataset.name,
+            desc: dataset.describe,
+            tags: dataset.tags || [], // Add appropriate tags if available
+            owner: dataset.IUserAttributes, // Adjust to match IUserAttributes structure
+            username: dataset.username,
+          })) || []
       }
       title="数据集"
       actionArea={
