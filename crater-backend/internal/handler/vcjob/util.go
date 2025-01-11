@@ -75,38 +75,47 @@ func GenerateVolumeMounts(
 	return pvc, volumeMounts, nil
 }
 
-// 解析 SubPath 和空间类型（公共空间或个人空间）
+// 解析 SubPath 和空间类型
 func resolveSubPathAndSpaceType(c context.Context, token util.JWTMessage, vm VolumeMount) (
 	subPath, volumeName string, readOnly bool, err error,
 ) {
 	rwxPVCName := config.GetConfig().Workspace.RWXPVCName
 	roxPVCName := config.GetConfig().Workspace.ROXPVCName
 
+	processSubPath := func(subPath string, accessMode model.AccessMode, isDatasetType bool) (string, string, bool, error) {
+		switch {
+		case strings.HasPrefix(subPath, "public"):
+			subPath = publicSpacePrefix + strings.TrimPrefix(subPath, "public")
+			if isDatasetType {
+				return subPath, roxPVCName, true, nil
+			}
+			return determineAccessMode(subPath, accessMode)
+		case strings.HasPrefix(subPath, "account") && !isDatasetType:
+			subPath = accountSpacePrefix + strings.TrimPrefix(subPath, "account")
+			return determineAccessMode(subPath, accessMode)
+		case strings.HasPrefix(subPath, "user"):
+			subPath = userSpacePrefix + strings.TrimPrefix(subPath, "user")
+			if isDatasetType {
+				return subPath, roxPVCName, true, nil
+			}
+			return subPath, rwxPVCName, false, nil
+		default:
+			return "", "", false, fmt.Errorf("mount path error")
+		}
+	}
+
 	switch vm.Type {
 	case DatasetType:
+		// DatasetType 按只读挂载，复用 SubPath 处理逻辑
 		subPath, err = GetSubPathByDatasetVolume(c, token.UserID, vm.DatasetID)
 		if err != nil {
 			return "", "", false, err
 		}
-		return subPath, roxPVCName, true, nil
+		return processSubPath(subPath, model.AccessModeRO, true)
 	default:
 		// FileType
 		subPath = vm.SubPath
-	}
-
-	// Type 为 FileType 时，解析 SubPath
-	switch {
-	case strings.HasPrefix(subPath, "public"):
-		subPath = publicSpacePrefix + strings.TrimPrefix(subPath, "public")
-		return determineAccessMode(subPath, token.PublicAccessMode)
-	case strings.HasPrefix(subPath, "account"):
-		subPath = accountSpacePrefix + strings.TrimPrefix(subPath, "account")
-		return determineAccessMode(subPath, token.AccountAccessMode)
-	case strings.HasPrefix(subPath, "user"):
-		subPath = userSpacePrefix + strings.TrimPrefix(subPath, "user")
-		return subPath, rwxPVCName, false, nil
-	default:
-		return "", "", false, fmt.Errorf("mount path error")
+		return processSubPath(subPath, token.PublicAccessMode, false)
 	}
 }
 
