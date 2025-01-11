@@ -83,8 +83,6 @@ func resolveSubPathAndSpaceType(c context.Context, token util.JWTMessage, vm Vol
 	roxPVCName := config.GetConfig().Workspace.ROXPVCName
 
 	switch vm.Type {
-	case FileType:
-		subPath = vm.SubPath
 	case DatasetType:
 		subPath, err = GetSubPathByDatasetVolume(c, token.UserID, vm.DatasetID)
 		if err != nil {
@@ -92,7 +90,8 @@ func resolveSubPathAndSpaceType(c context.Context, token util.JWTMessage, vm Vol
 		}
 		return subPath, roxPVCName, true, nil
 	default:
-		return "", "", false, fmt.Errorf("unknown volume type")
+		// FileType
+		subPath = vm.SubPath
 	}
 
 	// Type 为 FileType 时，解析 SubPath
