@@ -8,7 +8,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 )
 
@@ -23,7 +25,7 @@ func GenerateVolumeMounts(
 	_ uint,
 	volumes []VolumeMount,
 ) (pvc []v1.Volume, volumeMounts []v1.VolumeMount, err error) {
-	VolumeData := config.GetConfig().Workspace.PVCName
+	VolumeData := config.GetConfig().Workspace.RWXPVCName
 	pvc = []v1.Volume{
 		{
 			Name: VolumeCache,
@@ -40,7 +42,7 @@ func GenerateVolumeMounts(
 			Name: VolumeData,
 			VolumeSource: v1.VolumeSource{
 				PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-					ClaimName: config.GetConfig().Workspace.PVCName,
+					ClaimName: config.GetConfig().Workspace.RWXPVCName,
 				},
 			},
 		}
@@ -82,8 +84,16 @@ func GenerateNewVolumeMounts(
 	c context.Context,
 	userID uint,
 	volumes []VolumeMount,
+	token util.JWTMessage, // 传入 token 信息
 ) (pvc []v1.Volume, volumeMounts []v1.VolumeMount, err error) {
-	VolumeData := config.GetConfig().Workspace.PVCName
+	// 初始化返回的 PVC 和 VolumeMount 列表
+	pvcMap := make(map[string]bool) // 用于避免重复创建同一 PVC
+	volumeMounts = []v1.VolumeMount{
+		{
+			Name:      VolumeCache,
+			MountPath: "/dev/shm",
+		},
+	}
 	pvc = []v1.Volume{
 		{
 			Name: VolumeCache,
@@ -94,57 +104,108 @@ func GenerateNewVolumeMounts(
 			},
 		},
 	}
-	if len(volumes) > 0 {
-		fs := v1.Volume{
-			Name: VolumeData,
-			VolumeSource: v1.VolumeSource{
-				PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-					ClaimName: config.GetConfig().Workspace.PVCName,
-				},
-			},
-		}
-		pvc = append(pvc, fs)
-	}
 
-	volumeMounts = make([]v1.VolumeMount, len(volumes)+1)
-	volumeMounts[0] = v1.VolumeMount{
-		Name:      VolumeCache,
-		MountPath: "/dev/shm",
-	}
-
-	for i, vm := range volumes {
-		var subPath string
-		if vm.Type == FileType {
-			subPath = vm.SubPath
-		} else if vm.Type == DatasetType {
-			subPath, err = GetSubPathByDatasetVolume(c, userID, vm.DatasetID)
-			if err != nil {
-				return nil, nil, err
-			}
-		} else {
+	// 遍历 volumes，根据权限动态创建 PVC
+	for _, vm := range volumes {
+		subPath, isPublic, err := resolveSubPathAndSpaceType(c, userID, vm)
+		if err != nil {
 			return nil, nil, err
 		}
-		if strings.HasPrefix(subPath, "public") {
-			tmp := strings.TrimPrefix(subPath, "public")
-			subPath = publicSpacePrefix + tmp
-		} else if strings.HasPrefix(subPath, "user") {
-			tmp := strings.TrimPrefix(subPath, "user")
-			subPath = userSpacePrefix + tmp
-		} else if strings.HasPrefix(subPath, "account") {
-			tmp := strings.TrimPrefix(subPath, "account")
-			subPath = accountSpacePrefix + tmp
-		} else {
-			return nil, nil, fmt.Errorf("mount path error")
+
+		volumeName, readOnly, err := determineAccessMode(token, isPublic)
+		if err != nil {
+			return nil, nil, err
 		}
-		volumeMounts[i+1] = v1.VolumeMount{
-			Name:      VolumeData,
+
+		// 如果该 PVC 尚未创建，添加到 PVC 列表
+		if !pvcMap[volumeName] {
+			pvc = append(pvc, createVolume(volumeName))
+			pvcMap[volumeName] = true
+		}
+
+		// 添加挂载点
+		volumeMounts = append(volumeMounts, v1.VolumeMount{
+			Name:      volumeName,
 			SubPath:   subPath,
 			MountPath: vm.MountPath,
-			ReadOnly:  vm.Type == DatasetType,
-		}
+			ReadOnly:  readOnly,
+		})
 	}
 
 	return pvc, volumeMounts, nil
+}
+
+// 解析 SubPath 和空间类型（公共空间或个人空间）
+func resolveSubPathAndSpaceType(c context.Context, userID uint, vm VolumeMount) (subPath string, isPublic bool, err error) {
+	if vm.Type == FileType {
+		subPath = vm.SubPath
+	} else if vm.Type == DatasetType {
+		subPath, err = GetSubPathByDatasetVolume(c, userID, vm.DatasetID)
+		if err != nil {
+			return "", false, err
+		}
+	} else {
+		return "", false, fmt.Errorf("unknown volume type")
+	}
+
+	if strings.HasPrefix(subPath, "public") {
+		tmp := strings.TrimPrefix(subPath, "public")
+		subPath = publicSpacePrefix + tmp
+		isPublic = true
+	} else if strings.HasPrefix(subPath, "user") {
+		tmp := strings.TrimPrefix(subPath, "user")
+		subPath = userSpacePrefix + tmp
+		isPublic = false
+	} else if strings.HasPrefix(subPath, "account") {
+		tmp := strings.TrimPrefix(subPath, "account")
+		subPath = accountSpacePrefix + tmp
+	} else {
+		return "", false, fmt.Errorf("mount path error")
+	}
+
+	return subPath, isPublic, nil
+}
+
+// 根据权限模式判断 Volume 名称和只读属性
+func determineAccessMode(token util.JWTMessage, isPublic bool) (volumeName string, readOnly bool, err error) {
+	rwxPVCName := config.GetConfig().Workspace.RWXPVCName
+	roxPVCName := config.GetConfig().Workspace.ROXPVCName
+
+	if isPublic {
+		switch token.PublicAccessMode {
+		case model.AccessModeNA:
+			return "", false, fmt.Errorf("access to public directory is not allowed")
+		case model.AccessModeRO, model.AccessModeAO:
+			return roxPVCName, true, nil
+		case model.AccessModeRW:
+			return rwxPVCName, false, nil
+		default:
+			return "", false, fmt.Errorf("unknown access mode for public directory")
+		}
+	} else {
+		switch token.AccountAccessMode {
+		case model.AccessModeNA:
+			return "", false, fmt.Errorf("access to user directory is not allowed")
+		case model.AccessModeRO, model.AccessModeAO:
+			return roxPVCName, true, nil
+		case model.AccessModeRW:
+			return rwxPVCName, false, nil
+		default:
+			return "", false, fmt.Errorf("unknown access mode for user directory")
+		}
+	}
+}
+
+// 创建 PVC Volume
+func createVolume(volumeName string) v1.Volume {
+	return v1.Volume{
+		Name: volumeName,
+		VolumeSource: v1.VolumeSource{
+			PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+				ClaimName: volumeName,
+			},
+		},
+	}
 }
 
 func GetSubPathByDatasetVolume(c context.Context,
