@@ -546,19 +546,35 @@ func (mgr *ImagePackMgr) DeleteKanikoByID(c *gin.Context) {
 	kanikoID := deleteKanikoRequest.ID
 	var kaniko *model.Kaniko
 	k := query.Kaniko
+	// 1. check if kaniko exist and have permission
 	if kaniko, err = k.WithContext(c).
-		Preload(query.Kaniko.User).
 		Where(k.ID.Eq(kanikoID)).
 		Where(k.UserID.Eq(token.UserID)).First(); err != nil {
-		logutils.Log.Errorf("image not exist or have no permission%+v", err)
+		logutils.Log.Errorf("kaniko not exist or have no permission%+v", err)
 		resputil.Error(c, "failed to find imagepack or entity", resputil.NotSpecified)
 		return
 	}
+	// 2. if kaniko is finished, delete image entity
+	if kaniko.Status == model.BuildJobFinished {
+		if _, err = query.Image.WithContext(c).Where(query.Image.ImagePackName.Eq(kaniko.ImagePackName)).Delete(); err != nil {
+			logutils.Log.Errorf("delete image entity failed! err:%v", err)
+			resputil.Error(c, "failed to delete image", resputil.NotSpecified)
+			return
+		}
+	}
+	// 3. delete kaniko entity
 	if _, err = k.WithContext(c).Delete(kaniko); err != nil {
 		logutils.Log.Errorf("delete kaniko entity failed! err:%v", err)
 		resputil.Error(c, "failed to delete kaniko", resputil.NotSpecified)
 		return
 	}
+	// 4. delete kaniko job
+	if err = mgr.imagePacker.DeleteBuildkitJob(c, kaniko.ImagePackName, UserNameSpace); err != nil {
+		logutils.Log.Errorf("delete kaniko job failed! err:%v", err)
+		resputil.Error(c, "failed to delete kaniko job", resputil.NotSpecified)
+		return
+	}
+	// 5. if buildkit finished, then delete image from harbor
 	if kaniko.Status == model.BuildJobFinished {
 		if err = mgr.imageRegistry.DeleteImageFromProject(c, kaniko.ImageLink); err != nil {
 			logutils.Log.Errorf("delete imagepack artifact failed! err:%+v", err)
