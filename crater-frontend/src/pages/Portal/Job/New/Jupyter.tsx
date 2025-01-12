@@ -51,6 +51,14 @@ import useImageQuery from "@/hooks/query/useImageQuery";
 import DatasetItem from "@/components/form/DatasetItem";
 import { showErrorToast } from "@/utils/toast";
 import LoadableButton from "@/components/custom/LoadableButton";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { GrafanaIframe } from "@/pages/Embed/Monitor";
 
 const FileType = 1;
 const DatasetType = 2;
@@ -486,14 +494,24 @@ export const Component = () => {
                 )}
               />
               <div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => toast.warning("TODO: 为用户提供资源申请分析")}
-                >
-                  <ChartNoAxesColumn className="size-4" />
-                  资源分析
-                </Button>
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button type="button" variant="secondary">
+                      <ChartNoAxesColumn className="size-4" />
+                      空闲资源查询
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent className="sm:max-w-4xl">
+                    <SheetHeader>
+                      <SheetTitle>空闲资源查询</SheetTitle>
+                    </SheetHeader>
+                    <div className="mt-4 h-[calc(100vh-6rem)] w-full">
+                      <GrafanaIframe
+                        baseSrc={`${import.meta.env.VITE_GRAFANA_SCHEDULE}`}
+                      />
+                    </div>
+                  </SheetContent>
+                </Sheet>
               </div>
               <FormField
                 control={form.control}
