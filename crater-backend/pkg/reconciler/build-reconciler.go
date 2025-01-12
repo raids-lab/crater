@@ -88,8 +88,6 @@ var (
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 
 // Reconcile 主要用于同步 ImagePack 的状态到数据库中
-//
-//nolint:gocyclo // TODO(huangsy): refactor this function
 func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	k := query.Kaniko
@@ -101,127 +99,138 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	var job batchv1.Job
 
+	// 1. if job not found in k8s, maybe deleted by user or automatically deleted by k8s
 	if err := r.Get(ctx, req.NamespacedName, &job); err != nil {
 		if k8serrors.IsNotFound(err) {
-			// if job record in db is not finished, update the status to canceled
 			return r.handleJobNotFound(ctx, req.Name)
 		} else {
-			logger.Error(err, "unable to fetch job")
+			logger.Error(err, "unable to fetch job, maybe k8s api server is down")
 			return ctrl.Result{Requeue: true}, err
 		}
 	}
 
-	// create or update db record
-	// if kaniko not found, return
+	// 2. fetch kaniko record from database
 	kaniko, err := k.WithContext(ctx).Preload(query.Kaniko.User).Where(k.ImagePackName.Eq(job.Name)).First()
+
+	// 3. if fetch failed, it may be caused by database connection error. Requeue.
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		logger.Error(err, "unable to fetch kaniko entity in database")
+		logger.Error(err, "unable to fetch kaniko record in database")
 		return ctrl.Result{Requeue: true}, err
 	}
 
+	// 4. if kaniko record not found, then create a new one. Requeue
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		userID, _ := strconv.Atoi(job.Annotations["buildkit-data/UserID"])
-		dockerfile := job.Annotations["buildkit-data/Dockerfile"]
-		description := job.Annotations["buildkit-data/Description"]
-		buildSource := model.BuildKit
-		if dockerfile == "" {
-			buildSource = model.Snapshot
-		}
-		kanikoEntity := model.Kaniko{
-			//nolint:gosec // userID is very small, integer overflow conversion won't happen
-			UserID:        uint(userID),
-			ImagePackName: job.Name,
-			ImageLink:     job.Annotations["buildkit-data/ImageLink"],
-			NameSpace:     job.Namespace,
-			Status:        model.BuildJobInitial,
-			Dockerfile:    &dockerfile,
-			Description:   &description,
-			BuildSource:   buildSource,
-		}
-		if err = k.WithContext(ctx).Create(&kanikoEntity); err != nil {
-			logutils.Log.Errorf("create imagepack entity failed, params: %+v, %+v", kanikoEntity, err)
-		} else {
-			logger.Info("successfully created kaniko entity")
-		}
-		return ctrl.Result{Requeue: true}, nil
+		return r.handleKanikoRecordNotFound(ctx, &job)
 	}
 
+	// 5. get the job status from k8s job
 	jobStatus := r.getJobBuildStatus(&job)
-
-	// if kaniko found, update the status and decide whether to create image
-	if _, err = k.WithContext(ctx).
-		Where(k.ImagePackName.Eq(job.Name)).
-		Update(k.Status, jobStatus); err != nil {
-		logger.Error(err, "kaniko entity status updated failed")
+	if err = r.updateKanikoStatus(ctx, kaniko, jobStatus); err != nil {
+		logger.Error(err, "kaniko record status updated failed")
 		return ctrl.Result{Requeue: true}, nil
 	}
 	logger.Info(fmt.Sprintf("buildkit pod: %s , new stage: %s", job.Name, jobStatus))
 
+	// 6. if buildkit job finished
 	if jobStatus == model.BuildJobFinished {
 		size, err := r.imageRegistry.GetImageSize(ctx, kaniko.ImageLink)
 		if err != nil {
 			logger.Error(err, "get image size failed")
 		}
-		if _, err = k.WithContext(ctx).
-			Where(k.ImagePackName.Eq(job.Name)).
-			Update(k.Size, size); err != nil {
-			logger.Error(err, "kaniko entity size updated failed")
+		// 7. update kaniko record size
+		if err = r.updateKanikoSize(ctx, kaniko, size); err != nil {
+			logger.Error(err, "kaniko record size updated failed")
 			return ctrl.Result{Requeue: true}, err
 		}
-		im := query.Image
-		// avoid duplicatedly creating image entity result from the same one finished kaniko crd
-		if _, err = im.WithContext(ctx).
-			Where(im.ImagePackName.Eq(kaniko.ImagePackName)).
-			First(); errors.Is(err, gorm.ErrRecordNotFound) {
-			image := &model.Image{
-				User:          kaniko.User,
-				UserID:        kaniko.User.ID,
-				ImageLink:     kaniko.ImageLink,
-				Description:   kaniko.Description,
-				ImagePackName: &kaniko.ImagePackName,
-				IsPublic:      false,
-				TaskType:      model.JobTypeCustom,
-				ImageSource:   model.ImageCreateType,
-				Size:          size,
-			}
-			err = im.WithContext(ctx).Create(image)
-			if err != nil {
-				logger.Error(err, "image entity created failed")
-				return ctrl.Result{Requeue: true}, err
-			} else {
-				logger.Info("kaniko entity created successfully: " + kaniko.ImagePackName)
-			}
-		} else if err == nil {
-			logger.Error(err, "image entity already existed")
-		}
+		// 8. create image record
+		return r.createImageRecord(ctx, kaniko)
 	}
 	return ctrl.Result{}, nil
 }
 
 func (r *BuildKitReconciler) handleJobNotFound(ctx context.Context, jobName string) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	k := query.Kaniko
-	kaniko, err := k.WithContext(ctx).Where(k.ImagePackName.Eq(jobName)).First()
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			logger.Info("kaniko not found in database")
-			return ctrl.Result{}, nil
-		} else {
-			logger.Error(err, "unable to fetch kaniko entity")
-			return ctrl.Result{Requeue: true}, err
-		}
-	}
-
-	// if kaniko status is finished or failed, do nothing
-	if kaniko.Status == model.BuildJobFailed || kaniko.Status == model.BuildJobFinished {
-		return ctrl.Result{}, nil
-	}
-
-	if _, err := k.WithContext(ctx).Where(k.ImagePackName.Eq(jobName)).UpdateColumn(k.Status, model.BuildJobCanceled); err != nil {
-		logger.Error(err, "unable to update kaniko entity status")
-		return ctrl.Result{Requeue: true}, err
-	}
+	logger.Info("Job not found in k8s, maybe deleted by user or automatically deleted by k8s" + jobName)
 	return ctrl.Result{}, nil
+}
+
+func (r *BuildKitReconciler) handleKanikoRecordNotFound(ctx context.Context, job *batchv1.Job) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+	k := query.Kaniko
+	userID, _ := strconv.Atoi(job.Annotations["buildkit-data/UserID"])
+	dockerfile := job.Annotations["buildkit-data/Dockerfile"]
+	description := job.Annotations["buildkit-data/Description"]
+	buildSource := model.BuildKit
+	if dockerfile == "" {
+		buildSource = model.Snapshot
+	}
+	kanikorecord := model.Kaniko{
+		//nolint:gosec // userID is very small, integer overflow conversion won't happen
+		UserID:        uint(userID),
+		ImagePackName: job.Name,
+		ImageLink:     job.Annotations["buildkit-data/ImageLink"],
+		NameSpace:     job.Namespace,
+		Status:        model.BuildJobInitial,
+		Dockerfile:    &dockerfile,
+		Description:   &description,
+		BuildSource:   buildSource,
+	}
+	if err := k.WithContext(ctx).Create(&kanikorecord); err != nil {
+		logutils.Log.Errorf("create imagepack record failed, params: %+v, %+v", kanikorecord, err)
+	} else {
+		logger.Info("successfully created kaniko record")
+	}
+	return ctrl.Result{Requeue: true}, nil
+}
+
+func (r *BuildKitReconciler) updateKanikoStatus(ctx context.Context, kaniko *model.Kaniko, status model.BuildStatus) error {
+	k := query.Kaniko
+	_, err := k.WithContext(ctx).
+		Where(k.ImagePackName.Eq(kaniko.ImagePackName)).
+		Update(k.Status, status)
+	return err
+}
+
+func (r *BuildKitReconciler) updateKanikoSize(ctx context.Context, kaniko *model.Kaniko, size int64) error {
+	k := query.Kaniko
+	_, err := k.WithContext(ctx).
+		Where(k.ImagePackName.Eq(kaniko.ImagePackName)).
+		Update(k.Size, size)
+	return err
+}
+
+func (r *BuildKitReconciler) createImageRecord(ctx context.Context, kaniko *model.Kaniko) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+	im := query.Image
+	if _, err := im.WithContext(ctx).
+		Where(im.ImagePackName.Eq(kaniko.ImagePackName)).
+		First(); errors.Is(err, gorm.ErrRecordNotFound) {
+		image := &model.Image{
+			User:          kaniko.User,
+			UserID:        kaniko.User.ID,
+			ImageLink:     kaniko.ImageLink,
+			Description:   kaniko.Description,
+			ImagePackName: &kaniko.ImagePackName,
+			IsPublic:      false,
+			TaskType:      model.JobTypeCustom,
+			ImageSource:   model.ImageCreateType,
+			Size:          kaniko.Size,
+		}
+		err = im.WithContext(ctx).Create(image)
+		if err != nil {
+			logger.Error(err, "Image record created failed")
+			return ctrl.Result{Requeue: true}, err
+		} else {
+			logger.Info("Image record created successfully: " + kaniko.ImagePackName)
+			return ctrl.Result{}, nil
+		}
+	} else if err == nil {
+		logger.Error(err, "Image record already existed")
+		return ctrl.Result{}, nil
+	} else {
+		logger.Error(err, "encounter other error when query image record")
+		return ctrl.Result{}, err
+	}
 }
 
 func (r *BuildKitReconciler) getJobBuildStatus(job *batchv1.Job) model.BuildStatus {
