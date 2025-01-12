@@ -162,3 +162,14 @@ func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Cont
 	}
 	return buildkitContainer
 }
+
+func (b *imagePacker) DeleteBuildkitJob(c context.Context, jobName, ns string) error {
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      jobName,
+			Namespace: ns,
+		},
+	}
+	err := b.client.Delete(c, job)
+	return err
+}
