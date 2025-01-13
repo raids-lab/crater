@@ -55,7 +55,10 @@ export function DatasetTable({ apiGetDataset }: DatesetTableProps) {
               <SheetDescription>创建一个新的文件数据集</SheetDescription>
             </SheetHeader>
             <Separator className="mt-4" />
-            <DatasetCreateForm closeSheet={() => setOpenSheet(false)} />
+            <DatasetCreateForm
+              closeSheet={() => setOpenSheet(false)}
+              type="dataset"
+            />
           </SheetContent>
         </Sheet>
       }

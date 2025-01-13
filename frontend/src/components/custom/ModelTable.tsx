@@ -1,10 +1,10 @@
 import { Button } from "@/components/ui/button";
 import DataList from "@/pages/Portal/Data/DataList";
-import { BookOpenIcon, CirclePlusIcon } from "lucide-react";
-//import { useState } from "react";
+import { BookOpenIcon } from "lucide-react"; //, CirclePlusIcon
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Dataset } from "@/services/api/dataset";
-/*import {
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -13,7 +13,7 @@ import { Dataset } from "@/services/api/dataset";
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Separator } from "@radix-ui/react-dropdown-menu";
-import { DatasetCreateForm } from "@/pages/Portal/Data/CreateForm";*/
+import { DatasetCreateForm } from "@/pages/Portal/Data/CreateForm";
 
 import { IResponse } from "@/services/types";
 import { AxiosResponse } from "axios";
@@ -26,7 +26,7 @@ export function ModelTable({ apiGetDataset }: DatesetTableProps) {
     queryFn: () => apiGetDataset(),
     select: (res) => res.data.data,
   });
-
+  const [openSheet, setOpenSheet] = useState(false);
   return (
     <DataList
       items={
@@ -48,10 +48,26 @@ export function ModelTable({ apiGetDataset }: DatesetTableProps) {
             <BookOpenIcon />
             模型文档
           </Button>
-          <Button>
+          {/*<Button>
             <CirclePlusIcon />
             导入模型
-          </Button>
+          </Button>*/}
+          <Sheet open={openSheet} onOpenChange={setOpenSheet}>
+            <SheetTrigger asChild>
+              <Button className="h-8 min-w-fit">创建模型</Button>
+            </SheetTrigger>
+            <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
+              <SheetHeader>
+                <SheetTitle>创建新模型</SheetTitle>
+                <SheetDescription>创建一个新的文件模型集</SheetDescription>
+              </SheetHeader>
+              <Separator className="mt-4" />
+              <DatasetCreateForm
+                closeSheet={() => setOpenSheet(false)}
+                type="model"
+              />
+            </SheetContent>
+          </Sheet>
         </div>
       }
     />
