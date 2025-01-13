@@ -9,6 +9,7 @@ import { TimeDistance } from "@/components/custom/TimeDistance";
 import {
   apiUserDeleteKaniko,
   apiUserGetCredential,
+  apiUserGetQuota,
   apiUserListKaniko,
   getHeader,
   ImagePackStatus,
@@ -70,6 +71,7 @@ import TooltipLink from "@/components/label/TooltipLink";
 import ImageLabel from "@/components/label/ImageLabel";
 import ImagePhaseBadge from "@/components/badge/ImagePhaseBadge";
 import { formatBytes } from "@/utils/formatter";
+import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -90,6 +92,12 @@ export const ImageTable: FC = () => {
     queryKey: ["imagepack", "list"],
     queryFn: () => apiUserListKaniko(),
     select: (res) => res.data.data.kanikoList,
+  });
+
+  const quotaQuery = useQuery({
+    queryKey: ["imagepack", "quota"],
+    queryFn: () => apiUserGetQuota(),
+    select: (res) => res.data.data,
   });
 
   const refetchImagePackList = async () => {
@@ -277,7 +285,18 @@ export const ImageTable: FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">3</p>
+              <p className="text-2xl font-bold">
+                {quotaQuery.isLoading ? (
+                  <LoadingCircleIcon />
+                ) : (
+                  <>
+                    {
+                      imageQuery.data?.filter((c) => c.status == "Finished")
+                        .length
+                    }
+                  </>
+                )}
+              </p>
             </CardContent>
           </Card>
 
@@ -289,7 +308,16 @@ export const ImageTable: FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">20GiB / 50GiB</p>
+              <p className="text-2xl font-bold">
+                {quotaQuery.isLoading ? (
+                  <LoadingCircleIcon />
+                ) : (
+                  <>
+                    {Number(quotaQuery.data?.used).toFixed(2)}GiB/
+                    {Number(quotaQuery.data?.quota).toFixed(0)}GiB
+                  </>
+                )}
+              </p>
             </CardContent>
           </Card>
 
@@ -301,7 +329,13 @@ export const ImageTable: FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">user-admin</p>
+              <p className="text-2xl font-bold">
+                {quotaQuery.isLoading ? (
+                  <LoadingCircleIcon />
+                ) : (
+                  <>{quotaQuery.data?.project}</>
+                )}
+              </p>
             </CardContent>
           </Card>
 
