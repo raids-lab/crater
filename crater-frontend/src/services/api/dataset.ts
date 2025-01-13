@@ -29,6 +29,10 @@ export interface DatasetReq {
   describe: string;
   name: string;
   url: string;
+  type: string;
+  tags: string[];
+  weburl: string;
+  ispublic: boolean;
 }
 
 export interface DatasetReanmeReq {
