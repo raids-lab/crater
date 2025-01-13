@@ -26,14 +26,14 @@ var (
 )
 
 // CheckOrCreateProjectForUser checks if the project for the user exists, if not, create a new project for the user.
-func (r *ImageRegistry) CheckOrCreateProjectForUser(c context.Context, username string) error {
-	projectName := fmt.Sprintf("user-%s", username)
+func (r *ImageRegistry) CheckOrCreateProjectForUser(c context.Context, userName string) error {
+	projectName := fmt.Sprintf("user-%s", userName)
 	if exist, _ := r.harborClient.ProjectExists(c, projectName); exist {
 		return nil
 	}
 
 	u := query.User
-	if _, err := u.WithContext(c).Where(u.Name.Eq(username)).
+	if _, err := u.WithContext(c).Where(u.Name.Eq(userName)).
 		Update(u.ImageQuota, DefaultQuotaSize); err != nil {
 		logutils.Log.Errorf("save user imageQuota failed, err:%v", err)
 		return err
@@ -121,10 +121,10 @@ func GenerateRandomPassword(length int) (string, error) {
 	return password, nil
 }
 
-func (r *ImageRegistry) CheckUserExist(c context.Context, username string) bool {
+func (r *ImageRegistry) CheckUserExist(c context.Context, userName string) bool {
 	name := intstr.IntOrString{
 		Type:   intstr.String,
-		StrVal: username,
+		StrVal: userName,
 	}
 	if exist, _ := r.harborClient.UserExists(c, name); exist {
 		return true
@@ -132,41 +132,41 @@ func (r *ImageRegistry) CheckUserExist(c context.Context, username string) bool 
 	return false
 }
 
-func (r *ImageRegistry) CreateUser(c context.Context, username string) (string, error) {
-	email := username + TmpEmailSuffix
+func (r *ImageRegistry) CreateUser(c context.Context, userName string) (string, error) {
+	email := userName + TmpEmailSuffix
 	password, err := GenerateRandomPassword(PasswordLength)
 	if err != nil {
 		logutils.Log.Errorf("generate random password failed! err:%+v", err)
 		return "", err
 	}
-	if err = r.harborClient.NewUser(c, username, email, username, password, ""); err != nil {
+	if err = r.harborClient.NewUser(c, userName, email, userName, password, ""); err != nil {
 		logutils.Log.Errorf("create harbor user failed! err:%+v", err)
 		return "", err
 	}
 	return password, nil
 }
 
-func (r *ImageRegistry) AddProjectMember(c context.Context, username string) error {
-	projectName := fmt.Sprintf("user-%s", username)
+func (r *ImageRegistry) AddProjectMember(c context.Context, userName string) error {
+	projectName := fmt.Sprintf("user-%s", userName)
 	harborMember := &harbormodelv2.ProjectMember{
 		RoleID: 1,
 		MemberUser: &harbormodelv2.UserEntity{
-			Username: username,
+			Username: userName,
 		},
 	}
 	return r.harborClient.AddProjectMember(c, projectName, harborMember)
 }
 
-func (r *ImageRegistry) CheckOrCreateUser(c context.Context, username string) (string, error) {
-	if exist := r.CheckUserExist(c, username); exist {
+func (r *ImageRegistry) CheckOrCreateUser(c context.Context, userName string) (string, error) {
+	if exist := r.CheckUserExist(c, userName); exist {
 		return "", nil
 	}
-	password, err := r.CreateUser(c, username)
+	password, err := r.CreateUser(c, userName)
 	if err != nil {
 		return "", err
 	}
 
-	if err = r.AddProjectMember(c, username); err != nil {
+	if err = r.AddProjectMember(c, userName); err != nil {
 		logutils.Log.Errorf("add project member failed! err:%+v", err)
 		return password, err
 	}
@@ -174,11 +174,42 @@ func (r *ImageRegistry) CheckOrCreateUser(c context.Context, username string) (s
 	return password, nil
 }
 
-func (r *ImageRegistry) DeleteUser(c context.Context, username string) error {
-	userResp, err := r.harborClient.GetUserByName(c, username)
+func (r *ImageRegistry) DeleteUser(c context.Context, userName string) error {
+	userResp, err := r.harborClient.GetUserByName(c, userName)
 	if err != nil {
 		logutils.Log.Errorf("get harbor user failed! err:%+v", err)
 		return err
 	}
 	return r.harborClient.DeleteUser(c, userResp.UserID)
+}
+
+func (r *ImageRegistry) GetProjectDetail(c context.Context, userName string) (PorjetcDetail, error) {
+	projectName := fmt.Sprintf("user-%s", userName)
+	used, total, err := r.GetProjectQuota(c, projectName)
+	if err != nil {
+		return PorjetcDetail{}, err
+	}
+
+	detail := PorjetcDetail{
+		ProjectName: projectName,
+		UsedSize:    used,
+		TotalSize:   total,
+	}
+	return detail, nil
+}
+
+func (r *ImageRegistry) GetProjectQuota(c context.Context, projectName string) (used, total int64, err error) {
+	var project *harbormodelv2.Project
+	project, err = r.harborClient.GetProject(c, projectName)
+	if err != nil {
+		logutils.Log.Errorf("get harbor project failed, err: %+v", err)
+		return 0, 0, err
+	}
+	var quota *harbormodelv2.Quota
+	quota, err = r.harborClient.GetQuotaByProjectID(c, int64(project.ProjectID))
+	if err != nil {
+		logutils.Log.Errorf("get harbor project quota failed, err: %+v", err)
+		return 0, 0, err
+	}
+	return quota.Used["storage"], quota.Hard["storage"], nil
 }

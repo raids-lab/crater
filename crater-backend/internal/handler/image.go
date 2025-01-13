@@ -39,7 +39,6 @@ func (mgr *ImagePackMgr) GetName() string { return mgr.name }
 
 func (mgr *ImagePackMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
-//nolint:dupl// 路由注册
 func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/kaniko", mgr.UserListKaniko)
 	g.POST("/kaniko", mgr.UserCreateKaniko)
@@ -57,6 +56,7 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 
 	g.GET("/podname", mgr.GetImagepackPodName)
 	g.POST("/credential", mgr.UserGetProjectCredential)
+	g.GET("/quota", mgr.UserGetProjectDetail)
 }
 
 func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -133,7 +133,6 @@ type (
 	}
 	ListKanikoResponse struct {
 		KanikoInfoList []KanikoInfo `json:"kanikoList"`
-		TotalSize      int64        `json:"totalSize"`
 	}
 
 	ImageInfo struct {
@@ -174,13 +173,21 @@ type (
 		Name     *string `json:"name"`
 		Password *string `json:"password"`
 	}
+
+	GetProjectDetailResponse struct {
+		Used    float64 `json:"used"`
+		Quota   float64 `json:"quota"`
+		Project string  `json:"project"`
+		Total   int64   `json:"total"`
+	}
 )
 
 var (
 	UserNameSpace   = config.GetConfig().Workspace.ImageNamespace
 	ProjectIsPublic = true
 	//nolint:mnd // default project quota: 20GB
-	DefaultQuotaSize = int64(20 * math.Pow(2, 30))
+	GBit             = int64(math.Pow(2, 30))
+	DefaultQuotaSize = 20 * GBit
 )
 
 // UserCreateKaniko godoc
@@ -403,7 +410,6 @@ func (mgr *ImagePackMgr) UserListKaniko(c *gin.Context) {
 		logutils.Log.Errorf("fetch kaniko entity failed, err:%v", err)
 	}
 	kanikoInfos := []KanikoInfo{}
-	var totalSize int64
 	for i := range kanikos {
 		kaniko := kanikos[i]
 		kanikoInfo := KanikoInfo{
@@ -414,12 +420,10 @@ func (mgr *ImagePackMgr) UserListKaniko(c *gin.Context) {
 			Size:        kaniko.Size,
 			Description: *kaniko.Description,
 		}
-		totalSize += kaniko.Size
 		kanikoInfos = append(kanikoInfos, kanikoInfo)
 	}
 	response := ListKanikoResponse{
 		KanikoInfoList: kanikoInfos,
-		TotalSize:      totalSize,
 	}
 	resputil.Success(c, response)
 }
@@ -777,6 +781,28 @@ func (mgr *ImagePackMgr) UserGetProjectCredential(c *gin.Context) {
 	resp := GetProjectCredentialResponse{
 		Name:     &token.Username,
 		Password: &password,
+	}
+	resputil.Success(c, resp)
+}
+
+// UserGetProjectDetail godoc
+// @Summary 获取用户project的信息
+// @Description 获取用户的project的详细信息
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Router /v1/images/credential [GET]
+func (mgr *ImagePackMgr) UserGetProjectDetail(c *gin.Context) {
+	token := util.GetToken(c)
+	detail, err := mgr.imageRegistry.GetProjectDetail(c, token.Username)
+	if err != nil {
+		logutils.Log.Errorf("fetch project quota failed, err:%v", err)
+	}
+	resp := GetProjectDetailResponse{
+		Quota:   float64(detail.TotalSize) / float64(GBit),
+		Used:    float64(detail.UsedSize) / float64(GBit),
+		Project: detail.ProjectName,
 	}
 	resputil.Success(c, resp)
 }
