@@ -234,6 +234,7 @@ type DatasetReq struct {
 	URL      string         `json:"url" binding:"required"`
 	Describe string         `json:"describe" binding:"required"`
 	Type     model.DataType `json:"type" `
+	Ispublic bool           `json:"ispublic"`
 	Tags     []string       `json:"tags" `
 	WebURL   string         `json:"weburl" `
 }
@@ -261,6 +262,7 @@ func (mgr *DatasetMgr) CreateDataset(c *gin.Context) {
 	if datasetReq.Type == "" {
 		datasetReq.Type = "dataset"
 	}
+	var datasetid uint
 	regex := regexp.MustCompile("^/+")
 	url := regex.ReplaceAllString(datasetReq.URL, "")
 	db := query.Use(query.GetDB())
@@ -283,6 +285,7 @@ func (mgr *DatasetMgr) CreateDataset(c *gin.Context) {
 		var userDataset model.UserDataset
 		userDataset.UserID = token.UserID
 		userDataset.DatasetID = dataset.ID
+		datasetid = dataset.ID
 		if err := ud.WithContext(c).Create(&userDataset); err != nil {
 			return err
 		}
@@ -292,6 +295,17 @@ func (mgr *DatasetMgr) CreateDataset(c *gin.Context) {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	} else {
+		if datasetReq.Ispublic {
+			qd := query.AccountDataset
+			queuedataset := model.AccountDataset{
+				AccountID: 1,
+				DatasetID: datasetid,
+			}
+			if err := qd.WithContext(c).Create(&queuedataset); err != nil {
+				resputil.Error(c, err.Error(), resputil.NotSpecified)
+				return
+			}
+		}
 		resputil.Success(c, "created dataset successfully")
 	}
 }
