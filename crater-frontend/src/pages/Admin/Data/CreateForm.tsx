@@ -14,8 +14,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { apiDatasetCreate } from "@/services/api/dataset";
+import { Switch } from "@/components/ui/switch";
 import { FileSelectDialog } from "@/components/file/FileSelectDialog";
 import FormLabelMust from "@/components/form/FormLabelMust";
+import TagsInput from "@/components/ui/TagsInput";
 
 const formSchema = z.object({
   datasetName: z
@@ -28,23 +30,32 @@ const formSchema = z.object({
     }),
   describe: z.string(),
   url: z.string(),
+  type: z.enum(["dataset", "model"]),
+  tags: z.array(z.string()),
+  weburl: z.string(),
+  ispublic: z.boolean().default(true),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
 
 interface TaskFormProps extends React.HTMLAttributes<HTMLDivElement> {
   closeSheet: () => void;
+  type?: "dataset" | "model";
 }
 
-export function DatasetCreateForm({ closeSheet }: TaskFormProps) {
+export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
   const queryClient = useQueryClient();
-
+  const typestring = type === "model" ? "模型" : "数据集";
   const { mutate: createImagePack } = useMutation({
     mutationFn: (values: FormSchema) =>
       apiDatasetCreate({
         describe: values.describe,
         name: values.datasetName,
         url: values.url,
+        type: type ?? "dataset",
+        tags: values.tags,
+        weburl: values.weburl,
+        ispublic: values.ispublic,
       }),
     onSuccess: async (_, { datasetName }) => {
       await queryClient.invalidateQueries({
@@ -62,6 +73,7 @@ export function DatasetCreateForm({ closeSheet }: TaskFormProps) {
       datasetName: "",
       url: "",
       describe: "",
+      ispublic: true,
     },
   });
 
@@ -84,7 +96,7 @@ export function DatasetCreateForm({ closeSheet }: TaskFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                数据集名称
+                {typestring}名称
                 <FormLabelMust />
               </FormLabel>
               <FormControl>
@@ -101,7 +113,7 @@ export function DatasetCreateForm({ closeSheet }: TaskFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                数据集描述
+                {typestring}描述
                 <FormLabelMust />
               </FormLabel>
               <FormControl>
@@ -119,7 +131,7 @@ export function DatasetCreateForm({ closeSheet }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem className="col-span-2">
                   <FormLabel>
-                    数据集地址
+                    {typestring}地址
                     <FormLabelMust />
                   </FormLabel>
                   <FormControl>
@@ -137,6 +149,48 @@ export function DatasetCreateForm({ closeSheet }: TaskFormProps) {
             />
           </div>
         </div>
+        <FormField
+          control={form.control}
+          name="tags"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{typestring}标签 </FormLabel>
+              <FormControl>
+                <TagsInput {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="weburl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{typestring}仓库地址</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="ispublic"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between space-x-0 space-y-0">
+              <FormLabel className="font-normal">公开{typestring}</FormLabel>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <div className="grid">
           <Button type="submit">提交数据集</Button>
         </div>
