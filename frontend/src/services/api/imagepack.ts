@@ -11,7 +11,6 @@ import { JobType } from "./vcjob";
 
 export type ListKanikoResponse = {
   kanikoList: KanikoInfoResponse[];
-  totalSize: number;
 };
 
 export type KanikoInfoResponse = {
@@ -50,6 +49,13 @@ export type ProjectCredentialResponse = {
   name: string;
   password: string;
   exist: boolean;
+};
+
+export type ProjectDetailResponse = {
+  quota: number;
+  used: number;
+  total: number;
+  project: string;
 };
 
 export const getHeader = (key: string): string => {
@@ -248,3 +254,6 @@ export const apiUserGetCredential = () =>
   instance.post<IResponse<ProjectCredentialResponse>>(
     `${VERSION}/images/credential`,
   );
+
+export const apiUserGetQuota = () =>
+  instance.get<IResponse<ProjectDetailResponse>>(`${VERSION}/images/quota`);
