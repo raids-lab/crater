@@ -75,6 +75,9 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
       datasetName: "",
       url: "",
       describe: "",
+      type: type ?? "dataset",
+      tags: [],
+      weburl: "",
       ispublic: true,
     },
   });
@@ -175,7 +178,10 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
               <FormControl>
                 <Input {...field} />
               </FormControl>
-              <FormDescription> 请输入{typestring}开源仓库地址</FormDescription>
+              <FormDescription>
+                {" "}
+                请输入{typestring}开源仓库地址(如果有)
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
