@@ -7,84 +7,31 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (b *imagePacker) CreateFromDockerfile(c context.Context, data *BuildKitReq) error {
-	initContainer := b.generateInitContainer(data)
 	buildkitContainer := b.generateBuildKitContainer(data)
-	volumes := b.generateVolumes()
-
-	jobMeta := metav1.ObjectMeta{
-		Name:      data.JobName,
-		Namespace: data.Namespace,
-		Annotations: map[string]string{
-			"buildkit-data/UserID":      fmt.Sprint(data.UserID),
-			"buildkit-data/ImageLink":   data.ImageLink,
-			"buildkit-data/Dockerfile":  *data.Dockerfile,
-			"buildkit-data/Description": *data.Description,
-		},
+	volumes := b.generateVolumes(data.JobName)
+	var configMap *corev1.ConfigMap
+	var err error
+	if configMap, err = b.createConfigMap(c, data); err != nil {
+		return err
+	}
+	var job *batchv1.Job
+	if job, err = b.createJob(c, data, buildkitContainer, volumes); err != nil {
+		return err
 	}
 
-	jobSpec := batchv1.JobSpec{
-		Template: corev1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      data.JobName,
-				Namespace: data.Namespace,
-				Annotations: map[string]string{
-					"container.apparmor.security.beta.kubernetes.io/buildkit": "unconfined",
-				},
-			},
-			Spec: corev1.PodSpec{
-				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: initContainer,
-				Containers:     buildkitContainer,
-				Volumes:        volumes,
-				SecurityContext: &corev1.PodSecurityContext{
-					SeccompProfile: &corev1.SeccompProfile{
-						Type: corev1.SeccompProfileTypeUnconfined,
-					},
-					RunAsUser:  &runAsUerNumber,
-					RunAsGroup: &runAsGroupNumber,
-					FSGroup:    &fsAsGroupNumber,
-				},
-			},
-		},
-		TTLSecondsAfterFinished: &JobCleanTime,
-		BackoffLimit:            &BackoffLimitNumber,
-		Completions:             &CompletionNumber,
-		Parallelism:             &ParallelismNumber,
+	if err := b.updateOwnerReference(c, configMap, job); err != nil {
+		return err
 	}
 
-	job := &batchv1.Job{
-		ObjectMeta: jobMeta,
-		Spec:       jobSpec,
-	}
-
-	err := b.client.Create(c, job)
-	return err
+	return nil
 }
 
-func (b *imagePacker) generateInitContainer(data *BuildKitReq) []corev1.Container {
-	dockerfileSource := fmt.Sprintf("echo '%s' > /workspace/Dockerfile", *data.Dockerfile)
-	initContainer := []corev1.Container{
-		{
-			Name:    "prepare",
-			Image:   "***REMOVED***/docker.io/library/alpine:3.20",
-			Command: []string{"/bin/sh"},
-			Args:    []string{"-c", dockerfileSource},
-
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "workspace",
-					MountPath: "/workspace",
-				},
-			},
-		},
-	}
-	return initContainer
-}
-
-func (b *imagePacker) generateVolumes() []corev1.Volume {
+func (b *imagePacker) generateVolumes(jobName string) []corev1.Volume {
 	volumes := []corev1.Volume{
 		{
 			Name: "workspace",
@@ -111,6 +58,16 @@ func (b *imagePacker) generateVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: buildkitClientSecretName,
+				},
+			},
+		},
+		{
+			Name: "dockerfile-volume",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: jobName,
+					},
 				},
 			},
 		},
@@ -145,17 +102,17 @@ func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Cont
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
-					Name:      "workspace",
-					MountPath: "/workspace",
-					ReadOnly:  true,
-				},
-				{
 					Name:      "buildkitcerts",
 					MountPath: "/certs",
 				},
 				{
 					Name:      "harborcredits",
 					MountPath: "/.docker",
+				},
+				{
+					Name:      "dockerfile-volume",
+					MountPath: "/workspace",
+					ReadOnly:  true,
 				},
 			},
 		},
@@ -170,6 +127,93 @@ func (b *imagePacker) DeleteBuildkitJob(c context.Context, jobName, ns string) e
 			Namespace: ns,
 		},
 	}
-	err := b.client.Delete(c, job)
+	deletePolicy := metav1.DeletePropagationForeground
+	err := b.client.Delete(c, job, &client.DeleteOptions{PropagationPolicy: &deletePolicy})
 	return err
+}
+
+func (b *imagePacker) createConfigMap(c context.Context, data *BuildKitReq) (*corev1.ConfigMap, error) {
+	configMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      data.JobName,
+			Namespace: data.Namespace,
+		},
+		Data: map[string]string{
+			"Dockerfile": *data.Dockerfile,
+		},
+	}
+	err := b.client.Create(c, configMap)
+	return configMap, err
+}
+
+func (b *imagePacker) updateOwnerReference(c context.Context, configMap *corev1.ConfigMap, job *batchv1.Job) error {
+	ownerReference := metav1.OwnerReference{
+		APIVersion:         "batch/v1",
+		Kind:               "Job",
+		Name:               job.Name,
+		UID:                job.UID,
+		Controller:         ptr.To(true),
+		BlockOwnerDeletion: ptr.To(true),
+	}
+	fmt.Printf("ownerReference: %+v\n", ownerReference)
+	configMap.ObjectMeta.OwnerReferences = append(configMap.ObjectMeta.OwnerReferences, ownerReference)
+	err := b.client.Update(c, configMap)
+	fmt.Printf("configMap: %+v\n", configMap)
+	return err
+}
+
+func (b *imagePacker) createJob(
+	c context.Context,
+	data *BuildKitReq,
+	buildkitContainer []corev1.Container,
+	volumes []corev1.Volume,
+) (*batchv1.Job, error) {
+	jobMeta := metav1.ObjectMeta{
+		Name:      data.JobName,
+		Namespace: data.Namespace,
+		Annotations: map[string]string{
+			"buildkit-data/UserID":      fmt.Sprint(data.UserID),
+			"buildkit-data/ImageLink":   data.ImageLink,
+			"buildkit-data/Dockerfile":  *data.Dockerfile,
+			"buildkit-data/Description": *data.Description,
+		},
+	}
+
+	jobSpec := batchv1.JobSpec{
+		Template: corev1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      data.JobName,
+				Namespace: data.Namespace,
+				Annotations: map[string]string{
+					"container.apparmor.security.beta.kubernetes.io/buildkit": "unconfined",
+				},
+			},
+			Spec: corev1.PodSpec{
+				RestartPolicy: corev1.RestartPolicyNever,
+				Containers:    buildkitContainer,
+				Volumes:       volumes,
+				SecurityContext: &corev1.PodSecurityContext{
+					SeccompProfile: &corev1.SeccompProfile{
+						Type: corev1.SeccompProfileTypeUnconfined,
+					},
+					RunAsUser:  &runAsUerNumber,
+					RunAsGroup: &runAsGroupNumber,
+					FSGroup:    &fsAsGroupNumber,
+				},
+			},
+		},
+		TTLSecondsAfterFinished: &JobCleanTime,
+		BackoffLimit:            &BackoffLimitNumber,
+		Completions:             &CompletionNumber,
+		Parallelism:             &ParallelismNumber,
+	}
+
+	job := &batchv1.Job{
+		ObjectMeta: jobMeta,
+		Spec:       jobSpec,
+	}
+
+	err := b.client.Create(c, job)
+	fmt.Printf("job: %+v\n", job)
+	return job, err
 }

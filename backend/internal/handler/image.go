@@ -186,8 +186,7 @@ var (
 	UserNameSpace   = config.GetConfig().Workspace.ImageNamespace
 	ProjectIsPublic = true
 	//nolint:mnd // default project quota: 20GB
-	GBit             = int64(math.Pow(2, 30))
-	DefaultQuotaSize = 20 * GBit
+	GBit = int64(math.Pow(2, 30))
 )
 
 // UserCreateKaniko godoc
@@ -672,7 +671,7 @@ func (mgr *ImagePackMgr) UpdateProjectQuota(c *gin.Context) {
 		return
 	}
 	projectName := fmt.Sprintf("user-%s", token.Username)
-	if err := mgr.imageRegistry.UpdateQuotaForProject(c, projectName, DefaultQuotaSize); err != nil {
+	if err := mgr.imageRegistry.UpdateQuotaForProject(c, projectName, req.Size); err != nil {
 		resputil.Error(c, "update harbor project quota failed", resputil.NotSpecified)
 	}
 	resputil.Success(c, "")
