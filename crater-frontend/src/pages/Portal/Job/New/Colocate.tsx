@@ -86,6 +86,7 @@ const formSchema = z.object({
   observability: observabilitySchema,
   nodeSelector: nodeSelectorSchema,
   alertEnalbled: z.boolean().default(true),
+  openssh: z.boolean().default(false),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -111,6 +112,7 @@ export const Component = () => {
         volumeMounts: values.volumeMounts,
         envs: values.envs,
         useTensorBoard: values.observability.tbEnable,
+        openssh: values.openssh,
         alertEnabled: values.alertEnalbled,
         selectors: values.nodeSelector.enable
           ? [
