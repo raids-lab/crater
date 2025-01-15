@@ -32,6 +32,7 @@ import (
 const (
 	ThreeDaySeconds    int32 = 259200
 	IngressLabelPrefix       = "ingress.crater.raids.io/" // Annotation Ingress Key
+	NodePortLabelKey         = "nodeport.crater.raids.io/"
 )
 
 type (
@@ -42,6 +43,7 @@ type (
 		Image           string          `json:"image" binding:"required"`
 		Template        string          `json:"template"`
 		AlertEnabled    bool            `json:"alertEnabled"`
+		OpenSSH         bool            `json:"openssh"`
 	}
 )
 
@@ -62,9 +64,6 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	// Ingress base URL
 	baseURL := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
 	jobName := fmt.Sprintf("jupyter-%s", baseURL)
-
-	// useTensorBoard
-	useTensorboard := fmt.Sprintf("%t", req.UseTensorBoard)
 
 	// Command to start Jupyter
 	commandSchema := "start.sh jupyter lab --allow-root " +
@@ -171,7 +170,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	annotations := map[string]string{
 		AnnotationKeyTaskName:                     req.Name,
 		AnnotationKeyTaskTemplate:                 req.Template,
-		AnnotationKeyUseTensorBoard:               useTensorboard,
+		AnnotationKeyOpenSSH:                      strconv.FormatBool(req.OpenSSH),
 		AnnotationKeyAlertEnabled:                 strconv.FormatBool(req.AlertEnabled),
 		IngressLabelPrefix + notebookIngress.Name: string(ingressJSON), // 添加 notebookIngress Annotation
 	}

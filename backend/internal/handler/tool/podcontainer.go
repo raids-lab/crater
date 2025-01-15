@@ -427,21 +427,55 @@ func (mgr *APIServerMgr) GetPodNodeports(c *gin.Context) {
 // @Router /v1/namespaces/{namespace}/pods/{name}/nodeports [post]
 func (mgr *APIServerMgr) CreatePodNodeport(c *gin.Context) {
 	var req PodContainerReq
+	// 使用 Gin 的参数绑定方法获取 URI 参数
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
 
 	var nodeportMgr PodNodeportMgr
+	// 使用 Gin 的参数绑定方法获取 JSON 参数
 	if err := c.ShouldBindJSON(&nodeportMgr); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
 
-	var pod v1.Pod
-	if err := mgr.client.Get(c, client.ObjectKey{Namespace: req.Namespace, Name: req.PodName}, &pod); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+	// 调用 ProcessPodNodeport
+	nodeport, err := mgr.ProcessPodNodeport(c, req, nodeportMgr)
+	if err != nil {
+		if strings.Contains(err.Error(), "NodePort rule with the same name already exists") {
+			resputil.BadRequestError(c, err.Error())
+		} else {
+			resputil.Error(c, err.Error(), resputil.NotSpecified)
+		}
 		return
+	}
+
+	// 返回成功响应
+	resputil.Success(c, nodeport)
+}
+
+// processPodNodeport handles the core logic of retrieving the Pod and processing NodePort rules.
+func (mgr *APIServerMgr) ProcessPodNodeport(ctx context.Context, req PodContainerReq, nodeportMgr PodNodeportMgr) (*PodNodeport, error) {
+	// 检查 mgr.client 是否已初始化
+	if mgr.client == nil {
+		return nil, fmt.Errorf("client is not initialized")
+	}
+
+	// 检查输入参数有效性
+	if req.Namespace == "" || req.PodName == "" {
+		return nil, fmt.Errorf("namespace or pod name is empty")
+	}
+
+	var pod v1.Pod
+	// 使用标准 context.Context 获取 Pod 信息
+	if err := mgr.client.Get(ctx, client.ObjectKey{Namespace: req.Namespace, Name: req.PodName}, &pod); err != nil {
+		return nil, fmt.Errorf("failed to get Pod: %w", err)
+	}
+
+	// 确保 Pod 的 Annotations 字段被正确初始化
+	if pod.Annotations == nil {
+		pod.Annotations = make(map[string]string)
 	}
 
 	// 检查规则名称是否唯一
@@ -450,20 +484,25 @@ func (mgr *APIServerMgr) CreatePodNodeport(c *gin.Context) {
 			var existingRule PodNodeport
 			if err := json.Unmarshal([]byte(pod.Annotations[key]), &existingRule); err == nil {
 				if existingRule.Name == nodeportMgr.Name {
-					resputil.BadRequestError(c, "NodePort rule with the same name already exists")
-					return
+					return nil, fmt.Errorf("NodePort rule with the same name already exists")
 				}
 			}
 		}
 	}
 
-	nodePort, serviceName, err := crclient.CreateServiceForNodePort(c, mgr.client, &pod, nodeportMgr.ContainerPort)
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
+	// 验证 ContainerPort 的有效性
+	if nodeportMgr.ContainerPort == 0 {
+		return nil, fmt.Errorf("invalid container port")
 	}
 
-	nodeport := PodNodeport{
+	// 调用创建 NodePort 服务的方法
+	nodePort, serviceName, err := crclient.CreateServiceForNodePort(ctx, mgr.client, &pod, nodeportMgr.ContainerPort)
+	if err != nil || nodePort == 0 || serviceName == "" {
+		return nil, fmt.Errorf("failed to create NodePort service: %w", err)
+	}
+
+	// 构建返回的 NodePort 信息
+	nodeport := &PodNodeport{
 		Name:          nodeportMgr.Name,
 		ContainerPort: nodeportMgr.ContainerPort,
 		NodePort:      nodePort,
@@ -471,17 +510,17 @@ func (mgr *APIServerMgr) CreatePodNodeport(c *gin.Context) {
 		ServiceName:   serviceName,
 	}
 
+	// 更新 Pod 的 Annotations
 	annotationKey := fmt.Sprintf("%s/%s", NodePortLabelKey, nodeport.Name)
 	nodeportJSON, _ := json.Marshal(nodeport)
 	pod.Annotations[annotationKey] = string(nodeportJSON)
 
-	// 更新 Pod 注解
-	if err := mgr.client.Update(c, &pod); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
+	// 使用标准 context.Context 更新 Pod 信息
+	if err := mgr.client.Update(ctx, &pod); err != nil {
+		return nil, fmt.Errorf("failed to update Pod annotations: %w", err)
 	}
 
-	resputil.Success(c, nodeport)
+	return nodeport, nil
 }
 
 // DeletePodNodeport deletes a NodePort rule for a pod

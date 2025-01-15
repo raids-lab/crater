@@ -93,11 +93,11 @@ const (
 	LabelKeyTaskUser = "crater.raids.io/task-user"
 	LabelKeyBaseURL  = "crater.raids.io/base-url"
 
-	AnnotationKeyTaskName       = "crater.raids.io/task-name"
-	AnnotationKeyTaskTemplate   = "crater.raids.io/task-template"
-	AnnotationKeyJupyter        = "crater.raids.io/jupyter-token"
-	AnnotationKeyUseTensorBoard = "crater.raids.io/use-tensorboard"
-	AnnotationKeyAlertEnabled   = "crater.raids.io/alert-enabled"
+	AnnotationKeyTaskName     = "crater.raids.io/task-name"
+	AnnotationKeyTaskTemplate = "crater.raids.io/task-template"
+	AnnotationKeyJupyter      = "crater.raids.io/jupyter-token"
+	AnnotationKeyOpenSSH      = "crater.raids.io/open-ssh"
+	AnnotationKeyAlertEnabled = "crater.raids.io/alert-enabled"
 
 	// VolumeData  = "crater-rw-workspace"
 	VolumeCache = "crater-cache"

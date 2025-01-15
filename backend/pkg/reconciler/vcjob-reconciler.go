@@ -31,6 +31,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -38,6 +39,8 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/handler"
+	"github.com/raids-lab/crater/internal/handler/tool"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	"github.com/raids-lab/crater/pkg/alert"
 	"github.com/raids-lab/crater/pkg/config"
@@ -169,6 +172,11 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			if err = alertMgr.JobRunningAlert(ctx, job.Name); err != nil {
 				logger.Error(err, "fail to send email")
 			}
+			// 检查是否要打开 ssh 端口
+			err = r.checkAndOpenSSH(ctx, &job, logger)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 
 		// alert job failure
@@ -187,6 +195,56 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// 检查是否需要打开 SSH 端口
+func (r *VcJobReconciler) checkAndOpenSSH(ctx context.Context, job *batch.Job, logger logr.Logger) error {
+	if job.Annotations[vcjob.AnnotationKeyOpenSSH] != "true" {
+		return nil
+	}
+
+	logger.Info("Checking if SSH NodePort needs to be opened", "job", job.Name)
+
+	// 初始化 APIServerMgr 实例
+	var apiServerMgr *tool.APIServerMgr
+	for _, register := range handler.Registers {
+		mgrInterface := register(&handler.RegisterConfig{
+			Client:     r.Client,
+			KubeClient: kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie()),
+		})
+		if mgr, ok := mgrInterface.(*tool.APIServerMgr); ok {
+			apiServerMgr = mgr
+			break
+		}
+	}
+
+	if apiServerMgr == nil {
+		logger.Error(nil, "Failed to retrieve APIServerMgr instance")
+		return fmt.Errorf("failed to retrieve APIServerMgr instance")
+	}
+
+	logger.Info("Successfully retrieved APIServerMgr instance")
+
+	// 定义 SSH NodePort 的规则
+	sshNodeportMgr := tool.PodNodeportMgr{
+		Name:          "ssh",
+		ContainerPort: 22,
+	}
+
+	sshReq := tool.PodContainerReq{
+		Namespace: job.Namespace,
+		PodName:   fmt.Sprintf("%s-default0-0", job.Name),
+	}
+
+	// 调用 ProcessPodNodeport
+	nodePort, err := apiServerMgr.ProcessPodNodeport(ctx, sshReq, sshNodeportMgr)
+	if err != nil {
+		logger.Error(err, "Failed to open SSH NodePort")
+		return fmt.Errorf("failed to open SSH NodePort: %w", err)
+	}
+
+	logger.Info("SSH NodePort successfully opened", "NodePort", nodePort)
+	return nil
 }
 
 func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch.Job) (*model.Job, error) {
