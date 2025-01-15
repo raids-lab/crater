@@ -140,6 +140,16 @@ func (a *alertMgr) DeleteJob(ctx context.Context, jobName string, _ map[string]a
 	return a.sendJobMessage(ctx, jobName, subject, messageTemplate)
 }
 
+func (a *alertMgr) CleanJob(ctx context.Context, jobName string, _ map[string]any) error {
+	if a.err != nil {
+		return a.err
+	}
+
+	subject := "作业删除通知"
+	messageTemplate := `用户 %s 您好：您的作业 %s (%s) 运行时间达到上限，平台已经删除该作业。`
+	return a.sendJobMessage(ctx, jobName, subject, messageTemplate)
+}
+
 func (a *alertMgr) RemindLowUsageJob(ctx context.Context, jobName string, deleteTime time.Time, _ map[string]any) error {
 	if a.err != nil {
 		return a.err
