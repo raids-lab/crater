@@ -121,10 +121,11 @@ export interface IJupyterCreate {
   image: string;
   volumeMounts: VolumeMount[];
   envs: Env[];
-  useTensorBoard: boolean;
   selectors?: NodeSelectorRequirement[];
+  useTensorBoard: boolean;
   template: string;
   alertEnabled: boolean;
+  openssh: boolean;
 }
 
 export interface ITrainingCreate extends IJupyterCreate {
