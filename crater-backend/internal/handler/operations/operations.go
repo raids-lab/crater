@@ -11,6 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/resputil"
@@ -80,6 +81,7 @@ func (mgr *OperationsMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.DELETE("/auto", mgr.AutoDelete)
 	g.PUT("/keep/:name", mgr.SetKeepWhenLowResourceUsage)
 	g.DELETE("/job", mgr.DeleteUnUsedJobList)
+	g.DELETE("/cleanup", mgr.CleanupJobs)
 }
 
 type FreeJobRequest struct {
@@ -87,6 +89,11 @@ type FreeJobRequest struct {
 	WaitTime  int  `form:"waitTime"`
 	Util      int  `form:"util"`
 	Confirm   bool `form:"confirm"`
+}
+
+type CleanupJobsRequest struct {
+	BatchDays       *int `form:"batchDays"`
+	InteractiveDays *int `form:"interactiveDays"`
 }
 
 func (mgr *OperationsMgr) getJobWhiteList(c *gin.Context) ([]string, error) {
@@ -227,6 +234,120 @@ func (mgr *OperationsMgr) AutoDelete(c *gin.Context) {
 		"reminded": reminded,
 		"deleted":  deleted,
 	})
+}
+
+// getTimeouts calculates the timeout durations based on request parameters
+func getTimeouts(req *CleanupJobsRequest) (batchJobTimeout, interactiveJobTimeout time.Duration) {
+	batchJobTimeout = 4 * 24 * time.Hour
+	interactiveJobTimeout = 24 * time.Hour
+	if req.BatchDays != nil {
+		batchJobTimeout = time.Duration(*req.BatchDays) * 24 * time.Hour
+	}
+	if req.InteractiveDays != nil {
+		interactiveJobTimeout = time.Duration(*req.InteractiveDays) * 24 * time.Hour
+	}
+	return
+}
+
+// getJobsToCheck identifies jobs that need to be checked for cleanup
+func (mgr *OperationsMgr) getJobsToCheck(c *gin.Context, batchTimeout, interactiveTimeout time.Duration) ([]JobInfo, error) {
+	jobDB := query.Job
+	runningJobs, err := jobDB.WithContext(c).Where(jobDB.Status.Eq(string(batch.Running))).Find()
+	if err != nil {
+		logutils.Log.Errorf("Failed to get running jobs: %v", err)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return nil, err
+	}
+	jobsToCheck := make([]JobInfo, 0, len(runningJobs))
+	now := time.Now()
+	for _, job := range runningJobs {
+		jobAge := now.Sub(job.RunningTimestamp)
+		shouldCheck := false
+		if job.JobType == model.JobTypeJupyter || job.JobType == model.JobTypeWebIDE {
+			shouldCheck = jobAge > interactiveTimeout
+		} else {
+			shouldCheck = jobAge > batchTimeout
+		}
+		if !shouldCheck {
+			continue
+		}
+		jobInfo, ok := mgr.getJobInfo(c, job)
+		if !ok {
+			continue
+		}
+		jobsToCheck = append(jobsToCheck, jobInfo)
+	}
+	return jobsToCheck, nil
+}
+
+// getJobInfo retrieves job information from Kubernetes
+func (mgr *OperationsMgr) getJobInfo(c *gin.Context, job *model.Job) (JobInfo, bool) {
+	jobPodsList := mgr.promClient.GetJobPodsList()
+	namespace := config.GetConfig().Workspace.Namespace
+	pods, ok := jobPodsList[job.JobName]
+	if !ok || len(pods) == 0 {
+		return JobInfo{}, false
+	}
+	pod, err := mgr.kubeClient.CoreV1().Pods(namespace).Get(c, pods[0], metav1.GetOptions{})
+	if err != nil || len(pod.OwnerReferences) == 0 {
+		return JobInfo{}, false
+	}
+	return JobInfo{
+		jobName:       job.JobName,
+		jobType:       pod.OwnerReferences[0].Kind,
+		jobAPIVersion: pod.OwnerReferences[0].APIVersion,
+	}, true
+}
+
+// CleanupJobs godoc
+// @Summary Cleanup jobs based on type and duration
+// @Description Delete batch jobs older than 4 days and interactive jobs older than 1 day
+// @Tags Operations
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param use query CleanupJobsRequest true "batchDays interactiveDays"
+// @Success 200 {object} resputil.Response[any] "Success"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/admin/operations/cleanup [delete]
+// validateCleanupRequest validates the cleanup request parameters
+func (mgr *OperationsMgr) CleanupJobs(c *gin.Context) {
+	var req CleanupJobsRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	batchTimeout, interactiveTimeout := getTimeouts(&req)
+	jobDB := query.Job
+	jobsToCheck, err := mgr.getJobsToCheck(c, batchTimeout, interactiveTimeout)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	jobsToDelete := mgr.filterJobsToKeep(c, jobsToCheck)
+	deletedJobList := []string{}
+	for _, job := range jobsToDelete {
+		if err := mgr.deleteJobByName(c, job.jobAPIVersion, job.jobType, job.jobName); err != nil {
+			logutils.Log.Infof("Delete job %s failed: %v", job.jobName, err)
+			continue
+		}
+		deletedJobList = append(deletedJobList, job.jobName)
+		dbJob, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(job.jobName)).First()
+		if err != nil {
+			continue
+		}
+		if dbJob.AlertEnabled {
+			alertMgr := alert.GetAlertMgr()
+			if err := alertMgr.CleanJob(c, job.jobName, nil); err != nil {
+				logutils.Log.Infof("Send Alarm Email failed for job %s", job.jobName)
+			}
+		}
+	}
+
+	resputil.Success(c, deletedJobList)
 }
 
 // DeleteUnUsedJobList godoc
