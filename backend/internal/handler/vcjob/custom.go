@@ -64,9 +64,6 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	baseURL := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
 	jobName := fmt.Sprintf("single-%s", baseURL)
 
-	// useTensorBoard
-	useTensorboard := fmt.Sprintf("%t", req.UseTensorBoard)
-
 	// 4. Labels and Annotations
 	namespace := config.GetConfig().Workspace.Namespace
 	labels := map[string]string{
@@ -75,10 +72,9 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 		LabelKeyBaseURL:  baseURL,
 	}
 	annotations := map[string]string{
-		AnnotationKeyTaskName:       req.Name,
-		AnnotationKeyTaskTemplate:   req.Template,
-		AnnotationKeyUseTensorBoard: useTensorboard,
-		AnnotationKeyAlertEnabled:   strconv.FormatBool(req.AlertEnabled),
+		AnnotationKeyTaskName:     req.Name,
+		AnnotationKeyTaskTemplate: req.Template,
+		AnnotationKeyAlertEnabled: strconv.FormatBool(req.AlertEnabled),
 	}
 
 	// 5. Create the pod spec
