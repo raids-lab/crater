@@ -143,6 +143,7 @@ const formSchema = z.object({
   }),
   nodeSelector: nodeSelectorSchema,
   alertEnabled: z.boolean().default(true),
+  openssh: z.boolean().default(false),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -176,6 +177,7 @@ export const Component = () => {
         volumeMounts: values.volumeMounts,
         envs: values.envs,
         useTensorBoard: values.observability.tbEnable,
+        openssh: values.openssh,
         alertEnabled: values.alertEnabled,
         selectors: values.nodeSelector.enable
           ? [
@@ -274,7 +276,7 @@ export const Component = () => {
         if (jobInfo.envs.length > 0) {
           setEnvOpen(EnvCard);
         }
-        if (jobInfo.nodeSelector.enable) {
+        if (jobInfo.nodeSelector.enable || jobInfo.openssh) {
           setOtherOpen(OtherCard);
         }
       } catch (error) {
@@ -776,6 +778,23 @@ export const Component = () => {
                     <FormItem className="flex flex-row items-center justify-between space-x-0 space-y-0">
                       <FormLabel className="font-normal">
                         接收状态通知
+                      </FormLabel>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name={`openssh`}
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between space-x-0 space-y-0">
+                      <FormLabel className="font-normal">
+                        启用 SSH 连接
                       </FormLabel>
                       <FormControl>
                         <Switch
