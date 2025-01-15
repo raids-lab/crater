@@ -111,31 +111,26 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	// 2. fetch kaniko record from database
 	kaniko, err := k.WithContext(ctx).Preload(query.Kaniko.User).Where(k.ImagePackName.Eq(job.Name)).First()
-
-	// 3. if fetch failed, it may be caused by database connection error. Requeue.
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// 3. if kaniko record not found, then create a new one.
+			return r.handleKanikoRecordNotFound(ctx, &job)
+		}
+		// 4. if fetch failed, it may be caused by database connection error.
 		logger.Error(err, "unable to fetch kaniko record in database")
 		return ctrl.Result{Requeue: true}, err
 	}
 
-	// 4. if kaniko record not found, then create a new one. Requeue
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return r.handleKanikoRecordNotFound(ctx, &job)
-	}
-
 	// 5. get the job status from k8s job
 	jobStatus := r.getJobBuildStatus(&job)
-	if err = r.updateKanikoStatus(ctx, kaniko, jobStatus); err != nil {
-		logger.Error(err, "kaniko record status updated failed")
-		return ctrl.Result{Requeue: true}, nil
-	}
-	logger.Info(fmt.Sprintf("buildkit pod: %s , new stage: %s", job.Name, jobStatus))
 
 	// 6. if buildkit job finished
-	if jobStatus == model.BuildJobFinished {
-		size, err := r.imageRegistry.GetImageSize(ctx, kaniko.ImageLink)
+	if jobStatus == model.BuildJobFinished && kaniko.Status != model.BuildJobFinished {
+		var size int64
+		size, err = r.imageRegistry.GetImageSize(ctx, kaniko.ImageLink)
 		if err != nil {
 			logger.Error(err, "get image size failed")
+			return ctrl.Result{Requeue: true}, err
 		}
 		// 7. update kaniko record size
 		if err = r.updateKanikoSize(ctx, kaniko, size); err != nil {
@@ -145,6 +140,13 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		// 8. create image record
 		return r.createImageRecord(ctx, kaniko)
 	}
+
+	if err = r.updateKanikoStatus(ctx, kaniko, jobStatus); err != nil {
+		logger.Error(err, "kaniko record status updated failed")
+		return ctrl.Result{Requeue: true}, err
+	}
+	logger.Info(fmt.Sprintf("buildkit pod: %s , new stage: %s", job.Name, jobStatus))
+
 	return ctrl.Result{}, nil
 }
 
@@ -180,7 +182,7 @@ func (r *BuildKitReconciler) handleKanikoRecordNotFound(ctx context.Context, job
 	} else {
 		logger.Info("successfully created kaniko record")
 	}
-	return ctrl.Result{Requeue: true}, nil
+	return ctrl.Result{}, nil
 }
 
 func (r *BuildKitReconciler) updateKanikoStatus(ctx context.Context, kaniko *model.Kaniko, status model.BuildStatus) error {
@@ -202,35 +204,37 @@ func (r *BuildKitReconciler) updateKanikoSize(ctx context.Context, kaniko *model
 func (r *BuildKitReconciler) createImageRecord(ctx context.Context, kaniko *model.Kaniko) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	im := query.Image
-	if _, err := im.WithContext(ctx).
-		Where(im.ImagePackName.Eq(kaniko.ImagePackName)).
-		First(); errors.Is(err, gorm.ErrRecordNotFound) {
-		image := &model.Image{
-			User:          kaniko.User,
-			UserID:        kaniko.User.ID,
-			ImageLink:     kaniko.ImageLink,
-			Description:   kaniko.Description,
-			ImagePackName: &kaniko.ImagePackName,
-			IsPublic:      false,
-			TaskType:      model.JobTypeCustom,
-			ImageSource:   model.ImageCreateType,
-			Size:          kaniko.Size,
-		}
-		err = im.WithContext(ctx).Create(image)
-		if err != nil {
-			logger.Error(err, "Image record created failed")
-			return ctrl.Result{Requeue: true}, err
-		} else {
-			logger.Info("Image record created successfully: " + kaniko.ImagePackName)
-			return ctrl.Result{}, nil
-		}
-	} else if err == nil {
+
+	// Check if the image record already exists
+	_, err := im.WithContext(ctx).Where(im.ImagePackName.Eq(kaniko.ImagePackName)).First()
+	if err == nil {
 		logger.Error(err, "Image record already existed")
 		return ctrl.Result{}, nil
-	} else {
-		logger.Error(err, "encounter other error when query image record")
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		logger.Error(err, "encounter other error when querying image record")
 		return ctrl.Result{}, err
 	}
+
+	// Create a new image record
+	image := &model.Image{
+		User:          kaniko.User,
+		UserID:        kaniko.User.ID,
+		ImageLink:     kaniko.ImageLink,
+		Description:   kaniko.Description,
+		ImagePackName: &kaniko.ImagePackName,
+		IsPublic:      false,
+		TaskType:      model.JobTypeCustom,
+		ImageSource:   model.ImageCreateType,
+		Size:          kaniko.Size,
+	}
+	err = im.WithContext(ctx).Create(image)
+	if err != nil {
+		logger.Error(err, "Image record creation failed")
+		return ctrl.Result{Requeue: true}, err
+	}
+
+	logger.Info("Image record created successfully: " + kaniko.ImagePackName)
+	return ctrl.Result{}, nil
 }
 
 func (r *BuildKitReconciler) getJobBuildStatus(job *batchv1.Job) model.BuildStatus {
