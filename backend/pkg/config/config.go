@@ -69,6 +69,11 @@ type Config struct {
 		StrictRegisterMode bool       `yaml:"strictRegisterMode"` // If true, the user must sign up with token.
 		UIDServerURL       string     `yaml:"uidServerURL"`       // The URL of the UID server
 	} `yaml:"act"`
+	// scheduler plugin
+	SchedulerFlags struct {
+		AijobEn bool `yaml:"aijobEn"`
+		SpjobEn bool `yaml:"spjobEn"`
+	} `yaml:"schedulerFlags"`
 }
 
 type ACTOpenAPI struct {
