@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -38,7 +39,7 @@ import (
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
 func init() {
-	if config.GetConfig().SchedulerFlags.AijobEn {
+	if os.Getenv("AIJOB_UNPLUGIN") == "" {
 		handler.Registers = append(handler.Registers, NewAITaskMgr)
 	}
 }
