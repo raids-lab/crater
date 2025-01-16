@@ -47,3 +47,6 @@ act:
     port: 25
     user: notify
     password: ***REMOVED***
+schedulerFlags:
+  aijobEn: true
+  spjobEn: true
