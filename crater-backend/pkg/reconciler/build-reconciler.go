@@ -138,7 +138,10 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			return ctrl.Result{Requeue: true}, err
 		}
 		// 8. create image record
-		return r.createImageRecord(ctx, kaniko)
+		if err = r.createImageRecord(ctx, kaniko); err != nil {
+			logger.Error(err, "create image record failed")
+			return ctrl.Result{Requeue: true}, err
+		}
 	}
 
 	if err = r.updateKanikoStatus(ctx, kaniko, jobStatus); err != nil {
@@ -201,7 +204,7 @@ func (r *BuildKitReconciler) updateKanikoSize(ctx context.Context, kaniko *model
 	return err
 }
 
-func (r *BuildKitReconciler) createImageRecord(ctx context.Context, kaniko *model.Kaniko) (ctrl.Result, error) {
+func (r *BuildKitReconciler) createImageRecord(ctx context.Context, kaniko *model.Kaniko) error {
 	logger := log.FromContext(ctx)
 	im := query.Image
 
@@ -209,16 +212,16 @@ func (r *BuildKitReconciler) createImageRecord(ctx context.Context, kaniko *mode
 	_, err := im.WithContext(ctx).Where(im.ImagePackName.Eq(kaniko.ImagePackName)).First()
 	if err == nil {
 		logger.Error(err, "Image record already existed")
-		return ctrl.Result{}, nil
+		// skip if image record already exists
+		return nil
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		logger.Error(err, "encounter other error when querying image record")
-		return ctrl.Result{}, err
+		return err
 	}
 
 	// Create a new image record
 	image := &model.Image{
-		User:          kaniko.User,
-		UserID:        kaniko.User.ID,
+		UserID:        kaniko.UserID,
 		ImageLink:     kaniko.ImageLink,
 		Description:   kaniko.Description,
 		ImagePackName: &kaniko.ImagePackName,
@@ -230,11 +233,11 @@ func (r *BuildKitReconciler) createImageRecord(ctx context.Context, kaniko *mode
 	err = im.WithContext(ctx).Create(image)
 	if err != nil {
 		logger.Error(err, "Image record creation failed")
-		return ctrl.Result{Requeue: true}, err
+		return err
 	}
 
 	logger.Info("Image record created successfully: " + kaniko.ImagePackName)
-	return ctrl.Result{}, nil
+	return nil
 }
 
 func (r *BuildKitReconciler) getJobBuildStatus(job *batchv1.Job) model.BuildStatus {
