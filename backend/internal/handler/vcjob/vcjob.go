@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -21,6 +22,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler"
+	"github.com/raids-lab/crater/internal/handler/tool"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
@@ -59,6 +61,7 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.DELETE(":name", mgr.DeleteJob)
 
 	g.GET(":name/detail", mgr.GetJobDetail)
+	g.GET(":name/ssh", mgr.GetSSHPortDetail)
 	g.GET(":name/yaml", mgr.GetJobYaml)
 	g.GET(":name/pods", mgr.GetJobPods)
 	g.GET(":name/template", mgr.GetJobTemplate)
@@ -381,6 +384,19 @@ type (
 		CompletedTimestamp metav1.Time     `json:"completedAt"`
 	}
 
+	// SSHPortData 定义 SSH 端口信息的结构体
+	SSHPortData struct {
+		IP       string `json:"IP"`
+		NodePort int32  `json:"nodePort"`
+		Username string `json:"username"`
+	}
+
+	// SSHResp 定义返回的 SSH 信息的结构体
+	SSHResp struct {
+		Open bool        `json:"open"` // SSH 是否开启
+		Data SSHPortData `json:"data"` // SSH 端口信息
+	}
+
 	PodDetail struct {
 		Name      string          `json:"name"`
 		Namespace string          `json:"namespace"`
@@ -453,6 +469,78 @@ func getJob(c context.Context, name string, token *util.JWTMessage) (*model.Job,
 			Where(j.UserID.Eq(token.UserID)).
 			First()
 	}
+}
+
+// GetSSHPortDetail godoc
+// @Summary 获取作业的SSH端口信息
+// @Description 根据作业名称获取该作业的SSH端口相关信息
+// @Tags VolcanoJob
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param name path string true "Job Name"
+// @Success 200 {object} resputil.Response[SSHResp] "SSH端口信息"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/vcjobs/{name}/ssh [post]
+func (mgr *VolcanojobMgr) GetSSHPortDetail(c *gin.Context) {
+	var req JobActionReq
+	// 解析 URI 参数
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	token := util.GetToken(c)
+
+	// 根据作业名称获取作业详情
+	job, err := getJob(c, req.JobName, &token)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	// 获取作业的用户名
+	username := job.User.Nickname
+
+	// 构造 namespace 和 podName
+	namespace := job.Attributes.Data().Namespace
+	podName := fmt.Sprintf("%s-default0-0", req.JobName)
+
+	// 获取 Pod 信息
+	var pod v1.Pod
+	if err := mgr.client.Get(c, client.ObjectKey{Namespace: namespace, Name: podName}, &pod); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	// 检查 annotations 中是否包含 "crater.raids.io/open-ssh: true"
+	if pod.Annotations[AnnotationKeyOpenSSH] != "true" {
+		resputil.Success(c, SSHResp{Open: false, Data: SSHPortData{}})
+		return
+	}
+
+	// 查找 annotation 中的 nodeport 信息
+	var sshPort SSHResp
+	for key, value := range pod.Annotations {
+		if strings.HasPrefix(key, NodePortLabelKey+"ssh") {
+			var nodeportData tool.PodNodeport
+			if err := json.Unmarshal([]byte(value), &nodeportData); err == nil {
+				// 使用从 annotation 获取到的 IP 和 NodePort
+				sshPort = SSHResp{
+					Open: true, // 表示开启 SSH
+					Data: SSHPortData{
+						IP:       nodeportData.Address,
+						NodePort: nodeportData.NodePort,
+						Username: username,
+					},
+				}
+			}
+		}
+	}
+
+	// 返回 SSH 端口信息
+	resputil.Success(c, sshPort)
 }
 
 // GetJobPods godoc
