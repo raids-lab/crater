@@ -91,6 +91,15 @@ export interface IJupyterDetail {
   completedAt: string;
 }
 
+export interface ISSHPortDetail {
+  open: boolean;
+  data: {
+    IP: string;
+    nodePort: number;
+    username: string;
+  };
+}
+
 export interface VolumeMount {
   subPath: string;
   mountPath: string;
@@ -266,3 +275,9 @@ export const apiJupyterSnapshot = async (jobName: string) => {
   );
   return response.data;
 };
+
+// @Router /v1/vcjobs/jupyter/{name}/ssh [post]
+export const apiSSHPortGetDetail = (jobName: string) =>
+  instance.get<IResponse<ISSHPortDetail>>(
+    `${VERSION}/${JOB_URL}/${jobName}/ssh`,
+  );
