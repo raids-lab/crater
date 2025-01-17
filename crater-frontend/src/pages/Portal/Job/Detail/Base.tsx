@@ -38,6 +38,7 @@ import {
   JobType,
   JobPhase,
   apiJobGetEvent,
+  apiSSHPortGetDetail,
 } from "@/services/api/vcjob";
 import JobPhaseLabel from "@/components/badge/JobPhaseBadge";
 import { TimeDistance } from "@/components/custom/TimeDistance";
@@ -53,6 +54,7 @@ import { DetailPage } from "@/components/layout/DetailPage";
 import Nothing from "@/components/placeholder/Nothing";
 import { hasNvidiaGPU } from "@/utils/resource";
 import GpuIcon from "@/components/icon/GpuIcon";
+import { SSHPortDialog } from "./SSHPortDialog";
 export interface Resource {
   [key: string]: string;
 }
@@ -67,6 +69,12 @@ export function BaseCore({ jobName }: { jobName: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ["job", "detail", jobName],
     queryFn: () => apiJobGetDetail(jobName),
+    select: (res) => res.data.data,
+  });
+
+  const { data: sshPortData } = useQuery({
+    queryKey: ["job", "ssh", jobName],
+    queryFn: () => apiSSHPortGetDetail(jobName),
     select: (res) => res.data.data,
   });
 
@@ -109,6 +117,17 @@ export function BaseCore({ jobName }: { jobName: string }) {
           description={data.jobName}
         >
           <div className="flex flex-row gap-3">
+            {(data.jobType === JobType.Jupyter ||
+              data.jobType === JobType.WebIDE) &&
+              data.status === JobPhase.Running &&
+              sshPortData &&
+              sshPortData.open && (
+                <SSHPortDialog
+                  hostIP={sshPortData.data.IP}
+                  nodePort={sshPortData.data.nodePort}
+                  userName={sshPortData.data.username}
+                />
+              )}
             {(data.jobType === JobType.Jupyter ||
               data.jobType === JobType.WebIDE) &&
               data.status === JobPhase.Running && (
