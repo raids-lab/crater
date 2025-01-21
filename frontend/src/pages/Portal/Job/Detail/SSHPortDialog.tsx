@@ -30,7 +30,7 @@ export function SSHPortDialog({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button variant="secondary" title="打开 SSH 端口">
-          <Terminal className="mr-2 size-4" />
+          <Terminal className="size-4" />
           SSH 端口
         </Button>
       </DialogTrigger>
