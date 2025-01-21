@@ -501,7 +501,7 @@ func (mgr *VolcanojobMgr) GetSSHPortDetail(c *gin.Context) {
 	}
 
 	// 获取作业的用户名
-	username := job.User.Nickname
+	username := job.User.Name
 
 	// 构造 namespace 和 podName
 	namespace := job.Attributes.Data().Namespace
