@@ -3,7 +3,6 @@ package spjob
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 
 	"github.com/gin-gonic/gin"
@@ -29,7 +28,7 @@ import (
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
 func init() {
-	if os.Getenv("SPJOB_UNPLUGIN") == "" {
+	if config.GetConfig().SchedulerFlags.SpjobEn {
 		handler.Registers = append(handler.Registers, NewSparseJobMgr)
 	}
 }
