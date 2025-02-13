@@ -37,6 +37,7 @@ import {
   MapPinIcon,
   FileTextIcon,
   CalendarIcon,
+  Trash,
 } from "lucide-react";
 import useBreadcrumb from "@/hooks/useBreadcrumb";
 import { QueueNotInSelect } from "@/components/custom/QueueNotInSelect";
@@ -49,6 +50,7 @@ import { Input } from "../ui/input";
 import { DetailPage } from "@/components/layout/DetailPage";
 import PageTitle from "@/components/layout/PageTitle";
 import { DataTable } from "@/components/custom/DataTable";
+import { useNavigate } from "react-router-dom";
 
 interface QueueOption {
   value: string;
@@ -69,6 +71,9 @@ interface DatesetShareTableProps {
   apiCancelDatasetSharewithQueue: (
     csq: cancelSharedQueueResp,
   ) => Promise<AxiosResponse<IResponse<string>>>;
+  apiDatasetDelete: (
+    datasetID: number,
+  ) => Promise<AxiosResponse<IResponse<string>>>;
 }
 
 export function ModelShareTable({
@@ -76,9 +81,10 @@ export function ModelShareTable({
   apiShareDatasetwithQueue,
   apiCancelDatasetSharewithUser,
   apiCancelDatasetSharewithQueue,
+  apiDatasetDelete,
 }: DatesetShareTableProps) {
   const { id } = useParams<{ id: string; name: string }>();
-
+  const navigate = useNavigate();
   const datasetId = id ? parseInt(id, 10) : 0;
   const setBreadcrumb = useBreadcrumb();
   const userDatasetData = useQuery({
@@ -138,6 +144,17 @@ export function ModelShareTable({
     },
   });
 
+  const { mutate: deleteDataset } = useMutation({
+    mutationFn: (datasetID: number) => apiDatasetDelete(datasetID),
+    onSuccess: () => {
+      // 删除成功后刷新数据
+      navigate(-1);
+      toast.success("模型已删除");
+    },
+    onError: () => {
+      toast.error("删除模型失败");
+    },
+  });
   const { mutate: cancelShareWithQueue } = useMutation({
     mutationFn: (queueId: number) =>
       apiCancelDatasetSharewithQueue({
@@ -418,6 +435,41 @@ export function ModelShareTable({
                       onClick={() => shareWithQueue(datasetId)}
                     >
                       共享
+                    </Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            <Dialog>
+              <DialogTrigger asChild>
+                <div>
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0 hover:text-red-700"
+                    title="删除模型"
+                  >
+                    <Trash size={16} strokeWidth={2} />
+                  </Button>
+                </div>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>删除模型</DialogTitle>
+                  <DialogDescription>
+                    模型「{data.data?.[0]?.name}」将被删除
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <DialogClose>
+                    <Button variant="outline">取消</Button>
+                  </DialogClose>
+                  <DialogClose>
+                    <Button
+                      type="submit"
+                      variant="default"
+                      onClick={() => deleteDataset(datasetId)}
+                    >
+                      删除
                     </Button>
                   </DialogClose>
                 </DialogFooter>

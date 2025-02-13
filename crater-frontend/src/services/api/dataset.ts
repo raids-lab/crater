@@ -58,7 +58,6 @@ export interface cancelSharedQueueResp {
   datasetID: number;
   queueID: number;
 }
-
 export const apiGetDataset = () =>
   instance.get<IResponse<Dataset[]>>(VERSION + `/dataset/mydataset`);
 
