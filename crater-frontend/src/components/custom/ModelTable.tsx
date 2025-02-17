@@ -36,7 +36,8 @@ export function ModelTable({ apiGetDataset }: DatesetTableProps) {
             id: dataset.id,
             name: dataset.name,
             desc: dataset.describe,
-            tags: dataset.tags || [], // Add appropriate tags if available
+            tag: dataset.extra.tag || [], // Add appropriate tags if available
+            createdAt: dataset.createdAt,
             owner: dataset.IUserAttributes, // Adjust to match IUserAttributes structure
             username: dataset.username,
           })) || []

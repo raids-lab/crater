@@ -23,13 +23,13 @@ import { IUserAttributes } from "@/services/api/admin/user";
 import PageTitle from "@/components/layout/PageTitle";
 import TipBadge from "@/components/badge/TipBadge";
 import { TimeDistance } from "@/components/custom/TimeDistance";
-
 export interface DataItem {
   id: number;
   name: string;
   desc: string;
   username: string;
-  tags: string[];
+  createdAt?: string;
+  tag: string[];
   url?: string;
   owner: IUserAttributes;
 }
@@ -50,7 +50,7 @@ export default function DataList({
   const tags = useMemo(() => {
     const tags = new Set<string>();
     items.forEach((model) => {
-      model.tags.forEach((tag) => tags.add(tag));
+      model.tag.forEach((tag) => tags.add(tag));
     });
     return Array.from(tags);
   }, [items]);
@@ -64,7 +64,7 @@ export default function DataList({
     .filter((item) =>
       modelType === "所有标签"
         ? true
-        : item.tags.includes(modelType)
+        : item.tag.includes(modelType)
           ? true
           : false,
     )
@@ -163,9 +163,9 @@ export default function DataList({
               )}
             </div>
 
-            {item.tags.length > 0 && (
+            {item.tag.length > 0 && (
               <div className="flex flex-row flex-wrap gap-1 px-4 pb-1">
-                {item.tags.map((tag) => (
+                {item.tag.map((tag) => (
                   <Badge variant="secondary" key={tag} className="rounded-full">
                     {tag}
                   </Badge>
@@ -181,7 +181,9 @@ export default function DataList({
                   title={item.owner?.name || item.username}
                   className="bg-purple-600/15 text-purple-600 hover:bg-purple-600/25"
                 />
-                <TipBadge title={<TimeDistance date={"2023"} />} />
+                <TipBadge
+                  title={<TimeDistance date={item.createdAt || "2023"} />}
+                />
               </div>
             </div>
           </li>

@@ -2,6 +2,11 @@ import instance, { VERSION } from "../axios";
 import { IResponse } from "@/services/types";
 import { IUserAttributes } from "./admin/user";
 
+export interface Extra {
+  tag: string[];
+  weburl: string;
+}
+
 export interface Dataset {
   id: number;
   name: string;
@@ -10,8 +15,7 @@ export interface Dataset {
   username: string;
   createdAt: string;
   type: string;
-  tags: string[];
-  weburl: string;
+  extra: Extra;
   IUserAttributes: IUserAttributes;
 }
 
