@@ -12,7 +12,7 @@ sidebar_position: 2
 
 在`数据管理-数据集`下，可以查看数据集。这里显示的数据集包括用户自己创建的、个人被分享的和账户被分享的数据。
 
-![alt text](img/dataset.png)
+![dataset](./img/dataset.png)
 
 每个数据集会有一些基本描述，在右边有四个按钮，分别是删除，个人分享，账户分享和重命名。这些操作都需要数据集创建者才能使用。
 
@@ -20,7 +20,7 @@ sidebar_position: 2
 
 在数据集页面左上角有一个创建数据集按钮，点击后填写数据集名称、描述并选择文件夹位置进行创建。
 
-![alt text](img/create-dataset.png)
+![dataset-create](./img/dataset-create.png)
 
 创建的数据集名称不能相同，选择文件夹时会自动跳出你能看见的公共、个人及当前账户的空间文件，然后进行选择
 
