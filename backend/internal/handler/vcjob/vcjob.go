@@ -500,6 +500,12 @@ func (mgr *VolcanojobMgr) GetSSHPortDetail(c *gin.Context) {
 		return
 	}
 
+	// 检查作业是否处于 Running 状态
+	if job.Status != batch.Running {
+		resputil.Success(c, SSHResp{Open: false, Data: SSHPortData{}})
+		return
+	}
+
 	// 获取作业的用户名
 	username := job.User.Name
 
