@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import DataList from "@/pages/Portal/Data/DataList";
-import { BookOpenIcon } from "lucide-react"; //, CirclePlusIcon
+import DocsButton from "@/components/button/DocsButton"; //, CirclePlusIcon
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Dataset } from "@/services/api/dataset";
@@ -45,10 +45,7 @@ export function ModelTable({ apiGetDataset }: DatesetTableProps) {
       title="模型"
       actionArea={
         <div className="flex flex-row gap-3">
-          <Button variant="secondary">
-            <BookOpenIcon />
-            模型文档
-          </Button>
+          <DocsButton title="模型文档" url="file/model" />
           {/*<Button>
             <CirclePlusIcon />
             导入模型
