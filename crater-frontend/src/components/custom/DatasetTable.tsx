@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Dataset } from "@/services/api/dataset";
+import DocsButton from "@/components/button/DocsButton";
 import {
   Sheet,
   SheetContent,
@@ -46,22 +47,25 @@ export function DatasetTable({ apiGetDataset }: DatesetTableProps) {
       }
       title="数据集"
       actionArea={
-        <Sheet open={openSheet} onOpenChange={setOpenSheet}>
-          <SheetTrigger asChild>
-            <Button className="h-8 min-w-fit">创建数据集</Button>
-          </SheetTrigger>
-          <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
-            <SheetHeader>
-              <SheetTitle>创建数据集</SheetTitle>
-              <SheetDescription>创建一个新的文件数据集</SheetDescription>
-            </SheetHeader>
-            <Separator className="mt-4" />
-            <DatasetCreateForm
-              closeSheet={() => setOpenSheet(false)}
-              type="dataset"
-            />
-          </SheetContent>
-        </Sheet>
+        <div className="flex flex-row gap-3">
+          <DocsButton title="数据集文档" url="file/dataset" />
+          <Sheet open={openSheet} onOpenChange={setOpenSheet}>
+            <SheetTrigger asChild>
+              <Button className="h-8 min-w-fit">创建数据集</Button>
+            </SheetTrigger>
+            <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
+              <SheetHeader>
+                <SheetTitle>创建数据集</SheetTitle>
+                <SheetDescription>创建一个新的文件数据集</SheetDescription>
+              </SheetHeader>
+              <Separator className="mt-4" />
+              <DatasetCreateForm
+                closeSheet={() => setOpenSheet(false)}
+                type="dataset"
+              />
+            </SheetContent>
+          </Sheet>
+        </div>
       }
     />
   );
