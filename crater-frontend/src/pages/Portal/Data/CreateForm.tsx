@@ -10,7 +10,9 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import TagsInput from "@/components/ui/TagsInput";
+import { Badge } from "@/components/ui/badge";
+import { X, Plus } from "lucide-react";
+import * as React from "react";
 
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -48,6 +50,7 @@ interface TaskFormProps extends React.HTMLAttributes<HTMLDivElement> {
 export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
   const queryClient = useQueryClient();
   const typestring = type === "model" ? "模型" : "数据集";
+  const [inputValue, setInputValue] = React.useState("");
   const { mutate: createImagePack } = useMutation({
     mutationFn: (values: FormSchema) =>
       apiDatasetCreate({
@@ -162,9 +165,53 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
             <FormItem>
               <FormLabel>{typestring}标签 </FormLabel>
               <FormControl>
-                <TagsInput {...field} />
+                <div className="grid gap-2">
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {field.value.map((tag) => (
+                      <Badge key={tag} variant="secondary" className="gap-1">
+                        {tag}
+                        <X
+                          className="h-3 w-3 cursor-pointer"
+                          onClick={() => {
+                            const newTags = field.value.filter(
+                              (t) => t !== tag,
+                            );
+                            field.onChange(newTags);
+                          }}
+                        />
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      id="tags"
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const newTags = [...field.value, inputValue];
+                          field.onChange(newTags);
+                          setInputValue("");
+                        }
+                      }}
+                      className="flex-grow"
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        const newTags = [...field.value, inputValue];
+                        field.onChange(newTags);
+                        setInputValue("");
+                      }}
+                      className="h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-gray-300 bg-gray-200 transition-colors duration-200 hover:bg-gray-300"
+                    >
+                      <Plus className="h-5 w-5 text-gray-600" />
+                    </Button>
+                  </div>
+                </div>
               </FormControl>
-              <FormDescription> 请输入标签，用逗号分隔</FormDescription>
+              <FormDescription> 请输入标签</FormDescription>
               <FormMessage />
             </FormItem>
           )}
