@@ -47,7 +47,7 @@ func (r *ImageRegistry) CheckOrCreateProjectForUser(c context.Context, userName 
 		logutils.Log.Errorf("create harbor project failed! err:%+v", err)
 		return err
 	}
-
+	logutils.Log.Info("create harbor project success!")
 	return nil
 }
 

@@ -520,6 +520,12 @@ func (mgr *VolcanojobMgr) CreateJupyterSnapshot(c *gin.Context) {
 
 	containerName := pod.Spec.Containers[0].Name
 
+	// check whether user project exists
+	if err = mgr.imageRegistry.CheckOrCreateProjectForUser(c, token.Username); err != nil {
+		resputil.Error(c, "create harbor project failed", resputil.NotSpecified)
+		return
+	}
+
 	// generate image link
 	currentImageName := pod.Spec.Containers[0].Image
 	imageLink, err := utils.GenerateNewImageLink(currentImageName, token.Username)
