@@ -26,6 +26,7 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/imageregistry"
 	"github.com/raids-lab/crater/pkg/packer"
 	"github.com/raids-lab/crater/pkg/utils"
 )
@@ -36,18 +37,20 @@ func init() {
 }
 
 type VolcanojobMgr struct {
-	name        string
-	client      client.Client
-	kubeClient  kubernetes.Interface
-	imagePacker packer.ImagePackerInterface
+	name          string
+	client        client.Client
+	kubeClient    kubernetes.Interface
+	imagePacker   packer.ImagePackerInterface
+	imageRegistry imageregistry.ImageRegistryInterface
 }
 
 func NewVolcanojobMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &VolcanojobMgr{
-		name:        "vcjobs",
-		client:      conf.Client,
-		kubeClient:  conf.KubeClient,
-		imagePacker: conf.ImagePacker,
+		name:          "vcjobs",
+		client:        conf.Client,
+		kubeClient:    conf.KubeClient,
+		imagePacker:   conf.ImagePacker,
+		imageRegistry: conf.ImageRegistry,
 	}
 }
 
