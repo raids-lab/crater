@@ -390,7 +390,7 @@ export const ImageTable: FC = () => {
             <DialogDescription className="text-yellow-600">
               请保存好您的用户名和密码！
               <br />
-              Harbor仓库地址：https://crater-harbor.act.buaa.edu.cn/
+              Harbor仓库地址：https://gpu-harbor.act.buaa.edu.cn/
             </DialogDescription>
           </DialogHeader>
           {credentials && (
