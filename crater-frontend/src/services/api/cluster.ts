@@ -82,3 +82,6 @@ export const apiGetNodePods = (name: string) =>
 // 获取节点的 GPU 详情
 export const apiGetNodeGPU = (name: string) =>
   instance.get<IResponse<IClusterNodeGPU>>(VERSION + `/nodes/${name}/gpu`);
+// 改变节点的可调度状态
+export const apichangeNodeScheduling = (name: string) =>
+  instance.put<IResponse<string>>(VERSION + `/nodes/${name}`);
