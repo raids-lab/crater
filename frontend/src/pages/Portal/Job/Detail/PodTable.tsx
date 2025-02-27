@@ -13,15 +13,7 @@ import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableCo
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import NodeBadges from "@/components/badge/NodeBadges";
 import PodIngressDialog from "./Ingress";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { DotsHorizontalIcon } from "@radix-ui/react-icons";
+import TooltipButton from "@/components/custom/TooltipButton";
 import TooltipLink from "@/components/label/TooltipLink";
 import Nothing from "@/components/placeholder/Nothing";
 
@@ -140,65 +132,72 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
       cell: ({ row }) => {
         const pod = row.original;
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">更多操作</span>
-                <DotsHorizontalIcon className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel className="text-xs text-muted-foreground">
-                操作
-              </DropdownMenuLabel>
-              <DropdownMenuItem
-                disabled={pod.phase !== "Running"}
-                onClick={() => {
-                  setShowTerminal({
-                    namespace: pod.namespace,
-                    name: pod.name,
-                  });
-                }}
+          <div className="flex items-center space-x-1.5">
+            <TooltipButton
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              disabled={pod.phase !== "Running"}
+              onClick={() => {
+                setShowTerminal({
+                  namespace: pod.namespace,
+                  name: pod.name,
+                });
+              }}
+              tooltipContent="打开网页终端"
+            >
+              <TerminalIcon className="size-4 text-primary" />
+            </TooltipButton>
+
+            <TooltipButton
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              disabled={pod.phase !== "Running"}
+              onClick={() => {
+                setShowIngress({
+                  namespace: pod.namespace,
+                  name: pod.name,
+                });
+              }}
+              tooltipContent="配置外部访问"
+            >
+              <EthernetPort className="size-4 text-purple-600 dark:text-purple-500" />
+            </TooltipButton>
+
+            <TooltipButton
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              disabled={pod.phase !== "Running"}
+              asChild
+              tooltipContent="查看资源监控"
+            >
+              <a
+                target="_blank"
+                rel="noopener noreferrer"
+                href={getPodMonitorUrl(pod)}
+                className="size-9 p-0"
               >
-                <TerminalIcon className="text-primary" />
-                网页终端
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={pod.phase !== "Running"}
-                onClick={() => {
-                  setShowIngress({
-                    namespace: pod.namespace,
-                    name: pod.name,
-                  });
-                }}
-              >
-                <EthernetPort className="text-purple-600 dark:text-purple-500" />
-                外部访问
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild disabled={pod.phase !== "Running"}>
-                <a
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  href={getPodMonitorUrl(pod)}
-                  className="w-full"
-                >
-                  <GaugeIcon className="text-green-600 dark:text-green-500" />
-                  资源监控
-                </a>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  setShowLog({
-                    namespace: pod.namespace,
-                    name: pod.name,
-                  });
-                }}
-              >
-                <LogsIcon className="text-orange-600 dark:text-orange-500" />
-                日志诊断
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <GaugeIcon className="size-4 text-green-600 dark:text-green-500" />
+              </a>
+            </TooltipButton>
+
+            <TooltipButton
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => {
+                setShowLog({
+                  namespace: pod.namespace,
+                  name: pod.name,
+                });
+              }}
+              tooltipContent="查看容器日志"
+            >
+              <LogsIcon className="size-4 text-orange-600 dark:text-orange-500" />
+            </TooltipButton>
+          </div>
         );
       },
     },

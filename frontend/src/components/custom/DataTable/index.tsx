@@ -1,7 +1,6 @@
 import {
   ColumnDef,
   ColumnFiltersState,
-  PaginationState,
   SortingState,
   VisibilityState,
   flexRender,
@@ -31,6 +30,7 @@ import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
 import { Checkbox } from "@/components/ui/checkbox";
 import { GridIcon } from "lucide-react";
 import PageTitle from "@/components/layout/PageTitle";
+import { usePaginationWithStorage } from "@/hooks/usePaginationWithStorage";
 
 interface DataTableProps<TData, TValue>
   extends React.HTMLAttributes<HTMLDivElement> {
@@ -64,10 +64,7 @@ export function DataTable<TData, TValue>({
     minute: "2-digit",
     second: "2-digit",
   });
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 10,
-  });
+  const [pagination, setPagination] = usePaginationWithStorage(info?.title);
 
   const data = useMemo(() => {
     if (!queryData || isLoading) return [];

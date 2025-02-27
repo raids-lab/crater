@@ -151,7 +151,7 @@ type FormSchema = z.infer<typeof formSchema>;
 export const Component = () => {
   const [dataMountOpen, setDataMountOpen] = useState<string>(DataMountCard);
   const [envOpen, setEnvOpen] = useState<string>();
-  const [otherOpen, setOtherOpen] = useState<string>();
+  const [otherOpen, setOtherOpen] = useState<string>(OtherCard);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAtomValue(globalUserInfo);
