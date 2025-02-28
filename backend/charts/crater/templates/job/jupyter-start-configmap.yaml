@@ -40,4 +40,6 @@ data:
             PYTHONUSERBASE=/usr/local
         fi
     fi
+    # Run hooks
+    source /usr/local/bin/run-hooks.sh /usr/local/bin/before-notebook.d || true
     exec sudo --preserve-env --set-home --user "${NB_USER}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" PATH="${PATH}" PYTHONPATH="${PYTHONPATH:-}" PYTHONUSERBASE="${PYTHONUSERBASE}" "$@"
