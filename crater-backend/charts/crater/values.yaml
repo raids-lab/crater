@@ -2,12 +2,12 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "af09a656"
+      tag: "bd756e76"
       pullPolicy: "IfNotPresent"
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "d5356846"
+      tag: "6268df29"
       pullPolicy: "IfNotPresent"
   storage:
     image:
