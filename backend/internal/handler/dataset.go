@@ -48,6 +48,8 @@ func (mgr *DatasetMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.POST("/cancelshare/queue", mgr.CancelShareDatasetWithQueue)
 	g.POST("/rename", mgr.RemaneDatset)
 	g.GET("/detail/:datasetId", mgr.GetDatasetByID)
+	g.POST("/updateextra", mgr.UpdateExtraDataset)
+	g.POST("/updatedescribe", mgr.UpdateDescribe)
 }
 
 func (mgr *DatasetMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -758,6 +760,8 @@ type RenameReq struct {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/rename [post]
+//
+//nolint:dupl // ignore服务于不同的功能，后期如果集成会进行重构
 func (mgr *DatasetMgr) RemaneDatset(c *gin.Context) {
 	token := util.GetToken(c)
 	var req RenameReq
@@ -781,6 +785,96 @@ func (mgr *DatasetMgr) RemaneDatset(c *gin.Context) {
 		return
 	}
 	resputil.Success(c, "Successfully rename dataset")
+}
+
+type UpdateextraReq struct {
+	DatasetID uint     `json:"datasetID" binding:"required"`
+	Tags      []string `json:"tags" `
+	WebURL    string   `json:"weburl"`
+}
+
+// UpdateExtraDatset godoc
+// @Summary 数据集额外信息更新
+// @Description 数据集额外信息更新
+// @Tags Dataset
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param req body UpdateextraReq true "参数描述"
+// @Success 200 {object} resputil.Response[string] "成功返回值描述"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/dataset/updateextra [post]
+func (mgr *DatasetMgr) UpdateExtraDataset(c *gin.Context) {
+	token := util.GetToken(c)
+	var req UpdateextraReq
+	var newExtra model.Extracontent
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+	newExtra.Tags = req.Tags
+	newExtra.WebURL = &req.WebURL
+	d := query.Dataset
+	dataset, err := d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).First()
+	if err != nil {
+		resputil.Error(c, "this dataset not exist", resputil.InvalidRequest)
+		return
+	}
+	if dataset.UserID != token.UserID && token.RolePlatform != model.RoleAdmin {
+		resputil.Error(c, "you has no permission to update extra", resputil.InvalidRequest)
+		return
+	}
+	_, err = d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).Update(d.Extra, newExtra)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to update dataset: %v", err), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, "Successfully update dataset extra")
+}
+
+type UpdateDescribeReq struct {
+	DatasetID uint   `json:"datasetID" binding:"required"`
+	Describe  string `json:"describe" binding:"required"`
+}
+
+// UpdateDescribe godoc
+// @Summary 数据集描述更新
+// @Description 数据集描述更新
+// @Tags Dataset
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param req body UpdateDescribeReq true "参数描述"
+// @Success 200 {object} resputil.Response[string] "成功返回值描述"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/dataset/updatedescribe [post]
+//
+//nolint:dupl // ignore服务于不同的功能，后期如果集成会进行重构
+func (mgr *DatasetMgr) UpdateDescribe(c *gin.Context) {
+	token := util.GetToken(c)
+	var req UpdateDescribeReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+	d := query.Dataset
+	dataset, err := d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).First()
+	if err != nil {
+		resputil.Error(c, "this dataset not exist", resputil.InvalidRequest)
+		return
+	}
+	if dataset.UserID != token.UserID && token.RolePlatform != model.RoleAdmin {
+		resputil.Error(c, "you has no permission to update describe", resputil.InvalidRequest)
+		return
+	}
+	_, err = d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).Update(d.Describe, req.Describe)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to update dataset: %v", err), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, "Successfully update dataset describe")
 }
 
 type DatasetGetReq struct {

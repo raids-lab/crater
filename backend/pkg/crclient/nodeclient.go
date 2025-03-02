@@ -31,16 +31,61 @@ type NodeClient struct {
 	}
 	return false
 }*/
+const (
+	StatusFalse = "false"
+	StatusTrue  = "true"
+)
+
 func isNodeReady(node *corev1.Node) string {
 	if node.Spec.Unschedulable {
 		return "Unschedulable"
 	}
+	// 2. 初始化状态变量
+	var (
+		isReady          bool   // 节点是否就绪
+		diskPressure     bool   // 磁盘压力
+		memoryPressure   bool   // 内存压力
+		pidPressure      bool   // PID压力
+		networkAvailable = true // 网络是否可用（默认假设可用）
+	)
+
+	// 3. 遍历所有节点条件，提取关键状态
 	for _, condition := range node.Status.Conditions {
-		if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
-			return "true"
+		switch condition.Type {
+		case corev1.NodeReady:
+			isReady = (condition.Status == corev1.ConditionTrue)
+		case corev1.NodeDiskPressure:
+			diskPressure = (condition.Status == corev1.ConditionTrue)
+		case corev1.NodeMemoryPressure:
+			memoryPressure = (condition.Status == corev1.ConditionTrue)
+		case corev1.NodePIDPressure:
+			pidPressure = (condition.Status == corev1.ConditionTrue)
+		case corev1.NodeNetworkUnavailable:
+			networkAvailable = (condition.Status == corev1.ConditionFalse)
 		}
 	}
-	return "false"
+
+	// 4. 节点未就绪（次高优先级）
+	if !isReady {
+		return StatusFalse
+	}
+
+	// 5. 按优先级检查压力条件（从高到低）
+	if diskPressure {
+		return StatusFalse // 磁盘压力可能导致Pod驱逐失败"DiskPressure"
+	}
+	if memoryPressure {
+		return StatusFalse // 内存不足易触发OOM"MemoryPressure"
+	}
+	if pidPressure {
+		return StatusFalse // PID耗尽会阻止新进程创建"PIDPressure"
+	}
+	if !networkAvailable {
+		return StatusFalse // 网络问题影响Pod通信"NetworkUnavailable"
+	}
+
+	// 6. 所有条件正常
+	return StatusTrue
 }
 
 // taintsToString将节点的taint转化成字符串
