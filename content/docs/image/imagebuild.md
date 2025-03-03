@@ -1,57 +1,77 @@
----
-title: 镜像制作
-description: 这一页的内容已过时，请等待开发人员维护。
----
+# 镜像制作
 
-## 点击“制作镜像”按钮
+为了方便用户定制自己的镜像，我们提供了镜像制作功能，用户可以通过软件包或者 Dockerfile 来制作镜像。
 
-![alt text](./img/imagebuild_button.png)
+## 进入镜像制作页面
 
-## 填写镜像基础信息
+您可以通过点击侧边栏“数据与镜像”分类中的“镜像管理”菜单中的“镜像制作”，来进入到镜像制作页面。
 
-![alt text](./img/basic_info.png)
+![alt text](img/imagebuild-homepage.png)
 
-## 选择镜像构建方式
+进入页面后，您可以在页面上方看到您使用镜像制作功能制作的镜像总数，以及您 Harbor 镜像仓库的存储用量和限额，同时还能够看到您的 Harbor 项目名称，您可以在 Harbor 的对应项目中找到您制作的镜像。
 
-![alt text](./img/build_type.png)
+在图片所展示的例子中，由于该用户曾直接上传了本地制作好的镜像，而并非通过“镜像制作”功能制作镜像，因此虽然镜像此处总数为零，但是存储用量非零。这部分的教程请参阅“上传本地镜像”。
 
-### 1. 对于 Dockerfile 的构建方式：
+上方最右侧的“获取初始凭据”按钮，用于获取 Harbor 的用户名和密码，使您可以直接登录 Harbor 仓库，方便您手动上传镜像或者查看 Harbor 仓库中的镜像。但需要注意的是，再次点击该按钮会重置您的密码。
 
-1. 需要提供完整的 Dockerfile，如：
+## 选择镜像制作方式
 
-```dockerfile
-# 使用ubuntu作为基础镜像
-FROM crater-harbor.act.buaa.edu.cn/docker.io/library/ubuntu:latest
-# 安装Python3和pip3
-RUN apt  update \
-    &&  apt -y install python3
+目前我们提供两种制作镜像的方式，一种是基于软件包的构建，另一种是基于 Dockerfile 的构建。
 
-# 设置工作目录
-WORKDIR /app
-# 容器启动时执行的命令，可以根据需要修改
-CMD ["bash"]
+对于基于软件包的构建方式，您可以提供需要安装的 APT 包和 Python 依赖，据此创建新的镜像；而对于基于 Dockerfile 的构建方式，则需要您提供完整的 Dockerfile。
+
+您可以通过如图所示的下拉按钮选择您期望的构建方式，然后点击按钮呼出构建表单。
+
+![alt text](img/imagebuild-dropdown.png)
+
+### 1. 基于软件包构建
+
+基于软件包的构建需要您填写一个表单，其中，您必须要选择一个基础镜像，同时必须为镜像提供一个简短的描述，将作为镜像的标识展示。而 APT 软件包和 Python 依赖则可以留空，如果您需要安装软件包，则可以填写软件包名称，多个软件包之间用空格隔开。例如，如果您需要安装 curl 和 tree ，则可以填写 `curl tree`。
+
+![alt text](img/imagebuild-package.png)
+
+如果您计划运行的项目中包含 requirements.txt 文件，您可以将其内容拷贝至 Python 依赖处进行安装，但需要注意的是，pip 可能会在解析依赖时遇到无法解决的问题，为了避免镜像构建失败，您可以先尝试在容器中手动安装依赖尝试，再根据安装结果填写依赖。上图是一个表单填写的例子。在完成表单之后，您可以点击表单右下角的“开始制作”来启动镜像制作。
+
+### 2. 基于 Dockerfile 构建
+
+如果您选择了基于 Dockerfile 的构建方式，则您只需要填写一个镜像描述和完整的 Dockerfile，这两项均为必填项，一个可能的示例如下图所示。
+
+![alt text](img/imagebuild-dockerfile.png)
+
+这里使用的示例 Dockerfile 见下。
+
+```Dockerfile
+FROM gpu-harbor.act.buaa.edu.cn/user-liuyizhou/nvidia-pytorch:24.12-v1.2.1
+
+USER root
+
+RUN pip install onnxruntime-gpu && \
+    echo -e '#!/bin/bash\nunzip -o /home/$NB_USER/workspaces/test.zip -d /workspace/test' >> /usr/local/bin/before-notebook.d/prepare_workspace.sh && \
+    chmod +x /usr/local/bin/before-notebook.d/prepare_workspace.sh
 ```
 
-2. 在选择镜像（FROM 语句）时，最好将镜像名加上`crater-harbor.act.buaa.edu.cn`前缀，走实验室 harbor 代理
-3. 将完整的 Dockerfile 输入即可
+您可以通过点击表单右下角的“开始制作”来启动镜像制作。
 
-![alt text](./img/dockerfile_input.png)
+## 查看镜像
 
-### 2. 对于代码仓库的构建方式：
+在您点击“开始制作”之后，您将能够在页面下方的列表中看到您提交制作的镜像，初始的状态应为“等待中”。
 
-1. Git 仓库地址选择 HTTPS 的链接，复制
+![alt text](img/imagebuild-result.png)
 
-![alt text](./img/https_link.png)
+您可以通过点击镜像的描述来查看详细信息，此时您将能够在“构建日志”选项卡下看到镜像构建的详细日志，方便您排查可能出现的问题。
 
-2. 在 Git 仓库中生成项目的 Access Token
+![alt text](img/imagebuild-log.png)
 
-![alt text](./img/accesstoken.png)
+另外，您也可以切换标签页至“Dockerfile”，以查看系统通过表单为您生成或是您填写的 Dockerfile。
 
-3. 生成最小权限的 Access Token
+![alt text](img/imagebuild-dockerfile-show.png)
 
-![alt text](./img/generate_accesstoken.png)
+最后，如果您的镜像构建成功，则您能够在该页面看到镜像的状态变为“成功”，并且能够看到制作完成的镜像大小。请注意，由于 Docker 使用的分层存储机制，实际的存储用量可能会远小于各镜像的大小总和。同时，您也能够在“镜像列表”中看到您刚刚制作的类型为“Custom”的镜像，您将可以用它来启动“批处理作业”或“交互式作业”。
 
-4. 点击`Create project access token`，复制
-5. 将上述获得的 Git 仓库地址和 Access Token 输入即可
+![alt text](img/imagebuild-list.png)
 
-![alt text](./img/input_accesstoken.png)
+## 导入和导出配置
+
+在填写构建的表单时，您也可以将您的表单导出为 JSON 文件，以便于在下次需要它时从文件中导入，进行复用或是进一步的修改等。
+
+![alt text](img/imagebuild-save.png)
