@@ -134,23 +134,22 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
         >
           {row.getValue("role")}
         </Badge>
-        {row.original.podCount && (
-          <Tooltip>
-            <TooltipTrigger
-              className={cn(
-                "flex size-4 items-center justify-center rounded-full bg-slate-600 text-xs text-white",
-                {
-                  "bg-primary": row.original.podCount > 0,
-                },
-              )}
-            >
-              {row.original.podCount}
-            </TooltipTrigger>
-            <TooltipContent className="border bg-muted font-mono text-muted-foreground">
-              节点有 {row.original.podCount} 个 Pod 正在运行
-            </TooltipContent>
-          </Tooltip>
-        )}
+        <Tooltip>
+          <TooltipTrigger
+            className={cn(
+              "flex size-4 items-center justify-center rounded-full bg-slate-600 text-xs text-white",
+              {
+                "bg-primary":
+                  row.original.podCount && row.original.podCount > 0,
+              },
+            )}
+          >
+            {row.original.podCount}
+          </TooltipTrigger>
+          <TooltipContent className="border bg-muted font-mono text-muted-foreground">
+            节点有 {row.original.podCount} 个 Pod 正在运行
+          </TooltipContent>
+        </Tooltip>
       </div>
     ),
   },
