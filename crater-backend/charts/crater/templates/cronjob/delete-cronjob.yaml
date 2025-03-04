@@ -1,8 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cleanup-config
+  namespace: crater
+data:
+  USERNAME: "***REMOVED***"
+  PASSWORD: "***REMOVED***"
+  BATCH_DAYS: "5"
+  INTERACTIVE_DAYS: "5"
+  TIME_RANGE: "90"
+  WAIT_TIME: "30"
+  UTIL: "0"
+  HOST: ***REMOVED***
+---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: delete-operation-job
-  namespace: crater-workspace
+  namespace: crater
 spec:
   schedule: 0,30 * * * *
   successfulJobsHistoryLimit: 3
@@ -12,13 +27,11 @@ spec:
       template:
         spec:
           containers:
-          - name: curl-container
-            image: ***REMOVED***/docker.io/curlimages/curl:latest
-            command:
-            - /bin/sh
-            - -c
-            - >
-              curl -X DELETE "https://***REMOVED***/api/operations/auto?timeRange=120&waitTime=30&util=0"
+          - name: cleanup
+            image: ***REMOVED***/clean:v3
+            envFrom:
+            - configMapRef:
+                name: cleanup-config
           restartPolicy: OnFailure
 
 
