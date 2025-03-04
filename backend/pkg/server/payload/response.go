@@ -27,6 +27,7 @@ type ClusterNodeInfo struct {
 	Capacity corev1.ResourceList `json:"capacity"`
 	// Alocated v1.ResourceList   `json:"allocated"`
 	Allocated AllocatedInfo `json:"allocated"`
+	PodCount  int           `json:"podCount"`
 }
 
 type Pod struct {
