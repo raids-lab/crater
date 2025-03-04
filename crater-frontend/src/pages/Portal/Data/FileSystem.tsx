@@ -29,7 +29,6 @@ import {
   Folder,
   FolderPlusIcon,
   Globe,
-  LogInIcon,
   Trash2,
 } from "lucide-react";
 import { useSetAtom } from "jotai";
@@ -44,13 +43,6 @@ import {
 } from "@/services/api/file";
 import { ACCESS_TOKEN_KEY } from "@/utils/store";
 import { showErrorToast } from "@/utils/toast";
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card";
-import { CardTitle } from "@/components/ui-custom/card";
 import { getFolderTitle } from "@/components/file/LazyFileTree";
 import {
   AlertDialog,
@@ -64,18 +56,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
 import FileUpload from "@/components/file/FileUpload";
-
-const getFolderDescription = (folder: string) => {
-  // public: 公共空间
-  // q-*: 账户共享空间
-  // u-*: 用户私有空间
-  if (folder === "sugon-gpu-incoming") {
-    return "平台上所有用户都可以访问，如需获取上传权限，请联系管理员。";
-  } else if (folder.startsWith("q-")) {
-    return "账户共享空间，仅限账户内用户访问，如需获取上传权限，请联系账户管理员。";
-  }
-  return "个人空间，仅限当前用户访问，拥有完全的读写权限。";
-};
+import FolderNavigation from "./FolderNavigation";
 
 const getHeader = (key: string): string => {
   switch (key) {
@@ -548,7 +529,7 @@ export const Component: FC = () => {
         },
       },
     ],
-    [navigate, deleteFile, isRoot, path, pathname],
+    [navigate, pathname, path, isRoot, deleteFile, moveFile],
   );
 
   const refInput2 = useRef<HTMLInputElement>(null);
@@ -580,15 +561,6 @@ export const Component: FC = () => {
     },
   });
 
-  const handleTitleNavigation = (name: string) => {
-    if (name == "sugon-gpu-incoming") {
-      navigate(pathname + "/public");
-    } else if (name.startsWith("q-")) {
-      navigate(`${pathname}/account/${name}`);
-    } else {
-      navigate(`${pathname}/user/${name}`);
-    }
-  };
   const handleReturnNavigation = (backpath: string) => {
     if (backpath == "/portal/data/filesystem/user") {
       navigate("/portal/data/filesystem");
@@ -602,27 +574,7 @@ export const Component: FC = () => {
   return (
     <>
       {isRoot ? (
-        <div className="grid h-[calc(100vh_-_100px)] gap-4 md:gap-x-6 md:gap-y-8 lg:col-span-3 lg:grid-cols-3 lg:content-center">
-          {query.data?.map((r) => (
-            <Card
-              key={r.name}
-              className="flex flex-col items-start justify-between lg:h-80"
-            >
-              <CardHeader>
-                <CardTitle>{getFolderTitle(r.name)}</CardTitle>
-                <CardDescription className="text-balance leading-relaxed">
-                  {getFolderDescription(r.name)}
-                </CardDescription>
-              </CardHeader>
-              <CardFooter>
-                <Button onClick={() => handleTitleNavigation(r.name)}>
-                  <LogInIcon className="mr-2 size-4" />
-                  查看{getFolderTitle(r.name)}
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+        <FolderNavigation data={query.data}></FolderNavigation>
       ) : (
         <DataTable
           query={query}

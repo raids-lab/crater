@@ -17,6 +17,7 @@ export interface IClusterNodeInfo {
   taint: string;
   capacity: K8sResources;
   allocated: K8sResources;
+  podCount: number;
 }
 
 export interface IOwnerReference {

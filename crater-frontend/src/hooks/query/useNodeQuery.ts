@@ -49,6 +49,7 @@ const useNodeQuery = (onlyWorker?: boolean) => {
             taint: x.taint,
             role: x.role,
             labels: x.labels,
+            podCount: x.podCount,
           };
 
           if (cpuCapacity !== undefined && cpuAllocated !== undefined) {
