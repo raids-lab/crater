@@ -13,6 +13,8 @@ import { LogInIcon, Folder, FolderOpen, ChevronRight } from "lucide-react";
 import { getFolderTitle } from "@/components/file/LazyFileTree";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FileItem } from "@/services/api/file";
+import { cn } from "@/lib/utils";
+import PageTitle from "@/components/layout/PageTitle";
 
 const getFolderDescription = (folder: string) => {
   // public: 公共空间
@@ -73,15 +75,14 @@ export default function FolderNavigation({ data }: { data?: FileItem[] }) {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8 text-center">
-        <h1 className="mb-3 text-3xl font-bold tracking-tight">我的文件夹</h1>
-        <p className="mx-auto max-w-2xl text-muted-foreground">
-          选择一个文件夹以查看其内容。这些文件夹包含了您所有的重要资料。
-        </p>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
+    <div>
+      <PageTitle title="文件系统" description="选择一个文件夹以查看其内容。" />
+      <div
+        className={cn("grid gap-6 md:gap-8", {
+          "md:grid-cols-2": data && data.length === 2,
+          "md:grid-cols-3": data && data.length === 3,
+        })}
+      >
         {data?.map((r, index) => {
           const colors = getFolderColor(index);
 
@@ -143,9 +144,7 @@ export default function FolderNavigation({ data }: { data?: FileItem[] }) {
         <div className="py-12 text-center">
           <Folder className="mx-auto mb-4 size-12 text-muted-foreground/50" />
           <h3 className="mb-2 text-xl font-medium">没有找到文件夹</h3>
-          <p className="text-muted-foreground">
-            您当前没有任何文件夹。请创建一个新文件夹开始使用。
-          </p>
+          <p className="text-muted-foreground">您当前没有任何文件夹。</p>
         </div>
       )}
     </div>
