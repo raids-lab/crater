@@ -31,6 +31,7 @@ export interface ClusterNodeInfo {
   memory?: ResourceInfo;
   gpu?: ResourceInfo;
   labels: Record<string, string>;
+  podCount?: number;
 }
 
 export const toolbarConfig: DataTableToolbarConfig = {
@@ -126,15 +127,33 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
       <DataTableColumnHeader column={column} title={"角色"} />
     ),
     cell: ({ row }) => (
-      <Badge
-        variant={row.getValue("role") === "master" ? "default" : "secondary"}
-        className="font-mono font-normal"
-      >
-        {row.getValue("role")}
-      </Badge>
+      <div className="flex flex-row items-center justify-start gap-1">
+        <Badge
+          variant={row.getValue("role") === "master" ? "default" : "secondary"}
+          className="font-mono font-normal"
+        >
+          {row.getValue("role")}
+        </Badge>
+        {row.original.podCount && (
+          <Tooltip>
+            <TooltipTrigger
+              className={cn(
+                "flex size-4 items-center justify-center rounded-full bg-slate-600 text-xs text-white",
+                {
+                  "bg-primary": row.original.podCount > 0,
+                },
+              )}
+            >
+              {row.original.podCount}
+            </TooltipTrigger>
+            <TooltipContent className="border bg-muted font-mono text-muted-foreground">
+              节点有 {row.original.podCount} 个 Pod 正在运行
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </div>
     ),
   },
-
   {
     accessorKey: "cpu",
     header: ({ column }) => (
@@ -178,7 +197,7 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
   {
     accessorKey: "labels",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"标签"} />
+      <DataTableColumnHeader column={column} title={"GPU 标签"} />
     ),
     cell: ({ row }) => {
       const labels = row.original.labels;
