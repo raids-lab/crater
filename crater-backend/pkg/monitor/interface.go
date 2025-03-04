@@ -19,6 +19,9 @@ type PrometheusInterface interface {
 	// QueryNodeAllocatedMemory queries the allocated memory of each node
 	QueryNodeAllocatedMemory() map[string]int
 
+	// QueryNodeRunningCount queries the running pod of each node
+	QueryNodeRunningPodCount() map[string]int
+
 	// QueryNodeAllocatedGPU queries the allocated GPU of each node
 	QueryNodeAllocatedGPU() map[string]int
 

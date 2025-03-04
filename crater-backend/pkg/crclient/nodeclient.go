@@ -160,6 +160,7 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 	CPUMap := nc.PrometheusClient.QueryNodeAllocatedCPU()
 	MemMap := nc.PrometheusClient.QueryNodeAllocatedMemory()
 	GPUMap := nc.PrometheusClient.QueryNodeAllocatedGPU()
+	podCountMap := nc.PrometheusClient.QueryNodeRunningPodCount()
 
 	// Loop through each node and print allocated resources
 	for i := range nodes.Items {
@@ -174,6 +175,10 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 		if gpuCount > 0 {
 			// 将int类型的gpu_count转换为resource.Quantity类型
 			capacity_["nvidia.com/gpu"] = *resource.NewQuantity(int64(gpuCount), resource.DecimalSI)
+		}
+		podCount := 0
+		if v, ok := podCountMap[node.Name]; ok {
+			podCount = v
 		}
 		// TODO: remove
 		if node.Name == "zjlab-gpu1" || node.Name == "zjlab-gpu2" {
@@ -190,6 +195,7 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 			IsReady:   isNodeReady(node),
 			Capacity:  node.Status.Capacity,
 			Allocated: allocatedInfo,
+			PodCount:  podCount,
 		}
 	}
 

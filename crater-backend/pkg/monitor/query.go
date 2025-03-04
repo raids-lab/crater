@@ -104,6 +104,20 @@ func (p *PrometheusClient) QueryNodeAllocatedGPU() map[string]int {
 	return data
 }
 
+// QueryNodeRunningPodCount returns the running pod of each node
+func (p *PrometheusClient) QueryNodeRunningPodCount() map[string]int {
+	query := `count by (node) (
+	    kube_pod_status_phase{phase="Running"} * 
+		on(pod) group_left(node, created_by_kind) kube_pod_info{namespace="crater-workspace", created_by_kind="Job"} == 1
+	)`
+	data, err := p.intMapQuery(query, "node")
+	if err != nil {
+		logutils.Log.Errorf("QueryNodeRunningPodCount error: %v", err)
+		return nil
+	}
+	return data
+}
+
 func (p *PrometheusClient) QueryPodCPUUsage(podName string) float32 {
 	query := fmt.Sprintf("sum(rate(container_cpu_usage_seconds_total{pod=%q}[5m]))", podName)
 	data, err := p.float32MapQuery(query, "")
