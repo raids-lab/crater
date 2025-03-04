@@ -137,17 +137,17 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
         <Tooltip>
           <TooltipTrigger
             className={cn(
-              "flex size-4 items-center justify-center rounded-full bg-slate-600 text-xs text-white",
+              "flex size-4 items-center justify-center rounded-full bg-secondary text-xs text-secondary-foreground",
               {
-                "bg-primary":
+                "bg-orange-600/20 text-orange-600 dark:text-orange-400":
                   row.original.podCount && row.original.podCount > 0,
               },
             )}
           >
             {row.original.podCount}
           </TooltipTrigger>
-          <TooltipContent className="border bg-muted font-mono text-muted-foreground">
-            节点有 {row.original.podCount} 个 Pod 正在运行
+          <TooltipContent className="border bg-muted text-muted-foreground">
+            {row.original.podCount} 个作业正在运行
           </TooltipContent>
         </Tooltip>
       </div>
