@@ -18,11 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  apiJTaskImageList,
-  apiPytorchCreate,
-  JobType,
-} from "@/services/api/vcjob";
+import { apiPytorchCreate, JobType } from "@/services/api/vcjob";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -54,6 +50,8 @@ import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
 import { Textarea } from "@/components/ui/textarea";
 import { apiGetDataset } from "@/services/api/dataset";
+import ImageItem from "@/components/form/ImageItem";
+import useImageQuery from "@/hooks/query/useImageQuery";
 
 const VERSION = "20240528";
 const JOB_TYPE = "tensorflow";
@@ -155,16 +153,7 @@ export const Component = () => {
         }));
     },
   });
-  const imagesInfo = useQuery({
-    queryKey: ["jupyter", "images"],
-    queryFn: () => apiJTaskImageList(JobType.Pytorch),
-    select: (res) => {
-      return res.data.data.images.map((item) => ({
-        value: item.imageLink,
-        label: item.imageLink,
-      }));
-    },
-  });
+  const { data: images } = useImageQuery(JobType.Pytorch);
   const datasetInfo = useQuery({
     queryKey: ["datsets"],
     queryFn: () => apiGetDataset(),
@@ -516,9 +505,10 @@ export const Component = () => {
                       </FormLabel>
                       <FormControl>
                         <Combobox
-                          items={imagesInfo.data ?? []}
+                          items={images ?? []}
                           current={field.value}
                           handleSelect={(value) => field.onChange(value)}
+                          renderLabel={(item) => <ImageItem item={item} />}
                           formTitle="镜像"
                         />
                       </FormControl>
@@ -747,9 +737,10 @@ export const Component = () => {
                       </FormLabel>
                       <FormControl>
                         <Combobox
-                          items={imagesInfo.data ?? []}
+                          items={images ?? []}
                           current={field.value}
                           handleSelect={(value) => field.onChange(value)}
+                          renderLabel={(item) => <ImageItem item={item} />}
                           formTitle="镜像"
                         />
                       </FormControl>

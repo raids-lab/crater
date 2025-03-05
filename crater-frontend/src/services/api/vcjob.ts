@@ -9,13 +9,13 @@ const JOB_URL = store.get(globalJobUrl);
 
 export enum JobType {
   Jupyter = "jupyter",
-  WebIDE = "webide",
   Pytorch = "pytorch",
   Tensorflow = "tensorflow",
+  Custom = "custom",
+  WebIDE = "webide",
   KubeRay = "kuberay",
   DeepSpeed = "deepspeed",
   OpenMPI = "openmpi",
-  Custom = "custom",
 }
 
 export interface IJobInfo {
