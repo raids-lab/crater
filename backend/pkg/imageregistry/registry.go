@@ -185,6 +185,9 @@ func (r *ImageRegistry) DeleteUser(c context.Context, userName string) error {
 
 func (r *ImageRegistry) GetProjectDetail(c context.Context, userName string) (PorjetcDetail, error) {
 	projectName := fmt.Sprintf("user-%s", userName)
+	if exist, _ := r.harborClient.ProjectExists(c, projectName); !exist {
+		return PorjetcDetail{ProjectName: projectName, UsedSize: 0, TotalSize: DefaultQuotaSize}, nil
+	}
 	used, total, err := r.GetProjectQuota(c, projectName)
 	if err != nil {
 		return PorjetcDetail{}, err

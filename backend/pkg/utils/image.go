@@ -14,12 +14,24 @@ import (
 )
 
 const (
-	imageLinkRegExp = `([^/]+/){2}([^:]+):([^/]+)$`
-	parts           = 4
+	splitLinkRegExp  = `^([^/]+)/([^/]+)/(.+):([^/:]+)$`
+	getNameTagRegExp = `([^/]+/){2}([^:]+):([^/]+)$`
+	splitLinkParts   = 5
+	parts            = 4
 )
 
+func SplitImageLink(imageLink string) (ip, project, repository, tag string, err error) {
+	re := regexp.MustCompile(splitLinkRegExp)
+	matches := re.FindStringSubmatch(imageLink)
+	if len(matches) != splitLinkParts {
+		return "", "", "", "", fmt.Errorf("invalid image link: %s", imageLink)
+	}
+	ip, project, repository, tag = matches[1], matches[2], matches[3], matches[4]
+	return ip, project, repository, tag, nil
+}
+
 func GetImageNameAndTag(imageLink string) (name, tag string, err error) {
-	re := regexp.MustCompile(imageLinkRegExp)
+	re := regexp.MustCompile(getNameTagRegExp)
 	matches := re.FindStringSubmatch(imageLink)
 	if len(matches) != parts {
 		return "", "", fmt.Errorf("invalid image link: %s", imageLink)

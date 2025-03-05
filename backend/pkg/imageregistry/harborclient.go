@@ -9,13 +9,6 @@ import (
 	"github.com/raids-lab/crater/pkg/logutils"
 )
 
-// const (
-// 	RegistryServer  = "***REMOVED***"
-// 	RegistryUser    = "***REMOVED***"
-// 	RegistryPass    = "***REMOVED***" //nolint:gosec // 暂时硬编码这四个参数
-// 	RegistryProject = "crater-images"
-// )
-
 type AuthInfo struct {
 	RegistryServer  string
 	RegistryUser    string
