@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	imrocreq "github.com/imroc/req/v3"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/raids-lab/crater/dao/model"
@@ -33,6 +35,7 @@ type ImagePackMgr struct {
 	imagepackClient *crclient.ImagePackController
 	imagePacker     packer.ImagePackerInterface
 	imageRegistry   imageregistry.ImageRegistryInterface
+	req             *imrocreq.Client
 }
 
 func (mgr *ImagePackMgr) GetName() string { return mgr.name }
@@ -57,6 +60,10 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/podname", mgr.GetImagepackPodName)
 	g.POST("/credential", mgr.UserGetProjectCredential)
 	g.GET("/quota", mgr.UserGetProjectDetail)
+	g.POST("/valid", mgr.UserCheckLinkValidity)
+	g.POST("/description", mgr.UserChangeImageDescription)
+	g.POST("/delete", mgr.DeleteImageByIDList)
+	g.POST("/type", mgr.UserChangeImageTaskType)
 }
 
 func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -72,6 +79,7 @@ func NewImagePackMgr(conf *RegisterConfig) Manager {
 		imagepackClient: &crclient.ImagePackController{Client: conf.Client},
 		imagePacker:     conf.ImagePacker,
 		imageRegistry:   conf.ImageRegistry,
+		req:             imrocreq.C(),
 	}
 }
 
@@ -101,6 +109,10 @@ type (
 		ID uint `uri:"id" binding:"required"`
 	}
 
+	DeleteImageByIDListRequest struct {
+		IDList []uint `json:"idList" binding:"required"`
+	}
+
 	GetKanikoRequest struct {
 		ID uint `form:"id" binding:"required"`
 	}
@@ -120,30 +132,23 @@ type (
 	ChangeImagePublicStatusRequest struct {
 		ID uint `uri:"id" binding:"required"`
 	}
+
+	CheckLinkValidityRequest struct {
+		LinkPairs []ImageInfoLinkPair `json:"linkPairs"`
+	}
+
+	ChangeImageDescriptionRequest struct {
+		ID          uint   `json:"id"`
+		Description string `json:"description"`
+	}
+
+	ChangeImageTaskTypeRequest struct {
+		ID       uint          `json:"id"`
+		TaskType model.JobType `json:"taskType"`
+	}
 )
 
 type (
-	KanikoInfo struct {
-		ID          uint              `json:"ID"`
-		ImageLink   string            `json:"imageLink"`
-		Status      model.BuildStatus `json:"status"`
-		CreatedAt   time.Time         `json:"createdAt"`
-		Size        int64             `json:"size"`
-		Description string            `json:"description"`
-	}
-	ListKanikoResponse struct {
-		KanikoInfoList []KanikoInfo `json:"kanikoList"`
-	}
-
-	ImageInfo struct {
-		ID          uint          `json:"ID"`
-		ImageLink   string        `json:"imageLink"`
-		Description *string       `json:"description"`
-		CreatedAt   time.Time     `json:"createdAt"`
-		TaskType    model.JobType `json:"taskType"`
-		IsPublic    bool          `json:"isPublic"`
-		CreatorName string        `json:"creatorName"`
-	}
 	ListImageResponse struct {
 		ImageInfoList []ImageInfo `json:"imageList"`
 	}
@@ -179,6 +184,41 @@ type (
 		Quota   float64 `json:"quota"`
 		Project string  `json:"project"`
 		Total   int64   `json:"total"`
+	}
+
+	CheckLinkValidityResponse struct {
+		InvalidPairs []ImageInfoLinkPair `json:"linkPairs"`
+	}
+)
+
+type (
+	KanikoInfo struct {
+		ID          uint              `json:"ID"`
+		ImageLink   string            `json:"imageLink"`
+		Status      model.BuildStatus `json:"status"`
+		CreatedAt   time.Time         `json:"createdAt"`
+		Size        int64             `json:"size"`
+		Description string            `json:"description"`
+	}
+	ListKanikoResponse struct {
+		KanikoInfoList []KanikoInfo `json:"kanikoList"`
+	}
+
+	ImageInfo struct {
+		ID          uint          `json:"ID"`
+		ImageLink   string        `json:"imageLink"`
+		Description *string       `json:"description"`
+		CreatedAt   time.Time     `json:"createdAt"`
+		TaskType    model.JobType `json:"taskType"`
+		IsPublic    bool          `json:"isPublic"`
+		CreatorName string        `json:"creatorName"`
+	}
+
+	ImageInfoLinkPair struct {
+		ID          uint   `json:"id"`
+		ImageLink   string `json:"imageLink"`
+		Description string `json:"description"`
+		Creator     string `json:"creator"`
 	}
 )
 
@@ -594,7 +634,7 @@ func (mgr *ImagePackMgr) DeleteKanikoByID(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param ID body uint true "删除镜像的ID"
-// @Router /v1/images/image/{id} [POST]
+// @Router /v1/images/image/{id} [DELETE]
 func (mgr *ImagePackMgr) DeleteImageByID(c *gin.Context) {
 	var err error
 	var deleteImageRequest DeleteImageByIDRequest
@@ -610,6 +650,39 @@ func (mgr *ImagePackMgr) DeleteImageByID(c *gin.Context) {
 		resputil.Error(c, "failed to delete image", resputil.NotSpecified)
 	}
 	resputil.Success(c, "")
+}
+
+// DeleteImageByIDList godoc
+// @Summary 根据ID列表删除Image
+// @Description 根据ID列表的ID更新Image的状态为Deleted，起到删除的功能
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param ID body uint true "删除镜像的ID"
+// @Router /v1/images/delete [POST]
+func (mgr *ImagePackMgr) DeleteImageByIDList(c *gin.Context) {
+	var err error
+	var deleteImageListRequest DeleteImageByIDListRequest
+	if err = c.ShouldBindJSON(&deleteImageListRequest); err != nil {
+		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		return
+	}
+	imageIDList := deleteImageListRequest.IDList
+	flag := true
+	imageQuery := query.Image
+	for _, id := range imageIDList {
+		if _, err = imageQuery.WithContext(c).Where(imageQuery.ID.Eq(id)).Delete(); err != nil {
+			logutils.Log.Errorf("delete image entity failed! err:%v", err)
+			flag = false
+		}
+	}
+	if flag {
+		resputil.Success(c, "")
+	} else {
+		resputil.Error(c, "failed to delete image", resputil.NotSpecified)
+	}
 }
 
 // GetKanikoByID godoc
@@ -804,4 +877,104 @@ func (mgr *ImagePackMgr) UserGetProjectDetail(c *gin.Context) {
 		Project: detail.ProjectName,
 	}
 	resputil.Success(c, resp)
+}
+
+// UserCheckLinkValidity godoc
+// @Summary 检查镜像链接是否有效
+// @Description 通过获取的镜像链接列表，遍历其中的链接，检查是否有效
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Router /v1/images/valid [POST]
+func (mgr *ImagePackMgr) UserCheckLinkValidity(c *gin.Context) {
+	req := &CheckLinkValidityRequest{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		logutils.Log.Errorf("validate link pairs failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		return
+	}
+	invalidPairs := []ImageInfoLinkPair{}
+	for _, linkPair := range req.LinkPairs {
+		if !mgr.checkLinkValidity(linkPair.ImageLink) {
+			invalidPairs = append(invalidPairs, linkPair)
+		}
+	}
+	resp := CheckLinkValidityResponse{
+		InvalidPairs: invalidPairs,
+	}
+	fmt.Println(resp)
+	resputil.Success(c, resp)
+}
+
+func (mgr *ImagePackMgr) checkLinkValidity(link string) bool {
+	ip, project, repository, tag, err := utils.SplitImageLink(link)
+	if err != nil {
+		logutils.Log.Errorf("split image link failed, err %v", err)
+		return false
+	}
+	encodedRepo := url.PathEscape(repository)
+	encodedURL := fmt.Sprintf("https://%s/api/v2.0/projects/%s/repositories/%s/artifacts/%s", ip, project, encodedRepo, tag)
+	response, err := mgr.req.R().Get(encodedURL)
+	if err != nil {
+		logutils.Log.Errorf("http failure between checking link validity failed, err %v", err)
+		return false
+	}
+	return response.IsSuccessState()
+}
+
+// UserChangeImageDescription godoc
+// @Summary 更新镜像的描述
+// @Description 更新描述
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Router /v1/images/description [POST]
+func (mgr *ImagePackMgr) UserChangeImageDescription(c *gin.Context) {
+	token := util.GetToken(c)
+	req := &ChangeImageDescriptionRequest{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		logutils.Log.Errorf("validate description failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		return
+	}
+	imageQuery := query.Image
+	if _, err := imageQuery.WithContext(c).
+		Preload(query.Image.User).
+		Where(imageQuery.ID.Eq(req.ID)).
+		Where(imageQuery.UserID.Eq(token.UserID)).
+		Update(imageQuery.Description, req.Description); err != nil {
+		logutils.Log.Errorf("update image description failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, "update description failed", resputil.NotSpecified)
+	}
+	resputil.Success(c, "")
+}
+
+// UserChangeImageTaskType godoc
+// @Summary 更新镜像的任务类型
+// @Description 更新任务类型
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Router /v1/images/type [POST]
+func (mgr *ImagePackMgr) UserChangeImageTaskType(c *gin.Context) {
+	req := &ChangeImageTaskTypeRequest{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		logutils.Log.Errorf("validate task type failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		return
+	}
+	token := util.GetToken(c)
+	imageQuery := query.Image
+	if _, err := imageQuery.WithContext(c).
+		Preload(query.Image.User).
+		Where(imageQuery.ID.Eq(req.ID)).
+		Where(imageQuery.UserID.Eq(token.UserID)).
+		Update(imageQuery.TaskType, req.TaskType); err != nil {
+		logutils.Log.Errorf("update image task type failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, "update task type failed", resputil.NotSpecified)
+	}
+	resputil.Success(c, "")
 }
