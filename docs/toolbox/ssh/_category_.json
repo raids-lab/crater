@@ -1,0 +1,8 @@
+{
+  "label": "SSH 连接",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "description": "支持用户在创建 Jupyter 作业后，通过 VSCode 直接连接到容器环境，便于利用 VSCode 的代码补全、调试功能以及丰富的插件生态，从而提升开发效率与用户体验。"
+  }
+}
