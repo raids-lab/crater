@@ -172,6 +172,31 @@ export interface ImageUpload {
   taskType: JobType;
 }
 
+export interface UpdateDescription {
+  id: number;
+  description: string;
+}
+
+export interface UpdateTaskType {
+  id: number;
+  taskType: JobType;
+}
+
+export interface ImageLinkPair {
+  id: number;
+  imageLink: string;
+  description: string;
+  creator: string;
+}
+
+export interface ImageLinkPairs {
+  linkPairs: ImageLinkPair[];
+}
+
+export interface ImageIDList {
+  idList: number[];
+}
+
 export const ImageTaskType = {
   JupyterTask: 1, // Jupyter交互式任务
   WebIDETask: 2, // Web IDE任务
@@ -257,3 +282,18 @@ export const apiUserGetCredential = () =>
 
 export const apiUserGetQuota = () =>
   instance.get<IResponse<ProjectDetailResponse>>(`${VERSION}/images/quota`);
+
+export const apiUserChangeImageDescription = (data: UpdateDescription) =>
+  instance.post<IResponse<string>>(`${VERSION}/images/description`, data);
+
+export const apiUserChangeImageTaskType = (data: UpdateTaskType) =>
+  instance.post<IResponse<string>>(`${VERSION}/images/type`, data);
+
+export const apiUserCheckImageValid = (linkPairs: ImageLinkPairs) =>
+  instance.post<IResponse<ImageLinkPairs>>(
+    `${VERSION}/images/valid`,
+    linkPairs,
+  );
+
+export const apiUserDeleteImageList = (idList: number[]) =>
+  instance.post<IResponse<string>>(`${VERSION}/images/delete`, { idList });
