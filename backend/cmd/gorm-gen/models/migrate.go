@@ -14,6 +14,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/models"
+	"github.com/raids-lab/crater/pkg/monitor"
 )
 
 func main() {
@@ -89,6 +90,21 @@ func main() {
 					AlertEnabled bool `gorm:"type:boolean;default:true;comment:是否启用通知"`
 				}
 				return tx.Migrator().DropColumn(&Job{}, "AlertEnabled")
+			},
+		},
+		{
+			ID: "202503061740",
+			Migrate: func(tx *gorm.DB) error {
+				type Job struct {
+					ProfileData datatypes.JSONType[*monitor.ProfileData] `gorm:"comment:作业的性能数据"`
+				}
+				return tx.Migrator().AddColumn(&Job{}, "ProfileData")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Job struct {
+					ProfileData datatypes.JSONType[*monitor.ProfileData] `gorm:"comment:作业的性能数据"`
+				}
+				return tx.Migrator().DropColumn(&Job{}, "ProfileData")
 			},
 		},
 	})

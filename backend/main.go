@@ -87,8 +87,12 @@ func setupCRDManager(cfg *rest.Config, backendConfig *config.Config) (manager.Ma
 	return mgr, nil
 }
 
-func setupCustomCRDAddon(mgr manager.Manager, backendConfig *config.Config,
-	registerConfig *handler.RegisterConfig, stopCh context.Context) error {
+func setupCustomCRDAddon(
+	mgr manager.Manager,
+	backendConfig *config.Config,
+	registerConfig *handler.RegisterConfig,
+	stopCh context.Context,
+) error {
 	//-------aijob-------
 	var taskCtrl aitaskctl.TaskControllerInterface
 	if backendConfig.SchedulerFlags.AijobEn {
@@ -150,6 +154,7 @@ func setupCustomCRDAddon(mgr manager.Manager, backendConfig *config.Config,
 	}
 	registerConfig.ImagePacker = packer.GetImagePackerMgr(mgr.GetClient())
 	registerConfig.ImageRegistry = imageRegistry
+
 	//-------volcano-------
 	utilruntime.Must(scheduling.AddToScheme(mgr.GetScheme()))
 	utilruntime.Must(batch.AddToScheme(mgr.GetScheme()))
@@ -164,6 +169,7 @@ func setupCustomCRDAddon(mgr manager.Manager, backendConfig *config.Config,
 	vcjobReconciler := reconciler.NewVcJobReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
+		registerConfig.PrometheusClient,
 	)
 	err = vcjobReconciler.SetupWithManager(mgr)
 	if err != nil {
