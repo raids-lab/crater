@@ -27,6 +27,7 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/imageregistry"
+	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/packer"
 	"github.com/raids-lab/crater/pkg/utils"
 )
@@ -374,17 +375,18 @@ func convertJobResp(jobs []*model.Job) []JobResp {
 
 type (
 	JobDetailResp struct {
-		Name               string          `json:"name"`
-		Namespace          string          `json:"namespace"`
-		Username           string          `json:"username"`
-		JobName            string          `json:"jobName"`
-		JobType            model.JobType   `json:"jobType"`
-		Queue              string          `json:"queue"`
-		Resources          v1.ResourceList `json:"resources"`
-		Status             batch.JobPhase  `json:"status"`
-		CreationTimestamp  metav1.Time     `json:"createdAt"`
-		RunningTimestamp   metav1.Time     `json:"startedAt"`
-		CompletedTimestamp metav1.Time     `json:"completedAt"`
+		Name               string               `json:"name"`
+		Namespace          string               `json:"namespace"`
+		Username           string               `json:"username"`
+		JobName            string               `json:"jobName"`
+		JobType            model.JobType        `json:"jobType"`
+		Queue              string               `json:"queue"`
+		Resources          v1.ResourceList      `json:"resources"`
+		Status             batch.JobPhase       `json:"status"`
+		ProfileData        *monitor.ProfileData `json:"profileData"`
+		CreationTimestamp  metav1.Time          `json:"createdAt"`
+		RunningTimestamp   metav1.Time          `json:"startedAt"`
+		CompletedTimestamp metav1.Time          `json:"completedAt"`
 	}
 
 	// SSHPortData 定义 SSH 端口信息的结构体
@@ -439,6 +441,11 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		return
 	}
 
+	var profileData *monitor.ProfileData
+	if job.ProfileData != nil {
+		profileData = job.ProfileData.Data()
+	}
+
 	jobDetail := JobDetailResp{
 		Name:               job.Name,
 		Namespace:          job.Attributes.Data().Namespace,
@@ -448,6 +455,7 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		Queue:              job.Account.Nickname,
 		Status:             job.Status,
 		Resources:          job.Resources.Data(),
+		ProfileData:        profileData,
 		CreationTimestamp:  metav1.NewTime(job.CreationTimestamp),
 		RunningTimestamp:   metav1.NewTime(job.RunningTimestamp),
 		CompletedTimestamp: metav1.NewTime(job.CompletedTimestamp),
