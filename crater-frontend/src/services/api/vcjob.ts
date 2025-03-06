@@ -76,6 +76,31 @@ export interface PodDetail {
   phase: string;
 }
 
+export interface ProfileData {
+  gpu_util_avg?: number; //上限1
+  gpu_util_max?: number; //上限1
+  gpu_util_std?: number;
+  sm_active_avg?: number; //上限1
+  sm_active_max?: number; //上限1
+  sm_util_std?: number;
+  sm_occupancy_avg?: number; //上限1
+  sm_occupancy_max?: number;
+  sm_occupancy_std?: number;
+  dram_util_avg?: number; //上限1
+  dram_util_max?: number;
+  dram_util_std?: number;
+  mem_copy_util_avg?: number; //上限1
+  mem_copy_util_max?: number;
+  mem_copy_util_std?: number;
+  pcie_tx_avg?: number; // 展示数值 MB/s
+  pcie_tx_max?: number;
+  pcie_rx_avg?: number; // 展示数值 MB/s
+  pcie_rx_max?: number;
+  cpu_usage_avg?: number; //展示数值
+  gpu_mem_max?: number; //展示单位MB，上限是32768
+  cpu_mem_max?: number; // 展示单位MB，不用进度条
+}
+
 export interface IJupyterDetail {
   name: string;
   namespace: string;
@@ -86,6 +111,7 @@ export interface IJupyterDetail {
   queue: string;
   status: JobPhase;
   resources?: Record<string, string>;
+  profileData?: ProfileData;
   createdAt: string;
   startedAt: string;
   completedAt: string;

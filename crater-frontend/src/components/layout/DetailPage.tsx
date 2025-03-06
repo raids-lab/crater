@@ -65,7 +65,7 @@ export function DetailPage({ header, info, tabs: rawTabs }: DetailPageProps) {
               value={tab.key}
             >
               {tab.icon && <tab.icon className="size-4" />}
-              {tab.label}
+              <p className="hidden md:block">{tab.label}</p>
             </TabsTrigger>
           ))}
         </TabsList>
