@@ -44,6 +44,7 @@ import (
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	"github.com/raids-lab/crater/pkg/alert"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/monitor"
 
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 )
@@ -51,16 +52,22 @@ import (
 // VcJobReconciler reconciles a AIJob object
 type VcJobReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
-	log    logr.Logger
+	Scheme           *runtime.Scheme
+	log              logr.Logger
+	prometheusClient monitor.PrometheusInterface // get monitor data
 }
 
 // NewVcJobReconciler returns a new reconcile.Reconciler
-func NewVcJobReconciler(crClient client.Client, scheme *runtime.Scheme) *VcJobReconciler {
+func NewVcJobReconciler(
+	crClient client.Client,
+	scheme *runtime.Scheme,
+	prometheusClient monitor.PrometheusInterface,
+) *VcJobReconciler {
 	return &VcJobReconciler{
-		Client: crClient,
-		Scheme: scheme,
-		log:    ctrl.Log.WithName("vcjob-reconciler"),
+		Client:           crClient,
+		Scheme:           scheme,
+		log:              ctrl.Log.WithName("vcjob-reconciler"),
+		prometheusClient: prometheusClient,
 	}
 }
 
@@ -93,7 +100,6 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	logger := log.FromContext(ctx)
 	j := query.Job
 
-	// TODO(user): your logic here
 	var job batch.Job
 	err := r.Get(ctx, req.NamespacedName, &job)
 
@@ -119,6 +125,21 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		if record.Status == model.Deleted || record.Status == model.Freed ||
 			record.Status == batch.Failed || record.Status == batch.Completed ||
 			record.Status == batch.Aborted || record.Status == batch.Terminated {
+			profileData := r.prometheusClient.QueryProfileData(types.NamespacedName{
+				Namespace: job.Namespace,
+				Name:      job.Name,
+			}, record.RunningTimestamp)
+			var info gen.ResultInfo
+			info, err = j.WithContext(ctx).Where(j.JobName.Eq(req.Name)).Updates(model.Job{
+				ProfileData: datatypes.NewJSONType(profileData),
+			})
+			if err != nil {
+				logger.Error(err, "unable to update job profile data")
+				return ctrl.Result{Requeue: true}, err
+			}
+			if info.RowsAffected == 0 {
+				logger.Info("job not found in database")
+			}
 			return ctrl.Result{}, nil
 		}
 
@@ -327,6 +348,21 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 			}
 		}
 	}
+
+	// do not update nodes info if job is not running on any node
+	if len(nodes) == 0 {
+		profileData := r.prometheusClient.QueryProfileData(types.NamespacedName{
+			Namespace: job.Namespace,
+			Name:      job.Name,
+		}, runningTimestamp)
+		return &model.Job{
+			Status:             job.Status.State.Phase,
+			RunningTimestamp:   runningTimestamp,
+			CompletedTimestamp: completedTimestamp,
+			ProfileData:        datatypes.NewJSONType(profileData),
+		}
+	}
+
 	return &model.Job{
 		Status:             job.Status.State.Phase,
 		RunningTimestamp:   runningTimestamp,

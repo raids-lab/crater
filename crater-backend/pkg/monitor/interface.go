@@ -1,5 +1,11 @@
 package monitor
 
+import (
+	"time"
+
+	"k8s.io/apimachinery/pkg/types"
+)
+
 // PrometheusClient is a client for Prometheus
 type PrometheusInterface interface {
 	///////////// Node Related //////////////
@@ -45,6 +51,9 @@ type PrometheusInterface interface {
 	// QueryPodProfileMetric queries the profile metric of a pod (used for AiJob)
 	QueryPodProfileMetric(namespace, podname string) (PodUtil, error)
 
+	// QueryProfileData queries the profile data of a pod
+	QueryProfileData(namespacedName types.NamespacedName, from time.Time) *ProfileData
+
 	GetPodOwner(podName string) string
 
 	///////////// Job Related //////////////
@@ -53,5 +62,5 @@ type PrometheusInterface interface {
 	GetJobPodsList() map[string][]string
 
 	// GetLeastUsedGPUJobList returns the least used GPU job list
-	GetLeastUsedGPUJobList(podName, time, util string) int
+	GetLeastUsedGPUJobList(podName, _time, util string) int
 }

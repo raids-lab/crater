@@ -45,6 +45,7 @@ func newJob(db *gorm.DB, opts ...gen.DOOption) job {
 	_job.KeepWhenLowResourceUsage = field.NewBool(tableName, "keep_when_low_resource_usage")
 	_job.Reminded = field.NewBool(tableName, "reminded")
 	_job.Attributes = field.NewField(tableName, "attributes")
+	_job.ProfileData = field.NewField(tableName, "profile_data")
 	_job.Template = field.NewString(tableName, "template")
 	_job.AlertEnabled = field.NewBool(tableName, "alert_enabled")
 	_job.User = jobBelongsToUser{
@@ -106,6 +107,7 @@ type job struct {
 	KeepWhenLowResourceUsage field.Bool
 	Reminded                 field.Bool
 	Attributes               field.Field
+	ProfileData              field.Field
 	Template                 field.String
 	AlertEnabled             field.Bool
 	User                     jobBelongsToUser
@@ -145,6 +147,7 @@ func (j *job) updateTableName(table string) *job {
 	j.KeepWhenLowResourceUsage = field.NewBool(table, "keep_when_low_resource_usage")
 	j.Reminded = field.NewBool(table, "reminded")
 	j.Attributes = field.NewField(table, "attributes")
+	j.ProfileData = field.NewField(table, "profile_data")
 	j.Template = field.NewString(table, "template")
 	j.AlertEnabled = field.NewBool(table, "alert_enabled")
 
@@ -171,7 +174,7 @@ func (j *job) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (j *job) fillFieldMap() {
-	j.fieldMap = make(map[string]field.Expr, 22)
+	j.fieldMap = make(map[string]field.Expr, 23)
 	j.fieldMap["id"] = j.ID
 	j.fieldMap["created_at"] = j.CreatedAt
 	j.fieldMap["updated_at"] = j.UpdatedAt
@@ -190,6 +193,7 @@ func (j *job) fillFieldMap() {
 	j.fieldMap["keep_when_low_resource_usage"] = j.KeepWhenLowResourceUsage
 	j.fieldMap["reminded"] = j.Reminded
 	j.fieldMap["attributes"] = j.Attributes
+	j.fieldMap["profile_data"] = j.ProfileData
 	j.fieldMap["template"] = j.Template
 	j.fieldMap["alert_enabled"] = j.AlertEnabled
 
