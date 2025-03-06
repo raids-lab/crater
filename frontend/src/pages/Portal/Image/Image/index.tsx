@@ -21,7 +21,6 @@ import {
   imagepackPublicPersonalStatus,
   apiUserListImage,
   apiUserChangeImagePublicStatus,
-  apiUserDeleteImage,
   ImageInfoResponse,
   apiUserChangeImageDescription,
   apiUserCheckImageValid,
@@ -57,6 +56,7 @@ import {
   Trash2Icon,
   X,
   AlertTriangle,
+  SquareCheckBig,
 } from "lucide-react";
 import JobTypeLabel from "@/components/badge/JobTypeBadge";
 import { useAtomValue } from "jotai";
@@ -82,7 +82,7 @@ import { Label } from "@radix-ui/react-label";
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
     placeholder: "搜索镜像",
-    key: "link",
+    key: "imageLink",
   },
   filterOptions: [],
   getHeader: getHeader,
@@ -97,22 +97,20 @@ enum Dialogs {
 
 interface ActionsProps {
   imageInfo: ImageInfoResponse;
-  onDelete: (id: number) => void;
   onChangeStatus: (id: number) => void;
   onUpdateDescription: (data: { id: number; description: string }) => void;
   linkPairs: ImageLinkPair[];
-  onDeleteInvalidImages: (ids: number[]) => void;
+  onDeleteImageList: (ids: number[]) => void;
   userName: string;
   onChangeType: (data: { id: number; taskType: JobType }) => void;
 }
 
 const Actions: FC<ActionsProps> = ({
   imageInfo,
-  onDelete,
   onChangeStatus,
   onUpdateDescription,
   linkPairs,
-  onDeleteInvalidImages,
+  onDeleteImageList,
   userName,
   onChangeType,
 }) => {
@@ -231,8 +229,8 @@ const Actions: FC<ActionsProps> = ({
         <AlertDialogContent>
           {dialog === Dialogs.delete ? (
             <DeleteDialog
-              imageLink={imageInfo.imageLink}
-              onDelete={() => onDelete(imageInfo.ID)}
+              imageLinks={[imageInfo.imageLink]}
+              onDeleteImageList={() => onDeleteImageList([imageInfo.ID])}
             />
           ) : dialog === Dialogs.status ? (
             <StatusDialog
@@ -254,7 +252,7 @@ const Actions: FC<ActionsProps> = ({
             <ValidDialog
               linkPairs={linkPairs}
               onDeleteLinks={(invalidPairs: ImageLinkPair[]) => {
-                onDeleteInvalidImages(
+                onDeleteImageList(
                   invalidPairs
                     .filter((pair) => pair.creator === userName)
                     .map((pair) => pair.id),
@@ -271,6 +269,10 @@ const Actions: FC<ActionsProps> = ({
 export const Component: FC = () => {
   const queryClient = useQueryClient();
   const [openSheet, setOpenSheet] = useState(false);
+  const [openCheckDialog, setCheckOpenDialog] = useState(false);
+  const [selectedLinkPairs, setSelectedLinkPairs] = useState<ImageLinkPair[]>(
+    [],
+  );
 
   const user = useAtomValue(globalUserInfo);
   const imageInfo = useQuery({
@@ -289,13 +291,6 @@ export const Component: FC = () => {
       logger.error("更新查询失败", error);
     }
   };
-  const { mutate: deleteUserImage } = useMutation({
-    mutationFn: (id: number) => apiUserDeleteImage(id),
-    onSuccess: async () => {
-      await refetchImagePackList();
-      toast.success("镜像已删除");
-    },
-  });
   const { mutate: deleteUserImageList } = useMutation({
     mutationFn: (idList: number[]) => apiUserDeleteImageList(idList),
     onSuccess: async () => {
@@ -389,7 +384,6 @@ export const Component: FC = () => {
         return (
           <Actions
             imageInfo={imageInfo}
-            onDelete={deleteUserImage}
             onChangeStatus={changeImagePublicStatus}
             onUpdateDescription={updateImageDescription}
             linkPairs={[
@@ -400,7 +394,7 @@ export const Component: FC = () => {
                 creator: imageInfo.creatorName,
               },
             ]}
-            onDeleteInvalidImages={deleteUserImageList}
+            onDeleteImageList={deleteUserImageList}
             userName={user.name}
             onChangeType={updateImageTaskType}
           />
@@ -411,18 +405,102 @@ export const Component: FC = () => {
 
   return (
     <DataTable
+      info={{
+        title: "镜像列表",
+        description: "展示可用的公共或私有镜像，在作业提交时可供选择",
+      }}
       query={imageInfo}
       columns={columns}
       toolbarConfig={toolbarConfig}
       className="col-span-3"
+      multipleHandlers={[
+        {
+          title: (rows) => `删除 ${rows.length} 个镜像链接`,
+          description: (rows) => (
+            <div className="rounded-md border border-destructive/20 bg-destructive/5 px-4 py-3">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" />
+                <div>
+                  <p className="font-medium text-destructive">
+                    以下镜像链接将被删除，确认要继续吗？
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {"『" +
+                      rows
+                        .map((row) => row.original.description)
+                        .join("』,『") +
+                      "』"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ),
+          icon: <Trash2Icon className="text-destructive" />,
+          handleSubmit: (rows) => {
+            const ids = rows.map((row) => row.original.ID);
+            deleteUserImageList(ids);
+          },
+          isDanger: true,
+        },
+        {
+          title: (rows) => `检测 ${rows.length} 个镜像链接`,
+          description: (rows) => (
+            <div className="rounded-md border border-green-600/20 bg-green-600/5 px-4 py-3">
+              <div className="flex items-start gap-3">
+                <SquareCheckBig className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
+                <div>
+                  <p className="font-medium text-green-600">
+                    以下镜像链接将被检测
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {"『" +
+                      rows
+                        .map((row) => row.original.description)
+                        .join("』,『") +
+                      "』"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ),
+          icon: <CheckCheck className="text-green-600" />,
+          handleSubmit: (rows) => {
+            setSelectedLinkPairs(
+              rows.map((row) => ({
+                id: row.original.ID,
+                imageLink: row.original.imageLink,
+                description: row.original.description,
+                creator: row.original.creatorName,
+              })),
+            );
+            setCheckOpenDialog(true);
+          },
+          isDanger: false,
+        },
+      ]}
     >
+      <AlertDialog open={openCheckDialog} onOpenChange={setCheckOpenDialog}>
+        <AlertDialogContent>
+          <ValidDialog
+            linkPairs={selectedLinkPairs}
+            onDeleteLinks={(invalidPairs: ImageLinkPair[]) => {
+              deleteUserImageList(
+                invalidPairs
+                  .filter((pair) => pair.creator === user.name)
+                  .map((pair) => pair.id),
+              );
+            }}
+          />
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Sheet open={openSheet} onOpenChange={setOpenSheet}>
         <SheetTrigger asChild>
           <Button className="h-8 min-w-fit">导入镜像</Button>
         </SheetTrigger>
         <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
           <SheetHeader>
-            <SheetTitle>导入镜像</SheetTitle>
+            <SheetTitle>导入镜像链接</SheetTitle>
             <SheetDescription>导入一个新的训练作业镜像</SheetDescription>
           </SheetHeader>
           <Separator className="mt-4" />
@@ -434,13 +512,13 @@ export const Component: FC = () => {
 };
 
 interface DeleteDialogProps {
-  imageLink: string;
-  onDelete: () => void;
+  imageLinks: string[];
+  onDeleteImageList: () => void;
 }
 
 export const DeleteDialog: FC<DeleteDialogProps> = ({
-  imageLink,
-  onDelete,
+  imageLinks,
+  onDeleteImageList,
 }) => {
   return (
     <>
@@ -460,7 +538,7 @@ export const DeleteDialog: FC<DeleteDialogProps> = ({
             <div>
               <p className="font-medium text-destructive">将删除以下镜像</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                「{imageLink}」
+                {"『" + imageLinks.join("』,『") + "』"}
               </p>
             </div>
           </div>
@@ -473,7 +551,7 @@ export const DeleteDialog: FC<DeleteDialogProps> = ({
           取消
         </AlertDialogCancel>
 
-        <AlertDialogAction variant="destructive" onClick={onDelete}>
+        <AlertDialogAction variant="destructive" onClick={onDeleteImageList}>
           <Trash2 />
           确认删除
         </AlertDialogAction>
@@ -517,7 +595,7 @@ export const StatusDialog: FC<StatusDialogProps> = ({
       <AlertDialogDescription className="space-y-4 pt-2">
         <div className="rounded-md bg-muted/50 px-4 py-3">
           <p className="text-sm text-muted-foreground">镜像链接</p>
-          <p className="mt-1 break-all font-medium">{imageLink}</p>
+          <p className="mt-1 break-all font-medium">『{imageLink}』</p>
         </div>
 
         <div className={`rounded-md ${bgColor} ${darkBgColor} p-4`}>
