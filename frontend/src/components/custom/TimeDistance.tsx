@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/tooltip";
 import { format, formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 
 export const TimeDistance = ({
   date,
@@ -15,19 +15,29 @@ export const TimeDistance = ({
   date?: string;
   className?: string;
 }) => {
-  const [startTime, timeDiff] = useMemo(() => {
+  const [timeDiff, setTimeDiff] = useState("");
+  const [startTime, setStartTime] = useState<Date | null>(null);
+
+  useEffect(() => {
     if (!date) {
-      return [null, ""];
+      setStartTime(null);
+      setTimeDiff("");
+      return;
     }
-    const startTime = new Date(date);
-    const timeDifference = formatDistanceToNow(startTime, {
-      locale: zhCN,
-      addSuffix: true,
-    });
-    // 大约 1 个月前 -> 1 个月前
-    // 删除第一个数字之前的文字和空格
-    const timeDiff = timeDifference.replace(/^[^\d]*\s*/, "");
-    return [startTime, timeDiff];
+
+    const time = new Date(date);
+    setStartTime(time);
+    const updateTimeDiff = () => {
+      const timeDifference = formatDistanceToNow(time, {
+        locale: zhCN,
+        addSuffix: true,
+      });
+      setTimeDiff(timeDifference.replace(/^[^\d]*\s*/, ""));
+    };
+
+    updateTimeDiff();
+    const timer = setInterval(updateTimeDiff, 10000);
+    return () => clearInterval(timer);
   }, [date]);
 
   if (!startTime) {
