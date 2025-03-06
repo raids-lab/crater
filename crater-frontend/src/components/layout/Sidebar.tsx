@@ -1,18 +1,11 @@
-import React from "react";
 import { RouteObject } from "react-router-dom";
 
-export type SidebarSubItem = {
+export type RouteSubItem = {
   route: RouteObject;
 };
 
-export type SidebarItem = {
+export type RouteItem = {
   path: string;
-  children: SidebarSubItem[];
+  children: RouteSubItem[];
   route?: RouteObject;
-};
-
-export type SidebarMenu = {
-  path: string;
-  icon: React.ElementType;
-  route: RouteObject;
 };

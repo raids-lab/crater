@@ -57,10 +57,7 @@ const SystemSetting = () => {
 
   return (
     <>
-      <WarningAlert
-        title={"注意"}
-        description={"中期演示使用，目前仅 BASE 原生调度算法可用，请勿切换"}
-      />
+      <WarningAlert title={"注意"} description={"项目使用，请谨慎操作"} />
       <Card>
         <CardHeader>
           <CardTitle>调度算法</CardTitle>

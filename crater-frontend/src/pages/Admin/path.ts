@@ -7,12 +7,12 @@ export const adminPath: PathInfo = {
   children: [
     {
       path: "cluster",
-      title: "集群管理",
+      title: "资源管理",
       isEmpty: true,
       children: [
         {
           path: "node",
-          title: "节点信息",
+          title: "节点管理",
         },
         {
           path: "label",
@@ -21,6 +21,21 @@ export const adminPath: PathInfo = {
         {
           path: "resource",
           title: "资源列表",
+        },
+      ],
+    },
+    {
+      path: "monitor",
+      title: "集群监控",
+      isEmpty: true,
+      children: [
+        {
+          path: "network",
+          title: "网络监控",
+        },
+        {
+          path: "io",
+          title: "读写监控",
         },
       ],
     },
@@ -35,6 +50,10 @@ export const adminPath: PathInfo = {
     {
       path: "job",
       title: "作业管理",
+    },
+    {
+      path: "cron",
+      title: "定时策略",
     },
     {
       path: "image",
@@ -71,12 +90,8 @@ export const adminPath: PathInfo = {
       ],
     },
     {
-      path: "docs",
-      title: "文档编辑",
-    },
-    {
-      path: "feedback",
-      title: "问题反馈",
+      path: "setting",
+      title: "平台设置",
     },
   ],
 };

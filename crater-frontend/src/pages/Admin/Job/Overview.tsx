@@ -46,7 +46,6 @@ import {
   SquareIcon,
   Trash2Icon,
   UnlockIcon,
-  UserRoundIcon,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -57,9 +56,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { logger } from "@/utils/loglevel";
 import { useMemo } from "react";
-import CronPolicy from "./CronPolicy";
-import NivoPie from "@/components/chart/NivoPie";
-import PieCard from "@/components/chart/PieCard";
 
 export type StatusValue =
   | "Queueing"
@@ -401,69 +397,35 @@ const AdminJobOverview = () => {
     [deleteTask, keepTask],
   );
 
-  const userStatus = useMemo(() => {
-    if (!vcjobQuery.data) {
-      return [];
-    }
-    const data = vcjobQuery.data;
-    const counts = data
-      .filter((job) => job.status == "Running")
-      .reduce(
-        (acc, item) => {
-          const owner = item.owner;
-          if (!acc[owner]) {
-            acc[owner] = 0;
-          }
-          acc[owner] += 1;
-          return acc;
-        },
-        {} as Record<string, number>,
-      );
-    return Object.entries(counts).map(([phase, count]) => ({
-      id: phase,
-      label: phase,
-      value: count,
-    }));
-  }, [vcjobQuery.data]);
-
   return (
-    <>
-      <div className="grid gap-4 lg:grid-cols-7">
-        <CronPolicy className="lg:col-span-4" />
-        <PieCard
-          icon={UserRoundIcon}
-          cardTitle="用户统计"
-          cardDescription="当前正在运行作业所属的用户"
-          isLoading={vcjobQuery.isLoading}
-          className="lg:col-span-3"
-        >
-          <NivoPie data={userStatus} margin={{ top: 25, bottom: 30 }} />
-        </PieCard>
-      </div>
-      <DataTable
-        query={vcjobQuery}
-        columns={vcjobColumns}
-        toolbarConfig={toolbarConfig}
-        multipleHandlers={[
-          {
-            title: (rows) => `停止或删除 ${rows.length} 个作业`,
-            description: (rows) => (
-              <>
-                作业 {rows.map((row) => row.original.name).join(", ")}{" "}
-                将被停止或删除，确认要继续吗？
-              </>
-            ),
-            icon: <Trash2Icon className="text-destructive" />,
-            handleSubmit: (rows) => {
-              rows.forEach((row) => {
-                deleteTask(row.original.jobName);
-              });
-            },
-            isDanger: true,
+    <DataTable
+      info={{
+        title: "作业管理",
+        description:
+          "管理员可对作业进行锁定以避免被定时策略清理，或手动停止或删除用户的作业",
+      }}
+      query={vcjobQuery}
+      columns={vcjobColumns}
+      toolbarConfig={toolbarConfig}
+      multipleHandlers={[
+        {
+          title: (rows) => `停止或删除 ${rows.length} 个作业`,
+          description: (rows) => (
+            <>
+              作业 {rows.map((row) => row.original.name).join(", ")}{" "}
+              将被停止或删除，确认要继续吗？
+            </>
+          ),
+          icon: <Trash2Icon className="text-destructive" />,
+          handleSubmit: (rows) => {
+            rows.forEach((row) => {
+              deleteTask(row.original.jobName);
+            });
           },
-        ]}
-      />
-    </>
+          isDanger: true,
+        },
+      ]}
+    />
   );
 };
 

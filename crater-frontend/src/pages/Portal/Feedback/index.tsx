@@ -1,10 +1,9 @@
-import { SheetIcon, UsersRound } from "lucide-react";
+import { SheetIcon } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import groupURL from "/wechat/group.jpg";
 
 export default function FeedBack() {
   return (
-    <div className="grid max-w-96 gap-6">
+    <div>
       {/* 第二节：跳转至反馈在线表格 https://365.kdocs.cn/l/cuQ2oVGbNVIt */}
       <section>
         <Card>
@@ -21,22 +20,6 @@ export default function FeedBack() {
             >
               点击跳转至反馈表格
             </a>
-          </CardContent>
-        </Card>
-      </section>
-      {/* 第一节：如何加入微信内测用户群 */}
-      <section>
-        <Card>
-          <CardHeader className="flex items-center space-x-2">
-            <UsersRound size={24} className="text-primary" />
-            <CardTitle>加入微信内测用户群</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center">
-            <img
-              src={groupURL}
-              alt="微信内测用户群二维码"
-              className="mt-4 w-64"
-            />
           </CardContent>
         </Card>
       </section>

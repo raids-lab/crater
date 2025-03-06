@@ -14,7 +14,7 @@ import useNodeQuery from "@/hooks/query/useNodeQuery";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { toast } from "sonner";
 import { logger } from "@/utils/loglevel";
-import { BanIcon, PaintbrushIcon, TagsIcon } from "lucide-react";
+import { BanIcon, PaintbrushIcon, TagsIcon, ZapIcon } from "lucide-react";
 import { useMemo } from "react";
 import { useRoutes } from "react-router-dom";
 import { apichangeNodeScheduling } from "@/services/api/cluster";
@@ -84,7 +84,11 @@ const NodeForAdmin = () => {
                   编辑污点
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleNodeScheduling(nodeId)}>
-                  <BanIcon className="size-4" />
+                  {isReady === "true" ? (
+                    <BanIcon className="size-4" />
+                  ) : (
+                    <ZapIcon className="size-4" />
+                  )}
                   {isReady === "true" ? "禁止调度" : "恢复调度"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -98,6 +102,10 @@ const NodeForAdmin = () => {
 
   return (
     <DataTable
+      info={{
+        title: "节点管理",
+        description: "在这里修改节点的调度策略、是否由某些账户独享等",
+      }}
       query={nodeQuery}
       columns={columns}
       toolbarConfig={toolbarConfig}
