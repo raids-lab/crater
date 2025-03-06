@@ -143,10 +143,12 @@ func GenerateCustomPodSpec(
 		return podSpec, err
 	}
 	affinity := GenerateNodeAffinity(custom.Selectors, custom.Resource)
+	torelations := GenerateTaintTolerationsForAccount(token)
 
 	podSpec = v1.PodSpec{
-		Affinity: affinity,
-		Volumes:  volumes,
+		Affinity:    affinity,
+		Tolerations: torelations,
+		Volumes:     volumes,
 		Containers: []v1.Container{
 			{
 				Name:       custom.Name,

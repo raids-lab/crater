@@ -179,6 +179,21 @@ func GetSubPathByDatasetVolume(c context.Context,
 	return dataset.URL, nil
 }
 
+func GenerateTaintTolerationsForAccount(token util.JWTMessage) (tolerations []v1.Toleration) {
+	// If current account is not default account (which account id is 1), add toleration
+	if token.AccountID == model.DefaultAccountID {
+		return nil
+	}
+	return []v1.Toleration{
+		{
+			Key:      "crater.raids.io/account",
+			Operator: v1.TolerationOpEqual,
+			Value:    token.AccountName,
+			Effect:   v1.TaintEffectNoSchedule,
+		},
+	}
+}
+
 func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement, totalRequests v1.ResourceList) (affinity *v1.Affinity) {
 	gpuCount := GetGPUCountFromResource(totalRequests)
 
@@ -248,14 +263,16 @@ func GetGPUCountFromResource(resources v1.ResourceList) (gpuCount int64) {
 func generatePodSpec(
 	task *TaskReq,
 	affinity *v1.Affinity,
+	tolerations []v1.Toleration,
 	volumes []v1.Volume,
 	volumeMounts []v1.VolumeMount,
 	envs []v1.EnvVar,
 	ports []v1.ContainerPort,
 ) (podSpec v1.PodSpec) {
 	podSpec = v1.PodSpec{
-		Affinity: affinity,
-		Volumes:  volumes,
+		Affinity:    affinity,
+		Tolerations: tolerations,
+		Volumes:     volumes,
 		Containers: []v1.Container{
 			{
 				Name:  task.Name,
