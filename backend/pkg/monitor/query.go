@@ -59,11 +59,13 @@ func (p *PrometheusClient) QueryProfileData(namespacedName types.NamespacedName,
 		promRange = fmt.Sprintf("%dm", minutes)
 	}
 
+	allNull := true
 	queryMetricWithPtr := func(query string) *float32 {
 		value, err := p.queryMetric(query)
 		if err != nil {
 			return nil
 		}
+		allNull = false
 		return &value
 	}
 
@@ -106,6 +108,9 @@ func (p *PrometheusClient) QueryProfileData(namespacedName types.NamespacedName,
 
 	profileData.GPUMemMax = queryMetricWithPtr(fmt.Sprintf("max_over_time(DCGM_FI_DEV_FB_USED{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
 
+	if allNull {
+		return nil
+	}
 	return &profileData
 }
 

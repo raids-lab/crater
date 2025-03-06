@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -125,21 +126,25 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		if record.Status == model.Deleted || record.Status == model.Freed ||
 			record.Status == batch.Failed || record.Status == batch.Completed ||
 			record.Status == batch.Aborted || record.Status == batch.Terminated {
-			profileData := r.prometheusClient.QueryProfileData(types.NamespacedName{
-				Namespace: job.Namespace,
-				Name:      job.Name,
-			}, record.RunningTimestamp)
-			var info gen.ResultInfo
-			info, err = j.WithContext(ctx).Where(j.JobName.Eq(req.Name)).Updates(model.Job{
-				ProfileData: datatypes.NewJSONType(profileData),
-			})
-			if err != nil {
-				logger.Error(err, "unable to update job profile data")
-				return ctrl.Result{Requeue: true}, err
+			if record.ProfileData == nil {
+				podName := getPodNameFromJobTemplate(record.Attributes.Data())
+				profileData := r.prometheusClient.QueryProfileData(types.NamespacedName{
+					Namespace: config.GetConfig().Workspace.Namespace,
+					Name:      podName,
+				}, record.RunningTimestamp)
+				var info gen.ResultInfo
+				info, err = j.WithContext(ctx).Where(j.JobName.Eq(req.Name)).Updates(model.Job{
+					ProfileData: ptr.To(datatypes.NewJSONType(profileData)),
+				})
+				if err != nil {
+					logger.Error(err, "unable to update job profile data")
+					return ctrl.Result{Requeue: true}, err
+				}
+				if info.RowsAffected == 0 {
+					logger.Info("job not found in database")
+				}
 			}
-			if info.RowsAffected == 0 {
-				logger.Info("job not found in database")
-			}
+
 			return ctrl.Result{}, nil
 		}
 
@@ -160,7 +165,7 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	// create or update db record
 	// if job not found, create a new record
-	_, err = j.WithContext(ctx).Where(j.JobName.Eq(job.Name)).First()
+	oldRecord, err := j.WithContext(ctx).Where(j.JobName.Eq(job.Name)).First()
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		logger.Error(err, "unable to fetch job record")
 		return ctrl.Result{Requeue: true}, err
@@ -181,7 +186,7 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, nil
 	}
 
-	updateRecord := r.generateUpdateJobModel(ctx, &job)
+	updateRecord := r.generateUpdateJobModel(ctx, &job, oldRecord)
 
 	// if job found: before updating, check previous status, and send email
 	dbJob, _ := j.WithContext(ctx).Where(j.JobName.Eq(job.Name)).First()
@@ -321,7 +326,7 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 	}, nil
 }
 
-func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch.Job) *model.Job {
+func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch.Job, oldRecord *model.Job) *model.Job {
 	conditions := job.Status.Conditions
 	var runningTimestamp time.Time
 	var completedTimestamp time.Time
@@ -351,15 +356,24 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 
 	// do not update nodes info if job is not running on any node
 	if len(nodes) == 0 {
-		profileData := r.prometheusClient.QueryProfileData(types.NamespacedName{
-			Namespace: job.Namespace,
-			Name:      job.Name,
-		}, runningTimestamp)
+		if !completedTimestamp.IsZero() && oldRecord.ProfileData == nil {
+			profile := r.prometheusClient.QueryProfileData(types.NamespacedName{
+				Namespace: job.Namespace,
+				Name:      getPodNameFromJobTemplate(job),
+			}, runningTimestamp)
+			if profile != nil {
+				return &model.Job{
+					Status:             job.Status.State.Phase,
+					RunningTimestamp:   runningTimestamp,
+					CompletedTimestamp: completedTimestamp,
+					ProfileData:        ptr.To(datatypes.NewJSONType(profile)),
+				}
+			}
+		}
 		return &model.Job{
 			Status:             job.Status.State.Phase,
 			RunningTimestamp:   runningTimestamp,
 			CompletedTimestamp: completedTimestamp,
-			ProfileData:        datatypes.NewJSONType(profileData),
 		}
 	}
 
@@ -369,4 +383,15 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 		CompletedTimestamp: completedTimestamp,
 		Nodes:              datatypes.NewJSONType(nodes),
 	}
+}
+
+func getPodNameFromJobTemplate(job *batch.Job) string {
+	for i := range job.Spec.Tasks {
+		task := &job.Spec.Tasks[i]
+		if task.Replicas > 0 {
+			podName := fmt.Sprintf("%s-%s-%d", job.Name, task.Name, 0)
+			return podName
+		}
+	}
+	return ""
 }
