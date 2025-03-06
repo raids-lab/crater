@@ -430,8 +430,8 @@ const ColocateOverview = () => {
 
   return (
     <>
-      <div className="grid gap-5 lg:col-span-3 lg:grid-cols-4">
-        <Card className="row-span-2 flex flex-col justify-between lg:col-span-2">
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Card className="row-span-2 flex flex-col justify-between">
           <CardHeader>
             <CardTitle>交互式作业</CardTitle>
             <CardDescription className="text-balance pt-2 leading-relaxed">

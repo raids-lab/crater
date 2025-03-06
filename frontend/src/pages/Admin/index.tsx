@@ -1,4 +1,4 @@
-import { SidebarItem, SidebarMenu } from "@/components/layout/Sidebar";
+import { RouteItem } from "@/components/layout/Sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { FC, PropsWithChildren, Suspense } from "react";
 import { Navigate, RouteObject } from "react-router-dom";
@@ -9,15 +9,15 @@ import { User } from "./User";
 import Resource from "./Cluster/Resource";
 import AccountDetail from "./Account/Detail";
 import {
-  BookOpenIcon,
   BoxIcon,
+  SettingsIcon,
   DatabaseIcon,
-  FileTextIcon,
   FlaskConicalIcon,
-  MessageSquareMoreIcon,
   ServerIcon,
   UserRoundIcon,
   UsersRoundIcon,
+  BarChartBigIcon,
+  AlarmClockIcon,
 } from "lucide-react";
 import { Account } from "./Account";
 import admindatasetRoutes from "./Data";
@@ -25,8 +25,13 @@ import { NavGroupProps } from "@/components/sidebar/types";
 import AdminJob from "./Job";
 import NotFound from "@/components/layout/NotFound";
 import UserDetail from "@/components/custom/UserDetail";
+import SystemSetting from "../Portal/Setting/SystemSetting";
+import Monitor from "../Embed/Monitor";
+import CronPolicy from "./Job/CronPolicy";
 
-const sidebarItems: SidebarItem[] = [
+const OVERVIEW_DASHBOARD = import.meta.env.VITE_GRAFANA_OVERVIEW;
+
+const routeItems: RouteItem[] = [
   {
     path: "cluster",
     children: [
@@ -46,6 +51,23 @@ const sidebarItems: SidebarItem[] = [
         route: {
           path: "resource",
           element: <Resource />,
+        },
+      },
+    ],
+  },
+  {
+    path: "monitor",
+    children: [
+      {
+        route: {
+          path: "network",
+          element: <Monitor baseSrc={OVERVIEW_DASHBOARD} />,
+        },
+      },
+      {
+        route: {
+          path: "io",
+          element: <Monitor baseSrc={OVERVIEW_DASHBOARD} />,
         },
       },
     ],
@@ -92,6 +114,14 @@ const sidebarItems: SidebarItem[] = [
     },
     children: [],
   },
+  {
+    path: "cron",
+    children: [],
+    route: {
+      path: "cron",
+      element: <CronPolicy />,
+    },
+  },
   // {
   //   path: "image",
   //   icon: BoxIcon,
@@ -133,35 +163,26 @@ const sidebarItems: SidebarItem[] = [
       },
     ],
   },
-];
-
-const sidebarMenus: SidebarMenu[] = [
   {
-    path: "docs",
-    icon: FileTextIcon,
+    path: "setting",
+    children: [],
     route: {
-      path: "docs",
-    },
-  },
-  {
-    path: "feedback",
-    icon: MessageSquareMoreIcon,
-    route: {
-      path: "feedback",
+      path: "setting",
+      element: <SystemSetting />,
     },
   },
 ];
 
 const adminSidebarGroups: NavGroupProps[] = [
   {
-    title: "作业与服务",
+    title: "资源与监控",
     items: [
       {
-        title: "集群管理",
+        title: "资源管理",
         icon: ServerIcon,
         items: [
           {
-            title: "节点信息",
+            title: "节点管理",
             url: "cluster/node",
           },
           {
@@ -175,9 +196,33 @@ const adminSidebarGroups: NavGroupProps[] = [
         ],
       },
       {
+        title: "集群监控",
+        icon: BarChartBigIcon,
+        items: [
+          {
+            title: "网络监控",
+            url: "monitor/network",
+          },
+          {
+            title: "读写监控",
+            url: "monitor/io",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    title: "作业与服务",
+    items: [
+      {
         title: "作业管理",
         url: "job",
         icon: FlaskConicalIcon,
+      },
+      {
+        title: "定时策略",
+        url: "cron",
+        icon: AlarmClockIcon,
       },
     ],
   },
@@ -234,17 +279,12 @@ const adminSidebarGroups: NavGroupProps[] = [
     ],
   },
   {
-    title: "其他",
+    title: "设置",
     items: [
       {
-        title: "文档编辑",
-        url: "docs",
-        icon: BookOpenIcon,
-      },
-      {
-        title: "问题反馈",
-        icon: MessageSquareMoreIcon,
-        url: "feedback",
+        title: "平台设置",
+        icon: SettingsIcon,
+        url: "setting",
       },
     ],
   },
@@ -269,7 +309,7 @@ export const adminRoute: RouteObject = {
       index: true,
       element: <Navigate to="cluster/node" replace={true} />,
     },
-    ...sidebarItems.map((item) => {
+    ...routeItems.map((item) => {
       return (
         item.route ?? {
           path: item.path,
@@ -277,7 +317,6 @@ export const adminRoute: RouteObject = {
         }
       );
     }),
-    ...sidebarMenus.map((item) => item.route),
     {
       path: "*",
       element: <NotFound />,

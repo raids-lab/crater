@@ -32,13 +32,7 @@ import { Button } from "@/components/ui/button";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card.tsx";
+import { Card } from "@/components/ui/card.tsx";
 import { UpdateLabelForm } from "./Form";
 import { Badge } from "@/components/ui/badge";
 import { MyResponsivePieCanvas } from "./LabelPie";
@@ -190,56 +184,53 @@ export const Component: FC = () => {
 
   return (
     <>
-      <div className="grid gap-4 lg:col-span-3 lg:grid-cols-2 lg:gap-6">
-        <Card className="col-span-1 flex flex-col justify-between">
-          <CardHeader>
-            <CardTitle>节点标签</CardTitle>
-            <CardDescription className="leading-6">
-              部署 Nvidia GPU Operator 后，
+      <DataTable
+        info={{
+          title: "节点标签",
+          description: (
+            <>
+              基于{" "}
               <span className="rounded-md border px-1 py-0.5 font-mono">
                 nvidia.com/gpu.product
               </span>{" "}
-              标签将被添加到节点上， 用于标识节点的 GPU 类型。
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button>
-                  <RefreshCcwIcon className="size-4" />
-                  同步 Nvidia 节点
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>同步标签</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    确认要通过{" "}
-                    <span className="rounded-md border px-1 py-0.5 font-mono">
-                      nvidia.com/gpu.product
-                    </span>{" "}
-                    更新类型信息吗？
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>取消</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => syncNvidiaLabel()}>
-                    确认
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </CardContent>
-        </Card>
-        <Card className="h-52 p-6">
-          <MyResponsivePieCanvas />
-        </Card>
-      </div>
-      <DataTable
+              确定节点的 GPU 型号。
+            </>
+          ),
+        }}
         columns={columns}
         query={query}
         toolbarConfig={toolbarConfig}
-      />
+      >
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button>
+              <RefreshCcwIcon className="size-4" />
+              同步 Nvidia 节点
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>同步标签</AlertDialogTitle>
+              <AlertDialogDescription>
+                确认要通过{" "}
+                <span className="rounded-md border px-1 py-0.5 font-mono">
+                  nvidia.com/gpu.product
+                </span>{" "}
+                更新类型信息吗？
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogAction onClick={() => syncNvidiaLabel()}>
+                确认
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </DataTable>
+      <Card className="h-96 p-6">
+        <MyResponsivePieCanvas />
+      </Card>
     </>
   );
 };

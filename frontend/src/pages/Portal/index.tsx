@@ -1,4 +1,4 @@
-import { SidebarItem } from "@/components/layout/Sidebar";
+import { RouteItem } from "@/components/layout/Sidebar";
 import { Navigate, RouteObject } from "react-router-dom";
 import DashboardLayout from "@/components/layout/Dashboard";
 import {
@@ -22,7 +22,9 @@ import UserSettings from "./Setting/UserSetting";
 import Monitor from "../Embed/Monitor";
 import modelRoutes from "./Data/modelindex";
 
-const portalRoutes: SidebarItem[] = [
+const OVERVIEW_DASHBOARD = import.meta.env.VITE_GRAFANA_OVERVIEW;
+
+const portalRoutes: RouteItem[] = [
   {
     path: "overview",
     children: [],
@@ -36,7 +38,7 @@ const portalRoutes: SidebarItem[] = [
     children: [],
     route: {
       path: "monitor",
-      element: <Monitor />,
+      element: <Monitor baseSrc={OVERVIEW_DASHBOARD} />,
     },
   },
   {

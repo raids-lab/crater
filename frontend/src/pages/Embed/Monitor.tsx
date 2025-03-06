@@ -2,8 +2,6 @@ import useFixedLayout from "@/hooks/useFixedLayout";
 import { useTheme } from "@/utils/theme";
 import { useMemo, type FC } from "react";
 
-const OVERVIEW_DASHBOARD = import.meta.env.VITE_GRAFANA_OVERVIEW;
-
 export const GrafanaIframe = ({ baseSrc }: { baseSrc: string }) => {
   const { theme } = useTheme();
 
@@ -28,11 +26,11 @@ export const GrafanaIframe = ({ baseSrc }: { baseSrc: string }) => {
   );
 };
 
-const Monitor: FC = () => {
+const Monitor: FC<{ baseSrc: string }> = ({ baseSrc }: { baseSrc: string }) => {
   useFixedLayout();
   return (
     <div className="h-[calc(100vh_-_80px)] w-full">
-      <GrafanaIframe baseSrc={OVERVIEW_DASHBOARD} />
+      <GrafanaIframe baseSrc={baseSrc} />
     </div>
   );
 };

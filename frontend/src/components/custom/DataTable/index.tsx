@@ -23,7 +23,7 @@ import {
 import { DataTablePagination, MultipleHandler } from "./DataTablePagination";
 import { DataTableToolbar, DataTableToolbarConfig } from "./DataTableToolbar";
 import { Card, CardContent } from "@/components/ui/card";
-import { useMemo, useState } from "react";
+import { ReactNode, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { UseQueryResult } from "@tanstack/react-query";
 import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
@@ -36,7 +36,7 @@ interface DataTableProps<TData, TValue>
   extends React.HTMLAttributes<HTMLDivElement> {
   info?: {
     title: string;
-    description: string;
+    description: ReactNode;
   };
   query: UseQueryResult<TData[], Error>;
   columns: ColumnDef<TData, TValue>[];

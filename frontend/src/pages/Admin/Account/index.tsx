@@ -217,8 +217,17 @@ export const Account = () => {
 
   return (
     <>
-      <DataTable query={query} columns={columns} toolbarConfig={toolbarConfig}>
-        <Button className="h-8" onClick={handleCreate}>
+      <DataTable
+        info={{
+          title: "账户管理",
+          description:
+            "账户可包含多名用户，每个账户可设置资源配额，公共账户默认不设置配额，优先级最低",
+        }}
+        query={query}
+        columns={columns}
+        toolbarConfig={toolbarConfig}
+      >
+        <Button onClick={handleCreate}>
           <PlusCircleIcon className="size-4" />
           新建账户
         </Button>
