@@ -140,6 +140,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 
 	// 3. TODO: Node Affinity for ARM64 Nodes
 	affinity := GenerateNodeAffinity(req.Selectors, req.Resource)
+	torelations := GenerateTaintTolerationsForAccount(token)
 
 	// 4. Labels and Annotations
 	namespace := config.GetConfig().Workspace.Namespace
@@ -177,8 +178,9 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 
 	// 5. Create the pod spec
 	podSpec := v1.PodSpec{
-		Affinity: affinity,
-		Volumes:  volumes,
+		Affinity:    affinity,
+		Tolerations: torelations,
+		Volumes:     volumes,
 		Containers: []v1.Container{
 			{
 				Name:    "jupyter-notebook",

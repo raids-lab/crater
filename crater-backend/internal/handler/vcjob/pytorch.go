@@ -48,6 +48,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 
 	// 2. TODO: Node Affinity for ARM64 Nodes
 	affinity := GenerateNodeAffinity(req.Selectors, nil)
+	tolerations := GenerateTaintTolerationsForAccount(token)
 
 	// 3. Labels and Annotations
 	namespace := config.GetConfig().Workspace.Namespace
@@ -76,7 +77,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 			}
 		}
 		// 4.2. Generate pod spec
-		podSpec := generatePodSpec(task, affinity, volumes, volumeMounts, req.Envs, ports)
+		podSpec := generatePodSpec(task, affinity, tolerations, volumes, volumeMounts, req.Envs, ports)
 
 		// 4.3. Create task spec
 		taskSpec := batch.TaskSpec{
