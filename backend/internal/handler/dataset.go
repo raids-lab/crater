@@ -46,10 +46,8 @@ func (mgr *DatasetMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.POST("/share/queue", mgr.ShareDatasetWithQueue)
 	g.POST("/cancelshare/user", mgr.CancelShareDatasetWithUser)
 	g.POST("/cancelshare/queue", mgr.CancelShareDatasetWithQueue)
-	g.POST("/rename", mgr.RemaneDatset)
 	g.GET("/detail/:datasetId", mgr.GetDatasetByID)
-	g.POST("/updateextra", mgr.UpdateExtraDataset)
-	g.POST("/updatedescribe", mgr.UpdateDescribe)
+	g.POST("/update", mgr.UpdateDataset)
 }
 
 func (mgr *DatasetMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -743,122 +741,38 @@ func (mgr *DatasetMgr) DeleteDataset(c *gin.Context) {
 	}
 }
 
-type RenameReq struct {
-	DatasetID uint   `json:"datasetID" binding:"required"`
-	Name      string `json:"name" binding:"required"`
-}
-
-// RemaneDatset godoc
-// @Summary 数据集重命名
-// @Description 数据集重命名
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param req body RenameReq true "参数描述"
-// @Success 200 {object} resputil.Response[string] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/dataset/rename [post]
-//
-//nolint:dupl // ignore服务于不同的功能，后期如果集成会进行重构
-func (mgr *DatasetMgr) RemaneDatset(c *gin.Context) {
-	token := util.GetToken(c)
-	var req RenameReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-	d := query.Dataset
-	dataset, err := d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).First()
-	if err != nil {
-		resputil.Error(c, "this dataset not exist", resputil.InvalidRequest)
-		return
-	}
-	if dataset.UserID != token.UserID && token.RolePlatform != model.RoleAdmin {
-		resputil.Error(c, "you has no permission to rename", resputil.InvalidRequest)
-		return
-	}
-	_, err = d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).Update(d.Name, req.Name)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to rename dataset: %v", err), resputil.NotSpecified)
-		return
-	}
-	resputil.Success(c, "Successfully rename dataset")
-}
-
-type UpdateextraReq struct {
+type UpdateDatasetreq struct {
 	DatasetID uint     `json:"datasetID" binding:"required"`
+	Name      string   `json:"name" binding:"required"`
+	Describe  string   `json:"describe" binding:"required"`
+	URL       string   `json:"url" binding:"required"`
 	Tags      []string `json:"tags" `
 	WebURL    string   `json:"weburl"`
 }
 
-// UpdateExtraDatset godoc
-// @Summary 数据集额外信息更新
-// @Description 数据集额外信息更新
+// swagger
+// UpdateDataset godoc
+// @Summary 更新数据集
+// @Description 更新数据集
 // @Tags Dataset
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param req body UpdateextraReq true "参数描述"
+// @Param req body UpdateDatasetreq true "参数描述"
 // @Success 200 {object} resputil.Response[string] "成功返回值描述"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/dataset/updateextra [post]
-func (mgr *DatasetMgr) UpdateExtraDataset(c *gin.Context) {
+// @Router /v1/dataset/update [post]
+func (mgr *DatasetMgr) UpdateDataset(c *gin.Context) {
 	token := util.GetToken(c)
-	var req UpdateextraReq
-	var newExtra model.Extracontent
+	var req UpdateDatasetreq
+	var tempExtra model.Extracontent
 	if err := c.ShouldBindJSON(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
-	newExtra.Tags = req.Tags
-	newExtra.WebURL = &req.WebURL
-	d := query.Dataset
-	dataset, err := d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).First()
-	if err != nil {
-		resputil.Error(c, "this dataset not exist", resputil.InvalidRequest)
-		return
-	}
-	if dataset.UserID != token.UserID && token.RolePlatform != model.RoleAdmin {
-		resputil.Error(c, "you has no permission to update extra", resputil.InvalidRequest)
-		return
-	}
-	_, err = d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).Update(d.Extra, newExtra)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to update dataset: %v", err), resputil.NotSpecified)
-		return
-	}
-	resputil.Success(c, "Successfully update dataset extra")
-}
-
-type UpdateDescribeReq struct {
-	DatasetID uint   `json:"datasetID" binding:"required"`
-	Describe  string `json:"describe" binding:"required"`
-}
-
-// UpdateDescribe godoc
-// @Summary 数据集描述更新
-// @Description 数据集描述更新
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param req body UpdateDescribeReq true "参数描述"
-// @Success 200 {object} resputil.Response[string] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/dataset/updatedescribe [post]
-//
-//nolint:dupl // ignore服务于不同的功能，后期如果集成会进行重构
-func (mgr *DatasetMgr) UpdateDescribe(c *gin.Context) {
-	token := util.GetToken(c)
-	var req UpdateDescribeReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
+	tempExtra.Tags = req.Tags
+	tempExtra.WebURL = &req.WebURL
 	d := query.Dataset
 	dataset, err := d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).First()
 	if err != nil {
@@ -869,9 +783,24 @@ func (mgr *DatasetMgr) UpdateDescribe(c *gin.Context) {
 		resputil.Error(c, "you has no permission to update describe", resputil.InvalidRequest)
 		return
 	}
+	_, err = d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).Update(d.Name, req.Name)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to update name: %v", err), resputil.NotSpecified)
+		return
+	}
 	_, err = d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).Update(d.Describe, req.Describe)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to update dataset: %v", err), resputil.NotSpecified)
+		resputil.Error(c, fmt.Sprintf("failed to update describe: %v", err), resputil.NotSpecified)
+		return
+	}
+	_, err = d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).Update(d.URL, req.URL)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to update URL: %v", err), resputil.NotSpecified)
+		return
+	}
+	_, err = d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).Update(d.Extra, tempExtra)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to update Extra: %v", err), resputil.NotSpecified)
 		return
 	}
 	resputil.Success(c, "Successfully update dataset describe")
