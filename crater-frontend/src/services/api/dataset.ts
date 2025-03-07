@@ -129,3 +129,5 @@ export const apiAdminCancelShareWithQueue = (CSQ: cancelSharedQueueResp) =>
     VERSION + `/admin/dataset/cancelshare/queue`,
     CSQ,
   );
+export const apiDatasetUpdate = (dataset: DatasetReq & { datasetId: number }) =>
+  instance.post<IResponse<string>>(VERSION + "/dataset/update", dataset);
