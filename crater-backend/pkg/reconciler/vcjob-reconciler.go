@@ -148,10 +148,17 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			return ctrl.Result{}, nil
 		}
 
+		podName := getPodNameFromJobTemplate(record.Attributes.Data())
+		profileData := r.prometheusClient.QueryProfileData(types.NamespacedName{
+			Namespace: config.GetConfig().Workspace.Namespace,
+			Name:      podName,
+		}, record.RunningTimestamp)
+
 		var info gen.ResultInfo
 		info, err = j.WithContext(ctx).Where(j.JobName.Eq(req.Name)).Updates(model.Job{
 			Status:             model.Freed,
 			CompletedTimestamp: time.Now(),
+			ProfileData:        ptr.To(datatypes.NewJSONType(profileData)),
 		})
 		if err != nil {
 			logger.Error(err, "unable to update job status to freed")
