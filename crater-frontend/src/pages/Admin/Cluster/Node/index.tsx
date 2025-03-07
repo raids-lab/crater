@@ -75,11 +75,11 @@ const NodeForAdmin = () => {
                 <DropdownMenuLabel className="text-xs text-muted-foreground">
                   操作
                 </DropdownMenuLabel>
-                <DropdownMenuItem>
+                <DropdownMenuItem disabled>
                   <TagsIcon className="size-4" />
                   编辑标签
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem disabled>
                   <PaintbrushIcon className="size-4" />
                   编辑污点
                 </DropdownMenuItem>
