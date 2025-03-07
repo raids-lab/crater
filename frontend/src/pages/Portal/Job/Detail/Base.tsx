@@ -56,7 +56,8 @@ import Nothing from "@/components/placeholder/Nothing";
 import { hasNvidiaGPU } from "@/utils/resource";
 import GpuIcon from "@/components/icon/GpuIcon";
 import { SSHPortDialog } from "./SSHPortDialog";
-import { SmallDataCard } from "@/components/custom/DataCard";
+import ProfileDashboard from "@/components/profile-dashboard";
+import { getDaysDifference, getHoursDifference } from "@/utils/time";
 export interface Resource {
   [key: string]: string;
 }
@@ -109,105 +110,13 @@ export function BaseCore({ jobName }: { jobName: string }) {
     return data.profileData;
   }, [data]);
 
-  const profileItems = useMemo(() => {
-    if (!profileStat) return [];
+  const isCompletedOver3Days = useMemo(() => {
+    return getDaysDifference(data?.completedAt) > 3;
+  }, [data?.completedAt]);
 
-    return [
-      {
-        title: "CPU usage avg",
-        value:
-          profileStat.cpu_usage_avg && profileStat.cpu_usage_avg > 0
-            ? profileStat.cpu_usage_avg.toFixed(2)
-            : null,
-        unit: "Core",
-      },
-      {
-        title: "CPU mem max",
-        value:
-          profileStat.cpu_mem_max && profileStat.cpu_mem_max > 0
-            ? profileStat.cpu_mem_max.toFixed(2)
-            : null,
-        unit: "MB",
-      },
-      {
-        title: "GPU mem max",
-        value:
-          profileStat.gpu_mem_max && profileStat.gpu_mem_max > 0
-            ? `${profileStat.gpu_mem_max}`
-            : null,
-        unit: "MB",
-      },
-      {
-        title: "PCIE tx avg",
-        value:
-          profileStat.pcie_tx_avg && profileStat.pcie_tx_avg > 0
-            ? profileStat.pcie_tx_avg.toFixed(2)
-            : null,
-        unit: "MB/s",
-      },
-      {
-        title: "PCIE rx avg",
-        value:
-          profileStat.pcie_rx_avg && profileStat.pcie_rx_avg > 0
-            ? profileStat.pcie_rx_avg.toFixed(2)
-            : null,
-        unit: "MB/s",
-      },
-      {
-        title: "GPU util avg",
-        value:
-          profileStat.gpu_util_avg && profileStat.gpu_util_avg > 0
-            ? (profileStat.gpu_util_avg * 100).toFixed(2)
-            : null,
-      },
-      {
-        title: "GPU util max",
-        value:
-          profileStat.gpu_util_max && profileStat.gpu_util_max > 0
-            ? (profileStat.gpu_util_max * 100).toFixed(2)
-            : null,
-      },
-      {
-        title: "SM active avg",
-        value:
-          profileStat.sm_active_avg && profileStat.sm_active_avg > 0
-            ? (profileStat.sm_active_avg * 100).toFixed(2)
-            : null,
-      },
-      {
-        title: "SM active max",
-        value:
-          profileStat.sm_active_max && profileStat.sm_active_max > 0
-            ? (profileStat.sm_active_max * 100).toFixed(2)
-            : null,
-      },
-      {
-        title: "SM occupancy avg",
-        value:
-          profileStat.sm_occupancy_avg && profileStat.sm_occupancy_avg > 0
-            ? (profileStat.sm_occupancy_avg * 100).toFixed(2)
-            : null,
-      },
-      {
-        title: "DRAM util avg",
-        value:
-          profileStat.dram_util_avg && profileStat.dram_util_avg > 0
-            ? (profileStat.dram_util_avg * 100).toFixed(2)
-            : null,
-      },
-      {
-        title: "Mem copy util avg",
-        value:
-          profileStat.mem_copy_util_avg && profileStat.mem_copy_util_avg > 0
-            ? (profileStat.mem_copy_util_avg * 100).toFixed(2)
-            : null,
-      },
-    ].filter((item) => item.value !== null) as {
-      title: string;
-      value: string;
-      unit?: string;
-    }[];
-  }, [profileStat]);
+  const isCompletedOver1Hour = useMemo(() => {
+    return getHoursDifference(data?.completedAt) > 1 / 24;
+  }, [data?.completedAt]);
 
   if (isLoading || !data) {
     return <></>;
@@ -315,20 +224,9 @@ export function BaseCore({ jobName }: { jobName: string }) {
           key: "profile",
           icon: BarChartBigIcon,
           label: "统计信息",
-          children: (
-            <div className="grid gap-3 capitalize md:grid-cols-3">
-              {profileItems.map((item, index) => (
-                <SmallDataCard
-                  key={index}
-                  title={item.title}
-                  value={item.value}
-                  unit={item.unit}
-                />
-              ))}
-            </div>
-          ),
+          children: <ProfileDashboard profileData={data.profileData ?? {}} />,
           scrollable: true,
-          hidden: !profileStat || profileItems.length === 0,
+          hidden: !profileStat,
         },
         {
           key: "base",
@@ -340,6 +238,10 @@ export function BaseCore({ jobName }: { jobName: string }) {
             </>
           ),
           scrollable: true,
+          hidden:
+            data.status === JobPhase.Deleted ||
+            data.status === JobPhase.Freed ||
+            isCompletedOver3Days,
         },
         {
           key: "config",
@@ -376,6 +278,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
             />
           ),
           scrollable: true,
+          hidden: isCompletedOver1Hour,
         },
         {
           key: "monitor",

@@ -76,29 +76,72 @@ export interface PodDetail {
   phase: string;
 }
 
+// {
+//   "cpu_usage_avg": 0.12826866,
+//   "cpu_usage_max": 29.675838,
+//   "cpu_usage_std": 1.0184886,
+//   "cpu_mem_avg": 8204.886,
+//   "cpu_mem_max": 102399.22,
+//   "cpu_mem_std": 23043.736,
+//   "gpu_util_avg": 0.0063490635,
+//   "gpu_util_max": 0.76,
+//   "gpu_util_std": 0.063120745,
+//   "sm_active_avg": 0.0052751177,
+//   "sm_active_max": 0.592845,
+//   "sm_active_std": 0.0486276,
+//   "sm_occupancy_avg": 0.0025021092,
+//   "sm_occupancy_max": 0.280952,
+//   "sm_occupancy_std": 0.023056554,
+//   "dram_util_avg": 0.0029674373,
+//   "dram_util_max": 0.376592,
+//   "dram_util_std": 0.029283673,
+//   "mem_copy_util_avg": 0.0039970037,
+//   "mem_copy_util_max": 0.5,
+//   "mem_copy_util_std": 0.040522728,
+//   "pcie_tx_avg": 2.90641,
+//   "pcie_tx_max": 355.19397,
+//   "pcie_rx_avg": 24.02333,
+//   "pcie_rx_max": 2997.0408,
+//   "gpu_mem_max": 4899
+// }
 export interface ProfileData {
+  cpu_usage_avg?: number; //展示数值
+  cpu_usage_max?: number;
+  cpu_usage_std?: number;
+
+  cpu_mem_avg?: number; // 展示单位MB，不用进度条
+  cpu_mem_max?: number; // 展示单位MB，不用进度条
+  cpu_mem_std?: number; // 展示单位MB，不用进度条
+
   gpu_util_avg?: number; //上限1
   gpu_util_max?: number; //上限1
   gpu_util_std?: number;
+
   sm_active_avg?: number; //上限1
   sm_active_max?: number; //上限1
+  sm_active_std?: number;
+
   sm_util_std?: number;
+
   sm_occupancy_avg?: number; //上限1
   sm_occupancy_max?: number;
   sm_occupancy_std?: number;
+
   dram_util_avg?: number; //上限1
   dram_util_max?: number;
   dram_util_std?: number;
+
   mem_copy_util_avg?: number; //上限1
   mem_copy_util_max?: number;
   mem_copy_util_std?: number;
+
   pcie_tx_avg?: number; // 展示数值 MB/s
   pcie_tx_max?: number;
+
   pcie_rx_avg?: number; // 展示数值 MB/s
   pcie_rx_max?: number;
-  cpu_usage_avg?: number; //展示数值
-  gpu_mem_max?: number; //展示单位MB，上限是32768
-  cpu_mem_max?: number; // 展示单位MB，不用进度条
+
+  gpu_mem_max?: number; //展示单位MB
 }
 
 export interface IJupyterDetail {
