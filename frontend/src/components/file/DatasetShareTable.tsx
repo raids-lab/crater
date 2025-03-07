@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react"; //, useRef
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useParams } from "react-router-dom";
@@ -23,13 +23,11 @@ import {
   QueueDataset,
   UserDatasetResp,
   QueueDatasetGetResp,
-  apiDatasetRename,
   apiGetDatasetByID,
   cancelSharedUserResp,
   cancelSharedQueueResp,
 } from "@/services/api/dataset";
 import {
-  Pencil,
   User,
   Users,
   X,
@@ -46,12 +44,11 @@ import { IResponse } from "@/services/types";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "../custom/DataTable/DataTableColumnHeader";
 import { TimeDistance } from "../custom/TimeDistance";
-import { Input } from "../ui/input";
 import { DetailPage } from "@/components/layout/DetailPage";
 import PageTitle from "@/components/layout/PageTitle";
 import { DataTable } from "@/components/custom/DataTable";
 import { useNavigate } from "react-router-dom";
-
+import { DatasetUpdateForm } from "./updateform";
 interface QueueOption {
   value: string;
   id: number;
@@ -98,40 +95,13 @@ export function DatasetShareTable({
     select: (res) => res.data.data,
   });
   const queryClient = useQueryClient();
-  const refInput = useRef<HTMLInputElement>(null);
-  const [datasetNewName, setDatasetNewName] = useState<string>("");
+  //const refInput = useRef<HTMLInputElement>(null);
+  //const [datasetNewName, setDatasetNewName] = useState<string>("");
   const data = useQuery({
     queryKey: ["data", "datasetByID", datasetId],
     queryFn: () => apiGetDatasetByID(datasetId),
     select: (res) => res.data.data,
   });
-
-  const { mutate: RenameDataset } = useMutation({
-    mutationFn: (datasetid: number) => rename(datasetid),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ["data", "datasetByID", datasetId],
-      });
-    },
-  });
-  const rename = async (datasetid: number) => {
-    if (datasetNewName != "") {
-      await apiDatasetRename({
-        datasetID: datasetid,
-        name: datasetNewName,
-      }).then(() => {
-        toast.success("已修改名称");
-      });
-    } else {
-      toast.error("名称不能为空");
-    }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.persist();
-    setDatasetNewName(e.target.value);
-  };
-
   const { mutate: cancelShareWithUser } = useMutation({
     mutationFn: (userId: number) =>
       apiCancelDatasetSharewithUser({ datasetID: datasetId, userID: userId }),
@@ -324,56 +294,25 @@ export function DatasetShareTable({
           }
         >
           <div className="flex flex-row space-x-1">
-            <Dialog>
-              <DialogTrigger asChild>
-                <div>
-                  <Button
-                    variant="outline"
-                    className="h-8 w-8"
-                    size="icon"
-                    title="重命名"
-                  >
-                    <Pencil size={16} strokeWidth={2} />
-                  </Button>
-                </div>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>重命名</DialogTitle>
-                  <DialogDescription>重命名数据集</DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="rename" className="text-right">
-                      数据集新名称
-                    </Label>
-                    <Input
-                      id="rename"
-                      type="text"
-                      defaultValue=""
-                      className="col-span-3"
-                      ref={refInput}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <DialogClose>取消</DialogClose>
-                  <DialogClose>
-                    <Button
-                      type="submit"
-                      variant="default"
-                      onClick={() =>
-                        data.data?.[0]?.id && RenameDataset(data.data[0].id)
-                      }
-                    >
-                      确认
-                    </Button>
-                  </DialogClose>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <DatasetUpdateForm
+              type="dataset"
+              initialData={{
+                datasetId: datasetId, // 使用当前数据集ID
+                datasetName: data.data?.[0]?.name || "",
+                describe: data.data?.[0]?.describe || "",
+                url: data.data?.[0]?.url || "",
+                type: "model",
+                tags: data.data?.[0]?.extra.tag || [],
+                weburl: data.data?.[0]?.extra.weburl || "",
+                ispublic: true,
+              }}
+              onSuccess={() => {
+                // 重新查询数据
+                queryClient.invalidateQueries({
+                  queryKey: ["data", "datasetByID", datasetId],
+                });
+              }}
+            />
             <Dialog>
               <DialogTrigger asChild>
                 <div>
