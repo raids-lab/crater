@@ -764,6 +764,7 @@ func (mgr *VolcanojobMgr) GetJobEvents(c *gin.Context) {
 		return
 	}
 	events := jobEvents.Items
+	containsPodEvents := false
 
 	// get pod events
 	var podList = &v1.PodList{}
@@ -788,6 +789,11 @@ func (mgr *VolcanojobMgr) GetJobEvents(c *gin.Context) {
 		if err != nil {
 			resputil.Error(c, err.Error(), resputil.NotSpecified)
 			return
+		}
+		// 如果存在 Pod 事件，则不返回 Job 事件
+		if len(podEvents.Items) > 0 && !containsPodEvents {
+			containsPodEvents = true
+			events = []v1.Event{}
 		}
 		events = append(events, podEvents.Items...)
 	}
