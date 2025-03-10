@@ -58,14 +58,14 @@ export default function ProfileDashboard({
     <div className="space-y-8">
       {/* CPU Metrics Section */}
       {hasCpuMetrics && (
-        <MetricSection title="CPU Metrics" icon={<Cpu className="h-5 w-5" />}>
+        <MetricSection title="CPU 相关指标" icon={<Cpu className="h-5 w-5" />}>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {profileData.cpu_usage_avg !== undefined && (
               <MetricCard
                 title="Average CPU Usage"
                 value={profileData.cpu_usage_avg}
                 unit="Core"
-                description="Average CPU utilization"
+                description="作业运行期间 CPU 平均使用量"
               />
             )}
             {profileData.cpu_usage_max !== undefined && (
@@ -73,7 +73,7 @@ export default function ProfileDashboard({
                 title="Maximum CPU Usage"
                 value={profileData.cpu_usage_max}
                 unit="Core"
-                description="Peak CPU utilization"
+                description="作业运行期间 CPU 峰值使用量"
               />
             )}
             {profileData.cpu_usage_std !== undefined && (
@@ -81,7 +81,7 @@ export default function ProfileDashboard({
                 title="CPU Usage Std Dev"
                 value={profileData.cpu_usage_std}
                 unit="Core"
-                description="Standard deviation of CPU usage"
+                description="作业运行期间 CPU 使用量标准差"
               />
             )}
             {profileData.cpu_mem_avg !== undefined && (
@@ -89,7 +89,7 @@ export default function ProfileDashboard({
                 title="Average CPU Memory"
                 value={profileData.cpu_mem_avg}
                 unit="MB"
-                description="Average memory usage"
+                description="作业运行期间内存平均使用量"
               />
             )}
             {profileData.cpu_mem_max !== undefined && (
@@ -97,7 +97,7 @@ export default function ProfileDashboard({
                 title="Maximum CPU Memory"
                 value={profileData.cpu_mem_max}
                 unit="MB"
-                description="Peak memory usage"
+                description="作业运行期间内存峰值使用量"
               />
             )}
             {profileData.cpu_mem_std !== undefined && (
@@ -105,7 +105,7 @@ export default function ProfileDashboard({
                 title="CPU Memory Std Dev"
                 value={profileData.cpu_mem_std}
                 unit="MB"
-                description="Standard deviation of memory usage"
+                description="作业运行期间内存使用量标准差"
               />
             )}
           </div>
@@ -115,7 +115,7 @@ export default function ProfileDashboard({
       {/* GPU Utilization Section */}
       {hasGpuUtilMetrics && (
         <MetricSection
-          title="GPU Utilization"
+          title="GPU 利用率相关指标"
           icon={<GpuIcon className="h-5 w-5" />}
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -124,7 +124,7 @@ export default function ProfileDashboard({
                 title="Average GPU Utilization"
                 value={profileData.gpu_util_avg}
                 showPercentage={true}
-                description="Average GPU utilization (0-1)"
+                description="作业运行期间 GPU 平均利用率"
               />
             )}
             {profileData.gpu_util_max !== undefined && (
@@ -132,15 +132,16 @@ export default function ProfileDashboard({
                 title="Maximum GPU Utilization"
                 value={profileData.gpu_util_max}
                 showPercentage={true}
-                description="Peak GPU utilization (0-1)"
+                description="作业运行期间 GPU 峰值利用率"
               />
             )}
             {profileData.gpu_util_std !== undefined && (
-              <MetricCard
+              <ProgressCard
                 title="GPU Utilization Std Dev"
                 value={profileData.gpu_util_std}
+                showPercentage={true}
                 unit=""
-                description="Standard deviation of GPU utilization"
+                description="运行期间 GPU 利用率的标准差"
               />
             )}
           </div>
@@ -150,7 +151,7 @@ export default function ProfileDashboard({
       {/* SM Metrics Section */}
       {hasSmMetrics && (
         <MetricSection
-          title="GPU Streaming Multiprocessor Metrics"
+          title="GPU 流式多处理器相关指标"
           icon={<GpuIcon className="h-5 w-5" />}
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -159,7 +160,7 @@ export default function ProfileDashboard({
                 title="Average SM Active"
                 value={profileData.sm_active_avg}
                 showPercentage={true}
-                description="Average SM activity (0-1)"
+                description="作业运行期间 GPU 流式多处理器平均活跃度"
               />
             )}
             {profileData.sm_active_max !== undefined && (
@@ -167,15 +168,15 @@ export default function ProfileDashboard({
                 title="Maximum SM Active"
                 value={profileData.sm_active_max}
                 showPercentage={true}
-                description="Peak SM activity (0-1)"
+                description="作业运行期间 GPU 流式多处理器峰值活跃度"
               />
             )}
             {profileData.sm_active_std !== undefined && (
-              <MetricCard
+              <ProgressCard
                 title="SM Active Std Dev"
                 value={profileData.sm_active_std}
-                unit=""
-                description="Standard deviation of SM activity"
+                showPercentage={true}
+                description="作业运行期间 GPU 流式多处理器活跃度标准差"
               />
             )}
             {profileData.sm_occupancy_avg !== undefined && (
@@ -183,7 +184,7 @@ export default function ProfileDashboard({
                 title="Average SM Occupancy"
                 value={profileData.sm_occupancy_avg}
                 showPercentage={true}
-                description="Average SM occupancy (0-1)"
+                description="作业运行期间 GPU 流式多处理器平均占用率"
               />
             )}
             {profileData.sm_occupancy_max !== undefined && (
@@ -191,15 +192,15 @@ export default function ProfileDashboard({
                 title="Maximum SM Occupancy"
                 value={profileData.sm_occupancy_max}
                 showPercentage={true}
-                description="Peak SM occupancy (0-1)"
+                description="作业运行期间 GPU 流式多处理器峰值占用率"
               />
             )}
             {profileData.sm_occupancy_std !== undefined && (
-              <MetricCard
+              <ProgressCard
                 title="SM Occupancy Std Dev"
                 value={profileData.sm_occupancy_std}
-                unit=""
-                description="Standard deviation of SM occupancy"
+                showPercentage={true}
+                description="作业运行期间 GPU 流式多处理器占用率标准差"
               />
             )}
             {profileData.sm_util_std !== undefined && (
@@ -207,7 +208,7 @@ export default function ProfileDashboard({
                 title="SM Utilization Std Dev"
                 value={profileData.sm_util_std}
                 unit=""
-                description="Standard deviation of SM utilization"
+                description="作业运行期间 GPU 流式多处理器利用率标准差"
               />
             )}
           </div>
@@ -217,16 +218,24 @@ export default function ProfileDashboard({
       {/* Memory Utilization Section */}
       {hasMemoryMetrics && (
         <MetricSection
-          title="GPU Memory Utilization"
+          title="GPU 内存相关指标"
           icon={<Memory className="h-5 w-5" />}
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {profileData.gpu_mem_max !== undefined && (
+              <MetricCard
+                title="Maximum GPU Memory"
+                value={profileData.gpu_mem_max}
+                unit="MB"
+                description="作业运行期间 GPU 内存峰值使用量"
+              />
+            )}
             {profileData.dram_util_avg !== undefined && (
               <ProgressCard
                 title="Average DRAM Utilization"
                 value={profileData.dram_util_avg}
                 showPercentage={true}
-                description="Average DRAM utilization (0-1)"
+                description="作业运行期间 DRAM 平均利用率"
               />
             )}
             {profileData.dram_util_max !== undefined && (
@@ -234,15 +243,15 @@ export default function ProfileDashboard({
                 title="Maximum DRAM Utilization"
                 value={profileData.dram_util_max}
                 showPercentage={true}
-                description="Peak DRAM utilization (0-1)"
+                description="作业运行期间 DRAM 峰值利用率"
               />
             )}
             {profileData.dram_util_std !== undefined && (
-              <MetricCard
+              <ProgressCard
                 title="DRAM Utilization Std Dev"
                 value={profileData.dram_util_std}
-                unit=""
-                description="Standard deviation of DRAM utilization"
+                showPercentage={true}
+                description="作业运行期间 DRAM 利用率标准差"
               />
             )}
             {profileData.mem_copy_util_avg !== undefined && (
@@ -250,7 +259,7 @@ export default function ProfileDashboard({
                 title="Average Memory Copy Utilization"
                 value={profileData.mem_copy_util_avg}
                 showPercentage={true}
-                description="Average memory copy utilization (0-1)"
+                description="作业运行期间内存拷贝平均利用率"
               />
             )}
             {profileData.mem_copy_util_max !== undefined && (
@@ -258,23 +267,15 @@ export default function ProfileDashboard({
                 title="Maximum Memory Copy Utilization"
                 value={profileData.mem_copy_util_max}
                 showPercentage={true}
-                description="Peak memory copy utilization (0-1)"
+                description="作业运行期间内存拷贝峰值利用率"
               />
             )}
             {profileData.mem_copy_util_std !== undefined && (
-              <MetricCard
+              <ProgressCard
                 title="Memory Copy Utilization Std Dev"
                 value={profileData.mem_copy_util_std}
-                unit=""
-                description="Standard deviation of memory copy utilization"
-              />
-            )}
-            {profileData.gpu_mem_max !== undefined && (
-              <MetricCard
-                title="Maximum GPU Memory"
-                value={profileData.gpu_mem_max}
-                unit="MB"
-                description="Peak GPU memory usage"
+                showPercentage={true}
+                description="作业运行期间内存拷贝利用率标准差"
               />
             )}
           </div>
@@ -284,7 +285,7 @@ export default function ProfileDashboard({
       {/* PCIe Transfer Section */}
       {hasPcieMetrics && (
         <MetricSection
-          title="PCIe Transfer"
+          title="PCIe 传输相关指标"
           icon={<ArrowDownUp className="h-5 w-5" />}
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -293,7 +294,7 @@ export default function ProfileDashboard({
                 title="Average PCIe TX"
                 value={profileData.pcie_tx_avg}
                 unit="MB/s"
-                description="Average PCIe transmission rate"
+                description="作业运行期间 PCIe 平均传输速率"
               />
             )}
             {profileData.pcie_tx_max !== undefined && (
@@ -301,7 +302,7 @@ export default function ProfileDashboard({
                 title="Maximum PCIe TX"
                 value={profileData.pcie_tx_max}
                 unit="MB/s"
-                description="Peak PCIe transmission rate"
+                description="作业运行期间 PCIe 峰值传输速率"
               />
             )}
             {profileData.pcie_rx_avg !== undefined && (
@@ -309,7 +310,7 @@ export default function ProfileDashboard({
                 title="Average PCIe RX"
                 value={profileData.pcie_rx_avg}
                 unit="MB/s"
-                description="Average PCIe receive rate"
+                description="作业运行期间 PCIe 平均接收速率"
               />
             )}
             {profileData.pcie_rx_max !== undefined && (
@@ -317,7 +318,7 @@ export default function ProfileDashboard({
                 title="Maximum PCIe RX"
                 value={profileData.pcie_rx_max}
                 unit="MB/s"
-                description="Peak PCIe receive rate"
+                description="作业运行期间 PCIe 峰值接收速率"
               />
             )}
           </div>
