@@ -55,23 +55,26 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/available", mgr.ListAvailableImages)
 	g.GET("/getbyid", mgr.GetKanikoByID)
 	g.POST("/quota", mgr.UpdateProjectQuota)
-	g.POST("/change/:id", mgr.UpdateImagePublicStatus)
+	g.POST("/change/:id", mgr.UserUpdateImagePublicStatus)
 
 	g.GET("/podname", mgr.GetImagepackPodName)
 	g.POST("/credential", mgr.UserGetProjectCredential)
 	g.GET("/quota", mgr.UserGetProjectDetail)
-	g.POST("/valid", mgr.UserCheckLinkValidity)
+	g.POST("/valid", mgr.CheckLinkValidity)
 	g.POST("/description", mgr.UserChangeImageDescription)
-	g.POST("/deleteimage", mgr.DeleteImageByIDList)
-	g.POST("/deletekaniko", mgr.DeleteKanikoByIDList)
+	g.POST("/deleteimage", mgr.UserDeleteImageByIDList)
+	g.POST("/deletekaniko", mgr.UserDeleteKanikoByIDList)
 	g.POST("/type", mgr.UserChangeImageTaskType)
 }
 
 func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("/kaniko", mgr.AdminListKaniko)
-	g.POST("/kaniko", mgr.AdminCreate)
-	g.DELETE("/kaniko/:id", mgr.DeleteKanikoByID)
-	g.POST("/change/:id", mgr.UpdateImagePublicStatus)
+	g.GET("/image", mgr.AdminListImage)
+	g.POST("/deleteimage", mgr.AdminDeleteImageByIDList)
+	g.POST("/deletekaniko", mgr.AdminDeleteKanikoByIDList)
+	g.POST("/type", mgr.AdminChangeImageTaskType)
+	g.POST("/change/:id", mgr.AdminUpdateImagePublicStatus)
+	g.POST("/description", mgr.AdminChangeImageDescription)
 }
 
 func NewImagePackMgr(conf *RegisterConfig) Manager {
@@ -205,6 +208,7 @@ type (
 		CreatedAt   time.Time         `json:"createdAt"`
 		Size        int64             `json:"size"`
 		Description string            `json:"description"`
+		CreatorName string            `json:"creatorName"`
 	}
 	ListKanikoResponse struct {
 		KanikoInfoList []KanikoInfo `json:"kanikoList"`
@@ -454,6 +458,31 @@ func (mgr *ImagePackMgr) UserListKaniko(c *gin.Context) {
 	if err != nil {
 		logutils.Log.Errorf("fetch kaniko entity failed, err:%v", err)
 	}
+	response := mgr.generateKanikoListResponse(kanikos)
+	resputil.Success(c, response)
+}
+
+// AdminListKaniko godoc
+// @Summary 管理员获取相关镜像的功能
+// @Description 管理员获取所有镜像制作信息
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Router /v1/admin/images/kaniko [GET]
+func (mgr *ImagePackMgr) AdminListKaniko(c *gin.Context) {
+	var kanikos []*model.Kaniko
+	var err error
+	kanikoQuery := query.Kaniko
+	kanikos, err = kanikoQuery.WithContext(c).Preload(kanikoQuery.User).Order(kanikoQuery.CreatedAt.Desc()).Find()
+	if err != nil {
+		logutils.Log.Errorf("fetch kaniko entity failed, err:%v", err)
+	}
+	response := mgr.generateKanikoListResponse(kanikos)
+	resputil.Success(c, response)
+}
+
+func (mgr *ImagePackMgr) generateKanikoListResponse(kanikos []*model.Kaniko) ListKanikoResponse {
 	kanikoInfos := []KanikoInfo{}
 	for i := range kanikos {
 		kaniko := kanikos[i]
@@ -464,13 +493,13 @@ func (mgr *ImagePackMgr) UserListKaniko(c *gin.Context) {
 			CreatedAt:   kaniko.CreatedAt,
 			Size:        kaniko.Size,
 			Description: *kaniko.Description,
+			CreatorName: kaniko.User.Name,
 		}
 		kanikoInfos = append(kanikoInfos, kanikoInfo)
 	}
-	response := ListKanikoResponse{
+	return ListKanikoResponse{
 		KanikoInfoList: kanikoInfos,
 	}
-	resputil.Success(c, response)
 }
 
 // UserListImage godoc
@@ -495,6 +524,33 @@ func (mgr *ImagePackMgr) UserListImage(c *gin.Context) {
 		Find(); err != nil {
 		logutils.Log.Errorf("fetch kaniko entity failed, err:%v", err)
 	}
+	response := mgr.generateImageListResponse(images)
+	resputil.Success(c, response)
+}
+
+// AdminListImage godoc
+// @Summary 管理员获取所有镜像数据
+// @Description 所有的镜像数据
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Router /v1/admin/images/image [GET]
+func (mgr *ImagePackMgr) AdminListImage(c *gin.Context) {
+	var images []*model.Image
+	var err error
+	imageQuery := query.Image
+	if images, err = imageQuery.WithContext(c).
+		Preload(query.Image.User).
+		Order(imageQuery.CreatedAt.Desc()).
+		Find(); err != nil {
+		logutils.Log.Errorf("fetch image entity failed, err:%v", err)
+	}
+	response := mgr.generateImageListResponse(images)
+	resputil.Success(c, response)
+}
+
+func (mgr *ImagePackMgr) generateImageListResponse(images []*model.Image) ListImageResponse {
 	imageInfos := []ImageInfo{}
 	for i := range images {
 		image := images[i]
@@ -509,24 +565,9 @@ func (mgr *ImagePackMgr) UserListImage(c *gin.Context) {
 		}
 		imageInfos = append(imageInfos, imageInfo)
 	}
-	response := ListImageResponse{
+	return ListImageResponse{
 		ImageInfoList: imageInfos,
 	}
-	resputil.Success(c, response)
-}
-
-// AdminListKaniko godoc
-// @Summary 管理员获取相关镜像的功能
-// @Description 根据GET参数type来决定搜索私有or公共镜像
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param type query int true "管理员获取镜像的类型"
-// @Router /v1/admin/images/kaniko [GET]
-func (mgr *ImagePackMgr) AdminListKaniko(c *gin.Context) {
-	var response KanikoInfo
-	resputil.Success(c, response)
 }
 
 // ListAvailableImages godoc
@@ -595,14 +636,14 @@ func (mgr *ImagePackMgr) DeleteKanikoByID(c *gin.Context) {
 		return
 	}
 	kanikoID := deleteKanikoRequest.ID
-	if isSuccess, errorMsg := mgr.deleteKaniko(c, kanikoID, token.UserID); isSuccess {
+	if isSuccess, errorMsg := mgr.deleteKanikoByID(c, false, kanikoID, token.UserID); isSuccess {
 		resputil.Success(c, "")
 	} else {
 		resputil.Error(c, errorMsg, resputil.NotSpecified)
 	}
 }
 
-// DeleteKanikoByIDList godoc
+// UserDeleteKanikoByIDList godoc
 // @Summary 根据IDList删除Kaniko entity
 // @Description 遍历列表，根据ID更新Kaniko的状态为Deleted，起到删除的功能
 // @Tags ImagePack
@@ -611,8 +652,7 @@ func (mgr *ImagePackMgr) DeleteKanikoByID(c *gin.Context) {
 // @Security Bearer
 // @Param IDList body []uint true "删除kaniko的IDList"
 // @Router /v1/images/deletekaniko [POST]
-func (mgr *ImagePackMgr) DeleteKanikoByIDList(c *gin.Context) {
-	token := util.GetToken(c)
+func (mgr *ImagePackMgr) UserDeleteKanikoByIDList(c *gin.Context) {
 	var err error
 	var deleteKanikoListRequest DeleteKanikoByIDListRequest
 	if err = c.ShouldBindJSON(&deleteKanikoListRequest); err != nil {
@@ -620,14 +660,7 @@ func (mgr *ImagePackMgr) DeleteKanikoByIDList(c *gin.Context) {
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
-	kanikoIDList := deleteKanikoListRequest.IDList
-	flag := true
-	for _, id := range kanikoIDList {
-		if isSuccess, errorMsg := mgr.deleteKaniko(c, id, token.UserID); !isSuccess {
-			flag = false
-			logutils.Log.Errorf("delete kaniko failed, err:%v", errorMsg)
-		}
-	}
+	flag := mgr.deleteKanikoByIDList(c, true, deleteKanikoListRequest.IDList)
 	if flag {
 		resputil.Success(c, "")
 	} else {
@@ -635,16 +668,57 @@ func (mgr *ImagePackMgr) DeleteKanikoByIDList(c *gin.Context) {
 	}
 }
 
-func (mgr *ImagePackMgr) deleteKaniko(c *gin.Context, kanikoID, userID uint) (isSuccess bool, errMsg string) {
+// AdminDeleteKanikoByIDList godoc
+// @Summary 管理员模式下根据IDList删除Kaniko entity
+// @Description 管理员模式下遍历列表，根据ID更新Kaniko的状态为Deleted，起到删除的功能
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param IDList body []uint true "删除kaniko的IDList"
+// @Router /v1/admin/images/deletekaniko [POST]
+func (mgr *ImagePackMgr) AdminDeleteKanikoByIDList(c *gin.Context) {
+	var err error
+	var deleteKanikoListRequest DeleteKanikoByIDListRequest
+	if err = c.ShouldBindJSON(&deleteKanikoListRequest); err != nil {
+		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		return
+	}
+	flag := mgr.deleteKanikoByIDList(c, true, deleteKanikoListRequest.IDList)
+	if flag {
+		resputil.Success(c, "")
+	} else {
+		resputil.Error(c, "failed to delete kaniko", resputil.NotSpecified)
+	}
+}
+
+func (mgr *ImagePackMgr) deleteKanikoByIDList(c *gin.Context, isAdminMode bool, kanikoIDList []uint) (isSuccess bool) {
+	flag := true
+	userID := util.GetToken(c).UserID
+	for _, kanikoID := range kanikoIDList {
+		if isSuccess, errorMsg := mgr.deleteKanikoByID(c, isAdminMode, kanikoID, userID); !isSuccess {
+			flag = false
+			logutils.Log.Errorf("delete kaniko failed, err:%v", errorMsg)
+		}
+	}
+	return flag
+}
+
+func (mgr *ImagePackMgr) deleteKanikoByID(c *gin.Context, isAdminMode bool, kanikoID, userID uint) (isSuccess bool, errMsg string) {
 	var kaniko *model.Kaniko
 	var err error
 	var errorMsg string
-	k := query.Kaniko
 	flag := true
+	k := query.Kaniko
+	// 0. specify user & admin query
+	kanikoQuery := k.WithContext(c).Preload(k.User)
+	if !isAdminMode {
+		kanikoQuery = kanikoQuery.Where(k.UserID.Eq(userID))
+	}
 	// 1. check if kaniko exist and have permission
 	if kaniko, err = k.WithContext(c).
-		Where(k.ID.Eq(kanikoID)).
-		Where(k.UserID.Eq(userID)).First(); err != nil {
+		Where(k.ID.Eq(kanikoID)).First(); err != nil {
 		errorMsg = fmt.Sprintf("kaniko not exist or have no permission %+v", err)
 		logutils.Log.Error(errorMsg)
 		return false, errorMsg
@@ -657,7 +731,7 @@ func (mgr *ImagePackMgr) deleteKaniko(c *gin.Context, kanikoID, userID uint) (is
 		}
 	}
 	// 3. delete kaniko entity
-	if _, err = k.WithContext(c).Delete(kaniko); err != nil {
+	if _, err = kanikoQuery.Delete(kaniko); err != nil {
 		errorMsg = fmt.Sprintf("delete kaniko entity failed! err:%v", err)
 		logutils.Log.Error(errorMsg)
 		return false, errorMsg
@@ -703,16 +777,16 @@ func (mgr *ImagePackMgr) DeleteImageByID(c *gin.Context) {
 	resputil.Success(c, "")
 }
 
-// DeleteImageByIDList godoc
-// @Summary 根据ID列表删除Image
-// @Description 根据ID列表的ID更新Image的状态为Deleted，起到删除的功能
+// UserDeleteImageByIDList godoc
+// @Summary 用户模式根据ID列表删除Image
+// @Description 用户模式根据ID列表的ID更新Image的状态为Deleted，起到删除的功能
 // @Tags ImagePack
 // @Accept json
 // @Produce json
 // @Security Bearer
 // @Param ID body []uint true "删除镜像的ID"
 // @Router /v1/images/deleteimage [POST]
-func (mgr *ImagePackMgr) DeleteImageByIDList(c *gin.Context) {
+func (mgr *ImagePackMgr) UserDeleteImageByIDList(c *gin.Context) {
 	var err error
 	var deleteImageListRequest DeleteImageByIDListRequest
 	if err = c.ShouldBindJSON(&deleteImageListRequest); err != nil {
@@ -720,20 +794,53 @@ func (mgr *ImagePackMgr) DeleteImageByIDList(c *gin.Context) {
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
-	imageIDList := deleteImageListRequest.IDList
-	flag := true
-	imageQuery := query.Image
-	for _, id := range imageIDList {
-		if _, err = imageQuery.WithContext(c).Where(imageQuery.ID.Eq(id)).Delete(); err != nil {
-			logutils.Log.Errorf("delete image entity failed! err:%v", err)
-			flag = false
-		}
-	}
+	flag := mgr.deleteImageByIDList(c, false, deleteImageListRequest.IDList)
 	if flag {
 		resputil.Success(c, "")
 	} else {
 		resputil.Error(c, "failed to delete image", resputil.NotSpecified)
 	}
+}
+
+// AdminDeleteImageByIDList godoc
+// @Summary 管理员模式根据ID列表删除Image
+// @Description 管理员模式根据ID列表的ID更新Image的状态为Deleted，起到删除的功能
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param ID body []uint true "删除镜像的ID"
+// @Router /v1/amdin/images/deleteimage [POST]
+func (mgr *ImagePackMgr) AdminDeleteImageByIDList(c *gin.Context) {
+	var err error
+	var deleteImageListRequest DeleteImageByIDListRequest
+	if err = c.ShouldBindJSON(&deleteImageListRequest); err != nil {
+		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		return
+	}
+	flag := mgr.deleteImageByIDList(c, true, deleteImageListRequest.IDList)
+	if flag {
+		resputil.Success(c, "")
+	} else {
+		resputil.Error(c, "failed to delete image", resputil.NotSpecified)
+	}
+}
+
+func (mgr *ImagePackMgr) deleteImageByIDList(c *gin.Context, isAdminMode bool, imageIDList []uint) bool {
+	flag := true
+	imageQuery := query.Image
+	specifiedQuery := imageQuery.WithContext(c).Preload(query.Image.User)
+	if !isAdminMode {
+		specifiedQuery = specifiedQuery.Where(imageQuery.UserID.Eq(util.GetToken(c).UserID))
+	}
+	for _, id := range imageIDList {
+		if _, err := specifiedQuery.Where(imageQuery.ID.Eq(id)).Delete(); err != nil {
+			logutils.Log.Errorf("delete image entity failed! err:%v", err)
+			flag = false
+		}
+	}
+	return flag
 }
 
 // GetKanikoByID godoc
@@ -801,16 +908,16 @@ func (mgr *ImagePackMgr) UpdateProjectQuota(c *gin.Context) {
 	resputil.Success(c, "")
 }
 
-// UpdateImagePublicStatus godoc
-// @Summary 更新镜像的公共或私有状态
+// UserUpdateImagePublicStatus godoc
+// @Summary 用户模式下更新镜像的公共或私有状态
 // @Description 传入uint参数
 // @Tags ImagePack
 // @Accept json
 // @Produce json
 // @Security Bearer
 // @Param req body ChangeImagePublicStatusRequest true "更新镜像的ID"
-// @Router /v1/admin/images/change [POST]
-func (mgr *ImagePackMgr) UpdateImagePublicStatus(c *gin.Context) {
+// @Router /v1/images/change [POST]
+func (mgr *ImagePackMgr) UserUpdateImagePublicStatus(c *gin.Context) {
 	req := &ChangeImagePublicStatusRequest{}
 	var err error
 	if err = c.ShouldBindUri(req); err != nil {
@@ -818,17 +925,41 @@ func (mgr *ImagePackMgr) UpdateImagePublicStatus(c *gin.Context) {
 		resputil.Error(c, "validate params", resputil.NotSpecified)
 		return
 	}
-	token := util.GetToken(c)
+	mgr.updateImagePublicStatus(c, false, req.ID)
+}
+
+// AdminUpdateImagePublicStatus godoc
+// @Summary 管理员模式下更新镜像的公共或私有状态
+// @Description 传入uint参数
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param req body ChangeImagePublicStatusRequest true "更新镜像的ID"
+// @Router /v1/images/change [POST]
+func (mgr *ImagePackMgr) AdminUpdateImagePublicStatus(c *gin.Context) {
+	req := &ChangeImagePublicStatusRequest{}
+	var err error
+	if err = c.ShouldBindUri(req); err != nil {
+		logutils.Log.Errorf("validate update image public status params failed, err %v", err)
+		resputil.Error(c, "validate params", resputil.NotSpecified)
+		return
+	}
+	mgr.updateImagePublicStatus(c, true, req.ID)
+}
+
+func (mgr *ImagePackMgr) updateImagePublicStatus(c *gin.Context, isAdminMode bool, imageID uint) {
 	imageQuery := query.Image
-	if _, err = imageQuery.WithContext(c).
-		Preload(query.Image.User).
-		Where(imageQuery.ID.Eq(req.ID)).
-		Where(imageQuery.UserID.Eq(token.UserID)).
+	specifiedQuery := imageQuery.WithContext(c).Preload(query.Image.User)
+	if !isAdminMode {
+		specifiedQuery = specifiedQuery.Where(imageQuery.UserID.Eq(util.GetToken(c).UserID))
+	}
+	if _, err := specifiedQuery.
+		Where(imageQuery.ID.Eq(imageID)).
 		Update(imageQuery.IsPublic, imageQuery.IsPublic.Not()); err != nil {
 		logutils.Log.Errorf("update image image public status failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "update status failed", resputil.NotSpecified)
 	}
-
 	resputil.Success(c, "")
 }
 
@@ -930,7 +1061,7 @@ func (mgr *ImagePackMgr) UserGetProjectDetail(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
-// UserCheckLinkValidity godoc
+// CheckLinkValidity godoc
 // @Summary 检查镜像链接是否有效
 // @Description 通过获取的镜像链接列表，遍历其中的链接，检查是否有效
 // @Tags ImagePack
@@ -938,7 +1069,7 @@ func (mgr *ImagePackMgr) UserGetProjectDetail(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Router /v1/images/valid [POST]
-func (mgr *ImagePackMgr) UserCheckLinkValidity(c *gin.Context) {
+func (mgr *ImagePackMgr) CheckLinkValidity(c *gin.Context) {
 	req := &CheckLinkValidityRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		logutils.Log.Errorf("validate link pairs failed, err %v", err)
@@ -983,19 +1114,42 @@ func (mgr *ImagePackMgr) checkLinkValidity(link string) bool {
 // @Security Bearer
 // @Router /v1/images/description [POST]
 func (mgr *ImagePackMgr) UserChangeImageDescription(c *gin.Context) {
-	token := util.GetToken(c)
 	req := &ChangeImageDescriptionRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		logutils.Log.Errorf("validate description failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
 		return
 	}
+	mgr.changeImageDescription(c, false, req.ID, req.Description)
+}
+
+// AdminChangeImageDescription godoc
+// @Summary 管理员模式下更新镜像的描述
+// @Description 更新描述
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Router /v1/admin/images/description [POST]
+func (mgr *ImagePackMgr) AdminChangeImageDescription(c *gin.Context) {
+	req := &ChangeImageDescriptionRequest{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		logutils.Log.Errorf("validate description failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		return
+	}
+	mgr.changeImageDescription(c, true, req.ID, req.Description)
+}
+
+func (mgr *ImagePackMgr) changeImageDescription(c *gin.Context, isAdminMode bool, imageID uint, newDescription string) {
 	imageQuery := query.Image
-	if _, err := imageQuery.WithContext(c).
-		Preload(query.Image.User).
-		Where(imageQuery.ID.Eq(req.ID)).
-		Where(imageQuery.UserID.Eq(token.UserID)).
-		Update(imageQuery.Description, req.Description); err != nil {
+	specifiedQuery := imageQuery.WithContext(c).Preload(query.Image.User)
+	if !isAdminMode {
+		specifiedQuery = specifiedQuery.Where(imageQuery.UserID.Eq(util.GetToken(c).UserID))
+	}
+	if _, err := specifiedQuery.
+		Where(imageQuery.ID.Eq(imageID)).
+		Update(imageQuery.Description, newDescription); err != nil {
 		logutils.Log.Errorf("update image description failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "update description failed", resputil.NotSpecified)
 	}
@@ -1017,13 +1171,36 @@ func (mgr *ImagePackMgr) UserChangeImageTaskType(c *gin.Context) {
 		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
 		return
 	}
-	token := util.GetToken(c)
+	mgr.changeImageTaskType(c, false, req.ID, req.TaskType)
+}
+
+// UserChangeImageTaskType godoc
+// @Summary 更新镜像的任务类型
+// @Description 更新任务类型
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Router /v1/images/type [POST]
+func (mgr *ImagePackMgr) AdminChangeImageTaskType(c *gin.Context) {
+	req := &ChangeImageTaskTypeRequest{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		logutils.Log.Errorf("validate task type failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		return
+	}
+	mgr.changeImageTaskType(c, true, req.ID, req.TaskType)
+}
+
+func (mgr ImagePackMgr) changeImageTaskType(c *gin.Context, isAdminMode bool, imageID uint, newTaskType model.JobType) {
 	imageQuery := query.Image
-	if _, err := imageQuery.WithContext(c).
-		Preload(query.Image.User).
-		Where(imageQuery.ID.Eq(req.ID)).
-		Where(imageQuery.UserID.Eq(token.UserID)).
-		Update(imageQuery.TaskType, req.TaskType); err != nil {
+	specifiedQuery := query.Image.WithContext(c).Preload(imageQuery.User)
+	if !isAdminMode {
+		specifiedQuery = specifiedQuery.Where(imageQuery.UserID.Eq(util.GetToken(c).UserID))
+	}
+	if _, err := specifiedQuery.
+		Where(imageQuery.ID.Eq(imageID)).
+		Update(imageQuery.TaskType, newTaskType); err != nil {
 		logutils.Log.Errorf("update image task type failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "update task type failed", resputil.NotSpecified)
 	}
