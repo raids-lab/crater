@@ -8,11 +8,13 @@ import { Button } from "@/components/ui/button";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import {
   apiUserDeleteKaniko,
+  apiUserDeleteKanikoList,
   apiUserGetCredential,
   apiUserGetQuota,
   apiUserListKaniko,
   getHeader,
   ImagePackStatus,
+  imagepackStatuses,
   KanikoInfoResponse,
   ProjectCredentialResponse,
 } from "@/services/api/imagepack";
@@ -40,6 +42,7 @@ import {
   Key,
   Copy,
   User,
+  AlertTriangle,
 } from "lucide-react";
 import { useNavigate, useRoutes } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,9 +79,15 @@ import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
     placeholder: "搜索镜像",
-    key: "link",
+    key: "imageLink",
   },
-  filterOptions: [],
+  filterOptions: [
+    {
+      key: "status",
+      title: "状态",
+      option: imagepackStatuses,
+    },
+  ],
   getHeader: getHeader,
 };
 
@@ -113,6 +122,13 @@ export const ImageTable: FC = () => {
 
   const { mutate: userDeleteKaniko } = useMutation({
     mutationFn: (id: number) => apiUserDeleteKaniko(id),
+    onSuccess: async () => {
+      await refetchImagePackList();
+      toast.success("镜像已删除");
+    },
+  });
+  const { mutate: userDeleteKanikoList } = useMutation({
+    mutationFn: (idList: number[]) => apiUserDeleteKanikoList(idList),
     onSuccess: async () => {
       await refetchImagePackList();
       toast.success("镜像已删除");
@@ -363,6 +379,37 @@ export const ImageTable: FC = () => {
         columns={columns}
         toolbarConfig={toolbarConfig}
         className="lg:col-span-2"
+        multipleHandlers={[
+          {
+            title: (rows) =>
+              `删除 ${rows.length} 个镜像创建任务，以及对应镜像链接`,
+            description: (rows) => (
+              <div className="rounded-md border border-destructive/20 bg-destructive/5 px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" />
+                  <div>
+                    <p className="font-medium text-destructive">
+                      以下镜像创建任务和对应镜像链接将被删除，确认要继续吗？
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {"『" +
+                        rows
+                          .map((row) => row.original.description)
+                          .join("』,『") +
+                        "』"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ),
+            icon: <Trash2Icon className="text-destructive" />,
+            handleSubmit: (rows) => {
+              const ids = rows.map((row) => row.original.ID);
+              userDeleteKanikoList(ids);
+            },
+            isDanger: true,
+          },
+        ]}
       />
       <PipAptSheet
         isOpen={openPipAptSheet}

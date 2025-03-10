@@ -209,7 +209,7 @@ export const ImageTaskType = {
 };
 
 export const imageLinkRegex =
-  /^[a-zA-Z0-9.-]+(\/[a-zA-Z0-9.-]+)+:([a-zA-Z0-9.-]+)$/;
+  /^[a-zA-Z0-9.-]+(\/[a-zA-Z0-9_.-]+)+:[a-zA-Z0-9_](?:[a-zA-Z0-9_.-]*[a-zA-Z0-9_])?$/;
 
 export const imageNameRegex = /^([\w.-]+)\/([\w.-]+):([\w.-]+)$/;
 export const imageTagRegex = /:([\w.-]+)$/;
@@ -250,6 +250,11 @@ export const apiUserCreateByDockerfile = async (
 export const apiUserDeleteKaniko = (id: number) =>
   instance.delete<IResponse<string>>(VERSION + `/images/kaniko/${id}`);
 
+export const apiUserDeleteKanikoList = (idList: number[]) =>
+  instance.post<IResponse<string>>(`${VERSION}/images/deletekaniko`, {
+    idList,
+  });
+
 export const apiUserGetKaniko = (id: string) =>
   instance.get<IResponse<KanikoInfoResponse>>(
     `${VERSION}/images/getbyid?id=${id}`,
@@ -275,6 +280,9 @@ export const apiUserUploadImage = async (imageupload: ImageUpload) => {
 export const apiUserDeleteImage = (id: number) =>
   instance.delete<IResponse<string>>(VERSION + `/images/image/${id}`);
 
+export const apiUserDeleteImageList = (idList: number[]) =>
+  instance.post<IResponse<string>>(`${VERSION}/images/deleteimage`, { idList });
+
 export const apiUserGetCredential = () =>
   instance.post<IResponse<ProjectCredentialResponse>>(
     `${VERSION}/images/credential`,
@@ -294,6 +302,3 @@ export const apiUserCheckImageValid = (linkPairs: ImageLinkPairs) =>
     `${VERSION}/images/valid`,
     linkPairs,
   );
-
-export const apiUserDeleteImageList = (idList: number[]) =>
-  instance.post<IResponse<string>>(`${VERSION}/images/delete`, { idList });

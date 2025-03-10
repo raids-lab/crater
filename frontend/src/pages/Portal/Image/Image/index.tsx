@@ -58,7 +58,7 @@ import {
   AlertTriangle,
   SquareCheckBig,
 } from "lucide-react";
-import JobTypeLabel from "@/components/badge/JobTypeBadge";
+import JobTypeLabel, { jobTypes } from "@/components/badge/JobTypeBadge";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
 import ImageLabel from "@/components/label/ImageLabel";
@@ -84,7 +84,13 @@ const toolbarConfig: DataTableToolbarConfig = {
     placeholder: "搜索镜像",
     key: "imageLink",
   },
-  filterOptions: [],
+  filterOptions: [
+    {
+      key: "taskType",
+      title: "类型",
+      option: jobTypes,
+    },
+  ],
   getHeader: getHeader,
 };
 
