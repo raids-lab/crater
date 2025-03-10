@@ -60,6 +60,7 @@ func (p *PrometheusClient) QueryProfileData(namespacedName types.NamespacedName,
 	}
 
 	allNull := true
+	// TODO(liyilong): 支持多 GPU
 	queryMetricWithPtr := func(query string) *float32 {
 		value, err := p.queryMetric(query)
 		if err != nil {
@@ -123,7 +124,7 @@ func (p *PrometheusClient) QueryProfileData(namespacedName types.NamespacedName,
 	profileData.MemCopyUtilStd = queryMetricWithPtr(fmt.Sprintf("stddev_over_time(DCGM_FI_DEV_MEM_COPY_UTIL{namespace=%q,pod=%q}[%s])/100", namespace, podname, promRange))
 
 	// 查询 GPU 总显存指标
-	profileData.GPUMemTotal = queryMetricWithPtr(fmt.Sprintf("max_over_time(DCGM_FI_DEV_FB_TOTAL{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
+	profileData.GPUMemTotal = queryMetricWithPtr(fmt.Sprintf("max_over_time(DCGM_FI_DEV_FB_USED{namespace=%q,pod=%q}[%s])+DCGM_FI_DEV_FB_FREE", namespace, podname, promRange))
 
 	profileData.GPUMemMax = queryMetricWithPtr(fmt.Sprintf("max_over_time(DCGM_FI_DEV_FB_USED{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
 	profileData.GPUMemAvg = queryMetricWithPtr(fmt.Sprintf("avg_over_time(DCGM_FI_DEV_FB_USED{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
