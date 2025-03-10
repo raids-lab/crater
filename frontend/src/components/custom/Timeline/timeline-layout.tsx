@@ -23,14 +23,14 @@ export const EventTimeline = ({ items }: TimelineLayoutProps) => {
       {items
         .sort((a, b) => {
           if (!a.lastTimestamp) {
-            return 1;
-          }
-          if (!b.lastTimestamp) {
             return -1;
           }
+          if (!b.lastTimestamp) {
+            return 1;
+          }
           return (
-            new Date(a.lastTimestamp).getTime() -
-            new Date(b.lastTimestamp).getTime()
+            new Date(b.lastTimestamp).getTime() -
+            new Date(a.lastTimestamp).getTime()
           );
         })
         .map((item, index) => (

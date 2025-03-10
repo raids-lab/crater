@@ -28,11 +28,12 @@ export function ProgressCard({
       </CardHeader>
       <CardContent className="space-y-2">
         <div className="flex justify-between">
-          <span className="text-2xl font-bold">
-            {value.toFixed(2)}
-            {unit}
-          </span>
-          {showPercentage && <span className="text-sm text-muted-foreground">{percentage.toFixed(1)}%</span>}
+          {!showPercentage && 
+            (<span className="text-2xl font-bold">
+              {value.toFixed(2)}
+              {unit}
+            </span>)}
+          {showPercentage && <span className="text-2xl font-bold">{percentage.toFixed(1)}%</span>}
         </div>
         {showPercentage && <Progress value={percentage} className="h-2" />}
       </CardContent>
