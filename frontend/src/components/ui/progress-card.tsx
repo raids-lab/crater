@@ -20,8 +20,14 @@ export function ProgressCard({
 }: ProgressCardProps) {
   const percentage = (value / max) * 100
 
+  // if unit starts with "MB" and value > 1024, convert to GB
+  if (unit.startsWith("MB") && value > 1024) {
+    value = value / 1024
+    unit = unit.replace("MB", "GB")
+  }
+
   return (
-    <Card className="border border-border/50">
+    <Card className="border">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         {description && <p className="text-xs text-muted-foreground">{description}</p>}
@@ -31,11 +37,11 @@ export function ProgressCard({
           {!showPercentage && 
             (<span className="text-2xl font-bold">
               {value.toFixed(2)}
-              {unit}
+              <span className="text-xl ml-0.5">{unit}</span>
             </span>)}
-          {showPercentage && <span className="text-2xl font-bold">{percentage.toFixed(1)}%</span>}
+          {showPercentage && <span className="text-2xl font-bold">{percentage.toFixed(1)}<span className="text-xl ml-0.5">%</span></span>}
         </div>
-        {showPercentage && <Progress value={percentage} className="h-2" />}
+        {percentage > 0 && <Progress value={percentage} className="h-2" />}
       </CardContent>
     </Card>
   )

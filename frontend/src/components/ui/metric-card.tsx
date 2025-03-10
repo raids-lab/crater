@@ -8,11 +8,12 @@ interface MetricCardProps {
 }
 
 export function MetricCard({ title, value, unit, description }: MetricCardProps) {
-// if unit starts with "MB" and value > 1024, convert to GB
+  // if unit starts with "MB" and value > 1024, convert to GB
   if (unit.startsWith("MB") && value > 1024) {
     value = value / 1024
     unit = unit.replace("MB", "GB")
   }
+
   return (
     <Card className="border">
       <CardHeader className="pb-2">
@@ -21,7 +22,7 @@ export function MetricCard({ title, value, unit, description }: MetricCardProps)
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">
-          {value.toFixed(2)} {unit}
+          {value.toFixed(2)}<span className="text-xl ml-0.5">{unit}</span>
         </div>
       </CardContent>
     </Card>
