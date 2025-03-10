@@ -62,7 +62,8 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/quota", mgr.UserGetProjectDetail)
 	g.POST("/valid", mgr.UserCheckLinkValidity)
 	g.POST("/description", mgr.UserChangeImageDescription)
-	g.POST("/delete", mgr.DeleteImageByIDList)
+	g.POST("/deleteimage", mgr.DeleteImageByIDList)
+	g.POST("/deletekaniko", mgr.DeleteKanikoByIDList)
 	g.POST("/type", mgr.UserChangeImageTaskType)
 }
 
@@ -105,6 +106,11 @@ type (
 	DeleteKanikoByIDRequest struct {
 		ID uint `uri:"id" binding:"required"`
 	}
+
+	DeleteKanikoByIDListRequest struct {
+		IDList []uint `json:"idList" binding:"required"`
+	}
+
 	DeleteImageByIDRequest struct {
 		ID uint `uri:"id" binding:"required"`
 	}
@@ -444,7 +450,7 @@ func (mgr *ImagePackMgr) UserListKaniko(c *gin.Context) {
 	var err error
 	token := util.GetToken(c)
 	kanikoQuery := query.Kaniko
-	kanikos, err = kanikoQuery.WithContext(c).Where(kanikoQuery.UserID.Eq(token.UserID)).Find()
+	kanikos, err = kanikoQuery.WithContext(c).Where(kanikoQuery.UserID.Eq(token.UserID)).Order(kanikoQuery.CreatedAt.Desc()).Find()
 	if err != nil {
 		logutils.Log.Errorf("fetch kaniko entity failed, err:%v", err)
 	}
@@ -483,7 +489,9 @@ func (mgr *ImagePackMgr) UserListImage(c *gin.Context) {
 	if images, err = imageQuery.WithContext(c).
 		Preload(query.Image.User).
 		Where(imageQuery.UserID.Eq(token.UserID)).
+		Order(imageQuery.CreatedAt.Desc()).
 		Or(imageQuery.IsPublic).
+		Order(imageQuery.CreatedAt.Desc()).
 		Find(); err != nil {
 		logutils.Log.Errorf("fetch kaniko entity failed, err:%v", err)
 	}
@@ -587,43 +595,86 @@ func (mgr *ImagePackMgr) DeleteKanikoByID(c *gin.Context) {
 		return
 	}
 	kanikoID := deleteKanikoRequest.ID
+	if isSuccess, errorMsg := mgr.deleteKaniko(c, kanikoID, token.UserID); isSuccess {
+		resputil.Success(c, "")
+	} else {
+		resputil.Error(c, errorMsg, resputil.NotSpecified)
+	}
+}
+
+// DeleteKanikoByIDList godoc
+// @Summary 根据IDList删除Kaniko entity
+// @Description 遍历列表，根据ID更新Kaniko的状态为Deleted，起到删除的功能
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param IDList body []uint true "删除kaniko的IDList"
+// @Router /v1/images/deletekaniko [POST]
+func (mgr *ImagePackMgr) DeleteKanikoByIDList(c *gin.Context) {
+	token := util.GetToken(c)
+	var err error
+	var deleteKanikoListRequest DeleteKanikoByIDListRequest
+	if err = c.ShouldBindJSON(&deleteKanikoListRequest); err != nil {
+		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		return
+	}
+	kanikoIDList := deleteKanikoListRequest.IDList
+	flag := true
+	for _, id := range kanikoIDList {
+		if isSuccess, errorMsg := mgr.deleteKaniko(c, id, token.UserID); !isSuccess {
+			flag = false
+			logutils.Log.Errorf("delete kaniko failed, err:%v", errorMsg)
+		}
+	}
+	if flag {
+		resputil.Success(c, "")
+	} else {
+		resputil.Error(c, "failed to delete kaniko", resputil.NotSpecified)
+	}
+}
+
+func (mgr *ImagePackMgr) deleteKaniko(c *gin.Context, kanikoID, userID uint) (isSuccess bool, errMsg string) {
 	var kaniko *model.Kaniko
+	var err error
+	var errorMsg string
 	k := query.Kaniko
+	flag := true
 	// 1. check if kaniko exist and have permission
 	if kaniko, err = k.WithContext(c).
 		Where(k.ID.Eq(kanikoID)).
-		Where(k.UserID.Eq(token.UserID)).First(); err != nil {
-		logutils.Log.Errorf("kaniko not exist or have no permission%+v", err)
-		resputil.Error(c, "failed to find imagepack or entity", resputil.NotSpecified)
-		return
+		Where(k.UserID.Eq(userID)).First(); err != nil {
+		errorMsg = fmt.Sprintf("kaniko not exist or have no permission %+v", err)
+		logutils.Log.Error(errorMsg)
+		return false, errorMsg
 	}
 	// 2. if kaniko is finished, delete image entity
 	if kaniko.Status == model.BuildJobFinished {
 		if _, err = query.Image.WithContext(c).Where(query.Image.ImagePackName.Eq(kaniko.ImagePackName)).Delete(); err != nil {
-			logutils.Log.Errorf("delete image entity failed! err:%v", err)
-			resputil.Error(c, "failed to delete image", resputil.NotSpecified)
-			return
+			errorMsg = fmt.Sprintf("delete image entity failed! err:%v", err)
+			logutils.Log.Error(errorMsg)
 		}
 	}
 	// 3. delete kaniko entity
 	if _, err = k.WithContext(c).Delete(kaniko); err != nil {
-		logutils.Log.Errorf("delete kaniko entity failed! err:%v", err)
-		resputil.Error(c, "failed to delete kaniko", resputil.NotSpecified)
-		return
+		errorMsg = fmt.Sprintf("delete kaniko entity failed! err:%v", err)
+		logutils.Log.Error(errorMsg)
+		return false, errorMsg
 	}
 	// 4. delete kaniko job
 	if err = mgr.imagePacker.DeleteBuildkitJob(c, kaniko.ImagePackName, UserNameSpace); err != nil {
-		logutils.Log.Errorf("delete kaniko job failed! err:%v", err)
-		resputil.Error(c, "failed to delete kaniko job", resputil.NotSpecified)
-		return
+		errorMsg = fmt.Sprintf("delete kaniko job failed! err:%v", err)
+		logutils.Log.Error(errorMsg)
 	}
 	// 5. if buildkit finished, then delete image from harbor
 	if kaniko.Status == model.BuildJobFinished {
 		if err = mgr.imageRegistry.DeleteImageFromProject(c, kaniko.ImageLink); err != nil {
-			logutils.Log.Errorf("delete imagepack artifact failed! err:%+v", err)
+			errorMsg = fmt.Sprintf("delete imagepack artifact failed! err:%+v", err)
+			logutils.Log.Error(errorMsg)
 		}
 	}
-	resputil.Success(c, "")
+	return flag, errorMsg
 }
 
 // DeleteImageByID godoc
@@ -659,8 +710,8 @@ func (mgr *ImagePackMgr) DeleteImageByID(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param ID body uint true "删除镜像的ID"
-// @Router /v1/images/delete [POST]
+// @Param ID body []uint true "删除镜像的ID"
+// @Router /v1/images/deleteimage [POST]
 func (mgr *ImagePackMgr) DeleteImageByIDList(c *gin.Context) {
 	var err error
 	var deleteImageListRequest DeleteImageByIDListRequest
