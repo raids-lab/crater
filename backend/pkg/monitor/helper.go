@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func (p *PrometheusClient) queryMetric(expression string) (float32, error) {
@@ -231,4 +232,14 @@ func (p *PrometheusClient) checkGPUUsed(expression string) (int, error) {
 	}
 
 	return 0, fmt.Errorf("expected vector type result but got %s", result.Type())
+}
+
+// checkIfGPURequested 检查 Pod 是否申请了 GPU
+func (p *PrometheusClient) checkIfGPURequested(namespacedName types.NamespacedName) bool {
+	// 这里实现检查逻辑，例如通过查询 Pod 的资源请求或 Prometheus 中的相关指标
+	// 返回 true 表示 Pod 申请了 GPU，false 表示没有申请
+	// 这是一个示例实现，具体逻辑需要根据实际情况调整
+	query := fmt.Sprintf("count(DCGM_FI_DEV_GPU_UTIL{namespace=%q,pod=%q})", namespacedName.Namespace, namespacedName.Name)
+	value, err := p.queryMetric(query)
+	return err == nil && value > 0
 }

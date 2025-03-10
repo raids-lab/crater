@@ -72,6 +72,13 @@ func (p *PrometheusClient) QueryProfileData(namespacedName types.NamespacedName,
 	namespace := namespacedName.Namespace
 	podname := namespacedName.Name
 
+	// 查询 Pod 申请的 CPU 和内存（计算每个容器之和，并使用 max_over_time 在 Pod 运行期间的最大值）
+	profileData.CPURequest = queryMetricWithPtr(fmt.Sprintf("max_over_time(kube_pod_container_resource_requests{namespace=%q,pod=%q,resource=\"cpu\"}[%s])", namespace, podname, promRange))
+	profileData.CPULimit = queryMetricWithPtr(fmt.Sprintf("max_over_time(kube_pod_container_resource_limits{namespace=%q,pod=%q,resource=\"cpu\"}[%s])", namespace, podname, promRange))
+	profileData.MemRequest = queryMetricWithPtr(fmt.Sprintf("max_over_time(kube_pod_container_resource_requests{namespace=%q,pod=%q,resource=\"memory\"}[%s])/1048576", namespace, podname, promRange))
+	profileData.MemLimit = queryMetricWithPtr(fmt.Sprintf("max_over_time(kube_pod_container_resource_limits{namespace=%q,pod=%q,resource=\"memory\"}[%s])/1048576", namespace, podname, promRange))
+
+	// CPU 相关指标
 	profileData.CPUUsageAvg = queryMetricWithPtr(fmt.Sprintf("avg_over_time(irate(container_cpu_usage_seconds_total{namespace=%q,pod=%q,container!=\"POD\",container!=\"\"}[30s])[%s:])", namespace, podname, promRange))
 	profileData.CPUUsageMax = queryMetricWithPtr(fmt.Sprintf("max_over_time(irate(container_cpu_usage_seconds_total{namespace=%q,pod=%q,container!=\"POD\",container!=\"\"}[30s])[%s:])", namespace, podname, promRange))
 	profileData.CPUUsageStd = queryMetricWithPtr(fmt.Sprintf("stddev_over_time(irate(container_cpu_usage_seconds_total{namespace=%q,pod=%q,container!=\"POD\",container!=\"\"}[30s])[%s:])", namespace, podname, promRange))
@@ -79,6 +86,21 @@ func (p *PrometheusClient) QueryProfileData(namespacedName types.NamespacedName,
 	profileData.CPUMemMax = queryMetricWithPtr(fmt.Sprintf("max_over_time(container_memory_usage_bytes{namespace=%q,pod=%q,container!=\"POD\",container!=\"\"}[%s])/1048576", namespace, podname, promRange))
 	profileData.CPUMemAvg = queryMetricWithPtr(fmt.Sprintf("avg_over_time(container_memory_usage_bytes{namespace=%q,pod=%q,container!=\"POD\",container!=\"\"}[%s])/1048576", namespace, podname, promRange))
 	profileData.CPUMemStd = queryMetricWithPtr(fmt.Sprintf("stddev_over_time(container_memory_usage_bytes{namespace=%q,pod=%q,container!=\"POD\",container!=\"\"}[%s])/1048576", namespace, podname, promRange))
+
+	// 如果 Pod 没有申请 GPU，则直接返回 CPU 相关指标
+	gpuRequested := p.checkIfGPURequested(namespacedName)
+	if !gpuRequested {
+		if allNull {
+			return nil
+		}
+		return &profileData
+	}
+
+	// GPU 相关指标
+	profileData.PCIETxAvg = queryMetricWithPtr(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_PCIE_TX_BYTES{namespace=%q,pod=%q}[%s])/1048576", namespace, podname, promRange))
+	profileData.PCIETxMax = queryMetricWithPtr(fmt.Sprintf("max_over_time(DCGM_FI_PROF_PCIE_TX_BYTES{namespace=%q,pod=%q}[%s])/1048576", namespace, podname, promRange))
+	profileData.PCIERxAvg = queryMetricWithPtr(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_PCIE_RX_BYTES{namespace=%q,pod=%q}[%s])/1048576", namespace, podname, promRange))
+	profileData.PCIERxMax = queryMetricWithPtr(fmt.Sprintf("max_over_time(DCGM_FI_PROF_PCIE_RX_BYTES{namespace=%q,pod=%q}[%s])/1048576", namespace, podname, promRange))
 
 	profileData.GPUUtilAvg = queryMetricWithPtr(fmt.Sprintf("avg_over_time(DCGM_FI_DEV_GPU_UTIL{namespace=%q,pod=%q}[%s])/100", namespace, podname, promRange))
 	profileData.GPUUtilMax = queryMetricWithPtr(fmt.Sprintf("max_over_time(DCGM_FI_DEV_GPU_UTIL{namespace=%q,pod=%q}[%s])/100", namespace, podname, promRange))
@@ -100,13 +122,32 @@ func (p *PrometheusClient) QueryProfileData(namespacedName types.NamespacedName,
 	profileData.MemCopyUtilMax = queryMetricWithPtr(fmt.Sprintf("max_over_time(DCGM_FI_DEV_MEM_COPY_UTIL{namespace=%q,pod=%q}[%s])/100", namespace, podname, promRange))
 	profileData.MemCopyUtilStd = queryMetricWithPtr(fmt.Sprintf("stddev_over_time(DCGM_FI_DEV_MEM_COPY_UTIL{namespace=%q,pod=%q}[%s])/100", namespace, podname, promRange))
 
-	profileData.PCIETxAvg = queryMetricWithPtr(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_PCIE_TX_BYTES{namespace=%q,pod=%q}[%s])/1048576", namespace, podname, promRange))
-	profileData.PCIETxMax = queryMetricWithPtr(fmt.Sprintf("max_over_time(DCGM_FI_PROF_PCIE_TX_BYTES{namespace=%q,pod=%q}[%s])/1048576", namespace, podname, promRange))
-
-	profileData.PCIERxAvg = queryMetricWithPtr(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_PCIE_RX_BYTES{namespace=%q,pod=%q}[%s])/1048576", namespace, podname, promRange))
-	profileData.PCIERxMax = queryMetricWithPtr(fmt.Sprintf("max_over_time(DCGM_FI_PROF_PCIE_RX_BYTES{namespace=%q,pod=%q}[%s])/1048576", namespace, podname, promRange))
+	// 查询 GPU 总显存指标
+	profileData.GPUMemTotal = queryMetricWithPtr(fmt.Sprintf("max_over_time(DCGM_FI_DEV_FB_TOTAL{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
 
 	profileData.GPUMemMax = queryMetricWithPtr(fmt.Sprintf("max_over_time(DCGM_FI_DEV_FB_USED{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
+	profileData.GPUMemAvg = queryMetricWithPtr(fmt.Sprintf("avg_over_time(DCGM_FI_DEV_FB_USED{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
+	profileData.GPUMemStd = queryMetricWithPtr(fmt.Sprintf("stddev_over_time(DCGM_FI_DEV_FB_USED{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
+
+	profileData.TensorActiveAvg = queryMetricWithPtr(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
+	profileData.TensorActiveMax = queryMetricWithPtr(fmt.Sprintf("max_over_time(DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
+	profileData.TensorActiveStd = queryMetricWithPtr(fmt.Sprintf("stddev_over_time(DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
+
+	profileData.Fp64ActiveAvg = queryMetricWithPtr(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_PIPE_FP64_ACTIVE{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
+	profileData.Fp64ActiveMax = queryMetricWithPtr(fmt.Sprintf("max_over_time(DCGM_FI_PROF_PIPE_FP64_ACTIVE{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
+	profileData.Fp64ActiveStd = queryMetricWithPtr(fmt.Sprintf("stddev_over_time(DCGM_FI_PROF_PIPE_FP64_ACTIVE{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
+
+	profileData.Fp32ActiveAvg = queryMetricWithPtr(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_PIPE_FP32_ACTIVE{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
+	profileData.Fp32ActiveMax = queryMetricWithPtr(fmt.Sprintf("max_over_time(DCGM_FI_PROF_PIPE_FP32_ACTIVE{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
+	profileData.Fp32ActiveStd = queryMetricWithPtr(fmt.Sprintf("stddev_over_time(DCGM_FI_PROF_PIPE_FP32_ACTIVE{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
+
+	profileData.DramActiveAvg = queryMetricWithPtr(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_DRAM_ACTIVE{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
+	profileData.DramActiveMax = queryMetricWithPtr(fmt.Sprintf("max_over_time(DCGM_FI_PROF_DRAM_ACTIVE{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
+	profileData.DramActiveStd = queryMetricWithPtr(fmt.Sprintf("stddev_over_time(DCGM_FI_PROF_DRAM_ACTIVE{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
+
+	profileData.Fp16ActiveAvg = queryMetricWithPtr(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_PIPE_FP16_ACTIVE{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
+	profileData.Fp16ActiveMax = queryMetricWithPtr(fmt.Sprintf("max_over_time(DCGM_FI_PROF_PIPE_FP16_ACTIVE{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
+	profileData.Fp16ActiveStd = queryMetricWithPtr(fmt.Sprintf("stddev_over_time(DCGM_FI_PROF_PIPE_FP16_ACTIVE{namespace=%q,pod=%q}[%s])", namespace, podname, promRange))
 
 	if allNull {
 		return nil
