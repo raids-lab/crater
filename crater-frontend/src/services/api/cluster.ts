@@ -66,7 +66,10 @@ export interface IClusterNodeGPU {
   cudaVersion: string;
   gpuProduct: string;
 }
-
+export interface IClusterNodeTaint {
+  name: string;
+  taint: string;
+}
 export const apiGetNodes = () =>
   instance.get<
     IResponse<{
@@ -86,3 +89,13 @@ export const apiGetNodeGPU = (name: string) =>
 // 改变节点的可调度状态
 export const apichangeNodeScheduling = (name: string) =>
   instance.put<IResponse<string>>(VERSION + `/nodes/${name}`);
+export const apiAddNodeTaint = (nodetaint: IClusterNodeTaint) =>
+  instance.post<IResponse<string>>(
+    VERSION + `/nodes/${nodetaint.name}/taint`,
+    nodetaint,
+  );
+export const apiDeleteNodeTaint = (nodetaint: IClusterNodeTaint) =>
+  instance.delete<IResponse<string>>(
+    VERSION + `/nodes/${nodetaint.name}/taint`,
+    { data: nodetaint },
+  );
