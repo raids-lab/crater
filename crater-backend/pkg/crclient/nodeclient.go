@@ -265,11 +265,11 @@ func stringToTaint(taintString string) (corev1.Taint, error) {
 }
 func (nc *NodeClient) AddNodetaint(ctx context.Context, name, taint string) error {
 	node, err := nc.KubeClient.CoreV1().Nodes().Get(ctx, name, metav1.GetOptions{})
-	var Taint corev1.Taint
-	Taint, err1 := stringToTaint(taint)
 	if err != nil {
 		return err
 	}
+	var Taint corev1.Taint
+	Taint, err1 := stringToTaint(taint)
 	if err1 != nil {
 		return err
 	}
