@@ -122,24 +122,23 @@ const routeItems: RouteItem[] = [
       element: <CronPolicy />,
     },
   },
-  // {
-  //   path: "image",
-  //   icon: BoxIcon,
-  //   children: [
-  //     {
-  //       route: {
-  //         path: "create",
-  //         lazy: () => import("./Image/Create"),
-  //       },
-  //     },
-  //     {
-  //       route: {
-  //         path: "upload",
-  //         lazy: () => import("./Image/Upload"),
-  //       },
-  //     },
-  //   ],
-  // },
+  {
+    path: "image",
+    children: [
+      {
+        route: {
+          path: "create/*",
+          lazy: () => import("./Image/Registry"),
+        },
+      },
+      {
+        route: {
+          path: "upload/*",
+          lazy: () => import("./Image/Image"),
+        },
+      },
+    ],
+  },
   {
     path: "data",
     children: [
