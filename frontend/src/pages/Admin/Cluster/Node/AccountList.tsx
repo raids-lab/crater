@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiAdminAccountList } from "@/services/api/account";
 import { IAccount } from "@/services/api/account";
@@ -16,20 +16,10 @@ interface AccountSelectProps {
 }
 
 const AccountSelect: React.FC<AccountSelectProps> = ({ value, onChange }) => {
-  const { data, error, isLoading } = useQuery({
+  const { data } = useQuery({
     queryKey: ["admin", "accounts"],
     queryFn: apiAdminAccountList,
   });
-
-  useEffect(() => {
-    if (error) {
-      //console.error("Failed to fetch admin accounts:", error);
-    }
-  }, [error]);
-
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
 
   return (
     <div>
@@ -38,11 +28,13 @@ const AccountSelect: React.FC<AccountSelectProps> = ({ value, onChange }) => {
           <SelectValue placeholder="请选择账户" />
         </SelectTrigger>
         <SelectContent>
-          {data?.data?.data.map((account: IAccount) => (
-            <SelectItem key={account.name} value={account.name.toString()}>
-              {account.nickname}
-            </SelectItem>
-          ))}
+          {data?.data?.data
+            .filter((account: IAccount) => account.name !== "default")
+            .map((account: IAccount) => (
+              <SelectItem key={account.name} value={account.name.toString()}>
+                {account.nickname}
+              </SelectItem>
+            ))}
         </SelectContent>
       </Select>
     </div>
