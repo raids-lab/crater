@@ -27,6 +27,9 @@ import {
   ImageLinkPair,
   apiUserDeleteImageList,
   apiUserChangeImageTaskType,
+  UpdateDescription,
+  UpdateTaskType,
+  ListImageResponse,
 } from "@/services/api/imagepack";
 import { logger } from "@/utils/loglevel";
 import { toast } from "sonner";
@@ -78,6 +81,8 @@ import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { Input } from "@/components/ui/input";
 import { JobType } from "@/services/api/vcjob";
 import { Label } from "@radix-ui/react-label";
+import { AxiosResponse } from "axios";
+import { IResponse } from "@/services/types";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -101,6 +106,292 @@ enum Dialogs {
   valid = "valid",
 }
 
+export const Component: FC = () => {
+  return (
+    <ImageListTable
+      apiListImage={apiUserListImage}
+      apiDeleteImageList={apiUserDeleteImageList}
+      apiChangeImagePublicStatus={apiUserChangeImagePublicStatus}
+      apiChangeImageDescription={apiUserChangeImageDescription}
+      apiChangeImageTaskType={apiUserChangeImageTaskType}
+      isAdminMode={false}
+    ></ImageListTable>
+  );
+};
+
+interface ImageListTableProps {
+  apiListImage: () => Promise<AxiosResponse<IResponse<ListImageResponse>>>;
+  apiDeleteImageList: (
+    idList: number[],
+  ) => Promise<AxiosResponse<IResponse<string>>>;
+  apiChangeImagePublicStatus: (
+    id: number,
+  ) => Promise<AxiosResponse<IResponse<string>>>;
+  apiChangeImageDescription: (
+    data: UpdateDescription,
+  ) => Promise<AxiosResponse<IResponse<string>>>;
+  apiChangeImageTaskType: (
+    data: UpdateTaskType,
+  ) => Promise<AxiosResponse<IResponse<string>>>;
+  isAdminMode: boolean;
+}
+
+export const ImageListTable: FC<ImageListTableProps> = ({
+  apiListImage,
+  apiDeleteImageList,
+  apiChangeImagePublicStatus,
+  apiChangeImageDescription,
+  apiChangeImageTaskType,
+  isAdminMode,
+}) => {
+  const queryClient = useQueryClient();
+  const [openSheet, setOpenSheet] = useState(false);
+  const [openCheckDialog, setCheckOpenDialog] = useState(false);
+  const [selectedLinkPairs, setSelectedLinkPairs] = useState<ImageLinkPair[]>(
+    [],
+  );
+
+  const user = useAtomValue(globalUserInfo);
+  const imageInfo = useQuery({
+    queryKey: ["imagelink", "list"],
+    queryFn: () => apiListImage(),
+    select: (res) => res.data.data.imageList,
+  });
+
+  const refetchImagePackList = async () => {
+    try {
+      // 并行发送所有异步请求
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["imagelink", "list"] }),
+      ]);
+    } catch (error) {
+      logger.error("更新查询失败", error);
+    }
+  };
+  const { mutate: deleteUserImageList } = useMutation({
+    mutationFn: (idList: number[]) => apiDeleteImageList(idList),
+    onSuccess: async () => {
+      await refetchImagePackList();
+      toast.success("镜像已删除");
+    },
+  });
+  const { mutate: changeImagePublicStatus } = useMutation({
+    mutationFn: (id: number) => apiChangeImagePublicStatus(id),
+    onSuccess: async () => {
+      await refetchImagePackList();
+      toast.success("镜像状态更新");
+    },
+  });
+  const { mutate: updateImageDescription } = useMutation({
+    mutationFn: (data: { id: number; description: string }) =>
+      apiChangeImageDescription(data),
+    onSuccess: async () => {
+      await refetchImagePackList();
+      toast.success("镜像描述已更新");
+    },
+  });
+  const { mutate: updateImageTaskType } = useMutation({
+    mutationFn: (data: { id: number; taskType: JobType }) =>
+      apiChangeImageTaskType(data),
+    onSuccess: async () => {
+      await refetchImagePackList();
+      toast.success("镜像类型已更新");
+    },
+  });
+  const columns: ColumnDef<ImageInfoResponse>[] = [
+    {
+      accessorKey: "taskType",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeader("taskType")} />
+      ),
+      cell: ({ row }) => {
+        return <JobTypeLabel jobType={row.getValue("taskType")} />;
+      },
+    },
+    {
+      accessorKey: "imageLink",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeader("imageLink")} />
+      ),
+      cell: ({ row }) => (
+        <ImageLabel
+          description={row.original.description}
+          url={row.getValue<string>("imageLink")}
+        />
+      ),
+    },
+    {
+      accessorKey: "creatorName",
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={getHeader("creatorName")}
+        />
+      ),
+      cell: ({ row }) => <div>{row.getValue("creatorName")}</div>,
+    },
+    {
+      accessorKey: "isPublic",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeader("isPublic")} />
+      ),
+      cell: ({ row }) => {
+        const imagePublicPersonalStatus = imagepackPublicPersonalStatus.find(
+          (imagePublicPersonalStatus) =>
+            imagePublicPersonalStatus.value === row.getValue("isPublic"),
+        );
+        return imagePublicPersonalStatus?.label;
+      },
+    },
+    {
+      accessorKey: "createdAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeader("createdAt")} />
+      ),
+      cell: ({ row }) => {
+        return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
+      },
+      sortingFn: "datetime",
+    },
+    {
+      id: "actions",
+      enableHiding: false,
+      cell: ({ row }) => {
+        const imageInfo = row.original;
+        return (
+          <Actions
+            imageInfo={imageInfo}
+            onChangeStatus={changeImagePublicStatus}
+            onUpdateDescription={updateImageDescription}
+            linkPairs={[
+              {
+                id: imageInfo.ID,
+                imageLink: imageInfo.imageLink,
+                description: imageInfo.description,
+                creator: imageInfo.creatorName,
+              },
+            ]}
+            onDeleteImageList={deleteUserImageList}
+            userName={user.name}
+            onChangeType={updateImageTaskType}
+            isAdminMode={isAdminMode}
+          />
+        );
+      },
+    },
+  ];
+
+  return (
+    <DataTable
+      info={{
+        title: "镜像列表",
+        description: "展示可用的公共或私有镜像，在作业提交时可供选择",
+      }}
+      query={imageInfo}
+      columns={columns}
+      toolbarConfig={toolbarConfig}
+      className="col-span-3"
+      multipleHandlers={[
+        {
+          title: (rows) => `删除 ${rows.length} 个镜像链接`,
+          description: (rows) => (
+            <div className="rounded-md border border-destructive/20 bg-destructive/5 px-4 py-3">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" />
+                <div>
+                  <p className="font-medium text-destructive">
+                    以下镜像链接将被删除，确认要继续吗？
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {"『" +
+                      rows
+                        .map((row) => row.original.description)
+                        .join("』,『") +
+                      "』"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ),
+          icon: <Trash2Icon className="text-destructive" />,
+          handleSubmit: (rows) => {
+            const ids = rows.map((row) => row.original.ID);
+            deleteUserImageList(ids);
+          },
+          isDanger: true,
+        },
+        {
+          title: (rows) => `检测 ${rows.length} 个镜像链接`,
+          description: (rows) => (
+            <div className="rounded-md border border-green-600/20 bg-green-600/5 px-4 py-3">
+              <div className="flex items-start gap-3">
+                <SquareCheckBig className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
+                <div>
+                  <p className="font-medium text-green-600">
+                    以下镜像链接将被检测
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {"『" +
+                      rows
+                        .map((row) => row.original.description)
+                        .join("』,『") +
+                      "』"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ),
+          icon: <CheckCheck className="text-green-600" />,
+          handleSubmit: (rows) => {
+            setSelectedLinkPairs(
+              rows.map((row) => ({
+                id: row.original.ID,
+                imageLink: row.original.imageLink,
+                description: row.original.description,
+                creator: row.original.creatorName,
+              })),
+            );
+            setCheckOpenDialog(true);
+          },
+          isDanger: false,
+        },
+      ]}
+    >
+      <AlertDialog open={openCheckDialog} onOpenChange={setCheckOpenDialog}>
+        <AlertDialogContent>
+          <ValidDialog
+            linkPairs={selectedLinkPairs}
+            onDeleteLinks={(invalidPairs: ImageLinkPair[]) => {
+              deleteUserImageList(
+                isAdminMode
+                  ? invalidPairs.map((pair) => pair.id)
+                  : invalidPairs
+                      .filter((pair) => pair.creator === user.name)
+                      .map((pair) => pair.id),
+              );
+            }}
+          />
+        </AlertDialogContent>
+      </AlertDialog>
+      {!isAdminMode ? (
+        <Sheet open={openSheet} onOpenChange={setOpenSheet}>
+          <SheetTrigger asChild>
+            <Button className="h-8 min-w-fit">导入镜像</Button>
+          </SheetTrigger>
+          <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
+            <SheetHeader>
+              <SheetTitle>导入镜像链接</SheetTitle>
+              <SheetDescription>导入一个新的训练作业镜像</SheetDescription>
+            </SheetHeader>
+            <Separator className="mt-4" />
+            <ImageUploadForm closeSheet={() => setOpenSheet(false)} />
+          </SheetContent>
+        </Sheet>
+      ) : null}
+    </DataTable>
+  );
+};
+
 interface ActionsProps {
   imageInfo: ImageInfoResponse;
   onChangeStatus: (id: number) => void;
@@ -109,6 +400,7 @@ interface ActionsProps {
   onDeleteImageList: (ids: number[]) => void;
   userName: string;
   onChangeType: (data: { id: number; taskType: JobType }) => void;
+  isAdminMode: boolean;
 }
 
 const Actions: FC<ActionsProps> = ({
@@ -119,10 +411,11 @@ const Actions: FC<ActionsProps> = ({
   onDeleteImageList,
   userName,
   onChangeType,
+  isAdminMode,
 }) => {
   const [openDialog, setOpenDialog] = useState(false);
   const [dialog, setDialog] = useState<Dialogs | undefined>(undefined);
-  const isDisabled = imageInfo.creatorName !== userName;
+  const isDisabled = !isAdminMode && imageInfo.creatorName !== userName;
   return (
     <div className="flex flex-row space-x-1">
       <AlertDialog open={openDialog} onOpenChange={setOpenDialog}>
@@ -269,251 +562,6 @@ const Actions: FC<ActionsProps> = ({
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
-};
-
-export const Component: FC = () => {
-  const queryClient = useQueryClient();
-  const [openSheet, setOpenSheet] = useState(false);
-  const [openCheckDialog, setCheckOpenDialog] = useState(false);
-  const [selectedLinkPairs, setSelectedLinkPairs] = useState<ImageLinkPair[]>(
-    [],
-  );
-
-  const user = useAtomValue(globalUserInfo);
-  const imageInfo = useQuery({
-    queryKey: ["imagelink", "list"],
-    queryFn: () => apiUserListImage(),
-    select: (res) => res.data.data.imageList,
-  });
-
-  const refetchImagePackList = async () => {
-    try {
-      // 并行发送所有异步请求
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["imagelink", "list"] }),
-      ]);
-    } catch (error) {
-      logger.error("更新查询失败", error);
-    }
-  };
-  const { mutate: deleteUserImageList } = useMutation({
-    mutationFn: (idList: number[]) => apiUserDeleteImageList(idList),
-    onSuccess: async () => {
-      await refetchImagePackList();
-      toast.success("镜像已删除");
-    },
-  });
-  const { mutate: changeImagePublicStatus } = useMutation({
-    mutationFn: (id: number) => apiUserChangeImagePublicStatus(id),
-    onSuccess: async () => {
-      await refetchImagePackList();
-      toast.success("镜像状态更新");
-    },
-  });
-  const { mutate: updateImageDescription } = useMutation({
-    mutationFn: (data: { id: number; description: string }) =>
-      apiUserChangeImageDescription(data),
-    onSuccess: async () => {
-      await refetchImagePackList();
-      toast.success("镜像描述已更新");
-    },
-  });
-  const { mutate: updateImageTaskType } = useMutation({
-    mutationFn: (data: { id: number; taskType: JobType }) =>
-      apiUserChangeImageTaskType(data),
-    onSuccess: async () => {
-      await refetchImagePackList();
-      toast.success("镜像描述已更新");
-    },
-  });
-  const columns: ColumnDef<ImageInfoResponse>[] = [
-    {
-      accessorKey: "taskType",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("taskType")} />
-      ),
-      cell: ({ row }) => {
-        return <JobTypeLabel jobType={row.getValue("taskType")} />;
-      },
-    },
-    {
-      accessorKey: "imageLink",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("imageLink")} />
-      ),
-      cell: ({ row }) => (
-        <ImageLabel
-          description={row.original.description}
-          url={row.getValue<string>("imageLink")}
-        />
-      ),
-    },
-    {
-      accessorKey: "creatorName",
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={getHeader("creatorName")}
-        />
-      ),
-      cell: ({ row }) => <div>{row.getValue("creatorName")}</div>,
-    },
-    {
-      accessorKey: "isPublic",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("isPublic")} />
-      ),
-      cell: ({ row }) => {
-        const imagePublicPersonalStatus = imagepackPublicPersonalStatus.find(
-          (imagePublicPersonalStatus) =>
-            imagePublicPersonalStatus.value === row.getValue("isPublic"),
-        );
-        return imagePublicPersonalStatus?.label;
-      },
-    },
-    {
-      accessorKey: "createdAt",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("createdAt")} />
-      ),
-      cell: ({ row }) => {
-        return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
-      },
-      sortingFn: "datetime",
-    },
-    {
-      id: "actions",
-      enableHiding: false,
-      cell: ({ row }) => {
-        const imageInfo = row.original;
-        return (
-          <Actions
-            imageInfo={imageInfo}
-            onChangeStatus={changeImagePublicStatus}
-            onUpdateDescription={updateImageDescription}
-            linkPairs={[
-              {
-                id: imageInfo.ID,
-                imageLink: imageInfo.imageLink,
-                description: imageInfo.description,
-                creator: imageInfo.creatorName,
-              },
-            ]}
-            onDeleteImageList={deleteUserImageList}
-            userName={user.name}
-            onChangeType={updateImageTaskType}
-          />
-        );
-      },
-    },
-  ];
-
-  return (
-    <DataTable
-      info={{
-        title: "镜像列表",
-        description: "展示可用的公共或私有镜像，在作业提交时可供选择",
-      }}
-      query={imageInfo}
-      columns={columns}
-      toolbarConfig={toolbarConfig}
-      className="col-span-3"
-      multipleHandlers={[
-        {
-          title: (rows) => `删除 ${rows.length} 个镜像链接`,
-          description: (rows) => (
-            <div className="rounded-md border border-destructive/20 bg-destructive/5 px-4 py-3">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" />
-                <div>
-                  <p className="font-medium text-destructive">
-                    以下镜像链接将被删除，确认要继续吗？
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {"『" +
-                      rows
-                        .map((row) => row.original.description)
-                        .join("』,『") +
-                      "』"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ),
-          icon: <Trash2Icon className="text-destructive" />,
-          handleSubmit: (rows) => {
-            const ids = rows.map((row) => row.original.ID);
-            deleteUserImageList(ids);
-          },
-          isDanger: true,
-        },
-        {
-          title: (rows) => `检测 ${rows.length} 个镜像链接`,
-          description: (rows) => (
-            <div className="rounded-md border border-green-600/20 bg-green-600/5 px-4 py-3">
-              <div className="flex items-start gap-3">
-                <SquareCheckBig className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
-                <div>
-                  <p className="font-medium text-green-600">
-                    以下镜像链接将被检测
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {"『" +
-                      rows
-                        .map((row) => row.original.description)
-                        .join("』,『") +
-                      "』"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ),
-          icon: <CheckCheck className="text-green-600" />,
-          handleSubmit: (rows) => {
-            setSelectedLinkPairs(
-              rows.map((row) => ({
-                id: row.original.ID,
-                imageLink: row.original.imageLink,
-                description: row.original.description,
-                creator: row.original.creatorName,
-              })),
-            );
-            setCheckOpenDialog(true);
-          },
-          isDanger: false,
-        },
-      ]}
-    >
-      <AlertDialog open={openCheckDialog} onOpenChange={setCheckOpenDialog}>
-        <AlertDialogContent>
-          <ValidDialog
-            linkPairs={selectedLinkPairs}
-            onDeleteLinks={(invalidPairs: ImageLinkPair[]) => {
-              deleteUserImageList(
-                invalidPairs
-                  .filter((pair) => pair.creator === user.name)
-                  .map((pair) => pair.id),
-              );
-            }}
-          />
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <Sheet open={openSheet} onOpenChange={setOpenSheet}>
-        <SheetTrigger asChild>
-          <Button className="h-8 min-w-fit">导入镜像</Button>
-        </SheetTrigger>
-        <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
-          <SheetHeader>
-            <SheetTitle>导入镜像链接</SheetTitle>
-            <SheetDescription>导入一个新的训练作业镜像</SheetDescription>
-          </SheetHeader>
-          <Separator className="mt-4" />
-          <ImageUploadForm closeSheet={() => setOpenSheet(false)} />
-        </SheetContent>
-      </Sheet>
-    </DataTable>
   );
 };
 
