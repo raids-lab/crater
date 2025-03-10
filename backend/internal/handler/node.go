@@ -25,12 +25,7 @@ type NodeMgr struct {
 type NodePodRequest struct {
 	Name string `uri:"name" binding:"required"`
 }
-type NodePodUpdate struct {
-	Name  string `json:"name" binding:"required"`
-	Taint string `json:"taint" binding:"required"`
-}
-
-type NodePodDelete struct {
+type NodeTaint struct {
 	Name  string `json:"name" binding:"required"`
 	Taint string `json:"taint" binding:"required"`
 }
@@ -52,8 +47,8 @@ func (mgr *NodeMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *NodeMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("", mgr.ListNode)
-	g.DELETE("", mgr.DeleteNodetaint)
-	g.POST("", mgr.AddNodetaint)
+	g.DELETE("/:name/taint", mgr.DeleteNodetaint)
+	g.POST("/:name/taint", mgr.AddNodetaint)
 	g.PUT("/:name", mgr.UpdateNodeunschedule)
 	g.GET("/:name", mgr.GetNode)
 	g.GET("/:name/pods", mgr.GetPodsForNode)
@@ -151,15 +146,15 @@ func (mgr *NodeMgr) UpdateNodeunschedule(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param data body any true "节点名称+污点"
+// @Param req body NodeTaint true "节点名称+污点"
 // @Success 200 {object} resputil.Response[string] "成功返回值描述"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router  /v1/nodes  [post]
+// @Router  /v1/nodes/{name}/taint  [post]
 //
 //nolint:dupl// 重复代码
 func (mgr *NodeMgr) AddNodetaint(c *gin.Context) {
-	var req NodePodUpdate
+	var req NodeTaint
 	if err := c.ShouldBindJSON(&req); err != nil {
 		logutils.Log.Infof("Bind URI failed, err: %v", err)
 		resputil.Error(c, "Invalid request parameter", resputil.NotSpecified)
@@ -181,15 +176,15 @@ func (mgr *NodeMgr) AddNodetaint(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param data body any true "节点名称+污点"
+// @Param req body NodeTaint true "节点名称+污点"
 // @Success 200 {object} resputil.Response[string] "成功返回值描述"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/nodes  [delete]
+// @Router /v1/nodes/name/taint  [delete]
 //
 //nolint:dupl// 重复代码
 func (mgr *NodeMgr) DeleteNodetaint(c *gin.Context) {
-	var req NodePodDelete
+	var req NodeTaint
 	if err := c.ShouldBindJSON(&req); err != nil {
 		logutils.Log.Infof("Delete Bind URI failed, err: %v", err)
 		resputil.Error(c, "Delete Invalid request parameter", resputil.NotSpecified)
