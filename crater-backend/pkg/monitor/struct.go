@@ -25,6 +25,11 @@ type NodeGPUUtil struct {
 
 type ProfileData struct {
 	// CPU and Memory
+	CPURequest *float32 `json:"cpu_request,omitempty"`
+	CPULimit   *float32 `json:"cpu_limit,omitempty"`
+	MemRequest *float32 `json:"mem_request,omitempty"`
+	MemLimit   *float32 `json:"mem_limit,omitempty"`
+
 	CPUUsageAvg *float32 `json:"cpu_usage_avg,omitempty"`
 	CPUUsageMax *float32 `json:"cpu_usage_max,omitempty"`
 	CPUUsageStd *float32 `json:"cpu_usage_std,omitempty"`
@@ -60,7 +65,30 @@ type ProfileData struct {
 	PCIERxAvg *float32 `json:"pcie_rx_avg,omitempty"`
 	PCIERxMax *float32 `json:"pcie_rx_max,omitempty"`
 
-	GPUMemMax *float32 `json:"gpu_mem_max,omitempty"`
+	GPUMemTotal *float32 `json:"gpu_mem_total,omitempty"`
+	GPUMemMax   *float32 `json:"gpu_mem_max,omitempty"`
+	GPUMemAvg   *float32 `json:"gpu_mem_avg,omitempty"`
+	GPUMemStd   *float32 `json:"gpu_mem_std,omitempty"`
+
+	TensorActiveAvg *float32 `json:"tensor_active_avg,omitempty"`
+	TensorActiveMax *float32 `json:"tensor_active_max,omitempty"`
+	TensorActiveStd *float32 `json:"tensor_active_std,omitempty"`
+
+	Fp64ActiveAvg *float32 `json:"fp64_active_avg,omitempty"`
+	Fp64ActiveMax *float32 `json:"fp64_active_max,omitempty"`
+	Fp64ActiveStd *float32 `json:"fp64_active_std,omitempty"`
+
+	Fp32ActiveAvg *float32 `json:"fp32_active_avg,omitempty"`
+	Fp32ActiveMax *float32 `json:"fp32_active_max,omitempty"`
+	Fp32ActiveStd *float32 `json:"fp32_active_std,omitempty"`
+
+	DramActiveAvg *float32 `json:"dram_active_avg,omitempty"`
+	DramActiveMax *float32 `json:"dram_active_max,omitempty"`
+	DramActiveStd *float32 `json:"dram_active_std,omitempty"`
+
+	Fp16ActiveAvg *float32 `json:"fp16_active_avg,omitempty"`
+	Fp16ActiveMax *float32 `json:"fp16_active_max,omitempty"`
+	Fp16ActiveStd *float32 `json:"fp16_active_std,omitempty"`
 }
 
 type PodUtil struct {
