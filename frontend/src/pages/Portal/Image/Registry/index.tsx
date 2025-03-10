@@ -7,7 +7,6 @@ import { DataTable } from "@/components/custom/DataTable";
 import { Button } from "@/components/ui/button";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import {
-  apiUserDeleteKaniko,
   apiUserDeleteKanikoList,
   apiUserGetCredential,
   apiUserGetQuota,
@@ -16,6 +15,7 @@ import {
   ImagePackStatus,
   imagepackStatuses,
   KanikoInfoResponse,
+  ListKanikoResponse,
   ProjectCredentialResponse,
 } from "@/services/api/imagepack";
 import { logger } from "@/utils/loglevel";
@@ -75,6 +75,8 @@ import ImageLabel from "@/components/label/ImageLabel";
 import ImagePhaseBadge from "@/components/badge/ImagePhaseBadge";
 import { formatBytes } from "@/utils/formatter";
 import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
+import { IResponse } from "@/services/types";
+import { AxiosResponse } from "axios";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -91,7 +93,19 @@ const toolbarConfig: DataTableToolbarConfig = {
   getHeader: getHeader,
 };
 
-export const ImageTable: FC = () => {
+interface KanikoListTableProps {
+  apiListKaniko: () => Promise<AxiosResponse<IResponse<ListKanikoResponse>>>;
+  apiDeleteKanikoList: (
+    idList: number[],
+  ) => Promise<AxiosResponse<IResponse<string>>>;
+  isAdminMode: boolean;
+}
+
+export const KanikoListTable: FC<KanikoListTableProps> = ({
+  apiListKaniko,
+  apiDeleteKanikoList,
+  isAdminMode,
+}) => {
   const queryClient = useQueryClient();
   const [openPipAptSheet, setOpenPipAptSheet] = useState(false);
   const [openDockerfileSheet, setOpenDockerfileSheet] = useState(false);
@@ -99,14 +113,8 @@ export const ImageTable: FC = () => {
 
   const imageQuery = useQuery({
     queryKey: ["imagepack", "list"],
-    queryFn: () => apiUserListKaniko(),
+    queryFn: () => apiListKaniko(),
     select: (res) => res.data.data.kanikoList,
-  });
-
-  const quotaQuery = useQuery({
-    queryKey: ["imagepack", "quota"],
-    queryFn: () => apiUserGetQuota(),
-    select: (res) => res.data.data,
   });
 
   const refetchImagePackList = async () => {
@@ -119,33 +127,15 @@ export const ImageTable: FC = () => {
       logger.error("更新查询失败", error);
     }
   };
-
-  const { mutate: userDeleteKaniko } = useMutation({
-    mutationFn: (id: number) => apiUserDeleteKaniko(id),
-    onSuccess: async () => {
-      await refetchImagePackList();
-      toast.success("镜像已删除");
-    },
-  });
   const { mutate: userDeleteKanikoList } = useMutation({
-    mutationFn: (idList: number[]) => apiUserDeleteKanikoList(idList),
+    mutationFn: (idList: number[]) => apiDeleteKanikoList(idList),
     onSuccess: async () => {
       await refetchImagePackList();
       toast.success("镜像已删除");
     },
   });
-  const [credentials, setCredentials] =
-    useState<ProjectCredentialResponse | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { mutate: getProjectCredential } = useMutation({
-    mutationFn: () => apiUserGetCredential(),
-    onSuccess: async (data) => {
-      setCredentials(data.data.data);
-      setIsDialogOpen(true);
-      toast.success("凭据已生成, 请保存您的密码！");
-    },
-  });
-  const columns: ColumnDef<KanikoInfoResponse>[] = [
+
+  let columns: ColumnDef<KanikoInfoResponse>[] = [
     {
       accessorKey: "imageLink",
       header: ({ column }) => (
@@ -163,6 +153,17 @@ export const ImageTable: FC = () => {
           tooltip={`查看镜像详情`}
         />
       ),
+    },
+    {
+      id: "creatorName",
+      accessorKey: "creatorName",
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={getHeader("creatorName")}
+        />
+      ),
+      cell: ({ row }) => <div>{row.getValue("creatorName")}</div>,
     },
     {
       accessorKey: "createdAt",
@@ -244,7 +245,7 @@ export const ImageTable: FC = () => {
                   <AlertDialogAction
                     variant="destructive"
                     onClick={() => {
-                      userDeleteKaniko(kanikoInfo.ID);
+                      userDeleteKanikoList([kanikoInfo.ID]);
                     }}
                   >
                     删除
@@ -257,122 +258,52 @@ export const ImageTable: FC = () => {
       },
     },
   ];
-
+  columns = columns.filter(
+    (column) => column.id !== "creatorName" || isAdminMode,
+  );
   return (
-    <>
+    <div className="flex flex-col gap-3">
       <div>
         <PageTitle
           title="镜像制作"
           description="支持 Dockerfile 、低代码、快照等方式制作镜像"
-          className="mb-4"
+          className="mb-2"
         >
-          <div className="flex flex-row gap-3">
-            <DocsButton title="查看文档" url="image/imagebuild" />
-            <SplitButton
-              icon={<PackagePlusIcon />}
-              renderTitle={(title) => `基于${title}构建`}
-              itemTitle="构建方式"
-              items={[
-                {
-                  key: "pip-apt",
-                  title: "软件包",
-                  action: () => {
-                    setOpenPipAptSheet(true);
+          {!isAdminMode ? (
+            <div className="flex flex-row gap-3">
+              <DocsButton title="查看文档" url="image/imagebuild" />
+              <SplitButton
+                icon={<PackagePlusIcon />}
+                renderTitle={(title) => `基于${title}构建`}
+                itemTitle="构建方式"
+                items={[
+                  {
+                    key: "pip-apt",
+                    title: "软件包",
+                    action: () => {
+                      setOpenPipAptSheet(true);
+                    },
                   },
-                },
-                {
-                  key: "dockerfile",
-                  title: " Dockerfile ",
-                  action: () => {
-                    setOpenDockerfileSheet(true);
+                  {
+                    key: "dockerfile",
+                    title: " Dockerfile ",
+                    action: () => {
+                      setOpenDockerfileSheet(true);
+                    },
                   },
-                },
-              ]}
-              cacheKey="imagepack"
-            />
-          </div>
+                ]}
+                cacheKey="imagepack"
+              />
+            </div>
+          ) : null}
         </PageTitle>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-1.5 text-base">
-                <BoxIcon className="size-5 text-primary" />
-                镜像总数
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">
-                {quotaQuery.isLoading ? (
-                  <LoadingCircleIcon />
-                ) : (
-                  <>
-                    {
-                      imageQuery.data?.filter((c) => c.status == "Finished")
-                        .length
-                    }
-                  </>
-                )}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-1.5 text-base">
-                <HardDriveIcon className="size-5 text-primary" />
-                存储用量
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">
-                {quotaQuery.isLoading ? (
-                  <LoadingCircleIcon />
-                ) : (
-                  <>
-                    {Number(quotaQuery.data?.used).toFixed(2)}GiB/
-                    {Number(quotaQuery.data?.quota).toFixed(0)}GiB
-                  </>
-                )}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-1.5 text-base">
-                <UserRoundIcon className="size-5 text-primary" />
-                仓库项目
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">
-                {quotaQuery.isLoading ? (
-                  <LoadingCircleIcon />
-                ) : (
-                  <>{quotaQuery.data?.project}</>
-                )}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-1.5 text-base">
-                <KeyIcon className="size-5 text-primary" />
-                访问凭据
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button
-                variant="outline"
-                onClick={() => getProjectCredential()}
-                className="w-full"
-              >
-                获取初始凭据
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+        {!isAdminMode ? (
+          <ProjectDetailCardAndDiaglog
+            successImageNumber={
+              imageQuery.data?.filter((c) => c.status == "Finished").length ?? 0
+            }
+          />
+        ) : null}
       </div>
       <DataTable
         query={imageQuery}
@@ -411,22 +342,132 @@ export const ImageTable: FC = () => {
           },
         ]}
       />
-      <PipAptSheet
-        isOpen={openPipAptSheet}
-        onOpenChange={setOpenPipAptSheet}
-        title="基于软件包构建镜像"
-        description="基于平台提供的基础镜像，快速制作自定义镜像"
-        className="sm:max-w-3xl"
-        closeSheet={() => setOpenPipAptSheet(false)}
-      />
-      <DockerfileSheet
-        isOpen={openDockerfileSheet}
-        onOpenChange={setOpenDockerfileSheet}
-        title="基于 Dockerfile 构建镜像"
-        description="基于 Dockerfile 制作镜像"
-        className="sm:max-w-3xl"
-        closeSheet={() => setOpenDockerfileSheet(false)}
-      />
+      {!isAdminMode ? (
+        <div>
+          <PipAptSheet
+            isOpen={openPipAptSheet}
+            onOpenChange={setOpenPipAptSheet}
+            title="基于软件包构建镜像"
+            description="基于平台提供的基础镜像，快速制作自定义镜像"
+            className="sm:max-w-3xl"
+            closeSheet={() => setOpenPipAptSheet(false)}
+          />
+          <DockerfileSheet
+            isOpen={openDockerfileSheet}
+            onOpenChange={setOpenDockerfileSheet}
+            title="基于 Dockerfile 构建镜像"
+            description="基于 Dockerfile 制作镜像"
+            className="sm:max-w-3xl"
+            closeSheet={() => setOpenDockerfileSheet(false)}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+interface ProjectDetailCardAndDiaglogProps {
+  successImageNumber: number;
+}
+
+export const ProjectDetailCardAndDiaglog: FC<
+  ProjectDetailCardAndDiaglogProps
+> = ({ successImageNumber }) => {
+  const [credentials, setCredentials] =
+    useState<ProjectCredentialResponse | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const quotaQuery = useQuery({
+    queryKey: ["imagepack", "quota"],
+    queryFn: () => apiUserGetQuota(),
+    select: (res) => res.data.data,
+  });
+  const { mutate: getProjectCredential } = useMutation({
+    mutationFn: () => apiUserGetCredential(),
+    onSuccess: async (data) => {
+      setCredentials(data.data.data);
+      setIsDialogOpen(true);
+      toast.success("凭据已生成, 请保存您的密码！");
+    },
+  });
+  return (
+    <>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-1.5 text-base">
+              <BoxIcon className="size-5 text-primary" />
+              镜像总数
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">
+              {quotaQuery.isLoading ? (
+                <LoadingCircleIcon />
+              ) : (
+                <>{successImageNumber}</>
+              )}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-1.5 text-base">
+              <HardDriveIcon className="size-5 text-primary" />
+              存储用量
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">
+              {quotaQuery.isLoading ? (
+                <LoadingCircleIcon />
+              ) : (
+                <>
+                  {Number(quotaQuery.data?.used).toFixed(2)}GiB/
+                  {Number(quotaQuery.data?.quota).toFixed(0)}GiB
+                </>
+              )}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-1.5 text-base">
+              <UserRoundIcon className="size-5 text-primary" />
+              仓库项目
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">
+              {quotaQuery.isLoading ? (
+                <LoadingCircleIcon />
+              ) : (
+                <>{quotaQuery.data?.project}</>
+              )}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-1.5 text-base">
+              <KeyIcon className="size-5 text-primary" />
+              访问凭据
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              onClick={() => getProjectCredential()}
+              className="w-full"
+            >
+              获取初始凭据
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -519,7 +560,13 @@ export const Component = () => {
   const routes = useRoutes([
     {
       index: true,
-      element: <ImageTable />,
+      element: (
+        <KanikoListTable
+          apiListKaniko={apiUserListKaniko}
+          apiDeleteKanikoList={apiUserDeleteKanikoList}
+          isAdminMode={false}
+        />
+      ),
     },
     {
       path: ":id",

@@ -23,6 +23,7 @@ export type KanikoInfoResponse = {
   description: string;
   podName: string;
   podNameSpace: string;
+  creatorName: string;
 };
 
 export type ListImageResponse = {
