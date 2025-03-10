@@ -16,7 +16,7 @@ import useNodeQuery from "@/hooks/query/useNodeQuery";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { toast } from "sonner";
 import { logger } from "@/utils/loglevel";
-import { BanIcon, PaintbrushIcon, ZapIcon, Users } from "lucide-react";
+import { BanIcon, ZapIcon, Users } from "lucide-react";
 import { useMemo } from "react";
 import { useRoutes } from "react-router-dom";
 import {
@@ -77,20 +77,20 @@ const NodeForAdmin = () => {
     mutationFn: apiAddNodeTaint,
     onSuccess: async () => {
       await refetchTaskList();
-      toast.success("节点污点添加成功");
+      toast.success("节点占有成功");
     },
     onError: (error) => {
-      toast.error(`节点污点添加失败: ${error.message}`);
+      toast.error(`节点占有失败: ${error.message}`);
     },
   });
   const { mutate: deleteNodeTaint } = useMutation({
     mutationFn: apiDeleteNodeTaint,
     onSuccess: async () => {
       await refetchTaskList();
-      toast.success("节点污点删除成功");
+      toast.success("取消节点占有成功");
     },
     onError: (error) => {
-      toast.error(`节点污点删除失败: ${error.message}`);
+      toast.error(`取消节点占有失败: ${error.message}`);
     },
   });
   const nodeQuery = useNodeQuery();
@@ -135,10 +135,6 @@ const NodeForAdmin = () => {
                 >
                   <Users size={16} strokeWidth={2} />
                   取消独占
-                </DropdownMenuItem>
-                <DropdownMenuItem disabled>
-                  <PaintbrushIcon className="size-4" />
-                  编辑标签
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleNodeScheduling(nodeId)}>
                   {isReady === "true" ? (
