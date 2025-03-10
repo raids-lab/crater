@@ -122,6 +122,13 @@ export function BaseCore({ jobName }: { jobName: string }) {
     return <></>;
   }
 
+  const fromTime = data.startedAt
+    ? new Date(data.startedAt).toISOString()
+    : "now-3h";
+  const toTime = data.completedAt
+    ? new Date(data.completedAt).toISOString()
+    : "now";
+
   return (
     <DetailPage
       header={
@@ -287,7 +294,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
           children: (
             <div className="h-[calc(100vh_-_304px)] w-full">
               <GrafanaIframe
-                baseSrc={`${job_monitor}?var-job=${data.jobName}&from=now-1h&to=now`}
+                baseSrc={`${job_monitor}?var-job=${data.jobName}&from=${fromTime}&to=${toTime}&timezone=Asia%2FShanghai`}
               />
             </div>
           ),
@@ -299,7 +306,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
           children: (
             <div className="h-[calc(100vh_-_304px)] w-full">
               <GrafanaIframe
-                baseSrc={`${job_gpu_monitor}?var-job=${data.jobName}&from=now-1h&to=now`}
+                baseSrc={`${job_gpu_monitor}?var-job=${data.jobName}&from=${fromTime}&to=${toTime}&timezone=Asia%2FShanghai`}
               />
             </div>
           ),
