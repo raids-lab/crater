@@ -105,6 +105,11 @@ export interface PodDetail {
 //   "gpu_mem_max": 4899
 // }
 export interface ProfileData {
+  cpu_request?: number; // 展示单位m
+  cpu_limit?: number; // 展示单位m
+  mem_request?: number; // 展示单位MB
+  mem_limit?: number; // 展示单位MB
+
   cpu_usage_avg?: number; //展示数值
   cpu_usage_max?: number;
   cpu_usage_std?: number;
@@ -121,6 +126,8 @@ export interface ProfileData {
   sm_active_max?: number; //上限1
   sm_active_std?: number;
 
+  sm_util_avg?: number; //上限1
+  sm_util_max?: number;
   sm_util_std?: number;
 
   sm_occupancy_avg?: number; //上限1
@@ -130,6 +137,10 @@ export interface ProfileData {
   dram_util_avg?: number; //上限1
   dram_util_max?: number;
   dram_util_std?: number;
+
+  dram_active_avg?: number;
+  dram_active_max?: number;
+  dram_active_std?: number;
 
   mem_copy_util_avg?: number; //上限1
   mem_copy_util_max?: number;
@@ -141,7 +152,26 @@ export interface ProfileData {
   pcie_rx_avg?: number; // 展示数值 MB/s
   pcie_rx_max?: number;
 
-  gpu_mem_max?: number; //展示单位MB
+  gpu_mem_total?: number;
+  gpu_mem_max?: number;
+  gpu_mem_avg?: number;
+  gpu_mem_std?: number;
+
+  tensor_active_avg?: number;
+  tensor_active_max?: number;
+  tensor_active_std?: number;
+
+  fp64_active_avg?: number;
+  fp64_active_max?: number;
+  fp64_active_std?: number;
+
+  fp32_active_avg?: number;
+  fp32_active_max?: number;
+  fp32_active_std?: number;
+
+  fp16_active_avg?: number;
+  fp16_active_max?: number;
+  fp16_active_std?: number;
 }
 
 export interface IJupyterDetail {
