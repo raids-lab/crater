@@ -52,7 +52,7 @@ func (r *ImageRegistry) CheckOrCreateProjectForUser(c context.Context, userName 
 }
 
 func (r *ImageRegistry) getImageInfo(fullImageURL string) (projectName, imageName, imageTag string, err error) {
-	// fullImageURL like: ***REMOVED***-images/crater:latest
+	// fullImageURL like: crater-harbor-URL/crater-images/crater:latest
 	// projectName: crater-images, imageName: crater, imageTag: latest
 	// get projectName, imageName, imageTag from fullImageURL by regex
 	// check if full image url starts with inner registry

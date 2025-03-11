@@ -72,9 +72,18 @@ backendConfig:
         port: 25
         user: notify
         password: ***REMOVED***
-    schedulerFlags:
-      aijobEn: false
-      spjobEn: false
+        notify: ***REMOVED***
+    wpsRobot:
+      webhookAddress: ***REMOVED***
+    schedulerPlugins:
+      aijob:
+        aijobEn: false
+      spjob:
+        spjobEn: false
+        predictionServiceAddress: "***REMOVED***"
+    dindArgs:
+      buildkitImage: "***REMOVED***/user-huangsy/buildkit/buildctl:v0.18.2"
+      nerdctlImage: "***REMOVED***/nerdctl:2.0.1-retry"
 ssConfig:
   content: |
     postgres:

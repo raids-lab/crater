@@ -78,7 +78,7 @@ func (sa *SMTPAlerter) SendMessageTo(_ context.Context, receiver *model.UserAttr
 	}
 
 	// 设置邮件发送者和接收者
-	from := ***REMOVED***
+	from := config.GetConfig().ACT.SMTP.Notify
 	to := []string{*receiver.Email}
 
 	// 设置邮件消息

@@ -47,6 +47,15 @@ act:
     port: 25
     user: notify
     password: ***REMOVED***
-schedulerFlags:
-  aijobEn: true
-  spjobEn: true
+    notify: ***REMOVED***
+wpsRobot:
+  webhookAddress: ***REMOVED***
+schedulerPlugins:
+  aijob:
+    aijobEn: true
+  spjob:
+    spjobEn: true
+    predictionServiceAddress: "***REMOVED***"
+dindArgs:
+  buildkitImage: "***REMOVED***/user-huangsy/buildkit/buildctl:v0.18.2"
+  nerdctlImage: "***REMOVED***/nerdctl:2.0.1-retry"

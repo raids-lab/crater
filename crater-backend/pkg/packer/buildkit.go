@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/raids-lab/crater/pkg/config"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -92,7 +93,7 @@ func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Cont
 	buildkitContainer := []corev1.Container{
 		{
 			Name:  "buildkit",
-			Image: "***REMOVED***/user-huangsy/buildkit/buildctl:v0.18.2",
+			Image: config.GetConfig().DindArgs.BuildkitImage,
 			Args:  buildArgs,
 			Env: []corev1.EnvVar{
 				{
