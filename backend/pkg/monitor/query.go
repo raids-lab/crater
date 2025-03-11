@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -223,10 +224,10 @@ func (p *PrometheusClient) QueryNodeAllocatedGPU() map[string]int {
 
 // QueryNodeRunningPodCount returns the running pod of each node
 func (p *PrometheusClient) QueryNodeRunningPodCount() map[string]int {
-	query := `count by (node) (
+	query := fmt.Sprintf(`count by (node) (
 	    kube_pod_status_phase{phase="Running"} * 
-		on(pod) group_left(node, created_by_kind) kube_pod_info{namespace="crater-workspace", created_by_kind="Job"} == 1
-	)`
+		on(pod) group_left(node, created_by_kind) kube_pod_info{namespace=%q, created_by_kind="Job"} == 1
+	)`, config.GetConfig().Workspace.Namespace)
 	data, err := p.intMapQuery(query, "node")
 	if err != nil {
 		logutils.Log.Errorf("QueryNodeRunningPodCount error: %v", err)
@@ -301,16 +302,6 @@ func (p *PrometheusClient) QueryPodGPUAllocate(podName, namespace string) map[st
 	return data
 }
 
-func (p *PrometheusClient) QueryPodGPU() []PodGPUAllocate {
-	expression := `kube_pod_container_resource_requests{namespace="crater-jobs", resource="nvidia_com_gpu"}`
-	data, err := p.podGPU(expression)
-	if err != nil {
-		logutils.Log.Errorf("QueryPodGPU error: %v", err)
-		return nil
-	}
-	return data
-}
-
 func (p *PrometheusClient) QueryNodeGPUUtil() []NodeGPUUtil {
 	expression := "DCGM_FI_DEV_GPU_UTIL"
 	data, err := p.getNodeGPUUtil(expression)
@@ -322,7 +313,7 @@ func (p *PrometheusClient) QueryNodeGPUUtil() []NodeGPUUtil {
 }
 
 func (p *PrometheusClient) GetJobPodsList() map[string][]string {
-	query := `kube_pod_info{namespace="crater-workspace",created_by_kind="Job"}`
+	query := fmt.Sprintf(`kube_pod_info{namespace=%q,created_by_kind="Job"}`, config.GetConfig().Workspace.Namespace)
 	data, err := p.getJobPods(query)
 	if err != nil {
 		logutils.Log.Errorf("GetJobPodsList error: %v", err)
