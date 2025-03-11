@@ -1,4 +1,0 @@
-job_name,queue,model_name,priority,batch_size,cpu,memory,gpu,duration,sleep_minutes
-job1,q-12,resnet50,1,32,1,2Gi,1,3000,0
-job2,q-12,point_net,1,64,1,2Gi,2,1800,0
-job3,q-12,mobilenet_v3_small,1,128,4,8Gi,1,600,1
