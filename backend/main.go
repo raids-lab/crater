@@ -95,7 +95,7 @@ func setupCustomCRDAddon(
 ) error {
 	//-------aijob-------
 	var taskCtrl aitaskctl.TaskControllerInterface
-	if backendConfig.SchedulerFlags.AijobEn {
+	if backendConfig.SchedulerPlugins.Aijob.AijobEn {
 		utilruntime.Must(aisystemv1alpha1.AddToScheme(mgr.GetScheme()))
 		// 1. init task controller
 		// taskUpdateChan := make(chan util.TaskUpdateChan)
@@ -137,7 +137,7 @@ func setupCustomCRDAddon(
 	}
 	registerConfig.AITaskCtrl = taskCtrl
 	//-------spjob-------
-	if backendConfig.SchedulerFlags.SpjobEn {
+	if backendConfig.SchedulerPlugins.Spjob.SpjobEn {
 		utilruntime.Must(recommenddljob.AddToScheme(mgr.GetScheme()))
 	}
 

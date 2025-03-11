@@ -2,11 +2,13 @@ package monitor
 
 import (
 	"testing"
+
+	"github.com/raids-lab/crater/pkg/config"
 )
 
 func TestQueryPodUtilMetric(t *testing.T) {
 	// 请替换为你的 Prometheus API 地址
-	apiURL := ***REMOVED***
+	apiURL := config.GetConfig().PrometheusAPI
 	_ = NewPrometheusClient(apiURL)
 	// print url
 	t.Log(apiURL)
@@ -21,7 +23,7 @@ func TestQueryPodUtilMetric(t *testing.T) {
 
 func TestQueryPodUtilMetric3(t *testing.T) {
 	// 请替换为你的 Prometheus API 地址
-	apiURL := ***REMOVED***
+	apiURL := config.GetConfig().PrometheusAPI
 	client := NewPrometheusClient(apiURL)
 
 	// print url

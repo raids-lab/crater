@@ -12,10 +12,11 @@ import (
 	"net/http"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/pkg/config"
 )
 
 // WebhookAddress 是机器人Webhook地址
-var WebhookAddress = ***REMOVED***
+var WebhookAddress = config.GetConfig().WPSRobot.WebhookAddress
 
 // Message 是发送的消息结构体
 type Message struct {

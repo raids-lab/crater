@@ -85,7 +85,7 @@ func (b *imagePacker) generateSnapshotContainer(data *SnapshotReq) corev1.Contai
 
 	container := corev1.Container{
 		Name:    "build-image",
-		Image:   "***REMOVED***/nerdctl:2.0.1-retry",
+		Image:   config.GetConfig().DindArgs.NerdctlImage,
 		Command: args,
 		VolumeMounts: []corev1.VolumeMount{
 			{

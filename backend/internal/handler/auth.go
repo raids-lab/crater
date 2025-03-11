@@ -376,7 +376,7 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string)
 	u := query.User
 	uq := query.UserAccount
 
-	uidServerURL := config.GetConfig().ACT.UIDServerURL // http://192.168.5.59:5000/get_user_id
+	uidServerURL := config.GetConfig().ACT.UIDServerURL
 	var result ActUIDServerSuccessResp
 	var errorResult ActUIDServerErrorResp
 	if _, err := mgr.req.R().SetQueryParam("username", name).SetSuccessResult(&result).
