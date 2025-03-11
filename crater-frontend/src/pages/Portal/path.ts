@@ -12,7 +12,22 @@ export const craterPath: PathInfo = {
     },
     {
       path: "monitor",
-      title: "平台监控",
+      title: "集群监控",
+      isEmpty: true,
+      children: [
+        {
+          path: "gpu",
+          title: "GPU 监控",
+        },
+        {
+          path: "node",
+          title: "空闲资源",
+        },
+        {
+          path: "network",
+          title: "网络监控",
+        },
+      ],
     },
     {
       path: "job",

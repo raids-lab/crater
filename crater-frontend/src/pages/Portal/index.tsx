@@ -23,6 +23,8 @@ import Monitor from "../Embed/Monitor";
 import modelRoutes from "./Data/modelindex";
 
 const OVERVIEW_DASHBOARD = import.meta.env.VITE_GRAFANA_OVERVIEW;
+const AVAILABLE_DASHBOARD = import.meta.env.VITE_GRAFANA_SCHEDULE;
+const NETWORK_DASHBOARD = import.meta.env.VITE_GRAFANA_NETWORK;
 
 const portalRoutes: RouteItem[] = [
   {
@@ -35,11 +37,26 @@ const portalRoutes: RouteItem[] = [
   },
   {
     path: "monitor",
-    children: [],
-    route: {
-      path: "monitor",
-      element: <Monitor baseSrc={OVERVIEW_DASHBOARD} />,
-    },
+    children: [
+      {
+        route: {
+          path: "gpu",
+          element: <Monitor baseSrc={OVERVIEW_DASHBOARD} />,
+        },
+      },
+      {
+        route: {
+          path: "node",
+          element: <Monitor baseSrc={AVAILABLE_DASHBOARD} />,
+        },
+      },
+      {
+        route: {
+          path: "network",
+          element: <Monitor baseSrc={NETWORK_DASHBOARD} />,
+        },
+      },
+    ],
   },
   {
     path: "job",
@@ -148,7 +165,7 @@ const portalRoutes: RouteItem[] = [
 
 const userSidebarGroups: NavGroupProps[] = [
   {
-    title: "作业与服务",
+    title: "资源与监控",
     items: [
       {
         title: "平台概览",
@@ -156,10 +173,28 @@ const userSidebarGroups: NavGroupProps[] = [
         icon: SquareChartGanttIcon,
       },
       {
-        title: "平台监控",
-        url: "monitor",
+        title: "集群监控",
         icon: BarChartBigIcon,
+        items: [
+          {
+            title: "GPU 大盘",
+            url: "monitor/gpu",
+          },
+          {
+            title: "空闲资源",
+            url: "monitor/node",
+          },
+          {
+            title: "网络监控",
+            url: "monitor/network",
+          },
+        ],
       },
+    ],
+  },
+  {
+    title: "作业与服务",
+    items: [
       {
         title: "我的作业",
         icon: FlaskConicalIcon,

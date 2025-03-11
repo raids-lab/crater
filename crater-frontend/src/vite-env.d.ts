@@ -10,4 +10,5 @@ interface ImportMetaEnv {
   readonly VITE_GRAFANA_GPU_DASHBOARD: string;
   readonly VITE_GRAFANA_OVERVIEW: string;
   readonly VITE_GRAFANA_SCHEDULE: string;
+  readonly VITE_GRAFANA_NETWORK: string;
 }
