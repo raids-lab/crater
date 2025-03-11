@@ -38,7 +38,7 @@ import (
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
 func init() {
-	if config.GetConfig().SchedulerFlags.AijobEn {
+	if config.GetConfig().SchedulerPlugins.Aijob.AijobEn {
 		handler.Registers = append(handler.Registers, NewAITaskMgr)
 	}
 }

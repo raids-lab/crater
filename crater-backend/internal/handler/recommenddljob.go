@@ -8,6 +8,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 	utils "github.com/raids-lab/crater/pkg/util"
 )
@@ -134,14 +135,15 @@ func (mgr *RecommendDLJobMgr) AnalyzeResourceUsage(c *gin.Context) {
 		req.EmbeddingTableCount = 0
 	}
 	analyzeResp := &ResourceAnalyzeWebhookResponse{}
-	if err := utils.PostJSON(c, "***REMOVED***", "/api/v1/task/analyze/end2end", map[string]any{
-		"embedding_table_count": req.EmbeddingTableCount,
-		"embedding_dim_total":   req.EmbeddingDimTotal,
-		"embedding_size_total":  req.EmbeddingSizeTotal / 1e4,
-		"batch_size":            req.BatchSize,
-		"params":                req.Params / 1e3,
-		"macs":                  req.Macs / 1e6,
-	}, nil, analyzeResp); err != nil {
+	if err := utils.PostJSON(c, config.GetConfig().SchedulerPlugins.Spjob.PredictionServiceAddress, "/api/v1/task/analyze/end2end",
+		map[string]any{
+			"embedding_table_count": req.EmbeddingTableCount,
+			"embedding_dim_total":   req.EmbeddingDimTotal,
+			"embedding_size_total":  req.EmbeddingSizeTotal / 1e4,
+			"batch_size":            req.BatchSize,
+			"params":                req.Params / 1e3,
+			"macs":                  req.Macs / 1e6,
+		}, nil, analyzeResp); err != nil {
 		resputil.Error(c, fmt.Sprintf("request resource analyze failed, err:%v", err), resputil.NotSpecified)
 		return
 	}
