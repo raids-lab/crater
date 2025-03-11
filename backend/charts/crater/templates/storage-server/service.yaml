@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: webdav-service
-  namespace: crater-workspace
+  namespace: {{ .Values.backendConfig.workspace.namespace}}
   labels:
     name: webdav-service
 spec:

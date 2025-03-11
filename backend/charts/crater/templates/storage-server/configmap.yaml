@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: ss-config
-  namespace: crater-workspace
+  namespace: {{ .Values.backendConfig.workspace.namespace}}
 data:
   config.yaml: |
     {{ .Values.ssConfig.content | nindent 4 | trim }}

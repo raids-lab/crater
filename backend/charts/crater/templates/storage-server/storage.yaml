@@ -3,7 +3,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: crater-storage
-  namespace: crater-workspace
+  namespace: {{ .Values.backendConfig.workspace.namespace}}
 spec:
   accessModes:
     - ReadWriteMany
