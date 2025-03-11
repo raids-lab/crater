@@ -30,6 +30,7 @@ import Monitor from "../Embed/Monitor";
 import CronPolicy from "./Job/CronPolicy";
 
 const OVERVIEW_DASHBOARD = import.meta.env.VITE_GRAFANA_OVERVIEW;
+const NETWORK_DASHBOARD = import.meta.env.VITE_GRAFANA_NETWORK;
 
 const routeItems: RouteItem[] = [
   {
@@ -61,12 +62,12 @@ const routeItems: RouteItem[] = [
       {
         route: {
           path: "network",
-          element: <Monitor baseSrc={OVERVIEW_DASHBOARD} />,
+          element: <Monitor baseSrc={NETWORK_DASHBOARD} />,
         },
       },
       {
         route: {
-          path: "io",
+          path: "gpu",
           element: <Monitor baseSrc={OVERVIEW_DASHBOARD} />,
         },
       },
@@ -199,12 +200,12 @@ const adminSidebarGroups: NavGroupProps[] = [
         icon: BarChartBigIcon,
         items: [
           {
-            title: "网络监控",
-            url: "monitor/network",
+            title: "GPU 大盘",
+            url: "monitor/gpu",
           },
           {
-            title: "读写监控",
-            url: "monitor/io",
+            title: "网络监控",
+            url: "monitor/network",
           },
         ],
       },

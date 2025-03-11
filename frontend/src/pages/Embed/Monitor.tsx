@@ -30,7 +30,7 @@ const Monitor: FC<{ baseSrc: string }> = ({ baseSrc }: { baseSrc: string }) => {
   useFixedLayout();
   return (
     <div className="h-[calc(100vh_-_80px)] w-full">
-      <GrafanaIframe baseSrc={baseSrc} />
+      <GrafanaIframe baseSrc={baseSrc || ""} />
     </div>
   );
 };

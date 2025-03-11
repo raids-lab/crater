@@ -187,7 +187,7 @@ export default function ProfileDashboard({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {profileData.gpu_mem_avg !== undefined && (
               <ProgressCard
-                title="Maximum GPU Memory"
+                title="Average GPU Memory"
                 value={profileData.gpu_mem_avg}
                 unit="MB"
                 showPercentage={false}
@@ -207,7 +207,7 @@ export default function ProfileDashboard({
             )}
             {profileData.gpu_mem_std !== undefined && (
               <ProgressCard
-                title="Maximum GPU Memory"
+                title="GPU Memory Std Dev"
                 value={profileData.gpu_mem_std}
                 unit="MB"
                 showPercentage={false}
