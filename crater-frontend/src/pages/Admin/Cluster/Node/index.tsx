@@ -113,7 +113,7 @@ const NodeForAdmin = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                <DropdownMenuLabel className="text-muted-foreground text-xs">
                   操作
                 </DropdownMenuLabel>
                 <DropdownMenuItem

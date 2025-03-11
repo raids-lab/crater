@@ -28,7 +28,7 @@ export function DataTablePagination<TData>({
     <>
       {!hidden && (
         <div className="mt-4 flex items-center justify-between px-2">
-          <div className="flex-1 text-sm text-muted-foreground">
+          <div className="text-muted-foreground flex-1 text-sm">
             {table.getFilteredSelectedRowModel().rows.length === 0 ? (
               <>共 {table.getRowCount()} 条</>
             ) : (

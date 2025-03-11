@@ -49,15 +49,15 @@ const QuotaCard = ({
     <Card className="flex flex-col items-stretch justify-between">
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
         <CardDescription className="flex flex-row items-center justify-start uppercase">
-          <div className="mr-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-primary/10">
-            <props.icon className="size-4 text-primary" />
+          <div className="bg-primary/10 mr-1.5 flex h-7 w-7 items-center justify-center rounded-full">
+            <props.icon className="text-primary size-4" />
           </div>
           {resource?.label}
         </CardDescription>
-        <div className="font-sans text-xs text-muted-foreground">
+        <div className="text-muted-foreground font-sans text-xs">
           已用
           <span
-            className={cn("mx-0.5 font-mono text-xl font-bold text-primary", {
+            className={cn("text-primary mx-0.5 font-mono text-xl font-bold", {
               "text-orange-500": overflow,
             })}
           >
@@ -70,7 +70,7 @@ const QuotaCard = ({
         <Progress
           value={progress}
           aria-label={resource?.label}
-          className={cn({ "bg-orange-500/20 [&>*]:bg-orange-400": overflow })}
+          className={cn({ "bg-orange-500/20 *:bg-orange-400": overflow })}
         />
         {!!resource?.capability &&
           !!resource?.guarantee &&

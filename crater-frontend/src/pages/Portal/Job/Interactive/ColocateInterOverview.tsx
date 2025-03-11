@@ -338,7 +338,7 @@ const ColocateOverview = () => {
               <Button
                 variant="outline"
                 size="icon"
-                className="h-8 w-8 text-primary hover:text-primary/90"
+                className="text-primary hover:text-primary/90 h-8 w-8"
                 title="打开 Jupyter Lab"
                 onClick={() => {
                   toast.info("即将打开 Jupyter 页面");
@@ -359,7 +359,7 @@ const ColocateOverview = () => {
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-8 w-8 text-red-600 hover:text-destructive/90"
+                      className="hover:text-destructive/90 h-8 w-8 text-red-600"
                       title="删除 Jupyter Lab"
                     >
                       <Trash2Icon className="size-4" />
@@ -368,7 +368,7 @@ const ColocateOverview = () => {
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-8 w-8 text-orange-600 hover:text-destructive/90"
+                      className="hover:text-destructive/90 h-8 w-8 text-orange-600"
                       title="停止 Jupyter Lab"
                     >
                       <SquareIcon className="h-3.5 w-3.5" strokeWidth={"2.5"} />
@@ -434,7 +434,7 @@ const ColocateOverview = () => {
         <Card className="row-span-2 flex flex-col justify-between">
           <CardHeader>
             <CardTitle>交互式作业</CardTitle>
-            <CardDescription className="text-balance pt-2 leading-relaxed">
+            <CardDescription className="pt-2 leading-relaxed text-balance">
               提供开箱即用的 Jupyter Lab 或 Web IDE， 可用于代码编写、调试等。
             </CardDescription>
           </CardHeader>

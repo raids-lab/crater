@@ -246,7 +246,7 @@ export function DatasetUpdateForm({
                               }
                             }
                           }}
-                          className="flex-grow"
+                          className="grow"
                         />
                         <Button
                           type="button"
@@ -260,7 +260,7 @@ export function DatasetUpdateForm({
                               setInputValue("");
                             }
                           }}
-                          className="h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-gray-300 bg-gray-200 transition-colors duration-200 hover:bg-gray-300"
+                          className="h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-gray-200 transition-colors duration-200 hover:bg-gray-300"
                         >
                           <Plus className="h-5 w-5 text-gray-600" />
                         </Button>

@@ -47,7 +47,7 @@ export const EventTimeline = ({ items }: TimelineLayoutProps) => {
               <TimelineTitle className="flex flex-row items-center gap-1.5">
                 <TipBadge
                   title={item.type}
-                  className="bg-secondary capitalize text-secondary-foreground hover:bg-accent"
+                  className="bg-secondary text-secondary-foreground hover:bg-accent capitalize"
                 />
                 {item.involvedObject.kind} / {item.reason}
               </TimelineTitle>

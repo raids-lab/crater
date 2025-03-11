@@ -24,7 +24,7 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
         <TooltipTrigger disabled>
           <Badge
             variant="secondary"
-            className="cursor-pointer select-none font-mono font-normal"
+            className="cursor-pointer font-mono font-normal select-none"
           >
             {nodes.length > 1 ? (
               <p>
@@ -36,7 +36,7 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
             )}
           </Badge>
         </TooltipTrigger>
-        <TooltipContent className="border bg-background p-0 text-foreground">
+        <TooltipContent className="bg-background text-foreground border p-0">
           <div className="flex flex-row">
             {nodes
               .sort((a, b) => a.localeCompare(b))
@@ -48,7 +48,7 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
                 >
                   <DropdownMenuLabel
                     key={node}
-                    className="text-xs text-muted-foreground"
+                    className="text-muted-foreground text-xs"
                   >
                     {node}
                   </DropdownMenuLabel>

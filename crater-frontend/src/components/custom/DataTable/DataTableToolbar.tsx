@@ -42,7 +42,7 @@ export function DataTableToolbar<TData>({
       <div className="flex flex-row items-center space-x-2">
         {children}
         <div className="relative ml-auto h-9 flex-1 md:grow-0">
-          <SearchIcon className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+          <SearchIcon className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
           <Input
             placeholder={filterInput.placeholder}
             value={
@@ -54,7 +54,7 @@ export function DataTableToolbar<TData>({
                 .getColumn(filterInput.key)
                 ?.setFilterValue(event.target.value)
             }
-            className="h-9 w-[150px] bg-background pl-8 lg:w-[250px]"
+            className="bg-background h-9 w-[150px] pl-8 lg:w-[250px]"
           />
         </div>
         {filterOptions.map(

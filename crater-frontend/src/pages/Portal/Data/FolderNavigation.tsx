@@ -119,10 +119,10 @@ export default function FolderNavigation({
               <Card
                 className={cn(
                   "group h-full transition-all duration-300",
-                  "border-2 hover:shadow-lg dark:hover:shadow-primary/10",
+                  "dark:hover:shadow-primary/10 border-2 hover:shadow-lg",
                   colors.bg,
                   colors.border,
-                  hoveredFolder === r.name && "ring-2 ring-primary/20",
+                  hoveredFolder === r.name && "ring-primary/20 ring-2",
                 )}
                 onMouseEnter={() => setHoveredFolder(r.name)}
                 onMouseLeave={() => setHoveredFolder(null)}
@@ -138,7 +138,7 @@ export default function FolderNavigation({
                       {getFolderTitle(r.name)}
                     </CardTitle>
                   </div>
-                  <CardDescription className="text-balance leading-relaxed">
+                  <CardDescription className="leading-relaxed text-balance">
                     {getFolderDescription(r.name)}
                   </CardDescription>
                 </CardHeader>
@@ -146,7 +146,7 @@ export default function FolderNavigation({
                   <div
                     className={cn(
                       "flex h-24 items-center justify-center rounded-md",
-                      "bg-white/50 backdrop-blur-sm dark:bg-white/5",
+                      "bg-white/50 backdrop-blur-xs dark:bg-white/5",
                     )}
                   >
                     <div
@@ -179,7 +179,7 @@ export default function FolderNavigation({
 
       {data.length === 0 && (
         <div className="py-12 text-center">
-          <Folder className="mx-auto mb-4 size-12 text-muted-foreground/50" />
+          <Folder className="text-muted-foreground/50 mx-auto mb-4 size-12" />
           <h3 className="mb-2 text-xl font-medium">没有找到文件夹</h3>
           <p className="text-muted-foreground">您当前没有任何文件夹。</p>
         </div>

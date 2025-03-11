@@ -56,9 +56,9 @@ export default function FloatingBall({
             <TooltipContent
               side="left"
               align="end"
-              className="flex w-32 flex-col border bg-background p-1 text-foreground"
+              className="bg-background text-foreground flex w-32 flex-col border p-1"
             >
-              <DropdownMenuLabel className="text-xs text-muted-foreground">
+              <DropdownMenuLabel className="text-muted-foreground text-xs">
                 操作
               </DropdownMenuLabel>
               {/* 按钮 */}

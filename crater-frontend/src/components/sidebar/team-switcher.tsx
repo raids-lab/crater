@@ -96,7 +96,7 @@ export function TeamSwitcher() {
                     size={32}
                     // 'beachball' | 'empty' | 'ethereum' | 'jdenticon' | 'polkadot' | 'substrate'
                     theme="substrate"
-                    className="!cursor-pointer"
+                    className="cursor-pointer!"
                   />
                 )}
               </Avatar>
@@ -109,7 +109,7 @@ export function TeamSwitcher() {
                     <TooltipProvider delayDuration={10}>
                       <Tooltip>
                         <TooltipTrigger>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-muted-foreground text-xs">
                             {currentExpiredDiff < 0 ? (
                               <>已过期</>
                             ) : (
@@ -125,7 +125,7 @@ export function TeamSwitcher() {
                         </TooltipTrigger>
                         <TooltipContent
                           side="right"
-                          className="border bg-background text-foreground"
+                          className="bg-background text-foreground border"
                         >
                           {format(currentExpiredAt, "PPP", {
                             locale: zhCN,
@@ -141,12 +141,12 @@ export function TeamSwitcher() {
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-44 rounded-lg"
+            className="w-(--radix-dropdown-menu-trigger-width) min-w-44 rounded-lg"
             align="start"
             side={isMobile ? "bottom" : "right"}
             sideOffset={4}
           >
-            <DropdownMenuLabel className="text-xs text-muted-foreground">
+            <DropdownMenuLabel className="text-muted-foreground text-xs">
               账户
             </DropdownMenuLabel>
             {queues?.map((queue) => (
@@ -164,7 +164,7 @@ export function TeamSwitcher() {
                     value={stringToSS58(queue.name)}
                     size={24}
                     theme="substrate"
-                    className="!cursor-pointer"
+                    className="cursor-pointer!"
                   />
                 </div>
                 <span className="truncate">{queue.nickname}</span>

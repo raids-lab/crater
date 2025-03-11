@@ -10,14 +10,14 @@ export function NvidiaGpuInfoCard({ labels }: NvidiaGpuInfoProps) {
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-lg font-bold text-primary">
+        <CardTitle className="text-primary text-lg font-bold">
           {labels["nvidia.com/gpu.product"]}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="mt-4 grid grid-cols-2 gap-4">
           <div className="flex flex-col space-y-2">
-            <div className="flex items-center space-x-2 text-muted-foreground">
+            <div className="text-muted-foreground flex items-center space-x-2">
               <Memory className="size-4" />
               <span className="text-sm font-medium">显存</span>
             </div>
@@ -26,7 +26,7 @@ export function NvidiaGpuInfoCard({ labels }: NvidiaGpuInfoProps) {
             </span>
           </div>
           <div className="flex flex-col space-y-2">
-            <div className="flex items-center space-x-2 text-muted-foreground">
+            <div className="text-muted-foreground flex items-center space-x-2">
               <Grid className="size-4" />
               <span className="text-sm font-medium">GPU 数量</span>
             </div>
@@ -35,7 +35,7 @@ export function NvidiaGpuInfoCard({ labels }: NvidiaGpuInfoProps) {
             </span>
           </div>
           <div className="flex flex-col space-y-2">
-            <div className="flex items-center space-x-2 text-muted-foreground">
+            <div className="text-muted-foreground flex items-center space-x-2">
               <Layers className="size-4" />
               <span className="text-sm font-medium">架构</span>
             </div>
@@ -44,7 +44,7 @@ export function NvidiaGpuInfoCard({ labels }: NvidiaGpuInfoProps) {
             </span>
           </div>
           <div className="flex flex-col space-y-2">
-            <div className="flex items-center space-x-2 text-muted-foreground">
+            <div className="text-muted-foreground flex items-center space-x-2">
               <Cable className="size-4" />
               <span className="text-sm font-medium">驱动版本</span>
             </div>

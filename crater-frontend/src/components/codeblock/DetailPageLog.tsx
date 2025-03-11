@@ -60,7 +60,7 @@ export default function DetailPageLog({
               setCurrentContainer={setSelectedContainer}
               containers={containers}
             />
-            <fieldset className="hidden h-[calc(100vh_-378px)] max-h-full gap-6 overflow-y-auto rounded-lg border border-input p-4 shadow-sm md:grid">
+            <fieldset className="border-input hidden h-[calc(100vh_-378px)] max-h-full gap-6 overflow-y-auto rounded-lg border p-4 shadow-xs md:grid">
               <legend className="-ml-1 px-2 text-sm font-medium">
                 {selectedContainer.isInitContainer ? "初始化容器" : "容器信息"}
               </legend>

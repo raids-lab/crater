@@ -83,7 +83,7 @@ export default function DataList({
       <div className="my-4 flex items-end justify-between sm:my-0 sm:items-center">
         <div className="flex flex-col gap-4 sm:my-4 sm:flex-row">
           <div className="relative ml-auto h-9 flex-1 md:grow-0">
-            <SearchIcon className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+            <SearchIcon className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
             <Input
               placeholder={`搜索${title}...`}
               className="h-9 w-40 pl-8 lg:w-[250px]"
@@ -132,7 +132,7 @@ export default function DataList({
         </Select>
       </div>
       <Separator />
-      <ul className="faded-bottom no-scrollbar grid gap-4 overflow-auto pb-16 pt-4 md:grid-cols-2 lg:grid-cols-3">
+      <ul className="faded-bottom no-scrollbar grid gap-4 overflow-auto pt-4 pb-16 md:grid-cols-2 lg:grid-cols-3">
         {filteredItems.map((item) => (
           <li
             key={item.name}
@@ -141,7 +141,7 @@ export default function DataList({
             <div className="flex flex-row items-center justify-between p-4 pb-0">
               <div className="flex items-center gap-2">
                 <div
-                  className={`flex size-10 items-center justify-center rounded-lg bg-primary/10 p-1 text-primary`}
+                  className={`bg-primary/10 text-primary flex size-10 items-center justify-center rounded-lg p-1`}
                 >
                   {title === "模型" ? <BotIcon /> : <DatabaseZapIcon />}
                 </div>
@@ -172,7 +172,7 @@ export default function DataList({
                 ))}
               </div>
             )}
-            <p className="line-clamp-2 text-balance px-4 text-sm text-muted-foreground">
+            <p className="text-muted-foreground line-clamp-2 px-4 text-sm text-balance">
               {item.desc}
             </p>
             <div>

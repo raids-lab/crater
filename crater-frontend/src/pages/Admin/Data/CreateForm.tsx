@@ -179,7 +179,7 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
           control={form.control}
           name="ispublic"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between space-x-0 space-y-0">
+            <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
               <FormLabel className="font-normal">公开{typestring}</FormLabel>
               <FormControl>
                 <Switch

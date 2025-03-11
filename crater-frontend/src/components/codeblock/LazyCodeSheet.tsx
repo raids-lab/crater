@@ -66,14 +66,14 @@ const CodeSheetContent = ({
       </SheetHeader>
       <Card
         ref={refRoot}
-        className="relative h-[calc(100vh_-104px)] w-full overflow-hidden bg-gray-100 text-muted-foreground dark:border dark:bg-transparent"
+        className="text-muted-foreground relative h-[calc(100vh_-104px)] w-full overflow-hidden bg-gray-100 dark:border dark:bg-transparent"
       >
         <ScrollArea style={{ width, height }}>
           <BaseCodeBlock code={code ?? ""} language={language} />
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
         <Button
-          className="absolute right-4 top-4 h-8 w-8"
+          className="absolute top-4 right-4 h-8 w-8"
           onClick={copyCode}
           variant="outline"
           size="icon"

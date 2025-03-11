@@ -70,13 +70,13 @@ export const getColumns = (
         return (
           <Link
             to={`${row.original.id}`}
-            className="flex flex-row items-center justify-start gap-2 hover:text-primary"
+            className="hover:text-primary flex flex-row items-center justify-start gap-2"
           >
             <Identicon
               value={stringToSS58(row.original.name)}
               size={32}
               theme="substrate"
-              className="!cursor-pointer"
+              className="cursor-pointer!"
             />
             <div className="flex flex-col items-start gap-0.5">
               {row.getValue("nickname")}
@@ -84,7 +84,7 @@ export const getColumns = (
                 <TooltipProvider delayDuration={10}>
                   <Tooltip>
                     <TooltipTrigger>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-muted-foreground text-xs">
                         {diff < 0 ? (
                           <>已过期</>
                         ) : (
@@ -100,7 +100,7 @@ export const getColumns = (
                     </TooltipTrigger>
                     <TooltipContent
                       side="right"
-                      className="border bg-background text-foreground"
+                      className="bg-background text-foreground border"
                     >
                       {format(expiredAt, "PPP", { locale: zhCN })}过期
                     </TooltipContent>

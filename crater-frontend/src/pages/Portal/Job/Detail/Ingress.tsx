@@ -266,7 +266,7 @@ export default function PodIngressDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-grow overflow-y-auto">
+        <div className="grow overflow-y-auto">
           <Tabs
             defaultValue="ingress"
             value={activeTab}
@@ -301,7 +301,7 @@ export default function PodIngressDialog({
                       key={ingress.name}
                       className="flex items-center space-x-2 rounded-md bg-secondary p-3"
                     >
-                      <div className="ml-2 flex flex-grow flex-col items-start justify-start gap-0.5">
+                      <div className="ml-2 flex grow flex-col items-start justify-start gap-0.5">
                         <p>{ingress.name}</p>
                         <div className="flex flex-row text-xs text-muted-foreground">
                           {ingress.port} → {import.meta.env.VITE_HOST}
@@ -390,7 +390,7 @@ export default function PodIngressDialog({
                       key={nodeport.name}
                       className="flex items-center space-x-2 rounded bg-secondary p-3"
                     >
-                      <div className="ml-2 flex flex-grow flex-col items-start justify-start gap-0.5">
+                      <div className="ml-2 flex grow flex-col items-start justify-start gap-0.5">
                         <p>{nodeport.name}</p>
                         <div className="flex flex-row text-xs text-muted-foreground">
                           {nodeport.containerPort} → {nodeport.address}:

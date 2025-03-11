@@ -71,7 +71,7 @@ const Jupyter: FC = () => {
       <iframe
         title="jupyter notebook"
         src={url}
-        className="absolute bottom-0 left-0 right-0 top-0 h-screen w-screen"
+        className="absolute top-0 right-0 bottom-0 left-0 h-screen w-screen"
       />
       {/* Transparent overlay */}
       {isDragging && (

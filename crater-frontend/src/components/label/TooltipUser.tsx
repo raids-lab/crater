@@ -19,7 +19,7 @@ const TooltipUser = ({ attributes }: { attributes: IUserAttributes }) => {
             {attributes.nickname ?? attributes.name}
           </span>
         </TooltipTrigger>
-        <TooltipContent className="border bg-background text-foreground">
+        <TooltipContent className="bg-background text-foreground border">
           <Link
             className="m-0 p-0 font-normal"
             to={`/portal/user/${attributes.name}`}
@@ -32,7 +32,7 @@ const TooltipUser = ({ attributes }: { attributes: IUserAttributes }) => {
                     value={stringToSS58(attributes.name)}
                     size={32}
                     theme="beachball"
-                    className="!cursor-default"
+                    className="cursor-default!"
                   />
                 </AvatarFallback>
               </Avatar>

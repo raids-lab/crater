@@ -12,7 +12,7 @@ export const ProgressBar = ({
   const newWidth = width > 100 ? 100 : width;
   return (
     <div
-      className={cn("relative h-4 rounded bg-accent/50 text-foreground", {
+      className={cn("bg-accent/50 text-foreground relative h-4 rounded", {
         "text-white": width > 90,
       })}
     >

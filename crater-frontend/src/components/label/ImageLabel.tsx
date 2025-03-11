@@ -10,7 +10,7 @@ const ImageLabel = ({
   return (
     <div className="flex flex-col gap-0.5 text-left">
       <span className="truncate text-sm font-normal">{description}</span>
-      <span className="truncate font-mono text-xs text-muted-foreground">
+      <span className="text-muted-foreground truncate font-mono text-xs">
         {shortenImageName(url)}
       </span>
     </div>

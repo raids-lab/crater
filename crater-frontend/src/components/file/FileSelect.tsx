@@ -21,7 +21,7 @@ interface DirectoryProps {
 
 function LoadingIndicator() {
   return (
-    <div className="bg-whit absolute inset-0 flex items-center justify-center bg-opacity-50">
+    <div className="bg-whit bg-opacity-50 absolute inset-0 flex items-center justify-center">
       <div className="flex items-center space-x-3 rounded-md p-3 text-blue-300">
         <svg
           className="h-8 w-8 animate-spin text-blue-300"
@@ -177,7 +177,7 @@ export function FileSelect({
   }, [FileList, isLoading]);
 
   return (
-    <div className="left-0 flex h-[410px] w-[590px] max-w-screen-sm flex-col">
+    <div className="left-0 flex h-[410px] w-[590px] max-w-(--breakpoint-sm) flex-col">
       {/* ...保留FileSelect组件的其他部分代码 */}
       <div className="bg-slate-150 left-0 flex h-[50px] w-full items-center gap-2.5 rounded-lg border-2 px-1 py-2.5">
         <ChevronRightIcon className="size-4" />

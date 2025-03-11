@@ -6,7 +6,7 @@ const UserLabel = ({ attributes }: { attributes: IUserAttributes }) => {
       <span className="truncate text-sm font-normal">
         {attributes.nickname ?? attributes.name}
       </span>
-      <span className="truncate text-xs text-muted-foreground">
+      <span className="text-muted-foreground truncate text-xs">
         @{attributes.name}
       </span>
     </div>

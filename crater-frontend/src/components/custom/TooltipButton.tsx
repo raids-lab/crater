@@ -31,7 +31,7 @@ const TooltipButton = React.forwardRef<HTMLButtonElement, TooltipButtonProps>(
               {children}
             </Button>
           </TooltipTrigger>
-          <TooltipContent className="max-w-44 border bg-background text-foreground">
+          <TooltipContent className="bg-background text-foreground max-w-44 border">
             {tooltipContent}
           </TooltipContent>
         </Tooltip>

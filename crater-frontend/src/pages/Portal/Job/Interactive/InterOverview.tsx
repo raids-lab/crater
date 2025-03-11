@@ -120,7 +120,7 @@ const InterOverview = () => {
               <div className="flex flex-row items-center">
                 {row.getValue("name")}
                 {row.original.keepWhenLowUsage && (
-                  <LockIcon className="ml-1 size-4 text-muted-foreground" />
+                  <LockIcon className="text-muted-foreground ml-1 size-4" />
                 )}
               </div>
             }
@@ -225,7 +225,7 @@ const InterOverview = () => {
               <TooltipButton
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-primary hover:bg-primary/10 hover:text-primary/90"
+                className="text-primary hover:bg-primary/10 hover:text-primary/90 h-8 w-8"
                 tooltipContent="打开 Jupyter Lab"
                 onClick={() => {
                   toast.info("即将打开 Jupyter 页面");
@@ -246,7 +246,7 @@ const InterOverview = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuLabel className="text-xs text-muted-foreground">
+                    <DropdownMenuLabel className="text-muted-foreground text-xs">
                       操作
                     </DropdownMenuLabel>
                     <Link to={`${jobInfo.jobName}`}>

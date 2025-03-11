@@ -32,7 +32,7 @@ export const PhaseBadge = <T,>({
             <div>{data.label}</div>
           </Badge>
         </TooltipTrigger>
-        <TooltipContent className="max-w-44 border bg-background text-foreground">
+        <TooltipContent className="bg-background text-foreground max-w-44 border">
           <p>{data.description}</p>
         </TooltipContent>
       </Tooltip>

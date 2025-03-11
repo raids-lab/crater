@@ -91,9 +91,9 @@ export function GpuCardDemo({ gpuInfo }: GpuDemoProps) {
   else
     return (
       <Card>
-        <CardContent className="flex items-center justify-between bg-muted/50 p-6">
+        <CardContent className="bg-muted/50 flex items-center justify-between p-6">
           <div className="flex flex-col items-start gap-2">
-            <CardTitle className="text-lg font-bold text-primary">
+            <CardTitle className="text-primary text-lg font-bold">
               {gpuInfo?.gpuProduct}
             </CardTitle>
             <div className="mt-4 flex items-center space-x-2">
@@ -103,22 +103,22 @@ export function GpuCardDemo({ gpuInfo }: GpuDemoProps) {
         </CardContent>
         <Separator />
         <CardContent className="mt-6 grid grid-flow-col grid-rows-4 gap-x-2 gap-y-3 text-xs">
-          <div className="flex items-center space-x-2 text-muted-foreground">
+          <div className="text-muted-foreground flex items-center space-x-2">
             <Memory className="h-6 w-6" />
             <span className="text-sm font-bold">显存</span>
           </div>
 
-          <div className="flex items-center space-x-2 text-muted-foreground">
+          <div className="text-muted-foreground flex items-center space-x-2">
             <Grid className="h-6 w-6" />
             <span className="text-sm font-bold">GPU数量</span>
           </div>
 
-          <div className="flex items-center space-x-2 text-muted-foreground">
+          <div className="text-muted-foreground flex items-center space-x-2">
             <Layers className="h-6 w-6" />
             <span className="text-sm font-bold">架构</span>
           </div>
 
-          <div className="flex items-center space-x-2 text-muted-foreground">
+          <div className="text-muted-foreground flex items-center space-x-2">
             <Cable className="h-6 w-6" />
             <span className="text-sm font-bold">驱动版本</span>
           </div>
@@ -165,9 +165,9 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
 
   return (
     <Card className={className} {...props}>
-      <CardContent className="flex items-center justify-between bg-muted/50 p-6">
+      <CardContent className="bg-muted/50 flex items-center justify-between p-6">
         <div className="flex flex-col items-start gap-2">
-          <CardTitle className="text-lg font-bold text-primary">
+          <CardTitle className="text-primary text-lg font-bold">
             {nodeInfo?.name}
           </CardTitle>
         </div>
@@ -364,7 +364,7 @@ const getColumns = (
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel className="text-xs text-muted-foreground">
+            <DropdownMenuLabel className="text-muted-foreground text-xs">
               操作
             </DropdownMenuLabel>
             <DropdownMenuItem disabled>监控</DropdownMenuItem>

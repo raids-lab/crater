@@ -120,7 +120,7 @@ export function DataTablePagination<TData>({
             table.setPageSize(Number(value));
           }}
         >
-          <SelectTrigger className="h-9 w-[100px] bg-background pl-3 pr-2 text-xs">
+          <SelectTrigger className="bg-background h-9 w-[100px] pr-2 pl-3 text-xs">
             <SelectValue placeholder={table.getState().pagination.pageSize} />
           </SelectTrigger>
           <SelectContent side="top">
@@ -131,7 +131,7 @@ export function DataTablePagination<TData>({
             ))}
           </SelectContent>
         </Select>
-        <p className="pl-1.5 font-medium text-muted-foreground">
+        <p className="text-muted-foreground pl-1.5 font-medium">
           更新于 <time dateTime="2023-11-23">{updatedAt}</time>，
           {table.getFilteredSelectedRowModel().rows.length === 0 ? (
             <>共 {table.getFilteredRowModel().rows.length} 条</>
@@ -144,7 +144,7 @@ export function DataTablePagination<TData>({
         </p>
       </div>
       <div className="flex items-center space-x-6">
-        <p className="text-xs font-medium text-muted-foreground">
+        <p className="text-muted-foreground text-xs font-medium">
           第 {table.getState().pagination.pageIndex + 1} /{" "}
           {table.getPageCount()} 页
         </p>

@@ -14,7 +14,7 @@ export function Dashboard() {
   return (
     <div className="h-screen w-full lg:grid lg:grid-cols-2">
       {/* 左侧部分 */}
-      <div className="hidden bg-primary dark:bg-slate-800/70 lg:block">
+      <div className="bg-primary hidden lg:block dark:bg-slate-800/70">
         <div className="relative h-full w-full">
           {/* 背景SVG图像 */}
           <svg
@@ -33,7 +33,7 @@ export function Dashboard() {
           </svg>
           {/* 顶部Logo */}
           <div
-            className="absolute left-10 top-10 z-20 flex items-center text-lg font-medium"
+            className="absolute top-10 left-10 z-20 flex items-center text-lg font-medium"
             title="Switch signup and login"
           >
             <button
@@ -55,7 +55,7 @@ export function Dashboard() {
           {/* 中间文字内容 */}
           <div className="relative flex h-full items-center justify-center">
             <div className="z-10 px-6 py-8 text-left text-white lg:px-16 lg:py-12">
-              <h1 className="mb-4 text-5xl font-semibold leading-tight">
+              <h1 className="mb-4 text-5xl leading-tight font-semibold">
                 <span className="dark:text-primary">欢迎体验</span>
                 <br />
                 异构云资源混合调度
@@ -64,7 +64,7 @@ export function Dashboard() {
               </h1>
               <Button
                 variant="ghost"
-                className="bg-white text-black hover:bg-slate-200 hover:text-black dark:bg-primary dark:text-primary-foreground hover:dark:bg-primary/85 dark:hover:text-primary-foreground"
+                className="dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/85 dark:hover:text-primary-foreground bg-white text-black hover:bg-slate-200 hover:text-black"
                 onClick={() =>
                   window.open(`https://${import.meta.env.VITE_HOST}/website/`)
                 }
@@ -82,12 +82,12 @@ export function Dashboard() {
           <div className="mx-auto w-[350px] space-y-6">
             <div className="space-y-2 text-center">
               <h1 className="text-3xl font-bold">用户注册</h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 仅面向特定用户提供此功能
               </p>
             </div>
             <SignupForm />
-            <div className="text-center text-sm text-muted-foreground">
+            <div className="text-muted-foreground text-center text-sm">
               已有账号？
               <button
                 onClick={() => setShowSignup(false)}
@@ -101,12 +101,12 @@ export function Dashboard() {
           <div className="mx-auto w-[350px] space-y-6">
             <div className="space-y-2 text-center">
               <h1 className="text-3xl font-bold">用户登录</h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 已接入 ACT 实验室统一身份认证
               </p>
             </div>
             <LoginForm />
-            <div className="text-center text-sm text-muted-foreground">
+            <div className="text-muted-foreground text-center text-sm">
               还没有账号？
               <button onClick={() => setShowSignup(true)} className="underline">
                 立即注册

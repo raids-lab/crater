@@ -100,7 +100,7 @@ export default function CronPolicy({ className }: { className?: string }) {
                 control={form.control}
                 name="notifyEnabled"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                  <FormItem className="flex flex-row items-center space-y-0 space-x-3">
                     <FormControl>
                       <Checkbox
                         checked={field.value}
@@ -158,7 +158,7 @@ export default function CronPolicy({ className }: { className?: string }) {
                 control={form.control}
                 name="cleanEnabled"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                  <FormItem className="flex flex-row items-center space-y-0 space-x-3">
                     <FormControl>
                       <Checkbox
                         checked={field.value}

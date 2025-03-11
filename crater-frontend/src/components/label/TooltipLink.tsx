@@ -29,7 +29,7 @@ export default function TooltipLink({
             <a
               href={to}
               className={cn(
-                "font-normal no-underline hover:text-primary",
+                "hover:text-primary font-normal no-underline",
                 className,
               )}
               target="_blank"
@@ -41,14 +41,14 @@ export default function TooltipLink({
         ) : (
           <TooltipTrigger>
             <Link
-              className={cn("font-normal hover:text-primary", className)}
+              className={cn("hover:text-primary font-normal", className)}
               to={to}
             >
               {name}
             </Link>
           </TooltipTrigger>
         )}
-        <TooltipContent className="border bg-muted text-foreground">
+        <TooltipContent className="bg-muted text-foreground border">
           {tooltip}
         </TooltipContent>
       </Tooltip>
