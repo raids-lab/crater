@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: jupyter-start-configmap
-  namespace: crater-workspace
+  namespace: {{ .Values.backendConfig.workspace.namespace}}
 data:
   start.sh: |
     #!/bin/bash

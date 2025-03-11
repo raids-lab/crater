@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: storage-server-ingress
-  namespace: crater-workspace
+  namespace: {{ .Values.backendConfig.workspace.namespace}}
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "1000m"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"

@@ -2,24 +2,16 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cleanup-config
-  namespace: crater
-data:
-  USERNAME: "***REMOVED***"
-  PASSWORD: "***REMOVED***"
-  BATCH_DAYS: "5"
-  INTERACTIVE_DAYS: "5"
-  TIME_RANGE: "90"
-  WAIT_TIME: "30"
-  UTIL: "0"
-  HOST: ***REMOVED***
+  namespace: {{ .Release.Namespace }}
+data: {{ toYaml .Values.web.cronjob.config | nindent 2 }}
 ---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: delete-operation-job
-  namespace: crater
+  namespace: {{ .Release.Namespace }}
 spec:
-  schedule: 0,30 * * * *
+  schedule: {{ .Values.web.cronjob.schedule }}
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 1
   jobTemplate:
@@ -28,7 +20,8 @@ spec:
         spec:
           containers:
           - name: cleanup
-            image: ***REMOVED***/clean:v3
+            image: {{ .Values.web.cronjob.image }}
+            imagePullPolicy: IfNotPresent
             envFrom:
             - configMapRef:
                 name: cleanup-config
