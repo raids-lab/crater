@@ -214,7 +214,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel className="text-xs text-muted-foreground">
+                  <DropdownMenuLabel className="text-muted-foreground text-xs">
                     操作
                   </DropdownMenuLabel>
                   <DropdownMenuItem
@@ -315,14 +315,14 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             title: (rows) =>
               `删除 ${rows.length} 个镜像创建任务，以及对应镜像链接`,
             description: (rows) => (
-              <div className="rounded-md border border-destructive/20 bg-destructive/5 px-4 py-3">
+              <div className="border-destructive/20 bg-destructive/5 rounded-md border px-4 py-3">
                 <div className="flex items-start gap-3">
-                  <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" />
+                  <AlertTriangle className="text-destructive mt-0.5 h-5 w-5 shrink-0" />
                   <div>
-                    <p className="font-medium text-destructive">
+                    <p className="text-destructive font-medium">
                       以下镜像创建任务和对应镜像链接将被删除，确认要继续吗？
                     </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
+                    <p className="text-muted-foreground mt-1 text-sm">
                       {"『" +
                         rows
                           .map((row) => row.original.description)
@@ -392,10 +392,10 @@ export const ProjectDetailCardAndDiaglog: FC<
   return (
     <>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="shadow-sm">
+        <Card className="shadow-xs">
           <CardHeader>
             <CardTitle className="flex items-center gap-1.5 text-base">
-              <BoxIcon className="size-5 text-primary" />
+              <BoxIcon className="text-primary size-5" />
               镜像总数
             </CardTitle>
           </CardHeader>
@@ -410,10 +410,10 @@ export const ProjectDetailCardAndDiaglog: FC<
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm">
+        <Card className="shadow-xs">
           <CardHeader>
             <CardTitle className="flex items-center gap-1.5 text-base">
-              <HardDriveIcon className="size-5 text-primary" />
+              <HardDriveIcon className="text-primary size-5" />
               存储用量
             </CardTitle>
           </CardHeader>
@@ -431,10 +431,10 @@ export const ProjectDetailCardAndDiaglog: FC<
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm">
+        <Card className="shadow-xs">
           <CardHeader>
             <CardTitle className="flex items-center gap-1.5 text-base">
-              <UserRoundIcon className="size-5 text-primary" />
+              <UserRoundIcon className="text-primary size-5" />
               仓库项目
             </CardTitle>
           </CardHeader>
@@ -449,10 +449,10 @@ export const ProjectDetailCardAndDiaglog: FC<
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm">
+        <Card className="shadow-xs">
           <CardHeader>
             <CardTitle className="flex items-center gap-1.5 text-base">
-              <KeyIcon className="size-5 text-primary" />
+              <KeyIcon className="text-primary size-5" />
               访问凭据
             </CardTitle>
           </CardHeader>

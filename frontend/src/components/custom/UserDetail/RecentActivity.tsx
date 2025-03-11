@@ -20,7 +20,7 @@ export default function RecentActivity() {
           {activities.map((activity) => (
             <div key={activity.id} className="mb-4">
               <p className="font-semibold">{activity.action}</p>
-              <p className="text-sm text-muted-foreground">{activity.date}</p>
+              <p className="text-muted-foreground text-sm">{activity.date}</p>
             </div>
           ))}
         </ScrollArea>

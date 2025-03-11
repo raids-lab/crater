@@ -51,7 +51,7 @@ const CodeSheet = ({
           <SheetTitle className="font-mono">{title}</SheetTitle>
         </SheetHeader>
         <Card
-          className="relative h-[calc(100vh_-104px)] w-full overflow-hidden bg-slate-900 p-1 text-muted-foreground dark:border"
+          className="text-muted-foreground relative h-[calc(100vh_-104px)] w-full overflow-hidden bg-slate-900 p-1 dark:border"
           ref={refRoot}
         >
           <ScrollArea style={{ width, height }}>
@@ -60,7 +60,7 @@ const CodeSheet = ({
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
           <Button
-            className="absolute right-4 top-4 h-8 w-8"
+            className="absolute top-4 right-4 h-8 w-8"
             onClick={copyCode}
             variant="outline"
             size="icon"

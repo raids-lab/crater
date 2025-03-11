@@ -54,8 +54,8 @@ function Combobox<T>({
             role="combobox"
             aria-expanded={open}
             className={cn(
-              "w-full justify-between text-ellipsis whitespace-nowrap px-3 font-normal",
-              "data-[state=open]:outline-none data-[state=open]:ring-1 data-[state=open]:ring-ring",
+              "w-full justify-between px-3 font-normal text-ellipsis whitespace-nowrap",
+              "data-[state=open]:ring-ring data-[state=open]:ring-1 data-[state=open]:outline-hidden",
               !current && "text-muted-foreground",
               className,
             )}

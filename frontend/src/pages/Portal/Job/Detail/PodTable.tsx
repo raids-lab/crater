@@ -146,7 +146,7 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
               }}
               tooltipContent="打开网页终端"
             >
-              <TerminalIcon className="size-4 text-primary" />
+              <TerminalIcon className="text-primary size-4" />
             </TooltipButton>
 
             <TooltipButton

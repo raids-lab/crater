@@ -26,7 +26,7 @@ export const SmallDataCard = ({
   return (
     <Card>
       <CardHeader className="pb-0">
-        <CardTitle className="text-sm font-medium capitalize text-muted-foreground">
+        <CardTitle className="text-muted-foreground text-sm font-medium capitalize">
           {title}
         </CardTitle>
       </CardHeader>
@@ -36,7 +36,7 @@ export const SmallDataCard = ({
           {newUnit && <span className="ml-0.5 text-lg">{newUnit}</span>}
         </div>
         {description && (
-          <p className="pt-1 text-xs text-muted-foreground">{description}</p>
+          <p className="text-muted-foreground pt-1 text-xs">{description}</p>
         )}
       </CardContent>
     </Card>

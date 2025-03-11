@@ -46,7 +46,7 @@ export const FileSelectDialog = ({
             variant="outline"
             role="file-select"
             className={cn(
-              "w-full justify-between text-ellipsis whitespace-nowrap pl-3 pr-4 font-normal focus:outline-primary",
+              "focus:outline-primary w-full justify-between pr-4 pl-3 font-normal text-ellipsis whitespace-nowrap",
               !value && "text-muted-foreground",
             )}
             disabled={disabled}
@@ -61,9 +61,9 @@ export const FileSelectDialog = ({
             <DialogDescription>支持选择单个文件或文件夹</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4">
-            <div className="relative flex h-80 flex-col gap-2 rounded-md border border-input shadow-sm">
+            <div className="border-input relative flex h-80 flex-col gap-2 rounded-md border shadow-xs">
               <Tree
-                className="h-full w-full flex-shrink-0"
+                className="h-full w-full shrink-0"
                 onSelectChange={(item) => {
                   setContent(item);
                 }}

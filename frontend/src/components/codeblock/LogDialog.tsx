@@ -158,7 +158,7 @@ export function LogCard({
 
   return (
     <Card
-      className="relative h-full overflow-hidden rounded-md bg-slate-900 p-1 text-white dark:border dark:bg-muted/30 md:col-span-2 xl:col-span-3"
+      className="dark:bg-muted/30 relative h-full overflow-hidden rounded-md bg-slate-900 p-1 text-white md:col-span-2 xl:col-span-3 dark:border"
       ref={refRoot}
     >
       {showLog ? (
@@ -166,22 +166,22 @@ export function LogCard({
           <ScrollArea style={{ width, height }}>
             <div ref={logAreaRef}>
               {showMore && (
-                <div className="flex select-none justify-center pt-5">
+                <div className="flex justify-center pt-5 select-none">
                   <Button size="sm" onClick={handleShowMore}>
                     显示更多
                   </Button>
                 </div>
               )}
-              <pre className="whitespace-pre-wrap break-words px-3 py-3 text-sm text-sky-300 dark:text-blue-300">
+              <pre className="px-3 py-3 text-sm break-words whitespace-pre-wrap text-sky-300 dark:text-blue-300">
                 {logText}
               </pre>
             </div>
           </ScrollArea>
-          <ButtonGroup className="absolute right-5 top-5 rounded-md border border-input bg-background text-foreground">
+          <ButtonGroup className="border-input bg-background text-foreground absolute top-5 right-5 rounded-md border">
             <TooltipButton
               tooltipContent="刷新"
               onClick={handleRefresh}
-              className="border-0 border-r hover:text-primary focus-visible:ring-0"
+              className="hover:text-primary border-0 border-r focus-visible:ring-0"
               variant="ghost"
               size="icon"
               title="刷新"
@@ -190,7 +190,7 @@ export function LogCard({
             </TooltipButton>
             <TooltipButton
               onClick={() => setTimestamps((prev) => !prev)}
-              className="border-0 border-r hover:text-primary focus-visible:ring-0"
+              className="hover:text-primary border-0 border-r focus-visible:ring-0"
               variant="ghost"
               size="icon"
               tooltipContent="显示时间戳"
@@ -203,7 +203,7 @@ export function LogCard({
             </TooltipButton>
             <TooltipButton
               onClick={copyCode}
-              className="border-0 border-r hover:text-primary focus-visible:ring-0"
+              className="hover:text-primary border-0 border-r focus-visible:ring-0"
               variant="ghost"
               size="icon"
               tooltipContent="复制"
@@ -216,7 +216,7 @@ export function LogCard({
             </TooltipButton>
             <TooltipButton
               onClick={handleDownload}
-              className="border-0 hover:text-primary focus-visible:ring-0"
+              className="hover:text-primary border-0 focus-visible:ring-0"
               variant="ghost"
               size="icon"
               tooltipContent="下载"

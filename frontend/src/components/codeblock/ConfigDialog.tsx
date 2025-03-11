@@ -39,7 +39,7 @@ export function CodeContent({
 
   return (
     <Card
-      className="relative h-[calc(100vh-_304px)] overflow-hidden bg-slate-900 p-1 text-muted-foreground dark:border dark:bg-muted/30"
+      className="text-muted-foreground dark:bg-muted/30 relative h-[calc(100vh-_304px)] overflow-hidden bg-slate-900 p-1 dark:border"
       ref={refRoot}
     >
       <ScrollArea style={{ width, height }}>
@@ -47,7 +47,7 @@ export function CodeContent({
       </ScrollArea>
       <TooltipButton
         tooltipContent="复制"
-        className="absolute right-5 top-5 h-8 w-8"
+        className="absolute top-5 right-5 h-8 w-8"
         onClick={copyCode}
         variant="outline"
         size="icon"

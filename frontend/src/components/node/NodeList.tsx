@@ -63,7 +63,7 @@ export const UsageCell: FC<{ value?: ResourceInfo }> = ({ value }) => {
         {value.percent.toFixed(1)}
         <span className="ml-0.5">%</span>
       </p>
-      <p className="font-mono text-xs text-muted-foreground">
+      <p className="text-muted-foreground font-mono text-xs">
         {value.description}
       </p>
     </div>
@@ -108,7 +108,7 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
               <TooltipTrigger className="flex size-4 items-center justify-center rounded-full bg-slate-600 text-xs text-white">
                 {taints.length}
               </TooltipTrigger>
-              <TooltipContent className="border bg-muted font-mono text-muted-foreground">
+              <TooltipContent className="bg-muted text-muted-foreground border font-mono">
                 {taints.map((taint, index) => (
                   <p key={index} className="text-xs">
                     {taint}
@@ -137,7 +137,7 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
         <Tooltip>
           <TooltipTrigger
             className={cn(
-              "flex size-4 items-center justify-center rounded-full bg-secondary text-xs text-secondary-foreground",
+              "bg-secondary text-secondary-foreground flex size-4 items-center justify-center rounded-full text-xs",
               {
                 "bg-orange-600/20 text-orange-600 dark:text-orange-400":
                   row.original.podCount && row.original.podCount > 0,
@@ -146,7 +146,7 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
           >
             {row.original.podCount}
           </TooltipTrigger>
-          <TooltipContent className="border bg-muted text-muted-foreground">
+          <TooltipContent className="bg-muted text-muted-foreground border">
             {row.original.podCount} 个作业正在运行
           </TooltipContent>
         </Tooltip>

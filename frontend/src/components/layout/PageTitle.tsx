@@ -22,12 +22,12 @@ const PageTitle: FC<PageTitleProps> = ({
       className={cn("flex flex-row items-center justify-between", className)}
     >
       <div>
-        <h1 className="flex items-center text-xl font-bold leading-relaxed">
+        <h1 className="flex items-center text-xl leading-relaxed font-bold">
           {title}
           {isWIP && <TipBadge className="ml-1.5" />}
         </h1>
         {description && (
-          <p className="text-sm text-muted-foreground">{description}</p>
+          <p className="text-muted-foreground text-sm">{description}</p>
         )}
       </div>
       {children}

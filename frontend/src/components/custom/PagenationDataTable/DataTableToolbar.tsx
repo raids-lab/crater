@@ -39,7 +39,7 @@ export function DataTableToolbar<TData>({
       <div className="flex flex-row items-center space-x-2">
         {children}
         <div className="relative ml-auto h-8 flex-1 md:grow-0">
-          <Search className="absolute left-2 top-2 size-4 text-muted-foreground" />
+          <Search className="text-muted-foreground absolute top-2 left-2 size-4" />
           <Input
             placeholder={"查找" + getHeader(searchKey)}
             value={
@@ -48,7 +48,7 @@ export function DataTableToolbar<TData>({
             onChange={(event) =>
               table.getColumn(searchKey)?.setFilterValue(event.target.value)
             }
-            className="h-8 w-[150px] bg-background pl-8 lg:w-[250px]"
+            className="bg-background h-8 w-[150px] pl-8 lg:w-[250px]"
           />
         </div>
         {filterOptions.map(
@@ -112,14 +112,14 @@ export function DataTableToolbarRight<TData>({
           ),
       )}
       <div className="relative ml-auto h-8">
-        <Search className="absolute left-2 top-2 size-4 text-muted-foreground" />
+        <Search className="text-muted-foreground absolute top-2 left-2 size-4" />
         <Input
           placeholder={"查找" + getHeader(searchKey)}
           value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
             table.getColumn(searchKey)?.setFilterValue(event.target.value)
           }
-          className="h-8 w-[150px] bg-background pl-8 lg:w-[250px]"
+          className="bg-background h-8 w-[150px] pl-8 lg:w-[250px]"
         />
       </div>
       <DataTableViewOptions table={table} getHeader={getHeader} />

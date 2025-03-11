@@ -35,7 +35,7 @@ const DashboardLayout = ({ groups }: { groups: NavGroupProps[] }) => {
         <header
           className={cn(
             "flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear",
-            // "group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-16",
+            // "group-has-data-[collapsible=icon]/sidebar-wrapper:h-16",
             fixedLayout &&
               "header-fixed peer/header fixed z-50 w-[inherit] rounded-md",
           )}
@@ -54,7 +54,7 @@ const DashboardLayout = ({ groups }: { groups: NavGroupProps[] }) => {
           className={cn(
             "flex flex-col gap-6 p-6 pt-0",
             fixedLayout &&
-              "absolute bottom-0 left-0 right-0 top-0 w-full flex-grow overflow-hidden peer-[.header-fixed]/header:mt-16",
+              "absolute top-0 right-0 bottom-0 left-0 w-full grow overflow-hidden peer-[.header-fixed]/header:mt-16",
           )}
         >
           <Outlet />

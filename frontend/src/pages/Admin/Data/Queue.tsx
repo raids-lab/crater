@@ -128,7 +128,7 @@ export const Component: FC = () => {
                     navigate(pathname + "/" + row.original.name);
                   }}
                   variant={"link"}
-                  className="h-8 px-0 text-left font-normal text-secondary-foreground"
+                  className="text-secondary-foreground h-8 px-0 text-left font-normal"
                 >
                   {row.getValue("name")}
                 </Button>
@@ -137,7 +137,7 @@ export const Component: FC = () => {
           } else {
             return (
               <div style={{ display: "flex", alignItems: "center" }}>
-                <File className="mr-2 size-5 text-muted-foreground" />
+                <File className="text-muted-foreground mr-2 size-5" />
                 <span className="text-secondary-foreground">
                   {row.getValue("name")}
                 </span>
@@ -221,7 +221,7 @@ export const Component: FC = () => {
                     <div>
                       <Button
                         variant="outline"
-                        className="h-8 w-8 p-0 hover:text-destructive"
+                        className="hover:text-destructive h-8 w-8 p-0"
                         title="删除文件"
                       >
                         <Trash2 size={16} strokeWidth={4} />
@@ -258,7 +258,7 @@ export const Component: FC = () => {
                     <div>
                       <Button
                         variant="outline"
-                        className="h-8 w-8 p-0 hover:text-destructive"
+                        className="hover:text-destructive h-8 w-8 p-0"
                         title="删除文件夹"
                       >
                         <Trash2 size={16} strokeWidth={2} />

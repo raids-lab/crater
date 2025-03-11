@@ -37,7 +37,7 @@ export function CopyableCommand({ label, command }: CopyableCommandProps) {
           )}
         </Button>
       </div>
-      <code className="break-all text-sm">{command}</code>
+      <code className="text-sm break-all">{command}</code>
     </div>
   );
 }

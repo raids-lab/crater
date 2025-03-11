@@ -354,7 +354,7 @@ export const Component = () => {
               >
                 <ChevronLeftIcon className="size-4" />
               </Button>
-              <h1 className="shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
+              <h1 className="shrink-0 text-xl font-semibold tracking-tight whitespace-nowrap sm:grow-0">
                 Jupyter Lab
               </h1>
             </div>
@@ -585,7 +585,7 @@ export const Component = () => {
                             </FormLabel>
                             <button
                               onClick={() => volumeMountRemove(index)}
-                              className="absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+                              className="data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none"
                             >
                               <XIcon className="size-4" />
                               <span className="sr-only">Close</span>
@@ -692,7 +692,7 @@ export const Component = () => {
                           <FormItem className="relative">
                             <button
                               onClick={() => envRemove(index)}
-                              className="absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+                              className="data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none"
                             >
                               <XIcon className="size-4" />
                               <span className="sr-only">Close</span>
@@ -753,7 +753,7 @@ export const Component = () => {
                   control={form.control}
                   name={`observability.tbEnable`}
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between space-x-0 space-y-0">
+                    <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
                       <FormLabel>启用 Tensorboard</FormLabel>
                       <FormControl>
                         <Switch
@@ -795,7 +795,7 @@ export const Component = () => {
                   control={form.control}
                   name={`nodeSelector.enable`}
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between space-x-0 space-y-0">
+                    <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
                       <FormLabel>启用节点选择功能</FormLabel>
                       <FormControl>
                         <Switch

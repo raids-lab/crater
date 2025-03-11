@@ -142,7 +142,7 @@ export function DataTable<TData, TValue>({
           {!info && <>{children}</>}
         </DataTableToolbar>
       )}
-      <Card className="overflow-hidden rounded-md shadow-sm">
+      <Card className="overflow-hidden rounded-md shadow-xs">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -195,10 +195,10 @@ export function DataTable<TData, TValue>({
                   ) : (
                     <TableCell
                       colSpan={columns.length}
-                      className="h-60 text-center text-muted-foreground/85 hover:bg-transparent"
+                      className="text-muted-foreground/85 h-60 text-center hover:bg-transparent"
                     >
                       <div className="flex flex-col items-center justify-center py-16">
-                        <div className="mb-4 rounded-full bg-muted p-3">
+                        <div className="bg-muted mb-4 rounded-full p-3">
                           <GridIcon className="h-6 w-6" />
                         </div>
                         <p className="select-none">暂无数据</p>

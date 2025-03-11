@@ -51,7 +51,7 @@ const SplitButton = ({
   }, [items, position, setPosition]);
 
   return (
-    <div className="flex w-fit items-center space-x-1 rounded-md bg-primary text-primary-foreground">
+    <div className="bg-primary text-primary-foreground flex w-fit items-center space-x-1 rounded-md">
       <Button
         className="pr-3 shadow-none"
         onClick={() => items.find((item) => item.key === position)?.action()}
@@ -62,8 +62,8 @@ const SplitButton = ({
       <Separator orientation="vertical" className="h-[20px]" />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button className="pl-2 pr-3 shadow-none focus:ring-0">
-            <ChevronDownIcon className="size-4 text-primary-foreground" />
+          <Button className="pr-3 pl-2 shadow-none focus:ring-0">
+            <ChevronDownIcon className="text-primary-foreground size-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -72,7 +72,7 @@ const SplitButton = ({
           className="w-[200px]"
           forceMount
         >
-          <DropdownMenuLabel className="text-xs text-muted-foreground">
+          <DropdownMenuLabel className="text-muted-foreground text-xs">
             {itemTitle}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />

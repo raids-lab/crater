@@ -57,16 +57,16 @@ const SandwichSheet = ({
       {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
       <SheetContent className={cn("overflow-hidden p-0", className)}>
         <div className="relative -z-10 h-screen">
-          <SheetHeader className="h-[72px] pb-4 pl-6 pt-6">
+          <SheetHeader className="h-[72px] pt-6 pb-4 pl-6">
             <SheetTitle className="flex flex-row items-center">
               {title}
               {description && (
                 <TooltipProvider delayDuration={100}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <QuestionMarkCircledIcon className="ml-1 size-4 text-muted-foreground hover:cursor-help" />
+                      <QuestionMarkCircledIcon className="text-muted-foreground ml-1 size-4 hover:cursor-help" />
                     </TooltipTrigger>
-                    <TooltipContent className="border bg-background text-foreground">
+                    <TooltipContent className="bg-background text-foreground border">
                       {description}
                     </TooltipContent>
                   </Tooltip>
@@ -86,7 +86,7 @@ const SandwichSheet = ({
             </ScrollArea>
           </div>
           {footer && (
-            <SheetFooter className="absolute bottom-0 left-0 right-0 gap-2 p-6">
+            <SheetFooter className="absolute right-0 bottom-0 left-0 gap-2 p-6">
               {footer}
             </SheetFooter>
           )}

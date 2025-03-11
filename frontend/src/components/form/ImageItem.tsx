@@ -20,7 +20,7 @@ export default function ImageItem({
     <TooltipProvider delayDuration={100}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="flex w-full items-center gap-3 text-muted-foreground">
+          <div className="text-muted-foreground flex w-full items-center gap-3">
             <div
               className={cn(
                 "flex size-8 items-center justify-center rounded-full font-normal",
@@ -44,11 +44,11 @@ export default function ImageItem({
             </div>
           </div>
         </TooltipTrigger>
-        <TooltipContent className="border bg-muted text-muted-foreground">
+        <TooltipContent className="bg-muted text-muted-foreground border">
           <p>{item.detail?.creatorName}</p>
           <TimeDistance
             date={item.detail?.createdAt}
-            className="text-xs text-muted-foreground"
+            className="text-muted-foreground text-xs"
           />
         </TooltipContent>
       </Tooltip>

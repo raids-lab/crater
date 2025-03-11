@@ -69,7 +69,7 @@ export function ContainerSelect({
       <SelectContent>
         {containers.map((container) => (
           <SelectItem key={container.name} value={container.name}>
-            <div className="flex items-center gap-3 text-muted-foreground">
+            <div className="text-muted-foreground flex items-center gap-3">
               <div
                 className={cn(
                   "flex size-8 items-center justify-center rounded-full font-normal",
@@ -121,7 +121,7 @@ export const TableCellForm = ({
       <p className="col-span-2 font-mono">{selectedContainer.name}</p>
       <p className="text-muted-foreground">镜像</p>
       <p
-        className="col-span-2 overflow-hidden whitespace-normal break-words font-mono"
+        className="col-span-2 overflow-hidden font-mono break-words whitespace-normal"
         title={selectedContainer.image}
       >
         {shortenImageName(selectedContainer.image)}
@@ -145,13 +145,13 @@ export const TableCellForm = ({
             {selectedContainer.state.terminated.exitCode}
           </div>
           <div className="text-muted-foreground">退出原因</div>
-          <div className="col-span-2 whitespace-normal break-all font-mono">
+          <div className="col-span-2 font-mono break-all whitespace-normal">
             {selectedContainer.state.terminated.reason}
           </div>
           {!!selectedContainer.state.terminated.message && (
             <>
               <div className="text-muted-foreground">退出消息</div>
-              <div className="col-span-2 whitespace-normal break-all font-mono">
+              <div className="col-span-2 font-mono break-all whitespace-normal">
                 {selectedContainer.state.terminated.message}
               </div>
             </>
@@ -173,7 +173,7 @@ export const TableCellForm = ({
           {!!selectedContainer.state.waiting.reason && (
             <>
               <div className="text-muted-foreground">等待原因</div>
-              <div className="col-span-2 whitespace-normal break-all font-mono">
+              <div className="col-span-2 font-mono break-all whitespace-normal">
                 {selectedContainer.state.waiting.reason}
               </div>
             </>
@@ -181,7 +181,7 @@ export const TableCellForm = ({
           {!!selectedContainer.state.waiting.message && (
             <>
               <div className="text-muted-foreground">等待消息</div>
-              <div className="col-span-2 whitespace-normal break-all font-mono">
+              <div className="col-span-2 font-mono break-all whitespace-normal">
                 {selectedContainer.state.waiting.message}
               </div>
             </>
@@ -248,7 +248,7 @@ function Content({
               setCurrentContainer={setSelectedContainer}
               containers={containers}
             />
-            <fieldset className="hidden h-[calc(100vh_-264px)] max-h-full gap-6 overflow-y-auto rounded-lg border border-input p-4 shadow-sm md:grid">
+            <fieldset className="border-input hidden h-[calc(100vh_-264px)] max-h-full gap-6 overflow-y-auto rounded-lg border p-4 shadow-xs md:grid">
               <legend className="-ml-1 px-2 text-sm font-medium">
                 {selectedContainer.isInitContainer ? "初始化容器" : "容器信息"}
               </legend>

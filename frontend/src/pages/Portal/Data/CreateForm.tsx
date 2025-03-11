@@ -195,7 +195,7 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
                           setInputValue("");
                         }
                       }}
-                      className="flex-grow"
+                      className="grow"
                     />
                     <Button
                       type="button"
@@ -204,7 +204,7 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
                         field.onChange(newTags);
                         setInputValue("");
                       }}
-                      className="h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-gray-300 bg-gray-200 transition-colors duration-200 hover:bg-gray-300"
+                      className="h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-gray-200 transition-colors duration-200 hover:bg-gray-300"
                     >
                       <Plus className="h-5 w-5 text-gray-600" />
                     </Button>
@@ -237,7 +237,7 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
           control={form.control}
           name="ispublic"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between space-x-0 space-y-0">
+            <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
               <FormLabel className="font-normal">公开{typestring}</FormLabel>
               <FormControl>
                 <Switch

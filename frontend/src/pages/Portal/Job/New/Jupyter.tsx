@@ -359,7 +359,7 @@ export const Component = () => {
           onSubmit={form.handleSubmit(onSubmit)}
           className="relative grid items-start gap-4 md:gap-x-6 lg:grid-cols-3"
         >
-          <div className="items-centor absolute right-0 top-0 flex w-fit -translate-y-12 flex-row justify-end gap-3 lg:col-span-3">
+          <div className="items-centor absolute top-0 right-0 flex w-fit -translate-y-12 flex-row justify-end gap-3 lg:col-span-3">
             <FormImportButton
               metadata={MetadataFormJupyter}
               form={form}
@@ -568,7 +568,7 @@ export const Component = () => {
                               </FormLabel>
                               <button
                                 onClick={() => volumeMountRemove(index)}
-                                className="absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+                                className="data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none"
                               >
                                 <XIcon className="size-4" />
                                 <span className="sr-only">Close</span>
@@ -714,7 +714,7 @@ export const Component = () => {
                           <FormItem className="relative">
                             <button
                               onClick={() => envRemove(index)}
-                              className="absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+                              className="data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none"
                             >
                               <XIcon className="size-4" />
                               <span className="sr-only">Close</span>
@@ -775,7 +775,7 @@ export const Component = () => {
                   control={form.control}
                   name={`alertEnabled`}
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between space-x-0 space-y-0">
+                    <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
                       <FormLabel className="font-normal">
                         接收状态通知
                       </FormLabel>
@@ -792,7 +792,7 @@ export const Component = () => {
                   control={form.control}
                   name={`openssh`}
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between space-x-0 space-y-0">
+                    <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
                       <FormLabel className="font-normal">
                         启用 SSH 连接
                       </FormLabel>
@@ -809,7 +809,7 @@ export const Component = () => {
                   control={form.control}
                   name={`nodeSelector.enable`}
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between space-x-0 space-y-0">
+                    <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
                       <FormLabel className="font-normal">
                         指定工作节点
                       </FormLabel>

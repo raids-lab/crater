@@ -15,7 +15,7 @@ export default function UserProfile() {
             John Doe
             <TipBadge />
           </CardTitle>
-          <p className="text-sm text-muted-foreground">@johndoe</p>
+          <p className="text-muted-foreground text-sm">@johndoe</p>
         </div>
       </CardHeader>
       <CardContent>

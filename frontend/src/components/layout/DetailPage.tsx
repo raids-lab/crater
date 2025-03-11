@@ -38,14 +38,14 @@ export function DetailPage({ header, info, tabs: rawTabs }: DetailPageProps) {
     <div className="flex h-full w-full flex-col space-y-6">
       <div className="h-[132.5px] space-y-6">
         {header}
-        <div className="grid grid-cols-3 gap-4 text-sm text-muted-foreground">
+        <div className="text-muted-foreground grid grid-cols-3 gap-4 text-sm">
           {info.map((data, index) => (
             <div
               key={index}
               className={cn("flex items-center", data.className)}
             >
-              <data.icon className="mr-1.5 size-4 text-muted-foreground" />
-              <span className="truncate text-sm text-muted-foreground">
+              <data.icon className="text-muted-foreground mr-1.5 size-4" />
+              <span className="text-muted-foreground truncate text-sm">
                 {data.title}：
               </span>
               <span className="truncate">{data.value}</span>
@@ -53,10 +53,7 @@ export function DetailPage({ header, info, tabs: rawTabs }: DetailPageProps) {
           ))}
         </div>
       </div>
-      <Tabs
-        defaultValue={tabs[0].key}
-        className="w-full flex-grow overflow-hidden"
-      >
+      <Tabs defaultValue={tabs[0].key} className="w-full grow overflow-hidden">
         <TabsList className="tabs-list-underline">
           {tabs.map((tab) => (
             <TabsTrigger

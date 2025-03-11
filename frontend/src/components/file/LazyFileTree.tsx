@@ -193,9 +193,9 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
               <AccordionPrimitive.Item value={item.id}>
                 <AccordionTrigger
                   className={cn(
-                    "px-2 before:absolute before:left-0 before:-z-10 before:h-[1.75rem] before:w-full before:bg-muted/80 before:opacity-0 hover:before:opacity-100",
+                    "before:bg-muted/80 px-2 before:absolute before:left-0 before:-z-10 before:h-[1.75rem] before:w-full before:opacity-0 hover:before:opacity-100",
                     selectedItemId === item.id &&
-                      "text-accent-foreground before:border-l-2 before:border-l-accent-foreground/50 before:bg-accent before:opacity-100 dark:before:border-0",
+                      "text-accent-foreground before:border-l-accent-foreground/50 before:bg-accent before:border-l-2 before:opacity-100 dark:before:border-0",
                   )}
                   onClick={() => {
                     if (!childrenInitialized) {
@@ -205,7 +205,7 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
                   }}
                 >
                   <item.icon
-                    className="mr-2 size-4 shrink-0 text-accent-foreground/50"
+                    className="text-accent-foreground/50 mr-2 size-4 shrink-0"
                     aria-hidden="true"
                   />
                   <span className="truncate text-sm">{item.name}</span>
@@ -254,18 +254,18 @@ const Leaf = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "flex cursor-pointer items-center px-2 py-2 before:absolute before:left-0 before:right-1 before:-z-10 before:h-[1.75rem] before:w-full before:bg-muted/80 before:opacity-0 hover:before:opacity-100",
+        "before:bg-muted/80 flex cursor-pointer items-center px-2 py-2 before:absolute before:right-1 before:left-0 before:-z-10 before:h-[1.75rem] before:w-full before:opacity-0 hover:before:opacity-100",
         className,
         isSelected &&
-          "text-accent-foreground before:border-l-2 before:border-l-accent-foreground/50 before:bg-accent before:opacity-100 dark:before:border-0",
+          "text-accent-foreground before:border-l-accent-foreground/50 before:bg-accent before:border-l-2 before:opacity-100 dark:before:border-0",
       )}
       {...props}
     >
       <item.icon
-        className="mr-2 size-4 shrink-0 text-accent-foreground/50"
+        className="text-accent-foreground/50 mr-2 size-4 shrink-0"
         aria-hidden="true"
       />
-      <span className="flex-grow truncate text-sm">{item.name}</span>
+      <span className="grow truncate text-sm">{item.name}</span>
     </div>
   );
 });
@@ -281,13 +281,13 @@ const AccordionTrigger = React.forwardRef<
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex w-full flex-1 items-center py-2 transition-all last:[&[data-state=open]>svg]:rotate-90",
+        "flex w-full flex-1 items-center py-2 transition-all [&[data-state=open]>svg]:last:rotate-90",
         className,
       )}
       {...props}
     >
       {children}
-      <ChevronRight className="ml-auto size-4 shrink-0 text-accent-foreground/50 transition-transform duration-200" />
+      <ChevronRight className="text-accent-foreground/50 ml-auto size-4 shrink-0 transition-transform duration-200" />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ));
@@ -302,12 +302,12 @@ const AccordionContent = React.forwardRef<
   <AccordionPrimitive.Content
     ref={ref}
     className={cn(
-      "overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
+      "data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down overflow-hidden text-sm transition-all",
       className,
     )}
     {...props}
   >
-    <div className="pb-0 pt-0">{children}</div>
+    <div className="pt-0 pb-0">{children}</div>
   </AccordionPrimitive.Content>
 ));
 AccordionContent.displayName = AccordionPrimitive.Content.displayName;

@@ -19,8 +19,8 @@ const BaseCodeBlock = forwardRef<
         {children}
         <CodeBlock.Code className="rounded-xl px-3 py-5 shadow-lg">
           <div className="table-row">
-            <CodeBlock.LineNumber className="table-cell select-none pr-4 text-right text-xs text-gray-500" />
-            <CodeBlock.LineContent className="table-cell whitespace-pre-wrap break-words text-sm">
+            <CodeBlock.LineNumber className="table-cell pr-4 text-right text-xs text-gray-500 select-none" />
+            <CodeBlock.LineContent className="table-cell text-sm break-words whitespace-pre-wrap">
               <CodeBlock.Token />
             </CodeBlock.LineContent>
           </div>

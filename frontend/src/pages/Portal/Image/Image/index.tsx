@@ -295,14 +295,14 @@ export const ImageListTable: FC<ImageListTableProps> = ({
         {
           title: (rows) => `删除 ${rows.length} 个镜像链接`,
           description: (rows) => (
-            <div className="rounded-md border border-destructive/20 bg-destructive/5 px-4 py-3">
+            <div className="border-destructive/20 bg-destructive/5 rounded-md border px-4 py-3">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" />
+                <AlertTriangle className="text-destructive mt-0.5 h-5 w-5 shrink-0" />
                 <div>
-                  <p className="font-medium text-destructive">
+                  <p className="text-destructive font-medium">
                     以下镜像链接将被删除，确认要继续吗？
                   </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="text-muted-foreground mt-1 text-sm">
                     {"『" +
                       rows
                         .map((row) => row.original.description)
@@ -325,12 +325,12 @@ export const ImageListTable: FC<ImageListTableProps> = ({
           description: (rows) => (
             <div className="rounded-md border border-green-600/20 bg-green-600/5 px-4 py-3">
               <div className="flex items-start gap-3">
-                <SquareCheckBig className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
+                <SquareCheckBig className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
                 <div>
                   <p className="font-medium text-green-600">
                     以下镜像链接将被检测
                   </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="text-muted-foreground mt-1 text-sm">
                     {"『" +
                       rows
                         .map((row) => row.original.description)
@@ -427,7 +427,7 @@ const Actions: FC<ActionsProps> = ({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel className="text-xs text-muted-foreground">
+            <DropdownMenuLabel className="text-muted-foreground text-xs">
               操作
             </DropdownMenuLabel>
             <DropdownMenuItem
@@ -493,7 +493,7 @@ const Actions: FC<ActionsProps> = ({
             <DropdownMenuSub>
               <DropdownMenuSubTrigger
                 disabled={isDisabled}
-                className={`${isDisabled ? "cursor-not-allowed opacity-50 data-[disabled]:pointer-events-none" : ""} group`}
+                className={`${isDisabled ? "cursor-not-allowed opacity-50 data-disabled:pointer-events-none" : ""} group`}
               >
                 <Tag className="text-cyan-600" />
                 更改类型
@@ -578,7 +578,7 @@ export const DeleteDialog: FC<DeleteDialogProps> = ({
     <>
       <AlertDialogHeader>
         <AlertDialogTitle className="flex items-center gap-2 text-xl">
-          <Trash2 className="h-5 w-5 text-destructive" />
+          <Trash2 className="text-destructive h-5 w-5" />
           <span>删除镜像</span>
         </AlertDialogTitle>
       </AlertDialogHeader>
@@ -586,12 +586,12 @@ export const DeleteDialog: FC<DeleteDialogProps> = ({
       <Separator className="my-3" />
 
       <AlertDialogDescription className="space-y-4 pt-2">
-        <div className="rounded-md border border-destructive/20 bg-destructive/5 px-4 py-3">
+        <div className="border-destructive/20 bg-destructive/5 rounded-md border px-4 py-3">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" />
+            <AlertTriangle className="text-destructive mt-0.5 h-5 w-5 shrink-0" />
             <div>
-              <p className="font-medium text-destructive">将删除以下镜像</p>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="text-destructive font-medium">将删除以下镜像</p>
+              <p className="text-muted-foreground mt-1 text-sm">
                 {"『" + imageLinks.join("』,『") + "』"}
               </p>
             </div>
@@ -647,9 +647,9 @@ export const StatusDialog: FC<StatusDialogProps> = ({
       <Separator className="my-3" />
 
       <AlertDialogDescription className="space-y-4 pt-2">
-        <div className="rounded-md bg-muted/50 px-4 py-3">
-          <p className="text-sm text-muted-foreground">镜像链接</p>
-          <p className="mt-1 break-all font-medium">『{imageLink}』</p>
+        <div className="bg-muted/50 rounded-md px-4 py-3">
+          <p className="text-muted-foreground text-sm">镜像链接</p>
+          <p className="mt-1 font-medium break-all">『{imageLink}』</p>
         </div>
 
         <div className={`rounded-md ${bgColor} ${darkBgColor} p-4`}>
@@ -684,7 +684,7 @@ export const StatusDialog: FC<StatusDialogProps> = ({
           </div>
         </div>
 
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           {isPublic
             ? "设为私有后，只有您可以访问此镜像。"
             : "设为公共后，任何人都可以通过链接访问此镜像。"}
@@ -733,7 +733,7 @@ export const RenameDialog: FC<RenameDialogProps> = ({
     <>
       <AlertDialogHeader>
         <AlertDialogTitle className="flex items-center gap-1 text-xl">
-          <Pencil className="h-5 w-5 text-primary" />
+          <Pencil className="text-primary h-5 w-5" />
           <span>更新镜像名称</span>
         </AlertDialogTitle>
       </AlertDialogHeader>
@@ -741,8 +741,8 @@ export const RenameDialog: FC<RenameDialogProps> = ({
       <Separator className="my-3" />
 
       <AlertDialogDescription className="space-y-4 pt-2">
-        <div className="rounded-md bg-muted/50 px-4 py-3">
-          <p className="text-sm text-muted-foreground">当前名称</p>
+        <div className="bg-muted/50 rounded-md px-4 py-3">
+          <p className="text-muted-foreground text-sm">当前名称</p>
           <p className="mt-1 font-medium">「{imageDescription}」</p>
         </div>
 
@@ -763,7 +763,7 @@ export const RenameDialog: FC<RenameDialogProps> = ({
             autoFocus
           />
           {isTouched && !isValid && (
-            <p className="text-xs text-destructive">请输入有效的名称</p>
+            <p className="text-destructive text-xs">请输入有效的名称</p>
           )}
         </div>
       </AlertDialogDescription>
@@ -813,8 +813,8 @@ export const ValidDialog: FC<ValidDialogProps> = ({
   return (
     <>
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="bg-background/80 flex flex-col items-center justify-center backdrop-blur-xs">
+          <Loader2 className="text-primary h-8 w-8 animate-spin" />
           <span className="mt-2 text-sm font-medium">验证镜像中...</span>
         </div>
       ) : (
@@ -828,7 +828,7 @@ export const ValidDialog: FC<ValidDialogProps> = ({
                 </>
               ) : (
                 <>
-                  <AlertCircle className="h-5 w-5 text-destructive" />
+                  <AlertCircle className="text-destructive h-5 w-5" />
                   <span>无效镜像链接</span>
                 </>
               )}
@@ -848,20 +848,20 @@ export const ValidDialog: FC<ValidDialogProps> = ({
             ) : (
               <div className="max-h-[240px] space-y-3 overflow-y-auto pr-1">
                 {invalidPairs?.map((pair) => (
-                  <div className="rounded-md border border-destructive/20 bg-destructive/5 px-4 py-3 transition-all hover:bg-destructive/10">
+                  <div className="border-destructive/20 bg-destructive/5 hover:bg-destructive/10 rounded-md border px-4 py-3 transition-all">
                     <div className="space-y-1 text-sm">
-                      <div className="group relative overflow-hidden text-ellipsis text-muted-foreground">
-                        <span className="font-medium text-foreground">
+                      <div className="group text-muted-foreground relative overflow-hidden text-ellipsis">
+                        <span className="text-foreground font-medium">
                           链接:{" "}
                         </span>
                         <span className="break-all">{pair.imageLink}</span>
                       </div>
                       <div className="text-muted-foreground">
-                        <span className="font-medium text-foreground">
+                        <span className="text-foreground font-medium">
                           描述:{" "}
                         </span>
                         {pair.description || (
-                          <span className="italic text-muted-foreground">
+                          <span className="text-muted-foreground italic">
                             无描述
                           </span>
                         )}

@@ -201,7 +201,7 @@ export function LoginForm() {
                 <div className="flex items-center justify-between">
                   <FormLabel>密码</FormLabel>
                   <button
-                    className="p-0 text-sm text-muted-foreground underline"
+                    className="text-muted-foreground p-0 text-sm underline"
                     type="button"
                     onClick={() => toast.info("请联系 G512 杜英杰老师")}
                   >

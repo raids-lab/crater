@@ -24,7 +24,7 @@ export function DockerfileEditor({ value, onChange }: DockerfileEditorProps) {
         renderLineHighlight: "all",
         tabSize: 2,
       }}
-      className="bg-transparen overflow-hidden rounded-md border border-input"
+      className="bg-transparen border-input overflow-hidden rounded-md border"
     />
   );
 }

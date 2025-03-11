@@ -12,7 +12,7 @@ const TipBadge = ({
   return (
     <Badge
       className={cn(
-        "select-none rounded-full px-2 py-0 uppercase shadow-none",
+        "rounded-full px-2 py-0 uppercase shadow-none select-none",
         "bg-orange-600/15 text-orange-600 hover:bg-orange-600/25",
         className,
       )}

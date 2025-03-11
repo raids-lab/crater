@@ -146,15 +146,15 @@ export const Component = () => {
   return (
     <>
       <Card className="col-span-3">
-        <CardContent className="flex items-center justify-between bg-muted/50 p-6">
+        <CardContent className="bg-muted/50 flex items-center justify-between p-6">
           <div className="flex flex-row items-center gap-2">
-            <h1 className="text-xl font-semibold capitalize text-foreground">
+            <h1 className="text-foreground text-xl font-semibold capitalize">
               {data.name}
             </h1>
           </div>
           <div className="flex items-center gap-2">
             <Select onValueChange={(value) => handleIntervalChange(value)}>
-              <SelectTrigger className="h-8 w-[130px] bg-background">
+              <SelectTrigger className="bg-background h-8 w-[130px]">
                 <SelectValue placeholder="每 5s 刷新" />
               </SelectTrigger>
               <SelectContent>

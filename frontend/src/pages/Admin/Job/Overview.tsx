@@ -222,11 +222,11 @@ const AdminJobOverview = () => {
           return (
             <Link
               to={row.original.jobName}
-              className="flex flex-row items-center hover:text-primary"
+              className="hover:text-primary flex flex-row items-center"
             >
               {row.getValue("name")}
               {row.original.keepWhenLowUsage && (
-                <LockIcon className="ml-1 size-4 text-muted-foreground" />
+                <LockIcon className="text-muted-foreground ml-1 size-4" />
               )}
             </Link>
           );
@@ -335,7 +335,7 @@ const AdminJobOverview = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuLabel className="text-xs text-muted-foreground">
+                    <DropdownMenuLabel className="text-muted-foreground text-xs">
                       操作
                     </DropdownMenuLabel>
                     <Link to={`${jobInfo.jobName}`}>

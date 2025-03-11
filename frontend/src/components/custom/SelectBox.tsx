@@ -72,15 +72,15 @@ const SelectBox = React.forwardRef<HTMLInputElement, SelectBoxProps>(
           <Button
             variant={"outline"}
             className={cn(
-              "flex h-full min-h-[36px] w-full cursor-pointer items-center justify-between whitespace-nowrap px-3 py-1 font-normal",
-              "data-[state=open]:outline-none data-[state=open]:ring-1 data-[state=open]:ring-ring",
+              "flex h-full min-h-[36px] w-full cursor-pointer items-center justify-between px-3 py-1 font-normal whitespace-nowrap",
+              "data-[state=open]:ring-ring data-[state=open]:ring-1 data-[state=open]:outline-hidden",
               className,
             )}
           >
             <div
               className={cn(
                 "items-center gap-1 overflow-hidden text-sm",
-                "flex flex-grow flex-wrap",
+                "flex grow flex-wrap",
               )}
             >
               {value && value.length > 0 ? (
@@ -89,7 +89,7 @@ const SelectBox = React.forwardRef<HTMLInputElement, SelectBoxProps>(
                   ?.map((option) => (
                     <span
                       key={option.value}
-                      className="inline-flex items-center gap-1 rounded-md border bg-secondary py-0.5 pl-2 pr-1 text-xs font-medium text-secondary-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      className="bg-secondary text-secondary-foreground focus:ring-ring inline-flex items-center gap-1 rounded-md border py-0.5 pr-1 pl-2 text-xs font-medium transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-hidden"
                     >
                       <span>{option.label}</span>
                       <span
@@ -97,19 +97,19 @@ const SelectBox = React.forwardRef<HTMLInputElement, SelectBoxProps>(
                           e.preventDefault();
                           handleSelect(option.value);
                         }}
-                        className="flex items-center rounded-sm px-[1px] text-muted-foreground/60 hover:bg-accent hover:text-muted-foreground"
+                        className="text-muted-foreground/60 hover:bg-accent hover:text-muted-foreground flex items-center rounded-sm px-[1px]"
                       >
                         <Cross2Icon />
                       </span>
                     </span>
                   ))
               ) : (
-                <span className="mr-auto text-muted-foreground">
+                <span className="text-muted-foreground mr-auto">
                   {placeholder}
                 </span>
               )}
             </div>
-            <div className="flex items-center self-stretch pl-1 text-muted-foreground hover:text-foreground [&>div]:flex [&>div]:items-center [&>div]:self-stretch">
+            <div className="text-muted-foreground hover:text-foreground flex items-center self-stretch pl-1 [&>div]:flex [&>div]:items-center [&>div]:self-stretch">
               {value && value.length > 0 ? (
                 <div
                   onClick={(e) => {
@@ -143,7 +143,7 @@ const SelectBox = React.forwardRef<HTMLInputElement, SelectBoxProps>(
                 />
                 {searchTerm && (
                   <div
-                    className="absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3 text-muted-foreground hover:text-foreground"
+                    className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3"
                     onClick={() => setSearchTerm("")}
                   >
                     <Cross2Icon className="size-4" />
@@ -168,7 +168,7 @@ const SelectBox = React.forwardRef<HTMLInputElement, SelectBoxProps>(
                           >
                             <div
                               className={cn(
-                                "mr-2 flex size-4 items-center justify-center rounded-sm border border-primary",
+                                "border-primary mr-2 flex size-4 items-center justify-center rounded-sm border",
                                 isSelected
                                   ? "bg-primary text-primary-foreground"
                                   : "opacity-50 [&_svg]:invisible",
@@ -179,7 +179,7 @@ const SelectBox = React.forwardRef<HTMLInputElement, SelectBoxProps>(
                             <span>
                               {option.label}
                               {option.labelNote && (
-                                <span className="ml-2 text-muted-foreground">
+                                <span className="text-muted-foreground ml-2">
                                   {"@"}
                                   {option.labelNote}
                                 </span>
