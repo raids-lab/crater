@@ -28,7 +28,7 @@ import (
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
 func init() {
-	if config.GetConfig().SchedulerFlags.SpjobEn {
+	if config.GetConfig().SchedulerPlugins.Spjob.SpjobEn {
 		handler.Registers = append(handler.Registers, NewSparseJobMgr)
 	}
 }
@@ -502,14 +502,15 @@ func (mgr *SparseJobMgr) AnalyzeResourceUsage(c *gin.Context) {
 		req.EmbeddingTableCount = 0
 	}
 	analyzeResp := &ResourceAnalyzeWebhookResponse{}
-	if err := utils.PostJSON(c, "***REMOVED***", "/api/v1/task/analyze/end2end", map[string]any{
-		"embedding_table_count": req.EmbeddingTableCount,
-		"embedding_dim_total":   req.EmbeddingDimTotal,
-		"embedding_size_total":  req.EmbeddingSizeTotal / 1e4,
-		"batch_size":            req.BatchSize,
-		"params":                req.Params / 1e3,
-		"macs":                  req.Macs / 1e6,
-	}, nil, analyzeResp); err != nil {
+	if err := utils.PostJSON(c, config.GetConfig().SchedulerPlugins.Spjob.PredictionServiceAddress, "/api/v1/task/analyze/end2end",
+		map[string]any{
+			"embedding_table_count": req.EmbeddingTableCount,
+			"embedding_dim_total":   req.EmbeddingDimTotal,
+			"embedding_size_total":  req.EmbeddingSizeTotal / 1e4,
+			"batch_size":            req.BatchSize,
+			"params":                req.Params / 1e3,
+			"macs":                  req.Macs / 1e6,
+		}, nil, analyzeResp); err != nil {
 		resputil.Error(c, fmt.Sprintf("request resource analyze failed, err:%v", err), resputil.NotSpecified)
 		return
 	}

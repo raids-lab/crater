@@ -64,16 +64,31 @@ type Config struct {
 			Port     string `yaml:"port"`
 			User     string `yaml:"user"`
 			Password string `yaml:"password"`
+			Notify   string `yaml:"notify"`
 		} `yaml:"smtp"`
 		OpenAPI            ACTOpenAPI `yaml:"openAPI"`            // The Token configuration for ACT OpenAPI
 		StrictRegisterMode bool       `yaml:"strictRegisterMode"` // If true, the user must sign up with token.
 		UIDServerURL       string     `yaml:"uidServerURL"`       // The URL of the UID server
 	} `yaml:"act"`
+	// WPSRobot Settings
+	WPSRobot struct {
+		WebhookAddress string `yaml:"webhookAddress"`
+	} `yaml:"wpsRobot"`
 	// scheduler plugin
-	SchedulerFlags struct {
-		AijobEn bool `yaml:"aijobEn"`
-		SpjobEn bool `yaml:"spjobEn"`
-	} `yaml:"schedulerFlags"`
+	SchedulerPlugins struct {
+		Aijob struct {
+			AijobEn bool `yaml:"aijobEn"`
+		} `yaml:"aijob"`
+		Spjob struct {
+			SpjobEn                  bool   `yaml:"spjobEn"`
+			PredictionServiceAddress string `yaml:"predictionServiceAddress"`
+		} `yaml:"spjob"`
+	} `yaml:"schedulerPlugins"`
+	// dind plugin
+	DindArgs struct {
+		BuildkitImage string `yaml:"buildkitImage"`
+		NerdctlImage  string `yaml:"nerdctlImage"`
+	} `yaml:"dindArgs"`
 }
 
 type ACTOpenAPI struct {

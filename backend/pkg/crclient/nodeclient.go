@@ -176,14 +176,12 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 			// 将int类型的gpu_count转换为resource.Quantity类型
 			capacity_["nvidia.com/gpu"] = *resource.NewQuantity(int64(gpuCount), resource.DecimalSI)
 		}
+
 		podCount := 0
 		if v, ok := podCountMap[node.Name]; ok {
 			podCount = v
 		}
-		// TODO: remove
-		if node.Name == "zjlab-gpu1" || node.Name == "zjlab-gpu2" {
-			capacity_["nvidia.com/gpu"] = *resource.NewQuantity(int64(2), resource.DecimalSI)
-		}
+
 		// 获取节点类型
 		nodeType := node.Labels["crater.raids.io/nodetype"]
 		nodeInfos[i] = payload.ClusterNodeInfo{
