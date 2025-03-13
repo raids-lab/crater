@@ -4,7 +4,6 @@ import { NavBreadcrumb } from "@/components/layout/NavBreadcrumb";
 import { useMemo } from "react";
 
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
-import { Separator } from "@/components/ui/separator";
 import {
   SidebarInset,
   SidebarProvider,
@@ -42,7 +41,6 @@ const DashboardLayout = ({ groups }: { groups: NavGroupProps[] }) => {
         >
           <div className="flex items-center gap-2 px-6">
             <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
             <NavBreadcrumb className="hidden md:flex" />
           </div>
         </header>

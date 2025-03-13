@@ -25,7 +25,7 @@ export function DataTableViewOptions<TData>({
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="ml-auto flex h-9">
           <Settings2Icon className="size-4" />
-          视图
+          <span className="text-xs">视图</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[150px]">

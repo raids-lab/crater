@@ -18,7 +18,7 @@ type CodeSheetProps = React.HTMLAttributes<HTMLDivElement> & {
   title?: string;
   code?: string;
   language?: string;
-  side?: "bottom" | "left" | "right" | "top" | null | undefined;
+  side?: "bottom" | "left" | "right" | "top";
 };
 
 const CodeSheet = ({

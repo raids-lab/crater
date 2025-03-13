@@ -33,6 +33,7 @@
   --sidebar-border: hsl(220 13% 91%);
   --sidebar-ring: hsl(217.2 91.2% 59.8%);
   --radius: 0.5rem;
+  --sidebar: hsl(0 0% 98%);
 }
 
 .dark {
@@ -63,6 +64,7 @@
   --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
   --sidebar-border: hsl(240 3.7% 15.9%);
   --sidebar-ring: hsl(217.2 91.2% 59.8%);
+  --sidebar: hsl(240 5.9% 10%);
 }
 
 @theme {
@@ -189,7 +191,7 @@
 
 /* Tabs in the details view */
 .tabs-list-underline {
-  @apply text-muted-foreground mb-4 inline-flex h-9 w-full items-center justify-start gap-6 rounded-none border-b bg-transparent p-0;
+  @apply text-muted-foreground after:bg-primary mb-4 inline-flex h-9 items-center justify-start gap-6 rounded-none bg-transparent p-0 before:absolute before:left-0 before:h-8 before:w-full before:border-b;
 }
 
 .tabs-trigger-underline {
@@ -199,7 +201,7 @@
 /* Scrollbar */
 /* https://github.com/shadcn-ui/ui/issues/1815#issuecomment-2259480789 */
 ::-webkit-scrollbar {
-  @apply h-2.5 w-2.5;
+  @apply size-2.5;
 }
 
 ::-webkit-scrollbar-track {
@@ -208,4 +210,32 @@
 
 ::-webkit-scrollbar-thumb {
   @apply bg-border rounded-full border-[1px] border-solid border-transparent bg-clip-padding;
+}
+
+/*
+  ---break---
+*/
+
+@theme inline {
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/*
+  ---break---
+*/
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }

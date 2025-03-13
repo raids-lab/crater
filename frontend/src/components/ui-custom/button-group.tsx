@@ -1,8 +1,13 @@
 // https://github.com/shadcn-ui/ui/discussions/4283#discussioncomment-10643099
 import { Children, ReactElement, cloneElement } from 'react';
-
-import { ButtonProps } from '@/components/ui/button';
+import { VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button';
+
+type ButtonProps = React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean
+  };
 
 interface ButtonGroupProps {
   className?: string;
