@@ -20,10 +20,12 @@ export const FileSelectDialog = ({
   value,
   handleSubmit,
   disabled,
+  allowSelectFile = true,
 }: {
   value?: string;
   handleSubmit: (path: TreeDataItem) => void;
   disabled?: boolean;
+  allowSelectFile?: boolean;
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [content, setContent] = useState<TreeDataItem | undefined>();
@@ -71,7 +73,12 @@ export const FileSelectDialog = ({
             </div>
           </div>
           <DialogFooter className="gap-2 sm:justify-end sm:space-x-0">
-            <Button type="button" className="w-full" onClick={handleSelect}>
+            <Button
+              type="button"
+              className="w-full"
+              onClick={handleSelect}
+              disabled={!content || (!allowSelectFile && !content.isdir)}
+            >
               确认选择 {content?.name}
             </Button>
           </DialogFooter>

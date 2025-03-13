@@ -19,8 +19,8 @@ export interface QeueuSpace {
 }
 
 export interface MoveFile {
-  type: number;
   fileName: string;
+  dst: string;
 }
 
 export const apiGetFiles = (path: string) =>

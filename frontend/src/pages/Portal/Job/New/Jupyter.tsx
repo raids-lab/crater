@@ -273,7 +273,7 @@ export const Component = () => {
       volumeMounts: [
         {
           type: FileType,
-          subPath: `user/${user.space}`,
+          subPath: `user`,
           mountPath: `/home/${user.name}`,
         },
       ],
@@ -663,7 +663,7 @@ export const Component = () => {
                                         );
                                         form.setValue(
                                           `volumeMounts.${index}.mountPath`,
-                                          `/data/${item.realname}`,
+                                          `/data/${item.name}`,
                                         );
                                       }}
                                       disabled={disabled}
