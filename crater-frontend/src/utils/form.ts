@@ -98,6 +98,36 @@ export const envsSchema = z.array(
 
 export type EnvsSchema = z.infer<typeof envsSchema>;
 
+export const ingressesSchema = z.array(
+  z.object({
+    name: z
+      .string()
+      .min(1)
+      .max(20)
+      .regex(/^[a-z]+$/, {
+        message: "只能包含小写字母",
+      }),
+    port: z.number().int().positive(),
+  }),
+);
+
+export type IngressesSchema = z.infer<typeof ingressesSchema>;
+
+export const nodeportsSchema = z.array(
+  z.object({
+    name: z
+      .string()
+      .min(1)
+      .max(20)
+      .regex(/^[a-z]+$/, {
+        message: "只能包含小写字母",
+      }),
+    port: z.number().int().positive(),
+  }),
+);
+
+export type NodeportsSchema = z.infer<typeof nodeportsSchema>;
+
 export const observabilitySchema = z
   .object({
     tbEnable: z.boolean(),

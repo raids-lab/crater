@@ -46,6 +46,8 @@ import {
   taskSchema,
   convertToResourceList,
   nodeSelectorSchema,
+  ingressesSchema,
+  nodeportsSchema,
 } from "@/utils/form";
 import { useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
@@ -71,8 +73,10 @@ const formSchema = z.object({
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
   observability: observabilitySchema,
-  alertEnabled: z.boolean().default(true),
   nodeSelector: nodeSelectorSchema,
+  ingresses: ingressesSchema,
+  nodeports: nodeportsSchema,
+  alertEnabled: z.boolean().default(true),
   openssh: z.boolean().default(false),
 });
 
@@ -82,10 +86,12 @@ export const EnvCard = "环境变量";
 export const DataMountCard = "数据挂载";
 export const TensorboardCard = "观测面板";
 export const OtherCard = "其他选项";
+export const IngressCard = "外部转发";
 
 export const Component = () => {
   const [dataMountOpen, setDataMountOpen] = useState<string>();
   const [envOpen, setEnvOpen] = useState<string>();
+  const [ingressOpen, setIngressOpen] = useState<string>();
   const [tensorboardOpen, setTensorboardOpen] = useState<string>();
   const [otherOpen, setOtherOpen] = useState<string>();
   const navigate = useNavigate();
@@ -102,6 +108,8 @@ export const Component = () => {
         workingDir: values.task.workingDir,
         volumeMounts: values.volumeMounts,
         envs: values.envs,
+        ingresses: values.ingresses,
+        nodeports: values.nodeports,
         useTensorBoard: values.observability.tbEnable,
         openssh: values.openssh,
         alertEnabled: values.alertEnabled,
@@ -242,6 +250,24 @@ export const Component = () => {
     remove: volumeMountRemove,
   } = useFieldArray<FormSchema>({
     name: "volumeMounts",
+    control: form.control,
+  });
+
+  const {
+    fields: ingressFields,
+    append: ingressAppend,
+    remove: ingressRemove,
+  } = useFieldArray<FormSchema>({
+    name: "ingresses",
+    control: form.control,
+  });
+
+  const {
+    fields: nodeportFields,
+    append: nodeportAppend,
+    remove: nodeportRemove,
+  } = useFieldArray<FormSchema>({
+    name: "nodeports",
     control: form.control,
   });
 
@@ -642,6 +668,147 @@ export const Component = () => {
                 </Button>
               </div>
             </AccordionCard>{" "}
+            <AccordionCard
+              cardTitle={IngressCard}
+              value={ingressOpen}
+              setValue={setIngressOpen}
+            >
+              <div className="mt-3 space-y-5">
+                <Tabs defaultValue="ingress" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="ingress">Ingress 规则</TabsTrigger>
+                    <TabsTrigger value="nodeport">Nodeport 规则</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="ingress" className="space-y-5">
+                    {ingressFields.map((field, index) => (
+                      <div key={field.id}>
+                        <Separator
+                          className={index === 0 ? "hidden" : "mb-5"}
+                        />
+                        <div className="relative space-y-5">
+                          <button
+                            onClick={() => ingressRemove(index)}
+                            className="absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none"
+                          >
+                            <XIcon className="size-4" />
+                            <span className="sr-only">Remove</span>
+                          </button>
+                          <FormField
+                            control={form.control}
+                            name={`ingresses.${index}.name`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>
+                                  规则名称 {index + 1}
+                                  <FormLabelMust />
+                                </FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name={`ingresses.${index}.port`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>
+                                  容器端口 {index + 1}
+                                  <FormLabelMust />
+                                </FormLabel>
+                                <FormControl>
+                                  <Input type="number" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() =>
+                        ingressAppend({
+                          name: "",
+                          port: 0,
+                        })
+                      }
+                    >
+                      <CirclePlus className="size-4" />
+                      添加 Ingress 规则
+                    </Button>
+                  </TabsContent>
+                  <TabsContent value="nodeport" className="space-y-5">
+                    {nodeportFields.map((field, index) => (
+                      <div key={field.id}>
+                        <Separator
+                          className={index === 0 ? "hidden" : "mb-5"}
+                        />
+                        <div className="relative space-y-5">
+                          <button
+                            onClick={() => nodeportRemove(index)}
+                            className="absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none"
+                          >
+                            <XIcon className="size-4" />
+                            <span className="sr-only">Remove</span>
+                          </button>
+                          <FormField
+                            control={form.control}
+                            name={`nodeports.${index}.name`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>
+                                  规则名称 {index + 1}
+                                  <FormLabelMust />
+                                </FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name={`nodeports.${index}.port`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>
+                                  容器端口 {index + 1}
+                                  <FormLabelMust />
+                                </FormLabel>
+                                <FormControl>
+                                  <Input type="number" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() =>
+                        nodeportAppend({
+                          name: "",
+                          port: 0,
+                        })
+                      }
+                    >
+                      <CirclePlus className="size-4" /> 添加 Nodeport 规则
+                    </Button>
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </AccordionCard>
             <AccordionCard
               cardTitle={EnvCard}
               value={envOpen}
