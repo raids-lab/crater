@@ -635,7 +635,7 @@ export const Component = () => {
                                         );
                                         form.setValue(
                                           `volumeMounts.${index}.mountPath`,
-                                          `/data/datasets-${value.split("/").pop()}`,
+                                          `/data/${datasetInfo.data?.find((item) => item.value === value)?.detail?.name}`,
                                         );
                                       }}
                                       formTitle="数据集"
