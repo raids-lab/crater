@@ -1,12 +1,18 @@
-import React, { forwardRef } from 'react';
+import React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 
-interface TagsInputProps {
+type TagsInputProps = React.ComponentProps<"input"> & {
   name: string;
+  ref?: React.RefObject<HTMLInputElement>;
 }
 
-const TagsInput = forwardRef<HTMLInputElement, TagsInputProps>(({ name }, ref) => {
+const TagsInput = (
+  {
+    ref,
+    name
+  }: TagsInputProps
+) => {
   const { control, setError, clearErrors } = useFormContext();
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>, onChange: (value: string[]) => void) => {
@@ -37,6 +43,6 @@ const TagsInput = forwardRef<HTMLInputElement, TagsInputProps>(({ name }, ref) =
       )}
     />
   );
-});
+};
 
 export default TagsInput;

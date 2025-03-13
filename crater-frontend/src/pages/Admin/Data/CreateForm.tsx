@@ -156,7 +156,7 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
             <FormItem>
               <FormLabel>{typestring}标签 </FormLabel>
               <FormControl>
-                <TagsInput {...field} />
+                <TagsInput name={field.name} />
               </FormControl>
               <FormMessage />
             </FormItem>

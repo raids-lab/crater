@@ -62,7 +62,7 @@ export function DataTableFacetedFilter<TData, TValue>({
           disabled={facets?.size === 0}
         >
           <ListFilter className="size-4" />
-          {title}
+          <span className="text-xs">{title}</span>
           {selectedValues?.size > 0 && (
             <>
               <Separator orientation="vertical" className="h-4" />

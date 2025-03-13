@@ -217,9 +217,7 @@ export function FileSelect({
   );
 }
 
-function ChevronRightIcon(
-  props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>,
-) {
+function ChevronRightIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
       {...props}
@@ -238,7 +236,7 @@ function ChevronRightIcon(
   );
 }
 
-function FolderIcon(props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) {
+function FolderIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
       {...props}
@@ -257,9 +255,7 @@ function FolderIcon(props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>) {
   );
 }
 
-function RefreshCwIcon(
-  props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>,
-) {
+function RefreshCwIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
       {...props}

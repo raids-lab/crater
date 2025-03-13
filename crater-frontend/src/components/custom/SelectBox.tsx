@@ -38,167 +38,165 @@ interface SelectBoxProps {
   className?: string;
 }
 
-const SelectBox = React.forwardRef<HTMLInputElement, SelectBoxProps>(
-  (
-    {
-      inputPlaceholder,
-      emptyPlaceholder,
-      placeholder,
-      className,
-      options,
-      value,
-      onChange,
-    },
-    ref,
-  ) => {
-    const [searchTerm, setSearchTerm] = React.useState<string>("");
-    const [isOpen, setIsOpen] = React.useState(false);
+const SelectBox = ({
+  ref,
+  inputPlaceholder,
+  emptyPlaceholder,
+  placeholder,
+  className,
+  options,
+  value,
+  onChange,
+}: SelectBoxProps & {
+  ref?: React.RefObject<HTMLInputElement>;
+}) => {
+  const [searchTerm, setSearchTerm] = React.useState<string>("");
+  const [isOpen, setIsOpen] = React.useState(false);
 
-    const handleSelect = (selectedValue: string) => {
-      const newValue =
-        value?.includes(selectedValue) && Array.isArray(value)
-          ? value.filter((v) => v !== selectedValue)
-          : [...(value ?? []), selectedValue];
-      onChange?.(newValue);
-    };
+  const handleSelect = (selectedValue: string) => {
+    const newValue =
+      value?.includes(selectedValue) && Array.isArray(value)
+        ? value.filter((v) => v !== selectedValue)
+        : [...(value ?? []), selectedValue];
+    onChange?.(newValue);
+  };
 
-    const handleClear = () => {
-      onChange?.([]);
-    };
+  const handleClear = () => {
+    onChange?.([]);
+  };
 
-    return (
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant={"outline"}
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant={"outline"}
+          className={cn(
+            "flex h-full min-h-[36px] w-full cursor-pointer items-center justify-between px-3 py-1 font-normal whitespace-nowrap",
+            "data-[state=open]:ring-ring data-[state=open]:ring-1 data-[state=open]:outline-hidden",
+            className,
+          )}
+        >
+          <div
             className={cn(
-              "flex h-full min-h-[36px] w-full cursor-pointer items-center justify-between px-3 py-1 font-normal whitespace-nowrap",
-              "data-[state=open]:ring-ring data-[state=open]:ring-1 data-[state=open]:outline-hidden",
-              className,
+              "items-center gap-1 overflow-hidden text-sm",
+              "flex grow flex-wrap",
             )}
           >
-            <div
-              className={cn(
-                "items-center gap-1 overflow-hidden text-sm",
-                "flex grow flex-wrap",
-              )}
-            >
-              {value && value.length > 0 ? (
-                options
-                  .filter((option) => value.includes(option.value))
-                  ?.map((option) => (
-                    <span
-                      key={option.value}
-                      className="bg-secondary text-secondary-foreground focus:ring-ring inline-flex items-center gap-1 rounded-md border py-0.5 pr-1 pl-2 text-xs font-medium transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-hidden"
-                    >
-                      <span>{option.label}</span>
-                      <span
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleSelect(option.value);
-                        }}
-                        className="text-muted-foreground/60 hover:bg-accent hover:text-muted-foreground flex items-center rounded-sm px-[1px]"
-                      >
-                        <Cross2Icon />
-                      </span>
-                    </span>
-                  ))
-              ) : (
-                <span className="text-muted-foreground mr-auto">
-                  {placeholder}
-                </span>
-              )}
-            </div>
-            <div className="text-muted-foreground hover:text-foreground flex items-center self-stretch pl-1 [&>div]:flex [&>div]:items-center [&>div]:self-stretch">
-              {value && value.length > 0 ? (
-                <div
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleClear();
-                  }}
-                >
-                  <XIcon className="size-4" />
-                </div>
-              ) : (
-                <div>
-                  <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
-                </div>
-              )}
-            </div>
-          </Button>
-        </PopoverTrigger>
-        <DialogOverlay>
-          <PopoverContent
-            className="w-[var(--radix-popover-trigger-width)] p-0"
-            align="start"
-          >
-            <Command>
-              <div className="relative">
-                <CommandInput
-                  value={searchTerm}
-                  onValueChange={(e) => setSearchTerm(e)}
-                  ref={ref}
-                  placeholder={inputPlaceholder ?? "Search..."}
-                  className="h-9"
-                />
-                {searchTerm && (
-                  <div
-                    className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3"
-                    onClick={() => setSearchTerm("")}
+            {value && value.length > 0 ? (
+              options
+                .filter((option) => value.includes(option.value))
+                ?.map((option) => (
+                  <span
+                    key={option.value}
+                    className="bg-secondary text-secondary-foreground focus:ring-ring inline-flex items-center gap-1 rounded-md border py-0.5 pr-1 pl-2 text-xs font-medium transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-hidden"
                   >
-                    <Cross2Icon className="size-4" />
-                  </div>
-                )}
+                    <span>{option.label}</span>
+                    <span
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleSelect(option.value);
+                      }}
+                      className="text-muted-foreground/60 hover:bg-accent hover:text-muted-foreground flex items-center rounded-sm px-[1px]"
+                    >
+                      <Cross2Icon />
+                    </span>
+                  </span>
+                ))
+            ) : (
+              <span className="text-muted-foreground mr-auto">
+                {placeholder}
+              </span>
+            )}
+          </div>
+          <div className="text-muted-foreground hover:text-foreground flex items-center self-stretch pl-1 [&>div]:flex [&>div]:items-center [&>div]:self-stretch">
+            {value && value.length > 0 ? (
+              <div
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleClear();
+                }}
+              >
+                <XIcon className="size-4" />
               </div>
-              <CommandList>
-                <CommandEmpty>
-                  {emptyPlaceholder ?? "No results found."}
-                </CommandEmpty>
-                <CommandGroup>
-                  <ScrollArea>
-                    <div className="max-h-64">
-                      {options?.map((option) => {
-                        const isSelected =
-                          Array.isArray(value) && value.includes(option.value);
-                        return (
-                          <CommandItem
-                            key={option.value}
-                            // value={option.value}
-                            onSelect={() => handleSelect(option.value)}
+            ) : (
+              <div>
+                <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+              </div>
+            )}
+          </div>
+        </Button>
+      </PopoverTrigger>
+      <DialogOverlay>
+        <PopoverContent
+          className="w-[var(--radix-popover-trigger-width)] p-0"
+          align="start"
+        >
+          <Command>
+            <div className="relative">
+              <CommandInput
+                value={searchTerm}
+                onValueChange={(e) => setSearchTerm(e)}
+                ref={ref}
+                placeholder={inputPlaceholder ?? "Search..."}
+                className="h-9"
+              />
+              {searchTerm && (
+                <div
+                  className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3"
+                  onClick={() => setSearchTerm("")}
+                >
+                  <Cross2Icon className="size-4" />
+                </div>
+              )}
+            </div>
+            <CommandList>
+              <CommandEmpty>
+                {emptyPlaceholder ?? "No results found."}
+              </CommandEmpty>
+              <CommandGroup>
+                <ScrollArea>
+                  <div className="max-h-64">
+                    {options?.map((option) => {
+                      const isSelected =
+                        Array.isArray(value) && value.includes(option.value);
+                      return (
+                        <CommandItem
+                          key={option.value}
+                          // value={option.value}
+                          onSelect={() => handleSelect(option.value)}
+                        >
+                          <div
+                            className={cn(
+                              "border-primary mr-2 flex size-4 items-center justify-center rounded-sm border",
+                              isSelected
+                                ? "bg-primary text-primary-foreground"
+                                : "opacity-50 [&_svg]:invisible",
+                            )}
                           >
-                            <div
-                              className={cn(
-                                "border-primary mr-2 flex size-4 items-center justify-center rounded-sm border",
-                                isSelected
-                                  ? "bg-primary text-primary-foreground"
-                                  : "opacity-50 [&_svg]:invisible",
-                              )}
-                            >
-                              <CheckIcon />
-                            </div>
-                            <span>
-                              {option.label}
-                              {option.labelNote && (
-                                <span className="text-muted-foreground ml-2">
-                                  {"@"}
-                                  {option.labelNote}
-                                </span>
-                              )}
-                            </span>
-                          </CommandItem>
-                        );
-                      })}
-                    </div>
-                  </ScrollArea>
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </DialogOverlay>
-      </Popover>
-    );
-  },
-);
+                            <CheckIcon />
+                          </div>
+                          <span>
+                            {option.label}
+                            {option.labelNote && (
+                              <span className="text-muted-foreground ml-2">
+                                {"@"}
+                                {option.labelNote}
+                              </span>
+                            )}
+                          </span>
+                        </CommandItem>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </DialogOverlay>
+    </Popover>
+  );
+};
 
 SelectBox.displayName = "SelectBox";
 

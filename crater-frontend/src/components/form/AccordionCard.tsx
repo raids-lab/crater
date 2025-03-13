@@ -20,7 +20,7 @@ const AccordionCard = ({
   ...props
 }: AccordionCardProps) => {
   return (
-    <Card {...props}>
+    <Card className="p-0" {...props}>
       <Accordion
         type="single"
         collapsible

@@ -1,12 +1,15 @@
 import { CodeBlock } from "react-code-block";
 import { themes } from "prism-react-renderer";
 import { useTheme } from "@/utils/theme";
-import { forwardRef } from "react";
 
-const BaseCodeBlock = forwardRef<
-  HTMLDivElement,
-  { code: string; language: string; children?: React.ReactNode }
->(({ code, language, children }, ref) => {
+const BaseCodeBlock = ({
+  ref,
+  code,
+  language,
+  children,
+}: { code: string; language: string; children?: React.ReactNode } & {
+  ref?: React.RefObject<HTMLDivElement>;
+}) => {
   const { theme } = useTheme();
 
   return (
@@ -28,7 +31,7 @@ const BaseCodeBlock = forwardRef<
       </div>
     </CodeBlock>
   );
-});
+};
 BaseCodeBlock.displayName = "BaseCodeBlock";
 
 export default BaseCodeBlock;

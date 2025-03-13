@@ -1,5 +1,5 @@
 import React from "react";
-import { ButtonProps, buttonVariants, Button } from "../ui/button";
+import { buttonVariants, Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -7,38 +7,46 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { VariantProps } from "class-variance-authority";
 
-interface TooltipButtonProps extends ButtonProps {
-  tooltipContent: string;
-}
+type TooltipButtonProps = React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean;
+    tooltipContent: string;
+  };
 
-const TooltipButton = React.forwardRef<HTMLButtonElement, TooltipButtonProps>(
-  function LoadableButton(
-    { className, variant, size, tooltipContent, children, ...props },
-    ref,
-  ) {
-    return (
-      <TooltipProvider delayDuration={100}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={variant}
-              size={size}
-              className={cn(buttonVariants({ variant, size, className }))}
-              ref={ref}
-              {...props}
-            >
-              {children}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent className="bg-background text-foreground max-w-44 border">
-            {tooltipContent}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    );
-  },
-);
+const TooltipButton = function LoadableButton({
+  ref,
+  className,
+  variant,
+  size,
+  tooltipContent,
+  children,
+  ...props
+}: TooltipButtonProps & {
+  ref?: React.RefObject<HTMLButtonElement>;
+}) {
+  return (
+    <TooltipProvider delayDuration={100}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={variant}
+            size={size}
+            className={cn(buttonVariants({ variant, size, className }))}
+            ref={ref}
+            {...props}
+          >
+            {children}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent className="bg-background text-foreground max-w-44 border">
+          {tooltipContent}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
 
 TooltipButton.displayName = "TooltipButton";
 export default TooltipButton;

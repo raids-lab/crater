@@ -142,7 +142,7 @@ export function DataTable<TData, TValue>({
           {!info && <>{children}</>}
         </DataTableToolbar>
       )}
-      <Card className="overflow-hidden rounded-md shadow-xs">
+      <Card className="overflow-hidden rounded-md p-0 shadow-xs">
         <CardContent className="p-0">
           <Table>
             <TableHeader>

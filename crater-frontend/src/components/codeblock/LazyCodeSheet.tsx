@@ -99,7 +99,10 @@ const LazyCodeSheet = ({
   return (
     <Sheet>
       <SheetTrigger asChild>{children}</SheetTrigger>
-      <SheetContent className="flex flex-col gap-6 sm:max-w-3xl" side={side}>
+      <SheetContent
+        className="flex flex-col gap-6 sm:max-w-3xl"
+        side={side || "right"}
+      >
         <CodeSheetContent title={title} queryFn={queryFn} language={language} />
       </SheetContent>
     </Sheet>
