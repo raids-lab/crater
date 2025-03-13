@@ -63,7 +63,7 @@ export function ContainerSelect({
         }
       }}
     >
-      <SelectTrigger id="model" className={cn("h-14")}>
+      <SelectTrigger id="model" className={cn("h-14 w-full")}>
         <SelectValue placeholder="请选择 Container" />
       </SelectTrigger>
       <SelectContent>
@@ -282,7 +282,7 @@ export function PodContainerDialog({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent
-        className="h-[calc(100vh_-104px)] w-[calc(100vw_-104px)] max-w-full gap-5"
+        className="h-[calc(100vh_-104px)] w-[calc(100vw_-104px)] gap-5 sm:max-w-full"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader>

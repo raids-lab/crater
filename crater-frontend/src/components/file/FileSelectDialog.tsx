@@ -51,7 +51,7 @@ export const FileSelectDialog = ({
             )}
             disabled={disabled}
           >
-            {!isDialogOpen && value ? value : ""}
+            {!isDialogOpen && value ? value : "选择文件"}
             <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
           </Button>
         </DialogTrigger>
