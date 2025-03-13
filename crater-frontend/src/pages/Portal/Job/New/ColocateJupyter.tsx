@@ -102,6 +102,30 @@ const formSchema = z.object({
       }),
     }),
   ),
+  ingresses: z.array(
+    z.object({
+      name: z
+        .string()
+        .min(1)
+        .max(20)
+        .regex(/^[a-z]+$/, {
+          message: "只能包含小写字母",
+        }),
+      port: z.number().int().positive(),
+    }),
+  ),
+  nodeports: z.array(
+    z.object({
+      name: z
+        .string()
+        .min(1)
+        .max(20)
+        .regex(/^[a-z]+$/, {
+          message: "只能包含小写字母",
+        }),
+      port: z.number().int().positive(),
+    }),
+  ),
   volumeMounts: z.array(
     z.object({
       subPath: z.string().min(1, {
@@ -183,6 +207,8 @@ export const Component = () => {
         useTensorBoard: values.observability.tbEnable,
         alertEnabled: values.alertEnabled,
         openssh: values.openssh,
+        ingresses: values.ingresses,
+        nodeports: values.nodeports,
         selectors: values.nodeSelector.enable
           ? [
               {
@@ -271,6 +297,8 @@ export const Component = () => {
       nodeSelector: {
         enable: false,
       },
+      ingresses: [{ name: "notebook", port: 8888 }],
+      nodeports: [],
     },
   });
 

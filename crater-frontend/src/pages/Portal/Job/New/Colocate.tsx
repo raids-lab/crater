@@ -47,6 +47,8 @@ import {
   taskSchema,
   convertToResourceList,
   nodeSelectorSchema,
+  ingressesSchema,
+  nodeportsSchema,
 } from "@/utils/form";
 import { useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
@@ -87,6 +89,8 @@ const formSchema = z.object({
   nodeSelector: nodeSelectorSchema,
   alertEnalbled: z.boolean().default(true),
   openssh: z.boolean().default(false),
+  ingresses: ingressesSchema,
+  nodeports: nodeportsSchema,
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -113,6 +117,8 @@ export const Component = () => {
         envs: values.envs,
         useTensorBoard: values.observability.tbEnable,
         openssh: values.openssh,
+        ingresses: values.ingresses,
+        nodeports: values.nodeports,
         alertEnabled: values.alertEnalbled,
         selectors: values.nodeSelector.enable
           ? [
