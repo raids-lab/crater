@@ -145,14 +145,8 @@ const routeItems: RouteItem[] = [
     children: [
       {
         route: {
-          path: "account/*",
-          lazy: () => import("./Data/Queue"),
-        },
-      },
-      {
-        route: {
-          path: "user/*",
-          lazy: () => import("./Data/User"),
+          path: "filesystem/*",
+          lazy: () => import("./Data/FileSystem"),
         },
       },
       {
@@ -263,12 +257,8 @@ const adminSidebarGroups: NavGroupProps[] = [
         icon: DatabaseIcon,
         items: [
           {
-            title: "用户文件",
-            url: "data/user",
-          },
-          {
-            title: "账户文件",
-            url: "data/account",
+            title: "文件系统",
+            url: "data/filesystem",
           },
           {
             title: "数据集",

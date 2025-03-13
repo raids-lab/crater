@@ -15,27 +15,27 @@ import { FileItem, apiGetFiles } from "@/services/api/file";
 interface TreeDataItem {
   id: string;
   name: string;
-  realname: string;
   icon: LucideIcon;
+  isdir: boolean;
   hasChildren: boolean;
 }
 
 export const getFolderTitle = (folder: string) => {
-  if (folder === "sugon-gpu-incoming" || folder === "public") {
+  if (folder === "public") {
     return "公共空间";
-  } else if (folder.startsWith("q") || folder.startsWith("accou")) {
+  } else if (folder === "account") {
     return "账户空间";
   }
   return "用户空间";
 };
 
-export const getTitleWithoutPref = (folder: string) => {
-  if (folder.startsWith("account/")) {
-    return folder.replace(/^(account\/)/, "");
-  } else if (folder.startsWith("user/")) {
-    return folder.replace(/^(user\/)/, "");
+export const getAdminFolderTitle = (folder: string) => {
+  if (folder === "admin-public") {
+    return "公共空间";
+  } else if (folder === "admin-account") {
+    return "账户空间";
   }
-  return folder;
+  return "用户空间";
 };
 
 type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
@@ -73,16 +73,8 @@ const Tree = ({
     select: (res) =>
       res.data.data
         ?.map((r) => {
-          let newName = r.name;
-          if (newName === "public" || newName === "sugon-gpu-incoming") {
-            newName = "public";
-          } else if (newName.startsWith("q-")) {
-            newName = "account/" + newName;
-          } else {
-            newName = "user/" + newName;
-          }
           return {
-            name: newName,
+            name: r.name,
             modifytime: r.modifytime,
             isdir: r.isdir,
             size: r.size,
@@ -145,8 +137,8 @@ const TreeItem = ({
     return {
       id: currentPath,
       name: level === 0 ? getFolderTitle(data.name) : data.name,
-      realname: level === 0 ? getTitleWithoutPref(data.name) : data.name,
       icon: data.isdir ? FolderIcon : FileDigitIcon,
+      isdir: data.isdir,
       hasChildren: data.isdir && data.size > 0,
     };
   }, [currentPath, data, level]);
