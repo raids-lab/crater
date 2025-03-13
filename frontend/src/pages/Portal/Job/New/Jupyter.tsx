@@ -42,7 +42,7 @@ import { apiResourceList } from "@/services/api/resource";
 import { apiGetDataset, Dataset } from "@/services/api/dataset";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
-import { DataMountCard, EnvCard, OtherCard } from "./Custom";
+import { DataMountCard, EnvCard, IngressCard, OtherCard } from "./Custom";
 import FormExportButton from "@/components/form/FormExportButton";
 import FormImportButton from "@/components/form/FormImportButton";
 import { MetadataFormJupyter } from "@/components/form/types";
@@ -137,6 +137,30 @@ const formSchema = z.object({
         }),
     }),
   ),
+  ingresses: z.array(
+    z.object({
+      name: z
+        .string()
+        .min(1)
+        .max(20)
+        .regex(/^[a-z]+$/, {
+          message: "只能包含小写字母",
+        }),
+      port: z.number().int().positive(),
+    }),
+  ),
+  nodeports: z.array(
+    z.object({
+      name: z
+        .string()
+        .min(1)
+        .max(20)
+        .regex(/^[a-z]+$/, {
+          message: "只能包含小写字母",
+        }),
+      port: z.number().int().positive(),
+    }),
+  ),
   // 添加 useTensorBoard 作为布尔类型的属性
   observability: z.object({
     tbEnable: z.boolean(),
@@ -152,6 +176,7 @@ export const Component = () => {
   const [dataMountOpen, setDataMountOpen] = useState<string>(DataMountCard);
   const [envOpen, setEnvOpen] = useState<string>();
   const [otherOpen, setOtherOpen] = useState<string>(OtherCard);
+  const [ingressOpen, setIngressOpen] = useState<string>(IngressCard);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAtomValue(globalUserInfo);
@@ -178,6 +203,8 @@ export const Component = () => {
         envs: values.envs,
         useTensorBoard: values.observability.tbEnable,
         openssh: values.openssh,
+        ingresses: values.ingresses,
+        nodeports: values.nodeports,
         alertEnabled: values.alertEnabled,
         selectors: values.nodeSelector.enable
           ? [
@@ -250,6 +277,12 @@ export const Component = () => {
           mountPath: `/home/${user.name}`,
         },
       ],
+      ingresses: [
+        {
+          name: "notebook",
+          port: 8888,
+        },
+      ],
       envs: [],
       observability: {
         tbEnable: false,
@@ -275,6 +308,9 @@ export const Component = () => {
         }
         if (jobInfo.envs.length > 0) {
           setEnvOpen(EnvCard);
+        }
+        if (jobInfo.ingresses.length > 0 || jobInfo.nodeports.length > 0) {
+          setIngressOpen(IngressCard);
         }
         if (jobInfo.nodeSelector.enable || jobInfo.openssh) {
           setOtherOpen(OtherCard);
@@ -313,6 +349,24 @@ export const Component = () => {
     remove: volumeMountRemove,
   } = useFieldArray<FormSchema>({
     name: "volumeMounts",
+    control: form.control,
+  });
+
+  const {
+    fields: ingressFields,
+    append: ingressAppend,
+    remove: ingressRemove,
+  } = useFieldArray<FormSchema>({
+    name: "ingresses",
+    control: form.control,
+  });
+
+  const {
+    fields: nodeportFields,
+    append: nodeportAppend,
+    remove: nodeportRemove,
+  } = useFieldArray<FormSchema>({
+    name: "nodeports",
     control: form.control,
   });
 
@@ -695,6 +749,177 @@ export const Component = () => {
                 </Button>
               </div>
             </AccordionCard>{" "}
+            <AccordionCard
+              cardTitle={IngressCard}
+              value={ingressOpen}
+              setValue={setIngressOpen}
+            >
+              <div className="mt-3 space-y-5">
+                <Tabs defaultValue="ingress" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="ingress">Ingress 规则</TabsTrigger>
+                    <TabsTrigger value="nodeport">Nodeport 规则</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="ingress" className="space-y-5">
+                    {ingressFields.map((field, index) => (
+                      <div key={field.id}>
+                        <Separator
+                          className={index === 0 ? "hidden" : "mb-5"}
+                        />
+                        <div className="relative space-y-5">
+                          <button
+                            onClick={() => ingressRemove(index)}
+                            className="absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none"
+                          >
+                            <XIcon className="size-4" />
+                            <span className="sr-only">Remove</span>
+                          </button>
+                          <FormField
+                            control={form.control}
+                            name={`ingresses.${index}.name`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>
+                                  规则名称 {index + 1}
+                                  <FormLabelMust />
+                                </FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name={`ingresses.${index}.port`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>
+                                  容器端口 {index + 1}
+                                  <FormLabelMust />
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    {...field}
+                                    type="text"
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      if (value === "") {
+                                        field.onChange(null);
+                                      } else {
+                                        const parsed = parseInt(value, 10);
+                                        if (!isNaN(parsed)) {
+                                          field.onChange(parsed);
+                                        }
+                                      }
+                                    }}
+                                    value={field.value ?? ""}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() =>
+                        ingressAppend({
+                          name: "",
+                          port: 0,
+                        })
+                      }
+                    >
+                      <CirclePlus className="size-4" />
+                      添加 Ingress 规则
+                    </Button>
+                  </TabsContent>
+                  <TabsContent value="nodeport" className="space-y-5">
+                    {nodeportFields.map((field, index) => (
+                      <div key={field.id}>
+                        <Separator
+                          className={index === 0 ? "hidden" : "mb-5"}
+                        />
+                        <div className="relative space-y-5">
+                          <button
+                            onClick={() => nodeportRemove(index)}
+                            className="absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none"
+                          >
+                            <XIcon className="size-4" />
+                            <span className="sr-only">Remove</span>
+                          </button>
+                          <FormField
+                            control={form.control}
+                            name={`nodeports.${index}.name`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>
+                                  规则名称 {index + 1}
+                                  <FormLabelMust />
+                                </FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name={`nodeports.${index}.port`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>
+                                  容器端口 {index + 1}
+                                  <FormLabelMust />
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    {...field}
+                                    type="text"
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      if (value === "") {
+                                        field.onChange(null);
+                                      } else {
+                                        const parsed = parseInt(value, 10);
+                                        if (!isNaN(parsed)) {
+                                          field.onChange(parsed);
+                                        }
+                                      }
+                                    }}
+                                    value={field.value ?? ""}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() =>
+                        nodeportAppend({
+                          name: "",
+                          port: 0,
+                        })
+                      }
+                    >
+                      <CirclePlus className="size-4" /> 添加 Nodeport 规则
+                    </Button>
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </AccordionCard>
             <AccordionCard
               cardTitle={EnvCard}
               value={envOpen}
