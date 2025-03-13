@@ -204,6 +204,16 @@ export interface VolumeMount {
   mountPath: string;
 }
 
+export interface Ingress {
+  name: string;
+  port: number;
+}
+
+export interface Nodeport {
+  name: string;
+  port: number;
+}
+
 export interface Env {
   name: string;
   value: string;
@@ -234,6 +244,8 @@ export interface IJupyterCreate {
   template: string;
   alertEnabled: boolean;
   openssh: boolean;
+  ingresses: Ingress[];
+  nodeports: Nodeport[];
 }
 
 export interface ITrainingCreate extends IJupyterCreate {
