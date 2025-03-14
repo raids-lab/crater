@@ -2,17 +2,17 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "bd756e76"
+      tag: "31170f8b"
       pullPolicy: "IfNotPresent"
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "6268df29"
+      tag: "6f05687c"
       pullPolicy: "IfNotPresent"
   storage:
     image:
       repository: ***REMOVED***
-      tag: "p5sg9dqv"
+      tag: "lc9v6p5s"
       pullPolicy: "IfNotPresent"
   ingress:
     host: ***REMOVED***
