@@ -17,6 +17,9 @@ postgres:
   password: ***REMOVED***
   sslmode: disable
   TimeZone: Asia/Shanghai
+userSpacePrefix: ***REMOVED***
+accountSpacePrefix: crater-accounts
+publicSpacePrefix: ***REMOVED***
 workspace:
   namespace: crater-workspace
   rwxpvcName: crater-storage

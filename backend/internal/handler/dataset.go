@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -265,6 +266,11 @@ func (mgr *DatasetMgr) CreateDataset(c *gin.Context) {
 	var datasetid uint
 	regex := regexp.MustCompile("^/+")
 	url := regex.ReplaceAllString(datasetReq.URL, "")
+	realURL, urlerr := redirectDatasetURL(c, url, token)
+	if urlerr != nil {
+		resputil.Error(c, urlerr.Error(), resputil.NotSpecified)
+		return
+	}
 	db := query.Use(query.GetDB())
 	err := db.Transaction(func(tx *query.Query) error {
 		d := tx.Dataset
@@ -272,7 +278,7 @@ func (mgr *DatasetMgr) CreateDataset(c *gin.Context) {
 		var dataset model.Dataset
 		dataset.Name = datasetReq.Name
 		dataset.Describe = datasetReq.Describe
-		dataset.URL = url
+		dataset.URL = realURL
 		dataset.UserID = token.UserID
 		dataset.Type = datasetReq.Type
 		dataset.Extra = datatypes.NewJSONType(model.Extracontent{
@@ -307,6 +313,31 @@ func (mgr *DatasetMgr) CreateDataset(c *gin.Context) {
 			}
 		}
 		resputil.Success(c, "created dataset successfully")
+	}
+}
+
+// 正则去除前缀/后的url,重定向到实际位置，如在user后加上user.space的路径
+func redirectDatasetURL(c *gin.Context, url string, token util.JWTMessage) (string, error) {
+	if strings.HasPrefix(url, "public") {
+		return url, nil
+	} else if strings.HasPrefix(url, "account") {
+		a := query.Account
+		account, aerr := a.WithContext(c).Where(a.ID.Eq(token.AccountID)).First()
+		if aerr != nil {
+			return "", aerr
+		}
+		realURL := "account" + account.Space + strings.TrimPrefix(url, "account")
+		return realURL, nil
+	} else if strings.HasPrefix(url, "user") {
+		u := query.User
+		user, uerr := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
+		if uerr != nil {
+			return "", uerr
+		}
+		realURL := "user/" + user.Space + strings.TrimPrefix(url, "user")
+		return realURL, nil
+	} else {
+		return "", fmt.Errorf("dataset url err")
 	}
 }
 
@@ -773,6 +804,13 @@ func (mgr *DatasetMgr) UpdateDataset(c *gin.Context) {
 	}
 	tempExtra.Tags = req.Tags
 	tempExtra.WebURL = &req.WebURL
+	regex := regexp.MustCompile("^/+")
+	url := regex.ReplaceAllString(req.URL, "")
+	realURL, urlerr := redirectDatasetURL(c, url, token)
+	if urlerr != nil {
+		resputil.Error(c, urlerr.Error(), resputil.NotSpecified)
+		return
+	}
 	d := query.Dataset
 	dataset, err := d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).First()
 	if err != nil {
@@ -793,7 +831,7 @@ func (mgr *DatasetMgr) UpdateDataset(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("failed to update describe: %v", err), resputil.NotSpecified)
 		return
 	}
-	_, err = d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).Update(d.URL, req.URL)
+	_, err = d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).Update(d.URL, realURL)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("failed to update URL: %v", err), resputil.NotSpecified)
 		return

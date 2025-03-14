@@ -29,6 +29,9 @@ type Config struct {
 		SSLMode  string `yaml:"sslmode"`
 		TimeZone string `yaml:"TimeZone"`
 	} `yaml:"postgres"`
+	UserSpacePrefix    string `yaml:"userSpacePrefix"`
+	AccountSpacePrefix string `yaml:"accountSpacePrefix"`
+	PublicSpacePrefix  string `yaml:"publicSpacePrefix"`
 	// Port Settings
 	Host           string `yaml:"host"`        // "The domain name of the server."
 	ServerAddr     string `yaml:"serverAddr"`  // "The address the server endpoint binds to."

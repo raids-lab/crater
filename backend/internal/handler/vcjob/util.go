@@ -22,10 +22,6 @@ const (
 	DatasetType
 )
 
-const userSpacePrefix = "***REMOVED***"
-const accountSpacePrefix = "***REMOVED***"
-const publicSpacePrefix = "***REMOVED***"
-
 func GenerateVolumeMounts(
 	c context.Context,
 	volumes []VolumeMount,
@@ -85,16 +81,29 @@ func resolveSubPathAndSpaceType(c context.Context, token util.JWTMessage, vm Vol
 	processSubPath := func(subPath string, accessMode model.AccessMode, isDatasetType bool) (string, string, bool, error) {
 		switch {
 		case strings.HasPrefix(subPath, "public"):
-			subPath = publicSpacePrefix + strings.TrimPrefix(subPath, "public")
+			subPath = config.GetConfig().PublicSpacePrefix + strings.TrimPrefix(subPath, "public")
 			if isDatasetType {
 				return subPath, roxPVCName, true, nil
 			}
 			return determineAccessMode(subPath, accessMode)
-		case strings.HasPrefix(subPath, "account") && !isDatasetType:
-			subPath = accountSpacePrefix + strings.TrimPrefix(subPath, "account")
+		case strings.HasPrefix(subPath, "account"):
+			a := query.Account
+			account, aerr := a.WithContext(c).Where(a.ID.Eq(token.AccountID)).First()
+			if aerr != nil {
+				return "", "", false, aerr
+			}
+			subPath = config.GetConfig().AccountSpacePrefix + account.Space + strings.TrimPrefix(subPath, "account")
+			if isDatasetType {
+				return subPath, roxPVCName, true, nil
+			}
 			return determineAccessMode(subPath, accessMode)
 		case strings.HasPrefix(subPath, "user"):
-			subPath = userSpacePrefix + strings.TrimPrefix(subPath, "user")
+			u := query.User
+			user, uerr := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
+			if uerr != nil {
+				return "", "", false, uerr
+			}
+			subPath = config.GetConfig().UserSpacePrefix + "/" + user.Space + strings.TrimPrefix(subPath, "user")
 			if isDatasetType {
 				return subPath, roxPVCName, true, nil
 			}
