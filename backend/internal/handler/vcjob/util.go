@@ -3,6 +3,7 @@ package vcjob
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
@@ -19,7 +20,7 @@ type VolumeType uint
 const (
 	_ VolumeType = iota
 	FileType
-	DatasetType
+	DataType
 )
 
 func GenerateVolumeMounts(
@@ -71,79 +72,73 @@ func GenerateVolumeMounts(
 	return pvc, volumeMounts, nil
 }
 
-// 解析 SubPath 和空间类型
+// resolveSubPathAndSpaceType resolves the subpath and volume type based on the mount configuration
 func resolveSubPathAndSpaceType(c context.Context, token util.JWTMessage, vm VolumeMount) (
 	subPath, volumeName string, readOnly bool, err error,
 ) {
+	// Get PVC names from config
 	rwxPVCName := config.GetConfig().Workspace.RWXPVCName
 	roxPVCName := config.GetConfig().Workspace.ROXPVCName
 
-	processSubPath := func(subPath string, accessMode model.AccessMode, isDatasetType bool) (string, string, bool, error) {
-		switch {
-		case strings.HasPrefix(subPath, "public"):
-			subPath = config.GetConfig().PublicSpacePrefix + strings.TrimPrefix(subPath, "public")
-			if isDatasetType {
-				return subPath, roxPVCName, true, nil
-			}
-			return determineAccessMode(subPath, accessMode)
-		case strings.HasPrefix(subPath, "account"):
-			a := query.Account
-			account, aerr := a.WithContext(c).Where(a.ID.Eq(token.AccountID)).First()
-			if aerr != nil {
-				return "", "", false, aerr
-			}
-			subPath = config.GetConfig().AccountSpacePrefix + account.Space + strings.TrimPrefix(subPath, "account")
-			if isDatasetType {
-				return subPath, roxPVCName, true, nil
-			}
-			return determineAccessMode(subPath, accessMode)
-		case strings.HasPrefix(subPath, "user"):
-			u := query.User
-			user, uerr := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
-			if uerr != nil {
-				return "", "", false, uerr
-			}
-			subPath = config.GetConfig().UserSpacePrefix + "/" + user.Space + strings.TrimPrefix(subPath, "user")
-			if isDatasetType {
-				return subPath, roxPVCName, true, nil
-			}
-			return subPath, rwxPVCName, false, nil
-		default:
-			return "", "", false, fmt.Errorf("mount path error")
-		}
-	}
-
-	switch vm.Type {
-	case DatasetType:
-		// DatasetType 按只读挂载，复用 SubPath 处理逻辑
-		subPath, err = GetSubPathByDatasetVolume(c, token.UserID, vm.DatasetID)
+	// Handle dataset type volumes - always read-only
+	if vm.Type == DataType {
+		// Get dataset path from database
+		datasetPath, err := GetSubPathByDatasetVolume(c, token.UserID, vm.DatasetID)
 		if err != nil {
 			return "", "", false, err
 		}
-		return processSubPath(subPath, model.AccessModeRO, true)
+		// Datasets are always mounted as read-only
+		return datasetPath, roxPVCName, true, nil
+	}
+
+	// Handle file type volumes based on path prefix
+	switch {
+	case strings.HasPrefix(vm.SubPath, "public"):
+		// Public space paths - permission based on PublicAccessMode
+		subPath := filepath.Clean(config.GetConfig().PublicSpacePrefix + strings.TrimPrefix(vm.SubPath, "public"))
+		return determineAccessMode(subPath, token.PublicAccessMode, rwxPVCName, roxPVCName)
+
+	case strings.HasPrefix(vm.SubPath, "account"):
+		// Account space paths - permission based on AccountAccessMode
+		a := query.Account
+		account, err := a.WithContext(c).Where(a.ID.Eq(token.AccountID)).First()
+		if err != nil {
+			return "", "", false, err
+		}
+		subPath := filepath.Clean(config.GetConfig().AccountSpacePrefix + account.Space + strings.TrimPrefix(vm.SubPath, "account"))
+		return determineAccessMode(subPath, token.AccountAccessMode, rwxPVCName, roxPVCName)
+
+	case strings.HasPrefix(vm.SubPath, "user"):
+		// User space paths - always read-write
+		u := query.User
+		user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
+		if err != nil {
+			return "", "", false, err
+		}
+		subPath := config.GetConfig().UserSpacePrefix + "/" + user.Space + strings.TrimPrefix(vm.SubPath, "user")
+		// User's own space always gets read-write access
+		return subPath, rwxPVCName, false, nil
+
 	default:
-		// FileType
-		subPath = vm.SubPath
-		return processSubPath(subPath, token.PublicAccessMode, false)
+		return "", "", false, fmt.Errorf("invalid mount path format: %s", vm.SubPath)
 	}
 }
 
-// 根据权限模式判断 Volume 名称和只读属性
-func determineAccessMode(subPath string, accessModel model.AccessMode) (
+// determineAccessMode determines the appropriate PVC and read-only flag based on the access mode
+func determineAccessMode(subPath string, accessMode model.AccessMode, rwxPVCName, roxPVCName string) (
 	volumeSubPath, volumeName string, readOnly bool, err error,
 ) {
-	rwxPVCName := config.GetConfig().Workspace.RWXPVCName
-	roxPVCName := config.GetConfig().Workspace.ROXPVCName
-
-	switch accessModel {
+	switch accessMode {
 	case model.AccessModeNA:
-		return "", "", false, fmt.Errorf("access to public directory is not allowed")
+		return "", "", false, fmt.Errorf("access to directory is not allowed")
 	case model.AccessModeRO, model.AccessModeAO:
+		// Read-only access
 		return subPath, roxPVCName, true, nil
 	case model.AccessModeRW:
+		// Read-write access
 		return subPath, rwxPVCName, false, nil
 	default:
-		return "", "", false, fmt.Errorf("unknown access mode for public directory")
+		return "", "", false, fmt.Errorf("unknown access mode: %v", accessMode)
 	}
 }
 
