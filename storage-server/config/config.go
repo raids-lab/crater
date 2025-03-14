@@ -10,23 +10,6 @@ import (
 )
 
 type Config struct {
-	// Leader Election Settings
-	EnableLeaderElection bool `yaml:"enableLeaderElection"` // "Enable leader election for controller manager.
-	// Enabling this will ensure there is only one active controller manager."
-	LeaderElectionID string `yaml:"leaderElectionID"` // "The ID for leader election."
-	// Profiling Settings
-	EnableProfiling  bool   `yaml:"enableProfiling"`
-	PrometheusAPI    string `yaml:"prometheusAPI"`
-	ProfilingTimeout int    `yaml:"profilingTimeout"`
-	// DB Settings
-	DBHost              string `yaml:"dbHost"`
-	DBPort              string `yaml:"dbPort"`
-	DBUser              string `yaml:"dbUser"`
-	DBPassword          string `yaml:"dbPassword"`
-	DBName              string `yaml:"dbName"`
-	DBCharset           string `yaml:"dbCharset"`
-	DBConnectionTimeout int    `yaml:"dbConnTimeout"`
-	// New DB Settings
 	Postgres struct {
 		Host     string `yaml:"host"`
 		Port     string `yaml:"port"`
@@ -36,31 +19,9 @@ type Config struct {
 		SSLMode  string `yaml:"sslmode"`
 		TimeZone string `yaml:"TimeZone"`
 	} `yaml:"postgres"`
-	// Port Settings
-	ServerAddr     string `yaml:"serverAddr"`  // "The address the server endpoint binds to."
-	MetricsAddr    string `yaml:"metricsAddr"` // "The address the metric endpoint binds to."
-	ProbeAddr      string `yaml:"probeAddr"`   // "The address the probe endpoint binds to."
-	MonitoringPort int    `yaml:"monitoringPort"`
-	// Workspace Settings
-	Workspace struct {
-		Namespace   string `yaml:"namespace"`
-		PVCName     string `yaml:"pvcName"`
-		IngressName string `yaml:"ingressName"`
-	} `yaml:"workspace"`
-	ACT struct {
-		Image struct {
-			RegistryServer  string `yaml:"registryServer"`
-			RegistryUser    string `yaml:"registryUser"`
-			RegistryPass    string `yaml:"registryPass"`
-			RegistryProject string `yaml:"registryProject"`
-		} `yaml:"image"`
-		Auth struct {
-			UserName string `yaml:"userName"`
-			Password string `yaml:"password"`
-			Address  string `yaml:"address"`
-			SearchDN string `yaml:"searchDN"`
-		} `yaml:"auth"`
-	} `yaml:"act"`
+	UserSpacePrefix    string `yaml:"userSpacePrefix"`
+	AccountSpacePrefix string `yaml:"accountSpacePrefix"`
+	PublicSpacePrefix  string `yaml:"publicSpacePrefix"`
 }
 
 var (
