@@ -17,12 +17,11 @@ import { cn } from "@/lib/utils";
 import PageTitle from "@/components/layout/PageTitle";
 
 // TODO: 修改硬编码
-const isPublicFolder = (folder: string) => folder === "sugon-gpu-incoming";
+const isPublicFolder = (folder: string) => folder === "public";
 
-const isAccountFolder = (folder: string) => folder.startsWith("q-");
+const isAccountFolder = (folder: string) => folder === "account";
 
-const isUserFolder = (folder: string) =>
-  !isPublicFolder(folder) && !isAccountFolder(folder);
+const isUserFolder = (folder: string) => folder === "user";
 
 const getFolderDescription = (folder: string) => {
   // public: 公共空间
@@ -38,8 +37,10 @@ const getFolderDescription = (folder: string) => {
 
 export default function FolderNavigation({
   data: rowData,
+  isadmin,
 }: {
   data?: FileItem[];
+  isadmin: boolean;
 }) {
   const [hoveredFolder, setHoveredFolder] = useState<string | null>(null);
   const { pathname } = useLocation();
@@ -85,11 +86,23 @@ export default function FolderNavigation({
   const handleTitleNavigation = (name: string) => {
     // TODO(ganhao): 能不能让用户目录和账户目录也对齐公共目录，不要暴露具体的名称
     if (isPublicFolder(name)) {
-      navigate(pathname + "/public");
+      if (isadmin) {
+        navigate(pathname + "/admin-public");
+      } else {
+        navigate(pathname + "/public");
+      }
     } else if (isAccountFolder(name)) {
-      navigate(`${pathname}/account/${name}`);
+      if (isadmin) {
+        navigate(`${pathname}/admin-account`);
+      } else {
+        navigate(`${pathname}/account`);
+      }
     } else {
-      navigate(`${pathname}/user/${name}`);
+      if (isadmin) {
+        navigate(`${pathname}/admin-user`);
+      } else {
+        navigate(`${pathname}/user`);
+      }
     }
   };
 
