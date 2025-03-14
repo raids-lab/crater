@@ -206,9 +206,7 @@ export const Component = () => {
         image: "",
         ports: [],
       },
-      volumeMounts: [
-        { subPath: "user/" + user.space, mountPath: "/home/" + user.name },
-      ],
+      volumeMounts: [{ subPath: "user", mountPath: "/home/" + user.name }],
       envs: [],
       observability: {
         tbEnable: false,
@@ -903,7 +901,7 @@ export const Component = () => {
                                       field.onChange(item.id);
                                       form.setValue(
                                         `volumeMounts.${index}.mountPath`,
-                                        `/mnt/${item.realname}`,
+                                        `/mnt/${item.name}`,
                                       );
                                     }}
                                   />
