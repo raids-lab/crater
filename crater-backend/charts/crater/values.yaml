@@ -42,6 +42,9 @@ backendConfig:
       password: ***REMOVED***
       sslmode: disable
       TimeZone: Asia/Shanghai
+    userSpacePrefix: ***REMOVED***
+    accountSpacePrefix:  crater-accounts
+    publicSpacePrefix: ***REMOVED***
     workspace:
       namespace: crater-workspace
       rwxpvcName: crater-rw-storage
@@ -94,6 +97,9 @@ ssConfig:
       password: ***REMOVED***
       sslmode: disable
       TimeZone: Asia/Shanghai
+    userSpacePrefix: ***REMOVED***
+    accountSpacePrefix:  crater-accounts
+    publicSpacePrefix: ***REMOVED***
 # Usage:
 # helm install crater ./charts/crater \
 # --set-string tls.cert="$(cat path/to/tls.crt)"\
