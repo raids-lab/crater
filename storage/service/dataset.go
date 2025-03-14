@@ -11,7 +11,6 @@ import (
 	"strings"
 	"webdav/dao/model"
 	"webdav/response"
-	"webdav/util"
 
 	"github.com/gin-gonic/gin"
 )
@@ -136,7 +135,7 @@ func CopyFile(c *gin.Context) {
 	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/dataset/create")
 	permission := GetPermission(param, jwttoken, c)
 	if permission == model.NotAllowed {
-		c.String(http.StatusUnauthorized, "Unauthorized 1")
+		response.HTTPError(c, http.StatusUnauthorized, "your permission is NotAllowed", response.NotSpecified)
 		return
 	}
 
@@ -179,8 +178,7 @@ func CopyFile(c *gin.Context) {
 }
 
 type MoveFileReq struct {
-	Type     int    `json:"type"`
-	FileName string `json:"fileName"`
+	Dst string `json:"dst"  binding:"required"`
 }
 
 func MoveFile(c *gin.Context) {
@@ -191,56 +189,35 @@ func MoveFile(c *gin.Context) {
 		response.Error(c, err.Error(), response.NotSpecified)
 		return
 	}
-	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/move")
-	permission := GetPermission(param, jwttoken, c)
-	if permission == model.NotAllowed || permission == model.ReadOnly {
-		c.String(http.StatusUnauthorized, "Your have no permission to move files")
-		return
-	}
-	realPath, err := Redirect(param)
-	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
-		return
-	}
 	var moveFileReq MoveFileReq
 	err = c.ShouldBind(&moveFileReq)
 	if err != nil {
 		response.BadRequestError(c, err.Error())
 		return
 	}
-	dst, err := checkMoveFile(jwttoken, moveFileReq, param)
+	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/move")
+	sourcePermission := GetPermission(param, jwttoken, c)
+	dstPermission := GetPermission(moveFileReq.Dst, jwttoken, c)
+	if sourcePermission != model.ReadWrite || dstPermission != model.ReadWrite {
+		response.HTTPError(c, http.StatusUnauthorized, "You have no permission to move files or move files to this location ",
+			response.NotSpecified)
+		return
+	}
+	realPath, err := Redirect(c, param, jwttoken)
 	if err != nil {
 		response.Error(c, err.Error(), response.NotSpecified)
 		return
 	}
-	err = moveFiles(c.Request.Context(), realPath, dst, false)
+	realDst, err := Redirect(c, moveFileReq.Dst, jwttoken)
+	if err != nil {
+		response.Error(c, err.Error(), response.NotSpecified)
+	}
+	err = moveFiles(c.Request.Context(), realPath, realDst, false)
 	if err != nil {
 		response.Error(c, err.Error(), response.NotSpecified)
 		return
 	}
 	response.Success(c, "move files successfully")
-}
-
-func checkMoveFile(token util.JWTMessage, moveFileReq MoveFileReq, path string) (string, error) {
-	// 1是公共空间，2是账户空间，目前只支持移动到公共空间或当前账户空间
-	if moveFileReq.Type == 1 {
-		if token.PublicAccessMode != model.AccessModeNA {
-			path = strings.TrimLeft(path, "/")
-			if strings.HasPrefix(path, "user") {
-				return publicSpacePrefix + "/" + token.Username + "/" + moveFileReq.FileName, nil
-			} else if strings.HasPrefix(path, "account") {
-				return publicSpacePrefix + "/" + token.AccountName + "/" + moveFileReq.FileName, nil
-			}
-		} else {
-			return "", fmt.Errorf("you have no public permission to move files ")
-		}
-	} else if moveFileReq.Type == 2 {
-		if token.AccountID != 1 && token.AccountAccessMode != model.AccessModeNA {
-			return accountSpacePrefix + "/" + token.AccountName + "/" + moveFileReq.FileName, nil
-		}
-		return "", fmt.Errorf("you have no this account's permission to move files ")
-	}
-	return "", fmt.Errorf("invalid Request")
 }
 
 func moveFiles(ctx context.Context, src, dst string, overwrite bool) error {
