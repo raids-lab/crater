@@ -647,7 +647,8 @@ export const Component = () => {
                                           DatasetType,
                                         )
                                       }
-                                      disabled={disabled}
+                                      //TODO(zhengxl): make dataset path to absolute path.
+                                      disabled={true}
                                     >
                                       数据集
                                     </TabsTrigger>
