@@ -5,13 +5,13 @@ export const userRoles = [
   {
     value: Role.Admin.toString(),
     label: "管理员",
-    color: "text-purple-500 border-0 bg-purple-500/10",
+    color: "text-highlight-purple bg-highlight-purple/20",
     description: "账户内的用户管理、资源分配等操作，将由账户管理员负责",
   },
   {
     value: Role.User.toString(),
     label: "用户",
-    color: "text-blue-500 border-0 bg-blue-500/10",
+    color: "text-highlight-blue bg-highlight-blue/20",
     description: "账户内的普通用户，只能使用资源，无法进行管理操作",
   },
 ];
@@ -29,7 +29,7 @@ const getUserRoleLabel = (
   } else {
     return {
       label: "未知",
-      color: "text-slate-500 border-0 bg-slate-500/10",
+      color: "text-highlight-slate bg-highlight-slate/20",
       description: "由于某些原因无法获取用户角色信息",
     };
   }

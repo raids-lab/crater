@@ -251,20 +251,20 @@ const InterOverview = () => {
                     </DropdownMenuLabel>
                     <Link to={`${jobInfo.jobName}`}>
                       <DropdownMenuItem>
-                        <InfoIcon className="text-emerald-600 dark:text-emerald-500" />
+                        <InfoIcon className="text-highlight-emerald" />
                         详情
                       </DropdownMenuItem>
                     </Link>
                     <Link to={`new-jupyter-vcjobs?fromJob=${jobInfo.jobName}`}>
                       <DropdownMenuItem>
-                        <RedoDotIcon className="text-purple-600 dark:text-purple-500" />
+                        <RedoDotIcon className="text-highlight-purple" />
                         克隆
                       </DropdownMenuItem>
                     </Link>
                     <AlertDialogTrigger asChild>
                       <DropdownMenuItem className="group">
                         {shouldStop ? (
-                          <SquareIcon className="text-orange-600 dark:text-orange-500" />
+                          <SquareIcon className="text-highlight-orange" />
                         ) : (
                           <Trash2Icon className="text-destructive" />
                         )}

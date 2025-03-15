@@ -160,7 +160,7 @@ export default function FolderNavigation({
                     ) : (
                       <Folder className={cn("size-6", colors.icon)} />
                     )}
-                    <CardTitle className="flex flex-row gap-1.5 text-xl">
+                    <CardTitle className="flex flex-row items-center gap-2 text-xl">
                       {getFolderTitle(r.name)}
                       <UserAccessBadge
                         access={getAccessMode(r.name, token).toString()}

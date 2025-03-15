@@ -80,7 +80,7 @@ export default function FloatingBall({
                   )
                 }
               >
-                <GaugeIcon className="text-green-600 dark:text-green-500" />
+                <GaugeIcon className="text-highlight-green" />
                 资源监控
               </Button>
               <Button
@@ -88,7 +88,7 @@ export default function FloatingBall({
                 className="justify-start px-2 py-1 font-normal"
                 onClick={handleShowLog}
               >
-                <LogsIcon className="text-orange-600 dark:text-orange-500" />
+                <LogsIcon className="text-highlight-orange" />
                 日志诊断
               </Button>
               <Button
@@ -96,7 +96,7 @@ export default function FloatingBall({
                 className="justify-start px-2 py-1 font-normal"
                 onClick={handleSnapshot}
               >
-                <Save className="text-purple-600 dark:text-purple-500" />
+                <Save className="text-highlight-purple" />
                 <span>保存镜像</span>
               </Button>
             </TooltipContent>

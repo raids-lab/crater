@@ -27,17 +27,17 @@ const getNodeTypeBadge = (
     case NodeType.Hygon:
       return {
         label: "海光",
-        color: "text-purple-600 bg-purple-500/10",
+        color: "text-highlight-purple bg-highlight-purple/10",
       };
     case NodeType.Shenwei:
       return {
         label: "申威",
-        color: "text-amber-600 bg-amber-500/10",
+        color: "text-highlight-amber bg-highlight-amber/10",
       };
     case NodeType.Yitian:
       return {
         label: "倚天",
-        color: "text-cyan-600 bg-cyan-500/10",
+        color: "text-highlight-cyan bg-highlight-cyan/10",
       };
     default:
       return {

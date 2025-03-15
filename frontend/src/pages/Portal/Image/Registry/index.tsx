@@ -220,7 +220,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                   <DropdownMenuItem
                     onClick={() => navigate(`${kanikoInfo.ID}`)}
                   >
-                    <InfoIcon className="text-emerald-600 dark:text-emerald-500" />
+                    <InfoIcon className="text-highlight-emerald" />
                     详情
                   </DropdownMenuItem>
 

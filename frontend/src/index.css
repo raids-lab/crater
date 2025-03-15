@@ -42,6 +42,30 @@
   /* Customization */
   --highlight: oklch(0.473 0.149 253.58);
   --highlight-foreground: oklch(0.984 0.003 247.858);
+
+  /* Highlight Colors - Light Mode */
+  --highlight-red: oklch(0.637 0.237 25.331);
+  --highlight-orange: oklch(0.705 0.213 47.604);
+  --highlight-amber: oklch(0.769 0.188 70.08);
+  --highlight-yellow: oklch(0.795 0.184 86.047);
+  --highlight-lime: oklch(0.768 0.233 130.85);
+  --highlight-green: oklch(0.723 0.219 149.579);
+  --highlight-emerald: oklch(0.696 0.17 162.48);
+  --highlight-teal: oklch(0.704 0.14 182.503);
+  --highlight-cyan: oklch(0.715 0.143 215.221);
+  --highlight-sky: oklch(0.685 0.169 237.323);
+  --highlight-blue: oklch(0.623 0.214 259.815);
+  --highlight-indigo: oklch(0.585 0.233 277.117);
+  --highlight-violet: oklch(0.606 0.25 292.717);
+  --highlight-purple: oklch(0.627 0.265 303.9);
+  --highlight-fuchsia: oklch(0.667 0.295 322.15);
+  --highlight-pink: oklch(0.656 0.241 354.308);
+  --highlight-rose: oklch(0.645 0.246 16.439);
+  --highlight-slate: oklch(0.554 0.046 257.417);
+  --highlight-gray: oklch(0.551 0.027 264.364);
+  --highlight-zinc: oklch(0.552 0.016 285.938);
+  --highlight-neutral: oklch(0.556 0 0);
+  --highlight-stone: oklch(0.553 0.013 58.071);
 }
 
 .dark {
@@ -80,6 +104,30 @@
   /* Customization */
   --highlight: oklch(0.473 0.149 253.58);
   --highlight-foreground: oklch(0.984 0.003 247.858);
+
+  /* Highlight Colors - Dark Mode */
+  --highlight-red: oklch(0.704 0.191 22.216);
+  --highlight-orange: oklch(0.75 0.183 55.934);
+  --highlight-amber: oklch(0.828 0.189 84.429);
+  --highlight-yellow: oklch(0.852 0.199 91.936);
+  --highlight-lime: oklch(0.841 0.238 128.85);
+  --highlight-green: oklch(0.792 0.209 151.711);
+  --highlight-emerald: oklch(0.765 0.177 163.223);
+  --highlight-teal: oklch(0.777 0.152 181.912);
+  --highlight-cyan: oklch(0.789 0.154 211.53);
+  --highlight-sky: oklch(0.746 0.16 232.661);
+  --highlight-blue: oklch(0.707 0.165 254.624);
+  --highlight-indigo: oklch(0.673 0.182 276.935);
+  --highlight-violet: oklch(0.702 0.183 293.541);
+  --highlight-purple: oklch(0.714 0.203 305.504);
+  --highlight-fuchsia: oklch(0.74 0.238 322.16);
+  --highlight-pink: oklch(0.718 0.202 349.761);
+  --highlight-rose: oklch(0.712 0.194 13.428);
+  --highlight-slate: oklch(0.704 0.04 256.788);
+  --highlight-gray: oklch(0.707 0.022 261.325);
+  --highlight-zinc: oklch(0.705 0.015 286.067);
+  --highlight-neutral: oklch(0.708 0 0);
+  --highlight-stone: oklch(0.709 0.01 56.259);
 }
 
 @theme {
@@ -122,6 +170,30 @@
   /* Customization */
   --color-highlight: var(--highlight);
   --color-highlight-foreground: var(--highlight-foreground);
+
+  /* Highlight Colors */
+  --color-highlight-red: var(--highlight-red);
+  --color-highlight-orange: var(--highlight-orange);
+  --color-highlight-amber: var(--highlight-amber);
+  --color-highlight-yellow: var(--highlight-yellow);
+  --color-highlight-lime: var(--highlight-lime);
+  --color-highlight-green: var(--highlight-green);
+  --color-highlight-emerald: var(--highlight-emerald);
+  --color-highlight-teal: var(--highlight-teal);
+  --color-highlight-cyan: var(--highlight-cyan);
+  --color-highlight-sky: var(--highlight-sky);
+  --color-highlight-blue: var(--highlight-blue);
+  --color-highlight-indigo: var(--highlight-indigo);
+  --color-highlight-violet: var(--highlight-violet);
+  --color-highlight-purple: var(--highlight-purple);
+  --color-highlight-fuchsia: var(--highlight-fuchsia);
+  --color-highlight-pink: var(--highlight-pink);
+  --color-highlight-rose: var(--highlight-rose);
+  --color-highlight-slate: var(--highlight-slate);
+  --color-highlight-gray: var(--highlight-gray);
+  --color-highlight-zinc: var(--highlight-zinc);
+  --color-highlight-neutral: var(--highlight-neutral);
+  --color-highlight-stone: var(--highlight-stone);
 
   --radius-lg: calc(var(--radius) + 2px);
   --radius-md: var(--radius);

@@ -73,7 +73,7 @@ export default function ProfileDashboard({
     profileData.pcie_rx_max !== undefined;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* CPU Metrics Section */}
       {hasCpuMetrics && (
         <MetricSection title="CPU 相关指标" icon={<Cpu className="h-5 w-5" />}>

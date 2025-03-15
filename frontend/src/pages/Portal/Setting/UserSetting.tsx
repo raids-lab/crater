@@ -155,7 +155,7 @@ export default function UserSettings() {
         <Card className="lg:col-span-2">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
-              <CardContent className="space-y-8 pt-6">
+              <CardContent className="space-y-8">
                 <div className="flex flex-row items-center gap-6">
                   <FormField
                     control={form.control}
@@ -229,7 +229,7 @@ export default function UserSettings() {
                   )}
                 />
               </CardContent>
-              <CardFooter className="px-6">
+              <CardFooter className="px-6 pt-6">
                 <Button type="submit">
                   <UserRoundCogIcon />
                   更新用户信息

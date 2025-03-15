@@ -66,7 +66,7 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
                     </DropdownMenuLabel>
                     <Button
                       variant="ghost"
-                      className="z-10 cursor-pointer justify-start bg-transparent px-2 py-1 dark:hover:bg-slate-700"
+                      className="z-10 cursor-pointer justify-start bg-transparent px-2 py-1"
                       onClick={() => navigate(`/portal/overview/${node}`)}
                     >
                       <InfoIcon className="mr-2 h-4 w-4" />
