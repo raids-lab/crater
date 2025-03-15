@@ -340,7 +340,7 @@ const AdminJobOverview = () => {
                     </DropdownMenuLabel>
                     <Link to={`${jobInfo.jobName}`}>
                       <DropdownMenuItem>
-                        <InfoIcon className="text-emerald-600 dark:text-emerald-500" />
+                        <InfoIcon className="text-highlight-emerald" />
                         详情
                       </DropdownMenuItem>
                     </Link>
@@ -349,16 +349,16 @@ const AdminJobOverview = () => {
                       title="设置作业自动清除策略"
                     >
                       {row.original.keepWhenLowUsage ? (
-                        <UnlockIcon className="text-purple-600 dark:text-purple-500" />
+                        <UnlockIcon className="text-highlight-purple" />
                       ) : (
-                        <LockIcon className="text-purple-600 dark:text-purple-500" />
+                        <LockIcon className="text-highlight-purple" />
                       )}
                       {row.original.keepWhenLowUsage ? "解锁" : "锁定"}
                     </DropdownMenuItem>
                     <AlertDialogTrigger asChild>
                       <DropdownMenuItem className="group">
                         {shouldStop ? (
-                          <SquareIcon className="text-orange-600 dark:text-orange-500" />
+                          <SquareIcon className="text-highlight-orange" />
                         ) : (
                           <Trash2Icon className="text-destructive" />
                         )}

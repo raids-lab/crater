@@ -136,7 +136,7 @@ export default function DataList({
         {filteredItems.map((item) => (
           <li
             key={item.name}
-            className="flex flex-col justify-between gap-3 rounded-lg border hover:shadow-md"
+            className="bg-card flex flex-col justify-between gap-3 rounded-lg border hover:shadow-md"
           >
             <div className="flex flex-row items-center justify-between p-4 pb-0">
               <div className="flex items-center gap-2">

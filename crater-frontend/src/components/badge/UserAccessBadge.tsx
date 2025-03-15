@@ -5,14 +5,14 @@ export const userAccesses = [
   {
     value: Access.RW.toString(),
     label: "读写",
-    color: "text-orange-500 border-0 bg-orange-500/10",
-    description: "账户内的用户管理、资源分配等操作，将由账户管理员负责",
+    color: "text-highlight-orange bg-highlight-orange/20",
+    description: "拥有对数据的读写权限",
   },
   {
     value: Access.RO.toString(),
     label: "只读",
-    color: "text-emerald-500 border-0 bg-emerald-500/10",
-    description: "账户内的普通用户，只能使用资源，无法进行管理操作",
+    color: "text-highlight-emerald bg-highlight-emerald/20",
+    description: "只有对数据的读取权限",
   },
 ];
 
@@ -29,7 +29,7 @@ const getUserAccessLabel = (
   } else {
     return {
       label: "未知",
-      color: "text-slate-500 border-0 bg-slate-500/10",
+      color: "text-highlight-slate bg-highlight-slate/20",
       description: "由于某些原因无法获取用户读写权限信息",
     };
   }

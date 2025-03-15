@@ -13,7 +13,7 @@ export default function WarningAlert({
 }) {
   return (
     <Alert className={cn("border-orange-600 bg-orange-600/15", className)}>
-      <AlertTitle className="text-orange-600">{title}</AlertTitle>
+      <AlertTitle className="text-highlight-orange">{title}</AlertTitle>
       <AlertDescription>{description}</AlertDescription>
     </Alert>
   );

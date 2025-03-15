@@ -1,6 +1,5 @@
-import { cn } from "@/lib/utils";
-import { Badge } from "../ui/badge";
 import { JobType } from "@/services/api/vcjob";
+import { PhaseBadge } from "./PhaseBadge";
 
 export const jobTypes = [
   {
@@ -30,49 +29,50 @@ const getJobTypeLabel = (
 ): {
   label: string;
   color: string;
+  description: string;
 } => {
   switch (phase) {
     case JobType.Custom:
       return {
         label: "Custom",
-        color: "text-purple-600 bg-purple-500/10",
+        color: "text-highlight-purple bg-highlight-purple/10",
+        description: "自定义的批处理作业",
       };
     case JobType.Jupyter:
       return {
         label: "Jupyter",
-        color: "text-amber-600 bg-amber-500/10",
+        color: "text-highlight-amber bg-highlight-amber/10",
+        description: "Jupyter 交互式作业",
       };
     case JobType.Tensorflow:
       return {
         label: "Tensorflow",
-        color: "text-cyan-600 bg-cyan-500/10",
+        color: "text-highlight-cyan bg-highlight-cyan/10",
+        description: "Tensorflow 分布式训练作业",
       };
     case JobType.Pytorch:
       return {
         label: "Pytorch",
-        color: "text-rose-600 bg-rose-500/10",
+        color: "text-highlight-rose bg-highlight-rose/10",
+        description: "Pytorch 分布式训练作业",
       };
     case JobType.WebIDE:
       return {
         label: "WebIDE",
-        color: "text-lime-600 bg-lime-500/10",
+        color: "text-highlight-lime bg-highlight-lime/10",
+        description: "WebIDE 交互式作业",
       };
     default:
       return {
         label: "Custom",
-        color: "text-purple-600 bg-purple-500/10",
+        color: "text-highlight-purple bg-highlight-purple/10",
+        description: "自定义的批处理作业",
       };
   }
 };
 
 const JobTypeLabel = ({ jobType }: { jobType: JobType }) => {
-  const data = getJobTypeLabel(jobType);
-
-  return (
-    <Badge className={cn("border-none", data.color)} variant="outline">
-      <div className="">{data.label}</div>
-    </Badge>
-  );
+  return <PhaseBadge phase={jobType} getPhaseLabel={getJobTypeLabel} />;
 };
 
 export default JobTypeLabel;

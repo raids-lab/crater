@@ -10,7 +10,7 @@ interface MetricSectionProps {
 export function MetricSection({ title, icon, children }: MetricSectionProps) {
   return (
     <Card>
-      <CardHeader className="pb-3">
+      <CardHeader>
         <CardTitle className="flex items-center gap-2">
           {icon}
           <span>{title}</span>

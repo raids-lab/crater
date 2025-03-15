@@ -52,13 +52,11 @@ export const UsageCell: FC<{ value?: ResourceInfo }> = ({ value }) => {
     <div>
       <p
         className={cn(
-          "mb-0.5 font-mono text-sm font-bold text-green-600 dark:text-green-400",
+          "text-highlight-emerald mb-0.5 font-mono text-sm font-bold",
           {
-            "text-yellow-600 dark:text-yellow-400":
-              value.percent > 20 && value.percent <= 50,
-            "text-orange-600 dark:text-orange-400":
-              value.percent > 50 && value.percent <= 80,
-            "text-rose-600 dark:text-red-500": value.percent > 80,
+            "text-highlight-yellow": value.percent > 25 && value.percent <= 50,
+            "text-highlight-orange": value.percent > 50 && value.percent <= 75,
+            "text-highlight-red": value.percent > 75,
           },
         )}
       >

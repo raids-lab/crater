@@ -138,7 +138,7 @@ export function GpuCardDemo({ gpuInfo }: GpuDemoProps) {
               );
             }}
           >
-            <GpuIcon className="text-purple-600 dark:text-purple-500" />
+            <GpuIcon className="text-highlight-purple" />
             <span className="truncate font-normal">加速卡监控</span>
           </Button>
         </CardFooter>
@@ -214,7 +214,7 @@ export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
           }}
           disabled={nodeInfo?.name == "zjlab-sw"}
         >
-          <CpuIcon className="text-purple-600 dark:text-purple-500" />
+          <CpuIcon className="text-highlight-purple" />
           <span className="truncate font-normal">节点监控</span>
         </Button>
       </CardFooter>

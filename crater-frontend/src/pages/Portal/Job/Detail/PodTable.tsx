@@ -162,7 +162,7 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
               }}
               tooltipContent="配置外部访问"
             >
-              <EthernetPort className="size-4 text-purple-600 dark:text-purple-500" />
+              <EthernetPort className="text-highlight-purple size-4" />
             </TooltipButton>
 
             <TooltipButton
@@ -179,7 +179,7 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
                 href={getPodMonitorUrl(pod)}
                 className="size-9 p-0"
               >
-                <GaugeIcon className="size-4 text-green-600 dark:text-green-500" />
+                <GaugeIcon className="text-highlight-green size-4" />
               </a>
             </TooltipButton>
 
@@ -195,7 +195,7 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
               }}
               tooltipContent="查看容器日志"
             >
-              <LogsIcon className="size-4 text-orange-600 dark:text-orange-500" />
+              <LogsIcon className="text-highlight-orange size-4" />
             </TooltipButton>
           </div>
         );

@@ -4,6 +4,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { useEffect, useState } from "react";
@@ -47,7 +48,9 @@ export const TimeDistance = ({
   return (
     <TooltipProvider delayDuration={10}>
       <Tooltip>
-        <TooltipTrigger className={className}>{timeDiff}</TooltipTrigger>
+        <TooltipTrigger className={cn("cursor-help", className)}>
+          {timeDiff}
+        </TooltipTrigger>
         <TooltipContent>
           {format(startTime, "PPPp", { locale: zhCN })}
         </TooltipContent>
