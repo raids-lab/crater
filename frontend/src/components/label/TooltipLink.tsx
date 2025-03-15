@@ -48,9 +48,7 @@ export default function TooltipLink({
             </Link>
           </TooltipTrigger>
         )}
-        <TooltipContent className="bg-muted text-foreground border">
-          {tooltip}
-        </TooltipContent>
+        <TooltipContent className="max-w-44">{tooltip}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );

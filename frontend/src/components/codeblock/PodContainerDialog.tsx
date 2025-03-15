@@ -63,7 +63,7 @@ export function ContainerSelect({
         }
       }}
     >
-      <SelectTrigger id="model" className={cn("h-14 w-full")}>
+      <SelectTrigger className="h-14 w-full data-[size=default]:h-14">
         <SelectValue placeholder="请选择 Container" />
       </SelectTrigger>
       <SelectContent>
@@ -74,13 +74,17 @@ export function ContainerSelect({
                 className={cn(
                   "flex size-8 items-center justify-center rounded-full font-normal",
                   {
-                    "bg-primary/15 text-primary": !container.isInitContainer,
-                    "bg-purple-500/15 text-purple-500":
-                      container.isInitContainer,
+                    "bg-primary/15": !container.isInitContainer,
+                    "bg-purple-500/15": container.isInitContainer,
                   },
                 )}
               >
-                <BoxIcon className="size-5" />
+                <BoxIcon
+                  className={cn("size-5", {
+                    "text-primary": !container.isInitContainer,
+                    "text-purple-500": container.isInitContainer,
+                  })}
+                />
               </div>
               <div className="flex flex-col items-start gap-0.5">
                 <p className="text-foreground">{container.name}</p>
@@ -272,7 +276,7 @@ export function PodContainerDialog({
     namespacedName: PodNamespacedName;
     selectedContainer: ContainerInfo;
   }>;
-  type: string;
+  type: "shell" | "log";
 }) {
   const [isOpen, setIsOpen] = useNamespacedState(
     namespacedName,
@@ -280,10 +284,23 @@ export function PodContainerDialog({
   );
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen} modal={type === "shell"}>
       <DialogContent
         className="h-[calc(100vh_-104px)] w-[calc(100vw_-104px)] gap-5 sm:max-w-full"
         onOpenAutoFocus={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => {
+          // 当类型为 shell 时，阻止 ESC 关闭对话框
+          if (type === "shell") {
+            e.preventDefault();
+          }
+        }}
+        // onPointerDownOutside={(e) => {
+        //   // 当类型为 shell 时，阻止点击外部关闭对话框
+        //   if (type === "shell") {
+        //     toast.warning("请使用右上角关闭按钮，手动关闭终端");
+        //     e.preventDefault();
+        //   }
+        // }}
       >
         <DialogHeader>
           <DialogTitle className="flex flex-row items-center gap-1.5 font-semibold">

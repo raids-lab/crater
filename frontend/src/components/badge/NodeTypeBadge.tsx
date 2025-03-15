@@ -42,7 +42,7 @@ const getNodeTypeBadge = (
     default:
       return {
         label: "Intel",
-        color: "text-slate-500 bg-slate-500/10",
+        color: "text-secondary-foreground bg-secondary",
       };
   }
 };

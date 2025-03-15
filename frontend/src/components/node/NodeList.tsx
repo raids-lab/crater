@@ -110,7 +110,7 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
               <TooltipTrigger className="flex size-4 items-center justify-center rounded-full bg-slate-600 text-xs text-white">
                 {taints.length}
               </TooltipTrigger>
-              <TooltipContent className="bg-muted text-muted-foreground border font-mono">
+              <TooltipContent className="font-mono">
                 {taints.map((taint, index) => (
                   <p key={index} className="text-xs">
                     {taint}
@@ -139,16 +139,16 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
         <Tooltip>
           <TooltipTrigger
             className={cn(
-              "bg-secondary text-secondary-foreground flex size-4 items-center justify-center rounded-full text-xs",
+              "bg-secondary text-secondary-foreground flex size-4 items-center justify-center rounded-full text-xs hover:cursor-help",
               {
-                "bg-orange-600/20 text-orange-600 dark:text-orange-400":
+                "bg-primary text-primary-foreground":
                   row.original.podCount && row.original.podCount > 0,
               },
             )}
           >
             {row.original.podCount}
           </TooltipTrigger>
-          <TooltipContent className="bg-muted text-muted-foreground border">
+          <TooltipContent>
             {row.original.podCount} 个作业正在运行
           </TooltipContent>
         </Tooltip>

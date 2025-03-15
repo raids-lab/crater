@@ -51,19 +51,23 @@ const SplitButton = ({
   }, [items, position, setPosition]);
 
   return (
-    <div className="bg-primary text-primary-foreground flex w-fit items-center space-x-1 rounded-md">
+    <div className="bg-highlight hover:bg-highlight/90 flex w-fit items-center rounded-md transition-colors">
       <Button
-        className="pr-3 shadow-none"
+        className="text-highlight-foreground hover:text-highlight-foreground cursor-pointer rounded-r-none pr-3 shadow-none hover:bg-transparent dark:hover:bg-transparent"
+        variant="ghost"
         onClick={() => items.find((item) => item.key === position)?.action()}
       >
         {icon}
         {renderTitle(items.find((item) => item.key === position)?.title)}
       </Button>
-      <Separator orientation="vertical" className="h-[20px]" />
+      <Separator orientation="vertical" className="bg-background" />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button className="pr-3 pl-2 shadow-none focus:ring-0">
-            <ChevronDownIcon className="text-primary-foreground size-4" />
+          <Button
+            className="text-highlight-foreground cursor-pointer rounded-l-none pr-3 pl-2 shadow-none hover:bg-transparent focus:ring-0 dark:hover:bg-transparent"
+            variant="ghost"
+          >
+            <ChevronDownIcon className="text-highlight-foreground size-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent

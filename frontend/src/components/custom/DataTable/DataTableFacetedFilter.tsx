@@ -125,13 +125,15 @@ export function DataTableFacetedFilter<TData, TValue>({
                     >
                       <div
                         className={cn(
-                          "border-primary mr-2 flex size-4 items-center justify-center rounded-sm border",
+                          "border-primary flex size-4 items-center justify-center rounded-sm border",
                           isSelected
                             ? "bg-primary text-primary-foreground"
                             : "opacity-50 [&_svg]:invisible",
                         )}
                       >
-                        <CheckIcon className={cn("size-4")} />
+                        <CheckIcon
+                          className={cn("text-primary-foreground size-4")}
+                        />
                       </div>
                       {option.icon && (
                         <option.icon className="text-muted-foreground mr-2 size-4" />

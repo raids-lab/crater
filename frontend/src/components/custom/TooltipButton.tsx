@@ -40,9 +40,7 @@ const TooltipButton = function LoadableButton({
             {children}
           </Button>
         </TooltipTrigger>
-        <TooltipContent className="bg-background text-foreground max-w-44 border">
-          {tooltipContent}
-        </TooltipContent>
+        <TooltipContent className="max-w-44">{tooltipContent}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );

@@ -160,7 +160,7 @@ export function NavUser() {
                 toast.success("已退出");
               }}
             >
-              <LogOut />
+              <LogOut className="dark:text-destructive-foreground" />
               退出登录
             </DropdownMenuItem>
           </DropdownMenuContent>

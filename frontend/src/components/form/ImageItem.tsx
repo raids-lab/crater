@@ -25,12 +25,17 @@ export default function ImageItem({
               className={cn(
                 "flex size-8 items-center justify-center rounded-full font-normal",
                 {
-                  "bg-primary/15 text-primary": item.detail?.isPublic,
-                  "bg-purple-500/15 text-purple-500": !item.detail?.isPublic,
+                  "bg-primary/15": item.detail?.isPublic,
+                  "bg-purple-500/15": !item.detail?.isPublic,
                 },
               )}
             >
-              <BoxIcon className="size-5" />
+              <BoxIcon
+                className={cn("size-5", {
+                  "text-primary": item.detail?.isPublic,
+                  "text-purple-500": !item.detail?.isPublic,
+                })}
+              />
             </div>
             <div className="flex flex-col items-start gap-0.5">
               {item.detail?.description && (
@@ -44,12 +49,9 @@ export default function ImageItem({
             </div>
           </div>
         </TooltipTrigger>
-        <TooltipContent className="bg-muted text-muted-foreground border">
+        <TooltipContent>
           <p>{item.detail?.creatorName}</p>
-          <TimeDistance
-            date={item.detail?.createdAt}
-            className="text-muted-foreground text-xs"
-          />
+          <TimeDistance date={item.detail?.createdAt} className="text-xs" />
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

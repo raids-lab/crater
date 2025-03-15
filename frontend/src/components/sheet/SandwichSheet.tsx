@@ -66,9 +66,7 @@ const SandwichSheet = ({
                     <TooltipTrigger asChild>
                       <QuestionMarkCircledIcon className="text-muted-foreground ml-1 size-4 hover:cursor-help" />
                     </TooltipTrigger>
-                    <TooltipContent className="bg-background text-foreground border">
-                      {description}
-                    </TooltipContent>
+                    <TooltipContent>{description}</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               )}
@@ -86,7 +84,7 @@ const SandwichSheet = ({
             </ScrollArea>
           </div>
           {footer && (
-            <SheetFooter className="absolute right-0 bottom-0 left-0 gap-2 p-6">
+            <SheetFooter className="absolute right-0 bottom-0 left-0 flex-row justify-end gap-2 p-6">
               {footer}
             </SheetFooter>
           )}

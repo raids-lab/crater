@@ -561,7 +561,7 @@ export const Component = () => {
                     <SheetHeader>
                       <SheetTitle>空闲资源查询</SheetTitle>
                     </SheetHeader>
-                    <div className="mt-4 h-[calc(100vh-6rem)] w-full">
+                    <div className="h-[calc(100vh-6rem)] w-full px-4">
                       <GrafanaIframe
                         baseSrc={`${import.meta.env.VITE_GRAFANA_SCHEDULE}`}
                       />

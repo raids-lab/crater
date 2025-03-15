@@ -256,7 +256,7 @@ export default function PodIngressDialog({
                 <TooltipTrigger>
                   <CircleHelpIcon className="ml-1 size-4 text-muted-foreground" />
                 </TooltipTrigger>
-                <TooltipContent className="border bg-background text-foreground">
+                <TooltipContent>
                   支持用户自定义 Ingress
                   <br />
                   将容器端口转发至外部访问
