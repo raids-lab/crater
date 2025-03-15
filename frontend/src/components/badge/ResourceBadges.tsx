@@ -32,7 +32,7 @@ const ResourceBadges = ({
           <Badge
             key={key}
             variant="secondary"
-            className="font-mono font-normal"
+            className="font-mono font-normal select-none"
           >
             {display}
           </Badge>

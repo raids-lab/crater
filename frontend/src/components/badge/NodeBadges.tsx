@@ -47,7 +47,7 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
             )}
           </Badge>
         </TooltipTrigger>
-        <TooltipContent className="p-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+        <TooltipContent className="p-0">
           {isSingleNode ? (
             <div className="p-2 text-xs">查看节点 {nodes[0]} 详情</div>
           ) : (

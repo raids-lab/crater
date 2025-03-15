@@ -212,13 +212,13 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
                   <TooltipTrigger>
                     <Badge
                       key={key}
-                      className="text-xs font-normal"
+                      className="cursor-help text-xs font-normal"
                       variant={"outline"}
                     >
                       {labels[key]}
                     </Badge>
                   </TooltipTrigger>
-                  <TooltipContent asChild>
+                  <TooltipContent className="p-0">
                     <NvidiaGpuInfoCard labels={labels} />
                   </TooltipContent>
                 </Tooltip>
