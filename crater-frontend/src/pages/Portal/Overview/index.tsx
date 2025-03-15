@@ -58,7 +58,7 @@ export const Component: FC = () => {
 
   const nodeQuery = useNodeQuery(true);
 
-  const vcJobColumns = useMemo<ColumnDef<IJobInfo>[]>(
+  const jobColumns = useMemo<ColumnDef<IJobInfo>[]>(
     () => [
       {
         accessorKey: "jobType",
@@ -345,7 +345,7 @@ export const Component: FC = () => {
           description: "查看集群作业的运行情况",
         }}
         query={jobQuery}
-        columns={vcJobColumns}
+        columns={jobColumns}
         toolbarConfig={toolbarConfig}
       />
       <DataTable

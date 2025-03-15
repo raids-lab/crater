@@ -15,8 +15,11 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { FileItem } from "@/services/api/file";
 import { cn } from "@/lib/utils";
 import PageTitle from "@/components/layout/PageTitle";
+import { useAtomValue } from "jotai";
+import { globalAccount } from "@/utils/store";
+import { AccessMode, AccountContext } from "@/services/api/auth";
+import UserAccessBadge from "../badge/UserAccessBadge";
 
-// TODO: 修改硬编码
 const isPublicFolder = (folder: string) => folder === "public";
 
 const isAccountFolder = (folder: string) => folder === "account";
@@ -35,6 +38,15 @@ const getFolderDescription = (folder: string) => {
   return "个人空间，仅限当前用户访问，拥有完全的读写权限。";
 };
 
+const getAccessMode = (folder: string, token: AccountContext) => {
+  if (isPublicFolder(folder)) {
+    return token.accessPublic;
+  } else if (isAccountFolder(folder)) {
+    return token.accessQueue;
+  }
+  return AccessMode.ReadWrite;
+};
+
 export default function FolderNavigation({
   data: rowData,
   isadmin,
@@ -45,6 +57,7 @@ export default function FolderNavigation({
   const [hoveredFolder, setHoveredFolder] = useState<string | null>(null);
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const token = useAtomValue(globalAccount);
 
   // 对文件夹进行排序，公共 -> 账户 -> 用户
   const sortFolders = (folders: FileItem[]) => {
@@ -147,8 +160,11 @@ export default function FolderNavigation({
                     ) : (
                       <Folder className={cn("size-6", colors.icon)} />
                     )}
-                    <CardTitle className="text-xl">
+                    <CardTitle className="flex flex-row gap-1.5 text-xl">
                       {getFolderTitle(r.name)}
+                      <UserAccessBadge
+                        access={getAccessMode(r.name, token).toString()}
+                      />
                     </CardTitle>
                   </div>
                   <CardDescription className="leading-relaxed text-balance">
@@ -190,7 +206,7 @@ export default function FolderNavigation({
         })}
       </div>
 
-      {data.length === 0 && (
+      {rowData != undefined && data.length === 0 && (
         <div className="py-12 text-center">
           <Folder className="text-muted-foreground/50 mx-auto mb-4 size-12" />
           <h3 className="mb-2 text-xl font-medium">没有找到文件夹</h3>
