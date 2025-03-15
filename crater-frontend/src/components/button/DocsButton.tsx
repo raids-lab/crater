@@ -5,6 +5,7 @@ const DocsButton = ({ title, url }: { title: string; url: string }) => {
   return (
     <Button
       variant="secondary"
+      className="cursor-pointer"
       onClick={() =>
         window.open(`https://${import.meta.env.VITE_HOST}/website/docs/${url}`)
       }

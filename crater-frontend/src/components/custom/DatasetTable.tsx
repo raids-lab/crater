@@ -12,7 +12,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Separator } from "@radix-ui/react-dropdown-menu";
 import { DatasetCreateForm } from "@/pages/Portal/Data/CreateForm";
 
 import { IResponse } from "@/services/types";
@@ -58,7 +57,6 @@ export function DatasetTable({ apiGetDataset }: DatesetTableProps) {
                 <SheetTitle>创建数据集</SheetTitle>
                 <SheetDescription>创建一个新的文件数据集</SheetDescription>
               </SheetHeader>
-              <Separator className="mt-4" />
               <DatasetCreateForm
                 closeSheet={() => setOpenSheet(false)}
                 type="dataset"

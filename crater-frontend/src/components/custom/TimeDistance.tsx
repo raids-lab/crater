@@ -48,7 +48,7 @@ export const TimeDistance = ({
     <TooltipProvider delayDuration={10}>
       <Tooltip>
         <TooltipTrigger className={className}>{timeDiff}</TooltipTrigger>
-        <TooltipContent className="bg-background text-foreground border">
+        <TooltipContent>
           {format(startTime, "PPPp", { locale: zhCN })}
         </TooltipContent>
       </Tooltip>

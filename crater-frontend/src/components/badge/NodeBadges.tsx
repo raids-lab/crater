@@ -18,52 +18,64 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
     return <></>;
   }
 
+  const isSingleNode = nodes.length === 1;
+  const handleBadgeClick = () => {
+    if (isSingleNode) {
+      navigate(`/portal/overview/${nodes[0]}`);
+    }
+  };
+
   return (
     <TooltipProvider delayDuration={200}>
       <Tooltip>
-        <TooltipTrigger disabled>
+        <TooltipTrigger asChild>
           <Badge
             variant="secondary"
-            className="cursor-pointer font-mono font-normal select-none"
+            className={cn(
+              "font-mono font-normal select-none",
+              isSingleNode ? "cursor-pointer" : "cursor-help",
+            )}
+            onClick={handleBadgeClick}
           >
-            {nodes.length > 1 ? (
+            {isSingleNode ? (
+              nodes[0]
+            ) : (
               <p>
                 {nodes.length}
                 <span className="ml-0.5 font-sans">节点</span>
               </p>
-            ) : (
-              nodes[0]
             )}
           </Badge>
         </TooltipTrigger>
-        <TooltipContent className="bg-background text-foreground border p-0">
-          <div className="flex flex-row">
-            {nodes
-              .sort((a, b) => a.localeCompare(b))
-              .map((node, i) => (
-                <div
-                  className={cn("flex flex-col p-1", {
-                    "border-l": i > 0,
-                  })}
-                >
-                  <DropdownMenuLabel
+        <TooltipContent className="p-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+          {isSingleNode ? (
+            <div className="p-2 text-xs">查看节点 {nodes[0]} 详情</div>
+          ) : (
+            <div className="flex flex-col">
+              {nodes
+                .sort((a, b) => a.localeCompare(b))
+                .map((node, i) => (
+                  <div
                     key={node}
-                    className="text-muted-foreground text-xs"
+                    className={cn("flex flex-col p-1", {
+                      "border-t dark:border-slate-700": i > 0,
+                    })}
                   >
-                    {node}
-                  </DropdownMenuLabel>
-                  {/* 按钮 */}
-                  <Button
-                    variant="ghost"
-                    className="justify-start px-2 py-1"
-                    onClick={() => navigate(`/portal/overview/${node}`)}
-                  >
-                    <InfoIcon className="text-emerald-600 dark:text-emerald-500" />
-                    <span className="truncate font-normal">节点详情</span>
-                  </Button>
-                </div>
-              ))}
-          </div>
+                    <DropdownMenuLabel className="text-xs">
+                      {node}
+                    </DropdownMenuLabel>
+                    <Button
+                      variant="ghost"
+                      className="z-10 cursor-pointer justify-start bg-transparent px-2 py-1 dark:hover:bg-slate-700"
+                      onClick={() => navigate(`/portal/overview/${node}`)}
+                    >
+                      <InfoIcon className="mr-2 h-4 w-4" />
+                      <span className="truncate font-normal">节点详情</span>
+                    </Button>
+                  </div>
+                ))}
+            </div>
+          )}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

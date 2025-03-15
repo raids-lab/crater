@@ -19,7 +19,7 @@ const TooltipUser = ({ attributes }: { attributes: IUserAttributes }) => {
             {attributes.nickname ?? attributes.name}
           </span>
         </TooltipTrigger>
-        <TooltipContent className="bg-background text-foreground border">
+        <TooltipContent>
           <Link
             className="m-0 p-0 font-normal"
             to={`/portal/user/${attributes.name}`}
