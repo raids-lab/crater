@@ -1,9 +1,9 @@
-import { Button } from "@/components/ui/button";
 import { exportToJsonFile } from "@/utils/form";
 import { showErrorToast } from "@/utils/toast";
 import { CircleArrowUp } from "lucide-react";
 import { FieldValues, UseFormReturn } from "react-hook-form";
 import { MetadataFormType } from "./types";
+import TooltipButton from "../custom/TooltipButton";
 
 interface ImportButtonProps<T extends FieldValues> {
   metadata: MetadataFormType;
@@ -20,10 +20,11 @@ function FormExportButton<T extends FieldValues>({
 }: ImportButtonProps<T>) {
   const currentValues = form?.getValues();
   return (
-    <Button
+    <TooltipButton
       variant="outline"
       type="button"
       className={className}
+      tooltipContent="将当前配置导出到本地文件"
       onClick={() => {
         form
           ?.trigger()
@@ -56,7 +57,7 @@ function FormExportButton<T extends FieldValues>({
     >
       <CircleArrowUp className="size-4" />
       {buttonText}
-    </Button>
+    </TooltipButton>
   );
 }
 

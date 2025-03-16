@@ -57,8 +57,61 @@ export enum JobPhase {
   Failed = "Failed",
   Deleted = "Deleted",
   Freed = "Freed",
+  Cancelled = "Cancelled",
   Init = "",
 }
+
+export enum JobStatus {
+  NotStarted = "NotStarted",
+  Running = "Running",
+  Terminated = "Terminated",
+  MetadataOnly = "MetadataOnly",
+  Unknown = "Unknown",
+}
+
+export const getJobStateType = (phase: JobPhase): JobStatus => {
+  // 作业还没有开始运行的状态
+  const notStartedPhases = new Set([JobPhase.Pending, JobPhase.Init]);
+
+  // 作业正在运行的状态
+  const runningPhases = new Set([
+    JobPhase.Running,
+    JobPhase.Restarting,
+    JobPhase.Completing,
+    JobPhase.Aborting,
+    JobPhase.Terminating,
+  ]);
+
+  // 作业终态
+  const terminatedPhases = new Set([
+    JobPhase.Completed,
+    JobPhase.Failed,
+    JobPhase.Terminated,
+    JobPhase.Aborted,
+  ]);
+
+  // 仅保留元数据的状态
+  const metadataOnlyPhases = new Set([
+    JobPhase.Freed,
+    JobPhase.Deleted,
+    JobPhase.Cancelled,
+  ]);
+
+  if (notStartedPhases.has(phase)) {
+    return JobStatus.NotStarted;
+  }
+  if (runningPhases.has(phase)) {
+    return JobStatus.Running;
+  }
+  if (terminatedPhases.has(phase)) {
+    return JobStatus.Terminated;
+  }
+  if (metadataOnlyPhases.has(phase)) {
+    return JobStatus.MetadataOnly;
+  }
+
+  return JobStatus.Unknown;
+};
 
 export const apiJobBatchList = () =>
   instance.get<IResponse<IJobInfo[]>>(`${VERSION}/${JOB_URL}`);

@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /* https://ui.shadcn.com/docs/theming#slate */
-:root {
+/* :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.129 0.042 264.695);
@@ -38,12 +38,8 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
-
-  /* Customization */
   --highlight: oklch(0.473 0.149 253.58);
   --highlight-foreground: oklch(0.984 0.003 247.858);
-
-  /* Highlight Colors - Light Mode */
   --highlight-red: oklch(0.637 0.237 25.331);
   --highlight-orange: oklch(0.705 0.213 47.604);
   --highlight-amber: oklch(0.769 0.188 70.08);
@@ -100,12 +96,8 @@
   --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
-
-  /* Customization */
   --highlight: oklch(0.473 0.149 253.58);
   --highlight-foreground: oklch(0.984 0.003 247.858);
-
-  /* Highlight Colors - Dark Mode */
   --highlight-red: oklch(0.704 0.191 22.216);
   --highlight-orange: oklch(0.75 0.183 55.934);
   --highlight-amber: oklch(0.828 0.189 84.429);
@@ -128,6 +120,134 @@
   --highlight-zinc: oklch(0.705 0.015 286.067);
   --highlight-neutral: oklch(0.708 0 0);
   --highlight-stone: oklch(0.709 0.01 56.259);
+} */
+
+/* Change from oklch to hsl since oklch is not supported by old browsers */
+:root {
+  --radius: 0.625rem;
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(228.8, 85.1%, 5%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(228.8, 85.1%, 5%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(228.8, 85.1%, 5%);
+  --primary: hsl(208.3, 100%, 33.7%);
+  --primary-foreground: hsl(210, 34.5%, 98%);
+  --secondary: hsl(210, 40.6%, 96%);
+  --secondary-foreground: hsl(222.3, 49.4%, 11.3%);
+  --muted: hsl(210, 40.6%, 96%);
+  --muted-foreground: hsl(215.4, 18.4%, 47%);
+  --accent: hsl(210, 40.6%, 96%);
+  --accent-foreground: hsl(222.3, 49.4%, 11.3%);
+  --destructive: hsl(357.2, 100%, 45.3%);
+  --destructive-foreground: hsl(210, 34.5%, 98%);
+  --border: hsl(214.3, 33%, 91.4%);
+  --input: hsl(214.3, 33%, 91.4%);
+  --ring: hsl(215, 22.6%, 64.5%);
+  --chart-1: hsl(18, 100%, 48%);
+  --chart-2: hsl(174.7, 100%, 29.5%);
+  --chart-3: hsl(195.8, 72.1%, 22.9%);
+  --chart-4: hsl(43.6, 100%, 50%);
+  --chart-5: hsl(36.3, 100%, 49.7%);
+  --sidebar: hsl(210, 34.5%, 98%);
+  --sidebar-foreground: hsl(228.8, 85.1%, 5%);
+  --sidebar-primary: hsl(222.3, 49.4%, 11.3%);
+  --sidebar-primary-foreground: hsl(210, 34.5%, 98%);
+  --sidebar-accent: hsl(210, 40.6%, 96%);
+  --sidebar-accent-foreground: hsl(222.3, 49.4%, 11.3%);
+  --sidebar-border: hsl(214.3, 33%, 91.4%);
+  --sidebar-ring: hsl(215, 22.6%, 64.5%);
+
+  /* Customization */
+  --highlight: hsl(208.3, 100%, 33.7%);
+  --highlight-foreground: hsl(210, 34.5%, 98%);
+
+  /* Highlight Colors - Light Mode */
+  --highlight-red: hsl(356.9, 95.9%, 57.7%);
+  --highlight-orange: hsl(24.6, 100%, 50%);
+  --highlight-amber: hsl(36.3, 100%, 49.7%);
+  --highlight-yellow: hsl(44.2, 100%, 47.1%);
+  --highlight-lime: hsl(83.9, 100%, 40.5%);
+  --highlight-green: hsl(144.1, 100%, 39.4%);
+  --highlight-emerald: hsl(159.7, 100%, 36.9%);
+  --highlight-teal: hsl(173.6, 100%, 36.7%);
+  --highlight-cyan: hsl(189.5, 100%, 42.9%);
+  --highlight-sky: hsl(199.3, 100%, 47.9%);
+  --highlight-blue: hsl(216.3, 100%, 58.5%);
+  --highlight-indigo: hsl(241, 100%, 68.6%);
+  --highlight-violet: hsl(260.9, 100%, 65.9%);
+  --highlight-purple: hsl(273.3, 100%, 63.8%);
+  --highlight-fuchsia: hsl(292.6, 96.4%, 57.5%);
+  --highlight-pink: hsl(328.3, 91.8%, 58.2%);
+  --highlight-rose: hsl(345.3, 100%, 56.2%);
+  --highlight-slate: hsl(215.4, 18.4%, 47%);
+  --highlight-gray: hsl(220, 10.3%, 46.3%);
+  --highlight-zinc: hsl(240.1, 4.4%, 46.3%);
+  --highlight-neutral: hsl(0, 0%, 45.2%);
+  --highlight-stone: hsl(25, 5.9%, 44.6%);
+}
+
+.dark {
+  --background: hsl(228.8, 85.1%, 5%);
+  --foreground: hsl(210, 34.5%, 98%);
+  --card: hsl(222.3, 49.4%, 11.3%);
+  --card-foreground: hsl(210, 34.5%, 98%);
+  --popover: hsl(222.3, 49.4%, 11.3%);
+  --popover-foreground: hsl(210, 34.5%, 98%);
+  --primary: hsl(208.3, 100%, 33.7%);
+  --primary-foreground: hsl(210, 34.5%, 98%);
+  --secondary: hsl(217.3, 36.1%, 17.5%);
+  --secondary-foreground: hsl(210, 34.5%, 98%);
+  --muted: hsl(217.3, 36.1%, 17.5%);
+  --muted-foreground: hsl(215, 22.6%, 64.5%);
+  --accent: hsl(217.3, 36.1%, 17.5%);
+  --accent-foreground: hsl(210, 34.5%, 98%);
+  --destructive: hsl(359, 84%, 61%);
+  --destructive-foreground: hsl(210, 34.5%, 98%);
+  --border: hsla(0, 0%, 100%, 10%);
+  --input: hsla(0, 0%, 100%, 15%);
+  --ring: hsl(220, 10.3%, 46.3%);
+  --chart-1: hsl(225.3, 84.1%, 49%);
+  --chart-2: hsl(159.7, 100%, 36.9%);
+  --chart-3: hsl(36.3, 100%, 49.7%);
+  --chart-4: hsl(273.3, 100%, 63.8%);
+  --chart-5: hsl(345.3, 100%, 56.2%);
+  --sidebar: hsl(222.3, 49.4%, 11.3%);
+  --sidebar-foreground: hsl(210, 34.5%, 98%);
+  --sidebar-primary: hsl(225.3, 84.1%, 49%);
+  --sidebar-primary-foreground: hsl(210, 34.5%, 98%);
+  --sidebar-accent: hsl(217.3, 36.1%, 17.5%);
+  --sidebar-accent-foreground: hsl(210, 34.5%, 98%);
+  --sidebar-border: hsla(0, 0%, 100%, 10%);
+  --sidebar-ring: hsl(220, 10.3%, 46.3%);
+
+  /* Customization */
+  --highlight: hsl(208.3, 100%, 33.7%);
+  --highlight-foreground: hsl(210, 34.5%, 98%);
+
+  /* Highlight Colors - Dark Mode */
+  --highlight-red: hsl(358.7, 100%, 69.6%);
+  --highlight-orange: hsl(31.8, 100%, 50.7%);
+  --highlight-amber: hsl(43.6, 100%, 50%);
+  --highlight-yellow: hsl(47.2, 100%, 49.7%);
+  --highlight-lime: hsl(79.9, 100%, 45.1%);
+  --highlight-green: hsl(150.1, 95.6%, 44.8%);
+  --highlight-emerald: hsl(161.2, 100%, 41.6%);
+  --highlight-teal: hsl(173.4, 100%, 41.8%);
+  --highlight-cyan: hsl(187.8, 100%, 47.5%);
+  --highlight-sky: hsl(195.8, 100%, 50%);
+  --highlight-blue: hsl(212, 100%, 65.8%);
+  --highlight-indigo: hsl(235.5, 100%, 74.4%);
+  --highlight-violet: hsl(256.9, 100%, 75.8%);
+  --highlight-purple: hsl(272.3, 100%, 74%);
+  --highlight-fuchsia: hsl(292.8, 100%, 70.9%);
+  --highlight-pink: hsl(327.5, 95.4%, 68.9%);
+  --highlight-rose: hsl(349.6, 100%, 69.4%);
+  --highlight-slate: hsl(215, 22.6%, 64.5%);
+  --highlight-gray: hsl(217.9, 11.9%, 64.3%);
+  --highlight-zinc: hsl(240.1, 5.7%, 64.3%);
+  --highlight-neutral: hsl(0, 0%, 63%);
+  --highlight-stone: hsl(24, 5.8%, 63.1%);
 }
 
 @theme {

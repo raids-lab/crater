@@ -12,8 +12,10 @@ import {
   GaugeIcon,
   LayoutGridIcon,
   ShieldEllipsisIcon,
+  SquareIcon,
   Trash2Icon,
   UserRoundIcon,
+  XIcon,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -40,6 +42,8 @@ import {
   JobPhase,
   apiJobGetEvent,
   apiSSHPortGetDetail,
+  JobStatus,
+  getJobStateType,
 } from "@/services/api/vcjob";
 import JobPhaseLabel from "@/components/badge/JobPhaseBadge";
 import { TimeDistance } from "@/components/custom/TimeDistance";
@@ -58,6 +62,7 @@ import GpuIcon from "@/components/icon/GpuIcon";
 import { SSHPortDialog } from "./SSHPortDialog";
 import ProfileDashboard from "@/components/profile-dashboard";
 import { getDaysDifference, getHoursDifference } from "@/utils/time";
+import { REFETCH_INTERVAL } from "@/config/task";
 export interface Resource {
   [key: string]: string;
 }
@@ -73,6 +78,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
     queryKey: ["job", "detail", jobName],
     queryFn: () => apiJobGetDetail(jobName),
     select: (res) => res.data.data,
+    refetchInterval: REFETCH_INTERVAL,
   });
 
   const { data: sshPortData } = useQuery({
@@ -117,6 +123,13 @@ export function BaseCore({ jobName }: { jobName: string }) {
   const isCompletedOver1Hour = useMemo(() => {
     return getHoursDifference(data?.completedAt) > 1 / 24;
   }, [data?.completedAt]);
+
+  const jobStatus = useMemo(() => {
+    if (!data) {
+      return JobStatus.Unknown;
+    }
+    return getJobStateType(data.status);
+  }, [data]);
 
   if (isLoading || !data) {
     return <></>;
@@ -172,18 +185,49 @@ export function BaseCore({ jobName }: { jobName: string }) {
               )}
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <div>
-                  <Button variant="destructive" title="删除作业">
+                {jobStatus === JobStatus.NotStarted ? (
+                  <Button
+                    title="取消作业"
+                    className="bg-highlight-orange hover:bg-highlight-orange/90 cursor-pointer"
+                  >
+                    <XIcon className="size-4" />
+                    取消作业
+                  </Button>
+                ) : jobStatus === JobStatus.Running ? (
+                  <Button
+                    title="停止作业"
+                    className="bg-highlight-orange hover:bg-highlight-orange/90 cursor-pointer"
+                  >
+                    <SquareIcon className="size-4" />
+                    停止作业
+                  </Button>
+                ) : (
+                  <Button
+                    variant="destructive"
+                    title="删除作业"
+                    className="cursor-pointer"
+                  >
                     <Trash2Icon className="size-4" />
                     删除作业
                   </Button>
-                </div>
+                )}
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>删除作业</AlertDialogTitle>
+                  <AlertDialogTitle>
+                    {jobStatus === JobStatus.NotStarted
+                      ? "取消作业"
+                      : jobStatus === JobStatus.Running
+                        ? "停止作业"
+                        : "删除作业"}
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
-                    作业「{data.name}」将停止，请确认已经保存好所需数据。
+                    作业 {data.name} 将
+                    {jobStatus === JobStatus.NotStarted
+                      ? "取消，是否放弃排队？"
+                      : jobStatus === JobStatus.Running
+                        ? "停止，请确认已经保存好所需数据。"
+                        : "删除，所有数据将被清理。"}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -194,7 +238,11 @@ export function BaseCore({ jobName }: { jobName: string }) {
                       deleteJTask();
                     }}
                   >
-                    删除
+                    {jobStatus === JobStatus.NotStarted
+                      ? "取消"
+                      : jobStatus === JobStatus.Running
+                        ? "停止"
+                        : "删除"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

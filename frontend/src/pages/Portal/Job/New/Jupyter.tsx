@@ -59,6 +59,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { GrafanaIframe } from "@/pages/Embed/Monitor";
+import PageTitle from "@/components/layout/PageTitle";
+import { PublishConfigForm } from "./Publish";
+import TipBadge from "@/components/badge/TipBadge";
 
 const FileType = 1;
 const DatasetType = 2;
@@ -252,9 +255,11 @@ export const Component = () => {
         .sort((a, b) => {
           return b.amountSingleMax - a.amountSingleMax;
         })
+        .filter((item) => item.amountSingleMax > 0)
         .map((item) => ({
           value: item.name,
-          label: `单机 ${item.amountSingleMax} 卡 · ${item.label.toUpperCase()}`,
+          label: item.label.toUpperCase(),
+          detail: item,
         }));
     },
   });
@@ -411,34 +416,47 @@ export const Component = () => {
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="relative grid items-start gap-4 md:gap-x-6 lg:grid-cols-3"
+          className="grid items-start gap-4 md:gap-x-6 lg:grid-cols-3"
         >
-          <div className="items-centor absolute top-0 right-0 flex w-fit -translate-y-12 flex-row justify-end gap-3 lg:col-span-3">
-            <FormImportButton
-              metadata={MetadataFormJupyter}
-              form={form}
-              afterImport={(data) => {
-                if (data.volumeMounts.length > 0) {
-                  setDataMountOpen(DataMountCard);
-                }
-                if (data.envs.length > 0) {
-                  setEnvOpen(EnvCard);
-                }
-                if (data.nodeSelector.enable) {
-                  setOtherOpen(OtherCard);
-                }
-              }}
-            />
-            <FormExportButton metadata={MetadataFormJupyter} form={form} />
-            <LoadableButton
-              isLoading={isPending}
-              isLoadingText="提交作业"
-              type="submit"
-            >
-              <CirclePlus className="size-4" />
-              提交作业
-            </LoadableButton>
-          </div>
+          <PageTitle
+            title="新建 Jupyter Lab"
+            description="提供交互式的 Web 实验环境，可用于代码调试"
+            className="lg:col-span-3"
+            isWIP={true}
+            tipContent={`版本 ${MetadataFormJupyter.version}`}
+          >
+            <div className="items-centor flex w-fit flex-row justify-end gap-3">
+              <FormImportButton
+                metadata={MetadataFormJupyter}
+                form={form}
+                afterImport={(data) => {
+                  if (data.volumeMounts.length > 0) {
+                    setDataMountOpen(DataMountCard);
+                  }
+                  if (data.envs.length > 0) {
+                    setEnvOpen(EnvCard);
+                  }
+                  if (data.nodeSelector.enable) {
+                    setOtherOpen(OtherCard);
+                  }
+                }}
+              />
+              <FormExportButton metadata={MetadataFormJupyter} form={form} />
+              <PublishConfigForm
+                config={MetadataFormJupyter}
+                onPublish={() => {}}
+              />
+              <LoadableButton
+                isLoading={isPending}
+                isLoadingText="提交作业"
+                type="submit"
+              >
+                <CirclePlus className="size-4" />
+                提交作业
+              </LoadableButton>
+            </div>
+          </PageTitle>
+
           <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle>基本设置</CardTitle>
@@ -540,6 +558,17 @@ export const Component = () => {
                     <FormControl>
                       <Combobox
                         items={resources ?? []}
+                        renderLabel={(item) => {
+                          return (
+                            <div className="flex w-full flex-row items-center justify-between gap-3">
+                              <p>{item.label}</p>
+                              <TipBadge
+                                title={`可申请至多 ${item.detail?.amountSingleMax} 张卡`}
+                                className="bg-highlight-purple/15 text-highlight-purple"
+                              />
+                            </div>
+                          );
+                        }}
                         current={field.value ?? ""}
                         handleSelect={(value) => field.onChange(value)}
                         formTitle=" GPU 型号"

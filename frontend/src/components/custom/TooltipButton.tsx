@@ -40,7 +40,7 @@ const TooltipButton = function LoadableButton({
             {children}
           </Button>
         </TooltipTrigger>
-        <TooltipContent className="max-w-44">{tooltipContent}</TooltipContent>
+        <TooltipContent>{tooltipContent}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
