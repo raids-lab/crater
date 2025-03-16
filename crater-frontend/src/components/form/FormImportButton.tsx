@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { importFromJsonFile } from "@/utils/form";
@@ -7,6 +6,7 @@ import { CircleArrowDown } from "lucide-react";
 import { FieldValues, UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
 import { MetadataFormType } from "./types";
+import TooltipButton from "../custom/TooltipButton";
 
 interface ImportButtonProps<T extends FieldValues> {
   metadata: MetadataFormType;
@@ -26,10 +26,11 @@ function FormImportButton<T extends FieldValues>({
   buttonText = "导入配置",
 }: ImportButtonProps<T>) {
   return (
-    <Button
+    <TooltipButton
       variant="outline"
       type="button"
       className={cn("relative cursor-pointer", className)}
+      tooltipContent="从本地文件导入作业配置"
     >
       <Input
         onChange={(e) => {
@@ -53,7 +54,7 @@ function FormImportButton<T extends FieldValues>({
       />
       <CircleArrowDown className="size-4" />
       {buttonText}
-    </Button>
+    </TooltipButton>
   );
 }
 

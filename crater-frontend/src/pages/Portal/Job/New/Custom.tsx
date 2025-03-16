@@ -86,7 +86,7 @@ export const EnvCard = "环境变量";
 export const DataMountCard = "数据挂载";
 export const TensorboardCard = "观测面板";
 export const OtherCard = "其他选项";
-export const IngressCard = "外部转发";
+export const IngressCard = "外部访问（暂不可用）";
 
 export const Component = () => {
   const [dataMountOpen, setDataMountOpen] = useState<string>();

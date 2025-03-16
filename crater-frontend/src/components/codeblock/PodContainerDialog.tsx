@@ -284,7 +284,7 @@ export function PodContainerDialog({
   );
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen} modal={type === "shell"}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen} modal={true}>
       <DialogContent
         className="h-[calc(100vh_-104px)] w-[calc(100vw_-104px)] gap-5 sm:max-w-full"
         onOpenAutoFocus={(e) => e.preventDefault()}
