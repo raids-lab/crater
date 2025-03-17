@@ -9,10 +9,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useForm } from "react-hook-form";
+import { useForm, UseFormReturn } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import {
   apiUserUploadImage,
   imageLinkRegex,
@@ -27,6 +26,11 @@ import {
 } from "@/components/ui/select";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import { JobType } from "@/services/api/vcjob";
+import SandwichSheet, {
+  SandwichSheetProps,
+} from "@/components/sheet/SandwichSheet";
+import LoadableButton from "@/components/custom/LoadableButton";
+import { PackagePlusIcon } from "lucide-react";
 
 const formSchema = z.object({
   imageLink: z
@@ -36,28 +40,125 @@ const formSchema = z.object({
       message: "镜像链接格式不正确",
     }),
   description: z.string().min(1, { message: "镜像描述不能为空" }),
-  taskType: z.enum([
-    JobType.Custom,
-    JobType.DeepSpeed,
-    JobType.Jupyter,
-    JobType.KubeRay,
-    JobType.OpenMPI,
-    JobType.Pytorch,
-    JobType.Tensorflow,
-    JobType.WebIDE,
-  ]),
+  taskType: z
+    .enum([
+      JobType.Custom,
+      JobType.DeepSpeed,
+      JobType.Jupyter,
+      JobType.KubeRay,
+      JobType.OpenMPI,
+      JobType.Pytorch,
+      JobType.Tensorflow,
+      JobType.WebIDE,
+    ])
+    .refine((value) => Object.values(JobType).includes(value), {
+      message: "请选择任务类型",
+    }),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
 
-interface TaskFormProps extends React.HTMLAttributes<HTMLDivElement> {
+interface ImageUploadSheetContentProps {
+  form: UseFormReturn<FormSchema>;
+  onSubmit: (values: FormSchema) => void;
+}
+
+function ImageUploadSheetContent({
+  form,
+  onSubmit,
+}: ImageUploadSheetContentProps) {
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6">
+      <FormField
+        control={form.control}
+        name="imageLink"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>
+              镜像链接
+              <FormLabelMust />
+            </FormLabel>
+            <FormControl>
+              <Input {...field} className="font-mono" />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="description"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>
+              镜像描述
+              <FormLabelMust />
+            </FormLabel>
+            <FormControl>
+              <Input {...field} className="font-mono" />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="taskType"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>
+              任务类型
+              <FormLabelMust />
+            </FormLabel>
+            <FormControl>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <SelectTrigger className="">
+                  <SelectValue placeholder="请选择" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={JobType.Jupyter}>
+                    Jupyter交互式任务
+                  </SelectItem>
+
+                  <SelectItem value={JobType.Tensorflow}>
+                    Tensorflow任务
+                  </SelectItem>
+                  <SelectItem value={JobType.Pytorch}>Pytorch任务</SelectItem>
+                  <SelectItem value={JobType.Custom}>用户自定义任务</SelectItem>
+                  <SelectItem value={JobType.KubeRay} disabled>
+                    Ray任务
+                  </SelectItem>
+                  <SelectItem value={JobType.DeepSpeed} disabled>
+                    DeepSpeed任务
+                  </SelectItem>
+                  <SelectItem value={JobType.OpenMPI} disabled>
+                    OpenMPI任务
+                  </SelectItem>
+                  <SelectItem value={JobType.WebIDE} disabled>
+                    Web IDE任务
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </form>
+  );
+}
+interface ImageUploadFormProps extends SandwichSheetProps {
   closeSheet: () => void;
 }
 
-export function ImageUploadForm({ closeSheet }: TaskFormProps) {
+export function ImageUploadForm({
+  closeSheet,
+  ...props
+}: ImageUploadFormProps) {
   const queryClient = useQueryClient();
 
-  const { mutate: uploadImagePack } = useMutation({
+  const { mutate: uploadImagePack, isPending } = useMutation({
     mutationFn: (values: FormSchema) => {
       const { imageName, imageTag } = parseImageLink(values.imageLink);
       return apiUserUploadImage({
@@ -95,101 +196,29 @@ export function ImageUploadForm({ closeSheet }: TaskFormProps) {
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="mt-6 flex flex-col space-y-4"
+      <SandwichSheet
+        {...props}
+        footer={
+          <>
+            <LoadableButton
+              isLoading={isPending}
+              isLoadingText="正在提交"
+              type="submit"
+              onClick={async () => {
+                const isValid = await form.trigger();
+                if (isValid) {
+                  form.handleSubmit(onSubmit)();
+                }
+              }}
+            >
+              <PackagePlusIcon />
+              确认提交
+            </LoadableButton>
+          </>
+        }
       >
-        <FormField
-          control={form.control}
-          name="imageLink"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                镜像链接
-                <FormLabelMust />
-              </FormLabel>
-              <FormControl>
-                <Input {...field} className="font-mono" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div>
-          <div className="grid grid-cols-2 gap-3">
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    镜像描述
-                    <FormLabelMust />
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} className="font-mono" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
-        <div>
-          <FormField
-            control={form.control}
-            name="taskType"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  任务类型
-                  <FormLabelMust />
-                </FormLabel>
-                <FormControl>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <SelectTrigger className="">
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={JobType.Jupyter}>
-                        Jupyter交互式任务
-                      </SelectItem>
-                      <SelectItem value={JobType.WebIDE} disabled>
-                        Web IDE任务
-                      </SelectItem>
-                      <SelectItem value={JobType.Tensorflow}>
-                        Tensorflow任务
-                      </SelectItem>
-                      <SelectItem value={JobType.Pytorch}>
-                        Pytorch任务
-                      </SelectItem>
-                      <SelectItem value={JobType.KubeRay} disabled>
-                        Ray任务
-                      </SelectItem>
-                      <SelectItem value={JobType.DeepSpeed} disabled>
-                        DeepSpeed任务
-                      </SelectItem>
-                      <SelectItem value={JobType.OpenMPI} disabled>
-                        OpenMPI任务
-                      </SelectItem>
-                      <SelectItem value={JobType.Custom}>
-                        用户自定义任务
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <div className="grid">
-          <Button type="submit">提交镜像</Button>
-        </div>
-      </form>
+        <ImageUploadSheetContent form={form} onSubmit={onSubmit} />
+      </SandwichSheet>
     </Form>
   );
 }

@@ -155,15 +155,12 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
       ),
     },
     {
-      id: "creatorName",
-      accessorKey: "creatorName",
+      id: "nickName",
+      accessorKey: "nickName",
       header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={getHeader("creatorName")}
-        />
+        <DataTableColumnHeader column={column} title={getHeader("nickName")} />
       ),
-      cell: ({ row }) => <div>{row.getValue("creatorName")}</div>,
+      cell: ({ row }) => <div>{row.getValue("nickName")}</div>,
     },
     {
       accessorKey: "createdAt",
@@ -258,9 +255,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
       },
     },
   ];
-  columns = columns.filter(
-    (column) => column.id !== "creatorName" || isAdminMode,
-  );
+  columns = columns.filter((column) => column.id !== "nickName" || isAdminMode);
   return (
     <div className="flex flex-col gap-3">
       <div>
