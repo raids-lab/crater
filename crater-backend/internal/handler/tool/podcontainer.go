@@ -90,6 +90,8 @@ type (
 
 const IngressLabelKey = "ingress.crater.raids.io"
 const NodePortLabelKey = "nodeport.crater.raids.io"
+const AnnotationKeyOpenSSH = "crater.raids.io/open-ssh"
+const SSHContainerPort = 22
 
 func NewAPIServerMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &APIServerMgr{
@@ -221,20 +223,14 @@ func (mgr *APIServerMgr) CreatePodIngress(c *gin.Context) {
 		return
 	}
 
-	// Validate if the port or rule name already exists
+	// 获取 Pod 信息
 	var pod v1.Pod
 	if err := mgr.client.Get(c, client.ObjectKey{Namespace: req.Namespace, Name: req.PodName}, &pod); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	// 获取 "crater.raids.io/task-user" 标签值作为 jobName
-	userName, ok := pod.Labels["crater.raids.io/task-user"]
-	if !ok {
-		resputil.Error(c, "Label crater.raids.io/task-user not found", resputil.NotSpecified)
-		return
-	}
-
+	// 校验是否已存在相同端口或规则名的 Ingress
 	for key, value := range pod.Annotations {
 		if strings.HasPrefix(key, IngressLabelKey) {
 			var existingRule PodIngress
@@ -247,32 +243,48 @@ func (mgr *APIServerMgr) CreatePodIngress(c *gin.Context) {
 		}
 	}
 
-	var ingress PodIngress
-	ingress.Name = ingressMgr.Name
-	ingress.Port = ingressMgr.Port
-	// Generate a unique prefix for the ingress rule
-	ingress.Prefix = fmt.Sprintf("/ingress/%s-%s", userName, uuid.New().String()[:5])
-
-	// 从 gin.Context 获取 context.Context
-	ctx := c.Request.Context()
-
-	// 将 ingress 转换为 crclient.PodIngress 类型
-	crclientIngress := crclient.PodIngress(ingress)
-
-	// 调用 CreateCustomForwardingRule 函数
-	err := crclient.CreateCustomForwardingRule(
-		ctx,
-		mgr.client, // Kubernetes client 实例
-		&pod,
-		crclientIngress,
-	)
-
-	if err != nil {
+	// 调用封装的函数创建和部署 Ingress 规则
+	if err := mgr.ProcessPodIngressRule(c.Request.Context(), &pod, ingressMgr); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	resputil.Success(c, ingress)
+	resputil.Success(c, ingressMgr)
+}
+
+func (mgr *APIServerMgr) ProcessPodIngressRule(ctx context.Context, pod *v1.Pod, ingressMgr PodIngressMgr) error {
+	// 获取 "crater.raids.io/task-user" 作为前缀的一部分
+	userName, ok := pod.Labels["crater.raids.io/task-user"]
+	if !ok {
+		return fmt.Errorf("label crater.raids.io/task-user not found")
+	}
+
+	// 创建 ingress 规则
+	ingress := PodIngress{
+		Name:   ingressMgr.Name,
+		Port:   ingressMgr.Port,
+		Prefix: fmt.Sprintf("/ingress/%s-%s", userName, uuid.New().String()[:5]), // 生成唯一前缀
+	}
+
+	// 将 ingress 转换为 crclient.PodIngress 类型
+	crclientIngress := crclient.PodIngress{
+		Name:   ingress.Name,
+		Port:   ingress.Port,
+		Prefix: ingress.Prefix,
+	}
+
+	// 确保 mgr.client 是 controller-runtime 的 client
+	if mgr.client == nil {
+		return fmt.Errorf("APIServerMgr client is nil")
+	}
+
+	// 调用 CreateCustomForwardingRule
+	err := crclient.CreateCustomForwardingRule(ctx, mgr.client, pod, crclientIngress)
+	if err != nil {
+		return fmt.Errorf("failed to create ingress rule: %w", err)
+	}
+
+	return nil
 }
 
 // DeletePodIngress deletes an ingress rule for a pod
@@ -455,53 +467,94 @@ func (mgr *APIServerMgr) CreatePodNodeport(c *gin.Context) {
 	resputil.Success(c, nodeport)
 }
 
-// processPodNodeport handles the core logic of retrieving the Pod and processing NodePort rules.
+// 获取 Pod
+func (mgr *APIServerMgr) getPodByName(ctx context.Context, namespace, podName string) (*v1.Pod, error) {
+	if namespace == "" || podName == "" {
+		return nil, fmt.Errorf("namespace or pod name is empty")
+	}
+
+	var pod v1.Pod
+	if err := mgr.client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: podName}, &pod); err != nil {
+		return nil, fmt.Errorf("failed to get Pod: %w", err)
+	}
+
+	// 确保 Pod 的 Annotations 字段被初始化
+	if pod.Annotations == nil {
+		pod.Annotations = make(map[string]string)
+	}
+
+	return &pod, nil
+}
+
+// 检查 NodePort 规则是否已存在
+func checkExistingNodePortRules(pod *v1.Pod, ruleName string) error {
+	for key := range pod.Annotations {
+		if strings.HasPrefix(key, NodePortLabelKey) {
+			var existingRule PodNodeport
+			if err := json.Unmarshal([]byte(pod.Annotations[key]), &existingRule); err == nil {
+				if existingRule.Name == ruleName {
+					return fmt.Errorf("NodePort rule with the same name already exists")
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// 创建 NodePort Service
+func (mgr *APIServerMgr) createNodePortService(ctx context.Context, pod *v1.Pod,
+	containerPort int32) (nodePort int32, serviceName string, err error) {
+	if containerPort == 0 {
+		err = fmt.Errorf("invalid container port")
+		return
+	}
+
+	nodePort, serviceName, err = crclient.CreateServiceForNodePort(ctx, mgr.client, pod, containerPort)
+	if err != nil || nodePort == 0 || serviceName == "" {
+		err = fmt.Errorf("failed to create NodePort service: %w", err)
+	}
+	return
+}
+
+// 更新 Pod Annotations
+func updatePodAnnotations(pod *v1.Pod, nodeport *PodNodeport) {
+	annotationKey := fmt.Sprintf("%s/%s", NodePortLabelKey, nodeport.Name)
+	nodeportJSON, _ := json.Marshal(nodeport)
+	pod.Annotations[annotationKey] = string(nodeportJSON)
+
+	// SSH 特殊处理
+	if nodeport.ContainerPort == SSHContainerPort {
+		pod.Annotations[AnnotationKeyOpenSSH] = "true"
+		fmt.Printf("Successfully changed AnnotationKeyOpenSSH from false to true, Pod: %s\n", pod.Name)
+	}
+}
+
+// 处理 Pod NodePort 逻辑
 func (mgr *APIServerMgr) ProcessPodNodeport(ctx context.Context, req PodContainerReq, nodeportMgr PodNodeportMgr) (*PodNodeport, error) {
 	// 检查 mgr.client 是否已初始化
 	if mgr.client == nil {
 		return nil, fmt.Errorf("client is not initialized")
 	}
 
-	// 检查输入参数有效性
-	if req.Namespace == "" || req.PodName == "" {
-		return nil, fmt.Errorf("namespace or pod name is empty")
+	// 获取 Pod
+	pod, err := mgr.getPodByName(ctx, req.Namespace, req.PodName)
+	if err != nil {
+		return nil, err
 	}
 
-	var pod v1.Pod
-	// 使用标准 context.Context 获取 Pod 信息
-	if err := mgr.client.Get(ctx, client.ObjectKey{Namespace: req.Namespace, Name: req.PodName}, &pod); err != nil {
-		return nil, fmt.Errorf("failed to get Pod: %w", err)
+	// 检查 NodePort 规则是否唯一
+	err = checkExistingNodePortRules(pod, nodeportMgr.Name)
+	if err != nil {
+		return nil, err
 	}
 
-	// 确保 Pod 的 Annotations 字段被正确初始化
-	if pod.Annotations == nil {
-		pod.Annotations = make(map[string]string)
+	// 创建 NodePort Service
+	nodePort, serviceName, err := mgr.createNodePortService(ctx, pod, nodeportMgr.ContainerPort)
+	if err != nil {
+		return nil, err
 	}
 
-	// 检查规则名称是否唯一
-	for key := range pod.Annotations {
-		if strings.HasPrefix(key, NodePortLabelKey) {
-			var existingRule PodNodeport
-			if err := json.Unmarshal([]byte(pod.Annotations[key]), &existingRule); err == nil {
-				if existingRule.Name == nodeportMgr.Name {
-					return nil, fmt.Errorf("NodePort rule with the same name already exists")
-				}
-			}
-		}
-	}
-
-	// 验证 ContainerPort 的有效性
-	if nodeportMgr.ContainerPort == 0 {
-		return nil, fmt.Errorf("invalid container port")
-	}
-
-	// 调用创建 NodePort 服务的方法
-	nodePort, serviceName, err := crclient.CreateServiceForNodePort(ctx, mgr.client, &pod, nodeportMgr.ContainerPort)
-	if err != nil || nodePort == 0 || serviceName == "" {
-		return nil, fmt.Errorf("failed to create NodePort service: %w", err)
-	}
-
-	// 构建返回的 NodePort 信息
+	// 构建 NodePort 结构体
 	nodeport := &PodNodeport{
 		Name:          nodeportMgr.Name,
 		ContainerPort: nodeportMgr.ContainerPort,
@@ -510,13 +563,11 @@ func (mgr *APIServerMgr) ProcessPodNodeport(ctx context.Context, req PodContaine
 		ServiceName:   serviceName,
 	}
 
-	// 更新 Pod 的 Annotations
-	annotationKey := fmt.Sprintf("%s/%s", NodePortLabelKey, nodeport.Name)
-	nodeportJSON, _ := json.Marshal(nodeport)
-	pod.Annotations[annotationKey] = string(nodeportJSON)
+	// 更新 Pod Annotations
+	updatePodAnnotations(pod, nodeport)
 
-	// 使用标准 context.Context 更新 Pod 信息
-	if err := mgr.client.Update(ctx, &pod); err != nil {
+	// 更新 Pod 信息
+	if err := mgr.client.Update(ctx, pod); err != nil {
 		return nil, fmt.Errorf("failed to update Pod annotations: %w", err)
 	}
 
