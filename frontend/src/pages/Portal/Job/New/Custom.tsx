@@ -16,8 +16,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiJobTemplate, apiTrainingCreate } from "@/services/api/vcjob";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiTrainingCreate } from "@/services/api/vcjob";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -28,13 +28,11 @@ import {
   XIcon,
 } from "lucide-react";
 import FormLabelMust from "@/components/form/FormLabelMust";
-import Combobox from "@/components/form/Combobox";
 import AccordionCard from "@/components/form/AccordionCard";
 import { Separator } from "@/components/ui/separator";
 import {
   exportToJsonFile,
   importFromJsonFile,
-  observabilitySchema,
   volumeMountsSchema,
   envsSchema,
   taskSchema,
@@ -43,15 +41,18 @@ import {
   ingressesSchema,
   nodeportsSchema,
   VolumeMountType,
+  exportToJsonString,
 } from "@/utils/form";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
-import { apiResourceList } from "@/services/api/resource";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageFormField } from "@/components/form/ImageFormField";
 import { VolumeMountsCard } from "@/components/form/DataMountFormField";
+import { useTemplateLoader } from "@/hooks/useTemplateLoader";
+import { MetadataFormCustom } from "@/components/form/types";
+import { ResourceFormFields } from "@/components/form/ResourceFormField";
 
 const VERSION = "20240528";
 const JOB_TYPE = "single";
@@ -68,7 +69,6 @@ const formSchema = z.object({
   task: taskSchema,
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
-  observability: observabilitySchema,
   nodeSelector: nodeSelectorSchema,
   ingresses: ingressesSchema,
   nodeports: nodeportsSchema,
@@ -82,12 +82,11 @@ export const EnvCard = "环境变量";
 export const DataMountCard = "数据挂载";
 export const TensorboardCard = "观测面板";
 export const OtherCard = "其他选项";
-export const IngressCard = "外部访问（暂不可用）";
+export const IngressCard = "外部访问";
 
 export const Component = () => {
   const [envOpen, setEnvOpen] = useState<string>();
   const [ingressOpen, setIngressOpen] = useState<string>();
-  const [tensorboardOpen, setTensorboardOpen] = useState<string>();
   const [otherOpen, setOtherOpen] = useState<string>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -105,7 +104,6 @@ export const Component = () => {
         envs: values.envs,
         ingresses: values.ingresses,
         nodeports: values.nodeports,
-        useTensorBoard: values.observability.tbEnable,
         openssh: values.openssh,
         alertEnabled: values.alertEnabled,
         selectors: values.nodeSelector.enable
@@ -117,15 +115,7 @@ export const Component = () => {
               },
             ]
           : undefined,
-        template: JSON.stringify(
-          {
-            version: VERSION,
-            type: JOB_TYPE,
-            data: currentValues,
-          },
-          null,
-          2,
-        ),
+        template: exportToJsonString(MetadataFormCustom, values),
       }),
     onSuccess: async (_, { jobName }) => {
       await Promise.all([
@@ -135,21 +125,6 @@ export const Component = () => {
       ]);
       toast.success(`作业 ${jobName} 创建成功`);
       navigate(-1);
-    },
-  });
-
-  const { data: resources } = useQuery({
-    queryKey: ["resources", "list"],
-    queryFn: () => apiResourceList(true),
-    select: (res) => {
-      return res.data.data
-        .sort((a, b) => {
-          return b.amountSingleMax - a.amountSingleMax;
-        })
-        .map((item) => ({
-          value: item.name,
-          label: `${item.amountSingleMax}卡 · ${item.label}`,
-        }));
     },
   });
 
@@ -181,9 +156,6 @@ export const Component = () => {
         },
       ],
       envs: [],
-      observability: {
-        tbEnable: false,
-      },
       alertEnabled: true,
       nodeSelector: {
         enable: false,
@@ -191,33 +163,30 @@ export const Component = () => {
     },
   });
 
-  const { mutate: fetchJobTemplate } = useMutation({
-    mutationFn: (jobName: string) => apiJobTemplate(jobName),
-    onSuccess: (response) => {
-      const jobInfo = JSON.parse(response.data.data);
-      form.reset(jobInfo.data);
-      if (jobInfo.data.envs.length > 0) {
-        setEnvOpen(EnvCard);
-      }
-      if (jobInfo.data.observability.tbEnable) {
-        setTensorboardOpen(TensorboardCard);
-      }
-      if (jobInfo.data.nodeSelector.enable || jobInfo.data.openssh) {
-        setOtherOpen(OtherCard);
-      }
-    },
-    onError: () => {
-      toast.error(`解析错误，导入配置失败`);
-    },
+  // Use the template loader hook
+  useTemplateLoader({
+    form,
+    metadata: MetadataFormCustom,
+    uiStateUpdaters: [
+      {
+        condition: (data) => data.envs.length > 0,
+        setter: setEnvOpen,
+        value: EnvCard,
+      },
+      {
+        condition: (data) =>
+          data.ingresses.length > 0 || data.nodeports.length > 0,
+        setter: setIngressOpen,
+        value: IngressCard,
+      },
+      {
+        condition: (data) =>
+          data.nodeSelector.enable || data.openssh || data.alertEnabled,
+        setter: setOtherOpen,
+        value: OtherCard,
+      },
+    ],
   });
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const fromJob = params.get("fromJob");
-    if (fromJob) {
-      fetchJobTemplate(fromJob);
-    }
-  }, [fetchJobTemplate]);
 
   const currentValues = form.watch();
 
@@ -299,9 +268,6 @@ export const Component = () => {
                         if (data.envs.length > 0) {
                           setEnvOpen(EnvCard);
                         }
-                        if (data.observability.tbEnable) {
-                          setTensorboardOpen(TensorboardCard);
-                        }
                         toast.success(`导入配置成功`);
                       })
                       .catch(() => {
@@ -317,7 +283,6 @@ export const Component = () => {
               <Button
                 variant="outline"
                 type="button"
-                // className="h-8"
                 onClick={() => {
                   form
                     .trigger()
@@ -372,93 +337,12 @@ export const Component = () => {
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-3 gap-3">
-                <FormField
-                  control={form.control}
-                  name="task.resource.cpu"
-                  render={() => (
-                    <FormItem>
-                      <FormLabel>
-                        CPU (核数)
-                        <FormLabelMust />
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          {...form.register("task.resource.cpu", {
-                            valueAsNumber: true,
-                          })}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="task.resource.gpu.count"
-                  render={() => (
-                    <FormItem>
-                      <FormLabel>
-                        GPU (卡数)
-                        <FormLabelMust />
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          {...form.register("task.resource.gpu.count", {
-                            valueAsNumber: true,
-                          })}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="task.resource.memory"
-                  render={() => (
-                    <FormItem>
-                      <FormLabel>
-                        内存 (GB)
-                        <FormLabelMust />
-                      </FormLabel>
-                      <FormControl>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            {...form.register("task.resource.memory", {
-                              valueAsNumber: true,
-                            })}
-                          />
-                        </FormControl>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={form.control}
-                name="task.resource.gpu.model"
-                render={({ field }) => (
-                  <FormItem hidden={currentValues.task.resource.gpu.count == 0}>
-                    <FormLabel>
-                      GPU 型号
-                      <FormLabelMust />
-                    </FormLabel>
-                    <FormControl>
-                      <Combobox
-                        items={resources ?? []}
-                        current={field.value ?? ""}
-                        handleSelect={(value) => field.onChange(value)}
-                        formTitle=" GPU 型号"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+              <ResourceFormFields
+                form={form}
+                cpuPath="task.resource.cpu"
+                memoryPath="task.resource.memory"
+                gpuCountPath="task.resource.gpu.count"
+                gpuModelPath="task.resource.gpu.model"
               />
               <ImageFormField form={form} name="task.image" />
               <FormField
@@ -715,48 +599,6 @@ export const Component = () => {
                   <CirclePlus className="size-4" />
                   添加{EnvCard}
                 </Button>
-              </div>
-            </AccordionCard>
-            <AccordionCard
-              cardTitle={TensorboardCard}
-              value={tensorboardOpen}
-              setValue={setTensorboardOpen}
-            >
-              <div className="mt-3 space-y-2">
-                <FormField
-                  control={form.control}
-                  name={`observability.tbEnable`}
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                      <FormLabel>启用 Tensorboard</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`observability.tbLogDir`}
-                  render={({ field }) => (
-                    <FormItem
-                      className={cn({
-                        hidden: !currentValues.observability.tbEnable,
-                      })}
-                    >
-                      <FormControl>
-                        <Input {...field} className="font-mono" />
-                      </FormControl>
-                      <FormDescription>
-                        日志路径（仅支持采集个人文件夹下日志）
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
             </AccordionCard>
             <AccordionCard

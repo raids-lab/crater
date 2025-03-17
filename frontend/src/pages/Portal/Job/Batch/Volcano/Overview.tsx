@@ -1,30 +1,9 @@
 import { ColumnDef } from "@tanstack/react-table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui-custom/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiJobDelete, JobPhase, apiJobBatchList } from "@/services/api/vcjob";
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import { DotsHorizontalIcon } from "@radix-ui/react-icons";
-import { useNavigate } from "react-router-dom";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import { toast } from "sonner";
 import { getHeader, jobToolbarConfig } from "@/pages/Portal/Job/statuses";
@@ -41,10 +20,10 @@ import { useAtomValue } from "jotai";
 import { Trash2Icon } from "lucide-react";
 import DocsButton from "@/components/button/DocsButton";
 import { JobNameCell } from "@/components/label/JobNameLabel";
+import { JobActionsMenu } from "@/components/job/JobActionsMenu";
 
 const VolcanoOverview = () => {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const jobType = useAtomValue(globalJobUrl);
 
   const batchQuery = useQuery({
@@ -176,53 +155,12 @@ const VolcanoOverview = () => {
         id: "actions",
         enableHiding: false,
         cell: ({ row }) => {
-          const taskInfo = row.original;
-          return (
-            <AlertDialog>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-8 w-8 p-0">
-                    <span className="sr-only">操作</span>
-                    <DotsHorizontalIcon className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel className="text-muted-foreground text-xs">
-                    操作
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={() => navigate(`${taskInfo.jobName}`)}
-                  >
-                    详情
-                  </DropdownMenuItem>
-                  <AlertDialogTrigger asChild>
-                    <DropdownMenuItem>删除</DropdownMenuItem>
-                  </AlertDialogTrigger>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>删除作业</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    作业「{taskInfo?.name}」将不再可见，请谨慎操作。
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>取消</AlertDialogCancel>
-                  <AlertDialogAction
-                    variant="destructive"
-                    onClick={() => deleteTask(taskInfo.jobName)}
-                  >
-                    删除
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          );
+          const jobInfo = row.original;
+          return <JobActionsMenu jobInfo={jobInfo} onDelete={deleteTask} />;
         },
       },
     ],
-    [deleteTask, navigate],
+    [deleteTask],
   );
 
   return (

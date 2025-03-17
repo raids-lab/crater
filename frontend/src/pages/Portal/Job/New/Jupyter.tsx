@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui-custom/card";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -16,46 +16,35 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiJupyterCreate, apiJobTemplate } from "@/services/api/vcjob";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiJupyterCreate } from "@/services/api/vcjob";
 import { cn } from "@/lib/utils";
 import { convertToK8sResources } from "@/utils/resource";
 import { toast } from "sonner";
-import { ChartNoAxesColumn, CirclePlus, XIcon } from "lucide-react";
+import { CirclePlus, XIcon } from "lucide-react";
 import FormLabelMust from "@/components/form/FormLabelMust";
-import Combobox from "@/components/form/Combobox";
 import AccordionCard from "@/components/form/AccordionCard";
 import { Separator } from "@/components/ui/separator";
 import {
   exportToJsonString,
-  importFromJsonString,
   nodeSelectorSchema,
   VolumeMountType,
 } from "@/utils/form";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
-import { apiResourceList } from "@/services/api/resource";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
 import { EnvCard, IngressCard, OtherCard } from "./Custom";
 import FormExportButton from "@/components/form/FormExportButton";
 import FormImportButton from "@/components/form/FormImportButton";
 import { MetadataFormJupyter } from "@/components/form/types";
-import { showErrorToast } from "@/utils/toast";
 import LoadableButton from "@/components/custom/LoadableButton";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { GrafanaIframe } from "@/pages/Embed/Monitor";
 import PageTitle from "@/components/layout/PageTitle";
 import { PublishConfigForm } from "./Publish";
-import TipBadge from "@/components/badge/TipBadge";
 import { ImageFormField } from "@/components/form/ImageFormField";
 import { VolumeMountsCard } from "@/components/form/DataMountFormField";
+import { useTemplateLoader } from "@/hooks/useTemplateLoader";
+import { ResourceFormFields } from "@/components/form/ResourceFormField";
 
 const formSchema = z.object({
   taskname: z
@@ -155,10 +144,6 @@ const formSchema = z.object({
       port: z.number().int().positive(),
     }),
   ),
-  // 添加 useTensorBoard 作为布尔类型的属性
-  observability: z.object({
-    tbEnable: z.boolean(),
-  }),
   nodeSelector: nodeSelectorSchema,
   alertEnabled: z.boolean().default(true),
   openssh: z.boolean().default(false),
@@ -173,8 +158,6 @@ export const Component = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAtomValue(globalUserInfo);
-  const [searchParams] = useSearchParams();
-  const fromJob = searchParams.get("fromJob");
 
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) => {
@@ -196,7 +179,6 @@ export const Component = () => {
         image: values.image,
         volumeMounts: values.volumeMounts,
         envs: values.envs,
-        useTensorBoard: values.observability.tbEnable,
         openssh: values.openssh,
         ingresses: values.ingresses,
         nodeports: values.nodeports,
@@ -219,23 +201,6 @@ export const Component = () => {
       );
       toast.success(`作业 ${taskname} 创建成功`);
       navigate(-1);
-    },
-  });
-
-  const { data: resources } = useQuery({
-    queryKey: ["resources", "list"],
-    queryFn: () => apiResourceList(true),
-    select: (res) => {
-      return res.data.data
-        .sort((a, b) => {
-          return b.amountSingleMax - a.amountSingleMax;
-        })
-        .filter((item) => item.amountSingleMax > 0)
-        .map((item) => ({
-          value: item.name,
-          label: item.label.toUpperCase(),
-          detail: item,
-        }));
     },
   });
 
@@ -264,9 +229,6 @@ export const Component = () => {
         },
       ],
       envs: [],
-      observability: {
-        tbEnable: false,
-      },
       alertEnabled: true,
       nodeSelector: {
         enable: false,
@@ -274,39 +236,30 @@ export const Component = () => {
     },
   });
 
-  const { mutate: loadJobTemplate } = useMutation({
-    mutationFn: (jobName: string) => apiJobTemplate(jobName),
-    onSuccess: (response) => {
-      try {
-        const jobInfo = importFromJsonString<FormSchema>(
-          MetadataFormJupyter,
-          response.data.data,
-        );
-        form.reset(jobInfo);
-        if (jobInfo.envs.length > 0) {
-          setEnvOpen(EnvCard);
-        }
-        if (jobInfo.ingresses.length > 0 || jobInfo.nodeports.length > 0) {
-          setIngressOpen(IngressCard);
-        }
-        if (jobInfo.nodeSelector.enable || jobInfo.openssh) {
-          setOtherOpen(OtherCard);
-        }
-      } catch (error) {
-        showErrorToast(error);
-      }
-    },
-    onError: () => {
-      toast.error("获取作业模板失败");
-    },
+  // Use the template loader hook
+  useTemplateLoader({
+    form,
+    metadata: MetadataFormJupyter,
+    uiStateUpdaters: [
+      {
+        condition: (data) => data.envs.length > 0,
+        setter: setEnvOpen,
+        value: EnvCard,
+      },
+      {
+        condition: (data) =>
+          data.ingresses.length > 0 || data.nodeports.length > 0,
+        setter: setIngressOpen,
+        value: IngressCard,
+      },
+      {
+        condition: (data) =>
+          data.nodeSelector.enable || data.openssh || data.alertEnabled,
+        setter: setOtherOpen,
+        value: OtherCard,
+      },
+    ],
   });
-
-  // 检查是否有来自作业模板的参数，如果有则加载模板
-  useEffect(() => {
-    if (fromJob) {
-      loadJobTemplate(fromJob);
-    }
-  }, [loadJobTemplate, fromJob]);
 
   const currentValues = form.watch();
 
@@ -431,127 +384,13 @@ export const Component = () => {
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-3 gap-3">
-                <FormField
-                  control={form.control}
-                  name="cpu"
-                  render={() => (
-                    <FormItem>
-                      <FormLabel>
-                        CPU (核数)
-                        <FormLabelMust />
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          {...form.register("cpu", { valueAsNumber: true })}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="memory"
-                  render={() => (
-                    <FormItem>
-                      <FormLabel>
-                        内存 (GiB)
-                        <FormLabelMust />
-                      </FormLabel>
-                      <FormControl>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            {...form.register("memory", {
-                              valueAsNumber: true,
-                            })}
-                          />
-                        </FormControl>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="gpu.count"
-                  render={() => (
-                    <FormItem>
-                      <FormLabel>
-                        GPU (卡数)
-                        <FormLabelMust />
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          {...form.register("gpu.count", {
-                            valueAsNumber: true,
-                          })}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={form.control}
-                name="gpu.model"
-                render={({ field }) => (
-                  <FormItem hidden={currentValues.gpu.count == 0}>
-                    <FormLabel>
-                      GPU 型号
-                      <FormLabelMust />
-                    </FormLabel>
-                    <FormControl>
-                      <Combobox
-                        items={resources ?? []}
-                        renderLabel={(item) => {
-                          return (
-                            <div className="flex w-full flex-row items-center justify-between gap-3">
-                              <p>{item.label}</p>
-                              <TipBadge
-                                title={`可申请至多 ${item.detail?.amountSingleMax} 张卡`}
-                                className="bg-highlight-purple/15 text-highlight-purple"
-                              />
-                            </div>
-                          );
-                        }}
-                        current={field.value ?? ""}
-                        handleSelect={(value) => field.onChange(value)}
-                        formTitle=" GPU 型号"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+              <ResourceFormFields
+                form={form}
+                cpuPath="cpu"
+                memoryPath="memory"
+                gpuCountPath="gpu.count"
+                gpuModelPath="gpu.model"
               />
-              <div>
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="cursor-pointer"
-                    >
-                      <ChartNoAxesColumn className="size-4" />
-                      空闲资源查询
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent className="sm:max-w-4xl">
-                    <SheetHeader>
-                      <SheetTitle>空闲资源查询</SheetTitle>
-                    </SheetHeader>
-                    <div className="h-[calc(100vh-6rem)] w-full px-4">
-                      <GrafanaIframe
-                        baseSrc={`${import.meta.env.VITE_GRAFANA_SCHEDULE}`}
-                      />
-                    </div>
-                  </SheetContent>
-                </Sheet>
-              </div>
               <ImageFormField form={form} name="image" />
             </CardContent>
           </Card>

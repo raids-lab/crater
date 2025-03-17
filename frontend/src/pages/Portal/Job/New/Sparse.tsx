@@ -127,7 +127,6 @@ export const Component = () => {
         envs: values.envs,
         ingresses: values.ingresses,
         nodeports: values.nodeports,
-        useTensorBoard: values.observability.tbEnable,
         openssh: values.openssh,
         alertEnabled: values.alertEnabled,
         runningType: values.runningType,

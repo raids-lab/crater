@@ -295,7 +295,6 @@ export interface IJupyterCreate {
   volumeMounts: VolumeMount[];
   envs: Env[];
   selectors?: NodeSelectorRequirement[];
-  useTensorBoard: boolean;
   template: string;
   alertEnabled: boolean;
   openssh: boolean;
@@ -334,9 +333,9 @@ export interface ITensorflowCreate {
   }[];
   volumeMounts: VolumeMount[];
   envs: Env[];
-  useTensorBoard: boolean;
   selectors?: NodeSelectorRequirement[];
   alertEnabled: boolean;
+  template?: string;
 }
 
 export const apiJupyterCreate = async (task: IJupyterCreate) => {

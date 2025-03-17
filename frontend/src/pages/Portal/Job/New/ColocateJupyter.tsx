@@ -180,7 +180,6 @@ export const Component = () => {
         image: values.image,
         volumeMounts: values.volumeMounts,
         envs: values.envs,
-        useTensorBoard: values.observability.tbEnable,
         alertEnabled: values.alertEnabled,
         openssh: values.openssh,
         ingresses: values.ingresses,
