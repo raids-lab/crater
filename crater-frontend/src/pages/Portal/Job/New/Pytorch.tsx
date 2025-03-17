@@ -40,6 +40,7 @@ import {
   taskSchema,
   convertToResourceList,
   nodeSelectorSchema,
+  VolumeMountType,
 } from "@/utils/form";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
@@ -180,7 +181,13 @@ export const Component = () => {
         image: "",
         ports: [],
       },
-      volumeMounts: [{ subPath: "user", mountPath: "/home/" + user.name }],
+      volumeMounts: [
+        {
+          type: VolumeMountType.FileType,
+          subPath: `user`,
+          mountPath: `/home/${user.name}`,
+        },
+      ],
       envs: [],
       observability: {
         tbEnable: false,

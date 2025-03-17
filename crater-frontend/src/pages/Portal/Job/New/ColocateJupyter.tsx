@@ -41,6 +41,7 @@ import {
   importFromJsonFile,
   nodeSelectorSchema,
   volumeMountsSchema,
+  VolumeMountType,
 } from "@/utils/form";
 import { useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
@@ -252,7 +253,13 @@ export const Component = () => {
       },
       memory: 2,
       image: "",
-      volumeMounts: [{ subPath: "user", mountPath: "/home/" + user.name }],
+      volumeMounts: [
+        {
+          type: VolumeMountType.FileType,
+          subPath: `user`,
+          mountPath: `/home/${user.name}`,
+        },
+      ],
       envs: [],
       observability: {
         tbEnable: false,
