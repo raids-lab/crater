@@ -3,7 +3,6 @@ import { CardTitle } from "@/components/ui-custom/card";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { FileSelectDialog } from "@/components/file/FileSelectDialog";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -14,7 +13,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -42,14 +40,15 @@ import {
   exportToJsonFile,
   importFromJsonFile,
   nodeSelectorSchema,
+  volumeMountsSchema,
 } from "@/utils/form";
 import { useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { apiResourceList } from "@/services/api/resource";
-import { apiGetDataset } from "@/services/api/dataset";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
-import { DataMountCard, EnvCard, TensorboardCard, OtherCard } from "./Custom";
+import { EnvCard, TensorboardCard, OtherCard } from "./Custom";
+import { VolumeMountsCard } from "@/components/form/DataMountFormField";
 
 const VERSION = "20240528";
 const JOB_TYPE = "jupyter";
@@ -126,30 +125,7 @@ const formSchema = z.object({
       port: z.number().int().positive(),
     }),
   ),
-  volumeMounts: z.array(
-    z.object({
-      subPath: z.string().min(1, {
-        message: "挂载源不能为空",
-      }),
-      mountPath: z
-        .string()
-        .min(1, {
-          message: "挂载到容器中的路径不能为空",
-        })
-        .refine((value) => value.startsWith("/"), {
-          message: "路径需以单个斜杠 `/` 开头",
-        })
-        .refine((value) => !value.includes(".."), {
-          message: "禁止使用相对路径 `..`",
-        })
-        .refine((value) => !value.includes("//"), {
-          message: "避免使用多个连续的斜杠 `//`",
-        })
-        .refine((value) => value !== "/", {
-          message: "禁止挂载到根目录 `/`",
-        }),
-    }),
-  ),
+  volumeMounts: volumeMountsSchema,
   // 添加 useTensorBoard 作为布尔类型的属性
   observability: z
     .object({
@@ -178,7 +154,6 @@ const formSchema = z.object({
 type FormSchema = z.infer<typeof formSchema>;
 
 export const Component = () => {
-  const [dataMountOpen, setDataMountOpen] = useState<string>();
   const [envOpen, setEnvOpen] = useState<string>();
   const [tensorboardOpen, setTensorboardOpen] = useState<string>();
   const [otherOpen, setOtherOpen] = useState<string>();
@@ -250,16 +225,6 @@ export const Component = () => {
       }));
     },
   });
-  const datasetInfo = useQuery({
-    queryKey: ["datsets"],
-    queryFn: () => apiGetDataset(),
-    select: (res) => {
-      return res.data.data.map((item) => ({
-        value: item.url.replace(/^\/+/, ""),
-        label: item.name,
-      }));
-    },
-  });
 
   const { data: resources } = useQuery({
     queryKey: ["resources", "list"],
@@ -305,9 +270,7 @@ export const Component = () => {
     onSuccess: (response) => {
       const jobInfo = JSON.parse(response.data.data);
       form.reset(jobInfo.data);
-      if (jobInfo.data.volumeMounts.length > 0) {
-        setDataMountOpen(DataMountCard);
-      }
+
       if (jobInfo.data.envs.length > 0) {
         setEnvOpen(EnvCard);
       }
@@ -332,15 +295,6 @@ export const Component = () => {
   }, [fetchJobTemplate]);
 
   const currentValues = form.watch();
-
-  const {
-    fields: volumeMountFields,
-    append: volumeMountAppend,
-    remove: volumeMountRemove,
-  } = useFieldArray<FormSchema>({
-    name: "volumeMounts",
-    control: form.control,
-  });
 
   const {
     fields: envFields,
@@ -399,9 +353,7 @@ export const Component = () => {
                     )
                       .then((data) => {
                         form.reset(data);
-                        if (data.volumeMounts.length > 0) {
-                          setDataMountOpen(DataMountCard);
-                        }
+
                         if (data.envs.length > 0) {
                           setEnvOpen(EnvCard);
                         }
@@ -588,117 +540,7 @@ export const Component = () => {
             </CardContent>
           </Card>
           <div className="flex flex-col gap-4">
-            <AccordionCard
-              cardTitle={DataMountCard}
-              value={dataMountOpen}
-              setValue={setDataMountOpen}
-            >
-              <div className="mt-3 space-y-5">
-                {volumeMountFields.map((field, index) => (
-                  <div key={field.id}>
-                    <Separator
-                      className={cn("mb-5", index === 0 && "hidden")}
-                    />
-                    <div className="space-y-5">
-                      <FormField
-                        control={form.control}
-                        name={`volumeMounts.${index}.subPath`}
-                        render={({ field }) => (
-                          <FormItem className="relative">
-                            <FormLabel>
-                              挂载源 {index + 1}
-                              <FormLabelMust />
-                            </FormLabel>
-                            <button
-                              onClick={() => volumeMountRemove(index)}
-                              className="data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none"
-                            >
-                              <XIcon className="size-4" />
-                              <span className="sr-only">Close</span>
-                            </button>
-                            <FormControl>
-                              <Tabs defaultValue="file" className="w-full">
-                                <TabsList className="grid w-full grid-cols-2">
-                                  <TabsTrigger value="file">
-                                    文件系统
-                                  </TabsTrigger>
-                                  <TabsTrigger
-                                    value="dataset"
-                                    // onClick={handleTabClick}
-                                  >
-                                    数据集
-                                  </TabsTrigger>
-                                </TabsList>
-                                <TabsContent value="file">
-                                  <FileSelectDialog
-                                    value={field.value.split("/").pop()}
-                                    handleSubmit={(item) => {
-                                      field.onChange(item.id);
-                                      form.setValue(
-                                        `volumeMounts.${index}.mountPath`,
-                                        `/mnt/${item.name}`,
-                                      );
-                                    }}
-                                  />
-                                </TabsContent>
-                                <TabsContent value="dataset">
-                                  <Combobox
-                                    items={datasetInfo.data ?? []}
-                                    current={field.value}
-                                    handleSelect={(value) => {
-                                      field.onChange(value);
-                                      form.setValue(
-                                        `volumeMounts.${index}.mountPath`,
-                                        `/mnt/${value.split("/").pop()}`,
-                                      );
-                                    }}
-                                    formTitle="数据集"
-                                  />
-                                </TabsContent>
-                              </Tabs>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`volumeMounts.${index}.mountPath`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>
-                              挂载点 {index + 1}
-                              <FormLabelMust />
-                            </FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormDescription>
-                              挂载到容器中的路径
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full"
-                  onClick={() =>
-                    volumeMountAppend({
-                      subPath: "",
-                      mountPath: "",
-                    })
-                  }
-                >
-                  <CirclePlus className="size-4" />
-                  添加{DataMountCard}
-                </Button>
-              </div>
-            </AccordionCard>{" "}
+            <VolumeMountsCard form={form} />
             <AccordionCard
               cardTitle={EnvCard}
               value={envOpen}

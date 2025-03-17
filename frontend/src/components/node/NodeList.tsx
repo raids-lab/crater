@@ -205,11 +205,10 @@ export const nodeColumns: ColumnDef<ClusterNodeInfo>[] = [
           {Object.keys(labels)
             .filter((k) => k.includes("nvidia.com/gpu.product"))
             .map((key) => (
-              <TooltipProvider delayDuration={100}>
+              <TooltipProvider delayDuration={100} key={key}>
                 <Tooltip>
-                  <TooltipTrigger>
+                  <TooltipTrigger asChild>
                     <Badge
-                      key={key}
                       className="cursor-help text-xs font-normal"
                       variant={"outline"}
                     >

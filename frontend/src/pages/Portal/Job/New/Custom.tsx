@@ -3,7 +3,6 @@ import { CardTitle } from "@/components/ui-custom/card";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { FileSelectDialog } from "@/components/file/FileSelectDialog";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -18,12 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  apiJobTemplate,
-  apiJTaskImageList,
-  apiTrainingCreate,
-  JobType,
-} from "@/services/api/vcjob";
+import { apiJobTemplate, apiTrainingCreate } from "@/services/api/vcjob";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -55,7 +49,8 @@ import { apiResourceList } from "@/services/api/resource";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
 import { Textarea } from "@/components/ui/textarea";
-import { apiGetDataset } from "@/services/api/dataset";
+import { ImageFormField } from "@/components/form/ImageFormField";
+import { VolumeMountsCard } from "@/components/form/DataMountFormField";
 
 const VERSION = "20240528";
 const JOB_TYPE = "single";
@@ -89,7 +84,6 @@ export const OtherCard = "其他选项";
 export const IngressCard = "外部访问（暂不可用）";
 
 export const Component = () => {
-  const [dataMountOpen, setDataMountOpen] = useState<string>();
   const [envOpen, setEnvOpen] = useState<string>();
   const [ingressOpen, setIngressOpen] = useState<string>();
   const [tensorboardOpen, setTensorboardOpen] = useState<string>();
@@ -157,26 +151,7 @@ export const Component = () => {
         }));
     },
   });
-  const imagesInfo = useQuery({
-    queryKey: ["jupyter", "images"],
-    queryFn: () => apiJTaskImageList(JobType.Custom),
-    select: (res) => {
-      return res.data.data.images.map((item) => ({
-        value: item.imageLink,
-        label: item.imageLink,
-      }));
-    },
-  });
-  const datasetInfo = useQuery({
-    queryKey: ["datsets"],
-    queryFn: () => apiGetDataset(),
-    select: (res) => {
-      return res.data.data.map((item) => ({
-        value: item.url.replace(/^\/+/, ""),
-        label: item.name,
-      }));
-    },
-  });
+
   // 1. Define your form.
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
@@ -214,9 +189,6 @@ export const Component = () => {
     onSuccess: (response) => {
       const jobInfo = JSON.parse(response.data.data);
       form.reset(jobInfo.data);
-      if (jobInfo.data.volumeMounts.length > 0) {
-        setDataMountOpen(DataMountCard);
-      }
       if (jobInfo.data.envs.length > 0) {
         setEnvOpen(EnvCard);
       }
@@ -241,15 +213,6 @@ export const Component = () => {
   }, [fetchJobTemplate]);
 
   const currentValues = form.watch();
-
-  const {
-    fields: volumeMountFields,
-    append: volumeMountAppend,
-    remove: volumeMountRemove,
-  } = useFieldArray<FormSchema>({
-    name: "volumeMounts",
-    control: form.control,
-  });
 
   const {
     fields: ingressFields,
@@ -326,9 +289,6 @@ export const Component = () => {
                     )
                       .then((data) => {
                         form.reset(data);
-                        if (data.volumeMounts.length > 0) {
-                          setDataMountOpen(DataMountCard);
-                        }
                         if (data.envs.length > 0) {
                           setEnvOpen(EnvCard);
                         }
@@ -493,27 +453,7 @@ export const Component = () => {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="task.image"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      容器镜像
-                      <FormLabelMust />
-                    </FormLabel>
-                    <FormControl>
-                      <Combobox
-                        items={imagesInfo.data ?? []}
-                        current={field.value}
-                        handleSelect={(value) => field.onChange(value)}
-                        formTitle="镜像"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <ImageFormField form={form} name="task.image" />
               <FormField
                 control={form.control}
                 name="task.command"
@@ -558,114 +498,7 @@ export const Component = () => {
             </CardContent>
           </Card>
           <div className="flex flex-col gap-4">
-            <AccordionCard
-              cardTitle={DataMountCard}
-              value={dataMountOpen}
-              setValue={setDataMountOpen}
-            >
-              <div className="mt-3 space-y-5">
-                {volumeMountFields.map((field, index) => (
-                  <div key={field.id}>
-                    <Separator
-                      className={cn("mb-5", index === 0 && "hidden")}
-                    />
-                    <div className="space-y-5">
-                      <FormField
-                        control={form.control}
-                        name={`volumeMounts.${index}.subPath`}
-                        render={({ field }) => (
-                          <FormItem className="relative">
-                            <FormLabel>
-                              挂载源 {index + 1}
-                              <FormLabelMust />
-                            </FormLabel>
-                            <button
-                              onClick={() => volumeMountRemove(index)}
-                              className="data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none"
-                            >
-                              <XIcon className="size-4" />
-                              <span className="sr-only">Close</span>
-                            </button>
-                            <FormControl>
-                              <Tabs defaultValue="file" className="w-full">
-                                <TabsList className="grid w-full grid-cols-2">
-                                  <TabsTrigger value="file">
-                                    文件系统
-                                  </TabsTrigger>
-                                  <TabsTrigger value="dataset">
-                                    数据集
-                                  </TabsTrigger>
-                                </TabsList>
-                                <TabsContent value="file">
-                                  <FileSelectDialog
-                                    value={field.value.split("/").pop()}
-                                    handleSubmit={(item) => {
-                                      field.onChange(item.id);
-                                      form.setValue(
-                                        `volumeMounts.${index}.mountPath`,
-                                        `/mnt/${item.name}`,
-                                      );
-                                    }}
-                                  />
-                                </TabsContent>
-                                <TabsContent value="dataset">
-                                  <Combobox
-                                    items={datasetInfo.data ?? []}
-                                    current={field.value}
-                                    handleSelect={(value) => {
-                                      field.onChange(value);
-                                      form.setValue(
-                                        `volumeMounts.${index}.mountPath`,
-                                        `/mnt/${value.split("/").pop()}`,
-                                      );
-                                    }}
-                                    formTitle="数据集"
-                                  />
-                                </TabsContent>
-                              </Tabs>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`volumeMounts.${index}.mountPath`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>
-                              挂载点 {index + 1}
-                              <FormLabelMust />
-                            </FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormDescription>
-                              挂载到容器中的路径
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full"
-                  onClick={() =>
-                    volumeMountAppend({
-                      subPath: "",
-                      mountPath: "",
-                    })
-                  }
-                >
-                  <CirclePlus className="size-4" />
-                  添加{DataMountCard}
-                </Button>
-              </div>
-            </AccordionCard>{" "}
+            <VolumeMountsCard form={form} />
             <AccordionCard
               cardTitle={IngressCard}
               value={ingressOpen}
