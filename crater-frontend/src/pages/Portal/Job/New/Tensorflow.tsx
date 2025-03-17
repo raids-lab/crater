@@ -41,6 +41,7 @@ import {
   convertToResourceList,
   nodeSelectorSchema,
   VolumeMountType,
+  exportToJsonString,
 } from "@/utils/form";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
@@ -50,6 +51,8 @@ import { globalUserInfo } from "@/utils/store";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageFormField } from "@/components/form/ImageFormField";
 import { VolumeMountsCard } from "@/components/form/DataMountFormField";
+import { MetadataFormTensorflow } from "@/components/form/types";
+import { useTemplateLoader } from "@/hooks/useTemplateLoader";
 
 const VERSION = "20240528";
 const JOB_TYPE = "tensorflow";
@@ -112,7 +115,6 @@ export const Component = () => {
         ],
         volumeMounts: values.volumeMounts,
         envs: values.envs,
-        useTensorBoard: values.observability.tbEnable,
         alertEnabled: values.alertEnabled,
         selectors: values.nodeSelector.enable
           ? [
@@ -123,6 +125,7 @@ export const Component = () => {
               },
             ]
           : undefined,
+        template: exportToJsonString(MetadataFormTensorflow, values),
       }),
     onSuccess: async (_, { jobName: taskname }) => {
       await Promise.all([
@@ -197,6 +200,24 @@ export const Component = () => {
         enable: false,
       },
     },
+  });
+
+  // Use the template loader hook
+  useTemplateLoader({
+    form,
+    metadata: MetadataFormTensorflow,
+    uiStateUpdaters: [
+      {
+        condition: (data) => data.envs.length > 0,
+        setter: setEnvOpen,
+        value: EnvCard,
+      },
+      {
+        condition: (data) => data.nodeSelector.enable || data.alertEnabled,
+        setter: setOtherOpen,
+        value: OtherCard,
+      },
+    ],
   });
 
   const currentValues = form.watch();

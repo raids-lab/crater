@@ -13,6 +13,21 @@ export const MetadataFormJupyter: MetadataFormType = {
   type: "jupyter",
 };
 
+export const MetadataFormCustom: MetadataFormType = {
+  version: "20250317",
+  type: "custom",
+};
+
+export const MetadataFormTensorflow: MetadataFormType = {
+  version: "20250313",
+  type: "tensorflow",
+};
+
+export const MetadataFormPytorch: MetadataFormType = {
+  version: "20250313",
+  type: "pytorch",
+};
+
 export const MetadataFormDockerfile: MetadataFormType = {
   version: "20241208",
   type: "dockerfile",

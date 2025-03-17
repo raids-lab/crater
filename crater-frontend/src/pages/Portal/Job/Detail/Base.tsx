@@ -239,7 +239,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
                     }}
                   >
                     {jobStatus === JobStatus.NotStarted
-                      ? "取消"
+                      ? "确认"
                       : jobStatus === JobStatus.Running
                         ? "停止"
                         : "删除"}
