@@ -82,6 +82,7 @@ func (mgr *OperationsMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.PUT("/keep/:name", mgr.SetKeepWhenLowResourceUsage)
 	g.DELETE("/job", mgr.DeleteUnUsedJobList)
 	g.DELETE("/cleanup", mgr.CleanupJobs)
+	g.DELETE("/waiting/jupyter", mgr.CancelWaitingJupyterJobs)
 }
 
 type FreeJobRequest struct {
@@ -94,6 +95,10 @@ type FreeJobRequest struct {
 type CleanupJobsRequest struct {
 	BatchDays       *int `form:"batchDays"`
 	InteractiveDays *int `form:"interactiveDays"`
+}
+
+type CancelWaitingJupyterJobsRequest struct {
+	WaitMinitues int `form:"waitMinitues" binding:"required"`
 }
 
 func (mgr *OperationsMgr) getJobWhiteList(c *gin.Context) ([]string, error) {
@@ -512,4 +517,100 @@ func (mgr *OperationsMgr) getLeastUsedGPUJobs(c *gin.Context, duration, util int
 		}
 	}
 	return leastUsedJobs
+}
+
+// DeleteUnscheduledJupyterJobs godoc
+// @Summary Delete unscheduled jupyter jobs
+// @Description check pending jupyter jobs, delete if not scheduled
+// @Tags Operations
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param use query CancelWaitingJupyterJobsRequest true "waitMinitues"
+// @Success 200 {object} resputil.Response[any] "Success"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/operations/waiting/jupyter [delete]
+func (mgr *OperationsMgr) CancelWaitingJupyterJobs(c *gin.Context) {
+	var req CancelWaitingJupyterJobsRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	deletedJobs := mgr.deleteUnscheduledJupyterJobs(c, req.WaitMinitues)
+	resputil.Success(c, deletedJobs)
+}
+
+func (mgr *OperationsMgr) deleteUnscheduledJupyterJobs(c *gin.Context, waitMinitues int) []string {
+	jobDB := query.Job
+	// status = batch.Pending, jobType = model.JobTypeJupyter, now - CreationTimestamp > waitMinitues
+	jobs, err := jobDB.WithContext(c).Where(
+		jobDB.Status.Eq(string(batch.Pending)),
+		jobDB.JobType.Eq(string(model.JobTypeJupyter)),
+		jobDB.CreationTimestamp.Lt(time.Now().Add(-time.Duration(waitMinitues)*time.Minute)),
+	).Find()
+
+	if err != nil {
+		logutils.Log.Errorf("Failed to get unscheduled jupyter jobs: %v", err)
+		return nil
+	}
+
+	deletedJobs := []string{}
+	for _, job := range jobs {
+		if mgr.isJobscheduled(c, job.JobName) {
+			continue
+		}
+
+		// delete job
+		vcjob := &batch.Job{}
+		namespace := config.GetConfig().Workspace.Namespace
+		if err := mgr.client.Get(c, client.ObjectKey{Name: job.JobName, Namespace: namespace}, vcjob); err != nil {
+			logutils.Log.Errorf("Failed to get job %s: %v", job.JobName, err)
+			continue
+		}
+
+		if err := mgr.client.Delete(c, vcjob); err != nil {
+			logutils.Log.Errorf("Failed to delete job %s: %v", job.JobName, err)
+			continue
+		}
+
+		deletedJobs = append(deletedJobs, job.JobName)
+	}
+
+	return deletedJobs
+}
+
+// 所有Pod被schedule，返回true；否则返回false
+func (mgr *OperationsMgr) isJobscheduled(c *gin.Context, jobName string) bool {
+	// get pods: namespace=config.GetConfig().Workspace.Namespace, label['volcano.sh/job-name']=jobName
+	namespace := config.GetConfig().Workspace.Namespace
+	pods, err := mgr.kubeClient.CoreV1().Pods(namespace).List(c, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("volcano.sh/job-name=%s", jobName),
+	})
+	if err != nil {
+		logutils.Log.Errorf("Failed to get pods: %v", err)
+		return false
+	}
+
+	result := true
+	for i := range pods.Items {
+		pod := &pods.Items[i]
+		// check pod's conditions: type==PodScheduled && status==True
+		thisPodScheduled := false
+		for _, condition := range pod.Status.Conditions {
+			if condition.Type != "PodScheduled" {
+				continue
+			}
+			if condition.Status == "True" {
+				thisPodScheduled = true
+				break
+			}
+			if condition.Status == "False" {
+				return false
+			}
+		}
+		result = result && thisPodScheduled
+	}
+	return result
 }
