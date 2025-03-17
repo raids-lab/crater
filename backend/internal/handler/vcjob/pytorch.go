@@ -59,6 +59,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	}
 	annotations := map[string]string{
 		AnnotationKeyTaskName:     req.Name,
+		AnnotationKeyTaskTemplate: req.Template,
 		AnnotationKeyAlertEnabled: strconv.FormatBool(req.AlertEnabled),
 	}
 

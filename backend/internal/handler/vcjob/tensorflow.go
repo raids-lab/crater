@@ -37,7 +37,6 @@ type (
 		CreateJobCommon `json:",inline"`
 		Name            string    `json:"name" binding:"required"`
 		Tasks           []TaskReq `json:"tasks"`
-		AlertEnabled    bool      `json:"alertEnabled"`
 	}
 )
 
@@ -95,6 +94,7 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	}
 	annotations := map[string]string{
 		AnnotationKeyTaskName:     req.Name,
+		AnnotationKeyTaskTemplate: req.Template,
 		AnnotationKeyAlertEnabled: strconv.FormatBool(req.AlertEnabled),
 	}
 
