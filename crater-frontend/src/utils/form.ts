@@ -58,11 +58,18 @@ export const taskSchema = z.object({
 
 export type TaskSchema = z.infer<typeof taskSchema>;
 
+export enum VolumeMountType {
+  FileType = 1,
+  DataType,
+}
+
 export const volumeMountsSchema = z.array(
   z.object({
+    type: z.number().int(),
     subPath: z.string().min(1, {
       message: "挂载源不能为空",
     }),
+    datasetID: z.number().int().nonnegative().optional(),
     mountPath: z
       .string()
       .min(1, {

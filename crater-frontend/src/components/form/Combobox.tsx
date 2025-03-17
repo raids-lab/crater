@@ -62,7 +62,7 @@ function Combobox<T>({
             )}
             disabled={disabled}
           >
-            <p className="truncate">
+            <p className="truncate lg:max-w-60">
               {current
                 ? items.find((dataset) => dataset.value === current)?.label
                 : `选择${formTitle}`}
