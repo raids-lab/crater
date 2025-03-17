@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
 )
 
@@ -319,23 +321,24 @@ func (mgr *DatasetMgr) CreateDataset(c *gin.Context) {
 // 正则去除前缀/后的url,重定向到实际位置，如在user后加上user.space的路径
 func redirectDatasetURL(c *gin.Context, url string, token util.JWTMessage) (string, error) {
 	if strings.HasPrefix(url, "public") {
-		return url, nil
+		subPath := filepath.Clean(config.GetConfig().PublicSpacePrefix + strings.TrimPrefix(url, "public"))
+		return subPath, nil
 	} else if strings.HasPrefix(url, "account") {
 		a := query.Account
 		account, aerr := a.WithContext(c).Where(a.ID.Eq(token.AccountID)).First()
 		if aerr != nil {
 			return "", aerr
 		}
-		realURL := "account" + account.Space + strings.TrimPrefix(url, "account")
-		return realURL, nil
+		subPath := filepath.Clean(config.GetConfig().AccountSpacePrefix + account.Space + strings.TrimPrefix(url, "account"))
+		return subPath, nil
 	} else if strings.HasPrefix(url, "user") {
 		u := query.User
 		user, uerr := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
 		if uerr != nil {
 			return "", uerr
 		}
-		realURL := "user/" + user.Space + strings.TrimPrefix(url, "user")
-		return realURL, nil
+		subPath := config.GetConfig().UserSpacePrefix + "/" + user.Space + strings.TrimPrefix(url, "user")
+		return subPath, nil
 	} else {
 		return "", fmt.Errorf("dataset url err")
 	}
