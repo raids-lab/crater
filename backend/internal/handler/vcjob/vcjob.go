@@ -61,7 +61,7 @@ func (mgr *VolcanojobMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("", mgr.GetUserJobs)
-	g.GET("all", mgr.GetAllJobs)
+	g.GET("all", mgr.GetAllJobsInDays)
 	g.DELETE(":name", mgr.DeleteJob)
 
 	g.GET(":name/detail", mgr.GetJobDetail)
@@ -88,7 +88,7 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 }
 
 func (mgr *VolcanojobMgr) RegisterAdmin(g *gin.RouterGroup) {
-	g.GET("", mgr.GetAllJobs)
+	g.GET("", mgr.GetAllJobsInDays)
 	// delete job
 	g.DELETE(":name", mgr.DeleteJobForAdmin)
 }
@@ -323,21 +323,47 @@ func (mgr *VolcanojobMgr) GetUserJobs(c *gin.Context) {
 	resputil.Success(c, jobList)
 }
 
-// GetAllJobs godoc
+// GetAllJobsInDays godoc
 // @Summary Get all of the jobs
-// @Description Get all jobs  by client-go
+// @Description 返回指定天数内的所有作业，默认为14天
 // @Tags VolcanoJob
 // @Accept json
 // @Produce json
 // @Security Bearer
+// @Param days query int false "Number of days to look back, default is 14" default(14)
 // @Success 200 {object} resputil.Response[any] "admin get Volcano Job List"
 // @Failure 400 {object} resputil.Response[any] "admin Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/vcjobs/all [get]
-func (mgr *VolcanojobMgr) GetAllJobs(c *gin.Context) {
+func (mgr *VolcanojobMgr) GetAllJobsInDays(c *gin.Context) {
+	type QueryParams struct {
+		Days int `form:"days"`
+	}
+
+	var req QueryParams
+	if err := c.ShouldBindQuery(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	// Use default value of 7 if days parameter is not provided or is zero
+	days := 7
+	if req.Days > 0 {
+		days = req.Days
+	}
+
 	j := query.Job
-	// TODO(liyilong): j.WithContext(c).Unscoped().Preload(j.Account).Preload(query.Job.User).Find()
-	jobs, err := j.WithContext(c).Preload(j.Account).Preload(query.Job.User).Find()
+	q := j.WithContext(c).Preload(j.Account).Preload(query.Job.User)
+
+	// If days is -1, don't apply time filter (return all jobs)
+	// Otherwise apply the time filter for the specified days
+	if req.Days != -1 {
+		now := time.Now()
+		lookbackPeriod := now.AddDate(0, 0, -days)
+		q = q.Where(j.CreatedAt.Gte(lookbackPeriod))
+	}
+
+	jobs, err := q.Find()
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
