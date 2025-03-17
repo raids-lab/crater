@@ -112,16 +112,11 @@ func getNodeRole(node *corev1.Node) string {
 	return "worker"
 }
 
-func calculateCPULoad(ratio float32, cpu int) string {
-	// 计算当前CPU使用量
-	loadScaleFactor := 100
-	load := int(ratio * float32(cpu) / float32(loadScaleFactor))
-	// 将计算结果转换为字符串，并在末尾加上'm'
-	result := fmt.Sprintf("%dm", load)
-	return result
+func formatCPULoad(cpu float32) string {
+	return fmt.Sprintf("%.2f", cpu)
 }
 
-func fomatMemoryLoad(mem int) string {
+func formatMemoryLoad(mem int) string {
 	trans := 1024
 	mem_ := mem / trans
 	if mem_ < trans {
@@ -166,8 +161,8 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 	for i := range nodes.Items {
 		node := &nodes.Items[i]
 		allocatedInfo := payload.AllocatedInfo{
-			CPU: calculateCPULoad(CPUMap[node.Name], int(node.Status.Capacity.Cpu().MilliValue())),
-			Mem: fomatMemoryLoad(MemMap[node.Name]),
+			CPU: formatCPULoad(CPUMap[node.Name]),
+			Mem: formatMemoryLoad(MemMap[node.Name]),
 			GPU: fmt.Sprintf("%d", GPUMap[node.Name]),
 		}
 		gpuCount := nc.getNodeGPUCount(node.Name)
