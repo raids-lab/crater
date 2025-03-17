@@ -24,6 +24,7 @@ export type KanikoInfoResponse = {
   podName: string;
   podNameSpace: string;
   creatorName: string;
+  nickName: string;
 };
 
 export type ListImageResponse = {
@@ -32,7 +33,6 @@ export type ListImageResponse = {
 
 export type ImageInfoResponse = {
   ID: number;
-  // name: string;
   imageLink: string;
   description: string;
   status: string;
@@ -40,6 +40,7 @@ export type ImageInfoResponse = {
   isPublic: boolean;
   taskType: JobType;
   creatorName: string;
+  nickName: string;
 };
 
 export type KanikoLogResponse = {
@@ -63,7 +64,7 @@ export const getHeader = (key: string): string => {
   switch (key) {
     case "imageLink":
       return "镜像地址";
-    case "creatorName":
+    case "nickName":
       return "提交者";
     case "status":
       return "状态";
@@ -158,11 +159,15 @@ export interface KanikoCreate {
   image: string;
   packages: string;
   requirements: string;
+  name: string;
+  tag: string;
 }
 
 export interface DockerfileCreate {
   description: string;
   dockerfile: string;
+  name: string;
+  tag: string;
 }
 
 export interface ImageUpload {
@@ -212,8 +217,9 @@ export const ImageTaskType = {
 export const imageLinkRegex =
   /^[a-zA-Z0-9.-]+(\/[a-zA-Z0-9_.-]+)+:[a-zA-Z0-9_](?:[a-zA-Z0-9_.-]*[a-zA-Z0-9_])?$/;
 
-export const imageNameRegex = /^([\w.-]+)\/([\w.-]+):([\w.-]+)$/;
-export const imageTagRegex = /:([\w.-]+)$/;
+export const imageNameRegex = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
+export const imageTagRegex =
+  /^(?=.{1,128}$)(?![-.])([a-zA-Z0-9_.+-]*)(?<![-.])$/;
 
 export function parseImageLink(imageLink: string) {
   const parts = imageLink.split(":");
@@ -260,9 +266,6 @@ export const apiUserGetKaniko = (id: string) =>
   instance.get<IResponse<KanikoInfoResponse>>(
     `${VERSION}/images/getbyid?id=${id}`,
   );
-
-export const apiUserLogKaniko = (id: string) =>
-  instance.get<IResponse<KanikoLogResponse>>(`${VERSION}/images/log?id=${id}`);
 
 export const apiUserListImage = () =>
   instance.get<IResponse<ListImageResponse>>(`${VERSION}/images/image`);

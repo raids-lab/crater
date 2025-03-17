@@ -4,14 +4,6 @@ import { type FC, useEffect, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTable } from "@/components/custom/DataTable";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { ImageUploadForm } from "./UploadForm";
@@ -221,14 +213,11 @@ export const ImageListTable: FC<ImageListTableProps> = ({
       ),
     },
     {
-      accessorKey: "creatorName",
+      accessorKey: "nickName",
       header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={getHeader("creatorName")}
-        />
+        <DataTableColumnHeader column={column} title={getHeader("nickName")} />
       ),
-      cell: ({ row }) => <div>{row.getValue("creatorName")}</div>,
+      cell: ({ row }) => <div>{row.getValue("nickName")}</div>,
     },
     {
       accessorKey: "isPublic",
@@ -282,113 +271,117 @@ export const ImageListTable: FC<ImageListTableProps> = ({
   ];
 
   return (
-    <DataTable
-      info={{
-        title: "镜像列表",
-        description: "展示可用的公共或私有镜像，在作业提交时可供选择",
-      }}
-      query={imageInfo}
-      columns={columns}
-      toolbarConfig={toolbarConfig}
-      className="col-span-3"
-      multipleHandlers={[
-        {
-          title: (rows) => `删除 ${rows.length} 个镜像链接`,
-          description: (rows) => (
-            <div className="border-destructive/20 bg-destructive/5 rounded-md border px-4 py-3">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="text-destructive mt-0.5 h-5 w-5 shrink-0" />
-                <div>
-                  <p className="text-destructive font-medium">
-                    以下镜像链接将被删除，确认要继续吗？
-                  </p>
-                  <p className="text-muted-foreground mt-1 text-sm">
-                    {"『" +
-                      rows
-                        .map((row) => row.original.description)
-                        .join("』,『") +
-                      "』"}
-                  </p>
+    <>
+      <DataTable
+        info={{
+          title: "镜像列表",
+          description: "展示可用的公共或私有镜像，在作业提交时可供选择",
+        }}
+        query={imageInfo}
+        columns={columns}
+        toolbarConfig={toolbarConfig}
+        className="col-span-3"
+        multipleHandlers={[
+          {
+            title: (rows) => `删除 ${rows.length} 个镜像链接`,
+            description: (rows) => (
+              <div className="border-destructive/20 bg-destructive/5 rounded-md border px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="text-destructive mt-0.5 h-5 w-5 shrink-0" />
+                  <div>
+                    <p className="text-destructive font-medium">
+                      以下镜像链接将被删除，确认要继续吗？
+                    </p>
+                    <p className="text-muted-foreground mt-1 text-sm">
+                      {"『" +
+                        rows
+                          .map((row) => row.original.description)
+                          .join("』,『") +
+                        "』"}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ),
-          icon: <Trash2Icon className="text-destructive" />,
-          handleSubmit: (rows) => {
-            const ids = rows.map((row) => row.original.ID);
-            deleteUserImageList(ids);
+            ),
+            icon: <Trash2Icon className="text-destructive" />,
+            handleSubmit: (rows) => {
+              const ids = rows.map((row) => row.original.ID);
+              deleteUserImageList(ids);
+            },
+            isDanger: true,
           },
-          isDanger: true,
-        },
-        {
-          title: (rows) => `检测 ${rows.length} 个镜像链接`,
-          description: (rows) => (
-            <div className="rounded-md border border-green-600/20 bg-green-600/5 px-4 py-3">
-              <div className="flex items-start gap-3">
-                <SquareCheckBig className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
-                <div>
-                  <p className="font-medium text-green-600">
-                    以下镜像链接将被检测
-                  </p>
-                  <p className="text-muted-foreground mt-1 text-sm">
-                    {"『" +
-                      rows
-                        .map((row) => row.original.description)
-                        .join("』,『") +
-                      "』"}
-                  </p>
+          {
+            title: (rows) => `检测 ${rows.length} 个镜像链接`,
+            description: (rows) => (
+              <div className="rounded-md border border-green-600/20 bg-green-600/5 px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <SquareCheckBig className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
+                  <div>
+                    <p className="font-medium text-green-600">
+                      以下镜像链接将被检测
+                    </p>
+                    <p className="text-muted-foreground mt-1 text-sm">
+                      {"『" +
+                        rows
+                          .map((row) => row.original.description)
+                          .join("』,『") +
+                        "』"}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ),
-          icon: <CheckCheck className="text-green-600" />,
-          handleSubmit: (rows) => {
-            setSelectedLinkPairs(
-              rows.map((row) => ({
-                id: row.original.ID,
-                imageLink: row.original.imageLink,
-                description: row.original.description,
-                creator: row.original.creatorName,
-              })),
-            );
-            setCheckOpenDialog(true);
-          },
-          isDanger: false,
-        },
-      ]}
-    >
-      <AlertDialog open={openCheckDialog} onOpenChange={setCheckOpenDialog}>
-        <AlertDialogContent>
-          <ValidDialog
-            linkPairs={selectedLinkPairs}
-            onDeleteLinks={(invalidPairs: ImageLinkPair[]) => {
-              deleteUserImageList(
-                isAdminMode
-                  ? invalidPairs.map((pair) => pair.id)
-                  : invalidPairs
-                      .filter((pair) => pair.creator === user.name)
-                      .map((pair) => pair.id),
+            ),
+            icon: <CheckCheck className="text-green-600" />,
+            handleSubmit: (rows) => {
+              setSelectedLinkPairs(
+                rows.map((row) => ({
+                  id: row.original.ID,
+                  imageLink: row.original.imageLink,
+                  description: row.original.description,
+                  creator: row.original.creatorName,
+                })),
               );
-            }}
-          />
-        </AlertDialogContent>
-      </AlertDialog>
-      {!isAdminMode ? (
-        <Sheet open={openSheet} onOpenChange={setOpenSheet}>
-          <SheetTrigger asChild>
-            <Button className="h-8 min-w-fit">导入镜像</Button>
-          </SheetTrigger>
-          <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
-            <SheetHeader>
-              <SheetTitle>导入镜像链接</SheetTitle>
-              <SheetDescription>导入一个新的训练作业镜像</SheetDescription>
-            </SheetHeader>
-            <Separator className="mt-4" />
-            <ImageUploadForm closeSheet={() => setOpenSheet(false)} />
-          </SheetContent>
-        </Sheet>
-      ) : null}
-    </DataTable>
+              setCheckOpenDialog(true);
+            },
+            isDanger: false,
+          },
+        ]}
+      >
+        <AlertDialog open={openCheckDialog} onOpenChange={setCheckOpenDialog}>
+          <AlertDialogContent>
+            <ValidDialog
+              linkPairs={selectedLinkPairs}
+              onDeleteLinks={(invalidPairs: ImageLinkPair[]) => {
+                deleteUserImageList(
+                  isAdminMode
+                    ? invalidPairs.map((pair) => pair.id)
+                    : invalidPairs
+                        .filter((pair) => pair.creator === user.name)
+                        .map((pair) => pair.id),
+                );
+              }}
+            />
+          </AlertDialogContent>
+        </AlertDialog>
+        {!isAdminMode ? (
+          <Button
+            variant="default"
+            className="flex items-center gap-2"
+            onClick={() => setOpenSheet(true)}
+          >
+            导入镜像
+          </Button>
+        ) : null}
+      </DataTable>
+      <ImageUploadForm
+        isOpen={openSheet}
+        onOpenChange={setOpenSheet}
+        title="导入镜像"
+        description="导入镜像"
+        className="sm:max-w-3xl"
+        closeSheet={() => setOpenSheet(false)}
+      />
+    </>
   );
 };
 
@@ -495,7 +488,7 @@ const Actions: FC<ActionsProps> = ({
                 disabled={isDisabled}
                 className={`${isDisabled ? "cursor-not-allowed opacity-50 data-disabled:pointer-events-none" : ""} group`}
               >
-                <Tag className="text-cyan-600" />
+                <Tag className="mr-2 size-4 text-cyan-600" />
                 更改类型
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
