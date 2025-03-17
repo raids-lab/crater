@@ -28,7 +28,6 @@ type (
 		Image           string          `json:"image" binding:"required"`
 		Command         string          `json:"command" binding:"required"`
 		WorkingDir      string          `json:"workingDir" binding:"required"`
-		Template        string          `json:"template"`
 		AlertEnabled    bool            `json:"alertEnabled"`
 	}
 )
@@ -151,7 +150,7 @@ func GenerateCustomPodSpec(
 		Volumes:     volumes,
 		Containers: []v1.Container{
 			{
-				Name:       custom.Name,
+				Name:       "custom",
 				Image:      custom.Image,
 				Command:    []string{"sh", "-c", custom.Command},
 				WorkingDir: custom.WorkingDir,

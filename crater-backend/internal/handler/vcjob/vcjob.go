@@ -141,11 +141,12 @@ type (
 	}
 
 	CreateJobCommon struct {
-		VolumeMounts   []VolumeMount                `json:"volumeMounts,omitempty"`
-		DatasetMounts  []DatasetMount               `json:"datasetMounts,omitempty"`
-		Envs           []v1.EnvVar                  `json:"envs,omitempty"`
-		Selectors      []v1.NodeSelectorRequirement `json:"selectors,omitempty"`
-		UseTensorBoard bool                         `json:"useTensorBoard"`
+		VolumeMounts  []VolumeMount                `json:"volumeMounts,omitempty"`
+		DatasetMounts []DatasetMount               `json:"datasetMounts,omitempty"`
+		Envs          []v1.EnvVar                  `json:"envs,omitempty"`
+		Selectors     []v1.NodeSelectorRequirement `json:"selectors,omitempty"`
+		Template      string                       `json:"template"`
+		AlertEnabled  bool                         `json:"alertEnabled"`
 	}
 )
 
