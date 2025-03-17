@@ -48,7 +48,7 @@ export default function TooltipLink({
             </Link>
           </TooltipTrigger>
         )}
-        <TooltipContent className="max-w-44">{tooltip}</TooltipContent>
+        <TooltipContent>{tooltip}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );

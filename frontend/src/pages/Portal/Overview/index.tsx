@@ -305,7 +305,7 @@ export const Component: FC = () => {
         <PieCard
           icon={FlaskConicalIcon}
           cardTitle="作业状态"
-          cardDescription="查看集群所有作业的状态统计"
+          cardDescription="查看集群近 7 天作业的状态统计"
           isLoading={jobQuery.isLoading}
         >
           <NivoPie
@@ -342,7 +342,7 @@ export const Component: FC = () => {
       <DataTable
         info={{
           title: "作业信息",
-          description: "查看集群作业的运行情况",
+          description: "查看近 7 天集群作业的运行情况",
         }}
         query={jobQuery}
         columns={jobColumns}
