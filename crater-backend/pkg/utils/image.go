@@ -40,19 +40,19 @@ func GetImageNameAndTag(imageLink string) (name, tag string, err error) {
 	return name, tag, nil
 }
 
-func GenerateNewImageLink(imageLink, username string) (newImageLink string, err error) {
-	imageName, _, err := GetImageNameAndTag(imageLink)
-	if err != nil {
-		return "", err
-	}
+func GenerateNewImageLink(imageLink, username, imageName, imageTag string) (newImageLink string, err error) {
 	registryServer := config.GetConfig().ACT.Image.RegistryServer
 	registryProject := fmt.Sprintf("user-%s", username)
-	loc, err := time.LoadLocation("Asia/Shanghai")
-	if err != nil {
-		return "", err
+	loc, _ := time.LoadLocation("Asia/Shanghai")
+	if imageName == "" {
+		if imageName, _, err = GetImageNameAndTag(imageLink); err != nil {
+			return "", err
+		}
 	}
-	now := time.Now().In(loc)
-	imageTag := fmt.Sprintf("%02d%02d%02d%02d-%s", now.Month(), now.Day(), now.Hour(), now.Minute(), uuid.New().String()[:4])
+	if imageTag == "" {
+		now := time.Now().In(loc)
+		imageTag = fmt.Sprintf("%02d%02d%02d%02d-%s", now.Month(), now.Day(), now.Hour(), now.Minute(), uuid.New().String()[:4])
+	}
 	newImageLink = fmt.Sprintf("%s/%s/%s:%s", registryServer, registryProject, imageName, imageTag)
 	return newImageLink, nil
 }
