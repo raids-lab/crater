@@ -11,7 +11,7 @@ export function DockerfileEditor({ value, onChange }: DockerfileEditorProps) {
   const { theme } = useTheme();
   return (
     <Editor
-      height="450px"
+      height="300px"
       defaultLanguage="dockerfile"
       value={value}
       onChange={onChange}
