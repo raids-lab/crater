@@ -29,7 +29,6 @@ import { Link } from "react-router-dom";
 import {
   ExternalLink,
   InfoIcon,
-  LockIcon,
   RedoDotIcon,
   SquareIcon,
   Trash2Icon,
@@ -52,8 +51,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
-import TooltipLink from "@/components/label/TooltipLink";
 import DocsButton from "@/components/button/DocsButton";
+import { JobNameCell } from "@/components/label/JobNameLabel";
 
 const InterOverview = () => {
   const jobType = useAtomValue(globalJobUrl);
@@ -114,25 +113,7 @@ const InterOverview = () => {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("name")} />
         ),
-        cell: ({ row }) => (
-          <TooltipLink
-            name={
-              <div className="flex flex-row items-center">
-                {row.getValue("name")}
-                {row.original.keepWhenLowUsage && (
-                  <LockIcon className="text-muted-foreground ml-1 size-4" />
-                )}
-              </div>
-            }
-            to={row.original.jobName}
-            tooltip={
-              `查看 ${row.getValue("name")} 作业详情` +
-              (row.original.keepWhenLowUsage
-                ? "（已锁定，低利用率仍保留）"
-                : "")
-            }
-          />
-        ),
+        cell: ({ row }) => <JobNameCell jobInfo={row.original} />,
       },
       {
         accessorKey: "status",

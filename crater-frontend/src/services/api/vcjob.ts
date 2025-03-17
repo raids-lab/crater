@@ -33,8 +33,10 @@ export interface IJobInfo {
   keepWhenLowUsage: boolean;
 }
 
-export const apiAdminGetJobList = () =>
-  instance.get<IResponse<IJobInfo[]>>(`${VERSION}/admin/${JOB_URL}`);
+export const apiAdminGetJobList = (days?: number) =>
+  instance.get<IResponse<IJobInfo[]>>(`${VERSION}/admin/${JOB_URL}`, {
+    params: { days },
+  });
 
 export const apiAdminGetJobDetail = (jobName: string) =>
   instance.get<IResponse<IJupyterDetail>>(
@@ -391,7 +393,7 @@ export const apiJobDeleteForAdmin = async (jobName: string) => {
   return response.data;
 };
 
-export const apiJobKeepForAdmin = async (jobName: string) => {
+export const apiJobToggleKeepForAdmin = async (jobName: string) => {
   const response = await instance.put<IResponse<string>>(
     `${VERSION}/admin/operations/keep/${jobName}`,
   );

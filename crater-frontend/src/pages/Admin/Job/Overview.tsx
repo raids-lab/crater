@@ -3,7 +3,7 @@ import {
   JobType,
   apiAdminGetJobList as apiAdminGetJobList,
   apiJobDeleteForAdmin,
-  apiJobKeepForAdmin,
+  apiJobToggleKeepForAdmin,
 } from "@/services/api/vcjob";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
@@ -55,7 +55,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { logger } from "@/utils/loglevel";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { JobNameCell } from "@/components/label/JobNameLabel";
 
 export type StatusValue =
   | "Queueing"
@@ -164,10 +172,11 @@ const toolbarConfig: DataTableToolbarConfig = {
 
 const AdminJobOverview = () => {
   const queryClient = useQueryClient();
+  const [days, setDays] = useState(7);
 
   const vcjobQuery = useQuery({
-    queryKey: ["admin", "tasklist", "volcanoJob"],
-    queryFn: apiAdminGetJobList,
+    queryKey: ["admin", "tasklist", "job", days],
+    queryFn: () => apiAdminGetJobList(days),
     select: (res) => res.data.data,
   });
 
@@ -176,7 +185,7 @@ const AdminJobOverview = () => {
       await Promise.all([
         new Promise((resolve) => setTimeout(resolve, 200)).then(() =>
           queryClient.invalidateQueries({
-            queryKey: ["admin", "tasklist", "volcanoJob"],
+            queryKey: ["admin", "tasklist", "job", days],
           }),
         ),
       ]);
@@ -193,8 +202,8 @@ const AdminJobOverview = () => {
     },
   });
 
-  const { mutate: keepTask } = useMutation({
-    mutationFn: apiJobKeepForAdmin,
+  const { mutate: toggleKeepTask } = useMutation({
+    mutationFn: apiJobToggleKeepForAdmin,
     onSuccess: async () => {
       await refetchTaskList();
       toast.success("操作成功");
@@ -217,20 +226,7 @@ const AdminJobOverview = () => {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("name")} />
         ),
-        cell: ({ row }) => {
-          // 判断状态是否为 'Running'
-          return (
-            <Link
-              to={row.original.jobName}
-              className="hover:text-primary flex flex-row items-center"
-            >
-              {row.getValue("name")}
-              {row.original.keepWhenLowUsage && (
-                <LockIcon className="text-muted-foreground ml-1 size-4" />
-              )}
-            </Link>
-          );
-        },
+        cell: ({ row }) => <JobNameCell jobInfo={row.original} />,
       },
       {
         accessorKey: "owner",
@@ -238,6 +234,13 @@ const AdminJobOverview = () => {
           <DataTableColumnHeader column={column} title={getHeader("owner")} />
         ),
         cell: ({ row }) => <div>{row.getValue("owner")}</div>,
+      },
+      {
+        accessorKey: "queue",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("queue")} />
+        ),
+        cell: ({ row }) => <div>{row.getValue("queue")}</div>,
       },
       {
         accessorKey: "nodes",
@@ -345,7 +348,7 @@ const AdminJobOverview = () => {
                       </DropdownMenuItem>
                     </Link>
                     <DropdownMenuItem
-                      onClick={() => keepTask(jobInfo.jobName)}
+                      onClick={() => toggleKeepTask(jobInfo.jobName)}
                       title="设置作业自动清除策略"
                     >
                       {row.original.keepWhenLowUsage ? (
@@ -394,7 +397,7 @@ const AdminJobOverview = () => {
         },
       },
     ],
-    [deleteTask, keepTask],
+    [deleteTask, toggleKeepTask],
   );
 
   return (
@@ -424,8 +427,42 @@ const AdminJobOverview = () => {
           },
           isDanger: true,
         },
+        {
+          title: (rows) => `锁定或解锁 ${rows.length} 个作业`,
+          description: (rows) => (
+            <>
+              作业 {rows.map((row) => row.original.name).join(", ")}{" "}
+              将被锁定或解锁，确认要继续吗？
+            </>
+          ),
+          icon: <LockIcon className="text-highlight-purple" />,
+          handleSubmit: (rows) => {
+            rows.forEach((row) => {
+              toggleKeepTask(row.original.jobName);
+            });
+          },
+          isDanger: false,
+        },
       ]}
-    />
+    >
+      <Select
+        value={days.toString()}
+        onValueChange={(value) => {
+          setDays(parseInt(value));
+        }}
+      >
+        <SelectTrigger className="bg-background h-9 pr-2 pl-3">
+          <SelectValue placeholder={days.toString()} />
+        </SelectTrigger>
+        <SelectContent side="top">
+          {[7, 14, 30, 90, -1].map((pageSize) => (
+            <SelectItem key={pageSize} value={`${pageSize}`}>
+              {pageSize === -1 ? "全部" : `近 ${pageSize} 天`}数据
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </DataTable>
   );
 };
 

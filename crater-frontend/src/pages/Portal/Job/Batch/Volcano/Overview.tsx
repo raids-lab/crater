@@ -24,7 +24,7 @@ import { apiJobDelete, JobPhase, apiJobBatchList } from "@/services/api/vcjob";
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import { toast } from "sonner";
 import { getHeader, jobToolbarConfig } from "@/pages/Portal/Job/statuses";
@@ -40,6 +40,7 @@ import { globalJobUrl } from "@/utils/store";
 import { useAtomValue } from "jotai";
 import { Trash2Icon } from "lucide-react";
 import DocsButton from "@/components/button/DocsButton";
+import { JobNameCell } from "@/components/label/JobNameLabel";
 
 const VolcanoOverview = () => {
   const queryClient = useQueryClient();
@@ -91,14 +92,7 @@ const VolcanoOverview = () => {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("name")} />
         ),
-        cell: ({ row }) => (
-          <Link
-            to={row.original.jobName}
-            className="underline-offset-4 hover:underline"
-          >
-            {row.getValue("name")}
-          </Link>
-        ),
+        cell: ({ row }) => <JobNameCell jobInfo={row.original} />,
       },
       {
         accessorKey: "status",
