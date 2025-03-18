@@ -809,10 +809,16 @@ func (mgr *DatasetMgr) UpdateDataset(c *gin.Context) {
 	tempExtra.WebURL = &req.WebURL
 	regex := regexp.MustCompile("^/+")
 	url := regex.ReplaceAllString(req.URL, "")
-	realURL, urlerr := redirectDatasetURL(c, url, token)
-	if urlerr != nil {
-		resputil.Error(c, urlerr.Error(), resputil.NotSpecified)
-		return
+	var realURL string
+	var urlerr error
+	if strings.Contains(url, "public") || strings.Contains(url, "user") || strings.Contains(url, "account") {
+		realURL, urlerr = redirectDatasetURL(c, url, token)
+		if urlerr != nil {
+			resputil.Error(c, urlerr.Error(), resputil.NotSpecified)
+			return
+		}
+	} else {
+		realURL = url
 	}
 	d := query.Dataset
 	dataset, err := d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).First()
