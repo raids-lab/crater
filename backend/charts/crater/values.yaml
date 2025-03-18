@@ -3,12 +3,12 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "31170f8b"
+      tag: "02b20b9f"
       pullPolicy: "IfNotPresent"
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "6f05687c"
+      tag: "ad7b3722"
       pullPolicy: "IfNotPresent"
   storage:
     image:
@@ -16,7 +16,7 @@ web:
       tag: "lc9v6p5s"
       pullPolicy: "IfNotPresent"
   buildkit:
-      dockerconfigjson: ***REMOVED***
+    dockerconfigjson: ***REMOVED***
   ingress:
     host: ***REMOVED***
   cronjob:
@@ -37,14 +37,12 @@ web:
     token: Bearer ***REMOVED***
     ancestor: https://***REMOVED***
     host: gpu-grafana.***REMOVED***
-
 nodeSelector:
   node-role.kubernetes.io/control-plane: ""
 tolerations:
   - key: node-role.kubernetes.io/control-plane
     operator: Exists
     effect: NoSchedule
-
 # Backend configuration variables
 backendConfig:
   enableLeaderElection: false
@@ -57,7 +55,6 @@ backendConfig:
   probeAddr: :8081
   monitoringPort: 9443
   host: ***REMOVED***
-  
   postgres:
     host: ***REMOVED***
     port: 5432
@@ -66,14 +63,12 @@ backendConfig:
     password: ***REMOVED***
     sslmode: disable
     timeZone: Asia/Shanghai
-  
   workspace:
     namespace: crater-workspace
     rwxpvcName: crater-rw-storage
     roxpvcName: crater-ro-storage
     ingressName: crater-jobs-ingress
     imageNameSpace: crater-images
-  
   act:
     strictRegisterMode: true
     uidServerURL: http://192.168.5.59:5000/get_user_id
@@ -99,22 +94,17 @@ backendConfig:
       user: notify
       password: ***REMOVED***
       notify: notify@***REMOVED***
-  
   wpsRobot:
     webhookAddress: https://xz.wps.cn/api/v1/webhook/send?key=4dd9cd4970e225491cfefcfafe7ee2e3
-  
   schedulerPlugins:
     aijob:
       aijobEn: false
     spjob:
       spjobEn: false
       predictionServiceAddress: ***REMOVED***
-  
   dindArgs:
     buildkitImage: ***REMOVED***/user-huangsy/buildkit/buildctl:v0.18.2
     nerdctlImage: ***REMOVED***/nerdctl:2.0.1-retry
-
-
 # cert-manager configuration variables
 # Usage:
 # helm install crater ./charts/crater \
@@ -123,8 +113,6 @@ backendConfig:
 tls:
   cert: "===hdgddh==="
   key: "==="
-
-
 ssConfig:
   content: |
     postgres:
@@ -138,7 +126,6 @@ ssConfig:
     userSpacePrefix: ***REMOVED***
     accountSpacePrefix:  crater-accounts
     publicSpacePrefix: ***REMOVED***
-
 # pvc configuration variables
 storage:
   create: false

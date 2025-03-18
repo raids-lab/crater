@@ -203,6 +203,41 @@ git push origin v0.x.x
 
 ### 3.3 通过 Helm 部署到集群
 
+1. 将 Kubeconfig 指向生产集群，检查一下节点是否是生产集群的机器。
+
+```shell
+export KUBECONFIG=$HOME/.kube/config_actgpu
+```
+
+2. 由于在 Gitlab Pipeline 中，我们不会使用 Helm 去更新，导致生产环境的前端、后端、存储后端的版本往往和当前的 chart 中的版本不同，为此提供了一个脚本，用于将镜像版本写入到 Values 中：
+
+```shell
+$ ./hack/helm-current-version.sh             
+web-backend 镜像：***REMOVED***/web-backend:02b20b9f
+web-frontend 镜像：***REMOVED***/web-frontend:ad7b3722
+webdav 镜像：***REMOVED***/webdav:lc9v6p5s
+镜像信息已在 charts/crater/values.yaml 中替换完成。
+```
+
+3. 准备好证书，将 `*.***REMOVED***` 的证书解压到项目根目录，已经忽略了解压后的文件夹：
+
+```shell
+$ unzip ***REMOVED***-certs-until-2025-06-11.zip
+解压到 ***REMOVED*** 文件夹
+
+$ tree ***REMOVED***
+***REMOVED***
+├── ***REMOVED***.cer
+├── ***REMOVED***.conf
+├── ***REMOVED***.csr
+├── ***REMOVED***.csr.conf
+├── ***REMOVED***.key
+├── ca.cer
+└── fullchain.cer
+```
+
+4. 确认 `***REMOVED***/fullchain.cer` 和 `***REMOVED***/***REMOVED***.key` 文件存在，先 Dry Run 查看结果：
+
 ```shell
 helm upgrade --install crater ./charts/crater \
 --namespace crater \
@@ -211,6 +246,8 @@ helm upgrade --install crater ./charts/crater \
 --set-string tls.key="$(cat ***REMOVED***/***REMOVED***.key)" \
 --dry-run
 ```
+
+5. 移除 `--dry-run` 参数，正式安装。
 
 ### 3.3 证书过期
 
