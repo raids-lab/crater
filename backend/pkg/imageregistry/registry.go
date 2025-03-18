@@ -216,3 +216,7 @@ func (r *ImageRegistry) GetProjectQuota(c context.Context, projectName string) (
 	}
 	return quota.Used["storage"], quota.Hard["storage"], nil
 }
+
+func (r *ImageRegistry) GetHarborIP() string {
+	return "https://" + r.harborClient.RegistryServer
+}

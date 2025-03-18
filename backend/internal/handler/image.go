@@ -65,6 +65,7 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.POST("/deleteimage", mgr.UserDeleteImageByIDList)
 	g.POST("/deletekaniko", mgr.UserDeleteKanikoByIDList)
 	g.POST("/type", mgr.UserChangeImageTaskType)
+	g.GET("/harbor", mgr.GetHarborIP)
 }
 
 func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -201,6 +202,10 @@ type (
 
 	CheckLinkValidityResponse struct {
 		InvalidPairs []ImageInfoLinkPair `json:"linkPairs"`
+	}
+
+	GetHarborIPResponse struct {
+		HarborIP string `json:"ip"`
 	}
 )
 
@@ -1077,6 +1082,7 @@ func (mgr *ImagePackMgr) UserGetProjectCredential(c *gin.Context) {
 		resputil.Error(c, "add project member failed", resputil.NotSpecified)
 		return
 	}
+	fmt.Printf("username: %s, password: %s\n", token.Username, password)
 	resp := GetProjectCredentialResponse{
 		Name:     &token.Username,
 		Password: &password,
@@ -1091,7 +1097,7 @@ func (mgr *ImagePackMgr) UserGetProjectCredential(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Router /v1/images/credential [GET]
+// @Router /v1/images/quota [GET]
 func (mgr *ImagePackMgr) UserGetProjectDetail(c *gin.Context) {
 	token := util.GetToken(c)
 	detail, err := mgr.imageRegistry.GetProjectDetail(c, token.Username)
@@ -1219,14 +1225,14 @@ func (mgr *ImagePackMgr) UserChangeImageTaskType(c *gin.Context) {
 	mgr.changeImageTaskType(c, false, req.ID, req.TaskType)
 }
 
-// UserChangeImageTaskType godoc
-// @Summary 更新镜像的任务类型
+// AdminChangeImageTaskType godoc
+// @Summary 管理员更新镜像的任务类型
 // @Description 更新任务类型
 // @Tags ImagePack
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Router /v1/images/type [POST]
+// @Router /v1/admin/images/type [POST]
 func (mgr *ImagePackMgr) AdminChangeImageTaskType(c *gin.Context) {
 	req := &ChangeImageTaskTypeRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
@@ -1250,4 +1256,20 @@ func (mgr ImagePackMgr) changeImageTaskType(c *gin.Context, isAdminMode bool, im
 		resputil.HTTPError(c, http.StatusBadRequest, "update task type failed", resputil.NotSpecified)
 	}
 	resputil.Success(c, "")
+}
+
+// GetHarborIP godoc
+// @Summary 获取harbor的部署地址
+// @Description 通过后端获取harbor的部署地址
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Router /v1/images/harbor [GET]
+func (mgr *ImagePackMgr) GetHarborIP(c *gin.Context) {
+	harborIP := mgr.imageRegistry.GetHarborIP()
+	resp := GetHarborIPResponse{
+		HarborIP: harborIP,
+	}
+	resputil.Success(c, resp)
 }
