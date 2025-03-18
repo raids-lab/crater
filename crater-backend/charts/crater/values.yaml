@@ -1,3 +1,4 @@
+# depolyment configuration variables
 web:
   backend:
     image:
@@ -14,79 +15,116 @@ web:
       repository: ***REMOVED***
       tag: "lc9v6p5s"
       pullPolicy: "IfNotPresent"
+  buildkit:
+      dockerconfigjson: ***REMOVED***
   ingress:
     host: ***REMOVED***
+  cronjob:
+    schedule: 0,30 * * * *
+    image: ***REMOVED***/clean:v3
+    config:
+      SERNAME: "***REMOVED***"
+      PASSWORD: "***REMOVED***"
+      BATCH_DAYS: "5"
+      INTERACTIVE_DAYS: "5"
+      TIME_RANGE: "90"
+      WAIT_TIME: "30"
+      UTIL: "0"
+      HOST: ***REMOVED***
+  grafana:
+    image: ***REMOVED***/docker.io/library/nginx:1.27.3-bookworm
+    address: http://prometheus-grafana.monitoring
+    token: Bearer ***REMOVED***
+    ancestor: https://***REMOVED***
+    host: gpu-grafana.***REMOVED***
+
 nodeSelector:
   node-role.kubernetes.io/control-plane: ""
 tolerations:
   - key: node-role.kubernetes.io/control-plane
     operator: Exists
     effect: NoSchedule
+
+# Backend configuration variables
 backendConfig:
-  content: |
-    enableLeaderElection: false
-    leaderElectionID: ***REMOVED***
-    enableProfiling: true
-    prometheusAPI: ***REMOVED***
-    profilingTimeout: 120
-    serverAddr: :8088
-    metricsAddr: :8080
-    probeAddr: :8081
-    monitoringPort: 9443
+  enableLeaderElection: false
+  leaderElectionID: 1ca428e5.training-operator.kubeflow.org
+  enableProfiling: true
+  prometheusAPI: http://prometheus-kube-prometheus-prometheus.monitoring:9090
+  profilingTimeout: 120
+  serverAddr: :8088
+  metricsAddr: :8080
+  probeAddr: :8081
+  monitoringPort: 9443
+  host: ***REMOVED***
+  
+  postgres:
     host: ***REMOVED***
-    postgres:
-      host: ***REMOVED***
-      port: 5432
-      dbname: crater
-      user: crater
+    port: 5432
+    dbname: crater
+    user: crater
+    password: ***REMOVED***
+    sslmode: disable
+    timeZone: Asia/Shanghai
+  
+  workspace:
+    namespace: crater-workspace
+    rwxpvcName: crater-rw-storage
+    roxpvcName: crater-ro-storage
+    ingressName: crater-jobs-ingress
+    imageNameSpace: crater-images
+  
+  act:
+    strictRegisterMode: true
+    uidServerURL: http://192.168.5.59:5000/get_user_id
+    image:
+      registryServer: ***REMOVED***
+      registryUser: ***REMOVED***
+      registryPass: ***REMOVED***
+      registryProject: crater
+      registryAdmin: admin
+      registryAdminPass: ***REMOVED***
+    openAPI:
+      url: ***REMOVED***
+      chameleonKey: ***REMOVED***
+      accessToken: ***REMOVED***
+    auth:
+      userName: ***REMOVED***
       password: ***REMOVED***
-      sslmode: disable
-      TimeZone: Asia/Shanghai
-    userSpacePrefix: ***REMOVED***
-    accountSpacePrefix:  crater-accounts
-    publicSpacePrefix: ***REMOVED***
-    workspace:
-      namespace: crater-workspace
-      rwxpvcName: crater-rw-storage
-      roxpvcName: crater-ro-storage
-      ingressName: crater-jobs-ingress
-      imageNameSpace: crater-images
-    act:
-      strictRegisterMode: true
-      uidServerURL: ***REMOVED***
-      image:
-        registryServer: ***REMOVED***
-        registryUser: ***REMOVED***
-        registryPass: ***REMOVED***
-        registryProject: crater
-        registryAdmin: admin
-        registryAdminPass: ***REMOVED***
-      openAPI:
-        url: ***REMOVED***
-        chameleonKey: ***REMOVED***
-        accessToken: ***REMOVED***
-      auth:
-        userName: ***REMOVED***
-        password: ***REMOVED***
-        address: ***REMOVED***
-        searchDN: OU=Lab,OU=ACT,DC=lab,DC=act,DC=buaa,Dc=edu,DC=cn
-      smtp:
-        host: ***REMOVED***
-        port: 25
-        user: notify
-        password: ***REMOVED***
-        notify: ***REMOVED***
-    wpsRobot:
-      webhookAddress: ***REMOVED***
-    schedulerPlugins:
-      aijob:
-        aijobEn: false
-      spjob:
-        spjobEn: false
-        predictionServiceAddress: "***REMOVED***"
-    dindArgs:
-      buildkitImage: "***REMOVED***/user-huangsy/buildkit/buildctl:v0.18.2"
-      nerdctlImage: "***REMOVED***/nerdctl:2.0.1-retry"
+      address: ***REMOVED***
+      searchDN: OU=Lab,OU=ACT,DC=lab,DC=act,DC=buaa,Dc=edu,DC=cn
+    smtp:
+      host: ***REMOVED***
+      port: 25
+      user: notify
+      password: ***REMOVED***
+      notify: notify@***REMOVED***
+  
+  wpsRobot:
+    webhookAddress: https://xz.wps.cn/api/v1/webhook/send?key=4dd9cd4970e225491cfefcfafe7ee2e3
+  
+  schedulerPlugins:
+    aijob:
+      aijobEn: false
+    spjob:
+      spjobEn: false
+      predictionServiceAddress: ***REMOVED***
+  
+  dindArgs:
+    buildkitImage: ***REMOVED***/user-huangsy/buildkit/buildctl:v0.18.2
+    nerdctlImage: ***REMOVED***/nerdctl:2.0.1-retry
+
+
+# cert-manager configuration variables
+# Usage:
+# helm install crater ./charts/crater \
+# --set-string tls.cert="$(cat path/to/tls.crt)"\
+# --set-string tls.key="$(cat path/to/tls.key)"
+tls:
+  cert: "===hdgddh==="
+  key: "==="
+
+
 ssConfig:
   content: |
     postgres:
@@ -100,13 +138,8 @@ ssConfig:
     userSpacePrefix: ***REMOVED***
     accountSpacePrefix:  crater-accounts
     publicSpacePrefix: ***REMOVED***
-# Usage:
-# helm install crater ./charts/crater \
-# --set-string tls.cert="$(cat path/to/tls.crt)"\
-# --set-string tls.key="$(cat path/to/tls.key)"
-tls:
-  cert: "===hdgddh==="
-  key: "==="
+
+# pvc configuration variables
 storage:
   create: false
   request: 2Ti
