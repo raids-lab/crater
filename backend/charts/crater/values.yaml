@@ -21,17 +21,24 @@ web:
   ingress:
     host: ***REMOVED***
   cronjob:
-    schedule: 0,30 * * * *
-    image: ***REMOVED***/clean:v3
+    image: ***REMOVED***/curl-jq:latest
     config:
-      SERNAME: "***REMOVED***"
+      USERNAME: "***REMOVED***"
       PASSWORD: "***REMOVED***"
-      BATCH_DAYS: "5"
-      INTERACTIVE_DAYS: "5"
-      TIME_RANGE: "90"
-      WAIT_TIME: "30"
-      UTIL: "0"
       HOST: ***REMOVED***
+      jobs:
+        lowGPUUtil:
+          schedule: "0,30 * * * *"
+          TIME_RANGE: "90"
+          WAIT_TIME: "30"
+          UTIL: "0"
+        longTime:
+          schedule: "0 */12 * * *"
+          BATCH_DAYS: "4"
+          INTERACTIVE_DAYS: "4"
+        waitingJupyter:
+          schedule: "*/5 * * * *"
+          JUPYTER_WAIT_MINUTES: "5"
   grafana:
     image: ***REMOVED***/docker.io/library/nginx:1.27.3-bookworm
     address: http://prometheus-grafana.monitoring
