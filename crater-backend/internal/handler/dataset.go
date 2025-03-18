@@ -811,7 +811,8 @@ func (mgr *DatasetMgr) UpdateDataset(c *gin.Context) {
 	url := regex.ReplaceAllString(req.URL, "")
 	var realURL string
 	var urlerr error
-	if strings.Contains(url, "public") || strings.Contains(url, "user") || strings.Contains(url, "account") {
+	// 如果更新时未对位置进行更改，则位置还是绝对路径不需要重定向
+	if strings.HasPrefix(url, "public") || strings.HasPrefix(url, "user") || strings.HasPrefix(url, "account") {
 		realURL, urlerr = redirectDatasetURL(c, url, token)
 		if urlerr != nil {
 			resputil.Error(c, urlerr.Error(), resputil.NotSpecified)
