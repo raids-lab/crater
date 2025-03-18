@@ -34,6 +34,8 @@ type ImageRegistryInterface interface {
 	GetProjectQuota(c context.Context, projectName string) (int64, int64, error)
 
 	GetProjectDetail(c context.Context, userName string) (PorjetcDetail, error)
+
+	GetHarborIP() string
 }
 
 type PorjetcDetail struct {
