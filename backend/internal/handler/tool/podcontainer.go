@@ -918,16 +918,36 @@ type (
 	}
 )
 
-type streamHandler struct {
-	ws *websocket.Conn
-}
-
 const (
 	// WriteTimeout specifies the maximum duration for completing a write operation.
 	WriteTimeout = 10 * time.Second
 	// EndOfTransmission represents the signal for ending the transmission (Ctrl+D).
 	EndOfTransmission = "\u0004"
 )
+
+// 首先定义终端大小消息的结构
+type TerminalMessage struct {
+	Op   string `json:"op"`   // 操作类型: "stdin", "stdout", "resize"等
+	Data string `json:"data"` // 对于stdin/stdout是内容，对于resize是宽高
+	Cols uint16 `json:"cols"` // 列数
+	Rows uint16 `json:"rows"` // 行数
+}
+
+type streamHandler struct {
+	ws       *websocket.Conn
+	sizeChan chan remotecommand.TerminalSize
+	doneChan chan struct{}
+}
+
+// 实现TerminalSizeQueue接口的Next方法
+func (h *streamHandler) Next() *remotecommand.TerminalSize {
+	select {
+	case size := <-h.sizeChan:
+		return &size
+	case <-h.doneChan:
+		return nil
+	}
+}
 
 func (h *streamHandler) Write(p []byte) (int, error) {
 	if err := h.ws.SetWriteDeadline(time.Now().Add(WriteTimeout)); err != nil {
@@ -947,6 +967,25 @@ func (h *streamHandler) Read(p []byte) (int, error) {
 		// Returns "0x04" on error
 		return copy(p, EndOfTransmission), err
 	}
+
+	// 尝试解析为终端消息
+	var msg TerminalMessage
+	if err := json.Unmarshal(message, &msg); err == nil {
+		// 如果是resize操作
+		if msg.Op == "resize" {
+			h.sizeChan <- remotecommand.TerminalSize{
+				Width:  msg.Cols,
+				Height: msg.Rows,
+			}
+			return 0, nil
+		}
+
+		// 如果是stdin操作，使用Data字段
+		if msg.Op == "stdin" {
+			return copy(p, msg.Data), nil
+		}
+	}
+
 	return copy(p, message), nil
 }
 
@@ -976,6 +1015,13 @@ func (mgr *APIServerMgr) GetPodContainerTerminal(c *gin.Context) {
 	ctx, cancel := context.WithCancel(c)
 	defer cancel()
 
+	stream := &streamHandler{
+		ws:       ws,
+		sizeChan: make(chan remotecommand.TerminalSize),
+		doneChan: make(chan struct{}),
+	}
+	defer close(stream.doneChan)
+
 	// Reference: https://github.com/juicedata/juicefs-csi-driver/pull/1053
 	request := mgr.kubeClient.CoreV1().RESTClient().Post().
 		Resource("pods").
@@ -996,12 +1042,12 @@ func (mgr *APIServerMgr) GetPodContainerTerminal(c *gin.Context) {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
-	stream := &streamHandler{ws: ws}
 	err = executor.StreamWithContext(ctx, remotecommand.StreamOptions{
-		Stdin:  stream,
-		Stdout: stream,
-		Stderr: stream,
-		Tty:    true,
+		Stdin:             stream,
+		Stdout:            stream,
+		Stderr:            stream,
+		Tty:               true,
+		TerminalSizeQueue: stream,
 	})
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
