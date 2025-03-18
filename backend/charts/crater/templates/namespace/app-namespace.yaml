@@ -1,4 +1,11 @@
+{{- if .Values.createNamespace }}
 apiVersion: v1
 kind: Namespace
 metadata:
   name: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+{{- end }}

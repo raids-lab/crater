@@ -1,9 +1,10 @@
 # depolyment configuration variables
+createNamespace: false
 web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "02b20b9f"
+      tag: "0891934e"
       pullPolicy: "IfNotPresent"
   frontend:
     image:
