@@ -18,7 +18,6 @@ package reconciler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -206,44 +205,6 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			if err = alertMgr.JobRunningAlert(ctx, job.Name); err != nil {
 				logger.Error(err, "fail to send email")
 			}
-			// 检查是否要打开 ssh 端口
-			err = r.checkAndOpenSSH(ctx, &job, logger)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-
-			// 获取 Job，为后续从 Template 里获取需要添加的 ingress 和 nodeport 做准备
-			var record *model.Job
-			record, err = j.WithContext(ctx).Where(j.JobName.Eq(req.Name)).First()
-			if err != nil {
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					logger.Info("job not found in database")
-					return ctrl.Result{}, nil
-				} else {
-					logger.Error(err, "unable to fetch job record")
-					return ctrl.Result{Requeue: true}, err
-				}
-			}
-
-			// 处理需要打开的 ingress 端口
-			ingressList := r.getIngressesFromJobTemplate(record)
-
-			// 调用 checkAndOpenIngress 函数
-			err = r.checkAndOpenIngress(ctx, &job, ingressList, logger)
-			if err != nil {
-				logger.Error(err, "Failed to open Ingress ports")
-				return ctrl.Result{}, err
-			}
-
-			// 处理需要打开的 nodeport 端口
-			nodePortList := r.getNodePortsFromJobTemplate(record)
-
-			// 调用 checkAndOpenNodePort 函数
-			err = r.checkAndOpenNodePort(ctx, &job, nodePortList, logger)
-			if err != nil {
-				logger.Error(err, "Failed to open NodePort ports")
-				return ctrl.Result{}, err
-			}
 		}
 
 		// alert job failure
@@ -259,6 +220,12 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	if err != nil {
 		logger.Error(err, "unable to update job record")
 		return ctrl.Result{Requeue: true}, err
+	}
+
+	// 检查是否要打开 ssh 端口
+	err = r.checkAndOpenSSH(ctx, &job, logger)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
@@ -435,195 +402,4 @@ func getPodNameFromJobTemplate(job *batch.Job) string {
 		}
 	}
 	return ""
-}
-
-// extractPortMappings 从 JobTemplate 提取端口映射（ingresses/nodeports）
-func extractPortMappings(record *model.Job, key string, logger logr.Logger) []map[string]any {
-	mappings := []map[string]any{}
-
-	// 检查 record.Template 是否为空
-	if record.Template == "" {
-		logger.Info("record.Template is empty, skipping extraction", "key", key)
-		return mappings
-	}
-
-	// 解析 JSON
-	var templateData map[string]any
-	if err := json.Unmarshal([]byte(record.Template), &templateData); err != nil {
-		logger.Error(err, "Failed to parse job template JSON")
-		return mappings
-	}
-
-	// 进入 data 层级
-	data, dataExists := templateData["data"].(map[string]any)
-	if !dataExists {
-		logger.Info("'data' field not found in template, skipping extraction", "key", key)
-		return mappings
-	}
-
-	// 获取指定 key 的数据
-	portData, exists := data[key]
-	if !exists {
-		return mappings
-	}
-
-	portList, ok := portData.([]any)
-	if !ok {
-		logger.Info("Invalid format in job template", "key", key)
-		return mappings
-	}
-
-	// 解析数据
-	for _, port := range portList {
-		portMap, ok := port.(map[string]any)
-		if !ok {
-			continue
-		}
-		mappings = append(mappings, portMap)
-	}
-
-	return mappings
-}
-
-// getIngressesFromJobTemplate 获取 ingresses 映射
-func (r *VcJobReconciler) getIngressesFromJobTemplate(record *model.Job) []tool.PodIngressMgr {
-	ingresses := []tool.PodIngressMgr{}
-	mappings := extractPortMappings(record, "ingresses", r.log)
-
-	for _, ingressMap := range mappings {
-		name, nameOk := ingressMap["name"].(string)
-		portFloat, portOk := ingressMap["port"].(float64)
-
-		if nameOk && portOk {
-			ingresses = append(ingresses, tool.PodIngressMgr{Name: name, Port: int32(portFloat)})
-		}
-	}
-	return ingresses
-}
-
-// getNodePortsFromJobTemplate 获取 nodeports 映射
-func (r *VcJobReconciler) getNodePortsFromJobTemplate(record *model.Job) []tool.PodNodeportMgr {
-	nodePorts := []tool.PodNodeportMgr{}
-	mappings := extractPortMappings(record, "nodeports", r.log)
-
-	for _, portMap := range mappings {
-		name, nameOk := portMap["name"].(string)
-		portFloat, portOk := portMap["port"].(float64)
-
-		if nameOk && portOk {
-			nodePorts = append(nodePorts, tool.PodNodeportMgr{Name: name, ContainerPort: int32(portFloat)})
-		}
-	}
-	return nodePorts
-}
-
-// 处理 Ingress 端口
-func (r *VcJobReconciler) checkAndOpenIngress(ctx context.Context, job *batch.Job,
-	ingressList []tool.PodIngressMgr, logger logr.Logger) error {
-	if len(ingressList) == 0 {
-		return nil
-	}
-
-	logger.Info("Processing Ingress rules", "job", job.Name, "ingressCount", len(ingressList))
-
-	// 获取 Kubernetes 客户端
-	cfg := ctrl.GetConfigOrDie()
-	kubeClient, err := client.New(cfg, client.Options{})
-	if err != nil {
-		logger.Error(err, "Failed to create controller-runtime client")
-		return err
-	}
-
-	// 读取 Pod 信息
-	var pod v1.Pod
-	err = kubeClient.Get(ctx, client.ObjectKey{
-		Namespace: job.Namespace,
-		Name:      fmt.Sprintf("%s-default0-0", job.Name),
-	}, &pod)
-
-	if err != nil {
-		logger.Error(err, "Failed to fetch Pod from Kubernetes API", "PodName", fmt.Sprintf("%s-default0-0", job.Name))
-		return err
-	}
-
-	// 确保 pod 有正确的标签
-	if _, ok := pod.Labels["crater.raids.io/task-user"]; !ok {
-		logger.Error(nil, "Pod is missing required label crater.raids.io/task-user", "PodName", pod.Name)
-		return fmt.Errorf("label crater.raids.io/task-user not found in Pod %s", pod.Name)
-	}
-
-	// 初始化 APIServerMgr 实例
-	var apiServerMgr *tool.APIServerMgr
-	for _, register := range handler.Registers {
-		mgrInterface := register(&handler.RegisterConfig{
-			Client:     r.Client,
-			KubeClient: kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie()),
-		})
-		if mgr, ok := mgrInterface.(*tool.APIServerMgr); ok {
-			apiServerMgr = mgr
-			break
-		}
-	}
-
-	if apiServerMgr == nil {
-		logger.Error(nil, "Failed to retrieve APIServerMgr instance for NodePort")
-		return fmt.Errorf("failed to retrieve APIServerMgr instance")
-	}
-
-	// 逐个处理 Ingress 规则
-	for _, ingress := range ingressList {
-		err := apiServerMgr.ProcessPodIngressRule(ctx, &pod, ingress)
-		if err != nil {
-			logger.Error(err, "Failed to create Ingress forwarding rule", "Ingress", ingress.Name)
-			return err
-		}
-
-		logger.Info("Successfully created Ingress forwarding rule", "Ingress", ingress.Name, "Port", ingress.Port)
-	}
-
-	return nil
-}
-
-func (r *VcJobReconciler) checkAndOpenNodePort(ctx context.Context, job *batch.Job,
-	nodePortList []tool.PodNodeportMgr, logger logr.Logger) error {
-	if len(nodePortList) == 0 {
-		return nil
-	}
-
-	logger.Info("Processing NodePort rules", "job", job.Name, "nodePortCount", len(nodePortList))
-
-	// 初始化 APIServerMgr 实例
-	var apiServerMgr *tool.APIServerMgr
-	for _, register := range handler.Registers {
-		mgrInterface := register(&handler.RegisterConfig{
-			Client:     r.Client,
-			KubeClient: kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie()),
-		})
-		if mgr, ok := mgrInterface.(*tool.APIServerMgr); ok {
-			apiServerMgr = mgr
-			break
-		}
-	}
-
-	if apiServerMgr == nil {
-		logger.Error(nil, "Failed to retrieve APIServerMgr instance for NodePort")
-		return fmt.Errorf("failed to retrieve APIServerMgr instance")
-	}
-
-	// 逐个处理 NodePort 规则
-	for _, nodePort := range nodePortList {
-		nodePortReq := tool.PodContainerReq{
-			Namespace: job.Namespace,
-			PodName:   fmt.Sprintf("%s-default0-0", job.Name),
-		}
-
-		_, err := apiServerMgr.ProcessPodNodeport(ctx, nodePortReq, nodePort)
-		if err != nil {
-			logger.Error(err, "Failed to open NodePort", "NodePort", nodePort.Name)
-			return err
-		}
-		logger.Info("Successfully opened NodePort", "NodePort", nodePort.Name, "ContainerPort", nodePort.ContainerPort)
-	}
-
-	return nil
 }
