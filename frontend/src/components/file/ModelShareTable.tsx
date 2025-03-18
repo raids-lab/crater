@@ -32,10 +32,10 @@ import {
   Users,
   X,
   UserRoundIcon,
-  MapPinIcon,
-  FileTextIcon,
   CalendarIcon,
   Trash,
+  FileIcon,
+  Folder,
 } from "lucide-react";
 import useBreadcrumb from "@/hooks/useBreadcrumb";
 import { QueueNotInSelect } from "@/components/custom/QueueNotInSelect";
@@ -45,6 +45,12 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "../custom/DataTable/DataTableColumnHeader";
 import { TimeDistance } from "../custom/TimeDistance";
 import { DetailPage } from "@/components/layout/DetailPage";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import PageTitle from "@/components/layout/PageTitle";
 import { DataTable } from "@/components/custom/DataTable";
 import { useNavigate } from "react-router-dom";
@@ -422,18 +428,55 @@ export function ModelShareTable({
           icon: CalendarIcon,
           value: <TimeDistance date={data.data?.[0]?.createdAt} />,
         },
-        {
-          title: "模型描述",
-          icon: FileTextIcon,
-          value: data.data?.[0]?.describe,
-        },
-        {
-          title: "模型位置", // 位置标题
-          icon: MapPinIcon, // 位置图标
-          value: data.data?.[0]?.url, // 位置内容
-        },
       ]}
       tabs={[
+        {
+          key: "datasetinfo",
+          icon: FileIcon,
+          label: "模型基本信息", // 数据集信息标签
+          children: (
+            <div className="space-y-1">
+              {data.data?.[0]?.extra.tag && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-xl">
+                      <Folder className="mr-2 h-5 w-5 text-blue-500" />
+                      模型标签
+                    </CardTitle>
+                    <CardDescription className="text-muted-foreground font-mono text-sm">
+                      {data.data?.[0]?.extra.tag.join("、")}
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              )}
+              {data.data?.[0]?.extra.weburl && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-xl">
+                      <Folder className="mr-2 h-5 w-5 text-blue-500" />
+                      模型开源仓库地址
+                    </CardTitle>
+                    <CardDescription className="text-muted-foreground font-mono text-sm">
+                      {data.data?.[0]?.extra.weburl}
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              )}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center text-xl">
+                    <Folder className="mr-2 h-5 w-5 text-blue-500" />
+                    模型描述
+                  </CardTitle>
+                  <CardDescription className="text-muted-foreground font-mono text-sm">
+                    {data.data?.[0]?.describe}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </div>
+          ),
+          scrollable: true,
+        },
         {
           key: "usershare",
           icon: User,
