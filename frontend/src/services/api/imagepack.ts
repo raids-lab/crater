@@ -203,6 +203,10 @@ export interface ImageIDList {
   idList: number[];
 }
 
+export interface HarborIPData {
+  ip: string;
+}
+
 export const ImageTaskType = {
   JupyterTask: 1, // Jupyter交互式任务
   WebIDETask: 2, // Web IDE任务
@@ -306,3 +310,6 @@ export const apiUserCheckImageValid = (linkPairs: ImageLinkPairs) =>
     `${VERSION}/images/valid`,
     linkPairs,
   );
+
+export const apiGetHarborIP = () =>
+  instance.get<IResponse<HarborIPData>>(`${VERSION}/images/harbor`);

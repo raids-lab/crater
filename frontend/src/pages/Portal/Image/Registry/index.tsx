@@ -7,6 +7,7 @@ import { DataTable } from "@/components/custom/DataTable";
 import { Button } from "@/components/ui/button";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import {
+  apiGetHarborIP,
   apiUserDeleteKanikoList,
   apiUserGetCredential,
   apiUserGetQuota,
@@ -43,6 +44,9 @@ import {
   Copy,
   User,
   AlertTriangle,
+  RefreshCw,
+  ExternalLink,
+  ListStart,
 } from "lucide-react";
 import { useNavigate, useRoutes } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,7 +62,6 @@ import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -77,6 +80,10 @@ import { formatBytes } from "@/utils/formatter";
 import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
 import { IResponse } from "@/services/types";
 import { AxiosResponse } from "axios";
+import { globalUserInfo } from "@/utils/store";
+import { useAtomValue } from "jotai";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -293,7 +300,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
           ) : null}
         </PageTitle>
         {!isAdminMode ? (
-          <ProjectDetailCardAndDiaglog
+          <ProjectDetail
             successImageNumber={
               imageQuery.data?.filter((c) => c.status == "Finished").length ?? 0
             }
@@ -361,28 +368,174 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
   );
 };
 
-interface ProjectDetailCardAndDiaglogProps {
+interface UserHarborCredentialsDialogProps {
+  isDialogOpen: boolean;
+  setIsDialogOpen: (open: boolean) => void;
+}
+
+export const UserHarborCredentialsDialog: FC<
+  UserHarborCredentialsDialogProps
+> = ({ isDialogOpen, setIsDialogOpen }) => {
+  const [credentials, setCredentials] =
+    useState<ProjectCredentialResponse | null>(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const user = useAtomValue(globalUserInfo);
+  const { mutate: getProjectCredential } = useMutation({
+    mutationFn: () => apiUserGetCredential(),
+    onSuccess: async (data) => {
+      setCredentials(data.data.data);
+      setShowConfirmation(false);
+      toast.success("凭据已生成, 请保存您的密码！");
+    },
+  });
+  const harborIP = useQuery({
+    queryKey: ["harbor", "ip"],
+    queryFn: () => apiGetHarborIP(),
+    select: (res) => res.data.data,
+  });
+  const handleResetClick = () => {
+    setShowConfirmation(true);
+  };
+  return (
+    <>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="h-6 w-6 text-blue-500" />
+              Harbor仓库用户凭据
+            </DialogTitle>
+          </DialogHeader>
+          <div>
+            <Alert className="my-3 border-yellow-500 bg-yellow-50">
+              <AlertTriangle className="h-5 w-5 text-yellow-600" />
+              <AlertDescription className="font-medium text-yellow-800">
+                请保存好您的用户名和密码，密码只会显示一次！
+              </AlertDescription>
+            </Alert>
+            <div className="flex items-center justify-between rounded-md border border-blue-200 bg-blue-50 px-2 py-3">
+              <div className="text-sm text-blue-700">Harbor仓库地址：</div>
+              <a
+                href={harborIP.data?.ip}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800"
+              >
+                {harborIP.data?.ip}
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          </div>
+          <Separator />
+          <div className="grid gap-4 rounded-md border border-gray-100 bg-gray-50 p-3 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="username" className="text-right">
+                用户名
+              </Label>
+              <div className="col-span-3 flex items-center">
+                <User className="mr-2 h-4 w-4 text-gray-500" />
+                <Input
+                  id="username"
+                  value={user.name}
+                  readOnly
+                  className="pr-10"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="project" className="text-right">
+                项目名
+              </Label>
+              <div className="col-span-3 flex items-center">
+                <ListStart className="mr-2 h-4 w-4 text-gray-500" />
+                <Input
+                  id="project"
+                  value={"user-" + user.name}
+                  readOnly
+                  className="pr-10"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="password" className="text-right">
+                密码
+              </Label>
+              <div className="col-span-3 flex items-center">
+                <Key className="mr-2 h-4 w-4 text-gray-500" />
+                <Input
+                  id="password"
+                  value={credentials ? credentials.password : "•".repeat(10)}
+                  readOnly
+                  className="pr-10"
+                />
+                {credentials ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="absolute right-12 hover:bg-transparent"
+                    onClick={() => copyToClipboard(credentials.password)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex items-center gap-2"
+              onClick={() => handleResetClick()}
+            >
+              <RefreshCw className="h-4 w-4" />
+              重置密码
+            </Button>
+            <Button
+              type="button"
+              variant="default"
+              onClick={() => setIsDialogOpen(false)}
+            >
+              关闭
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+        <AlertDialogContent className="max-w-[150px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认重置密码</AlertDialogTitle>
+            <AlertDialogDescription>
+              您确定要重置密码吗？此操作无法撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => getProjectCredential()}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              确认重置
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+};
+
+interface ProjectDetailProps {
   successImageNumber: number;
 }
 
-export const ProjectDetailCardAndDiaglog: FC<
-  ProjectDetailCardAndDiaglogProps
-> = ({ successImageNumber }) => {
-  const [credentials, setCredentials] =
-    useState<ProjectCredentialResponse | null>(null);
+export const ProjectDetail: FC<ProjectDetailProps> = ({
+  successImageNumber,
+}) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const quotaQuery = useQuery({
     queryKey: ["imagepack", "quota"],
     queryFn: () => apiUserGetQuota(),
     select: (res) => res.data.data,
-  });
-  const { mutate: getProjectCredential } = useMutation({
-    mutationFn: () => apiUserGetCredential(),
-    onSuccess: async (data) => {
-      setCredentials(data.data.data);
-      setIsDialogOpen(true);
-      toast.success("凭据已生成, 请保存您的密码！");
-    },
   });
   return (
     <>
@@ -454,7 +607,7 @@ export const ProjectDetailCardAndDiaglog: FC<
           <CardContent>
             <Button
               variant="outline"
-              onClick={() => getProjectCredential()}
+              onClick={() => setIsDialogOpen(true)}
               className="w-full"
             >
               获取初始凭据
@@ -463,78 +616,10 @@ export const ProjectDetailCardAndDiaglog: FC<
         </Card>
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Key className="h-6 w-6 text-blue-500" />
-              Harbor仓库用户凭据
-            </DialogTitle>
-            <DialogDescription className="text-yellow-600">
-              请保存好您的用户名和密码！
-              <br />
-              Harbor仓库地址：https://gpu-harbor.act.buaa.edu.cn/
-            </DialogDescription>
-          </DialogHeader>
-          {credentials && (
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="username" className="text-right">
-                  Username
-                </Label>
-                <div className="col-span-3 flex items-center">
-                  <User className="mr-2 h-4 w-4 text-gray-500" />
-                  <Input
-                    id="username"
-                    value={credentials.name}
-                    readOnly
-                    className="pr-10"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="absolute right-12 hover:bg-transparent"
-                    onClick={() => copyToClipboard(credentials.name)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="password" className="text-right">
-                  Password
-                </Label>
-                <div className="col-span-3 flex items-center">
-                  <Key className="mr-2 h-4 w-4 text-gray-500" />
-                  <Input
-                    id="password"
-                    value={credentials.password}
-                    readOnly
-                    className="pr-10"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="absolute right-12 hover:bg-transparent"
-                    onClick={() => copyToClipboard(credentials.password)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter className="sm:justify-start">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setIsDialogOpen(false)}
-            >
-              关闭
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <UserHarborCredentialsDialog
+        isDialogOpen={isDialogOpen}
+        setIsDialogOpen={setIsDialogOpen}
+      />
     </>
   );
 };
