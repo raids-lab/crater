@@ -19,6 +19,12 @@ export const nodeStatuses = [
     color: "text-highlight-orange bg-highlight-orange/20",
     description: "节点不可调度",
   },
+  {
+    value: "occupied",
+    label: "已占用",
+    color: "text-highlight-yellow bg-highlight-yellow/20",
+    description: "节点已被占用",
+  },
 ];
 
 const getNodeStatusLabel = (

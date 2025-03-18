@@ -32,8 +32,6 @@ import {
   Users,
   X,
   UserRoundIcon,
-  MapPinIcon,
-  FileTextIcon,
   CalendarIcon,
   Trash,
 } from "lucide-react";
@@ -48,6 +46,13 @@ import { DetailPage } from "@/components/layout/DetailPage";
 import PageTitle from "@/components/layout/PageTitle";
 import { DataTable } from "@/components/custom/DataTable";
 import { useNavigate } from "react-router-dom";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Folder, FileIcon } from "lucide-react";
 import { DatasetUpdateForm } from "./updateform";
 interface QueueOption {
   value: string;
@@ -422,18 +427,55 @@ export function DatasetShareTable({
           icon: CalendarIcon,
           value: <TimeDistance date={data.data?.[0]?.createdAt} />,
         },
-        {
-          title: "数据集描述",
-          icon: FileTextIcon,
-          value: data.data?.[0]?.describe,
-        },
-        {
-          title: "数据集位置", // 位置标题
-          icon: MapPinIcon, // 位置图标
-          value: data.data?.[0]?.url, // 位置内容
-        },
       ]}
       tabs={[
+        {
+          key: "datasetinfo",
+          icon: FileIcon,
+          label: "数据集基本信息", // 数据集信息标签
+          children: (
+            <div className="space-y-1">
+              {data.data?.[0]?.extra.tag && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-xl">
+                      <Folder className="mr-2 h-5 w-5 text-blue-500" />
+                      数据集标签
+                    </CardTitle>
+                    <CardDescription className="text-muted-foreground font-mono text-sm">
+                      {data.data?.[0]?.extra.tag.join("、")}
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              )}
+              {data.data?.[0]?.extra.weburl && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-xl">
+                      <Folder className="mr-2 h-5 w-5 text-blue-500" />
+                      数据集开源仓库地址
+                    </CardTitle>
+                    <CardDescription className="text-muted-foreground font-mono text-sm">
+                      {data.data?.[0]?.extra.weburl}
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              )}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center text-xl">
+                    <Folder className="mr-2 h-5 w-5 text-blue-500" />
+                    数据集描述
+                  </CardTitle>
+                  <CardDescription className="text-muted-foreground font-mono text-sm">
+                    {data.data?.[0]?.describe}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </div>
+          ),
+          scrollable: true,
+        },
         {
           key: "usershare",
           icon: User,
