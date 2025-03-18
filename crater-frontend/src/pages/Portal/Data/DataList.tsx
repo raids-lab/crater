@@ -57,9 +57,11 @@ export default function DataList({
 
   const filteredItems = items
     .sort((a, b) =>
-      sort === "ascending"
-        ? a.name.localeCompare(b.name)
-        : b.name.localeCompare(a.name),
+      sort === "descending"
+        ? new Date(a.createdAt || "").getTime() -
+          new Date(b.createdAt || "").getTime()
+        : new Date(b.createdAt || "").getTime() -
+          new Date(a.createdAt || "").getTime(),
     )
     .filter((item) =>
       modelType === "所有标签"
