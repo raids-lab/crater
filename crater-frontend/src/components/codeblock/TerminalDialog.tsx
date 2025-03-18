@@ -10,6 +10,7 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { REFRESH_TOKEN_KEY } from "@/utils/store";
+import { useDebounceCallback } from "usehooks-ts";
 
 const buildWebSocketUrl = (
   namespace: string,
@@ -28,6 +29,29 @@ const buildWebSocketUrl = (
   return url.toString() + `?token=${token}`;
 };
 
+// 发送终端大小变更消息
+function sendTerminalResize(websocket: WebSocket, cols: number, rows: number) {
+  if (websocket.readyState === WebSocket.OPEN) {
+    const resizeMessage = {
+      op: "resize",
+      cols: cols,
+      rows: rows,
+    };
+    websocket.send(JSON.stringify(resizeMessage));
+  }
+}
+
+// 发送终端输入消息
+function sendTerminalInput(websocket: WebSocket, data: string) {
+  if (websocket.readyState === WebSocket.OPEN) {
+    const inputMessage = {
+      op: "stdin",
+      data: data,
+    };
+    websocket.send(JSON.stringify(inputMessage));
+  }
+}
+
 function TerminalCard({
   namespacedName,
   selectedContainer,
@@ -35,10 +59,18 @@ function TerminalCard({
   namespacedName: PodNamespacedName;
   selectedContainer: ContainerInfo;
 }) {
-  const terminalRef = useRef<Terminal | null>(null); // 用于保存终端实例
-  const xtermRef = useRef<HTMLDivElement>(null); // 用于保存终端的 DOM 元素
-  const fitAddonRef = useRef<FitAddon | null>(null); // 用于保存 fitAddon 实例
+  const terminalRef = useRef<Terminal | null>(null);
+  const xtermRef = useRef<HTMLDivElement>(null);
+  const fitAddonRef = useRef<FitAddon | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+
+  // 使用防抖函数，延迟300ms发送尺寸变更信息
+  const debouncedSendResize = useDebounceCallback(
+    (ws: WebSocket, cols: number, rows: number) => {
+      sendTerminalResize(ws, cols, rows);
+    },
+    300,
+  );
 
   useEffect(() => {
     if (!selectedContainer.state.running || !xtermRef.current) {
@@ -62,12 +94,6 @@ function TerminalCard({
     terminal.focus();
     fitAddon.fit(); // 调整终端大小
 
-    // 监听窗口调整，自动调整终端大小
-    const handleResize = () => {
-      fitAddon.fit();
-    };
-    window.addEventListener("resize", handleResize);
-
     const wsUrl = buildWebSocketUrl(
       namespacedName.namespace,
       namespacedName.name,
@@ -86,12 +112,36 @@ function TerminalCard({
     };
 
     ws.onclose = () => {
-      terminal.writeln("Connection closed.");
+      //另起一行，说明关闭的时间
+      terminal.writeln("");
+      terminal.writeln("Connection closed on " + new Date().toLocaleString());
     };
 
-    // 将终端的输入发送到 WebSocket
+    ws.onopen = () => {
+      // 连接打开后立即发送初始终端大小（这里不需要防抖）
+      const { cols, rows } = terminal;
+      sendTerminalResize(ws, cols, rows);
+    };
+
+    // 监听窗口调整，自动调整终端大小
+    const handleResize = () => {
+      fitAddon.fit();
+
+      // 获取调整后的终端尺寸并发送到后端（使用防抖）
+      const { cols, rows } = terminal;
+      debouncedSendResize(ws, cols, rows);
+    };
+    window.addEventListener("resize", handleResize);
+
+    // 监听终端大小变化（使用防抖）
+    terminal.onResize((dimensions) => {
+      debouncedSendResize(ws, dimensions.cols, dimensions.rows);
+    });
+
+    // 将终端的输入发送到 WebSocket，使用新的格式
+    // 注意：输入不需要防抖，应该立即发送
     terminal.onData((data) => {
-      ws.send(data);
+      sendTerminalInput(ws, data);
     });
 
     return () => {
@@ -99,7 +149,7 @@ function TerminalCard({
       ws.close();
       terminal.dispose();
     };
-  }, [namespacedName, selectedContainer]);
+  }, [namespacedName, selectedContainer, debouncedSendResize]);
 
   return (
     <Card className="overflow-hidden rounded-md bg-black p-1 md:col-span-2 xl:col-span-3 dark:border">
