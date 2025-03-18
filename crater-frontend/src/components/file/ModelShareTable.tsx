@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogClose,
@@ -14,7 +13,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { OnChangeValue } from "react-select";
 import { ShareDatasetToUserDialog } from "@/components/custom/UserNotInSelect";
 import {
   apiListUsersInDataset,
@@ -38,7 +36,7 @@ import {
   Folder,
 } from "lucide-react";
 import useBreadcrumb from "@/hooks/useBreadcrumb";
-import { QueueNotInSelect } from "@/components/custom/QueueNotInSelect";
+import { ShareDatasetToQueueDialog } from "@/components/custom/QueueNotInSelect";
 import { AxiosResponse } from "axios";
 import { IResponse } from "@/services/types";
 import { ColumnDef } from "@tanstack/react-table";
@@ -55,11 +53,6 @@ import PageTitle from "@/components/layout/PageTitle";
 import { DataTable } from "@/components/custom/DataTable";
 import { useNavigate } from "react-router-dom";
 import { DatasetUpdateForm } from "./updateform";
-interface QueueOption {
-  value: string;
-  id: number;
-  label: string;
-}
 
 interface DatesetShareTableProps {
   apiShareDatasetwithUser: (
@@ -146,27 +139,6 @@ export function ModelShareTable({
   useEffect(() => {
     setBreadcrumb([{ title: "共享情况" }]);
   }, [setBreadcrumb]);
-
-  const { mutate: shareWithQueue } = useMutation({
-    mutationFn: (datasetId: number) =>
-      apiShareDatasetwithQueue({
-        datasetID: datasetId,
-        queueIDs: queueIds,
-      }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ["data", "queuedataset", datasetId],
-      });
-      toast.success("共享成功");
-      setQueueIds([]);
-    },
-  });
-
-  const [queueIds, setQueueIds] = useState<number[]>([]);
-  const onChangeQueue = (newValue: OnChangeValue<QueueOption, true>) => {
-    const queueIds: number[] = newValue.map((queue) => queue.id);
-    setQueueIds(queueIds);
-  };
 
   const userDatasetColumns = useMemo<ColumnDef<UserDatasetResp>[]>(
     () => [
@@ -359,28 +331,10 @@ export function ModelShareTable({
                   <DialogTitle>共享模型</DialogTitle>
                   <DialogDescription>和账户共享模型</DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="queue" className="text-right">
-                      账户名称
-                    </Label>
-                    <QueueNotInSelect id={datasetId} onChange={onChangeQueue} />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <DialogClose>
-                    <Button variant="outline">取消</Button>
-                  </DialogClose>
-                  <DialogClose>
-                    <Button
-                      type="submit"
-                      variant="default"
-                      onClick={() => shareWithQueue(datasetId)}
-                    >
-                      共享
-                    </Button>
-                  </DialogClose>
-                </DialogFooter>
+                <ShareDatasetToQueueDialog
+                  datasetId={datasetId}
+                  apiShareDatasetwithQueue={apiShareDatasetwithQueue}
+                />
               </DialogContent>
             </Dialog>
             <Dialog>
@@ -435,7 +389,7 @@ export function ModelShareTable({
           icon: FileIcon,
           label: "模型基本信息", // 数据集信息标签
           children: (
-            <div className="space-y-1">
+            <div className="space-y-1 md:space-y-2 lg:space-y-3">
               {data.data?.[0]?.extra.tag && (
                 <Card>
                   <CardHeader>
