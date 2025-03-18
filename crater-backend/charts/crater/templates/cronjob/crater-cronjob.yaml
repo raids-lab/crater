@@ -1,0 +1,104 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: clean-low-gpu-util-job
+  namespace: {{ .Release.Namespace }}
+  labels:
+    crater.raids-lab.io/component: cronjob
+spec:
+  schedule: {{ .Values.web.cronjob.config.jobs.lowGPUUtil.schedule }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: cleanup-task
+            image: {{ .Values.web.cronjob.image }}
+            volumeMounts:
+            - name: scripts-volume
+              mountPath: /scripts
+              readOnly: true
+            command: ["/bin/sh", "/scripts/clean-low-gpu-util-job.sh"]
+            env:
+            - name: TIME_RANGE
+              value: {{ .Values.web.cronjob.config.jobs.lowGPUUtil.TIME_RANGE }}
+            - name: WAIT_TIME
+              value: {{ .Values.web.cronjob.config.jobs.lowGPUUtil.WAIT_TIME }}
+            - name: UTIL
+              value: {{ .Values.web.cronjob.config.jobs.lowGPUUtil.UTIL }}
+            envFrom:
+            - configMapRef:
+                name: crater-cronjob-config
+          restartPolicy: OnFailure
+          volumes:
+          - name: scripts-volume
+            configMap:
+              name: crater-cronjob-scripts
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: clean-long-time-job
+  namespace: {{ .Release.Namespace }}
+  labels:
+    crater.raids-lab.io/component: cronjob
+spec:
+  schedule: {{ .Values.web.cronjob.config.jobs.longTime.schedule }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: cleanup-task
+            image: {{ .Values.web.cronjob.image }}
+            volumeMounts:
+            - name: scripts-volume
+              mountPath: /scripts
+              readOnly: true
+            command: ["/bin/sh", "/scripts/clean-long-time-job.sh"]
+            env:
+            - name: BATCH_DAYS
+              value: {{ .Values.web.cronjob.config.jobs.longTime.BATCH_DAYS }}
+            - name: INTERACTIVE_DAYS
+              value: {{ .Values.web.cronjob.config.jobs.longTime.INTERACTIVE_DAYS }}
+            envFrom:
+            - configMapRef:
+                name: crater-cronjob-config
+          restartPolicy: OnFailure
+          volumes:
+          - name: scripts-volume
+            configMap:
+              name: crater-cronjob-scripts
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: clean-waiting-jupyter
+  namespace: {{ .Release.Namespace }}
+  labels:
+    crater.raids-lab.io/component: cronjob
+spec:
+  schedule: {{ .Values.web.cronjob.config.jobs.waitingJupyter.schedule }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: cleanup-task
+            image: {{ .Values.web.cronjob.image }}
+            volumeMounts:
+            - name: scripts-volume
+              mountPath: /scripts
+              readOnly: true
+            command: ["/bin/sh", "/scripts/clean-waiting-jupyter.sh"]
+            env:
+            - name: JUPYTER_WAIT_MINUTES
+              value: {{ .Values.web.cronjob.config.jobs.waitingJupyter.JUPYTER_WAIT_MINUTES }}
+            envFrom:
+            - configMapRef:
+                name: crater-cronjob-config
+          restartPolicy: OnFailure
+          volumes:
+          - name: scripts-volume
+            configMap:
+              name: crater-cronjob-scripts
