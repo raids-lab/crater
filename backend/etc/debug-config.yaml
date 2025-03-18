@@ -1,7 +1,7 @@
 enableLeaderElection: false
-leaderElectionID: ***REMOVED***
+leaderElectionID: 1ca428e5.training-operator.kubeflow.org
 enableProfiling: true
-prometheusAPI: ***REMOVED***
+prometheusAPI: http://***REMOVED***:31110
 profilingTimeout: 120
 serverAddr: :8098
 metricsAddr: :8090
@@ -28,7 +28,7 @@ workspace:
   imageNameSpace: crater-images
 act:
   strictRegisterMode: false
-  uidServerURL: ***REMOVED***
+  uidServerURL: http://192.168.5.59:5000/get_user_id
   image:
     registryServer: ***REMOVED***
     registryUser: ***REMOVED***
@@ -50,15 +50,15 @@ act:
     port: 25
     user: notify
     password: ***REMOVED***
-    notify: ***REMOVED***
+    notify: notify@***REMOVED***
 wpsRobot:
-  webhookAddress: ***REMOVED***
+  webhookAddress: https://xz.wps.cn/api/v1/webhook/send?key=4dd9cd4970e225491cfefcfafe7ee2e3
 schedulerPlugins:
   aijob:
     aijobEn: true
   spjob:
     spjobEn: true
-    predictionServiceAddress: "***REMOVED***"
+    predictionServiceAddress: ***REMOVED***
 dindArgs:
-  buildkitImage: "***REMOVED***/user-huangsy/buildkit/buildctl:v0.18.2"
-  nerdctlImage: "***REMOVED***/nerdctl:2.0.1-retry"
+  buildkitImage: ***REMOVED***/user-huangsy/buildkit/buildctl:v0.18.2
+  nerdctlImage: ***REMOVED***/nerdctl:2.0.1-retry

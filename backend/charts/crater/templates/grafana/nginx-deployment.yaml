@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: grafana-proxy
-  namespace: crater
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
   selector:
@@ -17,7 +17,8 @@ spec:
       tolerations: {{ .Values.tolerations | toYaml | nindent 8 }}
       containers:
       - name: nginx
-        image: ***REMOVED***/docker.io/library/nginx:1.27.3-bookworm
+        image: {{ .Values.web.grafana.image }}
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80
         volumeMounts:

@@ -1,7 +1,7 @@
 enableLeaderElection: false
-leaderElectionID: ***REMOVED***
+leaderElectionID: 1ca428e5.training-operator.kubeflow.org
 enableProfiling: true
-prometheusAPI: ***REMOVED***
+prometheusAPI: http://***REMOVED***:31110
 profilingTimeout: 120
 serverAddr: :8088
 metricsAddr: :8080
@@ -43,15 +43,15 @@ act:
     port: 25
     user: notify
     password: ***REMOVED***
-    notify: ***REMOVED***
+    notify: notify@***REMOVED***
 wpsRobot:
-  webhookAddress: ***REMOVED***
+  webhookAddress: https://xz.wps.cn/api/v1/webhook/send?key=4dd9cd4970e225491cfefcfafe7ee2e3
 schedulerPlugins:
   aijob:
     aijobEn: false
   spjob:
     spjobEn: false
-    predictionServiceAddress: "***REMOVED***"
+    predictionServiceAddress: ***REMOVED***
 dindArgs:
-  buildkitImage: "***REMOVED***/user-huangsy/buildkit/buildctl:v0.18.2"
-  nerdctlImage: "***REMOVED***/nerdctl:2.0.1-retry"
+  buildkitImage: ***REMOVED***/user-huangsy/buildkit/buildctl:v0.18.2
+  nerdctlImage: ***REMOVED***/nerdctl:2.0.1-retry

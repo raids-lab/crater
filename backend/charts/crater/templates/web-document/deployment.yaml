@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: crater-website
-  namespace: crater
+  namespace: {{ .Release.Namespace }}
   labels:
     app: crater-website
 spec:
