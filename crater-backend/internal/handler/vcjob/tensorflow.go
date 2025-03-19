@@ -28,6 +28,7 @@ type (
 		Replicas   int32           `json:"replicas"`
 		Resource   v1.ResourceList `json:"resource"`
 		Image      string          `json:"image"`
+		Shell      *string         `json:"shell"`
 		Command    *string         `json:"command"`
 		WorkingDir *string         `json:"workingDir"`
 		Ports      []PortReq       `json:"ports"`

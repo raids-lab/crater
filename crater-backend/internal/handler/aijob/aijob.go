@@ -436,7 +436,9 @@ func (mgr *AIJobMgr) Create(c *gin.Context) {
 	req.TaskType = "training"
 	req.Image = vcReq.Image
 	req.ResourceRequest = vcReq.Resource
-	req.Command = vcReq.Command
+	if vcReq.Command != nil {
+		req.Command = *vcReq.Command
+	}
 	req.WorkingDir = vcReq.WorkingDir
 
 	taskModel := models.FormatTaskAttrToModel(&req.TaskAttr)

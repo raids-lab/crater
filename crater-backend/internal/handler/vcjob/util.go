@@ -300,7 +300,11 @@ func generatePodSpec(
 		RestartPolicy: v1.RestartPolicyNever,
 	}
 	if task.Command != nil {
-		podSpec.Containers[0].Command = []string{"sh", "-c", *task.Command}
+		if task.Shell != nil {
+			podSpec.Containers[0].Command = []string{*task.Shell, "-c", *task.Command}
+		} else {
+			podSpec.Containers[0].Command = []string{"sh", "-c", *task.Command}
+		}
 	}
 	if task.WorkingDir != nil {
 		podSpec.Containers[0].WorkingDir = *task.WorkingDir
