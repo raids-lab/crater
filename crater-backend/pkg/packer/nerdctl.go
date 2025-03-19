@@ -80,7 +80,7 @@ func (b *imagePacker) generateSnapshotContainer(data *SnapshotReq) corev1.Contai
 		"--container-name", data.ContainerName,
 		"--image-url", data.ImageLink,
 		// 如有需要，可添加 "--size-limit" 参数
-		"--size-limit", "25",
+		"--size-limit", "30",
 	}
 
 	container := corev1.Container{
