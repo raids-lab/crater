@@ -32,7 +32,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Role, apiUserLogin } from "@/services/api/auth";
 import LoadableButton from "@/components/custom/LoadableButton";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { isAxiosError } from "axios";
 import { IErrorResponse } from "@/services/types";
@@ -43,6 +42,7 @@ import {
   ERROR_REGISTER_TIMEOUT,
 } from "@/services/error_code";
 import { ExternalLink } from "lucide-react";
+import { AuthMode } from ".";
 
 const formSchema = z.object({
   username: z
@@ -73,7 +73,12 @@ const formSchema = z.object({
     }),
 });
 
-export function LoginForm() {
+interface LoginFormProps {
+  authMode: AuthMode;
+  onForgotPasswordClick: () => void;
+}
+
+export function LoginForm({ authMode, onForgotPasswordClick }: LoginFormProps) {
   const [open, setOpen] = useState(false);
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -91,7 +96,6 @@ export function LoginForm() {
       password: "",
     },
   });
-  const currentValues = form.watch();
 
   // 2. Define a submit handler.
   const onSubmit = (values: z.infer<typeof formSchema>) => {
@@ -102,7 +106,7 @@ export function LoginForm() {
       loginUser({
         username: values.username,
         password: values.password,
-        auth: "act-ldap",
+        auth: authMode == AuthMode.ACT ? "act-ldap" : "normal",
       });
     }
   };
@@ -186,9 +190,7 @@ export function LoginForm() {
                 <FormLabel>账号</FormLabel>
                 <FormControl>
                   <Input autoComplete="username" {...field} />
-                  {/* <Input placeholder="shadcn" {...field} /> */}
                 </FormControl>
-                {/* <FormDescription>密码</FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
@@ -203,7 +205,7 @@ export function LoginForm() {
                   <button
                     className="text-muted-foreground p-0 text-sm underline"
                     type="button"
-                    onClick={() => toast.info("请联系 G512 杜英杰老师")}
+                    onClick={onForgotPasswordClick}
                   >
                     忘记密码？
                   </button>
@@ -225,25 +227,8 @@ export function LoginForm() {
             className="w-full"
             isLoading={status === "pending"}
           >
-            ACT 认证登录
+            {authMode === AuthMode.ACT ? "ACT 认证登录" : "登录"}
           </LoadableButton>
-          <Button
-            className="w-full border"
-            type="button"
-            variant="outline"
-            onClick={() => {
-              if (status !== "pending") {
-                resetAll();
-                loginUser({
-                  username: currentValues.username,
-                  password: currentValues.password,
-                  auth: "normal",
-                });
-              }
-            }}
-          >
-            其他登录方式
-          </Button>
         </form>
       </Form>
       <AlertDialog open={open} onOpenChange={setOpen}>

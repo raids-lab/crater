@@ -44,12 +44,6 @@ const routeItems: RouteItem[] = [
       },
       {
         route: {
-          path: "label",
-          lazy: () => import("./Cluster/Label"),
-        },
-      },
-      {
-        route: {
           path: "resource",
           element: <Resource />,
         },
@@ -178,10 +172,6 @@ const adminSidebarGroups: NavGroupProps[] = [
           {
             title: "节点管理",
             url: "cluster/node",
-          },
-          {
-            title: "节点标签",
-            url: "cluster/label",
           },
           {
             title: "资源列表",

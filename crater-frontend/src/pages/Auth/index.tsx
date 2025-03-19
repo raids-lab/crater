@@ -6,10 +6,57 @@ import { SignupForm } from "./SignupForm";
 import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/utils/theme";
+import { ForgotPasswordForm } from "./ForgotPasswordForm";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+
+// 定义认证模式枚举
+export enum AuthMode {
+  ACT = "act",
+  NORMAL = "normal",
+}
 
 export function Dashboard() {
   const [showSignup, setShowSignup] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showRegisterDialog, setShowRegisterDialog] = useState(false);
   const { theme, setTheme } = useTheme();
+  const [currentMode, setCurrentMode] = useState<AuthMode>(AuthMode.ACT);
+
+  // 处理注册按钮点击
+  const handleRegisterClick = () => {
+    if (currentMode === AuthMode.ACT) {
+      setShowRegisterDialog(true);
+    } else {
+      setShowSignup(true);
+      setShowForgotPassword(false);
+    }
+  };
+
+  // 处理忘记密码按钮点击
+  const handleForgotPasswordClick = () => {
+    if (currentMode === AuthMode.ACT) {
+      toast.info("请联系 G512 杜英杰老师");
+    } else {
+      setShowForgotPassword(true);
+      setShowSignup(false);
+    }
+  };
+
+  // 返回登录表单
+  const handleBackToLogin = () => {
+    setShowSignup(false);
+    setShowForgotPassword(false);
+  };
 
   return (
     <div className="h-screen w-full lg:grid lg:grid-cols-2">
@@ -39,6 +86,12 @@ export function Dashboard() {
             <button
               className="flex h-14 w-full flex-row items-center justify-center text-white"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              onDoubleClick={() => {
+                setCurrentMode((prev) => {
+                  return prev === AuthMode.ACT ? AuthMode.NORMAL : AuthMode.ACT;
+                });
+                toast.info(`当前认证模式：${currentMode}`);
+              }}
             >
               <CraterIcon className="mr-1.5 h-8 w-8" />
               <CraterText className="h-4" />
@@ -78,7 +131,7 @@ export function Dashboard() {
       </div>
       {/* 右侧表单部分 */}
       <div className="flex items-center justify-center py-12">
-        {showSignup ? (
+        {showSignup && currentMode === AuthMode.NORMAL ? (
           <div className="mx-auto w-[350px] space-y-6">
             <div className="space-y-2 text-center">
               <h1 className="text-3xl font-bold">用户注册</h1>
@@ -89,11 +142,24 @@ export function Dashboard() {
             <SignupForm />
             <div className="text-muted-foreground text-center text-sm">
               已有账号？
-              <button
-                onClick={() => setShowSignup(false)}
-                className="underline"
-              >
+              <button onClick={handleBackToLogin} className="underline">
                 立即登录
+              </button>
+            </div>
+          </div>
+        ) : showForgotPassword && currentMode === AuthMode.NORMAL ? (
+          <div className="mx-auto w-[350px] space-y-6">
+            <div className="space-y-2 text-center">
+              <h1 className="text-3xl font-bold">重置密码</h1>
+              <p className="text-muted-foreground text-sm">
+                我们将向您的邮箱发送密码重置链接
+              </p>
+            </div>
+            <ForgotPasswordForm />
+            <div className="text-muted-foreground text-center text-sm">
+              想起密码了？
+              <button onClick={handleBackToLogin} className="underline">
+                返回登录
               </button>
             </div>
           </div>
@@ -102,19 +168,59 @@ export function Dashboard() {
             <div className="space-y-2 text-center">
               <h1 className="text-3xl font-bold">用户登录</h1>
               <p className="text-muted-foreground text-sm">
-                已接入 ACT 实验室统一身份认证
+                {currentMode === AuthMode.ACT
+                  ? "已接入 ACT 实验室统一身份认证"
+                  : "请输入您的账号和密码"}
               </p>
             </div>
-            <LoginForm />
+            <LoginForm
+              authMode={currentMode}
+              onForgotPasswordClick={handleForgotPasswordClick}
+            />
             <div className="text-muted-foreground text-center text-sm">
               还没有账号？
-              <button onClick={() => setShowSignup(true)} className="underline">
+              <button onClick={handleRegisterClick} className="underline">
                 立即注册
               </button>
             </div>
           </div>
         )}
       </div>
+
+      {/* ACT模式下的注册引导对话框 */}
+      <AlertDialog
+        open={showRegisterDialog}
+        onOpenChange={setShowRegisterDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>账号激活指南</AlertDialogTitle>
+            <AlertDialogDescription>
+              第一次登录平台时，需要从 ACT 门户同步用户信息，请参考「
+              <a
+                href={`https://${import.meta.env.VITE_HOST}/website/docs/quick-start/login`}
+                className="text-primary underline"
+              >
+                平台访问指南
+              </a>
+              」激活您的账号。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                window.open(
+                  `https://${import.meta.env.VITE_HOST}/website/docs/quick-start/login`,
+                )
+              }
+            >
+              <ExternalLink className="mr-2 h-4 w-4" />
+              立即阅读
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
