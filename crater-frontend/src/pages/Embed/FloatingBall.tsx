@@ -10,7 +10,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
 
 export default function FloatingBall({
   jobName,
@@ -23,8 +22,6 @@ export default function FloatingBall({
   handleSnapshot: () => void;
   setIsDragging: (isDragging: boolean) => void;
 }) {
-  const navigate = useNavigate();
-
   const x = useMotionValue(window.innerWidth - 60);
   const y = useMotionValue(window.innerHeight - 60);
 
@@ -51,12 +48,13 @@ export default function FloatingBall({
             <TooltipTrigger asChild>
               <CraterIcon
                 style={{ filter: "drop-shadow(1px 1px 4px rgba(0,0,0,0.5))" }}
+                className="h-12 w-12"
               />
             </TooltipTrigger>
             <TooltipContent
               side="left"
               align="end"
-              className="bg-background text-foreground flex w-32 flex-col border p-1"
+              className="bg-background text-foreground flex w-32 flex-col border p-1 [&_span]:hidden"
             >
               <DropdownMenuLabel className="text-muted-foreground text-xs">
                 操作
@@ -65,10 +63,10 @@ export default function FloatingBall({
               <Button
                 variant="ghost"
                 className="justify-start px-2 py-1 font-normal"
-                onClick={() => navigate(`/portal/job/inter/${jobName}`)}
+                onClick={() => window.open(`/portal/job/inter/${jobName}`)}
               >
                 <InfoIcon className="text-primary" />
-                <span>作业详情</span>
+                作业详情
               </Button>
               <Button
                 variant="ghost"
@@ -97,7 +95,7 @@ export default function FloatingBall({
                 onClick={handleSnapshot}
               >
                 <Save className="text-highlight-purple" />
-                <span>保存镜像</span>
+                保存镜像
               </Button>
             </TooltipContent>
           </Tooltip>
