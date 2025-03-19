@@ -54,7 +54,7 @@ const columns: ColumnDef<Resource>[] = [
     ),
     cell: ({ row }) => {
       return (
-        <Badge className="font-mono font-normal" variant="outline">
+        <Badge className="font-mono font-normal" variant="secondary">
           {row.getValue<string>("name")}
         </Badge>
       );
@@ -71,7 +71,7 @@ const columns: ColumnDef<Resource>[] = [
         return <></>;
       }
       return (
-        <Badge className="font-mono font-normal" variant="outline">
+        <Badge className="font-mono font-normal" variant="secondary">
           {text}
         </Badge>
       );
@@ -85,9 +85,9 @@ const columns: ColumnDef<Resource>[] = [
     cell: ({ row }) => {
       const amount = row.getValue<number>("amount");
       if (amount > 1024 * 1024) {
-        return <div>{formatBytes(amount)}</div>;
+        return <div className="font-mono">{formatBytes(amount)}</div>;
       }
-      return <div>{row.getValue("amount")}</div>;
+      return <div className="font-mono">{row.getValue("amount")}</div>;
     },
   },
   {
@@ -98,9 +98,9 @@ const columns: ColumnDef<Resource>[] = [
     cell: ({ row }) => {
       const amount = row.getValue<number>("amountSingleMax");
       if (amount > 1024 * 1024) {
-        return <div>{formatBytes(amount)}</div>;
+        return <div className="font-mono">{formatBytes(amount)}</div>;
       }
-      return <div>{row.getValue("amountSingleMax")}</div>;
+      return <div className="font-mono">{row.getValue("amountSingleMax")}</div>;
     },
   },
   {
@@ -109,7 +109,9 @@ const columns: ColumnDef<Resource>[] = [
       <DataTableColumnHeader column={column} title={"Format"} />
     ),
     cell: ({ row }) => (
-      <div className="font-mono">{row.getValue("format")}</div>
+      <Badge className="font-mono font-normal" variant="outline">
+        {row.getValue("format")}
+      </Badge>
     ),
   },
   // 添加删除键和更新键

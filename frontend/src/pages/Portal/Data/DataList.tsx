@@ -23,6 +23,7 @@ import { IUserAttributes } from "@/services/api/admin/user";
 import PageTitle from "@/components/layout/PageTitle";
 import TipBadge from "@/components/badge/TipBadge";
 import { TimeDistance } from "@/components/custom/TimeDistance";
+import { motion } from "framer-motion";
 export interface DataItem {
   id: number;
   name: string;
@@ -38,10 +39,12 @@ export default function DataList({
   items,
   title,
   actionArea,
+  isWIP,
 }: {
   items: DataItem[];
   title: string;
   actionArea?: React.ReactNode;
+  isWIP?: boolean;
 }) {
   const [sort, setSort] = useState("ascending");
   const [modelType, setModelType] = useState("所有标签");
@@ -78,6 +81,7 @@ export default function DataList({
     <div>
       <PageTitle
         title={title}
+        isWIP={isWIP}
         description={`我们为您准备了一些常见${title}，也欢迎您上传并分享更多${title}。`}
       >
         {actionArea}
@@ -135,9 +139,13 @@ export default function DataList({
       </div>
       <Separator />
       <ul className="faded-bottom no-scrollbar grid gap-4 overflow-auto pt-4 pb-16 md:grid-cols-2 lg:grid-cols-3">
-        {filteredItems.map((item) => (
-          <li
+        {filteredItems.map((item, index) => (
+          <motion.li
             key={item.name}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: (index / 3) * 0.1 }}
+            whileHover={{ y: -5 }}
             className="bg-card flex flex-col justify-between gap-3 rounded-lg border hover:shadow-md"
           >
             <div className="flex flex-row items-center justify-between p-4 pb-0">
@@ -149,7 +157,7 @@ export default function DataList({
                 </div>
                 <TooltipLink
                   to={`${item.id}`}
-                  name={<p>{item.name}</p>}
+                  name={<p className="text-left">{item.name}</p>}
                   tooltip={`查看${title}详情`}
                   className="font-semibold"
                 />
@@ -174,7 +182,10 @@ export default function DataList({
                 ))}
               </div>
             )}
-            <p className="text-muted-foreground line-clamp-2 px-4 text-sm text-balance">
+            <p
+              className="text-muted-foreground line-clamp-3 px-4 text-sm text-balance"
+              title={item.desc}
+            >
               {item.desc}
             </p>
             <div>
@@ -188,7 +199,7 @@ export default function DataList({
                 />
               </div>
             </div>
-          </li>
+          </motion.li>
         ))}
       </ul>
     </div>

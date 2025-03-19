@@ -3,13 +3,13 @@ import { Navigate, RouteObject } from "react-router-dom";
 import DashboardLayout from "@/components/layout/Dashboard";
 import {
   BarChartBigIcon,
-  BriefcaseIcon,
   BoxIcon,
   DatabaseIcon,
   FlaskConicalIcon,
   MessageSquareMoreIcon,
   SettingsIcon,
   SquareChartGanttIcon,
+  ShoppingBagIcon,
 } from "lucide-react";
 import batchRoutes from "./Job/Batch";
 import interactiveRoutes from "./Job/Interactive";
@@ -21,6 +21,7 @@ import FeedBack from "./Feedback";
 import UserSettings from "./Setting/UserSetting";
 import Monitor from "../Embed/Monitor";
 import modelRoutes from "./Data/modelindex";
+import AssignmentTemplateList from "./Job/Store";
 
 const OVERVIEW_DASHBOARD = import.meta.env.VITE_GRAFANA_OVERVIEW;
 const AVAILABLE_DASHBOARD = import.meta.env.VITE_GRAFANA_SCHEDULE;
@@ -77,20 +78,11 @@ const portalRoutes: RouteItem[] = [
   },
   {
     path: "service",
-    children: [
-      {
-        route: {
-          path: "tensorboard/*",
-          element: <>TODO</>,
-        },
-      },
-      {
-        route: {
-          path: "model/*",
-          element: <>TODO</>,
-        },
-      },
-    ],
+    route: {
+      path: "modal",
+      element: <AssignmentTemplateList />,
+    },
+    children: [],
   },
   {
     path: "image",
@@ -210,18 +202,9 @@ const userSidebarGroups: NavGroupProps[] = [
         ],
       },
       {
-        title: "我的服务",
-        icon: BriefcaseIcon,
-        items: [
-          {
-            title: "Tensorboard",
-            url: "service/tensorboard",
-          },
-          {
-            title: "模型托管",
-            url: "service/model",
-          },
-        ],
+        title: "作业模板",
+        url: "modal",
+        icon: ShoppingBagIcon,
       },
     ],
   },
