@@ -303,6 +303,7 @@ export interface IJupyterCreate {
 }
 
 export interface ITrainingCreate extends IJupyterCreate {
+  shell?: string;
   command?: string;
   workingDir?: string;
 }
