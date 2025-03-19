@@ -20,19 +20,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiTrainingCreate } from "@/services/api/vcjob";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import {
-  ChevronLeftIcon,
-  CircleArrowDown,
-  CircleArrowUp,
-  CirclePlus,
-  XIcon,
-} from "lucide-react";
+import { CirclePlus, XIcon } from "lucide-react";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import AccordionCard from "@/components/form/AccordionCard";
 import { Separator } from "@/components/ui/separator";
 import {
-  exportToJsonFile,
-  importFromJsonFile,
   volumeMountsSchema,
   envsSchema,
   taskSchema,
@@ -53,9 +45,18 @@ import { VolumeMountsCard } from "@/components/form/DataMountFormField";
 import { useTemplateLoader } from "@/hooks/useTemplateLoader";
 import { MetadataFormCustom } from "@/components/form/types";
 import { ResourceFormFields } from "@/components/form/ResourceFormField";
-
-const VERSION = "20240528";
-const JOB_TYPE = "single";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import FormExportButton from "@/components/form/FormExportButton";
+import { PublishConfigForm } from "./Publish";
+import LoadableButton from "@/components/custom/LoadableButton";
+import PageTitle from "@/components/layout/PageTitle";
+import FormImportButton from "@/components/form/FormImportButton";
 
 const formSchema = z.object({
   jobName: z
@@ -79,7 +80,6 @@ const formSchema = z.object({
 type FormSchema = z.infer<typeof formSchema>;
 
 export const EnvCard = "环境变量";
-export const DataMountCard = "数据挂载";
 export const TensorboardCard = "观测面板";
 export const OtherCard = "其他选项";
 export const IngressCard = "外部访问";
@@ -98,6 +98,7 @@ export const Component = () => {
         name: values.jobName,
         resource: convertToResourceList(values.task.resource),
         image: values.task.image,
+        shell: values.task.shell,
         command: values.task.command,
         workingDir: values.task.workingDir,
         volumeMounts: values.volumeMounts,
@@ -144,6 +145,7 @@ export const Component = () => {
           memory: 2,
         },
         image: "",
+        shell: "bash",
         command: "",
         workingDir: "/home/" + user.name,
         ports: [],
@@ -233,86 +235,43 @@ export const Component = () => {
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="grid flex-1 items-start gap-4 md:col-span-3 md:gap-x-6 lg:grid-cols-3"
+          className="grid flex-1 items-start gap-4 md:gap-x-6 lg:grid-cols-3"
         >
-          <div className="items-centor flex flex-row justify-between lg:col-span-3">
-            <div className="flex flex-row items-center gap-3">
-              <Button
-                variant="outline"
-                size="icon"
-                type="button"
-                className="h-8 w-8"
-                onClick={() => navigate(-1)}
-              >
-                <ChevronLeftIcon className="size-4" />
-              </Button>
-              <h1 className="flex-1 shrink-0 text-xl font-semibold tracking-tight whitespace-nowrap sm:grow-0">
-                单机训练作业
-              </h1>
-            </div>
-            <div className="flex flex-row gap-3">
-              <Button
-                variant="outline"
-                type="button"
-                className="relative cursor-pointer"
-              >
-                <Input
-                  onChange={(e) => {
-                    importFromJsonFile<FormSchema>(
-                      VERSION,
-                      JOB_TYPE,
-                      e.target.files?.[0],
-                    )
-                      .then((data) => {
-                        form.reset(data);
-                        if (data.envs.length > 0) {
-                          setEnvOpen(EnvCard);
-                        }
-                        toast.success(`导入配置成功`);
-                      })
-                      .catch(() => {
-                        toast.error(`解析错误，导入配置失败`);
-                      });
-                  }}
-                  type="file"
-                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                />
-                <CircleArrowDown className="size-4" />
-                导入配置
-              </Button>
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => {
-                  form
-                    .trigger()
-                    .then((isValid) => {
-                      if (!isValid) {
-                        return;
-                      }
-                      exportToJsonFile(
-                        {
-                          version: VERSION,
-                          type: JOB_TYPE,
-                          data: currentValues,
-                        },
-                        currentValues.jobName + ".json",
-                      );
-                    })
-                    .catch((error) => {
-                      toast.error((error as Error).message);
-                    });
+          <PageTitle
+            title="新建单机训练作业"
+            description="提交无须人工干预而执行系列程序的作业"
+            className="lg:col-span-3"
+            isWIP={true}
+            tipContent={`版本 ${MetadataFormCustom.version}`}
+          >
+            <div className="items-centor flex w-fit flex-row justify-end gap-3">
+              <FormImportButton
+                metadata={MetadataFormCustom}
+                form={form}
+                afterImport={(data) => {
+                  if (data.envs.length > 0) {
+                    setEnvOpen(EnvCard);
+                  }
+                  if (data.nodeSelector.enable) {
+                    setOtherOpen(OtherCard);
+                  }
                 }}
+              />
+              <FormExportButton metadata={MetadataFormCustom} form={form} />
+              <PublishConfigForm
+                config={MetadataFormCustom}
+                onPublish={() => {}}
+              />
+              <LoadableButton
+                isLoading={isPending}
+                isLoadingText="提交作业"
+                type="submit"
               >
-                <CircleArrowUp className="size-4" />
-                导出配置
-              </Button>
-              <Button type="submit">
                 <CirclePlus className="size-4" />
                 提交作业
-              </Button>
+              </LoadableButton>
             </div>
-          </div>
+          </PageTitle>
           <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle>基本设置</CardTitle>
@@ -347,19 +306,60 @@ export const Component = () => {
               <ImageFormField form={form} name="task.image" />
               <FormField
                 control={form.control}
-                name="task.command"
+                name="task.shell"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      启动命令
+                      Shell
                       <FormLabelMust />
                     </FormLabel>
                     <FormControl>
-                      <Textarea {...field} className="h-24 font-mono" />
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <SelectTrigger className="w-1/4 font-mono">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="bash" className="font-mono">
+                            bash
+                          </SelectItem>
+                          <SelectItem value="sh" className="font-mono">
+                            sh
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                     </FormControl>
                     <FormDescription>
-                      将覆盖镜像的启动命令，可通过{" "}
-                      <span className="font-mono">;</span> 拆分多行命令
+                      选择用于执行命令的
+                      <span className="mx-0.5 font-mono">shell</span>，默认为
+                      <span className="mx-0.5 font-mono">bash</span>
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="task.command"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>启动命令</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        className="h-30 font-mono"
+                        placeholder={`# Example
+source conda.sh;
+conda activate base;
+./start.sh;`}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      可通过
+                      <span className="mx-0.5 font-mono">;</span>{" "}
+                      拆分多行命令。若不输入，将使用镜像的启动命令
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -378,8 +378,10 @@ export const Component = () => {
                       <Input {...field} className="font-mono" />
                     </FormControl>
                     <FormDescription>
-                      用户文件夹位于{" "}
-                      <span className="font-mono">/home/{user.name}</span>
+                      默认为用户主目录
+                      <span className="mx-0.5 font-mono">
+                        /home/{user.name}
+                      </span>
                       ，重启后数据不会丢失
                     </FormDescription>
                     <FormMessage />

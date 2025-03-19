@@ -359,7 +359,6 @@ export const Component = () => {
               </LoadableButton>
             </div>
           </PageTitle>
-
           <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle>基本设置</CardTitle>

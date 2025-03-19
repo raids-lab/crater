@@ -162,7 +162,7 @@ export function ResourceFormFields<T extends FieldValues>({
               variant="secondary"
               className="cursor-pointer"
             >
-              <ChartNoAxesColumn className="mr-2 size-4" />
+              <ChartNoAxesColumn className="size-4" />
               空闲资源查询
             </Button>
           </SheetTrigger>

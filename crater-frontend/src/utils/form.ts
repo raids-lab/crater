@@ -44,6 +44,7 @@ export const taskSchema = z.object({
   image: z.string().min(1, {
     message: "容器镜像不能为空",
   }),
+  shell: z.string().optional(),
   command: z.string().optional(),
   workingDir: z.string().optional(),
   ports: z.array(
