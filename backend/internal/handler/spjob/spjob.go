@@ -143,9 +143,8 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 					Volumes: volumes,
 					Containers: []corev1.Container{
 						{
-							Name:    "sparse-recdl",
-							Image:   req.Image,
-							Command: []string{"sh", "-c", req.Command},
+							Name:  "sparse-recdl",
+							Image: req.Image,
 							Resources: corev1.ResourceRequirements{
 								Limits: req.Resource,
 							},
@@ -168,6 +167,9 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 			EmbeddingTableCount: req.EmbeddingTableCount,
 			InputTensor:         req.InputTensor,
 		},
+	}
+	if req.Command != nil {
+		job.Spec.Template.Spec.Containers[0].Command = []string{"sh", "-c", *req.Command}
 	}
 
 	if err := mgr.jobclient.CreateRecommendDLJob(c, job); err != nil {

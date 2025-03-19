@@ -27,9 +27,8 @@ type (
 		Resource        v1.ResourceList `json:"resource"`
 		Image           string          `json:"image" binding:"required"`
 		Shell           *string         `json:"shell"`
-		Command         string          `json:"command" binding:"required"`
+		Command         *string         `json:"command"`
 		WorkingDir      string          `json:"workingDir" binding:"required"`
-		AlertEnabled    bool            `json:"alertEnabled"`
 	}
 )
 
@@ -142,12 +141,9 @@ func GenerateCustomPodSpec(
 	if err != nil {
 		return podSpec, err
 	}
+
 	affinity := GenerateNodeAffinity(custom.Selectors, custom.Resource)
 	torelations := GenerateTaintTolerationsForAccount(token)
-	shell := "sh"
-	if custom.Shell != nil && *custom.Shell != "" {
-		shell = *custom.Shell
-	}
 
 	podSpec = v1.PodSpec{
 		Affinity:    affinity,
@@ -157,7 +153,6 @@ func GenerateCustomPodSpec(
 			{
 				Name:       "custom",
 				Image:      custom.Image,
-				Command:    []string{shell, "-c", custom.Command},
 				WorkingDir: custom.WorkingDir,
 				Resources: v1.ResourceRequirements{
 					Limits:   custom.Resource,
@@ -176,5 +171,14 @@ func GenerateCustomPodSpec(
 		},
 		RestartPolicy: v1.RestartPolicyNever,
 	}
+
+	if custom.Command != nil {
+		if custom.Shell != nil {
+			podSpec.Containers[0].Command = []string{*custom.Shell, "-c", *custom.Command}
+		} else {
+			podSpec.Containers[0].Command = []string{"sh", "-c", *custom.Command}
+		}
+	}
+
 	return podSpec, nil
 }
