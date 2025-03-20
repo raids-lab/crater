@@ -4,12 +4,12 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "0891934e"
+      tag: "87f9ed6a"
       pullPolicy: "IfNotPresent"
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "ad7b3722"
+      tag: "c25eb195"
       pullPolicy: "IfNotPresent"
   storage:
     image:
@@ -70,7 +70,10 @@ backendConfig:
     user: crater
     password: ***REMOVED***
     sslmode: disable
-    timeZone: Asia/Shanghai
+    TimeZone: Asia/Shanghai
+  userSpacePrefix: ***REMOVED***
+  accountSpacePrefix: crater-accounts
+  publicSpacePrefix: ***REMOVED***
   workspace:
     namespace: crater-workspace
     rwxpvcName: crater-rw-storage
