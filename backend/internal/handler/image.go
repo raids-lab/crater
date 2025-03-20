@@ -243,13 +243,14 @@ type (
 	}
 
 	BuildImageData struct {
-		BaseImage   string
-		UserName    string
-		UserID      uint
-		Description string
-		Dockerfile  string
-		ImageName   string
-		ImageTag    string
+		BaseImage    string
+		UserName     string
+		UserID       uint
+		Description  string
+		Dockerfile   string
+		ImageName    string
+		ImageTag     string
+		Requirements *string
 	}
 )
 
@@ -279,13 +280,14 @@ func (mgr *ImagePackMgr) UserCreateKaniko(c *gin.Context) {
 	}
 	dockerfile := mgr.generateDockerfile(req)
 	buildData := &BuildImageData{
-		BaseImage:   req.SourceImage,
-		Description: req.Description,
-		Dockerfile:  dockerfile,
-		ImageName:   req.ImageName,
-		ImageTag:    req.ImageTag,
-		UserName:    token.Username,
-		UserID:      token.UserID,
+		BaseImage:    req.SourceImage,
+		Description:  req.Description,
+		Dockerfile:   dockerfile,
+		ImageName:    req.ImageName,
+		ImageTag:     req.ImageTag,
+		UserName:     token.Username,
+		UserID:       token.UserID,
+		Requirements: &req.PythonRequirements,
 	}
 	mgr.buildFromDockerfile(c, buildData)
 }
@@ -440,13 +442,13 @@ RUN apt-get update && apt-get install -y %s && \
 	// Generate requirements.txt and install Python dependencies
 	requirementsSection := "\n# No Python dependencies specified"
 	if req.PythonRequirements != "" {
-		requirementsSection = fmt.Sprintf(`
+		requirementsSection =
+			`
 # Install Python dependencies
-RUN echo -e "%s" > /requirements.txt && \
-    pip install --extra-index-url https://mirrors.aliyun.com/pypi/simple/ --no-cache-dir -r /requirements.txt`,
-			strings.ReplaceAll(req.PythonRequirements, "\n", "\\n"))
+COPY requirements.txt /requirements.txt
+RUN pip install --extra-index-url https://mirrors.aliyun.com/pypi/simple/ --no-cache-dir -r /requirements.txt
+`
 	}
-
 	// Generate Dockerfile
 	dockerfile := fmt.Sprintf(`FROM %s
 USER root
@@ -471,12 +473,13 @@ func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, data *BuildImageDat
 
 	// create ImagePack CRD
 	buildkitData := &packer.BuildKitReq{
-		JobName:     imagepackName,
-		Namespace:   UserNameSpace,
-		Dockerfile:  &data.Dockerfile,
-		ImageLink:   imageLink,
-		UserID:      data.UserID,
-		Description: &data.Description,
+		JobName:      imagepackName,
+		Namespace:    UserNameSpace,
+		Dockerfile:   &data.Dockerfile,
+		ImageLink:    imageLink,
+		UserID:       data.UserID,
+		Description:  &data.Description,
+		Requirements: data.Requirements,
 	}
 
 	if err := mgr.imagePacker.CreateFromDockerfile(c, buildkitData); err != nil {
