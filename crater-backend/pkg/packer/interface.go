@@ -14,13 +14,14 @@ type ImageRegistrySecret struct {
 }
 
 type BuildKitReq struct {
-	UserID      uint
-	Namespace   string
-	JobName     string
-	Dockerfile  *string
-	Description *string
-	Registry    *ImageRegistrySecret // If nil, use default registry
-	ImageLink   string
+	UserID       uint
+	Namespace    string
+	JobName      string
+	Dockerfile   *string
+	Requirements *string
+	Description  *string
+	Registry     *ImageRegistrySecret // If nil, use default registry
+	ImageLink    string
 }
 
 type SnapshotReq struct {
