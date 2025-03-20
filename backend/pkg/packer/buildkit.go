@@ -63,7 +63,7 @@ func (b *imagePacker) generateVolumes(jobName string) []corev1.Volume {
 			},
 		},
 		{
-			Name: "dockerfile-volume",
+			Name: "configmap-volume",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -111,7 +111,7 @@ func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Cont
 					MountPath: "/.docker",
 				},
 				{
-					Name:      "dockerfile-volume",
+					Name:      "configmap-volume",
 					MountPath: "/workspace",
 					ReadOnly:  true,
 				},
@@ -140,7 +140,8 @@ func (b *imagePacker) createConfigMap(c context.Context, data *BuildKitReq) (*co
 			Namespace: data.Namespace,
 		},
 		Data: map[string]string{
-			"Dockerfile": *data.Dockerfile,
+			"Dockerfile":       *data.Dockerfile,
+			"requirements.txt": *data.Requirements,
 		},
 	}
 	err := b.client.Create(c, configMap)
