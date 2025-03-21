@@ -2,7 +2,8 @@ import { useState } from "react";
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import NodeDetail from "@/components/node/NodeDetail";
-import { nodeColumns } from "@/components/node/NodeList";
+import { getNodeColumns } from "@/components/node/NodeList";
+import { useAccountNameLookup } from "@/components/node/getaccountnickname";
 import { Button } from "@/components/ui/button";
 import AccountSelect from "./AccountList";
 import {
@@ -17,7 +18,7 @@ import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { toast } from "sonner";
 import { logger } from "@/utils/loglevel";
 import { BanIcon, ZapIcon, Users } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { useRoutes } from "react-router-dom";
 import {
   apichangeNodeScheduling,
@@ -33,7 +34,6 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
     placeholder: "搜索节点名称",
@@ -49,9 +49,9 @@ const NodeForAdmin = () => {
   const [selectedAccount, setSelectedAccount] = useState("");
   const [selectedNode, setSelectedNode] = useState("");
   const [isOccupation, setIsOccupation] = useState(true);
-  const refetchTaskList = async () => {
+
+  const refetchTaskList = useCallback(async () => {
     try {
-      // 隔 200ms 并行发送所有异步请求
       await Promise.all([
         new Promise((resolve) => setTimeout(resolve, 200)).then(() =>
           queryClient.invalidateQueries({ queryKey: ["overview", "nodes"] }),
@@ -60,19 +60,23 @@ const NodeForAdmin = () => {
     } catch (error) {
       logger.error("更新查询失败", error);
     }
-  };
+  }, [queryClient]);
 
-  const { mutate: handleNodeScheduling } = useMutation({
-    mutationFn: apichangeNodeScheduling,
-    onSuccess: async () => {
-      // 重新获取节点数据
-      await refetchTaskList();
-      toast.success("操作成功");
+  const handleNodeScheduling = useCallback(
+    (nodeId: string) => {
+      // 调用 mutation
+      apichangeNodeScheduling(nodeId)
+        .then(() => {
+          refetchTaskList();
+          toast.success("操作成功");
+        })
+        .catch((error) => {
+          toast.error(`操作失败: ${error.message}`);
+        });
     },
-    onError: (error) => {
-      toast.error(`操作失败: ${error.message}`);
-    },
-  });
+    [refetchTaskList],
+  );
+
   const { mutate: addNodeTaint } = useMutation({
     mutationFn: apiAddNodeTaint,
     onSuccess: async () => {
@@ -83,6 +87,7 @@ const NodeForAdmin = () => {
       toast.error(`节点占有失败: ${error.message}`);
     },
   });
+
   const { mutate: deleteNodeTaint } = useMutation({
     mutationFn: apiDeleteNodeTaint,
     onSuccess: async () => {
@@ -93,8 +98,35 @@ const NodeForAdmin = () => {
       toast.error(`取消节点占有失败: ${error.message}`);
     },
   });
+
   const nodeQuery = useNodeQuery();
 
+  const handleOccupation = useCallback(() => {
+    const taintcontent = `crater.raids.io/account=${selectedAccount}:NoSchedule`;
+    const taint = {
+      name: selectedNode,
+      taint: taintcontent,
+    };
+    if (isOccupation) {
+      addNodeTaint(taint);
+    } else {
+      deleteNodeTaint(taint);
+    }
+    setOpen(false);
+  }, [
+    selectedAccount,
+    selectedNode,
+    isOccupation,
+    addNodeTaint,
+    deleteNodeTaint,
+  ]);
+  const { getNicknameByName } = useAccountNameLookup();
+
+  // 生成稳定的列定义
+  const nodeColumns = useMemo(
+    () => getNodeColumns((name: string) => getNicknameByName(name) || ""),
+    [getNicknameByName], // 依赖项确保列定义稳定
+  );
   const columns = useMemo(
     () => [
       ...nodeColumns,
@@ -104,6 +136,12 @@ const NodeForAdmin = () => {
         cell: ({ row }) => {
           const nodeId = row.original.name;
           const isReady = row.original.isReady;
+          const taint = row.original.taint;
+          const occupiedaccount = taint
+            .split(",")
+            .find((t) => t.startsWith("crater.raids.io/account"))
+            ?.split("=")[1]
+            .split(":")[0];
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -116,26 +154,30 @@ const NodeForAdmin = () => {
                 <DropdownMenuLabel className="text-muted-foreground text-xs">
                   操作
                 </DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedNode(nodeId);
-                    setIsOccupation(true);
-                    setOpen(true);
-                  }}
-                >
-                  <Users size={16} strokeWidth={2} />
-                  账户占有
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedNode(nodeId);
-                    setIsOccupation(false);
-                    setOpen(true);
-                  }}
-                >
-                  <Users size={16} strokeWidth={2} />
-                  取消独占
-                </DropdownMenuItem>
+                {isReady === "occupied" ? (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setSelectedNode(nodeId);
+                      setIsOccupation(false);
+                      setSelectedAccount(occupiedaccount || "");
+                      setOpen(true);
+                    }}
+                  >
+                    <Users size={16} strokeWidth={2} />
+                    取消独占
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setSelectedNode(nodeId);
+                      setIsOccupation(true);
+                      setOpen(true);
+                    }}
+                  >
+                    <Users size={16} strokeWidth={2} />
+                    账户占有
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => handleNodeScheduling(nodeId)}>
                   {isReady === "true" ? (
                     <BanIcon className="size-4" />
@@ -150,22 +192,8 @@ const NodeForAdmin = () => {
         },
       },
     ],
-    [handleNodeScheduling],
-  );
-
-  const handleOccupation = () => {
-    const taintcontent = `crater.raids.io/account=${selectedAccount}:NoSchedule`;
-    const taint = {
-      name: selectedNode,
-      taint: taintcontent,
-    };
-    if (isOccupation) {
-      addNodeTaint(taint);
-    } else {
-      deleteNodeTaint(taint);
-    }
-    setOpen(false);
-  };
+    [handleNodeScheduling, nodeColumns],
+  ); // 确保依赖项是稳定的
 
   return (
     <>
@@ -183,12 +211,20 @@ const NodeForAdmin = () => {
           <DialogHeader>
             <DialogTitle>{isOccupation ? "账户占有" : "取消占有"}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <AccountSelect
-              value={selectedAccount}
-              onChange={setSelectedAccount}
-            />
-          </div>
+          {isOccupation ? (
+            <div className="grid gap-4 py-4">
+              <AccountSelect
+                value={selectedAccount}
+                onChange={setSelectedAccount}
+              />
+            </div>
+          ) : (
+            <div className="grid gap-4 py-4">
+              <div className="flex items-center gap-4">
+                <span>确定取消{selectedAccount}的占有:</span>
+              </div>
+            </div>
+          )}
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">取消</Button>
