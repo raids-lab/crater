@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { getNodeColumns } from "@/components/node/NodeList";
-import { useAccountNameLookup } from "@/components/node/getaccountnickname";
+//import { useAccountNameLookup } from "@/components/node/getaccountnickname";
 import { getHeader } from "@/pages/Admin/Job/Overview";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import { JobPhase } from "@/services/api/vcjob";
@@ -58,7 +58,7 @@ export const Component: FC = () => {
   const { scheduler } = useAtomValue(globalSettings);
 
   const nodeQuery = useNodeQuery(true);
-  const { getNicknameByName } = useAccountNameLookup();
+  //const { getNicknameByName } = useAccountNameLookup();
   const jobColumns = useMemo<ColumnDef<IJobInfo>[]>(
     () => [
       {
@@ -355,9 +355,7 @@ export const Component: FC = () => {
           description: "集群节点维度的资源分配情况",
         }}
         query={nodeQuery}
-        columns={getNodeColumns(
-          (name: string) => getNicknameByName(name) || "",
-        )}
+        columns={getNodeColumns()}
       />
     </>
   );
