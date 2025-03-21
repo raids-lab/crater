@@ -36,20 +36,43 @@ const (
 	StatusTrue  = "true"
 )
 
+// 判断是否会有网络、内存、磁盘等压力问题
+// 判断是否被占用
 func isNodeReady(node *corev1.Node) string {
 	if node.Spec.Unschedulable {
 		return "Unschedulable"
 	}
-	// 2. 初始化状态变量
+
+	if !isNodeConditionsReady(node) {
+		return StatusFalse
+	}
+
+	if isNodeOccupied(node) {
+		return "occupied"
+	}
+
+	return StatusTrue
+}
+
+func isNodeOccupied(node *corev1.Node) bool {
+	for _, taint := range node.Spec.Taints {
+		taintStr := taintToString(taint)
+		if strings.Contains(taintStr, "crater.raids.io/account=") && strings.HasSuffix(taintStr, ":NoSchedule") {
+			return true
+		}
+	}
+	return false
+}
+
+func isNodeConditionsReady(node *corev1.Node) bool {
 	var (
-		isReady          bool   // 节点是否就绪
-		diskPressure     bool   // 磁盘压力
-		memoryPressure   bool   // 内存压力
-		pidPressure      bool   // PID压力
-		networkAvailable = true // 网络是否可用（默认假设可用）
+		isReady          bool
+		diskPressure     bool
+		memoryPressure   bool
+		pidPressure      bool
+		networkAvailable = true
 	)
 
-	// 3. 遍历所有节点条件，提取关键状态
 	for _, condition := range node.Status.Conditions {
 		switch condition.Type {
 		case corev1.NodeReady:
@@ -65,27 +88,11 @@ func isNodeReady(node *corev1.Node) string {
 		}
 	}
 
-	// 4. 节点未就绪（次高优先级）
-	if !isReady {
-		return StatusFalse
+	if !isReady || diskPressure || memoryPressure || pidPressure || !networkAvailable {
+		return false
 	}
 
-	// 5. 按优先级检查压力条件（从高到低）
-	if diskPressure {
-		return StatusFalse // 磁盘压力可能导致Pod驱逐失败"DiskPressure"
-	}
-	if memoryPressure {
-		return StatusFalse // 内存不足易触发OOM"MemoryPressure"
-	}
-	if pidPressure {
-		return StatusFalse // PID耗尽会阻止新进程创建"PIDPressure"
-	}
-	if !networkAvailable {
-		return StatusFalse // 网络问题影响Pod通信"NetworkUnavailable"
-	}
-
-	// 6. 所有条件正常
-	return StatusTrue
+	return true
 }
 
 // taintsToString将节点的taint转化成字符串
