@@ -134,6 +134,12 @@ func (b *imagePacker) DeleteBuildkitJob(c context.Context, jobName, ns string) e
 }
 
 func (b *imagePacker) createConfigMap(c context.Context, data *BuildKitReq) (*corev1.ConfigMap, error) {
+	var requirements string
+	if data.Requirements == nil {
+		requirements = ""
+	} else {
+		requirements = *data.Requirements
+	}
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      data.JobName,
@@ -141,7 +147,7 @@ func (b *imagePacker) createConfigMap(c context.Context, data *BuildKitReq) (*co
 		},
 		Data: map[string]string{
 			"Dockerfile":       *data.Dockerfile,
-			"requirements.txt": *data.Requirements,
+			"requirements.txt": requirements,
 		},
 	}
 	err := b.client.Create(c, configMap)
