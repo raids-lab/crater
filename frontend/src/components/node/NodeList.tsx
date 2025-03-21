@@ -71,7 +71,7 @@ export const UsageCell: FC<{ value?: ResourceInfo }> = ({ value }) => {
 };
 
 export const getNodeColumns = (
-  getNicknameByName: (name: string) => string | undefined,
+  getNicknameByName?: (name: string) => string | undefined,
 ): ColumnDef<ClusterNodeInfo>[] => {
   return [
     {
@@ -107,7 +107,7 @@ export const getNodeColumns = (
 
         // 如果状态为"occupied"，提取占用的账户名
         let accountInfo = null;
-        if (status === "occupied") {
+        if (status === "occupied" && getNicknameByName) {
           const occupiedAccount = taints
             .find((t) => t.startsWith("crater.raids.io/account"))
             ?.split("=")[1]
