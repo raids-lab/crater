@@ -16,9 +16,7 @@ type Config struct {
 	// Enabling this will ensure there is only one active controller manager."
 	LeaderElectionID string `yaml:"leaderElectionID"` // "The ID for leader election."
 	// Profiling Settings
-	EnableProfiling  bool   `yaml:"enableProfiling"`
-	PrometheusAPI    string `yaml:"prometheusAPI"`
-	ProfilingTimeout int    `yaml:"profilingTimeout"`
+	PrometheusAPI string `yaml:"prometheusAPI"`
 	// New DB Settings
 	Postgres struct {
 		Host     string `yaml:"host"`
@@ -73,14 +71,12 @@ type Config struct {
 		StrictRegisterMode bool       `yaml:"strictRegisterMode"` // If true, the user must sign up with token.
 		UIDServerURL       string     `yaml:"uidServerURL"`       // The URL of the UID server
 	} `yaml:"act"`
-	// WPSRobot Settings
-	WPSRobot struct {
-		WebhookAddress string `yaml:"webhookAddress"`
-	} `yaml:"wpsRobot"`
 	// scheduler plugin
 	SchedulerPlugins struct {
 		Aijob struct {
-			AijobEn bool `yaml:"aijobEn"`
+			AijobEn          bool `yaml:"aijobEn"`
+			EnableProfiling  bool `yaml:"enableProfiling"`
+			ProfilingTimeout int  `yaml:"profilingTimeout"`
 		} `yaml:"aijob"`
 		Spjob struct {
 			SpjobEn                  bool   `yaml:"spjobEn"`
