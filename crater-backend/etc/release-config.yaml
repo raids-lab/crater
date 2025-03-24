@@ -1,8 +1,6 @@
 enableLeaderElection: false
 leaderElectionID: 1ca428e5.training-operator.kubeflow.org
-enableProfiling: true
 prometheusAPI: http://***REMOVED***:31110
-profilingTimeout: 120
 serverAddr: :8088
 metricsAddr: :8080
 probeAddr: :8081
@@ -44,11 +42,11 @@ act:
     user: notify
     password: ***REMOVED***
     notify: notify@***REMOVED***
-wpsRobot:
-  webhookAddress: https://xz.wps.cn/api/v1/webhook/send?key=4dd9cd4970e225491cfefcfafe7ee2e3
 schedulerPlugins:
   aijob:
     aijobEn: false
+    enableProfiling: true
+    profilingTimeout: 120
   spjob:
     spjobEn: false
     predictionServiceAddress: ***REMOVED***
