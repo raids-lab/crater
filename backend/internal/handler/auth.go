@@ -375,16 +375,25 @@ type (
 func (mgr *AuthMgr) createUser(c context.Context, name string, password *string) (*model.User, error) {
 	u := query.User
 	uq := query.UserAccount
-
-	uidServerURL := config.GetConfig().ACT.UIDServerURL
-	var result ActUIDServerSuccessResp
-	var errorResult ActUIDServerErrorResp
-	if _, err := mgr.req.R().SetQueryParam("username", name).SetSuccessResult(&result).
-		SetErrorResult(&errorResult).Get(uidServerURL); err != nil {
-		return nil, ErrorUIDServerConnect
+	userAttribute := model.UserAttribute{
+		UID: ptr.To("1001"),
+		GID: ptr.To("1001"),
 	}
-	if errorResult.Error != "" {
-		return nil, ErrorUIDServerNotFound
+	// Custom Check if the user is valid in external UID server
+	if config.GetConfig().ACT.StrictRegisterMode {
+		uidServerURL := config.GetConfig().ACT.UIDServerURL
+		var result ActUIDServerSuccessResp
+		var errorResult ActUIDServerErrorResp
+		if _, err := mgr.req.R().SetQueryParam("username", name).SetSuccessResult(&result).
+			SetErrorResult(&errorResult).Get(uidServerURL); err != nil {
+			return nil, ErrorUIDServerConnect
+		}
+		if errorResult.Error != "" {
+			return nil, ErrorUIDServerNotFound
+		}
+		userAttribute.Email = ptr.To(name + "@***REMOVED***")
+		userAttribute.UID = ptr.To(result.UID)
+		userAttribute.GID = ptr.To(result.GID)
 	}
 
 	var hashedPassword *string
@@ -398,17 +407,13 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string)
 	}
 
 	user := model.User{
-		Name:     name,
-		Nickname: name,
-		Password: hashedPassword,
-		Role:     model.RoleUser,
-		Status:   model.StatusActive,
-		Space:    name,
-		Attributes: datatypes.NewJSONType(model.UserAttribute{
-			Email: ptr.To(name + "@***REMOVED***"),
-			UID:   ptr.To(result.UID),
-			GID:   ptr.To(result.GID),
-		}),
+		Name:       name,
+		Nickname:   name,
+		Password:   hashedPassword,
+		Role:       model.RoleUser,
+		Status:     model.StatusActive,
+		Space:      name,
+		Attributes: datatypes.NewJSONType(userAttribute),
 	}
 	if err := u.WithContext(c).Create(&user); err != nil {
 		return nil, err
