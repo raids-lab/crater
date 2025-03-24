@@ -25,7 +25,7 @@ workspace:
   ingressName: crater-jobs-ingress
   imageNameSpace: crater-images
 act:
-  strictRegisterMode: false
+  strictRegisterMode: true
   uidServerURL: http://192.168.5.59:5000/get_user_id
   image:
     registryServer: ***REMOVED***
