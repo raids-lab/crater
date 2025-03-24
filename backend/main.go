@@ -123,8 +123,8 @@ func setupCustomCRDAddon(
 		}
 
 		// 3. profiler config
-		if backendConfig.EnableProfiling {
-			aijobProfiler := profiler.NewProfiler(mgr, registerConfig.PrometheusClient, backendConfig.ProfilingTimeout)
+		if backendConfig.SchedulerPlugins.Aijob.EnableProfiling {
+			aijobProfiler := profiler.NewProfiler(mgr, registerConfig.PrometheusClient, backendConfig.SchedulerPlugins.Aijob.ProfilingTimeout)
 			taskCtrl.SetProfiler(aijobProfiler)
 			// todo: start profiling
 			aijobProfiler.Start(stopCh)
