@@ -57,6 +57,7 @@ func (mgr *AuthMgr) RegisterPublic(g *gin.RouterGroup) {
 	g.POST("login", mgr.Login)
 	g.POST("signup", mgr.Signup)
 	g.POST("refresh", mgr.RefreshToken)
+	g.GET("mode", mgr.GetAuthMode)
 }
 
 func (mgr *AuthMgr) RegisterProtected(g *gin.RouterGroup) {
@@ -99,6 +100,23 @@ const (
 
 	UserNamePattern = `^[a-z][a-z0-9-]*$`
 )
+
+// GetAuthMode godoc
+// @Summary 获取后端用户认证模式
+// @Description 返回后端部署的config值
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Success 200 {object} resputil.Response[string] "启用认证类型"
+// @Failure 400 {object} resputil.Response[any] "请求参数错误"
+// @Failure 500 {object} resputil.Response[any] "获取相关配置时错误"
+// @Router /auth/mode [get]
+func (mgr *AuthMgr) GetAuthMode(c *gin.Context) {
+	if config.GetConfig().ACT.StrictRegisterMode {
+		resputil.Success(c, "act")
+	}
+	resputil.Success(c, "normal")
+}
 
 // Login godoc
 // @Summary 用户登录

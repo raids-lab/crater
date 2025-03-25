@@ -4,17 +4,17 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "87f9ed6a"
+      tag: "2da29fd1"
       pullPolicy: "IfNotPresent"
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "c25eb195"
+      tag: "0015f52c-testing"
       pullPolicy: "IfNotPresent"
   storage:
     image:
       repository: ***REMOVED***
-      tag: "lc9v6p5s"
+      tag: ""
       pullPolicy: "IfNotPresent"
   buildkit:
     dockerconfigjson: ***REMOVED***
