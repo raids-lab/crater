@@ -49,10 +49,16 @@ import ResourceBadges from "../badge/ResourceBadges";
 import yitianURL from "/nodes/yitian.png";
 import hygonURL from "/nodes/hygon.png";
 import shenweiURL from "/nodes/sw.png";
-import TooltipLink from "../label/TooltipLink";
 import { DetailPage } from "../layout/DetailPage";
 import PageTitle from "../layout/PageTitle";
 import { GrafanaIframe } from "@/pages/Embed/Monitor";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import TooltipButton from "../custom/TooltipButton";
 
 type CardDemoProps = React.ComponentProps<typeof Card> & {
   nodeInfo?: {
@@ -271,8 +277,8 @@ const toolbarConfig: DataTableToolbarConfig = {
 };
 
 const getColumns = (
-  nodeName: string,
   handleShowPodLog: (namespacedName: PodNamespacedName) => void,
+  handleShowMonitor: (pod: IClusterPodInfo) => void,
 ): ColumnDef<IClusterPodInfo>[] => [
   {
     accessorKey: "type",
@@ -305,14 +311,16 @@ const getColumns = (
     ),
     cell: ({ row }) => {
       const podName = row.getValue<string>("name");
-      const link = `${POD_MONITOR}?orgId=1&var-node_name=${nodeName}&var-pod_name=${podName}&from=now-1h&to=now`;
       return (
-        <TooltipLink
+        <TooltipButton
           name={podName}
-          to={link}
-          tooltip={`查看 Pod 监控`}
-          className="font-mono"
-        />
+          tooltipContent={`查看 Pod 监控`}
+          className="text-foreground hover:text-primary cursor-pointer font-mono hover:no-underline"
+          variant="link"
+          onClick={() => handleShowMonitor(row.original)}
+        >
+          {podName}
+        </TooltipButton>
       );
     },
     enableSorting: false,
@@ -367,7 +375,9 @@ const getColumns = (
             <DropdownMenuLabel className="text-muted-foreground text-xs">
               操作
             </DropdownMenuLabel>
-            <DropdownMenuItem disabled>监控</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleShowMonitor(taskInfo)}>
+              监控
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() =>
                 handleShowPodLog({
@@ -389,6 +399,8 @@ export const NodeDetail: FC = () => {
   const { id: nodeName } = useParams();
   const setBreadcrumb = useBreadcrumb();
   const [showLogPod, setShowLogPod] = useState<NamespacedName>();
+  const [showMonitor, setShowMonitor] = useState(false);
+  const [grafanaUrl, setGrafanaUrl] = useState<string>(POD_MONITOR);
 
   const { data: nodeDetail } = useQuery({
     queryKey: ["nodes", nodeName, "detail"],
@@ -419,7 +431,13 @@ export const NodeDetail: FC = () => {
   });
 
   const columns = useMemo(
-    () => getColumns(nodeName || "defaultNodeName", setShowLogPod),
+    () =>
+      getColumns(setShowLogPod, (pod) => {
+        setGrafanaUrl(
+          `${POD_MONITOR}?orgId=1&var-node_name=${nodeName}&var-pod_name=${pod.name}&from=now-1h&to=now`,
+        );
+        setShowMonitor(true);
+      }),
     [nodeName],
   );
 
@@ -496,6 +514,16 @@ export const NodeDetail: FC = () => {
                 namespacedName={showLogPod}
                 setNamespacedName={setShowLogPod}
               />
+              <Sheet open={showMonitor} onOpenChange={setShowMonitor}>
+                <SheetContent className="sm:max-w-4xl">
+                  <SheetHeader>
+                    <SheetTitle>资源监控</SheetTitle>
+                  </SheetHeader>
+                  <div className="h-[calc(100vh-6rem)] w-full px-4">
+                    <GrafanaIframe baseSrc={grafanaUrl} />
+                  </div>
+                </SheetContent>
+              </Sheet>
             </>
           ),
           scrollable: true,

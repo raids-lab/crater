@@ -14,8 +14,14 @@ import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableT
 import NodeBadges from "@/components/badge/NodeBadges";
 import PodIngressDialog from "./Ingress";
 import TooltipButton from "@/components/custom/TooltipButton";
-import TooltipLink from "@/components/label/TooltipLink";
 import Nothing from "@/components/placeholder/Nothing";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { GrafanaIframe } from "@/pages/Embed/Monitor";
 
 const POD_MONITOR = import.meta.env.VITE_GRAFANA_POD_MONITOR;
 
@@ -63,6 +69,9 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
   const [showLog, setShowLog] = useState<NamespacedName>();
   const [showTerminal, setShowTerminal] = useState<NamespacedName>();
   const [showIngress, setShowIngress] = useState<NamespacedName>();
+  const [showMonitor, setShowMonitor] = useState(false);
+  const [grafanaUrl, setGrafanaUrl] = useState<string>(POD_MONITOR);
+
   const query = useQuery({
     queryKey: ["job", "detail", jobName, "pods"],
     queryFn: () => apiJobGetPods(jobName),
@@ -79,12 +88,18 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
       cell: ({ row }) => {
         const pod = row.original;
         return pod.name ? (
-          <TooltipLink
+          <TooltipButton
             name={pod.name}
-            to={getPodMonitorUrl(pod)}
-            tooltip={`查看 Pod 监控`}
-            className="font-mono"
-          />
+            tooltipContent={`查看 Pod 监控`}
+            className="text-foreground hover:text-primary cursor-pointer font-mono hover:no-underline"
+            variant="link"
+            onClick={() => {
+              setGrafanaUrl(getPodMonitorUrl(pod));
+              setShowMonitor(true);
+            }}
+          >
+            {pod.name}
+          </TooltipButton>
         ) : (
           "---"
         );
@@ -170,17 +185,13 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
               size="icon"
               className="h-8 w-8"
               disabled={pod.phase !== "Running"}
-              asChild
+              onClick={() => {
+                setGrafanaUrl(getPodMonitorUrl(pod));
+                setShowMonitor(true);
+              }}
               tooltipContent="查看资源监控"
             >
-              <a
-                target="_blank"
-                rel="noopener noreferrer"
-                href={getPodMonitorUrl(pod)}
-                className="size-9 p-0"
-              >
-                <GaugeIcon className="text-highlight-green size-4" />
-              </a>
+              <GaugeIcon className="text-highlight-green size-4" />
             </TooltipButton>
 
             <TooltipButton
@@ -227,6 +238,16 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
         namespacedName={showIngress}
         setNamespacedName={setShowIngress}
       />
+      <Sheet open={showMonitor} onOpenChange={setShowMonitor}>
+        <SheetContent className="sm:max-w-4xl">
+          <SheetHeader>
+            <SheetTitle>资源监控</SheetTitle>
+          </SheetHeader>
+          <div className="h-[calc(100vh-6rem)] w-full px-4">
+            <GrafanaIframe baseSrc={grafanaUrl} />
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   );
 };

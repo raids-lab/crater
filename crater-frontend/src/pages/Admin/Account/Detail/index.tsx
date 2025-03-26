@@ -78,10 +78,11 @@ import { UserRoundPlusIcon } from "lucide-react";
 import Quota from "./AccountQuota";
 import { toast } from "sonner";
 import TooltipUser from "@/components/label/TooltipUser";
+import SelectBox from "@/components/custom/SelectBox";
 
 const formSchema = z.object({
-  index: z.string().min(1, {
-    message: "id不能小于1",
+  userIds: z.array(z.string()).min(1, {
+    message: "请至少选择一个用户",
   }),
   role: z.string().min(1, {
     message: "不支持的角色",
@@ -90,8 +91,6 @@ const formSchema = z.object({
     message: "不支持的访问权限",
   }),
 });
-
-type FormSchema = z.infer<typeof formSchema>;
 
 const getHeader = (key: string): string => {
   switch (key) {
@@ -146,8 +145,10 @@ const AccountDetail = () => {
   }, [setBreadcrumb, accountInfo]);
 
   const { mutate: addUser } = useMutation({
-    mutationFn: (user: IUserInAccountCreate) => apiAddUser(pid, user),
+    mutationFn: (users: IUserInAccountCreate[]) =>
+      Promise.all(users.map((user) => apiAddUser(pid, user))),
     onSuccess: async () => {
+      toast.success("用户已添加");
       await queryClient.invalidateQueries({
         queryKey: ["account", pid, "users"],
       });
@@ -365,27 +366,43 @@ const AccountDetail = () => {
   const [openSheet, setOpenSheet] = useState(false);
 
   // 1. Define your form.
-  const form = useForm<FormSchema>({
+  const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      index: "0",
-      role: "0",
-      accessmode: "0",
+      userIds: [],
+      role: "2",
+      accessmode: "2",
     },
   });
 
   // 2. Define a submit handler.
-  const onSubmit = (values: FormSchema) => {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
-    addUser({
-      id: usersOutOfProject.at(parseInt(values.index))?.id as number,
-      name: usersOutOfProject.at(parseInt(values.index))?.name as string,
-      role: values.role,
-      accessmode: values.accessmode,
+  const onSubmit = (values: z.infer<typeof formSchema>) => {
+    // 处理多个用户添加
+    const usersToAdd = values.userIds.map((userId) => {
+      const user = usersOutOfProject.find((u) => u.id.toString() === userId);
+      return {
+        id: user?.id as number,
+        name: user?.name as string,
+        role: values.role,
+        accessmode: values.accessmode,
+        attributes: user?.userInfo,
+      };
     });
+
+    addUser(usersToAdd);
     setOpenSheet(false);
   };
+
+  // 将用户列表转换为SelectBox需要的格式
+  const userOptions = useMemo(
+    () =>
+      usersOutOfProject.map((user) => ({
+        value: user.id.toString(),
+        label: user.userInfo.nickname || user.name,
+        labelNote: user.name,
+      })),
+    [usersOutOfProject],
+  );
 
   return (
     <div className="grid grid-cols-[1fr_300px] gap-6">
@@ -413,37 +430,23 @@ const AccountDetail = () => {
                 >
                   <FormField
                     control={form.control}
-                    name="index"
+                    name="userIds"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
                           用户
                           <FormLabelMust />
                         </FormLabel>
-
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="w-full" id="name">
-                              <SelectValue placeholder="Select users" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectGroup>
-                              {usersOutOfProject.length > 0 &&
-                                usersOutOfProject.map((user, index) => (
-                                  <SelectItem
-                                    key={index}
-                                    value={index.toString()}
-                                  >
-                                    {user.name}
-                                  </SelectItem>
-                                ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <SelectBox
+                            options={userOptions}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="选择用户"
+                            inputPlaceholder="搜索用户..."
+                            emptyPlaceholder="没有找到用户"
+                          />
+                        </FormControl>
                         <FormDescription>
                           可选择一位或多位用户加入到账户中
                         </FormDescription>
