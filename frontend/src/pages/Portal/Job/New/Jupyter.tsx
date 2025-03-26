@@ -347,7 +347,7 @@ export const Component = () => {
               <FormExportButton metadata={MetadataFormJupyter} form={form} />
               <PublishConfigForm
                 config={MetadataFormJupyter}
-                onPublish={() => {}}
+                configform={form}
               />
               <LoadableButton
                 isLoading={isPending}
