@@ -300,261 +300,213 @@ export function FileSystemTable({
         cell: ({ row }) => {
           return (
             <>
-              {path.startsWith("/public") ? (
-                <>
-                  {row.original.isdir ? null : (
-                    <div className="flex flex-row space-x-1">
-                      <TooltipButton
-                        variant="outline"
-                        className="h-8 w-8 p-0 hover:text-sky-700"
-                        tooltipContent="下载文件"
-                        onClick={() => {
-                          const link = `${import.meta.env.VITE_API_BASE_URL}ss/download${path}/${row.original.name}`;
-                          const o = new XMLHttpRequest();
-                          o.open("GET", link);
-                          o.responseType = "blob";
-                          const token = localStorage.getItem(ACCESS_TOKEN_KEY);
-                          o.setRequestHeader(
-                            "Authorization",
-                            "Bearer " + token,
-                          );
-                          o.onload = function () {
-                            if (o.status == 200) {
-                              const content = o.response as string;
-                              const a = document.createElement("a");
-                              a.style.display = "none";
-                              a.download = row.original.name || "";
-                              const blob = new Blob([content]);
-                              a.href = URL.createObjectURL(blob);
-                              document.body.appendChild(a);
-                              a.click();
-                              document.body.removeChild(a);
-                              toast.success("下载文件成功！");
-                            } else {
-                              toast.error("下载失败：" + o.statusText);
-                            }
-                          };
-                          o.send();
-                          toast.info("正在下载该文件");
-                        }}
-                      >
-                        <DownloadIcon className="size-4" />
-                      </TooltipButton>
-                    </div>
-                  )}
-                </>
+              {row.original.isdir ? (
+                <div className="flex flex-row space-x-1">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <div>
+                        <TooltipButton
+                          className="hover:text-destructive h-8 w-8 p-0"
+                          variant="outline"
+                          size="icon"
+                          tooltipContent="删除文件夹"
+                        >
+                          <Trash2 size={16} strokeWidth={2} />
+                        </TooltipButton>
+                      </div>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>删除文件夹</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          文件夹{row.original.name}
+                          将删除，请确认是否删除该文件夹
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction
+                          variant="destructive"
+                          onClick={() => {
+                            deleteFile(path + "/" + row.original.name);
+                          }}
+                        >
+                          删除
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <div>
+                        <TooltipButton
+                          className="hover:text-destructive h-8 w-8 p-0"
+                          variant="outline"
+                          size="icon"
+                          tooltipContent="移动文件夹"
+                        >
+                          <Globe size={16} strokeWidth={2} />
+                        </TooltipButton>
+                      </div>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-lg">
+                          移动文件/文件夹
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          <div className="text-foreground font-medium">
+                            正在移动：
+                            <span className="text-primary">
+                              {row.original.name}
+                            </span>
+                          </div>
+                          <p className="text-sm">
+                            请选择目标位置，移动后原位置将不再保留此文件/文件夹
+                          </p>
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction asChild>
+                          <FileSelectDialog
+                            value={""}
+                            handleSubmit={(item) => {
+                              moveFile({
+                                fileData: {
+                                  fileName: row.original.name,
+                                  dst: item.id + "/" + row.original.name,
+                                },
+                                path: `${path}/${row.original.name}`,
+                              });
+                            }}
+                            disabled={false}
+                            allowSelectFile={false}
+                          />
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               ) : (
-                <>
-                  {row.original.isdir ? (
-                    <div className="flex flex-row space-x-1">
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <div>
-                            <TooltipButton
-                              className="hover:text-destructive h-8 w-8 p-0"
-                              variant="outline"
-                              size="icon"
-                              tooltipContent="删除文件夹"
-                            >
-                              <Trash2 size={16} strokeWidth={2} />
-                            </TooltipButton>
+                <div className="flex flex-row space-x-1">
+                  <TooltipButton
+                    variant="outline"
+                    className="h-8 w-8 p-0 hover:text-sky-700"
+                    tooltipContent="下载文件"
+                    onClick={() => {
+                      const link = `${import.meta.env.VITE_API_BASE_URL}ss/download${path}/${row.original.name}`;
+                      const o = new XMLHttpRequest();
+                      o.open("GET", link);
+                      o.responseType = "blob";
+                      const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+                      o.setRequestHeader("Authorization", "Bearer " + token);
+                      o.onload = function () {
+                        if (o.status == 200) {
+                          const content = o.response as string;
+                          const a = document.createElement("a");
+                          a.style.display = "none";
+                          a.download = row.original.name || "";
+                          const blob = new Blob([content]);
+                          a.href = URL.createObjectURL(blob);
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          toast.success("下载文件成功！");
+                        } else {
+                          toast.error("下载失败：" + o.statusText);
+                        }
+                      };
+                      o.send();
+                      toast.info("正在下载该文件");
+                    }}
+                  >
+                    <DownloadIcon className="size-4" />
+                  </TooltipButton>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <div>
+                        <TooltipButton
+                          className="hover:text-destructive h-8 w-8 p-0"
+                          variant="outline"
+                          size="icon"
+                          tooltipContent="删除文件"
+                        >
+                          <Trash2 size={16} strokeWidth={2} />
+                        </TooltipButton>
+                      </div>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>删除文件</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          文件{row.original.name}
+                          将删除，请确认是否删除该文件
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction
+                          variant="destructive"
+                          onClick={() => {
+                            deleteFile(path + "/" + row.original.name);
+                          }}
+                        >
+                          删除
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <div>
+                        <TooltipButton
+                          className="hover:text-destructive h-8 w-8 p-0"
+                          variant="outline"
+                          size="icon"
+                          tooltipContent="移动文件"
+                        >
+                          <Globe size={16} strokeWidth={2} />
+                        </TooltipButton>
+                      </div>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-lg">
+                          移动文件/文件夹
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          <div className="text-foreground font-medium">
+                            正在移动：
+                            <span className="text-primary">
+                              {row.original.name}
+                            </span>
                           </div>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>删除文件夹</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              文件夹{row.original.name}
-                              将删除，请确认是否删除该文件夹
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>取消</AlertDialogCancel>
-                            <AlertDialogAction
-                              variant="destructive"
-                              onClick={() => {
-                                deleteFile(path + "/" + row.original.name);
-                              }}
-                            >
-                              删除
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <div>
-                            <TooltipButton
-                              className="hover:text-destructive h-8 w-8 p-0"
-                              variant="outline"
-                              size="icon"
-                              tooltipContent="移动文件夹"
-                            >
-                              <Globe size={16} strokeWidth={2} />
-                            </TooltipButton>
-                          </div>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle className="text-lg">
-                              移动文件/文件夹
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              <div className="text-foreground font-medium">
-                                正在移动：
-                                <span className="text-primary">
-                                  {row.original.name}
-                                </span>
-                              </div>
-                              <p className="text-sm">
-                                请选择目标位置，移动后原位置将不再保留此文件/文件夹
-                              </p>
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>取消</AlertDialogCancel>
-                            <FileSelectDialog
-                              value={""}
-                              handleSubmit={(item) => {
-                                moveFile({
-                                  fileData: {
-                                    fileName: row.original.name,
-                                    dst: item.id + "/" + row.original.name,
-                                  },
-                                  path: `${path}/${row.original.name}`,
-                                });
-                              }}
-                              disabled={false}
-                              allowSelectFile={false}
-                            />
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  ) : (
-                    <div className="flex flex-row space-x-1">
-                      <TooltipButton
-                        variant="outline"
-                        className="h-8 w-8 p-0 hover:text-sky-700"
-                        tooltipContent="下载文件"
-                        onClick={() => {
-                          const link = `${import.meta.env.VITE_API_BASE_URL}ss/download${path}/${row.original.name}`;
-                          const o = new XMLHttpRequest();
-                          o.open("GET", link);
-                          o.responseType = "blob";
-                          const token = localStorage.getItem(ACCESS_TOKEN_KEY);
-                          o.setRequestHeader(
-                            "Authorization",
-                            "Bearer " + token,
-                          );
-                          o.onload = function () {
-                            if (o.status == 200) {
-                              const content = o.response as string;
-                              const a = document.createElement("a");
-                              a.style.display = "none";
-                              a.download = row.original.name || "";
-                              const blob = new Blob([content]);
-                              a.href = URL.createObjectURL(blob);
-                              document.body.appendChild(a);
-                              a.click();
-                              document.body.removeChild(a);
-                              toast.success("下载文件成功！");
-                            } else {
-                              toast.error("下载失败：" + o.statusText);
-                            }
-                          };
-                          o.send();
-                          toast.info("正在下载该文件");
-                        }}
-                      >
-                        <DownloadIcon className="size-4" />
-                      </TooltipButton>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <div>
-                            <TooltipButton
-                              className="hover:text-destructive h-8 w-8 p-0"
-                              variant="outline"
-                              size="icon"
-                              tooltipContent="删除文件"
-                            >
-                              <Trash2 size={16} strokeWidth={2} />
-                            </TooltipButton>
-                          </div>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>删除文件</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              文件{row.original.name}
-                              将删除，请确认是否删除该文件
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>取消</AlertDialogCancel>
-                            <AlertDialogAction
-                              variant="destructive"
-                              onClick={() => {
-                                deleteFile(path + "/" + row.original.name);
-                              }}
-                            >
-                              删除
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <div>
-                            <TooltipButton
-                              className="hover:text-destructive h-8 w-8 p-0"
-                              variant="outline"
-                              size="icon"
-                              tooltipContent="移动文件"
-                            >
-                              <Globe size={16} strokeWidth={2} />
-                            </TooltipButton>
-                          </div>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle className="text-lg">
-                              移动文件/文件夹
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              <div className="text-foreground font-medium">
-                                正在移动：
-                                <span className="text-primary">
-                                  {row.original.name}
-                                </span>
-                              </div>
-                              <p className="text-sm">
-                                请选择目标位置，移动后原位置将不再保留此文件/文件夹
-                              </p>
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>取消</AlertDialogCancel>
-                            <FileSelectDialog
-                              value={""}
-                              handleSubmit={(item) => {
-                                moveFile({
-                                  fileData: {
-                                    fileName: row.original.name,
-                                    dst: item.id + "/" + row.original.name,
-                                  },
-                                  path: `${path}/${row.original.name}`,
-                                });
-                              }}
-                              disabled={false}
-                              allowSelectFile={false}
-                            />
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  )}
-                </>
+                          <p className="text-sm">
+                            请选择目标位置，移动后原位置将不再保留此文件/文件夹
+                          </p>
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <FileSelectDialog
+                          value={""}
+                          handleSubmit={(item) => {
+                            moveFile({
+                              fileData: {
+                                fileName: row.original.name,
+                                dst: item.id + "/" + row.original.name,
+                              },
+                              path: `${path}/${row.original.name}`,
+                            });
+                          }}
+                          disabled={false}
+                          allowSelectFile={false}
+                        />
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               )}
             </>
           );
