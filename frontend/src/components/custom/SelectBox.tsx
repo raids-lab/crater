@@ -173,7 +173,7 @@ const SelectBox = ({
                                 : "opacity-50 [&_svg]:invisible",
                             )}
                           >
-                            <CheckIcon />
+                            <CheckIcon className="text-primary-foreground" />
                           </div>
                           <span>
                             {option.label}

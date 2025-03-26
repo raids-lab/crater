@@ -170,7 +170,7 @@ export function FileSystemTable({
       breadcrumb[breadcrumb.length - 1].path = undefined;
     }
     setBreadcrumb(breadcrumb);
-  }, [pathname, setBreadcrumb]);
+  }, [isadmin, pathname, setBreadcrumb]);
 
   const backpath = useMemo(() => {
     return pathname.replace(/\/[^/]+$/, "");
@@ -561,7 +561,7 @@ export function FileSystemTable({
         },
       },
     ],
-    [navigate, pathname, path, isRoot, deleteFile, moveFile],
+    [navigate, pathname, path, deleteFile, moveFile],
   );
 
   const refInput2 = useRef<HTMLInputElement>(null);

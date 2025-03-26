@@ -55,11 +55,11 @@ export const FileSelectDialog = ({
           >
             {!isDialogOpen && value
               ? value === "user"
-                ? "用户目录"
+                ? "用户空间"
                 : value === "account"
-                  ? "账户目录"
+                  ? "账户空间"
                   : value === "public"
-                    ? "公共目录"
+                    ? "公共空间"
                     : value
               : "选择文件"}
             <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
