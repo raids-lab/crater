@@ -328,7 +328,7 @@ export const Component = () => {
           </CardContent>
         </Card>
       )}
-      <PodTable jobName={jobName} />
+      <PodTable jobName={jobName} userName=" " />
     </>
   );
 };
