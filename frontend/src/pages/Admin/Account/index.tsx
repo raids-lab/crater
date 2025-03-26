@@ -307,8 +307,8 @@ export const Account = () => {
                 control={form.control}
                 name="expiredAt"
                 render={({ field }) => (
-                  <FormItem className="col-span-1 flex flex-col space-y-2">
-                    <FormLabel className="pt-1.5 pb-1">过期时间</FormLabel>
+                  <FormItem className="col-span-1 flex flex-col">
+                    <FormLabel>过期时间</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
@@ -352,14 +352,14 @@ export const Account = () => {
                 control={form.control}
                 name="admins"
                 render={() => (
-                  <FormItem className="col-span-1 grow">
+                  <FormItem>
                     <FormLabel>
                       账户管理员
                       <FormLabelMust />
                     </FormLabel>
                     <FormControl>
                       <SelectBox
-                        className="col-span-4 h-8"
+                        className="my-0 h-8"
                         options={userList ?? []}
                         inputPlaceholder="搜索用户"
                         placeholder="选择用户"
