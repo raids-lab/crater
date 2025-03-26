@@ -50,10 +50,7 @@ const SandwichSheet = ({
   const { ref: refRoot, width, height } = useResizeObserver();
 
   return (
-    <Sheet
-      open={trigger ? undefined : isOpen}
-      onOpenChange={trigger ? undefined : onOpenChange}
-    >
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
       {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
       <SheetContent className={cn("overflow-hidden p-0", className)}>
         <div className="relative -z-10 h-screen">
