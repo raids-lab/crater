@@ -107,6 +107,29 @@ func main() {
 				return tx.Migrator().DropColumn(&Job{}, "ProfileData")
 			},
 		},
+		{
+			ID: "202503251830",
+			Migrate: func(tx *gorm.DB) error {
+				type JobTemplate struct {
+					gorm.Model
+					Name     string `gorm:"not null;type:varchar(256)"`
+					Describe string `gorm:"type:varchar(512)"`
+					Document string `gorm:"type:text"`
+					Template string `gorm:"type:text"`
+					UserID   uint   `gorm:"index"`
+					User     model.User
+				}
+
+				// 明确指定表名
+				if err := tx.Table("jobtemplates").Migrator().CreateTable(&JobTemplate{}); err != nil {
+					return err
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("jobtemplates") // 删除 jobtemplates 表
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -123,6 +146,7 @@ func main() {
 			&models.AITask{},
 			&model.Kaniko{},
 			&model.Image{},
+			&model.Jobtemplate{},
 		)
 		if err != nil {
 			return err

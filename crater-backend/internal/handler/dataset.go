@@ -170,6 +170,8 @@ func (mgr *DatasetMgr) GetDatasetByID(c *gin.Context) {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/admin/dataset/alldataset [get]
+//
+//nolint:dupl // This is a handler file, and it's common to have similar handlers.
 func (mgr *DatasetMgr) GetAllDataset(c *gin.Context) {
 	datasets := make(map[uint]DatasetResp)
 	d := query.Dataset

@@ -34,6 +34,7 @@ func main() {
 		model.Job{},
 		model.Image{},
 		model.Kaniko{},
+		model.Jobtemplate{},
 	)
 
 	// 执行并生成代码
