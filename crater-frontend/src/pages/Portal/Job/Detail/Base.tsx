@@ -289,7 +289,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
           label: "基本信息",
           children: (
             <>
-              <PodTable jobName={jobName} />
+              <PodTable jobName={jobName} userName={data.username} />
             </>
           ),
           scrollable: true,
