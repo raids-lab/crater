@@ -260,7 +260,7 @@ export const Component = () => {
               <FormExportButton metadata={MetadataFormCustom} form={form} />
               <PublishConfigForm
                 config={MetadataFormCustom}
-                onPublish={() => {}}
+                configform={form}
               />
               <LoadableButton
                 isLoading={isPending}

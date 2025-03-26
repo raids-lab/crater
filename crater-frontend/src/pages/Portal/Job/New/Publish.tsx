@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { FieldValues, UseFormReturn } from "react-hook-form";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Share2 } from "lucide-react";
 import {
   Form,
@@ -19,6 +21,8 @@ import {
 import SandwichSheet from "@/components/sheet/SandwichSheet";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import TooltipButton from "@/components/custom/TooltipButton";
+import { createJobTemplate } from "@/services/api/jobtemplate";
+import { toast } from "sonner";
 
 // Define the form schema with Zod
 const formSchema = z.object({
@@ -28,17 +32,45 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-interface PublishConfigFormProps {
+interface PublishConfigFormProps<T extends FieldValues> {
   config: object; // The configuration object to be published
-  onPublish: (name: string, description: string, config: object) => void;
+  configform: UseFormReturn<T>;
 }
 
-export function PublishConfigForm({
+export function PublishConfigForm<T extends FieldValues>({
   config,
-  onPublish,
-}: PublishConfigFormProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  configform,
+}: PublishConfigFormProps<T>) {
+  const data = configform?.getValues();
+  const queryClient = useQueryClient();
 
+  const [isOpen, setIsOpen] = useState(false);
+  // 解析为 JSON 对象
+  const objconfig = typeof config === "string" ? JSON.parse(config) : config;
+  // 合并到新对象
+  const objcombinedConfig = {
+    ...objconfig,
+    data, // 将 B 作为 data 属性
+  };
+
+  // 生成字符串 C（带格式化缩进）
+  const formattedConfig = JSON.stringify(objcombinedConfig, null, 2);
+  const { mutate: createTemplate } = useMutation({
+    mutationFn: (values: FormValues) =>
+      createJobTemplate({
+        name: values.name,
+        describe: values.description || "",
+        template: formattedConfig,
+        document: "",
+      }),
+    onSuccess: async (_, { name }) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["list", "jobtemplate"],
+      });
+      toast.success(`Job template ${name} created successfully`);
+      setIsOpen(false);
+    },
+  });
   // Initialize react-hook-form
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -49,12 +81,8 @@ export function PublishConfigForm({
   });
 
   const handleSubmit = form.handleSubmit((data) => {
-    onPublish(data.name, data.description || "", config);
-    setIsOpen(false);
-    form.reset();
+    createTemplate(data);
   });
-
-  const formattedConfig = JSON.stringify(config, null, 2);
 
   return (
     <SandwichSheet
