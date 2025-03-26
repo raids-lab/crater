@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import {
   NamespacedName,
-  PodContainerDialogProps,
+  PodIngressDialogProps,
 } from "@/components/codeblock/PodContainerDialog";
 import { useNamespacedState } from "@/hooks/useNamespacedState";
 import FormLabelMust from "@/components/form/FormLabelMust";
@@ -68,7 +68,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
+import { ClipboardCopy } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SSHPortDialog } from "./SSHPortDialog";
 
 const ingressFormSchema = z.object({
   name: z
@@ -100,7 +102,8 @@ type PodInfo = {
 export default function PodIngressDialog({
   namespacedName,
   setNamespacedName,
-}: PodContainerDialogProps) {
+  userName,
+}: PodIngressDialogProps) {
   const [isOpen, setIsOpen] = useNamespacedState(
     namespacedName,
     setNamespacedName,
@@ -112,7 +115,18 @@ export default function PodIngressDialog({
   const [isEditIngressDialogOpen, setIsEditIngressDialogOpen] = useState(false);
   const [isEditNodeportDialogOpen, setIsEditNodeportDialogOpen] =
     useState(false);
-  const [activeTab, setActiveTab] = useState<"ingress" | "nodeport">("ingress"); // Tab状态
+  const [activeTab, setActiveTab] = useState<"ingress" | "nodeport">(
+    "nodeport",
+  ); // Tab状态
+  const [selectedNodeport, setSelectedNodeport] = useState<PodNodeport | null>(
+    null,
+  );
+  const [showSSHDialog, setShowSSHDialog] = useState(false);
+
+  const handleCopyCommandClick = (nodeport: PodNodeport) => {
+    setSelectedNodeport(nodeport);
+    setShowSSHDialog(true);
+  };
 
   const ingressForm = useForm<PodIngressMgr>({
     resolver: zodResolver(ingressFormSchema),
@@ -268,7 +282,7 @@ export default function PodIngressDialog({
 
         <div className="grow overflow-y-auto">
           <Tabs
-            defaultValue="ingress"
+            defaultValue="nodeport"
             value={activeTab}
             onValueChange={(value) =>
               setActiveTab(value as "ingress" | "nodeport")
@@ -397,18 +411,29 @@ export default function PodIngressDialog({
                           {nodeport.nodePort}
                         </div>
                       </div>
+
                       <TooltipButton
                         variant="ghost"
                         size="icon"
                         className="hover:text-primary"
-                        onClick={() => {
-                          const url = `http://${nodeport.address}:${nodeport.nodePort}`;
-                          window.open(url, "_blank");
-                        }}
-                        tooltipContent="访问链接"
+                        onClick={() => handleCopyCommandClick(nodeport)}
+                        tooltipContent="复制命令"
                       >
-                        <ExternalLink className="size-4" />
+                        <ClipboardCopy className="size-4" />
                       </TooltipButton>
+
+
+                      {showSSHDialog && selectedNodeport && (
+                        <SSHPortDialog
+                          hostIP={selectedNodeport.address}
+                          nodePort={selectedNodeport.nodePort}
+                          userName={userName}
+                          withButton={false}
+                          open={showSSHDialog}
+                          onOpenChange={setShowSSHDialog}
+                        />
+                      )}
+
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <TooltipButton

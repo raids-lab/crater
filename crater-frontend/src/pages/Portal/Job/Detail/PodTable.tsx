@@ -25,6 +25,11 @@ import { GrafanaIframe } from "@/pages/Embed/Monitor";
 
 const POD_MONITOR = import.meta.env.VITE_GRAFANA_POD_MONITOR;
 
+interface PodTableProps {
+  jobName: string;
+  userName: string;
+}
+
 const getHeader = (key: string): string => {
   switch (key) {
     case "name":
@@ -65,7 +70,7 @@ const getPodMonitorUrl = (pod: PodDetail) => {
   return `${POD_MONITOR}?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`;
 };
 
-export const PodTable = ({ jobName }: { jobName: string }) => {
+export const PodTable = ({ jobName, userName }: PodTableProps) => {
   const [showLog, setShowLog] = useState<NamespacedName>();
   const [showTerminal, setShowTerminal] = useState<NamespacedName>();
   const [showIngress, setShowIngress] = useState<NamespacedName>();
@@ -237,6 +242,7 @@ export const PodTable = ({ jobName }: { jobName: string }) => {
       <PodIngressDialog
         namespacedName={showIngress}
         setNamespacedName={setShowIngress}
+        userName={userName}
       />
       <Sheet open={showMonitor} onOpenChange={setShowMonitor}>
         <SheetContent className="sm:max-w-4xl">

@@ -40,6 +40,12 @@ export interface PodContainerDialogProps {
   setNamespacedName: (namespacedName: NamespacedName) => void;
 }
 
+export interface PodIngressDialogProps {
+  namespacedName: NamespacedName;
+  setNamespacedName: (namespacedName: NamespacedName) => void;
+  userName: string;
+}
+
 export function ContainerSelect({
   currentContainer,
   setCurrentContainer,
