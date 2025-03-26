@@ -22,6 +22,7 @@ var (
 	Dataset        *dataset
 	Image          *image
 	Job            *job
+	Jobtemplate    *jobtemplate
 	Kaniko         *kaniko
 	Label          *label
 	Resource       *resource
@@ -37,6 +38,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	Dataset = &Q.Dataset
 	Image = &Q.Image
 	Job = &Q.Job
+	Jobtemplate = &Q.Jobtemplate
 	Kaniko = &Q.Kaniko
 	Label = &Q.Label
 	Resource = &Q.Resource
@@ -53,6 +55,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		Dataset:        newDataset(db, opts...),
 		Image:          newImage(db, opts...),
 		Job:            newJob(db, opts...),
+		Jobtemplate:    newJobtemplate(db, opts...),
 		Kaniko:         newKaniko(db, opts...),
 		Label:          newLabel(db, opts...),
 		Resource:       newResource(db, opts...),
@@ -70,6 +73,7 @@ type Query struct {
 	Dataset        dataset
 	Image          image
 	Job            job
+	Jobtemplate    jobtemplate
 	Kaniko         kaniko
 	Label          label
 	Resource       resource
@@ -88,6 +92,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		Dataset:        q.Dataset.clone(db),
 		Image:          q.Image.clone(db),
 		Job:            q.Job.clone(db),
+		Jobtemplate:    q.Jobtemplate.clone(db),
 		Kaniko:         q.Kaniko.clone(db),
 		Label:          q.Label.clone(db),
 		Resource:       q.Resource.clone(db),
@@ -113,6 +118,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		Dataset:        q.Dataset.replaceDB(db),
 		Image:          q.Image.replaceDB(db),
 		Job:            q.Job.replaceDB(db),
+		Jobtemplate:    q.Jobtemplate.replaceDB(db),
 		Kaniko:         q.Kaniko.replaceDB(db),
 		Label:          q.Label.replaceDB(db),
 		Resource:       q.Resource.replaceDB(db),
@@ -128,6 +134,7 @@ type queryCtx struct {
 	Dataset        IDatasetDo
 	Image          IImageDo
 	Job            IJobDo
+	Jobtemplate    IJobtemplateDo
 	Kaniko         IKanikoDo
 	Label          ILabelDo
 	Resource       IResourceDo
@@ -143,6 +150,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		Dataset:        q.Dataset.WithContext(ctx),
 		Image:          q.Image.WithContext(ctx),
 		Job:            q.Job.WithContext(ctx),
+		Jobtemplate:    q.Jobtemplate.WithContext(ctx),
 		Kaniko:         q.Kaniko.WithContext(ctx),
 		Label:          q.Label.WithContext(ctx),
 		Resource:       q.Resource.WithContext(ctx),
