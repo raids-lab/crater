@@ -112,7 +112,7 @@ func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
 	q := query.Account
 	queue, err := q.WithContext(c).Where(q.Name.Eq(token.AccountName)).First()
 	if err != nil {
-		resputil.Error(c, "Queue not found", resputil.TokenInvalid)
+		resputil.Error(c, "Queue not found", resputil.NotSpecified)
 		return
 	}
 
