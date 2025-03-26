@@ -222,7 +222,7 @@ func (mgr *AccountMgr) GetQuota(c *gin.Context) {
 		Name:      account.Name,
 		Namespace: config.GetConfig().Workspace.Namespace,
 	}, &queue); err != nil {
-		resputil.Error(c, "Queue not found", resputil.TokenInvalid)
+		resputil.Error(c, "Queue not found", resputil.NotSpecified)
 		return
 	}
 
