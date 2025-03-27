@@ -230,6 +230,7 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
   return (
     <>
       <DataTable
+        storageKey="job_pods"
         toolbarConfig={toolbarConfig}
         query={query}
         columns={columns}

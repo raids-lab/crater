@@ -1,6 +1,6 @@
 import { ProfileData } from "@/services/api/vcjob";
-import { MetricCard } from "../ui/metric-card";
-import { MetricGroup } from "../ui/metric-group";
+import { MetricCard } from "../ui-custom/metric-card";
+import { MetricGroup } from "../ui-custom/metric-group";
 
 interface CpuMetricsProps {
   profileData: ProfileData;

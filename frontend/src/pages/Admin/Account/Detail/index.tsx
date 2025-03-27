@@ -408,6 +408,11 @@ const AccountDetail = () => {
     <div className="grid grid-cols-[1fr_300px] gap-6">
       <main>
         <DataTable
+          info={{
+            title: "用户列表",
+            description: "在这里管理账户中的用户",
+          }}
+          storageKey="admin_account_users"
           query={accountUsersQuery}
           columns={columns}
           toolbarConfig={toolbarConfig}

@@ -345,6 +345,7 @@ export const Component: FC = () => {
           title: "作业信息",
           description: "查看近 7 天集群作业的运行情况",
         }}
+        storageKey="overview_joblist"
         query={jobQuery}
         columns={jobColumns}
         toolbarConfig={toolbarConfig}
@@ -354,6 +355,7 @@ export const Component: FC = () => {
           title: "节点信息",
           description: "集群节点维度的资源分配情况",
         }}
+        storageKey="overview_nodelist"
         query={nodeQuery}
         columns={getNodeColumns()}
       />

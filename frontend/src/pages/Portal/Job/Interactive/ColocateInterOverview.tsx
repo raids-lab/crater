@@ -468,6 +468,7 @@ const ColocateOverview = () => {
         <Quota />
       </div>
       <DataTable
+        storageKey="portal_aijob_interactive"
         query={batchQuery}
         columns={batchColumns}
         toolbarConfig={toolbarConfig}

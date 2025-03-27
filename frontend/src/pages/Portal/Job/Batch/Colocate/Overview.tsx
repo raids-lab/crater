@@ -492,6 +492,11 @@ const ColocateOverview = () => {
         <Quota />
       </div>
       <DataTable
+        info={{
+          title: "批处理作业",
+          description: "批处理作业是一种无需人工干预的作业",
+        }}
+        storageKey="portal_aijob_batch"
         query={batchQuery}
         columns={batchColumns}
         toolbarConfig={toolbarConfig}

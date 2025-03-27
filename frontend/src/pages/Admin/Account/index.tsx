@@ -223,6 +223,7 @@ export const Account = () => {
           description:
             "账户可包含多名用户，每个账户可设置资源配额，公共账户默认不设置配额，优先级最低",
         }}
+        storageKey="admin_account_management"
         query={query}
         columns={columns}
         toolbarConfig={toolbarConfig}

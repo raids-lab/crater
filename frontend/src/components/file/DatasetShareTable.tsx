@@ -437,10 +437,7 @@ export function DatasetShareTable({
           label: "数据集共享用户",
           children: (
             <DataTable
-              info={{
-                title: "",
-                description: "",
-              }}
+              storageKey="file_share_user"
               query={userDatasetData}
               columns={userDatasetColumns}
             />
@@ -453,10 +450,7 @@ export function DatasetShareTable({
           label: "数据集共享账户",
           children: (
             <DataTable
-              info={{
-                title: "",
-                description: "",
-              }}
+              storageKey="file_share_queue"
               query={queueDatasetData}
               columns={queueDatasetColumns}
             />
