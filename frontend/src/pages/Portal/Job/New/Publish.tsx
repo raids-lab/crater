@@ -88,7 +88,7 @@ export function PublishConfigForm<T extends FieldValues>({
     <SandwichSheet
       isOpen={isOpen}
       onOpenChange={setIsOpen}
-      title="分享配置 (开发中，暂不可用)"
+      title="分享配置"
       description="将此配置文件分享给其他用户"
       trigger={
         <TooltipButton
@@ -99,7 +99,20 @@ export function PublishConfigForm<T extends FieldValues>({
           分享配置
         </TooltipButton>
       }
-      footer={<Button onClick={() => handleSubmit()}>公开此配置文件</Button>}
+      footer={
+        <Button
+          onClick={async () => {
+            const isValid = await configform.trigger();
+            if (isValid) {
+              handleSubmit();
+            } else {
+              toast.error("请检查作业配置是否填写正确");
+            }
+          }}
+        >
+          公开此配置文件
+        </Button>
+      }
       className="sm:max-w-2xl"
     >
       <Form {...form}>
