@@ -506,6 +506,7 @@ export const NodeDetail: FC = () => {
           children: (
             <>
               <DataTable
+                storageKey="node_pods"
                 query={podsQuery}
                 columns={columns}
                 toolbarConfig={toolbarConfig}

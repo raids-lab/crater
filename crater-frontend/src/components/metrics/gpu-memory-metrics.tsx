@@ -1,7 +1,7 @@
 import { ProfileData } from "@/services/api/vcjob";
-import { ProgressCard } from "../ui/progress-card";
-import { MetricGroup } from "../ui/metric-group";
-import { MetricCard } from "../ui/metric-card";
+import { ProgressCard } from "../ui-custom/progress-card";
+import { MetricGroup } from "../ui-custom/metric-group";
+import { MetricCard } from "../ui-custom/metric-card";
 
 interface GpuMemoryMetricsProps {
   profileData: ProfileData;

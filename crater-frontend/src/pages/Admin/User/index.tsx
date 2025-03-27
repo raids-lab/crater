@@ -289,6 +289,11 @@ export const User = () => {
 
   return (
     <DataTable
+      info={{
+        title: "用户管理",
+        description: "在这里查看和管理用户信息",
+      }}
+      storageKey="admin_user"
       query={userQuery}
       columns={columns}
       toolbarConfig={toolbarConfig}

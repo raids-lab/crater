@@ -308,6 +308,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
         ) : null}
       </div>
       <DataTable
+        storageKey="image_registry"
         query={imageQuery}
         columns={columns}
         toolbarConfig={toolbarConfig}

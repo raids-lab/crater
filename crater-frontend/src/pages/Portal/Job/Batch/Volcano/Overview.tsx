@@ -169,6 +169,7 @@ const VolcanoOverview = () => {
         title: "批处理作业",
         description: "提交无须人工干预而执行系列程序的作业",
       }}
+      storageKey="portal_batch_job_overview"
       query={batchQuery}
       columns={batchColumns}
       toolbarConfig={jobToolbarConfig}

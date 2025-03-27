@@ -202,6 +202,7 @@ const NodeForAdmin = () => {
           title: "节点管理",
           description: "在这里修改节点的调度策略、是否由某些账户独享等",
         }}
+        storageKey="admin_node_management"
         query={nodeQuery}
         columns={columns}
         toolbarConfig={toolbarConfig}

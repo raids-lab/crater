@@ -181,6 +181,7 @@ export const Component: FC = () => {
         title: "资源列表",
         description: "资源列表用于定义集群中的资源，如 GPU、CPU、内存等",
       }}
+      storageKey="admin_resource_list"
     >
       <AlertDialog>
         <AlertDialogTrigger asChild>

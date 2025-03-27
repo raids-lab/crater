@@ -31,6 +31,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { GridIcon } from "lucide-react";
 import PageTitle from "@/components/layout/PageTitle";
 import { usePaginationWithStorage } from "@/hooks/usePaginationWithStorage";
+import { useLocalStorage } from "usehooks-ts";
 
 interface DataTableProps<TData, TValue>
   extends React.HTMLAttributes<HTMLDivElement> {
@@ -38,6 +39,7 @@ interface DataTableProps<TData, TValue>
     title: string;
     description: ReactNode;
   };
+  storageKey: string;
   query: UseQueryResult<TData[], Error>;
   columns: ColumnDef<TData, TValue>[];
   toolbarConfig?: DataTableToolbarConfig;
@@ -47,6 +49,7 @@ interface DataTableProps<TData, TValue>
 
 export function DataTable<TData, TValue>({
   info,
+  storageKey,
   query,
   columns,
   toolbarConfig,
@@ -56,7 +59,10 @@ export function DataTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnFilters, setColumnFilters] = useLocalStorage<ColumnFiltersState>(
+    `${storageKey}-column-filters`,
+    [],
+  );
   const [sorting, setSorting] = useState<SortingState>([]);
   const { data: queryData, isLoading, dataUpdatedAt, refetch } = query;
   const updatedAt = new Date(dataUpdatedAt).toLocaleString([], {
@@ -64,7 +70,7 @@ export function DataTable<TData, TValue>({
     minute: "2-digit",
     second: "2-digit",
   });
-  const [pagination, setPagination] = usePaginationWithStorage(info?.title);
+  const [pagination, setPagination] = usePaginationWithStorage(storageKey);
 
   const data = useMemo(() => {
     if (!queryData || isLoading) return [];

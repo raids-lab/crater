@@ -277,6 +277,7 @@ export const ImageListTable: FC<ImageListTableProps> = ({
           title: "镜像列表",
           description: "展示可用的公共或私有镜像，在作业提交时可供选择",
         }}
+        storageKey="imagelink"
         query={imageInfo}
         columns={columns}
         toolbarConfig={toolbarConfig}

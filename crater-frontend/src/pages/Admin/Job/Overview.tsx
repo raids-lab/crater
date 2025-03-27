@@ -164,7 +164,6 @@ const toolbarConfig: DataTableToolbarConfig = {
       key: "status",
       title: "状态",
       option: jobPhases,
-      defaultValues: ["Running"],
     },
   ],
   getHeader: getHeader,
@@ -407,6 +406,7 @@ const AdminJobOverview = () => {
         description:
           "管理员可对作业进行锁定以避免被定时策略清理，或手动停止或删除用户的作业",
       }}
+      storageKey="admin_job_overview"
       query={vcjobQuery}
       columns={vcjobColumns}
       toolbarConfig={toolbarConfig}

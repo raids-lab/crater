@@ -558,6 +558,7 @@ export function FileSystemTable({
         ></FolderNavigation>
       ) : (
         <DataTable
+          storageKey="filesystem"
           query={query}
           columns={columns}
           toolbarConfig={toolbarConfig}

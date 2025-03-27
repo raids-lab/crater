@@ -200,54 +200,53 @@ const InterOverview = () => {
   );
 
   return (
-    <>
-      <DataTable
-        info={{
-          title: "交互式作业",
-          description:
-            "提供开箱即用的 Jupyter Lab 或 Web IDE， 可用于测试、调试等",
-        }}
-        query={interactiveQuery}
-        columns={interColumns}
-        toolbarConfig={jobToolbarConfig}
-        multipleHandlers={[
-          {
-            title: (rows) => `停止或删除 ${rows.length} 个作业`,
-            description: (rows) => (
-              <>
-                作业 {rows.map((row) => row.original.name).join(", ")}{" "}
-                将被停止或删除，确认要继续吗？
-              </>
-            ),
-            icon: <Trash2Icon className="text-destructive" />,
-            handleSubmit: (rows) => {
-              rows.forEach((row) => {
-                deleteTask(row.original.jobName);
-              });
-            },
-            isDanger: true,
+    <DataTable
+      info={{
+        title: "交互式作业",
+        description:
+          "提供开箱即用的 Jupyter Lab 或 Web IDE， 可用于测试、调试等",
+      }}
+      storageKey="portal_job_interactive"
+      query={interactiveQuery}
+      columns={interColumns}
+      toolbarConfig={jobToolbarConfig}
+      multipleHandlers={[
+        {
+          title: (rows) => `停止或删除 ${rows.length} 个作业`,
+          description: (rows) => (
+            <>
+              作业 {rows.map((row) => row.original.name).join(", ")}{" "}
+              将被停止或删除，确认要继续吗？
+            </>
+          ),
+          icon: <Trash2Icon className="text-destructive" />,
+          handleSubmit: (rows) => {
+            rows.forEach((row) => {
+              deleteTask(row.original.jobName);
+            });
           },
-        ]}
-      >
-        <div className="flex flex-row gap-3">
-          <DocsButton title="查看文档" url="quick-start/interactive" />
-          <SplitLinkButton
-            title="interactive"
-            urls={[
-              {
-                url: `portal/job/inter/new-jupyter-${jobType}`,
-                name: " Jupyter Lab",
-              },
-              {
-                url: "portal/job/inter/new-webide",
-                name: " Web IDE",
-                disabled: true,
-              },
-            ]}
-          />
-        </div>
-      </DataTable>
-    </>
+          isDanger: true,
+        },
+      ]}
+    >
+      <div className="flex flex-row gap-3">
+        <DocsButton title="查看文档" url="quick-start/interactive" />
+        <SplitLinkButton
+          title="interactive"
+          urls={[
+            {
+              url: `portal/job/inter/new-jupyter-${jobType}`,
+              name: " Jupyter Lab",
+            },
+            {
+              url: "portal/job/inter/new-webide",
+              name: " Web IDE",
+              disabled: true,
+            },
+          ]}
+        />
+      </div>
+    </DataTable>
   );
 };
 
