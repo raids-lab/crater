@@ -16,7 +16,7 @@ export interface Dataset {
   createdAt: string;
   type: string;
   extra: Extra;
-  IUserAttributes: IUserAttributes;
+  attribute: IUserAttributes;
 }
 
 export interface UserDataset {

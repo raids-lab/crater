@@ -8,7 +8,7 @@ export interface JobTemplate {
   document: string;
   createdAt: string;
   template: string;
-  IUserAttributes: IUserAttributes;
+  attribute: IUserAttributes;
 }
 export interface JobTemplateReq {
   describe: string;
@@ -24,4 +24,7 @@ export const createJobTemplate = (data: JobTemplateReq) => {
     VERSION + `/jobtemplate/create`,
     data,
   );
+};
+export const getJobTemplate = (id: number) => {
+  return instance.get<IResponse<JobTemplate>>(VERSION + `/jobtemplate/${id}`);
 };
