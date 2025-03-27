@@ -237,8 +237,6 @@ func (r *VcJobReconciler) checkAndOpenSSH(ctx context.Context, job *batch.Job, l
 		return nil
 	}
 
-	logger.Info("Checking if SSH NodePort needs to be opened", "job", job.Name)
-
 	// 初始化 APIServerMgr 实例
 	var apiServerMgr *tool.APIServerMgr
 	for _, register := range handler.Registers {
@@ -257,8 +255,6 @@ func (r *VcJobReconciler) checkAndOpenSSH(ctx context.Context, job *batch.Job, l
 		return fmt.Errorf("failed to retrieve APIServerMgr instance")
 	}
 
-	logger.Info("Successfully retrieved APIServerMgr instance")
-
 	// 定义 SSH NodePort 的规则
 	sshNodeportMgr := tool.PodNodeportMgr{
 		Name:          "ssh",
@@ -271,13 +267,12 @@ func (r *VcJobReconciler) checkAndOpenSSH(ctx context.Context, job *batch.Job, l
 	}
 
 	// 调用 ProcessPodNodeport
-	nodePort, err := apiServerMgr.ProcessPodNodeport(ctx, sshReq, sshNodeportMgr)
+	_, err := apiServerMgr.ProcessPodNodeport(ctx, sshReq, sshNodeportMgr)
 	if err != nil {
 		logger.Error(err, "Failed to open SSH NodePort")
 		return fmt.Errorf("failed to open SSH NodePort: %w", err)
 	}
 
-	logger.Info("SSH NodePort successfully opened", "NodePort", nodePort)
 	return nil
 }
 

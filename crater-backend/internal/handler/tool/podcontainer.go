@@ -487,18 +487,18 @@ func (mgr *APIServerMgr) getPodByName(ctx context.Context, namespace, podName st
 }
 
 // 检查 NodePort 规则是否已存在
-func checkExistingNodePortRules(pod *v1.Pod, ruleName string) error {
+func getExistingNodePortRule(pod *v1.Pod, ruleName string) (*PodNodeport, bool) {
 	for key := range pod.Annotations {
 		if strings.HasPrefix(key, NodePortLabelKey) {
 			var existingRule PodNodeport
 			if err := json.Unmarshal([]byte(pod.Annotations[key]), &existingRule); err == nil {
 				if existingRule.Name == ruleName {
-					return fmt.Errorf("NodePort rule with the same name already exists")
+					return &existingRule, true
 				}
 			}
 		}
 	}
-	return nil
+	return nil, false
 }
 
 // 创建 NodePort Service
@@ -542,10 +542,9 @@ func (mgr *APIServerMgr) ProcessPodNodeport(ctx context.Context, req PodContaine
 		return nil, err
 	}
 
-	// 检查 NodePort 规则是否唯一
-	err = checkExistingNodePortRules(pod, nodeportMgr.Name)
-	if err != nil {
-		return nil, err
+	// 检查是否已有同名规则
+	if existing, found := getExistingNodePortRule(pod, nodeportMgr.Name); found {
+		return existing, nil
 	}
 
 	// 创建 NodePort Service
