@@ -6,7 +6,7 @@ import { apiJobTemplate } from "@/services/api/vcjob";
 import { importFromJsonString } from "@/utils/form";
 import { toast } from "sonner";
 import { showErrorToast } from "@/utils/toast";
-
+import { getJobTemplate } from "@/services/api/jobtemplate";
 interface UIStateUpdater<T> {
   /** Condition to determine if this state should be updated */
   condition: (data: T) => boolean;
@@ -50,7 +50,7 @@ export function useTemplateLoader<T extends FieldValues>({
 }: TemplateLoaderOptions<T>) {
   const [searchParams] = useSearchParams();
   const fromJob = searchParams.get("fromJob");
-
+  const fromTemplate = searchParams.get("fromTemplate");
   const { mutate: loadJobTemplate } = useMutation({
     mutationFn: (jobName: string) => apiJobTemplate(jobName),
     onSuccess: (response) => {
@@ -88,12 +88,54 @@ export function useTemplateLoader<T extends FieldValues>({
     },
   });
 
-  // Load template when fromJob changes
+  const { mutate: loadTemplate } = useMutation({
+    mutationFn: (templateId: number) => getJobTemplate(templateId),
+    onSuccess: (response) => {
+      try {
+        // Import the template data
+        let templateInfo = importFromJsonString<T>(
+          metadata,
+          response.data.data.template,
+        );
+
+        // Apply optional data processing
+        if (dataProcessor) {
+          templateInfo = dataProcessor(templateInfo);
+        }
+
+        // Reset the form with the loaded data
+        form.reset(templateInfo);
+
+        // Update UI states based on the loaded data
+        uiStateUpdaters.forEach(({ condition, setter, value }) => {
+          if (condition(templateInfo)) {
+            setter(value);
+          }
+        });
+
+        // Call the success callback
+        if (onSuccess) {
+          onSuccess(templateInfo);
+        }
+
+        toast.success(`已加载模板 ${fromTemplate} 的配置`);
+      } catch (error) {
+        showErrorToast(error);
+      }
+    },
+    onError: () => {
+      toast.error("获取模板失败");
+    },
+  });
+
+  // Load template when fromJob or fromTemplate changes
   useEffect(() => {
     if (fromJob) {
       loadJobTemplate(fromJob);
+    } else if (fromTemplate) {
+      loadTemplate(Number(fromTemplate));
     }
-  }, [loadJobTemplate, fromJob]);
+  }, [loadJobTemplate, loadTemplate, fromJob, fromTemplate]);
 
   return { fromJob };
 }

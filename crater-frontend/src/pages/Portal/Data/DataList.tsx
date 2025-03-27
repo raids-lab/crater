@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
+//import { Link } from "react-router-dom";
 import {
   Select,
   SelectContent,
@@ -32,9 +33,16 @@ export interface DataItem {
   createdAt?: string;
   tag: string[];
   url?: string;
+  template?: string;
   owner: IUserAttributes;
 }
-
+//假设 JobType 是这样定义的枚举
+enum JobType {
+  Jupyter = "jupyter",
+  Custom = "custom",
+  Tensorflow = "tensorflow",
+  Pytorch = "pytorch",
+}
 export default function DataList({
   items,
   title,
@@ -57,7 +65,37 @@ export default function DataList({
     });
     return Array.from(tags);
   }, [items]);
+  const getNewJobUrl = (jobType: JobType) => {
+    switch (jobType) {
+      case JobType.Jupyter: // 直接匹配枚举值
+        return "job/iner/new-jupyter-vcjobs";
+      case JobType.Custom:
+        return "job/batch/new-vcjobs";
+      case JobType.Tensorflow:
+        return "job/batch/new-tensorflow";
+      case JobType.Pytorch:
+        return "job/batch/new-pytorch";
+      default:
+        return "job/batch/new-vcjobs";
+    }
+  };
+  // 新增 JSON 解析函数
+  const getJobUrlFromTemplate = (template: string): string => {
+    try {
+      const parsed = JSON.parse(template);
 
+      // 类型安全校验
+      if (!parsed.type || !Object.values(JobType).includes(parsed.type)) {
+        return getNewJobUrl(JobType.Jupyter);
+      }
+
+      // 通过类型断言确保类型安全
+      const jobType = parsed.type as JobType;
+      return getNewJobUrl(jobType);
+    } catch {
+      return getNewJobUrl(JobType.Jupyter); // 解析失败返回默认
+    }
+  };
   const filteredItems = items
     .sort((a, b) =>
       sort === "descending"
@@ -155,12 +193,21 @@ export default function DataList({
                 >
                   {title === "模型" ? <BotIcon /> : <DatabaseZapIcon />}
                 </div>
-                <TooltipLink
-                  to={`${item.id}`}
-                  name={<p className="text-left">{item.name}</p>}
-                  tooltip={`查看${title}详情`}
-                  className="font-semibold"
-                />
+                {title === "作业模板" ? (
+                  <TooltipLink
+                    to={`/portal/${getJobUrlFromTemplate(item.template || "")}?fromTemplate=${item.id}`}
+                    name={<p className="text-left">{item.name}</p>}
+                    tooltip={`查看${title}详情`}
+                    className="font-semibold"
+                  />
+                ) : (
+                  <TooltipLink
+                    to={`${item.id}`}
+                    name={<p className="text-left">{item.name}</p>}
+                    tooltip={`查看${title}详情`}
+                    className="font-semibold"
+                  />
+                )}
               </div>
               {item.url && (
                 <TooltipButton
