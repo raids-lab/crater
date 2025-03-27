@@ -33,6 +33,7 @@ func (mgr *JobTemplateMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/list", mgr.ListJobTemplate)
 	g.POST("/create", mgr.CreateJobTemplate)
 	g.DELETE("/delete/:id", mgr.DeleteJobTemplate)
+	g.GET("/:id", mgr.GetJobTemplate)
 }
 
 func (mgr *JobTemplateMgr) RegisterAdmin(_ *gin.RouterGroup) {
@@ -45,9 +46,9 @@ type JobTemplateresp struct {
 	Describe  string    `json:"describe"`
 	Document  string    `json:"document"`
 	Template  string    `json:"template"`
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt time.Time `json:"createdAt"`
 
-	Attribute datatypes.JSONType[model.UserAttribute] `json:"attributes"`
+	Attribute datatypes.JSONType[model.UserAttribute] `json:"attribute"`
 }
 
 // swagger
@@ -101,6 +102,44 @@ func (mgr *JobTemplateMgr) MatchUser(c *gin.Context, jobtemplate *model.Jobtempl
 		CreatedAt: jobtemplate.CreatedAt,
 		Attribute: user.Attributes,
 	}, nil
+}
+
+type GetJobTemplateReq struct {
+	ID uint `uri:"id" binding:"required"` // 关键修复：使用 uri 标签
+}
+
+// swagger
+// @Summary 获取作业模板
+// @Description 获取作业模板
+// @Tags jobtemplate
+// @Accept json
+// @Produce json
+// @Param id path int true "作业模板ID"  // Swagger 注解正确
+// @Security Bearer
+// @Success 200 {object} resputil.Response[any] "成功返回值描述"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/jobtemplate/{id} [get]
+func (mgr *JobTemplateMgr) GetJobTemplate(c *gin.Context) {
+	var req GetJobTemplateReq
+	if err := c.ShouldBindUri(&req); err != nil { // ✅ 正确绑定路径参数
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	jobtemplate, err := query.Jobtemplate.WithContext(c).Where(query.Jobtemplate.ID.Eq(req.ID)).First()
+	if err != nil {
+		resputil.Error(c, "Failed to get job template", resputil.NotSpecified)
+		return
+	}
+
+	jobtemplateResp, terr := mgr.MatchUser(c, jobtemplate)
+	if terr != nil {
+		resputil.Error(c, "Failed to get job template", resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, jobtemplateResp)
 }
 
 type JobTemplateReq struct {
