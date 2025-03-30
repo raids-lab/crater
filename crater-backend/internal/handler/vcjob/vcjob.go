@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -523,7 +522,6 @@ func getJob(c context.Context, name string, token *util.JWTMessage) (*model.Job,
 // @Router /v1/vcjobs/{name}/ssh [post]
 func (mgr *VolcanojobMgr) GetSSHPortDetail(c *gin.Context) {
 	var req JobActionReq
-	// 解析 URI 参数
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
@@ -531,60 +529,66 @@ func (mgr *VolcanojobMgr) GetSSHPortDetail(c *gin.Context) {
 
 	token := util.GetToken(c)
 
-	// 根据作业名称获取作业详情
 	job, err := getJob(c, req.JobName, &token)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	// 检查作业是否处于 Running 状态
 	if job.Status != batch.Running {
 		resputil.Success(c, SSHResp{Open: false, Data: SSHPortData{}})
 		return
 	}
 
-	// 获取作业的用户名
 	username := job.User.Name
-
-	// 构造 namespace 和 podName
 	namespace := job.Attributes.Data().Namespace
 	podName := fmt.Sprintf("%s-default0-0", req.JobName)
 
-	// 获取 Pod 信息
 	var pod v1.Pod
 	if err := mgr.client.Get(c, client.ObjectKey{Namespace: namespace, Name: podName}, &pod); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	// 检查 annotations 中是否包含 "crater.raids.io/open-ssh: true"
 	if pod.Annotations[AnnotationKeyOpenSSH] != "true" {
 		resputil.Success(c, SSHResp{Open: false, Data: SSHPortData{}})
 		return
 	}
 
-	// 查找 annotation 中的 nodeport 信息
-	var sshPort SSHResp
+	// 查找并补全 nodeport 注解信息
 	for key, value := range pod.Annotations {
-		if strings.HasPrefix(key, NodePortLabelKey+"ssh") {
+		if key == NodePortLabelKey+"ssh" {
 			var nodeportData tool.PodNodeport
 			if err := json.Unmarshal([]byte(value), &nodeportData); err == nil {
-				// 使用从 annotation 获取到的 IP 和 NodePort
-				sshPort = SSHResp{
-					Open: true, // 表示开启 SSH
+				// 尝试补全 address，如果为空且 Pod 有 HostIP
+				if nodeportData.Address == "" && pod.Status.HostIP != "" {
+					nodeportData.Address = pod.Status.HostIP
+
+					// 回写到 annotation 中
+					newAnno, err := json.Marshal(nodeportData)
+					if err == nil {
+						pod.Annotations[key] = string(newAnno)
+						_ = mgr.client.Update(c, &pod) // 异步更新，无需报错
+					}
+				}
+
+				// 构建返回结构
+				sshPort := SSHResp{
+					Open: true,
 					Data: SSHPortData{
 						IP:       nodeportData.Address,
 						NodePort: nodeportData.NodePort,
 						Username: username,
 					},
 				}
+				resputil.Success(c, sshPort)
+				return
 			}
 		}
 	}
 
-	// 返回 SSH 端口信息
-	resputil.Success(c, sshPort)
+	// 未找到 SSH 信息，默认返回关闭状态
+	resputil.Success(c, SSHResp{Open: false, Data: SSHPortData{}})
 }
 
 // GetJobPods godoc
