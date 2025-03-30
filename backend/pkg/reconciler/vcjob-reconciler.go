@@ -205,6 +205,12 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			if err = alertMgr.JobRunningAlert(ctx, job.Name); err != nil {
 				logger.Error(err, "fail to send email")
 			}
+
+			// 检查是否要打开 ssh 端口
+			err = r.checkAndOpenSSH(ctx, &job, logger)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 
 		// alert job failure
@@ -220,12 +226,6 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	if err != nil {
 		logger.Error(err, "unable to update job record")
 		return ctrl.Result{Requeue: true}, err
-	}
-
-	// 检查是否要打开 ssh 端口
-	err = r.checkAndOpenSSH(ctx, &job, logger)
-	if err != nil {
-		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
