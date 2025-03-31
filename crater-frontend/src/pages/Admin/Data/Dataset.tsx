@@ -1,9 +1,7 @@
 import { type FC } from "react";
-import { apiAdminGetDataset } from "@/services/api/dataset";
-
-import { DatasetTable } from "@/components/custom/DatasetTable";
+import { AdminDatasetTable } from "@/components/custom/admindataset";
 
 const AdminDataset: FC = () => {
-  return <DatasetTable apiGetDataset={apiAdminGetDataset} />;
+  return <AdminDatasetTable />;
 };
 export default AdminDataset;
