@@ -238,7 +238,7 @@ export default function DataList({
             <div>
               <div className="flex flex-row flex-wrap gap-1 p-4 pt-0">
                 <TipBadge
-                  title={item.owner?.name || item.username}
+                  title={item.owner?.nickname || item.username}
                   className="bg-purple-600/15 text-purple-600 hover:bg-purple-600/25"
                 />
                 <TipBadge
