@@ -71,6 +71,8 @@ import {
 import { ClipboardCopy } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SSHPortDialog } from "./SSHPortDialog";
+import { useAtomValue } from "jotai";
+import { urlHostAtom } from "@/utils/store/config";
 
 const ingressFormSchema = z.object({
   name: z
@@ -122,6 +124,7 @@ export default function PodIngressDialog({
     null,
   );
   const [showSSHDialog, setShowSSHDialog] = useState(false);
+  const host = useAtomValue(urlHostAtom);
 
   const handleCopyCommandClick = (nodeport: PodNodeport) => {
     setSelectedNodeport(nodeport);
@@ -318,7 +321,7 @@ export default function PodIngressDialog({
                       <div className="ml-2 flex grow flex-col items-start justify-start gap-0.5">
                         <p>{ingress.name}</p>
                         <div className="flex flex-row text-xs text-muted-foreground">
-                          {ingress.port} → {import.meta.env.VITE_HOST}
+                          {ingress.port} → {host}
                           {ingress.prefix}
                         </div>
                       </div>
@@ -327,7 +330,7 @@ export default function PodIngressDialog({
                         size="icon"
                         className="hover:text-primary"
                         onClick={() => {
-                          const url = `https://${import.meta.env.VITE_HOST}${ingress.prefix}`;
+                          const url = `https://${host}${ingress.prefix}`;
                           window.open(url, "_blank");
                         }}
                         tooltipContent="访问链接"
@@ -358,7 +361,7 @@ export default function PodIngressDialog({
                               <AlertDialogTitle>删除外部访问规则</AlertDialogTitle>
                               <AlertDialogDescription>
                                 外部访问规则「{ingress.name}」<br />
-                                {ingress.port} → {import.meta.env.VITE_HOST}
+                                {ingress.port} → {host}
                                 {ingress.prefix}
                                 <br />
                                 将被删除，请谨慎操作。
@@ -480,8 +483,8 @@ export default function PodIngressDialog({
             onClick={() =>
               window.open(
                 activeTab === "ingress" ?
-                  `https://${import.meta.env.VITE_HOST}/website/docs/toolbox/external-access/ingress-rule`
-                  : `https://${import.meta.env.VITE_HOST}/website/docs/toolbox/external-access/nodeport-rule`,
+                  `https://${host}/website/docs/toolbox/external-access/ingress-rule`
+                  : `https://${host}/website/docs/toolbox/external-access/nodeport-rule`,
               )
             }>
             <BookOpenIcon />

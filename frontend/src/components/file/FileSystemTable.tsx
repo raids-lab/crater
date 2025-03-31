@@ -30,7 +30,7 @@ import {
   Globe,
   Trash2,
 } from "lucide-react";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { globalBreadCrumb } from "@/utils/store";
 import {
   FileItem,
@@ -62,6 +62,7 @@ import { AxiosResponse } from "axios";
 import { IResponse } from "@/services/types";
 import { FileSelectDialog } from "./FileSelectDialog";
 import TooltipButton from "../custom/TooltipButton";
+import { urlApiBaseAtom } from "@/utils/store/config";
 
 const getHeader = (key: string): string => {
   switch (key) {
@@ -99,6 +100,7 @@ export function FileSystemTable({
   const navigate = useNavigate();
   const [dirName, setDirName] = useState<string>("");
   const setBreadcrumb = useSetAtom(globalBreadCrumb);
+  const apiBaseURL = useAtomValue(urlApiBaseAtom);
 
   const path = useMemo(() => {
     if (isadmin) {
@@ -395,7 +397,7 @@ export function FileSystemTable({
                     className="h-8 w-8 p-0 hover:text-sky-700"
                     tooltipContent="下载文件"
                     onClick={() => {
-                      const link = `${import.meta.env.VITE_API_BASE_URL}ss/download${path}/${row.original.name}`;
+                      const link = `${apiBaseURL}ss/download${path}/${row.original.name}`;
                       const o = new XMLHttpRequest();
                       o.open("GET", link);
                       o.responseType = "blob";

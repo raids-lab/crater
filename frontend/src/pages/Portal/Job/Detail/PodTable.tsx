@@ -224,7 +224,7 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
   }
 
   if (!query.data || query.data.length === 0) {
-    return <Nothing title="作业信息已被清理" />;
+    return <Nothing title="暂无作业信息，可查看作业事件" />;
   }
 
   return (

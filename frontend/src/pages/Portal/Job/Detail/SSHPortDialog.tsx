@@ -11,7 +11,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { CopyableCommand } from "@/components/codeblock/CopyableCommand";
-import { BookOpenIcon, Terminal } from "lucide-react";
+import { Terminal } from "lucide-react";
+import DocsButton from "@/components/button/DocsButton";
 
 interface SSHPortDialogProps {
   hostIP: string;
@@ -61,17 +62,7 @@ export function SSHPortDialog({
           />
         </div>
         <DialogFooter className="mt-4">
-          <Button
-            variant="secondary"
-            onClick={() =>
-              window.open(
-                `https://${import.meta.env.VITE_HOST}/website/docs/toolbox/external-access/nodeport-rule`,
-              )
-            }
-          >
-            <BookOpenIcon />
-            帮助文档
-          </Button>
+          <DocsButton title="帮助文档" url="toolbox/ssh/ssh-new" />
         </DialogFooter>
       </DialogContent>
     </Dialog>

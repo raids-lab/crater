@@ -4,7 +4,6 @@ import { LoginForm } from "./LoginForm";
 import { useState } from "react";
 import { SignupForm } from "./SignupForm";
 import { ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useTheme } from "@/utils/theme";
 import { ForgotPasswordForm } from "./ForgotPasswordForm";
 import {
@@ -18,6 +17,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import DocsButton from "@/components/button/DocsButton";
+import { useAtomValue } from "jotai";
+import { urlWebsiteBaseAtom } from "@/utils/store/config";
 
 // 定义认证模式枚举
 export enum AuthMode {
@@ -31,6 +33,7 @@ export function Dashboard() {
   const [showRegisterDialog, setShowRegisterDialog] = useState(false);
   const { theme, setTheme } = useTheme();
   const [currentMode, setCurrentMode] = useState<AuthMode>(AuthMode.ACT);
+  const website = useAtomValue(urlWebsiteBaseAtom);
 
   // 处理注册按钮点击
   const handleRegisterClick = () => {
@@ -115,16 +118,12 @@ export function Dashboard() {
                 <br />
                 与智能运维平台
               </h1>
-              <Button
+              <DocsButton
                 variant="ghost"
                 className="dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/85 dark:hover:text-primary-foreground bg-white text-black hover:bg-slate-200 hover:text-black"
-                onClick={() =>
-                  window.open(`https://${import.meta.env.VITE_HOST}/website/`)
-                }
-              >
-                <ExternalLink />
-                平台文档
-              </Button>
+                title="平台文档"
+                url=""
+              />
             </div>
           </div>
         </div>
@@ -198,7 +197,7 @@ export function Dashboard() {
             <AlertDialogDescription>
               第一次登录平台时，需要从 ACT 门户同步用户信息，请参考「
               <a
-                href={`https://${import.meta.env.VITE_HOST}/website/docs/quick-start/login`}
+                href={`${website}/docs/quick-start/login`}
                 className="text-primary underline"
               >
                 平台访问指南
@@ -209,11 +208,7 @@ export function Dashboard() {
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() =>
-                window.open(
-                  `https://${import.meta.env.VITE_HOST}/website/docs/quick-start/login`,
-                )
-              }
+              onClick={() => window.open(`${website}/docs/quick-start/login`)}
             >
               <ExternalLink className="mr-2 h-4 w-4" />
               立即阅读

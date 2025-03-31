@@ -38,8 +38,10 @@ import { toast } from "sonner";
 import { Role } from "@/services/api/auth";
 import { stringToSS58 } from "@/utils/ss58";
 import { useIsAdmin } from "@/hooks/useAdmin";
+import { urlWebsiteBaseAtom } from "@/utils/store/config";
 
 export function NavUser() {
+  const website = useAtomValue(urlWebsiteBaseAtom);
   const { isMobile } = useSidebar();
   const queryClient = useQueryClient();
   const { resetAll } = useResetStore();
@@ -135,11 +137,7 @@ export function NavUser() {
                   个人主页
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() =>
-                  window.open(`https://${import.meta.env.VITE_HOST}/website`)
-                }
-              >
+              <DropdownMenuItem onClick={() => window.open(website)}>
                 <BookOpenIcon />
                 平台文档
               </DropdownMenuItem>

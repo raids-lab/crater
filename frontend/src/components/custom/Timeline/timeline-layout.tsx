@@ -12,6 +12,7 @@ import {
   TimelineTime,
 } from "./timeline";
 import { Event as KubernetesEvent } from "kubernetes-types/core/v1";
+import { cn } from "@/lib/utils";
 
 interface TimelineLayoutProps {
   items: KubernetesEvent[]; // Replace any[] with the actual type of items.
@@ -19,7 +20,7 @@ interface TimelineLayoutProps {
 
 export const EventTimeline = ({ items }: TimelineLayoutProps) => {
   return (
-    <Timeline>
+    <Timeline className="pt-4">
       {items
         .sort((a, b) => {
           if (!a.lastTimestamp) {
@@ -47,7 +48,10 @@ export const EventTimeline = ({ items }: TimelineLayoutProps) => {
               <TimelineTitle className="flex flex-row items-center gap-1.5">
                 <TipBadge
                   title={item.type}
-                  className="bg-secondary text-secondary-foreground hover:bg-accent capitalize"
+                  className={cn({
+                    "bg-secondary text-secondary-foreground hover:bg-accent capitalize":
+                      item.type === "Normal",
+                  })}
                 />
                 {item.involvedObject.kind} / {item.reason}
               </TimelineTitle>

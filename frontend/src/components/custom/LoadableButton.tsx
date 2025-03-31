@@ -11,7 +11,6 @@ type LoadableButtonProps = React.ComponentProps<"button"> &
   };
 
 const LoadableButton = function LoadableButton({
-  ref,
   className,
   variant,
   size,
@@ -19,13 +18,10 @@ const LoadableButton = function LoadableButton({
   isLoadingText,
   children,
   ...props
-}: LoadableButtonProps & {
-  ref?: React.RefObject<HTMLButtonElement>;
-}) {
+}: LoadableButtonProps) {
   return (
     <Button
       className={cn(buttonVariants({ variant, size, className }))}
-      ref={ref}
       {...props}
       disabled={isLoading}
     >

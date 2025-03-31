@@ -11,14 +11,16 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { REFRESH_TOKEN_KEY } from "@/utils/store";
 import { useDebounceCallback } from "usehooks-ts";
+import { useAtomValue } from "jotai";
+import { urlApiBaseAtom, versionAtom } from "@/utils/store/config";
 
 const buildWebSocketUrl = (
+  apiBaseUrl: string,
+  version: string,
   namespace: string,
   podName: string,
   containerName: string,
 ) => {
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
-  const version = import.meta.env.VITE_API_VERSION;
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
   const token = localStorage.getItem(REFRESH_TOKEN_KEY) || "";
   const url = new URL(apiBaseUrl);
@@ -59,6 +61,9 @@ function TerminalCard({
   namespacedName: PodNamespacedName;
   selectedContainer: ContainerInfo;
 }) {
+  const apiBaseUrl = useAtomValue(urlApiBaseAtom);
+  const version = useAtomValue(versionAtom);
+
   const terminalRef = useRef<Terminal | null>(null);
   const xtermRef = useRef<HTMLDivElement>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -73,6 +78,9 @@ function TerminalCard({
   );
 
   useEffect(() => {
+    if (!apiBaseUrl || !version) {
+      return;
+    }
     if (!selectedContainer.state.running || !xtermRef.current) {
       return;
     }
@@ -95,6 +103,8 @@ function TerminalCard({
     fitAddon.fit(); // 调整终端大小
 
     const wsUrl = buildWebSocketUrl(
+      apiBaseUrl,
+      version,
       namespacedName.namespace,
       namespacedName.name,
       selectedContainer.name,
@@ -149,7 +159,13 @@ function TerminalCard({
       ws.close();
       terminal.dispose();
     };
-  }, [namespacedName, selectedContainer, debouncedSendResize]);
+  }, [
+    namespacedName,
+    selectedContainer,
+    debouncedSendResize,
+    apiBaseUrl,
+    version,
+  ]);
 
   return (
     <Card className="overflow-hidden rounded-md bg-black p-1 md:col-span-2 xl:col-span-3 dark:border">
