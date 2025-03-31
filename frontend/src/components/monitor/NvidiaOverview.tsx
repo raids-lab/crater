@@ -1,0 +1,10 @@
+import Monitor from "@/pages/Embed/Monitor";
+import { grafanaOverviewAtom } from "@/utils/store/config";
+import { useAtomValue } from "jotai";
+
+const NvidiaOverview = () => {
+  const grafanaOverview = useAtomValue(grafanaOverviewAtom);
+  return <Monitor baseSrc={grafanaOverview.main} />;
+};
+
+export default NvidiaOverview;

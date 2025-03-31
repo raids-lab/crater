@@ -19,13 +19,11 @@ import AuthedRouter from "./AuthedRouter";
 import NotFound from "@/components/layout/NotFound";
 import FeedBack from "./Feedback";
 import UserSettings from "./Setting/UserSetting";
-import Monitor from "../Embed/Monitor";
 import modelRoutes from "./Data/modelindex";
 import AssignmentTemplateList from "./Job/Store";
-
-const OVERVIEW_DASHBOARD = import.meta.env.VITE_GRAFANA_OVERVIEW;
-const AVAILABLE_DASHBOARD = import.meta.env.VITE_GRAFANA_SCHEDULE;
-const NETWORK_DASHBOARD = import.meta.env.VITE_GRAFANA_NETWORK;
+import NvidiaOverview from "@/components/monitor/NvidiaOverview";
+import ResourseOverview from "@/components/monitor/ResourceOverview";
+import NetworkOverview from "@/components/monitor/NetworkOverview";
 
 const portalRoutes: RouteItem[] = [
   {
@@ -42,19 +40,19 @@ const portalRoutes: RouteItem[] = [
       {
         route: {
           path: "gpu",
-          element: <Monitor baseSrc={OVERVIEW_DASHBOARD} />,
+          element: <NvidiaOverview />,
         },
       },
       {
         route: {
           path: "node",
-          element: <Monitor baseSrc={AVAILABLE_DASHBOARD} />,
+          element: <ResourseOverview />,
         },
       },
       {
         route: {
           path: "network",
-          element: <Monitor baseSrc={NETWORK_DASHBOARD} />,
+          element: <NetworkOverview />,
         },
       },
     ],

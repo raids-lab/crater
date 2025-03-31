@@ -27,7 +27,7 @@ export const PhaseBadge = <T,>({
   return (
     <TooltipProvider delayDuration={100}>
       <Tooltip>
-        <TooltipTrigger disabled>
+        <TooltipTrigger asChild>
           <Badge
             className={cn("cursor-help border-none", data.color)}
             variant="outline"
