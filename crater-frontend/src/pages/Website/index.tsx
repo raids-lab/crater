@@ -1,7 +1,10 @@
+import { urlWebsiteBaseAtom } from "@/utils/store/config";
+import { useAtomValue } from "jotai";
 import { type FC } from "react";
 
 const Website: FC = () => {
-  window.location.href = `https://${import.meta.env.VITE_HOST}/website`;
+  const website = useAtomValue(urlWebsiteBaseAtom);
+  window.location.href = website;
   return <></>;
 };
 

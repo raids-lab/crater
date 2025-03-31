@@ -43,6 +43,7 @@ import {
 } from "@/services/error_code";
 import { ExternalLink } from "lucide-react";
 import { AuthMode } from ".";
+import { urlWebsiteBaseAtom } from "@/utils/store/config";
 
 const formSchema = z.object({
   username: z
@@ -87,6 +88,7 @@ export function LoginForm({ authMode, onForgotPasswordClick }: LoginFormProps) {
   const setAccount = useSetAtom(globalAccount);
   const { resetAll } = useResetStore();
   const lastView = useAtomValue(globalLastView);
+  const website = useAtomValue(urlWebsiteBaseAtom);
 
   // 1. Define your form.
   const form = useForm<z.infer<typeof formSchema>>({
@@ -237,22 +239,14 @@ export function LoginForm({ authMode, onForgotPasswordClick }: LoginFormProps) {
             <AlertDialogTitle>账号未激活</AlertDialogTitle>
             <AlertDialogDescription>
               第一次登录平台时，需要从 ACT 门户同步用户信息，请参考「
-              <a
-                href={`https://${import.meta.env.VITE_HOST}/website/docs/quick-start/login`}
-              >
-                平台访问指南
-              </a>
+              <a href={`${website}/docs/quick-start/login`}>平台访问指南</a>
               」激活您的账号。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() =>
-                window.open(
-                  `https://${import.meta.env.VITE_HOST}/website/docs/quick-start/login`,
-                )
-              }
+              onClick={() => window.open(`${website}/docs/quick-start/login`)}
             >
               <ExternalLink />
               立即阅读

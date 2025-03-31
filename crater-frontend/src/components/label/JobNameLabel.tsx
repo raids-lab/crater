@@ -1,6 +1,6 @@
 import { LockIcon } from "lucide-react";
 import TooltipLink from "@/components/label/TooltipLink";
-import { IJobInfo } from "@/services/api/vcjob";
+import { getJobStateType, IJobInfo, JobStatus } from "@/services/api/vcjob";
 import TipBadge from "../badge/TipBadge";
 
 interface JobNameCellProps {
@@ -18,7 +18,11 @@ export const JobNameCell = ({ jobInfo }: JobNameCellProps) => {
           )}
         </div>
       }
-      to={jobInfo.jobName}
+      to={
+        getJobStateType(jobInfo.status) === JobStatus.NotStarted
+          ? `${jobInfo.jobName}?tab=event`
+          : jobInfo.jobName
+      }
       tooltip={
         // `查看 ${jobInfo.name} 详情` +
         // (jobInfo.keepWhenLowUsage ? "（已锁定，低利用率仍保留）" : "")

@@ -9,17 +9,31 @@ import {
 } from "./error_code";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/utils/store";
 import { showErrorToast } from "@/utils/toast";
+import { getDefaultStore } from "jotai";
+import { urlApiBaseAtom, versionAtom } from "@/utils/store/config";
 
-export const VERSION = import.meta.env.VITE_API_VERSION;
+const store = getDefaultStore();
 
 interface AxiosRetryRequestConfig extends AxiosRequestConfig {
   _retry: boolean;
 }
 
-const instance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
-  withCredentials: true,
-});
+// 异步函数初始化 Axios 实例
+export async function initializeApiClient() {
+  // 从 Jotai store 中获取 apiBaseUrl
+  const baseURL = await store.get(urlApiBaseAtom);
+
+  const apiClient = axios.create({
+    baseURL,
+    withCredentials: true,
+  });
+
+  const version = await store.get(versionAtom);
+
+  return [apiClient, version] as const;
+}
+
+export const [instance, VERSION] = await initializeApiClient();
 
 instance.defaults.headers.common["Content-Type"] = "application/json";
 
