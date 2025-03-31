@@ -72,6 +72,7 @@ build_image:
       /kaniko/executor
       --context "${CI_PROJECT_DIR}"
       --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
+      --target "backend"
       --destination "${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}"
   only:
     - main
