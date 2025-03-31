@@ -22,5 +22,13 @@ spec:
           imagePullPolicy: {{ .Values.web.frontend.image.pullPolicy }}
           ports:
             - containerPort: 80
+          volumeMounts:
+            - name: config-volume
+              mountPath: /usr/share/nginx/html/config.json
+              subPath: config.json
+      volumes:
+        - name: config-volume
+          configMap:
+            name: crater-web-frontend-config
       nodeSelector: {{ .Values.nodeSelector | toYaml | nindent 8 }}
       tolerations: {{ .Values.tolerations | toYaml | nindent 8 }}

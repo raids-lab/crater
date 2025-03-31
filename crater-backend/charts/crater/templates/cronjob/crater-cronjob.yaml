@@ -21,11 +21,11 @@ spec:
             command: ["/bin/sh", "/scripts/clean-low-gpu-util-job.sh"]
             env:
             - name: TIME_RANGE
-              value: {{ .Values.web.cronjob.config.jobs.lowGPUUtil.TIME_RANGE }}
+              value: "{{ .Values.web.cronjob.config.jobs.lowGPUUtil.TIME_RANGE }}"
             - name: WAIT_TIME
-              value: {{ .Values.web.cronjob.config.jobs.lowGPUUtil.WAIT_TIME }}
+              value: "{{ .Values.web.cronjob.config.jobs.lowGPUUtil.WAIT_TIME }}"
             - name: UTIL
-              value: {{ .Values.web.cronjob.config.jobs.lowGPUUtil.UTIL }}
+              value: "{{ .Values.web.cronjob.config.jobs.lowGPUUtil.UTIL }}"
             envFrom:
             - configMapRef:
                 name: crater-cronjob-config
@@ -58,9 +58,9 @@ spec:
             command: ["/bin/sh", "/scripts/clean-long-time-job.sh"]
             env:
             - name: BATCH_DAYS
-              value: {{ .Values.web.cronjob.config.jobs.longTime.BATCH_DAYS }}
+              value: "{{ .Values.web.cronjob.config.jobs.longTime.BATCH_DAYS }}"
             - name: INTERACTIVE_DAYS
-              value: {{ .Values.web.cronjob.config.jobs.longTime.INTERACTIVE_DAYS }}
+              value: "{{ .Values.web.cronjob.config.jobs.longTime.INTERACTIVE_DAYS }}"
             envFrom:
             - configMapRef:
                 name: crater-cronjob-config
@@ -93,7 +93,7 @@ spec:
             command: ["/bin/sh", "/scripts/clean-waiting-jupyter.sh"]
             env:
             - name: JUPYTER_WAIT_MINUTES
-              value: {{ .Values.web.cronjob.config.jobs.waitingJupyter.JUPYTER_WAIT_MINUTES }}
+              value: "{{ .Values.web.cronjob.config.jobs.waitingJupyter.JUPYTER_WAIT_MINUTES }}"
             envFrom:
             - configMapRef:
                 name: crater-cronjob-config
