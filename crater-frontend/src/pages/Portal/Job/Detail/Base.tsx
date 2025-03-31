@@ -62,19 +62,19 @@ import GpuIcon from "@/components/icon/GpuIcon";
 import { SSHPortDialog } from "./SSHPortDialog";
 import ProfileDashboard, {
   containsBaseMetrics,
-} from "@/components/profile-dashboard";
+} from "@/components/ui-custom/profile-dashboard";
 import { getDaysDifference, getHoursDifference } from "@/utils/time";
 import { REFETCH_INTERVAL } from "@/config/task";
+import { useAtomValue } from "jotai";
+import { grafanaJobAtom } from "@/utils/store/config";
 export interface Resource {
   [key: string]: string;
 }
 
-const job_monitor = import.meta.env.VITE_GRAFANA_JOB_MONITOR;
-const job_gpu_monitor = import.meta.env.VITE_GRAFANA_JOB_GPU_MONITOR;
-
 export function BaseCore({ jobName }: { jobName: string }) {
   useFixedLayout();
   const navigate = useNavigate();
+  const grafanaJob = useAtomValue(grafanaJobAtom);
 
   const { data, isLoading } = useQuery({
     queryKey: ["job", "detail", jobName],
@@ -344,7 +344,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
           children: (
             <div className="h-[calc(100vh_-_304px)] w-full">
               <GrafanaIframe
-                baseSrc={`${job_monitor}?var-job=${data.jobName}&from=${fromTime}&to=${toTime}&timezone=Asia%2FShanghai`}
+                baseSrc={`${grafanaJob.basic}?var-job=${data.jobName}&from=${fromTime}&to=${toTime}&timezone=Asia%2FShanghai`}
               />
             </div>
           ),
@@ -356,7 +356,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
           children: (
             <div className="h-[calc(100vh_-_304px)] w-full">
               <GrafanaIframe
-                baseSrc={`${job_gpu_monitor}?var-job=${data.jobName}&from=${fromTime}&to=${toTime}&timezone=Asia%2FShanghai`}
+                baseSrc={`${grafanaJob.nvidia}?var-job=${data.jobName}&from=${fromTime}&to=${toTime}&timezone=Asia%2FShanghai`}
               />
             </div>
           ),

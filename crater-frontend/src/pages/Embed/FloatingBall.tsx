@@ -1,7 +1,7 @@
 import React from "react";
 import { motion, useMotionValue } from "framer-motion";
 import { DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Save, GaugeIcon, LogsIcon, InfoIcon } from "lucide-react";
+import { Save, LogsIcon, InfoIcon } from "lucide-react";
 import CraterIcon from "@/components/icon/CraterIcon";
 import {
   Tooltip,
@@ -12,14 +12,14 @@ import {
 import { Button } from "@/components/ui/button";
 
 export default function FloatingBall({
-  jobName,
   handleShowLog,
+  handleShowDetail,
   handleSnapshot,
   setIsDragging,
 }: {
-  jobName: string;
   handleShowLog: () => void;
   handleSnapshot: () => void;
+  handleShowDetail: () => void;
   setIsDragging: (isDragging: boolean) => void;
 }) {
   const x = useMotionValue(window.innerWidth - 60);
@@ -63,23 +63,10 @@ export default function FloatingBall({
               <Button
                 variant="ghost"
                 className="justify-start px-2 py-1 font-normal"
-                onClick={() => window.open(`/portal/job/inter/${jobName}`)}
+                onClick={handleShowDetail}
               >
                 <InfoIcon className="text-primary" />
                 作业详情
-              </Button>
-              <Button
-                variant="ghost"
-                className="justify-start px-2 py-1 font-normal"
-                onClick={() =>
-                  window.open(
-                    `${import.meta.env.VITE_GRAFANA_JOB_MONITOR}?orgId=1&var-job=${jobName}&from=now-1h&to=now`,
-                    "_blank",
-                  )
-                }
-              >
-                <GaugeIcon className="text-highlight-green" />
-                资源监控
               </Button>
               <Button
                 variant="ghost"

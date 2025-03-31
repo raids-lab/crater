@@ -1,9 +1,9 @@
-import { MetricSection } from "./ui-custom/metric-section";
-import { ProgressCard } from "./ui-custom/progress-card";
-import { MetricCard } from "./ui-custom/metric-card";
+import { MetricSection } from "./metric-section";
+import { ProgressCard } from "./progress-card";
+import { MetricCard } from "./metric-card";
 import { Cpu, MemoryStickIcon as Memory, ArrowDownUp } from "lucide-react";
 import { ProfileData } from "@/services/api/vcjob";
-import GpuIcon from "./icon/GpuIcon";
+import GpuIcon from "../icon/GpuIcon";
 
 interface ProfileDashboardProps {
   profileData: ProfileData;

@@ -22,6 +22,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { GrafanaIframe } from "@/pages/Embed/Monitor";
+import { useAtomValue } from "jotai";
+import { grafanaOverviewAtom } from "@/utils/store/config";
 
 interface ResourceFormFieldsProps<T extends FieldValues> {
   form: UseFormReturn<T>;
@@ -30,7 +32,6 @@ interface ResourceFormFieldsProps<T extends FieldValues> {
   gpuCountPath: FieldPath<T>;
   gpuModelPath: FieldPath<T>;
   required?: boolean;
-  grafanaUrl?: string;
 }
 
 export function ResourceFormFields<T extends FieldValues>({
@@ -40,9 +41,9 @@ export function ResourceFormFields<T extends FieldValues>({
   gpuCountPath,
   gpuModelPath,
   required = true,
-  grafanaUrl = import.meta.env.VITE_GRAFANA_SCHEDULE,
 }: ResourceFormFieldsProps<T>) {
   const gpuCount = form.watch(gpuCountPath);
+  const grafanaOverview = useAtomValue(grafanaOverviewAtom);
 
   // 获取可用资源列表
   const { data: resources } = useQuery({
@@ -171,7 +172,7 @@ export function ResourceFormFields<T extends FieldValues>({
               <SheetTitle>空闲资源查询</SheetTitle>
             </SheetHeader>
             <div className="h-[calc(100vh-6rem)] w-full px-4">
-              <GrafanaIframe baseSrc={grafanaUrl} />
+              <GrafanaIframe baseSrc={grafanaOverview.schedule} />
             </div>
           </SheetContent>
         </Sheet>

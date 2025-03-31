@@ -46,9 +46,6 @@ import {
 import LogDialog from "../codeblock/LogDialog";
 import ResourceBadges from "../badge/ResourceBadges";
 
-import yitianURL from "/nodes/yitian.png";
-import hygonURL from "/nodes/hygon.png";
-import shenweiURL from "/nodes/sw.png";
 import { DetailPage } from "../layout/DetailPage";
 import PageTitle from "../layout/PageTitle";
 import { GrafanaIframe } from "@/pages/Embed/Monitor";
@@ -59,19 +56,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import TooltipButton from "../custom/TooltipButton";
-
-type CardDemoProps = React.ComponentProps<typeof Card> & {
-  nodeInfo?: {
-    name: string;
-    address: string;
-    role: string;
-    os: string;
-    osVersion: string;
-    arch: string;
-    kubeletVersion: string;
-    containerRuntimeVersion: string;
-  };
-};
+import { useAtomValue } from "jotai";
+import { grafanaJobAtom, grafanaNodeAtom } from "@/utils/store/config";
 
 type GpuDemoProps = React.ComponentProps<typeof Card> & {
   gpuInfo?: {
@@ -88,11 +74,8 @@ type GpuDemoProps = React.ComponentProps<typeof Card> & {
   };
 };
 
-const POD_MONITOR = import.meta.env.VITE_GRAFANA_POD_MONITOR;
-const GRAFANA_NODE = import.meta.env.VITE_GRAFANA_NODE;
-const DCGM_EXPORTER = import.meta.env.VITE_GRAFANA_GPU_DASHBOARD;
-
 export function GpuCardDemo({ gpuInfo }: GpuDemoProps) {
+  const grafanaNode = useAtomValue(grafanaNodeAtom);
   if (!gpuInfo?.haveGPU) return null;
   else
     return (
@@ -140,7 +123,7 @@ export function GpuCardDemo({ gpuInfo }: GpuDemoProps) {
             variant="outline"
             onClick={() => {
               window.open(
-                `${DCGM_EXPORTER}?from=now-30m&to=now&var-datasource=prometheus&var-host=${gpuInfo?.nodeName}&var-gpu=$__all&refresh=5s`,
+                `${grafanaNode.nvidia}?from=now-30m&to=now&var-datasource=prometheus&var-host=${gpuInfo?.nodeName}&var-gpu=$__all&refresh=5s`,
               );
             }}
           >
@@ -150,82 +133,6 @@ export function GpuCardDemo({ gpuInfo }: GpuDemoProps) {
         </CardFooter>
       </Card>
     );
-}
-
-// CardDemo 组件
-export function CardDemo({ className, nodeInfo, ...props }: CardDemoProps) {
-  const imageURL = useMemo(() => {
-    const name = nodeInfo?.name;
-    if (!name) return null;
-    // if contains ali
-    if (name.includes("ali")) {
-      return yitianURL;
-    } else if (name.includes("hygon")) {
-      return hygonURL;
-    } else if (name.includes("sw")) {
-      return shenweiURL;
-    } else {
-      return null;
-    }
-  }, [nodeInfo?.name]);
-
-  return (
-    <Card className={className} {...props}>
-      <CardContent className="bg-muted/50 flex items-center justify-between p-6">
-        <div className="flex flex-col items-start gap-2">
-          <CardTitle className="text-primary text-lg font-bold">
-            {nodeInfo?.name}
-          </CardTitle>
-        </div>
-      </CardContent>
-      <Separator />
-      <CardContent className="mt-6 grid grid-flow-col grid-rows-7 gap-x-2 gap-y-3 text-xs">
-        <p className="text-muted-foreground">IP 地址</p>
-        <p className="text-muted-foreground">角色</p>
-        <p className="text-muted-foreground">操作系统类型</p>
-        <p className="text-muted-foreground">操作系统版本</p>
-        <p className="text-muted-foreground">系统架构</p>
-        <p className="text-muted-foreground">Kubelet 版本</p>
-        <p className="text-muted-foreground">容器运行时</p>
-        <p className="font-mono font-medium">{nodeInfo?.address}</p>
-        <p className="font-medium capitalize">{nodeInfo?.role}</p>
-        <p className="font-medium capitalize">{nodeInfo?.os}</p>
-        <p className="font-medium">{nodeInfo?.osVersion}</p>
-        <p className="font-medium uppercase">{nodeInfo?.arch}</p>
-        <p className="font-mono font-medium">{nodeInfo?.kubeletVersion}</p>
-        <p className="font-mono font-medium">
-          {nodeInfo?.containerRuntimeVersion}
-        </p>
-      </CardContent>
-      <CardFooter className="flex justify-center">
-        {imageURL && (
-          <img src={imageURL} alt="节点提供方 LOGO" className="h-16 w-auto" />
-        )}
-        <Button
-          variant="outline"
-          onClick={() => {
-            if (nodeInfo?.name == "ali-2") {
-              window.open(
-                `https://ecs.console.aliyun.com/server/i-2zefsgw9xfdks1gjro5l/monitor?regionId=cn-beijing`,
-              );
-            } else if (nodeInfo?.name == "ali-3") {
-              window.open(
-                `https://ecs.console.aliyun.com/server/i-2ze5e0maafu6vn80d2ek/monitor?regionId=cn-beijing`,
-              );
-            } else {
-              window.open(
-                `${GRAFANA_NODE}?from=now-1h&to=now&var-datasource=prometheus&var-cluster=&var-resolution=30s&var-node=${nodeInfo?.name}`,
-              );
-            }
-          }}
-          disabled={nodeInfo?.name == "zjlab-sw"}
-        >
-          <CpuIcon className="text-highlight-purple" />
-          <span className="truncate font-normal">节点监控</span>
-        </Button>
-      </CardFooter>
-    </Card>
-  );
 }
 
 const getHeader = (name: string): string => {
@@ -398,9 +305,11 @@ const getColumns = (
 export const NodeDetail: FC = () => {
   const { id: nodeName } = useParams();
   const setBreadcrumb = useBreadcrumb();
+  const grafanaJob = useAtomValue(grafanaJobAtom);
+  const grafanaNode = useAtomValue(grafanaNodeAtom);
   const [showLogPod, setShowLogPod] = useState<NamespacedName>();
   const [showMonitor, setShowMonitor] = useState(false);
-  const [grafanaUrl, setGrafanaUrl] = useState<string>(POD_MONITOR);
+  const [grafanaUrl, setGrafanaUrl] = useState<string>(grafanaJob.pod);
 
   const { data: nodeDetail } = useQuery({
     queryKey: ["nodes", nodeName, "detail"],
@@ -434,11 +343,11 @@ export const NodeDetail: FC = () => {
     () =>
       getColumns(setShowLogPod, (pod) => {
         setGrafanaUrl(
-          `${POD_MONITOR}?orgId=1&var-node_name=${nodeName}&var-pod_name=${pod.name}&from=now-1h&to=now`,
+          `${grafanaJob.pod}?orgId=1&var-node_name=${nodeName}&var-pod_name=${pod.name}&from=now-1h&to=now`,
         );
         setShowMonitor(true);
       }),
-    [nodeName],
+    [nodeName, grafanaJob],
   );
 
   // 修改 BreadCrumb
@@ -536,7 +445,7 @@ export const NodeDetail: FC = () => {
           children: (
             <div className="h-[calc(100vh_-_304px)] w-full">
               <GrafanaIframe
-                baseSrc={`${GRAFANA_NODE}?from=now-1h&to=now&var-datasource=prometheus&var-cluster=&var-resolution=30s&var-node=${nodeName}`}
+                baseSrc={`${grafanaNode.basic}?from=now-1h&to=now&var-datasource=prometheus&var-cluster=&var-resolution=30s&var-node=${nodeName}`}
               />
             </div>
           ),
@@ -548,7 +457,7 @@ export const NodeDetail: FC = () => {
           children: (
             <div className="h-[calc(100vh-_304px)] w-full">
               <GrafanaIframe
-                baseSrc={`${DCGM_EXPORTER}?from=now-30m&to=now&var-datasource=prometheus&var-host=${nodeName}&var-gpu=$__all&refresh=5s`}
+                baseSrc={`${grafanaNode.nvidia}?from=now-30m&to=now&var-datasource=prometheus&var-host=${nodeName}&var-gpu=$__all&refresh=5s`}
               />
             </div>
           ),

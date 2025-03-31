@@ -19,12 +19,20 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAtomValue } from "jotai";
 import { urlHostAtom } from "@/utils/store/config";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { BaseCore } from "../Portal/Job/Detail/Base";
 
 const Jupyter: FC = () => {
   // get param from url
   const { id } = useParams();
   const [namespacedName, setNamespacedName] = useState<NamespacedName>();
   const [isSnapshotOpen, setIsSnapshotOpen] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const host = useAtomValue(urlHostAtom);
 
   const { data: jupyterInfo } = useQuery({
@@ -79,7 +87,6 @@ const Jupyter: FC = () => {
         <div className="fixed inset-0 z-50" style={{ cursor: "move" }} />
       )}
       <FloatingBall
-        jobName={id ?? ""}
         setIsDragging={setIsDragging}
         handleShowLog={() =>
           jupyterInfo &&
@@ -88,6 +95,7 @@ const Jupyter: FC = () => {
             namespace: jupyterInfo.namespace,
           })
         }
+        handleShowDetail={() => setIsDetailOpen(true)}
         handleSnapshot={() => setIsSnapshotOpen(true)}
       />
       <LogDialog
@@ -110,6 +118,16 @@ const Jupyter: FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Sheet open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <SheetContent className="sm:max-w-6xl">
+          <SheetHeader>
+            <SheetTitle>作业详情</SheetTitle>
+          </SheetHeader>
+          <div className="h-[calc(100vh-6rem)] w-full px-4">
+            <BaseCore jobName={id ?? ""} />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

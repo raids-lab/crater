@@ -22,8 +22,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { GrafanaIframe } from "@/pages/Embed/Monitor";
-
-const POD_MONITOR = import.meta.env.VITE_GRAFANA_POD_MONITOR;
+import { useAtomValue } from "jotai";
+import { grafanaJobAtom } from "@/utils/store/config";
 
 interface PodTableProps {
   jobName: string;
@@ -66,8 +66,8 @@ const toolbarConfig: DataTableToolbarConfig = {
   getHeader: getHeader,
 };
 
-const getPodMonitorUrl = (pod: PodDetail) => {
-  return `${POD_MONITOR}?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`;
+const getPodMonitorUrl = (baseURL: string, pod: PodDetail) => {
+  return `${baseURL}?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`;
 };
 
 export const PodTable = ({ jobName, userName }: PodTableProps) => {
@@ -75,7 +75,8 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
   const [showTerminal, setShowTerminal] = useState<NamespacedName>();
   const [showIngress, setShowIngress] = useState<NamespacedName>();
   const [showMonitor, setShowMonitor] = useState(false);
-  const [grafanaUrl, setGrafanaUrl] = useState<string>(POD_MONITOR);
+  const grafanaJob = useAtomValue(grafanaJobAtom);
+  const [grafanaUrl, setGrafanaUrl] = useState<string>(grafanaJob.pod);
 
   const query = useQuery({
     queryKey: ["job", "detail", jobName, "pods"],
@@ -99,7 +100,7 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
             className="text-foreground hover:text-primary cursor-pointer font-mono hover:no-underline"
             variant="link"
             onClick={() => {
-              setGrafanaUrl(getPodMonitorUrl(pod));
+              setGrafanaUrl(getPodMonitorUrl(grafanaJob.pod, pod));
               setShowMonitor(true);
             }}
           >
@@ -191,7 +192,7 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
               className="h-8 w-8"
               disabled={pod.phase !== "Running"}
               onClick={() => {
-                setGrafanaUrl(getPodMonitorUrl(pod));
+                setGrafanaUrl(getPodMonitorUrl(grafanaJob.pod, pod));
                 setShowMonitor(true);
               }}
               tooltipContent="查看资源监控"

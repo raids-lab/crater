@@ -95,8 +95,6 @@ const initial: AIjobDetail = {
   profileStatus: "",
 };
 
-const job_monitor = import.meta.env.VITE_GRAFANA_JOB_MONITOR;
-
 export const Component = () => {
   const { name } = useParams<string>();
   const jobName = "" + name;
@@ -218,15 +216,7 @@ export const Component = () => {
                 </Button>
               </ConfigDialog>
               <Separator orientation="vertical" />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  // const url = generateMetricsUrl(data.podDetails);
-                  const url = `${job_monitor}?orgId=1&var-job=${data.jobName}&from=now-1h&to=now`;
-                  window.open(url, "_blank");
-                }}
-              >
+              <Button variant="ghost" size="sm">
                 <PieChartIcon className="size-4" />
                 资源监控
               </Button>

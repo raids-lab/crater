@@ -26,11 +26,9 @@ import AdminJob from "./Job";
 import NotFound from "@/components/layout/NotFound";
 import UserDetail from "@/components/custom/UserDetail";
 import SystemSetting from "../Portal/Setting/SystemSetting";
-import Monitor from "../Embed/Monitor";
 import CronPolicy from "./Job/CronPolicy";
-
-const OVERVIEW_DASHBOARD = import.meta.env.VITE_GRAFANA_OVERVIEW;
-const NETWORK_DASHBOARD = import.meta.env.VITE_GRAFANA_NETWORK;
+import NetworkOverview from "@/components/monitor/NetworkOverview";
+import NvidiaOverview from "@/components/monitor/NvidiaOverview";
 
 const routeItems: RouteItem[] = [
   {
@@ -56,13 +54,13 @@ const routeItems: RouteItem[] = [
       {
         route: {
           path: "network",
-          element: <Monitor baseSrc={NETWORK_DASHBOARD} />,
+          element: <NetworkOverview />,
         },
       },
       {
         route: {
           path: "gpu",
-          element: <Monitor baseSrc={OVERVIEW_DASHBOARD} />,
+          element: <NvidiaOverview />,
         },
       },
     ],
