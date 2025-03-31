@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import useFixedLayout from "@/hooks/useFixedLayout";
 import { ScrollArea } from "../ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { useSearchParams } from "react-router-dom";
 
 interface DetailTabProps {
   key: string;
@@ -29,10 +30,33 @@ interface DetailPageProps {
 
 export function DetailPage({ header, info, tabs: rawTabs }: DetailPageProps) {
   useFixedLayout();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const tabs = useMemo(() => {
     return rawTabs.filter((tab) => !tab.hidden);
   }, [rawTabs]);
+
+  // 从 URL 查询参数中获取当前标签
+  const currentTab = useMemo(() => {
+    const tabFromUrl = searchParams.get("tab");
+    // 检查 URL 中的标签是否存在且可见
+    if (tabFromUrl && tabs.some((tab) => tab.key === tabFromUrl)) {
+      return tabFromUrl;
+    }
+    // 默认使用第一个可见标签
+    return tabs.length > 0 ? tabs[0].key : "";
+  }, [searchParams, tabs]);
+
+  // 处理标签切换
+  const handleTabChange = (value: string) => {
+    setSearchParams(
+      (params) => {
+        params.set("tab", value);
+        return params;
+      },
+      { replace: true },
+    );
+  };
 
   return (
     <div className="flex h-full w-full flex-col space-y-6">
@@ -53,7 +77,11 @@ export function DetailPage({ header, info, tabs: rawTabs }: DetailPageProps) {
           ))}
         </div>
       </div>
-      <Tabs defaultValue={tabs[0].key} className="w-full grow overflow-hidden">
+      <Tabs
+        value={currentTab}
+        onValueChange={handleTabChange}
+        className="w-full grow overflow-hidden"
+      >
         <TabsList className="tabs-list-underline">
           {tabs.map((tab) => (
             <TabsTrigger

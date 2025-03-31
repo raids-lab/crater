@@ -60,7 +60,9 @@ import Nothing from "@/components/placeholder/Nothing";
 import { hasNvidiaGPU } from "@/utils/resource";
 import GpuIcon from "@/components/icon/GpuIcon";
 import { SSHPortDialog } from "./SSHPortDialog";
-import ProfileDashboard from "@/components/profile-dashboard";
+import ProfileDashboard, {
+  containsBaseMetrics,
+} from "@/components/profile-dashboard";
 import { getDaysDifference, getHoursDifference } from "@/utils/time";
 import { REFETCH_INTERVAL } from "@/config/task";
 export interface Resource {
@@ -281,7 +283,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
           label: "统计信息",
           children: <ProfileDashboard profileData={data.profileData ?? {}} />,
           scrollable: true,
-          hidden: !profileStat,
+          hidden: !profileStat || !containsBaseMetrics(profileStat),
         },
         {
           key: "base",
