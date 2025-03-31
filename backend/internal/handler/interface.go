@@ -25,8 +25,8 @@ type RegisterConfig struct {
 	// Client is the controller-runtime client.
 	Client client.Client
 
-	// Kubeconfig is the
-	Kubeconfig *rest.Config
+	// KubeConfig is the kubernetes client config.
+	KubeConfig *rest.Config
 
 	// KubeClient is the kubernetes client.
 	KubeClient kubernetes.Interface

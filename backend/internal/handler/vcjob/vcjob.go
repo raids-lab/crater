@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
@@ -39,6 +40,7 @@ func init() {
 type VolcanojobMgr struct {
 	name          string
 	client        client.Client
+	config        *rest.Config
 	kubeClient    kubernetes.Interface
 	imagePacker   packer.ImagePackerInterface
 	imageRegistry imageregistry.ImageRegistryInterface
@@ -48,6 +50,7 @@ func NewVolcanojobMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &VolcanojobMgr{
 		name:          "vcjobs",
 		client:        conf.Client,
+		config:        conf.KubeConfig,
 		kubeClient:    conf.KubeClient,
 		imagePacker:   conf.ImagePacker,
 		imageRegistry: conf.ImageRegistry,
