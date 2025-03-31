@@ -217,7 +217,7 @@ func main() {
 	}
 	// get k8s config via ./kubeconfig
 	cfg := ctrl.GetConfigOrDie()
-	registerConfig.Kubeconfig = cfg
+	registerConfig.KubeConfig = cfg
 	// kube clientset
 	clientset, err := kubernetes.NewForConfig(cfg)
 	registerConfig.KubeClient = clientset

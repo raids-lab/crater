@@ -1,6 +1,7 @@
 package vcjob
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -13,6 +14,9 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
@@ -442,12 +446,61 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 		return
 	}
 
+	// TODO(liuxw24): 移动到更加合适的时机，比如作业变成了运行状态
+	// try to run command `service ssh restart` in the pod if OpenSSH is enabled
+	if shouldOpenSSH(vcjob) {
+		if _, err := mgr.execCommandInPod(c, namespace, podName, "jupyter-notebook", []string{"service", "ssh", "restart"}); err != nil {
+			klog.Warning("failed to restart ssh service in pod: %w", err)
+		}
+	}
+
 	resputil.Success(c, JobTokenResp{
 		BaseURL:   baseURL,
 		Token:     jupyterToken,
 		PodName:   podName,
 		Namespace: namespace,
 	})
+}
+
+// execCommandInPod 在Pod中执行命令并返回输出结果
+func (mgr *VolcanojobMgr) execCommandInPod(ctx *gin.Context, namespace, podName, containerName string, command []string) (string, error) {
+	req := mgr.kubeClient.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(podName).
+		Namespace(namespace).
+		SubResource("exec")
+
+	option := &v1.PodExecOptions{
+		Command:   command,
+		Container: containerName,
+		Stdin:     false,
+		Stdout:    true,
+		Stderr:    true,
+		TTY:       false,
+	}
+
+	req.VersionedParams(
+		option,
+		scheme.ParameterCodec,
+	)
+
+	exec, err := remotecommand.NewSPDYExecutor(mgr.config, "POST", req.URL())
+	if err != nil {
+		return "", fmt.Errorf("failed to create SPDY executor: %w", err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
+		Stdin:  nil,
+		Stdout: &stdout,
+		Stderr: &stderr,
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("failed to execute command: %v, stderr: %s, error: %w", command, stderr.String(), err)
+	}
+
+	return stdout.String(), nil
 }
 
 // CreateJupyterSnapshot godoc
@@ -549,4 +602,14 @@ func (mgr *VolcanojobMgr) CreateJupyterSnapshot(c *gin.Context) {
 	}
 
 	resputil.Success(c, imageLink)
+}
+
+func shouldOpenSSH(job *batch.Job) bool {
+	// Check if the job has the OpenSSH annotation
+	if value, ok := job.Annotations[AnnotationKeyOpenSSH]; ok {
+		if value == "true" {
+			return true
+		}
+	}
+	return false
 }

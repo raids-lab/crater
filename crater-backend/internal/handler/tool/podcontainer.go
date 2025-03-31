@@ -96,7 +96,7 @@ const SSHContainerPort = 22
 func NewAPIServerMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &APIServerMgr{
 		name:       "namespaces",
-		config:     conf.Kubeconfig,
+		config:     conf.KubeConfig,
 		client:     conf.Client,
 		kubeClient: conf.KubeClient,
 	}
