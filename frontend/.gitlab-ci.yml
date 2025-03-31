@@ -1,7 +1,4 @@
 stages:
-  - build_frontend_testing
-  - build_image_testing
-  - deploy_testing
   - build_frontend
   - build_image
   - deploy
@@ -20,28 +17,6 @@ build_frontend_main:
     - pnpm config set registry https://registry.npmmirror.com
     - pnpm install
     - pnpm build
-  only:
-    - main
-  cache:
-    key: "crater-web-frontend"
-    paths:
-      - .pnpm-store/
-      - node_modules/
-  artifacts:
-    paths:
-      - dist/
-    expire_in: 1 week
-
-# Build frontend and generate artifacts for testing branch
-build_frontend_testing:
-  stage: build_frontend_testing
-  image: harbor.act.buaa.edu.cn/crater/node-pnpm:21
-  script:
-    - sed -i "s/VITE_APP_VERSION=\".*\"/VITE_APP_VERSION=\"${CI_COMMIT_SHORT_SHA}\"/" .env
-    - pnpm config set store-dir .pnpm-store
-    - pnpm config set registry https://registry.npmmirror.com
-    - pnpm install
-    - pnpm build-testing # 使用 pnpm build-testing 进行打包，符合 testing 分支要求
   only:
     - main
   cache:
@@ -74,25 +49,19 @@ build_image_main:
   dependencies:
     - build_frontend_main
 
-# Build Docker image and push to harbor registry for testing branch
-build_image_testing:
-  stage: build_image_testing
+# Deploy to Kubernetes cluster for testing branch
+deploy_testing:
+  stage: deploy
   image:
-    name: harbor.act.buaa.edu.cn/crater/kaniko-executor:debug
+    name: harbor.act.buaa.edu.cn/crater/bitnami-kubectl:240302
     entrypoint: [""]
   script:
-    # Since GitLab container registry is not enabled, we need to set up harbor registry manually.
-    - mkdir -p /kaniko/.docker
-    - echo "{\"auths\":{\"${HARBOR_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${HARBOR_REGISTRY_USER}" "${HARBOR_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
-    - >-
-      /kaniko/executor
-      --context "${CI_PROJECT_DIR}"
-      --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
-      --destination "${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}-testing"
+    - kubectl config use-context raids/resource-scheduling/crater/web-frontend:crater-cluster
+    - kubectl set image deployment/crater-web-frontend crater-web-frontend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -n crater
   only:
     - main
   dependencies:
-    - build_frontend_testing
+    - build_image_main
 
 # Deploy to Kubernetes cluster for main branch
 deploy_main:
@@ -107,17 +76,3 @@ deploy_main:
     - main
   dependencies:
     - build_image_main
-
-# Deploy to Kubernetes cluster for testing branch
-deploy_testing:
-  stage: deploy_testing
-  image:
-    name: harbor.act.buaa.edu.cn/crater/bitnami-kubectl:240302
-    entrypoint: [""]
-  script:
-    - kubectl config use-context raids/resource-scheduling/crater/web-frontend:crater-cluster
-    - kubectl set image deployment/crater-web-frontend crater-web-frontend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}-testing -n crater
-  only:
-    - main
-  dependencies:
-    - build_image_testing
