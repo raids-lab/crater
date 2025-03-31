@@ -9,6 +9,17 @@ interface ProfileDashboardProps {
   profileData: ProfileData;
 }
 
+export const containsBaseMetrics = (profileData: ProfileData) => {
+  return (
+    profileData.cpu_usage_avg !== undefined ||
+    profileData.cpu_usage_max !== undefined ||
+    profileData.cpu_usage_std !== undefined ||
+    profileData.cpu_mem_avg !== undefined ||
+    profileData.cpu_mem_max !== undefined ||
+    profileData.cpu_mem_std !== undefined
+  );
+};
+
 export default function ProfileDashboard({
   profileData,
 }: ProfileDashboardProps) {
