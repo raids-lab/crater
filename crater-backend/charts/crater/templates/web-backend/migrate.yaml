@@ -1,0 +1,32 @@
+{{- if .Values.createMirationJob }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: crater-web-backend-migration
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migration
+          image: {{ .Values.web.migrate.image.repository }}:{{ .Values.web.migrate.image.tag }}
+          imagePullPolicy: {{ .Values.web.migrate.image.pullPolicy }}
+          command: ["./migrate"]
+          volumeMounts:
+            - name: backend-conf
+              mountPath: /etc/config/config.yaml
+              subPath: config.yaml
+      volumes:
+        - name: backend-conf
+          configMap:
+            name: backend-config
+            items:
+              - key: config.yaml
+                path: config.yaml
+      nodeSelector: {{ .Values.nodeSelector | toYaml | nindent 8 }}
+      tolerations: {{ .Values.tolerations | toYaml | nindent 8 }}
+{{- end }}
