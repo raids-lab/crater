@@ -6,7 +6,7 @@ metadata:
   labels:
     crater.raids-lab.io/component: cronjob
 spec:
-  schedule: {{ .Values.web.cronjob.config.jobs.lowGPUUtil.schedule }}
+  schedule: "{{ .Values.web.cronjob.config.jobs.lowGPUUtil.schedule }}"
   jobTemplate:
     spec:
       template:
@@ -43,7 +43,7 @@ metadata:
   labels:
     crater.raids-lab.io/component: cronjob
 spec:
-  schedule: {{ .Values.web.cronjob.config.jobs.longTime.schedule }}
+  schedule: "{{ .Values.web.cronjob.config.jobs.longTime.schedule }}"
   jobTemplate:
     spec:
       template:
@@ -78,7 +78,7 @@ metadata:
   labels:
     crater.raids-lab.io/component: cronjob
 spec:
-  schedule: {{ .Values.web.cronjob.config.jobs.waitingJupyter.schedule }}
+  schedule: "{{ .Values.web.cronjob.config.jobs.waitingJupyter.schedule }}"
   jobTemplate:
     spec:
       template:

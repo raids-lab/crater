@@ -239,7 +239,15 @@ func (mgr *OperationsMgr) AutoDelete(c *gin.Context) {
 	}
 
 	// delete time: 即当前时间 + waitTime
-	deleteTime := time.Now().UTC().Add(time.Duration(req.WaitTime) * time.Minute)
+
+	timeZone := config.GetConfig().Postgres.TimeZone
+	loc, err := time.LoadLocation(timeZone)
+	if err != nil {
+		logutils.Log.Errorf("Failed to load location: %v", err)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	deleteTime := time.Now().In(loc).Add(time.Duration(req.WaitTime) * time.Minute)
 
 	// remind
 	reminded := mgr.remindLeastUsedGPUJobs(c, req.TimeRange, req.Util, deleteTime)
