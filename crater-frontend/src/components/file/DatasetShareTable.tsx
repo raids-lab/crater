@@ -45,6 +45,8 @@ import { DetailPage } from "@/components/layout/DetailPage";
 import PageTitle from "@/components/layout/PageTitle";
 import { DataTable } from "@/components/custom/DataTable";
 import { useNavigate } from "react-router-dom";
+import { globalUserInfo } from "@/utils/store";
+import { useAtomValue } from "jotai";
 import {
   Card,
   CardHeader,
@@ -94,8 +96,7 @@ export function DatasetShareTable({
     select: (res) => res.data.data,
   });
   const queryClient = useQueryClient();
-  //const refInput = useRef<HTMLInputElement>(null);
-  //const [datasetNewName, setDatasetNewName] = useState<string>("");
+  const user = useAtomValue(globalUserInfo);
   const data = useQuery({
     queryKey: ["data", "datasetByID", datasetId],
     queryFn: () => apiGetDatasetByID(datasetId),
@@ -271,108 +272,113 @@ export function DatasetShareTable({
             </div>
           }
         >
-          <div className="flex flex-row space-x-1">
-            <DatasetUpdateForm
-              type="dataset"
-              initialData={{
-                datasetId: datasetId, // 使用当前数据集ID
-                datasetName: data.data?.[0]?.name || "",
-                describe: data.data?.[0]?.describe || "",
-                url: data.data?.[0]?.url || "",
-                type: "model",
-                tags: data.data?.[0]?.extra.tag || [],
-                weburl: data.data?.[0]?.extra.weburl || "",
-                ispublic: true,
-              }}
-              onSuccess={() => {
-                // 重新查询数据
-                queryClient.invalidateQueries({
-                  queryKey: ["data", "datasetByID", datasetId],
-                });
-              }}
-            />
-            <Dialog>
-              <DialogTrigger asChild>
-                <div>
-                  <Button
-                    variant="outline"
-                    className="h-8 w-8 p-0 hover:text-red-700"
-                    title="用户共享"
-                  >
-                    <User size={16} strokeWidth={2} />
-                  </Button>
-                </div>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>分享至用户</DialogTitle>
-                  <DialogDescription>和指定的用户共享数据集</DialogDescription>
-                </DialogHeader>
-                <ShareDatasetToUserDialog
-                  datasetId={datasetId}
-                  apiShareDatasetwithUser={apiShareDatasetwithUser}
-                />
-              </DialogContent>
-            </Dialog>
-            <Dialog>
-              <DialogTrigger asChild>
-                <div>
-                  <Button
-                    variant="outline"
-                    className="h-8 w-8 p-0 hover:text-red-700"
-                    title="账户共享"
-                  >
-                    <Users size={16} strokeWidth={2} />
-                  </Button>
-                </div>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>共享数据集</DialogTitle>
-                  <DialogDescription>和账户共享数据集</DialogDescription>
-                </DialogHeader>
-                <ShareDatasetToQueueDialog
-                  datasetId={datasetId}
-                  apiShareDatasetwithQueue={apiShareDatasetwithQueue}
-                />
-              </DialogContent>
-            </Dialog>
-            <Dialog>
-              <DialogTrigger asChild>
-                <div>
-                  <Button
-                    variant="outline"
-                    className="h-8 w-8 p-0 hover:text-red-700"
-                    title="删除数据集"
-                  >
-                    <Trash size={16} strokeWidth={2} />
-                  </Button>
-                </div>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>删除数据集</DialogTitle>
-                  <DialogDescription>
-                    数据集「{data.data?.[0]?.name}」将被删除
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <DialogClose>
-                    <Button variant="outline">取消</Button>
-                  </DialogClose>
-                  <DialogClose>
+          {user?.name == data.data?.[0]?.attribute.name && (
+            <div className="flex flex-row space-x-1">
+              <DatasetUpdateForm
+                type="dataset"
+                initialData={{
+                  datasetId: datasetId, // 使用当前数据集ID
+                  datasetName: data.data?.[0]?.name || "",
+                  describe: data.data?.[0]?.describe || "",
+                  url: data.data?.[0]?.url || "",
+                  type: "model",
+                  tags: data.data?.[0]?.extra.tag || [],
+                  weburl: data.data?.[0]?.extra.weburl || "",
+                  ispublic: true,
+                }}
+                onSuccess={() => {
+                  // 重新查询数据
+                  queryClient.invalidateQueries({
+                    queryKey: ["data", "datasetByID", datasetId],
+                  });
+                }}
+              />
+
+              <Dialog>
+                <DialogTrigger asChild>
+                  <div>
                     <Button
-                      type="submit"
-                      variant="default"
-                      onClick={() => deleteDataset(datasetId)}
+                      variant="outline"
+                      className="h-8 w-8 p-0 hover:text-red-700"
+                      title="用户共享"
                     >
-                      删除
+                      <User size={16} strokeWidth={2} />
                     </Button>
-                  </DialogClose>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
+                  </div>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>分享至用户</DialogTitle>
+                    <DialogDescription>
+                      和指定的用户共享数据集
+                    </DialogDescription>
+                  </DialogHeader>
+                  <ShareDatasetToUserDialog
+                    datasetId={datasetId}
+                    apiShareDatasetwithUser={apiShareDatasetwithUser}
+                  />
+                </DialogContent>
+              </Dialog>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <div>
+                    <Button
+                      variant="outline"
+                      className="h-8 w-8 p-0 hover:text-red-700"
+                      title="账户共享"
+                    >
+                      <Users size={16} strokeWidth={2} />
+                    </Button>
+                  </div>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>共享数据集</DialogTitle>
+                    <DialogDescription>和账户共享数据集</DialogDescription>
+                  </DialogHeader>
+                  <ShareDatasetToQueueDialog
+                    datasetId={datasetId}
+                    apiShareDatasetwithQueue={apiShareDatasetwithQueue}
+                  />
+                </DialogContent>
+              </Dialog>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <div>
+                    <Button
+                      variant="outline"
+                      className="h-8 w-8 p-0 hover:text-red-700"
+                      title="删除数据集"
+                    >
+                      <Trash size={16} strokeWidth={2} />
+                    </Button>
+                  </div>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>删除数据集</DialogTitle>
+                    <DialogDescription>
+                      数据集「{data.data?.[0]?.name}」将被删除
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <DialogClose>
+                      <Button variant="outline">取消</Button>
+                    </DialogClose>
+                    <DialogClose>
+                      <Button
+                        type="submit"
+                        variant="default"
+                        onClick={() => deleteDataset(datasetId)}
+                      >
+                        删除
+                      </Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
         </PageTitle>
       }
       info={[

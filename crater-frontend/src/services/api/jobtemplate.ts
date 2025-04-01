@@ -28,3 +28,8 @@ export const createJobTemplate = (data: JobTemplateReq) => {
 export const getJobTemplate = (id: number) => {
   return instance.get<IResponse<JobTemplate>>(VERSION + `/jobtemplate/${id}`);
 };
+export const deleteJobTemplate = (id: number) => {
+  return instance.delete<IResponse<string>>(
+    VERSION + `/jobtemplate/delete/${id}`,
+  );
+};
