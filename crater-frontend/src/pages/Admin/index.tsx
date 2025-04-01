@@ -22,13 +22,14 @@ import {
 import { Account } from "./Account";
 import admindatasetRoutes from "./Data";
 import { NavGroupProps } from "@/components/sidebar/types";
-import AdminJob from "./Job";
+import adminJobRoutes from "./Job";
 import NotFound from "@/components/layout/NotFound";
 import UserDetail from "@/components/custom/UserDetail";
 import SystemSetting from "../Portal/Setting/SystemSetting";
 import CronPolicy from "./Job/CronPolicy";
 import NetworkOverview from "@/components/monitor/NetworkOverview";
 import NvidiaOverview from "@/components/monitor/NvidiaOverview";
+import Loading from "@/components/placeholder/Loading";
 
 const routeItems: RouteItem[] = [
   {
@@ -103,7 +104,7 @@ const routeItems: RouteItem[] = [
     path: "job",
     route: {
       path: "job/*",
-      element: <AdminJob />,
+      children: adminJobRoutes,
     },
     children: [],
   },
@@ -276,7 +277,7 @@ const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
 export const adminRoute: RouteObject = {
   path: "/admin",
   element: (
-    <Suspense fallback={<h2>Loading...</h2>}>
+    <Suspense fallback={<Loading />}>
       <AuthedRouter>
         <DashboardLayout groups={adminSidebarGroups} />
       </AuthedRouter>

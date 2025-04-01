@@ -515,7 +515,7 @@ export function FileSystemTable({
         },
       },
     ],
-    [navigate, pathname, path, deleteFile, moveFile],
+    [navigate, pathname, deleteFile, path, moveFile, apiBaseURL],
   );
 
   const refInput2 = useRef<HTMLInputElement>(null);
