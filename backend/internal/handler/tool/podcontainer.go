@@ -1,9 +1,12 @@
 package tool
 
 import (
+	"bufio"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -104,7 +107,10 @@ func NewAPIServerMgr(conf *handler.RegisterConfig) handler.Manager {
 
 func (mgr *APIServerMgr) GetName() string { return mgr.name }
 
-func (mgr *APIServerMgr) RegisterPublic(_ *gin.RouterGroup) {}
+func (mgr *APIServerMgr) RegisterPublic(g *gin.RouterGroup) {
+	// TODO(liyilong): 进行权限控制
+	g.GET(":namespace/pods/:name/containers/:container/log/stream", mgr.StreamPodContainerLog)
+}
 
 func (mgr *APIServerMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET(":namespace/pods/:name/events", mgr.GetPodEvents)
@@ -122,6 +128,68 @@ func (mgr *APIServerMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET(":namespace/pods/:name/nodeports", mgr.GetPodNodeports)
 	g.POST(":namespace/pods/:name/nodeports", mgr.CreatePodNodeport)
 	g.DELETE(":namespace/pods/:name/nodeports", mgr.DeletePodNodeport)
+}
+
+// 实现流式日志函数
+func (mgr *APIServerMgr) StreamPodContainerLog(c *gin.Context) {
+	var req PodContainerLogURIReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	var param PodContainerLogQueryReq
+	if err := c.ShouldBindQuery(&param); err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// 设置SSE响应头
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("Access-Control-Allow-Origin", "*")
+
+	// 创建日志请求，强制设置Follow为true
+	logReq := mgr.kubeClient.CoreV1().Pods(req.Namespace).GetLogs(req.PodName, &v1.PodLogOptions{
+		Container:  req.ContainerName,
+		Follow:     true, // 强制为true
+		Timestamps: param.Timestamps,
+		TailLines:  param.TailLines,
+	})
+
+	// 使用流式方式获取日志
+	stream, err := logReq.Stream(c)
+	if err != nil {
+		c.SSEvent("error", fmt.Sprintf("获取日志流失败: %v", err))
+		c.Writer.Flush()
+		return
+	}
+	defer stream.Close()
+
+	// 设置连接关闭检测
+	ctx := c.Request.Context()
+	go func() {
+		<-ctx.Done()
+		stream.Close()
+	}()
+
+	// 读取并发送日志
+	reader := bufio.NewReader(stream)
+	for {
+		line, err := reader.ReadBytes('\n')
+		if err != nil {
+			if err != io.EOF {
+				c.SSEvent("error", fmt.Sprintf("读取日志出错: %v", err))
+			}
+			break
+		}
+
+		// 将日志行编码为base64并发送
+		encoded := base64.StdEncoding.EncodeToString(line)
+		c.SSEvent("message", encoded)
+		c.Writer.Flush()
+	}
 }
 
 // GetJobNameFromPod retrieves the job name from a pod's owner references
