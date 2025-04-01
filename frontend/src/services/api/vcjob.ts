@@ -22,6 +22,7 @@ export interface IJobInfo {
   name: string;
   jobName: string;
   owner: string;
+  userInfo: UserInfo;
   jobType: JobType;
   queue: string;
   status: JobPhase;
@@ -229,10 +230,17 @@ export interface ProfileData {
   fp16_active_std?: number;
 }
 
+export interface UserInfo {
+  UserName: string;
+  Nickname: string;
+}
+
 export interface IJupyterDetail {
   name: string;
   namespace: string;
   username: string;
+  nickname: string;
+  userInfo: UserInfo;
   jobName: string;
   jobType: JobType;
   retry: string;

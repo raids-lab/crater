@@ -254,7 +254,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
       }
       info={[
         { title: "账户", icon: CreditCardIcon, value: data.queue },
-        { title: "用户", icon: UserRoundIcon, value: data.username },
+        { title: "用户", icon: UserRoundIcon, value: data.nickname },
         {
           title: "状态",
           icon: ActivityIcon,
