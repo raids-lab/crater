@@ -75,6 +75,10 @@ run: fmt api-docs  ## Run a controller from your host.
 build: fmt lint swagger # generate vet ## Build manager binary.
 	go build -ldflags="-w -s" -o bin/controller main.go
 
+.PHONY: build-migrate
+build-migrate: fmt lint
+	go build -ldflags="-w -s" -o bin/migrate cmd/gorm-gen/models/migrate.go
+
 .PHONY: docker-build
 docker-build: fmt swagger ## Build docker image with the manager.
 	docker build -t ${IMG} .
