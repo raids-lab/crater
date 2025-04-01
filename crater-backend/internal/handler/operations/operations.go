@@ -372,7 +372,39 @@ func (mgr *OperationsMgr) CleanupJobs(c *gin.Context) {
 		}
 	}
 
-	resputil.Success(c, deletedJobList)
+	defaultRemindTime := 24 * time.Hour
+	remindedJobList := mgr.remindLongTimeJobs(c, batchTimeout, interactiveTimeout, defaultRemindTime)
+
+	resputil.Success(c, map[string][]string{
+		"deleted":  deletedJobList,
+		"reminded": remindedJobList,
+	})
+}
+
+func (mgr *OperationsMgr) remindLongTimeJobs(c *gin.Context, batchTimeout, interactiveTimeout, timeRange time.Duration) []string {
+	jobDB := query.Job
+	jobsToCheck, err := mgr.getJobsToCheck(c, batchTimeout-timeRange, interactiveTimeout-timeRange)
+	if err != nil {
+		return nil
+	}
+
+	remindedJobList := []string{}
+	deleteTime := time.Now().Add(-timeRange)
+	for _, job := range jobsToCheck {
+		dbJob, dbErr := jobDB.WithContext(c).Where(jobDB.JobName.Eq(job.jobName)).First()
+		if dbErr != nil {
+			continue
+		}
+		if !dbJob.AlertEnabled {
+			continue
+		}
+		alertMgr := alert.GetAlertMgr()
+		if err := alertMgr.RemindLongTimeRunningJob(c, job.jobName, deleteTime, nil); err != nil {
+			logutils.Log.Infof("Send Alarm Email failed for job %s", job.jobName)
+		}
+		remindedJobList = append(remindedJobList, job.jobName)
+	}
+	return remindedJobList
 }
 
 // DeleteUnUsedJobList godoc
