@@ -157,7 +157,19 @@ func (a *alertMgr) RemindLowUsageJob(ctx context.Context, jobName string, delete
 
 	subject := "作业即将删除告警"
 	deleteTimeStr := deleteTime.Format("2006-01-02 15:04:05")
-	messageTemplate := `用户 %s 您好：您的作业 %s (%s) 申请了 GPU 资源，但资源利用率过低，平台将于 %s 删除该作业。`
+	messageTemplate := `用户 %s 您好：您的作业 %s (%s) 申请了 GPU 资源，但资源利用率过低，平台将于 %s 删除该作业。如果有特殊需求，请联系管理员锁定作业。`
+	message := fmt.Sprintf(messageTemplate, "%s", "%s", "%s", deleteTimeStr)
+	return a.sendJobMessage(ctx, jobName, subject, message)
+}
+
+func (a *alertMgr) RemindLongTimeRunningJob(ctx context.Context, jobName string, deleteTime time.Time, _ map[string]any) error {
+	if a.err != nil {
+		return a.err
+	}
+
+	subject := "作业即将删除告警"
+	deleteTimeStr := deleteTime.Format("2006-01-02 15:04:05")
+	messageTemplate := `用户 %s 您好：您的作业 %s (%s) 运行时间较长，平台将于 %s 删除该作业。如果有特殊需求，请联系管理员锁定作业。`
 	message := fmt.Sprintf(messageTemplate, "%s", "%s", "%s", deleteTimeStr)
 	return a.sendJobMessage(ctx, jobName, subject, message)
 }
