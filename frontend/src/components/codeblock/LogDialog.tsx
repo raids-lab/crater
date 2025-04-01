@@ -10,6 +10,7 @@ import {
   DownloadIcon,
   RefreshCcw,
 } from "lucide-react";
+import { PlayCircle, Square, Play, Pause } from "lucide-react";
 import { useCopyToClipboard } from "usehooks-ts";
 import { ButtonGroup } from "../ui-custom/button-group";
 import { Button } from "../ui/button";
@@ -23,8 +24,30 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import LoadingCircleIcon from "../icon/LoadingCircleIcon";
 import TooltipButton from "../custom/TooltipButton";
+import { logger } from "@/utils/loglevel";
+import { useAtomValue } from "jotai";
+import { asyncUrlApiBaseAtom } from "@/utils/store/config";
 
 const DEFAULT_TAIL_LINES = 500;
+
+// 辅助函数：正确解码包含UTF-8字符的base64字符串
+const decodeBase64ToUtf8 = (base64: string): string => {
+  try {
+    // 将base64转换为二进制字符串
+    const binaryString = atob(base64);
+    // 创建一个Uint8Array来存储二进制数据
+    const bytes = new Uint8Array(binaryString.length);
+    // 将二进制字符串的每个字符转换为其对应的字节值
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    // 使用TextDecoder将字节数组解码为UTF-8字符串
+    return new TextDecoder("utf-8").decode(bytes);
+  } catch (error) {
+    logger.error("Base64解码失败:", error);
+    return "日志解码失败";
+  }
+};
 
 export function LogCard({
   namespacedName,
@@ -33,6 +56,7 @@ export function LogCard({
   namespacedName: PodNamespacedName;
   selectedContainer: ContainerInfo;
 }) {
+  const apibaseUrl = useAtomValue(asyncUrlApiBaseAtom);
   const queryClient = useQueryClient();
   const [tailLines, setTailLines] = useState(DEFAULT_TAIL_LINES);
   const [timestamps, setTimestamps] = useState(false);
@@ -40,6 +64,11 @@ export function LogCard({
   const [, copy] = useCopyToClipboard();
   const { ref: refRoot, width, height } = useResizeObserver();
   const logAreaRef = useRef<HTMLDivElement>(null);
+
+  const [streaming, setStreaming] = useState(false); // 新增：控制是否处于流式模式
+  const [streamingPaused, setStreamingPaused] = useState(false); // 新增：控制流是否暂停
+  const [streamedLogs, setStreamedLogs] = useState<string[]>([]); // 新增：存储流式日志
+  const streamEventSource = useRef<EventSource | null>(null); // 新增：SSE连接引用
 
   const { data: logText } = useQuery({
     queryKey: [
@@ -64,8 +93,8 @@ export function LogCard({
         },
       ),
     select: (res) => {
-      // convert base64 to string
-      return atob(res.data.data);
+      // 使用改进的方法解码base64字符串为UTF-8文本
+      return decodeBase64ToUtf8(res.data.data);
     },
     enabled:
       !selectedContainer.state.waiting &&
@@ -89,7 +118,8 @@ export function LogCard({
         },
       ),
     onSuccess: (res) => {
-      const logText = atob(res.data.data);
+      // 使用改进的方法解码base64字符串为UTF-8文本
+      const logText = decodeBase64ToUtf8(res.data.data);
       const blob = new Blob([logText], {
         type: "text/plain;charset=utf-8",
       });
@@ -156,6 +186,64 @@ export function LogCard({
     setTailLines((prev) => prev + DEFAULT_TAIL_LINES);
   };
 
+  // ...existing code...
+
+  // 添加启动和停止流式日志的函数
+  const startStreaming = () => {
+    if (streamEventSource.current) {
+      stopStreaming();
+    }
+
+    const url = `${apibaseUrl}namespaces/${namespacedName.namespace}/pods/${namespacedName.name}/containers/${selectedContainer.name}/log/stream?timestamps=${timestamps}`;
+
+    const eventSource = new EventSource(url);
+    streamEventSource.current = eventSource;
+
+    eventSource.onmessage = (event) => {
+      try {
+        const logLine = decodeBase64ToUtf8(event.data);
+        setStreamedLogs((prev) => [...prev, logLine]);
+        if (!streamingPaused && logAreaRef.current) {
+          logAreaRef.current.scrollIntoView(false);
+        }
+      } catch (error) {
+        logger.error("处理流式日志失败:", error);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      logger.error("流式日志连接错误:", error);
+      toast.error("流式日志连接失败，已自动切换到普通模式");
+      stopStreaming();
+    };
+
+    setStreaming(true);
+  };
+
+  const stopStreaming = () => {
+    if (streamEventSource.current) {
+      streamEventSource.current.close();
+      streamEventSource.current = null;
+    }
+    setStreaming(false);
+    setStreamingPaused(false);
+  };
+
+  // 组件卸载时清理资源
+  useEffect(() => {
+    return () => {
+      stopStreaming();
+    };
+  }, []);
+
+  // 确保流模式和普通模式切换时清理/重置
+  useEffect(() => {
+    if (streaming) {
+      // 切换到流模式时清空缓存的流日志
+      setStreamedLogs([]);
+    }
+  }, [streaming]);
+
   return (
     <Card
       className="dark:bg-muted/30 relative h-full overflow-hidden rounded-md bg-slate-900 p-1 text-white md:col-span-2 xl:col-span-3 dark:border"
@@ -173,7 +261,7 @@ export function LogCard({
                 </div>
               )}
               <pre className="px-3 py-3 text-sm break-words whitespace-pre-wrap text-sky-300 dark:text-blue-300">
-                {logText}
+                {streaming ? streamedLogs.join("\n") : logText}
               </pre>
             </div>
           </ScrollArea>
@@ -193,7 +281,7 @@ export function LogCard({
               className="hover:text-primary border-0 border-r focus-visible:ring-0"
               variant="ghost"
               size="icon"
-              tooltipContent="显示时间戳"
+              tooltipContent={timestamps ? "隐藏时间戳" : "显示时间戳"}
             >
               {timestamps ? (
                 <CalendarOff className="size-4" />
@@ -216,12 +304,39 @@ export function LogCard({
             </TooltipButton>
             <TooltipButton
               onClick={handleDownload}
-              className="hover:text-primary border-0 focus-visible:ring-0"
+              className="hover:text-primary border-0 border-r focus-visible:ring-0"
               variant="ghost"
               size="icon"
               tooltipContent="下载"
             >
               <DownloadIcon className="size-4" />
+            </TooltipButton>
+            <TooltipButton
+              onClick={() => setStreamingPaused(!streamingPaused)}
+              className="hover:text-primary border-0 border-r focus-visible:ring-0"
+              variant="ghost"
+              size="icon"
+              tooltipContent={streamingPaused ? "继续自动滚动" : "暂停自动滚动"}
+              hidden={!streaming}
+            >
+              {streamingPaused ? (
+                <Play className="size-4" />
+              ) : (
+                <Pause className="size-4" />
+              )}
+            </TooltipButton>
+            <TooltipButton
+              onClick={() => (streaming ? stopStreaming() : startStreaming())}
+              className="hover:text-primary border-0 focus-visible:ring-0"
+              variant="ghost"
+              size="icon"
+              tooltipContent={streaming ? "停止实时日志" : "启动实时日志"}
+            >
+              {streaming ? (
+                <Square className="size-4" /> // 停止图标
+              ) : (
+                <PlayCircle className="size-4" /> // 播放图标
+              )}
             </TooltipButton>
           </ButtonGroup>
         </>
