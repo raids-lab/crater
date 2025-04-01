@@ -18,13 +18,39 @@ import {
   SearchIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import TooltipButton from "@/components/custom/TooltipButton";
+//import TooltipButton from "@/components/custom/TooltipButton";
 import TooltipLink from "@/components/label/TooltipLink";
 import { IUserAttributes } from "@/services/api/admin/user";
 import PageTitle from "@/components/layout/PageTitle";
 import TipBadge from "@/components/badge/TipBadge";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import { motion } from "framer-motion";
+import { globalUserInfo } from "@/utils/store";
+import { useAtomValue } from "jotai";
+// 导入所需组件
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui-custom/alert-dialog";
+
+import { Trash2Icon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+
 export interface DataItem {
   id: number;
   name: string;
@@ -48,16 +74,20 @@ export default function DataList({
   title,
   actionArea,
   isWIP,
+  itemdelete,
+  onRefresh,
 }: {
   items: DataItem[];
   title: string;
   actionArea?: React.ReactNode;
   isWIP?: boolean;
+  itemdelete?: (id: number) => void;
+  onRefresh?: () => void;
 }) {
   const [sort, setSort] = useState("ascending");
   const [modelType, setModelType] = useState("所有标签");
   const [searchTerm, setSearchTerm] = useState("");
-
+  const user = useAtomValue(globalUserInfo);
   const tags = useMemo(() => {
     const tags = new Set<string>();
     items.forEach((model) => {
@@ -209,14 +239,65 @@ export default function DataList({
                   />
                 )}
               </div>
-              {item.url && (
-                <TooltipButton
-                  tooltipContent={`更多操作`}
-                  variant="ghost"
-                  size="icon"
-                >
-                  <EllipsisVerticalIcon />
-                </TooltipButton>
+              {title === "作业模板" && (
+                <AlertDialog>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 p-0"
+                      >
+                        <span className="sr-only">更多操作</span>
+                        <EllipsisVerticalIcon className="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel className="text-muted-foreground text-xs">
+                        操作
+                      </DropdownMenuLabel>
+                      {user?.name === item.owner.name && (
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem className="group text-red-500">
+                            <Trash2Icon className="text-destructive mr-2 size-4" />
+                            删除
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>删除作业模板</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        作业模板 {item.name} 将被删除，此操作不可恢复。
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>取消</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (itemdelete && onRefresh) {
+                            try {
+                              await itemdelete(item.id);
+                              // 成功删除后，重置搜索和过滤条件以刷新列表
+                              setSearchTerm("");
+                              setModelType("所有标签");
+                              // 如果父组件提供了重新获取数据的方法，可以在这里调用
+                              onRefresh();
+                            } catch (error) {
+                              toast.error("删除失败:" + error);
+                            }
+                          }
+                        }}
+                      >
+                        删除
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
             </div>
 
