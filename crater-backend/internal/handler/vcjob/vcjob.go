@@ -286,6 +286,7 @@ type (
 		Name               string          `json:"name"`
 		JobName            string          `json:"jobName"`
 		Owner              string          `json:"owner"`
+		UserInfo           model.UserInfo  `json:"userInfo"`
 		JobType            string          `json:"jobType"`
 		Queue              string          `json:"queue"`
 		Status             string          `json:"status"`
@@ -382,9 +383,13 @@ func convertJobResp(jobs []*model.Job) []JobResp {
 	for i := range jobs {
 		job := jobs[i]
 		jobList[i] = JobResp{
-			Name:               job.Name,
-			JobName:            job.JobName,
-			Owner:              job.User.Nickname,
+			Name:    job.Name,
+			JobName: job.JobName,
+			Owner:   job.User.Nickname,
+			UserInfo: model.UserInfo{
+				UserName: job.User.Name,
+				Nickname: job.User.Nickname,
+			},
 			JobType:            string(job.JobType),
 			Queue:              job.Account.Nickname,
 			Status:             string(job.Status),
@@ -407,6 +412,8 @@ type (
 		Name               string               `json:"name"`
 		Namespace          string               `json:"namespace"`
 		Username           string               `json:"username"`
+		Nickname           string               `json:"nickname"`
+		UserInfo           model.UserInfo       `json:"userInfo"`
 		JobName            string               `json:"jobName"`
 		JobType            model.JobType        `json:"jobType"`
 		Queue              string               `json:"queue"`
@@ -476,9 +483,14 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 	}
 
 	jobDetail := JobDetailResp{
-		Name:               job.Name,
-		Namespace:          job.Attributes.Data().Namespace,
-		Username:           job.User.Nickname,
+		Name:      job.Name,
+		Namespace: job.Attributes.Data().Namespace,
+		Username:  job.User.Name,
+		Nickname:  job.User.Nickname,
+		UserInfo: model.UserInfo{
+			UserName: job.User.Name,
+			Nickname: job.User.Nickname,
+		},
 		JobName:            job.JobName,
 		JobType:            job.JobType,
 		Queue:              job.Account.Nickname,
