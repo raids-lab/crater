@@ -455,3 +455,17 @@ export const apiSSHPortGetDetail = (jobName: string) =>
   instance.get<IResponse<ISSHPortDetail>>(
     `${VERSION}/${JOB_URL}/${jobName}/ssh`,
   );
+
+export const apiJobScheduleAdmin = async () => {
+  const response = await instance.get<IResponse<string>>(
+    `${VERSION}/admin/operations/cronjob`,
+  );
+  return response.data;
+};
+export const apiJobScheduleChangeAdmin = async (schedule: object) => {
+  const response = await instance.put<IResponse<string>>(
+    `${VERSION}/admin/operations/cronjob`,
+    schedule,
+  );
+  return response.data;
+};
