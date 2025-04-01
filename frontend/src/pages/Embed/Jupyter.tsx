@@ -25,7 +25,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { BaseCore } from "../Portal/Job/Detail/Base";
 
 const Jupyter: FC = () => {
   // get param from url
@@ -124,7 +123,12 @@ const Jupyter: FC = () => {
             <SheetTitle>作业详情</SheetTitle>
           </SheetHeader>
           <div className="h-[calc(100vh-6rem)] w-full px-4">
-            <BaseCore jobName={id ?? ""} />
+            <iframe
+              title="grafana"
+              src={`/portal/job/inter/${id}`}
+              height={"100%"}
+              width={"100%"}
+            />
           </div>
         </SheetContent>
       </Sheet>

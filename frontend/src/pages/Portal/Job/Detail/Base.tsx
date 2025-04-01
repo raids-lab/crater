@@ -344,7 +344,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
           children: (
             <div className="h-[calc(100vh_-_304px)] w-full">
               <GrafanaIframe
-                baseSrc={`${grafanaJob.basic}?var-job=${data.jobName}&from=${fromTime}&to=${toTime}&timezone=Asia%2FShanghai`}
+                baseSrc={`${grafanaJob.basic}?var-job=${data.jobName}&from=${fromTime}&to=${toTime}`}
               />
             </div>
           ),
@@ -356,7 +356,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
           children: (
             <div className="h-[calc(100vh_-_304px)] w-full">
               <GrafanaIframe
-                baseSrc={`${grafanaJob.nvidia}?var-job=${data.jobName}&from=${fromTime}&to=${toTime}&timezone=Asia%2FShanghai`}
+                baseSrc={`${grafanaJob.nvidia}?var-job=${data.jobName}&from=${fromTime}&to=${toTime}`}
               />
             </div>
           ),

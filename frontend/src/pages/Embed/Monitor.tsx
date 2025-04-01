@@ -19,7 +19,7 @@ export const GrafanaIframe = ({ baseSrc }: { baseSrc: string }) => {
   return (
     <iframe
       title="grafana"
-      src={`${base}theme=${theme}&kiosk`}
+      src={`${base}theme=${theme}&kiosk&timezone=Asia%2FShanghai`}
       height={"100%"}
       width={"100%"}
     />

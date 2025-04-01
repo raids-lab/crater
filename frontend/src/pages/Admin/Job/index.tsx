@@ -1,20 +1,15 @@
-import { useRoutes } from "react-router-dom";
+import { RouteObject } from "react-router-dom";
 import AdminJobOverview from "./Overview";
-import { Component } from "../../Portal/Job/Detail/Base";
 
-const AdminJob = () => {
-  const routes = useRoutes([
-    {
-      index: true,
-      element: <AdminJobOverview />,
-    },
-    {
-      path: ":name",
-      element: <Component />,
-    },
-  ]);
+const adminJobRoutes: RouteObject[] = [
+  {
+    index: true,
+    element: <AdminJobOverview />,
+  },
+  {
+    path: ":name",
+    lazy: () => import("../../Portal/Job/Detail/Base"),
+  },
+];
 
-  return <>{routes}</>;
-};
-
-export default AdminJob;
+export default adminJobRoutes;

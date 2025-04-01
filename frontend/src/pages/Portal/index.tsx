@@ -24,6 +24,8 @@ import AssignmentTemplateList from "./Job/Store";
 import NvidiaOverview from "@/components/monitor/NvidiaOverview";
 import ResourseOverview from "@/components/monitor/ResourceOverview";
 import NetworkOverview from "@/components/monitor/NetworkOverview";
+import { Suspense } from "react";
+import Loading from "@/components/placeholder/Loading";
 
 const portalRoutes: RouteItem[] = [
   {
@@ -268,9 +270,11 @@ const userSidebarGroups: NavGroupProps[] = [
 export const portalRoute: RouteObject = {
   path: "/portal",
   element: (
-    <AuthedRouter>
-      <DashboardLayout groups={userSidebarGroups} />
-    </AuthedRouter>
+    <Suspense fallback={<Loading />}>
+      <AuthedRouter>
+        <DashboardLayout groups={userSidebarGroups} />
+      </AuthedRouter>
+    </Suspense>
   ),
   children: [
     {
