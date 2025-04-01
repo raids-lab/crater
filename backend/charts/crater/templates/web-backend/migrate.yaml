@@ -16,6 +16,11 @@ spec:
           image: {{ .Values.web.migrate.image.repository }}:{{ .Values.web.migrate.image.tag }}
           imagePullPolicy: {{ .Values.web.migrate.image.pullPolicy }}
           command: ["./migrate"]
+          env:
+            - name: CRATER_ADMIN_USERNAME
+              value: {{ .Values.web.migrate.admin.username }}
+            - name: CRATER_ADMIN_PASSWORD
+              value: {{ .Values.web.migrate.admin.password }}
           volumeMounts:
             - name: backend-conf
               mountPath: /etc/config/config.yaml

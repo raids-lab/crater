@@ -10,8 +10,11 @@ web:
   migrate:
     image:
       repository: "***REMOVED***/migrate"
-      tag: "latest"
+      tag: "v1"
       pullPolicy: "IfNotPresent"
+    admin:
+      username: "crater-admin"
+      password: "admin"
   frontend:
     image:
       repository: ***REMOVED***
