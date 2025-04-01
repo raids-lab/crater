@@ -57,7 +57,10 @@ import {
 } from "@/components/ui/sheet";
 import TooltipButton from "../custom/TooltipButton";
 import { useAtomValue } from "jotai";
-import { grafanaJobAtom, grafanaNodeAtom } from "@/utils/store/config";
+import {
+  asyncGrafanaJobAtom,
+  asyncGrafanaNodeAtom,
+} from "@/utils/store/config";
 
 type GpuDemoProps = React.ComponentProps<typeof Card> & {
   gpuInfo?: {
@@ -75,7 +78,7 @@ type GpuDemoProps = React.ComponentProps<typeof Card> & {
 };
 
 export function GpuCardDemo({ gpuInfo }: GpuDemoProps) {
-  const grafanaNode = useAtomValue(grafanaNodeAtom);
+  const grafanaNode = useAtomValue(asyncGrafanaNodeAtom);
   if (!gpuInfo?.haveGPU) return null;
   else
     return (
@@ -305,8 +308,8 @@ const getColumns = (
 export const NodeDetail: FC = () => {
   const { id: nodeName } = useParams();
   const setBreadcrumb = useBreadcrumb();
-  const grafanaJob = useAtomValue(grafanaJobAtom);
-  const grafanaNode = useAtomValue(grafanaNodeAtom);
+  const grafanaJob = useAtomValue(asyncGrafanaJobAtom);
+  const grafanaNode = useAtomValue(asyncGrafanaNodeAtom);
   const [showLogPod, setShowLogPod] = useState<NamespacedName>();
   const [showMonitor, setShowMonitor] = useState(false);
   const [grafanaUrl, setGrafanaUrl] = useState<string>(grafanaJob.pod);

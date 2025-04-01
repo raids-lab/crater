@@ -57,33 +57,33 @@ export const configAtom = atom(async () => {
 export const loadableConfigAtom = loadable(configAtom);
 
 // 派生原子
-export const versionAtom = atom(
+export const asyncVersionAtom = atom(
   async (get) => (await get(configAtom)).url.apiVersion,
 );
 
-export const appVersionAtom = atom(
+export const asyncAppVersionAtom = atom(
   async (get) => (await get(configAtom)).version,
 );
 
-export const urlHostAtom = atom(
+export const asyncUrlHostAtom = atom(
   async (get) => (await get(configAtom)).url.host,
 );
 
-export const urlApiBaseAtom = atom(
+export const asyncUrlApiBaseAtom = atom(
   async (get) => (await get(configAtom)).url.apiBase,
 );
 
-export const urlWebsiteBaseAtom = atom(
+export const asyncUrlWebsiteBaseAtom = atom(
   async (get) => (await get(configAtom)).url.websiteBase,
 );
 
 // 派生原子 - 按类别导出
-export const grafanaOverviewAtom = atom(
+export const asyncGrafanaOverviewAtom = atom(
   async (get) => (await get(configAtom)).grafana.overview,
 );
-export const grafanaNodeAtom = atom(
+export const asyncGrafanaNodeAtom = atom(
   async (get) => (await get(configAtom)).grafana.node,
 );
-export const grafanaJobAtom = atom(
+export const asyncGrafanaJobAtom = atom(
   async (get) => (await get(configAtom)).grafana.job,
 );

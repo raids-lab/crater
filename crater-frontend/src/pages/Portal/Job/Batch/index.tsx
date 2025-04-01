@@ -2,6 +2,7 @@ import { RouteObject } from "react-router-dom";
 import VolcanoOverview from "./Volcano/Overview";
 import { globalJobUrl, store } from "@/utils/store";
 import ColocateOverview from "./Colocate/Overview";
+import { Base } from "../Detail/Base";
 
 const jobType = store.get(globalJobUrl);
 const batchRoutes: RouteObject[] = [
@@ -11,10 +12,7 @@ const batchRoutes: RouteObject[] = [
   },
   {
     path: ":name",
-    lazy:
-      jobType === "aijobs"
-        ? () => import("../Detail/AIJob")
-        : () => import("../Detail/Base"),
+    element: <Base />,
   },
   {
     path: "new-aijobs",

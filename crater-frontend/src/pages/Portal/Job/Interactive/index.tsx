@@ -2,6 +2,7 @@ import { RouteObject } from "react-router-dom";
 import InterOverview from "./InterOverview";
 import ColocateInterOverview from "./ColocateInterOverview";
 import { globalJobUrl, store } from "@/utils/store";
+import { Base } from "../Detail/Base";
 
 const jobType = store.get(globalJobUrl);
 const interactiveRoutes: RouteObject[] = [
@@ -20,7 +21,7 @@ const interactiveRoutes: RouteObject[] = [
   },
   {
     path: ":name",
-    lazy: () => import("../Detail/Base"),
+    element: <Base />,
   },
 ];
 

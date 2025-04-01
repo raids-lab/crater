@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useAtomValue } from "jotai";
-import { urlHostAtom } from "@/utils/store/config";
+import { asyncUrlHostAtom } from "@/utils/store/config";
 import {
   Sheet,
   SheetContent,
@@ -32,7 +32,7 @@ const Jupyter: FC = () => {
   const [namespacedName, setNamespacedName] = useState<NamespacedName>();
   const [isSnapshotOpen, setIsSnapshotOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const host = useAtomValue(urlHostAtom);
+  const host = useAtomValue(asyncUrlHostAtom);
 
   const { data: jupyterInfo } = useQuery({
     queryKey: ["jupyter", id],

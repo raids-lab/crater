@@ -62,7 +62,7 @@ import { AxiosResponse } from "axios";
 import { IResponse } from "@/services/types";
 import { FileSelectDialog } from "./FileSelectDialog";
 import TooltipButton from "../custom/TooltipButton";
-import { urlApiBaseAtom } from "@/utils/store/config";
+import { asyncUrlApiBaseAtom } from "@/utils/store/config";
 
 const getHeader = (key: string): string => {
   switch (key) {
@@ -100,7 +100,7 @@ export function FileSystemTable({
   const navigate = useNavigate();
   const [dirName, setDirName] = useState<string>("");
   const setBreadcrumb = useSetAtom(globalBreadCrumb);
-  const apiBaseURL = useAtomValue(urlApiBaseAtom);
+  const apiBaseURL = useAtomValue(asyncUrlApiBaseAtom);
 
   const path = useMemo(() => {
     if (isadmin) {
