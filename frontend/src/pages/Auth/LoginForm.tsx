@@ -43,7 +43,7 @@ import {
 } from "@/services/error_code";
 import { ExternalLink } from "lucide-react";
 import { AuthMode } from ".";
-import { urlWebsiteBaseAtom } from "@/utils/store/config";
+import { asyncUrlWebsiteBaseAtom } from "@/utils/store/config";
 
 const formSchema = z.object({
   username: z
@@ -88,7 +88,7 @@ export function LoginForm({ authMode, onForgotPasswordClick }: LoginFormProps) {
   const setAccount = useSetAtom(globalAccount);
   const { resetAll } = useResetStore();
   const lastView = useAtomValue(globalLastView);
-  const website = useAtomValue(urlWebsiteBaseAtom);
+  const website = useAtomValue(asyncUrlWebsiteBaseAtom);
 
   // 1. Define your form.
   const form = useForm<z.infer<typeof formSchema>>({

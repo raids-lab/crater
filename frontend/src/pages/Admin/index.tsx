@@ -1,6 +1,6 @@
 import { RouteItem } from "@/components/layout/Sidebar";
 import { useAuth } from "@/hooks/useAuth";
-import { FC, PropsWithChildren, Suspense } from "react";
+import { FC, PropsWithChildren } from "react";
 import { Navigate, RouteObject } from "react-router-dom";
 import { Role } from "@/services/api/auth";
 import DashboardLayout from "@/components/layout/Dashboard";
@@ -29,7 +29,6 @@ import SystemSetting from "../Portal/Setting/SystemSetting";
 import CronPolicy from "./Job/CronPolicy";
 import NetworkOverview from "@/components/monitor/NetworkOverview";
 import NvidiaOverview from "@/components/monitor/NvidiaOverview";
-import Loading from "@/components/placeholder/Loading";
 
 const routeItems: RouteItem[] = [
   {
@@ -277,11 +276,9 @@ const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
 export const adminRoute: RouteObject = {
   path: "/admin",
   element: (
-    <Suspense fallback={<Loading />}>
-      <AuthedRouter>
-        <DashboardLayout groups={adminSidebarGroups} />
-      </AuthedRouter>
-    </Suspense>
+    <AuthedRouter>
+      <DashboardLayout groups={adminSidebarGroups} />
+    </AuthedRouter>
   ),
   children: [
     {

@@ -12,7 +12,7 @@ import "@xterm/xterm/css/xterm.css";
 import { REFRESH_TOKEN_KEY } from "@/utils/store";
 import { useDebounceCallback } from "usehooks-ts";
 import { useAtomValue } from "jotai";
-import { urlApiBaseAtom, versionAtom } from "@/utils/store/config";
+import { asyncUrlApiBaseAtom, asyncVersionAtom } from "@/utils/store/config";
 
 const buildWebSocketUrl = (
   apiBaseUrl: string,
@@ -61,8 +61,8 @@ function TerminalCard({
   namespacedName: PodNamespacedName;
   selectedContainer: ContainerInfo;
 }) {
-  const apiBaseUrl = useAtomValue(urlApiBaseAtom);
-  const version = useAtomValue(versionAtom);
+  const apiBaseUrl = useAtomValue(asyncUrlApiBaseAtom);
+  const version = useAtomValue(asyncVersionAtom);
 
   const terminalRef = useRef<Terminal | null>(null);
   const xtermRef = useRef<HTMLDivElement>(null);

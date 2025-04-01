@@ -66,7 +66,7 @@ import ProfileDashboard, {
 import { getDaysDifference, getHoursDifference } from "@/utils/time";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
-import { grafanaJobAtom } from "@/utils/store/config";
+import { asyncGrafanaJobAtom } from "@/utils/store/config";
 export interface Resource {
   [key: string]: string;
 }
@@ -74,7 +74,7 @@ export interface Resource {
 export function BaseCore({ jobName }: { jobName: string }) {
   useFixedLayout();
   const navigate = useNavigate();
-  const grafanaJob = useAtomValue(grafanaJobAtom);
+  const grafanaJob = useAtomValue(asyncGrafanaJobAtom);
 
   const { data, isLoading } = useQuery({
     queryKey: ["job", "detail", jobName],
@@ -367,7 +367,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
   );
 }
 
-export const Component = () => {
+export const Base = () => {
   const { name } = useParams<string>();
   const jobName = "" + name;
   const setBreadcrumb = useBreadcrumb();

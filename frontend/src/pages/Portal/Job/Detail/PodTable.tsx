@@ -5,7 +5,7 @@ import PodPhaseLabel, { podPhases } from "@/components/badge/PodPhaseBadge";
 import { EthernetPort, GaugeIcon, LogsIcon, TerminalIcon } from "lucide-react";
 import { DataTable } from "@/components/custom/DataTable";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { NamespacedName } from "@/components/codeblock/PodContainerDialog";
 import LogDialog from "@/components/codeblock/LogDialog";
 import TerminalDialog from "@/components/codeblock/TerminalDialog";
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/sheet";
 import { GrafanaIframe } from "@/pages/Embed/Monitor";
 import { useAtomValue } from "jotai";
-import { grafanaJobAtom } from "@/utils/store/config";
+import { asyncGrafanaJobAtom } from "@/utils/store/config";
 
 interface PodTableProps {
   jobName: string;
@@ -75,8 +75,8 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
   const [showTerminal, setShowTerminal] = useState<NamespacedName>();
   const [showIngress, setShowIngress] = useState<NamespacedName>();
   const [showMonitor, setShowMonitor] = useState(false);
-  const grafanaJob = useAtomValue(grafanaJobAtom);
-  const [grafanaUrl, setGrafanaUrl] = useState<string>(grafanaJob.pod);
+  const grafanaJob = useAtomValue(asyncGrafanaJobAtom);
+  const [grafanaUrl, setGrafanaUrl] = useState<string>("");
 
   const query = useQuery({
     queryKey: ["job", "detail", jobName, "pods"],
@@ -85,140 +85,149 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
     enabled: !!jobName,
   });
 
-  const columns: ColumnDef<PodDetail>[] = [
-    {
-      accessorKey: "name",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("name")} />
-      ),
-      cell: ({ row }) => {
-        const pod = row.original;
-        return pod.name ? (
-          <TooltipButton
-            name={pod.name}
-            tooltipContent={`查看 Pod 监控`}
-            className="text-foreground hover:text-primary cursor-pointer font-mono hover:no-underline"
-            variant="link"
-            onClick={() => {
-              setGrafanaUrl(getPodMonitorUrl(grafanaJob.pod, pod));
-              setShowMonitor(true);
-            }}
-          >
-            {pod.name}
-          </TooltipButton>
-        ) : (
-          "---"
-        );
-      },
-    },
-    {
-      accessorKey: "phase",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("phase")} />
-      ),
-      cell: ({ row }) => <PodPhaseLabel podPhase={row.getValue("phase")} />,
-      filterFn: (row, id, value) => {
-        return (value as string[]).includes(row.getValue(id));
-      },
-    },
-    {
-      accessorKey: "ip",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("ip")} />
-      ),
-      cell: ({ row }) => <p className="font-mono">{row.getValue("ip")}</p>,
-      enableSorting: false,
-    },
-    {
-      accessorKey: "nodename",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("nodename")} />
-      ),
-      cell: ({ row }) => <NodeBadges nodes={[row.getValue("nodename")]} />,
-    },
-    {
-      accessorKey: "resource",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("resource")} />
-      ),
-      cell: ({ row }) => (
-        <div className="flex flex-row gap-1">
-          <ResourceBadges resources={row.getValue("resource")} />
-        </div>
-      ),
-    },
-    {
-      id: "actions",
-      header: "",
-      cell: ({ row }) => {
-        const pod = row.original;
-        return (
-          <div className="flex items-center space-x-1.5">
+  const columns: ColumnDef<PodDetail>[] = useMemo(
+    () => [
+      {
+        accessorKey: "name",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("name")} />
+        ),
+        cell: ({ row }) => {
+          const pod = row.original;
+          return pod.name ? (
             <TooltipButton
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              disabled={pod.phase !== "Running"}
-              onClick={() => {
-                setShowTerminal({
-                  namespace: pod.namespace,
-                  name: pod.name,
-                });
-              }}
-              tooltipContent="打开网页终端"
-            >
-              <TerminalIcon className="text-primary size-4" />
-            </TooltipButton>
-
-            <TooltipButton
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              disabled={pod.phase !== "Running"}
-              onClick={() => {
-                setShowIngress({
-                  namespace: pod.namespace,
-                  name: pod.name,
-                });
-              }}
-              tooltipContent="配置外部访问"
-            >
-              <EthernetPort className="text-highlight-purple size-4" />
-            </TooltipButton>
-
-            <TooltipButton
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              disabled={pod.phase !== "Running"}
+              name={pod.name}
+              tooltipContent={`查看 Pod 监控`}
+              className="text-foreground hover:text-primary cursor-pointer font-mono hover:no-underline"
+              variant="link"
               onClick={() => {
                 setGrafanaUrl(getPodMonitorUrl(grafanaJob.pod, pod));
                 setShowMonitor(true);
               }}
-              tooltipContent="查看资源监控"
             >
-              <GaugeIcon className="text-highlight-green size-4" />
+              {pod.name}
             </TooltipButton>
-
-            <TooltipButton
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => {
-                setShowLog({
-                  namespace: pod.namespace,
-                  name: pod.name,
-                });
-              }}
-              tooltipContent="查看容器日志"
-            >
-              <LogsIcon className="text-highlight-orange size-4" />
-            </TooltipButton>
-          </div>
-        );
+          ) : (
+            "---"
+          );
+        },
       },
-    },
-  ];
+      {
+        accessorKey: "phase",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("phase")} />
+        ),
+        cell: ({ row }) => <PodPhaseLabel podPhase={row.getValue("phase")} />,
+        filterFn: (row, id, value) => {
+          return (value as string[]).includes(row.getValue(id));
+        },
+      },
+      {
+        accessorKey: "ip",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("ip")} />
+        ),
+        cell: ({ row }) => <p className="font-mono">{row.getValue("ip")}</p>,
+        enableSorting: false,
+      },
+      {
+        accessorKey: "nodename",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("nodename")}
+          />
+        ),
+        cell: ({ row }) => <NodeBadges nodes={[row.getValue("nodename")]} />,
+      },
+      {
+        accessorKey: "resource",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("resource")}
+          />
+        ),
+        cell: ({ row }) => (
+          <div className="flex flex-row gap-1">
+            <ResourceBadges resources={row.getValue("resource")} />
+          </div>
+        ),
+      },
+      {
+        id: "actions",
+        header: "",
+        cell: ({ row }) => {
+          const pod = row.original;
+          return (
+            <div className="flex items-center space-x-1.5">
+              <TooltipButton
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                disabled={pod.phase !== "Running"}
+                onClick={() => {
+                  setShowTerminal({
+                    namespace: pod.namespace,
+                    name: pod.name,
+                  });
+                }}
+                tooltipContent="打开网页终端"
+              >
+                <TerminalIcon className="text-primary size-4" />
+              </TooltipButton>
+
+              <TooltipButton
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                disabled={pod.phase !== "Running"}
+                onClick={() => {
+                  setShowIngress({
+                    namespace: pod.namespace,
+                    name: pod.name,
+                  });
+                }}
+                tooltipContent="配置外部访问"
+              >
+                <EthernetPort className="text-highlight-purple size-4" />
+              </TooltipButton>
+
+              <TooltipButton
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                disabled={pod.phase !== "Running"}
+                onClick={() => {
+                  setGrafanaUrl(getPodMonitorUrl(grafanaJob.pod, pod));
+                  setShowMonitor(true);
+                }}
+                tooltipContent="查看资源监控"
+              >
+                <GaugeIcon className="text-highlight-green size-4" />
+              </TooltipButton>
+
+              <TooltipButton
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => {
+                  setShowLog({
+                    namespace: pod.namespace,
+                    name: pod.name,
+                  });
+                }}
+                tooltipContent="查看容器日志"
+              >
+                <LogsIcon className="text-highlight-orange size-4" />
+              </TooltipButton>
+            </div>
+          );
+        },
+      },
+    ],
+    [grafanaJob.pod],
+  );
 
   if (query.isLoading) {
     return <></>;

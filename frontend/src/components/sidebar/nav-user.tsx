@@ -38,10 +38,10 @@ import { toast } from "sonner";
 import { Role } from "@/services/api/auth";
 import { stringToSS58 } from "@/utils/ss58";
 import { useIsAdmin } from "@/hooks/useAdmin";
-import { urlWebsiteBaseAtom } from "@/utils/store/config";
+import { asyncUrlWebsiteBaseAtom } from "@/utils/store/config";
 
 export function NavUser() {
-  const website = useAtomValue(urlWebsiteBaseAtom);
+  const website = useAtomValue(asyncUrlWebsiteBaseAtom);
   const { isMobile } = useSidebar();
   const queryClient = useQueryClient();
   const { resetAll } = useResetStore();

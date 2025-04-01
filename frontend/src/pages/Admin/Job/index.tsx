@@ -1,5 +1,6 @@
 import { RouteObject } from "react-router-dom";
 import AdminJobOverview from "./Overview";
+import { Base } from "@/pages/Portal/Job/Detail/Base";
 
 const adminJobRoutes: RouteObject[] = [
   {
@@ -8,7 +9,7 @@ const adminJobRoutes: RouteObject[] = [
   },
   {
     path: ":name",
-    lazy: () => import("../../Portal/Job/Detail/Base"),
+    element: <Base />,
   },
 ];
 
