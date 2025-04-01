@@ -3,9 +3,9 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/go-gormigrate/gormigrate/v2"
-	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -167,8 +167,14 @@ func main() {
 
 		// create default admin user, add to default queue
 		// 1. generate a random name and password
-		name := fmt.Sprintf("admin%s", uuid.New().String()[:5])
-		password := uuid.New().String()[:8]
+		var name, password string
+		var ok bool
+		if name, ok = os.LookupEnv("CRATER_ADMIN_USERNAME"); !ok {
+			return fmt.Errorf("ADMIN_NAME is required for initial admin user")
+		}
+		if password, ok = os.LookupEnv("CRATER_ADMIN_PASSWORD"); !ok {
+			return fmt.Errorf("ADMIN_PASSWORD is required for initial admin user")
+		}
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		if err != nil {
 			return err
