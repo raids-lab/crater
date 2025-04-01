@@ -56,3 +56,8 @@ type User struct {
 	UserAccounts []UserAccount
 	UserDatasets []UserDataset
 }
+
+type UserInfo struct {
+	UserName string
+	Nickname string
+}
