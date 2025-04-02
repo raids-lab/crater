@@ -96,7 +96,7 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="mt-6 flex flex-col space-y-4"
+        className="flex flex-col space-y-4 px-6"
       >
         <FormField
           control={form.control}
