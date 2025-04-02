@@ -1,21 +1,18 @@
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type FC, useEffect, useState } from "react";
+import { type FC, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { DataTable } from "@/components/custom/DataTable";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { ImageUploadForm } from "./UploadForm";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import {
   getHeader,
-  imagepackPublicPersonalStatus,
   apiUserListImage,
   apiUserChangeImagePublicStatus,
   ImageInfoResponse,
   apiUserChangeImageDescription,
-  apiUserCheckImageValid,
   ImageLinkPair,
   apiUserDeleteImageList,
   apiUserChangeImageTaskType,
@@ -27,29 +24,16 @@ import { logger } from "@/utils/loglevel";
 import { toast } from "sonner";
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
 } from "@/components/ui-custom/alert-dialog";
 import {
-  AlertCircle,
   BookCopy,
-  Check,
   CheckCheck,
-  CheckCircle,
   Globe,
   Lock,
   ListCheck,
-  Loader2,
-  Pencil,
   Tag,
-  Trash2,
   Trash2Icon,
-  X,
   AlertTriangle,
   SquareCheckBig,
 } from "lucide-react";
@@ -70,11 +54,17 @@ import {
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
-import { Input } from "@/components/ui/input";
 import { JobType } from "@/services/api/vcjob";
-import { Label } from "@radix-ui/react-label";
 import { AxiosResponse } from "axios";
 import { IResponse } from "@/services/types";
+import VisibilityBadge, {
+  Visibility,
+  visibilityTypes,
+} from "@/components/badge/VisibilityBadge";
+import { ValidDialog } from "./ValidDialog";
+import { StatusDialog } from "./StatusDialog";
+import { RenameDialog } from "./RenameDialog";
+import { DeleteDialog } from "./DeleteDialog";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -86,6 +76,11 @@ const toolbarConfig: DataTableToolbarConfig = {
       key: "taskType",
       title: "类型",
       option: jobTypes,
+    },
+    {
+      key: "visibility",
+      title: "可见性",
+      option: visibilityTypes,
     },
   ],
   getHeader: getHeader,
@@ -147,7 +142,11 @@ export const ImageListTable: FC<ImageListTableProps> = ({
   const imageInfo = useQuery({
     queryKey: ["imagelink", "list"],
     queryFn: () => apiListImage(),
-    select: (res) => res.data.data.imageList,
+    select: (res) =>
+      res.data.data.imageList.map((i) => ({
+        ...i,
+        visibility: i.isPublic ? Visibility.Public : Visibility.Private,
+      })),
   });
 
   const refetchImagePackList = async () => {
@@ -220,16 +219,13 @@ export const ImageListTable: FC<ImageListTableProps> = ({
       cell: ({ row }) => <div>{row.getValue("nickName")}</div>,
     },
     {
-      accessorKey: "isPublic",
+      accessorKey: "visibility",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeader("isPublic")} />
       ),
       cell: ({ row }) => {
-        const imagePublicPersonalStatus = imagepackPublicPersonalStatus.find(
-          (imagePublicPersonalStatus) =>
-            imagePublicPersonalStatus.value === row.getValue("isPublic"),
-        );
-        return imagePublicPersonalStatus?.label;
+        const visibilityValue = row.getValue<Visibility>("visibility");
+        return <VisibilityBadge visibility={visibilityValue} />;
       },
     },
     {
@@ -556,336 +552,5 @@ const Actions: FC<ActionsProps> = ({
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
-};
-
-interface DeleteDialogProps {
-  imageLinks: string[];
-  onDeleteImageList: () => void;
-}
-
-export const DeleteDialog: FC<DeleteDialogProps> = ({
-  imageLinks,
-  onDeleteImageList,
-}) => {
-  return (
-    <>
-      <AlertDialogHeader>
-        <AlertDialogTitle className="flex items-center gap-2 text-xl">
-          <Trash2 className="text-destructive h-5 w-5" />
-          <span>删除镜像</span>
-        </AlertDialogTitle>
-      </AlertDialogHeader>
-
-      <Separator className="my-3" />
-
-      <AlertDialogDescription className="space-y-4 pt-2">
-        <div className="border-destructive/20 bg-destructive/5 rounded-md border px-4 py-3">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="text-destructive mt-0.5 h-5 w-5 shrink-0" />
-            <div>
-              <p className="text-destructive font-medium">将删除以下镜像</p>
-              <p className="text-muted-foreground mt-1 text-sm">
-                {"『" + imageLinks.join("』,『") + "』"}
-              </p>
-            </div>
-          </div>
-        </div>
-      </AlertDialogDescription>
-
-      <AlertDialogFooter>
-        <AlertDialogCancel>
-          <X />
-          取消
-        </AlertDialogCancel>
-
-        <AlertDialogAction variant="destructive" onClick={onDeleteImageList}>
-          <Trash2 />
-          确认删除
-        </AlertDialogAction>
-      </AlertDialogFooter>
-    </>
-  );
-};
-
-interface StatusDialogProps {
-  imageLink: string;
-  isPublic: boolean;
-  onChange: () => void;
-}
-
-export const StatusDialog: FC<StatusDialogProps> = ({
-  imageLink,
-  isPublic,
-  onChange,
-}) => {
-  const currentStatus = isPublic ? "公共" : "私有";
-  const newStatus = isPublic ? "私有" : "公共";
-
-  // Choose icon based on the new status
-  const StatusIcon = isPublic ? Lock : Globe;
-  const statusColor = isPublic ? "text-amber-600" : "text-green-600";
-  const bgColor = isPublic ? "bg-amber-50" : "bg-green-50";
-  const darkBgColor = isPublic
-    ? "dark:bg-amber-950/30"
-    : "dark:bg-green-950/30";
-  return (
-    <>
-      <AlertDialogHeader>
-        <AlertDialogTitle className="flex items-center gap-2 text-xl">
-          <StatusIcon className={`h-5 w-5 ${statusColor}`} />
-          <span>更新镜像访问权限</span>
-        </AlertDialogTitle>
-      </AlertDialogHeader>
-
-      <Separator className="my-3" />
-
-      <AlertDialogDescription className="space-y-4 pt-2">
-        <div className="bg-muted/50 rounded-md px-4 py-3">
-          <p className="text-muted-foreground text-sm">镜像链接</p>
-          <p className="mt-1 font-medium break-all">『{imageLink}』</p>
-        </div>
-
-        <div className={`rounded-md ${bgColor} ${darkBgColor} p-4`}>
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <p className="text-sm font-medium">状态变更</p>
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-1.5">
-                  <div
-                    className={`rounded-full ${isPublic ? "bg-green-100" : "bg-amber-100"} p-1`}
-                  >
-                    <div
-                      className={`h-2 w-2 rounded-full ${isPublic ? "bg-green-500" : "bg-amber-500"}`}
-                    ></div>
-                  </div>
-                  <span className="text-sm">{currentStatus}</span>
-                </div>
-                <div className="text-muted-foreground">→</div>
-                <div className="flex items-center gap-1.5">
-                  <div
-                    className={`rounded-full ${!isPublic ? "bg-green-100" : "bg-amber-100"} p-1`}
-                  >
-                    <div
-                      className={`h-2 w-2 rounded-full ${!isPublic ? "bg-green-500" : "bg-amber-500"}`}
-                    ></div>
-                  </div>
-                  <span className="text-sm font-medium">{newStatus}</span>
-                </div>
-              </div>
-            </div>
-            <StatusIcon className={`h-8 w-8 ${statusColor} opacity-20`} />
-          </div>
-        </div>
-
-        <p className="text-muted-foreground text-sm">
-          {isPublic
-            ? "设为私有后，只有您可以访问此镜像。"
-            : "设为公共后，任何人都可以通过链接访问此镜像。"}
-        </p>
-      </AlertDialogDescription>
-
-      <AlertDialogFooter>
-        <AlertDialogCancel>
-          <X />
-          取消
-        </AlertDialogCancel>
-
-        <AlertDialogAction
-          className={`flex items-center gap-2 ${isPublic ? "bg-amber-600 hover:bg-amber-700" : "bg-green-600 hover:bg-green-700"}`}
-          onClick={onChange}
-        >
-          <Check />
-          确认
-        </AlertDialogAction>
-      </AlertDialogFooter>
-    </>
-  );
-};
-
-interface RenameDialogProps {
-  imageDescription: string;
-  onRename: (newDescription: string) => void;
-}
-
-export const RenameDialog: FC<RenameDialogProps> = ({
-  imageDescription,
-  onRename,
-}) => {
-  const initialDescription = "";
-  const [newDescription, setNewDescription] = useState(initialDescription);
-  const [isTouched, setIsTouched] = useState(false);
-  useEffect(() => {
-    setNewDescription(initialDescription || "");
-    setIsTouched(false);
-  }, [initialDescription]);
-
-  const isValid = newDescription.trim().length > 0;
-  const hasChanged = newDescription !== initialDescription;
-  const canSubmit = isValid && hasChanged;
-  return (
-    <>
-      <AlertDialogHeader>
-        <AlertDialogTitle className="flex items-center gap-1 text-xl">
-          <Pencil className="text-primary h-5 w-5" />
-          <span>更新镜像名称</span>
-        </AlertDialogTitle>
-      </AlertDialogHeader>
-
-      <Separator className="my-3" />
-
-      <AlertDialogDescription className="space-y-4 pt-2">
-        <div className="bg-muted/50 rounded-md px-4 py-3">
-          <p className="text-muted-foreground text-sm">当前名称</p>
-          <p className="mt-1 font-medium">「{imageDescription}」</p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="new-description" className="font-medium">
-            新名称
-          </Label>
-          <Input
-            id="new-description"
-            type="text"
-            value={newDescription}
-            onChange={(e) => {
-              setNewDescription(e.target.value);
-              setIsTouched(true);
-            }}
-            placeholder="输入新的描述"
-            className={`transition-all ${isTouched && !isValid ? "border-destructive ring-destructive/10" : ""}`}
-            autoFocus
-          />
-          {isTouched && !isValid && (
-            <p className="text-destructive text-xs">请输入有效的名称</p>
-          )}
-        </div>
-      </AlertDialogDescription>
-
-      <AlertDialogFooter className="mt-4 gap-2 sm:gap-0">
-        <AlertDialogCancel asChild>
-          <Button variant="outline" className="flex items-center gap-2">
-            <X className="h-4 w-4" />
-            取消
-          </Button>
-        </AlertDialogCancel>
-
-        <AlertDialogAction asChild>
-          <Button
-            variant="default"
-            className="flex items-center gap-2"
-            onClick={() => onRename(newDescription)}
-            disabled={!canSubmit}
-          >
-            <Check className="h-4 w-4" />
-            确认
-          </Button>
-        </AlertDialogAction>
-      </AlertDialogFooter>
-    </>
-  );
-};
-
-interface ValidDialogProps {
-  linkPairs: ImageLinkPair[];
-  onDeleteLinks: (invalidPairs: ImageLinkPair[]) => void;
-}
-
-export const ValidDialog: FC<ValidDialogProps> = ({
-  linkPairs,
-  onDeleteLinks,
-}) => {
-  const { data, isLoading } = useQuery({
-    queryKey: ["checkImageValid", linkPairs],
-    queryFn: () => apiUserCheckImageValid({ linkPairs }),
-    select: (res) => res.data.data.linkPairs,
-  });
-
-  const invalidPairs = data;
-  const isValid = !isLoading && invalidPairs?.length === 0;
-
-  return (
-    <>
-      {isLoading ? (
-        <div className="bg-background/80 flex flex-col items-center justify-center backdrop-blur-xs">
-          <Loader2 className="text-primary h-8 w-8 animate-spin" />
-          <span className="mt-2 text-sm font-medium">验证镜像中...</span>
-        </div>
-      ) : (
-        <>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-xl">
-              {isValid ? (
-                <>
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <span>所选镜像有效</span>
-                </>
-              ) : (
-                <>
-                  <AlertCircle className="text-destructive h-5 w-5" />
-                  <span>无效镜像链接</span>
-                </>
-              )}
-            </AlertDialogTitle>
-          </AlertDialogHeader>
-
-          <Separator className="my-3" />
-
-          <AlertDialogDescription className="pt-2">
-            {isValid ? (
-              <div className="flex h-16 items-center justify-center rounded-md bg-green-50 px-4 py-3 dark:bg-green-950/30">
-                <span className="flex items-center gap-2 text-center text-sm text-green-700 dark:text-green-400">
-                  <CheckCheck className="h-4 w-4" />
-                  所选镜像链接有效，可以继续操作。
-                </span>
-              </div>
-            ) : (
-              <div className="max-h-[240px] space-y-3 overflow-y-auto pr-1">
-                {invalidPairs?.map((pair) => (
-                  <div className="border-destructive/20 bg-destructive/5 hover:bg-destructive/10 rounded-md border px-4 py-3 transition-all">
-                    <div className="space-y-1 text-sm">
-                      <div className="group text-muted-foreground relative overflow-hidden text-ellipsis">
-                        <span className="text-foreground font-medium">
-                          链接:{" "}
-                        </span>
-                        <span className="break-all">{pair.imageLink}</span>
-                      </div>
-                      <div className="text-muted-foreground">
-                        <span className="text-foreground font-medium">
-                          描述:{" "}
-                        </span>
-                        {pair.description || (
-                          <span className="text-muted-foreground italic">
-                            无描述
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </AlertDialogDescription>
-
-          <AlertDialogFooter className="mt-4 gap-2 sm:gap-0">
-            <AlertDialogCancel className="flex items-center gap-2">
-              <X className="h-4 w-4" />
-              关闭
-            </AlertDialogCancel>
-
-            {(invalidPairs?.length ?? 0) > 0 && (
-              <AlertDialogAction
-                variant="destructive"
-                className="flex items-center gap-2"
-                onClick={() => onDeleteLinks(invalidPairs ?? [])}
-              >
-                <Trash2 className="h-4 w-4" />
-                删除链接
-              </AlertDialogAction>
-            )}
-          </AlertDialogFooter>
-        </>
-      )}
-    </>
   );
 };
