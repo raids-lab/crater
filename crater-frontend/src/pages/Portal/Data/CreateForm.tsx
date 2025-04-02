@@ -22,6 +22,7 @@ import { apiDatasetCreate } from "@/services/api/dataset";
 import { Switch } from "@/components/ui/switch";
 import { FileSelectDialog } from "@/components/file/FileSelectDialog";
 import FormLabelMust from "@/components/form/FormLabelMust";
+import TagInput from "@/components/form/TagsInput";
 
 const formSchema = z.object({
   datasetName: z
@@ -158,6 +159,7 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
             />
           </div>
         </div>
+        <TagInput onSubmit={() => {}} />
         <FormField
           control={form.control}
           name="tags"

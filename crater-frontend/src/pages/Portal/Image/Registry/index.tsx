@@ -13,6 +13,7 @@ import {
   apiUserGetQuota,
   apiUserListKaniko,
   getHeader,
+  ImageLinkPair,
   ImagePackStatus,
   imagepackStatuses,
   KanikoInfoResponse,
@@ -47,6 +48,8 @@ import {
   RefreshCw,
   ExternalLink,
   ListStart,
+  CheckCheck,
+  SquareCheckBig,
 } from "lucide-react";
 import { useNavigate, useRoutes } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -84,6 +87,7 @@ import { globalUserInfo } from "@/utils/store";
 import { useAtomValue } from "jotai";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { ValidDialog } from "../Image/ValidDialog";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -117,6 +121,11 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
   const [openPipAptSheet, setOpenPipAptSheet] = useState(false);
   const [openDockerfileSheet, setOpenDockerfileSheet] = useState(false);
   const navigate = useNavigate();
+  const [openCheckDialog, setCheckOpenDialog] = useState(false);
+  const user = useAtomValue(globalUserInfo);
+  const [selectedLinkPairs, setSelectedLinkPairs] = useState<ImageLinkPair[]>(
+    [],
+  );
 
   const imageQuery = useQuery({
     queryKey: ["imagepack", "list"],
@@ -134,7 +143,8 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
       logger.error("更新查询失败", error);
     }
   };
-  const { mutate: userDeleteKanikoList } = useMutation({
+
+  const { mutate: deleteKanikoList } = useMutation({
     mutationFn: (idList: number[]) => apiDeleteKanikoList(idList),
     onSuccess: async () => {
       await refetchImagePackList();
@@ -249,7 +259,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                   <AlertDialogAction
                     variant="destructive"
                     onClick={() => {
-                      userDeleteKanikoList([kanikoInfo.ID]);
+                      deleteKanikoList([kanikoInfo.ID]);
                     }}
                   >
                     删除
@@ -339,9 +349,44 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             icon: <Trash2Icon className="text-destructive" />,
             handleSubmit: (rows) => {
               const ids = rows.map((row) => row.original.ID);
-              userDeleteKanikoList(ids);
+              deleteKanikoList(ids);
             },
             isDanger: true,
+          },
+          {
+            title: (rows) => `检测 ${rows.length} 个镜像链接`,
+            description: (rows) => (
+              <div className="rounded-md border border-green-600/20 bg-green-600/5 px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <SquareCheckBig className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
+                  <div>
+                    <p className="font-medium text-green-600">
+                      以下镜像链接将被检测
+                    </p>
+                    <p className="text-muted-foreground mt-1 text-sm">
+                      {"『" +
+                        rows
+                          .map((row) => row.original.description)
+                          .join("』,『") +
+                        "』"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ),
+            icon: <CheckCheck className="text-green-600" />,
+            handleSubmit: (rows) => {
+              setSelectedLinkPairs(
+                rows.map((row) => ({
+                  id: row.original.ID,
+                  imageLink: row.original.imageLink,
+                  description: row.original.description,
+                  creator: row.original.creatorName,
+                })),
+              );
+              setCheckOpenDialog(true);
+            },
+            isDanger: false,
           },
         ]}
       />
@@ -365,6 +410,20 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
           />
         </div>
       ) : null}
+      <AlertDialog open={openCheckDialog} onOpenChange={setCheckOpenDialog}>
+        <AlertDialogContent>
+          <ValidDialog
+            linkPairs={selectedLinkPairs}
+            onDeleteLinks={(invalidPairs: ImageLinkPair[]) => {
+              deleteKanikoList(
+                invalidPairs
+                  .filter((pair) => pair.creator === user.name)
+                  .map((pair) => pair.id),
+              );
+            }}
+          />
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
