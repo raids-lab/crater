@@ -43,8 +43,8 @@ import PageTitle from "@/components/layout/PageTitle";
 import { PublishConfigForm } from "./Publish";
 import { ImageFormField } from "@/components/form/ImageFormField";
 import { VolumeMountsCard } from "@/components/form/DataMountFormField";
-import { useTemplateLoader } from "@/hooks/useTemplateLoader";
 import { ResourceFormFields } from "@/components/form/ResourceFormField";
+import { TemplateInfo } from "@/components/form/TemplateInfo";
 
 const formSchema = z.object({
   taskname: z
@@ -236,31 +236,6 @@ export const Component = () => {
     },
   });
 
-  // Use the template loader hook
-  useTemplateLoader({
-    form,
-    metadata: MetadataFormJupyter,
-    uiStateUpdaters: [
-      {
-        condition: (data) => data.envs.length > 0,
-        setter: setEnvOpen,
-        value: EnvCard,
-      },
-      {
-        condition: (data) =>
-          data.ingresses.length > 0 || data.nodeports.length > 0,
-        setter: setIngressOpen,
-        value: IngressCard,
-      },
-      {
-        condition: (data) =>
-          data.nodeSelector.enable || data.openssh || data.alertEnabled,
-        setter: setOtherOpen,
-        value: OtherCard,
-      },
-    ],
-  });
-
   const currentValues = form.watch();
 
   const {
@@ -322,7 +297,7 @@ export const Component = () => {
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="grid items-start gap-4 md:gap-x-6 lg:grid-cols-3"
+          className="grid items-start gap-4 md:gap-6 lg:grid-cols-3"
         >
           <PageTitle
             title="新建 Jupyter Lab"
@@ -359,41 +334,68 @@ export const Component = () => {
               </LoadableButton>
             </div>
           </PageTitle>
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>基本设置</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-5">
-              <FormField
-                control={form.control}
-                name="taskname"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      作业名称
-                      <FormLabelMust />
-                    </FormLabel>
-                    <FormControl>
-                      <Input {...field} autoFocus={true} />
-                    </FormControl>
-                    <FormDescription>
-                      名称可重复，最多包含 40 个字符
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <ResourceFormFields
-                form={form}
-                cpuPath="cpu"
-                memoryPath="memory"
-                gpuCountPath="gpu.count"
-                gpuModelPath="gpu.model"
-              />
-              <ImageFormField form={form} name="image" />
-            </CardContent>
-          </Card>
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 md:gap-6 lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>基本设置</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-5">
+                <FormField
+                  control={form.control}
+                  name="taskname"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        作业名称
+                        <FormLabelMust />
+                      </FormLabel>
+                      <FormControl>
+                        <Input {...field} autoFocus={true} />
+                      </FormControl>
+                      <FormDescription>
+                        名称可重复，最多包含 40 个字符
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <ResourceFormFields
+                  form={form}
+                  cpuPath="cpu"
+                  memoryPath="memory"
+                  gpuCountPath="gpu.count"
+                  gpuModelPath="gpu.model"
+                />
+                <ImageFormField form={form} name="image" />
+              </CardContent>
+            </Card>
+            <TemplateInfo
+              form={form}
+              metadata={MetadataFormJupyter}
+              uiStateUpdaters={[
+                {
+                  condition: (data) => data.envs.length > 0,
+                  setter: setEnvOpen,
+                  value: EnvCard,
+                },
+                {
+                  condition: (data) =>
+                    data.ingresses.length > 0 || data.nodeports.length > 0,
+                  setter: setIngressOpen,
+                  value: IngressCard,
+                },
+                {
+                  condition: (data) =>
+                    data.nodeSelector.enable ||
+                    data.openssh ||
+                    data.alertEnabled,
+                  setter: setOtherOpen,
+                  value: OtherCard,
+                },
+              ]}
+            />
+          </div>
+          <div className="flex flex-col gap-4 md:gap-6">
             <VolumeMountsCard form={form} />
             <AccordionCard
               cardTitle={IngressCard}

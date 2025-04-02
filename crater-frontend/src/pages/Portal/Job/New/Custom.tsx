@@ -42,7 +42,6 @@ import { globalUserInfo } from "@/utils/store";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageFormField } from "@/components/form/ImageFormField";
 import { VolumeMountsCard } from "@/components/form/DataMountFormField";
-import { useTemplateLoader } from "@/hooks/useTemplateLoader";
 import { MetadataFormCustom } from "@/components/form/types";
 import { ResourceFormFields } from "@/components/form/ResourceFormField";
 import {
@@ -57,6 +56,7 @@ import { PublishConfigForm } from "./Publish";
 import LoadableButton from "@/components/custom/LoadableButton";
 import PageTitle from "@/components/layout/PageTitle";
 import FormImportButton from "@/components/form/FormImportButton";
+import { TemplateInfo } from "@/components/form/TemplateInfo";
 
 const formSchema = z.object({
   jobName: z
@@ -165,31 +165,6 @@ export const Component = () => {
     },
   });
 
-  // Use the template loader hook
-  useTemplateLoader({
-    form,
-    metadata: MetadataFormCustom,
-    uiStateUpdaters: [
-      {
-        condition: (data) => data.envs.length > 0,
-        setter: setEnvOpen,
-        value: EnvCard,
-      },
-      {
-        condition: (data) =>
-          data.ingresses.length > 0 || data.nodeports.length > 0,
-        setter: setIngressOpen,
-        value: IngressCard,
-      },
-      {
-        condition: (data) =>
-          data.nodeSelector.enable || data.openssh || data.alertEnabled,
-        setter: setOtherOpen,
-        value: OtherCard,
-      },
-    ],
-  });
-
   const currentValues = form.watch();
 
   const {
@@ -272,125 +247,152 @@ export const Component = () => {
               </LoadableButton>
             </div>
           </PageTitle>
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>基本设置</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-5">
-              <FormField
-                control={form.control}
-                name="jobName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      作业名称
-                      <FormLabelMust />
-                    </FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      名称可重复，最多包含 40 个字符
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <ResourceFormFields
-                form={form}
-                cpuPath="task.resource.cpu"
-                memoryPath="task.resource.memory"
-                gpuCountPath="task.resource.gpu.count"
-                gpuModelPath="task.resource.gpu.model"
-              />
-              <ImageFormField form={form} name="task.image" />
-              <FormField
-                control={form.control}
-                name="task.shell"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Shell
-                      <FormLabelMust />
-                    </FormLabel>
-                    <FormControl>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <SelectTrigger className="w-1/4 font-mono">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="bash" className="font-mono">
-                            bash
-                          </SelectItem>
-                          <SelectItem value="sh" className="font-mono">
-                            sh
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormDescription>
-                      选择用于执行命令的
-                      <span className="mx-0.5 font-mono">shell</span>，默认为
-                      <span className="mx-0.5 font-mono">bash</span>
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="task.command"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>启动命令</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        className="h-30 font-mono"
-                        placeholder={`# Example
+          <div className="flex flex-col gap-4 md:gap-6 lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>基本设置</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-5">
+                <FormField
+                  control={form.control}
+                  name="jobName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        作业名称
+                        <FormLabelMust />
+                      </FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        名称可重复，最多包含 40 个字符
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <ResourceFormFields
+                  form={form}
+                  cpuPath="task.resource.cpu"
+                  memoryPath="task.resource.memory"
+                  gpuCountPath="task.resource.gpu.count"
+                  gpuModelPath="task.resource.gpu.model"
+                />
+                <ImageFormField form={form} name="task.image" />
+                <FormField
+                  control={form.control}
+                  name="task.shell"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Shell
+                        <FormLabelMust />
+                      </FormLabel>
+                      <FormControl>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <SelectTrigger className="w-1/4 font-mono">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="bash" className="font-mono">
+                              bash
+                            </SelectItem>
+                            <SelectItem value="sh" className="font-mono">
+                              sh
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormDescription>
+                        选择用于执行命令的
+                        <span className="mx-0.5 font-mono">shell</span>，默认为
+                        <span className="mx-0.5 font-mono">bash</span>
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="task.command"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>启动命令</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          className="h-30 font-mono"
+                          placeholder={`# Example
 source conda.sh;
 conda activate base;
 ./start.sh;`}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      可通过
-                      <span className="mx-0.5 font-mono">;</span>{" "}
-                      拆分多行命令。若不输入，将使用镜像的启动命令
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="task.workingDir"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      工作目录
-                      <FormLabelMust />
-                    </FormLabel>
-                    <FormControl>
-                      <Input {...field} className="font-mono" />
-                    </FormControl>
-                    <FormDescription>
-                      默认为用户主目录
-                      <span className="mx-0.5 font-mono">
-                        /home/{user.name}
-                      </span>
-                      ，重启后数据不会丢失
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-          <div className="flex flex-col gap-4">
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        可通过
+                        <span className="mx-0.5 font-mono">;</span>{" "}
+                        拆分多行命令。若不输入，将使用镜像的启动命令
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="task.workingDir"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        工作目录
+                        <FormLabelMust />
+                      </FormLabel>
+                      <FormControl>
+                        <Input {...field} className="font-mono" />
+                      </FormControl>
+                      <FormDescription>
+                        默认为用户主目录
+                        <span className="mx-0.5 font-mono">
+                          /home/{user.name}
+                        </span>
+                        ，重启后数据不会丢失
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+            <TemplateInfo
+              form={form}
+              metadata={MetadataFormCustom}
+              uiStateUpdaters={[
+                {
+                  condition: (data) => data.envs.length > 0,
+                  setter: setEnvOpen,
+                  value: EnvCard,
+                },
+                {
+                  condition: (data) =>
+                    data.ingresses.length > 0 || data.nodeports.length > 0,
+                  setter: setIngressOpen,
+                  value: IngressCard,
+                },
+                {
+                  condition: (data) =>
+                    data.nodeSelector.enable ||
+                    data.openssh ||
+                    data.alertEnabled,
+                  setter: setOtherOpen,
+                  value: OtherCard,
+                },
+              ]}
+            />
+          </div>
+          <div className="flex flex-col gap-4 md:gap-6">
             <VolumeMountsCard form={form} />
             <AccordionCard
               cardTitle={IngressCard}
