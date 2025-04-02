@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { FieldValues, UseFormReturn } from "react-hook-form";
 import { useSearchParams } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
@@ -7,7 +7,9 @@ import { importFromJsonString } from "@/utils/form";
 import { toast } from "sonner";
 import { showErrorToast } from "@/utils/toast";
 import { getJobTemplate } from "@/services/api/jobtemplate";
-interface UIStateUpdater<T> {
+import { JobTemplate } from "@/services/api/jobtemplate";
+
+export interface UIStateUpdater<T> {
   /** Condition to determine if this state should be updated */
   condition: (data: T) => boolean;
   /** State setter function */
@@ -32,7 +34,7 @@ interface TemplateLoaderOptions<T extends FieldValues> {
 /**
  * Custom hook for loading job templates from URL params
  * @example
- * const { fromJob } = useTemplateLoader({
+ * const { fromJob, fromTemplate, templateData } = useTemplateLoader({
  *   form,
  *   metadata: MetadataFormJupyter,
  *   uiStateUpdaters: [
@@ -51,6 +53,8 @@ export function useTemplateLoader<T extends FieldValues>({
   const [searchParams] = useSearchParams();
   const fromJob = searchParams.get("fromJob");
   const fromTemplate = searchParams.get("fromTemplate");
+  const [templateData, setTemplateData] = useState<JobTemplate | null>(null);
+
   const { mutate: loadJobTemplate } = useMutation({
     mutationFn: (jobName: string) => apiJobTemplate(jobName),
     onSuccess: (response) => {
@@ -98,6 +102,9 @@ export function useTemplateLoader<T extends FieldValues>({
           response.data.data.template,
         );
 
+        // Store template data for display
+        setTemplateData(response.data.data);
+
         // Apply optional data processing
         if (dataProcessor) {
           templateInfo = dataProcessor(templateInfo);
@@ -137,5 +144,5 @@ export function useTemplateLoader<T extends FieldValues>({
     }
   }, [loadJobTemplate, loadTemplate, fromJob, fromTemplate]);
 
-  return { fromJob };
+  return { fromJob, fromTemplate, templateData };
 }
