@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import useResizeObserver from "use-resize-observer";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { FileItem, apiGetFiles } from "@/services/api/file";
+import { FileItem, apiGetFiles, apiGetRWFiles } from "@/services/api/file";
 interface TreeDataItem {
   id: string;
   name: string;
@@ -42,12 +42,14 @@ type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
   initialSlelectedItemId?: string;
   onSelectChange?: (item: TreeDataItem | undefined) => void;
   className?: string;
+  isrw?: boolean;
 };
 
 const Tree = ({
   ref,
   initialSlelectedItemId,
   onSelectChange,
+  isrw,
   className,
   ...props
 }: TreeProps & {
@@ -68,8 +70,8 @@ const Tree = ({
   );
 
   const { data } = useQuery({
-    queryKey: ["directory", "list"],
-    queryFn: () => apiGetFiles(""),
+    queryKey: ["directory", "list", isrw],
+    queryFn: () => (isrw ? apiGetRWFiles("") : apiGetFiles("")),
     select: (res) =>
       res.data.data
         ?.map((r) => {
@@ -100,6 +102,7 @@ const Tree = ({
                 currentPath={item.name}
                 data={item}
                 ref={ref}
+                isrw={isrw}
                 selectedItemId={selectedItemId}
                 handleSelectChange={handleSelectChange}
               />
@@ -126,6 +129,7 @@ const TreeItem = ({
   level,
   data,
   currentPath,
+  isrw,
   selectedItemId,
   handleSelectChange,
   className,
@@ -160,7 +164,8 @@ const TreeItem = ({
   const [childrenInitialized, setChildrenInitialized] = React.useState(false);
 
   const { mutate: getChildren } = useMutation({
-    mutationFn: () => apiGetFiles(currentPath),
+    mutationFn: () =>
+      isrw ? apiGetRWFiles(currentPath) : apiGetFiles(currentPath),
     onSuccess: (fileList) => {
       const children =
         fileList.data.data?.sort((a, b) => {
@@ -212,6 +217,7 @@ const TreeItem = ({
                         level={level + 1}
                         key={index}
                         data={data}
+                        isrw={isrw}
                         currentPath={`${currentPath}/${data.name}`}
                         selectedItemId={selectedItemId}
                         handleSelectChange={handleSelectChange}

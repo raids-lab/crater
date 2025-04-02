@@ -21,11 +21,13 @@ export const FileSelectDialog = ({
   handleSubmit,
   disabled,
   allowSelectFile = true,
+  isrw = false,
 }: {
   value?: string;
   handleSubmit: (path: TreeDataItem) => void;
   disabled?: boolean;
   allowSelectFile?: boolean;
+  isrw?: boolean;
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [content, setContent] = useState<TreeDataItem | undefined>();
@@ -74,6 +76,7 @@ export const FileSelectDialog = ({
             <div className="border-input relative flex h-80 flex-col gap-2 rounded-md border shadow-xs">
               <Tree
                 className="h-full w-full shrink-0"
+                isrw={isrw}
                 onSelectChange={(item) => {
                   setContent(item);
                 }}
