@@ -311,7 +311,7 @@ export function PodContainerDialog({
         <DialogHeader>
           <DialogTitle className="flex flex-row items-center gap-1.5 font-semibold">
             <span className="font-mono">{namespacedName?.name}</span>
-            <TipBadge title={type} />
+            <TipBadge title={type} className="uppercase" />
           </DialogTitle>
         </DialogHeader>
         <Content

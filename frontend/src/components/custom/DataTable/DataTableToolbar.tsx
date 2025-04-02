@@ -8,11 +8,7 @@ import {
 } from "./DataTableFacetedFilter";
 import { SearchIcon, XIcon } from "lucide-react";
 
-export interface DataTableToolbarConfig {
-  filterInput: {
-    placeholder: string;
-    key: string;
-  };
+export type DataTableToolbarConfig = {
   filterOptions: readonly {
     key: string;
     title: string;
@@ -20,7 +16,16 @@ export interface DataTableToolbarConfig {
     defaultValues?: string[];
   }[];
   getHeader: (key: string) => string;
-}
+} & (
+  | {
+      filterInput: { placeholder: string; key: string };
+      globalSearch?: undefined;
+    }
+  | {
+      filterInput?: undefined;
+      globalSearch: { enabled: boolean; placeholder?: string };
+    }
+);
 
 interface DataTableToolbarProps<TData>
   extends React.HTMLAttributes<HTMLDivElement> {
@@ -31,11 +36,13 @@ interface DataTableToolbarProps<TData>
 
 export function DataTableToolbar<TData>({
   table,
-  config: { filterInput, filterOptions, getHeader },
+  config: { filterInput, filterOptions, getHeader, globalSearch },
   isLoading,
   children,
 }: DataTableToolbarProps<TData>) {
-  const isFiltered = table.getState().columnFilters.length > 0;
+  const isFiltered =
+    table.getState().columnFilters.length > 0 ||
+    (globalSearch?.enabled && Boolean(table.getState().globalFilter));
 
   return (
     <div className="flex items-center justify-between">
@@ -43,19 +50,30 @@ export function DataTableToolbar<TData>({
         {children}
         <div className="relative ml-auto h-9 flex-1 md:grow-0">
           <SearchIcon className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
-          <Input
-            placeholder={filterInput.placeholder}
-            value={
-              (table.getColumn(filterInput.key)?.getFilterValue() as string) ??
-              ""
-            }
-            onChange={(event) =>
-              table
-                .getColumn(filterInput.key)
-                ?.setFilterValue(event.target.value)
-            }
-            className="bg-background h-9 w-[150px] pl-8 lg:w-[250px]"
-          />
+          {globalSearch?.enabled && (
+            <Input
+              placeholder={globalSearch.placeholder ?? "全局搜索"}
+              value={table.getState().globalFilter || ""}
+              onChange={(event) => table.setGlobalFilter(event.target.value)}
+              className="bg-background h-9 w-[150px] pl-8 lg:w-[250px]"
+            />
+          )}
+          {filterInput && (
+            <Input
+              placeholder={filterInput.placeholder}
+              value={
+                (table
+                  .getColumn(filterInput.key)
+                  ?.getFilterValue() as string) ?? ""
+              }
+              onChange={(event) =>
+                table
+                  .getColumn(filterInput.key)
+                  ?.setFilterValue(event.target.value)
+              }
+              className="bg-background h-9 w-[150px] pl-8 lg:w-[250px]"
+            />
+          )}
         </div>
         {filterOptions.map(
           (filterOption) =>
@@ -75,7 +93,12 @@ export function DataTableToolbar<TData>({
             size="icon"
             title="Clear filters"
             type="button"
-            onClick={() => table.resetColumnFilters()}
+            onClick={() => {
+              table.resetColumnFilters();
+              if (globalSearch?.enabled) {
+                table.setGlobalFilter("");
+              }
+            }}
             className="size-9 border-dashed"
           >
             <XIcon className="size-4" />

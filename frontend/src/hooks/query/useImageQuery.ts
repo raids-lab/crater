@@ -12,14 +12,22 @@ const useImageQuery = (type?: JobType) => {
         new Map(
           res.data.data.images.map((item) => [item.imageLink, item]),
         ).values(),
-      ).map(
-        (item) =>
-          ({
-            value: item.imageLink,
-            label: item.description,
-            detail: item,
-          }) as ComboboxItem<ImageInfoResponse>,
-      );
+      )
+        // Sort by creation time, newest first
+        .sort((a, b) => {
+          // Adjust the field name if needed based on your data structure
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        })
+        .map(
+          (item) =>
+            ({
+              value: item.imageLink,
+              label: item.description,
+              detail: item,
+            }) as ComboboxItem<ImageInfoResponse>,
+        );
       return items;
     },
   });

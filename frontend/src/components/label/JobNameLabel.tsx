@@ -27,7 +27,7 @@ export const JobNameCell = ({ jobInfo }: JobNameCellProps) => {
         // `查看 ${jobInfo.name} 详情` +
         // (jobInfo.keepWhenLowUsage ? "（已锁定，低利用率仍保留）" : "")
         <div className="flex flex-row items-center justify-between gap-1.5">
-          <p className="text-xs">查看 {jobInfo.name} 详情</p>
+          <p className="text-xs">查看 {jobInfo.jobName} 详情</p>
           {jobInfo.keepWhenLowUsage && (
             <TipBadge
               title="作业清理豁免中"

@@ -124,7 +124,7 @@ export const statuses: {
 
 export const getHeader = (key: string): string => {
   switch (key) {
-    case "name":
+    case "jobName":
       return "名称";
     case "jobType":
       return "类型";
@@ -150,9 +150,8 @@ export const getHeader = (key: string): string => {
 };
 
 const toolbarConfig: DataTableToolbarConfig = {
-  filterInput: {
-    placeholder: "搜索作业名称",
-    key: "name",
+  globalSearch: {
+    enabled: true,
   },
   filterOptions: [
     {
@@ -221,7 +220,7 @@ const AdminJobOverview = () => {
         ),
       },
       {
-        accessorKey: "name",
+        accessorKey: "jobName",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("name")} />
         ),
