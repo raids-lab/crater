@@ -27,7 +27,10 @@ export const apiGetFiles = (path: string) =>
   instance.get<IResponse<FileItem[] | undefined>>(
     `ss/files/${path.replace(/^\//, "")}`,
   );
-
+export const apiGetRWFiles = (path: string) =>
+  instance.get<IResponse<FileItem[] | undefined>>(
+    `ss/rwfiles/${path.replace(/^\//, "")}`,
+  );
 export const apiGetAdminFile = (path: string) =>
   instance.get<IResponse<FileItem[] | undefined>>(
     `ss/admin/files/${path.replace(/^\//, "")}`,
