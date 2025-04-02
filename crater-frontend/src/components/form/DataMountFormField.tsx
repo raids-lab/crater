@@ -117,7 +117,23 @@ export function VolumeMountsCard<
                         <span className="sr-only">Close</span>
                       </button>
                       <FormControl>
-                        <Tabs defaultValue="file" className="w-full">
+                        <Tabs
+                          value={
+                            form.getValues(`volumeMounts.${index}.type`) ===
+                            VolumeMountType.FileType
+                              ? "file"
+                              : "dataset"
+                          }
+                          onValueChange={(value) => {
+                            form.setValue(
+                              `volumeMounts.${index}.type`,
+                              value === "file"
+                                ? VolumeMountType.FileType
+                                : VolumeMountType.DataType,
+                            );
+                          }}
+                          className="w-full"
+                        >
                           <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger
                               value="file"
