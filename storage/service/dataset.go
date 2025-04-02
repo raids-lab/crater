@@ -79,7 +79,7 @@ func UncompressDir(srcZip, destDir string) error {
 	}
 	defer zipReader.Close()
 
-	err = os.MkdirAll(destDir, os.FileMode(defaultFolderPerm))
+	err = os.MkdirAll(destDir, os.FileMode(model.DefaultFolderPerm))
 	if err != nil {
 		return err
 	}
@@ -227,7 +227,7 @@ func moveFiles(ctx context.Context, src, dst string, overwrite bool) error {
 		if !os.IsNotExist(err) {
 			return err
 		}
-		if err := fs.FileSystem.Mkdir(ctx, dstDir, RWXFolderPerm); err != nil {
+		if err := fs.FileSystem.Mkdir(ctx, dstDir, model.RWXFolderPerm); err != nil {
 			return err
 		}
 		created = true

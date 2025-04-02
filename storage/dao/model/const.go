@@ -103,3 +103,12 @@ const (
 	QueueMOde
 	UserMode
 )
+
+const DefaultFolderPerm = 0755
+const RWXFolderPerm = 0777
+const UserPath = "user"
+const PublicPath = "public"
+const AccountPath = "account"
+const AdminUserPath = "admin-user"
+const AdminPublicPath = "admin-public"
+const AdminAccountPath = "admin-account"
