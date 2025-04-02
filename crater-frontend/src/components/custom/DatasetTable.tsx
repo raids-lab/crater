@@ -4,22 +4,16 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Dataset } from "@/services/api/dataset";
 import DocsButton from "@/components/button/DocsButton";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { DatasetCreateForm } from "@/pages/Portal/Data/CreateForm";
-
 import { IResponse } from "@/services/types";
 import DataList from "@/pages/Portal/Data/DataList";
 import { AxiosResponse } from "axios";
+import SandwichSheet from "@/components/sheet/SandwichSheet";
+
 interface DatesetTableProps {
   apiGetDataset: () => Promise<AxiosResponse<IResponse<Dataset[]>>>;
 }
+
 export function DatasetTable({ apiGetDataset }: DatesetTableProps) {
   const data = useQuery({
     queryKey: ["data", "mydataset"],
@@ -48,21 +42,21 @@ export function DatasetTable({ apiGetDataset }: DatesetTableProps) {
       actionArea={
         <div className="flex flex-row gap-3">
           <DocsButton title="数据集文档" url="file/dataset" />
-          <Sheet open={openSheet} onOpenChange={setOpenSheet}>
-            <SheetTrigger asChild>
-              <Button className="h-8 min-w-fit">创建数据集</Button>
-            </SheetTrigger>
-            <SheetContent className="max-h-screen overflow-y-auto sm:max-w-3xl">
-              <SheetHeader>
-                <SheetTitle>创建数据集</SheetTitle>
-                <SheetDescription>创建一个新的文件数据集</SheetDescription>
-              </SheetHeader>
+          <SandwichSheet
+            isOpen={openSheet}
+            onOpenChange={setOpenSheet}
+            title="创建数据集"
+            description="创建一个新的文件数据集"
+            trigger={<Button className="h-8 min-w-fit">创建数据集</Button>}
+            className="sm:max-w-3xl"
+          >
+            <div className="pt-1">
               <DatasetCreateForm
                 closeSheet={() => setOpenSheet(false)}
                 type="dataset"
               />
-            </SheetContent>
-          </Sheet>
+            </div>
+          </SandwichSheet>
         </div>
       }
     />
