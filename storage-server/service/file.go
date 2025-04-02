@@ -38,9 +38,6 @@ type Permissions struct {
 	Public model.FilePermission
 }
 
-const defaultFolderPerm = 0755
-const RWXFolderPerm = 0777
-
 func checkfs() {
 	fsonce.Do(func() {
 		fs = &webdav.Handler{
@@ -186,7 +183,7 @@ func WebDav(c *gin.Context) {
 	fs.ServeHTTP(c.Writer, c.Request)
 	// 直接创建文件夹使用777权限也没有用，可能是因为父目录有设置SetGID位，权限是drwxr-sr-x，于是选择直接修改权限
 	if c.Request.Method == "MKCOL" || c.Request.Method == "PUT" {
-		chmod(c, RWXFolderPerm)
+		chmod(c, model.RWXFolderPerm)
 	}
 }
 
@@ -275,11 +272,36 @@ func GetBasicFiles(c *gin.Context, token util.JWTMessage, isadmin bool) []Files 
 	files := GetFilesByPaths(s, c)
 	for i, f := range files {
 		if f.Name == userSpacePrefix {
-			files[i].Name = "user"
+			files[i].Name = model.UserPath
 		} else if f.Name == publicSpacePrefix {
-			files[i].Name = "public"
+			files[i].Name = model.PublicPath
 		} else if f.Name == accountSpacePrefix {
-			files[i].Name = "account"
+			files[i].Name = model.AccountPath
+		}
+	}
+	return files
+}
+
+func GetRWFiles(c *gin.Context, token util.JWTMessage) []Files {
+	userSpacePrefix := config.GetConfig().UserSpacePrefix
+	accountSpacePrefix := config.GetConfig().AccountSpacePrefix
+	publicSpacePrefix := config.GetConfig().PublicSpacePrefix
+	var s []string
+	s = append(s, userSpacePrefix)
+	if token.PublicAccessMode == model.AccessModeRW {
+		s = append(s, publicSpacePrefix)
+	}
+	if token.AccountID != 0 && token.AccountID != 1 && token.AccountAccessMode == model.AccessModeRW {
+		s = append(s, accountSpacePrefix)
+	}
+	files := GetFilesByPaths(s, c)
+	for i, f := range files {
+		if f.Name == userSpacePrefix {
+			files[i].Name = model.UserPath
+		} else if f.Name == publicSpacePrefix {
+			files[i].Name = model.PublicPath
+		} else if f.Name == accountSpacePrefix {
+			files[i].Name = model.AccountPath
 		}
 	}
 	return files
@@ -322,6 +344,41 @@ func GetFiles(c *gin.Context) {
 	}
 	if token == "" {
 		data = GetBasicFiles(c, jwttoken, false)
+		response.Success(c, data)
+	} else {
+		realPath, err := Redirect(c, param, jwttoken)
+		if err != nil {
+			response.Error(c, err.Error(), response.NotSpecified)
+			return
+		}
+		data, err = handleDirsList(fs.FileSystem, realPath)
+		if err != nil {
+			response.Error(c, err.Error(), response.NotSpecified)
+			return
+		}
+		response.Success(c, data)
+	}
+}
+
+// 用户获取有读写权限的可移动文件
+func GetFilesWithRWAcc(c *gin.Context) {
+	AlloweOption(c)
+	checkfs()
+	var data []Files
+	jwttoken, err := CheckJWTToken(c)
+	if err != nil {
+		response.Error(c, err.Error(), response.NotSpecified)
+		return
+	}
+	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/rwfiles")
+	token := getFirstToken(param)
+	permission := GetPermission(param, jwttoken, c)
+	if permission == model.NotAllowed || (permission == model.ReadOnly && token != "") {
+		response.HTTPError(c, http.StatusUnauthorized, "You have no permission to get these files", response.NotSpecified)
+		return
+	}
+	if token == "" {
+		data = GetRWFiles(c, jwttoken)
 		response.Success(c, data)
 	} else {
 		realPath, err := Redirect(c, param, jwttoken)
@@ -436,7 +493,7 @@ func checkSpace() {
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				fmt.Println("create dir:", space)
-				err = fs.FileSystem.Mkdir(ctx, space, os.FileMode(RWXFolderPerm))
+				err = fs.FileSystem.Mkdir(ctx, space, os.FileMode(model.RWXFolderPerm))
 				if err != nil {
 					fmt.Println("can't create dir:", us.Space)
 					fmt.Println("err:", err)
@@ -451,7 +508,7 @@ func checkSpace() {
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				fmt.Println("create dir:", space)
-				err = fs.FileSystem.Mkdir(ctx, space, os.FileMode(RWXFolderPerm))
+				err = fs.FileSystem.Mkdir(ctx, space, os.FileMode(model.RWXFolderPerm))
 				if err != nil {
 					fmt.Println("can't create dir:", acc.Space)
 					return
@@ -496,23 +553,23 @@ func GetPermission(path string, token util.JWTMessage, c *gin.Context) model.Fil
 		return model.ReadOnly
 	}
 	part := strings.Split(cleanedPath, "/")
-	if part[0] == "account" {
+	if part[0] == model.AccountPath {
 		a := query.Account
 		_, err := a.WithContext(c).Where(a.ID.Eq(token.AccountID)).First()
 		if err != nil {
 			return model.NotAllowed
 		}
 		return model.FilePermission(token.AccountAccessMode)
-	} else if part[0] == "public" {
+	} else if part[0] == model.PublicPath {
 		return model.FilePermission(token.PublicAccessMode)
-	} else if part[0] == "user" {
+	} else if part[0] == model.UserPath {
 		u := query.User
 		_, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
 		if err != nil {
 			return model.NotAllowed
 		}
 		return model.ReadWrite
-	} else if part[0] == "admin-account" || part[0] == "admin-public" || part[0] == "admin-user" {
+	} else if part[0] == model.AdminAccountPath || part[0] == model.AdminPublicPath || part[0] == model.AdminUserPath {
 		if token.RolePlatform != model.RoleAdmin {
 			return model.NotAllowed
 		}
@@ -617,36 +674,36 @@ func Redirect(c *gin.Context, path string, token util.JWTMessage) (string, error
 	publicSpacePrefix := config.GetConfig().PublicSpacePrefix
 	path = strings.TrimLeft(path, "/")
 	var res string
-	if strings.HasPrefix(path, "public") {
-		res = strings.TrimPrefix(path, "public")
+	if strings.HasPrefix(path, model.PublicPath) {
+		res = strings.TrimPrefix(path, model.PublicPath)
 		res = publicSpacePrefix + res
-	} else if strings.HasPrefix(path, "user") {
-		res = strings.TrimPrefix(path, "user")
+	} else if strings.HasPrefix(path, model.UserPath) {
+		res = strings.TrimPrefix(path, model.UserPath)
 		u := query.User
 		user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
 		if err != nil {
 			return "", fmt.Errorf("user does not exist")
 		}
 		res = userSpacePrefix + "/" + user.Space + res
-	} else if strings.HasPrefix(path, "account") {
-		res = strings.TrimPrefix(path, "account")
+	} else if strings.HasPrefix(path, model.AccountPath) {
+		res = strings.TrimPrefix(path, model.AccountPath)
 		a := query.Account
 		account, err := a.WithContext(c).Where(a.ID.Eq(token.AccountID)).First()
 		if err != nil {
 			return "", fmt.Errorf("account does not exist")
 		}
 		res = accountSpacePrefix + account.Space + res
-	} else if strings.HasPrefix(path, "admin-public") {
-		res = strings.TrimPrefix(path, "admin-public")
+	} else if strings.HasPrefix(path, model.AdminPublicPath) {
+		res = strings.TrimPrefix(path, model.AdminPublicPath)
 		res = publicSpacePrefix + res
-	} else if strings.HasPrefix(path, "admin-user") {
-		res = strings.TrimPrefix(path, "admin-user")
+	} else if strings.HasPrefix(path, model.AdminUserPath) {
+		res = strings.TrimPrefix(path, model.AdminUserPath)
 		if token.RolePlatform != model.RoleAdmin {
 			return "", fmt.Errorf("your role is not admin")
 		}
 		res = userSpacePrefix + res
-	} else if strings.HasPrefix(path, "admin-account") {
-		res = strings.TrimPrefix(path, "admin-account")
+	} else if strings.HasPrefix(path, model.AdminAccountPath) {
+		res = strings.TrimPrefix(path, model.AdminAccountPath)
 		res = accountSpacePrefix + res
 	} else {
 		return "", fmt.Errorf("an incorrect path")
@@ -664,6 +721,8 @@ func RegisterFile(r *gin.Engine) {
 	r.Handle("OPTIONS", "/api/ss/*path", AlloweOption)
 	r.Handle("GET", "/api/ss/files", GetFiles)
 	r.Handle("GET", "/api/ss/files/*path", GetFiles)
+	r.Handle("GET", "/api/ss/rwfiles", GetFilesWithRWAcc)
+	r.Handle("GET", "/api/ss/rwfiles/*path", GetFilesWithRWAcc)
 	r.Handle("GET", "/api/ss/admin/*path", GetAllFiles)
 	r.Handle("GET", "/api/ss/download/*path", Download)
 	r.Handle("DELETE", "/api/ss/delete/*path", DeleteFile)
