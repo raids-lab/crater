@@ -72,25 +72,7 @@ export function TemplateInfo<T extends FieldValues>({
       <CardContent className="pt-0">
         <div className="">
           <MarkdownRenderer>
-            {`# Hello World
-
- This is a paragraph with **bold** and *italic* text.
-  
- ## Lists
- - Item 1
- - Item 2
-   - Nested item
-  
- ## Code
- \`\`\`tsx
- console.log("Hello World")
- \`\`\`
-  
- ## Tables
- | Header 1 | Header 2 |
- |----------|----------|
- | Cell 1   | Cell 2   |
- `}
+            {templateData?.document || "#暂无文档"}
           </MarkdownRenderer>
         </div>
       </CardContent>
