@@ -61,6 +61,7 @@ import {
   asyncGrafanaJobAtom,
   asyncGrafanaNodeAtom,
 } from "@/utils/store/config";
+import { useIsAdmin } from "@/hooks/useAdmin";
 
 type GpuDemoProps = React.ComponentProps<typeof Card> & {
   gpuInfo?: {
@@ -187,6 +188,7 @@ const toolbarConfig: DataTableToolbarConfig = {
 };
 
 const getColumns = (
+  isAdminView: boolean,
   handleShowPodLog: (namespacedName: PodNamespacedName) => void,
   handleShowMonitor: (pod: IClusterPodInfo) => void,
 ): ColumnDef<IClusterPodInfo>[] => [
@@ -288,16 +290,18 @@ const getColumns = (
             <DropdownMenuItem onClick={() => handleShowMonitor(taskInfo)}>
               监控
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() =>
-                handleShowPodLog({
-                  namespace: taskInfo.namespace,
-                  name: taskInfo.name,
-                })
-              }
-            >
-              日志
-            </DropdownMenuItem>
+            {isAdminView && (
+              <DropdownMenuItem
+                onClick={() =>
+                  handleShowPodLog({
+                    namespace: taskInfo.namespace,
+                    name: taskInfo.name,
+                  })
+                }
+              >
+                日志
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       );
@@ -342,15 +346,16 @@ export const NodeDetail: FC = () => {
     enabled: !!nodeName,
   });
 
+  const isAdminView = useIsAdmin();
   const columns = useMemo(
     () =>
-      getColumns(setShowLogPod, (pod) => {
+      getColumns(isAdminView, setShowLogPod, (pod) => {
         setGrafanaUrl(
           `${grafanaJob.pod}?orgId=1&var-node_name=${nodeName}&var-pod_name=${pod.name}&from=now-1h&to=now`,
         );
         setShowMonitor(true);
       }),
-    [nodeName, grafanaJob],
+    [nodeName, grafanaJob, isAdminView],
   );
 
   // 修改 BreadCrumb
