@@ -28,6 +28,7 @@ import { toast } from "sonner";
 const formSchema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
   description: z.string().optional(),
+  document: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -61,7 +62,7 @@ export function PublishConfigForm<T extends FieldValues>({
         name: values.name,
         describe: values.description || "",
         template: formattedConfig,
-        document: "",
+        document: values.document || "", // 修复：使用表单中收集的document值
       }),
     onSuccess: async (_, { name }) => {
       await queryClient.invalidateQueries({
@@ -77,6 +78,7 @@ export function PublishConfigForm<T extends FieldValues>({
     defaultValues: {
       name: "",
       description: "",
+      document: "",
     },
   });
 
@@ -142,10 +144,7 @@ export function PublishConfigForm<T extends FieldValues>({
             name="description"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>
-                  描述
-                  <FormLabelMust />
-                </FormLabel>
+                <FormLabel>描述</FormLabel>
                 <FormControl>
                   <Textarea {...field} />
                 </FormControl>
@@ -164,13 +163,30 @@ export function PublishConfigForm<T extends FieldValues>({
                 id="config-preview"
                 value={formattedConfig}
                 readOnly
-                className="bg-muted font-mono text-sm"
+                className="bg-muted h-60 resize-none overflow-auto font-mono text-sm"
               />
             </div>
             <Label className="text-muted-foreground">
               请确保您不会在此配置中包含任何敏感信息，如密码、密钥等
             </Label>
           </div>
+
+          <FormField
+            control={form.control}
+            name="document"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>作业模板详细文档</FormLabel>
+                <FormControl>
+                  <Textarea {...field} />
+                </FormControl>
+                <FormDescription>
+                  关于此配置的详细使用的markdown文档,请输入markdown源码
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </form>
       </Form>
     </SandwichSheet>

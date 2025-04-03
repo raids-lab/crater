@@ -1,10 +1,6 @@
-//import { useState } from "react"; // 添加 useState 导入
-//import { useEffect } from "react"; // 添加 useEffect 导入
 import DataList from "../../Data/DataList";
 import { listJobTemplate, deleteJobTemplate } from "@/services/api/jobtemplate";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-
-//import { Link } from "react-router-dom";
 
 export default function AssignmentTemplateList() {
   // const [loading, setLoading] = useState(true);
