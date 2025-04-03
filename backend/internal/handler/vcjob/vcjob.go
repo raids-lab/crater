@@ -550,6 +550,12 @@ func (mgr *VolcanojobMgr) GetSSHPortDetail(c *gin.Context) {
 		return
 	}
 
+	// 仅保留 Custom 和 Jupyter 类型的 SSH 功能
+	if job.JobType != model.JobTypeCustom && job.JobType != model.JobTypeJupyter {
+		resputil.Success(c, SSHResp{Open: false, Data: SSHPortData{}})
+		return
+	}
+
 	if job.Status != batch.Running {
 		resputil.Success(c, SSHResp{Open: false, Data: SSHPortData{}})
 		return
