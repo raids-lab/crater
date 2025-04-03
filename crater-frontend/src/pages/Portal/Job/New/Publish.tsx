@@ -155,22 +155,6 @@ export function PublishConfigForm<T extends FieldValues>({
               </FormItem>
             )}
           />
-
-          <div className="space-y-2">
-            <Label htmlFor="config-preview">配置预览</Label>
-            <div className="relative">
-              <Textarea
-                id="config-preview"
-                value={formattedConfig}
-                readOnly
-                className="bg-muted h-60 resize-none overflow-auto font-mono text-sm"
-              />
-            </div>
-            <Label className="text-muted-foreground">
-              请确保您不会在此配置中包含任何敏感信息，如密码、密钥等
-            </Label>
-          </div>
-
           <FormField
             control={form.control}
             name="document"
@@ -178,7 +162,7 @@ export function PublishConfigForm<T extends FieldValues>({
               <FormItem>
                 <FormLabel>作业模板详细文档</FormLabel>
                 <FormControl>
-                  <Textarea {...field} />
+                  <Textarea {...field} className="min-h-[200px]" />
                 </FormControl>
                 <FormDescription>
                   关于此配置的详细使用的markdown文档,请输入markdown源码
@@ -187,6 +171,20 @@ export function PublishConfigForm<T extends FieldValues>({
               </FormItem>
             )}
           />
+          <div className="space-y-2">
+            <Label htmlFor="config-preview">配置预览</Label>
+            <div className="relative">
+              <Textarea
+                id="config-preview"
+                value={formattedConfig}
+                readOnly
+                className="bg-muted font-mono text-sm"
+              />
+            </div>
+            <Label className="text-muted-foreground">
+              请确保您不会在此配置中包含任何敏感信息，如密码、密钥等
+            </Label>
+          </div>
         </form>
       </Form>
     </SandwichSheet>
