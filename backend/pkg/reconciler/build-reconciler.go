@@ -122,7 +122,7 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	// 5. get the job status from k8s job
-	jobStatus := r.getJobBuildStatus(&job)
+	jobStatus := r.getJobBuildStatus(ctx, &job)
 
 	// 6. if buildkit job finished
 	if jobStatus == model.BuildJobFinished && kaniko.Status != model.BuildJobFinished {
@@ -240,16 +240,36 @@ func (r *BuildKitReconciler) createImageRecord(ctx context.Context, kaniko *mode
 	return nil
 }
 
-func (r *BuildKitReconciler) getJobBuildStatus(job *batchv1.Job) model.BuildStatus {
-	var status model.BuildStatus
+func (r *BuildKitReconciler) getJobBuildStatus(ctx context.Context, job *batchv1.Job) model.BuildStatus {
+	// Check if the job has succeeded or failed
 	if job.Status.Succeeded == 1 {
-		status = model.BuildJobFinished
+		return model.BuildJobFinished
 	} else if job.Status.Failed == 1 {
-		status = model.BuildJobFailed
-	} else if job.Status.Active == 1 {
-		status = model.BuildJobRunning
-	} else {
-		status = model.BuildJobPending
+		return model.BuildJobFailed
 	}
-	return status
+
+	// If job is active, check pod status to determine if it's running or pending
+	if job.Status.Active > 0 {
+		podList := &v1.PodList{}
+		labelSelector := client.MatchingLabels{
+			"job-name": job.Name,
+		}
+		err := r.List(ctx, podList, client.InNamespace(job.Namespace), labelSelector)
+		if err != nil {
+			r.log.Error(err, "Failed to list pods for job", "job", job.Name)
+			return model.BuildJobPending
+		}
+
+		// If any pod is running, the job is running
+		for i := range podList.Items {
+			if podList.Items[i].Status.Phase == v1.PodRunning {
+				return model.BuildJobRunning
+			}
+		}
+
+		// All pods are pending, so job is pending
+		return model.BuildJobPending
+	}
+
+	return model.BuildJobPending
 }
