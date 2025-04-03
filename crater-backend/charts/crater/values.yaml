@@ -47,7 +47,37 @@ web:
       tag: "lc9v6p5s"
       pullPolicy: "IfNotPresent"
   buildkit:
+    image:
+      repository: "***REMOVED***/docker.io/moby/buildkit"
+      tag: "v0.18.2-rootless"
+      pullPolicy: "IfNotPresent"
     dockerconfigjson: ***REMOVED***
+    httpsProxy: 192.168.5.58:1080
+    noProxy: ***REMOVED***
+    resources:
+      requests:
+        cpu: 8
+        memory: 24Gi
+      limits:
+        cpu: 16
+        memory: 48Gi
+    cache:
+      storageClass: "openebs-hostpath"
+      storageSize: 400Gi
+      maxUsedSpace: "400GB"
+      minFreeSpace: "50GB"
+      reservedSpace: "50GB"
+    nodeSelectorIn:
+      - huawei-81
+      - huawei-82
+      - huawei-cpu-1
+      - huawei-cpu-2
+      - huawei-cpu-3
+      - huawei-cpu-4
+      - huawei-cpu-5
+      - huawei-cpu-6
+      - huawei-cpu-7
+      - huawei-cpu-8
   ingress:
     host: ***REMOVED***
   cronjob:
