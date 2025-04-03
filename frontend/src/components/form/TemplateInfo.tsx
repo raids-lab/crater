@@ -69,13 +69,13 @@ export function TemplateInfo<T extends FieldValues>({
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="pt-0">
-        <div className="">
-          <MarkdownRenderer>
-            {templateData?.document || "#暂无文档"}
-          </MarkdownRenderer>
-        </div>
-      </CardContent>
+      {templateData?.document && (
+        <CardContent className="pt-0">
+          <div className="">
+            <MarkdownRenderer>{templateData?.document}</MarkdownRenderer>
+          </div>
+        </CardContent>
+      )}
     </Card>
   );
 }
