@@ -126,7 +126,6 @@ func (mgr *UserMgr) GetUser(c *gin.Context) {
 	name := c.Param("name")
 	u := query.User
 	user, err := u.WithContext(c).
-		Select(u.ID, u.Name, u.Role, u.Status, u.Attributes).
 		Where(u.Name.Eq(name)).
 		First()
 
