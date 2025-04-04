@@ -32,12 +32,14 @@ func (mgr *UserMgr) GetName() string { return mgr.name }
 
 func (mgr *UserMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
-func (mgr *UserMgr) RegisterProtected(_ *gin.RouterGroup) {}
+func (mgr *UserMgr) RegisterProtected(g *gin.RouterGroup) {
+	g.GET("/:name", mgr.GetUser) // 新增获取单个用户的接口
+}
 
-func (mgr *UserMgr) RegisterAdmin(users *gin.RouterGroup) {
-	users.GET("", mgr.ListUser)
-	users.DELETE("/:name", mgr.DeleteUser)
-	users.PUT("/:name/role", mgr.UpdateRole)
+func (mgr *UserMgr) RegisterAdmin(g *gin.RouterGroup) {
+	g.GET("", mgr.ListUser)
+	g.DELETE("/:name", mgr.DeleteUser)
+	g.PUT("/:name/role", mgr.UpdateRole)
 }
 
 type UserResp struct {
@@ -106,6 +108,35 @@ func (mgr *UserMgr) ListUser(c *gin.Context) {
 	}
 	logutils.Log.Infof("list users success, count: %d", len(users))
 	resputil.Success(c, users)
+}
+
+// GetUser godoc
+// @Summary 获取单个用户信息
+// @Description 获取指定用户的详细信息
+// @Tags User
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param name path string true "username"
+// @Success 200 {object} resputil.Response[any] "成功获取用户信息"
+// @Failure 400 {object} resputil.Response[any] "请求参数错误"
+// @Failure 500 {object} resputil.Response[any] "其他错误"
+// @Router /v1/users/{name} [get]
+func (mgr *UserMgr) GetUser(c *gin.Context) {
+	name := c.Param("name")
+	u := query.User
+	user, err := u.WithContext(c).
+		Select(u.ID, u.Name, u.Role, u.Status, u.Attributes).
+		Where(u.Name.Eq(name)).
+		First()
+
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("get user failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	logutils.Log.Infof("get user success, username: %s", name)
+	resputil.Success(c, user)
 }
 
 // UpdateRole godoc

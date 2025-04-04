@@ -58,6 +58,6 @@ type User struct {
 }
 
 type UserInfo struct {
-	UserName string
-	Nickname string
+	Username string `json:"username"`
+	Nickname string `json:"nickname"`
 }

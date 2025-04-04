@@ -387,7 +387,7 @@ func convertJobResp(jobs []*model.Job) []JobResp {
 			JobName: job.JobName,
 			Owner:   job.User.Nickname,
 			UserInfo: model.UserInfo{
-				UserName: job.User.Name,
+				Username: job.User.Name,
 				Nickname: job.User.Nickname,
 			},
 			JobType:            string(job.JobType),
@@ -488,7 +488,7 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		Username:  job.User.Name,
 		Nickname:  job.User.Nickname,
 		UserInfo: model.UserInfo{
-			UserName: job.User.Name,
+			Username: job.User.Name,
 			Nickname: job.User.Nickname,
 		},
 		JobName:            job.JobName,
