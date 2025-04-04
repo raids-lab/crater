@@ -45,7 +45,6 @@ import { ProjectStatus } from "@/services/api/account";
 import UserLabel from "@/components/label/UserLabel";
 import UserRoleBadge from "@/components/badge/UserRoleBadge";
 import UserStatusBadge from "@/components/badge/UserStatusBadge";
-import TooltipLink from "@/components/label/TooltipLink";
 
 interface TUser {
   id: number;
@@ -156,10 +155,12 @@ export const User = () => {
           <DataTableColumnHeader column={column} title={getHeader("name")} />
         ),
         cell: ({ row }) => (
-          <TooltipLink
-            name={<UserLabel attributes={row.original.attributes} />}
-            to={row.original.name}
-            tooltip={`查看用户 ${row.original.name} 信息`}
+          <UserLabel
+            attributes={{
+              username: row.original.name,
+              nickname: row.original.attributes.nickname,
+            }}
+            prefix="admin/user"
           />
         ),
       },

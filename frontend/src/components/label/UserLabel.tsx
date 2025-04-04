@@ -1,15 +1,29 @@
-import { IUserAttributes } from "@/services/api/admin/user";
+import { IUserInfo } from "@/services/api/vcjob";
+import TooltipLink from "./TooltipLink";
 
-const UserLabel = ({ attributes }: { attributes: IUserAttributes }) => {
+const UserLabel = ({
+  attributes,
+  prefix,
+}: {
+  attributes: IUserInfo;
+  prefix: string;
+}) => {
   return (
-    <div className="flex flex-col gap-0.5 text-left">
-      <span className="truncate text-sm font-normal">
-        {attributes.nickname ?? attributes.name}
-      </span>
-      <span className="text-muted-foreground truncate text-xs">
-        @{attributes.name}
-      </span>
-    </div>
+    <TooltipLink
+      name={
+        <span className="truncate text-sm font-normal">
+          {attributes.nickname || attributes.username}
+        </span>
+      }
+      to={`/${prefix}/${attributes.username}`}
+      tooltip={
+        <p>
+          查看{attributes.nickname || attributes.username}
+          <span className="mx-0.5 font-mono">(@{attributes.username})</span>
+          信息
+        </p>
+      }
+    />
   );
 };
 

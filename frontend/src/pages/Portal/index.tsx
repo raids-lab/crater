@@ -24,6 +24,7 @@ import AssignmentTemplateList from "./Job/Store";
 import NvidiaOverview from "@/components/monitor/NvidiaOverview";
 import ResourseOverview from "@/components/monitor/ResourceOverview";
 import NetworkOverview from "@/components/monitor/NetworkOverview";
+import UserDetail from "@/components/custom/UserDetail";
 
 const portalRoutes: RouteItem[] = [
   {
@@ -131,6 +132,19 @@ const portalRoutes: RouteItem[] = [
         },
       },
     ],
+  },
+  {
+    path: "user",
+    children: [],
+    route: {
+      path: "user/*",
+      children: [
+        {
+          path: ":name",
+          element: <UserDetail />,
+        },
+      ],
+    },
   },
   {
     path: "setting",
