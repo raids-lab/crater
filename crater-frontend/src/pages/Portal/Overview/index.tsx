@@ -30,6 +30,7 @@ import GpuIcon from "@/components/icon/GpuIcon";
 import PieCard from "@/components/chart/PieCard";
 import DocsButton from "@/components/button/DocsButton";
 import PageTitle from "@/components/layout/PageTitle";
+import UserLabel from "@/components/label/UserLabel";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -82,7 +83,9 @@ export const Component: FC = () => {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("owner")} />
         ),
-        cell: ({ row }) => <div>{row.getValue("owner")}</div>,
+        cell: ({ row }) => (
+          <UserLabel attributes={row.original.userInfo} prefix="portal/user" />
+        ),
       },
       {
         accessorKey: "nodes",
