@@ -303,7 +303,6 @@ export const Component = () => {
             title="新建 Jupyter Lab"
             description="提供交互式的 Web 实验环境，可用于代码调试"
             className="lg:col-span-3"
-            isWIP={true}
             tipContent={`版本 ${MetadataFormJupyter.version}`}
           >
             <div className="items-centor flex w-fit flex-row justify-end gap-3">

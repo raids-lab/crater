@@ -148,13 +148,10 @@ export function BaseCore({ jobName }: { jobName: string }) {
     <DetailPage
       header={
         <PageTitle
-          title={
-            <div className="flex flex-row items-center gap-1.5 text-2xl">
-              {data.name}
-              <JobTypeLabel jobType={data.jobType} />
-            </div>
-          }
+          title={data.name}
+          tipComponent={<JobTypeLabel jobType={data.jobType} />}
           description={data.jobName}
+          descriptionCopiable
         >
           <div className="flex flex-row gap-3">
             {(data.jobType === JobType.Jupyter ||
@@ -342,11 +339,9 @@ export function BaseCore({ jobName }: { jobName: string }) {
           icon: GaugeIcon,
           label: "基础监控",
           children: (
-            <div className="h-[calc(100vh_-_304px)] w-full">
-              <GrafanaIframe
-                baseSrc={`${grafanaJob.basic}?var-job=${data.jobName}&from=${fromTime}&to=${toTime}`}
-              />
-            </div>
+            <GrafanaIframe
+              baseSrc={`${grafanaJob.basic}?var-job=${data.jobName}&from=${fromTime}&to=${toTime}`}
+            />
           ),
         },
         {
@@ -354,11 +349,9 @@ export function BaseCore({ jobName }: { jobName: string }) {
           icon: GpuIcon,
           label: "加速卡监控",
           children: (
-            <div className="h-[calc(100vh_-_304px)] w-full">
-              <GrafanaIframe
-                baseSrc={`${grafanaJob.nvidia}?var-job=${data.jobName}&from=${fromTime}&to=${toTime}`}
-              />
-            </div>
+            <GrafanaIframe
+              baseSrc={`${grafanaJob.nvidia}?var-job=${data.jobName}&from=${fromTime}&to=${toTime}`}
+            />
           ),
           hidden: !showGPUDashboard,
         },

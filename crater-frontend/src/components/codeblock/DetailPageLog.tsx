@@ -42,11 +42,7 @@ export default function DetailPageLog({
 
   return (
     <>
-      {podName === "" ? (
-        <div className="flex h-[calc(100vh_-304px)] w-full items-center justify-center">
-          镜像构建Pod已删除，无法查看日志
-        </div>
-      ) : !containers || !selectedContainer ? (
+      {!containers || !selectedContainer ? (
         <div className="flex h-[calc(100vh_-304px)] w-full items-center justify-center">
           <LoadingCircleIcon />
         </div>

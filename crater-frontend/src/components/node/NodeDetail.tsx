@@ -451,11 +451,9 @@ export const NodeDetail: FC = () => {
           icon: GaugeIcon,
           label: "基础监控",
           children: (
-            <div className="h-[calc(100vh_-_304px)] w-full">
-              <GrafanaIframe
-                baseSrc={`${grafanaNode.basic}?from=now-1h&to=now&var-datasource=prometheus&var-cluster=&var-resolution=30s&var-node=${nodeName}`}
-              />
-            </div>
+            <GrafanaIframe
+              baseSrc={`${grafanaNode.basic}?from=now-1h&to=now&var-datasource=prometheus&var-cluster=&var-resolution=30s&var-node=${nodeName}`}
+            />
           ),
         },
         {
@@ -463,11 +461,9 @@ export const NodeDetail: FC = () => {
           icon: GpuIcon,
           label: "加速卡监控",
           children: (
-            <div className="h-[calc(100vh-_304px)] w-full">
-              <GrafanaIframe
-                baseSrc={`${grafanaNode.nvidia}?from=now-30m&to=now&var-datasource=prometheus&var-host=${nodeName}&var-gpu=$__all&refresh=5s`}
-              />
-            </div>
+            <GrafanaIframe
+              baseSrc={`${grafanaNode.nvidia}?from=now-30m&to=now&var-datasource=prometheus&var-host=${nodeName}&var-gpu=$__all&refresh=5s`}
+            />
           ),
           hidden: !gpuDetail?.haveGPU,
         },

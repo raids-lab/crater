@@ -139,6 +139,7 @@ function KanikoInfo({ kanikoInfo: kanikoInfo }: KanikoCard) {
                 }}
               />
             ),
+            hidden: kanikoInfo?.podName === "",
           },
           {
             key: "dockerfile",

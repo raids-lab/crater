@@ -2,26 +2,36 @@ import { Check, Copy } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
-import { Button } from "@/components/ui/button";
+import TooltipButton from "../custom/TooltipButton";
+import { VariantProps } from "class-variance-authority";
+import { buttonVariants } from "../ui/button";
 
-type CopyButtonProps = {
-  content: string;
-  copyMessage?: string;
-};
+type CopyButtonProps = React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    content: string;
+    copyMessage?: string;
+  };
 
-export function CopyButton({ content, copyMessage }: CopyButtonProps) {
+export function CopyButton({
+  className,
+  variant,
+  size,
+  content,
+  copyMessage,
+}: CopyButtonProps) {
   const { isCopied, handleCopy } = useCopyToClipboard({
     text: content,
     copyMessage,
   });
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
+    <TooltipButton
+      variant={variant ?? "ghost"}
+      size={size ?? "icon"}
+      className={cn("relative h-6 w-6", className)}
       type="button"
-      className="relative h-6 w-6"
       aria-label="Copy to clipboard"
+      tooltipContent={"复制"}
       onClick={handleCopy}
     >
       <div className="absolute inset-0 flex items-center justify-center">
@@ -38,6 +48,6 @@ export function CopyButton({ content, copyMessage }: CopyButtonProps) {
           isCopied ? "scale-0" : "scale-100",
         )}
       />
-    </Button>
+    </TooltipButton>
   );
 }
