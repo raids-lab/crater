@@ -60,9 +60,9 @@ export function DetailPage({ header, info, tabs: rawTabs }: DetailPageProps) {
 
   return (
     <div className="flex h-full w-full flex-col space-y-6">
-      <div className="h-[132.5px] space-y-6">
+      <div className="h-32 space-y-6">
         {header}
-        <div className="text-muted-foreground grid grid-cols-3 gap-4 text-sm">
+        <div className="text-muted-foreground grid grid-cols-3 gap-3 text-sm">
           {info.map((data, index) => (
             <div
               key={index}
@@ -97,11 +97,13 @@ export function DetailPage({ header, info, tabs: rawTabs }: DetailPageProps) {
         {tabs.map((tab) => (
           <TabsContent key={tab.key} value={tab.key} className="w-full">
             {tab.scrollable ? (
-              <ScrollArea className="h-[calc(100vh-_304px)] w-full">
+              <ScrollArea className="h-[calc(100vh_-_300px)] w-full">
                 {tab.children}
               </ScrollArea>
             ) : (
-              <>{tab.children}</>
+              <div className="h-[calc(100vh_-_300px)] w-full">
+                {tab.children}
+              </div>
             )}
           </TabsContent>
         ))}

@@ -265,13 +265,7 @@ export function DatasetShareTable({
   return (
     <DetailPage
       header={
-        <PageTitle
-          title={
-            <div className="flex flex-row items-center gap-1.5 text-2xl">
-              {data.data?.[0]?.name}
-            </div>
-          }
-        >
+        <PageTitle title={data.data?.[0]?.name}>
           {user?.name == data.data?.[0]?.attribute.name && (
             <div className="flex flex-row space-x-1">
               <DatasetUpdateForm

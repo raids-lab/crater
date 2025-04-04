@@ -260,7 +260,7 @@ export const convertToResourceList = (
     cpu: `${resource.cpu}`,
     memory: `${resource.memory}Gi`,
   };
-  if (resource.gpu.model) {
+  if (resource.gpu.model && resource.gpu.count > 0) {
     k8sResource[resource.gpu.model] = `${resource.gpu.count}`;
   }
   return k8sResource;

@@ -73,14 +73,12 @@ export default function DataList({
   items,
   title,
   actionArea,
-  isWIP,
   itemdelete,
   onRefresh,
 }: {
   items: DataItem[];
   title: string;
   actionArea?: React.ReactNode;
-  isWIP?: boolean;
   itemdelete?: (id: number) => void;
   onRefresh?: () => void;
 }) {
@@ -149,7 +147,6 @@ export default function DataList({
     <div>
       <PageTitle
         title={title}
-        isWIP={isWIP}
         description={`我们为您准备了一些常见${title}，也欢迎您上传并分享更多${title}。`}
       >
         {actionArea}

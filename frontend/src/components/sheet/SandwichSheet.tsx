@@ -71,8 +71,8 @@ const SandwichSheet = ({
           </SheetHeader>
           <div
             className={cn({
-              "h-[calc(100vh-_156px)]": footer,
-              "h-[calc(100vh-_72px)]": !footer,
+              "h-[calc(100vh_-_156px)]": footer,
+              "h-[calc(100vh_-_72px)]": !footer,
             })}
             ref={refRoot}
           >

@@ -3,13 +3,10 @@ import { AxiosResponse } from "axios";
 import { IResponse } from "@/services/types";
 import { Card } from "@/components/ui/card";
 import BaseCodeBlock from "./BaseCodeBlock";
-import { CopyCheckIcon, CopyIcon } from "lucide-react";
-import { toast } from "sonner";
-import { useCopyToClipboard } from "usehooks-ts";
 import { FetchSheet } from "./Dialog";
 import useResizeObserver from "use-resize-observer";
 import { ScrollArea } from "../ui/scroll-area";
-import TooltipButton from "../custom/TooltipButton";
+import { CopyButton } from "../button/copy-button";
 
 export interface PodNamespacedName {
   namespace: string;
@@ -17,47 +14,28 @@ export interface PodNamespacedName {
 }
 
 export function CodeContent({
-  data: yaml,
+  data,
   language,
 }: {
   data: string;
   language?: string;
 }) {
   const { ref: refRoot, width, height } = useResizeObserver();
-  const [copiedText, copy] = useCopyToClipboard();
-
-  const copyCode = () => {
-    // Logic to copy `code`
-    copy(yaml ?? "")
-      .then(() => {
-        toast.success("已复制到剪贴板");
-      })
-      .catch(() => {
-        toast.error("复制失败");
-      });
-  };
 
   return (
     <Card
-      className="text-muted-foreground dark:bg-muted/30 relative h-[calc(100vh-_304px)] overflow-hidden bg-slate-900 p-1 dark:border"
+      className="text-muted-foreground dark:bg-muted/30 relative h-full overflow-hidden bg-slate-900 p-1 dark:border"
       ref={refRoot}
     >
       <ScrollArea style={{ width, height }}>
-        <BaseCodeBlock code={yaml ?? ""} language={language ?? ""} />
+        <BaseCodeBlock code={data ?? ""} language={language ?? ""} />
       </ScrollArea>
-      <TooltipButton
-        tooltipContent="复制"
+      <CopyButton
         className="absolute top-5 right-5 h-8 w-8"
-        onClick={copyCode}
+        content={data ?? ""}
         variant="outline"
         size="icon"
-      >
-        {copiedText ? (
-          <CopyCheckIcon className="size-4" />
-        ) : (
-          <CopyIcon className="size-4" />
-        )}
-      </TooltipButton>
+      />
     </Card>
   );
 }

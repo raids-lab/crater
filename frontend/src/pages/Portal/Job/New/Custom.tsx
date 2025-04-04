@@ -216,7 +216,6 @@ export const Component = () => {
             title="新建单机训练作业"
             description="提交无须人工干预而执行系列程序的作业"
             className="lg:col-span-3"
-            isWIP={true}
             tipContent={`版本 ${MetadataFormCustom.version}`}
           >
             <div className="items-centor flex w-fit flex-row justify-end gap-3">

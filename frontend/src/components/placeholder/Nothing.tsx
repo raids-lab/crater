@@ -27,7 +27,7 @@ export const NothingCore = ({
 
 const Nothing = ({ title }: { title?: string }) => {
   return (
-    <div className="text-muted-foreground/85 flex h-[calc(100vh-_304px)] w-full items-center justify-center text-center hover:bg-transparent">
+    <div className="text-muted-foreground/85 flex h-[calc(100vh_-_300px)] w-full items-center justify-center text-center hover:bg-transparent">
       <NothingCore title={title} />
     </div>
   );

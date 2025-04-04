@@ -1,38 +1,45 @@
 import { FC, ReactNode } from "react";
 import TipBadge from "../badge/TipBadge";
 import { cn } from "@/lib/utils";
+import { CopyButton } from "../button/copy-button";
 
 interface PageTitleProps {
-  title: ReactNode;
-  description?: ReactNode;
+  title?: string;
+  description?: string;
+  descriptionCopiable?: boolean;
   children?: ReactNode;
   className?: string;
-  isWIP?: boolean;
+  tipComponent?: ReactNode;
   tipContent?: ReactNode;
 }
 
 const PageTitle: FC<PageTitleProps> = ({
   description,
+  descriptionCopiable,
   title,
   children,
   className,
-  isWIP,
+  tipComponent,
   tipContent,
 }) => {
   return (
     <div
       className={cn(
-        "flex flex-col justify-between gap-3 md:flex-row md:items-center",
+        "flex h-12 flex-col justify-between gap-3 md:flex-row md:items-center",
         className,
       )}
     >
       <div>
-        <h1 className="flex items-center text-xl leading-relaxed font-bold">
-          {title}
-          {isWIP && <TipBadge className="ml-1.5" title={tipContent} />}
-        </h1>
+        <div className="flex items-center gap-1.5 text-xl font-bold">
+          <p>{title}</p>
+          {tipComponent}
+          {tipContent && <TipBadge title={tipContent} />}
+        </div>
         {description && (
-          <p className="text-muted-foreground text-sm">{description}</p>
+          <p className="text-muted-foreground flex items-center gap-1 text-sm">
+            {description}
+            {descriptionCopiable && <CopyButton content={description} />}
+          </p>
         )}
       </div>
       {children}

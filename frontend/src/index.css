@@ -406,8 +406,9 @@
 }
 
 .tabs-trigger-underline {
-  @apply text-muted-foreground ring-offset-background focus-visible:ring-ring data-[state=active]:border-b-primary data-[state=active]:bg-background data-[state=active]:text-foreground relative inline-flex h-9 items-center justify-center gap-1.5 rounded-none border-b-2 border-b-transparent bg-transparent px-0 py-1 pt-2 pb-3 text-sm font-semibold whitespace-nowrap shadow-none transition-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow-none!;
-  @apply border-t-0 border-r-0 border-l-0;
+  @apply text-muted-foreground ring-offset-background focus-visible:ring-ring relative inline-flex h-9 items-center justify-center gap-1.5 rounded-none border-b-2 border-b-transparent bg-transparent px-0 py-1 pt-2 pb-3 text-sm font-semibold whitespace-nowrap shadow-none transition-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50;
+  @apply data-[state=active]:border-b-primary data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none!;
+  @apply cursor-pointer border-t-0 border-r-0 border-l-0;
 }
 
 /* Scrollbar */
