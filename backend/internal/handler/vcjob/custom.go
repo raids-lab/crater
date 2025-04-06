@@ -18,6 +18,7 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/utils"
 )
 
 type (
@@ -56,6 +57,12 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	exceededResources := aitaskctl.CheckResourcesBeforeCreateJob(c, token.UserID, token.AccountID, req.Resource)
 	if len(exceededResources) > 0 {
 		resputil.Error(c, fmt.Sprintf("%v", exceededResources), resputil.NotSpecified)
+		return
+	}
+
+	// 如果希望接受邮件，则需要确保邮箱已验证
+	if req.AlertEnabled && !utils.IsUserEmailVerified(c, token.UserID) {
+		resputil.Error(c, "Email not verified", resputil.UserEmailNotVerified)
 		return
 	}
 

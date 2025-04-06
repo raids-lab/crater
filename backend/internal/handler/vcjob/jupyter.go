@@ -49,6 +49,7 @@ type (
 	}
 )
 
+//nolint:gocyclo //todo: Split functions to reduce cyclical complexity
 func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	token := util.GetToken(c)
 
@@ -63,6 +64,13 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("%v", exceededResources), resputil.NotSpecified)
 		return
 	}
+
+	// 如果希望接受邮件，则需要确保邮箱已验证
+	if req.AlertEnabled && !utils.IsUserEmailVerified(c, token.UserID) {
+		resputil.Error(c, "Email not verified", resputil.UserEmailNotVerified)
+		return
+	}
+
 	// Ingress base URL
 	baseURL := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
 	jobName := fmt.Sprintf("jupyter-%s", baseURL)

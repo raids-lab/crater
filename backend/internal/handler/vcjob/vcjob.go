@@ -400,8 +400,8 @@ func convertJobResp(jobs []*model.Job) []JobResp {
 			CompletedTimestamp: metav1.NewTime(job.CompletedTimestamp),
 			Nodes:              job.Nodes.Data(),
 			Resources:          job.Resources.Data(),
-			Locked:             job.LockedTimestamp.After(util.GetLocalTime()),
-			PermanentLocked:    util.IsPermanentTime(job.LockedTimestamp),
+			Locked:             job.LockedTimestamp.After(utils.GetLocalTime()),
+			PermanentLocked:    utils.IsPermanentTime(job.LockedTimestamp),
 			LockedTimestamp:    metav1.NewTime(job.LockedTimestamp),
 		}
 	}

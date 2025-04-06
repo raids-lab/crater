@@ -15,7 +15,6 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/resputil"
-	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/alert"
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
@@ -23,6 +22,7 @@ import (
 	tasksvc "github.com/raids-lab/crater/pkg/db/task"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/monitor"
+	"github.com/raids-lab/crater/pkg/utils"
 )
 
 const (
@@ -131,7 +131,7 @@ type CronjobConfigs struct {
 func (mgr *OperationsMgr) getJobWhiteList(c *gin.Context) ([]string, error) {
 	var cleanList []string
 	jobDB := query.Job
-	curTime := util.GetLocalTime()
+	curTime := utils.GetLocalTime()
 
 	data, err := jobDB.WithContext(c).Where(jobDB.LockedTimestamp.Gt(curTime)).Find()
 
@@ -254,11 +254,11 @@ func (mgr *OperationsMgr) AddLockTime(c *gin.Context) {
 	jobDB := query.Job
 
 	// 永久锁定
-	lockTime := util.GetPermanentTime()
+	lockTime := utils.GetPermanentTime()
 
 	// 非永久锁定
 	if !req.IsPermanent {
-		lockTime = util.GetLocalTime().Add(
+		lockTime = utils.GetLocalTime().Add(
 			time.Duration(req.Days)*24*time.Hour + time.Duration(req.Hours)*time.Hour + time.Duration(req.Minutes)*time.Minute,
 		)
 	}
@@ -325,7 +325,7 @@ func (mgr *OperationsMgr) AutoDelete(c *gin.Context) {
 	}
 
 	// delete time: 即当前时间 + waitTime
-	deleteTime := util.GetLocalTime().Add(time.Duration(req.WaitTime) * time.Minute)
+	deleteTime := utils.GetLocalTime().Add(time.Duration(req.WaitTime) * time.Minute)
 
 	// remind
 	reminded := mgr.remindLeastUsedGPUJobs(c, req.TimeRange, req.Util, deleteTime)

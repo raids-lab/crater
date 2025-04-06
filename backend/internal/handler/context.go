@@ -19,6 +19,8 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/alert"
+	"github.com/raids-lab/crater/pkg/logutils"
+	"github.com/raids-lab/crater/pkg/utils"
 )
 
 // 邮箱验证码缓存
@@ -290,6 +292,12 @@ func (mgr *ContextMgr) UpdateUserEmail(c *gin.Context) {
 	if req.Code != verifyCodeCache[req.Email] {
 		resputil.Error(c, "Wrong verification Code", resputil.NotSpecified)
 		return
+	}
+
+	// update user's LastEmailVerifiedAt
+	curTime := utils.GetLocalTime()
+	if _, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).Update(u.LastEmailVerifiedAt, curTime); err != nil {
+		logutils.Log.Error("Failed to update LastEmailVerifiedAt", err)
 	}
 
 	resputil.Success(c, "User email updated successfully")
