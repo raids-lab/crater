@@ -28,3 +28,10 @@ export interface User {
 
 export const apiGetUser = (userName: string) =>
   instance.get<IResponse<User>>(`${VERSION}/users/${userName}`);
+
+export const apiUserEmailVerified = async () => {
+  const res = await instance.get<IResponse<boolean>>(
+    `${VERSION}/users/email/verified`,
+  );
+  return res.data;
+};
