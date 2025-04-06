@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/datatypes"
@@ -48,6 +49,18 @@ type UserResp struct {
 	Role       model.Role                              `json:"role"`       // 用户角色
 	Status     model.Status                            `json:"status"`     // 用户状态
 	Attributes datatypes.JSONType[model.UserAttribute] `json:"attributes"` // 用户额外属性
+}
+
+type UserDetailResp struct {
+	ID        uint         `json:"id"`        // 用户ID
+	Name      string       `json:"name"`      // 用户名称
+	Nickname  string       `json:"nickname"`  // 用户昵称
+	Role      model.Role   `json:"role"`      // 用户角色
+	Status    model.Status `json:"status"`    // 用户状态
+	CreatedAt time.Time    `json:"createdAt"` // 创建时间
+	Teacher   *string      `json:"teacher"`   // 导师
+	Group     *string      `json:"group"`     // 课题组
+	Avatar    *string      `json:"avatar"`    // 头像
 }
 
 type UpdateRoleReq struct {
@@ -118,7 +131,7 @@ func (mgr *UserMgr) ListUser(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param name path string true "username"
-// @Success 200 {object} resputil.Response[any] "成功获取用户信息"
+// @Success 200 {object} resputil.Response[UserDetailResp] "成功获取用户信息"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/users/{name} [get]
@@ -134,8 +147,24 @@ func (mgr *UserMgr) GetUser(c *gin.Context) {
 		return
 	}
 
+	// 创建用户详情响应对象
+	userResp := UserDetailResp{
+		ID:        user.ID,
+		Name:      user.Name,
+		Nickname:  user.Nickname,
+		Role:      user.Role,
+		Status:    user.Status,
+		CreatedAt: user.CreatedAt,
+	}
+
+	// 从 Attributes 中获取需要的字段
+	data := user.Attributes.Data()
+	userResp.Teacher = data.Teacher
+	userResp.Group = data.Group
+	userResp.Avatar = data.Avatar
+
 	logutils.Log.Infof("get user success, username: %s", name)
-	resputil.Success(c, user)
+	resputil.Success(c, userResp)
 }
 
 // UpdateRole godoc
