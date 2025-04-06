@@ -3,7 +3,6 @@ import RunningJobs from "@/components/custom/UserDetail/RunningJobs";
 import LoginHeatmap from "@/components/custom/UserDetail/LoginHeatmap";
 import SharedItems from "@/components/custom/UserDetail/SharedItems";
 import RecentActivity from "@/components/custom/UserDetail/RecentActivity";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import TipBadge from "@/components/badge/TipBadge";
 import { Activity, Calendar, Database, List, User, Users } from "lucide-react";
 import { useParams } from "react-router-dom";
@@ -14,6 +13,7 @@ import { Role } from "@/services/api/auth";
 import useBreadcrumb from "@/hooks/useBreadcrumb";
 import { useEffect } from "react";
 import { TimeDistance } from "../TimeDistance";
+import { UserAvatar } from "./UserAvatar";
 
 export default function UserDetail() {
   const setBreadcrumb = useBreadcrumb();
@@ -79,21 +79,13 @@ export default function UserDetail() {
   // User header content with actual data
   const header = (
     <div className="flex items-center space-x-4">
-      <Avatar className="h-20 w-20">
-        <AvatarImage
-          src={user.Attributes.avatar || "/avatar.jpg"}
-          alt={`${user.Nickname}'s avatar`}
-        />
-        <AvatarFallback>
-          {user.Nickname?.substring(0, 2) || user.Name?.substring(0, 2) || "??"}
-        </AvatarFallback>
-      </Avatar>
+      <UserAvatar user={user} className="size-20" size={80} />
       <div>
         <h1 className="flex items-center gap-2 text-3xl font-bold">
-          {user.Nickname || user.Name}
+          {user.nickname || user.name}
           {user.role === Role.Admin && <TipBadge />}
         </h1>
-        <p className="text-muted-foreground">@{user.Name}</p>
+        <p className="text-muted-foreground">@{user.name}</p>
       </div>
     </div>
   );
@@ -103,17 +95,17 @@ export default function UserDetail() {
     {
       icon: User,
       title: "导师",
-      value: user.Attributes.teacher || "未设置",
+      value: user.teacher || "未设置",
     },
     {
       icon: Users,
       title: "课题组",
-      value: user.Attributes.group || "未设置",
+      value: user.group || "未设置",
     },
     {
       icon: Calendar,
       title: "加入日期",
-      value: <TimeDistance date={user.CreatedAt} />,
+      value: <TimeDistance date={user.createdAt} />,
     },
   ];
 

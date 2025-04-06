@@ -5,8 +5,8 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
+import { CardTitle } from "@/components/ui-custom/card";
 import { Badge } from "@/components/ui/badge";
 import { MarkdownRenderer } from "./markdown-renderer";
 
@@ -48,7 +48,7 @@ export function TemplateInfo<T extends FieldValues>({
     <Card className="mb-4">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle>
+          <CardTitle className="flex items-center">
             {fromJob ? "作业模板" : "预设模板"}
             <Badge variant="outline" className="ml-2">
               {fromJob || templateData?.name}

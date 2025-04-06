@@ -66,6 +66,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { JobNameCell } from "@/components/label/JobNameLabel";
+import UserLabel from "@/components/label/UserLabel";
 
 export type StatusValue =
   | "Queueing"
@@ -277,7 +278,9 @@ const AdminJobOverview = () => {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("owner")} />
         ),
-        cell: ({ row }) => <div>{row.getValue("owner")}</div>,
+        cell: ({ row }) => (
+          <UserLabel attributes={row.original.userInfo} prefix="admin/user" />
+        ),
       },
       {
         accessorKey: "queue",

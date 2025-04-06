@@ -74,11 +74,20 @@ import useBreadcrumb from "@/hooks/useBreadcrumb";
 import UserRoleBadge, { userRoles } from "@/components/badge/UserRoleBadge";
 import UserAccessBadge from "@/components/badge/UserAccessBadge";
 import ResourceBadges from "@/components/badge/ResourceBadges";
-import { UserRoundPlusIcon } from "lucide-react";
+import {
+  Briefcase,
+  Calendar,
+  Layers,
+  UserRoundPlusIcon,
+  Users,
+} from "lucide-react";
 import Quota from "./AccountQuota";
 import { toast } from "sonner";
-import TooltipUser from "@/components/label/TooltipUser";
 import SelectBox from "@/components/custom/SelectBox";
+import UserLabel from "@/components/label/UserLabel";
+import { DetailPage } from "@/components/layout/DetailPage";
+import { TimeDistance } from "@/components/custom/TimeDistance";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const formSchema = z.object({
   userIds: z.array(z.string()).min(1, {
@@ -131,7 +140,7 @@ const AccountDetail = () => {
     select: (res) => res.data.data,
   });
 
-  const { data: accountInfo } = useQuery({
+  const { data: accountInfo, isLoading: isLoadingAccount } = useQuery({
     queryKey: ["admin", "accounts", pid],
     queryFn: () => apiAccountGet(pid),
     select: (res) => res.data.data,
@@ -199,7 +208,15 @@ const AccountDetail = () => {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("name")} />
         ),
-        cell: ({ row }) => <TooltipUser attributes={row.original.userInfo} />,
+        cell: ({ row }) => (
+          <UserLabel
+            attributes={{
+              username: row.original.name,
+              nickname: row.original.userInfo.nickname,
+            }}
+            prefix="admin/user"
+          />
+        ),
       },
       {
         accessorKey: "role",
@@ -404,142 +421,222 @@ const AccountDetail = () => {
     [usersOutOfProject],
   );
 
-  return (
-    <div className="grid grid-cols-[1fr_300px] gap-6">
-      <main>
-        <DataTable
-          info={{
-            title: "用户列表",
-            description: "在这里管理账户中的用户",
-          }}
-          storageKey="admin_account_users"
-          query={accountUsersQuery}
-          columns={columns}
-          toolbarConfig={toolbarConfig}
-        >
-          <Dialog open={openSheet} onOpenChange={setOpenSheet}>
-            <DialogTrigger asChild>
-              <Button className="h-8">
-                <UserRoundPlusIcon className="size-4" />
-                添加用户
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>添加用户</DialogTitle>
-              </DialogHeader>
-              <Form {...form}>
-                <form
-                  onSubmit={form.handleSubmit(onSubmit)}
-                  className="space-y-4"
-                >
-                  <FormField
-                    control={form.control}
-                    name="userIds"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          用户
-                          <FormLabelMust />
-                        </FormLabel>
-                        <FormControl>
-                          <SelectBox
-                            options={userOptions}
-                            value={field.value}
-                            onChange={field.onChange}
-                            placeholder="选择用户"
-                            inputPlaceholder="搜索用户..."
-                            emptyPlaceholder="没有找到用户"
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          可选择一位或多位用户加入到账户中
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="role"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          角色
-                          <FormLabelMust />
-                        </FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value.toString()}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="w-full" id="role">
-                              <SelectValue placeholder="Select users" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectGroup>
-                              <SelectItem value="2">普通用户</SelectItem>
-                              <SelectItem value="3">管理员</SelectItem>
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          配置用户在账户中的角色
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="accessmode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          访问权限
-                          <FormLabelMust />
-                        </FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value.toString()}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="w-full" id="accessmode">
-                              <SelectValue placeholder="Select users" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectGroup>
-                              <SelectItem value="2">只读</SelectItem>
-                              <SelectItem value="3">读写</SelectItem>
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          设置用户在账户空间的访问权限
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <DialogFooter>
-                    <DialogClose asChild>
-                      <Button variant="outline">取消</Button>
-                    </DialogClose>
-                    <Button type="submit">添加</Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-        </DataTable>
-      </main>
-      <aside className="flex flex-col gap-3 lg:pt-10">
-        <Quota accountID={pid} />
-      </aside>
+  // 加载中状态
+  if (isLoadingAccount) {
+    return (
+      <DetailPage
+        header={
+          <div className="flex items-center space-x-4">
+            <Skeleton className="h-12 w-12 rounded-full" />
+            <div>
+              <Skeleton className="mb-2 h-8 w-40" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+          </div>
+        }
+        info={[]}
+        tabs={[]}
+      />
+    );
+  }
+
+  // 错误状态或数据不存在
+  if (!accountInfo) {
+    return (
+      <DetailPage
+        header={
+          <div>
+            <h1 className="text-2xl font-bold text-red-500">
+              无法加载账户数据
+            </h1>
+            <p className="text-muted-foreground">账户不存在或您没有权限访问</p>
+          </div>
+        }
+        info={[]}
+        tabs={[]}
+      />
+    );
+  }
+
+  // 账户头部内容
+  const header = (
+    <div className="flex items-center space-x-4">
+      <div className="bg-muted flex h-20 w-20 items-center justify-center rounded-md border">
+        <Briefcase className="text-muted-foreground size-10" />
+      </div>
+      <div>
+        <h1 className="flex items-center gap-2 text-3xl font-bold">
+          {accountInfo.nickname}
+        </h1>
+        <p className="text-muted-foreground">ID: {accountInfo.id}</p>
+      </div>
     </div>
   );
+
+  // 账户基本信息
+  const info = [
+    {
+      icon: Users,
+      title: "用户数量",
+      value: accountUsersQuery.data?.length || "加载中...",
+    },
+    {
+      icon: Layers,
+      title: "账户级别",
+      value: "标准",
+    },
+    {
+      icon: Calendar,
+      title: "过期时间",
+      value: <TimeDistance date={accountInfo.expiredAt} />,
+    },
+  ];
+
+  // 用户管理组件
+  const UserManagement = () => (
+    <DataTable
+      storageKey="admin_account_users"
+      query={accountUsersQuery}
+      columns={columns}
+      toolbarConfig={toolbarConfig}
+    >
+      <Dialog open={openSheet} onOpenChange={setOpenSheet}>
+        <DialogTrigger asChild>
+          <Button className="h-8">
+            <UserRoundPlusIcon className="size-4" />
+            添加用户
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>添加用户</DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="userIds"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      用户
+                      <FormLabelMust />
+                    </FormLabel>
+                    <FormControl>
+                      <SelectBox
+                        options={userOptions}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="选择用户"
+                        inputPlaceholder="搜索用户..."
+                        emptyPlaceholder="没有找到用户"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      可选择一位或多位用户加入到账户中
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      角色
+                      <FormLabelMust />
+                    </FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value.toString()}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="w-full" id="role">
+                          <SelectValue placeholder="Select users" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value="2">普通用户</SelectItem>
+                          <SelectItem value="3">管理员</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>配置用户在账户中的角色</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="accessmode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      访问权限
+                      <FormLabelMust />
+                    </FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value.toString()}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="w-full" id="accessmode">
+                          <SelectValue placeholder="Select users" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value="2">只读</SelectItem>
+                          <SelectItem value="3">读写</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      设置用户在账户空间的访问权限
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline">取消</Button>
+                </DialogClose>
+                <Button type="submit">添加</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+    </DataTable>
+  );
+
+  // 标签页配置
+  const tabs = [
+    {
+      key: "users",
+      icon: Users,
+      label: "用户管理",
+      children: <UserManagement />,
+      scrollable: true,
+    },
+    {
+      key: "quota",
+      icon: Layers,
+      label: "配额使用情况",
+      children: (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Quota accountID={pid} />
+        </div>
+      ),
+      scrollable: true,
+    },
+  ];
+
+  return <DetailPage header={header} info={info} tabs={tabs} />;
 };
 
 export default AccountDetail;

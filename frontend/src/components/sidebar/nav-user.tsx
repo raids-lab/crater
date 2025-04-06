@@ -7,8 +7,6 @@ import {
   Sparkles,
   Sun,
 } from "lucide-react";
-import Identicon from "@polkadot/react-identicon";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,9 +34,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/utils/theme";
 import { toast } from "sonner";
 import { Role } from "@/services/api/auth";
-import { stringToSS58 } from "@/utils/ss58";
 import { useIsAdmin } from "@/hooks/useAdmin";
 import { asyncUrlWebsiteBaseAtom } from "@/utils/store/config";
+import { UserAvatar } from "../custom/UserDetail/UserAvatar";
 
 export function NavUser() {
   const website = useAtomValue(asyncUrlWebsiteBaseAtom);
@@ -61,17 +59,7 @@ export function NavUser() {
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={user.avatar} alt="Avatar preview" />
-                <AvatarFallback>
-                  <Identicon
-                    value={stringToSS58(user.name)}
-                    size={32}
-                    theme="beachball"
-                    className="cursor-default!"
-                  />
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar user={user} />
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">{user.nickname}</span>
                 <span className="truncate text-xs">{user.email}</span>
@@ -87,17 +75,7 @@ export function NavUser() {
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user.avatar} alt="Avatar preview" />
-                  <AvatarFallback>
-                    <Identicon
-                      value={stringToSS58(user.name)}
-                      size={32}
-                      theme="beachball"
-                      className="cursor-default!"
-                    />
-                  </AvatarFallback>
-                </Avatar>
+                <UserAvatar user={user} />
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">
                     {user.nickname}
