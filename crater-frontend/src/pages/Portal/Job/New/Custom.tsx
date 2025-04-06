@@ -649,7 +649,9 @@ conda activate base;
                   name={`nodeSelector.enable`}
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                      <FormLabel>启用节点选择功能</FormLabel>
+                      <FormLabel className="font-normal">
+                        指定工作节点
+                      </FormLabel>
                       <FormControl>
                         <Switch
                           checked={field.value}

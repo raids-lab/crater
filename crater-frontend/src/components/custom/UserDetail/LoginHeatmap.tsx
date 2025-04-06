@@ -33,11 +33,11 @@ export default function LoginHeatmap() {
             data={data}
             from="2023-12-13"
             to="2024-12-13"
-            emptyColor={theme === "dark" ? "#18181b" : "#eeeeee"}
+            emptyColor={theme === "dark" ? "#1f283b" : "#eeeeee"}
             colors={["#61cdbb", "#97e3d5", "#e8c1a0", "#f47560"]}
             margin={{ top: 40, right: 20, bottom: 20, left: 20 }}
             dayBorderWidth={2}
-            dayBorderColor={theme === "dark" ? "#000000" : "#ffffff"}
+            dayBorderColor={theme === "dark" ? "#10172a" : "#ffffff"}
             firstWeekday="monday"
             theme={nivoTheme}
           />
