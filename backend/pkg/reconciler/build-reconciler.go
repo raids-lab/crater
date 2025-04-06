@@ -220,13 +220,17 @@ func (r *BuildKitReconciler) createImageRecord(ctx context.Context, kaniko *mode
 	}
 
 	// Create a new image record
+	taskType := model.JobTypeCustom
+	if kaniko.BuildSource == model.Snapshot {
+		taskType = model.JobTypeJupyter
+	}
 	image := &model.Image{
 		UserID:        kaniko.UserID,
 		ImageLink:     kaniko.ImageLink,
 		Description:   kaniko.Description,
 		ImagePackName: &kaniko.ImagePackName,
 		IsPublic:      false,
-		TaskType:      model.JobTypeCustom,
+		TaskType:      taskType,
 		ImageSource:   model.ImageCreateType,
 		Size:          kaniko.Size,
 	}
