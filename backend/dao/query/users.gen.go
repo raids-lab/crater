@@ -38,6 +38,7 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.Status = field.NewUint8(tableName, "status")
 	_user.Space = field.NewString(tableName, "space")
 	_user.ImageQuota = field.NewInt64(tableName, "image_quota")
+	_user.LastEmailVerifiedAt = field.NewTime(tableName, "last_email_verified_at")
 	_user.Attributes = field.NewField(tableName, "attributes")
 	_user.UserAccounts = userHasManyUserAccounts{
 		db: db.Session(&gorm.Session{}),
@@ -59,20 +60,21 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 type user struct {
 	userDo userDo
 
-	ALL          field.Asterisk
-	ID           field.Uint
-	CreatedAt    field.Time
-	UpdatedAt    field.Time
-	DeletedAt    field.Field
-	Name         field.String
-	Nickname     field.String
-	Password     field.String
-	Role         field.Uint8
-	Status       field.Uint8
-	Space        field.String
-	ImageQuota   field.Int64
-	Attributes   field.Field
-	UserAccounts userHasManyUserAccounts
+	ALL                 field.Asterisk
+	ID                  field.Uint
+	CreatedAt           field.Time
+	UpdatedAt           field.Time
+	DeletedAt           field.Field
+	Name                field.String
+	Nickname            field.String
+	Password            field.String
+	Role                field.Uint8
+	Status              field.Uint8
+	Space               field.String
+	ImageQuota          field.Int64
+	LastEmailVerifiedAt field.Time
+	Attributes          field.Field
+	UserAccounts        userHasManyUserAccounts
 
 	UserDatasets userHasManyUserDatasets
 
@@ -102,6 +104,7 @@ func (u *user) updateTableName(table string) *user {
 	u.Status = field.NewUint8(table, "status")
 	u.Space = field.NewString(table, "space")
 	u.ImageQuota = field.NewInt64(table, "image_quota")
+	u.LastEmailVerifiedAt = field.NewTime(table, "last_email_verified_at")
 	u.Attributes = field.NewField(table, "attributes")
 
 	u.fillFieldMap()
@@ -127,7 +130,7 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 14)
+	u.fieldMap = make(map[string]field.Expr, 15)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
@@ -139,6 +142,7 @@ func (u *user) fillFieldMap() {
 	u.fieldMap["status"] = u.Status
 	u.fieldMap["space"] = u.Space
 	u.fieldMap["image_quota"] = u.ImageQuota
+	u.fieldMap["last_email_verified_at"] = u.LastEmailVerifiedAt
 	u.fieldMap["attributes"] = u.Attributes
 
 }
