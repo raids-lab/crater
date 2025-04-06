@@ -31,7 +31,9 @@ export interface IJobInfo {
   completedAt: string;
   nodes: string[];
   resources?: Record<string, string>;
-  keepWhenLowUsage: boolean;
+  locked: boolean;
+  permanentLocked: boolean;
+  lockedTimestamp?: string;
 }
 
 export const apiAdminGetJobList = (days?: number) =>
@@ -404,6 +406,22 @@ export const apiJobDeleteForAdmin = async (jobName: string) => {
 export const apiJobToggleKeepForAdmin = async (jobName: string) => {
   const response = await instance.put<IResponse<string>>(
     `${VERSION}/admin/operations/keep/${jobName}`,
+  );
+  return response.data;
+};
+
+export const apiJobUnlock = async (jobName: string) => {
+  const response = await instance.put<IResponse<string>>(
+    `${VERSION}/admin/operations/clear/locktime`,
+    { name: jobName },
+  );
+  return response.data;
+};
+
+export const apiJobLock = async (params: object) => {
+  const response = await instance.put<IResponse<string>>(
+    `${VERSION}/admin/operations/add/locktime`,
+    params,
   );
   return response.data;
 };
