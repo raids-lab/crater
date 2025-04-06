@@ -42,6 +42,7 @@ type Job struct {
 	CreationTimestamp  time.Time                           `gorm:"not null;comment:作业创建时间"`
 	RunningTimestamp   time.Time                           `gorm:"comment:作业开始运行时间"`
 	CompletedTimestamp time.Time                           `gorm:"comment:作业完成时间"`
+	LockedTimestamp    time.Time                           `gorm:"comment:作业锁定时间"`
 	Nodes              datatypes.JSONType[[]string]        `gorm:"comment:作业运行的节点"`
 	Resources          datatypes.JSONType[v1.ResourceList] `gorm:"comment:作业的资源需求"`
 

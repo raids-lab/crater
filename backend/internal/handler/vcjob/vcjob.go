@@ -295,7 +295,9 @@ type (
 		CompletedTimestamp metav1.Time     `json:"completedAt"`
 		Nodes              []string        `json:"nodes"`
 		Resources          v1.ResourceList `json:"resources"`
-		KeepWhenLowUsage   bool            `json:"keepWhenLowUsage"`
+		Locked             bool            `json:"locked"`
+		PermanentLocked    bool            `json:"permanentLocked"`
+		LockedTimestamp    metav1.Time     `json:"lockedTimestamp"`
 	}
 )
 
@@ -398,7 +400,9 @@ func convertJobResp(jobs []*model.Job) []JobResp {
 			CompletedTimestamp: metav1.NewTime(job.CompletedTimestamp),
 			Nodes:              job.Nodes.Data(),
 			Resources:          job.Resources.Data(),
-			KeepWhenLowUsage:   job.KeepWhenLowResourceUsage,
+			Locked:             job.LockedTimestamp.After(util.GetLocalTime()),
+			PermanentLocked:    util.IsPermanentTime(job.LockedTimestamp),
+			LockedTimestamp:    metav1.NewTime(job.LockedTimestamp),
 		}
 	}
 	sort.Slice(jobList, func(i, j int) bool {

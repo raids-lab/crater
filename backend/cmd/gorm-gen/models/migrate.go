@@ -4,6 +4,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/go-gormigrate/gormigrate/v2"
 	"golang.org/x/crypto/bcrypt"
@@ -128,6 +129,21 @@ func main() {
 			},
 			Rollback: func(tx *gorm.DB) error {
 				return tx.Migrator().DropTable("jobtemplates") // 删除 jobtemplates 表
+			},
+		},
+		{
+			ID: "202504050201", // 确保ID是唯一的
+			Migrate: func(tx *gorm.DB) error {
+				type Job struct {
+					LockedTimestamp time.Time `gorm:"comment:作业锁定时间"`
+				}
+				return tx.Migrator().AddColumn(&Job{}, "LockedTimestamp")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Job struct {
+					LockedTimestamp time.Time `gorm:"comment:作业锁定时间"`
+				}
+				return tx.Migrator().DropColumn(&Job{}, "LockedTimestamp")
 			},
 		},
 	})
