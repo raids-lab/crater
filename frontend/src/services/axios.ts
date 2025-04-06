@@ -6,6 +6,7 @@ import {
   ERROR_TOKEN_EXPIRED,
   ERROR_TOKEN_INVALID,
   ERROR_USER_NOT_ALLOWED,
+  ERROR_USER_EMAIL_NOT_VERIFIED,
 } from "./error_code";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/utils/store";
 import { showErrorToast } from "@/utils/toast";
@@ -98,6 +99,8 @@ instance.interceptors.response.use(
       showErrorToast(`请求参数有误, ${error.response?.data.msg}`);
     } else if (errorCode === ERROR_USER_NOT_ALLOWED) {
       showErrorToast("用户激活成功，但无关联账户，请联系平台管理员");
+    } else if (errorCode === ERROR_USER_EMAIL_NOT_VERIFIED) {
+      showErrorToast("接收通知需要验证邮箱，请前往个人主页验证");
     } else if (errorCode === ERROR_NOT_SPECIFIED) {
       showErrorToast(error);
     }

@@ -12,4 +12,5 @@ export const ERROR_REGISTER_TIMEOUT: ErrorCode = 40104;
 export const ERROR_REGISTER_NOT_FOUND: ErrorCode = 40105;
 export const ERROR_INVALID_CREDENTIALS: ErrorCode = 40106;
 export const ERROR_USER_NOT_ALLOWED: ErrorCode = 40301;
+export const ERROR_USER_EMAIL_NOT_VERIFIED: ErrorCode = 40302;
 export const ERROR_NOT_SPECIFIED: ErrorCode = 99999;
