@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ import {
 import LoadableButton from "@/components/custom/LoadableButton";
 import Quota from "../Job/Interactive/Quota";
 import PageTitle from "@/components/layout/PageTitle";
+import { apiUserEmailVerified } from "@/services/api/user";
 
 const formSchema = z.object({
   nickname: z.string().min(2, {
@@ -77,6 +79,11 @@ export default function UserSettings() {
       phone: user.phone || null,
       avatar: user.avatar || null,
     },
+  });
+  const { data: emailVerified } = useQuery({
+    queryKey: ["emailVerified"],
+    queryFn: () => apiUserEmailVerified(),
+    select: (res) => res.data,
   });
 
   const { mutate: updateUser } = useMutation({
@@ -207,7 +214,8 @@ export default function UserSettings() {
                               setIsEmailVerified(false);
                             }}
                           />
-                          {field.value !== originalEmail && (
+                          {(field.value !== originalEmail ||
+                            emailVerified !== true) && (
                             <LoadableButton
                               isLoading={isSendVerificationPending}
                               isLoadingText="验证中"
