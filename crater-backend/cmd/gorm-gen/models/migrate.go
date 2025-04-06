@@ -146,6 +146,21 @@ func main() {
 				return tx.Migrator().DropColumn(&Job{}, "LockedTimestamp")
 			},
 		},
+		{
+			ID: "202504061413", // 确保ID是唯一的
+			Migrate: func(tx *gorm.DB) error {
+				type User struct {
+					LastEmailVerifiedAt time.Time `gorm:"comment:最后一次邮箱验证时间"`
+				}
+				return tx.Migrator().AddColumn(&User{}, "LastEmailVerifiedAt")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type User struct {
+					LastEmailVerifiedAt time.Time `gorm:"comment:最后一次邮箱验证时间"`
+				}
+				return tx.Migrator().DropColumn(&User{}, "LastEmailVerifiedAt")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
