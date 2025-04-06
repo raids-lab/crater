@@ -219,6 +219,13 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 				logger.Error(err, "fail to send email")
 			}
 		}
+
+		// alert job complete
+		if job.Status.State.Phase == batch.Completed && dbJob.Status != batch.Completed {
+			if err = alertMgr.JobCompleteAlert(ctx, job.Name); err != nil {
+				logger.Error(err, "fail to send email")
+			}
+		}
 	}
 
 	// if job found, update the record

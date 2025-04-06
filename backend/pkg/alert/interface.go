@@ -19,6 +19,7 @@ import (
 type AlertInterface interface {
 	JobRunningAlert(ctx context.Context, jobName string) error
 	JobFailureAlert(ctx context.Context, jobName string) error
+	JobCompleteAlert(ctx context.Context, jobName string) error
 	DeleteJob(ctx context.Context, jobName string, extra map[string]any) error
 	CleanJob(ctx context.Context, jobName string, extra map[string]any) error
 	RemindLongTimeRunningJob(ctx context.Context, jobName string, deleteTime time.Time, extra map[string]any) error
