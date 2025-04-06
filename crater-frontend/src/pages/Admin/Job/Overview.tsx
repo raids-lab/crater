@@ -3,7 +3,9 @@ import {
   JobType,
   apiAdminGetJobList as apiAdminGetJobList,
   apiJobDeleteForAdmin,
+  apiJobLock,
   apiJobToggleKeepForAdmin,
+  apiJobUnlock,
 } from "@/services/api/vcjob";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
@@ -171,6 +173,13 @@ const toolbarConfig: DataTableToolbarConfig = {
 const AdminJobOverview = () => {
   const queryClient = useQueryClient();
   const [days, setDays] = useState(7);
+  const [lockModalJobInfo, setLockModalJobInfo] = useState<IJobInfo | null>(
+    null,
+  );
+  const [isPermanent, setIsPermanent] = useState(false);
+  const [daysInput, setDaysInput] = useState("");
+  const [hoursInput, setHoursInput] = useState("");
+  const [minutesInput, setMinutesInput] = useState("");
 
   const vcjobQuery = useQuery({
     queryKey: ["admin", "tasklist", "job", days],
@@ -207,6 +216,43 @@ const AdminJobOverview = () => {
       toast.success("操作成功");
     },
   });
+
+  const handleClick = (jobInfo: IJobInfo) => {
+    if (jobInfo.locked) {
+      apiJobUnlock(jobInfo.jobName).then(() => {
+        toast.success("解锁成功");
+        refetchTaskList();
+      });
+      setLockModalJobInfo(null);
+    } else {
+      setIsPermanent(false);
+      setDaysInput("");
+      setHoursInput("");
+      setMinutesInput("");
+      setLockModalJobInfo(jobInfo);
+    }
+  };
+
+  const submitLock = () => {
+    if (!isPermanent && !(+daysInput || +hoursInput || +minutesInput)) {
+      toast.error("请至少填写一个锁定时长字段");
+      return;
+    }
+    const payload = {
+      name: lockModalJobInfo?.jobName,
+      isPermanent: isPermanent,
+      ...(!isPermanent && {
+        days: +daysInput || 0,
+        hours: +hoursInput || 0,
+        minutes: +minutesInput || 0,
+      }),
+    };
+    apiJobLock(payload).then(() => {
+      toast.success("锁定成功");
+      refetchTaskList();
+    });
+    setLockModalJobInfo(null);
+  };
 
   const vcjobColumns = useMemo<ColumnDef<IJobInfo>[]>(
     () => [
@@ -346,15 +392,15 @@ const AdminJobOverview = () => {
                       </DropdownMenuItem>
                     </Link>
                     <DropdownMenuItem
-                      onClick={() => toggleKeepTask(jobInfo.jobName)}
+                      onClick={() => handleClick(jobInfo)}
                       title="设置作业自动清除策略"
                     >
-                      {row.original.keepWhenLowUsage ? (
+                      {row.original.locked ? (
                         <UnlockIcon className="text-highlight-purple" />
                       ) : (
                         <LockIcon className="text-highlight-purple" />
                       )}
-                      {row.original.keepWhenLowUsage ? "解锁" : "锁定"}
+                      {row.original.locked ? "解锁" : "锁定"}
                     </DropdownMenuItem>
                     <AlertDialogTrigger asChild>
                       <DropdownMenuItem className="group">
@@ -395,73 +441,145 @@ const AdminJobOverview = () => {
         },
       },
     ],
-    [deleteTask, toggleKeepTask],
+    [deleteTask],
   );
 
   return (
-    <DataTable
-      info={{
-        title: "作业管理",
-        description:
-          "管理员可对作业进行锁定以避免被定时策略清理，或手动停止或删除用户的作业",
-      }}
-      storageKey="admin_job_overview"
-      query={vcjobQuery}
-      columns={vcjobColumns}
-      toolbarConfig={toolbarConfig}
-      multipleHandlers={[
-        {
-          title: (rows) => `停止或删除 ${rows.length} 个作业`,
-          description: (rows) => (
-            <>
-              作业 {rows.map((row) => row.original.name).join(", ")}{" "}
-              将被停止或删除，确认要继续吗？
-            </>
-          ),
-          icon: <Trash2Icon className="text-destructive" />,
-          handleSubmit: (rows) => {
-            rows.forEach((row) => {
-              deleteTask(row.original.jobName);
-            });
-          },
-          isDanger: true,
-        },
-        {
-          title: (rows) => `锁定或解锁 ${rows.length} 个作业`,
-          description: (rows) => (
-            <>
-              作业 {rows.map((row) => row.original.name).join(", ")}{" "}
-              将被锁定或解锁，确认要继续吗？
-            </>
-          ),
-          icon: <LockIcon className="text-highlight-purple" />,
-          handleSubmit: (rows) => {
-            rows.forEach((row) => {
-              toggleKeepTask(row.original.jobName);
-            });
-          },
-          isDanger: false,
-        },
-      ]}
-    >
-      <Select
-        value={days.toString()}
-        onValueChange={(value) => {
-          setDays(parseInt(value));
+    <>
+      <DataTable
+        info={{
+          title: "作业管理",
+          description:
+            "管理员可对作业进行锁定以避免被定时策略清理，或手动停止或删除用户的作业",
         }}
+        storageKey="admin_job_overview"
+        query={vcjobQuery}
+        columns={vcjobColumns}
+        toolbarConfig={toolbarConfig}
+        multipleHandlers={[
+          {
+            title: (rows) => `停止或删除 ${rows.length} 个作业`,
+            description: (rows) => (
+              <>
+                作业 {rows.map((row) => row.original.name).join(", ")}{" "}
+                将被停止或删除，确认要继续吗？
+              </>
+            ),
+            icon: <Trash2Icon className="text-destructive" />,
+            handleSubmit: (rows) => {
+              rows.forEach((row) => {
+                deleteTask(row.original.jobName);
+              });
+            },
+            isDanger: true,
+          },
+          {
+            title: (rows) => `锁定或解锁 ${rows.length} 个作业`,
+            description: (rows) => (
+              <>
+                作业 {rows.map((row) => row.original.name).join(", ")}{" "}
+                将被锁定或解锁，确认要继续吗？
+              </>
+            ),
+            icon: <LockIcon className="text-highlight-purple" />,
+            handleSubmit: (rows) => {
+              rows.forEach((row) => {
+                toggleKeepTask(row.original.jobName);
+              });
+            },
+            isDanger: false,
+          },
+        ]}
       >
-        <SelectTrigger className="bg-background h-9 pr-2 pl-3">
-          <SelectValue placeholder={days.toString()} />
-        </SelectTrigger>
-        <SelectContent side="top">
-          {[7, 14, 30, 90, -1].map((pageSize) => (
-            <SelectItem key={pageSize} value={`${pageSize}`}>
-              {pageSize === -1 ? "全部" : `近 ${pageSize} 天`}数据
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </DataTable>
+        <Select
+          value={days.toString()}
+          onValueChange={(value) => {
+            setDays(parseInt(value));
+          }}
+        >
+          <SelectTrigger className="bg-background h-9 pr-2 pl-3">
+            <SelectValue placeholder={days.toString()} />
+          </SelectTrigger>
+          <SelectContent side="top">
+            {[7, 14, 30, 90, -1].map((pageSize) => (
+              <SelectItem key={pageSize} value={`${pageSize}`}>
+                {pageSize === -1 ? "全部" : `近 ${pageSize} 天`}数据
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </DataTable>
+      {lockModalJobInfo && (
+        <AlertDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setLockModalJobInfo(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>设置锁定策略</AlertDialogTitle>
+              <AlertDialogDescription>
+                当前作业 <strong>{lockModalJobInfo.jobName}</strong> 未被锁定，
+                请选择锁定方式：
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-4 py-2">
+              <div>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={isPermanent}
+                    onChange={(e) => setIsPermanent(e.target.checked)}
+                  />
+                  <span>永久锁定</span>
+                </label>
+              </div>
+              {!isPermanent && (
+                <div className="flex flex-row space-x-2">
+                  <div className="flex flex-col items-center">
+                    <input
+                      type="number"
+                      min="0"
+                      value={daysInput}
+                      onChange={(e) => setDaysInput(e.target.value)}
+                      className="w-16 rounded-md border-2 border-gray-400 p-1 text-base font-medium focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                    />
+                    <label className="mt-1 text-sm font-semibold">天</label>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <input
+                      type="number"
+                      min="0"
+                      max="23"
+                      value={hoursInput}
+                      onChange={(e) => setHoursInput(e.target.value)}
+                      className="w-16 rounded-md border-2 border-gray-400 p-1 text-base font-medium focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                    />
+                    <label className="mt-1 text-sm font-semibold">小时</label>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <input
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={minutesInput}
+                      onChange={(e) => setMinutesInput(e.target.value)}
+                      className="w-16 rounded-md border-2 border-gray-400 p-1 text-base font-medium focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                    />
+                    <label className="mt-1 text-sm font-semibold">分钟</label>
+                  </div>
+                </div>
+              )}
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogAction onClick={submitLock}>确认</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+    </>
   );
 };
 
