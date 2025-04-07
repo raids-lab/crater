@@ -217,22 +217,21 @@ type (
 		CreatedAt   time.Time         `json:"createdAt"`
 		Size        int64             `json:"size"`
 		Description string            `json:"description"`
-		CreatorName string            `json:"creatorName"`
-		NickName    string            `json:"nickName"`
+		UserInfo    model.UserInfo    `json:"userInfo"`
 	}
+
 	ListKanikoResponse struct {
 		KanikoInfoList []KanikoInfo `json:"kanikoList"`
 	}
 
 	ImageInfo struct {
-		ID          uint          `json:"ID"`
-		ImageLink   string        `json:"imageLink"`
-		Description *string       `json:"description"`
-		CreatedAt   time.Time     `json:"createdAt"`
-		TaskType    model.JobType `json:"taskType"`
-		IsPublic    bool          `json:"isPublic"`
-		CreatorName string        `json:"creatorName"`
-		NickName    string        `json:"nickName"`
+		ID          uint           `json:"ID"`
+		ImageLink   string         `json:"imageLink"`
+		Description *string        `json:"description"`
+		CreatedAt   time.Time      `json:"createdAt"`
+		TaskType    model.JobType  `json:"taskType"`
+		IsPublic    bool           `json:"isPublic"`
+		UserInfo    model.UserInfo `json:"userInfo"`
 	}
 
 	ImageInfoLinkPair struct {
@@ -543,8 +542,10 @@ func (mgr *ImagePackMgr) generateKanikoListResponse(kanikos []*model.Kaniko) Lis
 			CreatedAt:   kaniko.CreatedAt,
 			Size:        kaniko.Size,
 			Description: *kaniko.Description,
-			CreatorName: kaniko.User.Name,
-			NickName:    kaniko.User.Nickname,
+			UserInfo: model.UserInfo{
+				Username: kaniko.User.Name,
+				Nickname: kaniko.User.Nickname,
+			},
 		}
 		kanikoInfos = append(kanikoInfos, kanikoInfo)
 	}
@@ -612,8 +613,10 @@ func (mgr *ImagePackMgr) generateImageListResponse(images []*model.Image) ListIm
 			CreatedAt:   image.CreatedAt,
 			IsPublic:    image.IsPublic,
 			TaskType:    image.TaskType,
-			CreatorName: image.User.Name,
-			NickName:    image.User.Nickname,
+			UserInfo: model.UserInfo{
+				Username: image.User.Name,
+				Nickname: image.User.Nickname,
+			},
 		}
 		imageInfos = append(imageInfos, imageInfo)
 	}
@@ -661,8 +664,10 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 			CreatedAt:   image.CreatedAt,
 			IsPublic:    image.IsPublic,
 			TaskType:    image.TaskType,
-			CreatorName: image.User.Name,
-			NickName:    image.User.Nickname,
+			UserInfo: model.UserInfo{
+				Username: image.User.Name,
+				Nickname: image.User.Nickname,
+			},
 		}
 		imageInfos = append(imageInfos, imageInfo)
 	}
@@ -882,13 +887,13 @@ func (mgr *ImagePackMgr) AdminDeleteImageByIDList(c *gin.Context) {
 
 func (mgr *ImagePackMgr) deleteImageByIDList(c *gin.Context, isAdminMode bool, imageIDList []uint) bool {
 	flag := true
-	imageQuery := query.Image
-	specifiedQuery := imageQuery.WithContext(c).Preload(query.Image.User)
+	iq := query.Image
+	specifiedQuery := iq.WithContext(c).Preload(iq.User)
 	if !isAdminMode {
-		specifiedQuery = specifiedQuery.Where(imageQuery.UserID.Eq(util.GetToken(c).UserID))
+		specifiedQuery = specifiedQuery.Where(iq.UserID.Eq(util.GetToken(c).UserID))
 	}
 	for _, id := range imageIDList {
-		if _, err := specifiedQuery.Where(imageQuery.ID.Eq(id)).Delete(); err != nil {
+		if _, err := specifiedQuery.Where(iq.ID.Eq(id)).Delete(); err != nil {
 			logutils.Log.Errorf("delete image entity failed! err:%v", err)
 			flag = false
 		}

@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -9,7 +8,6 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
-	"gorm.io/datatypes"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -29,6 +27,7 @@ func NewJobTemplateMgr(_ *RegisterConfig) Manager {
 func (mgr *JobTemplateMgr) GetName() string { return mgr.name }
 
 func (mgr *JobTemplateMgr) RegisterPublic(_ *gin.RouterGroup) {}
+
 func (mgr *JobTemplateMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/list", mgr.ListJobTemplate)
 	g.POST("/create", mgr.CreateJobTemplate)
@@ -48,7 +47,7 @@ type JobTemplateresp struct {
 	Template  string    `json:"template"`
 	CreatedAt time.Time `json:"createdAt"`
 
-	Attribute datatypes.JSONType[model.UserAttribute] `json:"attribute"`
+	UserInfo model.UserInfo `json:"userInfo"`
 }
 
 // swagger
@@ -62,46 +61,29 @@ type JobTemplateresp struct {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/jobtemplate/list [get]
-//
-//nolint:dupl // This is a handler file, and it's common to have similar handlers.
 func (mgr *JobTemplateMgr) ListJobTemplate(c *gin.Context) {
-	jobtemplates := make(map[uint]JobTemplateresp)
-	d := query.Jobtemplate
-	jobtemplate, err := d.WithContext(c).Where(d.ID.IsNotNull()).Find()
+	j := query.Jobtemplate
+	templates, err := j.WithContext(c).Preload(j.User).Where(j.ID.IsNotNull()).Find()
 	if err != nil {
 		resputil.Error(c, "Can't get jobtemplates", resputil.NotSpecified)
 		return
 	}
-	for i := range jobtemplate {
-		tmp, terr := mgr.MatchUser(c, jobtemplate[i])
-		if terr == nil {
-			jobtemplates[tmp.ID] = tmp
-		}
-	}
-	result := make([]JobTemplateresp, 0, len(jobtemplates))
-	for i := range jobtemplates {
-		result = append(result, jobtemplates[i])
+	var result []JobTemplateresp
+	for i := range templates {
+		result = append(result, JobTemplateresp{
+			ID:        templates[i].ID,
+			Name:      templates[i].Name,
+			Describe:  templates[i].Describe,
+			Document:  templates[i].Document,
+			Template:  templates[i].Template,
+			CreatedAt: templates[i].CreatedAt,
+			UserInfo: model.UserInfo{
+				Username: templates[i].User.Name,
+				Nickname: templates[i].User.Nickname,
+			},
+		})
 	}
 	resputil.Success(c, result)
-}
-
-// 获取作业模板创建者信息
-func (mgr *JobTemplateMgr) MatchUser(c *gin.Context, jobtemplate *model.Jobtemplate) (JobTemplateresp, error) {
-	u := query.User
-	user, uerr := u.WithContext(c).Where(u.ID.Eq(jobtemplate.UserID)).First()
-	if uerr != nil {
-		resputil.Error(c, fmt.Sprintf("Dataset has no creator, err %v", uerr), resputil.NotSpecified)
-		return JobTemplateresp{}, uerr
-	}
-	return JobTemplateresp{
-		ID:        jobtemplate.ID,
-		Name:      jobtemplate.Name,
-		Describe:  jobtemplate.Describe,
-		Document:  jobtemplate.Document,
-		Template:  jobtemplate.Template,
-		CreatedAt: jobtemplate.CreatedAt,
-		Attribute: user.Attributes,
-	}, nil
 }
 
 type GetJobTemplateReq struct {
@@ -122,21 +104,29 @@ type GetJobTemplateReq struct {
 // @Router /v1/jobtemplate/{id} [get]
 func (mgr *JobTemplateMgr) GetJobTemplate(c *gin.Context) {
 	var req GetJobTemplateReq
-	if err := c.ShouldBindUri(&req); err != nil { // ✅ 正确绑定路径参数
+	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
 
-	jobtemplate, err := query.Jobtemplate.WithContext(c).Where(query.Jobtemplate.ID.Eq(req.ID)).First()
+	j := query.Jobtemplate
+	jobtemplate, err := j.WithContext(c).Preload(j.User).Where(j.ID.Eq(req.ID)).First()
 	if err != nil {
 		resputil.Error(c, "Failed to get job template", resputil.NotSpecified)
 		return
 	}
 
-	jobtemplateResp, terr := mgr.MatchUser(c, jobtemplate)
-	if terr != nil {
-		resputil.Error(c, "Failed to get job template", resputil.NotSpecified)
-		return
+	jobtemplateResp := JobTemplateresp{
+		ID:        jobtemplate.ID,
+		Name:      jobtemplate.Name,
+		Describe:  jobtemplate.Describe,
+		Document:  jobtemplate.Document,
+		Template:  jobtemplate.Template,
+		CreatedAt: jobtemplate.CreatedAt,
+		UserInfo: model.UserInfo{
+			Username: jobtemplate.User.Name,
+			Nickname: jobtemplate.User.Nickname,
+		},
 	}
 
 	resputil.Success(c, jobtemplateResp)
