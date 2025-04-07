@@ -7,6 +7,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/raids-lab/crater/pkg/aitaskctl"
+	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/imageregistry"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/packer"
@@ -42,6 +43,9 @@ type RegisterConfig struct {
 
 	// ImageRegistry is the image registry.
 	ImageRegistry imageregistry.ImageRegistryInterface
+
+	// ServiceManager 用于创建 Service 和 Ingress
+	ServiceManager crclient.ServiceManagerInterface
 }
 
 // Registers is a slice of Manager Init functions.

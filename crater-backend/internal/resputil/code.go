@@ -24,6 +24,9 @@ const (
 	// User's email is not verified
 	UserEmailNotVerified ErrorCode = 40302
 
+	// Container related
+	ServiceSshdNotFound ErrorCode = 40401
+
 	// Indicates laziness of the developer
 	// Frontend will directly print the message without any translation
 	NotSpecified ErrorCode = 99999

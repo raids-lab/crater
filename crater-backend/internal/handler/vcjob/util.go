@@ -1,14 +1,20 @@
 package vcjob
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
 
+	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/utils/ptr"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
+	"github.com/gin-gonic/gin"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/util"
@@ -310,4 +316,82 @@ func generatePodSpec(
 		podSpec.Containers[0].WorkingDir = *task.WorkingDir
 	}
 	return podSpec
+}
+
+func marshalYAMLWithIndent(v any, indent int) ([]byte, error) {
+	var buf bytes.Buffer
+	encoder := yaml.NewEncoder(&buf)
+	encoder.SetIndent(indent)
+	if err := encoder.Encode(v); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func getJob(c context.Context, name string, token *util.JWTMessage) (*model.Job, error) {
+	j := query.Job
+	q := j.WithContext(c).
+		Preload(j.Account).
+		Preload(j.User).
+		Where(j.JobName.Eq(name))
+
+	if token.RolePlatform == model.RoleAdmin {
+		return q.First()
+	} else {
+		return q.
+			Where(j.AccountID.Eq(token.AccountID)).
+			Where(j.UserID.Eq(token.UserID)).
+			First()
+	}
+}
+
+func getPodNameAndLabelFromJob(vcjob *batch.Job) (podName string, podLabels map[string]string) {
+	for i := range vcjob.Spec.Tasks {
+		task := &vcjob.Spec.Tasks[i]
+		return fmt.Sprintf("%s-%s-0", vcjob.Name, task.Name), task.Template.Labels
+	}
+	return "", nil
+}
+
+// execCommandInPod 在Pod中执行命令并返回输出结果
+func (mgr *VolcanojobMgr) execCommandInPod(
+	ctx *gin.Context, namespace, podName, containerName string, command []string,
+) (string, error) {
+	req := mgr.kubeClient.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(podName).
+		Namespace(namespace).
+		SubResource("exec")
+
+	option := &v1.PodExecOptions{
+		Command:   command,
+		Container: containerName,
+		Stdin:     false,
+		Stdout:    true,
+		Stderr:    true,
+		TTY:       false,
+	}
+
+	req.VersionedParams(
+		option,
+		scheme.ParameterCodec,
+	)
+
+	exec, err := remotecommand.NewSPDYExecutor(mgr.config, "POST", req.URL())
+	if err != nil {
+		return "", fmt.Errorf("failed to create SPDY executor: %w", err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
+		Stdin:  nil,
+		Stdout: &stdout,
+		Stderr: &stderr,
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("failed to execute command: %v, stderr: %s, error: %w", command, stderr.String(), err)
+	}
+
+	return stdout.String(), nil
 }
