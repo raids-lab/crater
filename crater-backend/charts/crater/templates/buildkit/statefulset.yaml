@@ -8,7 +8,7 @@ metadata:
 spec:
   serviceName: buildkitd
   podManagementPolicy: Parallel
-  replicas: 1
+  replicas: {{ .Values.web.buildkit.replica }}
   selector:
     matchLabels:
       app: buildkitd
