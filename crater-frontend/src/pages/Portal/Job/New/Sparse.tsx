@@ -63,8 +63,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { EnvCard, TensorboardCard, OtherCard } from "./Custom";
+import { EnvCard, TensorboardCard } from "./Custom";
 import { VolumeMountsCard } from "@/components/form/DataMountFormField";
+import { OtherOptionsFormCard } from "@/components/form/OtherOptionsFormField";
 
 const VERSION = "20240528";
 const JOB_TYPE = "single";
@@ -127,7 +128,6 @@ export const Component = () => {
         envs: values.envs,
         ingresses: values.ingresses,
         nodeports: values.nodeports,
-        openssh: values.openssh,
         alertEnabled: values.alertEnabled,
         runningType: values.runningType,
         params: values.params,
@@ -230,9 +230,6 @@ export const Component = () => {
       }
       if (jobInfo.data.observability.tbEnable) {
         setTensorboardOpen(TensorboardCard);
-      }
-      if (jobInfo.data.nodeSelector.enable) {
-        setOtherOpen(OtherCard);
       }
     },
     onError: () => {
@@ -898,48 +895,14 @@ export const Component = () => {
                 />
               </div>
             </AccordionCard>
-            <AccordionCard
-              cardTitle={OtherCard}
+            <OtherOptionsFormCard
+              form={form}
+              alertEnabledPath="alertEnabled"
+              nodeSelectorEnablePath="nodeSelector.enable"
+              nodeSelectorNodeNamePath="nodeSelector.nodeName"
               value={otherOpen}
               setValue={setOtherOpen}
-            >
-              <div className="mt-3 space-y-2">
-                <FormField
-                  control={form.control}
-                  name={`nodeSelector.enable`}
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                      <FormLabel>启用节点选择功能</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`nodeSelector.nodeName`}
-                  render={({ field }) => (
-                    <FormItem
-                      className={cn({
-                        hidden: !currentValues.nodeSelector.enable,
-                      })}
-                    >
-                      <FormControl>
-                        <Input {...field} className="font-mono" />
-                      </FormControl>
-                      <FormDescription>
-                        节点名称（可通过概览页面查看）
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </AccordionCard>
+            />
           </div>
         </form>
       </Form>

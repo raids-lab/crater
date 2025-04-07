@@ -31,10 +31,9 @@ import {
   VolumeMountType,
 } from "@/utils/form";
 import { useState } from "react";
-import { Switch } from "@/components/ui/switch";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
-import { EnvCard, IngressCard, OtherCard } from "./Custom";
+import { EnvCard, IngressCard } from "./Custom";
 import FormExportButton from "@/components/form/FormExportButton";
 import FormImportButton from "@/components/form/FormImportButton";
 import { MetadataFormJupyter } from "@/components/form/types";
@@ -45,6 +44,10 @@ import { ImageFormField } from "@/components/form/ImageFormField";
 import { VolumeMountsCard } from "@/components/form/DataMountFormField";
 import { ResourceFormFields } from "@/components/form/ResourceFormField";
 import { TemplateInfo } from "@/components/form/TemplateInfo";
+import {
+  OtherCard,
+  OtherOptionsFormCard,
+} from "@/components/form/OtherOptionsFormField";
 
 const formSchema = z.object({
   taskname: z
@@ -146,7 +149,6 @@ const formSchema = z.object({
   ),
   nodeSelector: nodeSelectorSchema,
   alertEnabled: z.boolean().default(true),
-  openssh: z.boolean().default(false),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -179,7 +181,6 @@ export const Component = () => {
         image: values.image,
         volumeMounts: values.volumeMounts,
         envs: values.envs,
-        openssh: values.openssh,
         ingresses: values.ingresses,
         nodeports: values.nodeports,
         alertEnabled: values.alertEnabled,
@@ -235,8 +236,6 @@ export const Component = () => {
       },
     },
   });
-
-  const currentValues = form.watch();
 
   const {
     fields: ingressFields,
@@ -385,9 +384,7 @@ export const Component = () => {
                 },
                 {
                   condition: (data) =>
-                    data.nodeSelector.enable ||
-                    data.openssh ||
-                    data.alertEnabled,
+                    data.nodeSelector.enable || data.alertEnabled,
                   setter: setOtherOpen,
                   value: OtherCard,
                 },
@@ -637,84 +634,14 @@ export const Component = () => {
                 </Button>
               </div>
             </AccordionCard>
-            <AccordionCard
-              cardTitle={OtherCard}
+            <OtherOptionsFormCard
+              form={form}
+              alertEnabledPath="alertEnabled"
+              nodeSelectorEnablePath="nodeSelector.enable"
+              nodeSelectorNodeNamePath="nodeSelector.nodeName"
               value={otherOpen}
               setValue={setOtherOpen}
-            >
-              <div className="mt-3 space-y-3">
-                <FormField
-                  control={form.control}
-                  name={`alertEnabled`}
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                      <FormLabel className="font-normal">
-                        接收状态通知
-                      </FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`openssh`}
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                      <FormLabel className="font-normal">
-                        启用 SSH 连接
-                      </FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`nodeSelector.enable`}
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                      <FormLabel className="font-normal">
-                        指定工作节点
-                      </FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`nodeSelector.nodeName`}
-                  render={({ field }) => (
-                    <FormItem
-                      className={cn({
-                        hidden: !currentValues.nodeSelector.enable,
-                      })}
-                    >
-                      <FormControl>
-                        <Input {...field} className="font-mono" />
-                      </FormControl>
-                      <FormDescription>
-                        输入节点名称（可通过概览页面查看）
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </AccordionCard>
+            />
           </div>
         </form>
       </Form>

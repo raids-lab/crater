@@ -36,7 +36,6 @@ import {
   exportToJsonString,
 } from "@/utils/form";
 import { useState } from "react";
-import { Switch } from "@/components/ui/switch";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
 import { Textarea } from "@/components/ui/textarea";
@@ -57,6 +56,10 @@ import LoadableButton from "@/components/custom/LoadableButton";
 import PageTitle from "@/components/layout/PageTitle";
 import FormImportButton from "@/components/form/FormImportButton";
 import { TemplateInfo } from "@/components/form/TemplateInfo";
+import {
+  OtherCard,
+  OtherOptionsFormCard,
+} from "@/components/form/OtherOptionsFormField";
 
 const formSchema = z.object({
   jobName: z
@@ -70,24 +73,22 @@ const formSchema = z.object({
   task: taskSchema,
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
-  nodeSelector: nodeSelectorSchema,
   ingresses: ingressesSchema,
   nodeports: nodeportsSchema,
+  nodeSelector: nodeSelectorSchema,
   alertEnabled: z.boolean().default(true),
-  openssh: z.boolean().default(false),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
 
 export const EnvCard = "环境变量";
 export const TensorboardCard = "观测面板";
-export const OtherCard = "其他选项";
 export const IngressCard = "外部访问（暂不可用）";
 
 export const Component = () => {
   const [envOpen, setEnvOpen] = useState<string>();
   const [ingressOpen, setIngressOpen] = useState<string>();
-  const [otherOpen, setOtherOpen] = useState<string>();
+  const [otherOpen, setOtherOpen] = useState<string>(OtherCard);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAtomValue(globalUserInfo);
@@ -105,7 +106,6 @@ export const Component = () => {
         envs: values.envs,
         ingresses: values.ingresses,
         nodeports: values.nodeports,
-        openssh: values.openssh,
         alertEnabled: values.alertEnabled,
         selectors: values.nodeSelector.enable
           ? [
@@ -164,8 +164,6 @@ export const Component = () => {
       },
     },
   });
-
-  const currentValues = form.watch();
 
   const {
     fields: ingressFields,
@@ -382,9 +380,7 @@ conda activate base;
                 },
                 {
                   condition: (data) =>
-                    data.nodeSelector.enable ||
-                    data.openssh ||
-                    data.alertEnabled,
+                    data.nodeSelector.enable || data.alertEnabled,
                   setter: setOtherOpen,
                   value: OtherCard,
                 },
@@ -604,84 +600,14 @@ conda activate base;
                 </Button>
               </div>
             </AccordionCard>
-            <AccordionCard
-              cardTitle={OtherCard}
+            <OtherOptionsFormCard
+              form={form}
+              alertEnabledPath="alertEnabled"
+              nodeSelectorEnablePath="nodeSelector.enable"
+              nodeSelectorNodeNamePath="nodeSelector.nodeName"
               value={otherOpen}
               setValue={setOtherOpen}
-            >
-              <div className="mt-3 space-y-2">
-                <FormField
-                  control={form.control}
-                  name={`alertEnabled`}
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                      <FormLabel className="font-normal">
-                        接收状态通知
-                      </FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`openssh`}
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                      <FormLabel className="font-normal">
-                        启用 SSH 连接
-                      </FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`nodeSelector.enable`}
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                      <FormLabel className="font-normal">
-                        指定工作节点
-                      </FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`nodeSelector.nodeName`}
-                  render={({ field }) => (
-                    <FormItem
-                      className={cn({
-                        hidden: !currentValues.nodeSelector.enable,
-                      })}
-                    >
-                      <FormControl>
-                        <Input {...field} className="font-mono" />
-                      </FormControl>
-                      <FormDescription>
-                        节点名称（可通过概览页面查看）
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </AccordionCard>
+            />
           </div>
         </form>
       </Form>

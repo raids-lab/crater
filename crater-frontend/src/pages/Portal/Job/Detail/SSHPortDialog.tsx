@@ -49,7 +49,17 @@ export function SSHPortDialog({
     onError: (error) => {
       const [errorCode] = getErrorCode(error);
       if (errorCode === ERROR_SERVICE_SSHD_NOT_FOUND) {
-        toast.error("SSHD 服务未发现，请阅读 SSH 相关文档。");
+        toast.error(
+          <div className="flex flex-row items-center">
+            未检测到 SSHD 服务，请阅读
+            <DocsButton
+              variant="link"
+              title="帮助文档"
+              url="toolbox/ssh/vscode-ssh"
+              className="text-destructive"
+            />
+          </div>,
+        );
       }
     },
   });
@@ -82,23 +92,19 @@ export function SSHPortDialog({
         <DialogHeader>
           <DialogTitle>SSH 连接</DialogTitle>
         </DialogHeader>
-        {sshInfo ? (
+        {sshInfo && (
           <div className="flex flex-col space-y-4">
             <CopyableCommand
-              label="Terminal"
+              label="通过 Terminal 连接"
               command={`ssh ${userName}@${sshInfo.ip} -p ${sshInfo.port}`}
             />
             <CopyableCommand
-              label="VSCode"
+              label="通过 VSCode 连接"
               command={`${userName}@${sshInfo.ip}:${sshInfo.port}`}
             />
           </div>
-        ) : (
-          <div className="py-4 text-center">
-            <p>正在获取 SSH 连接信息...</p>
-          </div>
         )}
-        <DialogFooter className="mt-4">
+        <DialogFooter className="mt-2">
           <DocsButton title="帮助文档" url="toolbox/ssh/ssh-new" />
         </DialogFooter>
       </DialogContent>

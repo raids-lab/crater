@@ -165,6 +165,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
                       getPortToken(jobName);
                     }, 500);
                   }}
+                  className="cursor-pointer"
                 >
                   <ExternalLinkIcon className="size-4" />
                   交互式页面
