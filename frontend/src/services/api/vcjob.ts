@@ -264,6 +264,12 @@ export interface ISSHPortDetail {
   };
 }
 
+// SSH 信息接口
+export interface SSHInfo {
+  ip: string;
+  port: string;
+}
+
 export interface VolumeMount {
   subPath: string;
   mountPath: string;
@@ -468,11 +474,9 @@ export const apiJupyterSnapshot = async (jobName: string) => {
   return response.data;
 };
 
-// @Router /v1/vcjobs/jupyter/{name}/ssh [post]
-export const apiSSHPortGetDetail = (jobName: string) =>
-  instance.get<IResponse<ISSHPortDetail>>(
-    `${VERSION}/${JOB_URL}/${jobName}/ssh`,
-  );
+// 开启 SSH 端口
+export const apiOpenSSH = (jobName: string) =>
+  instance.post<IResponse<SSHInfo>>(`${VERSION}/${JOB_URL}/${jobName}/ssh`);
 
 export const apiJobScheduleAdmin = async () => {
   const response = await instance.get<IResponse<string>>(
