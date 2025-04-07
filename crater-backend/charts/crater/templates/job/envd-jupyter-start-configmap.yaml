@@ -13,7 +13,7 @@ data:
     else
         # Add user
         groupadd --force --gid "${NB_GID}" --non-unique "${NB_GROUP:-${NB_USER}}"
-        useradd --no-log-init --home "/home/${NB_USER}" --shell /bin/bash --uid "${NB_UID}" --gid "${NB_GID}" --groups 100 "${NB_USER}"
+        useradd --no-log-init --home "/home/${NB_USER}" --shell /bin/zsh --uid "${NB_UID}" --gid "${NB_GID}" --groups 100 "${NB_USER}"
     fi
     # Ensuring home dir is owned by user
     if [ ! -d "/home/${NB_USER}" ]; then
@@ -34,5 +34,5 @@ data:
             PYTHONUSERBASE=/opt/conda/envs/envd
         fi
     fi
-    echo "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/cuda/bin:/opt/conda/envs/envd/bin:/opt/conda/bin:/home/envd/.local/bin" >> /home/${NB_USER}/.bashrc
-    exec sudo --preserve-env --set-home --user "${PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" PATH="${USER_PATH}" PYTHONPATH="${PYTHONPATH:-}" PYTHONUSERBASE="${PYTHONUSERBASE}" "$@"
+    sudo cp /root/.zshrc /home/${NB_USER}/.zshrc
+    exec sudo --preserve-env --set-home --user "${NB_USER}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" PATH="${USER_PATH}" PYTHONPATH="${PYTHONPATH:-}" PYTHONUSERBASE="${PYTHONUSERBASE}" "$@"
