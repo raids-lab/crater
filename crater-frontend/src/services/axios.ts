@@ -7,6 +7,7 @@ import {
   ERROR_TOKEN_INVALID,
   ERROR_USER_NOT_ALLOWED,
   ERROR_USER_EMAIL_NOT_VERIFIED,
+  ErrorCode,
 } from "./error_code";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/utils/store";
 import { showErrorToast } from "@/utils/toast";
@@ -108,5 +109,15 @@ instance.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+export const getErrorCode = (error: unknown): [ErrorCode, string] => {
+  if (isAxiosError<IErrorResponse>(error)) {
+    return [
+      error.response?.data.code ?? ERROR_NOT_SPECIFIED,
+      error.response?.data.msg ?? error.message,
+    ];
+  }
+  return [ERROR_NOT_SPECIFIED, (error as Error).message];
+};
 
 export default instance;

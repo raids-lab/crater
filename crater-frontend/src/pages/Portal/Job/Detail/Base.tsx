@@ -41,7 +41,6 @@ import {
   JobType,
   JobPhase,
   apiJobGetEvent,
-  apiSSHPortGetDetail,
   JobStatus,
   getJobStateType,
 } from "@/services/api/vcjob";
@@ -81,12 +80,6 @@ export function BaseCore({ jobName }: { jobName: string }) {
     queryFn: () => apiJobGetDetail(jobName),
     select: (res) => res.data.data,
     refetchInterval: REFETCH_INTERVAL,
-  });
-
-  const { data: sshPortData } = useQuery({
-    queryKey: ["job", "ssh", jobName],
-    queryFn: () => apiSSHPortGetDetail(jobName),
-    select: (res) => res.data.data,
   });
 
   const { mutate: getPortToken } = useMutation({
@@ -155,15 +148,10 @@ export function BaseCore({ jobName }: { jobName: string }) {
         >
           <div className="flex flex-row gap-3">
             {(data.jobType === JobType.Jupyter ||
-              data.jobType === JobType.WebIDE) &&
-              data.status === JobPhase.Running &&
-              sshPortData &&
-              sshPortData.open && (
-                <SSHPortDialog
-                  hostIP={sshPortData.data.IP}
-                  nodePort={sshPortData.data.nodePort}
-                  userName={sshPortData.data.username}
-                />
+              data.jobType === JobType.WebIDE ||
+              data.jobType === JobType.Custom) &&
+              data.status === JobPhase.Running && (
+                <SSHPortDialog jobName={jobName} userName={data.username} />
               )}
             {(data.jobType === JobType.Jupyter ||
               data.jobType === JobType.WebIDE) &&

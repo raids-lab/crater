@@ -29,7 +29,7 @@ import {
   apiCreatePodNodeport,
   apiDeletePodNodeport,
 } from "@/services/api/tool";
-import { PodNodeport, PodNodeportMgr } from "@/services/api/tool";
+import { PodNodeportMgr } from "@/services/api/tool";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,10 +41,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
-import { GridIcon, ClipboardCopy } from "lucide-react";
+import { GridIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { SSHPortDialog } from "./SSHPortDialog";
 import DocsButton from "@/components/button/DocsButton";
+import { CopyButton } from "@/components/button/copy-button";
 
 const nodeportFormSchema = z.object({
   name: z
@@ -62,16 +62,9 @@ interface NodeportPanelProps {
   userName: string;
 }
 
-export function NodeportPanel({
-  namespacedName,
-  userName,
-}: NodeportPanelProps) {
+export function NodeportPanel({ namespacedName }: NodeportPanelProps) {
   const [isEditNodeportDialogOpen, setIsEditNodeportDialogOpen] =
     useState(false);
-  const [selectedNodeport, setSelectedNodeport] = useState<PodNodeport | null>(
-    null,
-  );
-  const [showSSHDialog, setShowSSHDialog] = useState(false);
 
   const nodeportForm = useForm<PodNodeportMgr>({
     resolver: zodResolver(nodeportFormSchema),
@@ -99,11 +92,6 @@ export function NodeportPanel({
     queryFn: fetchNodeports,
     enabled: !!namespacedName,
   });
-
-  const handleCopyCommandClick = (nodeport: PodNodeport) => {
-    setSelectedNodeport(nodeport);
-    setShowSSHDialog(true);
-  };
 
   const handleAddNodeport = () => {
     nodeportForm.reset({ name: "", containerPort: 0 });
@@ -180,16 +168,9 @@ export function NodeportPanel({
                 >
                   <ExternalLink className="size-4" />
                 </TooltipButton>
-                <TooltipButton
-                  variant="ghost"
-                  size="icon"
-                  className="hover:text-primary"
-                  onClick={() => handleCopyCommandClick(nodeport)}
-                  tooltipContent="复制命令"
-                >
-                  <ClipboardCopy className="size-4" />
-                </TooltipButton>
-
+                <CopyButton
+                  content={`${nodeport.address}:${nodeport.nodePort}`}
+                />
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <TooltipButton
@@ -238,16 +219,6 @@ export function NodeportPanel({
           </Button>
         </div>
       </div>
-      {showSSHDialog && selectedNodeport && (
-        <SSHPortDialog
-          hostIP={selectedNodeport.address}
-          nodePort={selectedNodeport.nodePort}
-          userName={userName}
-          withButton={false}
-          open={showSSHDialog}
-          onOpenChange={setShowSSHDialog}
-        />
-      )}
       <Dialog
         open={isEditNodeportDialogOpen}
         onOpenChange={setIsEditNodeportDialogOpen}

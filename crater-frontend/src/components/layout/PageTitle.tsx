@@ -25,7 +25,7 @@ const PageTitle: FC<PageTitleProps> = ({
   return (
     <div
       className={cn(
-        "flex h-12 flex-col justify-between gap-3 md:flex-row md:items-center",
+        "flex h-12 flex-row items-center justify-between gap-3",
         className,
       )}
     >
@@ -36,7 +36,7 @@ const PageTitle: FC<PageTitleProps> = ({
           {tipContent && <TipBadge title={tipContent} />}
         </div>
         {description && (
-          <p className="text-muted-foreground flex items-center gap-1 text-sm">
+          <p className="text-muted-foreground hidden items-center gap-1 text-sm md:flex">
             {description}
             {descriptionCopiable && <CopyButton content={description} />}
           </p>
