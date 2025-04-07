@@ -51,6 +51,7 @@ web:
       repository: "***REMOVED***/docker.io/moby/buildkit"
       tag: "v0.18.2-rootless"
       pullPolicy: "IfNotPresent"
+    replica: 3
     dockerconfigjson: ***REMOVED***
     httpsProxy: 192.168.5.58:1080
     noProxy: ***REMOVED***
@@ -63,7 +64,7 @@ web:
         memory: 48Gi
     cache:
       storageClass: "openebs-hostpath"
-      storageSize: 400Gi
+      storageSize: 10Ti
       maxUsedSpace: "400GB"
       minFreeSpace: "50GB"
       reservedSpace: "50GB"
