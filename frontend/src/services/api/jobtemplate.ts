@@ -1,6 +1,6 @@
 import instance, { VERSION } from "../axios";
 import { IResponse } from "@/services/types";
-import { IUserAttributes } from "./admin/user";
+import { IUserInfo } from "./vcjob";
 export interface JobTemplate {
   id: number;
   name: string;
@@ -8,7 +8,7 @@ export interface JobTemplate {
   document: string;
   createdAt: string;
   template: string;
-  attribute: IUserAttributes;
+  userInfo: IUserInfo;
 }
 export interface JobTemplateReq {
   describe: string;

@@ -15,12 +15,12 @@ import {
   BotIcon,
   DatabaseZapIcon,
   EllipsisVerticalIcon,
+  PackageIcon,
   SearchIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 //import TooltipButton from "@/components/custom/TooltipButton";
 import TooltipLink from "@/components/label/TooltipLink";
-import { IUserAttributes } from "@/services/api/admin/user";
 import PageTitle from "@/components/layout/PageTitle";
 import TipBadge from "@/components/badge/TipBadge";
 import { TimeDistance } from "@/components/custom/TimeDistance";
@@ -46,21 +46,20 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
-
 import { Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { IUserInfo } from "@/services/api/vcjob";
+import UserLabel from "@/components/label/UserLabel";
 
 export interface DataItem {
   id: number;
   name: string;
   desc: string;
-  username: string;
   createdAt?: string;
   tag: string[];
   url?: string;
   template?: string;
-  owner: IUserAttributes;
+  owner: IUserInfo;
 }
 //假设 JobType 是这样定义的枚举
 enum JobType {
@@ -69,23 +68,56 @@ enum JobType {
   Tensorflow = "tensorflow",
   Pytorch = "pytorch",
 }
+
+const getNewJobUrl = (jobType: JobType) => {
+  switch (jobType) {
+    case JobType.Jupyter: // 直接匹配枚举值
+      return "job/iner/new-jupyter-vcjobs";
+    case JobType.Custom:
+      return "job/batch/new-vcjobs";
+    case JobType.Tensorflow:
+      return "job/batch/new-tensorflow";
+    case JobType.Pytorch:
+      return "job/batch/new-pytorch";
+    default:
+      return "job/batch/new-vcjobs";
+  }
+};
+
+// 新增 JSON 解析函数
+const getJobUrlFromTemplate = (template: string): string => {
+  try {
+    const parsed = JSON.parse(template);
+
+    // 类型安全校验
+    if (!parsed.type || !Object.values(JobType).includes(parsed.type)) {
+      return getNewJobUrl(JobType.Jupyter);
+    }
+
+    // 通过类型断言确保类型安全
+    const jobType = parsed.type as JobType;
+    return getNewJobUrl(jobType);
+  } catch {
+    return getNewJobUrl(JobType.Jupyter); // 解析失败返回默认
+  }
+};
+
 export default function DataList({
   items,
   title,
   actionArea,
-  itemdelete,
-  onRefresh,
+  handleDelete,
 }: {
   items: DataItem[];
-  title: string;
+  title: "模型" | "数据集" | "作业模板";
   actionArea?: React.ReactNode;
-  itemdelete?: (id: number) => void;
-  onRefresh?: () => void;
+  handleDelete?: (id: number) => void;
 }) {
   const [sort, setSort] = useState("ascending");
   const [modelType, setModelType] = useState("所有标签");
   const [searchTerm, setSearchTerm] = useState("");
   const user = useAtomValue(globalUserInfo);
+
   const tags = useMemo(() => {
     const tags = new Set<string>();
     items.forEach((model) => {
@@ -93,37 +125,7 @@ export default function DataList({
     });
     return Array.from(tags);
   }, [items]);
-  const getNewJobUrl = (jobType: JobType) => {
-    switch (jobType) {
-      case JobType.Jupyter: // 直接匹配枚举值
-        return "job/iner/new-jupyter-vcjobs";
-      case JobType.Custom:
-        return "job/batch/new-vcjobs";
-      case JobType.Tensorflow:
-        return "job/batch/new-tensorflow";
-      case JobType.Pytorch:
-        return "job/batch/new-pytorch";
-      default:
-        return "job/batch/new-vcjobs";
-    }
-  };
-  // 新增 JSON 解析函数
-  const getJobUrlFromTemplate = (template: string): string => {
-    try {
-      const parsed = JSON.parse(template);
 
-      // 类型安全校验
-      if (!parsed.type || !Object.values(JobType).includes(parsed.type)) {
-        return getNewJobUrl(JobType.Jupyter);
-      }
-
-      // 通过类型断言确保类型安全
-      const jobType = parsed.type as JobType;
-      return getNewJobUrl(jobType);
-    } catch {
-      return getNewJobUrl(JobType.Jupyter); // 解析失败返回默认
-    }
-  };
   const filteredItems = items
     .sort((a, b) =>
       sort === "descending"
@@ -218,7 +220,13 @@ export default function DataList({
                 <div
                   className={`bg-primary/10 text-primary flex size-10 items-center justify-center rounded-lg p-1`}
                 >
-                  {title === "模型" ? <BotIcon /> : <DatabaseZapIcon />}
+                  {title === "模型" ? (
+                    <BotIcon />
+                  ) : title === "数据集" ? (
+                    <DatabaseZapIcon />
+                  ) : (
+                    <PackageIcon />
+                  )}
                 </div>
                 {title === "作业模板" ? (
                   <TooltipLink
@@ -236,7 +244,7 @@ export default function DataList({
                   />
                 )}
               </div>
-              {title === "作业模板" && (
+              {user.name === item.owner.username && (
                 <AlertDialog>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -253,9 +261,9 @@ export default function DataList({
                       <DropdownMenuLabel className="text-muted-foreground text-xs">
                         操作
                       </DropdownMenuLabel>
-                      {user?.name === item.owner.name && (
+                      {handleDelete && (
                         <AlertDialogTrigger asChild>
-                          <DropdownMenuItem className="group text-red-500">
+                          <DropdownMenuItem className="group">
                             <Trash2Icon className="text-destructive mr-2 size-4" />
                             删除
                           </DropdownMenuItem>
@@ -265,29 +273,18 @@ export default function DataList({
                   </DropdownMenu>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>删除作业模板</AlertDialogTitle>
+                      <AlertDialogTitle>删除{title}</AlertDialogTitle>
                       <AlertDialogDescription>
-                        作业模板 {item.name} 将被删除，此操作不可恢复。
+                        {title} {item.name} 将被删除，此操作不可恢复。
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>取消</AlertDialogCancel>
                       <AlertDialogAction
                         variant="destructive"
-                        onClick={async (e) => {
+                        onClick={(e) => {
                           e.stopPropagation();
-                          if (itemdelete && onRefresh) {
-                            try {
-                              await itemdelete(item.id);
-                              // 成功删除后，重置搜索和过滤条件以刷新列表
-                              setSearchTerm("");
-                              setModelType("所有标签");
-                              // 如果父组件提供了重新获取数据的方法，可以在这里调用
-                              onRefresh();
-                            } catch (error) {
-                              toast.error("删除失败:" + error);
-                            }
-                          }
+                          handleDelete?.(item.id);
                         }}
                       >
                         删除
@@ -316,11 +313,16 @@ export default function DataList({
             <div>
               <div className="flex flex-row flex-wrap gap-1 p-4 pt-0">
                 <TipBadge
-                  title={item.owner?.nickname || item.username}
-                  className="bg-purple-600/15 text-purple-600 hover:bg-purple-600/25"
+                  title={
+                    <UserLabel
+                      info={item.owner}
+                      className="hover:text-highlight-orange text-xs"
+                    />
+                  }
                 />
                 <TipBadge
                   title={<TimeDistance date={item.createdAt || "2023"} />}
+                  className="bg-purple-600/15 text-purple-600 hover:bg-purple-600/25"
                 />
               </div>
             </div>

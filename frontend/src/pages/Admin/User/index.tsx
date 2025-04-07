@@ -156,11 +156,10 @@ export const User = () => {
         ),
         cell: ({ row }) => (
           <UserLabel
-            attributes={{
+            info={{
               username: row.original.name,
               nickname: row.original.attributes.nickname,
             }}
-            prefix="admin/user"
           />
         ),
       },

@@ -50,7 +50,7 @@ export default function ImageItem({
           </div>
         </TooltipTrigger>
         <TooltipContent>
-          <p>{item.detail?.creatorName}</p>
+          <p>{item.detail?.userInfo.nickname}</p>
           <TimeDistance date={item.detail?.createdAt} className="text-xs" />
         </TooltipContent>
       </Tooltip>

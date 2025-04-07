@@ -278,9 +278,7 @@ const AdminJobOverview = () => {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("owner")} />
         ),
-        cell: ({ row }) => (
-          <UserLabel attributes={row.original.userInfo} prefix="admin/user" />
-        ),
+        cell: ({ row }) => <UserLabel info={row.original.userInfo} />,
       },
       {
         accessorKey: "queue",

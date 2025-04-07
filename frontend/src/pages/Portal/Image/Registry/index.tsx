@@ -88,6 +88,7 @@ import { useAtomValue } from "jotai";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { ValidDialog } from "../Image/ValidDialog";
+import UserLabel from "@/components/label/UserLabel";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -172,12 +173,12 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
       ),
     },
     {
-      id: "nickName",
-      accessorKey: "nickName",
+      id: "userInfo",
+      accessorKey: "userInfo",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("nickName")} />
+        <DataTableColumnHeader column={column} title={getHeader("userInfo")} />
       ),
-      cell: ({ row }) => <div>{row.getValue("nickName")}</div>,
+      cell: ({ row }) => <UserLabel info={row.original.userInfo} />,
     },
     {
       accessorKey: "createdAt",
@@ -381,7 +382,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                   id: row.original.ID,
                   imageLink: row.original.imageLink,
                   description: row.original.description,
-                  creator: row.original.creatorName,
+                  creator: row.original.userInfo,
                 })),
               );
               setCheckOpenDialog(true);
@@ -417,7 +418,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             onDeleteLinks={(invalidPairs: ImageLinkPair[]) => {
               deleteKanikoList(
                 invalidPairs
-                  .filter((pair) => pair.creator === user.name)
+                  .filter((pair) => pair.creator.username === user.name)
                   .map((pair) => pair.id),
               );
             }}

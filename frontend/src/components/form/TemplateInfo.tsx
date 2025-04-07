@@ -55,9 +55,9 @@ export function TemplateInfo<T extends FieldValues>({
             </Badge>
           </CardTitle>
 
-          {templateData?.attribute && (
+          {templateData?.userInfo.nickname && (
             <Badge variant="secondary">
-              作者: {templateData.attribute.nickname}
+              作者: {templateData.userInfo.nickname}
             </Badge>
           )}
         </div>
