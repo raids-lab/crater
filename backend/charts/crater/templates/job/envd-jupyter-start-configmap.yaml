@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: envd-jupyter-start-configmap
+  namespace: {{ .Values.backendConfig.workspace.namespace}}
+data:
+  start.sh: |
+    #!/bin/bash
+    set -e
+    # Determine whether the user already exists
+    if id "${NB_USER}" &>/dev/null; then
+        echo "User ${NB_USER} already exists, will not recreate"
+    else
+        # Add user
+        groupadd --force --gid "${NB_GID}" --non-unique "${NB_GROUP:-${NB_USER}}"
+        useradd --no-log-init --home "/home/${NB_USER}" --shell /bin/bash --uid "${NB_UID}" --gid "${NB_GID}" --groups 100 "${NB_USER}"
+    fi
+    # Ensuring home dir is owned by user
+    if [ ! -d "/home/${NB_USER}" ]; then
+        mkdir -p "/home/${NB_USER}"
+    fi
+    chown "${NB_UID}:${NB_GID}" "/home/${NB_USER}"
+    # Granting user passwordless sudo rights
+    if [ ! -d "/etc/sudoers.d" ]; then
+        mkdir -p "/etc/sudoers.d"
+    fi
+    if [ ! -f "/etc/sudoers.d/added-by-start-script" ]; then
+        touch /etc/sudoers.d/added-by-start-script
+    fi
+    echo "${NB_USER} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/added-by-start-script
+    # Set PYTHONUSERBASE
+    if [ -z "${PYTHONUSERBASE}" ]; then
+        if ! command -v conda >/dev/null 2>&1; then
+            PYTHONUSERBASE=/opt/conda/envs/envd
+        fi
+    fi
+    echo "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/cuda/bin:/opt/conda/envs/envd/bin:/opt/conda/bin:/home/envd/.local/bin" >> /home/${NB_USER}/.bashrc
+    exec sudo --preserve-env --set-home --user "${PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" PATH="${USER_PATH}" PYTHONPATH="${PYTHONPATH:-}" PYTHONUSERBASE="${PYTHONUSERBASE}" "$@"
