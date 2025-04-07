@@ -28,8 +28,9 @@ export function CopyButton({
     <TooltipButton
       variant={variant ?? "ghost"}
       size={size ?? "icon"}
-      className={cn("relative h-6 w-6", className)}
+      className={cn("relative h-6 w-6 cursor-pointer", className)}
       type="button"
+      onFocus={(e) => e.preventDefault()}
       aria-label="Copy to clipboard"
       tooltipContent={"复制"}
       onClick={handleCopy}

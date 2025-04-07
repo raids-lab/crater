@@ -44,7 +44,6 @@ import {
   exportToJsonString,
 } from "@/utils/form";
 import { useState } from "react";
-import { Switch } from "@/components/ui/switch";
 import { apiResourceList } from "@/services/api/resource";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
@@ -53,6 +52,10 @@ import { ImageFormField } from "@/components/form/ImageFormField";
 import { VolumeMountsCard } from "@/components/form/DataMountFormField";
 import { MetadataFormTensorflow } from "@/components/form/types";
 import { useTemplateLoader } from "@/hooks/useTemplateLoader";
+import {
+  OtherCard,
+  OtherOptionsFormCard,
+} from "@/components/form/OtherOptionsFormField";
 
 const VERSION = "20240528";
 const JOB_TYPE = "tensorflow";
@@ -78,13 +81,10 @@ const formSchema = z.object({
 type FormSchema = z.infer<typeof formSchema>;
 
 const EnvCard = "环境变量";
-const TensorboardCard = "观测面板";
-const OtherCard = "其他选项";
 
 export const Component = () => {
   const [envOpen, setEnvOpen] = useState<string>();
-  const [tensorboardOpen, setTensorboardOpen] = useState<string>();
-  const [otherOpen, setOtherOpen] = useState<string>();
+  const [otherOpen, setOtherOpen] = useState<string>(OtherCard);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAtomValue(globalUserInfo);
@@ -301,9 +301,6 @@ export const Component = () => {
                         form.reset(data);
                         if (data.envs.length > 0) {
                           setEnvOpen(EnvCard);
-                        }
-                        if (data.observability.tbEnable) {
-                          setTensorboardOpen(TensorboardCard);
                         }
                         if (data.nodeSelector.enable) {
                           setOtherOpen(OtherCard);
@@ -877,107 +874,14 @@ export const Component = () => {
                 </Button>
               </div>
             </AccordionCard>
-            <AccordionCard
-              cardTitle={TensorboardCard}
-              value={tensorboardOpen}
-              setValue={setTensorboardOpen}
-            >
-              <div className="mt-3 space-y-2">
-                <FormField
-                  control={form.control}
-                  name={`observability.tbEnable`}
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                      <FormLabel>启用 Tensorboard</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`observability.tbLogDir`}
-                  render={({ field }) => (
-                    <FormItem
-                      className={cn({
-                        hidden: !currentValues.observability.tbEnable,
-                      })}
-                    >
-                      <FormControl>
-                        <Input {...field} className="font-mono" />
-                      </FormControl>
-                      <FormDescription>
-                        日志路径（仅支持采集个人文件夹下日志）
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </AccordionCard>
-            <AccordionCard
-              cardTitle={OtherCard}
+            <OtherOptionsFormCard
+              form={form}
+              alertEnabledPath="alertEnabled"
+              nodeSelectorEnablePath="nodeSelector.enable"
+              nodeSelectorNodeNamePath="nodeSelector.nodeName"
               value={otherOpen}
               setValue={setOtherOpen}
-            >
-              <div className="mt-3 space-y-2">
-                <FormField
-                  control={form.control}
-                  name={`alertEnabled`}
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                      <FormLabel className="font-normal">
-                        接收状态通知
-                      </FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`nodeSelector.enable`}
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                      <FormLabel>启用节点选择功能</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`nodeSelector.nodeName`}
-                  render={({ field }) => (
-                    <FormItem
-                      className={cn({
-                        hidden: !currentValues.nodeSelector.enable,
-                      })}
-                    >
-                      <FormControl>
-                        <Input {...field} className="font-mono" />
-                      </FormControl>
-                      <FormDescription>
-                        节点名称（可通过概览页面查看）
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </AccordionCard>
+            />
           </div>
         </form>
       </Form>

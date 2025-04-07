@@ -62,10 +62,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { EnvCard, TensorboardCard, OtherCard } from "./Custom";
+import { EnvCard, TensorboardCard } from "./Custom";
 import { VolumeMountsCard } from "@/components/form/DataMountFormField";
 import { useTemplateLoader } from "@/hooks/useTemplateLoader";
 import { MetadataFormCustom } from "@/components/form/types";
+import { OtherCard } from "@/components/form/OtherOptionsFormField";
 
 const VERSION = "20240528";
 const JOB_TYPE = "single";

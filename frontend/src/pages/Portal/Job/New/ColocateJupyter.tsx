@@ -48,8 +48,9 @@ import { Switch } from "@/components/ui/switch";
 import { apiResourceList } from "@/services/api/resource";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
-import { EnvCard, TensorboardCard, OtherCard } from "./Custom";
+import { EnvCard, TensorboardCard } from "./Custom";
 import { VolumeMountsCard } from "@/components/form/DataMountFormField";
+import { OtherCard } from "@/components/form/OtherOptionsFormField";
 
 const VERSION = "20240528";
 const JOB_TYPE = "jupyter";
@@ -181,7 +182,6 @@ export const Component = () => {
         volumeMounts: values.volumeMounts,
         envs: values.envs,
         alertEnabled: values.alertEnabled,
-        openssh: values.openssh,
         ingresses: values.ingresses,
         nodeports: values.nodeports,
         selectors: values.nodeSelector.enable

@@ -313,7 +313,6 @@ export interface IJupyterCreate {
   selectors?: NodeSelectorRequirement[];
   template: string;
   alertEnabled: boolean;
-  openssh: boolean;
   ingresses: Ingress[];
   nodeports: Nodeport[];
 }
