@@ -22,7 +22,6 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler"
-	"github.com/raids-lab/crater/internal/handler/tool"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
@@ -71,7 +70,6 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.DELETE(":name", mgr.DeleteJob)
 
 	g.GET(":name/detail", mgr.GetJobDetail)
-	g.GET(":name/ssh", mgr.GetSSHPortDetail)
 	g.GET(":name/yaml", mgr.GetJobYaml)
 	g.GET(":name/pods", mgr.GetJobPods)
 	g.GET(":name/template", mgr.GetJobTemplate)
@@ -112,7 +110,6 @@ const (
 	AnnotationKeyTaskName     = "crater.raids.io/task-name"
 	AnnotationKeyTaskTemplate = "crater.raids.io/task-template"
 	AnnotationKeyJupyter      = "crater.raids.io/jupyter-token"
-	AnnotationKeyOpenSSH      = "crater.raids.io/open-ssh"
 	AnnotationKeyAlertEnabled = "crater.raids.io/alert-enabled"
 	AnnotationKeySSHEnabled   = "crater.raids.io/ssh-enabled" // Value 格式为 "ip:port"
 
@@ -152,6 +149,7 @@ type (
 	}
 
 	CreateJobCommon struct {
+		Name          string                       `json:"name" binding:"required"`
 		VolumeMounts  []VolumeMount                `json:"volumeMounts,omitempty"`
 		DatasetMounts []DatasetMount               `json:"datasetMounts,omitempty"`
 		Envs          []v1.EnvVar                  `json:"envs,omitempty"`
@@ -521,95 +519,6 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		CompletedTimestamp: metav1.NewTime(job.CompletedTimestamp),
 	}
 	resputil.Success(c, jobDetail)
-}
-
-// GetSSHPortDetail godoc
-// @Summary 获取作业的SSH端口信息
-// @Description 根据作业名称获取该作业的SSH端口相关信息
-// @Tags VolcanoJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name path string true "Job Name"
-// @Success 200 {object} resputil.Response[SSHResp] "SSH端口信息"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/vcjobs/{name}/ssh [post]
-func (mgr *VolcanojobMgr) GetSSHPortDetail(c *gin.Context) {
-	var req JobActionReq
-	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-
-	token := util.GetToken(c)
-
-	job, err := getJob(c, req.JobName, &token)
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	// 仅保留 Custom 和 Jupyter 类型的 SSH 功能
-	if job.JobType != model.JobTypeCustom && job.JobType != model.JobTypeJupyter {
-		resputil.Error(c, "job type not support ssh", resputil.NotSpecified)
-		return
-	}
-
-	if job.Status != batch.Running {
-		resputil.Success(c, SSHResp{Open: false, Data: SSHPortData{}})
-		return
-	}
-
-	username := job.User.Name
-	namespace := job.Attributes.Data().Namespace
-	podName := fmt.Sprintf("%s-default0-0", req.JobName)
-
-	var pod v1.Pod
-	if err := mgr.client.Get(c, client.ObjectKey{Namespace: namespace, Name: podName}, &pod); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	if pod.Annotations[AnnotationKeyOpenSSH] != "true" {
-		resputil.Success(c, SSHResp{Open: false, Data: SSHPortData{}})
-		return
-	}
-
-	// 查找并补全 nodeport 注解信息
-	for key, value := range pod.Annotations {
-		if key == NodePortLabelKey+"ssh" {
-			var nodeportData tool.PodNodeport
-			if err := json.Unmarshal([]byte(value), &nodeportData); err == nil {
-				// 尝试补全 address，如果为空且 Pod 有 HostIP
-				if nodeportData.Address == "" && pod.Status.HostIP != "" {
-					nodeportData.Address = pod.Status.HostIP
-
-					// 回写到 annotation 中
-					newAnno, err := json.Marshal(nodeportData)
-					if err == nil {
-						pod.Annotations[key] = string(newAnno)
-						_ = mgr.client.Update(c, &pod) // 异步更新，无需报错
-					}
-				}
-
-				// 构建返回结构
-				sshPort := SSHResp{
-					Open: true,
-					Data: SSHPortData{
-						IP:       nodeportData.Address,
-						NodePort: nodeportData.NodePort,
-						Username: username,
-					},
-				}
-				resputil.Success(c, sshPort)
-				return
-			}
-		}
-	}
-
-	// 未找到 SSH 信息，默认返回关闭状态
-	resputil.Success(c, SSHResp{Open: false, Data: SSHPortData{}})
 }
 
 // OpenSSH godoc

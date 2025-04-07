@@ -37,7 +37,6 @@ type (
 
 	CreateTensorflowReq struct {
 		CreateJobCommon `json:",inline"`
-		Name            string    `json:"name" binding:"required"`
 		Tasks           []TaskReq `json:"tasks"`
 	}
 )
