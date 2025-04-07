@@ -502,8 +502,12 @@ func (mgr *ImagePackMgr) UserListKaniko(c *gin.Context) {
 	var kanikos []*model.Kaniko
 	var err error
 	token := util.GetToken(c)
-	kanikoQuery := query.Kaniko
-	kanikos, err = kanikoQuery.WithContext(c).Where(kanikoQuery.UserID.Eq(token.UserID)).Order(kanikoQuery.CreatedAt.Desc()).Find()
+	kq := query.Kaniko
+	kanikos, err = kq.WithContext(c).
+		Where(kq.UserID.Eq(token.UserID)).
+		Order(kq.CreatedAt.Desc()).
+		Preload(kq.User).
+		Find()
 	if err != nil {
 		logutils.Log.Errorf("fetch kaniko entity failed, err:%v", err)
 	}
