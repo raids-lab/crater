@@ -62,15 +62,14 @@ func (mgr *DatasetMgr) RegisterAdmin(g *gin.RouterGroup) {
 }
 
 type DatasetResp struct {
-	Name      string                                  `json:"name"`
-	ID        uint                                    `json:"id"`
-	UserName  string                                  `json:"username"`
-	URL       string                                  `json:"url"`
-	Describe  string                                  `json:"describe"`
-	CreatedAt time.Time                               `json:"createdAt"`
-	Type      model.DataType                          `json:"type"`
-	Extra     datatypes.JSONType[model.Extracontent]  `json:"extra"`
-	Attribute datatypes.JSONType[model.UserAttribute] `json:"attribute"`
+	Name      string                                 `json:"name"`
+	ID        uint                                   `json:"id"`
+	URL       string                                 `json:"url"`
+	Describe  string                                 `json:"describe"`
+	CreatedAt time.Time                              `json:"createdAt"`
+	Type      model.DataType                         `json:"type"`
+	Extra     datatypes.JSONType[model.ExtraContent] `json:"extra"`
+	UserInfo  model.UserInfo                         `json:"userInfo"`
 }
 
 // GetMyDataset godoc
@@ -87,31 +86,32 @@ type DatasetResp struct {
 func (mgr *DatasetMgr) GetMyDataset(c *gin.Context) {
 	token := util.GetToken(c)
 	datasets := make(map[uint]DatasetResp)
+
 	ud := query.UserDataset
 	d := query.Dataset
-	userDataset, err := ud.WithContext(c).Where(ud.UserID.Eq(token.UserID)).Find()
+	userDatasets, err := ud.WithContext(c).Where(ud.UserID.Eq(token.UserID)).Find()
 	if err != nil {
 		logutils.Log.Infof("Can't get , err: %v", err)
 		resputil.Error(c, "Can't get mydatasets", resputil.NotSpecified)
 		return
 	}
-	for i := range userDataset {
-		dataset, uderr := d.WithContext(c).Where(d.ID.Eq(userDataset[i].DatasetID)).First()
-		if uderr != nil {
-			resputil.Error(c, fmt.Sprintf("Get user's dataset failed, err %v", uderr), resputil.NotSpecified)
+	for i := range userDatasets {
+		dataset, ferr := d.WithContext(c).
+			Preload(query.Image.User).
+			Where(d.ID.Eq(userDatasets[i].DatasetID)).
+			First()
+		if ferr != nil {
+			resputil.Error(c, fmt.Sprintf("Get user's dataset failed, err %v", ferr), resputil.NotSpecified)
 			return
 		}
-		tmp, terr := mgr.generateDataseResponse(c, dataset)
-		if terr == nil {
-			datasets[dataset.ID] = tmp
-		}
+		datasets[dataset.ID] = convertDataset(dataset)
 	}
-	err = mgr.generateQueueDataseResponse(c, 1, datasets)
+	err = mgr.generateQueueDataseResponse(c, model.DefaultAccountID, datasets)
 	if err != nil {
 		resputil.Error(c, "Can't get public datasets", resputil.NotSpecified)
 		return
 	}
-	if token.AccountID != 0 && token.AccountID != 1 {
+	if token.AccountID != model.DefaultAccountID {
 		err = mgr.generateQueueDataseResponse(c, token.AccountID, datasets)
 		if err != nil {
 			resputil.Error(c, "Can't get queue datasets", resputil.NotSpecified)
@@ -144,16 +144,12 @@ func (mgr *DatasetMgr) GetDatasetByID(c *gin.Context) {
 		return
 	}
 	d := query.Dataset
-	dataset, err := d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).First()
+	dataset, err := d.WithContext(c).Preload(query.Image.User).Where(d.ID.Eq(req.DatasetID)).First()
 	if err != nil {
 		resputil.Error(c, "this dataset not exist", resputil.InvalidRequest)
 		return
 	}
-	res, err := mgr.generateDataseResponse(c, dataset)
-	if err != nil {
-		resputil.Error(c, "Can't get this dataset", resputil.NotSpecified)
-		return
-	}
+	res := convertDataset(dataset)
 	var result []DatasetResp
 	result = append(result, res)
 	resputil.Success(c, result)
@@ -170,21 +166,16 @@ func (mgr *DatasetMgr) GetDatasetByID(c *gin.Context) {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/admin/dataset/alldataset [get]
-//
-//nolint:dupl // This is a handler file, and it's common to have similar handlers.
 func (mgr *DatasetMgr) GetAllDataset(c *gin.Context) {
 	datasets := make(map[uint]DatasetResp)
 	d := query.Dataset
-	dataset, err := d.WithContext(c).Where(d.ID.IsNotNull()).Find()
+	dataset, err := d.WithContext(c).Preload(query.Image.User).Where(d.ID.IsNotNull()).Find()
 	if err != nil {
 		resputil.Error(c, "Can't get datasets", resputil.NotSpecified)
 		return
 	}
 	for i := range dataset {
-		tmp, terr := mgr.generateDataseResponse(c, dataset[i])
-		if terr == nil {
-			datasets[tmp.ID] = tmp
-		}
+		datasets[dataset[i].ID] = convertDataset(dataset[i])
 	}
 	result := make([]DatasetResp, 0, len(datasets))
 	for i := range datasets {
@@ -201,37 +192,16 @@ func (mgr *DatasetMgr) generateQueueDataseResponse(c *gin.Context, queueid uint,
 		return err
 	}
 	for i := range queueDataset {
-		dataset, err := d.WithContext(c).Where(d.ID.Eq(queueDataset[i].DatasetID)).First()
+		dataset, err := d.WithContext(c).
+			Preload(query.Image.User).
+			Where(d.ID.Eq(queueDataset[i].DatasetID)).
+			First()
 		if err != nil {
 			return err
 		}
-		tmp, terr := mgr.generateDataseResponse(c, dataset)
-		if terr != nil {
-			return terr
-		}
-		data[tmp.ID] = tmp
+		data[dataset.ID] = convertDataset(dataset)
 	}
 	return nil
-}
-
-func (mgr *DatasetMgr) generateDataseResponse(c *gin.Context, dataset *model.Dataset) (DatasetResp, error) {
-	u := query.User
-	user, uerr := u.WithContext(c).Where(u.ID.Eq(dataset.UserID)).First()
-	if uerr != nil {
-		resputil.Error(c, fmt.Sprintf("Dataset has no creator, err %v", uerr), resputil.NotSpecified)
-		return DatasetResp{}, uerr
-	}
-	return DatasetResp{
-		Name:      dataset.Name,
-		Describe:  dataset.Describe,
-		URL:       dataset.URL,
-		UserName:  user.Nickname,
-		ID:        dataset.ID,
-		CreatedAt: dataset.CreatedAt,
-		Type:      dataset.Type,
-		Extra:     dataset.Extra,
-		Attribute: user.Attributes,
-	}, nil
 }
 
 type DatasetReq struct {
@@ -285,7 +255,7 @@ func (mgr *DatasetMgr) CreateDataset(c *gin.Context) {
 		dataset.URL = realURL
 		dataset.UserID = token.UserID
 		dataset.Type = datasetReq.Type
-		dataset.Extra = datatypes.NewJSONType(model.Extracontent{
+		dataset.Extra = datatypes.NewJSONType(model.ExtraContent{
 			Tags:   datasetReq.Tags,
 			WebURL: &datasetReq.WebURL,
 		})
@@ -802,7 +772,7 @@ type UpdateDatasetreq struct {
 func (mgr *DatasetMgr) UpdateDataset(c *gin.Context) {
 	token := util.GetToken(c)
 	var req UpdateDatasetreq
-	var tempExtra model.Extracontent
+	var tempExtra model.ExtraContent
 	if err := c.ShouldBindJSON(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
@@ -1050,4 +1020,20 @@ func (mgr *DatasetMgr) ListQueueOfDataset(c *gin.Context) {
 		return
 	}
 	resputil.Success(c, resp)
+}
+
+func convertDataset(dataset *model.Dataset) DatasetResp {
+	return DatasetResp{
+		Name:      dataset.Name,
+		Describe:  dataset.Describe,
+		URL:       dataset.URL,
+		ID:        dataset.ID,
+		CreatedAt: dataset.CreatedAt,
+		Type:      dataset.Type,
+		Extra:     dataset.Extra,
+		UserInfo: model.UserInfo{
+			Username: dataset.User.Name,
+			Nickname: dataset.User.Nickname,
+		},
+	}
 }
