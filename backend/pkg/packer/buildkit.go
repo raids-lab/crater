@@ -54,14 +54,14 @@ func (b *imagePacker) generateVolumes(jobName string) []corev1.Volume {
 				},
 			},
 		},
-		{
-			Name: "buildkitcerts",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: buildkitClientSecretName,
-				},
-			},
-		},
+		// {
+		// 	Name: "buildkitcerts",
+		// 	VolumeSource: corev1.VolumeSource{
+		// 		Secret: &corev1.SecretVolumeSource{
+		// 			SecretName: buildkitClientSecretName,
+		// 		},
+		// 	},
+		// },
 		{
 			Name: "configmap-volume",
 			VolumeSource: corev1.VolumeSource{
@@ -80,9 +80,9 @@ func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Cont
 	output := fmt.Sprintf("type=image,name=%s,push=true", data.ImageLink)
 	buildArgs := []string{
 		"--addr", "tcp://buildkitd.crater-images:1234",
-		"--tlscacert=/certs/ca.pem",
-		"--tlscert=/certs/cert.pem",
-		"--tlskey=/certs/key.pem",
+		// "--tlscacert=/certs/ca.pem",
+		// "--tlscert=/certs/cert.pem",
+		// "--tlskey=/certs/key.pem",
 		"build",
 		"--frontend", "dockerfile.v0",
 		"--progress", "plain",
@@ -102,10 +102,10 @@ func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Cont
 				},
 			},
 			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "buildkitcerts",
-					MountPath: "/certs",
-				},
+				// {
+				// 	Name:      "buildkitcerts",
+				// 	MountPath: "/certs",
+				// },
 				{
 					Name:      "harborcredits",
 					MountPath: "/.docker",
