@@ -210,11 +210,10 @@ const AccountDetail = () => {
         ),
         cell: ({ row }) => (
           <UserLabel
-            attributes={{
+            info={{
               username: row.original.name,
               nickname: row.original.userInfo.nickname,
             }}
-            prefix="admin/user"
           />
         ),
       },

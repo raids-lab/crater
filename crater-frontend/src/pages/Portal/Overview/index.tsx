@@ -83,9 +83,7 @@ export const Component: FC = () => {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("owner")} />
         ),
-        cell: ({ row }) => (
-          <UserLabel attributes={row.original.userInfo} prefix="portal/user" />
-        ),
+        cell: ({ row }) => <UserLabel info={row.original.userInfo} />,
       },
       {
         accessorKey: "nodes",

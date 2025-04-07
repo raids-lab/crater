@@ -65,6 +65,7 @@ import { ValidDialog } from "./ValidDialog";
 import { StatusDialog } from "./StatusDialog";
 import { RenameDialog } from "./RenameDialog";
 import { DeleteDialog } from "./DeleteDialog";
+import UserLabel from "@/components/label/UserLabel";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -212,11 +213,12 @@ export const ImageListTable: FC<ImageListTableProps> = ({
       ),
     },
     {
-      accessorKey: "nickName",
+      id: "userInfo",
+      accessorKey: "userInfo",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("nickName")} />
+        <DataTableColumnHeader column={column} title={getHeader("userInfo")} />
       ),
-      cell: ({ row }) => <div>{row.getValue("nickName")}</div>,
+      cell: ({ row }) => <UserLabel info={row.original.userInfo} />,
     },
     {
       accessorKey: "visibility",
@@ -253,7 +255,7 @@ export const ImageListTable: FC<ImageListTableProps> = ({
                 id: imageInfo.ID,
                 imageLink: imageInfo.imageLink,
                 description: imageInfo.description,
-                creator: imageInfo.creatorName,
+                creator: imageInfo.userInfo,
               },
             ]}
             onDeleteImageList={deleteUserImageList}
@@ -335,7 +337,7 @@ export const ImageListTable: FC<ImageListTableProps> = ({
                   id: row.original.ID,
                   imageLink: row.original.imageLink,
                   description: row.original.description,
-                  creator: row.original.creatorName,
+                  creator: row.original.userInfo,
                 })),
               );
               setCheckOpenDialog(true);
@@ -353,7 +355,7 @@ export const ImageListTable: FC<ImageListTableProps> = ({
                   isAdminMode
                     ? invalidPairs.map((pair) => pair.id)
                     : invalidPairs
-                        .filter((pair) => pair.creator === user.name)
+                        .filter((pair) => pair.creator.username === user.name)
                         .map((pair) => pair.id),
                 );
               }}
@@ -405,7 +407,7 @@ const Actions: FC<ActionsProps> = ({
 }) => {
   const [openDialog, setOpenDialog] = useState(false);
   const [dialog, setDialog] = useState<Dialogs | undefined>(undefined);
-  const isDisabled = !isAdminMode && imageInfo.creatorName !== userName;
+  const isDisabled = !isAdminMode && imageInfo.userInfo.username !== userName;
   return (
     <div className="flex flex-row space-x-1">
       <AlertDialog open={openDialog} onOpenChange={setOpenDialog}>
@@ -543,7 +545,7 @@ const Actions: FC<ActionsProps> = ({
               onDeleteLinks={(invalidPairs: ImageLinkPair[]) => {
                 onDeleteImageList(
                   invalidPairs
-                    .filter((pair) => pair.creator === userName)
+                    .filter((pair) => pair.creator.username === userName)
                     .map((pair) => pair.id),
                 );
               }}

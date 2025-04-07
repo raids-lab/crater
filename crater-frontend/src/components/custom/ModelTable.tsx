@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Dataset } from "@/services/api/dataset";
+import { IDataset } from "@/services/api/dataset";
 import DocsButton from "@/components/button/DocsButton";
 import { DatasetCreateForm } from "@/pages/Portal/Data/CreateForm";
 import { IResponse } from "@/services/types";
@@ -10,7 +10,7 @@ import { AxiosResponse } from "axios";
 import SandwichSheet from "@/components/sheet/SandwichSheet";
 
 interface DatesetTableProps {
-  apiGetDataset: () => Promise<AxiosResponse<IResponse<Dataset[]>>>;
+  apiGetDataset: () => Promise<AxiosResponse<IResponse<IDataset[]>>>;
 }
 
 export function ModelTable({ apiGetDataset }: DatesetTableProps) {
@@ -33,8 +33,7 @@ export function ModelTable({ apiGetDataset }: DatesetTableProps) {
             desc: dataset.describe,
             tag: dataset.extra.tag || [],
             createdAt: dataset.createdAt,
-            owner: dataset.attribute,
-            username: dataset.username,
+            owner: dataset.userInfo,
           })) || []
       }
       title="模型"

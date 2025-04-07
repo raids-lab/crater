@@ -22,7 +22,7 @@ import Combobox from "@/components/form/Combobox";
 import DatasetItem from "@/components/form/DatasetItem";
 import AccordionCard from "@/components/form/AccordionCard";
 import { useQuery } from "@tanstack/react-query";
-import { apiGetDataset, Dataset } from "@/services/api/dataset";
+import { apiGetDataset, IDataset } from "@/services/api/dataset";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
 import { ComboboxItem } from "@/components/form/Combobox";
@@ -58,7 +58,7 @@ export function VolumeMountsCard<
             value: item.id.toString(),
             label: item.name,
             detail: item,
-          }) as ComboboxItem<Dataset>,
+          }) as ComboboxItem<IDataset>,
       );
     },
   });

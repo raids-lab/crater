@@ -266,7 +266,7 @@ export function DatasetShareTable({
     <DetailPage
       header={
         <PageTitle title={data.data?.[0]?.name}>
-          {user?.name == data.data?.[0]?.attribute.name && (
+          {user?.name == data.data?.[0]?.userInfo.username && (
             <div className="flex flex-row space-x-1">
               <DatasetUpdateForm
                 type="dataset"
@@ -376,7 +376,11 @@ export function DatasetShareTable({
         </PageTitle>
       }
       info={[
-        { title: "用户", icon: UserRoundIcon, value: data.data?.[0]?.username },
+        {
+          title: "用户",
+          icon: UserRoundIcon,
+          value: data.data?.[0]?.userInfo.username,
+        },
         {
           title: "创建于",
           icon: CalendarIcon,

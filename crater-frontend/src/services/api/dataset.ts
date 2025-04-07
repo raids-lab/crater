@@ -1,22 +1,22 @@
 import instance, { VERSION } from "../axios";
 import { IResponse } from "@/services/types";
 import { IUserAttributes } from "./admin/user";
+import { IUserInfo } from "./vcjob";
 
 export interface Extra {
   tag: string[];
   weburl: string;
 }
 
-export interface Dataset {
+export interface IDataset {
   id: number;
   name: string;
   url: string;
   describe: string;
-  username: string;
   createdAt: string;
   type: string;
   extra: Extra;
-  attribute: IUserAttributes;
+  userInfo: IUserInfo;
 }
 
 export interface UserDataset {
@@ -39,7 +39,7 @@ export interface DatasetReq {
   ispublic: boolean;
 }
 
-export interface DatasetReanmeReq {
+export interface DatasetRenameReq {
   datasetID: number;
   name: string;
 }
@@ -63,14 +63,14 @@ export interface cancelSharedQueueResp {
   queueID: number;
 }
 export const apiGetDataset = () =>
-  instance.get<IResponse<Dataset[]>>(VERSION + `/dataset/mydataset`);
+  instance.get<IResponse<IDataset[]>>(VERSION + `/dataset/mydataset`);
 
 //因为table表单的query必须要返回数组，实际上数组里只有一个数据集的数据
 export const apiGetDatasetByID = (datasetID: number) =>
-  instance.get<IResponse<Dataset[]>>(VERSION + `/dataset/detail/${datasetID}`);
+  instance.get<IResponse<IDataset[]>>(VERSION + `/dataset/detail/${datasetID}`);
 
 export const apiAdminGetDataset = () =>
-  instance.get<IResponse<Dataset[]>>(VERSION + `/admin/dataset/alldataset`);
+  instance.get<IResponse<IDataset[]>>(VERSION + `/admin/dataset/alldataset`);
 
 export const apiShareDatasetwithUser = (ud: UserDataset) =>
   instance.post<IResponse<string>>(VERSION + "/dataset/share/user", ud);
@@ -84,7 +84,7 @@ export const apiDatasetCreate = (dataset: DatasetReq) =>
 export const apiDatasetDelete = (datasetID: number) =>
   instance.delete<IResponse<string>>(VERSION + `/dataset/delete/${datasetID}`);
 
-export const apiDatasetRename = (drr: DatasetReanmeReq) =>
+export const apiDatasetRename = (drr: DatasetRenameReq) =>
   instance.post<IResponse<string>>(VERSION + "/dataset/rename", drr);
 
 export const apiAdminShareDatasetwithUser = (ud: UserDataset) =>

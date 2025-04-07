@@ -1,7 +1,7 @@
 import {
   apiAdminGetDataset,
   apiDatasetDelete,
-  Dataset,
+  IDataset,
 } from "@/services/api/dataset";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataTable } from "@/components/custom/DataTable";
@@ -59,7 +59,7 @@ export const AdminDatasetTable = () => {
   });
 
   const { mutate: deleteDataset } = useMutation({
-    mutationFn: (dataset: Dataset) => apiDatasetDelete(dataset.id),
+    mutationFn: (dataset: IDataset) => apiDatasetDelete(dataset.id),
     onSuccess: async (_, dataset) => {
       await queryClient.invalidateQueries({
         queryKey: ["admin", "datasets"],
@@ -68,7 +68,7 @@ export const AdminDatasetTable = () => {
     },
   });
 
-  const columns: ColumnDef<Dataset>[] = [
+  const columns: ColumnDef<IDataset>[] = [
     {
       accessorKey: "name",
       header: "名称",

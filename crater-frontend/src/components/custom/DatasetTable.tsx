@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Dataset } from "@/services/api/dataset";
+import { IDataset } from "@/services/api/dataset";
 import DocsButton from "@/components/button/DocsButton";
 import { DatasetCreateForm } from "@/pages/Portal/Data/CreateForm";
 import { IResponse } from "@/services/types";
@@ -11,7 +11,7 @@ import { AxiosResponse } from "axios";
 import SandwichSheet from "@/components/sheet/SandwichSheet";
 
 interface DatesetTableProps {
-  apiGetDataset: () => Promise<AxiosResponse<IResponse<Dataset[]>>>;
+  apiGetDataset: () => Promise<AxiosResponse<IResponse<IDataset[]>>>;
 }
 
 export function DatasetTable({ apiGetDataset }: DatesetTableProps) {
@@ -34,8 +34,7 @@ export function DatasetTable({ apiGetDataset }: DatesetTableProps) {
             desc: dataset.describe,
             tag: dataset.extra.tag || [], // Add appropriate tags if available
             createdAt: dataset.createdAt,
-            owner: dataset.attribute, // Adjust to match IUserAttributes structure
-            username: dataset.username,
+            owner: dataset.userInfo,
           })) || []
       }
       title="数据集"

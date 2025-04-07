@@ -1,7 +1,11 @@
 import { ComboboxItem } from "./Combobox";
-import { Dataset } from "@/services/api/dataset";
+import { IDataset } from "@/services/api/dataset";
 
-export default function DatasetItem({ item }: { item: ComboboxItem<Dataset> }) {
+export default function DatasetItem({
+  item,
+}: {
+  item: ComboboxItem<IDataset>;
+}) {
   return (
     <div className="text-muted-foreground flex flex-col items-start gap-0.5">
       <p className="text-foreground">{item.detail?.name}</p>

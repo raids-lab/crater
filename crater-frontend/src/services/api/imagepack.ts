@@ -7,7 +7,7 @@ import {
   CrossCircledIcon,
   StopwatchIcon,
 } from "@radix-ui/react-icons";
-import { JobType } from "./vcjob";
+import { IUserInfo, JobType } from "./vcjob";
 
 export type ListKanikoResponse = {
   kanikoList: KanikoInfoResponse[];
@@ -23,8 +23,7 @@ export type KanikoInfoResponse = {
   description: string;
   podName: string;
   podNameSpace: string;
-  creatorName: string;
-  nickName: string;
+  userInfo: IUserInfo;
 };
 
 export type ListImageResponse = {
@@ -39,8 +38,7 @@ export type ImageInfoResponse = {
   createdAt: string;
   isPublic: boolean;
   taskType: JobType;
-  creatorName: string;
-  nickName: string;
+  userInfo: IUserInfo;
 };
 
 export type KanikoLogResponse = {
@@ -64,7 +62,7 @@ export const getHeader = (key: string): string => {
   switch (key) {
     case "imageLink":
       return "镜像地址";
-    case "nickName":
+    case "userInfo":
       return "提交者";
     case "status":
       return "状态";
@@ -192,7 +190,7 @@ export interface ImageLinkPair {
   id: number;
   imageLink: string;
   description: string;
-  creator: string;
+  creator: IUserInfo;
 }
 
 export interface ImageLinkPairs {

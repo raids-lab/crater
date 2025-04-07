@@ -27,7 +27,6 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useAtom } from "jotai";
 import { globalSettings } from "@/utils/store";
-import { Separator } from "@/components/ui/separator";
 import { FileCogIcon } from "lucide-react";
 import WarningAlert from "@/components/custom/WarningAlert";
 
@@ -65,10 +64,9 @@ const SystemSetting = () => {
             为您的工作负载选取最佳资源分配和调度策略
           </CardDescription>
         </CardHeader>
-        <Separator />
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)}>
-            <CardContent className="pt-6">
+            <CardContent>
               <FormField
                 control={form.control}
                 name="scheduler"
@@ -100,7 +98,6 @@ const SystemSetting = () => {
                 )}
               />
             </CardContent>
-            <Separator />
             <CardFooter className="px-6 py-4">
               <Button type="submit">
                 <FileCogIcon />
