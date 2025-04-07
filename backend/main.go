@@ -48,6 +48,7 @@ import (
 	aisystemv1alpha1 "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	recommenddljob "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/crclient"
 	db "github.com/raids-lab/crater/pkg/db/orm"
 	"github.com/raids-lab/crater/pkg/imageregistry"
 	"github.com/raids-lab/crater/pkg/logutils"
@@ -224,6 +225,7 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
+
 	// init db
 	err = db.InitDB()
 	if err != nil {
@@ -259,6 +261,10 @@ func main() {
 		setupLog.Error(err, "unable to set up custom CRD addon")
 		os.Exit(1)
 	}
+
+	// 初始化 ServiceManager
+	serviceManager := crclient.NewServiceManager(mgr.GetClient(), clientset)
+	registerConfig.ServiceManager = serviceManager
 
 	// start manager
 	setupLog.Info("starting manager")

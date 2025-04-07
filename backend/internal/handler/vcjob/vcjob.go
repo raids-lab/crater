@@ -2,17 +2,17 @@ package vcjob
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/utils/ptr"
@@ -26,7 +26,9 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/imageregistry"
+	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/packer"
 	"github.com/raids-lab/crater/pkg/utils"
@@ -38,22 +40,24 @@ func init() {
 }
 
 type VolcanojobMgr struct {
-	name          string
-	client        client.Client
-	config        *rest.Config
-	kubeClient    kubernetes.Interface
-	imagePacker   packer.ImagePackerInterface
-	imageRegistry imageregistry.ImageRegistryInterface
+	name           string
+	client         client.Client
+	config         *rest.Config
+	kubeClient     kubernetes.Interface
+	imagePacker    packer.ImagePackerInterface
+	imageRegistry  imageregistry.ImageRegistryInterface
+	serviceManager crclient.ServiceManagerInterface
 }
 
 func NewVolcanojobMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &VolcanojobMgr{
-		name:          "vcjobs",
-		client:        conf.Client,
-		config:        conf.KubeConfig,
-		kubeClient:    conf.KubeClient,
-		imagePacker:   conf.ImagePacker,
-		imageRegistry: conf.ImageRegistry,
+		name:           "vcjobs",
+		client:         conf.Client,
+		config:         conf.KubeConfig,
+		kubeClient:     conf.KubeClient,
+		imagePacker:    conf.ImagePacker,
+		imageRegistry:  conf.ImageRegistry,
+		serviceManager: conf.ServiceManager,
 	}
 }
 
@@ -72,7 +76,7 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET(":name/pods", mgr.GetJobPods)
 	g.GET(":name/template", mgr.GetJobTemplate)
 	g.GET(":name/event", mgr.GetJobEvents)
-	g.PUT(":name/alert", mgr.SetAlertEnabled)
+	g.PUT(":name/alert", mgr.ToggleAlertState)
 
 	// jupyter
 	g.POST("jupyter", mgr.CreateJupyterJob)
@@ -87,6 +91,9 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 
 	// pytorch
 	g.POST("pytorch", mgr.CreatePytorchJob)
+
+	// open ssh
+	g.POST(":name/ssh", mgr.OpenSSH)
 }
 
 func (mgr *VolcanojobMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -107,6 +114,7 @@ const (
 	AnnotationKeyJupyter      = "crater.raids.io/jupyter-token"
 	AnnotationKeyOpenSSH      = "crater.raids.io/open-ssh"
 	AnnotationKeyAlertEnabled = "crater.raids.io/alert-enabled"
+	AnnotationKeySSHEnabled   = "crater.raids.io/ssh-enabled" // Value 格式为 "ip:port"
 
 	// VolumeData  = "crater-rw-workspace"
 	VolumeCache = "crater-cache"
@@ -114,6 +122,7 @@ const (
 
 	JupyterPort     = 8888
 	TensorBoardPort = 6006
+	SSHPort         = 22
 )
 
 type (
@@ -436,6 +445,12 @@ type (
 		Username string `json:"username"`
 	}
 
+	// SSHInfo 定义 SSH 信息的结构体
+	SSHInfo struct {
+		IP   string `json:"ip"`
+		Port string `json:"port"`
+	}
+
 	// SSHResp 定义返回的 SSH 信息的结构体
 	SSHResp struct {
 		Open bool        `json:"open"` // SSH 是否开启
@@ -508,25 +523,6 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 	resputil.Success(c, jobDetail)
 }
 
-func getJob(c context.Context, name string, token *util.JWTMessage) (*model.Job, error) {
-	j := query.Job
-	if token.RolePlatform == model.RoleAdmin {
-		return j.WithContext(c).
-			Preload(j.Account).
-			Preload(j.User).
-			Where(j.JobName.Eq(name)).
-			First()
-	} else {
-		return j.WithContext(c).
-			Preload(j.Account).
-			Preload(j.User).
-			Where(j.JobName.Eq(name)).
-			Where(j.AccountID.Eq(token.AccountID)).
-			Where(j.UserID.Eq(token.UserID)).
-			First()
-	}
-}
-
 // GetSSHPortDetail godoc
 // @Summary 获取作业的SSH端口信息
 // @Description 根据作业名称获取该作业的SSH端口相关信息
@@ -556,7 +552,7 @@ func (mgr *VolcanojobMgr) GetSSHPortDetail(c *gin.Context) {
 
 	// 仅保留 Custom 和 Jupyter 类型的 SSH 功能
 	if job.JobType != model.JobTypeCustom && job.JobType != model.JobTypeJupyter {
-		resputil.Success(c, SSHResp{Open: false, Data: SSHPortData{}})
+		resputil.Error(c, "job type not support ssh", resputil.NotSpecified)
 		return
 	}
 
@@ -614,6 +610,108 @@ func (mgr *VolcanojobMgr) GetSSHPortDetail(c *gin.Context) {
 
 	// 未找到 SSH 信息，默认返回关闭状态
 	resputil.Success(c, SSHResp{Open: false, Data: SSHPortData{}})
+}
+
+// OpenSSH godoc
+// @Summary 开启 SSH
+// @Description 开启 SSH
+// @Tags VolcanoJob
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param name path string true "Job Name"
+// @Success 200 {object} resputil.Response[any] "SSH开启成功"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/vcjobs/{name}/ssh [post]
+func (mgr *VolcanojobMgr) OpenSSH(c *gin.Context) {
+	var req JobActionReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	token := util.GetToken(c)
+
+	job, err := getJob(c, req.JobName, &token)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	if job.Status != batch.Running {
+		resputil.Error(c, "job is not running", resputil.NotSpecified)
+		return
+	}
+
+	vcjob := job.Attributes.Data()
+	namespace := job.Attributes.Data().Namespace
+	podName, podLabels := getPodNameAndLabelFromJob(vcjob)
+
+	var pod v1.Pod
+	if err = mgr.client.Get(c, client.ObjectKey{Namespace: namespace, Name: podName}, &pod); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	// 1. Check if AnnotationKeySSHEnabled is already set, get the value and return
+	if v, ok := pod.Annotations[AnnotationKeySSHEnabled]; ok {
+		// 解析主机名和端口号 // Value 格式为 "ip:port"
+		splits := strings.Split(v, ":")
+		if len(splits) != 2 {
+			resputil.Error(c, "invalid ssh enabled value", resputil.NotSpecified)
+			return
+		}
+		resputil.Success(c, SSHInfo{
+			IP:   splits[0],
+			Port: splits[1],
+		})
+		return
+	}
+
+	// 2. Run the command to open SSH
+	if _, err = mgr.execCommandInPod(c, namespace, podName, "jupyter-notebook", []string{"service", "ssh", "restart"}); err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to start ssh service in pod: %v", err), resputil.ServiceSshdNotFound)
+		return
+	}
+
+	// 3. Create service for SSH
+	ip, port, err := mgr.serviceManager.CreateNodePort(
+		c,
+		[]metav1.OwnerReference{
+			{
+				APIVersion:         "batch.volcano.sh/v1alpha1",
+				Kind:               "Job",
+				Name:               vcjob.Name,
+				UID:                vcjob.UID,
+				BlockOwnerDeletion: ptr.To(true),
+			},
+		},
+		podLabels,
+		ptr.To(v1.ServicePort{
+			Name:       "ssh",
+			Port:       SSHPort,
+			Protocol:   v1.ProtocolTCP,
+			TargetPort: intstr.FromInt(SSHPort),
+		}),
+	)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to create ssh service: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	// 4. Update the pod annotation with the SSH information
+	sshInfo := SSHInfo{
+		IP:   ip,
+		Port: fmt.Sprintf("%d", port),
+	}
+	sshInfoStr := fmt.Sprintf("%s:%d", ip, port)
+	pod.Annotations[AnnotationKeySSHEnabled] = sshInfoStr
+	if err := mgr.client.Update(c, &pod); err != nil {
+		logutils.Log.Errorf("failed to update pod annotation: %v", err)
+	}
+
+	resputil.Success(c, sshInfo)
 }
 
 // GetJobPods godoc
@@ -745,16 +843,6 @@ func (mgr *VolcanojobMgr) GetJobYaml(c *gin.Context) {
 	resputil.Success(c, string(JobYaml))
 }
 
-func marshalYAMLWithIndent(v any, indent int) ([]byte, error) {
-	var buf bytes.Buffer
-	encoder := yaml.NewEncoder(&buf)
-	encoder.SetIndent(indent)
-	if err := encoder.Encode(v); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
 // GetJobTemplate godoc
 // @Summary 获取任务的 template
 // @Description 获取任务的 template
@@ -857,7 +945,7 @@ func (mgr *VolcanojobMgr) GetJobEvents(c *gin.Context) {
 	resputil.Success(c, events)
 }
 
-// SetAlertEnabled godoc
+// ToggleAlertState godoc
 // @Summary set AlertEnabled of the job to the opposite value
 // @Description set AlertEnabled of the job to the opposite value
 // @Tags VolcanoJob
@@ -867,7 +955,7 @@ func (mgr *VolcanojobMgr) GetJobEvents(c *gin.Context) {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/vcjobs/{name}/alert [put]
-func (mgr *VolcanojobMgr) SetAlertEnabled(c *gin.Context) {
+func (mgr *VolcanojobMgr) ToggleAlertState(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
