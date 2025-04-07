@@ -72,11 +72,8 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	jobName := fmt.Sprintf("jupyter-%s", baseURL)
 
 	// Command to start Jupyter
-	commandSchema := "start.sh jupyter lab --allow-root " +
-		"--notebook-dir=/home/%s " +
-		"--NotebookApp.base_url=/ingress/%s/ " +
-		"--ResourceUseDisplay.track_cpu_percent=True"
-	command := fmt.Sprintf(commandSchema, token.Username, baseURL)
+	var commandSchema string
+	var command string
 
 	// 1. Volume Mounts
 	volumes, volumeMounts, err := GenerateVolumeMounts(c, req.VolumeMounts, token)
@@ -85,14 +82,31 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		return
 	}
 
-	// 1.1 Support NGC images
-	if !strings.Contains(req.Image, "jupyter") {
+	// 1.1 Configure jupyter images
+	if strings.Contains(req.Image, "jupyter") {
+		commandSchema = "start.sh jupyter lab --allow-root " +
+			"--notebook-dir=/home/%s " +
+			"--NotebookApp.base_url=/ingress/%s/ " +
+			"--ResourceUseDisplay.track_cpu_percent=True"
+		command = fmt.Sprintf(commandSchema, token.Username, baseURL)
+	} else {
+		var startScriptConfigMap string
+		var jupyterPath string
+		if strings.Contains(req.Image, "envd") {
+			// 1.2 Configure envd images
+			startScriptConfigMap = "envd-jupyter-start-configmap"
+			jupyterPath = "/opt/conda/envs/envd/bin/jupyter"
+		} else {
+			// 1.3 Configure NGC images
+			startScriptConfigMap = "jupyter-start-configmap"
+			jupyterPath = "jupyter"
+		}
 		volumes = append(volumes, v1.Volume{
 			Name: "bash-script-volume",
 			VolumeSource: v1.VolumeSource{
 				ConfigMap: &v1.ConfigMapVolumeSource{
 					LocalObjectReference: v1.LocalObjectReference{
-						Name: "jupyter-start-configmap",
+						Name: startScriptConfigMap,
 					},
 					//nolint:mnd // 0755 is the default mode
 					DefaultMode: ptr.To(int32(0755)),
@@ -106,9 +120,9 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 			SubPath:   "start.sh",
 		})
 
-		commandSchema := "/usr/bin/start.sh jupyter lab --ip=0.0.0.0 --no-browser --allow-root " +
+		commandSchema = "/usr/bin/start.sh %s lab --ip=0.0.0.0 --no-browser --allow-root " +
 			"--notebook-dir=/home/%s --NotebookApp.base_url=/ingress/%s/ --ResourceUseDisplay.track_cpu_percent=True"
-		command = fmt.Sprintf(commandSchema, token.Username, baseURL)
+		command = fmt.Sprintf(commandSchema, jupyterPath, token.Username, baseURL)
 	}
 
 	// 2. Env Vars
