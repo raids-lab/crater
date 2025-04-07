@@ -81,6 +81,8 @@ export function VolumeMountsCard<
     });
   };
 
+  const currentValues = form.watch();
+
   return (
     <AccordionCard
       cardTitle={DataMountCard}
@@ -119,7 +121,7 @@ export function VolumeMountsCard<
                       <FormControl>
                         <Tabs
                           value={
-                            form.getValues(`volumeMounts.${index}.type`) ===
+                            currentValues.volumeMounts[index].type ===
                             VolumeMountType.FileType
                               ? "file"
                               : "dataset"
