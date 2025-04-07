@@ -24,7 +24,6 @@ import (
 type (
 	CreateCustomReq struct {
 		CreateJobCommon `json:",inline"`
-		Name            string          `json:"name" binding:"required"`
 		Resource        v1.ResourceList `json:"resource"`
 		Image           string          `json:"image" binding:"required"`
 		Shell           *string         `json:"shell"`

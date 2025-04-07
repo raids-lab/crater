@@ -38,10 +38,8 @@ const (
 type (
 	CreateJupyterReq struct {
 		CreateJobCommon `json:",inline"`
-		Name            string          `json:"name" binding:"required"`
 		Resource        v1.ResourceList `json:"resource"`
 		Image           string          `json:"image" binding:"required"`
-		OpenSSH         bool            `json:"openssh"`
 	}
 )
 
@@ -191,7 +189,6 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	annotations := map[string]string{
 		AnnotationKeyTaskName:                     req.Name,
 		AnnotationKeyTaskTemplate:                 req.Template,
-		AnnotationKeyOpenSSH:                      strconv.FormatBool(req.OpenSSH),
 		AnnotationKeyAlertEnabled:                 strconv.FormatBool(req.AlertEnabled),
 		IngressLabelPrefix + notebookIngress.Name: string(ingressJSON), // 添加 notebookIngress Annotation
 	}
