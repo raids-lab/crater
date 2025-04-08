@@ -168,6 +168,15 @@ export interface DockerfileCreate {
   tag: string;
 }
 
+export interface EnvdCreate {
+  description: string;
+  envd: string;
+  name: string;
+  tag: string;
+  python: string;
+  cuda: string;
+}
+
 export interface ImageUpload {
   imageLink: string;
   imageName: string;
@@ -252,6 +261,14 @@ export const apiUserCreateByDockerfile = async (
   const response = await instance.post<IResponse<string>>(
     VERSION + "/images/dockerfile",
     imageDockerfile,
+  );
+  return response.data;
+};
+
+export const apiUserCreateByEnvd = async (envdInfo: EnvdCreate) => {
+  const response = await instance.post<IResponse<string>>(
+    VERSION + "/images/envd",
+    envdInfo,
   );
   return response.data;
 };
