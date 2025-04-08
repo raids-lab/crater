@@ -20,6 +20,9 @@
       "basic": "https://gpu-grafana.act.buaa.edu.cn/d/R4ZPFfyIz/crater-job-basic-dashboard",
       "nvidia": "https://gpu-grafana.act.buaa.edu.cn/d/2CDE0AC7/crater-job-nvidia-dashboard",
       "pod": "https://gpu-grafana.act.buaa.edu.cn/d/MhnFUFLSz/crater-pod-dashboard"
+    },
+    "user": {
+      "nvidia": "https://gpu-grafana.act.buaa.edu.cn/d/user-nvidia-dcgm-dashboard/crater-user-nvidia-dashboard"
     }
   },
   "featureFlags": {

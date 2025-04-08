@@ -21,6 +21,9 @@ export interface AppConfig {
       nvidia: string;
       pod: string;
     };
+    user: {
+      nvidia: string;
+    };
   };
   featureFlags: {
     enableRegister: boolean;

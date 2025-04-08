@@ -14,6 +14,10 @@ import useBreadcrumb from "@/hooks/useBreadcrumb";
 import { useEffect } from "react";
 import { TimeDistance } from "../TimeDistance";
 import { UserAvatar } from "./UserAvatar";
+import GpuIcon from "@/components/icon/GpuIcon";
+import { GrafanaIframe } from "@/pages/Embed/Monitor";
+import { asyncGrafanaUserAtom } from "@/utils/store/config";
+import { useAtomValue } from "jotai";
 
 export default function UserDetail() {
   const setBreadcrumb = useBreadcrumb();
@@ -36,6 +40,7 @@ export default function UserDetail() {
     select: (data) => data.data.data,
     enabled: !!name,
   });
+  const grafanaUser = useAtomValue(asyncGrafanaUserAtom);
 
   // Loading state
   if (isLoading) {
@@ -111,6 +116,16 @@ export default function UserDetail() {
 
   // Tab configuration
   const tabs = [
+    {
+      key: "gpu",
+      icon: GpuIcon,
+      label: "加速卡监控",
+      children: (
+        <GrafanaIframe
+          baseSrc={`${grafanaUser.nvidia}?var-user=${user.name}`}
+        />
+      ),
+    },
     {
       key: "activity",
       icon: Activity,
