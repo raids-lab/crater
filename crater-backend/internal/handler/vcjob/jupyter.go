@@ -542,7 +542,7 @@ func (mgr *VolcanojobMgr) CreateJupyterSnapshot(c *gin.Context) {
 
 	// generate image link
 	currentImageName := pod.Spec.Containers[0].Image
-	imageLink, err := utils.GenerateNewImageLink(currentImageName, token.Username, "", "")
+	imageLink, err := utils.GenerateNewImageLinkForDockerfileBuild(currentImageName, token.Username, "", "")
 	if err != nil {
 		resputil.Error(c, "generate new image link failed", resputil.NotSpecified)
 		return

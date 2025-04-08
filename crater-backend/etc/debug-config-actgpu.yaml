@@ -58,3 +58,4 @@ schedulerPlugins:
 dindArgs:
   buildkitImage: ***REMOVED***/user-huangsy/buildkit/buildctl:v0.18.2
   nerdctlImage: ***REMOVED***/nerdctl:2.0.1-retry
+  envdImage: ***REMOVED***/user-huangsy/envd-build-frontend:v1.2.0
