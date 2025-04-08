@@ -122,3 +122,6 @@ export const apiAccountQuotaGet = (pid: number) => {
 export const apiAccountGet = (pid: number) => {
   return instance.get<IResponse<IAccount>>(`${VERSION}/admin/accounts/${pid}`);
 };
+export const apiAccountGetByName = (name: string) => {
+  return instance.get<IResponse<IAccount>>(VERSION + `/accounts/${name}`);
+};
