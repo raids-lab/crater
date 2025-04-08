@@ -43,10 +43,13 @@ func NewAccountMgr(conf *RegisterConfig) Manager {
 
 func (mgr *AccountMgr) GetName() string { return mgr.name }
 
-func (mgr *AccountMgr) RegisterPublic(_ *gin.RouterGroup) {}
+func (mgr *AccountMgr) RegisterPublic(_ *gin.RouterGroup) {
+
+}
 
 func (mgr *AccountMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.GET("", mgr.ListForUser) // 获取当前用户可访问的账户
+	g.GET("", mgr.ListForUser)           // 获取当前用户可访问的账户
+	g.GET(":name", mgr.GetAccountByName) // 获取指定账户
 }
 
 func (mgr *AccountMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -83,7 +86,7 @@ type (
 // @Success 200 {object} resputil.Response[[]AccountResp] "成功返回值描述"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/projects [get]
+// @Router /v1/accounts [get]
 func (mgr *AccountMgr) ListForUser(c *gin.Context) {
 	token := util.GetToken(c)
 
@@ -174,7 +177,9 @@ type AccountIDReq struct {
 // @Success 200 {object} resputil.Response[any] "账户信息"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/admin/projects/{aid} [get]
+// @Router /v1/admin/accounts/{aid} [get]
+//
+//nolint:dupl// 重复代码
 func (mgr *AccountMgr) GetAccountByID(c *gin.Context) {
 	var uriReq AccountIDReq
 	if err := c.ShouldBindUri(&uriReq); err != nil {
@@ -183,6 +188,50 @@ func (mgr *AccountMgr) GetAccountByID(c *gin.Context) {
 	}
 	q := query.Account
 	queue, err := q.WithContext(c).Where(q.ID.Eq(uriReq.ID)).First()
+
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("find project failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	resp := ListAllResp{
+		ID:        queue.ID,
+		Name:      queue.Name,
+		Nickname:  queue.Nickname,
+		Space:     queue.Space,
+		Quota:     queue.Quota.Data(),
+		ExpiredAt: queue.ExpiredAt,
+	}
+
+	resputil.Success(c, resp)
+}
+
+type AccountNameReq struct {
+	Name string `uri:"name" binding:"required"`
+}
+
+// GetAccountByName godoc
+// @Summary 获取指定账户
+// @Description 根据账户名称获取账户的信息
+// @Tags Project
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param name path AccountNameReq true "projectname"
+// @Success 200 {object} resputil.Response[any] "账户信息"
+// @Failure 400 {object} resputil.Response[any] "请求参数错误"
+// @Failure 500 {object} resputil.Response[any] "其他错误"
+// @Router /v1/accounts/{name} [get]
+//
+//nolint:dupl// 重复代码
+func (mgr *AccountMgr) GetAccountByName(c *gin.Context) {
+	var uriReq AccountNameReq
+	if err := c.ShouldBindUri(&uriReq); err != nil {
+		resputil.Error(c, fmt.Sprintf("invalid request, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+	q := query.Account
+	queue, err := q.WithContext(c).Where(q.Name.Eq(uriReq.Name)).First()
 
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("find project failed, detail: %v", err), resputil.NotSpecified)
