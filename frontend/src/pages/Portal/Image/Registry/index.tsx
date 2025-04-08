@@ -89,6 +89,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { ValidDialog } from "../Image/ValidDialog";
 import UserLabel from "@/components/label/UserLabel";
+import { EnvdSheet } from "./EnvdSheet";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -121,6 +122,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
   const queryClient = useQueryClient();
   const [openPipAptSheet, setOpenPipAptSheet] = useState(false);
   const [openDockerfileSheet, setOpenDockerfileSheet] = useState(false);
+  const [openEnvdSheet, setOpenEnvdSheet] = useState(false);
   const navigate = useNavigate();
   const [openCheckDialog, setCheckOpenDialog] = useState(false);
   const user = useAtomValue(globalUserInfo);
@@ -304,6 +306,13 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                       setOpenDockerfileSheet(true);
                     },
                   },
+                  {
+                    key: "envd",
+                    title: " Envd ",
+                    action: () => {
+                      setOpenEnvdSheet(true);
+                    },
+                  },
                 ]}
                 cacheKey="imagepack"
               />
@@ -408,6 +417,14 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             description="基于 Dockerfile 制作镜像"
             className="sm:max-w-3xl"
             closeSheet={() => setOpenDockerfileSheet(false)}
+          />
+          <EnvdSheet
+            isOpen={openEnvdSheet}
+            onOpenChange={setOpenEnvdSheet}
+            title="基于 Envd 构建镜像"
+            description="基于 Envd 制作镜像"
+            className="sm:max-w-3xl"
+            closeSheet={() => setOpenEnvdSheet(false)}
           />
         </div>
       ) : null}
