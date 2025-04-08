@@ -87,7 +87,7 @@ func CheckResourcesBeforeCreateJob(
 		return exceededResources
 	}
 
-	const maxJobResources = 10
+	const maxJobResources = 100
 	if len(jobResources) >= maxJobResources {
 		exceededResources = append(exceededResources, "作业数量超过限制")
 		return exceededResources
