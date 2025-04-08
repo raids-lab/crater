@@ -34,6 +34,8 @@ func newDataset(db *gorm.DB, opts ...gen.DOOption) dataset {
 	_dataset.Name = field.NewString(tableName, "name")
 	_dataset.URL = field.NewString(tableName, "url")
 	_dataset.Describe = field.NewString(tableName, "describe")
+	_dataset.Type = field.NewString(tableName, "type")
+	_dataset.Extra = field.NewField(tableName, "extra")
 	_dataset.UserID = field.NewUint(tableName, "user_id")
 	_dataset.UserDatasets = datasetHasManyUserDatasets{
 		db: db.Session(&gorm.Session{}),
@@ -45,6 +47,22 @@ func newDataset(db *gorm.DB, opts ...gen.DOOption) dataset {
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("AccountDatasets", "model.AccountDataset"),
+	}
+
+	_dataset.User = datasetBelongsToUser{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("User", "model.User"),
+		UserAccounts: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("User.UserAccounts", "model.UserAccount"),
+		},
+		UserDatasets: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("User.UserDatasets", "model.UserDataset"),
+		},
 	}
 
 	_dataset.fillFieldMap()
@@ -63,10 +81,14 @@ type dataset struct {
 	Name         field.String
 	URL          field.String
 	Describe     field.String
+	Type         field.String
+	Extra        field.Field
 	UserID       field.Uint
 	UserDatasets datasetHasManyUserDatasets
 
 	AccountDatasets datasetHasManyAccountDatasets
+
+	User datasetBelongsToUser
 
 	fieldMap map[string]field.Expr
 }
@@ -90,6 +112,8 @@ func (d *dataset) updateTableName(table string) *dataset {
 	d.Name = field.NewString(table, "name")
 	d.URL = field.NewString(table, "url")
 	d.Describe = field.NewString(table, "describe")
+	d.Type = field.NewString(table, "type")
+	d.Extra = field.NewField(table, "extra")
 	d.UserID = field.NewUint(table, "user_id")
 
 	d.fillFieldMap()
@@ -115,7 +139,7 @@ func (d *dataset) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (d *dataset) fillFieldMap() {
-	d.fieldMap = make(map[string]field.Expr, 10)
+	d.fieldMap = make(map[string]field.Expr, 13)
 	d.fieldMap["id"] = d.ID
 	d.fieldMap["created_at"] = d.CreatedAt
 	d.fieldMap["updated_at"] = d.UpdatedAt
@@ -123,6 +147,8 @@ func (d *dataset) fillFieldMap() {
 	d.fieldMap["name"] = d.Name
 	d.fieldMap["url"] = d.URL
 	d.fieldMap["describe"] = d.Describe
+	d.fieldMap["type"] = d.Type
+	d.fieldMap["extra"] = d.Extra
 	d.fieldMap["user_id"] = d.UserID
 
 }
@@ -276,6 +302,84 @@ func (a datasetHasManyAccountDatasetsTx) Clear() error {
 }
 
 func (a datasetHasManyAccountDatasetsTx) Count() int64 {
+	return a.tx.Count()
+}
+
+type datasetBelongsToUser struct {
+	db *gorm.DB
+
+	field.RelationField
+
+	UserAccounts struct {
+		field.RelationField
+	}
+	UserDatasets struct {
+		field.RelationField
+	}
+}
+
+func (a datasetBelongsToUser) Where(conds ...field.Expr) *datasetBelongsToUser {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a datasetBelongsToUser) WithContext(ctx context.Context) *datasetBelongsToUser {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a datasetBelongsToUser) Session(session *gorm.Session) *datasetBelongsToUser {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a datasetBelongsToUser) Model(m *model.Dataset) *datasetBelongsToUserTx {
+	return &datasetBelongsToUserTx{a.db.Model(m).Association(a.Name())}
+}
+
+type datasetBelongsToUserTx struct{ tx *gorm.Association }
+
+func (a datasetBelongsToUserTx) Find() (result *model.User, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a datasetBelongsToUserTx) Append(values ...*model.User) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a datasetBelongsToUserTx) Replace(values ...*model.User) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a datasetBelongsToUserTx) Delete(values ...*model.User) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a datasetBelongsToUserTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a datasetBelongsToUserTx) Count() int64 {
 	return a.tx.Count()
 }
 

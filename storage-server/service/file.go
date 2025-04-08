@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -88,14 +89,14 @@ func ListMySpace(userID, accountID uint, c *gin.Context) (allspace, allRealSpace
 		realSpace = append(realSpace, config.GetConfig().UserSpacePrefix+"/"+user.Space)
 	}
 	a := query.Account
-	publicaccount, err := a.WithContext(c).Where(a.ID.Eq(1)).First()
+	publicaccount, err := a.WithContext(c).Where(a.ID.Eq(model.DefaultAccountID)).First()
 	if err != nil {
 		fmt.Println("can't find public account, ", err)
 		return space, realSpace
 	}
 	space = append(space, strings.TrimLeft(publicaccount.Space, "/"))
 	realSpace = append(realSpace, config.GetConfig().PublicSpacePrefix)
-	if accountID != 0 && accountID != 1 {
+	if accountID != 0 && accountID != model.DefaultAccountID {
 		account, err := a.WithContext(c).Where(a.ID.Eq(accountID)).First()
 		if err != nil {
 			fmt.Println("user has no account, ", err)
@@ -266,7 +267,7 @@ func GetBasicFiles(c *gin.Context, token util.JWTMessage, isadmin bool) []Files 
 	publicSpacePrefix := config.GetConfig().PublicSpacePrefix
 	var s []string
 	s = append(s, userSpacePrefix, publicSpacePrefix)
-	if isadmin || (token.AccountID != 0 && token.AccountID != 1) {
+	if isadmin || (token.AccountID != 0 && token.AccountID != model.DefaultAccountID) {
 		s = append(s, accountSpacePrefix)
 	}
 	files := GetFilesByPaths(s, c)
@@ -291,7 +292,7 @@ func GetRWFiles(c *gin.Context, token util.JWTMessage) []Files {
 	if token.PublicAccessMode == model.AccessModeRW {
 		s = append(s, publicSpacePrefix)
 	}
-	if token.AccountID != 0 && token.AccountID != 1 && token.AccountAccessMode == model.AccessModeRW {
+	if token.AccountID != 0 && token.AccountID != model.DefaultAccountID && token.AccountAccessMode == model.AccessModeRW {
 		s = append(s, accountSpacePrefix)
 	}
 	files := GetFilesByPaths(s, c)
@@ -431,6 +432,93 @@ func GetAllFiles(c *gin.Context) {
 			response.Error(c, err.Error(), response.NotSpecified)
 			return
 		}
+		data, err = handleDirsList(fs.FileSystem, realPath)
+		if err != nil {
+			response.Error(c, err.Error(), response.NotSpecified)
+			return
+		}
+		response.Success(c, data)
+	}
+}
+
+type DatasetRequest struct {
+	ID uint `uri:"id" binding:"required"`
+}
+
+func GetDatasetPermission(c *gin.Context, datasetID uint, token util.JWTMessage) model.FilePermission {
+	ud := query.UserDataset
+	d := query.Dataset
+	ad := query.AccountDataset
+	dataset, err := d.WithContext(c).Where(d.ID.Eq(datasetID)).First()
+	if err != nil {
+		return model.NotAllowed
+	}
+	if dataset.UserID == token.UserID || token.RolePlatform == model.RoleAdmin {
+		return model.ReadWrite
+	}
+	accountDataset, err := ad.WithContext(c).Where(ad.DatasetID.Eq(datasetID)).Find()
+	if err == nil && len(accountDataset) != 0 {
+		for i := range accountDataset {
+			if accountDataset[i].AccountID == model.DefaultAccountID || accountDataset[i].AccountID == token.AccountID {
+				return model.ReadOnly
+			}
+		}
+	}
+	_, err = ud.WithContext(c).Where(ud.DatasetID.Eq(datasetID), ud.UserID.Eq(token.UserID)).First()
+	if err == nil {
+		return model.ReadOnly
+	}
+	return model.NotAllowed
+}
+
+func GetDatasetURLByID(c *gin.Context, datasetID uint) (string, error) {
+	d := query.Dataset
+	dataset, err := d.WithContext(c).Where(d.ID.Eq(datasetID)).First()
+	if err != nil {
+		return "", err
+	}
+	return dataset.URL, err
+}
+
+// 通过数据集获取文件
+func GetDatasetFiles(c *gin.Context) {
+	AlloweOption(c)
+	checkfs()
+	var data []Files
+	jwttoken, err := CheckJWTToken(c)
+	if err != nil {
+		response.Error(c, err.Error(), response.NotSpecified)
+		return
+	}
+	var datasetReq DatasetRequest
+	if err = c.ShouldBindUri(&datasetReq); err != nil {
+		response.HTTPError(c, http.StatusBadRequest, err.Error(), response.NotSpecified)
+		return
+	}
+	permission := GetDatasetPermission(c, datasetReq.ID, jwttoken)
+	if permission == model.NotAllowed {
+		response.Error(c, "This dataset does not exist or you do not have permission", response.NotSpecified)
+		return
+	}
+	URL, err := GetDatasetURLByID(c, datasetReq.ID)
+	if err != nil {
+		response.Error(c, err.Error(), response.NotSpecified)
+		return
+	}
+	ss := "/api/ss/dataset/" + strconv.FormatUint(uint64(datasetReq.ID), 10)
+	path := strings.TrimPrefix(c.Request.URL.Path, ss)
+	token := getFirstToken(path)
+	if token == "" {
+		var datasetpaths []string
+		datasetpaths = append(datasetpaths, URL)
+		files := GetFilesByPaths(datasetpaths, c)
+		if len(files) == 0 {
+			response.Error(c, "The dataset's URL does not exist. ", response.NotSpecified)
+			return
+		}
+		response.Success(c, files)
+	} else {
+		realPath := URL + "/" + strings.TrimPrefix(path, "/"+token)
 		data, err = handleDirsList(fs.FileSystem, realPath)
 		if err != nil {
 			response.Error(c, err.Error(), response.NotSpecified)
@@ -728,4 +816,6 @@ func RegisterFile(r *gin.Engine) {
 	r.Handle("DELETE", "/api/ss/delete/*path", DeleteFile)
 	r.Handle("GET", "/api/ss/userspace", GetUserSpace)
 	r.Handle("GET", "/api/ss/queuespace", GetAccountSpace)
+	r.Handle("GET", "/api/ss/dataset/:id", GetDatasetFiles)
+	r.Handle("GET", "/api/ss/dataset/:id/*path", GetDatasetFiles)
 }
