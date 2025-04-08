@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { getNodeColumns } from "@/components/node/NodeList";
-//import { useAccountNameLookup } from "@/components/node/getaccountnickname";
+import { useAccountNameLookup } from "@/components/node/getaccountnickname";
 import { getHeader } from "@/pages/Admin/Job/Overview";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import { JobPhase } from "@/services/api/vcjob";
@@ -59,7 +59,7 @@ export const Component: FC = () => {
   const { scheduler } = useAtomValue(globalSettings);
 
   const nodeQuery = useNodeQuery(true);
-  //const { getNicknameByName } = useAccountNameLookup();
+  const { getNicknameByName } = useAccountNameLookup();
   const jobColumns = useMemo<ColumnDef<IJobInfo>[]>(
     () => [
       {
@@ -358,7 +358,7 @@ export const Component: FC = () => {
         }}
         storageKey="overview_nodelist"
         query={nodeQuery}
-        columns={getNodeColumns()}
+        columns={getNodeColumns(getNicknameByName)}
       />
     </>
   );
