@@ -162,18 +162,23 @@ func (r *BuildKitReconciler) handleJobNotFound(ctx context.Context, jobName stri
 func (r *BuildKitReconciler) handleKanikoRecordNotFound(ctx context.Context, job *batchv1.Job) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	k := query.Kaniko
-	userID, _ := strconv.Atoi(job.Annotations["buildkit-data/UserID"])
-	dockerfile := job.Annotations["buildkit-data/Dockerfile"]
-	description := job.Annotations["buildkit-data/Description"]
-	buildSource := model.BuildKit
-	if dockerfile == "" {
+	userID, _ := strconv.Atoi(job.Annotations["build-data/UserID"])
+	dockerfile := job.Annotations["build-data/Dockerfile"]
+	description := job.Annotations["build-data/Description"]
+	envd := job.Annotations["build-data/Envd"]
+	var buildSource model.BuildSource
+	if dockerfile != "" {
+		buildSource = model.BuildKit
+	} else if envd != "" {
+		buildSource = model.Envd
+	} else {
 		buildSource = model.Snapshot
 	}
 	kanikorecord := model.Kaniko{
 		//nolint:gosec // userID is very small, integer overflow conversion won't happen
 		UserID:        uint(userID),
 		ImagePackName: job.Name,
-		ImageLink:     job.Annotations["buildkit-data/ImageLink"],
+		ImageLink:     job.Annotations["build-data/ImageLink"],
 		NameSpace:     job.Namespace,
 		Status:        model.BuildJobInitial,
 		Dockerfile:    &dockerfile,

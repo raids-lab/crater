@@ -87,6 +87,7 @@ type Config struct {
 	DindArgs struct {
 		BuildkitImage string `yaml:"buildkitImage"`
 		NerdctlImage  string `yaml:"nerdctlImage"`
+		EnvdImage     string `yaml:"envdImage"`
 	} `yaml:"dindArgs"`
 }
 

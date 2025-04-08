@@ -46,6 +46,7 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/kaniko", mgr.UserListKaniko)
 	g.POST("/kaniko", mgr.UserCreateKaniko)
 	g.POST("/dockerfile", mgr.UserCreateByDockerfile)
+	g.POST("/envd", mgr.UserCreateByEnvd)
 	g.DELETE("/kaniko/:id", mgr.DeleteKanikoByID)
 
 	g.GET("/image", mgr.UserListImage)
@@ -103,6 +104,14 @@ type (
 		Dockerfile  string `json:"dockerfile"`
 		ImageName   string `json:"name"`
 		ImageTag    string `json:"tag"`
+	}
+	CreateByEnvdRequest struct {
+		Description string `json:"description"`
+		Envd        string `json:"envd"`
+		ImageName   string `json:"name"`
+		ImageTag    string `json:"tag"`
+		Python      string `json:"python"`
+		Cuda        string `json:"cuda"`
 	}
 
 	UploadImageRequest struct {
@@ -241,7 +250,7 @@ type (
 		Creator     string `json:"creator"`
 	}
 
-	BuildImageData struct {
+	DockerfileBuildData struct {
 		BaseImage    string
 		UserName     string
 		UserID       uint
@@ -250,6 +259,17 @@ type (
 		ImageName    string
 		ImageTag     string
 		Requirements *string
+	}
+
+	EnvdBuildData struct {
+		Python      string
+		Cuda        string
+		Description string
+		Envd        string
+		ImageName   string
+		ImageTag    string
+		UserName    string
+		UserID      uint
 	}
 )
 
@@ -278,7 +298,7 @@ func (mgr *ImagePackMgr) UserCreateKaniko(c *gin.Context) {
 		return
 	}
 	dockerfile := mgr.generateDockerfile(req)
-	buildData := &BuildImageData{
+	buildData := &DockerfileBuildData{
 		BaseImage:    req.SourceImage,
 		Description:  req.Description,
 		Dockerfile:   dockerfile,
@@ -314,7 +334,7 @@ func (mgr *ImagePackMgr) UserCreateByDockerfile(c *gin.Context) {
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
-	buildData := &BuildImageData{
+	buildData := &DockerfileBuildData{
 		Description: req.Description,
 		Dockerfile:  req.Dockerfile,
 		ImageName:   req.ImageName,
@@ -356,6 +376,38 @@ func extractBaseImageFromDockerfile(dockerfile string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("no FROM instruction found in Dockerfile")
+}
+
+// UserCreateByEnvd godoc
+// @Summary 接受用户传入的Envd内容和描述，创建镜像
+// @Description 获取参数，提取Dockerfile中的基础镜像，调用接口
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param data body CreateByEnvdRequest true "创建ImagePack CRD"
+// @Router /v1/images/envd [POST]
+func (mgr *ImagePackMgr) UserCreateByEnvd(c *gin.Context) {
+	req := &CreateByEnvdRequest{}
+	token := util.GetToken(c)
+	if err := c.ShouldBindJSON(req); err != nil {
+		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		return
+	}
+
+	buildData := &EnvdBuildData{
+		Description: req.Description,
+		Envd:        req.Envd,
+		ImageName:   req.ImageName,
+		ImageTag:    req.ImageTag,
+		Python:      req.Python,
+		Cuda:        req.Cuda,
+		UserName:    token.Username,
+		UserID:      token.UserID,
+	}
+	fmt.Printf("%+v", buildData)
+	mgr.buildFromEnvd(c, buildData)
 }
 
 // UserUploadImage godoc
@@ -415,7 +467,7 @@ func (mgr *ImagePackMgr) AdminCreate(c *gin.Context) {
 	}
 	logutils.Log.Infof("create params: %+v", req)
 	dockerfile := mgr.generateDockerfile(req)
-	buildData := &BuildImageData{
+	buildData := &DockerfileBuildData{
 		BaseImage:   req.SourceImage,
 		Description: req.Description,
 		Dockerfile:  dockerfile,
@@ -458,13 +510,13 @@ USER root
 	return dockerfile
 }
 
-func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, data *BuildImageData) {
+func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, data *DockerfileBuildData) {
 	if err := mgr.imageRegistry.CheckOrCreateProjectForUser(c, data.UserName); err != nil {
 		resputil.Error(c, "create harbor project failed", resputil.NotSpecified)
 		return
 	}
 	imagepackName := fmt.Sprintf("%s-%s", data.UserName, uuid.New().String()[:5])
-	imageLink, err := utils.GenerateNewImageLink(data.BaseImage, data.UserName, data.ImageName, data.ImageTag)
+	imageLink, err := utils.GenerateNewImageLinkForDockerfileBuild(data.BaseImage, data.UserName, data.ImageName, data.ImageTag)
 	if err != nil {
 		resputil.Error(c, "generate new image link failed", resputil.NotSpecified)
 		return
@@ -482,6 +534,37 @@ func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, data *BuildImageDat
 	}
 
 	if err := mgr.imagePacker.CreateFromDockerfile(c, buildkitData); err != nil {
+		logutils.Log.Errorf("create imagepack failed, err:%+v", err)
+		resputil.Error(c, "create imagepack failed", resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, "")
+}
+
+func (mgr *ImagePackMgr) buildFromEnvd(c *gin.Context, data *EnvdBuildData) {
+	if err := mgr.imageRegistry.CheckOrCreateProjectForUser(c, data.UserName); err != nil {
+		resputil.Error(c, "create harbor project failed", resputil.NotSpecified)
+		return
+	}
+	imagepackName := fmt.Sprintf("%s-%s", data.UserName, uuid.New().String()[:5])
+	imageLink, err := utils.GenerateNewImageLinkForEnvdBuild(data.UserName, data.Python, data.Cuda)
+	if err != nil {
+		resputil.Error(c, "generate new image link failed", resputil.NotSpecified)
+		return
+	}
+
+	// create ImagePack CRD
+	envdData := &packer.EnvdReq{
+		JobName:     imagepackName,
+		Namespace:   UserNameSpace,
+		Envd:        &data.Envd,
+		ImageLink:   imageLink,
+		UserID:      data.UserID,
+		Description: &data.Description,
+	}
+
+	if err := mgr.imagePacker.CreateFromEnvd(c, envdData); err != nil {
 		logutils.Log.Errorf("create imagepack failed, err:%+v", err)
 		resputil.Error(c, "create imagepack failed", resputil.NotSpecified)
 		return

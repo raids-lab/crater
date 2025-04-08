@@ -38,9 +38,21 @@ type SnapshotReq struct {
 	ImageLink string
 }
 
+type EnvdReq struct {
+	UserID       uint
+	Namespace    string
+	JobName      string
+	Envd         *string
+	Requirements *string
+	Description  *string
+	Registry     *ImageRegistrySecret // If nil, use default registry
+	ImageLink    string
+}
+
 type ImagePackerInterface interface {
 	CreateFromDockerfile(ctx context.Context, data *BuildKitReq) error
 	CreateFromSnapshot(ctx context.Context, data *SnapshotReq) error
+	CreateFromEnvd(ctx context.Context, data *EnvdReq) error
 	DeleteBuildkitJob(ctx context.Context, jobName, ns string) error
 }
 
