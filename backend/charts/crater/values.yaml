@@ -64,7 +64,7 @@ web:
         memory: 48Gi
     cache:
       storageClass: "openebs-hostpath"
-      storageSize: 10Ti
+      storageSize: 400Gi
       maxUsedSpace: "400GB"
       minFreeSpace: "50GB"
       reservedSpace: "50GB"
@@ -175,6 +175,7 @@ backendConfig:
   dindArgs:
     buildkitImage: ***REMOVED***/user-huangsy/buildkit/buildctl:v0.18.2
     nerdctlImage: ***REMOVED***/nerdctl:2.0.1-retry
+    envdImage: ***REMOVED***/user-huangsy/envd-build-frontend:v1.2.0
 # cert-manager configuration variables
 # Usage:
 # helm install crater ./charts/crater \

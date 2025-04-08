@@ -20,6 +20,7 @@ type BuildSource string
 const (
 	BuildKit BuildSource = "buildkit"
 	Snapshot BuildSource = "snapshot"
+	Envd     BuildSource = "envd"
 )
 
 type Kaniko struct {

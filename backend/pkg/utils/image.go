@@ -40,7 +40,15 @@ func GetImageNameAndTag(imageLink string) (name, tag string, err error) {
 	return name, tag, nil
 }
 
-func GenerateNewImageLink(imageLink, username, imageName, imageTag string) (newImageLink string, err error) {
+func GenerateNewImageLinkForEnvdBuild(username, python, cuda string) (newImageLink string, err error) {
+	registryServer := config.GetConfig().ACT.Image.RegistryServer
+	registryProject := fmt.Sprintf("user-%s", username)
+	imageTag := fmt.Sprintf("py%s-cuda%s-%s", python, cuda, uuid.New().String()[:4])
+	newImageLink = fmt.Sprintf("%s/%s/%s:%s", registryServer, registryProject, "envd-python-cuda", imageTag)
+	return newImageLink, nil
+}
+
+func GenerateNewImageLinkForDockerfileBuild(imageLink, username, imageName, imageTag string) (newImageLink string, err error) {
 	registryServer := config.GetConfig().ACT.Image.RegistryServer
 	registryProject := fmt.Sprintf("user-%s", username)
 	loc, _ := time.LoadLocation("Asia/Shanghai")
