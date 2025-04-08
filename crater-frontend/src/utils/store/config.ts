@@ -31,6 +31,9 @@ export const configAtom = atom(async () => {
           nvidia: import.meta.env.VITE_GRAFANA_JOB_GPU_MONITOR,
           pod: import.meta.env.VITE_GRAFANA_POD_MONITOR,
         },
+        user: {
+          nvidia: import.meta.env.VITE_GRAFANA_USER_GPU_DASHBOARD,
+        },
       },
       featureFlags: {
         enableRegister: false,
@@ -86,4 +89,7 @@ export const asyncGrafanaNodeAtom = atom(
 );
 export const asyncGrafanaJobAtom = atom(
   async (get) => (await get(configAtom)).grafana.job,
+);
+export const asyncGrafanaUserAtom = atom(
+  async (get) => (await get(configAtom)).grafana.user,
 );
