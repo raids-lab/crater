@@ -17,7 +17,7 @@ func (b *imagePacker) CreateFromDockerfile(c context.Context, data *BuildKitReq)
 	volumes := b.generateVolumes(data.JobName)
 	var configMap *corev1.ConfigMap
 	var err error
-	if configMap, err = b.createConfigMap(c, data); err != nil {
+	if configMap, err = b.createDockerfileConfigMap(c, data); err != nil {
 		return err
 	}
 	var job *batchv1.Job
@@ -133,7 +133,7 @@ func (b *imagePacker) DeleteBuildkitJob(c context.Context, jobName, ns string) e
 	return err
 }
 
-func (b *imagePacker) createConfigMap(c context.Context, data *BuildKitReq) (*corev1.ConfigMap, error) {
+func (b *imagePacker) createDockerfileConfigMap(c context.Context, data *BuildKitReq) (*corev1.ConfigMap, error) {
 	var requirements string
 	if data.Requirements == nil {
 		requirements = ""
@@ -180,10 +180,11 @@ func (b *imagePacker) createJob(
 		Name:      data.JobName,
 		Namespace: data.Namespace,
 		Annotations: map[string]string{
-			"buildkit-data/UserID":      fmt.Sprint(data.UserID),
-			"buildkit-data/ImageLink":   data.ImageLink,
-			"buildkit-data/Dockerfile":  *data.Dockerfile,
-			"buildkit-data/Description": *data.Description,
+			"build-data/UserID":      fmt.Sprint(data.UserID),
+			"build-data/ImageLink":   data.ImageLink,
+			"build-data/Dockerfile":  *data.Dockerfile,
+			"build-data/Description": *data.Description,
+			"build-data/Envd":        "",
 		},
 	}
 
