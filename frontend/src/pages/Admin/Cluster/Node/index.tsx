@@ -20,6 +20,7 @@ import { logger } from "@/utils/loglevel";
 import { BanIcon, ZapIcon, Users } from "lucide-react";
 import { useMemo, useCallback } from "react";
 import { useRoutes } from "react-router-dom";
+import { nodeStatuses } from "@/components/badge/NodeStatusBadge";
 import {
   apichangeNodeScheduling,
   apiAddNodeTaint,
@@ -39,7 +40,13 @@ const toolbarConfig: DataTableToolbarConfig = {
     placeholder: "搜索节点名称",
     key: "name",
   },
-  filterOptions: [],
+  filterOptions: [
+    {
+      key: "isReady",
+      title: "状态",
+      option: nodeStatuses,
+    },
+  ],
   getHeader: (x) => x,
 };
 
