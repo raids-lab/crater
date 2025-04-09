@@ -72,7 +72,7 @@ enum JobType {
 const getNewJobUrl = (jobType: JobType) => {
   switch (jobType) {
     case JobType.Jupyter: // 直接匹配枚举值
-      return "job/iner/new-jupyter-vcjobs";
+      return "job/inter/new-jupyter-vcjobs";
     case JobType.Custom:
       return "job/batch/new-vcjobs";
     case JobType.Tensorflow:
