@@ -244,10 +244,10 @@ type (
 	}
 
 	ImageInfoLinkPair struct {
-		ID          uint   `json:"id"`
-		ImageLink   string `json:"imageLink"`
-		Description string `json:"description"`
-		Creator     string `json:"creator"`
+		ID          uint           `json:"id"`
+		ImageLink   string         `json:"imageLink"`
+		Description string         `json:"description"`
+		Creator     model.UserInfo `json:"creator"`
 	}
 
 	DockerfileBuildData struct {
