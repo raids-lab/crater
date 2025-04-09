@@ -1,4 +1,4 @@
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import useResizeObserver from "use-resize-observer";
 import { Card } from "../ui/card";
 import { apiGetPodContainerLog, ContainerInfo } from "@/services/api/tool";
@@ -186,8 +186,6 @@ export function LogCard({
     setTailLines((prev) => prev + DEFAULT_TAIL_LINES);
   };
 
-  // ...existing code...
-
   // 添加启动和停止流式日志的函数
   const startStreaming = () => {
     if (streamEventSource.current) {
@@ -202,7 +200,11 @@ export function LogCard({
     eventSource.onmessage = (event) => {
       try {
         const logLine = decodeBase64ToUtf8(event.data);
-        setStreamedLogs((prev) => [...prev, logLine]);
+        // 移除可能的尾部换行符，防止渲染时出现双重换行
+        const trimmedLogLine = logLine.endsWith("\n")
+          ? logLine.slice(0, -1)
+          : logLine;
+        setStreamedLogs((prev) => [...prev, trimmedLogLine]);
         if (!streamingPaused && logAreaRef.current) {
           logAreaRef.current.scrollIntoView(false);
         }
@@ -264,6 +266,7 @@ export function LogCard({
                 {streaming ? streamedLogs.join("\n") : logText}
               </pre>
             </div>
+            <ScrollBar orientation="horizontal" />
           </ScrollArea>
           <ButtonGroup className="border-input bg-background text-foreground absolute top-5 right-5 rounded-md border">
             <TooltipButton
