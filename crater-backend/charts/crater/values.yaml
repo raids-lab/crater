@@ -5,7 +5,7 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "71a582f7"
+      tag: "cc202627"
       pullPolicy: "IfNotPresent"
   migrate:
     image:
@@ -18,7 +18,7 @@ web:
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "bc9f6fb9"
+      tag: "fdfbde49"
       pullPolicy: "IfNotPresent"
     config:
       version: "1.0.0"
@@ -39,12 +39,14 @@ web:
           basic: "https://gpu-grafana.***REMOVED***/d/R4ZPFfyIz/crater-job-basic-dashboard"
           nvidia: "https://gpu-grafana.***REMOVED***/d/2CDE0AC7/crater-job-nvidia-dashboard"
           pod: "https://gpu-grafana.***REMOVED***/d/MhnFUFLSz/crater-pod-dashboard"
+        user:
+          nvidia: "https://gpu-grafana.***REMOVED***/d/user-nvidia-dcgm-dashboard/crater-user-nvidia-dashboard"
       featureFlags:
         enableRegister: true
   storage:
     image:
       repository: ***REMOVED***
-      tag: "9dso22xs"
+      tag: "kjfd98d3"
       pullPolicy: "IfNotPresent"
   buildkit:
     image:
