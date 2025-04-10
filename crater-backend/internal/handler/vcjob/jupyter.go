@@ -119,7 +119,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		})
 
 		commandSchema = "/usr/bin/start.sh %s lab --ip=0.0.0.0 --no-browser --allow-root " +
-			"--notebook-dir=/home/%s --NotebookApp.base_url=/ingress/%s/ --ResourceUseDisplay.track_cpu_percent=True"
+			"--notebook-dir=/home/%s --NotebookApp.base_url=/ingress/%s/ "
 		command = fmt.Sprintf(commandSchema, jupyterPath, token.Username, baseURL)
 	}
 

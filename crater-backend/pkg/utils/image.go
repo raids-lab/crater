@@ -43,8 +43,8 @@ func GetImageNameAndTag(imageLink string) (name, tag string, err error) {
 func GenerateNewImageLinkForEnvdBuild(username, python, cuda string) (newImageLink string, err error) {
 	registryServer := config.GetConfig().ACT.Image.RegistryServer
 	registryProject := fmt.Sprintf("user-%s", username)
-	imageTag := fmt.Sprintf("py%s-cuda%s-%s", python, cuda, uuid.New().String()[:4])
-	newImageLink = fmt.Sprintf("%s/%s/%s:%s", registryServer, registryProject, "envd-python-cuda", imageTag)
+	imageTag := fmt.Sprintf("py%s-%s-%s", python, cuda, uuid.New().String()[:4])
+	newImageLink = fmt.Sprintf("%s/%s/%s:%s", registryServer, registryProject, "envd", imageTag)
 	return newImageLink, nil
 }
 

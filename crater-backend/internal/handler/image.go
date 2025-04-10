@@ -111,7 +111,7 @@ type (
 		ImageName   string `json:"name"`
 		ImageTag    string `json:"tag"`
 		Python      string `json:"python"`
-		Cuda        string `json:"cuda"`
+		Cuda        string `json:"base"`
 	}
 
 	UploadImageRequest struct {
