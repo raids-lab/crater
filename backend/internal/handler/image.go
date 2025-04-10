@@ -1,3 +1,4 @@
+// TODO(huangsy): This file is too long; consider splitting it into smaller files.
 package handler
 
 import (
@@ -111,7 +112,7 @@ type (
 		ImageName   string `json:"name"`
 		ImageTag    string `json:"tag"`
 		Python      string `json:"python"`
-		Cuda        string `json:"base"`
+		Base        string `json:"base"`
 	}
 
 	UploadImageRequest struct {
@@ -263,7 +264,7 @@ type (
 
 	EnvdBuildData struct {
 		Python      string
-		Cuda        string
+		Base        string
 		Description string
 		Envd        string
 		ImageName   string
@@ -402,7 +403,7 @@ func (mgr *ImagePackMgr) UserCreateByEnvd(c *gin.Context) {
 		ImageName:   req.ImageName,
 		ImageTag:    req.ImageTag,
 		Python:      req.Python,
-		Cuda:        req.Cuda,
+		Base:        req.Base,
 		UserName:    token.Username,
 		UserID:      token.UserID,
 	}
@@ -548,7 +549,7 @@ func (mgr *ImagePackMgr) buildFromEnvd(c *gin.Context, data *EnvdBuildData) {
 		return
 	}
 	imagepackName := fmt.Sprintf("%s-%s", data.UserName, uuid.New().String()[:5])
-	imageLink, err := utils.GenerateNewImageLinkForEnvdBuild(data.UserName, data.Python, data.Cuda)
+	imageLink, err := utils.GenerateNewImageLinkForEnvdBuild(data.UserName, data.Python, data.Base)
 	if err != nil {
 		resputil.Error(c, "generate new image link failed", resputil.NotSpecified)
 		return
@@ -882,7 +883,7 @@ func (mgr *ImagePackMgr) deleteKanikoByID(c *gin.Context, isAdminMode bool, kani
 		return false, errorMsg
 	}
 	// 4. delete kaniko job
-	if err = mgr.imagePacker.DeleteBuildkitJob(c, kaniko.ImagePackName, UserNameSpace); err != nil {
+	if err = mgr.imagePacker.DeleteJob(c, kaniko.ImagePackName, UserNameSpace); err != nil {
 		errorMsg = fmt.Sprintf("delete kaniko job failed! err:%v", err)
 		logutils.Log.Error(errorMsg)
 	}

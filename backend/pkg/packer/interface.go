@@ -53,7 +53,7 @@ type ImagePackerInterface interface {
 	CreateFromDockerfile(ctx context.Context, data *BuildKitReq) error
 	CreateFromSnapshot(ctx context.Context, data *SnapshotReq) error
 	CreateFromEnvd(ctx context.Context, data *EnvdReq) error
-	DeleteBuildkitJob(ctx context.Context, jobName, ns string) error
+	DeleteJob(ctx context.Context, jobName, ns string) error
 }
 
 type imagePacker struct {
