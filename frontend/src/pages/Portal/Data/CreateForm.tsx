@@ -166,6 +166,11 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
           label={`${typestring}标签`}
           description={`为${typestring}添加标签，以便分类和搜索`}
           customTags={[
+            { value: "VLM" },
+            { value: "LLAMA" },
+            { value: "LLM" },
+            { value: "QWEN" },
+            { value: "DeepSeek" },
             { value: "机器学习" },
             { value: "深度学习" },
             { value: "数据科学" },
