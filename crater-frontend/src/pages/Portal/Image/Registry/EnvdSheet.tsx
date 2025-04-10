@@ -377,10 +377,10 @@ const CUDA_BASE_IMAGE: {
     value:
       "crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04",
   },
-  {
-    label: "no-cuda-ubuntu24.04",
-    value: "crater-harbor.act.buaa.edu.cn/library/ubuntu:24.04",
-  },
+  // {
+  //   label: "no-cuda-ubuntu24.04",
+  //   value: "crater-harbor.act.buaa.edu.cn/library/ubuntu:24.04",
+  // },
   {
     label: "no-cuda-ubuntu22.04",
     value: "crater-harbor.act.buaa.edu.cn/library/ubuntu:22.04",
