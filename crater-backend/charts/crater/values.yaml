@@ -1,11 +1,10 @@
 # depolyment configuration variables
-createNamespace: false
 createMirationJob: false
 web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "71a582f7"
+      tag: "0af05d8f"
       pullPolicy: "IfNotPresent"
   migrate:
     image:
@@ -18,7 +17,7 @@ web:
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "bc9f6fb9"
+      tag: "6a7b712e"
       pullPolicy: "IfNotPresent"
     config:
       version: "1.0.0"

@@ -76,8 +76,8 @@ build: fmt lint swagger # generate vet ## Build manager binary.
 	go build -ldflags="-w -s" -o bin/controller main.go
 
 .PHONY: build-migrate
-build-migrate: fmt lint
-	go build -ldflags="-w -s" -o bin/migrate cmd/gorm-gen/models/migrate.go
+build-migrate:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/migrate cmd/gorm-gen/models/migrate.go
 
 .PHONY: docker-build
 docker-build: fmt swagger ## Build docker image with the manager.

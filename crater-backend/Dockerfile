@@ -15,6 +15,7 @@ FROM ***REMOVED***/crater/alpine:240304 AS migrate
 
 WORKDIR /
 
+ENV GIN_MODE=release
 COPY ./bin/migrate .
 
 # entrypoint will be replaced by the command in k8s deployment, so it's just a placeholder
