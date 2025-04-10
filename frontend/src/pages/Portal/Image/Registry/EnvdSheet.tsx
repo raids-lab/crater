@@ -290,8 +290,8 @@ export function EnvdSheet({ closeSheet, ...props }: EnvdSheetProps) {
         tag: values.imageTag ?? "",
         python: values.python,
         base:
-          CUDA_BASE_IMAGE.find((image) => image.value === values.base)?.label ??
-          "",
+          CUDA_BASE_IMAGE.find((image) => image.value === values.base)
+            ?.imageLabel ?? "",
       }),
     onSuccess: async () => {
       await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
@@ -339,41 +339,49 @@ export function EnvdSheet({ closeSheet, ...props }: EnvdSheetProps) {
 }
 
 const CUDA_BASE_IMAGE: {
+  imageLabel: string;
   label: string;
   value: string;
 }[] = [
   {
-    label: "cuda12.8.1",
+    imageLabel: "cu12.8.1",
+    label: "CUDA 12.8.1",
     value:
       "crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04",
   },
   {
-    label: "cuda12.6.3",
+    imageLabel: "cu12.6.3",
+    label: "CUDA 12.6.3",
     value:
       "crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.6.3-cudnn-devel-ubuntu22.04",
   },
   {
-    label: "cuda12.5.1",
+    imageLabel: "cu12.5.1",
+    label: "CUDA 12.5.1",
     value:
       "crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.5.1-cudnn-devel-ubuntu22.04",
   },
   {
-    label: "cuda12.4.1",
+    imageLabel: "cu12.4.1",
+    label: "CUDA 12.4.1",
     value:
       "crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04",
   },
   {
-    label: "cuda12.3.2",
+    imageLabel: "cu12.3.2",
+    label: "CUDA 12.3.2",
     value:
       "crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.3.2-cudnn9-devel-ubuntu22.04",
   },
   {
-    label: "cuda12.2.2",
+    imageLabel: "cu12.2.2",
+    label: "CUDA 12.2.2",
     value:
       "crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.2.2-cudnn9-devel-ubuntu22.04",
   },
   {
-    label: "cuda12.1.1",
+    imageLabel: "cu12.1.1",
+    label: "CUDA 12.1.1",
     value:
       "crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04",
   },
@@ -382,15 +390,18 @@ const CUDA_BASE_IMAGE: {
   //   value: "crater-harbor.act.buaa.edu.cn/library/ubuntu:24.04",
   // },
   {
-    label: "no-cuda-ubuntu22.04",
+    imageLabel: "ubuntu22.04",
+    label: "Ubuntu 22.04 (no CUDA)",
     value: "crater-harbor.act.buaa.edu.cn/library/ubuntu:22.04",
   },
   {
-    label: "no-cuda-ubuntu20.04",
+    imageLabel: "ubuntu20.04",
+    label: "Ubuntu 20.04 (no CUDA)",
     value: "crater-harbor.act.buaa.edu.cn/library/ubuntu:20.04",
   },
   {
-    label: "no-cuda-ubuntu18.04",
+    imageLabel: "ubuntu18.04",
+    label: "Ubuntu 18.04 (no CUDA)",
     value: "crater-harbor.act.buaa.edu.cn/library/ubuntu:18.04",
   },
 ];
@@ -407,14 +418,14 @@ const PYTHON_VERSIONS = [
 ];
 
 const generateBuildScript = (
-  cudaImage: string,
+  baseImage: string,
   pythonVersion: string = "3.12",
   extraAptPackages: string[] = [],
   extraPythonPackages: string[] = [],
 ) => `# syntax=v1
 
 def build():
-    base(image="${cudaImage}",dev=True)
+    base(image="${baseImage}",dev=True)
     install.python(version="${pythonVersion}")
     install.apt_packages([
         "openssh-server", "build-essential", "iputils-ping", "net-tools", "htop",
