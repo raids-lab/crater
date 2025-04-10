@@ -94,13 +94,10 @@ function DockerfileSheetContent({
             </FormLabel>
             <FormControl>
               <Input
-                // placeholder="关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示。"
+                placeholder="关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示。"
                 {...field}
               />
             </FormControl>
-            <FormDescription>
-              关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示。
-            </FormDescription>
             <FormMessage />
           </FormItem>
         )}

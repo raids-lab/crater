@@ -3,7 +3,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -26,18 +25,12 @@ import {
 } from "@/services/api/imagepack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import FormLabelMust from "@/components/form/FormLabelMust";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import Combobox from "@/components/form/Combobox";
 import { Textarea } from "@/components/ui/textarea";
 
 export const envdFormSchema = z.object({
   python: z.string().min(1, "Python version is required"),
-  cuda: z.string().min(1, "CUDA version is required"),
+  base: z.string().min(1, "CUDA version is required"),
   description: z.string().min(1, "请为镜像添加描述"),
   aptPackages: z.string().optional(),
   requirements: z
@@ -122,7 +115,10 @@ interface EnvdSheetContentProps {
   onSubmit: (values: EnvdFormValues) => void;
 }
 
-function DockerfileSheetContent({ form, onSubmit }: EnvdSheetContentProps) {
+function EnvdSheetContent({ form, onSubmit }: EnvdSheetContentProps) {
+  // const [showCuda, setShowCuda] = useState(true);
+  // const dropdownItems = showCuda ? CUDA_BASE_IMAGE : UBUNTU_BASE_IMAGE;
+  // const labelText = showCuda ? "Cuda Version" : "Ubuntu Version";
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6">
       <FormField
@@ -136,13 +132,10 @@ function DockerfileSheetContent({ form, onSubmit }: EnvdSheetContentProps) {
             </FormLabel>
             <FormControl>
               <Input
-                // placeholder="关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示。"
+                placeholder="关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示。"
                 {...field}
               />
             </FormControl>
-            <FormDescription>
-              关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示。
-            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
@@ -171,9 +164,40 @@ function DockerfileSheetContent({ form, onSubmit }: EnvdSheetContentProps) {
           </FormItem>
         )}
       />
+      {/* <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="show-cuda"
+            checked={showCuda}
+            onCheckedChange={(checked) => setShowCuda(checked === true)}
+          />
+          <FormLabel>
+            CUDA
+            <FormLabelMust />
+          </FormLabel>
+        </div>
+
+        <FormField
+          control={form.control}
+          name={"base"}
+          render={({ field }) => (
+            <FormItem className="m-0 flex-1 flex-grow">
+              <FormControl>
+                <Combobox
+                  items={dropdownItems}
+                  current={field.value}
+                  handleSelect={(value) => field.onChange(value)}
+                  formTitle={showCuda ? "CUDA版本" : "Ubuntu版本"}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div> */}
       <FormField
         control={form.control}
-        name="cuda"
+        name="base"
         render={({ field }) => (
           <FormItem>
             <FormLabel>
@@ -200,14 +224,11 @@ function DockerfileSheetContent({ form, onSubmit }: EnvdSheetContentProps) {
             <FormLabel>APT Packages</FormLabel>
             <FormControl>
               <Textarea
-                placeholder="e.g. git curl"
+                placeholder="输入要安装的 APT 包，例如 git、curl 等。使用空格分隔多个包。"
                 className="h-24 font-mono"
                 {...field}
               />
             </FormControl>
-            <FormDescription>
-              输入要安装的 APT 包，例如 git、curl 等。使用空格分隔多个包。
-            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
@@ -225,63 +246,10 @@ function DockerfileSheetContent({ form, onSubmit }: EnvdSheetContentProps) {
                 {...field}
               />
             </FormControl>
-            <FormDescription>
-              请粘贴 requirements.txt 文件的内容，以便安装所需的 Python 包。
-            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
       />
-      <div className="flex items-start gap-4">
-        <Accordion
-          type="single"
-          collapsible
-          className="w-full rounded-lg border"
-        >
-          <AccordionItem value="image-settings" className="border-none">
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              高级设置（镜像名和标签）
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="flex items-start gap-4">
-                <div className="flex-1">
-                  <FormField
-                    control={form.control}
-                    name="imageName"
-                    render={({ field }) => (
-                      <FormItem className="flex h-full flex-col">
-                        <FormLabel>镜像名</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="默认镜像名" />
-                        </FormControl>
-                        <FormMessage className="min-h-[20px] leading-none" />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <div className="flex-1">
-                  <FormField
-                    control={form.control}
-                    name="imageTag"
-                    render={({ field }) => (
-                      <FormItem className="flex h-full flex-col">
-                        <FormLabel>镜像标签</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="默认标签" />
-                        </FormControl>
-                        <FormMessage className="min-h-[20px] leading-none" />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-              <FormDescription className="mt-2">
-                输入用户自定义的镜像名和镜像标签，若为空，则由系统自动生成
-              </FormDescription>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </div>
     </form>
   );
 }
@@ -307,7 +275,7 @@ export function EnvdSheet({ closeSheet, ...props }: EnvdSheetProps) {
       apiUserCreateByEnvd({
         description: values.description,
         envd: generateBuildScript(
-          values.cuda,
+          values.base,
           values.python,
           values.aptPackages
             ?.split(" ")
@@ -321,8 +289,8 @@ export function EnvdSheet({ closeSheet, ...props }: EnvdSheetProps) {
         name: values.imageName ?? "",
         tag: values.imageTag ?? "",
         python: values.python,
-        cuda:
-          CUDA_BASE_IMAGE.find((image) => image.value === values.cuda)?.label ??
+        base:
+          CUDA_BASE_IMAGE.find((image) => image.value === values.base)?.label ??
           "",
       }),
     onSuccess: async () => {
@@ -364,28 +332,79 @@ export function EnvdSheet({ closeSheet, ...props }: EnvdSheetProps) {
           </>
         }
       >
-        <DockerfileSheetContent form={form} onSubmit={onSubmit} />
+        <EnvdSheetContent form={form} onSubmit={onSubmit} />
       </SandwichSheet>
     </Form>
   );
 }
+
 const CUDA_BASE_IMAGE: {
   label: string;
   value: string;
 }[] = [
   {
-    label: "12.8.1-cudnn-runtime-ubuntu22.04",
+    label: "cuda12.8.1",
     value:
-      "crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04",
+      "crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04",
   },
   {
-    label: "12.1.1-cudnn8-devel-ubuntu22.04",
+    label: "cuda12.6.3",
+    value:
+      "crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.6.3-cudnn-devel-ubuntu22.04",
+  },
+  {
+    label: "cuda12.5.1",
+    value:
+      "crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.5.1-cudnn-devel-ubuntu22.04",
+  },
+  {
+    label: "cuda12.4.1",
+    value:
+      "crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04",
+  },
+  {
+    label: "cuda12.3.2",
+    value:
+      "crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.3.2-cudnn9-devel-ubuntu22.04",
+  },
+  {
+    label: "cuda12.2.2",
+    value:
+      "crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.2.2-cudnn9-devel-ubuntu22.04",
+  },
+  {
+    label: "cuda12.1.1",
     value:
       "crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04",
   },
+  {
+    label: "no-cuda-ubuntu24.04",
+    value: "crater-harbor.act.buaa.edu.cn/library/ubuntu:24.04",
+  },
+  {
+    label: "no-cuda-ubuntu22.04",
+    value: "crater-harbor.act.buaa.edu.cn/library/ubuntu:22.04",
+  },
+  {
+    label: "no-cuda-ubuntu20.04",
+    value: "crater-harbor.act.buaa.edu.cn/library/ubuntu:20.04",
+  },
+  {
+    label: "no-cuda-ubuntu18.04",
+    value: "crater-harbor.act.buaa.edu.cn/library/ubuntu:18.04",
+  },
 ];
 
-const PYTHON_VERSIONS = ["3.12", "3.11", "3.10", "3.9", "3.8", "3.7", "3.6"];
+const PYTHON_VERSIONS = [
+  "3.13",
+  "3.12",
+  "3.11",
+  "3.10",
+  "3.9",
+  "3.8",
+  "3.7",
+  "3.6",
+];
 
 const generateBuildScript = (
   cudaImage: string,
@@ -395,23 +414,9 @@ const generateBuildScript = (
 ) => `# syntax=v1
 
 def build():
-    base(image="${cudaImage}")
+    base(image="${cudaImage}",dev=True)
     install.python(version="${pythonVersion}")
     install.apt_packages([
-        "bash-static", "bzip2", "curl", "git", "git-man", "libapr1", "libaprutil1", 
-        "libbrotli1", "libbsd0", "libcbor0.8", "libcurl3-gnutls", "libcurl4", 
-        "libedit2", "liberror-perl", "libexpat1", "libfido2-1", "libgdbm-compat4", 
-        "libgdbm6", "libglib2.0-0", "libgpm2", "libice6", "libmd0", "libmpdec3", 
-        "libncursesw5", "libnghttp2-14", "libperl5.34", "libpsl5", "libpython3-stdlib", 
-        "libpython3.10", "libpython3.10-minimal", "libpython3.10-stdlib", "librtmp1", 
-        "libserf-1-1", "libsm6", "libsodium23", "libssh-4", "libsvn1", "libtinfo5", 
-        "libutf8proc2", "libx11-6", "libx11-data", "libxau6", "libxcb1", "libxdmcp6", 
-        "libxext6", "libxrender1", "locales", "make", "media-types", "mercurial", 
-        "mercurial-common", "openssh-client", "perl", "perl-modules-5.34", "python3", 
-        "python3-minimal", "python3.10", "python3.10-minimal", "subversion", "sudo", 
-        "ucf", "vim", "vim-common", "vim-runtime", "wget", "x11-common", "xxd", "zsh", 
-        "zsh-common", "dirmngr", "gnupg", "gnupg-l10n", "gnupg-utils", "gpg", 
-        "gpg-agent", "gpg-wks-client", "gpg-wks-server", "gpgconf", "gpgsm", "gpgv", 
         "openssh-server", "build-essential", "iputils-ping", "net-tools", "htop",
     ])
     install.apt_packages([${extraAptPackages.map((item) => `"${item}"`)}])
@@ -433,6 +438,8 @@ def build():
         "echo \\"export ZSH=\\\\\\"/usr/share/.oh-my-zsh\\\\\\"\\" >> /etc/zsh/zshrc;",
         "echo \\"plugins=(git extract sudo jsontools colored-man-pages zsh-autosuggestions zsh-syntax-highlighting)\\" >> /etc/zsh/zshrc;",
         "echo \\"ZSH_THEME=\\\\\\"robbyrussell\\\\\\"\\" >> /etc/zsh/zshrc;",
+        "mkdir -p /etc/jupyter;",
+        "echo \\"c.ServerApp.terminado_settings = {\\\\\\"shell_command\\\\\\": [\\\\\\"/bin/zsh\\\\\\"]}\\" >> /etc/jupyter/jupyter_server_config.py;",
         "echo \\"source \\\\$ZSH/oh-my-zsh.sh\\" >> /etc/zsh/zshrc;",
         "echo \\"zstyle \\\\\\":omz:update\\\\\\" mode disabled\\" >> /etc/zsh/zshrc;",
     ])
