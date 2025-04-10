@@ -99,7 +99,11 @@ export function TagsInput<T extends FieldValues>({
   const availableTags = customTags || predefinedTags;
 
   // Get current tags from form
-  const tags = form.watch(tagsPath) || [];
+  let tags = form.watch(tagsPath) || [];
+  // 检查是否为字符串数组，如果是则转换为Tag格式
+  if (Array.isArray(tags) && tags.length > 0 && typeof tags[0] === "string") {
+    tags = tags.map((str: string) => ({ value: str, label: str }));
+  }
 
   // Add a new custom tag
   const addCustomTag = () => {
