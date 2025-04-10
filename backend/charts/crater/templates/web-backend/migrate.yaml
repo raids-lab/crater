@@ -15,7 +15,9 @@ spec:
         - name: migration
           image: {{ .Values.web.migrate.image.repository }}:{{ .Values.web.migrate.image.tag }}
           imagePullPolicy: {{ .Values.web.migrate.image.pullPolicy }}
-          command: ["./migrate"]
+          command: 
+            - /migrate
+            - --config-file=/etc/config/config.yaml
           env:
             - name: CRATER_ADMIN_USERNAME
               value: {{ .Values.web.migrate.admin.username }}
