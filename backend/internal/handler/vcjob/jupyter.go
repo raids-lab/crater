@@ -382,8 +382,7 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 	}
 
 	token := util.GetToken(c)
-	j := query.Job
-	job, err := j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Where(j.UserID.Eq(token.UserID)).First()
+	job, err := getJob(c, req.JobName, &token)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return

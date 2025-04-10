@@ -172,11 +172,10 @@ type (
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/vcjobs/{name} [delete]
 func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
-	mgr.deleteJob(c, true)
+	mgr.deleteJob(c)
 }
 
-//nolint:gocyclo // refactor later
-func (mgr *VolcanojobMgr) deleteJob(c *gin.Context, shouldCheckOwner bool) {
+func (mgr *VolcanojobMgr) deleteJob(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
@@ -184,20 +183,12 @@ func (mgr *VolcanojobMgr) deleteJob(c *gin.Context, shouldCheckOwner bool) {
 	}
 
 	// Get job record from database
+	token := util.GetToken(c)
 	j := query.Job
-	jobRecord, err := j.WithContext(c).Where(j.JobName.Eq(req.JobName)).First()
+	_, err := getJob(c, req.JobName, &token)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
-	}
-
-	// If should check owner, check whether the job belongs to the current user
-	if shouldCheckOwner {
-		token := util.GetToken(c)
-		if jobRecord.UserID != token.UserID {
-			resputil.Error(c, "You are not the owner of the job", resputil.NotSpecified)
-			return
-		}
 	}
 
 	shouldDeleteRecord := false
@@ -265,7 +256,7 @@ func (mgr *VolcanojobMgr) deleteJob(c *gin.Context, shouldCheckOwner bool) {
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/admin/vcjobs/{name} [delete]
 func (mgr *VolcanojobMgr) DeleteJobForAdmin(c *gin.Context) {
-	mgr.deleteJob(c, false)
+	mgr.deleteJob(c)
 }
 
 func (mgr *VolcanojobMgr) getPodLog(c *gin.Context, namespace, podName string) (*bytes.Buffer, error) {
@@ -770,8 +761,8 @@ func (mgr *VolcanojobMgr) GetJobTemplate(c *gin.Context) {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
-	db := query.Job
-	job, err := db.WithContext(c).Where(db.JobName.Eq(req.JobName)).First()
+	token := util.GetToken(c)
+	job, err := getJob(c, req.JobName, &token)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -871,14 +862,16 @@ func (mgr *VolcanojobMgr) ToggleAlertState(c *gin.Context) {
 		return
 	}
 
-	jobDB := query.Job
-	j, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(req.JobName)).First()
+	token := util.GetToken(c)
+	job, err := getJob(c, req.JobName, &token)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
-	preStatus := j.AlertEnabled
-	if _, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(req.JobName)).Update(jobDB.AlertEnabled, !preStatus); err != nil {
+
+	preStatus := job.AlertEnabled
+	j := query.Job
+	if _, err := j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Update(j.AlertEnabled, !preStatus); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
