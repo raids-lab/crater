@@ -289,28 +289,28 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
               <DocsButton title="查看文档" url="image/imagebuild" />
               <SplitButton
                 icon={<PackagePlusIcon />}
-                renderTitle={(title) => `基于${title}构建`}
+                renderTitle={(title) => title}
                 itemTitle="构建方式"
                 items={[
                   {
+                    key: "envd",
+                    title: "Python+CUDA自定义构建",
+                    action: () => {
+                      setOpenEnvdSheet(true);
+                    },
+                  },
+                  {
                     key: "pip-apt",
-                    title: "软件包",
+                    title: "基于现有镜像构建",
                     action: () => {
                       setOpenPipAptSheet(true);
                     },
                   },
                   {
                     key: "dockerfile",
-                    title: " Dockerfile ",
+                    title: "基于 Dockerfile 构建",
                     action: () => {
                       setOpenDockerfileSheet(true);
-                    },
-                  },
-                  {
-                    key: "envd",
-                    title: " Envd ",
-                    action: () => {
-                      setOpenEnvdSheet(true);
                     },
                   },
                 ]}
@@ -405,7 +405,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
           <PipAptSheet
             isOpen={openPipAptSheet}
             onOpenChange={setOpenPipAptSheet}
-            title="基于软件包构建镜像"
+            title="基于现有镜像构建"
             description="基于平台提供的基础镜像，快速制作自定义镜像"
             className="sm:max-w-3xl"
             closeSheet={() => setOpenPipAptSheet(false)}
@@ -421,8 +421,8 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
           <EnvdSheet
             isOpen={openEnvdSheet}
             onOpenChange={setOpenEnvdSheet}
-            title="基于 Envd 构建镜像"
-            description="基于 Envd 制作镜像"
+            title="Python+CUDA自定义版本构建"
+            description="Python+CUDA指定版本构建"
             className="sm:max-w-3xl"
             closeSheet={() => setOpenEnvdSheet(false)}
           />

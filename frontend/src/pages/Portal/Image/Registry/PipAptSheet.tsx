@@ -165,11 +165,11 @@ function PipAptSheetContent({ form, onSubmit }: PipAptSheetContentProps) {
               <FormLabelMust />
             </FormLabel>
             <FormControl>
-              <Input {...field} />
+              <Input
+                placeholder="关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示。"
+                {...field}
+              />
             </FormControl>
-            <FormDescription>
-              关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示。
-            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
@@ -182,14 +182,11 @@ function PipAptSheetContent({ form, onSubmit }: PipAptSheetContentProps) {
             <FormLabel>APT Packages</FormLabel>
             <FormControl>
               <Textarea
-                placeholder="e.g. git curl"
+                placeholder="输入要安装的 APT 包，例如 git、curl 等。使用空格分隔多个包。"
                 className="h-24 font-mono"
                 {...field}
               />
             </FormControl>
-            <FormDescription>
-              输入要安装的 APT 包，例如 git、curl 等。使用空格分隔多个包。
-            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
@@ -202,14 +199,11 @@ function PipAptSheetContent({ form, onSubmit }: PipAptSheetContentProps) {
             <FormLabel>Python 依赖</FormLabel>
             <FormControl>
               <Textarea
-                placeholder="粘贴 requirements.txt 文件内容到此处"
+                placeholder="请粘贴 requirements.txt 文件的内容，以便安装所需的 Python 包。"
                 className="h-24 font-mono"
                 {...field}
               />
             </FormControl>
-            <FormDescription>
-              请粘贴 requirements.txt 文件的内容，以便安装所需的 Python 包。
-            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
