@@ -174,7 +174,7 @@ export interface EnvdCreate {
   name: string;
   tag: string;
   python: string;
-  cuda: string;
+  base: string;
 }
 
 export interface ImageUpload {
