@@ -34,5 +34,7 @@ data:
             PYTHONUSERBASE=/opt/conda/envs/envd
         fi
     fi
-    sudo cp /root/.zshrc /home/${NB_USER}/.zshrc
-    exec sudo --preserve-env --set-home --user "${NB_USER}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" PATH="${USER_PATH}" PYTHONPATH="${PYTHONPATH:-}" PYTHONUSERBASE="${PYTHONUSERBASE}" "$@"
+    if [ ! -f "/home/${NB_USER}/.zshrc" ]; then
+        touch "/home/${NB_USER}/.zshrc"
+    fi
+    exec sudo --preserve-env --set-home --user "${NB_USER}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" PATH="${PATH}" PYTHONPATH="${PYTHONPATH:-}" PYTHONUSERBASE="${PYTHONUSERBASE}" "$@"
