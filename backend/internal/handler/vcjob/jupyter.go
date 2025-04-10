@@ -400,11 +400,6 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 		return
 	}
 
-	if vcjob.Labels[LabelKeyTaskUser] != token.Username {
-		resputil.Error(c, "Job do not belong to the user", resputil.NotSpecified)
-		return
-	}
-
 	// Check if the job is running
 	status := vcjob.Status.State.Phase
 	if status != batch.Running {
