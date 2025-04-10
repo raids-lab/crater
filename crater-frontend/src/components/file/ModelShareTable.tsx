@@ -97,10 +97,10 @@ export function ModelShareTable({
     select: (res) => res.data.data,
   });
   const queryClient = useQueryClient();
-  const data = useQuery({
+  const query = useQuery({
     queryKey: ["data", "datasetByID", datasetId],
     queryFn: () => apiGetDatasetByID(datasetId),
-    select: (res) => res.data.data,
+    select: (res) => res.data.data[0],
   });
 
   const { mutate: cancelShareWithUser } = useMutation({
@@ -267,19 +267,19 @@ export function ModelShareTable({
   return (
     <DetailPage
       header={
-        <PageTitle title={data.data?.[0]?.name}>
-          {user?.name === data.data?.[0]?.userInfo.username && (
+        <PageTitle title={query.data?.name}>
+          {user?.name === query.data?.userInfo.username && (
             <div className="flex flex-row space-x-1">
               <DatasetUpdateForm
                 type="dataset"
                 initialData={{
                   datasetId: datasetId, // 使用当前数据集ID
-                  datasetName: data.data?.[0]?.name || "",
-                  describe: data.data?.[0]?.describe || "",
-                  url: data.data?.[0]?.url || "",
+                  datasetName: query.data?.name || "",
+                  describe: query.data?.describe || "",
+                  url: query.data?.url || "",
                   type: "dataset",
-                  tags: data.data?.[0]?.extra.tag || [],
-                  weburl: data.data?.[0]?.extra.weburl || "",
+                  tags: query.data?.extra.tag || [],
+                  weburl: query.data?.extra.weburl || "",
                   ispublic: true,
                 }}
                 onSuccess={() => {
@@ -351,7 +351,7 @@ export function ModelShareTable({
                   <DialogHeader>
                     <DialogTitle>删除模型</DialogTitle>
                     <DialogDescription>
-                      模型「{data.data?.[0]?.name}」将被删除
+                      模型「{query.data?.name}」将被删除
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
@@ -378,12 +378,12 @@ export function ModelShareTable({
         {
           title: "用户",
           icon: UserRoundIcon,
-          value: data.data?.[0]?.userInfo.username,
+          value: query.data?.userInfo.username,
         },
         {
           title: "创建于",
           icon: CalendarIcon,
-          value: <TimeDistance date={data.data?.[0]?.createdAt} />,
+          value: <TimeDistance date={query.data?.createdAt} />,
         },
       ]}
       tabs={[
@@ -393,7 +393,7 @@ export function ModelShareTable({
           label: "模型基本信息", // 数据集信息标签
           children: (
             <div className="space-y-1 md:space-y-2 lg:space-y-3">
-              {data.data?.[0]?.extra.tag && (
+              {query.data?.extra.tag && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center text-xl">
@@ -401,12 +401,12 @@ export function ModelShareTable({
                       模型标签
                     </CardTitle>
                     <CardDescription className="text-muted-foreground font-mono text-sm">
-                      {data.data?.[0]?.extra.tag.join("、")}
+                      {query.data?.extra.tag.join("、")}
                     </CardDescription>
                   </CardHeader>
                 </Card>
               )}
-              {data.data?.[0]?.extra.weburl && (
+              {query.data?.extra.weburl && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center text-xl">
@@ -414,7 +414,7 @@ export function ModelShareTable({
                       模型开源仓库地址
                     </CardTitle>
                     <CardDescription className="text-muted-foreground font-mono text-sm">
-                      {data.data?.[0]?.extra.weburl}
+                      {query.data?.extra.weburl}
                     </CardDescription>
                   </CardHeader>
                 </Card>
@@ -426,7 +426,7 @@ export function ModelShareTable({
                     模型描述
                   </CardTitle>
                   <CardDescription className="text-muted-foreground font-mono text-sm">
-                    {data.data?.[0]?.describe}
+                    {query.data?.describe}
                   </CardDescription>
                 </CardHeader>
               </Card>
