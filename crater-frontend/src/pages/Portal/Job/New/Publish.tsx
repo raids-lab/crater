@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { FieldValues, UseFormReturn } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Share2 } from "lucide-react";
+import { getJobTemplate } from "@/services/api/jobtemplate";
+import { useQuery } from "@tanstack/react-query";
 
 import {
   Form,
@@ -30,7 +32,6 @@ import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 import { globalUserInfo } from "@/utils/store";
 import { useAtomValue } from "jotai";
-import { JobTemplate } from "@/services/api/jobtemplate";
 
 // Define the form schema with Zod
 const formSchema = z.object({
@@ -44,13 +45,11 @@ type FormValues = z.infer<typeof formSchema>;
 interface PublishConfigFormProps<T extends FieldValues> {
   config: object; // The configuration object to be published
   configform: UseFormReturn<T>;
-  externalTemplateData?: JobTemplate | null; // 添加此行
 }
 
 export function PublishConfigForm<T extends FieldValues>({
   config,
   configform,
-  externalTemplateData,
 }: PublishConfigFormProps<T>) {
   const data = configform?.getValues();
   const queryClient = useQueryClient();
@@ -59,7 +58,12 @@ export function PublishConfigForm<T extends FieldValues>({
   const fromTemplate = searchParams.get("fromTemplate");
 
   const [isOpen, setIsOpen] = useState(false);
-
+  const { data: templateData } = useQuery({
+    queryKey: ["jobTemplate", fromTemplate],
+    queryFn: () => getJobTemplate(Number(fromTemplate)),
+    enabled: !!fromTemplate,
+    select: (data) => data?.data?.data || null,
+  });
   // 解析为 JSON 对象
   const objconfig = typeof config === "string" ? JSON.parse(config) : config;
   // 合并到新对象
@@ -68,7 +72,7 @@ export function PublishConfigForm<T extends FieldValues>({
     data, // 将 B 作为 data 属性
   };
   const isUpdate =
-    fromTemplate && externalTemplateData?.userInfo.username === user.name;
+    fromTemplate && templateData?.userInfo.username === user.name;
   // 生成字符串 C（带格式化缩进）
   const formattedConfig = JSON.stringify(objcombinedConfig, null, 2);
   const { mutate: createTemplate } = useMutation({
@@ -89,7 +93,7 @@ export function PublishConfigForm<T extends FieldValues>({
           }),
     onSuccess: async (_, { name }) => {
       await queryClient.invalidateQueries({
-        queryKey: ["list", "jobtemplate"],
+        queryKey: ["data", "jobtemplate"],
       });
       if (isUpdate) {
         toast.success(`Job template ${name} updated successfully`);
@@ -102,11 +106,11 @@ export function PublishConfigForm<T extends FieldValues>({
   // Initialize react-hook-form
   // 提取默认值逻辑，避免重复的三元表达式
   const defaultValues =
-    isUpdate && externalTemplateData
+    isUpdate && templateData
       ? {
-          name: externalTemplateData.name || "",
-          description: externalTemplateData.describe || "",
-          document: externalTemplateData.document || "",
+          name: templateData.name || "",
+          description: templateData.describe || "",
+          document: templateData.document || "",
         }
       : {
           name: "",
@@ -119,15 +123,14 @@ export function PublishConfigForm<T extends FieldValues>({
     defaultValues,
   });
   useEffect(() => {
-    // 当模板数据加载完成且是更新操作时重置表单
-    if (externalTemplateData && isUpdate) {
+    if (templateData) {
       form.reset({
-        name: externalTemplateData.name || "",
-        description: externalTemplateData.describe || "",
-        document: externalTemplateData.document || "",
+        name: templateData.name || "",
+        description: templateData.describe || "",
+        document: templateData.document || "",
       });
     }
-  }, [externalTemplateData, fromTemplate, user.name, form, isUpdate]);
+  }, [templateData, form]);
 
   const handleSubmit = form.handleSubmit((data) => {
     createTemplate(data);
