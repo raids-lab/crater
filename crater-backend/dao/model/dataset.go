@@ -13,8 +13,9 @@ const (
 )
 
 type ExtraContent struct {
-	Tags   []string `json:"tag,omitempty"`
-	WebURL *string  `json:"weburl,omitempty"`
+	Tags     []string `json:"tag,omitempty"`
+	WebURL   *string  `json:"weburl,omitempty"`
+	Editable bool     `json:"editable,omitempty"`
 }
 
 type Dataset struct {
