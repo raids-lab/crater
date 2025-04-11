@@ -33,6 +33,7 @@ func (mgr *JobTemplateMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.POST("/create", mgr.CreateJobTemplate)
 	g.DELETE("/delete/:id", mgr.DeleteJobTemplate)
 	g.GET("/:id", mgr.GetJobTemplate)
+	g.PUT("/update/:id", mgr.UpdateJobTemplate)
 }
 
 func (mgr *JobTemplateMgr) RegisterAdmin(_ *gin.RouterGroup) {
@@ -209,4 +210,45 @@ func (mgr *JobTemplateMgr) DeleteJobTemplate(c *gin.Context) {
 	}
 
 	resputil.Success(c, "Delete job template success")
+}
+
+type UpdateJobTemplateReq struct {
+	ID       uint   `json:"id" binding:"required"`
+	Name     string `json:"name" binding:"required"`
+	Describe string `json:"describe"`
+	Document string `json:"document"`
+	Template string `json:"template" binding:"required"`
+}
+
+// swagger
+// @Summary 更新作业模板
+// @Description 更新作业模板
+// @Tags jobtemplate
+// @Accept json
+// @Produce json
+// @Param req body UpdateJobTemplateReq true "作业模板"
+// @Security Bearer
+// @Success 200 {object} resputil.Response[string] "成功返回值描述"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router  /v1/jobtemplate/update [put]
+func (mgr *JobTemplateMgr) UpdateJobTemplate(c *gin.Context) {
+	var jobtemplateReq UpdateJobTemplateReq
+	if err := c.ShouldBindJSON(&jobtemplateReq); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+	jobtemplate := model.Jobtemplate{
+		Name:     jobtemplateReq.Name,
+		Describe: jobtemplateReq.Describe,
+		Document: jobtemplateReq.Document,
+		Template: jobtemplateReq.Template,
+	}
+
+	if _, err := query.Jobtemplate.WithContext(c).Where(query.Jobtemplate.ID.Eq(jobtemplateReq.ID)).Updates(&jobtemplate); err != nil {
+		resputil.Error(c, "Failed to update job template", resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, "Update job template success")
 }
