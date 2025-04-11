@@ -411,20 +411,23 @@ func convertJobResp(jobs []*model.Job) []JobResp {
 
 type (
 	JobDetailResp struct {
-		Name               string               `json:"name"`
-		Namespace          string               `json:"namespace"`
-		Username           string               `json:"username"`
-		Nickname           string               `json:"nickname"`
-		UserInfo           model.UserInfo       `json:"userInfo"`
-		JobName            string               `json:"jobName"`
-		JobType            model.JobType        `json:"jobType"`
-		Queue              string               `json:"queue"`
-		Resources          v1.ResourceList      `json:"resources"`
-		Status             batch.JobPhase       `json:"status"`
-		ProfileData        *monitor.ProfileData `json:"profileData"`
-		CreationTimestamp  metav1.Time          `json:"createdAt"`
-		RunningTimestamp   metav1.Time          `json:"startedAt"`
-		CompletedTimestamp metav1.Time          `json:"completedAt"`
+		Name               string                        `json:"name"`
+		Namespace          string                        `json:"namespace"`
+		Username           string                        `json:"username"`
+		Nickname           string                        `json:"nickname"`
+		UserInfo           model.UserInfo                `json:"userInfo"`
+		JobName            string                        `json:"jobName"`
+		JobType            model.JobType                 `json:"jobType"`
+		Queue              string                        `json:"queue"`
+		Resources          v1.ResourceList               `json:"resources"`
+		Status             batch.JobPhase                `json:"status"`
+		ProfileData        *monitor.ProfileData          `json:"profileData"`
+		ScheduleData       *model.ScheduleData           `json:"scheduleData"`
+		Events             []v1.Event                    `json:"events"`
+		TerminatedStates   []v1.ContainerStateTerminated `json:"terminatedStates"`
+		CreationTimestamp  metav1.Time                   `json:"createdAt"`
+		RunningTimestamp   metav1.Time                   `json:"startedAt"`
+		CompletedTimestamp metav1.Time                   `json:"completedAt"`
 	}
 
 	// SSHPortData 定义 SSH 端口信息的结构体
@@ -490,6 +493,21 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		profileData = job.ProfileData.Data()
 	}
 
+	var scheduleData *model.ScheduleData
+	if job.ScheduleData != nil {
+		scheduleData = job.ScheduleData.Data()
+	}
+
+	var events []v1.Event
+	if job.Events != nil {
+		events = job.Events.Data()
+	}
+
+	var terminatedStates []v1.ContainerStateTerminated
+	if job.TerminatedStates != nil {
+		terminatedStates = job.TerminatedStates.Data()
+	}
+
 	jobDetail := JobDetailResp{
 		Name:      job.Name,
 		Namespace: job.Attributes.Data().Namespace,
@@ -505,6 +523,9 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		Status:             job.Status,
 		Resources:          job.Resources.Data(),
 		ProfileData:        profileData,
+		ScheduleData:       scheduleData,
+		Events:             events,
+		TerminatedStates:   terminatedStates,
 		CreationTimestamp:  metav1.NewTime(job.CreationTimestamp),
 		RunningTimestamp:   metav1.NewTime(job.RunningTimestamp),
 		CompletedTimestamp: metav1.NewTime(job.CompletedTimestamp),
