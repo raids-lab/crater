@@ -21,18 +21,20 @@ import FormExportButton from "@/components/form/FormExportButton";
 import { MetadataFormDockerfile } from "@/components/form/types";
 import { Input } from "@/components/ui/input";
 import {
-  apiUserCreateByDockerfile,
+  apiUserCreateByEnvd,
   imageNameRegex,
   imageTagRegex,
 } from "@/services/api/imagepack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { DockerfileEditor } from "./DockerfileEditor";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import { ImageSettingsFormCard } from "@/components/form/ImageSettingsFormCard";
+import { DockerfileEditor } from "./DockerfileEditor";
 
-export const dockerfileFormSchema = z.object({
-  dockerfile: z.string().min(1, "Dockerfile content is required"),
+export const envdRawFormSchema = z.object({
+  envdScript: z.string().min(1, "Envd script content is required"),
   description: z.string().min(1, "请为镜像添加描述"),
+  python: z.string().optional(),
+  base: z.string().optional(),
   imageName: z
     .string()
     .optional()
@@ -65,17 +67,14 @@ export const dockerfileFormSchema = z.object({
     ),
 });
 
-export type DockerfileFormValues = z.infer<typeof dockerfileFormSchema>;
+export type EnvdRawFormValues = z.infer<typeof envdRawFormSchema>;
 
-interface DockerfileSheetContentProps {
-  form: UseFormReturn<DockerfileFormValues>;
-  onSubmit: (values: DockerfileFormValues) => void;
+interface EnvdRawSheetContentProps {
+  form: UseFormReturn<EnvdRawFormValues>;
+  onSubmit: (values: EnvdRawFormValues) => void;
 }
 
-function DockerfileSheetContent({
-  form,
-  onSubmit,
-}: DockerfileSheetContentProps) {
+function EnvdRawSheetContent({ form, onSubmit }: EnvdRawSheetContentProps) {
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6">
       <FormField
@@ -97,18 +96,55 @@ function DockerfileSheetContent({
           </FormItem>
         )}
       />
+      <div className="grid grid-cols-2 gap-4">
+        <FormField
+          control={form.control}
+          name="python"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Python 版本</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="3.10" />
+              </FormControl>
+              <FormDescription>
+                指定环境中的 Python 版本，例如：3.10、3.12 等
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="base"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>基础镜像标签</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="cu12.8.1" />
+              </FormControl>
+              <FormDescription>
+                基础镜像标签，例如：cu12.8.1、ubuntu22.04 等
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
       <FormField
         control={form.control}
-        name="dockerfile"
+        name="envdScript"
         render={({ field }) => (
           <FormItem>
             <FormLabel>
-              Dockerfile
+              Envd 脚本
               <FormLabelMust />
             </FormLabel>
             <FormControl>
               <DockerfileEditor value={field.value} onChange={field.onChange} />
             </FormControl>
+            <FormDescription>
+              直接编写 envd 构建脚本，以 # syntax=v1 开头，包含 build() 函数
+            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
@@ -123,34 +159,40 @@ function DockerfileSheetContent({
   );
 }
 
-interface DockerfileSheetProps extends SandwichSheetProps {
+interface EnvdRawSheetProps extends SandwichSheetProps {
   closeSheet: () => void;
 }
 
-export function DockerfileSheet({
-  closeSheet,
-  ...props
-}: DockerfileSheetProps) {
+export function EnvdRawSheet({ closeSheet, ...props }: EnvdRawSheetProps) {
   const queryClient = useQueryClient();
 
-  const form = useForm<DockerfileFormValues>({
-    resolver: zodResolver(dockerfileFormSchema),
+  const form = useForm<EnvdRawFormValues>({
+    resolver: zodResolver(envdRawFormSchema),
     defaultValues: {
-      dockerfile:
-        'FROM node:14\n\nWORKDIR /app\n\nCOPY package*.json ./\n\nRUN npm install\n\nCOPY . .\n\nEXPOSE 3000\n\nCMD ["npm", "start"]',
+      envdScript: `# syntax=v1
+
+def build():
+    base(image="crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04",dev=True)
+    install.python(version="3.10")
+    install.apt_packages(["openssh-server", "build-essential", "iputils-ping", "net-tools", "htop"])
+    config.jupyter()`,
       description: "",
+      python: "3.10",
+      base: "cu12.8.1",
       imageName: "",
       imageTag: "",
     },
   });
 
-  const { mutate: submitDockerfileSheet, isPending } = useMutation({
-    mutationFn: (values: DockerfileFormValues) =>
-      apiUserCreateByDockerfile({
+  const { mutate: submitEnvdRawSheet, isPending } = useMutation({
+    mutationFn: (values: EnvdRawFormValues) =>
+      apiUserCreateByEnvd({
         description: values.description,
-        dockerfile: values.dockerfile,
+        envd: values.envdScript,
         name: values.imageName ?? "",
         tag: values.imageTag ?? "",
+        python: values.python ?? "",
+        base: values.base ?? "",
       }),
     onSuccess: async () => {
       await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
@@ -161,8 +203,8 @@ export function DockerfileSheet({
     },
   });
 
-  const onSubmit = (values: DockerfileFormValues) => {
-    submitDockerfileSheet(values);
+  const onSubmit = (values: EnvdRawFormValues) => {
+    submitEnvdRawSheet(values);
   };
 
   return (
@@ -191,7 +233,7 @@ export function DockerfileSheet({
           </>
         }
       >
-        <DockerfileSheetContent form={form} onSubmit={onSubmit} />
+        <EnvdRawSheetContent form={form} onSubmit={onSubmit} />
       </SandwichSheet>
     </Form>
   );

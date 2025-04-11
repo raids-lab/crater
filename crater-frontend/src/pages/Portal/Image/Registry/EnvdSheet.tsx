@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -27,6 +28,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import Combobox from "@/components/form/Combobox";
 import { Textarea } from "@/components/ui/textarea";
+import { ImageSettingsFormCard } from "@/components/form/ImageSettingsFormCard";
 
 export const envdFormSchema = z.object({
   python: z.string().min(1, "Python version is required"),
@@ -131,40 +133,41 @@ function EnvdSheetContent({ form, onSubmit }: EnvdSheetContentProps) {
               <FormLabelMust />
             </FormLabel>
             <FormControl>
-              <Input
-                placeholder="关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示。"
-                {...field}
-              />
+              <Input {...field} />
             </FormControl>
+            <FormDescription>
+              关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示
+            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
       />
-      <FormField
-        control={form.control}
-        name="python"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              Python Version
-              <FormLabelMust />
-            </FormLabel>
-            <FormControl>
-              <Combobox
-                items={PYTHON_VERSIONS.map((version) => ({
-                  label: version,
-                  value: version,
-                }))}
-                current={field.value}
-                handleSelect={(value) => field.onChange(value)}
-                formTitle="Python版本"
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      {/* <div className="flex items-center gap-4">
+      <div className="grid grid-cols-2 gap-4">
+        <FormField
+          control={form.control}
+          name="python"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                Python 版本
+                <FormLabelMust />
+              </FormLabel>
+              <FormControl>
+                <Combobox
+                  items={PYTHON_VERSIONS.map((version) => ({
+                    label: version,
+                    value: version,
+                  }))}
+                  current={field.value}
+                  handleSelect={(value) => field.onChange(value)}
+                  formTitle="Python版本"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {/* <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
           <Checkbox
             id="show-cuda"
@@ -195,27 +198,28 @@ function EnvdSheetContent({ form, onSubmit }: EnvdSheetContentProps) {
           )}
         />
       </div> */}
-      <FormField
-        control={form.control}
-        name="base"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              Cuda Version
-              <FormLabelMust />
-            </FormLabel>
-            <FormControl>
-              <Combobox
-                items={CUDA_BASE_IMAGE}
-                current={field.value}
-                handleSelect={(value) => field.onChange(value)}
-                formTitle="CUDA版本"
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+        <FormField
+          control={form.control}
+          name="base"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                CUDA 版本
+                <FormLabelMust />
+              </FormLabel>
+              <FormControl>
+                <Combobox
+                  items={CUDA_BASE_IMAGE}
+                  current={field.value}
+                  handleSelect={(value) => field.onChange(value)}
+                  formTitle="CUDA版本"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
       <FormField
         control={form.control}
         name="aptPackages"
@@ -224,11 +228,14 @@ function EnvdSheetContent({ form, onSubmit }: EnvdSheetContentProps) {
             <FormLabel>APT Packages</FormLabel>
             <FormControl>
               <Textarea
-                placeholder="输入要安装的 APT 包，例如 git、curl 等。使用空格分隔多个包。"
+                placeholder="git curl"
                 className="h-24 font-mono"
                 {...field}
               />
             </FormControl>
+            <FormDescription>
+              输入要安装的 APT 包，使用空格分隔多个包
+            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
@@ -241,14 +248,23 @@ function EnvdSheetContent({ form, onSubmit }: EnvdSheetContentProps) {
             <FormLabel>Python 依赖</FormLabel>
             <FormControl>
               <Textarea
-                placeholder="粘贴 requirements.txt 文件内容到此处"
+                placeholder={`transformers>=4.46.3
+diffusers==0.31.0`}
                 className="h-24 font-mono"
                 {...field}
               />
             </FormControl>
+            <FormDescription>
+              请粘贴 requirements.txt 文件的内容，以便安装所需的 Python 包
+            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
+      />
+      <ImageSettingsFormCard
+        form={form}
+        imageNamePath="imageName"
+        imageTagPath="imageTag"
       />
     </form>
   );
