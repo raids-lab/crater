@@ -9,7 +9,6 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import useResizeObserver from "use-resize-observer";
-import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import {
   Tooltip,
   TooltipContent,
@@ -17,6 +16,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ReactNode } from "react";
+import { HelpCircleIcon } from "lucide-react";
 
 export interface SandwichSheetProps {
   isOpen?: boolean;
@@ -61,7 +61,7 @@ const SandwichSheet = ({
                 <TooltipProvider delayDuration={100}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <QuestionMarkCircledIcon className="text-muted-foreground ml-1 size-4 hover:cursor-help" />
+                      <HelpCircleIcon className="text-muted-foreground ml-1 size-4 hover:cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>{description}</TooltipContent>
                   </Tooltip>

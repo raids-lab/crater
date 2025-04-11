@@ -19,7 +19,7 @@ import AuthedRouter from "./AuthedRouter";
 import NotFound from "@/components/layout/NotFound";
 import FeedBack from "./Feedback";
 import UserSettings from "./Setting/UserSetting";
-import modelRoutes from "./Data/modelindex";
+import modelRoutes from "./Data/modelIndex";
 import AssignmentTemplateList from "./Job/Store";
 import NvidiaOverview from "@/components/monitor/NvidiaOverview";
 import ResourseOverview from "@/components/monitor/ResourceOverview";

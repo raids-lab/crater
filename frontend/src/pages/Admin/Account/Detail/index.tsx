@@ -88,6 +88,7 @@ import UserLabel from "@/components/label/UserLabel";
 import { DetailPage } from "@/components/layout/DetailPage";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import { Skeleton } from "@/components/ui/skeleton";
+import DetailTitle from "@/components/layout/DetailTitle";
 
 const formSchema = z.object({
   userIds: z.array(z.string()).min(1, {
@@ -459,17 +460,11 @@ const AccountDetail = () => {
 
   // 账户头部内容
   const header = (
-    <div className="flex items-center space-x-4">
-      <div className="bg-muted flex h-20 w-20 items-center justify-center rounded-md border">
-        <Briefcase className="text-muted-foreground size-10" />
-      </div>
-      <div>
-        <h1 className="flex items-center gap-2 text-3xl font-bold">
-          {accountInfo.nickname}
-        </h1>
-        <p className="text-muted-foreground">ID: {accountInfo.id}</p>
-      </div>
-    </div>
+    <DetailTitle
+      icon={Briefcase}
+      title={accountInfo.nickname}
+      description={accountInfo.name}
+    />
   );
 
   // 账户基本信息
