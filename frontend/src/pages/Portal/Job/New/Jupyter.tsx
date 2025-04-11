@@ -44,7 +44,6 @@ import { ImageFormField } from "@/components/form/ImageFormField";
 import { VolumeMountsCard } from "@/components/form/DataMountFormField";
 import { ResourceFormFields } from "@/components/form/ResourceFormField";
 import { TemplateInfo } from "@/components/form/TemplateInfo";
-import { JobTemplate } from "@/services/api/jobtemplate";
 import {
   OtherCard,
   OtherOptionsFormCard,
@@ -161,9 +160,6 @@ export const Component = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAtomValue(globalUserInfo);
-  // 在组件内部，定义一个状态来存储 TemplateInfo 组件获取的模板数据
-  const [loadedTemplateData, setLoadedTemplateData] =
-    useState<JobTemplate | null>(null);
 
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) => {
@@ -325,7 +321,6 @@ export const Component = () => {
               <PublishConfigForm
                 config={MetadataFormJupyter}
                 configform={form}
-                externalTemplateData={loadedTemplateData}
               />
               <LoadableButton
                 isLoading={isPending}
@@ -394,8 +389,6 @@ export const Component = () => {
                   value: OtherCard,
                 },
               ]}
-              // 添加加载成功回调来保存模板数据
-              onTemplateLoaded={(data) => setLoadedTemplateData(data)}
             />
           </div>
           <div className="flex flex-col gap-4 md:gap-6">
