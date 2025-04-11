@@ -171,6 +171,7 @@ func setupCustomCRDAddon(
 		mgr.GetClient(),
 		mgr.GetScheme(),
 		registerConfig.PrometheusClient,
+		registerConfig.KubeClient,
 	)
 	err = vcjobReconciler.SetupWithManager(mgr)
 	if err != nil {
@@ -190,10 +191,13 @@ func main() {
 	//-------------------backend----------------------
 	// set global timezone
 	time.Local = time.UTC
+
 	// load backend config from file
 	backendConfig := config.GetConfig()
+
 	// init gin registerConfig
 	registerConfig := handler.RegisterConfig{}
+
 	// variable changes in local development
 	if gin.Mode() == gin.DebugMode {
 		err := godotenv.Load(".debug.env")
@@ -216,9 +220,11 @@ func main() {
 		backendConfig.MetricsAddr = ":" + ms
 		backendConfig.ServerAddr = ":" + be
 	}
+
 	// get k8s config via ./kubeconfig
 	cfg := ctrl.GetConfigOrDie()
 	registerConfig.KubeConfig = cfg
+
 	// kube clientset
 	clientset, err := kubernetes.NewForConfig(cfg)
 	registerConfig.KubeClient = clientset
@@ -232,11 +238,12 @@ func main() {
 		logutils.Log.Errorf("unable to init db:%q", err)
 		os.Exit(1)
 	}
-
 	query.SetDefault(query.GetDB())
+
 	// init promeClient
 	prometheusClient := monitor.NewPrometheusClient(backendConfig.PrometheusAPI)
 	registerConfig.PrometheusClient = prometheusClient
+
 	//-------------------ctrl manager----------------------
 	// init stopCh
 	stopCh := ctrl.SetupSignalHandler()

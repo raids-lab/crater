@@ -1,6 +1,9 @@
 package model
 
 import (
+	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/raids-lab/crater/pkg/monitor"
@@ -29,6 +32,39 @@ const (
 	JobTypeCustom     JobType = "custom"
 )
 
+type ScheduleData struct {
+	ImagePullTime string  `json:"imagePullTime"`
+	ImageSize     *string `json:"imageSize"`
+}
+
+// 从事件中获取镜像拉取数据，重点关注 Pod Pulled 事件
+func (s *ScheduleData) Init(msg string) error {
+	if strings.Contains(msg, "already present on machine") {
+		s.ImagePullTime = "0s"
+		return nil
+	}
+	if !strings.Contains(msg, "Successfully pulled image") {
+		return fmt.Errorf("not a image pull event")
+	}
+	// 使用正则表达式获取(2m46.503s including waiting) 括号内的内容，正则表达式匹配 (.* including waiting)
+	regex := `\((.*?) including waiting\)`
+	re := regexp.MustCompile(regex)
+	matches := re.FindStringSubmatch(msg)
+	if len(matches) > 1 {
+		s.ImagePullTime = matches[1]
+	}
+
+	// 使用正则表达式获取 Image size: 8341280688 bytes 内的数字
+	regex = `Image size: (\d+) bytes`
+	re = regexp.MustCompile(regex)
+	matches = re.FindStringSubmatch(msg)
+	if len(matches) > 1 {
+		imageSize := matches[1]
+		s.ImageSize = &imageSize
+	}
+	return nil
+}
+
 type Job struct {
 	gorm.Model
 	Name               string                              `gorm:"not null;type:varchar(256);comment:作业名称"`
@@ -42,15 +78,22 @@ type Job struct {
 	CreationTimestamp  time.Time                           `gorm:"not null;comment:作业创建时间"`
 	RunningTimestamp   time.Time                           `gorm:"comment:作业开始运行时间"`
 	CompletedTimestamp time.Time                           `gorm:"comment:作业完成时间"`
-	LockedTimestamp    time.Time                           `gorm:"comment:作业锁定时间"`
 	Nodes              datatypes.JSONType[[]string]        `gorm:"comment:作业运行的节点"`
 	Resources          datatypes.JSONType[v1.ResourceList] `gorm:"comment:作业的资源需求"`
+	Attributes         datatypes.JSONType[*batch.Job]      `gorm:"comment:作业的原始属性"`
+	Template           string                              `gorm:"type:text;comment:作业的模板配置"`
 
-	KeepWhenLowResourceUsage bool `gorm:"comment:当资源利用率低时是否保留"`
-	Reminded                 bool `gorm:"comment:是否已经处于发送了提醒的状态"`
+	// 通知相关
+	AlertEnabled bool `gorm:"type:boolean;default:false;comment:是否启用通知"`
+	Reminded     bool `gorm:"comment:是否已经处于发送了提醒的状态"`
 
-	Attributes   datatypes.JSONType[*batch.Job]            `gorm:"comment:作业的原始属性"`
-	ProfileData  *datatypes.JSONType[*monitor.ProfileData] `gorm:"comment:作业的性能数据"`
-	Template     string                                    `gorm:"type:text;comment:作业的模板配置"`
-	AlertEnabled bool                                      `gorm:"type:boolean;default:false;comment:是否启用通知"`
+	// 定时策略相关
+	KeepWhenLowResourceUsage bool      `gorm:"comment:当资源利用率低时是否保留"`
+	LockedTimestamp          time.Time `gorm:"comment:作业锁定时间"`
+
+	// 诊断数据收集
+	ProfileData      *datatypes.JSONType[*monitor.ProfileData]          `gorm:"comment:作业的性能数据"`
+	ScheduleData     *datatypes.JSONType[*ScheduleData]                 `gorm:"comment:作业的调度数据"`
+	Events           *datatypes.JSONType[[]v1.Event]                    `gorm:"comment:作业的事件 (运行时、失败时采集)"`
+	TerminatedStates *datatypes.JSONType[[]v1.ContainerStateTerminated] `gorm:"comment:作业的终止状态 (运行时、失败时采集)"`
 }

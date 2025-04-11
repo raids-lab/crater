@@ -10,6 +10,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 
 	"github.com/raids-lab/crater/dao/model"
@@ -18,6 +19,7 @@ import (
 	"github.com/raids-lab/crater/pkg/monitor"
 )
 
+//nolint:gocyclo // ignore cyclomatic complexity
 func main() {
 	db := query.GetDB()
 
@@ -159,6 +161,45 @@ func main() {
 					LastEmailVerifiedAt time.Time `gorm:"comment:最后一次邮箱验证时间"`
 				}
 				return tx.Migrator().DropColumn(&User{}, "LastEmailVerifiedAt")
+			},
+		},
+		{
+			ID: "202504112350", // 确保ID是唯一的
+			//nolint:dupl // ignore duplicate code
+			Migrate: func(tx *gorm.DB) error {
+				type Job struct {
+					ScheduleData     *datatypes.JSONType[*model.ScheduleData]           `gorm:"comment:作业的调度数据"`
+					Events           *datatypes.JSONType[[]v1.Event]                    `gorm:"comment:作业的事件 (运行时、失败时采集)"`
+					TerminatedStates *datatypes.JSONType[[]v1.ContainerStateTerminated] `gorm:"comment:作业的终止状态 (运行时、失败时采集)"`
+				}
+				if err := tx.Migrator().AddColumn(&Job{}, "ScheduleData"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().AddColumn(&Job{}, "Events"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().AddColumn(&Job{}, "TerminatedStates"); err != nil {
+					return err
+				}
+				return nil
+			},
+			//nolint:dupl // ignore duplicate code
+			Rollback: func(tx *gorm.DB) error {
+				type Job struct {
+					ScheduleData     *datatypes.JSONType[*model.ScheduleData]           `gorm:"comment:作业的调度数据"`
+					Events           *datatypes.JSONType[[]v1.Event]                    `gorm:"comment:作业的事件 (运行时、失败时采集)"`
+					TerminatedStates *datatypes.JSONType[[]v1.ContainerStateTerminated] `gorm:"comment:作业的终止状态 (运行时、失败时采集)"`
+				}
+				if err := tx.Migrator().DropColumn(&Job{}, "ScheduleData"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&Job{}, "Events"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&Job{}, "TerminatedStates"); err != nil {
+					return err
+				}
+				return nil
 			},
 		},
 	})
