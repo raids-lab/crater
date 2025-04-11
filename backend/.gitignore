@@ -35,3 +35,6 @@ kubeconfig*
 ***REMOVED***
 ***REMOVED****
 
+# statistic files
+*.csv
+

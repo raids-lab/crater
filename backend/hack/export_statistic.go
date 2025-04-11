@@ -1,3 +1,4 @@
+// Usage: CRATER_DEBUG_CONFIG_PATH=${PWD}/etc/debug-config-actgpu.yaml go run hack/export_statistic.go
 package main
 
 import (
