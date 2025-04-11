@@ -110,7 +110,7 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	// 2. fetch kaniko record from database
-	kaniko, err := k.WithContext(ctx).Preload(query.Kaniko.User).Where(k.ImagePackName.Eq(job.Name)).First()
+	kaniko, err := k.WithContext(ctx).Preload(k.User).Where(k.ImagePackName.Eq(job.Name)).First()
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// 3. if kaniko record not found, then create a new one.
