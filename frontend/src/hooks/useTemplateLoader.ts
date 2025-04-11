@@ -125,7 +125,7 @@ export function useTemplateLoader<T extends FieldValues>({
           onSuccess(templateInfo);
         }
 
-        toast.success(`已加载模板 ${fromTemplate} 的配置`);
+        //toast.success(`已加载模板 ${fromTemplate} 的配置`);
       } catch (error) {
         showErrorToast(error);
       }

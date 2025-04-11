@@ -32,12 +32,22 @@ import {
 const formSchema = z.object({
   datasetName: z
     .string()
-    .min(1, { message: "名称不能为空" })
-    .max(256, { message: "名称最多包含 256 个字符" }),
+    .min(1, {
+      message: "名称不能为空",
+    })
+    .max(256, {
+      message: "名称最多包含 256 个字符",
+    }),
   describe: z.string(),
   url: z.string(),
   type: z.enum(["dataset", "model"]),
-  tags: z.array(z.string()).default([]), // 确保默认值为空数组
+  tags: z
+    .array(
+      z.object({
+        value: z.string(),
+      }),
+    )
+    .optional(),
   weburl: z.string(),
   ispublic: z.boolean().default(true),
 });
@@ -78,9 +88,13 @@ export function DatasetUpdateForm({
     mutationFn: (values: FormSchema) =>
       apiDatasetUpdate({
         datasetId: initialData.datasetId, // 使用传入的ID
-        ...values,
+        describe: values.describe,
         name: values.datasetName,
+        url: values.url,
         type: type ?? "dataset",
+        tags: values.tags?.map((item) => item.value) ?? [],
+        weburl: values.weburl,
+        ispublic: values.ispublic,
       }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["data", "mydataset"] });

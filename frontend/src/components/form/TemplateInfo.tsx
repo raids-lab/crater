@@ -9,6 +9,8 @@ import {
 import { CardTitle } from "@/components/ui-custom/card";
 import { Badge } from "@/components/ui/badge";
 import { MarkdownRenderer } from "./markdown-renderer";
+import { JobTemplate } from "@/services/api/jobtemplate";
+import { useEffect } from "react";
 
 interface TemplateInfoProps<T extends FieldValues> {
   /** The form object to populate */
@@ -21,6 +23,7 @@ interface TemplateInfoProps<T extends FieldValues> {
   onSuccess?: (data: T) => void;
   /** Optional additional data processing */
   dataProcessor?: (data: T) => T;
+  onTemplateLoaded?: (templateData: JobTemplate) => void;
 }
 
 export function TemplateInfo<T extends FieldValues>({
@@ -29,6 +32,7 @@ export function TemplateInfo<T extends FieldValues>({
   uiStateUpdaters = [],
   onSuccess,
   dataProcessor,
+  onTemplateLoaded,
 }: TemplateInfoProps<T>) {
   // 使用 hook 获取模板信息
   const { fromJob, fromTemplate, templateData } = useTemplateLoader({
@@ -38,12 +42,16 @@ export function TemplateInfo<T extends FieldValues>({
     onSuccess,
     dataProcessor,
   });
-
+  // 添加副作用，当模板数据加载时调用回调
+  useEffect(() => {
+    if (templateData && onTemplateLoaded) {
+      onTemplateLoaded(templateData);
+    }
+  }, [templateData, onTemplateLoaded]);
   // 如果没有模板，不渲染任何内容
   if (!fromJob && !fromTemplate) {
     return null;
   }
-
   return (
     <Card className="mb-4">
       <CardHeader className="pb-2">
