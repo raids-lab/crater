@@ -90,6 +90,7 @@ import { Separator } from "@/components/ui/separator";
 import { ValidDialog } from "../Image/ValidDialog";
 import UserLabel from "@/components/label/UserLabel";
 import { EnvdSheet } from "./EnvdSheet";
+import { EnvdRawSheet } from "./EnvdRawSheet";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -123,6 +124,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
   const [openPipAptSheet, setOpenPipAptSheet] = useState(false);
   const [openDockerfileSheet, setOpenDockerfileSheet] = useState(false);
   const [openEnvdSheet, setOpenEnvdSheet] = useState(false);
+  const [openEnvdRawSheet, setOpenEnvdRawSheet] = useState(false);
   const navigate = useNavigate();
   const [openCheckDialog, setCheckOpenDialog] = useState(false);
   const user = useAtomValue(globalUserInfo);
@@ -294,7 +296,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                 items={[
                   {
                     key: "envd",
-                    title: "Python+CUDA自定义构建",
+                    title: "Python + CUDA 自定义构建",
                     action: () => {
                       setOpenEnvdSheet(true);
                     },
@@ -311,6 +313,13 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                     title: "基于 Dockerfile 构建",
                     action: () => {
                       setOpenDockerfileSheet(true);
+                    },
+                  },
+                  {
+                    key: "envd-raw",
+                    title: "基于 Envd 构建",
+                    action: () => {
+                      setOpenEnvdRawSheet(true);
                     },
                   },
                 ]}
@@ -402,6 +411,22 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
       />
       {!isAdminMode ? (
         <div>
+          <EnvdSheet
+            isOpen={openEnvdSheet}
+            onOpenChange={setOpenEnvdSheet}
+            title="Python + CUDA 自定义构建"
+            description="Python+CUDA指定版本构建"
+            className="sm:max-w-3xl"
+            closeSheet={() => setOpenEnvdSheet(false)}
+          />
+          <EnvdRawSheet
+            isOpen={openEnvdRawSheet}
+            onOpenChange={setOpenEnvdRawSheet}
+            title="高级 Envd 构建脚本"
+            description="直接编写 Envd 构建脚本，实现更复杂的定制化"
+            className="sm:max-w-3xl"
+            closeSheet={() => setOpenEnvdRawSheet(false)}
+          />
           <PipAptSheet
             isOpen={openPipAptSheet}
             onOpenChange={setOpenPipAptSheet}
@@ -417,14 +442,6 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             description="基于 Dockerfile 制作镜像"
             className="sm:max-w-3xl"
             closeSheet={() => setOpenDockerfileSheet(false)}
-          />
-          <EnvdSheet
-            isOpen={openEnvdSheet}
-            onOpenChange={setOpenEnvdSheet}
-            title="Python+CUDA自定义版本构建"
-            description="Python+CUDA指定版本构建"
-            className="sm:max-w-3xl"
-            closeSheet={() => setOpenEnvdSheet(false)}
           />
         </div>
       ) : null}

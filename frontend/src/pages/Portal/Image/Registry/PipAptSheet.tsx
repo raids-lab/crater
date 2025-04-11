@@ -32,12 +32,7 @@ import {
   imageTagRegex,
 } from "@/services/api/imagepack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { ImageSettingsFormCard } from "@/components/form/ImageSettingsFormCard";
 
 export const pipAptFormSchema = z.object({
   baseImage: z.string().min(1, "基础镜像是必填项"),
@@ -132,11 +127,30 @@ function PipAptSheetContent({ form, onSubmit }: PipAptSheetContentProps) {
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6">
       <FormField
         control={form.control}
+        name="description"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>
+              描述
+              <FormLabelMust />
+            </FormLabel>
+            <FormControl>
+              <Input {...field} />
+            </FormControl>
+            <FormDescription>
+              关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
         name="baseImage"
         render={({ field }) => (
           <FormItem>
             <FormLabel>
-              基础镜像
+              现有镜像
               <FormLabelMust />
             </FormLabel>
             <FormControl autoFocus={true}>
@@ -149,27 +163,8 @@ function PipAptSheetContent({ form, onSubmit }: PipAptSheetContentProps) {
               />
             </FormControl>
             <FormDescription>
-              选择一个带有所需 CUDA 和 Python 版本的基础镜像。
+              选择一个带有所需 CUDA 和 Python 版本的基础镜像
             </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={form.control}
-        name="description"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              描述
-              <FormLabelMust />
-            </FormLabel>
-            <FormControl>
-              <Input
-                placeholder="关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示。"
-                {...field}
-              />
-            </FormControl>
             <FormMessage />
           </FormItem>
         )}
@@ -182,11 +177,14 @@ function PipAptSheetContent({ form, onSubmit }: PipAptSheetContentProps) {
             <FormLabel>APT Packages</FormLabel>
             <FormControl>
               <Textarea
-                placeholder="输入要安装的 APT 包，例如 git、curl 等。使用空格分隔多个包。"
+                placeholder="git curl"
                 className="h-24 font-mono"
                 {...field}
               />
             </FormControl>
+            <FormDescription>
+              输入要安装的 APT 包，使用空格分隔多个包
+            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
@@ -199,66 +197,24 @@ function PipAptSheetContent({ form, onSubmit }: PipAptSheetContentProps) {
             <FormLabel>Python 依赖</FormLabel>
             <FormControl>
               <Textarea
-                placeholder="请粘贴 requirements.txt 文件的内容，以便安装所需的 Python 包。"
+                placeholder={`transformers>=4.46.3
+diffusers==0.31.0`}
                 className="h-24 font-mono"
                 {...field}
               />
             </FormControl>
+            <FormDescription>
+              请粘贴 requirements.txt 文件的内容，以便安装所需的 Python 包
+            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
       />
-
-      <div className="flex items-start gap-4">
-        <Accordion
-          type="single"
-          collapsible
-          className="w-full rounded-lg border"
-        >
-          <AccordionItem value="image-settings" className="border-none">
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              高级设置（镜像名和标签）
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="flex items-start gap-4">
-                <div className="flex-1">
-                  <FormField
-                    control={form.control}
-                    name="imageName"
-                    render={({ field }) => (
-                      <FormItem className="flex h-full flex-col">
-                        <FormLabel>镜像名</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="默认镜像名" />
-                        </FormControl>
-                        <FormMessage className="min-h-[20px] leading-none" />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <div className="flex-1">
-                  <FormField
-                    control={form.control}
-                    name="imageTag"
-                    render={({ field }) => (
-                      <FormItem className="flex h-full flex-col">
-                        <FormLabel>镜像标签</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="默认标签" />
-                        </FormControl>
-                        <FormMessage className="min-h-[20px] leading-none" />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-              <FormDescription className="mt-2">
-                输入用户自定义的镜像名和镜像标签，若为空，则由系统自动生成
-              </FormDescription>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </div>
+      <ImageSettingsFormCard
+        form={form}
+        imageNamePath="imageName"
+        imageTagPath="imageTag"
+      />
     </form>
   );
 }
