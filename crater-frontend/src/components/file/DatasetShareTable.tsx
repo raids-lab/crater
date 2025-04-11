@@ -141,6 +141,11 @@ export function DatasetShareTable({
       toast.error("删除数据集失败");
     },
   });
+  const formattedTags = useMemo(() => {
+    const tags = query.data?.extra.tag;
+    if (!tags || !Array.isArray(tags)) return [];
+    return tags.map((tag) => ({ value: tag }));
+  }, [query.data?.extra.tag]);
   const userDatasetColumns = useMemo<ColumnDef<UserDatasetResp>[]>(
     () => [
       {
@@ -276,7 +281,7 @@ export function DatasetShareTable({
                   describe: query.data?.describe || "",
                   url: query.data?.url || "",
                   type: "model",
-                  tags: query.data?.extra.tag || [],
+                  tags: formattedTags,
                   weburl: query.data?.extra.weburl || "",
                   ispublic: true,
                 }}
