@@ -20,7 +20,7 @@ import { FileSelectDialog } from "@/components/file/FileSelectDialog";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import { TagsInput } from "@/components/form/TagsInput";
 
-const formSchema = z.object({
+export const dataFormSchema = z.object({
   datasetName: z
     .string()
     .min(1, {
@@ -41,20 +41,22 @@ const formSchema = z.object({
     .optional(),
   weburl: z.string(),
   ispublic: z.boolean().default(true),
+  readOnly: z.boolean().default(true),
 });
 
-type FormSchema = z.infer<typeof formSchema>;
+export type DataFormSchema = z.infer<typeof dataFormSchema>;
 
-interface TaskFormProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface DataCreateFormProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   closeSheet: () => void;
   type?: "dataset" | "model";
 }
 
-export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
+export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
   const queryClient = useQueryClient();
-  const typestring = type === "model" ? "模型" : "数据集";
+  const dataTypeLabel = type === "model" ? "模型" : "数据集";
   const { mutate: createImagePack } = useMutation({
-    mutationFn: (values: FormSchema) =>
+    mutationFn: (values: DataFormSchema) =>
       apiDatasetCreate({
         describe: values.describe,
         name: values.datasetName,
@@ -63,19 +65,20 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
         tags: values.tags?.map((item) => item.value) ?? [],
         weburl: values.weburl,
         ispublic: values.ispublic,
+        editable: !values.readOnly,
       }),
     onSuccess: async (_, { datasetName }) => {
       await queryClient.invalidateQueries({
         queryKey: ["data", "mydataset"],
       });
-      toast.success(`${typestring} ${datasetName} 创建成功`);
+      toast.success(`${dataTypeLabel} ${datasetName} 创建成功`);
       closeSheet();
     },
   });
 
   // 1. Define your form.
-  const form = useForm<FormSchema>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<DataFormSchema>({
+    resolver: zodResolver(dataFormSchema),
     defaultValues: {
       datasetName: "",
       url: "",
@@ -84,11 +87,12 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
       tags: [],
       weburl: "",
       ispublic: true,
+      readOnly: true,
     },
   });
 
   // 2. Define a submit handler.
-  const onSubmit = (values: FormSchema) => {
+  const onSubmit = (values: DataFormSchema) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
     createImagePack(values);
@@ -106,7 +110,7 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                {typestring}名称
+                {dataTypeLabel}名称
                 <FormLabelMust />
               </FormLabel>
               <FormControl>
@@ -123,7 +127,7 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                {typestring}描述
+                {dataTypeLabel}描述
                 <FormLabelMust />
               </FormLabel>
               <FormControl>
@@ -141,7 +145,7 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
               render={({ field }) => (
                 <FormItem className="col-span-2">
                   <FormLabel>
-                    {typestring}地址
+                    {dataTypeLabel}地址
                     <FormLabelMust />
                   </FormLabel>
                   <FormControl>
@@ -153,7 +157,7 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
                       }}
                     />
                   </FormControl>
-                  <FormDescription> 请选择文件或文件夹</FormDescription>
+                  <FormDescription>请选择文件或文件夹</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -163,20 +167,17 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
         <TagsInput
           form={form}
           tagsPath="tags"
-          label={`${typestring}标签`}
-          description={`为${typestring}添加标签，以便分类和搜索`}
+          label={`${dataTypeLabel}标签`}
+          description={`为${dataTypeLabel}添加标签，以便分类和搜索`}
           customTags={[
-            { value: "VLM" },
-            { value: "LLAMA" },
-            { value: "LLM" },
-            { value: "QWEN" },
-            { value: "DeepSeek" },
-            { value: "机器学习" },
-            { value: "深度学习" },
+            { value: "大语言模型" },
             { value: "数据科学" },
             { value: "自然语言处理" },
             { value: "计算机视觉" },
             { value: "强化学习" },
+            { value: "Llama" },
+            { value: "Qwen" },
+            { value: "DeepSeek" },
           ]}
         />
         <FormField
@@ -184,13 +185,12 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
           name="weburl"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{typestring}仓库地址</FormLabel>
+              <FormLabel>{dataTypeLabel}仓库地址</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
               <FormDescription>
-                {" "}
-                请输入{typestring}开源仓库地址(如果有)
+                可提供{dataTypeLabel}开源仓库地址
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -201,7 +201,23 @@ export function DatasetCreateForm({ closeSheet, type }: TaskFormProps) {
           name="ispublic"
           render={({ field }) => (
             <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-              <FormLabel className="font-normal">公开{typestring}</FormLabel>
+              <FormLabel className="font-normal">所有用户可见</FormLabel>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="readOnly"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
+              <FormLabel className="font-normal">只读{dataTypeLabel}</FormLabel>
               <FormControl>
                 <Switch
                   checked={field.value}

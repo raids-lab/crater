@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FileSelectDialog } from "@/components/file/FileSelectDialog";
@@ -27,36 +26,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { dataFormSchema, DataFormSchema } from "@/pages/Portal/Data/CreateForm";
 
 // 复用创建表单的Schema
-const formSchema = z.object({
-  datasetName: z
-    .string()
-    .min(1, {
-      message: "名称不能为空",
-    })
-    .max(256, {
-      message: "名称最多包含 256 个字符",
-    }),
-  describe: z.string(),
-  url: z.string(),
-  type: z.enum(["dataset", "model"]),
-  tags: z
-    .array(
-      z.object({
-        value: z.string(),
-      }),
-    )
-    .optional(),
-  weburl: z.string(),
-  ispublic: z.boolean().default(true),
-});
-
-type FormSchema = z.infer<typeof formSchema>;
 
 interface UpdateFormProps {
   type?: "dataset" | "model";
-  initialData: FormSchema & { datasetId: number }; // 添加id字段
+  initialData: DataFormSchema & { datasetId: number }; // 添加id字段
   onSuccess?: () => void; // 添加回调函数
 }
 
@@ -69,8 +45,8 @@ export function DatasetUpdateForm({
   const [isOpen, setIsOpen] = React.useState(false);
   const typestring = type === "model" ? "模型" : "数据集";
 
-  const form = useForm<FormSchema>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<DataFormSchema>({
+    resolver: zodResolver(dataFormSchema),
     defaultValues: {
       ...initialData,
       tags: initialData.tags || [], // 强制转换为数组
@@ -85,7 +61,7 @@ export function DatasetUpdateForm({
   }, [form]);
 
   const { mutate: updateDataset, isPending } = useMutation({
-    mutationFn: (values: FormSchema) =>
+    mutationFn: (values: DataFormSchema) =>
       apiDatasetUpdate({
         datasetId: initialData.datasetId, // 使用传入的ID
         describe: values.describe,
@@ -95,6 +71,7 @@ export function DatasetUpdateForm({
         tags: values.tags?.map((item) => item.value) ?? [],
         weburl: values.weburl,
         ispublic: values.ispublic,
+        editable: !values.readOnly,
       }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["data", "mydataset"] });
@@ -107,7 +84,7 @@ export function DatasetUpdateForm({
     },
   });
 
-  const onSubmit = async (values: FormSchema) => {
+  const onSubmit = async (values: DataFormSchema) => {
     try {
       await updateDataset(values);
     } catch {

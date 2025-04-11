@@ -6,6 +6,7 @@ import { IUserInfo } from "./vcjob";
 export interface Extra {
   tag: string[];
   weburl: string;
+  editable: boolean;
 }
 
 export interface IDataset {
@@ -37,6 +38,7 @@ export interface DatasetReq {
   tags: string[];
   weburl: string;
   ispublic: boolean;
+  editable: boolean;
 }
 
 export interface DatasetRenameReq {
