@@ -90,7 +90,7 @@ func (b *imagePacker) createEnvdJob(
 		Annotations: map[string]string{
 			"build-data/UserID":      fmt.Sprint(data.UserID),
 			"build-data/ImageLink":   data.ImageLink,
-			"build-data/Dockerfile":  "",
+			"build-data/Dockerfile":  *data.Envd,
 			"build-data/Description": *data.Description,
 			"build-data/Envd":        *data.Envd,
 		},
