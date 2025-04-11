@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/raids-lab/crater/dao/model"
@@ -36,7 +37,8 @@ func main() {
 	headers := []string{
 		"ID", "Name", "JobName", "UserID", "UserName", "AccountID", "AccountName",
 		"JobType", "Status", "CreationTimestamp", "RunningTimestamp", "CompletedTimestamp",
-		"LockedTimestamp", "Nodes", "Resources", "KeepWhenLowResourceUsage", "Reminded",
+		"LockedTimestamp", "Nodes", "CPU", "Memory", "GPUCount", "GPUModel",
+		"KeepWhenLowResourceUsage", "Reminded",
 		"AlertEnabled",
 		// ProfileData fields
 		"CPURequest", "CPULimit", "MemRequest", "MemLimit",
@@ -83,9 +85,18 @@ func jobToCSVRecord(job *model.Job) ([]string, error) {
 		return nil, fmt.Errorf("failed to marshal nodes: %w", err)
 	}
 
-	resources, err := json.Marshal(job.Resources.Data())
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal resources: %w", err)
+	resources := job.Resources.Data()
+	cpu := resources.Cpu()
+	memory := resources.Memory()
+	// find nvidia.com/ prefix from resources, such as nvidia.com/v100, nvidia.com/a100
+	gpuCount := 0
+	gpuModel := ""
+	for k, v := range resources {
+		if strings.Contains(k.String(), "nvidia.com/") {
+			gpuCount += int(v.Value())
+			gpuModel = strings.TrimPrefix(k.String(), "nvidia.com/")
+			break
+		}
 	}
 
 	// Format timestamps
@@ -127,7 +138,10 @@ func jobToCSVRecord(job *model.Job) ([]string, error) {
 		formatTime(job.CompletedTimestamp),
 		formatTime(job.LockedTimestamp),
 		string(nodes),
-		string(resources),
+		fmt.Sprintf("%d", cpu.Value()),
+		fmt.Sprintf("%d", memory.Value()),
+		fmt.Sprintf("%d", gpuCount),
+		gpuModel,
 		fmt.Sprintf("%t", job.KeepWhenLowResourceUsage),
 		fmt.Sprintf("%t", job.Reminded),
 		fmt.Sprintf("%t", job.AlertEnabled),

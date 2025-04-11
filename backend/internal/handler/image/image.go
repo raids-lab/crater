@@ -16,6 +16,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
@@ -28,7 +29,7 @@ import (
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
 func init() {
-	Registers = append(Registers, NewImagePackMgr)
+	handler.Registers = append(handler.Registers, NewImagePackMgr)
 }
 
 type ImagePackMgr struct {
@@ -80,7 +81,7 @@ func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.POST("/description", mgr.AdminChangeImageDescription)
 }
 
-func NewImagePackMgr(conf *RegisterConfig) Manager {
+func NewImagePackMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &ImagePackMgr{
 		name:            "images",
 		imagepackClient: &crclient.ImagePackController{Client: conf.Client},
