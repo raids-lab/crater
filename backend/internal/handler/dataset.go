@@ -38,7 +38,7 @@ func (mgr *DatasetMgr) GetName() string { return mgr.name }
 func (mgr *DatasetMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *DatasetMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.GET("/mydataset", mgr.GetMyDataset)
+	g.GET("/mydataset", mgr.GetDatasets)
 	g.GET("/:datasetId/usersNotIn", mgr.ListUsersOutOfDataset)
 	g.GET("/:datasetId/usersIn", mgr.ListUserOfDataset)
 	g.GET("/:datasetId/queuesNotIn", mgr.ListQueuesOutOfDataset)
@@ -72,7 +72,7 @@ type DatasetResp struct {
 	UserInfo  model.UserInfo                         `json:"userInfo"`
 }
 
-// GetMyDataset godoc
+// GetDatasets godoc
 // @Summary 获取数据集
 // @Description 获取数据集
 // @Tags Dataset
@@ -83,7 +83,7 @@ type DatasetResp struct {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/dataset/mydataset [get]
-func (mgr *DatasetMgr) GetMyDataset(c *gin.Context) {
+func (mgr *DatasetMgr) GetDatasets(c *gin.Context) {
 	token := util.GetToken(c)
 	datasets := make(map[uint]DatasetResp)
 
@@ -208,10 +208,11 @@ type DatasetReq struct {
 	Name     string         `json:"name" binding:"required"`
 	URL      string         `json:"url" binding:"required"`
 	Describe string         `json:"describe" binding:"required"`
-	Type     model.DataType `json:"type" `
+	Type     model.DataType `json:"type"`
 	Ispublic bool           `json:"ispublic"`
-	Tags     []string       `json:"tags" `
-	WebURL   string         `json:"weburl" `
+	Tags     []string       `json:"tags"`
+	WebURL   *string        `json:"weburl"`
+	Editable bool           `json:"editable"`
 }
 
 // CreateDataset godoc
@@ -256,8 +257,9 @@ func (mgr *DatasetMgr) CreateDataset(c *gin.Context) {
 		dataset.UserID = token.UserID
 		dataset.Type = datasetReq.Type
 		dataset.Extra = datatypes.NewJSONType(model.ExtraContent{
-			Tags:   datasetReq.Tags,
-			WebURL: &datasetReq.WebURL,
+			Tags:     datasetReq.Tags,
+			WebURL:   datasetReq.WebURL,
+			Editable: datasetReq.Editable,
 		})
 		if err := d.WithContext(c).Create(&dataset); err != nil {
 			return err

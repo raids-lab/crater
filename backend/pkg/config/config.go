@@ -121,7 +121,7 @@ func initConfig() *Config {
 		if os.Getenv("CRATER_DEBUG_CONFIG_PATH") != "" {
 			configPath = os.Getenv("CRATER_DEBUG_CONFIG_PATH")
 		} else {
-			configPath = "./config/debug-config.yaml"
+			configPath = "./etc/debug-config.yaml"
 		}
 	} else {
 		configPath = "/etc/config/config.yaml"

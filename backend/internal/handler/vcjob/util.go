@@ -35,7 +35,6 @@ func GenerateVolumeMounts(
 	token util.JWTMessage, // 传入 token 信息
 ) (pvc []v1.Volume, volumeMounts []v1.VolumeMount, err error) {
 	// 初始化返回的 PVC 和 VolumeMount 列表
-	pvcMap := make(map[string]bool) // 用于避免重复创建同一 PVC
 	volumeMounts = []v1.VolumeMount{
 		{
 			Name:      VolumeCache,
@@ -54,33 +53,29 @@ func GenerateVolumeMounts(
 	}
 
 	// 遍历 volumes，根据权限动态创建 PVC
+	pvcMap := make(map[string]bool) // 用于避免重复创建同一 PVC
 	for _, vm := range volumes {
-		subPath, volumeName, readOnly, err := resolveSubPathAndSpaceType(c, token, vm)
+		volumeMount, err := resolveVolumeMount(c, token, vm)
 		if err != nil {
 			return nil, nil, err
 		}
 
 		// 如果该 PVC 尚未创建，添加到 PVC 列表
-		if !pvcMap[volumeName] {
-			pvc = append(pvc, createVolume(volumeName))
-			pvcMap[volumeName] = true
+		if !pvcMap[volumeMount.Name] {
+			pvc = append(pvc, createVolume(volumeMount.Name))
+			pvcMap[volumeMount.Name] = true
 		}
 
 		// 添加挂载点
-		volumeMounts = append(volumeMounts, v1.VolumeMount{
-			Name:      volumeName,
-			SubPath:   subPath,
-			MountPath: vm.MountPath,
-			ReadOnly:  readOnly,
-		})
+		volumeMounts = append(volumeMounts, volumeMount)
 	}
 
 	return pvc, volumeMounts, nil
 }
 
-// resolveSubPathAndSpaceType resolves the subpath and volume type based on the mount configuration
-func resolveSubPathAndSpaceType(c context.Context, token util.JWTMessage, vm VolumeMount) (
-	subPath, volumeName string, readOnly bool, err error,
+// resolveVolumeMount resolves the subpath and volume type based on the mount configuration
+func resolveVolumeMount(c context.Context, token util.JWTMessage, vm VolumeMount) (
+	mount v1.VolumeMount, err error,
 ) {
 	// Get PVC names from config
 	rwxPVCName := config.GetConfig().Workspace.RWXPVCName
@@ -89,12 +84,26 @@ func resolveSubPathAndSpaceType(c context.Context, token util.JWTMessage, vm Vol
 	// Handle dataset type volumes - always read-only
 	if vm.Type == DataType {
 		// Get dataset path from database
-		datasetPath, err := GetSubPathByDatasetVolume(c, token.UserID, vm.DatasetID)
+		datasetPath, editable, err := GetSubPathByDatasetVolume(c, token.UserID, vm.DatasetID)
 		if err != nil {
-			return "", "", false, err
+			return v1.VolumeMount{}, err
 		}
-		// Datasets are always mounted as read-only
-		return datasetPath, roxPVCName, true, nil
+		// If editable is true, use RWX PVC
+		if editable {
+			return v1.VolumeMount{
+				Name:      rwxPVCName,
+				SubPath:   datasetPath,
+				MountPath: vm.MountPath,
+				ReadOnly:  false,
+			}, nil
+		}
+		// If editable is false, use ROX PVC
+		return v1.VolumeMount{
+			Name:      roxPVCName,
+			SubPath:   datasetPath,
+			MountPath: vm.MountPath,
+			ReadOnly:  true,
+		}, nil
 	}
 
 	// Handle file type volumes based on path prefix
@@ -102,49 +111,77 @@ func resolveSubPathAndSpaceType(c context.Context, token util.JWTMessage, vm Vol
 	case strings.HasPrefix(vm.SubPath, "public"):
 		// Public space paths - permission based on PublicAccessMode
 		subPath := filepath.Clean(config.GetConfig().PublicSpacePrefix + strings.TrimPrefix(vm.SubPath, "public"))
-		return determineAccessMode(subPath, token.PublicAccessMode, rwxPVCName, roxPVCName)
-
+		if isReadOnly(token.PublicAccessMode) {
+			// Read-only access
+			return v1.VolumeMount{
+				Name:      roxPVCName,
+				SubPath:   subPath,
+				MountPath: vm.MountPath,
+				ReadOnly:  true,
+			}, nil
+		}
+		return v1.VolumeMount{
+			Name:      rwxPVCName,
+			SubPath:   subPath,
+			MountPath: vm.MountPath,
+			ReadOnly:  false,
+		}, nil
 	case strings.HasPrefix(vm.SubPath, "account"):
 		// Account space paths - permission based on AccountAccessMode
 		a := query.Account
 		account, err := a.WithContext(c).Where(a.ID.Eq(token.AccountID)).First()
 		if err != nil {
-			return "", "", false, err
+			return v1.VolumeMount{}, err
 		}
 		subPath := filepath.Clean(config.GetConfig().AccountSpacePrefix + account.Space + strings.TrimPrefix(vm.SubPath, "account"))
-		return determineAccessMode(subPath, token.AccountAccessMode, rwxPVCName, roxPVCName)
-
+		if isReadOnly(token.AccountAccessMode) {
+			// Read-only access
+			return v1.VolumeMount{
+				Name:      roxPVCName,
+				SubPath:   subPath,
+				MountPath: vm.MountPath,
+				ReadOnly:  true,
+			}, nil
+		}
+		// Read-write access
+		return v1.VolumeMount{
+			Name:      rwxPVCName,
+			SubPath:   subPath,
+			MountPath: vm.MountPath,
+			ReadOnly:  false,
+		}, nil
 	case strings.HasPrefix(vm.SubPath, "user"):
 		// User space paths - always read-write
 		u := query.User
 		user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
 		if err != nil {
-			return "", "", false, err
+			return v1.VolumeMount{}, err
 		}
-		subPath := config.GetConfig().UserSpacePrefix + "/" + user.Space + strings.TrimPrefix(vm.SubPath, "user")
+		subPath := filepath.Clean(config.GetConfig().UserSpacePrefix + "/" + user.Space + strings.TrimPrefix(vm.SubPath, "user"))
 		// User's own space always gets read-write access
-		return subPath, rwxPVCName, false, nil
-
+		return v1.VolumeMount{
+			Name:      rwxPVCName,
+			SubPath:   subPath,
+			MountPath: vm.MountPath,
+			ReadOnly:  false,
+		}, nil
 	default:
-		return "", "", false, fmt.Errorf("invalid mount path format: %s", vm.SubPath)
+		return v1.VolumeMount{}, fmt.Errorf("invalid mount path format: %s", vm.SubPath)
 	}
 }
 
-// determineAccessMode determines the appropriate PVC and read-only flag based on the access mode
-func determineAccessMode(subPath string, accessMode model.AccessMode, rwxPVCName, roxPVCName string) (
-	volumeSubPath, volumeName string, readOnly bool, err error,
-) {
+// isReadOnly determines the appropriate PVC and read-only flag based on the access mode
+func isReadOnly(accessMode model.AccessMode) bool {
 	switch accessMode {
-	case model.AccessModeNA:
-		return "", "", false, fmt.Errorf("access to directory is not allowed")
 	case model.AccessModeRO, model.AccessModeAO:
 		// Read-only access
-		return subPath, roxPVCName, true, nil
+		return true
 	case model.AccessModeRW:
 		// Read-write access
-		return subPath, rwxPVCName, false, nil
+		return false
 	default:
-		return "", "", false, fmt.Errorf("unknown access mode: %v", accessMode)
+		// Invalid access mode
+		return true
 	}
 }
 
@@ -161,32 +198,33 @@ func createVolume(volumeName string) v1.Volume {
 }
 
 func GetSubPathByDatasetVolume(c context.Context,
-	userID, datasetID uint) (string, error) {
+	userID, datasetID uint) (subPath string, editable bool, err error) {
 	ud := query.UserDataset
 	d := query.Dataset
 	ad := query.AccountDataset
 	ua := query.UserAccount
 	dataset, err := d.WithContext(c).Where(d.ID.Eq(datasetID)).First()
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
+	editable = dataset.Extra.Data().Editable
 	// Find()方法没找到不会报err，而是返回nil
 	accountDatasets, err := ad.WithContext(c).Where(ad.DatasetID.Eq(datasetID)).Find()
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	for _, accountDataset := range accountDatasets {
 		_, err = ua.WithContext(c).Where(ua.AccountID.Eq(accountDataset.AccountID), ua.UserID.Eq(userID)).First()
 		if err == nil {
-			return dataset.URL, nil
+			return dataset.URL, editable, nil
 		}
 	}
 	_, err = ud.WithContext(c).Where(ud.UserID.Eq(userID), ud.DatasetID.Eq(datasetID)).First()
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 
-	return dataset.URL, nil
+	return dataset.URL, editable, nil
 }
 
 func GenerateTaintTolerationsForAccount(token util.JWTMessage) (tolerations []v1.Toleration) {
