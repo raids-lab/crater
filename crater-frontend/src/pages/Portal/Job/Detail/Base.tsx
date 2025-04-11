@@ -59,9 +59,7 @@ import Nothing from "@/components/placeholder/Nothing";
 import { hasNvidiaGPU } from "@/utils/resource";
 import GpuIcon from "@/components/icon/GpuIcon";
 import { SSHPortDialog } from "./SSHPortDialog";
-import ProfileDashboard, {
-  containsBaseMetrics,
-} from "@/components/ui-custom/profile-dashboard";
+import ProfileDashboard from "@/components/metrics/profile-dashboard";
 import { getDaysDifference, getHoursDifference } from "@/utils/time";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
@@ -102,13 +100,6 @@ export function BaseCore({ jobName }: { jobName: string }) {
       return false;
     }
     return hasNvidiaGPU(data.resources);
-  }, [data]);
-
-  const profileStat = useMemo(() => {
-    if (!data) {
-      return null;
-    }
-    return data.profileData;
   }, [data]);
 
   const isCompletedOver3Days = useMemo(() => {
@@ -267,9 +258,9 @@ export function BaseCore({ jobName }: { jobName: string }) {
           key: "profile",
           icon: BarChartBigIcon,
           label: "统计信息",
-          children: <ProfileDashboard profileData={data.profileData ?? {}} />,
+          children: <ProfileDashboard data={data} />,
           scrollable: true,
-          hidden: !profileStat || !containsBaseMetrics(profileStat),
+          hidden: !data.profileData && !data.scheduleData,
         },
         {
           key: "base",

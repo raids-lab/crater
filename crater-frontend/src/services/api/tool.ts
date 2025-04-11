@@ -2,6 +2,16 @@ import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
 import { Event as KubernetesEvent } from "kubernetes-types/core/v1";
 
+export interface TerminatedState {
+  exitCode: number;
+  signal: number;
+  reason: string;
+  message: string;
+  startedAt: string;
+  finishedAt: string;
+  containerID: string;
+}
+
 export interface ContainerInfo {
   name: string;
   image: string;
@@ -13,15 +23,7 @@ export interface ContainerInfo {
     running?: {
       startedAt: string;
     };
-    terminated?: {
-      exitCode: number;
-      signal: number;
-      reason: string;
-      message: string;
-      startedAt: string;
-      finishedAt: string;
-      containerID: string;
-    };
+    terminated?: TerminatedState;
   };
   resources?: Record<string, string>;
   restartCount: number;

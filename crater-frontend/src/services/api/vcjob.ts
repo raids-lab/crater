@@ -4,6 +4,7 @@ import { IResponse } from "../types";
 import { globalJobUrl, store } from "@/utils/store";
 import { ImageInfoResponse } from "./imagepack";
 import { Event as KubernetesEvent } from "kubernetes-types/core/v1";
+import { TerminatedState } from "./tool";
 
 const JOB_URL = store.get(globalJobUrl);
 
@@ -237,6 +238,18 @@ export interface IUserInfo {
   nickname: string;
 }
 
+// ScheduleData       *model.ScheduleData           `json:"scheduleData"`
+// Events             []v1.Event                    `json:"events"`
+// TerminatedStates   []v1.ContainerStateTerminated `json:"terminatedStates"`
+// type ScheduleData struct {
+// 	ImagePullTime string  `json:"imagePullTime"`
+// 	ImageSize     *string `json:"imageSize"`
+// }
+export interface ScheduleData {
+  imagePullTime: string;
+  imageSize?: string;
+}
+
 export interface IJupyterDetail {
   name: string;
   namespace: string;
@@ -250,6 +263,9 @@ export interface IJupyterDetail {
   status: JobPhase;
   resources?: Record<string, string>;
   profileData?: ProfileData;
+  scheduleData?: ScheduleData;
+  events?: KubernetesEvent[];
+  terminatedStates?: TerminatedState[];
   createdAt: string;
   startedAt: string;
   completedAt: string;
