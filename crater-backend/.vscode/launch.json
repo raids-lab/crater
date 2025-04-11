@@ -12,19 +12,23 @@
             "program": "${workspaceFolder}/main.go",
             "env": {
                 "KUBECONFIG": "${workspaceFolder}/kubeconfig",
+                "CRATER_DEBUG_CONFIG_PATH": "${workspaceFolder}/etc/debug-config.yaml",
                 //"AIJOB_UNPLUGIN": "true",
                 //"SPJOB_UNPLUGIN": "true",
-            },
-            "args": [
-                "--config-file",
-                "./etc/debug-config.yaml",
-                "--metrics-bind-address",
-                ":8097",
-                "--health-probe-bind-address",
-                ":8096",
-                "--server-port",
-                ":8099"
-            ]
-        }
+            }
+        },
+        {
+            "name": "ACT GPU Server",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/main.go",
+            "env": {
+                "KUBECONFIG": "${workspaceFolder}/kubeconfig_act",
+                "CRATER_DEBUG_CONFIG_PATH": "${workspaceFolder}/etc/debug-config-actgpu.yaml",
+                //"AIJOB_UNPLUGIN": "true",
+                //"SPJOB_UNPLUGIN": "true",
+            }
+        },
     ]
 }

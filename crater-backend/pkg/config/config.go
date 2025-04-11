@@ -118,10 +118,15 @@ func initConfig() *Config {
 	config := &Config{}
 	var configPath string
 	if gin.Mode() == gin.DebugMode {
-		configPath = "./etc/debug-config.yaml"
+		if os.Getenv("CRATER_DEBUG_CONFIG_PATH") != "" {
+			configPath = os.Getenv("CRATER_DEBUG_CONFIG_PATH")
+		} else {
+			configPath = "./config/debug-config.yaml"
+		}
 	} else {
 		configPath = "/etc/config/config.yaml"
 	}
+	logutils.Log.Info("config path", configPath)
 
 	err := readConfig(configPath, config)
 	if err != nil {
