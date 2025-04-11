@@ -28,7 +28,7 @@ type Kaniko struct {
 	UserID        uint
 	User          User
 	ImagePackName string      `gorm:"uniqueIndex;type:varchar(128);not null;comment:ImagePack CRD 名称"`
-	ImageLink     string      `gorm:"type:varchar(128);not null;comment:镜像链接"`
+	ImageLink     string      `gorm:"type:varchar(512);not null;comment:镜像链接"`
 	NameSpace     string      `gorm:"type:varchar(128);not null;comment:命名空间"`
 	Status        BuildStatus `gorm:"not null;comment:构建状态"`
 	Description   *string     `gorm:"type:varchar(512);comment:描述"`

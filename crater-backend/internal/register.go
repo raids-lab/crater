@@ -3,6 +3,7 @@ package internal
 import (
 	"github.com/raids-lab/crater/internal/handler"
 	_ "github.com/raids-lab/crater/internal/handler/aijob"
+	_ "github.com/raids-lab/crater/internal/handler/image"
 	_ "github.com/raids-lab/crater/internal/handler/operations"
 	_ "github.com/raids-lab/crater/internal/handler/spjob"
 	_ "github.com/raids-lab/crater/internal/handler/tool"

@@ -26,5 +26,27 @@
                 ":8099"
             ]
         },
+        {
+            "name": "Production Debug Server",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/main.go",
+            "env": {
+                "KUBECONFIG": "${workspaceFolder}/kubeconfig_act",
+                //"AIJOB_UNPLUGIN": "true",
+                //"SPJOB_UNPLUGIN": "true",
+            },
+            "args": [
+                "--config-file",
+                "./etc/debug-config-actgpu.yaml",
+                "--metrics-bind-address",
+                ":8097",
+                "--health-probe-bind-address",
+                ":8096",
+                "--server-port",
+                ":8099"
+            ]
+        }
     ]
 }
