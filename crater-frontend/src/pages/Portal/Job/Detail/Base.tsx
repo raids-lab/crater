@@ -260,7 +260,10 @@ export function BaseCore({ jobName }: { jobName: string }) {
           label: "统计信息",
           children: <ProfileDashboard data={data} />,
           scrollable: true,
-          hidden: !data.profileData && !data.scheduleData,
+          hidden:
+            (!data.profileData && !data.scheduleData) ||
+            jobStatus === JobStatus.Running ||
+            jobStatus === JobStatus.NotStarted,
         },
         {
           key: "base",
@@ -323,6 +326,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
               baseSrc={`${grafanaJob.basic}?var-job=${data.jobName}&from=${fromTime}&to=${toTime}`}
             />
           ),
+          hidden: jobStatus === JobStatus.NotStarted,
         },
         {
           key: "gpu",
@@ -333,7 +337,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
               baseSrc={`${grafanaJob.nvidia}?var-job=${data.jobName}&from=${fromTime}&to=${toTime}`}
             />
           ),
-          hidden: !showGPUDashboard,
+          hidden: !showGPUDashboard || jobStatus === JobStatus.NotStarted,
         },
       ]}
     />
