@@ -40,15 +40,18 @@ func newJob(db *gorm.DB, opts ...gen.DOOption) job {
 	_job.CreationTimestamp = field.NewTime(tableName, "creation_timestamp")
 	_job.RunningTimestamp = field.NewTime(tableName, "running_timestamp")
 	_job.CompletedTimestamp = field.NewTime(tableName, "completed_timestamp")
-	_job.LockedTimestamp = field.NewTime(tableName, "locked_timestamp")
 	_job.Nodes = field.NewField(tableName, "nodes")
 	_job.Resources = field.NewField(tableName, "resources")
-	_job.KeepWhenLowResourceUsage = field.NewBool(tableName, "keep_when_low_resource_usage")
-	_job.Reminded = field.NewBool(tableName, "reminded")
 	_job.Attributes = field.NewField(tableName, "attributes")
-	_job.ProfileData = field.NewField(tableName, "profile_data")
 	_job.Template = field.NewString(tableName, "template")
 	_job.AlertEnabled = field.NewBool(tableName, "alert_enabled")
+	_job.Reminded = field.NewBool(tableName, "reminded")
+	_job.KeepWhenLowResourceUsage = field.NewBool(tableName, "keep_when_low_resource_usage")
+	_job.LockedTimestamp = field.NewTime(tableName, "locked_timestamp")
+	_job.ProfileData = field.NewField(tableName, "profile_data")
+	_job.ScheduleData = field.NewField(tableName, "schedule_data")
+	_job.Events = field.NewField(tableName, "events")
+	_job.TerminatedStates = field.NewField(tableName, "terminated_states")
 	_job.User = jobBelongsToUser{
 		db: db.Session(&gorm.Session{}),
 
@@ -103,15 +106,18 @@ type job struct {
 	CreationTimestamp        field.Time
 	RunningTimestamp         field.Time
 	CompletedTimestamp       field.Time
-	LockedTimestamp          field.Time
 	Nodes                    field.Field
 	Resources                field.Field
-	KeepWhenLowResourceUsage field.Bool
-	Reminded                 field.Bool
 	Attributes               field.Field
-	ProfileData              field.Field
 	Template                 field.String
 	AlertEnabled             field.Bool
+	Reminded                 field.Bool
+	KeepWhenLowResourceUsage field.Bool
+	LockedTimestamp          field.Time
+	ProfileData              field.Field
+	ScheduleData             field.Field
+	Events                   field.Field
+	TerminatedStates         field.Field
 	User                     jobBelongsToUser
 
 	Account jobBelongsToAccount
@@ -144,15 +150,18 @@ func (j *job) updateTableName(table string) *job {
 	j.CreationTimestamp = field.NewTime(table, "creation_timestamp")
 	j.RunningTimestamp = field.NewTime(table, "running_timestamp")
 	j.CompletedTimestamp = field.NewTime(table, "completed_timestamp")
-	j.LockedTimestamp = field.NewTime(table, "locked_timestamp")
 	j.Nodes = field.NewField(table, "nodes")
 	j.Resources = field.NewField(table, "resources")
-	j.KeepWhenLowResourceUsage = field.NewBool(table, "keep_when_low_resource_usage")
-	j.Reminded = field.NewBool(table, "reminded")
 	j.Attributes = field.NewField(table, "attributes")
-	j.ProfileData = field.NewField(table, "profile_data")
 	j.Template = field.NewString(table, "template")
 	j.AlertEnabled = field.NewBool(table, "alert_enabled")
+	j.Reminded = field.NewBool(table, "reminded")
+	j.KeepWhenLowResourceUsage = field.NewBool(table, "keep_when_low_resource_usage")
+	j.LockedTimestamp = field.NewTime(table, "locked_timestamp")
+	j.ProfileData = field.NewField(table, "profile_data")
+	j.ScheduleData = field.NewField(table, "schedule_data")
+	j.Events = field.NewField(table, "events")
+	j.TerminatedStates = field.NewField(table, "terminated_states")
 
 	j.fillFieldMap()
 
@@ -177,7 +186,7 @@ func (j *job) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (j *job) fillFieldMap() {
-	j.fieldMap = make(map[string]field.Expr, 24)
+	j.fieldMap = make(map[string]field.Expr, 27)
 	j.fieldMap["id"] = j.ID
 	j.fieldMap["created_at"] = j.CreatedAt
 	j.fieldMap["updated_at"] = j.UpdatedAt
@@ -191,15 +200,18 @@ func (j *job) fillFieldMap() {
 	j.fieldMap["creation_timestamp"] = j.CreationTimestamp
 	j.fieldMap["running_timestamp"] = j.RunningTimestamp
 	j.fieldMap["completed_timestamp"] = j.CompletedTimestamp
-	j.fieldMap["locked_timestamp"] = j.LockedTimestamp
 	j.fieldMap["nodes"] = j.Nodes
 	j.fieldMap["resources"] = j.Resources
-	j.fieldMap["keep_when_low_resource_usage"] = j.KeepWhenLowResourceUsage
-	j.fieldMap["reminded"] = j.Reminded
 	j.fieldMap["attributes"] = j.Attributes
-	j.fieldMap["profile_data"] = j.ProfileData
 	j.fieldMap["template"] = j.Template
 	j.fieldMap["alert_enabled"] = j.AlertEnabled
+	j.fieldMap["reminded"] = j.Reminded
+	j.fieldMap["keep_when_low_resource_usage"] = j.KeepWhenLowResourceUsage
+	j.fieldMap["locked_timestamp"] = j.LockedTimestamp
+	j.fieldMap["profile_data"] = j.ProfileData
+	j.fieldMap["schedule_data"] = j.ScheduleData
+	j.fieldMap["events"] = j.Events
+	j.fieldMap["terminated_states"] = j.TerminatedStates
 
 }
 

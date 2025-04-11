@@ -31,6 +31,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -53,6 +54,7 @@ type VcJobReconciler struct {
 	Scheme           *runtime.Scheme
 	log              logr.Logger
 	prometheusClient monitor.PrometheusInterface // get monitor data
+	kubeClient       kubernetes.Interface
 }
 
 // NewVcJobReconciler returns a new reconcile.Reconciler
@@ -60,12 +62,14 @@ func NewVcJobReconciler(
 	crClient client.Client,
 	scheme *runtime.Scheme,
 	prometheusClient monitor.PrometheusInterface,
+	kubeClient kubernetes.Interface,
 ) *VcJobReconciler {
 	return &VcJobReconciler{
 		Client:           crClient,
 		Scheme:           scheme,
 		log:              ctrl.Log.WithName("vcjob-reconciler"),
 		prometheusClient: prometheusClient,
+		kubeClient:       kubeClient,
 	}
 }
 
@@ -120,6 +124,7 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			}
 		}
 
+		// 如果数据库的纪录中，作业已经处于终止态，则无需将作业标记为被释放
 		if record.Status == model.Deleted || record.Status == model.Freed ||
 			record.Status == batch.Failed || record.Status == batch.Completed ||
 			record.Status == batch.Aborted || record.Status == batch.Terminated {
@@ -145,6 +150,7 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			return ctrl.Result{}, nil
 		}
 
+		// 作业被定时策略释放，进行性能数据收集
 		podName := getPodNameFromJobTemplate(record.Attributes.Data())
 		profileData := r.prometheusClient.QueryProfileData(types.NamespacedName{
 			Namespace: config.GetConfig().Workspace.Namespace,
@@ -190,29 +196,26 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, nil
 	}
 
-	updateRecord := r.generateUpdateJobModel(ctx, &job, oldRecord)
-
 	// if job found: before updating, check previous status, and send email
-	dbJob, _ := j.WithContext(ctx).Where(j.JobName.Eq(job.Name)).First()
-	if dbJob.AlertEnabled {
+	if oldRecord.AlertEnabled {
 		alertMgr := alert.GetAlertMgr()
 
 		// send email after pending
-		if job.Status.State.Phase == batch.Running && dbJob.Status != batch.Running {
+		if job.Status.State.Phase == batch.Running && oldRecord.Status != batch.Running {
 			if err = alertMgr.JobRunningAlert(ctx, job.Name); err != nil {
 				logger.Error(err, "fail to send email")
 			}
 		}
 
 		// alert job failure
-		if job.Status.State.Phase == batch.Failed && dbJob.Status != batch.Failed {
+		if job.Status.State.Phase == batch.Failed && oldRecord.Status != batch.Failed {
 			if err = alertMgr.JobFailureAlert(ctx, job.Name); err != nil {
 				logger.Error(err, "fail to send email")
 			}
 		}
 
 		// alert job complete
-		if job.Status.State.Phase == batch.Completed && dbJob.Status != batch.Completed {
+		if job.Status.State.Phase == batch.Completed && oldRecord.Status != batch.Completed {
 			if err = alertMgr.JobCompleteAlert(ctx, job.Name); err != nil {
 				logger.Error(err, "fail to send email")
 			}
@@ -220,6 +223,7 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	// if job found, update the record
+	updateRecord := r.generateUpdateJobModel(ctx, &job, oldRecord)
 	_, err = j.WithContext(ctx).Where(j.JobName.Eq(job.Name)).Updates(updateRecord)
 	if err != nil {
 		logger.Error(err, "unable to update job record")
@@ -282,8 +286,10 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 	}, nil
 }
 
+//nolint:gocyclo // refactor later
 func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch.Job, oldRecord *model.Job) *model.Job {
 	conditions := job.Status.Conditions
+
 	var runningTimestamp time.Time
 	var completedTimestamp time.Time
 	for _, condition := range conditions {
@@ -293,6 +299,7 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 			completedTimestamp = condition.LastTransitionTime.Time
 		}
 	}
+
 	nodes := make([]string, 0)
 	for i := range job.Spec.Tasks {
 		task := &job.Spec.Tasks[i]
@@ -300,7 +307,10 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 		for j := int32(0); j < replicas; j++ {
 			podName := fmt.Sprintf("%s-%s-%d", job.Name, task.Name, j)
 			var pod v1.Pod
-			err := r.Get(ctx, types.NamespacedName{Namespace: config.GetConfig().Workspace.Namespace, Name: podName}, &pod)
+			err := r.Get(ctx, types.NamespacedName{
+				Namespace: config.GetConfig().Workspace.Namespace,
+				Name:      podName,
+			}, &pod)
 			if err != nil {
 				continue
 			}
@@ -312,24 +322,75 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 
 	// do not update nodes info if job is not running on any node
 	if len(nodes) == 0 {
-		if !completedTimestamp.IsZero() && oldRecord.ProfileData == nil {
-			profile := r.prometheusClient.QueryProfileData(types.NamespacedName{
-				Namespace: job.Namespace,
-				Name:      getPodNameFromJobTemplate(job),
-			}, runningTimestamp)
-			if profile != nil {
-				return &model.Job{
-					Status:             job.Status.State.Phase,
-					RunningTimestamp:   runningTimestamp,
-					CompletedTimestamp: completedTimestamp,
-					ProfileData:        ptr.To(datatypes.NewJSONType(profile)),
+		var profilePtr *datatypes.JSONType[*monitor.ProfileData]
+		var terminatedStatesPtr *datatypes.JSONType[[]v1.ContainerStateTerminated]
+		var eventsPtr *datatypes.JSONType[[]v1.Event]
+
+		if !completedTimestamp.IsZero() {
+			// 作业进入了终止态
+			if oldRecord.ProfileData == nil {
+				// 进行性能数据收集
+				profile := r.prometheusClient.QueryProfileData(types.NamespacedName{
+					Namespace: job.Namespace,
+					Name:      getPodNameFromJobTemplate(job),
+				}, runningTimestamp)
+				if profile != nil {
+					profilePtr = ptr.To(datatypes.NewJSONType(profile))
 				}
+			}
+			if job.Status.State.Phase == batch.Failed {
+				// 作业失败，采集事件和终止状态
+				events := r.getNewEventsForJob(ctx, job, oldRecord)
+				if len(events) > 0 {
+					eventsPtr = ptr.To(datatypes.NewJSONType(events))
+				}
+				terminatedStates := r.getTerminatedStates(ctx, job, oldRecord)
+				if len(terminatedStates) > 0 {
+					terminatedStatesPtr = ptr.To(datatypes.NewJSONType(terminatedStates))
+				}
+			}
+		}
+
+		return &model.Job{
+			Status:             job.Status.State.Phase,
+			RunningTimestamp:   runningTimestamp,
+			CompletedTimestamp: completedTimestamp,
+			ProfileData:        profilePtr,
+			Events:             eventsPtr,
+			TerminatedStates:   terminatedStatesPtr,
+		}
+	}
+
+	// 作业运行，采集调度数据和事件
+	if job.Status.State.Phase == batch.Running {
+		var scheduleDataPtr *datatypes.JSONType[*model.ScheduleData]
+		var eventsPtr *datatypes.JSONType[[]v1.Event]
+		// 采集事件
+		events := r.getNewEventsForJob(ctx, job, oldRecord)
+		if len(events) > 0 {
+			eventsPtr = ptr.To(datatypes.NewJSONType(events))
+		}
+		for i := range events {
+			event := &events[i]
+			if event.Reason == "Pulled" {
+				// 解析事件消息，获取镜像拉取时间和大小
+				msg := event.Message
+				var scheduleData model.ScheduleData
+				err := scheduleData.Init(msg)
+				if err != nil {
+					continue
+				}
+				scheduleDataPtr = ptr.To(datatypes.NewJSONType(&scheduleData))
+				break
 			}
 		}
 		return &model.Job{
 			Status:             job.Status.State.Phase,
 			RunningTimestamp:   runningTimestamp,
 			CompletedTimestamp: completedTimestamp,
+			Nodes:              datatypes.NewJSONType(nodes),
+			ScheduleData:       scheduleDataPtr,
+			Events:             eventsPtr,
 		}
 	}
 
@@ -339,15 +400,4 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 		CompletedTimestamp: completedTimestamp,
 		Nodes:              datatypes.NewJSONType(nodes),
 	}
-}
-
-func getPodNameFromJobTemplate(job *batch.Job) string {
-	for i := range job.Spec.Tasks {
-		task := &job.Spec.Tasks[i]
-		if task.Replicas > 0 {
-			podName := fmt.Sprintf("%s-%s-%d", job.Name, task.Name, 0)
-			return podName
-		}
-	}
-	return ""
 }
