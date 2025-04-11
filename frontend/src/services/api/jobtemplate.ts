@@ -33,3 +33,9 @@ export const deleteJobTemplate = (id: number) => {
     VERSION + `/jobtemplate/delete/${id}`,
   );
 };
+export const updateJobTemplate = (data: JobTemplateReq & { id: number }) => {
+  return instance.put<IResponse<string>>(
+    VERSION + `/jobtemplate/update/${data.id}`,
+    data,
+  );
+};

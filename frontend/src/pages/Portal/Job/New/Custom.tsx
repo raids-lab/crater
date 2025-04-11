@@ -92,7 +92,6 @@ export const Component = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAtomValue(globalUserInfo);
-
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) =>
       apiTrainingCreate({

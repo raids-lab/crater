@@ -142,7 +142,11 @@ export function ModelShareTable({
   useEffect(() => {
     setBreadcrumb([{ title: "共享情况" }]);
   }, [setBreadcrumb]);
-
+  const formattedTags = useMemo(() => {
+    const tags = query.data?.extra.tag;
+    if (!tags || !Array.isArray(tags)) return [];
+    return tags.map((tag) => ({ value: tag }));
+  }, [query.data?.extra.tag]);
   const userDatasetColumns = useMemo<ColumnDef<UserDatasetResp>[]>(
     () => [
       {
@@ -271,14 +275,14 @@ export function ModelShareTable({
           {user?.name === query.data?.userInfo.username && (
             <div className="flex flex-row space-x-1">
               <DatasetUpdateForm
-                type="dataset"
+                type="model"
                 initialData={{
                   datasetId: datasetId, // 使用当前数据集ID
                   datasetName: query.data?.name || "",
                   describe: query.data?.describe || "",
                   url: query.data?.url || "",
-                  type: "dataset",
-                  tags: query.data?.extra.tag || [],
+                  type: "model",
+                  tags: formattedTags,
                   weburl: query.data?.extra.weburl || "",
                   ispublic: true,
                 }}

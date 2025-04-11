@@ -38,12 +38,10 @@ export function TemplateInfo<T extends FieldValues>({
     onSuccess,
     dataProcessor,
   });
-
   // 如果没有模板，不渲染任何内容
   if (!fromJob && !fromTemplate) {
     return null;
   }
-
   return (
     <Card className="mb-4">
       <CardHeader className="pb-2">

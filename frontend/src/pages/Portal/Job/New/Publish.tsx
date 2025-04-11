@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react"; // 修改这一行添加 useEffect
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -9,6 +9,9 @@ import { Label } from "@/components/ui/label";
 import { FieldValues, UseFormReturn } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Share2 } from "lucide-react";
+import { getJobTemplate } from "@/services/api/jobtemplate";
+import { useQuery } from "@tanstack/react-query";
+
 import {
   Form,
   FormControl,
@@ -21,8 +24,14 @@ import {
 import SandwichSheet from "@/components/sheet/SandwichSheet";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import TooltipButton from "@/components/custom/TooltipButton";
-import { createJobTemplate } from "@/services/api/jobtemplate";
+import {
+  createJobTemplate,
+  updateJobTemplate,
+} from "@/services/api/jobtemplate";
 import { toast } from "sonner";
+import { useSearchParams } from "react-router-dom";
+import { globalUserInfo } from "@/utils/store";
+import { useAtomValue } from "jotai";
 
 // Define the form schema with Zod
 const formSchema = z.object({
@@ -44,8 +53,17 @@ export function PublishConfigForm<T extends FieldValues>({
 }: PublishConfigFormProps<T>) {
   const data = configform?.getValues();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const user = useAtomValue(globalUserInfo);
+  const fromTemplate = searchParams.get("fromTemplate");
 
   const [isOpen, setIsOpen] = useState(false);
+  const { data: templateData } = useQuery({
+    queryKey: ["jobTemplate", fromTemplate],
+    queryFn: () => getJobTemplate(Number(fromTemplate)),
+    enabled: !!fromTemplate,
+    select: (data) => data?.data?.data || null,
+  });
   // 解析为 JSON 对象
   const objconfig = typeof config === "string" ? JSON.parse(config) : config;
   // 合并到新对象
@@ -53,34 +71,66 @@ export function PublishConfigForm<T extends FieldValues>({
     ...objconfig,
     data, // 将 B 作为 data 属性
   };
-
+  const isUpdate =
+    fromTemplate && templateData?.userInfo.username === user.name;
   // 生成字符串 C（带格式化缩进）
   const formattedConfig = JSON.stringify(objcombinedConfig, null, 2);
   const { mutate: createTemplate } = useMutation({
     mutationFn: (values: FormValues) =>
-      createJobTemplate({
-        name: values.name,
-        describe: values.description || "",
-        template: formattedConfig,
-        document: values.document || "", // 修复：使用表单中收集的document值
-      }),
+      isUpdate
+        ? updateJobTemplate({
+            id: Number(fromTemplate),
+            name: values.name,
+            describe: values.description || "",
+            template: formattedConfig,
+            document: values.document || "",
+          })
+        : createJobTemplate({
+            name: values.name,
+            describe: values.description || "",
+            template: formattedConfig,
+            document: values.document || "",
+          }),
     onSuccess: async (_, { name }) => {
       await queryClient.invalidateQueries({
-        queryKey: ["list", "jobtemplate"],
+        queryKey: ["data", "jobtemplate"],
       });
-      toast.success(`Job template ${name} created successfully`);
+      if (isUpdate) {
+        toast.success(`Job template ${name} updated successfully`);
+      } else {
+        toast.success(`Job template ${name} created successfully`);
+      }
       setIsOpen(false);
     },
   });
   // Initialize react-hook-form
+  // 提取默认值逻辑，避免重复的三元表达式
+  const defaultValues =
+    isUpdate && templateData
+      ? {
+          name: templateData.name || "",
+          description: templateData.describe || "",
+          document: templateData.document || "",
+        }
+      : {
+          name: "",
+          description: "",
+          document: "",
+        };
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      document: "",
-    },
+    defaultValues,
   });
+  useEffect(() => {
+    if (templateData) {
+      form.reset({
+        name: templateData.name || "",
+        description: templateData.describe || "",
+        document: templateData.document || "",
+      });
+    }
+  }, [templateData, form]);
 
   const handleSubmit = form.handleSubmit((data) => {
     createTemplate(data);
@@ -90,15 +140,17 @@ export function PublishConfigForm<T extends FieldValues>({
     <SandwichSheet
       isOpen={isOpen}
       onOpenChange={setIsOpen}
-      title="分享配置"
-      description="将此配置文件分享给其他用户"
+      title={isUpdate ? "更新配置" : "分享配置"}
+      description={isUpdate ? "更新此配置文件" : "将此配置文件分享给其他用户"}
       trigger={
         <TooltipButton
           variant="outline"
-          tooltipContent="与平台用户共享，便于快速复现实验"
+          tooltipContent={
+            isUpdate ? "更新已分享的配置" : "与平台用户共享，便于快速复现实验"
+          }
         >
           <Share2 />
-          分享配置
+          {isUpdate ? "更新配置" : "分享配置"}
         </TooltipButton>
       }
       footer={
@@ -112,7 +164,7 @@ export function PublishConfigForm<T extends FieldValues>({
             }
           }}
         >
-          公开此配置文件
+          {isUpdate ? "更新此配置文件" : "公开此配置文件"}
         </Button>
       }
       className="sm:max-w-2xl"
