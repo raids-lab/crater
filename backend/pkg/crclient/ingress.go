@@ -92,6 +92,7 @@ func CreateService(ctx context.Context, kubeClient client.Client, pod *v1.Pod, m
 			Name:            serviceName,
 			Namespace:       pod.Namespace,
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
+			Labels:          pod.Labels, // 使用 Pod 的 Labels 作为 Service 的 Labels
 		},
 		Spec: v1.ServiceSpec{
 			Ports: []v1.ServicePort{
@@ -144,6 +145,7 @@ func CreateServiceForNodePort(ctx context.Context, kubeClient client.Client, pod
 			Name:            serviceName,
 			Namespace:       pod.Namespace,
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
+			Labels:          pod.Labels, // 使用 Pod 的 Labels 作为 Service 的 Labels
 		},
 		Spec: v1.ServiceSpec{
 			Ports: []v1.ServicePort{
