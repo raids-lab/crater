@@ -49,8 +49,8 @@ export default function ImageItem({
             </div>
           </div>
         </TooltipTrigger>
-        <TooltipContent>
-          <p>{item.detail?.userInfo.nickname}</p>
+        <TooltipContent className="flex flex-row gap-0.5">
+          <p>{item.detail?.userInfo.nickname}</p>创建于
           <TimeDistance date={item.detail?.createdAt} className="text-xs" />
         </TooltipContent>
       </Tooltip>

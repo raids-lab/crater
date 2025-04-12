@@ -52,11 +52,25 @@ export function VolumeMountsCard<
     queryKey: ["datsets"],
     queryFn: () => apiGetDataset(),
     select: (res) => {
-      return res.data.data.map(
+      // 去重，根据 Label
+      // TODO(zhengxl): 不允许重复的 Label，需要在上传数据集时进行校验
+      const uniqueLabels = new Set();
+      const uniqueData = res.data.data.filter((item) => {
+        if (uniqueLabels.has(item.name)) {
+          return false;
+        }
+        uniqueLabels.add(item.name);
+        return true;
+      });
+      return uniqueData.map(
         (item) =>
           ({
             value: item.id.toString(),
-            label: item.name,
+            label: `${item.name} 
+            (${item.extra.tag?.join(", ")})
+            [${item.type === "model" ? "模型" : "数据集"}]
+            [${item.userInfo.nickname} ${item.userInfo.username}]`,
+            selectedLabel: item.name,
             detail: item,
           }) as ComboboxItem<IDataset>,
       );
@@ -159,7 +173,7 @@ export function VolumeMountsCard<
                               }
                               disabled={disabled}
                             >
-                              数据集
+                              数据
                             </TabsTrigger>
                           </TabsList>
                           <TabsContent value="file">
@@ -184,6 +198,7 @@ export function VolumeMountsCard<
                               items={datasetInfo.data ?? []}
                               current={field.value}
                               disabled={disabled}
+                              useDialog={true}
                               renderLabel={(item) => (
                                 <DatasetItem item={item} />
                               )}
@@ -202,7 +217,7 @@ export function VolumeMountsCard<
                                   `/data/${datasetInfo.data?.find((item) => item.value === value)?.detail?.name}`,
                                 );
                               }}
-                              formTitle="数据集"
+                              formTitle="数据"
                             />
                           </TabsContent>
                         </Tabs>

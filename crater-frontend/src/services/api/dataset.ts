@@ -15,7 +15,7 @@ export interface IDataset {
   url: string;
   describe: string;
   createdAt: string;
-  type: string;
+  type: "model" | "dataset";
   extra: Extra;
   userInfo: IUserInfo;
 }

@@ -1,19 +1,53 @@
 import { ComboboxItem } from "./Combobox";
 import { IDataset } from "@/services/api/dataset";
+import TipBadge from "../badge/TipBadge";
+import { TimeDistance } from "../custom/TimeDistance";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function DatasetItem({
   item,
 }: {
   item: ComboboxItem<IDataset>;
 }) {
+  const dataType = item.detail?.type;
   return (
-    <div className="text-muted-foreground flex flex-col items-start gap-0.5">
-      <p className="text-foreground">{item.detail?.name}</p>
-      {item.detail?.describe && (
-        <p className="text-xs" data-description>
-          {item.detail?.describe}
-        </p>
-      )}
-    </div>
+    <TooltipProvider delayDuration={100}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex w-full flex-col items-start gap-1">
+            <div className="flex w-full flex-row items-center gap-1.5">
+              <p>{item.detail?.name}</p>
+            </div>
+            {item.detail?.describe && (
+              <p className="text-muted-foreground text-xs" data-description>
+                {item.detail?.describe}
+              </p>
+            )}
+            <div className="mt-1 flex flex-wrap gap-1">
+              <TipBadge
+                className="text-highlight-slate bg-highlight-slate/15"
+                title={dataType === "model" ? "模型" : "数据集"}
+              />
+              {item.detail?.extra.tag?.map((tag) => (
+                <TipBadge
+                  key={tag}
+                  title={tag}
+                  className="text-highlight-slate bg-highlight-slate/15"
+                />
+              ))}
+            </div>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent className="flex flex-row gap-0.5">
+          <p>{item.detail?.userInfo.nickname}</p>创建于
+          <TimeDistance date={item.detail?.createdAt} className="text-xs" />
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

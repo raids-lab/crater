@@ -24,7 +24,9 @@ const useImageQuery = (type?: JobType) => {
           (item) =>
             ({
               value: item.imageLink,
-              label: item.description,
+              label: `${item.description} (${item.imageLink})
+              [${item.userInfo.nickname} ${item.userInfo.username}]`,
+              selectedLabel: item.description,
               detail: item,
             }) as ComboboxItem<ImageInfoResponse>,
         );

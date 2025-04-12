@@ -275,10 +275,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
             </>
           ),
           scrollable: true,
-          hidden:
-            data.status === JobPhase.Deleted ||
-            data.status === JobPhase.Freed ||
-            isCompletedOver3Days,
+          hidden: jobStatus === JobStatus.MetadataOnly || isCompletedOver3Days,
         },
         {
           key: "config",
