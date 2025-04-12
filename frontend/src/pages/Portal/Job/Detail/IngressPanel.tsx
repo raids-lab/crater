@@ -172,8 +172,7 @@ export const IngressPanel = ({
               <div className="ml-2 flex grow flex-col items-start justify-start gap-0.5">
                 <p>{ingress.name}</p>
                 <div className="text-muted-foreground flex flex-row text-xs">
-                  {ingress.port} → {host}
-                  {ingress.prefix}
+                  {ingress.port} → {ingress.prefix}
                 </div>
               </div>
               <TooltipButton
