@@ -475,6 +475,7 @@ export const apiJupyterTokenGet = (jobName: string) =>
   instance.get<
     IResponse<{
       baseURL: string;
+      fullURL: string;
       token: string;
       podName: string;
       namespace: string;
