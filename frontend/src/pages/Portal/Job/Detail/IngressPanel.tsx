@@ -46,6 +46,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { asyncUrlHostAtom } from "@/utils/store/config";
 import { useAtomValue } from "jotai";
 import DocsButton from "@/components/button/DocsButton";
+import { apiJupyterTokenGet } from "@/services/api/vcjob";
 
 const ingressFormSchema = z.object({
   name: z
@@ -60,9 +61,13 @@ const ingressFormSchema = z.object({
 
 interface IngressPanelProps {
   namespacedName: PodNamespacedName;
+  jobName: string; // Added jobName parameter
 }
 
-export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
+export const IngressPanel = ({
+  namespacedName,
+  jobName,
+}: IngressPanelProps) => {
   const [isEditIngressDialogOpen, setIsEditIngressDialogOpen] = useState(false);
   const host = useAtomValue(asyncUrlHostAtom);
   const queryClient = useQueryClient();
@@ -72,6 +77,13 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
     defaultValues: {
       name: "",
       port: 0,
+    },
+  });
+
+  const { mutate: getPortToken } = useMutation({
+    mutationFn: (jobName: string) => apiJupyterTokenGet(jobName),
+    onSuccess: (_, jobName) => {
+      window.open(`/job/jupyter/${jobName}`);
     },
   });
 
@@ -169,8 +181,15 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
                 size="icon"
                 className="hover:text-primary"
                 onClick={() => {
-                  const url = `https://${host}${ingress.prefix}`;
-                  window.open(url, "_blank");
+                  if (ingress.port === 8888) {
+                    toast.info("即将打开交互式页面");
+                    setTimeout(() => {
+                      getPortToken(ingress.name);
+                      window.open(`/job/jupyter/${jobName}`);
+                    }, 500);
+                  } else {
+                    window.open(ingress.prefix, "_blank");
+                  }
                 }}
                 tooltipContent="访问链接"
               >
