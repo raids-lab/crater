@@ -9,7 +9,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -20,6 +19,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -28,6 +28,7 @@ import (
 
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 )
 
@@ -91,10 +92,15 @@ type (
 	}
 )
 
-const IngressLabelKey = "ingress.crater.raids.io"
-const NodePortLabelKey = "nodeport.crater.raids.io"
-const AnnotationKeyOpenSSH = "crater.raids.io/open-ssh"
-const SSHContainerPort = 22
+const (
+	IngressLabelKey      = "ingress.crater.raids.io"
+	NodePortLabelKey     = "nodeport.crater.raids.io"
+	AnnotationKeyOpenSSH = "crater.raids.io/open-ssh"
+	SSHContainerPort     = 22
+	LabelKeyBaseURL      = "crater.raids.io/base-url"
+	LabelKeyTaskType     = "crater.raids.io/task-type"
+	LabelKeyTaskUser     = "crater.raids.io/task-user"
+)
 
 func NewAPIServerMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &APIServerMgr{
@@ -232,34 +238,106 @@ func (mgr *APIServerMgr) GetPodIngresses(c *gin.Context) {
 		return
 	}
 
-	// Retrieve annotations from the pod
+	// Fetch the pod
 	var pod v1.Pod
 	if err := mgr.client.Get(c, client.ObjectKey{Namespace: req.Namespace, Name: req.PodName}, &pod); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	// Extract ingress rules from pod annotations
-	var ingressRules []PodIngress
-	for key, value := range pod.Annotations {
-		if strings.HasPrefix(key, IngressLabelKey) {
-			// Parse the value (expected to be JSON format)
-			var mapping PortMapping
-			if err := json.Unmarshal([]byte(value), &mapping); err == nil {
-				// Convert PortMapping to PodIngress
-				ingress := PodIngress{
-					Name:   mapping.Name,
-					Port:   mapping.ContainerPort,
-					Prefix: mapping.Prefix,
-				}
-				ingressRules = append(ingressRules, ingress)
-			} else {
-				log.Printf("Warning: failed to parse annotation %s: %v", key, err)
-			}
+	// Extract relevant labels for filtering
+	selector := map[string]string{
+		LabelKeyBaseURL:  pod.Labels[LabelKeyBaseURL],
+		LabelKeyTaskType: pod.Labels[LabelKeyTaskType],
+		LabelKeyTaskUser: pod.Labels[LabelKeyTaskUser],
+	}
+
+	// Fetch services matching the filtered labels
+	services := &v1.ServiceList{}
+	listOptions := client.MatchingLabels(selector)
+	if err := mgr.client.List(c, services, listOptions, client.InNamespace(req.Namespace)); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	// Filter ClusterIP services
+	clusterIPServices := make([]*v1.Service, 0, len(services.Items))
+	for i := range services.Items {
+		if services.Items[i].Spec.Type == v1.ServiceTypeClusterIP {
+			clusterIPServices = append(clusterIPServices, &services.Items[i])
 		}
 	}
 
+	// Fetch ingresses in the namespace
+	ingresses := &networkingv1.IngressList{}
+	if err := mgr.client.List(c, ingresses, client.InNamespace(req.Namespace)); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	// Match ingresses with services
+	ingressRules := mgr.matchIngressesWithServices(clusterIPServices, ingresses)
+
 	resputil.Success(c, PodIngressResp{Ingresses: ingressRules})
+}
+
+// Extracted helper function to reduce cyclomatic complexity
+func (mgr *APIServerMgr) matchIngressesWithServices(
+	clusterIPServices []*v1.Service,
+	ingresses *networkingv1.IngressList,
+) []PodIngress {
+	var ingressRules []PodIngress
+	for i := range ingresses.Items {
+		ingress := &ingresses.Items[i]
+		for j := range clusterIPServices {
+			svc := clusterIPServices[j]
+			if isIngressServiceMatch(ingress, svc) {
+				for _, rule := range ingress.Spec.Rules {
+					host := rule.Host // Extract the host from the ingress rule
+					for _, httpPath := range rule.HTTP.Paths {
+						if httpPath.Backend.Service.Name != svc.Name {
+							continue
+						}
+						var containerPort int32
+						for _, svcPort := range svc.Spec.Ports {
+							if svcPort.Port == httpPath.Backend.Service.Port.Number {
+								if svcPort.TargetPort.Type == intstr.Int {
+									containerPort = svcPort.TargetPort.IntVal
+								}
+								break
+							}
+						}
+						// Retrieve port.Name from the ingress annotation
+						portName, ok := ingress.Annotations[crclient.AnnotationKeyPortName] // Use the constant
+						if !ok {
+							continue // Skip if the annotation is missing
+						}
+
+						// Construct the full ingress path
+						ingressPath := fmt.Sprintf("https://%s%s", host, httpPath.Path)
+						ingressRules = append(ingressRules, PodIngress{
+							Name:   portName,
+							Port:   containerPort,
+							Prefix: ingressPath,
+						})
+					}
+				}
+			}
+		}
+	}
+	return ingressRules
+}
+
+// 检查 Ingress 是否与指定的 Service 匹配
+func isIngressServiceMatch(ingress *networkingv1.Ingress, svc *v1.Service) bool {
+	for _, rule := range ingress.Spec.Rules {
+		for _, httpPath := range rule.HTTP.Paths {
+			if httpPath.Backend.Service.Name == svc.Name {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // CreatePodIngress creates a new ingress rule for a pod
@@ -291,68 +369,42 @@ func (mgr *APIServerMgr) CreatePodIngress(c *gin.Context) {
 		return
 	}
 
-	// 获取 Pod 信息
+	// Fetch the pod
 	var pod v1.Pod
 	if err := mgr.client.Get(c, client.ObjectKey{Namespace: req.Namespace, Name: req.PodName}, &pod); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	// 校验是否已存在相同端口或规则名的 Ingress
-	for key, value := range pod.Annotations {
-		if strings.HasPrefix(key, IngressLabelKey) {
-			var existingRule PodIngress
-			if err := json.Unmarshal([]byte(value), &existingRule); err == nil {
-				if existingRule.Port == ingressMgr.Port || existingRule.Name == ingressMgr.Name {
-					resputil.BadRequestError(c, "Ingress rule with the same port or name already exists")
-					return
-				}
-			}
-		}
+	// Use CreateIngressWithPrefix to create ingress and service
+	serviceManager := crclient.NewServiceManager(mgr.client, mgr.kubeClient)
+	podSelector := pod.Labels
+	port := &v1.ServicePort{
+		Name:       ingressMgr.Name,
+		Port:       ingressMgr.Port,
+		TargetPort: intstr.FromInt(int(ingressMgr.Port)),
+		Protocol:   v1.ProtocolTCP,
 	}
 
-	// 调用封装的函数创建和部署 Ingress 规则
-	if err := mgr.ProcessPodIngressRule(c.Request.Context(), &pod, ingressMgr); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+	username := pod.Labels[LabelKeyTaskUser]
+
+	ingressPath, err := serviceManager.CreateIngressWithPrefix(
+		c,
+		[]metav1.OwnerReference{
+			*metav1.NewControllerRef(&pod, v1.SchemeGroupVersion.WithKind("Pod")),
+		},
+		podSelector,
+		port,
+		config.GetConfig().Host,
+		fmt.Sprintf("%s-%s", username, uuid.New().String()[:5]),
+		username,
+	)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to create ingress: %v", err), resputil.NotSpecified)
 		return
 	}
 
-	resputil.Success(c, ingressMgr)
-}
-
-func (mgr *APIServerMgr) ProcessPodIngressRule(ctx context.Context, pod *v1.Pod, ingressMgr PodIngressMgr) error {
-	// 获取 "crater.raids.io/task-user" 作为前缀的一部分
-	userName, ok := pod.Labels["crater.raids.io/task-user"]
-	if !ok {
-		return fmt.Errorf("label crater.raids.io/task-user not found")
-	}
-
-	// 创建 ingress 规则
-	ingress := PodIngress{
-		Name:   ingressMgr.Name,
-		Port:   ingressMgr.Port,
-		Prefix: fmt.Sprintf("/ingress/%s-%s", userName, uuid.New().String()[:5]), // 生成唯一前缀
-	}
-
-	// 将 ingress 转换为 crclient.PodIngress 类型
-	crclientIngress := crclient.PodIngress{
-		Name:   ingress.Name,
-		Port:   ingress.Port,
-		Prefix: ingress.Prefix,
-	}
-
-	// 确保 mgr.client 是 controller-runtime 的 client
-	if mgr.client == nil {
-		return fmt.Errorf("APIServerMgr client is nil")
-	}
-
-	// 调用 CreateCustomForwardingRule
-	err := crclient.CreateCustomForwardingRule(ctx, mgr.client, pod, crclientIngress)
-	if err != nil {
-		return fmt.Errorf("failed to create ingress rule: %w", err)
-	}
-
-	return nil
+	resputil.Success(c, map[string]string{"ingressPath": ingressPath})
 }
 
 // DeletePodIngress deletes an ingress rule for a pod
@@ -372,54 +424,38 @@ func (mgr *APIServerMgr) ProcessPodIngressRule(ctx context.Context, pod *v1.Pod,
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/namespaces/{namespace}/pods/{name}/ingresses [delete]
 func (mgr *APIServerMgr) DeletePodIngress(c *gin.Context) {
-	var ingressMgr PodIngressMgr
-	if err := c.ShouldBindJSON(&ingressMgr); err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-
 	var req PodContainerReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
 
-	// 获取Pod
+	var ingressMgr PodIngressMgr
+	if err := c.ShouldBindJSON(&ingressMgr); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	// Fetch the pod
 	var pod v1.Pod
 	if err := mgr.client.Get(c, client.ObjectKey{Namespace: req.Namespace, Name: req.PodName}, &pod); err != nil {
 		resputil.Error(c, fmt.Sprintf("Failed to fetch pod: %v", err), resputil.NotSpecified)
 		return
 	}
 
-	// 从Annotation中获取规则
-	annotationKey := fmt.Sprintf("%s/%s", IngressLabelKey, ingressMgr.Name)
-	ruleData, exists := pod.Annotations[annotationKey]
-	if !exists {
-		resputil.Error(c, "Annotation for the specified rule not found", resputil.NotSpecified)
+	// Construct service and ingress names
+	serviceName := fmt.Sprintf("%s-svc-%s", pod.Labels[LabelKeyTaskUser], ingressMgr.Name)
+	ingressName := fmt.Sprintf("%s-ing-%s", pod.Labels[LabelKeyTaskUser], uuid.New().String()[:5])
+
+	// Delete the Service
+	if err := mgr.deleteService(c, req.Namespace, serviceName); err != nil {
+		resputil.Error(c, fmt.Sprintf("Failed to delete service: %v", err), resputil.NotSpecified)
 		return
 	}
 
-	// 解析规则
-	var rule PortMapping
-	if err := json.Unmarshal([]byte(ruleData), &rule); err != nil {
-		resputil.Error(c, fmt.Sprintf("Failed to parse annotation data: %v", err), resputil.NotSpecified)
-		return
-	}
-
-	// 删除关联的 Service
-	if err := mgr.deleteService(c, req.Namespace, rule.ServiceName); err != nil {
-		log.Printf("Warning: failed to delete service: %v", err)
-	}
-
-	// 删除关联的 Ingress
-	if err := mgr.deleteIngress(c, req.Namespace, rule.IngressName); err != nil {
-		log.Printf("Warning: failed to delete ingress: %v", err)
-	}
-
-	// 删除 Pod 的 Annotation
-	delete(pod.Annotations, annotationKey)
-	if err := mgr.client.Update(c, &pod); err != nil {
-		resputil.Error(c, fmt.Sprintf("Failed to update pod annotations: %v", err), resputil.NotSpecified)
+	// Delete the Ingress
+	if err := mgr.deleteIngress(c, req.Namespace, ingressName); err != nil {
+		resputil.Error(c, fmt.Sprintf("Failed to delete ingress: %v", err), resputil.NotSpecified)
 		return
 	}
 
@@ -429,7 +465,7 @@ func (mgr *APIServerMgr) DeletePodIngress(c *gin.Context) {
 // GetPodNodeports retrieves the NodePort rules for a pod
 // GetPodNodeports godoc
 // @Summary 获取Pod的NodePort规则
-// @Description 通过Pod注解获取相关的NodePort规则
+// @Description 通过Pod的labels选择相关的Service并获取NodePort规则
 // @Tags Pod
 // @Accept json
 // @Produce json
@@ -454,38 +490,44 @@ func (mgr *APIServerMgr) GetPodNodeports(c *gin.Context) {
 		return
 	}
 
+	// Extract relevant labels for filtering
+	selector := map[string]string{
+		LabelKeyBaseURL:  pod.Labels[LabelKeyBaseURL],
+		LabelKeyTaskType: pod.Labels[LabelKeyTaskType],
+		LabelKeyTaskUser: pod.Labels[LabelKeyTaskUser],
+	}
+
+	// Fetch services matching the filtered labels
+	services := &v1.ServiceList{}
+	listOptions := client.MatchingLabels(selector)
+	if err := mgr.client.List(c, services, listOptions, client.InNamespace(req.Namespace)); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
 	var nodeportRules []PodNodeport
-	for key, value := range pod.Annotations {
-		if strings.HasPrefix(key, NodePortLabelKey) {
-			var rule PodNodeport
-			if err := json.Unmarshal([]byte(value), &rule); err == nil {
-				// 获取 Service
-				service := &v1.Service{}
-				serviceName := fmt.Sprintf("%s-%s", req.PodName, rule.Name)
-				if err := mgr.client.Get(c, client.ObjectKey{Namespace: req.Namespace, Name: serviceName}, service); err == nil {
-					// 获取 NodePort
-					if len(service.Spec.Ports) > 0 && service.Spec.Ports[0].NodePort != 0 {
-						rule.NodePort = service.Spec.Ports[0].NodePort
+	for i := range services.Items {
+		svc := &services.Items[i]
+		if svc.Spec.Type == v1.ServiceTypeNodePort {
+			for _, port := range svc.Spec.Ports {
+				if port.NodePort != 0 {
+					// Retrieve port.Name from the service annotation
+					portName, ok := svc.Annotations[crclient.AnnotationKeyPortName]
+					if !ok {
+						portName = svc.Name // Fallback to service name if annotation is missing
 					}
-				}
 
-				// 同步最新 NodePort 和 HostIP
-				rule.Address = pod.Status.HostIP
-				nodeportRules = append(nodeportRules, rule)
-
-				// 更新注解
-				//nolint:gosec // 确定此处不会出现超过 int32 范围的情况
-				if currentNodeport, _ := strconv.Atoi(pod.Annotations[key]); rule.NodePort != int32(currentNodeport) {
-					nodeportJSON, _ := json.Marshal(rule)
-					pod.Annotations[key] = string(nodeportJSON)
-					// 异步更新 Pod 注解
-					if err := mgr.client.Update(c, &pod); err != nil {
-						log.Printf("Failed to asynchronously update pod annotations: %v", err)
-					}
+					nodeportRules = append(nodeportRules, PodNodeport{
+						Name:          portName,
+						NodePort:      port.NodePort,
+						Address:       pod.Status.HostIP,
+						ContainerPort: port.TargetPort.IntVal,
+					})
 				}
 			}
 		}
 	}
+
 	resputil.Success(c, PodNodeportResp{NodePorts: nodeportRules})
 }
 
@@ -507,138 +549,52 @@ func (mgr *APIServerMgr) GetPodNodeports(c *gin.Context) {
 // @Router /v1/namespaces/{namespace}/pods/{name}/nodeports [post]
 func (mgr *APIServerMgr) CreatePodNodeport(c *gin.Context) {
 	var req PodContainerReq
-	// 使用 Gin 的参数绑定方法获取 URI 参数
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
 
 	var nodeportMgr PodNodeportMgr
-	// 使用 Gin 的参数绑定方法获取 JSON 参数
 	if err := c.ShouldBindJSON(&nodeportMgr); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
 
-	// 调用 ProcessPodNodeport
-	nodeport, err := mgr.ProcessPodNodeport(c, req, nodeportMgr)
-	if err != nil {
-		if strings.Contains(err.Error(), "NodePort rule with the same name already exists") {
-			resputil.BadRequestError(c, err.Error())
-		} else {
-			resputil.Error(c, err.Error(), resputil.NotSpecified)
-		}
-		return
-	}
-
-	// 返回成功响应
-	resputil.Success(c, nodeport)
-}
-
-// 获取 Pod
-func (mgr *APIServerMgr) getPodByName(ctx context.Context, namespace, podName string) (*v1.Pod, error) {
-	if namespace == "" || podName == "" {
-		return nil, fmt.Errorf("namespace or pod name is empty")
-	}
-
+	// Fetch the pod
 	var pod v1.Pod
-	if err := mgr.client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: podName}, &pod); err != nil {
-		return nil, fmt.Errorf("failed to get Pod: %w", err)
-	}
-
-	// 确保 Pod 的 Annotations 字段被初始化
-	if pod.Annotations == nil {
-		pod.Annotations = make(map[string]string)
-	}
-
-	return &pod, nil
-}
-
-// 检查 NodePort 规则是否已存在
-func getExistingNodePortRule(pod *v1.Pod, ruleName string) (*PodNodeport, bool) {
-	for key := range pod.Annotations {
-		if strings.HasPrefix(key, NodePortLabelKey) {
-			var existingRule PodNodeport
-			if err := json.Unmarshal([]byte(pod.Annotations[key]), &existingRule); err == nil {
-				if existingRule.Name == ruleName {
-					return &existingRule, true
-				}
-			}
-		}
-	}
-	return nil, false
-}
-
-// 创建 NodePort Service
-func (mgr *APIServerMgr) createNodePortService(ctx context.Context, pod *v1.Pod,
-	containerPort int32) (nodePort int32, serviceName string, err error) {
-	if containerPort == 0 {
-		err = fmt.Errorf("invalid container port")
+	if err := mgr.client.Get(c, client.ObjectKey{Namespace: req.Namespace, Name: req.PodName}, &pod); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	nodePort, serviceName, err = crclient.CreateServiceForNodePort(ctx, mgr.client, pod, containerPort)
-	if err != nil || nodePort == 0 || serviceName == "" {
-		err = fmt.Errorf("failed to create NodePort service: %w", err)
-	}
-	return
-}
-
-// 更新 Pod Annotations
-func updatePodAnnotations(pod *v1.Pod, nodeport *PodNodeport) {
-	annotationKey := fmt.Sprintf("%s/%s", NodePortLabelKey, nodeport.Name)
-	nodeportJSON, _ := json.Marshal(nodeport)
-	pod.Annotations[annotationKey] = string(nodeportJSON)
-
-	// SSH 特殊处理
-	if nodeport.ContainerPort == SSHContainerPort {
-		pod.Annotations[AnnotationKeyOpenSSH] = "true"
-		fmt.Printf("Successfully changed AnnotationKeyOpenSSH from false to true, Pod: %s\n", pod.Name)
-	}
-}
-
-// 处理 Pod NodePort 逻辑
-func (mgr *APIServerMgr) ProcessPodNodeport(ctx context.Context, req PodContainerReq, nodeportMgr PodNodeportMgr) (*PodNodeport, error) {
-	// 检查 mgr.client 是否已初始化
-	if mgr.client == nil {
-		return nil, fmt.Errorf("client is not initialized")
+	// Use CreateNodePort to create a NodePort service
+	serviceManager := crclient.NewServiceManager(mgr.client, mgr.kubeClient)
+	podSelector := pod.Labels
+	port := &v1.ServicePort{
+		Name:       nodeportMgr.Name,
+		Port:       nodeportMgr.ContainerPort,
+		TargetPort: intstr.FromInt(int(nodeportMgr.ContainerPort)),
+		Protocol:   v1.ProtocolTCP,
 	}
 
-	// 获取 Pod
-	pod, err := mgr.getPodByName(ctx, req.Namespace, req.PodName)
+	host, nodePort, err := serviceManager.CreateNodePort(
+		c,
+		[]metav1.OwnerReference{
+			*metav1.NewControllerRef(&pod, v1.SchemeGroupVersion.WithKind("Pod")),
+		},
+		podSelector,
+		port,
+		pod.Labels[LabelKeyTaskUser],
+	)
 	if err != nil {
-		return nil, err
+		resputil.Error(c, fmt.Sprintf("failed to create nodeport service: %v", err), resputil.NotSpecified)
+		return
 	}
 
-	// 检查是否已有同名规则
-	if existing, found := getExistingNodePortRule(pod, nodeportMgr.Name); found {
-		return existing, nil
-	}
-
-	// 创建 NodePort Service
-	nodePort, serviceName, err := mgr.createNodePortService(ctx, pod, nodeportMgr.ContainerPort)
-	if err != nil {
-		return nil, err
-	}
-
-	// 构建 NodePort 结构体
-	nodeport := &PodNodeport{
-		Name:          nodeportMgr.Name,
-		ContainerPort: nodeportMgr.ContainerPort,
-		NodePort:      nodePort,
-		Address:       pod.Status.HostIP,
-		ServiceName:   serviceName,
-	}
-
-	// 更新 Pod Annotations
-	updatePodAnnotations(pod, nodeport)
-
-	// 更新 Pod 信息
-	if err := mgr.client.Update(ctx, pod); err != nil {
-		return nil, fmt.Errorf("failed to update Pod annotations: %w", err)
-	}
-
-	return nodeport, nil
+	resputil.Success(c, map[string]any{
+		"host":     host,
+		"nodePort": nodePort,
+	})
 }
 
 // DeletePodNodeport deletes a NodePort rule for a pod
@@ -658,70 +614,38 @@ func (mgr *APIServerMgr) ProcessPodNodeport(ctx context.Context, req PodContaine
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/namespaces/{namespace}/pods/{name}/nodeports [delete]
 func (mgr *APIServerMgr) DeletePodNodeport(c *gin.Context) {
-	var nodeportMgr PodNodeportMgr
-	if err := c.ShouldBindJSON(&nodeportMgr); err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-
 	var req PodContainerReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
 
-	// 获取 Pod
+	var nodeportMgr PodNodeportMgr
+	if err := c.ShouldBindJSON(&nodeportMgr); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	// Fetch the pod
 	var pod v1.Pod
 	if err := mgr.client.Get(c, client.ObjectKey{Namespace: req.Namespace, Name: req.PodName}, &pod); err != nil {
 		resputil.Error(c, fmt.Sprintf("Failed to fetch pod: %v", err), resputil.NotSpecified)
 		return
 	}
 
-	// 从 Annotation 中获取规则
-	annotationKey := fmt.Sprintf("%s/%s", NodePortLabelKey, nodeportMgr.Name)
-	ruleData, exists := pod.Annotations[annotationKey]
-	if !exists {
-		resputil.Error(c, "Annotation for the specified rule not found", resputil.NotSpecified)
-		return
-	}
+	// Construct service name
+	serviceName := fmt.Sprintf("%s-np-%s", pod.Labels[LabelKeyTaskUser], nodeportMgr.Name)
 
-	// 解析规则
-	var rule PodNodeport
-	if err := json.Unmarshal([]byte(ruleData), &rule); err != nil {
-		resputil.Error(c, fmt.Sprintf("Failed to parse annotation data: %v", err), resputil.NotSpecified)
-		return
-	}
-
-	// 删除关联的 Service
-	if err := mgr.deleteService(c, req.Namespace, rule.ServiceName); err != nil {
-		log.Printf("Warning: failed to delete service: %v", err)
-	}
-
-	// 删除 Pod 的 Annotation
-	delete(pod.Annotations, annotationKey)
-	if err := mgr.client.Update(c, &pod); err != nil {
-		resputil.Error(c, fmt.Sprintf("Failed to update pod annotations: %v", err), resputil.NotSpecified)
+	// Delete the Service
+	if err := mgr.deleteService(c, req.Namespace, serviceName); err != nil {
+		resputil.Error(c, fmt.Sprintf("Failed to delete service: %v", err), resputil.NotSpecified)
 		return
 	}
 
 	resputil.Success(c, "NodePort rule and associated service deleted successfully")
 }
 
-func (mgr *APIServerMgr) deleteService(c *gin.Context, namespace, serviceName string) error {
-	return mgr.deleteResource(c, namespace, serviceName, "Service", &v1.Service{})
-}
-
-func (mgr *APIServerMgr) deleteIngress(c *gin.Context, namespace, ingressName string) error {
-	return mgr.deleteResource(c, namespace, ingressName, "Ingress", &networkingv1.Ingress{})
-}
-
-func (mgr *APIServerMgr) deleteResource(
-	c *gin.Context,
-	namespace string,
-	name string,
-	resourceType string,
-	obj client.Object,
-) error {
+func (mgr *APIServerMgr) deleteResource(c *gin.Context, namespace, name, resourceType string, obj client.Object) error {
 	if err := mgr.client.Get(c, client.ObjectKey{Namespace: namespace, Name: name}, obj); err != nil {
 		if apierrors.IsNotFound(err) {
 			log.Printf("%s %s in namespace %s not found, nothing to delete", resourceType, name, namespace)
@@ -736,6 +660,14 @@ func (mgr *APIServerMgr) deleteResource(
 
 	log.Printf("%s %s in namespace %s successfully deleted", resourceType, name, namespace)
 	return nil
+}
+
+func (mgr *APIServerMgr) deleteService(c *gin.Context, namespace, serviceName string) error {
+	return mgr.deleteResource(c, namespace, serviceName, "Service", &v1.Service{})
+}
+
+func (mgr *APIServerMgr) deleteIngress(c *gin.Context, namespace, ingressName string) error {
+	return mgr.deleteResource(c, namespace, ingressName, "Ingress", &networkingv1.Ingress{})
 }
 
 // DeletePodRule deletes a rule annotation from a Pod
