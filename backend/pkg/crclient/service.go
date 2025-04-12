@@ -212,12 +212,9 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 	// Create the Ingress
 	ingressName := fmt.Sprintf("%s-ing-%s", prefix, port.Name)
 
-	// Ensure prefix starts and ends with "/"
+	// Ensure prefix starts with "/"
 	if !strings.HasPrefix(prefix, "/") {
 		prefix = "/" + prefix
-	}
-	if !strings.HasSuffix(prefix, "/") {
-		prefix += "/"
 	}
 
 	prefix = fmt.Sprintf("/ingress%s", prefix)
