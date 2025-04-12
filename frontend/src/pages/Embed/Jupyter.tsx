@@ -17,8 +17,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useAtomValue } from "jotai";
-import { asyncUrlHostAtom } from "@/utils/store/config";
 import {
   Sheet,
   SheetContent,
@@ -32,7 +30,6 @@ const Jupyter: FC = () => {
   const [namespacedName, setNamespacedName] = useState<NamespacedName>();
   const [isSnapshotOpen, setIsSnapshotOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const host = useAtomValue(asyncUrlHostAtom);
 
   const { data: jupyterInfo } = useQuery({
     queryKey: ["jupyter", id],
@@ -42,26 +39,26 @@ const Jupyter: FC = () => {
   });
 
   const url = useMemo(() => {
-    if (jupyterInfo && host) {
-      return `https://${host}/ingress/${jupyterInfo.baseURL}?token=${jupyterInfo.token}`;
+    if (jupyterInfo) {
+      return `${jupyterInfo.fullURL}?token=${jupyterInfo.token}`;
     }
     return "";
-  }, [jupyterInfo, host]);
+  }, [jupyterInfo]);
 
   // set jupyter notebook icon as current page icon
   // set title to jupyter base url
   useEffect(() => {
-    if (jupyterInfo?.baseURL && host) {
+    if (jupyterInfo?.baseURL && jupyterInfo.fullURL) {
       const link = document.querySelector(
         "link[rel='website icon']",
       ) as HTMLLinkElement;
       if (link) {
-        link.href = `https://${host}/ingress/${jupyterInfo.baseURL}/static/favicons/favicon.ico`;
+        link.href = `${jupyterInfo.fullURL}/static/favicons/favicon.ico`;
         link.type = "image/x-icon";
       }
       document.title = jupyterInfo.baseURL;
     }
-  }, [jupyterInfo, host]);
+  }, [jupyterInfo]);
 
   const { mutate: snapshot } = useMutation({
     mutationFn: (jobName: string) => apiJupyterSnapshot(jobName),
