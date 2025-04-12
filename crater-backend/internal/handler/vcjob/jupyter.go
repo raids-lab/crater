@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	v1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
@@ -24,7 +23,6 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
-	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/packer"
 	"github.com/raids-lab/crater/pkg/utils"
 )
@@ -246,8 +244,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		return
 	}
 
-	// Use CreateIngressWithPrefix to create ingress and service
-	serviceManager := crclient.NewServiceManager(mgr.client, mgr.kubeClient)
+	// Use the serviceManager property directly
 	podSelector := labels
 	port := &v1.ServicePort{
 		Name:       "notebook",
@@ -256,7 +253,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		Protocol:   v1.ProtocolTCP,
 	}
 
-	ingressPath, err := serviceManager.CreateIngressWithPrefix(
+	ingressPath, err := mgr.serviceManager.CreateIngressWithPrefix(
 		c,
 		[]metav1.OwnerReference{
 			*metav1.NewControllerRef(&job, batch.SchemeGroupVersion.WithKind("Job")),
@@ -324,22 +321,11 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 
 	baseURL := vcjob.Labels[LabelKeyBaseURL]
 
-	// Get the ingress name
-	ingressName := fmt.Sprintf("%s-ing-%s", baseURL, "notebook")
-	ingress := &networkingv1.Ingress{}
-	if err = mgr.client.Get(c, client.ObjectKey{Name: ingressName, Namespace: namespace}, ingress); err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to fetch ingress: %v", err), resputil.NotSpecified)
-		return
-	}
+	podName, _ := getPodNameAndLabelFromJob(vcjob)
 
-	// Extract the full URL directly
-	var fullURL string
-	if len(ingress.Spec.Rules) > 0 && len(ingress.Spec.Rules[0].HTTP.Paths) > 0 {
-		fullURL = fmt.Sprintf("https://%s%s", ingress.Spec.Rules[0].Host, ingress.Spec.Rules[0].HTTP.Paths[0].Path)
-	} else {
-		resputil.Error(c, "Ingress full URL not found", resputil.NotSpecified)
-		return
-	}
+	// Construct the full URL directly
+	host := config.GetConfig().Host
+	fullURL := fmt.Sprintf("https://%s/ingress/%s", host, baseURL)
 
 	// Check if jupyter token has been cached in the job annotations
 	jupyterToken, ok := vcjob.Annotations[AnnotationKeyJupyter]
@@ -348,14 +334,13 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 			BaseURL:   baseURL,
 			Token:     jupyterToken,
 			FullURL:   fullURL,
-			PodName:   req.JobName,
+			PodName:   podName,
 			Namespace: namespace,
 		})
 		return
 	}
 
 	// Fetch the pod logs to extract the token
-	podName, _ := getPodNameAndLabelFromJob(vcjob)
 	buf, err := mgr.getPodLog(c, namespace, podName)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
