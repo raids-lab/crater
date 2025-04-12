@@ -310,7 +310,7 @@ func (mgr *APIServerMgr) matchIngressesWithServices(
 						// Retrieve port.Name from the ingress annotation
 						portName, ok := ingress.Annotations[crclient.AnnotationKeyPortName] // Use the constant
 						if !ok {
-							continue // Skip if the annotation is missing
+							continue
 						}
 
 						// Construct the full ingress path
