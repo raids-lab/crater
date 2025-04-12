@@ -1,8 +1,8 @@
 package vcjob
 
 import (
-	"encoding/json"
 	"fmt"
+	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -43,7 +43,6 @@ type (
 	}
 )
 
-//nolint:gocyclo //todo: Split functions to reduce cyclical complexity
 func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	token := util.GetToken(c)
 
@@ -168,29 +167,10 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		LabelKeyBaseURL:  baseURL,
 	}
 
-	// 设置 notebook 的 Annotation 信息
-	notebookIngress := crclient.PortMapping{
-		Name:          "notebook",
-		ContainerPort: 8888, // Notebook 在容器内的默认端口
-		ServicePort:   80,
-		Prefix:        fmt.Sprintf("/ingress/%s", baseURL), // 设置唯一的 URL 前缀
-		ServiceName:   jobName,
-		IngressName:   jobName,
-	}
-
-	// 将 Ingress 转换为 JSON 字符串并添加到 annotations
-	ingressJSON, err := json.Marshal(notebookIngress)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to marshal ingress: %v", err), resputil.NotSpecified)
-		return
-	}
-
-	// 初始化 annotations 并添加 notebookIngress Annotation
 	annotations := map[string]string{
-		AnnotationKeyTaskName:                     req.Name,
-		AnnotationKeyTaskTemplate:                 req.Template,
-		AnnotationKeyAlertEnabled:                 strconv.FormatBool(req.AlertEnabled),
-		IngressLabelPrefix + notebookIngress.Name: string(ingressJSON), // 添加 notebookIngress Annotation
+		AnnotationKeyTaskName:     req.Name,
+		AnnotationKeyTaskTemplate: req.Template,
+		AnnotationKeyAlertEnabled: strconv.FormatBool(req.AlertEnabled),
 	}
 
 	// 5. Create the pod spec
@@ -211,7 +191,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 
 				Env: envs,
 				Ports: []v1.ContainerPort{
-					{ContainerPort: JupyterPort, Name: "notebook-port", Protocol: v1.ProtocolTCP},
+					{ContainerPort: JupyterPort, Name: "notebook", Protocol: v1.ProtocolTCP},
 				},
 				SecurityContext: &v1.SecurityContext{
 					RunAsUser:  ptr.To(int64(0)),
@@ -266,98 +246,33 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		return
 	}
 
-	// create service
-	svc := &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      jobName,
-			Namespace: namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         "batch.volcano.sh/v1alpha1",
-					Kind:               "Job",
-					Name:               jobName,
-					UID:                job.UID,
-					BlockOwnerDeletion: ptr.To(true),
-				},
-			},
-		},
-		Spec: v1.ServiceSpec{
-			Selector: labels,
-			Ports: []v1.ServicePort{
-				{
-					Name:       jobName,
-					Port:       80,
-					Protocol:   v1.ProtocolTCP,
-					TargetPort: intstr.FromInt(JupyterPort),
-				},
-			},
-			SessionAffinity: v1.ServiceAffinityNone,
-			Type:            v1.ServiceTypeClusterIP,
-		},
+	// Use CreateIngressWithPrefix to create ingress and service
+	serviceManager := crclient.NewServiceManager(mgr.client, mgr.kubeClient)
+	podSelector := labels
+	port := &v1.ServicePort{
+		Name:       "notebook",
+		Port:       80,
+		TargetPort: intstr.FromInt(JupyterPort),
+		Protocol:   v1.ProtocolTCP,
 	}
 
-	err = mgr.client.Create(c, svc)
+	ingressPath, err := serviceManager.CreateIngressWithPrefix(
+		c,
+		[]metav1.OwnerReference{
+			*metav1.NewControllerRef(&job, batch.SchemeGroupVersion.WithKind("Job")),
+		},
+		podSelector,
+		port,
+		config.GetConfig().Host,
+		baseURL,
+		token.Username,
+	)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.Error(c, fmt.Sprintf("failed to create ingress: %v", err), resputil.NotSpecified)
 		return
 	}
 
-	// 创建 Ingress，添加 OwnerReference
-	ingress := &networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			// 每个作业的 Service 创建单独的 Ingress
-			Name:      jobName,
-			Namespace: namespace,
-			Annotations: map[string]string{
-				// 启用 SSL 重定向
-				"nginx.ingress.kubernetes.io/ssl-redirect": "true",
-				// 设置请求体的最大大小
-				"nginx.ingress.kubernetes.io/proxy-body-size": "20480m",
-			},
-			// 添加 OwnerReference
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(&job, batch.SchemeGroupVersion.WithKind("Job")),
-			},
-		},
-		Spec: networkingv1.IngressSpec{
-			// 指定 Ingress 控制器为 nginx
-			IngressClassName: func(s string) *string { return &s }("nginx"),
-			Rules: []networkingv1.IngressRule{
-				{
-					Host: config.GetConfig().Host, // 设置 Host
-					IngressRuleValue: networkingv1.IngressRuleValue{
-						HTTP: &networkingv1.HTTPIngressRuleValue{
-							Paths: []networkingv1.HTTPIngressPath{
-								{
-									Path:     fmt.Sprintf("/ingress/%s", baseURL),
-									PathType: func(s networkingv1.PathType) *networkingv1.PathType { return &s }(networkingv1.PathTypePrefix),
-									Backend: networkingv1.IngressBackend{
-										Service: &networkingv1.IngressServiceBackend{
-											Name: jobName,
-											Port: networkingv1.ServiceBackendPort{
-												Number: 80,
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			TLS: []networkingv1.IngressTLS{
-				{
-					Hosts:      []string{config.GetConfig().Host}, // 需要 TLS 的主机名
-					SecretName: "crater-tls-secret",               // TLS 证书的 Secret 名称
-				},
-			},
-		},
-	}
-
-	if err = mgr.client.Create(c, ingress); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
+	log.Printf("Ingress created at path: %s", ingressPath)
 
 	resputil.Success(c, job)
 }
@@ -409,8 +324,22 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 
 	baseURL := vcjob.Labels[LabelKeyBaseURL]
 
-	// Get the logs of the job pod
-	podName, _ := getPodNameAndLabelFromJob(vcjob)
+	// Get the ingress name
+	ingressName := fmt.Sprintf("%s-ing-%s", baseURL, "notebook")
+	ingress := &networkingv1.Ingress{}
+	if err = mgr.client.Get(c, client.ObjectKey{Name: ingressName, Namespace: namespace}, ingress); err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to fetch ingress: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	// Extract the full URL directly
+	var fullURL string
+	if len(ingress.Spec.Rules) > 0 && len(ingress.Spec.Rules[0].HTTP.Paths) > 0 {
+		fullURL = fmt.Sprintf("https://%s%s", ingress.Spec.Rules[0].Host, ingress.Spec.Rules[0].HTTP.Paths[0].Path)
+	} else {
+		resputil.Error(c, "Ingress full URL not found", resputil.NotSpecified)
+		return
+	}
 
 	// Check if jupyter token has been cached in the job annotations
 	jupyterToken, ok := vcjob.Annotations[AnnotationKeyJupyter]
@@ -418,12 +347,15 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 		resputil.Success(c, JobTokenResp{
 			BaseURL:   baseURL,
 			Token:     jupyterToken,
-			PodName:   podName,
+			FullURL:   fullURL,
+			PodName:   req.JobName,
 			Namespace: namespace,
 		})
 		return
 	}
 
+	// Fetch the pod logs to extract the token
+	podName, _ := getPodNameAndLabelFromJob(vcjob)
 	buf, err := mgr.getPodLog(c, namespace, podName)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
@@ -438,11 +370,6 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 		return
 	}
 
-	if jupyterToken == "" {
-		resputil.Error(c, "Jupyter token not found", resputil.NotSpecified)
-		return
-	}
-
 	// Cache the jupyter token in the job annotations
 	vcjob.Annotations[AnnotationKeyJupyter] = jupyterToken
 	if err := mgr.client.Update(c, vcjob); err != nil {
@@ -450,9 +377,11 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 		return
 	}
 
+	fullURL = fmt.Sprintf("%s?token=%s", fullURL, jupyterToken)
 	resputil.Success(c, JobTokenResp{
 		BaseURL:   baseURL,
 		Token:     jupyterToken,
+		FullURL:   fullURL,
 		PodName:   podName,
 		Namespace: namespace,
 	})

@@ -3,6 +3,7 @@ package crclient
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/google/uuid"
@@ -17,6 +18,13 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 )
 
+const (
+	LabelKeyBaseURL       = "crater.raids.io/base-url"
+	LabelKeyTaskType      = "crater.raids.io/task-type"
+	LabelKeyTaskUser      = "crater.raids.io/task-user"
+	AnnotationKeyPortName = "crater.raids.io/port-name" // Annotation key for port name
+)
+
 // ServiceManagerInterface 接口定义
 type ServiceManagerInterface interface {
 	// CreateNodePort 创建一个 NodePort 类型的 Service，并返回 host 和分配的 NodePort
@@ -25,6 +33,7 @@ type ServiceManagerInterface interface {
 		ownerReferences []metav1.OwnerReference,
 		podSelector map[string]string,
 		port *v1.ServicePort,
+		username string,
 	) (host string, nodePort int32, err error)
 
 	// CreateIngressWithPrefix 创建一个 ClusterIP 类型的 Service，并创建带有前缀的 Ingress
@@ -33,7 +42,7 @@ type ServiceManagerInterface interface {
 		ownerReferences []metav1.OwnerReference,
 		podSelector map[string]string,
 		port *v1.ServicePort,
-		host, prefix string,
+		host, prefix, username string,
 	) (ingressPath string, err error)
 
 	// CreateIngress 创建一个 ClusterIP 类型的 Service，并创建 Ingress
@@ -42,7 +51,7 @@ type ServiceManagerInterface interface {
 		ownerReferences []metav1.OwnerReference,
 		podSelector map[string]string,
 		port *v1.ServicePort,
-		host string,
+		host, username string,
 	) (ingressPath string, err error)
 }
 
@@ -62,19 +71,36 @@ func NewServiceManager(cl client.Client, kubeClient kubernetes.Interface) Servic
 	}
 }
 
+// Helper function to generate labels
+func generateLabels(podSelector map[string]string, username string) map[string]string {
+	return map[string]string{
+		LabelKeyBaseURL:  podSelector[LabelKeyBaseURL],
+		LabelKeyTaskType: podSelector[LabelKeyTaskType],
+		LabelKeyTaskUser: username,
+	}
+}
+
 // CreateNodePort 实现
 func (s *serviceManagerImpl) CreateNodePort(
 	ctx context.Context,
 	ownerReferences []metav1.OwnerReference,
 	podSelector map[string]string,
 	port *v1.ServicePort,
+	username string,
 ) (host string, nodePort int32, err error) {
 	if port == nil {
 		return "", 0, fmt.Errorf("port and ownerRef cannot be nil")
 	}
 	// 生成唯一的 Service 名称
-	serviceName := fmt.Sprintf("np-%s", uuid.New().String()[:8])
+	serviceName := fmt.Sprintf("%s-np-%s", username, uuid.New().String()[:5])
 	namespace := s.config.Workspace.Namespace
+
+	// Extract labels from podSelector
+	labels := map[string]string{
+		LabelKeyBaseURL:  podSelector[LabelKeyBaseURL],
+		LabelKeyTaskType: podSelector[LabelKeyTaskType],
+		LabelKeyTaskUser: podSelector[LabelKeyTaskUser],
+	}
 
 	// 创建 NodePort 类型的 Service
 	svc := &v1.Service{
@@ -82,6 +108,10 @@ func (s *serviceManagerImpl) CreateNodePort(
 			Name:            serviceName,
 			Namespace:       namespace,
 			OwnerReferences: ownerReferences,
+			Labels:          labels,
+			Annotations: map[string]string{
+				AnnotationKeyPortName: port.Name,
+			},
 		},
 		Spec: v1.ServiceSpec{
 			Ports:    []v1.ServicePort{*port},
@@ -138,20 +168,26 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 	ownerReferences []metav1.OwnerReference,
 	podSelector map[string]string,
 	port *v1.ServicePort,
-	host, prefix string,
+	host,
+	prefix,
+	username string,
 ) (ingressPath string, err error) {
 	if port == nil {
 		return "", fmt.Errorf("port and ownerRef cannot be nil")
 	}
 	namespace := s.config.Workspace.Namespace
 
-	// 首先创建 ClusterIP 服务
-	serviceName := fmt.Sprintf("svc-%s", uuid.New().String()[:8])
+	// Generate labels
+	labels := generateLabels(podSelector, username)
+
+	// Create the ClusterIP service
+	serviceName := fmt.Sprintf("%s-svc-%s", prefix, port.Name)
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            serviceName,
 			Namespace:       namespace,
 			OwnerReferences: ownerReferences,
+			Labels:          labels,
 		},
 		Spec: v1.ServiceSpec{
 			Ports:    []v1.ServicePort{*port},
@@ -164,28 +200,40 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 		return "", fmt.Errorf("failed to create service: %w", err)
 	}
 
-	// 确保前缀以 / 开始
+	// Validate the created service
+	createdSvc := &v1.Service{}
+	if err = s.client.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: namespace}, createdSvc); err != nil {
+		return "", fmt.Errorf("failed to fetch created service: %w", err)
+	}
+	if len(createdSvc.Spec.Selector) == 0 {
+		return "", fmt.Errorf("service selector is empty or invalid")
+	}
+
+	// Create the Ingress
+	ingressName := fmt.Sprintf("%s-ing-%s", prefix, port.Name)
+
+	// Ensure prefix starts and ends with "/"
 	if !strings.HasPrefix(prefix, "/") {
 		prefix = "/" + prefix
 	}
-	// 确保前缀以 / 结束
 	if !strings.HasSuffix(prefix, "/") {
 		prefix += "/"
 	}
 
-	// 创建 Ingress
-	ingressName := fmt.Sprintf("ing-%s", uuid.New().String()[:8])
-	pathType := networkingv1.PathTypePrefix
+	prefix = fmt.Sprintf("/ingress%s", prefix)
 
+	pathType := networkingv1.PathTypePrefix
 	ingress := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ingressName,
-			Namespace: namespace,
+			Name:            ingressName,
+			Namespace:       namespace,
+			OwnerReferences: ownerReferences,
+			Labels:          labels,
 			Annotations: map[string]string{
 				"nginx.ingress.kubernetes.io/ssl-redirect":    "true",
 				"nginx.ingress.kubernetes.io/proxy-body-size": "20480m",
+				AnnotationKeyPortName:                         port.Name,
 			},
-			OwnerReferences: ownerReferences,
 		},
 		Spec: networkingv1.IngressSpec{
 			IngressClassName: ptr.To("nginx"),
@@ -225,7 +273,20 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 		return "", fmt.Errorf("failed to create ingress: %w", err)
 	}
 
-	ingressPath = fmt.Sprintf("https://%s%s", host, prefix)
+	// Validate the created ingress
+	createdIngress := &networkingv1.Ingress{}
+	if err = s.client.Get(ctx, types.NamespacedName{Name: ingressName, Namespace: namespace}, createdIngress); err != nil {
+		return "", fmt.Errorf("failed to fetch created ingress: %w", err)
+	}
+	if len(createdIngress.Spec.Rules) == 0 || createdIngress.Spec.Rules[0].HTTP == nil {
+		return "", fmt.Errorf("ingress rules are empty or invalid")
+	}
+
+	// Log the created service and ingress for debugging
+	log.Printf("Created Service: %s, Selector: %v", createdSvc.Name, createdSvc.Spec.Selector)
+	log.Printf("Created Ingress: %s, Rules: %v", createdIngress.Name, createdIngress.Spec.Rules)
+
+	ingressPath = fmt.Sprintf("https://%s%s", host, prefix) // Construct the full ingress path
 	return ingressPath, nil
 }
 
@@ -235,9 +296,9 @@ func (s *serviceManagerImpl) CreateIngress(
 	ownerReferences []metav1.OwnerReference,
 	podSelector map[string]string,
 	port *v1.ServicePort,
-	host string,
+	host, username string,
 ) (ingressPath string, err error) {
-	// 为兼容 API，生成一个随机前缀
+	// Generate a random prefix for compatibility
 	prefix := fmt.Sprintf("/%s/", uuid.New().String()[:8])
-	return s.CreateIngressWithPrefix(ctx, ownerReferences, podSelector, port, host, prefix)
+	return s.CreateIngressWithPrefix(ctx, ownerReferences, podSelector, port, host, prefix, username)
 }

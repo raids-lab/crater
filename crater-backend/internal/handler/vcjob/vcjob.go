@@ -132,6 +132,7 @@ type (
 		Token     string `json:"token"`
 		PodName   string `json:"podName"`
 		Namespace string `json:"namespace"`
+		FullURL   string `json:"fullURL"`
 	}
 )
 
@@ -615,6 +616,7 @@ func (mgr *VolcanojobMgr) OpenSSH(c *gin.Context) {
 			Protocol:   v1.ProtocolTCP,
 			TargetPort: intstr.FromInt(SSHPort),
 		}),
+		job.User.Name, // Pass the username
 	)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("failed to create ssh service: %v", err), resputil.NotSpecified)
