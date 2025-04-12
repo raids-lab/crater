@@ -254,6 +254,7 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
         namespacedName={showIngress}
         setNamespacedName={setShowIngress}
         userName={userName}
+        jobName={jobName}
       />
       <Sheet open={showMonitor} onOpenChange={setShowMonitor}>
         <SheetContent className="sm:max-w-4xl">
