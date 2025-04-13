@@ -35,6 +35,7 @@ const formSchema = z.object({
     invalid_type_error: "请选择调度算法",
     required_error: "请选择调度算法",
   }),
+  hideUsername: z.boolean().default(false),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -102,6 +103,47 @@ const SystemSetting = () => {
               <Button type="submit">
                 <FileCogIcon />
                 更新调度算法
+              </Button>
+            </CardFooter>
+          </form>
+        </Form>
+        <CardHeader>
+          <CardTitle>隐藏用户名</CardTitle>
+          <CardDescription>隐藏用户名，使用匿名用户进行操作</CardDescription>
+        </CardHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)}>
+            <CardContent>
+              <FormField
+                control={form.control}
+                name="hideUsername"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Select
+                        onValueChange={(value) => {
+                          field.onChange(value === "true");
+                        }}
+                        defaultValue={field.value ? "true" : "false"}
+                      >
+                        <SelectTrigger className="">
+                          <SelectValue placeholder="请选择" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="true">是</SelectItem>
+                          <SelectItem value="false">否</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+            <CardFooter className="px-6 py-4">
+              <Button type="submit">
+                <FileCogIcon />
+                更新用户名设置
               </Button>
             </CardFooter>
           </form>

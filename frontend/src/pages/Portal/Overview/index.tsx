@@ -23,7 +23,12 @@ import NodeBadges from "@/components/badge/NodeBadges";
 import JobTypeLabel, { jobTypes } from "@/components/badge/JobTypeBadge";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
-import { globalJobUrl, globalSettings, globalUserInfo } from "@/utils/store";
+import {
+  globalJobUrl,
+  globalSettings,
+  globalUserInfo,
+  globalHideUsername,
+} from "@/utils/store";
 import NodeDetail from "@/components/node/NodeDetail";
 import useNodeQuery from "@/hooks/query/useNodeQuery";
 import GpuIcon from "@/components/icon/GpuIcon";
@@ -31,6 +36,7 @@ import PieCard from "@/components/chart/PieCard";
 import DocsButton from "@/components/button/DocsButton";
 import PageTitle from "@/components/layout/PageTitle";
 import UserLabel from "@/components/label/UserLabel";
+import { getUserPseudonym } from "@/utils/pseudonym";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -201,6 +207,7 @@ export const Component: FC = () => {
     }));
   }, [jobQuery.data]);
 
+  const hideUsername = useAtomValue(globalHideUsername);
   const userStatus = useMemo(() => {
     if (!jobQuery.data) {
       return [];
@@ -210,7 +217,9 @@ export const Component: FC = () => {
       .filter((job) => job.status == "Running")
       .reduce(
         (acc, item) => {
-          const owner = item.owner;
+          const owner = hideUsername
+            ? getUserPseudonym(item.owner)
+            : item.owner;
           if (!acc[owner]) {
             acc[owner] = 0;
           }
@@ -219,12 +228,12 @@ export const Component: FC = () => {
         },
         {} as Record<string, number>,
       );
-    return Object.entries(counts).map(([phase, count]) => ({
-      id: phase,
-      label: phase,
+    return Object.entries(counts).map(([owner, count]) => ({
+      id: owner,
+      label: owner,
       value: count,
     }));
-  }, [jobQuery.data]);
+  }, [jobQuery.data, useAtomValue(globalHideUsername)]);
 
   const gpuStatus = useMemo(() => {
     if (!jobQuery.data) {

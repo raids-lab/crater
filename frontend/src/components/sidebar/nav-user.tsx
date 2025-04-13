@@ -25,6 +25,7 @@ import {
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   globalAccount,
+  globalHideUsername,
   globalLastView,
   globalUserInfo,
   useResetStore,
@@ -37,6 +38,7 @@ import { Role } from "@/services/api/auth";
 import { useIsAdmin } from "@/hooks/useAdmin";
 import { asyncUrlWebsiteBaseAtom } from "@/utils/store/config";
 import { UserAvatar } from "../custom/UserDetail/UserAvatar";
+import { getUserPseudonym } from "@/utils/pseudonym";
 
 export function NavUser() {
   const website = useAtomValue(asyncUrlWebsiteBaseAtom);
@@ -49,6 +51,11 @@ export function NavUser() {
   const { theme, setTheme } = useTheme();
   const setLastView = useSetAtom(globalLastView);
   const isAdminView = useIsAdmin();
+  const hideUsername = useAtomValue(globalHideUsername);
+
+  const displayName = hideUsername
+    ? getUserPseudonym(user.name)
+    : user.nickname || user.name;
 
   return (
     <SidebarMenu>
@@ -61,7 +68,7 @@ export function NavUser() {
             >
               <UserAvatar user={user} />
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{user.nickname}</span>
+                <span className="truncate font-semibold">{displayName}</span>
                 <span className="truncate text-xs">{user.email}</span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
@@ -77,9 +84,7 @@ export function NavUser() {
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <UserAvatar user={user} />
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">
-                    {user.nickname}
-                  </span>
+                  <span className="truncate font-semibold">{displayName}</span>
                   <span className="truncate text-xs">{user.email}</span>
                 </div>
               </div>

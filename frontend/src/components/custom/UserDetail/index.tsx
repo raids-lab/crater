@@ -18,9 +18,12 @@ import GpuIcon from "@/components/icon/GpuIcon";
 import { GrafanaIframe } from "@/pages/Embed/Monitor";
 import { asyncGrafanaUserAtom } from "@/utils/store/config";
 import { useAtomValue } from "jotai";
+import { globalHideUsername } from "@/utils/store";
+import { getUserPseudonym } from "@/utils/pseudonym";
 
 export default function UserDetail() {
   const setBreadcrumb = useBreadcrumb();
+  const hideUsername = useAtomValue(globalHideUsername);
 
   useEffect(() => {
     setBreadcrumb([{ title: "用户详情" }]);
@@ -87,10 +90,14 @@ export default function UserDetail() {
       <UserAvatar user={user} className="size-20" size={80} />
       <div>
         <h1 className="flex items-center gap-2 text-3xl font-bold">
-          {user.nickname || user.name}
+          {hideUsername
+            ? getUserPseudonym(user.name)
+            : user.nickname || user.name}
           {user.role === Role.Admin && <TipBadge />}
         </h1>
-        <p className="text-muted-foreground">@{user.name}</p>
+        <p className="text-muted-foreground">
+          @{hideUsername ? getUserPseudonym(user.name) : user.name}
+        </p>
       </div>
     </div>
   );
