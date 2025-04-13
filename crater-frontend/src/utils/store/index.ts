@@ -80,6 +80,7 @@ export const globalSettings = atomWithStorage(
   SETTINGS_KEY,
   {
     scheduler: "volcano" as "volcano" | "colocate" | "sparse",
+    hideUsername: false,
   },
   undefined,
   {
@@ -99,6 +100,11 @@ export const globalJobUrl = atom((get) => {
     default:
       return "vcjobs";
   }
+});
+
+export const globalHideUsername = atom((get) => {
+  const hideUsername = get(globalSettings).hideUsername;
+  return hideUsername;
 });
 
 /**

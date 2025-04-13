@@ -64,6 +64,7 @@ import { getDaysDifference, getHoursDifference } from "@/utils/time";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
 import { asyncGrafanaJobAtom } from "@/utils/store/config";
+import UserLabel from "@/components/label/UserLabel";
 export interface Resource {
   [key: string]: string;
 }
@@ -231,7 +232,11 @@ export function BaseCore({ jobName }: { jobName: string }) {
       }
       info={[
         { title: "账户", icon: CreditCardIcon, value: data.queue },
-        { title: "用户", icon: UserRoundIcon, value: data.nickname },
+        {
+          title: "用户",
+          icon: UserRoundIcon,
+          value: <UserLabel info={data.userInfo} />,
+        },
         {
           title: "状态",
           icon: ActivityIcon,
