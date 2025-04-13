@@ -576,6 +576,9 @@ func (mgr *VolcanojobMgr) OpenSSH(c *gin.Context) {
 		return
 	}
 
+	// get container name
+	containerName := pod.Spec.Containers[0].Name
+
 	// 1. Check if AnnotationKeySSHEnabled is already set, get the value and return
 	if v, ok := pod.Annotations[AnnotationKeySSHEnabled]; ok {
 		// 解析主机名和端口号 // Value 格式为 "ip:port"
@@ -591,9 +594,23 @@ func (mgr *VolcanojobMgr) OpenSSH(c *gin.Context) {
 		return
 	}
 
-	// 2. Run the command to open SSH
-	if _, err = mgr.execCommandInPod(c, namespace, podName, "jupyter-notebook", []string{"service", "ssh", "restart"}); err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to start ssh service in pod: %v", err), resputil.ServiceSshdNotFound)
+	// 检查并创建sshd用户，然后启动sshd服务
+	commands := []string{
+		"sh",
+		"-c",
+		`if ! id "sshd" &>/dev/null; then
+			echo "Creating SSHD user and group...";
+			groupadd sshd;
+			useradd -u 66 -g sshd -c "SSH daemon" -d /var/lib/sshd -s /sbin/nologin -m sshd;
+			echo "SSHD user creation completed";
+		else
+			echo "SSHD user already exists, skipping creation";
+		fi && 
+		service ssh restart`,
+	}
+
+	if _, err = mgr.execCommandInPod(c, namespace, podName, containerName, commands); err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to setup and start ssh service in pod: %v", err), resputil.ServiceSshdNotFound)
 		return
 	}
 
