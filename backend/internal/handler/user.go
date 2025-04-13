@@ -2,7 +2,6 @@ package handler
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/datatypes"
@@ -11,9 +10,7 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 
 	"github.com/raids-lab/crater/internal/resputil"
-	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/logutils"
-	"github.com/raids-lab/crater/pkg/utils"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -37,7 +34,6 @@ func (mgr *UserMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *UserMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/:name", mgr.GetUser) // 新增获取单个用户的接口
-	g.GET("/email/verified", mgr.CheckIfEmailVerified)
 }
 
 func (mgr *UserMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -52,18 +48,6 @@ type UserResp struct {
 	Role       model.Role                              `json:"role"`       // 用户角色
 	Status     model.Status                            `json:"status"`     // 用户状态
 	Attributes datatypes.JSONType[model.UserAttribute] `json:"attributes"` // 用户额外属性
-}
-
-type UserDetailResp struct {
-	ID        uint         `json:"id"`        // 用户ID
-	Name      string       `json:"name"`      // 用户名称
-	Nickname  string       `json:"nickname"`  // 用户昵称
-	Role      model.Role   `json:"role"`      // 用户角色
-	Status    model.Status `json:"status"`    // 用户状态
-	CreatedAt time.Time    `json:"createdAt"` // 创建时间
-	Teacher   *string      `json:"teacher"`   // 导师
-	Group     *string      `json:"group"`     // 课题组
-	Avatar    *string      `json:"avatar"`    // 头像
 }
 
 type UpdateRoleReq struct {
@@ -134,7 +118,7 @@ func (mgr *UserMgr) ListUser(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param name path string true "username"
-// @Success 200 {object} resputil.Response[UserDetailResp] "成功获取用户信息"
+// @Success 200 {object} resputil.Response[any] "成功获取用户信息"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/users/{name} [get]
@@ -142,6 +126,7 @@ func (mgr *UserMgr) GetUser(c *gin.Context) {
 	name := c.Param("name")
 	u := query.User
 	user, err := u.WithContext(c).
+		Select(u.ID, u.Name, u.Role, u.Status, u.Attributes).
 		Where(u.Name.Eq(name)).
 		First()
 
@@ -150,24 +135,8 @@ func (mgr *UserMgr) GetUser(c *gin.Context) {
 		return
 	}
 
-	// 创建用户详情响应对象
-	userResp := UserDetailResp{
-		ID:        user.ID,
-		Name:      user.Name,
-		Nickname:  user.Nickname,
-		Role:      user.Role,
-		Status:    user.Status,
-		CreatedAt: user.CreatedAt,
-	}
-
-	// 从 Attributes 中获取需要的字段
-	data := user.Attributes.Data()
-	userResp.Teacher = data.Teacher
-	userResp.Group = data.Group
-	userResp.Avatar = data.Avatar
-
 	logutils.Log.Infof("get user success, username: %s", name)
-	resputil.Success(c, userResp)
+	resputil.Success(c, user)
 }
 
 // UpdateRole godoc
@@ -210,34 +179,4 @@ func (mgr *UserMgr) UpdateRole(c *gin.Context) {
 	logutils.Log.Infof("update user role success, user: %s, role: %v", name, req.Role)
 
 	resputil.Success(c, "")
-}
-
-// CheckIfEmailVerified godoc
-// @Summary 检查邮箱是否已验证
-// @Description 检查邮箱是否已验证
-// @Tags User
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Success 200 {object} resputil.Response[any] "成功获取用户信息"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/users/email/verified [get]
-func (mgr *UserMgr) CheckIfEmailVerified(c *gin.Context) {
-	token := util.GetToken(c)
-	u := query.User
-	user, err := u.WithContext(c).
-		Where(u.ID.Eq(token.UserID)).
-		First()
-
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("get user failed, detail: %v", err), resputil.NotSpecified)
-		return
-	}
-
-	// 检查邮箱是否验证
-	fmt.Println(token.Username)
-	fmt.Println(user.LastEmailVerifiedAt)
-	verified := utils.IsEmailVerified(user.LastEmailVerifiedAt)
-	resputil.Success(c, verified)
 }
