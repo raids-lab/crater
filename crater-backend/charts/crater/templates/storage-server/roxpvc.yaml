@@ -2,11 +2,11 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: crater-storage
+  name: {{ .Values.backendConfig.workspace.roxpvcName}}
   namespace: {{ .Values.backendConfig.workspace.namespace}}
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadOnlyMany
   resources:
     requests:
       storage: {{ .Values.storage.request }}
