@@ -16,7 +16,7 @@ const BaseCodeBlock = ({
     <CodeBlock
       code={code}
       language={language}
-      theme={theme == "light" ? themes.vsDark : themes.vsDark}
+      theme={theme == "light" ? themes.vsLight : themes.vsDark}
     >
       <div className="relative" ref={ref}>
         {children}

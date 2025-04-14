@@ -15,25 +15,15 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiTensorflowCreate } from "@/services/api/vcjob";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import {
-  ChevronLeftIcon,
-  CircleArrowDown,
-  CircleArrowUp,
-  CirclePlus,
-  CirclePlusIcon,
-  XIcon,
-} from "lucide-react";
+import { CirclePlus, CirclePlusIcon, XIcon } from "lucide-react";
 import FormLabelMust from "@/components/form/FormLabelMust";
-import Combobox from "@/components/form/Combobox";
 import AccordionCard from "@/components/form/AccordionCard";
 import { Separator } from "@/components/ui/separator";
 import {
-  exportToJsonFile,
-  importFromJsonFile,
   observabilitySchema,
   volumeMountsSchema,
   envsSchema,
@@ -44,7 +34,6 @@ import {
   exportToJsonString,
 } from "@/utils/form";
 import { useState } from "react";
-import { apiResourceList } from "@/services/api/resource";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,13 +41,13 @@ import { ImageFormField } from "@/components/form/ImageFormField";
 import { VolumeMountsCard } from "@/components/form/DataMountFormField";
 import { MetadataFormTensorflow } from "@/components/form/types";
 import { useTemplateLoader } from "@/hooks/useTemplateLoader";
-import {
-  OtherCard,
-  OtherOptionsFormCard,
-} from "@/components/form/OtherOptionsFormField";
-
-const VERSION = "20240528";
-const JOB_TYPE = "tensorflow";
+import { OtherOptionsFormCard } from "@/components/form/OtherOptionsFormField";
+import PageTitle from "@/components/layout/PageTitle";
+import FormImportButton from "@/components/form/FormImportButton";
+import FormExportButton from "@/components/form/FormExportButton";
+import { PublishConfigForm } from "./Publish";
+import LoadableButton from "@/components/custom/LoadableButton";
+import { ResourceFormFields } from "@/components/form/ResourceFormField";
 
 const formSchema = z.object({
   jobName: z
@@ -83,8 +72,8 @@ type FormSchema = z.infer<typeof formSchema>;
 const EnvCard = "环境变量";
 
 export const Component = () => {
-  const [envOpen, setEnvOpen] = useState<string>();
-  const [otherOpen, setOtherOpen] = useState<string>(OtherCard);
+  const [envOpen, setEnvOpen] = useState<boolean>(false);
+  const [otherOpen, setOtherOpen] = useState<boolean>(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAtomValue(globalUserInfo);
@@ -135,21 +124,6 @@ export const Component = () => {
       ]);
       toast.success(`作业 ${taskname} 创建成功`);
       navigate(-1);
-    },
-  });
-
-  const { data: resources } = useQuery({
-    queryKey: ["resources", "list"],
-    queryFn: () => apiResourceList(true),
-    select: (res) => {
-      return res.data.data
-        .sort((a, b) => {
-          return b.amountSingleMax - a.amountSingleMax;
-        })
-        .map((item) => ({
-          value: item.name,
-          label: `${item.amountSingleMax}卡 · ${item.label}`,
-        }));
     },
   });
 
@@ -210,17 +184,15 @@ export const Component = () => {
       {
         condition: (data) => data.envs.length > 0,
         setter: setEnvOpen,
-        value: EnvCard,
+        value: true,
       },
       {
         condition: (data) => data.nodeSelector.enable || data.alertEnabled,
         setter: setOtherOpen,
-        value: OtherCard,
+        value: true,
       },
     ],
   });
-
-  const currentValues = form.watch();
 
   const {
     fields: envFields,
@@ -269,89 +241,42 @@ export const Component = () => {
           onSubmit={form.handleSubmit(onSubmit)}
           className="grid flex-1 items-start gap-4 md:gap-x-6 lg:col-span-3 lg:grid-cols-3"
         >
-          <div className="items-centor flex flex-row justify-between lg:col-span-3">
-            <div className="flex flex-row items-center gap-3">
-              <Button
-                variant="outline"
-                size="icon"
-                type="button"
-                className="h-8 w-8"
-                onClick={() => navigate(-1)}
-              >
-                <ChevronLeftIcon className="size-4" />
-              </Button>
-              <h1 className="flex-1 shrink-0 text-xl font-semibold tracking-tight whitespace-nowrap sm:grow-0">
-                Tensorflow 分布式训练作业
-              </h1>
-            </div>
-            <div className="flex flex-row gap-3">
-              <Button
-                variant="outline"
-                type="button"
-                className="relative cursor-pointer"
-              >
-                <Input
-                  onChange={(e) => {
-                    importFromJsonFile<FormSchema>(
-                      VERSION,
-                      JOB_TYPE,
-                      e.target.files?.[0],
-                    )
-                      .then((data) => {
-                        form.reset(data);
-                        if (data.envs.length > 0) {
-                          setEnvOpen(EnvCard);
-                        }
-                        if (data.nodeSelector.enable) {
-                          setOtherOpen(OtherCard);
-                        }
-                        toast.success(`导入配置成功`);
-                      })
-                      .catch(() => {
-                        toast.error(`解析错误，导入配置失败`);
-                      });
-                  }}
-                  type="file"
-                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                />
-                <CircleArrowDown className="size-4" />
-                导入配置
-              </Button>
-              <Button
-                variant="outline"
-                type="button"
-                // className="h-8"
-                onClick={() => {
-                  form
-                    .trigger()
-                    .then((isValid) => {
-                      if (!isValid) {
-                        return;
-                      }
-                      exportToJsonFile(
-                        {
-                          version: VERSION,
-                          type: JOB_TYPE,
-                          data: currentValues,
-                        },
-                        currentValues.jobName + ".json",
-                      );
-                    })
-                    .catch((error) => {
-                      toast.error((error as Error).message);
-                    });
+          <PageTitle
+            title="Tensorflow 分布式训练作业"
+            description="创建基于 Tensorflow 框架的分布式训练任务"
+            className="lg:col-span-3"
+            tipContent={`版本 ${MetadataFormTensorflow.version}`}
+          >
+            <div className="items-centor flex w-fit flex-row justify-end gap-3">
+              <FormImportButton
+                metadata={MetadataFormTensorflow}
+                form={form}
+                afterImport={(data) => {
+                  if (data.envs.length > 0) {
+                    setEnvOpen(true);
+                  }
+                  if (data.nodeSelector.enable) {
+                    setOtherOpen(true);
+                  }
                 }}
+              />
+              <FormExportButton metadata={MetadataFormTensorflow} form={form} />
+              <PublishConfigForm
+                config={MetadataFormTensorflow}
+                configform={form}
+              />
+              <LoadableButton
+                isLoading={isPending}
+                isLoadingText="提交作业"
+                type="submit"
               >
-                <CircleArrowUp className="size-4" />
-                导出配置
-              </Button>
-              <Button type="submit">
                 <CirclePlus className="size-4" />
                 提交作业
-              </Button>
+              </LoadableButton>
             </div>
-          </div>
-          <div className="flex flex-col gap-4 lg:col-span-2">
+          </PageTitle>
+
+          <div className="flex flex-col gap-6 lg:col-span-2">
             <Card>
               <CardHeader>
                 <CardTitle>基本设置</CardTitle>
@@ -404,93 +329,12 @@ export const Component = () => {
                     </FormItem>
                   )}
                 />
-                <div className="grid grid-cols-3 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="ps.resource.cpu"
-                    render={() => (
-                      <FormItem>
-                        <FormLabel>
-                          CPU (核数)
-                          <FormLabelMust />
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            {...form.register("ps.resource.cpu", {
-                              valueAsNumber: true,
-                            })}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="ps.resource.gpu.count"
-                    render={() => (
-                      <FormItem>
-                        <FormLabel>
-                          GPU (卡数)
-                          <FormLabelMust />
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            {...form.register("ps.resource.gpu.count", {
-                              valueAsNumber: true,
-                            })}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="ps.resource.memory"
-                    render={() => (
-                      <FormItem>
-                        <FormLabel>
-                          内存 (GB)
-                          <FormLabelMust />
-                        </FormLabel>
-                        <FormControl>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              {...form.register("ps.resource.memory", {
-                                valueAsNumber: true,
-                              })}
-                            />
-                          </FormControl>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="ps.resource.gpu.model"
-                  render={({ field }) => (
-                    <FormItem hidden={currentValues.ps.resource.gpu.count == 0}>
-                      <FormLabel>
-                        GPU 型号
-                        <FormLabelMust />
-                      </FormLabel>
-                      <FormControl>
-                        <Combobox
-                          items={resources ?? []}
-                          current={field.value ?? ""}
-                          handleSelect={(value) => field.onChange(value)}
-                          formTitle=" GPU 型号"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                <ResourceFormFields
+                  form={form}
+                  cpuPath="ps.resource.cpu"
+                  memoryPath="ps.resource.memory"
+                  gpuCountPath="ps.resource.gpu.count"
+                  gpuModelPath="ps.resource.gpu.model"
                 />
                 <ImageFormField form={form} name="ps.image" />
                 <FormField
@@ -613,95 +457,12 @@ export const Component = () => {
                     </FormItem>
                   )}
                 />
-                <div className="grid grid-cols-3 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="worker.resource.cpu"
-                    render={() => (
-                      <FormItem>
-                        <FormLabel>
-                          CPU (核数)
-                          <FormLabelMust />
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            {...form.register("worker.resource.cpu", {
-                              valueAsNumber: true,
-                            })}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="worker.resource.gpu.count"
-                    render={() => (
-                      <FormItem>
-                        <FormLabel>
-                          GPU (卡数)
-                          <FormLabelMust />
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            {...form.register("worker.resource.gpu.count", {
-                              valueAsNumber: true,
-                            })}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="worker.resource.memory"
-                    render={() => (
-                      <FormItem>
-                        <FormLabel>
-                          内存 (GB)
-                          <FormLabelMust />
-                        </FormLabel>
-                        <FormControl>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              {...form.register("worker.resource.memory", {
-                                valueAsNumber: true,
-                              })}
-                            />
-                          </FormControl>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="worker.resource.gpu.model"
-                  render={({ field }) => (
-                    <FormItem
-                      hidden={currentValues.worker.resource.gpu.count == 0}
-                    >
-                      <FormLabel>
-                        GPU 型号
-                        <FormLabelMust />
-                      </FormLabel>
-                      <FormControl>
-                        <Combobox
-                          items={resources ?? []}
-                          current={field.value ?? ""}
-                          handleSelect={(value) => field.onChange(value)}
-                          formTitle=" GPU 型号"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                <ResourceFormFields
+                  form={form}
+                  cpuPath="worker.resource.cpu"
+                  memoryPath="worker.resource.memory"
+                  gpuCountPath="worker.resource.gpu.count"
+                  gpuModelPath="worker.resource.gpu.model"
                 />
                 <ImageFormField form={form} name="worker.image" />
                 <FormField
@@ -801,12 +562,12 @@ export const Component = () => {
               </CardContent>
             </Card>
           </div>
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-6">
             <VolumeMountsCard form={form} />
             <AccordionCard
               cardTitle={EnvCard}
-              value={envOpen}
-              setValue={setEnvOpen}
+              open={envOpen}
+              setOpen={setEnvOpen}
             >
               <div className="mt-3 space-y-5">
                 {envFields.map((field, index) => (
@@ -879,8 +640,8 @@ export const Component = () => {
               alertEnabledPath="alertEnabled"
               nodeSelectorEnablePath="nodeSelector.enable"
               nodeSelectorNodeNamePath="nodeSelector.nodeName"
-              value={otherOpen}
-              setValue={setOtherOpen}
+              open={otherOpen}
+              setOpen={setOtherOpen}
             />
           </div>
         </form>
