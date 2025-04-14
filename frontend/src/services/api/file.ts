@@ -64,3 +64,10 @@ export const apiGetQueueSpace = () =>
 
 export const apiMoveFile = (req: MoveFile, path: string) =>
   instance.post<IResponse<MoveFile>>(`ss/move/${path.replace(/^\//, "")}`, req);
+
+export const apiGetDatasetFiles = (datasetID: number, path: string) =>
+  instance.get<IResponse<FileItem[]>>(
+    path === ""
+      ? `ss/dataset/${datasetID}`
+      : `ss/dataset/${datasetID}/${path.replace(/^\//, "")}`,
+  );
