@@ -44,7 +44,7 @@ export function VolumeMountsCard<
     volumeMounts: VolumeMountsSchema;
   },
 >({ form, className }: VolumeMountsCardProps<T>) {
-  const [dataMountOpen, setDataMountOpen] = useState<string>(DataMountCard);
+  const [dataMountOpen, setDataMountOpen] = useState<boolean>(true);
   const user = useAtomValue(globalUserInfo);
 
   // Get dataset information
@@ -100,8 +100,8 @@ export function VolumeMountsCard<
   return (
     <AccordionCard
       cardTitle={DataMountCard}
-      value={dataMountOpen}
-      setValue={setDataMountOpen}
+      open={dataMountOpen}
+      setOpen={setDataMountOpen}
       className={className}
     >
       <div className="mt-3 space-y-5">

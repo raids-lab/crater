@@ -24,7 +24,7 @@ export function CodeContent({
 
   return (
     <Card
-      className="text-muted-foreground dark:bg-muted/30 relative h-full overflow-hidden bg-slate-900 p-1 dark:border"
+      className="text-muted-foreground bg-muted/30 relative h-full overflow-hidden p-1 dark:border"
       ref={refRoot}
     >
       <ScrollArea style={{ width, height }}>

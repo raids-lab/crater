@@ -13,9 +13,9 @@ export interface UIStateUpdater<T> {
   /** Condition to determine if this state should be updated */
   condition: (data: T) => boolean;
   /** State setter function */
-  setter: (value: string) => void;
+  setter: (value: boolean) => void;
   /** Value to set if condition is true */
-  value: string;
+  value: boolean;
 }
 
 interface TemplateLoaderOptions<T extends FieldValues> {

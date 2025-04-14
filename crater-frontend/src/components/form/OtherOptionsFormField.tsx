@@ -26,8 +26,8 @@ interface OtherOptionsFormCardProps<T extends FieldValues> {
   alertEnabledPath: FieldPath<T>;
   nodeSelectorEnablePath: FieldPath<T>;
   nodeSelectorNodeNamePath: FieldPath<T>;
-  value: string | undefined;
-  setValue: (value: string) => void;
+  open: boolean;
+  setOpen: (open: boolean) => void;
 }
 
 export function OtherOptionsFormCard<T extends FieldValues>({
@@ -35,13 +35,13 @@ export function OtherOptionsFormCard<T extends FieldValues>({
   alertEnabledPath,
   nodeSelectorEnablePath,
   nodeSelectorNodeNamePath,
-  value,
-  setValue,
+  open,
+  setOpen,
 }: OtherOptionsFormCardProps<T>) {
   const nodeSelectorEnabled = form.watch(nodeSelectorEnablePath);
 
   return (
-    <AccordionCard cardTitle={OtherCard} value={value} setValue={setValue}>
+    <AccordionCard cardTitle={OtherCard} open={open} setOpen={setOpen}>
       <div className="mt-3 space-y-3">
         <FormField
           control={form.control}

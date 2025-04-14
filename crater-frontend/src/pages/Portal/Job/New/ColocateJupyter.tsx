@@ -48,7 +48,7 @@ import { Switch } from "@/components/ui/switch";
 import { apiResourceList } from "@/services/api/resource";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
-import { EnvCard, TensorboardCard } from "./Custom";
+import { EnvCard } from "./Custom";
 import { VolumeMountsCard } from "@/components/form/DataMountFormField";
 import { OtherCard } from "@/components/form/OtherOptionsFormField";
 
@@ -156,9 +156,8 @@ const formSchema = z.object({
 type FormSchema = z.infer<typeof formSchema>;
 
 export const Component = () => {
-  const [envOpen, setEnvOpen] = useState<string>();
-  const [tensorboardOpen, setTensorboardOpen] = useState<string>();
-  const [otherOpen, setOtherOpen] = useState<string>();
+  const [envOpen, setEnvOpen] = useState<boolean>(false);
+  const [otherOpen, setOtherOpen] = useState<boolean>(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAtomValue(globalUserInfo);
@@ -278,13 +277,10 @@ export const Component = () => {
       form.reset(jobInfo.data);
 
       if (jobInfo.data.envs.length > 0) {
-        setEnvOpen(EnvCard);
-      }
-      if (jobInfo.data.observability.tbEnable) {
-        setTensorboardOpen(TensorboardCard);
+        setEnvOpen(true);
       }
       if (jobInfo.data.nodeSelector.enable) {
-        setOtherOpen(OtherCard);
+        setOtherOpen(true);
       }
     },
     onError: () => {
@@ -361,10 +357,7 @@ export const Component = () => {
                         form.reset(data);
 
                         if (data.envs.length > 0) {
-                          setEnvOpen(EnvCard);
-                        }
-                        if (data.observability.tbEnable) {
-                          setTensorboardOpen(TensorboardCard);
+                          setEnvOpen(true);
                         }
                         toast.success(`导入配置成功`);
                       })
@@ -549,8 +542,8 @@ export const Component = () => {
             <VolumeMountsCard form={form} />
             <AccordionCard
               cardTitle={EnvCard}
-              value={envOpen}
-              setValue={setEnvOpen}
+              open={envOpen}
+              setOpen={setEnvOpen}
             >
               <div className="mt-3 space-y-5">
                 {envFields.map((field, index) => (
@@ -618,51 +611,9 @@ export const Component = () => {
               </div>
             </AccordionCard>
             <AccordionCard
-              cardTitle={TensorboardCard}
-              value={tensorboardOpen}
-              setValue={setTensorboardOpen}
-            >
-              <div className="mt-3 space-y-2">
-                <FormField
-                  control={form.control}
-                  name={`observability.tbEnable`}
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                      <FormLabel>启用 Tensorboard</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`observability.tbLogDir`}
-                  render={({ field }) => (
-                    <FormItem
-                      className={cn({
-                        hidden: !currentValues.observability.tbEnable,
-                      })}
-                    >
-                      <FormControl>
-                        <Input {...field} className="font-mono" />
-                      </FormControl>
-                      <FormDescription>
-                        日志路径（仅支持采集个人文件夹下日志）
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </AccordionCard>
-            <AccordionCard
               cardTitle={OtherCard}
-              value={otherOpen}
-              setValue={setOtherOpen}
+              open={otherOpen}
+              setOpen={setOtherOpen}
             >
               <div className="mt-3 space-y-2">
                 <FormField

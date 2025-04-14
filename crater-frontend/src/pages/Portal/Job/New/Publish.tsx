@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 import { globalUserInfo } from "@/utils/store";
 import { useAtomValue } from "jotai";
+import { CodeContent } from "@/components/codeblock/ConfigDialog";
 
 // Define the form schema with Zod
 const formSchema = z.object({
@@ -217,7 +218,7 @@ export function PublishConfigForm<T extends FieldValues>({
                   <Textarea {...field} className="min-h-[200px]" />
                 </FormControl>
                 <FormDescription>
-                  关于此配置的详细使用的markdown文档,请输入markdown源码
+                  关于此配置的详细说明，支持 Markdown 格式
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -226,14 +227,9 @@ export function PublishConfigForm<T extends FieldValues>({
           <div className="space-y-2">
             <Label htmlFor="config-preview">配置预览</Label>
             <div className="relative">
-              <Textarea
-                id="config-preview"
-                value={formattedConfig}
-                readOnly
-                className="bg-muted font-mono text-sm"
-              />
+              <CodeContent data={formattedConfig} language="json" />
             </div>
-            <Label className="text-muted-foreground">
+            <Label className="text-muted-foreground font-normal">
               请确保您不会在此配置中包含任何敏感信息，如密码、密钥等
             </Label>
           </div>

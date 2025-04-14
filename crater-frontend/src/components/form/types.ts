@@ -19,12 +19,12 @@ export const MetadataFormCustom: MetadataFormType = {
 };
 
 export const MetadataFormTensorflow: MetadataFormType = {
-  version: "20250313",
+  version: "20240528",
   type: "tensorflow",
 };
 
 export const MetadataFormPytorch: MetadataFormType = {
-  version: "20250313",
+  version: "20240528",
   type: "pytorch",
 };
 

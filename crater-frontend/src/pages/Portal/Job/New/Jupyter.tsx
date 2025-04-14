@@ -18,7 +18,6 @@ import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiJupyterCreate } from "@/services/api/vcjob";
-import { cn } from "@/lib/utils";
 import { convertToK8sResources } from "@/utils/resource";
 import { toast } from "sonner";
 import { CirclePlus, XIcon } from "lucide-react";
@@ -33,7 +32,7 @@ import {
 import { useState } from "react";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
-import { EnvCard, IngressCard } from "./Custom";
+import { IngressCard } from "./Custom";
 import FormExportButton from "@/components/form/FormExportButton";
 import FormImportButton from "@/components/form/FormImportButton";
 import { MetadataFormJupyter } from "@/components/form/types";
@@ -44,10 +43,8 @@ import { ImageFormField } from "@/components/form/ImageFormField";
 import { VolumeMountsCard } from "@/components/form/DataMountFormField";
 import { ResourceFormFields } from "@/components/form/ResourceFormField";
 import { TemplateInfo } from "@/components/form/TemplateInfo";
-import {
-  OtherCard,
-  OtherOptionsFormCard,
-} from "@/components/form/OtherOptionsFormField";
+import { OtherOptionsFormCard } from "@/components/form/OtherOptionsFormField";
+import { EnvFormCard } from "@/components/form/EnvFormField";
 
 const formSchema = z.object({
   taskname: z
@@ -154,9 +151,9 @@ const formSchema = z.object({
 type FormSchema = z.infer<typeof formSchema>;
 
 export const Component = () => {
-  const [envOpen, setEnvOpen] = useState<string>();
-  const [otherOpen, setOtherOpen] = useState<string>(OtherCard);
-  const [ingressOpen, setIngressOpen] = useState<string>();
+  const [envOpen, setEnvOpen] = useState(false);
+  const [otherOpen, setOtherOpen] = useState(true);
+  const [ingressOpen, setIngressOpen] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAtomValue(globalUserInfo);
@@ -255,15 +252,6 @@ export const Component = () => {
     control: form.control,
   });
 
-  const {
-    fields: envFields,
-    append: envAppend,
-    remove: envRemove,
-  } = useFieldArray<FormSchema>({
-    name: "envs",
-    control: form.control,
-  });
-
   // 2. Define a submit handler.
   const onSubmit = (values: FormSchema) => {
     // Do something with the form values.
@@ -310,10 +298,10 @@ export const Component = () => {
                 form={form}
                 afterImport={(data) => {
                   if (data.envs.length > 0) {
-                    setEnvOpen(EnvCard);
+                    setEnvOpen(true);
                   }
                   if (data.nodeSelector.enable) {
-                    setOtherOpen(OtherCard);
+                    setOtherOpen(true);
                   }
                 }}
               />
@@ -374,19 +362,19 @@ export const Component = () => {
                 {
                   condition: (data) => data.envs.length > 0,
                   setter: setEnvOpen,
-                  value: EnvCard,
+                  value: true,
                 },
                 {
                   condition: (data) =>
                     data.ingresses.length > 0 || data.nodeports.length > 0,
                   setter: setIngressOpen,
-                  value: IngressCard,
+                  value: true,
                 },
                 {
                   condition: (data) =>
                     data.nodeSelector.enable || data.alertEnabled,
                   setter: setOtherOpen,
-                  value: OtherCard,
+                  value: true,
                 },
               ]}
             />
@@ -395,8 +383,8 @@ export const Component = () => {
             <VolumeMountsCard form={form} />
             <AccordionCard
               cardTitle={IngressCard}
-              value={ingressOpen}
-              setValue={setIngressOpen}
+              open={ingressOpen}
+              setOpen={setIngressOpen}
             >
               <div className="mt-3 space-y-5">
                 <Tabs defaultValue="ingress" className="w-full">
@@ -564,83 +552,14 @@ export const Component = () => {
                 </Tabs>
               </div>
             </AccordionCard>
-            <AccordionCard
-              cardTitle={EnvCard}
-              value={envOpen}
-              setValue={setEnvOpen}
-            >
-              <div className="mt-3 space-y-5">
-                {envFields.map((field, index) => (
-                  <div key={field.id}>
-                    <Separator
-                      className={cn("mb-5", index === 0 && "hidden")}
-                    />
-                    <div className="space-y-5">
-                      <FormField
-                        control={form.control}
-                        name={`envs.${index}.name`}
-                        render={({ field }) => (
-                          <FormItem className="relative">
-                            <button
-                              onClick={() => envRemove(index)}
-                              className="data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none"
-                            >
-                              <XIcon className="size-4" />
-                              <span className="sr-only">Close</span>
-                            </button>
-                            <FormLabel>
-                              变量名 {index + 1}
-                              <FormLabelMust />
-                            </FormLabel>
-                            <FormControl>
-                              <Input {...field} className="font-mono" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`envs.${index}.value`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>
-                              变量值 {index + 1}
-                              <FormLabelMust />
-                            </FormLabel>
-                            <FormControl>
-                              <Input {...field} className="font-mono" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full"
-                  onClick={() =>
-                    envAppend({
-                      name: "",
-                      value: "",
-                    })
-                  }
-                >
-                  <CirclePlus className="size-4" />
-                  添加{EnvCard}
-                </Button>
-              </div>
-            </AccordionCard>
+            <EnvFormCard form={form} open={envOpen} setOpen={setEnvOpen} />
             <OtherOptionsFormCard
               form={form}
               alertEnabledPath="alertEnabled"
               nodeSelectorEnablePath="nodeSelector.enable"
               nodeSelectorNodeNamePath="nodeSelector.nodeName"
-              value={otherOpen}
-              setValue={setOtherOpen}
+              open={otherOpen}
+              setOpen={setOtherOpen}
             />
           </div>
         </form>
