@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useParams } from "react-router-dom";
@@ -32,10 +32,13 @@ import {
   UserRoundIcon,
   CalendarIcon,
   Trash,
+  File,
   FileIcon,
   Folder,
   BotIcon,
   DatabaseIcon,
+  FilesIcon,
+  ArrowLeftIcon,
 } from "lucide-react";
 import useBreadcrumb from "@/hooks/useBreadcrumb";
 import { ShareDatasetToQueueDialog } from "@/components/custom/QueueNotInSelect";
@@ -57,6 +60,9 @@ import { DatasetUpdateForm } from "./updateform";
 import { globalUserInfo } from "@/utils/store";
 import { useAtomValue } from "jotai";
 import DetailTitle from "../layout/DetailTitle";
+import { FileItem, apiGetDatasetFiles } from "@/services/api/file";
+import { FileSizeComponent } from "./FileSize";
+import TooltipButton from "../custom/TooltipButton";
 
 interface SharedResourceTableProps {
   resourceType: "model" | "dataset";
@@ -105,6 +111,49 @@ export function SharedResourceTable({
     queryKey: ["data", "datasetByID", datasetId],
     queryFn: () => apiGetDatasetByID(datasetId),
     select: (res) => res.data.data[0],
+  });
+  const [pathname, setPathname] = useState<string>("");
+
+  const handleBackClick = () => {
+    if (pathname) {
+      const pathParts = pathname.split("/").filter(Boolean); // 分割路径并过滤空字符串
+
+      if (pathParts.length > 1) {
+        pathParts.pop(); // 移除最后一部分
+        const newPath = "/" + pathParts.join("/"); // 重新拼接路径
+        setPathname(newPath); // 更新当前路径
+      } else {
+        setPathname(""); // 如果路径是根目录，清空路径
+      }
+    }
+  };
+
+  const queryDataset = useQuery({
+    queryKey: ["datasetfiles", pathname, datasetId],
+    queryFn: () => apiGetDatasetFiles(datasetId, pathname),
+    select: (res) => {
+      return (
+        res.data.data
+          ?.map((r) => {
+            return {
+              name: r.name,
+              modifytime: r.modifytime,
+              isdir: r.isdir,
+              size: r.size,
+              sys: r.sys,
+            };
+          })
+          .sort((a, b) => {
+            if (a.isdir && !b.isdir) {
+              return -1; // a在b之前
+            } else if (!a.isdir && b.isdir) {
+              return 1; // a在b之后
+            } else {
+              return a.name.localeCompare(b.name);
+            }
+          }) ?? []
+      );
+    },
   });
 
   const { mutate: cancelShareWithUser } = useMutation({
@@ -275,6 +324,86 @@ export function SharedResourceTable({
       },
     ],
     [cancelShareWithQueue, resourceType],
+  );
+  const getHeader = (key: string): string => {
+    switch (key) {
+      case "name":
+        return "名称";
+      case "modifytime":
+        return "更新于";
+      case "size":
+        return "大小";
+      default:
+        return key;
+    }
+  };
+  const datasetFilescolumns = useMemo<ColumnDef<FileItem>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("name")} />
+        ),
+        cell: ({ row }) => {
+          if (row.original.isdir) {
+            return (
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <Folder className="mr-2 size-5 text-yellow-600 dark:text-yellow-400" />
+                <Button
+                  onClick={() => {
+                    setPathname((prevPath) => {
+                      const cleanPrev = prevPath.replace(/\/+$/, "");
+                      return `${cleanPrev}/${row.original.name}`;
+                    });
+                  }}
+                  variant={"link"}
+                  className="text-secondary-foreground h-8 px-0 text-left font-normal"
+                >
+                  {row.getValue("name")}
+                </Button>
+              </div>
+            );
+          } else {
+            return (
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <File className="text-muted-foreground mr-2 size-5" />
+                <span className="text-secondary-foreground">
+                  {row.getValue("name")}
+                </span>
+              </div>
+            );
+          }
+        },
+      },
+      {
+        accessorKey: "modifytime",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={getHeader("modifytime")}
+          />
+        ),
+        cell: ({ row }) => {
+          return (
+            <TimeDistance date={row.getValue("modifytime")}></TimeDistance>
+          );
+        },
+      },
+      {
+        accessorKey: "size",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("size")} />
+        ),
+        cell: ({ row }) => {
+          if (row.original.isdir) {
+            return;
+          } else {
+            return <FileSizeComponent size={row.getValue("size")} />;
+          }
+        },
+      },
+    ],
+    [],
   );
 
   return (
@@ -486,6 +615,30 @@ export function SharedResourceTable({
             />
           ),
           scrollable: true,
+        },
+        {
+          key: "datasetFiles",
+          icon: FilesIcon,
+          label: `${resourceType === "model" ? "模型" : "数据集"}文件`,
+          children: (
+            <>
+              <TooltipButton
+                variant="outline"
+                size="icon"
+                onClick={handleBackClick}
+                className="h-8 w-8"
+                tooltipContent="返回上一级"
+              >
+                <ArrowLeftIcon className="size-4" />
+              </TooltipButton>
+
+              <DataTable
+                storageKey="dataset_files"
+                query={queryDataset}
+                columns={datasetFilescolumns}
+              />
+            </>
+          ),
         },
       ]}
     />
