@@ -106,6 +106,10 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 					Action: bus.CompleteJobAction,
 					Event:  bus.TaskCompletedEvent,
 				},
+				{
+					Action: bus.TerminateJobAction,
+					Event:  bus.PodFailedEvent,
+				},
 			}
 			minAvailable = task.Replicas
 		} else if task.Name == "worker" {
@@ -128,6 +132,12 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 			SchedulerName: VolcanoSchedulerName,
 			Plugins: map[string][]string{
 				"pytorch": {"--master=master", "--worker=worker", "--port=23456"},
+			},
+			Policies: []batch.LifecyclePolicy{
+				{
+					Action: bus.RestartJobAction,
+					Event:  bus.PodEvictedEvent,
+				},
 			},
 			Queue: token.AccountName,
 			Tasks: tasks,
