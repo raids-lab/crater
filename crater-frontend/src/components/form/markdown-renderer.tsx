@@ -13,7 +13,6 @@ import { cn } from "@/lib/utils";
 import { CopyButton } from "@/components/button/copy-button";
 import { logger } from "@/utils/loglevel";
 import { useTheme } from "@/utils/theme";
-import { toast } from "sonner";
 
 // 添加全局缓存对象来存储已处理的代码高亮结果
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -71,7 +70,6 @@ const HighlightedPre = React.memo(
       async function highlightCode() {
         try {
           // 使用动态导入并限制导入频率
-          toast.info("Loading syntax highlighter...");
           const { codeToTokens, bundledLanguages } = await import("shiki");
 
           if (!isMountedRef.current || abortController.signal.aborted) return;
