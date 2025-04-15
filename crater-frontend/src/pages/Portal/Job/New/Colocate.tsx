@@ -48,6 +48,7 @@ import {
   nodeportsSchema,
   VolumeMountType,
   exportToJsonString,
+  forwardsSchema,
 } from "@/utils/form";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
@@ -93,6 +94,7 @@ const formSchema = z.object({
   openssh: z.boolean().default(false),
   ingresses: ingressesSchema,
   nodeports: nodeportsSchema,
+  forwards: forwardsSchema,
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -115,10 +117,7 @@ export const Component = () => {
         workingDir: values.task.workingDir,
         volumeMounts: values.volumeMounts,
         envs: values.envs,
-        useTensorBoard: values.observability.tbEnable,
-        openssh: values.openssh,
-        ingresses: values.ingresses,
-        nodeports: values.nodeports,
+        forwards: values.forwards,
         alertEnabled: values.alertEnalbled,
         selectors: values.nodeSelector.enable
           ? [

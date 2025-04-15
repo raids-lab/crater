@@ -3,7 +3,6 @@ import { CardTitle } from "@/components/ui-custom/card";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -13,26 +12,24 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiJupyterCreate } from "@/services/api/vcjob";
 import { convertToK8sResources } from "@/utils/resource";
 import { toast } from "sonner";
-import { CirclePlus, XIcon } from "lucide-react";
+import { CirclePlus } from "lucide-react";
 import FormLabelMust from "@/components/form/FormLabelMust";
-import AccordionCard from "@/components/form/AccordionCard";
-import { Separator } from "@/components/ui/separator";
 import {
   exportToJsonString,
+  forwardsSchema,
+  ForwardType,
   nodeSelectorSchema,
   VolumeMountType,
 } from "@/utils/form";
 import { useState } from "react";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
-import { IngressCard } from "./Custom";
 import FormExportButton from "@/components/form/FormExportButton";
 import FormImportButton from "@/components/form/FormImportButton";
 import { MetadataFormJupyter } from "@/components/form/types";
@@ -45,6 +42,7 @@ import { ResourceFormFields } from "@/components/form/ResourceFormField";
 import { TemplateInfo } from "@/components/form/TemplateInfo";
 import { OtherOptionsFormCard } from "@/components/form/OtherOptionsFormField";
 import { EnvFormCard } from "@/components/form/EnvFormField";
+import { ForwardFormCard } from "@/components/form/ForwardFormField";
 
 const formSchema = z.object({
   taskname: z
@@ -120,30 +118,7 @@ const formSchema = z.object({
         }),
     }),
   ),
-  ingresses: z.array(
-    z.object({
-      name: z
-        .string()
-        .min(1)
-        .max(20)
-        .regex(/^[a-z]+$/, {
-          message: "只能包含小写字母",
-        }),
-      port: z.number().int().positive(),
-    }),
-  ),
-  nodeports: z.array(
-    z.object({
-      name: z
-        .string()
-        .min(1)
-        .max(20)
-        .regex(/^[a-z]+$/, {
-          message: "只能包含小写字母",
-        }),
-      port: z.number().int().positive(),
-    }),
-  ),
+  forwards: forwardsSchema,
   nodeSelector: nodeSelectorSchema,
   alertEnabled: z.boolean().default(true),
 });
@@ -153,7 +128,6 @@ type FormSchema = z.infer<typeof formSchema>;
 export const Component = () => {
   const [envOpen, setEnvOpen] = useState(false);
   const [otherOpen, setOtherOpen] = useState(true);
-  const [ingressOpen, setIngressOpen] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAtomValue(globalUserInfo);
@@ -178,8 +152,6 @@ export const Component = () => {
         image: values.image,
         volumeMounts: values.volumeMounts,
         envs: values.envs,
-        ingresses: values.ingresses,
-        nodeports: values.nodeports,
         alertEnabled: values.alertEnabled,
         selectors: values.nodeSelector.enable
           ? [
@@ -191,6 +163,7 @@ export const Component = () => {
             ]
           : undefined,
         template: exportToJsonString(MetadataFormJupyter, values),
+        forwards: values.forwards,
       });
     },
     onSuccess: async (_, { taskname }) => {
@@ -220,10 +193,11 @@ export const Component = () => {
           mountPath: `/home/${user.name}`,
         },
       ],
-      ingresses: [
+      forwards: [
         {
+          type: ForwardType.IngressType,
           name: "notebook",
-          port: 8888,
+          port: 0,
         },
       ],
       envs: [],
@@ -234,21 +208,8 @@ export const Component = () => {
     },
   });
 
-  const {
-    fields: ingressFields,
-    append: ingressAppend,
-    remove: ingressRemove,
-  } = useFieldArray<FormSchema>({
-    name: "ingresses",
-    control: form.control,
-  });
-
-  const {
-    fields: nodeportFields,
-    append: nodeportAppend,
-    remove: nodeportRemove,
-  } = useFieldArray<FormSchema>({
-    name: "nodeports",
+  useFieldArray<FormSchema>({
+    name: "forwards",
     control: form.control,
   });
 
@@ -366,12 +327,6 @@ export const Component = () => {
                 },
                 {
                   condition: (data) =>
-                    data.ingresses.length > 0 || data.nodeports.length > 0,
-                  setter: setIngressOpen,
-                  value: true,
-                },
-                {
-                  condition: (data) =>
                     data.nodeSelector.enable || data.alertEnabled,
                   setter: setOtherOpen,
                   value: true,
@@ -381,177 +336,7 @@ export const Component = () => {
           </div>
           <div className="flex flex-col gap-4 md:gap-6">
             <VolumeMountsCard form={form} />
-            <AccordionCard
-              cardTitle={IngressCard}
-              open={ingressOpen}
-              setOpen={setIngressOpen}
-            >
-              <div className="mt-3 space-y-5">
-                <Tabs defaultValue="ingress" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="ingress">Ingress 规则</TabsTrigger>
-                    <TabsTrigger value="nodeport">Nodeport 规则</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="ingress" className="space-y-5">
-                    {ingressFields.map((field, index) => (
-                      <div key={field.id}>
-                        <Separator
-                          className={index === 0 ? "hidden" : "mb-5"}
-                        />
-                        <div className="relative space-y-5">
-                          <button
-                            onClick={() => ingressRemove(index)}
-                            className="absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none"
-                          >
-                            <XIcon className="size-4" />
-                            <span className="sr-only">Remove</span>
-                          </button>
-                          <FormField
-                            control={form.control}
-                            name={`ingresses.${index}.name`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>
-                                  规则名称 {index + 1}
-                                  <FormLabelMust />
-                                </FormLabel>
-                                <FormControl>
-                                  <Input {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name={`ingresses.${index}.port`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>
-                                  容器端口 {index + 1}
-                                  <FormLabelMust />
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    {...field}
-                                    type="text"
-                                    onChange={(e) => {
-                                      const value = e.target.value;
-                                      if (value === "") {
-                                        field.onChange(null);
-                                      } else {
-                                        const parsed = parseInt(value, 10);
-                                        if (!isNaN(parsed)) {
-                                          field.onChange(parsed);
-                                        }
-                                      }
-                                    }}
-                                    value={field.value ?? ""}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="w-full"
-                      onClick={() =>
-                        ingressAppend({
-                          name: "",
-                          port: 0,
-                        })
-                      }
-                    >
-                      <CirclePlus className="size-4" />
-                      添加 Ingress 规则
-                    </Button>
-                  </TabsContent>
-                  <TabsContent value="nodeport" className="space-y-5">
-                    {nodeportFields.map((field, index) => (
-                      <div key={field.id}>
-                        <Separator
-                          className={index === 0 ? "hidden" : "mb-5"}
-                        />
-                        <div className="relative space-y-5">
-                          <button
-                            onClick={() => nodeportRemove(index)}
-                            className="absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none"
-                          >
-                            <XIcon className="size-4" />
-                            <span className="sr-only">Remove</span>
-                          </button>
-                          <FormField
-                            control={form.control}
-                            name={`nodeports.${index}.name`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>
-                                  规则名称 {index + 1}
-                                  <FormLabelMust />
-                                </FormLabel>
-                                <FormControl>
-                                  <Input {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name={`nodeports.${index}.port`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>
-                                  容器端口 {index + 1}
-                                  <FormLabelMust />
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    {...field}
-                                    type="text"
-                                    onChange={(e) => {
-                                      const value = e.target.value;
-                                      if (value === "") {
-                                        field.onChange(null);
-                                      } else {
-                                        const parsed = parseInt(value, 10);
-                                        if (!isNaN(parsed)) {
-                                          field.onChange(parsed);
-                                        }
-                                      }
-                                    }}
-                                    value={field.value ?? ""}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="w-full"
-                      onClick={() =>
-                        nodeportAppend({
-                          name: "",
-                          port: 0,
-                        })
-                      }
-                    >
-                      <CirclePlus className="size-4" /> 添加 Nodeport 规则
-                    </Button>
-                  </TabsContent>
-                </Tabs>
-              </div>
-            </AccordionCard>
+            <ForwardFormCard form={form} />
             <EnvFormCard form={form} open={envOpen} setOpen={setEnvOpen} />
             <OtherOptionsFormCard
               form={form}

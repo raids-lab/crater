@@ -47,6 +47,7 @@ import {
   ingressesSchema,
   nodeportsSchema,
   VolumeMountType,
+  forwardsSchema,
 } from "@/utils/form";
 import { useEffect, useState } from "react";
 import { useAtomValue } from "jotai";
@@ -103,6 +104,7 @@ const formSchema = z.object({
   openssh: z.boolean().default(false),
   ingresses: ingressesSchema,
   nodeports: nodeportsSchema,
+  forwards: forwardsSchema,
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -124,8 +126,7 @@ export const Component = () => {
         workingDir: values.task.workingDir,
         volumeMounts: values.volumeMounts,
         envs: values.envs,
-        ingresses: values.ingresses,
-        nodeports: values.nodeports,
+        forwards: values.forwards,
         alertEnabled: values.alertEnabled,
         runningType: values.runningType,
         params: values.params,
