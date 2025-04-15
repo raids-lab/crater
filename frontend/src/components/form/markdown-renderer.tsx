@@ -12,6 +12,8 @@ import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { CopyButton } from "@/components/button/copy-button";
 import { logger } from "@/utils/loglevel";
+import { useTheme } from "@/utils/theme";
+import { toast } from "sonner";
 
 // 添加全局缓存对象来存储已处理的代码高亮结果
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,6 +48,7 @@ const HighlightedPre = React.memo(
     const [tokens, setTokens] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const isMountedRef = useRef(true);
+    const { theme } = useTheme();
 
     // 创建唯一缓存键
     const cacheKey = useMemo(
@@ -68,6 +71,7 @@ const HighlightedPre = React.memo(
       async function highlightCode() {
         try {
           // 使用动态导入并限制导入频率
+          toast.info("Loading syntax highlighter...");
           const { codeToTokens, bundledLanguages } = await import("shiki");
 
           if (!isMountedRef.current || abortController.signal.aborted) return;
@@ -114,7 +118,7 @@ const HighlightedPre = React.memo(
         isMountedRef.current = false;
         abortController.abort();
       };
-    }, [cacheKey]);
+    }, [cacheKey, children, language]);
 
     if (isLoading) {
       return <pre {...props}>{children}</pre>;
@@ -132,10 +136,18 @@ const HighlightedPre = React.memo(
               <span>
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {line.map((token: any, tokenIndex: number) => {
-                  const style =
+                  const tokenStyle =
                     typeof token.htmlStyle === "string"
                       ? undefined
                       : token.htmlStyle;
+
+                  const style = {
+                    ...tokenStyle,
+                    color:
+                      theme === "light"
+                        ? "var(--shiki-light)"
+                        : "var(--shiki-dark)",
+                  };
 
                   return (
                     <span
