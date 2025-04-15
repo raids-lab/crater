@@ -33,6 +33,7 @@ import {
   nodeportsSchema,
   VolumeMountType,
   exportToJsonString,
+  forwardsSchema,
 } from "@/utils/form";
 import { useState } from "react";
 import { useAtomValue } from "jotai";
@@ -74,6 +75,7 @@ const formSchema = z.object({
   nodeports: nodeportsSchema,
   nodeSelector: nodeSelectorSchema,
   alertEnabled: z.boolean().default(true),
+  forwards: forwardsSchema,
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -100,8 +102,7 @@ export const Component = () => {
         workingDir: values.task.workingDir,
         volumeMounts: values.volumeMounts,
         envs: values.envs,
-        ingresses: values.ingresses,
-        nodeports: values.nodeports,
+        forwards: values.forwards,
         alertEnabled: values.alertEnabled,
         selectors: values.nodeSelector.enable
           ? [

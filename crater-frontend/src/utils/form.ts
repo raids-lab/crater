@@ -64,6 +64,11 @@ export enum VolumeMountType {
   DataType,
 }
 
+export enum ForwardType {
+  IngressType = 1,
+  NodeportType,
+}
+
 export const volumeMountsSchema = z.array(
   z.object({
     type: z.number().int(),
@@ -135,6 +140,22 @@ export const nodeportsSchema = z.array(
 );
 
 export type NodeportsSchema = z.infer<typeof nodeportsSchema>;
+
+export const forwardsSchema = z.array(
+  z.object({
+    type: z.number().int(),
+    name: z
+      .string()
+      .min(1)
+      .max(20)
+      .regex(/^[a-z]+$/, {
+        message: "只能包含小写字母",
+      }),
+    port: z.number().int().positive(),
+  }),
+);
+
+export type ForwardsSchema = z.infer<typeof forwardsSchema>;
 
 export const observabilitySchema = z
   .object({
