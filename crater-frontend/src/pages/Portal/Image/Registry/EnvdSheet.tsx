@@ -92,7 +92,10 @@ export const envdFormSchema = z.object({
       {
         message: "仅允许小写字母、数字、. _ -，且不能以分隔符开头/结尾",
       },
-    ),
+    )
+    .refine((v) => !v || v.includes("envd"), {
+      message: "名称需包含 'envd' ",
+    }),
   imageTag: z
     .string()
     .optional()
