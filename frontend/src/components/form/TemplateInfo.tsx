@@ -1,3 +1,4 @@
+import React from "react";
 import { UIStateUpdater, useTemplateLoader } from "@/hooks/useTemplateLoader";
 import { FieldValues, UseFormReturn } from "react-hook-form";
 import {
@@ -38,10 +39,17 @@ export function TemplateInfo<T extends FieldValues>({
     onSuccess,
     dataProcessor,
   });
+
+  // 缓存Markdown内容以避免不必要的重渲染
+  const markdownContent = React.useMemo(() => {
+    return templateData?.document || "";
+  }, [templateData?.document]);
+
   // 如果没有模板，不渲染任何内容
   if (!fromJob && !fromTemplate) {
     return null;
   }
+
   return (
     <Card className="mb-4">
       <CardHeader className="pb-2">
@@ -67,10 +75,10 @@ export function TemplateInfo<T extends FieldValues>({
         </CardDescription>
       </CardHeader>
 
-      {templateData?.document && (
+      {markdownContent && (
         <CardContent className="pt-0">
           <div className="">
-            <MarkdownRenderer>{templateData?.document}</MarkdownRenderer>
+            <MarkdownRenderer>{markdownContent}</MarkdownRenderer>
           </div>
         </CardContent>
       )}
