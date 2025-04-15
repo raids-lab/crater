@@ -29,6 +29,14 @@ const (
 	DataType
 )
 
+type ForwardType uint
+
+const (
+	_ ForwardType = iota
+	IngressType
+	NodePortType
+)
+
 func GenerateVolumeMounts(
 	c context.Context,
 	volumes []VolumeMount,
