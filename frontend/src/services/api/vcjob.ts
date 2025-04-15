@@ -291,12 +291,8 @@ export interface VolumeMount {
   mountPath: string;
 }
 
-export interface Ingress {
-  name: string;
-  port: number;
-}
-
-export interface Nodeport {
+export interface Forward {
+  type: number;
   name: string;
   port: number;
 }
@@ -329,14 +325,14 @@ export interface IJupyterCreate {
   selectors?: NodeSelectorRequirement[];
   template: string;
   alertEnabled: boolean;
-  ingresses: Ingress[];
-  nodeports: Nodeport[];
+  forwards: Forward[];
 }
 
 export interface ITrainingCreate extends IJupyterCreate {
   shell?: string;
   command?: string;
   workingDir?: string;
+  forwards: Forward[];
 }
 
 export interface ISparseCreate extends ITrainingCreate {

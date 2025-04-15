@@ -38,6 +38,7 @@ import AccordionCard from "@/components/form/AccordionCard";
 import { Separator } from "@/components/ui/separator";
 import {
   exportToJsonFile,
+  forwardsSchema,
   importFromJsonFile,
   nodeSelectorSchema,
   volumeMountsSchema,
@@ -151,6 +152,7 @@ const formSchema = z.object({
   alertEnabled: z.boolean().default(true),
   nodeSelector: nodeSelectorSchema,
   openssh: z.boolean().default(false),
+  forwards: forwardsSchema,
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -180,9 +182,8 @@ export const Component = () => {
         image: values.image,
         volumeMounts: values.volumeMounts,
         envs: values.envs,
+        forwards: values.forwards,
         alertEnabled: values.alertEnabled,
-        ingresses: values.ingresses,
-        nodeports: values.nodeports,
         selectors: values.nodeSelector.enable
           ? [
               {
