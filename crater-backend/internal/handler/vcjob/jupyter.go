@@ -41,6 +41,20 @@ type (
 	}
 )
 
+// CreateJupyterJob godoc
+// @Summary Create a Jupyter job
+// @Description Create a Jupyter job
+// @Tags VolcanoJob
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param CreateJupyterReq body CreateJupyterReq true "Create Jupyter Job Request"
+// @Success 200 {object} resputil.Response[any] "Success"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/vcjobs/jupyter [post]
+//
+//nolint:gocyclo // ignore cyclomatic complexity
 func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	token := util.GetToken(c)
 
@@ -244,11 +258,11 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		return
 	}
 
-	// Use the serviceManager property directly
+	// create notebook service and ingress
 	podSelector := labels
 	port := &v1.ServicePort{
 		Name:       "notebook",
-		Port:       80,
+		Port:       JupyterPort,
 		TargetPort: intstr.FromInt(JupyterPort),
 		Protocol:   v1.ProtocolTCP,
 	}
@@ -270,6 +284,57 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	}
 
 	log.Printf("Ingress created at path: %s", ingressPath)
+
+	// 从第二项开始遍历
+	for i := 1; i < len(req.Forwards); i++ {
+		forward := req.Forwards[i]
+		port := &v1.ServicePort{
+			Name:       forward.Name,
+			Port:       forward.Port,
+			TargetPort: intstr.FromInt(int(forward.Port)),
+			Protocol:   v1.ProtocolTCP,
+		}
+
+		switch forward.Type {
+		case 1: // Ingress
+			ingressPath, err := mgr.serviceManager.CreateIngressWithPrefix(
+				c,
+				[]metav1.OwnerReference{
+					*metav1.NewControllerRef(&job, batch.SchemeGroupVersion.WithKind("Job")),
+				},
+				podSelector,
+				port,
+				config.GetConfig().Host,
+				fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5]),
+				token.Username,
+			)
+			if err != nil {
+				resputil.Error(c, fmt.Sprintf("failed to create ingress for %s: %v", forward.Name, err), resputil.NotSpecified)
+				return
+			}
+			fmt.Printf("Ingress created for %s at path: %s\n", forward.Name, ingressPath)
+
+		case 2: // NodePort
+			host, nodePort, err := mgr.serviceManager.CreateNodePort(
+				c,
+				[]metav1.OwnerReference{
+					*metav1.NewControllerRef(&job, batch.SchemeGroupVersion.WithKind("Job")),
+				},
+				podSelector,
+				port,
+				token.Username,
+			)
+			if err != nil {
+				resputil.Error(c, fmt.Sprintf("failed to create nodeport for %s: %v", forward.Name, err), resputil.NotSpecified)
+				return
+			}
+			fmt.Printf("NodePort created for %s at %s:%d\n", forward.Name, host, nodePort)
+
+		default:
+			resputil.Error(c, fmt.Sprintf("unsupported forward type: %d", forward.Type), resputil.NotSpecified)
+			return
+		}
+	}
 
 	resputil.Success(c, job)
 }
