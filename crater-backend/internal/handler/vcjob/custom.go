@@ -150,6 +150,7 @@ func GenerateCustomPodSpec(
 
 	affinity := GenerateNodeAffinity(custom.Selectors, custom.Resource)
 	torelations := GenerateTaintTolerationsForAccount(token)
+	envs := GenerateEnvs(ctx, token, custom.Envs)
 
 	podSpec = v1.PodSpec{
 		Affinity:    affinity,
@@ -164,7 +165,7 @@ func GenerateCustomPodSpec(
 					Limits:   custom.Resource,
 					Requests: custom.Resource,
 				},
-				Env:   custom.Envs,
+				Env:   envs,
 				Ports: []v1.ContainerPort{},
 				SecurityContext: &v1.SecurityContext{
 					RunAsUser:  ptr.To(int64(0)),

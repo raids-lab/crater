@@ -70,6 +70,26 @@ func GenerateVolumeMounts(
 		volumeMounts = append(volumeMounts, volumeMount)
 	}
 
+	// 挂载启动脚本/usr/local/bin/start.sh
+	pvc = append(pvc, v1.Volume{
+		Name: "start-bash-script-volume",
+		VolumeSource: v1.VolumeSource{
+			ConfigMap: &v1.ConfigMapVolumeSource{
+				LocalObjectReference: v1.LocalObjectReference{
+					Name: "custom-start-configmap",
+				},
+				//nolint:mnd // 0755 is the default mode
+				DefaultMode: ptr.To(int32(0755)),
+			},
+		},
+	})
+	volumeMounts = append(volumeMounts, v1.VolumeMount{
+		Name:      "start-bash-script-volume",
+		MountPath: "/usr/local/bin/start.sh",
+		ReadOnly:  true,
+		SubPath:   "start.sh",
+	})
+
 	return pvc, volumeMounts, nil
 }
 
@@ -240,6 +260,29 @@ func GenerateTaintTolerationsForAccount(token util.JWTMessage) (tolerations []v1
 			Effect:   v1.TaintEffectNoSchedule,
 		},
 	}
+}
+
+func GenerateEnvs(ctx context.Context, token util.JWTMessage, customEnvs []v1.EnvVar) (envs []v1.EnvVar) {
+	u := query.User
+	user, err := u.WithContext(ctx).Where(u.ID.Eq(token.UserID)).First()
+	if err != nil {
+		return
+	}
+	customEnvs = append(customEnvs,
+		v1.EnvVar{
+			Name:  "NB_USER",
+			Value: token.Username,
+		},
+		v1.EnvVar{
+			Name:  "NB_GID",
+			Value: *user.Attributes.Data().GID,
+		},
+		v1.EnvVar{
+			Name:  "NB_UID",
+			Value: *user.Attributes.Data().UID,
+		},
+	)
+	return customEnvs
 }
 
 func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement, totalRequests v1.ResourceList) (affinity *v1.Affinity) {
