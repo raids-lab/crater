@@ -197,7 +197,7 @@ export const Component = () => {
         {
           type: ForwardType.IngressType,
           name: "notebook",
-          port: 0,
+          port: 8888,
         },
       ],
       envs: [],
