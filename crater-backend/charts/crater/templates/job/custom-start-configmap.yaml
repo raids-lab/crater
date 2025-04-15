@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-start-configmap
+  namespace: {{ .Values.backendConfig.workspace.namespace}}
+data:
+  start.sh: |
+    #!/bin/bash
+    set -e
+    
+    # Check if sshd user exists, if not, create it
+    if ! id "sshd" &>/dev/null; then
+        echo "Creating SSHD user and group..."
+        # Create sshd group
+        groupadd sshd
+        # Create sshd user with UID 66, group sshd, comment "SSH daemon",
+        # home directory /var/lib/sshd, shell /sbin/nologin, and create home directory
+        useradd -u 66 -g sshd -c "SSH daemon" -d /var/lib/sshd -s /sbin/nologin -m sshd
+        echo "SSHD user creation completed"
+    else
+        echo "SSHD user already exists, skipping creation"
+    fi
+    
+    # Determine whether the user already exists
+    if id "${NB_USER}" &>/dev/null; then
+        echo "User ${NB_USER} already exists, will not recreate"
+    else
+        # Add user
+        groupadd --force --gid "${NB_GID}" --non-unique "${NB_GROUP:-${NB_USER}}"
+        useradd --no-log-init --home "/home/${NB_USER}" --shell /bin/zsh --uid "${NB_UID}" --gid "${NB_GID}" --groups 100 "${NB_USER}"
+    fi
+    # Ensuring home dir is owned by user
+    if [ ! -d "/home/${NB_USER}" ]; then
+        mkdir -p "/home/${NB_USER}"
+    fi
+    chown "${NB_UID}:${NB_GID}" "/home/${NB_USER}"
+    # Granting user passwordless sudo rights
+    if [ ! -d "/etc/sudoers.d" ]; then
+        mkdir -p "/etc/sudoers.d"
+    fi
+    if [ ! -f "/etc/sudoers.d/added-by-start-script" ]; then
+        touch /etc/sudoers.d/added-by-start-script
+    fi
+    echo "${NB_USER} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/added-by-start-script
+    # Set PYTHONUSERBASE
+    if [ -z "${PYTHONUSERBASE}" ]; then
+        if ! command -v conda >/dev/null 2>&1; then
+            PYTHONUSERBASE=/opt/conda/envs/envd
+        fi
+    fi
+    if [ ! -f "/home/${NB_USER}/.zshrc" ]; then
+        touch "/home/${NB_USER}/.zshrc"
+    fi
+    exec sudo --preserve-env --set-home --user "${NB_USER}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" PATH="${PATH}" PYTHONPATH="${PYTHONPATH:-}" PYTHONUSERBASE="${PYTHONUSERBASE}" "$@"

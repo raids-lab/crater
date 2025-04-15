@@ -40,16 +40,20 @@ func GetImageNameAndTag(imageLink string) (name, tag string, err error) {
 	return name, tag, nil
 }
 
-func GenerateNewImageLinkForEnvdBuild(username, python, base string) (newImageLink string, err error) {
+func GenerateNewImageLinkForEnvdBuild(username, python, base, imageName, imageTag string) (newImageLink string, err error) {
 	registryServer := config.GetConfig().ACT.Image.RegistryServer
 	registryProject := fmt.Sprintf("user-%s", username)
-	var imageTag string
-	if base == "" {
-		imageTag = fmt.Sprintf("py%s-%s", python, uuid.New().String()[:4])
-	} else {
-		imageTag = fmt.Sprintf("py%s-%s-%s", python, base, uuid.New().String()[:4])
+	if imageName == "" {
+		imageName = "envd"
 	}
-	newImageLink = fmt.Sprintf("%s/%s/%s:%s", registryServer, registryProject, "envd", imageTag)
+	if imageTag == "" {
+		if base == "" {
+			imageTag = fmt.Sprintf("py%s-%s", python, uuid.New().String()[:4])
+		} else {
+			imageTag = fmt.Sprintf("py%s-%s-%s", python, base, uuid.New().String()[:4])
+		}
+	}
+	newImageLink = fmt.Sprintf("%s/%s/%s:%s", registryServer, registryProject, imageName, imageTag)
 	return newImageLink, nil
 }
 

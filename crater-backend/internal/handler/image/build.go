@@ -141,7 +141,6 @@ func (mgr *ImagePackMgr) UserCreateByEnvd(c *gin.Context) {
 		UserName:    token.Username,
 		UserID:      token.UserID,
 	}
-	fmt.Printf("%+v", buildData)
 	mgr.buildFromEnvd(c, buildData)
 }
 
@@ -245,7 +244,7 @@ func (mgr *ImagePackMgr) buildFromEnvd(c *gin.Context, data *EnvdBuildData) {
 		return
 	}
 	imagepackName := fmt.Sprintf("%s-%s", data.UserName, uuid.New().String()[:5])
-	imageLink, err := utils.GenerateNewImageLinkForEnvdBuild(data.UserName, data.Python, data.Base)
+	imageLink, err := utils.GenerateNewImageLinkForEnvdBuild(data.UserName, data.Python, data.Base, data.ImageName, data.ImageTag)
 	if err != nil {
 		resputil.Error(c, "generate new image link failed", resputil.NotSpecified)
 		return
