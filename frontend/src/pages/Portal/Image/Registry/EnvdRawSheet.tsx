@@ -33,11 +33,9 @@ import { DockerfileEditor } from "./DockerfileEditor";
 export const envdRawFormSchema = z.object({
   envdScript: z.string().min(1, "Envd script content is required"),
   description: z.string().min(1, "请为镜像添加描述"),
-  python: z.string().optional(),
-  base: z.string().optional(),
   imageName: z
     .string()
-    .optional()
+    .min(1, "镜像名不能为空")
     .refine(
       (v) => {
         if (v) {
@@ -49,10 +47,13 @@ export const envdRawFormSchema = z.object({
       {
         message: "仅允许小写字母、数字、. _ -，且不能以分隔符开头/结尾",
       },
-    ),
+    )
+    .refine((v) => !v || v.includes("envd"), {
+      message: "名称需包含 'envd' ",
+    }),
   imageTag: z
     .string()
-    .optional()
+    .min(1, "镜像标签不能为空")
     .refine(
       (v) => {
         if (v) {
@@ -99,32 +100,34 @@ function EnvdRawSheetContent({ form, onSubmit }: EnvdRawSheetContentProps) {
       <div className="grid grid-cols-2 gap-4">
         <FormField
           control={form.control}
-          name="python"
+          name="imageName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Python 版本</FormLabel>
+              <FormLabel>
+                镜像名
+                <FormLabelMust />
+              </FormLabel>
               <FormControl>
-                <Input {...field} placeholder="3.10" />
+                <Input {...field} />
               </FormControl>
-              <FormDescription>
-                指定环境中的 Python 版本，例如：3.10、3.12 等
-              </FormDescription>
+              <FormDescription>自定义镜像名</FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
         <FormField
           control={form.control}
-          name="base"
+          name="imageTag"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>基础镜像标签</FormLabel>
+              <FormLabel>
+                镜像标签
+                <FormLabelMust />
+              </FormLabel>
               <FormControl>
-                <Input {...field} placeholder="cu12.8.1" />
+                <Input {...field} />
               </FormControl>
-              <FormDescription>
-                基础镜像标签，例如：cu12.8.1、ubuntu22.04 等
-              </FormDescription>
+              <FormDescription>自定义镜像标签</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -177,8 +180,6 @@ def build():
     install.apt_packages(["openssh-server", "build-essential", "iputils-ping", "net-tools", "htop"])
     config.jupyter()`,
       description: "",
-      python: "3.10",
-      base: "cu12.8.1",
       imageName: "",
       imageTag: "",
     },
@@ -191,8 +192,8 @@ def build():
         envd: values.envdScript,
         name: values.imageName ?? "",
         tag: values.imageTag ?? "",
-        python: values.python ?? "",
-        base: values.base ?? "",
+        python: "",
+        base: "",
       }),
     onSuccess: async () => {
       await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
