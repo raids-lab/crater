@@ -149,6 +149,12 @@ type (
 		MountPath string `json:"mountPath"`
 	}
 
+	Forward struct {
+		Type ForwardType `json:"type"`
+		Name string      `json:"name"`
+		Port int32       `json:"port"`
+	}
+
 	CreateJobCommon struct {
 		Name          string                       `json:"name" binding:"required"`
 		VolumeMounts  []VolumeMount                `json:"volumeMounts,omitempty"`
@@ -157,6 +163,7 @@ type (
 		Selectors     []v1.NodeSelectorRequirement `json:"selectors,omitempty"`
 		Template      string                       `json:"template"`
 		AlertEnabled  bool                         `json:"alertEnabled"`
+		Forwards      []Forward                    `json:"forwards,omitempty"`
 	}
 )
 
