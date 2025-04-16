@@ -293,9 +293,122 @@ func (s *serviceManagerImpl) CreateIngress(
 	ownerReferences []metav1.OwnerReference,
 	podSelector map[string]string,
 	port *v1.ServicePort,
-	host, username string,
+	host,
+	username string,
 ) (ingressPath string, err error) {
-	// Generate a random prefix for compatibility
-	prefix := fmt.Sprintf("/%s/", uuid.New().String()[:8])
-	return s.CreateIngressWithPrefix(ctx, ownerReferences, podSelector, port, host, prefix, username)
+	if port == nil {
+		return "", fmt.Errorf("port and ownerRef cannot be nil")
+	}
+	namespace := s.config.Workspace.Namespace
+
+	// Generate labels
+	labels := generateLabels(podSelector, username)
+
+	// 生成随机8位字符串作为子域名前缀
+	randomPrefix := uuid.New().String()[:5]
+
+	// 构建新的五级域名
+	subdomain := fmt.Sprintf("%s.%s", randomPrefix, host)
+
+	// Create the ClusterIP service
+	serviceName := fmt.Sprintf("%s-%s-svc-%s", username, randomPrefix, port.Name)
+	svc := &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            serviceName,
+			Namespace:       namespace,
+			OwnerReferences: ownerReferences,
+			Labels:          labels,
+			Annotations: map[string]string{
+				AnnotationKeyPortName: port.Name,
+			},
+		},
+		Spec: v1.ServiceSpec{
+			Ports:    []v1.ServicePort{*port},
+			Type:     v1.ServiceTypeClusterIP,
+			Selector: podSelector,
+		},
+	}
+
+	if err = s.client.Create(ctx, svc); err != nil {
+		return "", fmt.Errorf("failed to create service: %w", err)
+	}
+
+	// Validate the created service
+	createdSvc := &v1.Service{}
+	if err = s.client.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: namespace}, createdSvc); err != nil {
+		return "", fmt.Errorf("failed to fetch created service: %w", err)
+	}
+	if len(createdSvc.Spec.Selector) == 0 {
+		return "", fmt.Errorf("service selector is empty or invalid")
+	}
+
+	// Create the Ingress
+	ingressName := fmt.Sprintf("%s-%s-ing-%s", username, randomPrefix, port.Name)
+
+	pathType := networkingv1.PathTypePrefix
+	ingress := &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            ingressName,
+			Namespace:       namespace,
+			OwnerReferences: ownerReferences,
+			Labels:          labels,
+			Annotations: map[string]string{
+				"nginx.ingress.kubernetes.io/ssl-redirect":    "true",
+				"nginx.ingress.kubernetes.io/proxy-body-size": "20480m",
+				AnnotationKeyPortName:                         port.Name,
+			},
+		},
+		Spec: networkingv1.IngressSpec{
+			IngressClassName: ptr.To("nginx"),
+			Rules: []networkingv1.IngressRule{
+				{
+					Host: subdomain,
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{
+								{
+									Path:     "/",
+									PathType: &pathType,
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: serviceName,
+											Port: networkingv1.ServiceBackendPort{
+												Number: port.Port,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			TLS: []networkingv1.IngressTLS{
+				{
+					Hosts:      []string{subdomain},
+					SecretName: "crater-tls-forward-secret",
+				},
+			},
+		},
+	}
+
+	if err = s.client.Create(ctx, ingress); err != nil {
+		return "", fmt.Errorf("failed to create ingress: %w", err)
+	}
+
+	// Validate the created ingress
+	createdIngress := &networkingv1.Ingress{}
+	if err = s.client.Get(ctx, types.NamespacedName{Name: ingressName, Namespace: namespace}, createdIngress); err != nil {
+		return "", fmt.Errorf("failed to fetch created ingress: %w", err)
+	}
+	if len(createdIngress.Spec.Rules) == 0 || createdIngress.Spec.Rules[0].HTTP == nil {
+		return "", fmt.Errorf("ingress rules are empty or invalid")
+	}
+
+	// Log the created service and ingress for debugging
+	log.Printf("Created Service: %s, Selector: %v", createdSvc.Name, createdSvc.Spec.Selector)
+	log.Printf("Created Ingress: %s, Rules: %v", createdIngress.Name, createdIngress.Spec.Rules)
+
+	ingressPath = fmt.Sprintf("https://%s/", subdomain) // 构建完整的访问路径
+	return ingressPath, nil
 }

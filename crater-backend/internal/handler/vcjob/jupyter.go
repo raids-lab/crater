@@ -258,8 +258,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		return
 	}
 
-	// create notebook service and ingress
-	podSelector := labels
+	// create jupyter notebook ingress
 	port := &v1.ServicePort{
 		Name:       "notebook",
 		Port:       JupyterPort,
@@ -272,7 +271,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		[]metav1.OwnerReference{
 			*metav1.NewControllerRef(&job, batch.SchemeGroupVersion.WithKind("Job")),
 		},
-		podSelector,
+		labels,
 		port,
 		config.GetConfig().Host,
 		baseURL,
@@ -285,9 +284,9 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 
 	log.Printf("Ingress created at path: %s", ingressPath)
 
-	// 从第二项开始遍历
-	for i := 1; i < len(req.Forwards); i++ {
-		forward := req.Forwards[i]
+	// create forward ing rules in template
+	//nolint:dupl // ignore duplicate code
+	for _, forward := range req.Forwards {
 		port := &v1.ServicePort{
 			Name:       forward.Name,
 			Port:       forward.Port,
@@ -295,45 +294,21 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 			Protocol:   v1.ProtocolTCP,
 		}
 
-		switch forward.Type {
-		case 1: // Ingress
-			ingressPath, err := mgr.serviceManager.CreateIngressWithPrefix(
-				c,
-				[]metav1.OwnerReference{
-					*metav1.NewControllerRef(&job, batch.SchemeGroupVersion.WithKind("Job")),
-				},
-				podSelector,
-				port,
-				config.GetConfig().Host,
-				fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5]),
-				token.Username,
-			)
-			if err != nil {
-				resputil.Error(c, fmt.Sprintf("failed to create ingress for %s: %v", forward.Name, err), resputil.NotSpecified)
-				return
-			}
-			fmt.Printf("Ingress created for %s at path: %s\n", forward.Name, ingressPath)
-
-		case 2: // NodePort
-			host, nodePort, err := mgr.serviceManager.CreateNodePort(
-				c,
-				[]metav1.OwnerReference{
-					*metav1.NewControllerRef(&job, batch.SchemeGroupVersion.WithKind("Job")),
-				},
-				podSelector,
-				port,
-				token.Username,
-			)
-			if err != nil {
-				resputil.Error(c, fmt.Sprintf("failed to create nodeport for %s: %v", forward.Name, err), resputil.NotSpecified)
-				return
-			}
-			fmt.Printf("NodePort created for %s at %s:%d\n", forward.Name, host, nodePort)
-
-		default:
-			resputil.Error(c, fmt.Sprintf("unsupported forward type: %d", forward.Type), resputil.NotSpecified)
+		ingressPath, err := mgr.serviceManager.CreateIngress(
+			c,
+			[]metav1.OwnerReference{
+				*metav1.NewControllerRef(&job, batch.SchemeGroupVersion.WithKind("Job")),
+			},
+			labels,
+			port,
+			config.GetConfig().Host,
+			token.Username,
+		)
+		if err != nil {
+			resputil.Error(c, fmt.Sprintf("failed to create ingress for %s: %v", forward.Name, err), resputil.NotSpecified)
 			return
 		}
+		fmt.Printf("Ingress created for %s at path: %s\n", forward.Name, ingressPath)
 	}
 
 	resputil.Success(c, job)
