@@ -32,6 +32,7 @@ import {
   nodeSelectorSchema,
   VolumeMountType,
   exportToJsonString,
+  forwardsSchema,
 } from "@/utils/form";
 import { useState } from "react";
 import { useAtomValue } from "jotai";
@@ -48,6 +49,7 @@ import PageTitle from "@/components/layout/PageTitle";
 import { PublishConfigForm } from "./Publish";
 import { TemplateInfo } from "@/components/form/TemplateInfo";
 import { ResourceFormFields } from "@/components/form/ResourceFormField";
+import { ForwardFormCard } from "@/components/form/ForwardFormField";
 
 const formSchema = z.object({
   jobName: z
@@ -65,6 +67,7 @@ const formSchema = z.object({
   observability: observabilitySchema,
   alertEnabled: z.boolean().default(true),
   nodeSelector: nodeSelectorSchema,
+  forwards: forwardsSchema,
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -115,6 +118,7 @@ export const Component = () => {
             ]
           : undefined,
         template: exportToJsonString(MetadataFormPytorch, values),
+        forwards: values.forwards,
       }),
     onSuccess: async (_, { jobName: taskname }) => {
       await Promise.all([
@@ -558,11 +562,18 @@ export const Component = () => {
                   value: true,
                 },
               ]}
+              dataProcessor={(data) => {
+                if (data.forwards === undefined || data.forwards === null) {
+                  data.forwards = [];
+                }
+                return data;
+              }}
             />
           </div>
 
           <div className="flex flex-col gap-4 md:gap-6">
             <VolumeMountsCard form={form} />
+            <ForwardFormCard form={form} />
             <AccordionCard
               cardTitle={EnvCard}
               open={envOpen}
