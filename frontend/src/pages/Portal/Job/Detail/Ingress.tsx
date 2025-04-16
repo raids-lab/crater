@@ -21,9 +21,7 @@ export default function PodIngressDialog({
     namespacedName,
     setNamespacedName,
   );
-  const [activeTab, setActiveTab] = useState<"ingress" | "nodeport">(
-    "nodeport",
-  );
+  const [activeTab, setActiveTab] = useState<"ingress" | "nodeport">("ingress");
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

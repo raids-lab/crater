@@ -172,7 +172,7 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
                     name: pod.name,
                   });
                 }}
-                tooltipContent="打开网页终端"
+                tooltipContent="网页终端"
               >
                 <TerminalIcon className="text-primary size-4" />
               </TooltipButton>
@@ -188,7 +188,7 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
                     name: pod.name,
                   });
                 }}
-                tooltipContent="配置外部访问"
+                tooltipContent="外部访问"
               >
                 <EthernetPort className="text-highlight-purple size-4" />
               </TooltipButton>
@@ -202,7 +202,7 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
                   setGrafanaUrl(getPodMonitorUrl(grafanaJob.pod, pod));
                   setShowMonitor(true);
                 }}
-                tooltipContent="查看资源监控"
+                tooltipContent="资源监控"
               >
                 <GaugeIcon className="text-highlight-green size-4" />
               </TooltipButton>
@@ -217,7 +217,7 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
                     name: pod.name,
                   });
                 }}
-                tooltipContent="查看容器日志"
+                tooltipContent="容器日志"
               >
                 <LogsIcon className="text-highlight-orange size-4" />
               </TooltipButton>

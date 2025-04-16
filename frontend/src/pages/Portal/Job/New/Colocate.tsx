@@ -44,8 +44,6 @@ import {
   taskSchema,
   convertToResourceList,
   nodeSelectorSchema,
-  ingressesSchema,
-  nodeportsSchema,
   VolumeMountType,
   exportToJsonString,
   forwardsSchema,
@@ -92,8 +90,6 @@ const formSchema = z.object({
   nodeSelector: nodeSelectorSchema,
   alertEnalbled: z.boolean().default(true),
   openssh: z.boolean().default(false),
-  ingresses: ingressesSchema,
-  nodeports: nodeportsSchema,
   forwards: forwardsSchema,
 });
 
