@@ -180,12 +180,22 @@ backendConfig:
     envdImage: ***REMOVED***/user-huangsy/envd-build-frontend:v1.2.0
 # cert-manager configuration variables
 # Usage:
-# helm install crater ./charts/crater \
-# --set-string tls.cert="$(cat path/to/tls.crt)"\
-# --set-string tls.key="$(cat path/to/tls.key)"
+# helm upgrade --install crater ./charts/crater \
+# --namespace crater \
+# --create-namespace \
+# --set-string tls.base.cert="$(cat ***REMOVED***/fullchain.cer)" \
+# --set-string tls.base.key="$(cat ***REMOVED***/***REMOVED***.key)" \
+# --set-string tls.forward.cert="$(cat ***REMOVED***/fullchain.cer)" \
+# --set-string tls.forward.key="$(cat ***REMOVED***/***REMOVED***.key)"
 tls:
-  cert: "===hdgddh==="
-  key: "==="
+  base:
+    enabled: false
+    cert: "===hdgddh==="
+    key: "==="
+  forward:
+    enabled: false
+    cert: "===hdgddh==="
+    key: "==="
 ssConfig:
   content: |
     postgres:
