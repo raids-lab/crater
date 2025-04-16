@@ -54,6 +54,12 @@ import { OtherOptionsFormCard } from "@/components/form/OtherOptionsFormField";
 import { EnvFormCard } from "@/components/form/EnvFormField";
 import { ForwardFormCard } from "@/components/form/ForwardFormField";
 
+const markdown = `## 运行规则
+
+2. 如果申请了 GPU 资源，当过去 2 个小时 GPU 利用率为 0，我们将尝试发送告警信息给用户，建议用户检查作业是否正常运行。若此后半小时 GPU 利用率仍为 0，**系统将释放作业占用的资源**。
+3. 当作业运行超过 4 天，我们将尝试发送告警信息给用户，提醒用户作业运行时间过长；若此后一天内用户未联系管理员说明情况并锁定作业，**系统将释放作业占用的资源**。
+`;
+
 const formSchema = z.object({
   jobName: z
     .string()
@@ -346,6 +352,7 @@ conda activate base;
                 }
                 return data;
               }}
+              defaultMarkdown={markdown}
             />
           </div>
           <div className="flex flex-col gap-4 md:gap-6">

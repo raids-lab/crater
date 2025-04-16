@@ -51,6 +51,55 @@ import { TemplateInfo } from "@/components/form/TemplateInfo";
 import { ResourceFormFields } from "@/components/form/ResourceFormField";
 import { ForwardFormCard } from "@/components/form/ForwardFormField";
 
+const markdown = `## 运行规则
+
+2. 如果申请了 GPU 资源，当过去 2 个小时 GPU 利用率为 0，我们将尝试发送告警信息给用户，建议用户检查作业是否正常运行。若此后半小时 GPU 利用率仍为 0，**系统将释放作业占用的资源**。
+3. 当作业运行超过 4 天，我们将尝试发送告警信息给用户，提醒用户作业运行时间过长；若此后一天内用户未联系管理员说明情况并锁定作业，**系统将释放作业占用的资源**。
+
+## 环境变量
+
+Pytorch 分布式作业相比普通的单机作业，在每个容器中都会设置环境变量：
+
+### 1. \`WORLD_SIZE\`
+- **作用**：表示参与分布式训练的进程总数（所有节点上的总进程数）。
+- **示例**：\`WORLD_SIZE=2\` 表示总共有 2 个进程参与训练。
+
+### 2. \`MASTER_ADDR\`
+- **作用**：指定主节点（rank 0 的节点）的地址（通常是主机名或 IP 地址）。
+- **示例**：\`MASTER_ADDR=py-liyilong-670a0-master-0.py-liyilong-670a0\` 表示主节点的主机名。Ray Worker 可以使用这个地址加入 Ray Head。
+
+### 3. \`MASTER_PORT\`
+- **作用**：指定主节点用于通信的端口号（所有节点需一致）。
+- **示例**：\`MASTER_PORT=23456\` 表示使用 23456 端口进行进程间通信。
+
+### 4. \`RANK\`
+- **作用**：表示当前进程的全局唯一标识（从 0 到 \`WORLD_SIZE-1\`）。主节点的 \`RANK\` 必须为 0。
+- **示例**：如果 \`RANK=0\`，表示当前进程是主进程。
+
+这些变量是 PyTorch 分布式训练（如 \`torch.distributed.launch\` 或 \`torchrun\`）的核心配置，用于：
+1. **初始化进程组**：通过 \`torch.distributed.init_process_group\` 实现多进程协作。
+2. **协调通信**：确保所有进程能正确连接到主节点（\`MASTER_ADDR:MASTER_PORT\`）。
+3. **数据并行**：结合 \`DistributedDataParallel\` (DDP) 实现多 GPU/多节点训练。
+
+例如：
+
+\`\`\`python
+import torch.distributed as dist
+
+dist.init_process_group(
+    backend="nccl",  # 或 "gloo"
+    init_method=f"tcp://{os.environ['MASTER_ADDR']}:{os.environ['MASTER_PORT']}",
+    world_size=int(os.environ['WORLD_SIZE']),
+    rank=int(os.environ['RANK'])
+)
+\`\`\`
+
+## InfiniBand
+
+关于多机作业使用 InfiniBand 的问题，我们正在开发中，请耐心等待。
+
+`;
+
 const formSchema = z.object({
   jobName: z
     .string()
@@ -568,6 +617,7 @@ export const Component = () => {
                 }
                 return data;
               }}
+              defaultMarkdown={markdown}
             />
           </div>
 

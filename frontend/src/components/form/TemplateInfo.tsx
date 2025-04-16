@@ -22,6 +22,8 @@ interface TemplateInfoProps<T extends FieldValues> {
   onSuccess?: (data: T) => void;
   /** Optional additional data processing */
   dataProcessor?: (data: T) => T;
+  /** Default Markdown content */
+  defaultMarkdown?: string;
 }
 
 export function TemplateInfo<T extends FieldValues>({
@@ -30,6 +32,7 @@ export function TemplateInfo<T extends FieldValues>({
   uiStateUpdaters = [],
   onSuccess,
   dataProcessor,
+  defaultMarkdown,
 }: TemplateInfoProps<T>) {
   // 使用 hook 获取模板信息
   const { fromJob, fromTemplate, templateData } = useTemplateLoader({
@@ -45,8 +48,20 @@ export function TemplateInfo<T extends FieldValues>({
     return templateData?.document || "";
   }, [templateData?.document]);
 
-  // 如果没有模板，不渲染任何内容
   if (!fromJob && !fromTemplate) {
+    if (defaultMarkdown) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle>作业说明</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MarkdownRenderer>{defaultMarkdown}</MarkdownRenderer>
+          </CardContent>
+        </Card>
+      );
+    }
+    // 如果没有模板，不渲染任何内容
     return null;
   }
 
