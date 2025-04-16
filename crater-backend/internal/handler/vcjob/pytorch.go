@@ -111,11 +111,11 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 					Event:  bus.PodFailedEvent,
 				},
 			}
-			minAvailable = task.Replicas
 		} else if task.Name == "worker" {
 			taskSpec.Template.Spec.RestartPolicy = v1.RestartPolicyOnFailure
 		}
 
+		minAvailable += task.Replicas
 		tasks[i] = taskSpec
 	}
 
