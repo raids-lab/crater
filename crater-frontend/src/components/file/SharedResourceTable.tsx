@@ -337,6 +337,7 @@ export function SharedResourceTable({
         return key;
     }
   };
+
   const datasetFilescolumns = useMemo<ColumnDef<FileItem>[]>(
     () => [
       {
@@ -626,12 +627,11 @@ export function SharedResourceTable({
                 variant="outline"
                 size="icon"
                 onClick={handleBackClick}
-                className="h-8 w-8"
+                className="mb-2 h-8 w-8"
                 tooltipContent="返回上一级"
               >
                 <ArrowLeftIcon className="size-4" />
               </TooltipButton>
-
               <DataTable
                 storageKey="dataset_files"
                 query={queryDataset}
@@ -639,6 +639,7 @@ export function SharedResourceTable({
               />
             </>
           ),
+          scrollable: true,
         },
       ]}
     />

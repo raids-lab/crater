@@ -2,7 +2,7 @@ import { LucideIcon } from "lucide-react";
 import { ReactNode, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import useFixedLayout from "@/hooks/useFixedLayout";
-import { ScrollArea } from "../ui/scroll-area";
+import { ScrollArea, ScrollBar } from "../ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useSearchParams } from "react-router-dom";
 
@@ -99,6 +99,7 @@ export function DetailPage({ header, info, tabs: rawTabs }: DetailPageProps) {
             {tab.scrollable ? (
               <ScrollArea className="h-[calc(100vh_-_300px)] w-full">
                 {tab.children}
+                <ScrollBar orientation="horizontal" />
               </ScrollArea>
             ) : (
               <div className="h-[calc(100vh_-_300px)] w-full">

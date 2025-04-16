@@ -292,7 +292,6 @@ export interface VolumeMount {
 }
 
 export interface Forward {
-  type: number;
   name: string;
   port: number;
 }
@@ -364,6 +363,7 @@ export interface ITensorflowCreate {
   selectors?: NodeSelectorRequirement[];
   alertEnabled: boolean;
   template?: string;
+  forwards: Forward[];
 }
 
 export const apiJupyterCreate = async (task: IJupyterCreate) => {

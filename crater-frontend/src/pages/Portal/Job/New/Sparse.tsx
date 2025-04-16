@@ -44,8 +44,6 @@ import {
   taskSchema,
   convertToResourceList,
   nodeSelectorSchema,
-  ingressesSchema,
-  nodeportsSchema,
   VolumeMountType,
   forwardsSchema,
 } from "@/utils/form";
@@ -102,8 +100,6 @@ const formSchema = z.object({
   alertEnabled: z.boolean().default(true),
   nodeSelector: nodeSelectorSchema,
   openssh: z.boolean().default(false),
-  ingresses: ingressesSchema,
-  nodeports: nodeportsSchema,
   forwards: forwardsSchema,
 });
 
