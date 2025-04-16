@@ -23,7 +23,6 @@ import FormLabelMust from "@/components/form/FormLabelMust";
 import {
   exportToJsonString,
   forwardsSchema,
-  ForwardType,
   nodeSelectorSchema,
   VolumeMountType,
 } from "@/utils/form";
@@ -193,13 +192,7 @@ export const Component = () => {
           mountPath: `/home/${user.name}`,
         },
       ],
-      forwards: [
-        {
-          type: ForwardType.IngressType,
-          name: "notebook",
-          port: 8888,
-        },
-      ],
+      forwards: [],
       envs: [],
       alertEnabled: true,
       nodeSelector: {
@@ -332,6 +325,12 @@ export const Component = () => {
                   value: true,
                 },
               ]}
+              dataProcessor={(data) => {
+                if (data.forwards === undefined || data.forwards === null) {
+                  data.forwards = [];
+                }
+                return data;
+              }}
             />
           </div>
           <div className="flex flex-col gap-4 md:gap-6">

@@ -9,7 +9,7 @@ export const MetadataFormAccount: MetadataFormType = {
 };
 
 export const MetadataFormJupyter: MetadataFormType = {
-  version: "20250416",
+  version: "20250313",
   type: "jupyter",
 };
 
