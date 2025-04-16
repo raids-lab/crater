@@ -17,12 +17,9 @@ import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiTensorflowCreate } from "@/services/api/vcjob";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { CirclePlus, CirclePlusIcon, XIcon } from "lucide-react";
 import FormLabelMust from "@/components/form/FormLabelMust";
-import AccordionCard from "@/components/form/AccordionCard";
-import { Separator } from "@/components/ui/separator";
 import {
   observabilitySchema,
   volumeMountsSchema,
@@ -50,6 +47,104 @@ import { PublishConfigForm } from "./Publish";
 import LoadableButton from "@/components/custom/LoadableButton";
 import { ResourceFormFields } from "@/components/form/ResourceFormField";
 import { ForwardFormCard } from "@/components/form/ForwardFormField";
+import { EnvFormCard } from "@/components/form/EnvFormField";
+import { TemplateInfo } from "@/components/form/TemplateInfo";
+
+const markdown = `# Env User Guidance
+
+## Background
+**Env Plugin** is designed for business that a pod should be aware of its index in the task such as [MPI](https://www.open-mpi.org/) and [TensorFlow](https://tensorflow.google.cn/). The indices will be registered as **environment variables** automatically when the Volcano job is created. For example, a tensorflow job consists of *1* ps and *2* workers. And each worker maps to a slice of raw data. In order to make the workers be aware of its target slice, they get their index in the environment variables.
+
+## Key Points
+* The index keys of the environment variables are \`VK_TASK_INDEX\` and \`VC_TASK_INDEX\`, they have the same value.
+* The value of the indices is a number which ranges from \`0\` to \`length - 1\`. The \`length\` equals to the number of replicas 
+of the task. It is also the index of the pod in the task. 
+
+## Examples
+\`\`\`yaml
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: tensorflow-dist-mnist
+spec:
+  minAvailable: 3
+  schedulerName: volcano
+  plugins:
+    env: []   ## Env plugin register, note that no values are needed in the array.
+    svc: []
+  policies:
+    - event: PodEvicted
+      action: RestartJob
+  queue: default
+  tasks:
+    - replicas: 1
+      name: ps
+      template:
+        spec:
+          containers:
+            - command:
+                - sh
+                - -c
+                - |
+                  PS_HOST=\`cat /etc/volcano/ps.host | sed 's/$/&:2222/g' | sed 's/^/"/;s/$/"/' | tr "\\n" ","\`;
+                  WORKER_HOST=\`cat /etc/volcano/worker.host | sed 's/$/&:2222/g' | sed 's/^/"/;s/$/"/' | tr "\\n" ","\`;
+                  export TF_CONFIG={\\"cluster\\":{\\"ps\\":[\\\${PS_HOST}],\\"worker\\":[\\\${WORKER_HOST}]},\\"task\\":{\\"type\\":\\"ps\\",\\"index\\":\\\${VK_TASK_INDEX}},\\"environment\\":\\"cloud\\"};   ## Get the index from the environment variable and configure it in the TF job.
+                  python /var/tf_dist_mnist/dist_mnist.py
+              image: volcanosh/dist-mnist-tf-example:0.0.1
+              name: tensorflow
+              ports:
+                - containerPort: 2222
+                  name: tfjob-port
+              resources: {}
+          restartPolicy: Never
+    - replicas: 2
+      name: worker
+      policies:
+        - event: TaskCompleted
+          action: CompleteJob
+      template:
+        spec:
+          containers:
+            - command:
+                - sh
+                - -c
+                - |
+                  PS_HOST=\`cat /etc/volcano/ps.host | sed 's/$/&:2222/g' | sed 's/^/"/;s/$/"/' | tr "\\n" ","\`;
+                  WORKER_HOST=\`cat /etc/volcano/worker.host | sed 's/$/&:2222/g' | sed 's/^/"/;s/$/"/' | tr "\\n" ","\`;
+                  export TF_CONFIG={\\"cluster\\":{\\"ps\\":[\\\${PS_HOST}],\\"worker\\":[\\\${WORKER_HOST}]},\\"task\\":{\\"type\\":\\"worker\\",\\"index\\":\\\${VK_TASK_INDEX}},\\"environment\\":\\"cloud\\"};
+                  python /var/tf_dist_mnist/dist_mnist.py
+              image: volcanosh/dist-mnist-tf-example:0.0.1
+              name: tensorflow
+              ports:
+                - containerPort: 2222
+                  name: tfjob-port
+              resources: {}
+          restartPolicy: Never
+\`\`\`
+Note:
+* When config env plugin in the tensorflow job above, all the pods will have 2 environment variables \`VK_TASK_INDEX\` and 
+\`VC_TASK_INDEX\`. The environment variables registered in the \`ps\` pod are as follows.
+\`\`\`bash
+[root@tensorflow-dist-mnist-ps-0 /] env | grep TASK_INDEX
+VK_TASK_INDEX=0
+VC_TASK_INDEX=0
+\`\`\`
+* Considering the 2 workers, you will get that their names are \`tensorflow-dist-mnist-worker-0\` and
+\`tensorflow-dist-mnist-worker-1\`. And the corresponding values of the index environment variables are \`0\` and \`1\`.
+\`\`\`bash
+[root@tensorflow-dist-mnist-worker-0 /] env | grep TASK_INDEX
+VK_TASK_INDEX=0
+VC_TASK_INDEX=0
+\`\`\`
+\`\`\`bash
+[root@tensorflow-dist-mnist-worker-1 /] env | grep TASK_INDEX
+VK_TASK_INDEX=1
+VC_TASK_INDEX=1
+\`\`\`
+## Note
+* Because of historical reasons, environment variables \`VK_TASK_INDEX\` and \`VC_TASK_INDEX\` both exist, \`VK_TASK_INDEX\` will
+be **deprecated** in the future releases.
+* No value are needed when register env plugin in the volcano job.`;
 
 const formSchema = z.object({
   jobName: z
@@ -71,8 +166,6 @@ const formSchema = z.object({
 });
 
 type FormSchema = z.infer<typeof formSchema>;
-
-const EnvCard = "环境变量";
 
 export const Component = () => {
   const [envOpen, setEnvOpen] = useState<boolean>(false);
@@ -197,15 +290,6 @@ export const Component = () => {
         value: true,
       },
     ],
-  });
-
-  const {
-    fields: envFields,
-    append: envAppend,
-    remove: envRemove,
-  } = useFieldArray<FormSchema>({
-    name: "envs",
-    control: form.control,
   });
 
   const {
@@ -566,81 +650,35 @@ export const Component = () => {
                 </div>
               </CardContent>
             </Card>
+            <TemplateInfo
+              form={form}
+              metadata={MetadataFormTensorflow}
+              uiStateUpdaters={[
+                {
+                  condition: (data) => data.envs.length > 0,
+                  setter: setEnvOpen,
+                  value: true,
+                },
+                {
+                  condition: (data) =>
+                    data.nodeSelector.enable || data.alertEnabled,
+                  setter: setOtherOpen,
+                  value: true,
+                },
+              ]}
+              dataProcessor={(data) => {
+                if (data.forwards === undefined || data.forwards === null) {
+                  data.forwards = [];
+                }
+                return data;
+              }}
+              defaultMarkdown={markdown}
+            />
           </div>
           <div className="flex flex-col gap-6">
             <VolumeMountsCard form={form} />
             <ForwardFormCard form={form} />
-            <AccordionCard
-              cardTitle={EnvCard}
-              open={envOpen}
-              setOpen={setEnvOpen}
-            >
-              <div className="mt-3 space-y-5">
-                {envFields.map((field, index) => (
-                  <div key={field.id}>
-                    <Separator
-                      className={cn("mb-5", index === 0 && "hidden")}
-                    />
-                    <div className="space-y-5">
-                      <FormField
-                        control={form.control}
-                        name={`envs.${index}.name`}
-                        render={({ field }) => (
-                          <FormItem className="relative">
-                            <button
-                              type="button"
-                              onClick={() => envRemove(index)}
-                              className="data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none"
-                            >
-                              <XIcon className="size-4" />
-                              <span className="sr-only">Close</span>
-                            </button>
-                            <FormLabel>
-                              变量名 {index + 1}
-                              <FormLabelMust />
-                            </FormLabel>
-                            <FormControl>
-                              <Input {...field} className="font-mono" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`envs.${index}.value`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>
-                              变量值 {index + 1}
-                              <FormLabelMust />
-                            </FormLabel>
-                            <FormControl>
-                              <Input {...field} className="font-mono" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full"
-                  onClick={() =>
-                    envAppend({
-                      name: "",
-                      value: "",
-                    })
-                  }
-                >
-                  <CirclePlus className="size-4" />
-                  添加{EnvCard}
-                </Button>
-              </div>
-            </AccordionCard>
+            <EnvFormCard form={form} open={envOpen} setOpen={setEnvOpen} />
             <OtherOptionsFormCard
               form={form}
               alertEnabledPath="alertEnabled"
