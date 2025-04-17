@@ -100,8 +100,12 @@ const PodInfo = ({
       }}
       appendInfos={[
         {
-          title: "IP 地址",
+          title: "内网 IP",
           content: pod.ip,
+        },
+        {
+          title: "节点",
+          content: <NodeBadges nodes={[pod.nodename]} />,
         },
       ]}
       children={
