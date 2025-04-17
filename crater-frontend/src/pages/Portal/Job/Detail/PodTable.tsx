@@ -81,16 +81,10 @@ const PodInfo = ({
   pod,
   setShowTerminal,
   setShowIngress,
-  setGrafanaUrl,
-  setShowMonitor,
-  grafanaPod,
 }: {
   pod: PodDetail;
   setShowTerminal: (namespacedName: NamespacedName) => void;
   setShowIngress: (namespacedName: NamespacedName) => void;
-  setGrafanaUrl: (url: string) => void;
-  setShowMonitor: (show: boolean) => void;
-  grafanaPod: string;
 }) => {
   return (
     <DetailPageLog
@@ -109,7 +103,7 @@ const PodInfo = ({
         },
       ]}
       children={
-        <div className="grid h-8 grid-cols-3 gap-2">
+        <div className="grid h-8 grid-cols-2 gap-2">
           <TooltipButton
             variant="outline"
             className="cursor-pointer"
@@ -123,9 +117,8 @@ const PodInfo = ({
             tooltipContent="网页终端"
           >
             <SquareTerminalIcon className="text-primary size-4" />
-            终端
+            网页终端
           </TooltipButton>
-
           <TooltipButton
             variant="outline"
             className="cursor-pointer"
@@ -139,21 +132,7 @@ const PodInfo = ({
             tooltipContent="外部访问"
           >
             <EthernetPort className="text-primary size-4" />
-            端口
-          </TooltipButton>
-
-          <TooltipButton
-            variant="outline"
-            className="cursor-pointer"
-            disabled={pod.phase !== "Running"}
-            onClick={() => {
-              setGrafanaUrl(getPodMonitorUrl(grafanaPod, pod));
-              setShowMonitor(true);
-            }}
-            tooltipContent="资源监控"
-          >
-            <GaugeIcon className="text-primary size-4" />
-            监控
+            外部访问
           </TooltipButton>
         </div>
       }
@@ -335,9 +314,6 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
           pod={query.data[0]}
           setShowTerminal={setShowTerminal}
           setShowIngress={setShowIngress}
-          setGrafanaUrl={setGrafanaUrl}
-          setShowMonitor={setShowMonitor}
-          grafanaPod={grafanaJob.pod}
         />
       ) : (
         <DataTable
