@@ -46,6 +46,11 @@ export const EventTimeline = ({ items }: TimelineLayoutProps) => {
               </TimelineTime>
               <TimelineIcon />
               <TimelineTitle className="flex flex-row items-center gap-1.5">
+                {item.reason}
+              </TimelineTitle>
+            </TimelineHeader>
+            <TimelineContent>
+              <div className="mb-2 flex flex-row items-center gap-1.5">
                 <TipBadge
                   title={item.type}
                   className={cn({
@@ -53,10 +58,21 @@ export const EventTimeline = ({ items }: TimelineLayoutProps) => {
                       item.type === "Normal",
                   })}
                 />
-                {item.involvedObject.kind} / {item.reason}
-              </TimelineTitle>
-            </TimelineHeader>
-            <TimelineContent>
+                <TipBadge
+                  title={item.involvedObject.kind}
+                  className={cn({
+                    "bg-secondary text-secondary-foreground hover:bg-accent capitalize":
+                      item.type === "Normal",
+                  })}
+                />
+                <TipBadge
+                  title={item.involvedObject.name}
+                  className={cn({
+                    "bg-secondary text-secondary-foreground hover:bg-accent":
+                      item.type === "Normal",
+                  })}
+                />
+              </div>
               <TimelineDescription>{item.message}</TimelineDescription>
             </TimelineContent>
           </TimelineItem>
