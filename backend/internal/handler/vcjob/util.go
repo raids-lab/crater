@@ -93,7 +93,7 @@ func GenerateVolumeMounts(
 	})
 	volumeMounts = append(volumeMounts, v1.VolumeMount{
 		Name:      "start-bash-script-volume",
-		MountPath: "/usr/local/bin/start.sh",
+		MountPath: "/crater-start.sh",
 		ReadOnly:  true,
 		SubPath:   "start.sh",
 	})
