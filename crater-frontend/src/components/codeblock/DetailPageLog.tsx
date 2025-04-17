@@ -8,11 +8,19 @@ import {
   TableCellForm,
 } from "./PodContainerDialog";
 import { LogCard } from "./LogDialog";
+import { cn } from "@/lib/utils";
 
 export default function DetailPageLog({
   namespacedName,
+  children,
+  appendInfos,
 }: {
   namespacedName?: PodNamespacedName;
+  children?: React.ReactNode;
+  appendInfos?: {
+    title: string;
+    content: React.ReactNode;
+  }[];
 }) {
   const { namespace, name: podName } = namespacedName ?? {};
   const queryClient = useQueryClient();
@@ -43,11 +51,11 @@ export default function DetailPageLog({
   return (
     <>
       {!containers || !selectedContainer ? (
-        <div className="flex h-[calc(100vh_-304px)] w-full items-center justify-center">
+        <div className="flex h-[calc(100vh_-_300px)] w-full items-center justify-center">
           <LoadingCircleIcon />
         </div>
       ) : (
-        <div className="grid h-[calc(100vh_-304px)] w-full gap-6 md:grid-cols-3 xl:grid-cols-4">
+        <div className="grid h-[calc(100vh_-_300px)] w-full gap-6 md:grid-cols-3 xl:grid-cols-4">
           {namespacedName && selectedContainer && (
             <LogCard
               namespacedName={namespacedName}
@@ -55,16 +63,28 @@ export default function DetailPageLog({
             />
           )}
           <div className="space-y-4">
-            <ContainerSelect
-              currentContainer={selectedContainer}
-              setCurrentContainer={setSelectedContainer}
-              containers={containers}
-            />
-            <fieldset className="border-input hidden h-[calc(100vh_-378px)] max-h-full gap-6 overflow-y-auto rounded-lg border p-4 shadow-xs md:grid">
+            {children ?? (
+              <ContainerSelect
+                currentContainer={selectedContainer}
+                setCurrentContainer={setSelectedContainer}
+                containers={containers}
+              />
+            )}
+            <fieldset
+              className={cn(
+                "border-input hidden h-[calc(100vh_-374px)] max-h-full gap-6 overflow-y-auto rounded-lg border p-4 shadow-xs md:grid",
+                {
+                  "h-[calc(100vh_-350px)]": !!children,
+                },
+              )}
+            >
               <legend className="-ml-1 px-2 text-sm font-medium">
                 {selectedContainer.isInitContainer ? "初始化容器" : "容器信息"}
               </legend>
-              <TableCellForm selectedContainer={selectedContainer} />
+              <TableCellForm
+                selectedContainer={selectedContainer}
+                appendInfos={appendInfos}
+              />
             </fieldset>
           </div>
         </div>

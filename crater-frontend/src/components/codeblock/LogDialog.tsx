@@ -248,7 +248,7 @@ export function LogCard({
 
   return (
     <Card
-      className="dark:bg-muted/30 relative h-full overflow-hidden rounded-md bg-slate-900 p-1 text-white md:col-span-2 xl:col-span-3 dark:border"
+      className="dark:bg-muted/30 bg-sidebar relative h-full overflow-hidden rounded-md p-1 md:col-span-2 xl:col-span-3 dark:border"
       ref={refRoot}
     >
       {showLog ? (
@@ -262,7 +262,7 @@ export function LogCard({
                   </Button>
                 </div>
               )}
-              <pre className="px-3 py-3 text-sm break-words whitespace-pre-wrap text-sky-300 dark:text-blue-300">
+              <pre className="px-3 py-3 text-sm break-words whitespace-pre-wrap dark:text-blue-300">
                 {streaming ? streamedLogs.join("\n") : logText}
               </pre>
             </div>

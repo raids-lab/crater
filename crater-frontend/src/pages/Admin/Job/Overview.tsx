@@ -57,7 +57,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { logger } from "@/utils/loglevel";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -188,7 +188,7 @@ const AdminJobOverview = () => {
     select: (res) => res.data.data,
   });
 
-  const refetchTaskList = async () => {
+  const refetchTaskList = useCallback(async () => {
     try {
       await Promise.all([
         new Promise((resolve) => setTimeout(resolve, 200)).then(() =>
@@ -200,7 +200,7 @@ const AdminJobOverview = () => {
     } catch (error) {
       logger.error("更新查询失败", error);
     }
-  };
+  }, [queryClient, days]);
 
   const { mutate: deleteTask } = useMutation({
     mutationFn: apiJobDeleteForAdmin,
@@ -218,21 +218,24 @@ const AdminJobOverview = () => {
     },
   });
 
-  const handleClick = (jobInfo: IJobInfo) => {
-    if (jobInfo.locked) {
-      apiJobUnlock(jobInfo.jobName).then(() => {
-        toast.success("解锁成功");
-        refetchTaskList();
-      });
-      setLockModalJobInfo(null);
-    } else {
-      setIsPermanent(false);
-      setDaysInput("");
-      setHoursInput("");
-      setMinutesInput("");
-      setLockModalJobInfo(jobInfo);
-    }
-  };
+  const handleClick = useCallback(
+    (jobInfo: IJobInfo) => {
+      if (jobInfo.locked) {
+        apiJobUnlock(jobInfo.jobName).then(() => {
+          toast.success("解锁成功");
+          refetchTaskList();
+        });
+        setLockModalJobInfo(null);
+      } else {
+        setIsPermanent(false);
+        setDaysInput("");
+        setHoursInput("");
+        setMinutesInput("");
+        setLockModalJobInfo(jobInfo);
+      }
+    },
+    [refetchTaskList],
+  );
 
   const submitLock = () => {
     if (!isPermanent && !(+daysInput || +hoursInput || +minutesInput)) {

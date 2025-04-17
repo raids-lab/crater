@@ -273,7 +273,7 @@ export const Component = () => {
           className="grid flex-1 items-start gap-4 md:gap-x-6 lg:grid-cols-3"
         >
           <PageTitle
-            title="新建单机作业"
+            title="新建自定义作业"
             description="提交无须人工干预而执行系列程序的作业"
             className="lg:col-span-3"
             tipContent={`版本 ${MetadataFormCustom.version}`}

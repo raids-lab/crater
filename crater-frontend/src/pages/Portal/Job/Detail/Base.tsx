@@ -65,9 +65,6 @@ import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
 import { asyncGrafanaJobAtom } from "@/utils/store/config";
 import UserLabel from "@/components/label/UserLabel";
-export interface Resource {
-  [key: string]: string;
-}
 
 export function BaseCore({ jobName }: { jobName: string }) {
   useFixedLayout();
@@ -274,11 +271,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
           key: "base",
           icon: LayoutGridIcon,
           label: "基本信息",
-          children: (
-            <>
-              <PodTable jobName={jobName} userName={data.username} />
-            </>
-          ),
+          children: <PodTable jobName={jobName} userName={data.username} />,
           scrollable: true,
           hidden: jobStatus === JobStatus.MetadataOnly || isCompletedOver3Days,
         },

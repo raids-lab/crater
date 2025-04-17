@@ -1,5 +1,5 @@
 // Reference: https://github.com/kubesphere/console/blob/master/packages/shared/src/stores/pod.ts#L187
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import {
   Dialog,
   DialogContent,
@@ -109,8 +109,13 @@ export function ContainerSelect({
 
 export const TableCellForm = ({
   selectedContainer,
+  appendInfos,
 }: {
   selectedContainer: ContainerInfo;
+  appendInfos?: {
+    title: string;
+    content: React.ReactNode;
+  }[];
 }) => {
   const containerStatus: ContainerStatus = useMemo(() => {
     if (selectedContainer.state.running) {
@@ -137,6 +142,14 @@ export const TableCellForm = ({
       >
         {shortenImageName(selectedContainer.image)}
       </p>
+      {appendInfos?.map((info, index) => (
+        <Fragment key={index}>
+          <div className="text-muted-foreground">{info.title}</div>
+          <div className="col-span-2 font-mono break-all whitespace-normal">
+            {info.content}
+          </div>
+        </Fragment>
+      ))}
       {!!selectedContainer.resources && (
         <>
           <div className="text-muted-foreground">申请资源</div>

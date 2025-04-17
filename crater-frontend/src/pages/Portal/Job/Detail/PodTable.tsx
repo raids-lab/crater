@@ -2,7 +2,13 @@ import { ColumnDef } from "@tanstack/react-table";
 import { apiJobGetPods, PodDetail } from "@/services/api/vcjob";
 import ResourceBadges from "@/components/badge/ResourceBadges";
 import PodPhaseLabel, { podPhases } from "@/components/badge/PodPhaseBadge";
-import { EthernetPort, GaugeIcon, LogsIcon, TerminalIcon } from "lucide-react";
+import {
+  EthernetPort,
+  GaugeIcon,
+  LogsIcon,
+  SquareTerminalIcon,
+  TerminalIcon,
+} from "lucide-react";
 import { DataTable } from "@/components/custom/DataTable";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -24,6 +30,7 @@ import {
 import { GrafanaIframe } from "@/pages/Embed/Monitor";
 import { useAtomValue } from "jotai";
 import { asyncGrafanaJobAtom } from "@/utils/store/config";
+import DetailPageLog from "@/components/codeblock/DetailPageLog";
 
 interface PodTableProps {
   jobName: string;
@@ -68,6 +75,86 @@ const toolbarConfig: DataTableToolbarConfig = {
 
 const getPodMonitorUrl = (baseURL: string, pod: PodDetail) => {
   return `${baseURL}?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`;
+};
+
+const PodInfo = ({
+  pod,
+  setShowTerminal,
+  setShowIngress,
+  setGrafanaUrl,
+  setShowMonitor,
+  grafanaPod,
+}: {
+  pod: PodDetail;
+  setShowTerminal: (namespacedName: NamespacedName) => void;
+  setShowIngress: (namespacedName: NamespacedName) => void;
+  setGrafanaUrl: (url: string) => void;
+  setShowMonitor: (show: boolean) => void;
+  grafanaPod: string;
+}) => {
+  return (
+    <DetailPageLog
+      namespacedName={{
+        name: pod.name,
+        namespace: pod.namespace,
+      }}
+      appendInfos={[
+        {
+          title: "IP 地址",
+          content: pod.ip,
+        },
+      ]}
+      children={
+        <div className="grid h-8 grid-cols-3 gap-2">
+          <TooltipButton
+            variant="outline"
+            className="cursor-pointer"
+            disabled={pod.phase !== "Running"}
+            onClick={() => {
+              setShowTerminal({
+                namespace: pod.namespace,
+                name: pod.name,
+              });
+            }}
+            tooltipContent="网页终端"
+          >
+            <SquareTerminalIcon className="text-primary size-4" />
+            终端
+          </TooltipButton>
+
+          <TooltipButton
+            variant="outline"
+            className="cursor-pointer"
+            disabled={pod.phase !== "Running"}
+            onClick={() => {
+              setShowIngress({
+                namespace: pod.namespace,
+                name: pod.name,
+              });
+            }}
+            tooltipContent="外部访问"
+          >
+            <EthernetPort className="text-primary size-4" />
+            端口
+          </TooltipButton>
+
+          <TooltipButton
+            variant="outline"
+            className="cursor-pointer"
+            disabled={pod.phase !== "Running"}
+            onClick={() => {
+              setGrafanaUrl(getPodMonitorUrl(grafanaPod, pod));
+              setShowMonitor(true);
+            }}
+            tooltipContent="资源监控"
+          >
+            <GaugeIcon className="text-primary size-4" />
+            监控
+          </TooltipButton>
+        </div>
+      }
+    />
+  );
 };
 
 export const PodTable = ({ jobName, userName }: PodTableProps) => {
@@ -239,12 +326,23 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
 
   return (
     <>
-      <DataTable
-        storageKey="job_pods"
-        toolbarConfig={toolbarConfig}
-        query={query}
-        columns={columns}
-      />
+      {query.data.length === 1 ? (
+        <PodInfo
+          pod={query.data[0]}
+          setShowTerminal={setShowTerminal}
+          setShowIngress={setShowIngress}
+          setGrafanaUrl={setGrafanaUrl}
+          setShowMonitor={setShowMonitor}
+          grafanaPod={grafanaJob.pod}
+        />
+      ) : (
+        <DataTable
+          storageKey="job_pods"
+          toolbarConfig={toolbarConfig}
+          query={query}
+          columns={columns}
+        />
+      )}
       <LogDialog namespacedName={showLog} setNamespacedName={setShowLog} />
       <TerminalDialog
         namespacedName={showTerminal}
