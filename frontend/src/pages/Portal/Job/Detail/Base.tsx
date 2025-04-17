@@ -10,8 +10,8 @@ import {
   ExternalLinkIcon,
   FileSlidersIcon,
   GaugeIcon,
+  HistoryIcon,
   LayoutGridIcon,
-  ShieldEllipsisIcon,
   SquareIcon,
   Trash2Icon,
   UserRoundIcon,
@@ -55,12 +55,11 @@ import JobTypeLabel from "@/components/badge/JobTypeBadge";
 import { GrafanaIframe } from "@/pages/Embed/Monitor";
 import useFixedLayout from "@/hooks/useFixedLayout";
 import { DetailPage } from "@/components/layout/DetailPage";
-import Nothing from "@/components/placeholder/Nothing";
 import { hasNvidiaGPU } from "@/utils/resource";
 import GpuIcon from "@/components/icon/GpuIcon";
 import { SSHPortDialog } from "./SSHPortDialog";
 import ProfileDashboard from "@/components/metrics/profile-dashboard";
-import { getDaysDifference, getHoursDifference } from "@/utils/time";
+import { getDaysDifference } from "@/utils/time";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
 import { asyncGrafanaJobAtom } from "@/utils/store/config";
@@ -102,10 +101,6 @@ export function BaseCore({ jobName }: { jobName: string }) {
 
   const isCompletedOver3Days = useMemo(() => {
     return getDaysDifference(data?.completedAt) > 3;
-  }, [data?.completedAt]);
-
-  const isCompletedOver1Hour = useMemo(() => {
-    return getHoursDifference(data?.completedAt) > 1 / 24;
   }, [data?.completedAt]);
 
   const jobStatus = useMemo(() => {
@@ -292,8 +287,8 @@ export function BaseCore({ jobName }: { jobName: string }) {
         },
         {
           key: "event",
-          icon: ShieldEllipsisIcon,
-          label: "作业事件",
+          icon: HistoryIcon,
+          label: jobStatus === JobStatus.Terminated ? "历史事件" : "作业事件",
           children: (
             <LazyContent
               name={jobName}
@@ -301,16 +296,16 @@ export function BaseCore({ jobName }: { jobName: string }) {
               fetchData={apiJobGetEvent}
               renderData={(events) => (
                 <>
-                  <EventTimeline items={events} />
-                  {events.length === 0 && (
-                    <Nothing title={"近一小时无事发生"} />
+                  {events.length > 0 ? (
+                    <EventTimeline items={events} />
+                  ) : (
+                    <EventTimeline items={data.events ?? []} />
                   )}
                 </>
               )}
             />
           ),
           scrollable: true,
-          hidden: isCompletedOver1Hour,
         },
         {
           key: "monitor",

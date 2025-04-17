@@ -1,17 +1,11 @@
 import { MetricSection } from "../ui-custom/metric-section";
 import { ProgressCard } from "../ui-custom/progress-card";
 import { MetricCard } from "../ui-custom/metric-card";
-import {
-  Cpu,
-  MemoryStickIcon as Memory,
-  ArrowDownUp,
-  HistoryIcon,
-} from "lucide-react";
+import { Cpu, MemoryStickIcon as Memory, ArrowDownUp } from "lucide-react";
 import { IJupyterDetail, ProfileData } from "@/services/api/vcjob";
 import GpuIcon from "../icon/GpuIcon";
 import { useMemo } from "react";
 import { JobInfoSections } from "./ScheduleInfoSection";
-import { EventTimeline } from "../custom/Timeline/timeline-layout";
 
 interface ProfileDashboardProps {
   data: IJupyterDetail;
@@ -40,15 +34,6 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
     return (
       <div className="space-y-6">
         <JobInfoSections data={data} />
-        {data.events && data.events?.length > 0 && (
-          <MetricSection
-            title="作业历史事件"
-            icon={<HistoryIcon className="h-5 w-5" />}
-            className="md:grid-cols-1 lg:grid-cols-1"
-          >
-            <EventTimeline items={data.events} />
-          </MetricSection>
-        )}
       </div>
     );
   }
@@ -530,15 +515,6 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
               description="作业运行期间 PCIe 峰值接收速率"
             />
           )}
-        </MetricSection>
-      )}
-      {data.events && data.events?.length > 0 && (
-        <MetricSection
-          title="作业历史事件"
-          icon={<HistoryIcon className="h-5 w-5" />}
-          className="md:grid-cols-1 lg:grid-cols-1"
-        >
-          <EventTimeline items={data.events} />
         </MetricSection>
       )}
     </div>

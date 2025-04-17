@@ -1,23 +1,17 @@
 import instance, { VERSION } from "../axios";
 import { IResponse } from "../types";
 import { Event as KubernetesEvent } from "kubernetes-types/core/v1";
-import { ContainerStateTerminated } from "kubernetes-types/core/v1";
+import {
+  ContainerStateTerminated,
+  ContainerState,
+} from "kubernetes-types/core/v1";
 
 export type TerminatedState = ContainerStateTerminated;
 
 export interface ContainerInfo {
   name: string;
   image: string;
-  state: {
-    waiting?: {
-      reason: string;
-      message: string;
-    };
-    running?: {
-      startedAt: string;
-    };
-    terminated?: TerminatedState;
-  };
+  state: ContainerState;
   resources?: Record<string, string>;
   restartCount: number;
   isInitContainer: boolean;
