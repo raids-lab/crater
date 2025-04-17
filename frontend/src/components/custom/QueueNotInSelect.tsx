@@ -55,9 +55,8 @@ export function ShareDatasetToQueueDialog({
 
   return (
     <>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="w-full">
         <SelectBox
-          className="col-span-4"
           options={queueList ?? []}
           value={queueIds}
           inputPlaceholder="搜索账户"
