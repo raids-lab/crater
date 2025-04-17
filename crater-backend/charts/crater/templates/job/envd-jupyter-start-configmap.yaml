@@ -7,20 +7,6 @@ data:
   start.sh: |
     #!/bin/bash
     set -e
-    
-    # Check if sshd user exists, if not, create it
-    if ! id "sshd" &>/dev/null; then
-        echo "Creating SSHD user and group..."
-        # Create sshd group
-        groupadd sshd
-        # Create sshd user with UID 66, group sshd, comment "SSH daemon",
-        # home directory /var/lib/sshd, shell /sbin/nologin, and create home directory
-        useradd -u 66 -g sshd -c "SSH daemon" -d /var/lib/sshd -s /sbin/nologin -m sshd
-        echo "SSHD user creation completed"
-    else
-        echo "SSHD user already exists, skipping creation"
-    fi
-    
     # Determine whether the user already exists
     if id "${NB_USER}" &>/dev/null; then
         echo "User ${NB_USER} already exists, will not recreate"
