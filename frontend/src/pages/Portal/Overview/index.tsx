@@ -233,7 +233,7 @@ export const Component: FC = () => {
       label: owner,
       value: count,
     }));
-  }, [jobQuery.data, useAtomValue(globalHideUsername)]);
+  }, [hideUsername, jobQuery.data]);
 
   const gpuStatus = useMemo(() => {
     if (!jobQuery.data) {

@@ -238,13 +238,6 @@ export interface IUserInfo {
   nickname: string;
 }
 
-// ScheduleData       *model.ScheduleData           `json:"scheduleData"`
-// Events             []v1.Event                    `json:"events"`
-// TerminatedStates   []v1.ContainerStateTerminated `json:"terminatedStates"`
-// type ScheduleData struct {
-// 	ImagePullTime string  `json:"imagePullTime"`
-// 	ImageSize     *string `json:"imageSize"`
-// }
 export interface ScheduleData {
   imagePullTime: string;
   imageSize?: string;
