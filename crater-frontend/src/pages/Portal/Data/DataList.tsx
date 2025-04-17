@@ -116,6 +116,7 @@ export default function DataList({
   const [sort, setSort] = useState("ascending");
   const [modelType, setModelType] = useState("所有标签");
   const [searchTerm, setSearchTerm] = useState("");
+  const [ownerFilter, setOwnerFilter] = useState("所有"); // 修改默认值为"所有"
   const user = useAtomValue(globalUserInfo);
 
   const tags = useMemo(() => {
@@ -143,6 +144,14 @@ export default function DataList({
     )
     .filter((item) =>
       item.name.toLowerCase().includes(searchTerm.toLowerCase()),
+    )
+    // 修改：基于所有者筛选，添加"所有"选项
+    .filter((item) =>
+      ownerFilter === "所有"
+        ? true
+        : ownerFilter === "我的"
+          ? user.name === item.owner.username
+          : user.name !== item.owner.username,
     );
 
   return (
@@ -164,17 +173,31 @@ export default function DataList({
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Select value={modelType} onValueChange={setModelType}>
-            <SelectTrigger className="min-w-36">
-              <SelectValue>{modelType}</SelectValue>
+          {title !== "作业模板" && (
+            <Select value={modelType} onValueChange={setModelType}>
+              <SelectTrigger className="min-w-36">
+                <SelectValue>{modelType}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="所有标签">所有标签</SelectItem>
+                {tags.map((tag) => (
+                  <SelectItem key={tag} value={tag}>
+                    {tag}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* 新增：简化的所有者筛选 */}
+          <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+            <SelectTrigger className="min-w-28">
+              <SelectValue>{ownerFilter}</SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="所有标签">所有标签</SelectItem>
-              {tags.map((tag) => (
-                <SelectItem key={tag} value={tag}>
-                  {tag}
-                </SelectItem>
-              ))}
+              <SelectItem value="所有">所有{title}</SelectItem>
+              <SelectItem value="我的">我的{title}</SelectItem>
+              <SelectItem value="他人">他人{title}</SelectItem>
             </SelectContent>
           </Select>
         </div>

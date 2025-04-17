@@ -52,9 +52,8 @@ export function ShareDatasetToUserDialog({
 
   return (
     <>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="w-full">
         <SelectBox
-          className="col-span-4"
           options={userList ?? []}
           value={users}
           inputPlaceholder="搜索用户"
