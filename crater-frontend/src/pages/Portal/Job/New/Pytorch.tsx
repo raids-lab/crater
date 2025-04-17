@@ -123,6 +123,14 @@ type FormSchema = z.infer<typeof formSchema>;
 
 const EnvCard = "环境变量";
 
+const dataProcessor = (data: FormSchema) => {
+  // Convert forwards to a format suitable for the API
+  if (data.forwards === undefined || data.forwards === null) {
+    data.forwards = [];
+  }
+  return data;
+};
+
 export const Component = () => {
   const [envOpen, setEnvOpen] = useState<boolean>(false);
   const [otherOpen, setOtherOpen] = useState<boolean>(false);
@@ -284,6 +292,7 @@ export const Component = () => {
               <FormImportButton
                 metadata={MetadataFormPytorch}
                 form={form}
+                dataProcessor={dataProcessor}
                 afterImport={(data) => {
                   if (data.envs.length > 0) {
                     setEnvOpen(true);
@@ -611,12 +620,7 @@ export const Component = () => {
                   value: true,
                 },
               ]}
-              dataProcessor={(data) => {
-                if (data.forwards === undefined || data.forwards === null) {
-                  data.forwards = [];
-                }
-                return data;
-              }}
+              dataProcessor={dataProcessor}
               defaultMarkdown={markdown}
             />
           </div>

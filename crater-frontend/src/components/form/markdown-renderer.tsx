@@ -245,7 +245,7 @@ const Code = React.memo(({ children, className, ...rest }: any) => {
   ) : (
     <code
       className={cn(
-        "[:not(pre)>&]:bg-background/50 font-mono [:not(pre)>&]:rounded-md [:not(pre)>&]:px-1 [:not(pre)>&]:py-0.5",
+        "[:not(pre)>&]:bg-muted/50 font-mono [:not(pre)>&]:rounded-md [:not(pre)>&]:px-1 [:not(pre)>&]:py-0.5",
       )}
       {...rest}
     >
@@ -300,7 +300,7 @@ function childrenTakeAllStringContents(element: unknown): string {
 
 const COMPONENTS = {
   h1: withClass("h1", "text-2xl font-semibold"),
-  h2: withClass("h2", "font-semibold text-xl"),
+  h2: withClass("h2", "font-semibold text-xl text-primary"),
   h3: withClass("h3", "font-semibold text-lg"),
   h4: withClass("h4", "font-semibold text-base"),
   h5: withClass("h5", "font-medium"),

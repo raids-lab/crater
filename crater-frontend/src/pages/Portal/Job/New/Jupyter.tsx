@@ -136,6 +136,13 @@ const formSchema = z.object({
 
 type FormSchema = z.infer<typeof formSchema>;
 
+const dataProcessor = (data: FormSchema) => {
+  if (data.forwards === undefined || data.forwards === null) {
+    data.forwards = [];
+  }
+  return data;
+};
+
 export const Component = () => {
   const [envOpen, setEnvOpen] = useState(false);
   const [otherOpen, setOtherOpen] = useState(true);
@@ -261,6 +268,7 @@ export const Component = () => {
             <div className="items-centor flex w-fit flex-row justify-end gap-3">
               <FormImportButton
                 metadata={MetadataFormJupyter}
+                dataProcessor={dataProcessor}
                 form={form}
                 afterImport={(data) => {
                   if (data.envs.length > 0) {
@@ -337,12 +345,7 @@ export const Component = () => {
                   value: true,
                 },
               ]}
-              dataProcessor={(data) => {
-                if (data.forwards === undefined || data.forwards === null) {
-                  data.forwards = [];
-                }
-                return data;
-              }}
+              dataProcessor={dataProcessor}
               defaultMarkdown={JupyterMarkdown}
             />
           </div>
