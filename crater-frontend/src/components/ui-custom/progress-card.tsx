@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
+import { ProgressBar } from "../custom/ProgressBar"
 
 interface ProgressCardProps {
   title: string
@@ -41,7 +41,7 @@ export function ProgressCard({
             </span>)}
           {showPercentage && <span className="text-2xl font-bold">{percentage.toFixed(1)}<span className="text-xl ml-0.5">%</span></span>}
         </div>
-        {percentage > 0 && <Progress value={percentage} className="h-2" />}
+        {percentage > 0.1 && <ProgressBar width={percentage} />}
       </CardContent>
     </Card>
   )

@@ -5,34 +5,28 @@ export const ProgressBar = ({
   label,
 }: {
   width: number;
-  label: string;
+  label?: string;
 }) => {
-  // dramActiveAvg: 19.41%, split by :
-  const [first, second] = label.split(":");
   const newWidth = width > 100 ? 100 : width;
   return (
     <div
-      className={cn("bg-accent/50 text-foreground relative h-4 rounded", {
+      className={cn("bg-accent text-foreground relative h-2 rounded-md", {
         "text-white": width > 90,
       })}
     >
       <div
-        className={cn("h-4 rounded transition-all duration-500", {
-          "bg-green-400 dark:bg-green-700": width <= 30,
-          "bg-yellow-400 dark:bg-yellow-700": width > 30 && width <= 60,
-          "bg-orange-400 dark:bg-orange-700": width > 60 && width <= 90,
-          "bg-red-500 dark:bg-rose-700": width > 90,
+        className={cn("h-2 rounded-md transition-all duration-500", {
+          "bg-highlight-emerald": width <= 20,
+          "bg-highlight-sky": width > 20 && width <= 50,
+          "bg-highlight-yellow": width > 50 && width <= 70,
+          "bg-highlight-orange": width > 70 && width <= 90,
+          "bg-highlight-red": width > 90,
         })}
         style={{ width: `${newWidth}%` }}
       ></div>
-      {first && second ? (
-        <div className="absolute inset-0 grid grid-cols-7 gap-1 font-mono text-xs font-medium">
-          <div className="col-span-4 text-right">{first}:</div>
-          <div className="col-span-3">{second}</div>
-        </div>
-      ) : (
+      {label && (
         <div className="absolute inset-0 font-mono text-xs font-medium">
-          <div className="text-center">{first}</div>
+          <div className="text-center">{label}</div>
         </div>
       )}
     </div>
