@@ -12,6 +12,7 @@ interface ImportButtonProps<T extends FieldValues> {
   metadata: MetadataFormType;
   form?: UseFormReturn<T>;
   beforeImport?: (data: T) => void;
+  dataProcessor?: (data: T) => T;
   afterImport?: (data: T) => void;
   buttonText?: string;
   className?: string;
@@ -20,6 +21,7 @@ interface ImportButtonProps<T extends FieldValues> {
 function FormImportButton<T extends FieldValues>({
   metadata,
   beforeImport,
+  dataProcessor,
   afterImport,
   form,
   className,
@@ -41,6 +43,10 @@ function FormImportButton<T extends FieldValues>({
           )
             .then((data) => {
               beforeImport?.(data);
+              // Apply optional data processing
+              if (dataProcessor) {
+                data = dataProcessor(data);
+              }
               form?.reset(data);
               afterImport?.(data);
               toast.info("导入配置成功");
