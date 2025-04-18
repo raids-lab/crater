@@ -73,7 +73,8 @@ func (mgr *ResourceMgr) ListResource(c *gin.Context) {
 	r := query.Resource
 	q := r.WithContext(c).Order(r.Priority.Desc())
 	if req.WithVendorDomain {
-		q = q.Where(r.VendorDomain.IsNotNull())
+		// nvidia.com
+		q = q.Where(r.VendorDomain.Eq("nvidia.com"))
 	}
 	resources, err := q.Find()
 	if err != nil {
