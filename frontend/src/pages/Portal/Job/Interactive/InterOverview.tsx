@@ -202,9 +202,8 @@ const InterOverview = () => {
   return (
     <DataTable
       info={{
-        title: "交互式作业",
-        description:
-          "提供开箱即用的 Jupyter Lab 或 Web IDE， 可用于测试、调试等",
+        title: "Jupyter Lab",
+        description: "提供开箱即用的 Jupyter Lab， 可用于测试、调试等",
       }}
       storageKey="portal_job_interactive"
       query={interactiveQuery}

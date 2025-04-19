@@ -443,7 +443,7 @@ const ColocateOverview = () => {
       <div className="grid gap-5 lg:grid-cols-2">
         <Card className="row-span-2 flex flex-col justify-between">
           <CardHeader>
-            <CardTitle>交互式作业</CardTitle>
+            <CardTitle>Jupyter Lab</CardTitle>
             <CardDescription className="pt-2 leading-relaxed text-balance">
               提供开箱即用的 Jupyter Lab 或 Web IDE， 可用于代码编写、调试等。
             </CardDescription>

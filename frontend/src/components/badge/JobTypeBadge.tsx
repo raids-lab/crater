@@ -56,12 +56,6 @@ const getJobTypeLabel = (
         color: "text-highlight-rose bg-highlight-rose/10",
         description: "Pytorch DDP 作业",
       };
-    case JobType.WebIDE:
-      return {
-        label: "WebIDE",
-        color: "text-highlight-lime bg-highlight-lime/10",
-        description: "WebIDE 交互式作业",
-      };
     default:
       return {
         label: "Custom",

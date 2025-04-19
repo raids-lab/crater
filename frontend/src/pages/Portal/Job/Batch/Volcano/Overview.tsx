@@ -166,8 +166,8 @@ const VolcanoOverview = () => {
   return (
     <DataTable
       info={{
-        title: "批处理作业",
-        description: "提交无须人工干预而执行系列程序的作业",
+        title: "自定义作业",
+        description: "使用自定义作业进行训练、推理等任务",
       }}
       storageKey="portal_batch_job_overview"
       query={batchQuery}
@@ -199,16 +199,16 @@ const VolcanoOverview = () => {
           urls={[
             {
               url: "portal/job/batch/new-" + jobType,
-              name: "自定义作业",
-            },
-            {
-              url: "portal/job/batch/new-tensorflow",
-              name: " Tensorflow PS 作业",
-              disabled: jobType === "spjobs",
+              name: "自定义作业（单机）",
             },
             {
               url: "portal/job/batch/new-pytorch",
               name: " Pytorch DDP 作业",
+              disabled: jobType === "spjobs",
+            },
+            {
+              url: "portal/job/batch/new-tensorflow",
+              name: " Tensorflow PS 作业",
               disabled: jobType === "spjobs",
             },
             {

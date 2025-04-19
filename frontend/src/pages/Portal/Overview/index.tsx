@@ -284,7 +284,7 @@ export const Component: FC = () => {
                 },
                 {
                   url: `portal/job/batch/new-${jobType}`,
-                  name: "自定义作业",
+                  name: "自定义作业（单机）",
                 },
                 {
                   url: "portal/job/batch/new-tensorflow",

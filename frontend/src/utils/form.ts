@@ -6,6 +6,9 @@ export const resourceSchema = z.object({
   cpu: z.number().int().min(0, {
     message: "CPU 核数不能小于 0",
   }),
+  memory: z.number().int().min(0, {
+    message: "内存大小不能小于 0",
+  }),
   gpu: z
     .object({
       count: z.number().int().min(0, {
@@ -26,9 +29,7 @@ export const resourceSchema = z.object({
         path: ["model"], // The path for the error message
       },
     ),
-  memory: z.number().int().min(0, {
-    message: "内存大小不能小于 0",
-  }),
+  rdma: z.boolean().default(false).optional(),
 });
 
 export type ResourceSchema = z.infer<typeof resourceSchema>;
@@ -241,12 +242,25 @@ export const importFromJsonString = <T>(
 export const convertToResourceList = (
   resource: ResourceSchema,
 ): K8sResources => {
-  const k8sResource: K8sResources = {
+  let k8sResource: K8sResources = {
     cpu: `${resource.cpu}`,
     memory: `${resource.memory}Gi`,
   };
   if (resource.gpu.model && resource.gpu.count > 0) {
+    if (resource.rdma) {
+      // 作业同时申请 RDMA 和 GPU 时，不需要限制 CPU 和内存
+      k8sResource = {};
+    }
     k8sResource[resource.gpu.model] = `${resource.gpu.count}`;
+    // GPU Model 和 RDMA 资源对应关系：
+    // nvidia.com/v100 => rdma/rdma_v100
+    // nvidia.com/a100 => rdma/rdma_a100
+    // TODO(liyilong): 暂时硬编码，后续需要考虑如何做成配置
+    if (resource.gpu.model === "nvidia.com/v100") {
+      k8sResource["rdma/rdma_v100"] = `1`;
+    } else if (resource.gpu.model === "nvidia.com/a100") {
+      k8sResource["rdma/rdma_a100"] = `1`;
+    }
   }
   return k8sResource;
 };

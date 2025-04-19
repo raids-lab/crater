@@ -61,23 +61,20 @@ const markdown = `## 运行规则
 
 ## 以普通用户运行
 
-批处理作业默认以 \`root\` 用户运行，这种情况下，由于交互式作业默认以普通用户运行，可能会导致权限问题。
+自定义作业默认以 \`root\` 用户运行，这种情况下，由于 Jupyter 交互式作业默认以普通用户运行，可能会导致权限问题。
 
-为了帮助您以普通用户运行批处理作业，我们在容器内注入了 \`/usr/local/bin/start.sh\` 脚本，您可以通过以下方式使用：
+为了帮助您以普通用户运行自定义作业，我们在容器内注入了 \`/crater-start.sh\` 脚本，您可以通过以下方式使用：
 
 ### 方法1：直接执行命令
 在批处理命令前加上脚本调用：
 \`\`\`bash
-/usr/local/bin/start.sh python your_script.py
+/crater-start.sh python your_script.py
 \`\`\`
 
 ### 方法2：多步骤执行
-先切换到普通用户环境，再执行后续命令：
+
 \`\`\`bash
-/usr/local/bin/start.sh;
-su \${NB_USER};
-your_actual_command_1;
-your_actual_command_2;
+// TODO(huangsy): 补充一下怎么使用
 \`\`\`
 
 脚本内容如下：
@@ -274,7 +271,7 @@ export const Component = () => {
         >
           <PageTitle
             title="新建自定义作业"
-            description="提交无须人工干预而执行系列程序的作业"
+            description="使用自定义作业进行训练、推理等任务"
             className="lg:col-span-3"
             tipContent={`版本 ${MetadataFormCustom.version}`}
           >
