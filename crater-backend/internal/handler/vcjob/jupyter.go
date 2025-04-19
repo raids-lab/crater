@@ -143,7 +143,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	torelations := GenerateTaintTolerationsForAccount(token)
 
 	// 4. Labels and Annotations
-	labels, podAnnotations, jobAnnotations := getLabelAndAnnotations(
+	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(
 		CraterJobTypeJupyter,
 		token,
 		jobName,

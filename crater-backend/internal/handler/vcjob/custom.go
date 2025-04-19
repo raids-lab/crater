@@ -69,7 +69,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	jobName := fmt.Sprintf("single-%s", baseURL)
 
 	// 4. Labels and Annotations
-	labels, podAnnotations, jobAnnotations := getLabelAndAnnotations(
+	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(
 		CraterJobTypeCustom,
 		token,
 		jobName,

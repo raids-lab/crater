@@ -59,7 +59,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	envs := GenerateEnvs(c, token, req.Envs)
 
 	// 3. Labels and Annotations
-	labels, podAnnotations, jobAnnotations := getLabelAndAnnotations(
+	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(
 		CraterJobTypePytorch,
 		token,
 		jobName,
