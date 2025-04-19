@@ -199,16 +199,16 @@ const VolcanoOverview = () => {
           urls={[
             {
               url: "portal/job/batch/new-" + jobType,
-              name: "自定义作业（单机）",
+              name: "自定义作业",
             },
             {
               url: "portal/job/batch/new-tensorflow",
-              name: " Tensorflow 作业",
+              name: " Tensorflow PS 作业",
               disabled: jobType === "spjobs",
             },
             {
               url: "portal/job/batch/new-pytorch",
-              name: " Pytorch 作业",
+              name: " Pytorch DDP 作业",
               disabled: jobType === "spjobs",
             },
             {

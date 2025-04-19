@@ -36,7 +36,7 @@ const getJobTypeLabel = (
       return {
         label: "Custom",
         color: "text-highlight-purple bg-highlight-purple/10",
-        description: "自定义的批处理作业",
+        description: "自定义作业",
       };
     case JobType.Jupyter:
       return {
@@ -48,13 +48,13 @@ const getJobTypeLabel = (
       return {
         label: "Tensorflow",
         color: "text-highlight-cyan bg-highlight-cyan/10",
-        description: "Tensorflow 分布式训练作业",
+        description: "TensorFlow PS 作业",
       };
     case JobType.Pytorch:
       return {
         label: "Pytorch",
         color: "text-highlight-rose bg-highlight-rose/10",
-        description: "Pytorch 分布式训练作业",
+        description: "Pytorch DDP 作业",
       };
     case JobType.WebIDE:
       return {
@@ -66,7 +66,7 @@ const getJobTypeLabel = (
       return {
         label: "Custom",
         color: "text-highlight-purple bg-highlight-purple/10",
-        description: "自定义的批处理作业",
+        description: "自定义作业",
       };
   }
 };

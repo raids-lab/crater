@@ -448,8 +448,8 @@ const ColocateOverview = () => {
             <CardTitle>批处理作业</CardTitle>
             <CardDescription className="pt-2 leading-relaxed text-balance">
               指无须人工干预而执行系列程序的作业，包含单机作业、Pytorch
-              分布式训练作业、 Tensorflow 分布式训练作业、Ray 分布式训练作业、
-              OpenMPI 分布式计算作业等。
+              分布式训练作业、 TensorFlow PS 作业、Ray 分布式训练作业、 OpenMPI
+              分布式计算作业等。
             </CardDescription>
           </CardHeader>
           <CardFooter>
@@ -457,13 +457,17 @@ const ColocateOverview = () => {
               title="batch"
               urls={[
                 {
+                  url: "portal/job/batch/new-" + jobType,
+                  name: "自定义作业",
+                },
+                {
                   url: "portal/job/batch/new-tensorflow",
-                  name: " Tensorflow 作业",
+                  name: " Tensorflow PS 作业",
                   disabled: true,
                 },
                 {
                   url: "portal/job/batch/new-pytorch",
-                  name: " Pytorch 作业",
+                  name: " Pytorch DDP 作业",
                   disabled: true,
                 },
                 {
@@ -480,10 +484,6 @@ const ColocateOverview = () => {
                   url: "portal/job/batch/new-openmpi",
                   name: " OpenMPI 作业",
                   disabled: true,
-                },
-                {
-                  url: "portal/job/batch/new-" + jobType,
-                  name: "自定义作业（单机）",
                 },
               ]}
             />

@@ -52,11 +52,11 @@ export const craterPath: PathInfo = {
             },
             {
               path: "new-tensorflow",
-              title: "新建 Tensorflow 作业",
+              title: "新建 Tensorflow PS 作业",
             },
             {
               path: "new-pytorch",
-              title: "新建 Pytorch 作业",
+              title: "新建 Pytorch DDP 作业",
             },
           ],
         },
