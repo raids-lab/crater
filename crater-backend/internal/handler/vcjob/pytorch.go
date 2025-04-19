@@ -44,7 +44,8 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	}
 
 	// base URL
-	jobName := fmt.Sprintf("py-%s-%s", token.Username, uuid.New().String()[:5])
+	baseURL := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
+	jobName := fmt.Sprintf("py-%s", baseURL)
 
 	// 1. Volume Mounts
 	volumes, volumeMounts, err := GenerateVolumeMounts(c, req.VolumeMounts, token)
@@ -62,7 +63,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(
 		CraterJobTypePytorch,
 		token,
-		jobName,
+		baseURL,
 		req.Name,
 		req.Template,
 		req.AlertEnabled,

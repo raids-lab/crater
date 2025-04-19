@@ -79,7 +79,8 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	}
 
 	// Ingress base URL
-	jobName := fmt.Sprintf("tf-%s-%s", token.Username, uuid.New().String()[:5])
+	baseURL := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:6])
+	jobName := fmt.Sprintf("tf-%s", baseURL)
 
 	// 1. Volume Mounts
 	volumes, volumeMounts, err := GenerateVolumeMounts(c, req.VolumeMounts, token)
@@ -97,7 +98,7 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(
 		CraterJobTypeTensorflow,
 		token,
-		jobName,
+		baseURL,
 		req.Name,
 		req.Template,
 		req.AlertEnabled,

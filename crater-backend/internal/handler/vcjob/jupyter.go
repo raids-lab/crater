@@ -146,7 +146,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(
 		CraterJobTypeJupyter,
 		token,
-		jobName,
+		baseURL,
 		req.Name,
 		req.Template,
 		req.AlertEnabled,
