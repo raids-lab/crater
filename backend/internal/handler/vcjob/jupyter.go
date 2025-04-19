@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -18,7 +17,6 @@ import (
 	bus "volcano.sh/apis/pkg/apis/bus/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
-	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
@@ -135,55 +133,26 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	}
 
 	// 2. Env Vars
-	u := query.User
-	user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	userAttr := user.Attributes.Data()
-	if !config.GetConfig().ACT.StrictRegisterMode {
-		userAttr.UID = ptr.To("1001")
-		userAttr.GID = ptr.To("1001")
-	}
-	if userAttr.UID == nil || userAttr.GID == nil {
-		resputil.Error(c, "UID or GID not found", resputil.NotSpecified)
-		return
-	}
-
-	//nolint:mnd // 5 is the number of default envs
-	envs := make([]v1.EnvVar, len(req.Envs)+7)
-	envs[0] = v1.EnvVar{Name: "GRANT_SUDO", Value: "1"}
-	envs[1] = v1.EnvVar{Name: "CHOWN_HOME", Value: "1"}
-	envs[2] = v1.EnvVar{Name: "NB_UID", Value: *userAttr.UID}
-	envs[3] = v1.EnvVar{Name: "NB_GID", Value: *userAttr.GID}
-	envs[4] = v1.EnvVar{Name: "NB_USER", Value: token.Username}
-	cpuLimit := req.Resource.Cpu().Value()
-	envs[5] = v1.EnvVar{Name: "CPU_LIMIT", Value: strconv.FormatInt(cpuLimit, 10)}
-	memoryLimit := req.Resource.Memory().Value()
-	envs[6] = v1.EnvVar{Name: "MEM_LIMIT", Value: strconv.FormatInt(memoryLimit, 10)}
-	for i, env := range req.Envs {
-		envs[i+7] = env
-	}
+	envs := GenerateEnvs(c, token, req.Envs)
+	envs = append(
+		envs,
+		v1.EnvVar{Name: "GRANT_SUDO", Value: "1"},
+		v1.EnvVar{Name: "CHOWN_HOME", Value: "1"},
+	)
 
 	// 3. TODO: Node Affinity for ARM64 Nodes
 	affinity := GenerateNodeAffinity(req.Selectors, req.Resource)
 	torelations := GenerateTaintTolerationsForAccount(token)
 
 	// 4. Labels and Annotations
-	namespace := config.GetConfig().Workspace.Namespace
-	labels := map[string]string{
-		LabelKeyTaskType: "jupyter",
-		LabelKeyTaskUser: token.Username,
-		LabelKeyBaseURL:  baseURL,
-	}
-
-	annotations := map[string]string{
-		AnnotationKeyTaskName:     req.Name,
-		AnnotationKeyTaskTemplate: req.Template,
-		AnnotationKeyAlertEnabled: strconv.FormatBool(req.AlertEnabled),
-	}
+	labels, podAnnotations, jobAnnotations := getLabelAndAnnotations(
+		CraterJobTypeJupyter,
+		token,
+		jobName,
+		req.Name,
+		req.Template,
+		req.AlertEnabled,
+	)
 
 	// 5. Create the pod spec
 	podSpec := v1.PodSpec{
@@ -192,7 +161,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		Volumes:     volumes,
 		Containers: []v1.Container{
 			{
-				Name:    "jupyter-notebook",
+				Name:    string(CraterJobTypeJupyter),
 				Image:   req.Image,
 				Command: []string{"bash", "-c", command},
 				Resources: v1.ResourceRequirements{
@@ -221,9 +190,9 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	job := batch.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        jobName,
-			Namespace:   namespace,
+			Namespace:   config.GetConfig().Workspace.Namespace,
 			Labels:      labels,
-			Annotations: annotations,
+			Annotations: jobAnnotations,
 		},
 		Spec: batch.JobSpec{
 			// 3 days
@@ -244,7 +213,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 					Template: v1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels:      labels,
-							Annotations: annotations,
+							Annotations: podAnnotations,
 						},
 						Spec: podSpec,
 					},

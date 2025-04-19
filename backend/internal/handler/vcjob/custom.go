@@ -3,7 +3,6 @@ package vcjob
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -14,7 +13,6 @@ import (
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 	bus "volcano.sh/apis/pkg/apis/bus/v1alpha1"
 
-	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
@@ -71,17 +69,14 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	jobName := fmt.Sprintf("single-%s", baseURL)
 
 	// 4. Labels and Annotations
-	namespace := config.GetConfig().Workspace.Namespace
-	labels := map[string]string{
-		LabelKeyTaskType: string(model.JobTypeCustom),
-		LabelKeyTaskUser: token.Username,
-		LabelKeyBaseURL:  baseURL,
-	}
-	annotations := map[string]string{
-		AnnotationKeyTaskName:     req.Name,
-		AnnotationKeyTaskTemplate: req.Template,
-		AnnotationKeyAlertEnabled: strconv.FormatBool(req.AlertEnabled),
-	}
+	labels, podAnnotations, jobAnnotations := getLabelAndAnnotations(
+		CraterJobTypeCustom,
+		token,
+		jobName,
+		req.Name,
+		req.Template,
+		req.AlertEnabled,
+	)
 
 	// 5. Create the pod spec
 	podSpec, err := GenerateCustomPodSpec(c, token, &req)
@@ -94,9 +89,9 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	job := batch.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        jobName,
-			Namespace:   namespace,
+			Namespace:   config.GetConfig().Workspace.Namespace,
 			Labels:      labels,
-			Annotations: annotations,
+			Annotations: jobAnnotations,
 		},
 		Spec: batch.JobSpec{
 			TTLSecondsAfterFinished: ptr.To(ThreeDaySeconds),
@@ -116,7 +111,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 					Template: v1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels:      labels,
-							Annotations: annotations,
+							Annotations: podAnnotations,
 						},
 						Spec: podSpec,
 					},
@@ -186,7 +181,7 @@ func GenerateCustomPodSpec(
 		Volumes:     volumes,
 		Containers: []v1.Container{
 			{
-				Name:       "custom",
+				Name:       string(CraterJobTypeCustom),
 				Image:      custom.Image,
 				WorkingDir: custom.WorkingDir,
 				Resources: v1.ResourceRequirements{

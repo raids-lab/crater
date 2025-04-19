@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -35,6 +36,15 @@ const (
 	_ ForwardType = iota
 	IngressType
 	NodePortType
+)
+
+type CraterJobType string
+
+const (
+	CraterJobTypeTensorflow CraterJobType = "tensorflow"
+	CraterJobTypePytorch    CraterJobType = "pytorch"
+	CraterJobTypeJupyter    CraterJobType = "jupyter"
+	CraterJobTypeCustom     CraterJobType = "custom"
 )
 
 func GenerateVolumeMounts(
@@ -270,12 +280,24 @@ func GenerateTaintTolerationsForAccount(token util.JWTMessage) (tolerations []v1
 	}
 }
 
-func GenerateEnvs(ctx context.Context, token util.JWTMessage, customEnvs []v1.EnvVar) (envs []v1.EnvVar) {
+// GenerateEnvs generates environment variables for the pod
+// NB_USER: username
+// NB_GID: group ID
+// NB_UID: user ID
+func GenerateEnvs(ctx context.Context, token util.JWTMessage, customEnvs []v1.EnvVar) []v1.EnvVar {
 	u := query.User
 	user, err := u.WithContext(ctx).Where(u.ID.Eq(token.UserID)).First()
 	if err != nil {
-		return
+		return customEnvs
 	}
+	data := user.Attributes.Data()
+	if data.UID == nil {
+		data.UID = ptr.To("1001")
+	}
+	if data.GID == nil {
+		data.GID = ptr.To("1001")
+	}
+	// Add user and group ID to environment variables
 	customEnvs = append(customEnvs,
 		v1.EnvVar{
 			Name:  "NB_USER",
@@ -283,11 +305,11 @@ func GenerateEnvs(ctx context.Context, token util.JWTMessage, customEnvs []v1.En
 		},
 		v1.EnvVar{
 			Name:  "NB_GID",
-			Value: *user.Attributes.Data().GID,
+			Value: *data.GID,
 		},
 		v1.EnvVar{
 			Name:  "NB_UID",
-			Value: *user.Attributes.Data().UID,
+			Value: *data.UID,
 		},
 	)
 	return customEnvs
@@ -336,6 +358,7 @@ func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement, totalRequest
 						Preference: v1.NodeSelectorTerm{
 							MatchExpressions: []v1.NodeSelectorRequirement{
 								{
+									// InfiniBand Node Feature Discovery Label
 									Key:      "feature.node.kubernetes.io/pci-15b3.present",
 									Operator: v1.NodeSelectorOpDoesNotExist,
 								},
@@ -359,7 +382,7 @@ func GetGPUCountFromResource(resources v1.ResourceList) (gpuCount int64) {
 	return 0
 }
 
-func generatePodSpec(
+func generatePodSpecForParallelJob(
 	task *TaskReq,
 	affinity *v1.Affinity,
 	tolerations []v1.Toleration,
@@ -383,9 +406,11 @@ func generatePodSpec(
 				Env:   envs,
 				Ports: ports,
 				SecurityContext: &v1.SecurityContext{
-					AllowPrivilegeEscalation: ptr.To(true),
-					RunAsUser:                ptr.To(int64(0)),
-					RunAsGroup:               ptr.To(int64(0)),
+					RunAsUser:  ptr.To(int64(0)),
+					RunAsGroup: ptr.To(int64(0)),
+					Capabilities: &v1.Capabilities{
+						Add: []v1.Capability{"IPC_LOCK"},
+					},
 				},
 				TerminationMessagePath:   "/dev/termination-log",
 				TerminationMessagePolicy: v1.TerminationMessageReadFile,
@@ -483,4 +508,26 @@ func (mgr *VolcanojobMgr) execCommandInPod(
 	}
 
 	return stdout.String(), nil
+}
+
+func getLabelAndAnnotations(jobType CraterJobType, token util.JWTMessage, jobName, taskName, template string, alertEnabled bool) (
+	labels map[string]string,
+	jobAnnotations map[string]string,
+	podAnnotations map[string]string,
+) {
+	labels = map[string]string{
+		LabelKeyTaskType: string(jobType),
+		LabelKeyTaskUser: token.Username,
+		LabelKeyBaseURL:  jobName,
+	}
+	jobAnnotations = map[string]string{
+		AnnotationKeyTaskName:     taskName,
+		AnnotationKeyTaskTemplate: template,
+		AnnotationKeyAlertEnabled: strconv.FormatBool(alertEnabled),
+	}
+	podAnnotations = map[string]string{
+		AnnotationKeyTaskName: taskName,
+		AnnotationKeyUser:     token.Username,
+	}
+	return labels, jobAnnotations, podAnnotations
 }
