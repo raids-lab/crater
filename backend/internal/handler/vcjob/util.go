@@ -515,7 +515,7 @@ func (mgr *VolcanojobMgr) execCommandInPod(
 	return stdout.String(), nil
 }
 
-func getLabelAndAnnotations(jobType CraterJobType, token util.JWTMessage, jobName, taskName, template string, alertEnabled bool) (
+func getLabelAndAnnotations(jobType CraterJobType, token util.JWTMessage, baseURL, taskName, template string, alertEnabled bool) (
 	labels map[string]string,
 	jobAnnotations map[string]string,
 	podAnnotations map[string]string,
@@ -523,7 +523,7 @@ func getLabelAndAnnotations(jobType CraterJobType, token util.JWTMessage, jobNam
 	labels = map[string]string{
 		LabelKeyTaskType: string(jobType),
 		LabelKeyTaskUser: token.Username,
-		LabelKeyBaseURL:  jobName,
+		LabelKeyBaseURL:  baseURL,
 	}
 	jobAnnotations = map[string]string{
 		AnnotationKeyTaskName:     taskName,

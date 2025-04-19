@@ -72,7 +72,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(
 		CraterJobTypeCustom,
 		token,
-		jobName,
+		baseURL,
 		req.Name,
 		req.Template,
 		req.AlertEnabled,
