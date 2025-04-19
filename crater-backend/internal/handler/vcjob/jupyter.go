@@ -51,8 +51,6 @@ type (
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/vcjobs/jupyter [post]
-//
-//nolint:gocyclo // ignore cyclomatic complexity
 func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	token := util.GetToken(c)
 
