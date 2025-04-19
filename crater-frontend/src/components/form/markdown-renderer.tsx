@@ -39,10 +39,11 @@ MarkdownRenderer.displayName = "MarkdownRenderer";
 interface HighlightedPreProps extends React.HTMLAttributes<HTMLPreElement> {
   children: string;
   language: string;
+  withLineNumbers?: boolean;
 }
 
-const HighlightedPre = React.memo(
-  ({ children, language, ...props }: HighlightedPreProps) => {
+export const HighlightedPre = React.memo(
+  ({ children, language, withLineNumbers, ...props }: HighlightedPreProps) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [tokens, setTokens] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -132,6 +133,14 @@ const HighlightedPre = React.memo(
           {tokens.map((line, lineIndex) => (
             <React.Fragment key={lineIndex}>
               <span>
+                {withLineNumbers && (
+                  <span className={cn("text-highlight-slate/50 mr-2.5")}>
+                    {String(lineIndex + 1).padStart(
+                      String(tokens.length).length,
+                      " ",
+                    )}
+                  </span>
+                )}
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {line.map((token: any, tokenIndex: number) => {
                   const tokenStyle =
@@ -174,7 +183,7 @@ interface CodeBlockProps extends React.HTMLAttributes<HTMLPreElement> {
   language: string;
 }
 
-const CodeBlock = React.memo(
+const ShikiCodeBlock = React.memo(
   ({ children, className, language, ...restProps }: CodeBlockProps) => {
     const code = useMemo(() => {
       if (typeof children === "string") {
@@ -233,15 +242,15 @@ const CodeBlock = React.memo(
     );
   },
 );
-CodeBlock.displayName = "CodeBlock";
+ShikiCodeBlock.displayName = "CodeBlock";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Code = React.memo(({ children, className, ...rest }: any) => {
   const match = /language-(\w+)/.exec(className || "");
   return match ? (
-    <CodeBlock className={className} language={match[1]} {...rest}>
+    <ShikiCodeBlock className={className} language={match[1]} {...rest}>
       {children}
-    </CodeBlock>
+    </ShikiCodeBlock>
   ) : (
     <code
       className={cn(

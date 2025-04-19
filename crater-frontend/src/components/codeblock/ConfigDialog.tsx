@@ -2,11 +2,11 @@
 import { AxiosResponse } from "axios";
 import { IResponse } from "@/services/types";
 import { Card } from "@/components/ui/card";
-import BaseCodeBlock from "./BaseCodeBlock";
 import { FetchSheet } from "./Dialog";
 import useResizeObserver from "use-resize-observer";
-import { ScrollArea } from "../ui/scroll-area";
+import { ScrollArea, ScrollBar } from "../ui/scroll-area";
 import { CopyButton } from "../button/copy-button";
+import { HighlightedPre } from "../form/markdown-renderer";
 
 export interface PodNamespacedName {
   namespace: string;
@@ -28,7 +28,14 @@ export function CodeContent({
       ref={refRoot}
     >
       <ScrollArea style={{ width, height }}>
-        <BaseCodeBlock code={data ?? ""} language={language ?? ""} />
+        <HighlightedPre
+          className="text-sm"
+          withLineNumbers
+          language={language ?? ""}
+        >
+          {data ?? ""}
+        </HighlightedPre>
+        <ScrollBar orientation="horizontal" />
       </ScrollArea>
       <CopyButton
         className="absolute top-5 right-5 h-8 w-8"
