@@ -2,12 +2,12 @@ package vcjob
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 	bus "volcano.sh/apis/pkg/apis/bus/v1alpha1"
 
@@ -54,21 +54,19 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	}
 
 	// 2. TODO: Node Affinity for ARM64 Nodes
-	affinity := GenerateNodeAffinity(req.Selectors, nil)
+	affinity := GenerateNodeAffinity(req.Selectors, jobResources)
 	tolerations := GenerateTaintTolerationsForAccount(token)
+	envs := GenerateEnvs(c, token, req.Envs)
 
 	// 3. Labels and Annotations
-	namespace := config.GetConfig().Workspace.Namespace
-	labels := map[string]string{
-		LabelKeyTaskType: "pytorch",
-		LabelKeyTaskUser: token.Username,
-		LabelKeyBaseURL:  jobName,
-	}
-	annotations := map[string]string{
-		AnnotationKeyTaskName:     req.Name,
-		AnnotationKeyTaskTemplate: req.Template,
-		AnnotationKeyAlertEnabled: strconv.FormatBool(req.AlertEnabled),
-	}
+	labels, podAnnotations, jobAnnotations := getLabelAndAnnotations(
+		CraterJobTypePytorch,
+		token,
+		jobName,
+		req.Name,
+		req.Template,
+		req.AlertEnabled,
+	)
 
 	// 4. Create the task spec
 	tasks := make([]batch.TaskSpec, len(req.Tasks))
@@ -84,8 +82,17 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 				Protocol:      v1.ProtocolTCP,
 			}
 		}
+
 		// 4.2. Generate pod spec
-		podSpec := generatePodSpec(task, affinity, tolerations, volumes, volumeMounts, req.Envs, ports)
+		podSpec := generatePodSpecForParallelJob(
+			task,
+			affinity,
+			tolerations,
+			volumes,
+			volumeMounts,
+			envs,
+			ports,
+		)
 
 		// 4.3. Create task spec
 		taskSpec := batch.TaskSpec{
@@ -94,7 +101,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      labels,
-					Annotations: annotations,
+					Annotations: podAnnotations,
 				},
 				Spec: podSpec,
 			},
@@ -123,13 +130,14 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	job := batch.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        jobName,
-			Namespace:   namespace,
+			Namespace:   config.GetConfig().Workspace.Namespace,
 			Labels:      labels,
-			Annotations: annotations,
+			Annotations: jobAnnotations,
 		},
 		Spec: batch.JobSpec{
-			MinAvailable:  minAvailable,
-			SchedulerName: VolcanoSchedulerName,
+			TTLSecondsAfterFinished: ptr.To(ThreeDaySeconds),
+			MinAvailable:            minAvailable,
+			SchedulerName:           VolcanoSchedulerName,
 			Plugins: map[string][]string{
 				"pytorch": {"--master=master", "--worker=worker", "--port=23456"},
 			},

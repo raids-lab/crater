@@ -103,15 +103,16 @@ func (mgr *VolcanojobMgr) RegisterAdmin(g *gin.RouterGroup) {
 const (
 	VolcanoSchedulerName = "volcano"
 
-	LabelKeyTaskType = "crater.raids.io/task-type"
-	LabelKeyTaskUser = "crater.raids.io/task-user"
-	LabelKeyBaseURL  = "crater.raids.io/base-url"
+	LabelKeyTaskType = "crater.raids.io/task-type" // 任务类型
+	LabelKeyTaskUser = "crater.raids.io/task-user" // 任务的用户名
+	LabelKeyBaseURL  = "crater.raids.io/base-url"  // 任务的基本URL
 
-	AnnotationKeyTaskName     = "crater.raids.io/task-name"
-	AnnotationKeyTaskTemplate = "crater.raids.io/task-template"
-	AnnotationKeyJupyter      = "crater.raids.io/jupyter-token"
-	AnnotationKeyAlertEnabled = "crater.raids.io/alert-enabled"
-	AnnotationKeySSHEnabled   = "crater.raids.io/ssh-enabled" // Value 格式为 "ip:port"
+	AnnotationKeyUser         = "crater.raids.io/user"          // 用户名，以小写字母开头
+	AnnotationKeyTaskName     = "crater.raids.io/task-name"     // 任务名称（可能是中文）
+	AnnotationKeyTaskTemplate = "crater.raids.io/task-template" // 任务模板
+	AnnotationKeyJupyter      = "crater.raids.io/jupyter-token" // Jupyter token 缓存
+	AnnotationKeyAlertEnabled = "crater.raids.io/alert-enabled" // 是否开启告警
+	AnnotationKeySSHEnabled   = "crater.raids.io/ssh-enabled"   // SSH 缓存，格式为 "ip:port"
 
 	// VolumeData  = "crater-rw-workspace"
 	VolumeCache = "crater-cache"
