@@ -94,10 +94,31 @@ dist.init_process_group(
 )
 \`\`\`
 
-## InfiniBand
+## 以普通用户运行
 
-关于多机作业使用 InfiniBand 的问题，我们正在开发中，请耐心等待。
+自定义作业默认以 \`root\` 用户运行，这种情况下，由于 Jupyter 交互式作业默认以普通用户运行，可能会导致权限问题。
 
+为了帮助您以普通用户运行自定义作业，我们在容器内注入了 \`/crater-start.sh\` 脚本，您可以通过以下方式使用：
+
+### 方法1：直接执行命令
+在批处理命令前加上脚本调用：
+\`\`\`bash
+/crater-start.sh python your_script.py
+\`\`\`
+
+### 方法2：多步骤执行
+
+\`\`\`bash
+// TODO(huangsy): 补充一下怎么使用
+\`\`\`
+
+## RDMA
+
+如果需要使用 RDMA，请先申请 GPU，之后在作业配置中启用 RDMA 选项。
+
+启用后，CPU 和内存限制将被忽略。请注意，RDMA 资源配置必须在所有角色中保持一致。
+
+相关文档有待补充。
 `;
 
 const formSchema = z.object({
@@ -133,7 +154,7 @@ const dataProcessor = (data: FormSchema) => {
 
 export const Component = () => {
   const [envOpen, setEnvOpen] = useState<boolean>(false);
-  const [otherOpen, setOtherOpen] = useState<boolean>(false);
+  const [otherOpen, setOtherOpen] = useState<boolean>(true);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAtomValue(globalUserInfo);
@@ -272,6 +293,13 @@ export const Component = () => {
       toast.info("请勿重复提交");
       return;
     }
+    if (values.ps.resource.rdma !== values.worker.resource.rdma) {
+      form.setError("ps.resource.rdma", {
+        type: "manual",
+        message: "RDMA 资源配置必须在所有角色中保持一致",
+      });
+      return;
+    }
     createTask(values);
   };
 
@@ -377,6 +405,7 @@ export const Component = () => {
                   memoryPath="ps.resource.memory"
                   gpuCountPath="ps.resource.gpu.count"
                   gpuModelPath="ps.resource.gpu.model"
+                  rdmaPath="ps.resource.rdma"
                 />
                 <ImageFormField form={form} name="ps.image" />
                 <FormField
@@ -505,6 +534,7 @@ export const Component = () => {
                   memoryPath="worker.resource.memory"
                   gpuCountPath="worker.resource.gpu.count"
                   gpuModelPath="worker.resource.gpu.model"
+                  rdmaPath="worker.resource.rdma"
                 />
                 <ImageFormField form={form} name="worker.image" />
                 <FormField

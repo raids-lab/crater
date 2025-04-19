@@ -13,7 +13,7 @@ import { apiResourceList } from "@/services/api/resource";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import Combobox from "@/components/form/Combobox";
 import TipBadge from "@/components/badge/TipBadge";
-import { ChartNoAxesColumn } from "lucide-react";
+import { ChartNoAxesColumn, CircleHelpIcon } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -24,6 +24,13 @@ import {
 import { GrafanaIframe } from "@/pages/Embed/Monitor";
 import { useAtomValue } from "jotai";
 import { asyncGrafanaOverviewAtom } from "@/utils/store/config";
+import { Switch } from "../ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
 
 interface ResourceFormFieldsProps<T extends FieldValues> {
   form: UseFormReturn<T>;
@@ -31,7 +38,7 @@ interface ResourceFormFieldsProps<T extends FieldValues> {
   memoryPath: FieldPath<T>;
   gpuCountPath: FieldPath<T>;
   gpuModelPath: FieldPath<T>;
-  required?: boolean;
+  rdmaPath?: FieldPath<T>;
 }
 
 export function ResourceFormFields<T extends FieldValues>({
@@ -40,7 +47,7 @@ export function ResourceFormFields<T extends FieldValues>({
   memoryPath,
   gpuCountPath,
   gpuModelPath,
-  required = true,
+  rdmaPath,
 }: ResourceFormFieldsProps<T>) {
   const gpuCount = form.watch(gpuCountPath);
   const grafanaOverview = useAtomValue(asyncGrafanaOverviewAtom);
@@ -73,7 +80,7 @@ export function ResourceFormFields<T extends FieldValues>({
             <FormItem>
               <FormLabel>
                 CPU (核数)
-                {required && <FormLabelMust />}
+                <FormLabelMust />
               </FormLabel>
               <FormControl>
                 <Input
@@ -92,7 +99,7 @@ export function ResourceFormFields<T extends FieldValues>({
             <FormItem>
               <FormLabel>
                 内存 (GiB)
-                {required && <FormLabelMust />}
+                <FormLabelMust />
               </FormLabel>
               <FormControl>
                 <Input
@@ -111,7 +118,7 @@ export function ResourceFormFields<T extends FieldValues>({
             <FormItem>
               <FormLabel>
                 GPU (卡数)
-                {required && <FormLabelMust />}
+                <FormLabelMust />
               </FormLabel>
               <FormControl>
                 <Input
@@ -124,7 +131,6 @@ export function ResourceFormFields<T extends FieldValues>({
           )}
         />
       </div>
-
       <FormField
         control={form.control}
         name={gpuModelPath}
@@ -132,7 +138,7 @@ export function ResourceFormFields<T extends FieldValues>({
           <FormItem hidden={gpuCount === 0}>
             <FormLabel>
               GPU 型号
-              {required && <FormLabelMust />}
+              <FormLabelMust />
             </FormLabel>
             <FormControl>
               <Combobox
@@ -155,6 +161,46 @@ export function ResourceFormFields<T extends FieldValues>({
           </FormItem>
         )}
       />
+      {rdmaPath && (
+        <FormField
+          control={form.control}
+          name={rdmaPath}
+          render={({ field }) => (
+            <FormItem hidden={gpuCount === 0}>
+              <div className="flex flex-row items-center justify-between space-y-0 space-x-0">
+                <FormLabel className="font-normal">
+                  启用 RDMA
+                  <TooltipProvider delayDuration={100}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <h2 className="mb-0.5 font-semibold">
+                          基于 InfiniBand 的 RDMA：
+                        </h2>
+                        <p>
+                          1. V100 型号速率为 100Gb/s，A100 型号速率为 200Gb/s
+                        </p>
+                        <p>2. RDMA 启用后，CPU 和内存限制将被忽略</p>
+                        <p>3. 如需使用此功能，请尽量申请单个节点上的所有卡</p>
+                        <p>4. 镜像需支持 RDMA，详情见作业文档</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </FormLabel>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
       <div>
         <Sheet>
           <SheetTrigger asChild>

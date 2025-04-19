@@ -56,12 +56,13 @@ export function OtherOptionsFormCard<T extends FieldValues>({
                       <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>通过邮件接收作业状态通知：</p>
-                      <p>1. 作业开始运行通知（等待超过5分钟）</p>
+                      <p className="mb-0.5 font-semibold">通过邮件接收通知：</p>
+                      <p>1. 作业开始运行通知（排队一段时间后）</p>
                       <p>2. 作业运行成功通知</p>
                       <p>3. 作业运行失败通知</p>
                       <p>4. 作业低利用率/长运行时间即将释放通知</p>
                       <p>5. 作业低利用率/长运行时间已释放通知</p>
+                      <p>注：支持北航邮箱、Google 邮箱等</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>

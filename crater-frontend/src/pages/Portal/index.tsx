@@ -204,11 +204,11 @@ const userSidebarGroups: NavGroupProps[] = [
         icon: FlaskConicalIcon,
         items: [
           {
-            title: "批处理作业",
+            title: "自定义作业",
             url: "job/batch",
           },
           {
-            title: "交互式作业",
+            title: "Jupyter Lab",
             url: "job/inter",
           },
         ],

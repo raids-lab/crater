@@ -445,11 +445,10 @@ const ColocateOverview = () => {
       <div className="grid gap-5 lg:col-span-3 lg:grid-cols-4">
         <Card className="row-span-2 flex flex-col justify-between lg:col-span-2">
           <CardHeader>
-            <CardTitle>批处理作业</CardTitle>
+            <CardTitle>自定义作业</CardTitle>
             <CardDescription className="pt-2 leading-relaxed text-balance">
-              指无须人工干预而执行系列程序的作业，包含单机作业、Pytorch
-              分布式训练作业、 TensorFlow PS 作业、Ray 分布式训练作业、 OpenMPI
-              分布式计算作业等。
+              如单机作业、Pytorch DDP 作业、 TensorFlow PS 作业、Ray
+              分布式训练作业、 OpenMPI 分布式计算作业等。
             </CardDescription>
           </CardHeader>
           <CardFooter>
@@ -493,8 +492,8 @@ const ColocateOverview = () => {
       </div>
       <DataTable
         info={{
-          title: "批处理作业",
-          description: "批处理作业是一种无需人工干预的作业",
+          title: "自定义作业",
+          description: "使用自定义作业进行训练、推理等任务",
         }}
         storageKey="portal_aijob_batch"
         query={batchQuery}
