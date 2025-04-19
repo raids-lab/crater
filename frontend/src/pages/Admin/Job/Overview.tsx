@@ -3,9 +3,6 @@ import {
   JobType,
   apiAdminGetJobList as apiAdminGetJobList,
   apiJobDeleteForAdmin,
-  apiJobLock,
-  apiJobToggleKeepForAdmin,
-  apiJobUnlock,
 } from "@/services/api/vcjob";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
@@ -67,6 +64,7 @@ import {
 } from "@/components/ui/select";
 import { JobNameCell } from "@/components/label/JobNameLabel";
 import UserLabel from "@/components/label/UserLabel";
+import { DurationDialog } from "./DurationDialog";
 
 export type StatusValue =
   | "Queueing"
@@ -174,13 +172,8 @@ const toolbarConfig: DataTableToolbarConfig = {
 const AdminJobOverview = () => {
   const queryClient = useQueryClient();
   const [days, setDays] = useState(7);
-  const [lockModalJobInfo, setLockModalJobInfo] = useState<IJobInfo | null>(
-    null,
-  );
-  const [isPermanent, setIsPermanent] = useState(false);
-  const [daysInput, setDaysInput] = useState("");
-  const [hoursInput, setHoursInput] = useState("");
-  const [minutesInput, setMinutesInput] = useState("");
+  const [selectedJobs, setSelectedJobs] = useState<IJobInfo[]>([]);
+  const [isLockDialogOpen, setIsLockDialogOpen] = useState(false);
 
   const vcjobQuery = useQuery({
     queryKey: ["admin", "tasklist", "job", days],
@@ -210,53 +203,10 @@ const AdminJobOverview = () => {
     },
   });
 
-  const { mutate: toggleKeepTask } = useMutation({
-    mutationFn: apiJobToggleKeepForAdmin,
-    onSuccess: async () => {
-      await refetchTaskList();
-      toast.success("操作成功");
-    },
-  });
-
-  const handleClick = useCallback(
-    (jobInfo: IJobInfo) => {
-      if (jobInfo.locked) {
-        apiJobUnlock(jobInfo.jobName).then(() => {
-          toast.success("解锁成功");
-          refetchTaskList();
-        });
-        setLockModalJobInfo(null);
-      } else {
-        setIsPermanent(false);
-        setDaysInput("");
-        setHoursInput("");
-        setMinutesInput("");
-        setLockModalJobInfo(jobInfo);
-      }
-    },
-    [refetchTaskList],
-  );
-
-  const submitLock = () => {
-    if (!isPermanent && !(+daysInput || +hoursInput || +minutesInput)) {
-      toast.error("请至少填写一个锁定时长字段");
-      return;
-    }
-    const payload = {
-      name: lockModalJobInfo?.jobName,
-      isPermanent: isPermanent,
-      ...(!isPermanent && {
-        days: +daysInput || 0,
-        hours: +hoursInput || 0,
-        minutes: +minutesInput || 0,
-      }),
-    };
-    apiJobLock(payload).then(() => {
-      toast.success("锁定成功");
-      refetchTaskList();
-    });
-    setLockModalJobInfo(null);
-  };
+  const handleClick = useCallback((jobInfo: IJobInfo) => {
+    setSelectedJobs([jobInfo]);
+    setIsLockDialogOpen(true);
+  }, []);
 
   const vcjobColumns = useMemo<ColumnDef<IJobInfo>[]>(
     () => [
@@ -487,9 +437,9 @@ const AdminJobOverview = () => {
             ),
             icon: <LockIcon className="text-highlight-purple" />,
             handleSubmit: (rows) => {
-              rows.forEach((row) => {
-                toggleKeepTask(row.original.jobName);
-              });
+              const jobInfos = rows.map((row) => row.original);
+              setSelectedJobs(jobInfos);
+              setIsLockDialogOpen(true);
             },
             isDanger: false,
           },
@@ -513,76 +463,14 @@ const AdminJobOverview = () => {
           </SelectContent>
         </Select>
       </DataTable>
-      {lockModalJobInfo && (
-        <AlertDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) setLockModalJobInfo(null);
-          }}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>设置锁定策略</AlertDialogTitle>
-              <AlertDialogDescription>
-                当前作业 <strong>{lockModalJobInfo.jobName}</strong> 未被锁定，
-                请选择锁定方式：
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="space-y-4 py-2">
-              <div>
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={isPermanent}
-                    onChange={(e) => setIsPermanent(e.target.checked)}
-                  />
-                  <span>永久锁定</span>
-                </label>
-              </div>
-              {!isPermanent && (
-                <div className="flex flex-row space-x-2">
-                  <div className="flex flex-col items-center">
-                    <input
-                      type="number"
-                      min="0"
-                      value={daysInput}
-                      onChange={(e) => setDaysInput(e.target.value)}
-                      className="w-16 rounded-md border-2 border-gray-400 p-1 text-base font-medium focus:ring-2 focus:ring-blue-400 focus:outline-none"
-                    />
-                    <label className="mt-1 text-sm font-semibold">天</label>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <input
-                      type="number"
-                      min="0"
-                      max="23"
-                      value={hoursInput}
-                      onChange={(e) => setHoursInput(e.target.value)}
-                      className="w-16 rounded-md border-2 border-gray-400 p-1 text-base font-medium focus:ring-2 focus:ring-blue-400 focus:outline-none"
-                    />
-                    <label className="mt-1 text-sm font-semibold">小时</label>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <input
-                      type="number"
-                      min="0"
-                      max="59"
-                      value={minutesInput}
-                      onChange={(e) => setMinutesInput(e.target.value)}
-                      className="w-16 rounded-md border-2 border-gray-400 p-1 text-base font-medium focus:ring-2 focus:ring-blue-400 focus:outline-none"
-                    />
-                    <label className="mt-1 text-sm font-semibold">分钟</label>
-                  </div>
-                </div>
-              )}
-            </div>
-            <AlertDialogFooter>
-              <AlertDialogCancel>取消</AlertDialogCancel>
-              <AlertDialogAction onClick={submitLock}>确认</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+
+      {/* Duration Dialog for locking/unlocking jobs */}
+      <DurationDialog
+        jobs={selectedJobs}
+        open={isLockDialogOpen}
+        setOpen={setIsLockDialogOpen}
+        onSuccess={refetchTaskList}
+      />
     </>
   );
 };
