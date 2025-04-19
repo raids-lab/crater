@@ -283,7 +283,7 @@ export const Component = () => {
           className="grid flex-1 items-start gap-4 md:gap-x-6 lg:grid-cols-3"
         >
           <PageTitle
-            title="Pytorch 分布式训练作业"
+            title="Pytorch DDP 作业"
             description="创建基于 Pytorch 框架的分布式训练任务"
             className="lg:col-span-3"
             tipContent={`版本 ${MetadataFormPytorch.version}`}
