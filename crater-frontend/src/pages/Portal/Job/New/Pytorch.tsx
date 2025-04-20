@@ -107,9 +107,12 @@ dist.init_process_group(
 \`\`\`
 
 ### 方法2：多步骤执行
-
+执行脚本后，指定以普通用户权限运行命令，若直接执行命令，则仍以root权限执行：
 \`\`\`bash
-// TODO(huangsy): 补充一下怎么使用
+/crater-start.sh
+su - \${NB_USER} -c 'your_command_1'
+su - \${NB_USER} -c 'your_command_2'
+...
 \`\`\`
 
 ## RDMA
