@@ -19,6 +19,7 @@ var (
 	Q              = new(Query)
 	Account        *account
 	AccountDataset *accountDataset
+	Alert          *alert
 	Dataset        *dataset
 	Image          *image
 	Job            *job
@@ -35,6 +36,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
 	Account = &Q.Account
 	AccountDataset = &Q.AccountDataset
+	Alert = &Q.Alert
 	Dataset = &Q.Dataset
 	Image = &Q.Image
 	Job = &Q.Job
@@ -52,6 +54,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		db:             db,
 		Account:        newAccount(db, opts...),
 		AccountDataset: newAccountDataset(db, opts...),
+		Alert:          newAlert(db, opts...),
 		Dataset:        newDataset(db, opts...),
 		Image:          newImage(db, opts...),
 		Job:            newJob(db, opts...),
@@ -70,6 +73,7 @@ type Query struct {
 
 	Account        account
 	AccountDataset accountDataset
+	Alert          alert
 	Dataset        dataset
 	Image          image
 	Job            job
@@ -89,6 +93,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		db:             db,
 		Account:        q.Account.clone(db),
 		AccountDataset: q.AccountDataset.clone(db),
+		Alert:          q.Alert.clone(db),
 		Dataset:        q.Dataset.clone(db),
 		Image:          q.Image.clone(db),
 		Job:            q.Job.clone(db),
@@ -115,6 +120,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		db:             db,
 		Account:        q.Account.replaceDB(db),
 		AccountDataset: q.AccountDataset.replaceDB(db),
+		Alert:          q.Alert.replaceDB(db),
 		Dataset:        q.Dataset.replaceDB(db),
 		Image:          q.Image.replaceDB(db),
 		Job:            q.Job.replaceDB(db),
@@ -131,6 +137,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 type queryCtx struct {
 	Account        IAccountDo
 	AccountDataset IAccountDatasetDo
+	Alert          IAlertDo
 	Dataset        IDatasetDo
 	Image          IImageDo
 	Job            IJobDo
@@ -147,6 +154,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
 		Account:        q.Account.WithContext(ctx),
 		AccountDataset: q.AccountDataset.WithContext(ctx),
+		Alert:          q.Alert.WithContext(ctx),
 		Dataset:        q.Dataset.WithContext(ctx),
 		Image:          q.Image.WithContext(ctx),
 		Job:            q.Job.WithContext(ctx),
