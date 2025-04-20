@@ -445,7 +445,7 @@ const ColocateOverview = () => {
           <CardHeader>
             <CardTitle>Jupyter Lab</CardTitle>
             <CardDescription className="pt-2 leading-relaxed text-balance">
-              提供开箱即用的 Jupyter Lab 或 Web IDE， 可用于代码编写、调试等。
+              提供开箱即用的 Jupyter Lab， 可用于代码编写、调试等。
             </CardDescription>
           </CardHeader>
           <CardFooter>
@@ -455,11 +455,6 @@ const ColocateOverview = () => {
                 {
                   url: `portal/job/inter/new-jupyter-${jobType}`,
                   name: " Jupyter Lab",
-                },
-                {
-                  url: "portal/job/inter/new-webide",
-                  name: " Web IDE",
-                  disabled: true,
                 },
               ]}
             />

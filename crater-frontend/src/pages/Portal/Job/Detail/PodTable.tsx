@@ -31,6 +31,7 @@ import { GrafanaIframe } from "@/pages/Embed/Monitor";
 import { useAtomValue } from "jotai";
 import { asyncGrafanaJobAtom } from "@/utils/store/config";
 import DetailPageLog from "@/components/codeblock/DetailPageLog";
+import TooltipCopy from "@/components/label/TooltipCopy";
 
 interface PodTableProps {
   jobName: string;
@@ -95,7 +96,7 @@ const PodInfo = ({
       appendInfos={[
         {
           title: "内网 IP",
-          content: pod.ip,
+          content: <TooltipCopy name={pod.ip} className="font-mono" />,
         },
         {
           title: "节点",
@@ -197,7 +198,9 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("ip")} />
         ),
-        cell: ({ row }) => <p className="font-mono">{row.getValue("ip")}</p>,
+        cell: ({ row }) => (
+          <TooltipCopy name={row.getValue("ip")} className="font-mono" />
+        ),
         enableSorting: false,
       },
       {

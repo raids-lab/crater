@@ -31,7 +31,7 @@ import {
 } from "@/utils/store";
 import NodeDetail from "@/components/node/NodeDetail";
 import useNodeQuery from "@/hooks/query/useNodeQuery";
-import GpuIcon from "@/components/icon/GpuIcon";
+import GPUIcon from "@/components/icon/GPUIcon";
 import PieCard from "@/components/chart/PieCard";
 import DocsButton from "@/components/button/DocsButton";
 import PageTitle from "@/components/layout/PageTitle";
@@ -338,7 +338,7 @@ export const Component: FC = () => {
           <NivoPie data={userStatus} margin={{ top: 25, bottom: 30 }} />
         </PieCard>
         <PieCard
-          icon={GpuIcon}
+          icon={GPUIcon}
           cardTitle="使用中 GPU"
           cardDescription="正在使用的 GPU 资源"
           isLoading={jobQuery.isLoading}

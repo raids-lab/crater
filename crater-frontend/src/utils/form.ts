@@ -2,6 +2,15 @@ import { z } from "zod";
 import { K8sResources } from "./resource";
 import { MetadataFormType } from "@/components/form/types";
 
+export const jobNameSchema = z
+  .string()
+  .min(1, {
+    message: "作业名称不能为空",
+  })
+  .max(40, {
+    message: "作业名称最多包含 40 个字符",
+  });
+
 export const resourceSchema = z.object({
   cpu: z.number().int().min(0, {
     message: "CPU 核数不能小于 0",
@@ -122,28 +131,6 @@ export const forwardsSchema = z.array(
 
 export type ForwardsSchema = z.infer<typeof forwardsSchema>;
 
-export const observabilitySchema = z
-  .object({
-    tbEnable: z.boolean(),
-    tbLogDir: z.string().optional(),
-  })
-  .refine(
-    (observability) => {
-      return (
-        !observability.tbEnable ||
-        (observability.tbEnable &&
-          observability.tbLogDir !== null &&
-          observability.tbLogDir !== undefined)
-      );
-    },
-    {
-      message: "TensorBoard 日志目录不能为空",
-      path: ["tbLogDir"],
-    },
-  );
-
-export type ObservabilitySchema = z.infer<typeof observabilitySchema>;
-
 export const nodeSelectorSchema = z
   .object({
     enable: z.boolean(),
@@ -164,7 +151,7 @@ export const nodeSelectorSchema = z
     },
   );
 
-export type NodeSelectorSchema = z.infer<typeof observabilitySchema>;
+export type NodeSelectorSchema = z.infer<typeof nodeSelectorSchema>;
 
 export interface JobSubmitJson<T> {
   version: string;

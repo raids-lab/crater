@@ -68,9 +68,8 @@ import { DeleteDialog } from "./DeleteDialog";
 import UserLabel from "@/components/label/UserLabel";
 
 const toolbarConfig: DataTableToolbarConfig = {
-  filterInput: {
-    placeholder: "搜索镜像",
-    key: "imageLink",
+  globalSearch: {
+    enabled: true,
   },
   filterOptions: [
     {
@@ -147,6 +146,7 @@ export const ImageListTable: FC<ImageListTableProps> = ({
       res.data.data.imageList.map((i) => ({
         ...i,
         visibility: i.isPublic ? Visibility.Public : Visibility.Private,
+        image: `${i.imageLink} (${i.description})`,
       })),
   });
 
@@ -201,14 +201,14 @@ export const ImageListTable: FC<ImageListTableProps> = ({
       },
     },
     {
-      accessorKey: "imageLink",
+      accessorKey: "image",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("imageLink")} />
+        <DataTableColumnHeader column={column} title={getHeader("image")} />
       ),
       cell: ({ row }) => (
         <ImageLabel
           description={row.original.description}
-          url={row.getValue<string>("imageLink")}
+          url={row.original.imageLink}
         />
       ),
     },

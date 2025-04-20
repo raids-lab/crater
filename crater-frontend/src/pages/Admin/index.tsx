@@ -249,7 +249,7 @@ const adminSidebarGroups: NavGroupProps[] = [
             url: "data/filesystem",
           },
           {
-            title: "数据集/模型",
+            title: "数据",
             url: "data/dataset",
           },
         ],

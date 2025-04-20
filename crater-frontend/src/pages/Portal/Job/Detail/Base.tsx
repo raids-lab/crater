@@ -7,7 +7,6 @@ import {
   CheckCircleIcon,
   ClockIcon,
   CreditCardIcon,
-  ExternalLinkIcon,
   FileSlidersIcon,
   GaugeIcon,
   HistoryIcon,
@@ -56,7 +55,7 @@ import { GrafanaIframe } from "@/pages/Embed/Monitor";
 import useFixedLayout from "@/hooks/useFixedLayout";
 import { DetailPage } from "@/components/layout/DetailPage";
 import { hasNvidiaGPU } from "@/utils/resource";
-import GpuIcon from "@/components/icon/GpuIcon";
+import GPUIcon from "@/components/icon/GPUIcon";
 import { SSHPortDialog } from "./SSHPortDialog";
 import ProfileDashboard from "@/components/metrics/profile-dashboard";
 import { getDaysDifference } from "@/utils/time";
@@ -64,6 +63,7 @@ import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
 import { asyncGrafanaJobAtom } from "@/utils/store/config";
 import UserLabel from "@/components/label/UserLabel";
+import JupyterIcon from "@/components/icon/JupyterIcon";
 
 export function BaseCore({ jobName }: { jobName: string }) {
   useFixedLayout();
@@ -142,17 +142,17 @@ export function BaseCore({ jobName }: { jobName: string }) {
               data.status === JobPhase.Running && (
                 <Button
                   variant="secondary"
-                  title="打开交互式页面"
+                  title="打开 Jupyter Lab"
                   onClick={() => {
-                    toast.info("即将打开交互式页面");
+                    toast.info("即将打开 Jupyter Lab 交互式页面");
                     setTimeout(() => {
                       getPortToken(jobName);
                     }, 500);
                   }}
                   className="cursor-pointer"
                 >
-                  <ExternalLinkIcon className="size-4" />
-                  交互式页面
+                  <JupyterIcon className="size-4" />
+                  Jupyter Lab
                 </Button>
               )}
             <AlertDialog>
@@ -320,7 +320,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
         },
         {
           key: "gpu",
-          icon: GpuIcon,
+          icon: GPUIcon,
           label: "加速卡监控",
           children: (
             <GrafanaIframe

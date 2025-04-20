@@ -18,7 +18,7 @@ import FormLabelMust from "@/components/form/FormLabelMust";
 import AccordionCard from "@/components/form/AccordionCard";
 import { cn } from "@/lib/utils";
 
-export const ForwardCard = "转发规则";
+export const ForwardCard = "外部访问";
 
 interface ForwardFormCardProps<
   T extends {
@@ -65,14 +65,14 @@ export function ForwardFormCard<
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        规则名称 {index + 1}
+                        规则名 {index + 1}
                         <FormLabelMust />
                       </FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
                       <FormDescription>
-                        仅允许包含小写字母，最多20字符
+                        只能包含小写字母，最多 20 字符
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

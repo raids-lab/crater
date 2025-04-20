@@ -3,7 +3,7 @@ import { ProgressCard } from "../ui-custom/progress-card";
 import { MetricCard } from "../ui-custom/metric-card";
 import { Cpu, MemoryStickIcon as Memory, ArrowDownUp } from "lucide-react";
 import { IJupyterDetail, ProfileData } from "@/services/api/vcjob";
-import GpuIcon from "../icon/GpuIcon";
+import GPUIcon from "../icon/GPUIcon";
 import { useMemo } from "react";
 import { JobInfoSections } from "./ScheduleInfoSection";
 
@@ -170,7 +170,7 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
       {hasGpuUtilMetrics && (
         <MetricSection
           title="GPU 利用率相关指标"
-          icon={<GpuIcon className="h-5 w-5" />}
+          icon={<GPUIcon className="h-5 w-5" />}
         >
           {profileData.gpu_util_avg !== undefined && (
             <ProgressCard
@@ -289,7 +289,7 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
       {hasSmMetrics && (
         <MetricSection
           title="GPU 流式多处理器相关指标"
-          icon={<GpuIcon className="h-5 w-5" />}
+          icon={<GPUIcon className="h-5 w-5" />}
         >
           {profileData.sm_active_avg !== undefined && (
             <ProgressCard
@@ -369,7 +369,7 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
       {hasTensorMetrics && (
         <MetricSection
           title="Tensor 相关指标"
-          icon={<GpuIcon className="h-5 w-5" />}
+          icon={<GPUIcon className="h-5 w-5" />}
         >
           {profileData.tensor_active_avg !== undefined && (
             <ProgressCard
@@ -401,7 +401,7 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
       {hasFpMetrics && (
         <MetricSection
           title="FP 相关指标"
-          icon={<GpuIcon className="h-5 w-5" />}
+          icon={<GPUIcon className="h-5 w-5" />}
         >
           {profileData.fp64_active_avg !== undefined && (
             <ProgressCard

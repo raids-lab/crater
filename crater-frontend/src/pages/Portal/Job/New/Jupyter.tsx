@@ -16,14 +16,18 @@ import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiJupyterCreate } from "@/services/api/vcjob";
-import { convertToK8sResources } from "@/utils/resource";
 import { toast } from "sonner";
 import { CirclePlus } from "lucide-react";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import {
+  convertToResourceList,
+  envsSchema,
   exportToJsonString,
   forwardsSchema,
+  jobNameSchema,
   nodeSelectorSchema,
+  taskSchema,
+  volumeMountsSchema,
   VolumeMountType,
 } from "@/utils/form";
 import { useState } from "react";
@@ -56,90 +60,20 @@ const JupyterMarkdown = `Jupyter 为用户提供交互式的 Web 实验环境，
 `;
 
 const formSchema = z.object({
-  taskname: z
-    .string()
-    .min(1, {
-      message: "作业名称不能为空",
-    })
-    .max(40, {
-      message: "作业名称最多包含 40 个字符",
-    }),
-  cpu: z.number().int().min(0, {
-    message: "CPU 核数不能小于 0",
-  }),
-  gpu: z
-    .object({
-      count: z.number().int().min(0, {
-        message: "指定的 GPU 卡数不能小于 0",
-      }),
-      model: z.string().optional(),
-    })
-    .refine(
-      (gpu) => {
-        // If a is not null, then b must not be null
-        return (
-          gpu.count === 0 ||
-          (gpu.count > 0 && gpu.model !== null && gpu.model !== undefined)
-        );
-      },
-      {
-        message: "GPU 型号不能为空",
-        path: ["model"], // The path for the error message
-      },
-    ),
-  memory: z.number().int().min(0, {
-    message: "内存大小不能小于 0",
-  }),
-  image: z.string().min(1, {
-    message: "容器镜像不能为空",
-  }),
-  envs: z.array(
-    z.object({
-      name: z.string().min(1, {
-        message: "环境变量名不能为空",
-      }),
-      value: z.string().min(1, {
-        message: "环境变量值不能为空",
-      }),
-    }),
-  ),
-  volumeMounts: z.array(
-    z.object({
-      type: z.number().int(),
-      subPath: z.string().min(1, {
-        message: "挂载源不能为空",
-      }),
-      datasetID: z.number().int().nonnegative().optional(),
-      mountPath: z
-        .string()
-        .min(1, {
-          message: "挂载到容器中的路径不能为空",
-        })
-        .refine((value) => value.startsWith("/"), {
-          message: "路径需以单个斜杠 `/` 开头",
-        })
-        .refine((value) => !value.includes(".."), {
-          message: "禁止使用相对路径 `..`",
-        })
-        .refine((value) => !value.includes("//"), {
-          message: "避免使用多个连续的斜杠 `//`",
-        })
-        .refine((value) => value !== "/", {
-          message: "禁止挂载到根目录 `/`",
-        }),
-    }),
-  ),
-  forwards: forwardsSchema,
+  jobName: jobNameSchema,
+  task: taskSchema,
+  envs: envsSchema,
+  volumeMounts: volumeMountsSchema,
   nodeSelector: nodeSelectorSchema,
   alertEnabled: z.boolean().default(true),
+  forwards: forwardsSchema,
 });
 
 type FormSchema = z.infer<typeof formSchema>;
 
 const dataProcessor = (data: FormSchema) => {
-  if (data.forwards === undefined || data.forwards === null) {
-    data.forwards = [];
-  }
+  // 如果需要在不改变 MetadataFormJupyter 版本号的情况下，保持兼容性
+  // 可以在这里进行数据转换
   return data;
 };
 
@@ -152,22 +86,10 @@ export const Component = () => {
 
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) => {
-      const others: Record<string, string> = {};
-      if (values.gpu.count > 0) {
-        if (values.gpu.model) {
-          others[values.gpu.model] = `${values.gpu.count}`;
-        } else {
-          others["nvidia.com/gpu"] = `${values.gpu.count}`;
-        }
-      }
       return apiJupyterCreate({
-        name: values.taskname,
-        resource: convertToK8sResources({
-          cpu: values.cpu,
-          memory: values.memory,
-          others,
-        }),
-        image: values.image,
+        name: values.jobName,
+        resource: convertToResourceList(values.task.resource),
+        image: values.task.image,
         volumeMounts: values.volumeMounts,
         envs: values.envs,
         alertEnabled: values.alertEnabled,
@@ -184,11 +106,11 @@ export const Component = () => {
         forwards: values.forwards,
       });
     },
-    onSuccess: async (_, { taskname }) => {
+    onSuccess: async (_, { jobName }) => {
       await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
         queryClient.invalidateQueries({ queryKey: ["job"] }),
       );
-      toast.success(`作业 ${taskname} 创建成功`);
+      toast.success(`作业 ${jobName} 创建成功`);
       navigate(-1);
     },
   });
@@ -197,13 +119,23 @@ export const Component = () => {
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      taskname: "",
-      cpu: 2,
-      gpu: {
-        count: 0,
+      jobName: "",
+      task: {
+        taskName: "training",
+        replicas: 1,
+        resource: {
+          cpu: 1,
+          gpu: {
+            count: 0,
+          },
+          memory: 2,
+        },
+        image: "",
+        shell: "",
+        command: "",
+        workingDir: `/home/${user.name}`,
+        ports: [],
       },
-      memory: 4,
-      image: "",
       volumeMounts: [
         {
           type: VolumeMountType.FileType,
@@ -233,17 +165,21 @@ export const Component = () => {
       toast.info("请勿重复提交");
       return;
     }
-    if (values.gpu.count > 0 && values.cpu <= 2 && values.memory <= 4) {
-      form.setError("gpu.model", {
+    if (
+      values.task.resource.gpu.count > 0 &&
+      values.task.resource.cpu <= 2 &&
+      values.task.resource.memory <= 4
+    ) {
+      form.setError("task.resource.gpu.model", {
         type: "manual",
         message:
           "建议结合节点资源分配情况，妥善调整 CPU 和内存资源申请，避免作业被 OOM Kill",
       });
-      form.setError("cpu", {
+      form.setError("task.resource.cpu", {
         type: "manual",
         message: "请增加 CPU 核数",
       });
-      form.setError("memory", {
+      form.setError("task.resource.memory", {
         type: "manual",
         message: "请增加内存大小",
       });
@@ -302,7 +238,7 @@ export const Component = () => {
               <CardContent className="grid gap-5">
                 <FormField
                   control={form.control}
-                  name="taskname"
+                  name="jobName"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
@@ -321,12 +257,12 @@ export const Component = () => {
                 />
                 <ResourceFormFields
                   form={form}
-                  cpuPath="cpu"
-                  memoryPath="memory"
-                  gpuCountPath="gpu.count"
-                  gpuModelPath="gpu.model"
+                  cpuPath="task.resource.cpu"
+                  memoryPath="task.resource.memory"
+                  gpuCountPath="task.resource.gpu.count"
+                  gpuModelPath="task.resource.gpu.model"
                 />
-                <ImageFormField form={form} name="image" />
+                <ImageFormField form={form} name="task.image" />
               </CardContent>
             </Card>
             <TemplateInfo

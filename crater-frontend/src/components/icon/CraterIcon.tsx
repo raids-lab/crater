@@ -30,6 +30,6 @@ const SvgComponent = (
     />
   </svg>
 );
-const ForwardRef = forwardRef(SvgComponent);
-ForwardRef.displayName = "CraterIcon";
-export default ForwardRef;
+const CraterIcon = forwardRef(SvgComponent);
+CraterIcon.displayName = "CraterIcon";
+export default CraterIcon;

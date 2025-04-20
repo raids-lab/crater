@@ -29,5 +29,6 @@ const SvgComponent = (
     </g>
   </svg>
 );
-const ForwardRef = forwardRef(SvgComponent);
-export default ForwardRef;
+const GPUIcon = forwardRef(SvgComponent);
+GPUIcon.displayName = "GPUIcon";
+export default GPUIcon;

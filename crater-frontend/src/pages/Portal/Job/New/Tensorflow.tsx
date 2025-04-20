@@ -21,7 +21,6 @@ import { toast } from "sonner";
 import { CirclePlus, CirclePlusIcon, XIcon } from "lucide-react";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import {
-  observabilitySchema,
   volumeMountsSchema,
   envsSchema,
   taskSchema,
@@ -189,7 +188,6 @@ const formSchema = z.object({
   worker: taskSchema,
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
-  observability: observabilitySchema,
   alertEnabled: z.boolean().default(true),
   nodeSelector: nodeSelectorSchema,
   forwards: forwardsSchema,
@@ -301,9 +299,6 @@ export const Component = () => {
         },
       ],
       envs: [],
-      observability: {
-        tbEnable: false,
-      },
       alertEnabled: true,
       nodeSelector: {
         enable: false,

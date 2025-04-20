@@ -38,7 +38,6 @@ import { Separator } from "@/components/ui/separator";
 import {
   exportToJsonFile,
   importFromJsonFile,
-  observabilitySchema,
   volumeMountsSchema,
   envsSchema,
   taskSchema,
@@ -96,7 +95,6 @@ const formSchema = z.object({
   task: taskSchema,
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
-  observability: observabilitySchema,
   alertEnabled: z.boolean().default(true),
   nodeSelector: nodeSelectorSchema,
   openssh: z.boolean().default(false),
@@ -205,9 +203,6 @@ export const Component = () => {
         },
       ],
       envs: [],
-      observability: {
-        tbEnable: false,
-      },
       nodeSelector: {
         enable: false,
       },

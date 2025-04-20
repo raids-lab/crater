@@ -24,7 +24,6 @@ import FormLabelMust from "@/components/form/FormLabelMust";
 import AccordionCard from "@/components/form/AccordionCard";
 import { Separator } from "@/components/ui/separator";
 import {
-  observabilitySchema,
   volumeMountsSchema,
   envsSchema,
   taskSchema,
@@ -33,6 +32,7 @@ import {
   VolumeMountType,
   exportToJsonString,
   forwardsSchema,
+  jobNameSchema,
 } from "@/utils/form";
 import { useState } from "react";
 import { useAtomValue } from "jotai";
@@ -125,19 +125,11 @@ su - \${NB_USER} -c 'your_command_2'
 `;
 
 const formSchema = z.object({
-  jobName: z
-    .string()
-    .min(1, {
-      message: "作业名称不能为空",
-    })
-    .max(40, {
-      message: "作业名称最多包含 40 个字符",
-    }),
+  jobName: jobNameSchema,
   ps: taskSchema,
   worker: taskSchema,
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
-  observability: observabilitySchema,
   alertEnabled: z.boolean().default(true),
   nodeSelector: nodeSelectorSchema,
   forwards: forwardsSchema,
@@ -251,9 +243,6 @@ export const Component = () => {
         },
       ],
       envs: [],
-      observability: {
-        tbEnable: false,
-      },
       alertEnabled: true,
       nodeSelector: {
         enable: false,

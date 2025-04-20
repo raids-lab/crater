@@ -135,9 +135,6 @@ function ImageUploadSheetContent({
                   <SelectItem value={JobType.OpenMPI} disabled>
                     OpenMPI任务
                   </SelectItem>
-                  <SelectItem value={JobType.WebIDE} disabled>
-                    Web IDE任务
-                  </SelectItem>
                 </SelectContent>
               </Select>
             </FormControl>
