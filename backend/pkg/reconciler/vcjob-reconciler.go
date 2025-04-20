@@ -295,7 +295,8 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 	for _, condition := range conditions {
 		if condition.Status == batch.Running {
 			runningTimestamp = condition.LastTransitionTime.Time
-		} else if condition.Status == batch.Completed || condition.Status == batch.Failed {
+		} else if condition.Status == batch.Completed || condition.Status == batch.Failed ||
+			condition.Status == batch.Aborted || condition.Status == batch.Terminated {
 			completedTimestamp = condition.LastTransitionTime.Time
 		}
 	}
