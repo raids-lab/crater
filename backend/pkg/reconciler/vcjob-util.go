@@ -6,11 +6,14 @@ import (
 	"sort"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/pkg/logutils"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 )
+
+const MaxJobEvents = 20
 
 func getPodNameFromJobTemplate(job *batch.Job) string {
 	for i := range job.Spec.Tasks {
@@ -86,8 +89,16 @@ func (r *VcJobReconciler) getNewEventsForJob(c context.Context, job *batch.Job, 
 
 	// sort events by timestamp
 	sort.Slice(events, func(i, j int) bool {
-		return events[i].LastTimestamp.Time.Before(events[j].LastTimestamp.Time)
+		return events[i].LastTimestamp.Time.After(events[j].LastTimestamp.Time)
 	})
+
+	// 最大保留 20 条最近的事件，避免存储过多的事件
+	if len(events) > MaxJobEvents {
+		logutils.Log.Warnf(
+			"Job %s/%s has too many events (%d), only keep the latest %d events", job.Namespace, job.Name, len(events), MaxJobEvents,
+		)
+		events = events[:MaxJobEvents]
+	}
 
 	return events
 }

@@ -1,4 +1,14 @@
 // Migration script for gorm-gen
+//
+// Usage:
+//
+// // For Dev Cluster (***REMOVED***)
+//
+// make migrate
+//
+// // For ActGPU Cluster (***REMOVED***)
+//
+// CRATER_DEBUG_CONFIG_PATH=${PWD}/etc/debug-config-actgpu.yaml make migrate
 package main
 
 import (
