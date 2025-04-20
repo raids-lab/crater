@@ -12,20 +12,19 @@ export const containerStatuses = [
     label: "等待",
     color: "text-highlight-purple bg-highlight-purple/20",
     description:
-      "如果容器并不处在 Running 或 Terminated 状态之一，它就处在 Waiting 状态。 处于 Waiting 状态的容器仍在运行它完成启动所需要的操作：例如， 从某个容器镜像仓库拉取容器镜像，或者向容器应用 Secret 数据等等。",
+      "容器仍在运行它完成启动所需要的操作：如从某个容器镜像仓库拉取容器镜像，或者向容器应用 Secret 数据等",
   },
   {
     value: "Running",
     label: "运行中",
     color: "text-highlight-blue bg-highlight-blue/20",
-    description: "Running 状态表明容器正在执行状态并且没有问题发生。",
+    description: "容器正在执行，并且没有问题发生",
   },
   {
     value: "Terminated",
     label: "已终止",
     color: "text-highlight-slate bg-highlight-slate/20",
-    description:
-      "处于 Terminated 状态的容器开始执行后，或者运行至正常结束或者因为某些原因失败。",
+    description: "容器运行至正常结束，或者因为某些原因失败。",
   },
 ];
 

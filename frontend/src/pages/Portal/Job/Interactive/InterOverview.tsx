@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { getHeader, jobToolbarConfig } from "@/pages/Portal/Job/statuses";
 import { logger } from "@/utils/loglevel";
 import JobPhaseLabel from "@/components/badge/JobPhaseBadge";
-import { ExternalLink, Trash2Icon } from "lucide-react";
+import { Trash2Icon } from "lucide-react";
 import SplitLinkButton from "@/components/button/SplitLinkButton";
 import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
@@ -27,6 +27,7 @@ import TooltipButton from "@/components/custom/TooltipButton";
 import DocsButton from "@/components/button/DocsButton";
 import { JobNameCell } from "@/components/label/JobNameLabel";
 import { JobActionsMenu } from "@/components/job/JobActionsMenu";
+import JupyterIcon from "@/components/icon/JupyterIcon";
 
 const InterOverview = () => {
   const jobType = useAtomValue(globalJobUrl);
@@ -175,21 +176,25 @@ const InterOverview = () => {
           const shouldDisable = jobInfo.status !== "Running";
           return (
             <div className="flex flex-row space-x-1">
-              <TooltipButton
-                variant="ghost"
-                size="icon"
-                className="text-primary hover:bg-primary/10 hover:text-primary/90 h-8 w-8"
-                tooltipContent="打开 Jupyter Lab"
-                onClick={() => {
-                  toast.info("即将打开 Jupyter 页面");
-                  setTimeout(() => {
-                    getPortToken(jobInfo.jobName);
-                  }, 500);
-                }}
-                disabled={shouldDisable}
-              >
-                <ExternalLink className="size-4" />
-              </TooltipButton>
+              {shouldDisable ? (
+                <div className="h-8 w-8" />
+              ) : (
+                <TooltipButton
+                  variant="ghost"
+                  size="icon"
+                  className="text-primary hover:bg-primary/10 hover:text-primary/90 h-8 w-8"
+                  tooltipContent="打开 Jupyter Lab"
+                  onClick={() => {
+                    toast.info("即将打开 Jupyter 页面");
+                    setTimeout(() => {
+                      getPortToken(jobInfo.jobName);
+                    }, 500);
+                  }}
+                  disabled={shouldDisable}
+                >
+                  <JupyterIcon className="size-4" />
+                </TooltipButton>
+              )}
               <JobActionsMenu jobInfo={jobInfo} onDelete={deleteTask} />
             </div>
           );
@@ -236,11 +241,6 @@ const InterOverview = () => {
             {
               url: `portal/job/inter/new-jupyter-${jobType}`,
               name: " Jupyter Lab",
-            },
-            {
-              url: "portal/job/inter/new-webide",
-              name: " Web IDE",
-              disabled: true,
             },
           ]}
         />

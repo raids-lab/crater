@@ -34,7 +34,7 @@ import {
   GaugeIcon,
   NetworkIcon,
 } from "lucide-react";
-import GpuIcon from "@/components/icon/GpuIcon";
+import GPUIcon from "@/components/icon/GPUIcon";
 import useBreadcrumb from "@/hooks/useBreadcrumb";
 import PodPhaseLabel, { podPhases } from "@/components/badge/PodPhaseBadge";
 import { Separator } from "@/components/ui/separator";
@@ -62,6 +62,7 @@ import {
   asyncGrafanaNodeAtom,
 } from "@/utils/store/config";
 import { useIsAdmin } from "@/hooks/useAdmin";
+import TooltipCopy from "../label/TooltipCopy";
 
 type GpuDemoProps = React.ComponentProps<typeof Card> & {
   gpuInfo?: {
@@ -131,7 +132,7 @@ export function GpuCardDemo({ gpuInfo }: GpuDemoProps) {
               );
             }}
           >
-            <GpuIcon className="text-highlight-purple" />
+            <GPUIcon className="text-highlight-purple" />
             <span className="truncate font-normal">加速卡监控</span>
           </Button>
         </CardFooter>
@@ -389,7 +390,9 @@ export const NodeDetail: FC = () => {
         {
           icon: NetworkIcon,
           title: "IP 地址",
-          value: <span className="font-mono">{nodeDetail?.address}</span>,
+          value: (
+            <TooltipCopy name={nodeDetail?.address} className="font-mono" />
+          ),
         },
         {
           icon: BotIcon,
@@ -458,7 +461,7 @@ export const NodeDetail: FC = () => {
         },
         {
           key: "gpu",
-          icon: GpuIcon,
+          icon: GPUIcon,
           label: "加速卡监控",
           children: (
             <GrafanaIframe

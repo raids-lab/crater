@@ -28,6 +28,7 @@ import {
   VolumeMountType,
   exportToJsonString,
   forwardsSchema,
+  jobNameSchema,
 } from "@/utils/form";
 import { useState } from "react";
 import { useAtomValue } from "jotai";
@@ -148,14 +149,7 @@ fi
 `;
 
 const formSchema = z.object({
-  jobName: z
-    .string()
-    .min(1, {
-      message: "作业名称不能为空",
-    })
-    .max(40, {
-      message: "作业名称最多包含 40 个字符",
-    }),
+  jobName: jobNameSchema,
   task: taskSchema,
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,

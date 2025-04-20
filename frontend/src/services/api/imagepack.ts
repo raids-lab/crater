@@ -60,8 +60,8 @@ export type ProjectDetailResponse = {
 
 export const getHeader = (key: string): string => {
   switch (key) {
-    case "imageLink":
-      return "镜像地址";
+    case "image":
+      return "镜像";
     case "userInfo":
       return "提交者";
     case "status":

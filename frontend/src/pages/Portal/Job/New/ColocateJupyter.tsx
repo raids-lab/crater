@@ -129,26 +129,6 @@ const formSchema = z.object({
     }),
   ),
   volumeMounts: volumeMountsSchema,
-  // 添加 useTensorBoard 作为布尔类型的属性
-  observability: z
-    .object({
-      tbEnable: z.boolean(),
-      tbLogDir: z.string().optional(),
-    })
-    .refine(
-      (observability) => {
-        return (
-          !observability.tbEnable ||
-          (observability.tbEnable &&
-            observability.tbLogDir !== null &&
-            observability.tbLogDir !== undefined)
-        );
-      },
-      {
-        message: "TensorBoard 日志目录不能为空",
-        path: ["tbLogDir"],
-      },
-    ),
   alertEnabled: z.boolean().default(true),
   nodeSelector: nodeSelectorSchema,
   openssh: z.boolean().default(false),
@@ -260,9 +240,6 @@ export const Component = () => {
         },
       ],
       envs: [],
-      observability: {
-        tbEnable: false,
-      },
       nodeSelector: {
         enable: false,
       },
