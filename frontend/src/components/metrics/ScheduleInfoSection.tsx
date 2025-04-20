@@ -11,22 +11,33 @@ import {
 import { zhCN } from "date-fns/locale";
 import { TerminatedSection } from "./TerminatedSection";
 
-// 辅助函数：将 "32.671s" 或 "2m32.671s" 转换为秒数
 const parseDurationString = (durationStr: string): number => {
   if (!durationStr) return 0;
 
   let totalSeconds = 0;
 
-  // 处理分钟部分
-  const minutesMatch = durationStr.match(/(\d+)m/);
+  // 处理小时部分 - 必须跟着h且前面没有m或s
+  const hoursMatch = durationStr.match(/(\d+)h/);
+  if (hoursMatch) {
+    totalSeconds += parseInt(hoursMatch[1], 10) * 3600;
+  }
+
+  // 处理分钟部分 - 必须跟着m且后面不是s
+  const minutesMatch = durationStr.match(/(\d+)m(?!s)/);
   if (minutesMatch) {
     totalSeconds += parseInt(minutesMatch[1], 10) * 60;
   }
 
-  // 处理秒部分
-  const secondsMatch = durationStr.match(/(\d+\.?\d*)s/);
+  // 处理秒部分 - 必须跟着s且前面不是m
+  const secondsMatch = durationStr.match(/(\d+\.?\d*)(?<!m)s/);
   if (secondsMatch) {
     totalSeconds += parseFloat(secondsMatch[1]);
+  }
+
+  // 处理毫秒部分 - 必须跟着ms
+  const millisecondsMatch = durationStr.match(/(\d+)ms/);
+  if (millisecondsMatch) {
+    totalSeconds += parseInt(millisecondsMatch[1], 10) / 1000;
   }
 
   return totalSeconds;
