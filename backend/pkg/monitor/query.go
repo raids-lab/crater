@@ -312,6 +312,16 @@ func (p *PrometheusClient) QueryNodeGPUUtil() []NodeGPUUtil {
 	return data
 }
 
+func (p *PrometheusClient) QueryNodeGPUUtilInNS(namespace string) []NodeGPUUtil {
+	expression := fmt.Sprintf("DCGM_FI_DEV_GPU_UTIL{namespace=%q}", namespace)
+	data, err := p.getNodeGPUUtil(expression)
+	if err != nil {
+		logutils.Log.Errorf("QueryNodeGPUUtil error: %v", err)
+		return nil
+	}
+	return data
+}
+
 func (p *PrometheusClient) GetJobPodsList() map[string][]string {
 	query := fmt.Sprintf(`kube_pod_info{namespace=%q,created_by_kind="Job"}`, config.GetConfig().Workspace.Namespace)
 	data, err := p.getJobPods(query)

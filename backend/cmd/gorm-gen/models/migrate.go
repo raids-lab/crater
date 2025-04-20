@@ -202,6 +202,30 @@ func main() {
 				return nil
 			},
 		},
+		{
+			ID: "202504181353", // Ensure the ID is unique
+			Migrate: func(tx *gorm.DB) error {
+				type Alert struct {
+					gorm.Model
+					JobName        string    `gorm:"type:varchar(255);not null;comment:作业名" json:"jobName"`
+					AlertType      string    `gorm:"type:varchar(255);not null;comment:邮件类型" json:"alertType"`
+					AlertTimestamp time.Time `gorm:"comment:邮件发送时间"`
+					AllowRepeat    bool      `gorm:"type:boolean;default:false;comment:是否允许重复发送"`
+					SendCount      int       `gorm:"not null;comment:邮件发送次数"`
+				}
+
+				// Create the table for alerts
+				if err := tx.Migrator().CreateTable(&Alert{}); err != nil {
+					return err
+				}
+
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				// Drop the alerts table if rolling back
+				return tx.Migrator().DropTable("alerts")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -219,6 +243,7 @@ func main() {
 			&model.Kaniko{},
 			&model.Image{},
 			&model.Jobtemplate{},
+			&model.Alert{},
 		)
 		if err != nil {
 			return err

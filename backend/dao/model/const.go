@@ -79,4 +79,17 @@ const (
 	ImageUploadType                 // 镜像上传
 )
 
-//go:generate stringer -type=Role,Status,AccessMode,JobStatus,ImageTaskType,WorkerType,ImageSourceType -output=const_string.go
+type AlertType uint8
+
+const (
+	_                        AlertType = iota
+	JobRunningAlert                    // 作业开始通知
+	JobFailedAlert                     // 作业失败通知
+	JobCompletedAlert                  // 作业完成通知
+	LowGPUJobRemindedAlert             // 低GPU利用率作业提醒通知
+	LowGPUJobDeletedAlert              // 低GPU利用率作业删除通知
+	LongTimeJobRemindedAlert           // 长时间作业提醒通知
+	LongTimeJobDeletedAlert            // 长时间作业删除通知
+)
+
+//go:generate stringer -type=Role,Status,AccessMode,JobStatus,ImageTaskType,WorkerType,ImageSourceType,AlertType -output=const_string.go
