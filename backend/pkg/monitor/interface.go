@@ -19,6 +19,9 @@ type PrometheusInterface interface {
 	// QueryNodeGPUUtil queries the GPU utilization of a node
 	QueryNodeGPUUtil() []NodeGPUUtil
 
+	// QueryNodeGPUUtil queries the GPU utilization of a node in namespace
+	QueryNodeGPUUtilInNS(namespace string) []NodeGPUUtil
+
 	// QueryNodeAllocatedCPU queries the allocated CPU of each node
 	QueryNodeAllocatedCPU() map[string]float32
 

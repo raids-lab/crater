@@ -2,6 +2,7 @@ package alert
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -10,6 +11,8 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
+	"github.com/raids-lab/crater/pkg/utils"
+	"gorm.io/gorm"
 )
 
 type alertMgr struct {
@@ -86,7 +89,7 @@ func (a *alertMgr) getJobAlertInfo(ctx context.Context, jobName string) (*JobInf
 	receiver := job.User.Attributes.Data()
 
 	return &JobInformation{
-		Name:              jobName,
+		Name:              job.Name,
 		JobName:           job.JobName,
 		Username:          job.User.Attributes.Data().Nickname,
 		jobURL:            jobURL,
@@ -102,6 +105,7 @@ func (a *alertMgr) getJobAlertInfo(ctx context.Context, jobName string) (*JobInf
 func (a *alertMgr) sendJobNotification(
 	ctx context.Context,
 	jobName, subject string,
+	alertType model.AlertType,
 	condition func(info *JobInformation) bool,
 	bodyFormatter func(info *JobInformation) string,
 ) error {
@@ -119,18 +123,55 @@ func (a *alertMgr) sendJobNotification(
 		return nil
 	}
 
+	// 检查是否已发送过
+	alertDB := query.Alert
+	record, alertErr := alertDB.WithContext(ctx).Where(alertDB.JobName.Eq(jobName), alertDB.AlertType.Eq(alertType.String())).First()
+
+	if alertErr == nil && !record.AllowRepeat {
+		// 该job该type的邮件已经发送过，且不允许再发送
+		logutils.Log.Infof("job %s type %s already sent", jobName, alertType.String())
+		return nil
+	}
+
+	if alertErr != nil && !errors.Is(alertErr, gorm.ErrRecordNotFound) {
+		// 发生错误
+		return alertErr
+	}
+
 	body := bodyFormatter(info)
 	if err := a.handler.SendMessageTo(ctx, &info.Receiver, subject, body); err != nil {
 		return err
 	}
 
-	// TODO: 审计，留下所有发送邮件记录
+	// 审计，留下所有发送邮件记录
+	if alertErr != nil && errors.Is(alertErr, gorm.ErrRecordNotFound) {
+		// 1. 邮件没发送过，创建新纪录
+		newRecord := &model.Alert{
+			JobName:        jobName,
+			AlertType:      alertType.String(),
+			AllowRepeat:    false,
+			AlertTimestamp: utils.GetLocalTime(),
+			SendCount:      1,
+		}
+		if err := alertDB.WithContext(ctx).Create(newRecord); err != nil {
+			return err
+		}
+	} else {
+		// 2. 邮件已经发送过，更新记录
+		record.SendCount++
+		record.AlertTimestamp = utils.GetLocalTime()
+		record.AllowRepeat = false
+		if err := alertDB.WithContext(ctx).Save(record); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 // 作业开始通知，只有当作业创建和运行间隔超过 10 分钟时才发送
 func (a *alertMgr) JobRunningAlert(ctx context.Context, jobName string) error {
-	return a.sendJobNotification(ctx, jobName, "作业开始通知",
+	return a.sendJobNotification(ctx, jobName, "作业开始通知", model.JobRunningAlert,
 		func(info *JobInformation) bool {
 			timeRangeMinite := 10
 			return info.RunningTimestamp.Sub(info.CreationTimestamp).Minutes() > float64(timeRangeMinite)
@@ -144,7 +185,7 @@ func (a *alertMgr) JobRunningAlert(ctx context.Context, jobName string) error {
 
 // 作业失败通知
 func (a *alertMgr) JobFailureAlert(ctx context.Context, jobName string) error {
-	return a.sendJobNotification(ctx, jobName, "作业失败通知",
+	return a.sendJobNotification(ctx, jobName, "作业失败通知", model.JobFailedAlert,
 		nil, // 无需额外判断
 		func(info *JobInformation) string {
 			return fmt.Sprintf("用户 %s 您好：您的作业 %s (%s) 运行失败。\n作业链接 %s",
@@ -155,7 +196,7 @@ func (a *alertMgr) JobFailureAlert(ctx context.Context, jobName string) error {
 
 // 作业完成通知
 func (a *alertMgr) JobCompleteAlert(ctx context.Context, jobName string) error {
-	return a.sendJobNotification(ctx, jobName, "作业完成通知",
+	return a.sendJobNotification(ctx, jobName, "作业完成通知", model.JobCompletedAlert,
 		nil, // 无需额外判断
 		func(info *JobInformation) string {
 			return fmt.Sprintf("用户 %s 您好：您的作业 %s (%s) 运行完成。\n作业链接 %s",
@@ -164,9 +205,9 @@ func (a *alertMgr) JobCompleteAlert(ctx context.Context, jobName string) error {
 	)
 }
 
-// 低利用率作业删除通知
+// 低GPU利用率作业删除通知
 func (a *alertMgr) DeleteJob(ctx context.Context, jobName string, _ map[string]any) error {
-	return a.sendJobNotification(ctx, jobName, "作业删除通知",
+	return a.sendJobNotification(ctx, jobName, "作业删除通知", model.LowGPUJobDeletedAlert,
 		nil,
 		func(info *JobInformation) string {
 			return fmt.Sprintf("用户 %s 您好：您的作业 %s (%s) 利用率过低，平台已经删除该作业。\n作业链接 %s",
@@ -177,7 +218,7 @@ func (a *alertMgr) DeleteJob(ctx context.Context, jobName string, _ map[string]a
 
 // 长时间运行作业删除通知
 func (a *alertMgr) CleanJob(ctx context.Context, jobName string, _ map[string]any) error {
-	return a.sendJobNotification(ctx, jobName, "作业删除通知",
+	return a.sendJobNotification(ctx, jobName, "作业删除通知", model.LongTimeJobDeletedAlert,
 		nil,
 		func(info *JobInformation) string {
 			return fmt.Sprintf("用户 %s 您好：您的作业 %s (%s) 运行时间达到上限，平台已经删除该作业。\n作业链接 %s",
@@ -188,7 +229,7 @@ func (a *alertMgr) CleanJob(ctx context.Context, jobName string, _ map[string]an
 
 // RemindLowUsageJob 发送低资源使用率告警
 func (a *alertMgr) RemindLowUsageJob(ctx context.Context, jobName string, deleteTime time.Time, _ map[string]any) error {
-	return a.sendJobNotification(ctx, jobName, "作业即将删除告警",
+	return a.sendJobNotification(ctx, jobName, "作业即将删除告警", model.LowGPUJobRemindedAlert,
 		nil,
 		func(info *JobInformation) string {
 			deleteTimeStr := deleteTime.Format("2006-01-02 15:04:05")
@@ -200,7 +241,7 @@ func (a *alertMgr) RemindLowUsageJob(ctx context.Context, jobName string, delete
 
 // RemindLongTimeRunningJob 发送长时间运行告警
 func (a *alertMgr) RemindLongTimeRunningJob(ctx context.Context, jobName string, deleteTime time.Time, _ map[string]any) error {
-	return a.sendJobNotification(ctx, jobName, "作业即将删除告警",
+	return a.sendJobNotification(ctx, jobName, "作业即将删除告警", model.LongTimeJobRemindedAlert,
 		nil,
 		func(info *JobInformation) string {
 			deleteTimeStr := deleteTime.Format("2006-01-02 15:04:05")
