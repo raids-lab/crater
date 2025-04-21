@@ -114,7 +114,7 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// 3. if kaniko record not found, then create a new one.
-			return r.handleKanikoRecordNotFound(ctx, &job)
+			return r.handleRecordNotFound(ctx, &job)
 		}
 		// 4. if fetch failed, it may be caused by database connection error.
 		logger.Error(err, "unable to fetch kaniko record in database")
@@ -159,7 +159,7 @@ func (r *BuildKitReconciler) handleJobNotFound(ctx context.Context, jobName stri
 	return ctrl.Result{}, nil
 }
 
-func (r *BuildKitReconciler) handleKanikoRecordNotFound(ctx context.Context, job *batchv1.Job) (ctrl.Result, error) {
+func (r *BuildKitReconciler) handleRecordNotFound(ctx context.Context, job *batchv1.Job) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	k := query.Kaniko
 	uID, _ := strconv.Atoi(job.Annotations["build-data/UserID"])
@@ -169,10 +169,10 @@ func (r *BuildKitReconciler) handleKanikoRecordNotFound(ctx context.Context, job
 	description := job.Annotations["build-data/Description"]
 	envd := job.Annotations["build-data/Envd"]
 	var buildSource model.BuildSource
-	if dockerfile != "" {
-		buildSource = model.BuildKit
-	} else if envd != "" {
+	if envd != "" {
 		buildSource = model.Envd
+	} else if dockerfile != "" {
+		buildSource = model.BuildKit
 	} else {
 		buildSource = model.Snapshot
 	}

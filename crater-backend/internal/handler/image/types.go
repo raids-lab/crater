@@ -97,6 +97,7 @@ type (
 		ID            uint              `json:"ID"`
 		ImageLink     string            `json:"imageLink"`
 		Status        model.BuildStatus `json:"status"`
+		BuildSource   model.BuildSource `json:"buildSource"`
 		CreatedAt     time.Time         `json:"createdAt"`
 		ImagePackName string            `json:"imagepackName"`
 		Description   string            `json:"description"`

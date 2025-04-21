@@ -219,11 +219,13 @@ func (mgr *ImagePackMgr) GetKanikoByID(c *gin.Context) {
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
+
 	podName, podNameSpace := mgr.getPodName(c, req.ID)
 	getKanikoResponse := GetKanikoResponse{
 		ID:            kaniko.ID,
 		ImageLink:     kaniko.ImageLink,
 		Status:        kaniko.Status,
+		BuildSource:   kaniko.BuildSource,
 		CreatedAt:     kaniko.CreatedAt,
 		ImagePackName: kaniko.ImagePackName,
 		Description:   *kaniko.Description,
