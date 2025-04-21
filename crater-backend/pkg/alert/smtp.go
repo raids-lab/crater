@@ -3,6 +3,7 @@ package alert
 import (
 	"context"
 	"fmt"
+	"mime"
 	"net/smtp"
 	"strings"
 
@@ -81,10 +82,15 @@ func (sa *SMTPAlerter) SendMessageTo(_ context.Context, receiver *model.UserAttr
 	from := config.GetConfig().ACT.SMTP.Notify
 	to := []string{*receiver.Email}
 
-	// 设置邮件消息
+	// 对主题进行编码，防止中文乱码
+	encodedSubject := mime.QEncoding.Encode("utf-8", subject)
+
+	// 设置邮件消息，添加MIME头信息
 	msg := []byte("To: " + to[0] + "\r\n" +
 		"From: " + from + "\r\n" +
-		"Subject: " + subject + "\r\n" +
+		"Subject: " + encodedSubject + "\r\n" +
+		"MIME-Version: 1.0\r\n" +
+		"Content-Type: text/plain; charset=UTF-8\r\n" +
 		"\r\n" +
 		body)
 
