@@ -22,12 +22,14 @@ export const FileSelectDialog = ({
   disabled,
   allowSelectFile = true,
   isrw = false,
+  title = "选择挂载数据",
 }: {
   value?: string;
   handleSubmit: (path: TreeDataItem) => void;
   disabled?: boolean;
   allowSelectFile?: boolean;
   isrw?: boolean;
+  title?: string;
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [content, setContent] = useState<TreeDataItem | undefined>();
@@ -69,7 +71,7 @@ export const FileSelectDialog = ({
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>选择挂载数据</DialogTitle>
+            <DialogTitle>{title}</DialogTitle>
             <DialogDescription>支持选择单个文件或文件夹</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4">
