@@ -100,21 +100,19 @@ export const ValidDialog: FC<ValidDialogProps> = ({
             )}
           </DialogDescription>
 
-          <DialogFooter className="mt-4 gap-2 sm:gap-0">
+          <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline" className="flex items-center gap-2">
-                <X className="h-4 w-4" />
+              <Button variant="outline">
+                <X />
                 关闭
               </Button>
             </DialogClose>
-
             {(invalidPairs?.length ?? 0) > 0 && (
               <Button
                 variant="destructive"
-                className="flex items-center gap-2"
                 onClick={() => onDeleteLinks(invalidPairs ?? [])}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 />
                 删除链接
               </Button>
             )}

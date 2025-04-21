@@ -17,6 +17,7 @@ export type KanikoInfoResponse = {
   ID: number;
   imageLink: string;
   status: ImagePackStatus;
+  buildSource: ImagePackSource;
   createdAt: string;
   size: number;
   dockerfile: string;
@@ -88,6 +89,8 @@ export type ImagePackStatus =
   | "Finished"
   | "Failed"
   | "";
+
+export type ImagePackSource = "buildkit" | "snapshot" | "envd" | "";
 
 export const imagepackStatuses: {
   value: ImagePackStatus;

@@ -23,7 +23,7 @@ import {
 import { DataTablePagination, MultipleHandler } from "./DataTablePagination";
 import { DataTableToolbar, DataTableToolbarConfig } from "./DataTableToolbar";
 import { Card, CardContent } from "@/components/ui/card";
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { UseQueryResult } from "@tanstack/react-query";
 import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
@@ -44,6 +44,7 @@ interface DataTableProps<TData, TValue>
   columns: ColumnDef<TData, TValue>[];
   toolbarConfig?: DataTableToolbarConfig;
   multipleHandlers?: MultipleHandler<TData>[];
+  briefChildren?: React.ReactNode;
   className?: string;
 }
 
@@ -55,6 +56,7 @@ export function DataTable<TData, TValue>({
   toolbarConfig,
   multipleHandlers,
   children,
+  briefChildren,
   className,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = useState({});
@@ -139,6 +141,7 @@ export function DataTable<TData, TValue>({
           {children}
         </PageTitle>
       )}
+      {briefChildren && <>{briefChildren}</>}
       {toolbarConfig && (
         <DataTableToolbar
           table={table}

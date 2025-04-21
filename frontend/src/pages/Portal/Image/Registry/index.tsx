@@ -7,10 +7,7 @@ import { DataTable } from "@/components/custom/DataTable";
 import { Button } from "@/components/ui/button";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import {
-  apiGetHarborIP,
   apiUserDeleteKanikoList,
-  apiUserGetCredential,
-  apiUserGetQuota,
   apiUserListKaniko,
   getHeader,
   ImageLinkPair,
@@ -18,7 +15,6 @@ import {
   imagepackStatuses,
   KanikoInfoResponse,
   ListKanikoResponse,
-  ProjectCredentialResponse,
 } from "@/services/api/imagepack";
 import { logger } from "@/utils/loglevel";
 import { toast } from "sonner";
@@ -34,25 +30,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
 import {
-  BoxIcon,
   InfoIcon,
   PackagePlusIcon,
   Trash2Icon,
-  HardDriveIcon,
-  KeyIcon,
-  UserRoundIcon,
-  Key,
-  Copy,
-  User,
   AlertTriangle,
-  RefreshCw,
-  ExternalLink,
-  ListStart,
   CheckCheck,
   SquareCheckBig,
 } from "lucide-react";
 import { useNavigate, useRoutes } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import KanikoDetail from "../Info";
 import {
   DropdownMenu,
@@ -62,16 +47,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@radix-ui/react-label";
-import PageTitle from "@/components/layout/PageTitle";
 import DocsButton from "@/components/button/DocsButton";
 import { PipAptSheet } from "./PipAptSheet";
 import { DockerfileSheet } from "./DockerfileSheet";
@@ -80,22 +55,21 @@ import TooltipLink from "@/components/label/TooltipLink";
 import ImageLabel from "@/components/label/ImageLabel";
 import ImagePhaseBadge from "@/components/badge/ImagePhaseBadge";
 import { formatBytes } from "@/utils/formatter";
-import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
 import { IResponse } from "@/services/types";
 import { AxiosResponse } from "axios";
 import { globalUserInfo } from "@/utils/store";
 import { useAtomValue } from "jotai";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
 import { ValidDialog } from "../Image/ValidDialog";
 import UserLabel from "@/components/label/UserLabel";
 import { EnvdSheet } from "./EnvdSheet";
 import { EnvdRawSheet } from "./EnvdRawSheet";
+import { ProjectDetail } from "./ProjectDetail";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
     placeholder: "搜索镜像",
-    key: "imageLink",
+    key: "image",
   },
   filterOptions: [
     {
@@ -135,7 +109,11 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
   const imageQuery = useQuery({
     queryKey: ["imagepack", "list"],
     queryFn: () => apiListKaniko(),
-    select: (res) => res.data.data.kanikoList,
+    select: (res) =>
+      res.data.data.kanikoList.map((i) => ({
+        ...i,
+        image: `${i.imageLink} (${i.description})`,
+      })),
   });
 
   const refetchImagePackList = async () => {
@@ -159,16 +137,16 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
 
   let columns: ColumnDef<KanikoInfoResponse>[] = [
     {
-      accessorKey: "imageLink",
+      accessorKey: "image",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("imageLink")} />
+        <DataTableColumnHeader column={column} title={getHeader("image")} />
       ),
       cell: ({ row }) => (
         <TooltipLink
           name={
             <ImageLabel
               description={row.original.description}
-              url={row.getValue<string>("imageLink")}
+              url={row.original.imageLink}
             />
           }
           to={`${row.original.ID}`}
@@ -214,7 +192,13 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
         <DataTableColumnHeader column={column} title={getHeader("size")} />
       ),
       cell: ({ row }) => {
-        return <span>{formatBytes(row.getValue("size"))}</span>;
+        return (
+          <>
+            {row.getValue<number>("size") > 0 && (
+              <span>{formatBytes(row.getValue("size"))}</span>
+            )}
+          </>
+        );
       },
     },
     {
@@ -279,64 +263,19 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
   ];
   columns = columns.filter((column) => column.id !== "nickName" || isAdminMode);
   return (
-    <div className="flex flex-col gap-3">
-      <div>
-        <PageTitle
-          title="镜像制作"
-          description="支持 Dockerfile 、低代码、快照等方式制作镜像"
-          className="mb-2"
-        >
-          {!isAdminMode ? (
-            <div className="flex flex-row gap-3">
-              <DocsButton title="查看文档" url="image/imagebuild" />
-              <SplitButton
-                icon={<PackagePlusIcon />}
-                renderTitle={(title) => title}
-                itemTitle="构建方式"
-                items={[
-                  {
-                    key: "envd",
-                    title: "Python + CUDA 自定义构建",
-                    action: () => {
-                      setOpenEnvdSheet(true);
-                    },
-                  },
-                  {
-                    key: "pip-apt",
-                    title: "基于现有镜像构建",
-                    action: () => {
-                      setOpenPipAptSheet(true);
-                    },
-                  },
-                  {
-                    key: "dockerfile",
-                    title: "基于 Dockerfile 构建",
-                    action: () => {
-                      setOpenDockerfileSheet(true);
-                    },
-                  },
-                  {
-                    key: "envd-raw",
-                    title: "基于 Envd 构建",
-                    action: () => {
-                      setOpenEnvdRawSheet(true);
-                    },
-                  },
-                ]}
-                cacheKey="imagepack"
-              />
-            </div>
-          ) : null}
-        </PageTitle>
-        {!isAdminMode ? (
-          <ProjectDetail
-            successImageNumber={
-              imageQuery.data?.filter((c) => c.status == "Finished").length ?? 0
-            }
-          />
-        ) : null}
-      </div>
+    <>
       <DataTable
+        info={
+          isAdminMode
+            ? {
+                title: "镜像制作管理",
+                description: "支持 Dockerfile 、低代码、快照等方式制作镜像",
+              }
+            : {
+                title: "镜像制作",
+                description: "支持 Dockerfile 、低代码、快照等方式制作镜像",
+              }
+        }
         storageKey="image_registry"
         query={imageQuery}
         columns={columns}
@@ -408,7 +347,59 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             isDanger: false,
           },
         ]}
-      />
+        briefChildren={
+          !isAdminMode ? (
+            <ProjectDetail
+              successImageNumber={
+                imageQuery.data?.filter((c) => c.status == "Finished").length ??
+                0
+              }
+            />
+          ) : null
+        }
+      >
+        {!isAdminMode ? (
+          <div className="flex flex-row gap-3">
+            <DocsButton title="查看文档" url="image/imagebuild" />
+            <SplitButton
+              icon={<PackagePlusIcon />}
+              renderTitle={(title) => title}
+              itemTitle="构建方式"
+              items={[
+                {
+                  key: "envd",
+                  title: "Python + CUDA 自定义构建",
+                  action: () => {
+                    setOpenEnvdSheet(true);
+                  },
+                },
+                {
+                  key: "pip-apt",
+                  title: "基于现有镜像构建",
+                  action: () => {
+                    setOpenPipAptSheet(true);
+                  },
+                },
+                {
+                  key: "dockerfile",
+                  title: "基于 Dockerfile 构建",
+                  action: () => {
+                    setOpenDockerfileSheet(true);
+                  },
+                },
+                {
+                  key: "envd-raw",
+                  title: "基于 Envd 构建",
+                  action: () => {
+                    setOpenEnvdRawSheet(true);
+                  },
+                },
+              ]}
+              cacheKey="imagepack"
+            />
+          </div>
+        ) : null}
+      </DataTable>
       {!isAdminMode ? (
         <div>
           <EnvdSheet
@@ -445,8 +436,8 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
           />
         </div>
       ) : null}
-      <AlertDialog open={openCheckDialog} onOpenChange={setCheckOpenDialog}>
-        <AlertDialogContent>
+      <Dialog open={openCheckDialog} onOpenChange={setCheckOpenDialog}>
+        <DialogContent>
           <ValidDialog
             linkPairs={selectedLinkPairs}
             onDeleteLinks={(invalidPairs: ImageLinkPair[]) => {
@@ -457,278 +448,10 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
               );
             }}
           />
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-};
-
-interface UserHarborCredentialsDialogProps {
-  isDialogOpen: boolean;
-  setIsDialogOpen: (open: boolean) => void;
-}
-
-export const UserHarborCredentialsDialog: FC<
-  UserHarborCredentialsDialogProps
-> = ({ isDialogOpen, setIsDialogOpen }) => {
-  const [credentials, setCredentials] =
-    useState<ProjectCredentialResponse | null>(null);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const user = useAtomValue(globalUserInfo);
-  const { mutate: getProjectCredential } = useMutation({
-    mutationFn: () => apiUserGetCredential(),
-    onSuccess: async (data) => {
-      setCredentials(data.data.data);
-      setShowConfirmation(false);
-      toast.success("凭据已生成, 请保存您的密码！");
-    },
-  });
-  const harborIP = useQuery({
-    queryKey: ["harbor", "ip"],
-    queryFn: () => apiGetHarborIP(),
-    select: (res) => res.data.data,
-  });
-  const handleResetClick = () => {
-    setShowConfirmation(true);
-  };
-  return (
-    <>
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Key className="h-6 w-6 text-blue-500" />
-              Harbor仓库用户凭据
-            </DialogTitle>
-          </DialogHeader>
-          <div>
-            <Alert className="my-3 border-yellow-500 bg-yellow-50">
-              <AlertTriangle className="h-5 w-5 text-yellow-600" />
-              <AlertDescription className="font-medium text-yellow-800">
-                请保存好您的用户名和密码，密码只会显示一次！
-              </AlertDescription>
-            </Alert>
-            <div className="flex items-center justify-between rounded-md border border-blue-200 bg-blue-50 px-2 py-3">
-              <div className="text-sm text-blue-700">Harbor仓库地址：</div>
-              <a
-                href={harborIP.data?.ip}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800"
-              >
-                {harborIP.data?.ip}
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-          </div>
-          <Separator />
-          <div className="grid gap-4 rounded-md border border-gray-100 bg-gray-50 p-3 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="username" className="text-right">
-                用户名
-              </Label>
-              <div className="col-span-3 flex items-center">
-                <User className="mr-2 h-4 w-4 text-gray-500" />
-                <Input
-                  id="username"
-                  value={user.name}
-                  readOnly
-                  className="pr-10"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="project" className="text-right">
-                项目名
-              </Label>
-              <div className="col-span-3 flex items-center">
-                <ListStart className="mr-2 h-4 w-4 text-gray-500" />
-                <Input
-                  id="project"
-                  value={"user-" + user.name}
-                  readOnly
-                  className="pr-10"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="password" className="text-right">
-                密码
-              </Label>
-              <div className="col-span-3 flex items-center">
-                <Key className="mr-2 h-4 w-4 text-gray-500" />
-                <Input
-                  id="password"
-                  value={credentials ? credentials.password : "•".repeat(10)}
-                  readOnly
-                  className="pr-10"
-                />
-                {credentials ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="absolute right-12 hover:bg-transparent"
-                    onClick={() => copyToClipboard(credentials.password)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-          </div>
-          <DialogFooter className="sm:justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex items-center gap-2"
-              onClick={() => handleResetClick()}
-            >
-              <RefreshCw className="h-4 w-4" />
-              重置密码
-            </Button>
-            <Button
-              type="button"
-              variant="default"
-              onClick={() => setIsDialogOpen(false)}
-            >
-              关闭
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
-      <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
-        <AlertDialogContent className="max-w-[150px]">
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认重置密码</AlertDialogTitle>
-            <AlertDialogDescription>
-              您确定要重置密码吗？此操作无法撤销。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => getProjectCredential()}
-              className="bg-red-500 hover:bg-red-600"
-            >
-              确认重置
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
-};
-
-interface ProjectDetailProps {
-  successImageNumber: number;
-}
-
-export const ProjectDetail: FC<ProjectDetailProps> = ({
-  successImageNumber,
-}) => {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const quotaQuery = useQuery({
-    queryKey: ["imagepack", "quota"],
-    queryFn: () => apiUserGetQuota(),
-    select: (res) => res.data.data,
-  });
-  return (
-    <>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="shadow-xs">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-1.5 text-base">
-              <BoxIcon className="text-primary size-5" />
-              镜像总数
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              {quotaQuery.isLoading ? (
-                <LoadingCircleIcon />
-              ) : (
-                <>{successImageNumber}</>
-              )}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-xs">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-1.5 text-base">
-              <HardDriveIcon className="text-primary size-5" />
-              存储用量
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              {quotaQuery.isLoading ? (
-                <LoadingCircleIcon />
-              ) : (
-                <>
-                  {Number(quotaQuery.data?.used).toFixed(2)}GiB/
-                  {Number(quotaQuery.data?.quota).toFixed(0)}GiB
-                </>
-              )}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-xs">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-1.5 text-base">
-              <UserRoundIcon className="text-primary size-5" />
-              仓库项目
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              {quotaQuery.isLoading ? (
-                <LoadingCircleIcon />
-              ) : (
-                <>{quotaQuery.data?.project}</>
-              )}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-xs">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-1.5 text-base">
-              <KeyIcon className="text-primary size-5" />
-              访问凭据
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button
-              variant="outline"
-              onClick={() => setIsDialogOpen(true)}
-              className="w-full"
-            >
-              获取初始凭据
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      <UserHarborCredentialsDialog
-        isDialogOpen={isDialogOpen}
-        setIsDialogOpen={setIsDialogOpen}
-      />
-    </>
-  );
-};
-
-const copyToClipboard = (text: string) => {
-  navigator.clipboard
-    .writeText(text)
-    .then(() => {
-      // 可以添加一个临时的成功提示
-      toast.success("复制成功");
-    })
-    .catch((err) => {
-      toast.error("复制失败", err);
-    });
 };
 
 export const Component = () => {
