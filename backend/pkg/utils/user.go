@@ -7,7 +7,7 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 )
 
-func IsUserEmailVerified(c context.Context, userID uint) bool {
+func CheckUserEmail(c context.Context, userID uint) bool {
 	u := query.User
 	user, err := u.WithContext(c).
 		Where(u.ID.Eq(userID)).
@@ -15,18 +15,18 @@ func IsUserEmailVerified(c context.Context, userID uint) bool {
 	if err != nil {
 		return false
 	}
-	return IsEmailVerified(user.LastEmailVerifiedAt)
+	varified, _ := CheckEmailVerified(user.LastEmailVerifiedAt)
+	return varified
 }
 
-func IsEmailVerified(lastEmailVerifiedAt time.Time) bool {
+func CheckEmailVerified(lastVerified *time.Time) (varified bool, last *time.Time) {
 	// todo: emailValidityDays写到配置文件中
 	emailValidityDays := 180
 
-	if lastEmailVerifiedAt.IsZero() {
-		return false
+	if lastVerified == nil || lastVerified.IsZero() {
+		return false, nil
 	}
 
 	curTime := GetLocalTime()
-
-	return lastEmailVerifiedAt.AddDate(0, 0, emailValidityDays).After(curTime)
+	return lastVerified.AddDate(0, 0, emailValidityDays).After(curTime), lastVerified
 }
