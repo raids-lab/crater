@@ -29,7 +29,7 @@ export function CodeContent({
     >
       <ScrollArea style={{ width, height }}>
         <HighlightedPre
-          className="text-sm"
+          className="p-2 text-sm"
           withLineNumbers
           language={language ?? ""}
         >

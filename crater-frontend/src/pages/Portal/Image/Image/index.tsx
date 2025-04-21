@@ -100,7 +100,7 @@ export const Component: FC = () => {
       apiChangeImageDescription={apiUserChangeImageDescription}
       apiChangeImageTaskType={apiUserChangeImageTaskType}
       isAdminMode={false}
-    ></ImageListTable>
+    />
   );
 };
 

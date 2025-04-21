@@ -1,7 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import React, { useEffect, type FC } from "react";
 import { Card } from "@/components/ui/card";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import useBreadcrumb from "@/hooks/useBreadcrumb";
 import {
   apiUserDeleteKaniko,
@@ -42,15 +42,13 @@ type KanikoCard = React.ComponentProps<typeof Card> & {
   kanikoInfo?: KanikoInfoResponse;
 };
 
-function KanikoInfo({ kanikoInfo: kanikoInfo }: KanikoCard) {
-  const queryClient = useQueryClient();
+function KanikoInfo({ kanikoInfo }: KanikoCard) {
+  const navigate = useNavigate();
 
   const { mutate: userDeleteKaniko } = useMutation({
     mutationFn: (id: number) => apiUserDeleteKaniko(id),
     onSuccess: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
-        queryClient.invalidateQueries({ queryKey: ["imagelink", "list"] }),
-      );
+      navigate(-1);
       toast.success("镜像已删除");
     },
   });
@@ -144,13 +142,21 @@ function KanikoInfo({ kanikoInfo: kanikoInfo }: KanikoCard) {
           {
             key: "dockerfile",
             icon: CodeIcon,
-            label: "Dockerfile",
+            label:
+              kanikoInfo.buildSource === "buildkit"
+                ? "Dockerfile"
+                : "Envd 配置",
             children: (
               <CodeContent
                 data={kanikoInfo.dockerfile}
-                language={"dockerfile"}
+                language={
+                  kanikoInfo.buildSource === "buildkit"
+                    ? "dockerfile"
+                    : "python"
+                }
               />
             ),
+            hidden: kanikoInfo.buildSource === "snapshot",
           },
         ]}
       />
