@@ -30,13 +30,6 @@ import { toast } from "sonner";
 import { getHeader } from "@/pages/Portal/Job/statuses";
 import { logger } from "@/utils/loglevel";
 import Quota from "../../Interactive/Quota";
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card";
-import { CardTitle } from "@/components/ui-custom/card";
 import SplitLinkButton from "@/components/button/SplitLinkButton";
 import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
@@ -442,54 +435,6 @@ const ColocateOverview = () => {
 
   return (
     <>
-      <div className="grid gap-5 lg:col-span-3 lg:grid-cols-4">
-        <Card className="row-span-2 flex flex-col justify-between lg:col-span-2">
-          <CardHeader>
-            <CardTitle>自定义作业</CardTitle>
-            <CardDescription className="pt-2 leading-relaxed text-balance">
-              如单机作业、Pytorch DDP 作业、 TensorFlow PS 作业、Ray
-              分布式训练作业、 OpenMPI 分布式计算作业等。
-            </CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <SplitLinkButton
-              title="batch"
-              urls={[
-                {
-                  url: "portal/job/batch/new-" + jobType,
-                  name: "自定义作业",
-                },
-                {
-                  url: "portal/job/batch/new-tensorflow",
-                  name: " Tensorflow PS 作业",
-                  disabled: true,
-                },
-                {
-                  url: "portal/job/batch/new-pytorch",
-                  name: " Pytorch DDP 作业",
-                  disabled: true,
-                },
-                {
-                  url: "portal/job/batch/new-ray",
-                  name: " Ray 作业",
-                  disabled: true,
-                },
-                {
-                  url: "portal/job/batch/new-deepspeed",
-                  name: " DeepSpeed 作业",
-                  disabled: true,
-                },
-                {
-                  url: "portal/job/batch/new-openmpi",
-                  name: " OpenMPI 作业",
-                  disabled: true,
-                },
-              ]}
-            />
-          </CardFooter>
-        </Card>
-        <Quota />
-      </div>
       <DataTable
         info={{
           title: "自定义作业",
@@ -517,7 +462,43 @@ const ColocateOverview = () => {
             isDanger: true,
           },
         ]}
-      ></DataTable>
+        briefChildren={<Quota />}
+      >
+        <SplitLinkButton
+          title="batch"
+          urls={[
+            {
+              url: "portal/job/batch/new-" + jobType,
+              name: "自定义作业",
+            },
+            {
+              url: "portal/job/batch/new-tensorflow",
+              name: " Tensorflow PS 作业",
+              disabled: true,
+            },
+            {
+              url: "portal/job/batch/new-pytorch",
+              name: " Pytorch DDP 作业",
+              disabled: true,
+            },
+            {
+              url: "portal/job/batch/new-ray",
+              name: " Ray 作业",
+              disabled: true,
+            },
+            {
+              url: "portal/job/batch/new-deepspeed",
+              name: " DeepSpeed 作业",
+              disabled: true,
+            },
+            {
+              url: "portal/job/batch/new-openmpi",
+              name: " OpenMPI 作业",
+              disabled: true,
+            },
+          ]}
+        />
+      </DataTable>
     </>
   );
 };

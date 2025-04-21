@@ -14,7 +14,7 @@ import { IResponse } from "../types";
 // 	Group     *string      `json:"group"`     // 课题组
 // 	Avatar    *string      `json:"avatar"`    // 头像
 // }
-export interface User {
+export interface IUser {
   id: number; // 用户ID
   name: string; // 用户名称
   nickname: string; // 用户昵称
@@ -27,7 +27,7 @@ export interface User {
 }
 
 export const apiGetUser = (userName: string) =>
-  instance.get<IResponse<User>>(`${VERSION}/users/${userName}`);
+  instance.get<IResponse<IUser>>(`${VERSION}/users/${userName}`);
 
 export interface EmailVerifiedResponse {
   verified: boolean; // 是否已验证

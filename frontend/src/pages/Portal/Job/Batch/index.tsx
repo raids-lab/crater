@@ -16,7 +16,7 @@ const batchRoutes: RouteObject[] = [
   },
   {
     path: "new-aijobs",
-    lazy: () => import("../New/Colocate"),
+    lazy: () => import("../New/EmiasCustom"),
   },
   {
     path: "new-vcjobs",

@@ -11,12 +11,15 @@ import {
 } from "@/components/ui/sidebar";
 import { NavGroupProps } from "../sidebar/types";
 import { useAtomValue } from "jotai";
-import { globalFixedLayout } from "@/utils/store";
+import { globalFixedLayout, globalSettings } from "@/utils/store";
 import { cn } from "@/lib/utils";
+import { Badge } from "../ui/badge";
+import { CogIcon } from "lucide-react";
 
 const DashboardLayout = ({ groups }: { groups: NavGroupProps[] }) => {
   const { pathname: rawPath } = useLocation();
   const fixedLayout = useAtomValue(globalFixedLayout);
+  const scheduler = useAtomValue(globalSettings).scheduler;
 
   // 特殊规则，网盘路由切换时，不启用过渡动画
   const motionKey = useMemo(() => {
@@ -33,16 +36,22 @@ const DashboardLayout = ({ groups }: { groups: NavGroupProps[] }) => {
       <SidebarInset>
         <header
           className={cn(
-            "flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear",
+            "flex h-16 shrink-0 items-center justify-between gap-2 px-6 transition-[width,height] ease-linear",
             // "group-has-data-[collapsible=icon]/sidebar-wrapper:h-16",
             fixedLayout &&
               "header-fixed peer/header fixed z-50 w-[inherit] rounded-md",
           )}
         >
-          <div className="flex items-center gap-2 px-6">
+          <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
             <NavBreadcrumb className="hidden md:flex" />
           </div>
+          {scheduler !== "volcano" && (
+            <Badge variant="secondary" className="uppercase">
+              <CogIcon />
+              {scheduler}
+            </Badge>
+          )}
         </header>
         <motion.div
           key={motionKey}

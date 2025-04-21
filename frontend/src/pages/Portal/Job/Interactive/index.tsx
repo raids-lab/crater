@@ -1,6 +1,6 @@
 import { RouteObject } from "react-router-dom";
 import InterOverview from "./InterOverview";
-import ColocateInterOverview from "./ColocateInterOverview";
+import ColocateInterOverview from "./EmiasOverview";
 import { globalJobUrl, store } from "@/utils/store";
 import { Base } from "../Detail/Base";
 
@@ -17,7 +17,7 @@ const interactiveRoutes: RouteObject[] = [
   },
   {
     path: "new-jupyter-aijobs",
-    lazy: () => import("../New/ColocateJupyter"),
+    lazy: () => import("../New/EmiasJupyter"),
   },
   {
     path: ":name",

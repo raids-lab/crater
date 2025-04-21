@@ -1,14 +1,14 @@
 import {
   Card,
+  CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ResourceResp, apiContextQuota } from "@/services/api/context";
 import { globalAccount } from "@/utils/store";
 import { useQuery } from "@tanstack/react-query";
-import { CpuIcon, MemoryStickIcon } from "lucide-react";
+import { CpuIcon, MemoryStickIcon, NetworkIcon } from "lucide-react";
 import GPUIcon from "@/components/icon/GPUIcon";
 import { useAtomValue } from "jotai";
 import { REFETCH_INTERVAL } from "@/config/task";
@@ -27,6 +27,8 @@ const showUnit = (label?: string) => {
     return "GB";
   } else if (label === "cpu") {
     return "核";
+  } else if (label?.startsWith("rdma")) {
+    return "网卡";
   }
   return "卡";
 };
@@ -39,6 +41,7 @@ const QuotaCard = ({
   resource?: ResourceResp;
 }) => {
   const allocated = resource?.allocated?.amount ?? 0;
+  const deserved = resource?.deserved?.amount ?? 0;
   const quota = resource?.deserved?.amount ?? resource?.capability?.amount ?? 1;
   const [progress, overflow] = useMemo(() => {
     const progress = (allocated / quota) * 100;
@@ -46,64 +49,38 @@ const QuotaCard = ({
     return [overflow ? 100 : progress, overflow];
   }, [allocated, quota]);
   return (
-    <Card className="flex flex-col items-stretch justify-between">
-      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
+    <Card className="flex flex-col items-stretch justify-between gap-3">
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-0">
         <CardDescription className="flex flex-row items-center justify-start uppercase">
-          <div className="bg-primary/10 mr-1.5 flex h-7 w-7 items-center justify-center rounded-full">
+          <div className="bg-primary/10 mr-1.5 flex size-7 items-center justify-center rounded-full">
             <props.icon className="text-primary size-4" />
           </div>
-          {resource?.label}
+          <span className="font-semibold">{resource?.label}</span>
         </CardDescription>
         <div className="text-muted-foreground font-sans text-xs">
           已用
           <span
-            className={cn("text-primary mx-0.5 font-mono text-xl font-bold", {
+            className={cn("text-primary mx-0.5 font-mono text-2xl font-bold", {
               "text-orange-500": overflow,
             })}
           >
             {showAmount(allocated, resource?.label)}
+            {deserved > 0 && (
+              <span className="text-base">
+                /{showAmount(deserved, resource?.label)}
+              </span>
+            )}
           </span>
           {showUnit(resource?.label)}
         </div>
       </CardHeader>
-      <CardFooter className="flex flex-col gap-2">
+      <CardContent>
         <Progress
           value={progress}
           aria-label={resource?.label}
           className={cn({ "bg-orange-500/20 *:bg-orange-400": overflow })}
         />
-        {!!resource?.capability &&
-          !!resource?.guarantee &&
-          !!resource?.deserved && (
-            <div className="flex w-full flex-row-reverse items-center justify-between text-xs">
-              {resource?.capability?.amount !== undefined && (
-                <p className="text-orange-500">
-                  上限:{" "}
-                  {showAmount(resource?.capability?.amount, resource?.label)}
-                </p>
-              )}
-              {resource?.deserved?.amount !== undefined && (
-                <p className="text-teal-500">
-                  应得:{" "}
-                  {showAmount(resource?.deserved?.amount, resource?.label)}
-                </p>
-              )}
-              {resource?.allocated?.amount !== undefined && (
-                <p className="text-sky-500">
-                  已用:{" "}
-                  {showAmount(resource?.allocated?.amount, resource?.label)}
-                </p>
-              )}
-              {resource?.guarantee?.amount !== undefined &&
-                resource?.guarantee?.amount > 0 && (
-                  <p className="text-slate-500">
-                    保证:{" "}
-                    {showAmount(resource?.guarantee?.amount, resource?.label)}
-                  </p>
-                )}
-            </div>
-          )}
-      </CardFooter>
+      </CardContent>
     </Card>
   );
 };
@@ -120,17 +97,20 @@ const Quota = () => {
 
   return (
     <div
-      className={cn("grid gap-4", {
-        "grid-cols-3": quota?.gpus?.length === 1,
-        "grid-cols-4": quota?.gpus?.length === 2,
-        "grid-cols-2": quota?.gpus?.length !== 1 && quota?.gpus?.length !== 2,
+      className={cn("grid grid-cols-2 gap-4", {
+        "md:grid-cols-3": quota?.gpus?.length === 1,
+        "md:grid-cols-4": quota?.gpus?.length !== 1,
       })}
     >
       <QuotaCard resource={quota?.cpu} icon={CpuIcon} />
       <QuotaCard resource={quota?.memory} icon={MemoryStickIcon} />
-      {quota?.gpus?.map((gpu, i) => (
-        <QuotaCard key={i} resource={gpu} icon={GPUIcon} />
-      ))}
+      {quota?.gpus?.map((gpu, i) =>
+        gpu.label.startsWith("rdma") ? (
+          <QuotaCard key={i} resource={gpu} icon={NetworkIcon} />
+        ) : (
+          <QuotaCard key={i} resource={gpu} icon={GPUIcon} />
+        ),
+      )}
     </div>
   );
 };
