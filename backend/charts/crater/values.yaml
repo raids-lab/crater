@@ -5,7 +5,7 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "85b120d6"
+      tag: "0b595ada"
       pullPolicy: "IfNotPresent"
   migrate:
     image:
@@ -18,7 +18,7 @@ web:
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "38ac59f4"
+      tag: "ed199e8f"
       pullPolicy: "IfNotPresent"
     config:
       version: "1.0.0"
@@ -91,12 +91,12 @@ web:
       HOST: ***REMOVED***
       jobs:
         lowGPUUtil:
-          schedule: "0,30 * * * *"
+          schedule: "*/5 * * * *"
           TIME_RANGE: "90"
           WAIT_TIME: "30"
           UTIL: "0"
         longTime:
-          schedule: "0 */12 * * *"
+          schedule: "*/5 * * * *"
           BATCH_DAYS: "4"
           INTERACTIVE_DAYS: "4"
         waitingJupyter:
