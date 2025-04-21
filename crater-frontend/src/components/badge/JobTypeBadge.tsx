@@ -18,10 +18,6 @@ export const jobTypes = [
     value: "pytorch",
     label: "Pytorch",
   },
-  {
-    value: "webide",
-    label: "Webide",
-  },
 ];
 
 const getJobTypeLabel = (

@@ -1,17 +1,25 @@
-import { type FC, useEffect, useState } from "react";
-import { Separator } from "@/components/ui/separator";
+import { type FC } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui-custom/alert-dialog";
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Check, Pencil, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@radix-ui/react-label";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
 interface RenameDialogProps {
   imageDescription: string;
@@ -22,76 +30,80 @@ export const RenameDialog: FC<RenameDialogProps> = ({
   imageDescription,
   onRename,
 }) => {
-  const initialDescription = "";
-  const [newDescription, setNewDescription] = useState(initialDescription);
-  const [isTouched, setIsTouched] = useState(false);
-  useEffect(() => {
-    setNewDescription(initialDescription || "");
-    setIsTouched(false);
-  }, [initialDescription]);
+  // 定义表单验证 schema
+  const formSchema = z.object({
+    newDescription: z
+      .string()
+      .min(1, "请输入有效的名称")
+      .refine((value) => value !== imageDescription, {
+        message: "新名称不能与当前名称相同",
+      }),
+  });
 
-  const isValid = newDescription.trim().length > 0;
-  const hasChanged = newDescription !== initialDescription;
-  const canSubmit = isValid && hasChanged;
+  type FormSchema = z.infer<typeof formSchema>;
+
+  // 使用 react-hook-form
+  const form = useForm<FormSchema>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      newDescription: imageDescription,
+    },
+  });
+
+  // 表单提交处理
+  const onSubmit = (values: FormSchema) => {
+    onRename(values.newDescription);
+  };
+
   return (
     <>
-      <AlertDialogHeader>
-        <AlertDialogTitle className="flex items-center gap-1 text-xl">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-1 text-xl">
           <Pencil className="text-primary h-5 w-5" />
           <span>更新镜像名称</span>
-        </AlertDialogTitle>
-      </AlertDialogHeader>
-
-      <Separator className="my-3" />
-
-      <AlertDialogDescription className="space-y-4 pt-2">
+        </DialogTitle>
+      </DialogHeader>
+      <DialogDescription className="space-y-4 pt-2">
         <div className="bg-muted/50 rounded-md px-4 py-3">
           <p className="text-muted-foreground text-sm">当前名称</p>
           <p className="mt-1 font-medium">「{imageDescription}」</p>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="new-description" className="font-medium">
-            新名称
-          </Label>
-          <Input
-            id="new-description"
-            type="text"
-            value={newDescription}
-            onChange={(e) => {
-              setNewDescription(e.target.value);
-              setIsTouched(true);
-            }}
-            placeholder="输入新的描述"
-            className={`transition-all ${isTouched && !isValid ? "border-destructive ring-destructive/10" : ""}`}
-            autoFocus
-          />
-          {isTouched && !isValid && (
-            <p className="text-destructive text-xs">请输入有效的名称</p>
-          )}
-        </div>
-      </AlertDialogDescription>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
+            <FormField
+              control={form.control}
+              name="newDescription"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="font-medium">新名称</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="输入新的描述" autoFocus />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </form>
+        </Form>
+      </DialogDescription>
 
-      <AlertDialogFooter className="mt-4 gap-2 sm:gap-0">
-        <AlertDialogCancel asChild>
+      <DialogFooter>
+        <DialogClose asChild>
           <Button variant="outline" className="flex items-center gap-2">
             <X className="h-4 w-4" />
             取消
           </Button>
-        </AlertDialogCancel>
-
-        <AlertDialogAction asChild>
-          <Button
-            variant="default"
-            className="flex items-center gap-2"
-            onClick={() => onRename(newDescription)}
-            disabled={!canSubmit}
-          >
-            <Check className="h-4 w-4" />
-            确认
-          </Button>
-        </AlertDialogAction>
-      </AlertDialogFooter>
+        </DialogClose>
+        <Button
+          variant="default"
+          className="flex items-center gap-2"
+          onClick={form.handleSubmit(onSubmit)}
+        >
+          <Check className="h-4 w-4" />
+          确认
+        </Button>
+      </DialogFooter>
     </>
   );
 };

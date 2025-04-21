@@ -13,7 +13,6 @@ export enum JobType {
   Pytorch = "pytorch",
   Tensorflow = "tensorflow",
   Custom = "custom",
-  WebIDE = "webide",
   KubeRay = "kuberay",
   DeepSpeed = "deepspeed",
   OpenMPI = "openmpi",

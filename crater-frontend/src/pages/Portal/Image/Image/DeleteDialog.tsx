@@ -1,13 +1,12 @@
 import { type FC } from "react";
-import { Separator } from "@/components/ui/separator";
 import {
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui-custom/alert-dialog";
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Trash2, X, AlertTriangle } from "lucide-react";
 
 interface DeleteDialogProps {
@@ -21,16 +20,14 @@ export const DeleteDialog: FC<DeleteDialogProps> = ({
 }) => {
   return (
     <>
-      <AlertDialogHeader>
-        <AlertDialogTitle className="flex items-center gap-2 text-xl">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2 text-xl">
           <Trash2 className="text-destructive h-5 w-5" />
           <span>删除镜像</span>
-        </AlertDialogTitle>
-      </AlertDialogHeader>
+        </DialogTitle>
+      </DialogHeader>
 
-      <Separator className="my-3" />
-
-      <AlertDialogDescription className="space-y-4 pt-2">
+      <DialogDescription className="space-y-4 pt-2">
         <div className="border-destructive/20 bg-destructive/5 rounded-md border px-4 py-3">
           <div className="flex items-start gap-3">
             <AlertTriangle className="text-destructive mt-0.5 h-5 w-5 shrink-0" />
@@ -42,19 +39,25 @@ export const DeleteDialog: FC<DeleteDialogProps> = ({
             </div>
           </div>
         </div>
-      </AlertDialogDescription>
+      </DialogDescription>
 
-      <AlertDialogFooter>
-        <AlertDialogCancel>
-          <X />
-          取消
-        </AlertDialogCancel>
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="outline" className="flex items-center gap-2">
+            <X className="size-4" />
+            取消
+          </Button>
+        </DialogClose>
 
-        <AlertDialogAction variant="destructive" onClick={onDeleteImageList}>
-          <Trash2 />
+        <Button
+          variant="destructive"
+          onClick={onDeleteImageList}
+          className="flex items-center gap-2"
+        >
+          <Trash2 className="size-4" />
           确认删除
-        </AlertDialogAction>
-      </AlertDialogFooter>
+        </Button>
+      </DialogFooter>
     </>
   );
 };

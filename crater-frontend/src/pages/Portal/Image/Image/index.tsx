@@ -22,12 +22,8 @@ import {
 } from "@/services/api/imagepack";
 import { logger } from "@/utils/loglevel";
 import { toast } from "sonner";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogContent,
-} from "@/components/ui-custom/alert-dialog";
-import {
-  BookCopy,
   CheckCheck,
   Globe,
   Lock,
@@ -36,6 +32,8 @@ import {
   Trash2Icon,
   AlertTriangle,
   SquareCheckBig,
+  CopyIcon,
+  ImportIcon,
 } from "lucide-react";
 import JobTypeLabel, { jobTypes } from "@/components/badge/JobTypeBadge";
 import { useAtomValue } from "jotai";
@@ -346,8 +344,8 @@ export const ImageListTable: FC<ImageListTableProps> = ({
           },
         ]}
       >
-        <AlertDialog open={openCheckDialog} onOpenChange={setCheckOpenDialog}>
-          <AlertDialogContent>
+        <Dialog open={openCheckDialog} onOpenChange={setCheckOpenDialog}>
+          <DialogContent>
             <ValidDialog
               linkPairs={selectedLinkPairs}
               onDeleteLinks={(invalidPairs: ImageLinkPair[]) => {
@@ -360,14 +358,15 @@ export const ImageListTable: FC<ImageListTableProps> = ({
                 );
               }}
             />
-          </AlertDialogContent>
-        </AlertDialog>
+          </DialogContent>
+        </Dialog>
         {!isAdminMode ? (
           <Button
             variant="default"
             className="flex items-center gap-2"
             onClick={() => setOpenSheet(true)}
           >
+            <ImportIcon />
             导入镜像
           </Button>
         ) : null}
@@ -410,7 +409,7 @@ const Actions: FC<ActionsProps> = ({
   const isDisabled = !isAdminMode && imageInfo.userInfo.username !== userName;
   return (
     <div className="flex flex-row space-x-1">
-      <AlertDialog open={openDialog} onOpenChange={setOpenDialog}>
+      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-8 w-8 p-0">
@@ -435,7 +434,7 @@ const Actions: FC<ActionsProps> = ({
                   });
               }}
             >
-              <BookCopy className="text-blue-600" />
+              <CopyIcon className="text-blue-600" />
               复制链接
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -461,6 +460,38 @@ const Actions: FC<ActionsProps> = ({
               )}
               {imageInfo.isPublic === true ? "设为私有" : "设为公共"}
             </DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger
+                disabled={isDisabled}
+                className={`${isDisabled ? "cursor-not-allowed opacity-50 data-disabled:pointer-events-none" : ""} group`}
+              >
+                <Tag className="mr-2 size-4 text-cyan-600" />
+                更改类型
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup value={`${imageInfo.taskType}`}>
+                  {Object.keys(JobType).map((key) => (
+                    <DropdownMenuRadioItem
+                      key={key}
+                      value={key}
+                      disabled={[
+                        JobType.DeepSpeed,
+                        JobType.KubeRay,
+                        JobType.OpenMPI,
+                      ].includes(JobType[key as keyof typeof JobType])}
+                      onClick={() =>
+                        onChangeType({
+                          id: imageInfo.ID,
+                          taskType: JobType[key as keyof typeof JobType],
+                        })
+                      }
+                    >
+                      {key}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
             <DropdownMenuItem
               disabled={isDisabled}
               onClick={() => {
@@ -481,43 +512,9 @@ const Actions: FC<ActionsProps> = ({
               <Trash2Icon className="text-red-600" />
               删除镜像
             </DropdownMenuItem>
-
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger
-                disabled={isDisabled}
-                className={`${isDisabled ? "cursor-not-allowed opacity-50 data-disabled:pointer-events-none" : ""} group`}
-              >
-                <Tag className="mr-2 size-4 text-cyan-600" />
-                更改类型
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuRadioGroup value={`${JobType}`}>
-                  {Object.keys(JobType).map((key) => (
-                    <DropdownMenuRadioItem
-                      key={key}
-                      value={key}
-                      disabled={[
-                        JobType.WebIDE,
-                        JobType.DeepSpeed,
-                        JobType.KubeRay,
-                        JobType.OpenMPI,
-                      ].includes(JobType[key as keyof typeof JobType])}
-                      onClick={() =>
-                        onChangeType({
-                          id: imageInfo.ID,
-                          taskType: JobType[key as keyof typeof JobType],
-                        })
-                      }
-                    >
-                      {key}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
           </DropdownMenuContent>
         </DropdownMenu>
-        <AlertDialogContent>
+        <DialogContent>
           {dialog === Dialogs.delete ? (
             <DeleteDialog
               imageLinks={[imageInfo.imageLink]}
@@ -551,8 +548,8 @@ const Actions: FC<ActionsProps> = ({
               }}
             />
           ) : null}
-        </AlertDialogContent>
-      </AlertDialog>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

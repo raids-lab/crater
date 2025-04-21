@@ -132,13 +132,11 @@ export function BaseCore({ jobName }: { jobName: string }) {
         >
           <div className="flex flex-row gap-3">
             {(data.jobType === JobType.Jupyter ||
-              data.jobType === JobType.WebIDE ||
               data.jobType === JobType.Custom) &&
               data.status === JobPhase.Running && (
                 <SSHPortDialog jobName={jobName} userName={data.username} />
               )}
-            {(data.jobType === JobType.Jupyter ||
-              data.jobType === JobType.WebIDE) &&
+            {data.jobType === JobType.Jupyter &&
               data.status === JobPhase.Running && (
                 <Button
                   variant="secondary"
