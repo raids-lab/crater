@@ -91,12 +91,12 @@ web:
       HOST: ***REMOVED***
       jobs:
         lowGPUUtil:
-          schedule: "0,30 * * * *"
+          schedule: "*/5 * * * *"
           TIME_RANGE: "90"
           WAIT_TIME: "30"
           UTIL: "0"
         longTime:
-          schedule: "0 */12 * * *"
+          schedule: "*/5 * * * *"
           BATCH_DAYS: "4"
           INTERACTIVE_DAYS: "4"
         waitingJupyter:
