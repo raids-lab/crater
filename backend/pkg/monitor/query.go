@@ -13,10 +13,11 @@ import (
 func (p *PrometheusClient) QueryPodProfileMetric(namespace, podname string) (PodUtil, error) {
 	podUtil := PodUtil{}
 	var err error
-	podUtil.GPUUtilAvg, err = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_DEV_GPU_UTIL{namespace=%q,pod=%q}[60s])/100", namespace, podname))
+	podUtil.CPUMemMax, err = p.queryMetric(fmt.Sprintf("max_over_time(container_memory_usage_bytes{namespace=%q,pod=%q,container!=\"POD\",container!=\"\"}[60s])/1048576", namespace, podname))
 	if err != nil {
 		return podUtil, err
 	}
+	podUtil.GPUUtilAvg, _ = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_DEV_GPU_UTIL{namespace=%q,pod=%q}[60s])/100", namespace, podname))
 	podUtil.GPUUtilMax, _ = p.queryMetric(fmt.Sprintf("max_over_time(DCGM_FI_DEV_GPU_UTIL{namespace=%q,pod=%q}[60s])/100", namespace, podname))
 	podUtil.GPUUtilStd, _ = p.queryMetric(fmt.Sprintf("stddev_over_time(DCGM_FI_DEV_GPU_UTIL{namespace=%q,pod=%q}[60s])/100", namespace, podname))
 	podUtil.SMActiveAvg, _ = p.queryMetric(fmt.Sprintf("avg_over_time(DCGM_FI_PROF_SM_ACTIVE{namespace=%q,pod=%q}[60s])", namespace, podname))

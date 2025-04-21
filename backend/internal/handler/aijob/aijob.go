@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
@@ -67,21 +68,21 @@ func (mgr *AIJobMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *AIJobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET(":id/token", mgr.GetJupyterToken)
-	g.GET("", mgr.List)
-	g.GET("all", mgr.ListAll)
+	g.GET("", mgr.ListUserJob)
+	g.GET("all", mgr.ListAllJob)
 	g.GET("quota", mgr.GetQuota)
 	g.DELETE(":id", mgr.Delete)
 
-	g.GET(":id/yaml", mgr.GetJobYaml)
 	g.GET(":id/detail", mgr.Get)
+	g.GET(":id/yaml", mgr.GetJobYaml)
 	g.GET(":id/pods", mgr.GetJobPods)
 
-	g.POST("training", mgr.Create)
+	g.POST("training", mgr.CreateCustom)
 	g.POST("jupyter", mgr.CreateJupyterJob)
 }
 
 func (mgr *AIJobMgr) RegisterAdmin(g *gin.RouterGroup) {
-	g.GET("", mgr.List)
+	g.GET("", mgr.ListUserJob)
 	g.GET(":id/detail", mgr.Get)
 }
 
@@ -406,19 +407,19 @@ type (
 	}
 )
 
-// Create godoc
-// @Summary Create a new AI job
-// @Description Create a new AI job by client-go
+// CreateCustom godoc
+// @Summary CreateCustom a new AI job
+// @Description CreateCustom a new AI job by client-go
 // @Tags AIJob
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param job body any true "Create AI Job Request"
-// @Success 200 {object} resputil.Response[any] "Create AI Job Response"
+// @Param job body any true "CreateCustom AI Job Request"
+// @Success 200 {object} resputil.Response[any] "CreateCustom AI Job Response"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/aijobs/training [post]
-func (mgr *AIJobMgr) Create(c *gin.Context) {
+func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
 	var vcReq CreateAIJobReq
 	if err := c.ShouldBindJSON(&vcReq); err != nil {
 		resputil.BadRequestError(c, err.Error())
@@ -470,18 +471,18 @@ type AIJobResp struct {
 	ProfileStatus string `json:"profileStatus"`
 }
 
-// List godoc
-// @Summary List AI jobs
-// @Description List AI jobs by client-go
+// ListUserJob godoc
+// @Summary ListUserJob AI jobs
+// @Description ListUserJob AI jobs by client-go
 // @Tags AIJob
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Success 200 {object} resputil.Response[any] "AI Job List"
+// @Success 200 {object} resputil.Response[any] "AI Job ListUserJob"
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/aijobs [get]
-func (mgr *AIJobMgr) List(c *gin.Context) {
+func (mgr *AIJobMgr) ListUserJob(c *gin.Context) {
 	token := interutil.GetToken(c)
 	taskModels, err := mgr.taskService.ListByQueue(token.AccountName)
 	if err != nil {
@@ -497,7 +498,7 @@ func (mgr *AIJobMgr) List(c *gin.Context) {
 	resputil.Success(c, jobs)
 }
 
-func (mgr *AIJobMgr) ListAll(c *gin.Context) {
+func (mgr *AIJobMgr) ListAllJob(c *gin.Context) {
 	taskModels, err := mgr.taskService.ListAll()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("list task failed, err %v", err), resputil.NotSpecified)
@@ -557,22 +558,12 @@ type AIJobDetailReq struct {
 }
 
 type AIJobDetailResp struct {
-	Name              string            `json:"name"`
-	Namespace         string            `json:"namespace"`
-	Username          string            `json:"username"`
-	JobName           string            `json:"jobName"`
-	Retry             string            `json:"retry"`
-	Queue             string            `json:"queue"`
-	Status            batch.JobPhase    `json:"status"`
-	CreationTimestamp metav1.Time       `json:"createdAt"`
-	RunningTimestamp  metav1.Time       `json:"startedAt"`
-	Duration          string            `json:"runtime"`
-	PodDetails        []vcjob.PodDetail `json:"podDetails"`
-	UseTensorBoard    bool              `json:"useTensorBoard"`
-	ID                uint              `json:"id"`
-	Priority          string            `json:"priority"`
-	ProfileStat       string            `json:"profileStat"`
-	ProfileStatus     string            `json:"profileStatus"`
+	vcjob.JobDetailResp
+	Retry         string `json:"retry"`
+	Duration      string `json:"runtime"`
+	Priority      string `json:"priority"`
+	ProfileStat   string `json:"profileStat"`
+	ProfileStatus string `json:"profileStatus"`
 }
 
 // Get godoc
@@ -617,37 +608,33 @@ func (mgr *AIJobMgr) Get(c *gin.Context) {
 		priority = "low"
 	}
 
-	var podDetail []vcjob.PodDetail
-	podName := fmt.Sprintf("%s-0", taskModel.JobName)
-	pod, err := mgr.kubeClient.CoreV1().Pods(taskModel.Namespace).Get(c, podName, metav1.GetOptions{})
-	if err == nil {
-		podDetail = []vcjob.PodDetail{{
-			Name:      pod.Name,
-			Namespace: pod.Namespace,
-			NodeName:  ptr.To(pod.Spec.NodeName),
-			IP:        pod.Status.PodIP,
-			Resource:  pod.Spec.Containers[0].Resources.Requests,
-			Phase:     pod.Status.Phase,
-		}}
+	u := query.User
+	user, err := u.WithContext(c).Where(u.Name.Eq(taskModel.Owner)).First()
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("get user failed, err %v", err), resputil.NotSpecified)
+		return
 	}
 
 	resp := AIJobDetailResp{
-		Name:              taskModel.TaskName,
-		Namespace:         taskModel.Namespace,
-		Username:          taskModel.Owner,
-		JobName:           taskModel.JobName,
-		Retry:             fmt.Sprintf("%d", 0),
-		Queue:             taskModel.UserName,
-		Status:            convertJobPhase(taskModel.Status),
-		CreationTimestamp: metav1.NewTime(taskModel.CreatedAt),
-		RunningTimestamp:  runningTimestamp,
-		Duration:          duration,
-		PodDetails:        podDetail,
-		UseTensorBoard:    false,
-		ID:                taskModel.ID,
-		Priority:          priority,
-		ProfileStat:       taskModel.ProfileStat,
-		ProfileStatus:     strconv.FormatUint(uint64(taskModel.ProfileStatus), 10),
+		JobDetailResp: vcjob.JobDetailResp{
+			Name:      taskModel.TaskName,
+			Namespace: taskModel.Namespace,
+			Username:  taskModel.Owner,
+			UserInfo: model.UserInfo{
+				Nickname: user.Nickname,
+				Username: user.Name,
+			},
+			JobName:           taskModel.JobName,
+			Queue:             taskModel.UserName,
+			Status:            convertJobPhase(taskModel.Status),
+			CreationTimestamp: metav1.NewTime(taskModel.CreatedAt),
+			RunningTimestamp:  runningTimestamp,
+		},
+		Retry:         fmt.Sprintf("%d", 0),
+		Duration:      duration,
+		Priority:      priority,
+		ProfileStat:   taskModel.ProfileStat,
+		ProfileStatus: strconv.FormatUint(uint64(taskModel.ProfileStatus), 10),
 	}
 	logutils.Log.Infof("get task success, taskID: %d", req.JobID)
 	resputil.Success(c, resp)
