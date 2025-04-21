@@ -91,6 +91,9 @@ type Config struct {
 		NerdctlImage  string `yaml:"nerdctlImage"`
 		EnvdImage     string `yaml:"envdImage"`
 	} `yaml:"dindArgs"`
+	// tls secret name
+	TLSSecretName        string `yaml:"tlsSecretName"`
+	TLSForwardSecretName string `yaml:"tlsForwardSecretName"`
 }
 
 type ACTOpenAPI struct {
