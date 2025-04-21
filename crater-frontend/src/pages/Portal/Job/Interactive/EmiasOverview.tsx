@@ -26,13 +26,6 @@ import { toast } from "sonner";
 import { getHeader } from "@/pages/Portal/Job/statuses";
 import { logger } from "@/utils/loglevel";
 import Quota from "./Quota";
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card";
-import { CardTitle } from "@/components/ui-custom/card";
 import SplitLinkButton from "@/components/button/SplitLinkButton";
 import { IJobInfo, JobType } from "@/services/api/vcjob";
 import { REFETCH_INTERVAL } from "@/config/task";
@@ -440,29 +433,11 @@ const ColocateOverview = () => {
 
   return (
     <>
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Card className="row-span-2 flex flex-col justify-between">
-          <CardHeader>
-            <CardTitle>Jupyter Lab</CardTitle>
-            <CardDescription className="pt-2 leading-relaxed text-balance">
-              提供开箱即用的 Jupyter Lab， 可用于代码编写、调试等。
-            </CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <SplitLinkButton
-              title="interactive"
-              urls={[
-                {
-                  url: `portal/job/inter/new-jupyter-${jobType}`,
-                  name: " Jupyter Lab",
-                },
-              ]}
-            />
-          </CardFooter>
-        </Card>
-        <Quota />
-      </div>
       <DataTable
+        info={{
+          title: "Jupyter Lab",
+          description: "提供开箱即用的 Jupyter Lab， 可用于代码编写、调试等。",
+        }}
         storageKey="portal_aijob_interactive"
         query={batchQuery}
         columns={batchColumns}
@@ -485,7 +460,18 @@ const ColocateOverview = () => {
             isDanger: true,
           },
         ]}
-      ></DataTable>
+        briefChildren={<Quota />}
+      >
+        <SplitLinkButton
+          title="interactive"
+          urls={[
+            {
+              url: `portal/job/inter/new-jupyter-${jobType}`,
+              name: " Jupyter Lab",
+            },
+          ]}
+        />
+      </DataTable>
     </>
   );
 };

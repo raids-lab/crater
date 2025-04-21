@@ -50,6 +50,7 @@ import { Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IUserInfo } from "@/services/api/vcjob";
 import UserLabel from "@/components/label/UserLabel";
+import Nothing from "@/components/placeholder/Nothing";
 
 export interface DataItem {
   id: number;
@@ -228,130 +229,138 @@ export default function DataList({
         </Select>
       </div>
       <Separator />
-      <ul className="faded-bottom no-scrollbar grid gap-4 overflow-auto pt-4 pb-16 md:grid-cols-2 lg:grid-cols-3">
-        {filteredItems.map((item, index) => (
-          <motion.li
-            key={item.name}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: (index / 3) * 0.1 }}
-            whileHover={{ y: -5 }}
-            className="bg-card flex flex-col justify-between gap-3 rounded-lg border hover:shadow-md"
-          >
-            <div className="flex flex-row items-center justify-between p-4 pb-0">
-              <div className="flex items-center gap-2">
-                <div
-                  className={`bg-primary/10 text-primary flex size-10 items-center justify-center rounded-lg p-1`}
-                >
-                  {title === "模型" ? (
-                    <BotIcon />
-                  ) : title === "数据集" ? (
-                    <DatabaseZapIcon />
+      {filteredItems.length === 0 ? (
+        <Nothing />
+      ) : (
+        <ul className="faded-bottom no-scrollbar grid gap-4 overflow-auto pt-4 pb-16 md:grid-cols-2 lg:grid-cols-3">
+          {filteredItems.map((item, index) => (
+            <motion.li
+              key={item.name}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: (index / 3) * 0.1 }}
+              whileHover={{ y: -5 }}
+              className="bg-card flex flex-col justify-between gap-3 rounded-lg border hover:shadow-md"
+            >
+              <div className="flex flex-row items-center justify-between p-4 pb-0">
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`bg-primary/10 text-primary flex size-10 items-center justify-center rounded-lg p-1`}
+                  >
+                    {title === "模型" ? (
+                      <BotIcon />
+                    ) : title === "数据集" ? (
+                      <DatabaseZapIcon />
+                    ) : (
+                      <PackageIcon />
+                    )}
+                  </div>
+                  {title === "作业模板" ? (
+                    <TooltipLink
+                      to={`/portal/${getJobUrlFromTemplate(item.template || "")}?fromTemplate=${item.id}`}
+                      name={<p className="text-left">{item.name}</p>}
+                      tooltip={`查看${title}详情`}
+                      className="font-semibold"
+                    />
                   ) : (
-                    <PackageIcon />
+                    <TooltipLink
+                      to={`${item.id}`}
+                      name={<p className="text-left">{item.name}</p>}
+                      tooltip={`查看${title}详情`}
+                      className="font-semibold"
+                    />
                   )}
                 </div>
-                {title === "作业模板" ? (
-                  <TooltipLink
-                    to={`/portal/${getJobUrlFromTemplate(item.template || "")}?fromTemplate=${item.id}`}
-                    name={<p className="text-left">{item.name}</p>}
-                    tooltip={`查看${title}详情`}
-                    className="font-semibold"
-                  />
-                ) : (
-                  <TooltipLink
-                    to={`${item.id}`}
-                    name={<p className="text-left">{item.name}</p>}
-                    tooltip={`查看${title}详情`}
-                    className="font-semibold"
-                  />
+                {user.name === item.owner.username && (
+                  <AlertDialog>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 p-0"
+                        >
+                          <span className="sr-only">更多操作</span>
+                          <EllipsisVerticalIcon className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel className="text-muted-foreground text-xs">
+                          操作
+                        </DropdownMenuLabel>
+                        {handleDelete && (
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem className="group">
+                              <Trash2Icon className="text-destructive mr-2 size-4" />
+                              删除
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>删除{title}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {title} {item.name} 将被删除，此操作不可恢复。
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction
+                          variant="destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete?.(item.id);
+                          }}
+                        >
+                          删除
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 )}
               </div>
-              {user.name === item.owner.username && (
-                <AlertDialog>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 p-0"
-                      >
-                        <span className="sr-only">更多操作</span>
-                        <EllipsisVerticalIcon className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel className="text-muted-foreground text-xs">
-                        操作
-                      </DropdownMenuLabel>
-                      {handleDelete && (
-                        <AlertDialogTrigger asChild>
-                          <DropdownMenuItem className="group">
-                            <Trash2Icon className="text-destructive mr-2 size-4" />
-                            删除
-                          </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>删除{title}</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {title} {item.name} 将被删除，此操作不可恢复。
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>取消</AlertDialogCancel>
-                      <AlertDialogAction
-                        variant="destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete?.(item.id);
-                        }}
-                      >
-                        删除
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
-            </div>
 
-            {item.tag.length > 0 && (
-              <div className="flex flex-row flex-wrap gap-1 px-4 pb-1">
-                {item.tag.map((tag) => (
-                  <Badge variant="secondary" key={tag} className="rounded-full">
-                    {tag}
-                  </Badge>
-                ))}
+              {item.tag.length > 0 && (
+                <div className="flex flex-row flex-wrap gap-1 px-4 pb-1">
+                  {item.tag.map((tag) => (
+                    <Badge
+                      variant="secondary"
+                      key={tag}
+                      className="rounded-full"
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <p
+                className="text-muted-foreground line-clamp-3 px-4 text-sm text-balance"
+                title={item.desc}
+              >
+                {item.desc}
+              </p>
+              <div>
+                <div className="flex flex-row flex-wrap gap-1 p-4 pt-0">
+                  <TipBadge
+                    title={
+                      <UserLabel
+                        info={item.owner}
+                        className="hover:text-highlight-orange text-xs"
+                      />
+                    }
+                  />
+                  <TipBadge
+                    title={<TimeDistance date={item.createdAt || "2023"} />}
+                    className="bg-purple-600/15 text-purple-600 hover:bg-purple-600/25"
+                  />
+                </div>
               </div>
-            )}
-            <p
-              className="text-muted-foreground line-clamp-3 px-4 text-sm text-balance"
-              title={item.desc}
-            >
-              {item.desc}
-            </p>
-            <div>
-              <div className="flex flex-row flex-wrap gap-1 p-4 pt-0">
-                <TipBadge
-                  title={
-                    <UserLabel
-                      info={item.owner}
-                      className="hover:text-highlight-orange text-xs"
-                    />
-                  }
-                />
-                <TipBadge
-                  title={<TimeDistance date={item.createdAt || "2023"} />}
-                  className="bg-purple-600/15 text-purple-600 hover:bg-purple-600/25"
-                />
-              </div>
-            </div>
-          </motion.li>
-        ))}
-      </ul>
+            </motion.li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

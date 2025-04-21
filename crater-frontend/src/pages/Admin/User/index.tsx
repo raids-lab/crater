@@ -13,6 +13,23 @@ import {
 } from "@/components/ui-custom/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -25,7 +42,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { showErrorToast } from "@/utils/toast";
 import { toast } from "sonner";
@@ -35,6 +52,7 @@ import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableT
 import {
   apiAdminUserDelete,
   apiAdminUserList,
+  apiAdminUpdateUserAttributes,
   apiAdminUserUpdateRole,
   IUserAttributes,
 } from "@/services/api/admin/user";
@@ -45,6 +63,9 @@ import { ProjectStatus } from "@/services/api/account";
 import UserLabel from "@/components/label/UserLabel";
 import UserRoleBadge from "@/components/badge/UserRoleBadge";
 import UserStatusBadge from "@/components/badge/UserStatusBadge";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 
 interface TUser {
   id: number;
@@ -113,9 +134,164 @@ const toolbarConfig: DataTableToolbarConfig = {
   getHeader: getHeader,
 };
 
+const userFormSchema = z.object({
+  nickname: z.string().optional(),
+  email: z.string().email().optional().or(z.literal("")),
+  teacher: z.string().optional().or(z.literal("")),
+  group: z.string().optional().or(z.literal("")),
+  phone: z.string().optional().or(z.literal("")),
+});
+
+type UserFormValues = z.infer<typeof userFormSchema>;
+
+interface UserEditDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  user: TUser | null;
+}
+
+function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps) {
+  const queryClient = useQueryClient();
+
+  const form = useForm<UserFormValues>({
+    resolver: zodResolver(userFormSchema),
+    defaultValues: {
+      nickname: user?.attributes.nickname || "",
+      email: user?.attributes.email || "",
+      teacher: user?.attributes.teacher || "",
+      group: user?.attributes.group || "",
+      phone: user?.attributes.phone || "",
+    },
+  });
+
+  useEffect(() => {
+    if (user) {
+      form.reset({
+        nickname: user.attributes.nickname || "",
+        email: user.attributes.email || "",
+        teacher: user.attributes.teacher || "",
+        group: user.attributes.group || "",
+        phone: user.attributes.phone || "",
+      });
+    }
+  }, [form, user]);
+
+  const { mutate: updateUser, isPending } = useMutation({
+    mutationFn: (values: UserFormValues) => {
+      if (!user) throw new Error("No user selected");
+      const updateData: IUserAttributes = {
+        ...user.attributes,
+        ...values,
+      };
+      return apiAdminUpdateUserAttributes(user.name, updateData);
+    },
+    onSuccess: () => {
+      toast.success("用户信息已更新");
+      queryClient.invalidateQueries({ queryKey: ["admin", "userlist"] });
+      onOpenChange(false);
+    },
+    onError: () => {
+      toast.error("更新失败");
+    },
+  });
+
+  function onSubmit(values: UserFormValues) {
+    updateUser(values);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>编辑用户信息</DialogTitle>
+          <DialogDescription>
+            更新用户 {user?.name} 的个人信息
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="nickname"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>昵称</FormLabel>
+                  <FormControl>
+                    <Input placeholder="昵称" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>邮箱</FormLabel>
+                  <FormControl>
+                    <Input placeholder="邮箱地址" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="teacher"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>导师</FormLabel>
+                  <FormControl>
+                    <Input placeholder="导师姓名" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="group"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>组别</FormLabel>
+                  <FormControl>
+                    <Input placeholder="组别" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>手机</FormLabel>
+                  <FormControl>
+                    <Input placeholder="手机号码" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <Button type="submit" disabled={isPending}>
+                {isPending ? "保存中..." : "保存修改"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export const User = () => {
   const queryClient = useQueryClient();
   const { name: currentUserName } = useAtomValue(globalUserInfo);
+  const [editUser, setEditUser] = useState<TUser | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const userQuery = useQuery({
     queryKey: ["admin", "userlist"],
@@ -224,6 +400,14 @@ export const User = () => {
                     <DropdownMenuLabel className="text-muted-foreground text-xs">
                       操作
                     </DropdownMenuLabel>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setEditUser(user);
+                        setEditDialogOpen(true);
+                      }}
+                    >
+                      编辑信息
+                    </DropdownMenuItem>
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger>权限</DropdownMenuSubTrigger>
                       <DropdownMenuSubContent>
@@ -288,15 +472,22 @@ export const User = () => {
   );
 
   return (
-    <DataTable
-      info={{
-        title: "用户管理",
-        description: "在这里查看和管理用户信息",
-      }}
-      storageKey="admin_user"
-      query={userQuery}
-      columns={columns}
-      toolbarConfig={toolbarConfig}
-    />
+    <>
+      <DataTable
+        info={{
+          title: "用户管理",
+          description: "在这里查看和管理用户信息",
+        }}
+        storageKey="admin_user"
+        query={userQuery}
+        columns={columns}
+        toolbarConfig={toolbarConfig}
+      />
+      <UserEditDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        user={editUser}
+      />
+    </>
   );
 };

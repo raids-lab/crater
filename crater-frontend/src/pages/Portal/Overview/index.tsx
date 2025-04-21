@@ -115,6 +115,21 @@ export const Component: FC = () => {
           );
           return <ResourceBadges resources={resources} />;
         },
+        sortingFn: (rowA, rowB) => {
+          const resourcesA = rowA.original.resources;
+          const resourcesB = rowB.original.resources;
+          if (resourcesA && resourcesB) {
+            // compare the number of GPUs, key with nvidia.com/ prefix
+            const gpuA = Object.keys(resourcesA).filter((key) =>
+              key.startsWith("nvidia.com"),
+            ).length;
+            const gpuB = Object.keys(resourcesB).filter((key) =>
+              key.startsWith("nvidia.com"),
+            ).length;
+            return gpuA - gpuB;
+          }
+          return 0;
+        },
       },
       {
         accessorKey: "status",

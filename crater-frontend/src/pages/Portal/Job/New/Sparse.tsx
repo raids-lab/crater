@@ -206,6 +206,7 @@ export const Component = () => {
       nodeSelector: {
         enable: false,
       },
+      forwards: [],
     },
   });
 
@@ -305,7 +306,7 @@ export const Component = () => {
                 <ChevronLeftIcon className="size-4" />
               </Button>
               <h1 className="flex-1 shrink-0 text-xl font-semibold tracking-tight whitespace-nowrap sm:grow-0">
-                单机训练作业
+                训练作业
               </h1>
             </div>
             <div className="flex flex-row gap-3">
@@ -548,7 +549,7 @@ export const Component = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        BatchSize
+                        Batch Size
                         <FormLabelMust />
                       </FormLabel>
                       <FormControl>
@@ -561,7 +562,7 @@ export const Component = () => {
               </div>
               <div className="space-y-2">
                 {dimFields.length > 0 && (
-                  <div>
+                  <div className="flex flex-col gap-2">
                     {dimFields.map((field, index) => (
                       <FormField
                         control={form.control}

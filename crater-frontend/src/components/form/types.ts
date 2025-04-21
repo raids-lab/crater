@@ -18,6 +18,11 @@ export const MetadataFormCustom: MetadataFormType = {
   type: "custom",
 };
 
+export const MetadataFormCustomEmias: MetadataFormType = {
+  version: "20250420",
+  type: "custom-emias",
+};
+
 export const MetadataFormTensorflow: MetadataFormType = {
   version: "20240528",
   type: "tensorflow",
@@ -36,4 +41,9 @@ export const MetadataFormDockerfile: MetadataFormType = {
 export const MetadataFormPipApt: MetadataFormType = {
   version: "20250102",
   type: "pipapt",
+};
+
+export const MetadataFormJupyterEmias: MetadataFormType = {
+  version: "20240528",
+  type: "jupyter-emias",
 };

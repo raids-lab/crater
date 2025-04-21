@@ -108,8 +108,10 @@ const SystemSetting = () => {
           </form>
         </Form>
         <CardHeader>
-          <CardTitle>隐藏用户名</CardTitle>
-          <CardDescription>隐藏用户名，使用匿名用户进行操作</CardDescription>
+          <CardTitle>用户名脱敏处理</CardTitle>
+          <CardDescription>
+            对用户名进行脱敏处理，避免暴露集群真实用户信息
+          </CardDescription>
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)}>

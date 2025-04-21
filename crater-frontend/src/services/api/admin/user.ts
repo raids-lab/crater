@@ -1,6 +1,5 @@
 import instance, { VERSION } from "@/services/axios";
 import { IResponse } from "@/services/types";
-import { K8sResources } from "@/utils/resource";
 import { Role } from "../auth";
 import { ProjectStatus } from "../account";
 
@@ -14,6 +13,8 @@ export interface IUserAttributes {
   expiredAt?: string;
   phone?: string;
   avatar?: string;
+  uid?: string;
+  gid?: string;
 }
 
 export interface IUser {
@@ -30,14 +31,12 @@ export const apiAdminUserList = () =>
 export const apiAdminUserDelete = (userName: string) =>
   instance.delete<IResponse<string>>(`${VERSION}/admin/users/${userName}`);
 
-export interface IAdminUserUpdate {
-  userName: string;
-  hardQuota: K8sResources;
-}
-
-export const apiAdminUserUpdateQuota = (data: IAdminUserUpdate) =>
+export const apiAdminUpdateUserAttributes = (
+  username: string,
+  data: IUserAttributes,
+) =>
   instance.put<IResponse<string>>(
-    `${VERSION}/admin/quotas/${data.userName}`,
+    `${VERSION}/admin/users/${username}/attributes`,
     data,
   );
 
