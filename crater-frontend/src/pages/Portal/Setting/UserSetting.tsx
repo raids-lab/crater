@@ -15,7 +15,7 @@ import {
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAtom } from "jotai";
 import { globalUserInfo } from "@/utils/store";
@@ -46,12 +46,19 @@ import LoadableButton from "@/components/custom/LoadableButton";
 import Quota from "../Job/Interactive/Quota";
 import PageTitle from "@/components/layout/PageTitle";
 import { apiUserEmailVerified } from "@/services/api/user";
+import { TimeDistance } from "@/components/custom/TimeDistance";
 
 const formSchema = z.object({
   nickname: z.string().min(2, {
     message: "Nickname must be at least 2 characters.",
   }),
-  email: z.string().email().optional().nullable(),
+  email: z
+    .string()
+    .email({
+      message: "无效的邮箱地址",
+    })
+    .optional()
+    .nullable(),
   teacher: z.string().optional().nullable(),
   group: z.string().optional().nullable(),
   expiredAt: z.string().optional().nullable(),
@@ -80,6 +87,7 @@ export default function UserSettings() {
       avatar: user.avatar || null,
     },
   });
+
   const { data: emailVerified } = useQuery({
     queryKey: ["emailVerified"],
     queryFn: () => apiUserEmailVerified(),
@@ -120,6 +128,13 @@ export default function UserSettings() {
       setIsDialogOpen(false);
     },
   });
+
+  useEffect(() => {
+    if (emailVerified?.verified) {
+      return;
+    }
+    setIsEmailVerified(false);
+  }, [emailVerified]);
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     if (!isEmailVerified && values.email !== originalEmail) {
@@ -215,7 +230,7 @@ export default function UserSettings() {
                             }}
                           />
                           {(field.value !== originalEmail ||
-                            emailVerified !== true) && (
+                            emailVerified?.verified !== true) && (
                             <LoadableButton
                               isLoading={isSendVerificationPending}
                               isLoadingText="验证中"
@@ -231,7 +246,18 @@ export default function UserSettings() {
                           )}
                         </div>
                       </FormControl>
-                      <FormDescription>用于接收通知的邮箱地址</FormDescription>
+                      <FormDescription>
+                        用于接收通知的邮箱地址
+                        {emailVerified?.lastEmailVerifiedAt && (
+                          <span className="ml-0.5">
+                            (上次验证于{" "}
+                            <TimeDistance
+                              date={emailVerified.lastEmailVerifiedAt}
+                            />
+                            )
+                          </span>
+                        )}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

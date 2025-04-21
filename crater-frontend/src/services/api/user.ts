@@ -29,8 +29,13 @@ export interface User {
 export const apiGetUser = (userName: string) =>
   instance.get<IResponse<User>>(`${VERSION}/users/${userName}`);
 
+export interface EmailVerifiedResponse {
+  verified: boolean; // 是否已验证
+  lastEmailVerifiedAt?: string; // 上次验证时间
+}
+
 export const apiUserEmailVerified = async () => {
-  const res = await instance.get<IResponse<boolean>>(
+  const res = await instance.get<IResponse<EmailVerifiedResponse>>(
     `${VERSION}/users/email/verified`,
   );
   return res.data;
