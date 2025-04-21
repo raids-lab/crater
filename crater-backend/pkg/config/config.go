@@ -55,10 +55,12 @@ type Config struct {
 			RegistryAdminPass string `yaml:"registryAdminPass"`
 		} `yaml:"image"`
 		Auth struct {
-			UserName string `yaml:"userName"`
-			Password string `yaml:"password"`
-			Address  string `yaml:"address"`
-			SearchDN string `yaml:"searchDN"`
+			UserName           string `yaml:"userName"`
+			Password           string `yaml:"password"`
+			Address            string `yaml:"address"`
+			SearchDN           string `yaml:"searchDN"`
+			AccessTokenSecret  string `yaml:"accessTokenSecret"`
+			RefreshTokenSecret string `yaml:"refreshTokenSecret"`
 		} `yaml:"auth"`
 		SMTP struct {
 			Host     string `yaml:"host"`
