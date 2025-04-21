@@ -224,20 +224,23 @@ func (mgr *UserMgr) UpdateRole(c *gin.Context) {
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/users/email/verified [get]
 func (mgr *UserMgr) CheckIfEmailVerified(c *gin.Context) {
+	type Resp struct {
+		Verified            bool       `json:"verified"`
+		LastEmailVerifiedAt *time.Time `json:"lastEmailVerifiedAt"`
+	}
+
 	token := util.GetToken(c)
 	u := query.User
-	user, err := u.WithContext(c).
-		Where(u.ID.Eq(token.UserID)).
-		First()
-
+	user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("get user failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
 
-	// 检查邮箱是否验证
-	fmt.Println(token.Username)
-	fmt.Println(user.LastEmailVerifiedAt)
-	verified := utils.IsEmailVerified(user.LastEmailVerifiedAt)
-	resputil.Success(c, verified)
+	// 检查邮箱过去半年是否验证过
+	verified, last := utils.CheckEmailVerified(user.LastEmailVerifiedAt)
+	resputil.Success(c, Resp{
+		Verified:            verified,
+		LastEmailVerifiedAt: last,
+	})
 }
