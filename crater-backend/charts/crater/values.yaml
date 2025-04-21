@@ -160,6 +160,8 @@ backendConfig:
       password: ***REMOVED***
       address: ***REMOVED***
       searchDN: OU=Lab,OU=ACT,DC=lab,DC=act,DC=buaa,Dc=edu,DC=cn
+      accessTokenSecret: ***REMOVED***
+      refreshTokenSecret: ***REMOVED***
     smtp:
       host: ***REMOVED***
       port: 25
