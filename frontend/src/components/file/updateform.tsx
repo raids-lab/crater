@@ -179,6 +179,7 @@ export function DatasetUpdateForm({
                             field.onChange(item.id);
                             form.setValue("url", item.id);
                           }}
+                          title="选择数据集地址"
                         />
                       </FormControl>
                       <FormMessage />
