@@ -347,7 +347,7 @@ func (mgr *OperationsMgr) handleLongTimeRunningJobs(
 	}
 
 	// 提醒作业
-	deleteTime := utils.GetLocalTime().Add(-defaultRemindTime)
+	deleteTime := utils.GetLocalTime().Add(defaultRemindTime)
 	for _, job := range reamindJobs {
 		err := mgr.remindLongTimeVCjob(c, job, deleteTime)
 		if err != nil {
