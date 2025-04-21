@@ -74,6 +74,11 @@ type FormSchema = z.infer<typeof formSchema>;
 const dataProcessor = (data: FormSchema) => {
   // 如果需要在不改变 MetadataFormJupyter 版本号的情况下，保持兼容性
   // 可以在这里进行数据转换
+
+  // if rdma is enabled, set it to false
+  if (data.task.resource.rdma) {
+    data.task.resource.rdma = false;
+  }
   return data;
 };
 
