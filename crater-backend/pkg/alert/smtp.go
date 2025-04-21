@@ -3,20 +3,21 @@ package alert
 import (
 	"context"
 	"fmt"
-	"mime"
-	"net/smtp"
-	"strings"
+	"strconv"
 
 	"github.com/raids-lab/crater/dao/model"
 	config "github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
+	"gopkg.in/gomail.v2"
 )
 
 type SMTPAlerter struct {
-	smtpHost string
-	smtpPort string
-
-	auth smtp.Auth
+	host     string
+	port     int
+	username string
+	password string
+	from     string
+	fromName string // 添加发件人昵称字段
 }
 
 func newSMTPAlerter() (alertHandlerInterface, error) {
@@ -24,52 +25,23 @@ func newSMTPAlerter() (alertHandlerInterface, error) {
 	smtpHost := smtpConfig.ACT.SMTP.Host
 	smtpPort := smtpConfig.ACT.SMTP.Port
 
-	conn, err := smtp.Dial(smtpHost + ":" + smtpPort)
+	// 将端口字符串转换为整数
+	port, err := strconv.Atoi(smtpPort)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid SMTP port: %w", err)
 	}
 
-	auth := getLoginAuth(smtpConfig.ACT.SMTP.User, smtpConfig.ACT.SMTP.Password)
-	if err := conn.Auth(auth); err != nil {
-		return nil, err
-	}
+	// 使用固定昵称"Crater System"，也可以从配置中获取
+	fromName := "Crater System"
+
 	return &SMTPAlerter{
-		smtpHost: smtpHost,
-		smtpPort: smtpPort,
-		auth:     auth,
+		host:     smtpHost,
+		port:     port,
+		username: smtpConfig.ACT.SMTP.User,
+		password: smtpConfig.ACT.SMTP.Password,
+		from:     smtpConfig.ACT.SMTP.Notify,
+		fromName: fromName,
 	}, nil
-}
-
-// 使用的服务器不支持tls，所以把smtpAuth相关的一些部分重写以绕过tls的检验。
-type loginAuth struct {
-	username, password string
-}
-
-func getLoginAuth(username, password string) smtp.Auth {
-	return &loginAuth{username, password}
-}
-
-func (a *loginAuth) Start(_ *smtp.ServerInfo) (proto string, toServe []byte, err error) {
-	return "LOGIN", nil, nil
-}
-
-func (a *loginAuth) Next(fromServer []byte, more bool) ([]byte, error) {
-	command := string(fromServer)
-	command = strings.TrimSpace(command)
-	command = strings.TrimSuffix(command, ":")
-	command = strings.ToLower(command)
-
-	if more {
-		if command == "username" {
-			return []byte(a.username), nil
-		} else if command == "password" {
-			return []byte(a.password), nil
-		} else {
-			// We've already sent everything.
-			return nil, fmt.Errorf("unexpected server challenge: %s", command)
-		}
-	}
-	return nil, nil
 }
 
 func (sa *SMTPAlerter) SendMessageTo(_ context.Context, receiver *model.UserAttribute, subject, body string) error {
@@ -78,27 +50,23 @@ func (sa *SMTPAlerter) SendMessageTo(_ context.Context, receiver *model.UserAttr
 		return nil
 	}
 
-	// 设置邮件发送者和接收者
-	from := config.GetConfig().ACT.SMTP.Notify
-	to := []string{*receiver.Email}
+	m := gomail.NewMessage()
+	// 使用SetAddressHeader方法设置发件人，让gomail处理编码
+	m.SetAddressHeader("From", sa.from, sa.fromName)
+	// 使用SetAddressHeader方法设置收件人，让gomail处理编码
+	m.SetAddressHeader("To", *receiver.Email, receiver.Nickname)
+	m.SetHeader("Subject", fmt.Sprintf("[Crater] %s", subject))
+	m.SetBody("text/html", body)
 
-	// 对主题进行编码，防止中文乱码
-	encodedSubject := mime.QEncoding.Encode("utf-8", subject)
+	d := gomail.NewDialer(sa.host, sa.port, sa.username, sa.password)
+	// 禁用SSL/TLS，如果服务器不支持
+	d.SSL = false
 
-	// 设置邮件消息，添加MIME头信息
-	msg := []byte("To: " + to[0] + "\r\n" +
-		"From: " + from + "\r\n" +
-		"Subject: " + encodedSubject + "\r\n" +
-		"MIME-Version: 1.0\r\n" +
-		"Content-Type: text/plain; charset=UTF-8\r\n" +
-		"\r\n" +
-		body)
-
-	if err := smtp.SendMail(sa.smtpHost+":"+sa.smtpPort, sa.auth, from, to, msg); err != nil {
-		logutils.Log.Errorf("Failed to send email to %s: %v", to[0], err)
+	if err := d.DialAndSend(m); err != nil {
+		logutils.Log.Errorf("Failed to send email to %s: %v", *receiver.Email, err)
 		return err
 	}
 
-	logutils.Log.Infof("Sent email to %s", to[0])
+	logutils.Log.Infof("Sent email to %s", *receiver.Email)
 	return nil
 }
