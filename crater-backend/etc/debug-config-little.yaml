@@ -1,0 +1,64 @@
+enableLeaderElection: false
+leaderElectionID: 1ca428e5.training-operator.kubeflow.org
+prometheusAPI: http://prometheus-kube-prometheus-prometheus.monitoring:9090
+serverAddr: :8088
+metricsAddr: :8080
+probeAddr: :8081
+monitoringPort: 9443
+host: crater.local # crater backend  host
+postgres:
+  host: 192.168.5.76
+  port: 32139
+  dbname: crater
+  user: crater
+  password: ***REMOVED*** # crater database secret password
+  sslmode: disable
+  TimeZone: Asia/Shanghai
+userSpacePrefix: ***REMOVED***
+accountSpacePrefix: crater-accounts
+publicSpacePrefix: ***REMOVED***
+workspace:
+  namespace: crater-workspace
+  rwxpvcName: crater-rw-storage
+  roxpvcName: crater-ro-storage
+  ingressName: crater-jobs-ingress
+  imageNameSpace: crater-images
+act:
+  strictRegisterMode: false # if true, only allow external registered users to use the system
+  uidServerURL: http://192.168.5.59:5000/get_user_id
+  image:
+    registryServer: ***REMOVED*** #harbor registry server
+    registryUser: ***REMOVED*** # harbor registry robot user
+    registryPass: ***REMOVED*** # harbor registry robot user password
+    registryProject: crater # harbor registry project
+    registryAdmin: admin # harbor registry admin user
+    registryAdminPass: ***REMOVED*** #  harbor registry admin user password
+  openAPI:
+    url: ***REMOVED***
+    chameleonKey: ***REMOVED***
+    accessToken: ***REMOVED***
+  auth:
+    userName: ***REMOVED***
+    password: ***REMOVED***
+    address: ***REMOVED***
+    searchDN: OU=Lab,OU=ACT,DC=lab,DC=act,DC=buaa,Dc=edu,DC=cn
+    accessTokenSecret: ***REMOVED***
+    refreshTokenSecret: ***REMOVED***
+  smtp:
+    host: ***REMOVED***
+    port: 25
+    user: notify
+    password: ***REMOVED***
+    notify: notify@***REMOVED***
+schedulerPlugins:
+  aijob:
+    aijobEn: true
+    enableProfiling: true
+    profilingTimeout: 120
+  spjob:
+    spjobEn: true
+    predictionServiceAddress: http://192.168.5.76:30500
+dindArgs:
+  buildkitImage: ***REMOVED***/user-huangsy/buildkit/buildctl:v0.18.2
+  nerdctlImage: ***REMOVED***/nerdctl:2.0.1-retry
+  envdImage: ***REMOVED***/user-huangsy/envd-build-frontend:v1.2.0

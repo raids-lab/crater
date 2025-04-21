@@ -5,7 +5,7 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "0b595ada"
+      tag: "6d6dec9d"
       pullPolicy: "IfNotPresent"
   migrate:
     image:
@@ -18,7 +18,7 @@ web:
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "ed199e8f"
+      tag: "a2797861"
       pullPolicy: "IfNotPresent"
     config:
       version: "1.0.0"

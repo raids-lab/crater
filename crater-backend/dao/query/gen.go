@@ -17,6 +17,7 @@ import (
 
 var (
 	Q              = new(Query)
+	AITask         *aITask
 	Account        *account
 	AccountDataset *accountDataset
 	Alert          *alert
@@ -25,7 +26,6 @@ var (
 	Job            *job
 	Jobtemplate    *jobtemplate
 	Kaniko         *kaniko
-	Label          *label
 	Resource       *resource
 	User           *user
 	UserAccount    *userAccount
@@ -34,6 +34,7 @@ var (
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
+	AITask = &Q.AITask
 	Account = &Q.Account
 	AccountDataset = &Q.AccountDataset
 	Alert = &Q.Alert
@@ -42,7 +43,6 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	Job = &Q.Job
 	Jobtemplate = &Q.Jobtemplate
 	Kaniko = &Q.Kaniko
-	Label = &Q.Label
 	Resource = &Q.Resource
 	User = &Q.User
 	UserAccount = &Q.UserAccount
@@ -52,6 +52,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:             db,
+		AITask:         newAITask(db, opts...),
 		Account:        newAccount(db, opts...),
 		AccountDataset: newAccountDataset(db, opts...),
 		Alert:          newAlert(db, opts...),
@@ -60,7 +61,6 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		Job:            newJob(db, opts...),
 		Jobtemplate:    newJobtemplate(db, opts...),
 		Kaniko:         newKaniko(db, opts...),
-		Label:          newLabel(db, opts...),
 		Resource:       newResource(db, opts...),
 		User:           newUser(db, opts...),
 		UserAccount:    newUserAccount(db, opts...),
@@ -71,6 +71,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 type Query struct {
 	db *gorm.DB
 
+	AITask         aITask
 	Account        account
 	AccountDataset accountDataset
 	Alert          alert
@@ -79,7 +80,6 @@ type Query struct {
 	Job            job
 	Jobtemplate    jobtemplate
 	Kaniko         kaniko
-	Label          label
 	Resource       resource
 	User           user
 	UserAccount    userAccount
@@ -91,6 +91,7 @@ func (q *Query) Available() bool { return q.db != nil }
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:             db,
+		AITask:         q.AITask.clone(db),
 		Account:        q.Account.clone(db),
 		AccountDataset: q.AccountDataset.clone(db),
 		Alert:          q.Alert.clone(db),
@@ -99,7 +100,6 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		Job:            q.Job.clone(db),
 		Jobtemplate:    q.Jobtemplate.clone(db),
 		Kaniko:         q.Kaniko.clone(db),
-		Label:          q.Label.clone(db),
 		Resource:       q.Resource.clone(db),
 		User:           q.User.clone(db),
 		UserAccount:    q.UserAccount.clone(db),
@@ -118,6 +118,7 @@ func (q *Query) WriteDB() *Query {
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:             db,
+		AITask:         q.AITask.replaceDB(db),
 		Account:        q.Account.replaceDB(db),
 		AccountDataset: q.AccountDataset.replaceDB(db),
 		Alert:          q.Alert.replaceDB(db),
@@ -126,7 +127,6 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		Job:            q.Job.replaceDB(db),
 		Jobtemplate:    q.Jobtemplate.replaceDB(db),
 		Kaniko:         q.Kaniko.replaceDB(db),
-		Label:          q.Label.replaceDB(db),
 		Resource:       q.Resource.replaceDB(db),
 		User:           q.User.replaceDB(db),
 		UserAccount:    q.UserAccount.replaceDB(db),
@@ -135,6 +135,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 }
 
 type queryCtx struct {
+	AITask         IAITaskDo
 	Account        IAccountDo
 	AccountDataset IAccountDatasetDo
 	Alert          IAlertDo
@@ -143,7 +144,6 @@ type queryCtx struct {
 	Job            IJobDo
 	Jobtemplate    IJobtemplateDo
 	Kaniko         IKanikoDo
-	Label          ILabelDo
 	Resource       IResourceDo
 	User           IUserDo
 	UserAccount    IUserAccountDo
@@ -152,6 +152,7 @@ type queryCtx struct {
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
+		AITask:         q.AITask.WithContext(ctx),
 		Account:        q.Account.WithContext(ctx),
 		AccountDataset: q.AccountDataset.WithContext(ctx),
 		Alert:          q.Alert.WithContext(ctx),
@@ -160,7 +161,6 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		Job:            q.Job.WithContext(ctx),
 		Jobtemplate:    q.Jobtemplate.WithContext(ctx),
 		Kaniko:         q.Kaniko.WithContext(ctx),
-		Label:          q.Label.WithContext(ctx),
 		Resource:       q.Resource.WithContext(ctx),
 		User:           q.User.WithContext(ctx),
 		UserAccount:    q.UserAccount.WithContext(ctx),

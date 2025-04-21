@@ -24,7 +24,6 @@ func main() {
 	// 从连接的数据库为所有表生成 Model 结构体和 CRUD 代码
 	g.ApplyBasic(
 		model.User{},
-		model.Label{},
 		model.Account{},
 		model.UserAccount{},
 		model.Dataset{},
@@ -36,6 +35,7 @@ func main() {
 		model.Kaniko{},
 		model.Jobtemplate{},
 		model.Alert{},
+		model.AITask{},
 	)
 
 	// 执行并生成代码

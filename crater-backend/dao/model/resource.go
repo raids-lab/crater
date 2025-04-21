@@ -20,8 +20,7 @@ type Resource struct {
 	AmountSingleMax int64  `gorm:"not null;comment:单机最大资源量" json:"amountSingleMax"`
 	Format          string `gorm:"type:varchar(255);not null;comment:资源格式" json:"format"`
 	Priority        int    `gorm:"not null;comment:优先级" json:"priority"`
-
-	Label string `gorm:"uniqueIndex;type:varchar(255);not null;comment:用于显示的别名" json:"label"`
+	Label           string `gorm:"type:varchar(255);not null;comment:用于显示的别名" json:"label"`
 }
 
 const (

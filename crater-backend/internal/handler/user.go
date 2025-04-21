@@ -44,6 +44,7 @@ func (mgr *UserMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.ListUser)
 	g.DELETE("/:name", mgr.DeleteUser)
 	g.PUT("/:name/role", mgr.UpdateRole)
+	g.PUT("/:name/attributes", mgr.UpdateUserAttributesByAdmin)
 }
 
 type UserResp struct {
@@ -243,4 +244,48 @@ func (mgr *UserMgr) CheckIfEmailVerified(c *gin.Context) {
 		Verified:            verified,
 		LastEmailVerifiedAt: last,
 	})
+}
+
+// UpdateUserAttributesByAdmin godoc
+// @Summary 管理员更新用户属性
+// @Description 管理员更新指定用户的属性
+// @Tags User
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param name path string true "username"
+// @Param attributes body model.UserAttribute true "用户属性"
+// @Success 200 {object} resputil.Response[any] "用户属性更新成功"
+// @Failure 400 {object} resputil.Response[any] "请求参数错误"
+// @Failure 500 {object} resputil.Response[any] "其他错误"
+// @Router /v1/admin/users/{name}/attributes [put]
+func (mgr *UserMgr) UpdateUserAttributesByAdmin(c *gin.Context) {
+	var nameReq UserNameReq
+	if err := c.ShouldBindUri(&nameReq); err != nil {
+		resputil.BadRequestError(c, fmt.Sprintf("Invalid request body: %v", err))
+		return
+	}
+	name := nameReq.Name
+
+	var attributes model.UserAttribute
+	if err := c.ShouldBindJSON(&attributes); err != nil {
+		resputil.BadRequestError(c, "Invalid request body")
+		return
+	}
+
+	u := query.User
+	user, err := u.WithContext(c).Where(u.Name.Eq(name)).First()
+	if err != nil {
+		resputil.Error(c, "User not found", resputil.NotSpecified)
+		return
+	}
+
+	user.Attributes = datatypes.NewJSONType(attributes)
+	if err := u.WithContext(c).Save(user); err != nil {
+		resputil.Error(c, fmt.Sprintf("Failed to update user attributes: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	logutils.Log.Infof("update user attributes success by admin, username: %s", name)
+	resputil.Success(c, "用户属性更新成功")
 }
