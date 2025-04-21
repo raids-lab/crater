@@ -13,7 +13,7 @@ func NewTokenConf() *TokenConf {
 		ContextTimeout:         2,
 		AccessTokenExpiryHour:  1,
 		RefreshTokenExpiryHour: 168,
-		AccessTokenSecret:      ***REMOVED***,
-		RefreshTokenSecret:     ***REMOVED***,
+		AccessTokenSecret:      GetConfig().ACT.Auth.AccessTokenSecret,
+		RefreshTokenSecret:     GetConfig().ACT.Auth.RefreshTokenSecret,
 	}
 }
