@@ -236,6 +236,7 @@ const FileActions = ({
                     });
                   }}
                   isrw={true}
+                  title="选择要移动到的位置"
                   disabled={false}
                   allowSelectFile={!isDir}
                 />
