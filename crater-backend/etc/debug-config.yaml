@@ -7,6 +7,8 @@ probeAddr: :8091
 monitoringPort: 0
 jycache: true
 host: crater.***REMOVED***
+tlsSecretName: crater-tls-secret
+tlsForwardSecretName: crater-tls-forward-secret
 postgres:
   host: ***REMOVED***
   port: 30432

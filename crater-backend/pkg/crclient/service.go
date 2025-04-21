@@ -260,7 +260,7 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 			TLS: []networkingv1.IngressTLS{
 				{
 					Hosts:      []string{host},
-					SecretName: "crater-tls-secret",
+					SecretName: s.config.TLSSecretName,
 				},
 			},
 		},
@@ -386,7 +386,7 @@ func (s *serviceManagerImpl) CreateIngress(
 			TLS: []networkingv1.IngressTLS{
 				{
 					Hosts:      []string{subdomain},
-					SecretName: "crater-tls-forward-secret",
+					SecretName: s.config.TLSForwardSecretName,
 				},
 			},
 		},
