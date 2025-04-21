@@ -388,7 +388,7 @@ func (mgr *APIServerMgr) CreatePodIngress(c *gin.Context) {
 
 	username := pod.Labels[LabelKeyTaskUser]
 
-	ingressPath, err := serviceManager.CreateIngressWithPrefix(
+	ingressPath, err := serviceManager.CreateIngress(
 		c,
 		[]metav1.OwnerReference{
 			*metav1.NewControllerRef(&pod, v1.SchemeGroupVersion.WithKind("Pod")),
@@ -396,7 +396,6 @@ func (mgr *APIServerMgr) CreatePodIngress(c *gin.Context) {
 		podSelector,
 		port,
 		config.GetConfig().Host,
-		fmt.Sprintf("%s-%s", username, uuid.New().String()[:5]),
 		username,
 	)
 	if err != nil {
