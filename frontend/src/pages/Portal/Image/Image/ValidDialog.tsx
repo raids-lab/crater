@@ -1,18 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { type FC } from "react";
-import { Separator } from "@/components/ui/separator";
 import {
   apiUserCheckImageValid,
   ImageLinkPair,
 } from "@/services/api/imagepack";
 import {
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui-custom/alert-dialog";
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import {
   AlertCircle,
   CheckCheck,
@@ -49,8 +48,8 @@ export const ValidDialog: FC<ValidDialogProps> = ({
         </div>
       ) : (
         <>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
               {isValid ? (
                 <>
                   <CheckCircle className="h-5 w-5 text-green-500" />
@@ -62,12 +61,10 @@ export const ValidDialog: FC<ValidDialogProps> = ({
                   <span>无效镜像链接</span>
                 </>
               )}
-            </AlertDialogTitle>
-          </AlertDialogHeader>
+            </DialogTitle>
+          </DialogHeader>
 
-          <Separator className="my-3" />
-
-          <AlertDialogDescription className="pt-2">
+          <DialogDescription className="pt-2">
             {isValid ? (
               <div className="flex h-16 items-center justify-center rounded-md bg-green-50 px-4 py-3 dark:bg-green-950/30">
                 <span className="flex items-center gap-2 text-center text-sm text-green-700 dark:text-green-400">
@@ -101,25 +98,27 @@ export const ValidDialog: FC<ValidDialogProps> = ({
                 ))}
               </div>
             )}
-          </AlertDialogDescription>
+          </DialogDescription>
 
-          <AlertDialogFooter className="mt-4 gap-2 sm:gap-0">
-            <AlertDialogCancel className="flex items-center gap-2">
-              <X className="h-4 w-4" />
-              关闭
-            </AlertDialogCancel>
+          <DialogFooter className="mt-4 gap-2 sm:gap-0">
+            <DialogClose asChild>
+              <Button variant="outline" className="flex items-center gap-2">
+                <X className="h-4 w-4" />
+                关闭
+              </Button>
+            </DialogClose>
 
             {(invalidPairs?.length ?? 0) > 0 && (
-              <AlertDialogAction
+              <Button
                 variant="destructive"
                 className="flex items-center gap-2"
                 onClick={() => onDeleteLinks(invalidPairs ?? [])}
               >
                 <Trash2 className="h-4 w-4" />
                 删除链接
-              </AlertDialogAction>
+              </Button>
             )}
-          </AlertDialogFooter>
+          </DialogFooter>
         </>
       )}
     </>

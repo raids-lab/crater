@@ -1,17 +1,17 @@
 import { type FC } from "react";
-import { Separator } from "@/components/ui/separator";
 import {
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui-custom/alert-dialog";
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Check, Globe, Lock, X } from "lucide-react";
 import VisibilityBadge, {
   Visibility,
 } from "@/components/badge/VisibilityBadge";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface StatusDialogProps {
   imageLink: string;
@@ -36,16 +36,13 @@ export const StatusDialog: FC<StatusDialogProps> = ({
     : "dark:bg-green-950/30";
   return (
     <>
-      <AlertDialogHeader>
-        <AlertDialogTitle className="flex items-center gap-2 text-xl">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2 text-xl">
           <StatusIcon className={`h-5 w-5 ${statusColor}`} />
           <span>更新镜像访问权限</span>
-        </AlertDialogTitle>
-      </AlertDialogHeader>
-
-      <Separator className="my-3" />
-
-      <AlertDialogDescription className="space-y-4 pt-2">
+        </DialogTitle>
+      </DialogHeader>
+      <DialogDescription className="space-y-4 pt-2">
         <div className="bg-muted/50 rounded-md px-4 py-3">
           <p className="text-muted-foreground text-sm">镜像链接</p>
           <p className="mt-1 font-medium break-all">『{imageLink}』</p>
@@ -74,22 +71,25 @@ export const StatusDialog: FC<StatusDialogProps> = ({
             ? "设为私有后，只有您可以访问此镜像。"
             : "设为公共后，任何人都可以通过链接访问此镜像。"}
         </p>
-      </AlertDialogDescription>
-
-      <AlertDialogFooter>
-        <AlertDialogCancel>
-          <X />
-          取消
-        </AlertDialogCancel>
-
-        <AlertDialogAction
-          className={`flex items-center gap-2 ${isPublic ? "bg-amber-600 hover:bg-amber-700" : "bg-green-600 hover:bg-green-700"}`}
+      </DialogDescription>
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="outline">
+            <X className="size-4" />
+            取消
+          </Button>
+        </DialogClose>
+        <Button
+          className={cn("flex items-center gap-2", {
+            "bg-highlight-amber hover:bg-highlight-amber/90": isPublic,
+            "bg-highlight-green hover:bg-highlight-green/90": !isPublic,
+          })}
           onClick={onChange}
         >
           <Check />
           确认
-        </AlertDialogAction>
-      </AlertDialogFooter>
+        </Button>
+      </DialogFooter>
     </>
   );
 };

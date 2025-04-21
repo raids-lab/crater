@@ -49,7 +49,6 @@ const formSchema = z.object({
       JobType.OpenMPI,
       JobType.Pytorch,
       JobType.Tensorflow,
-      JobType.WebIDE,
     ])
     .refine((value) => Object.values(JobType).includes(value), {
       message: "请选择任务类型",
