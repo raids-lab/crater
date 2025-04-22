@@ -3,14 +3,15 @@ package crclient
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,6 +24,9 @@ const (
 	LabelKeyTaskType      = "crater.raids.io/task-type"
 	LabelKeyTaskUser      = "crater.raids.io/task-user"
 	AnnotationKeyPortName = "crater.raids.io/port-name" // Annotation key for port name
+
+	Poll    = 500 * time.Millisecond // Polling interval for checking service creation
+	Timeout = 5 * time.Second        // Timeout for service creation
 )
 
 // ServiceManagerInterface 接口定义
@@ -125,41 +129,63 @@ func (s *serviceManagerImpl) CreateNodePort(
 		return "", 0, fmt.Errorf("failed to create NodePort service: %w", err)
 	}
 
-	// 重新获取 Service 以获取分配的 NodePort
-	if err = s.client.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: namespace}, svc); err != nil {
-		return "", 0, fmt.Errorf("failed to get created service: %w", err)
+	// 添加重试机制等待 Service 创建完成
+	var createdSvc v1.Service
+	err = wait.PollUntilContextTimeout(ctx, Poll, Timeout, false, func(ctx context.Context) (bool, error) {
+		if e := s.client.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: namespace}, &createdSvc); e != nil {
+			return false, nil // 继续重试
+		}
+		return true, nil
+	})
+
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to get created service after retries: %w", err)
 	}
 
 	// 获取分配的 NodePort
-	nodePort = svc.Spec.Ports[0].NodePort
+	nodePort = createdSvc.Spec.Ports[0].NodePort
 
-	// 获取集群节点的外部 IP
-	nodes, err := s.kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	// 通过 podSelector 获取 Pod 列表
+	podList := &v1.PodList{}
+	if err = s.client.List(ctx, podList, client.InNamespace(namespace), client.MatchingLabels(podSelector)); err != nil {
+		return "", nodePort, fmt.Errorf("failed to list pods: %w", err)
+	}
+
+	if len(podList.Items) == 0 {
+		return "", nodePort, fmt.Errorf("no pods found matching selector")
+	}
+
+	// 获取第一个 Pod 的节点名称
+	pod := podList.Items[0]
+	nodeName := pod.Spec.NodeName
+
+	if nodeName == "" {
+		return "", nodePort, fmt.Errorf("pod not assigned to a node yet")
+	}
+
+	// 只获取特定节点信息，而不是获取所有节点
+	node, err := s.kubeClient.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
 	if err != nil {
-		return "", nodePort, fmt.Errorf("failed to list nodes: %w", err)
+		return "", nodePort, fmt.Errorf("failed to get node %s: %w", nodeName, err)
 	}
 
-	// 尝试获取节点的外部 IP
-	for i := range nodes.Items {
-		for _, addr := range nodes.Items[i].Status.Addresses {
-			if addr.Type == v1.NodeExternalIP {
-				host = addr.Address
-				return host, nodePort, nil
-			}
+	// 首先尝试获取外部 IP
+	for _, addr := range node.Status.Addresses {
+		if addr.Type == v1.NodeExternalIP {
+			host = addr.Address
+			return host, nodePort, nil
 		}
 	}
 
-	// 如果没有外部 IP，使用第一个节点的内部 IP
-	for i := range nodes.Items {
-		for _, addr := range nodes.Items[i].Status.Addresses {
-			if addr.Type == v1.NodeInternalIP {
-				host = addr.Address
-				return host, nodePort, nil
-			}
+	// 如果没有外部 IP，获取 Internal IP
+	for _, addr := range node.Status.Addresses {
+		if addr.Type == v1.NodeInternalIP {
+			host = addr.Address
+			return host, nodePort, nil
 		}
 	}
 
-	return "", nodePort, fmt.Errorf("no suitable host IP found")
+	return "", nodePort, fmt.Errorf("no suitable host IP found for node %s", nodeName)
 }
 
 // CreateIngressWithPrefix 实现
@@ -198,15 +224,6 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 
 	if err = s.client.Create(ctx, svc); err != nil {
 		return "", fmt.Errorf("failed to create service: %w", err)
-	}
-
-	// Validate the created service
-	createdSvc := &v1.Service{}
-	if err = s.client.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: namespace}, createdSvc); err != nil {
-		return "", fmt.Errorf("failed to fetch created service: %w", err)
-	}
-	if len(createdSvc.Spec.Selector) == 0 {
-		return "", fmt.Errorf("service selector is empty or invalid")
 	}
 
 	// Create the Ingress
@@ -270,19 +287,6 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 		return "", fmt.Errorf("failed to create ingress: %w", err)
 	}
 
-	// Validate the created ingress
-	createdIngress := &networkingv1.Ingress{}
-	if err = s.client.Get(ctx, types.NamespacedName{Name: ingressName, Namespace: namespace}, createdIngress); err != nil {
-		return "", fmt.Errorf("failed to fetch created ingress: %w", err)
-	}
-	if len(createdIngress.Spec.Rules) == 0 || createdIngress.Spec.Rules[0].HTTP == nil {
-		return "", fmt.Errorf("ingress rules are empty or invalid")
-	}
-
-	// Log the created service and ingress for debugging
-	log.Printf("Created Service: %s, Selector: %v", createdSvc.Name, createdSvc.Spec.Selector)
-	log.Printf("Created Ingress: %s, Rules: %v", createdIngress.Name, createdIngress.Spec.Rules)
-
 	ingressPath = fmt.Sprintf("https://%s%s", host, prefix) // Construct the full ingress path
 	return ingressPath, nil
 }
@@ -331,15 +335,6 @@ func (s *serviceManagerImpl) CreateIngress(
 
 	if err = s.client.Create(ctx, svc); err != nil {
 		return "", fmt.Errorf("failed to create service: %w", err)
-	}
-
-	// Validate the created service
-	createdSvc := &v1.Service{}
-	if err = s.client.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: namespace}, createdSvc); err != nil {
-		return "", fmt.Errorf("failed to fetch created service: %w", err)
-	}
-	if len(createdSvc.Spec.Selector) == 0 {
-		return "", fmt.Errorf("service selector is empty or invalid")
 	}
 
 	// Create the Ingress
@@ -395,19 +390,6 @@ func (s *serviceManagerImpl) CreateIngress(
 	if err = s.client.Create(ctx, ingress); err != nil {
 		return "", fmt.Errorf("failed to create ingress: %w", err)
 	}
-
-	// Validate the created ingress
-	createdIngress := &networkingv1.Ingress{}
-	if err = s.client.Get(ctx, types.NamespacedName{Name: ingressName, Namespace: namespace}, createdIngress); err != nil {
-		return "", fmt.Errorf("failed to fetch created ingress: %w", err)
-	}
-	if len(createdIngress.Spec.Rules) == 0 || createdIngress.Spec.Rules[0].HTTP == nil {
-		return "", fmt.Errorf("ingress rules are empty or invalid")
-	}
-
-	// Log the created service and ingress for debugging
-	log.Printf("Created Service: %s, Selector: %v", createdSvc.Name, createdSvc.Spec.Selector)
-	log.Printf("Created Ingress: %s, Rules: %v", createdIngress.Name, createdIngress.Spec.Rules)
 
 	ingressPath = fmt.Sprintf("https://%s/", subdomain) // 构建完整的访问路径
 	return ingressPath, nil
