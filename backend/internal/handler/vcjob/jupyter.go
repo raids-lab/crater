@@ -242,7 +242,6 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		port,
 		config.GetConfig().Host,
 		baseURL,
-		token.Username,
 	)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("failed to create ingress: %v", err), resputil.NotSpecified)

@@ -38,10 +38,11 @@ func init() {
 }
 
 type APIServerMgr struct {
-	name       string
-	config     *rest.Config
-	client     client.Client
-	kubeClient kubernetes.Interface
+	name           string
+	config         *rest.Config
+	client         client.Client
+	kubeClient     kubernetes.Interface
+	serviceManager crclient.ServiceManagerInterface // Add serviceManager field
 }
 
 // PortMapping 结构体定义
@@ -100,14 +101,21 @@ const (
 	LabelKeyBaseURL      = "crater.raids.io/base-url"
 	LabelKeyTaskType     = "crater.raids.io/task-type"
 	LabelKeyTaskUser     = "crater.raids.io/task-user"
+	// Added volcano keys
+	LabelKeyJobName      = "volcano.sh/job-name"
+	LabelKeyJobNamespace = "volcano.sh/job-namespace"
+	LabelKeyQueueName    = "volcano.sh/queue-name"
+	LabelKeyTaskIndex    = "volcano.sh/task-index"
+	LabelKeyTaskSpec     = "volcano.sh/task-spec"
 )
 
 func NewAPIServerMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &APIServerMgr{
-		name:       "namespaces",
-		config:     conf.KubeConfig,
-		client:     conf.Client,
-		kubeClient: conf.KubeClient,
+		name:           "namespaces",
+		config:         conf.KubeConfig,
+		client:         conf.Client,
+		kubeClient:     conf.KubeClient,
+		serviceManager: conf.ServiceManager,
 	}
 }
 
@@ -246,11 +254,7 @@ func (mgr *APIServerMgr) GetPodIngresses(c *gin.Context) {
 	}
 
 	// Extract relevant labels for filtering
-	selector := map[string]string{
-		LabelKeyBaseURL:  pod.Labels[LabelKeyBaseURL],
-		LabelKeyTaskType: pod.Labels[LabelKeyTaskType],
-		LabelKeyTaskUser: pod.Labels[LabelKeyTaskUser],
-	}
+	selector := mgr.serviceManager.GenerateLabels(pod.Labels)
 
 	// Fetch services matching the filtered labels
 	services := &v1.ServiceList{}
@@ -376,8 +380,7 @@ func (mgr *APIServerMgr) CreatePodIngress(c *gin.Context) {
 		return
 	}
 
-	// Use CreateIngressWithPrefix to create ingress and service
-	serviceManager := crclient.NewServiceManager(mgr.client, mgr.kubeClient)
+	// Use CreateIngress to create ingress and service
 	podSelector := pod.Labels
 	port := &v1.ServicePort{
 		Name:       ingressMgr.Name,
@@ -388,7 +391,7 @@ func (mgr *APIServerMgr) CreatePodIngress(c *gin.Context) {
 
 	username := pod.Labels[LabelKeyTaskUser]
 
-	ingressPath, err := serviceManager.CreateIngress(
+	ingressPath, err := mgr.serviceManager.CreateIngress(
 		c,
 		[]metav1.OwnerReference{
 			*metav1.NewControllerRef(&pod, v1.SchemeGroupVersion.WithKind("Pod")),
@@ -489,12 +492,8 @@ func (mgr *APIServerMgr) GetPodNodeports(c *gin.Context) {
 		return
 	}
 
-	// Extract relevant labels for filtering
-	selector := map[string]string{
-		LabelKeyBaseURL:  pod.Labels[LabelKeyBaseURL],
-		LabelKeyTaskType: pod.Labels[LabelKeyTaskType],
-		LabelKeyTaskUser: pod.Labels[LabelKeyTaskUser],
-	}
+	// Determine selector based on job type
+	selector := mgr.serviceManager.GenerateLabels(pod.Labels) // Use serviceManager from APIServerMgr
 
 	// Fetch services matching the filtered labels
 	services := &v1.ServiceList{}
@@ -567,7 +566,6 @@ func (mgr *APIServerMgr) CreatePodNodeport(c *gin.Context) {
 	}
 
 	// Use CreateNodePort to create a NodePort service
-	serviceManager := crclient.NewServiceManager(mgr.client, mgr.kubeClient)
 	podSelector := pod.Labels
 	port := &v1.ServicePort{
 		Name:       nodeportMgr.Name,
@@ -576,7 +574,7 @@ func (mgr *APIServerMgr) CreatePodNodeport(c *gin.Context) {
 		Protocol:   v1.ProtocolTCP,
 	}
 
-	host, nodePort, err := serviceManager.CreateNodePort(
+	host, nodePort, err := mgr.serviceManager.CreateNodePort(
 		c,
 		[]metav1.OwnerReference{
 			*metav1.NewControllerRef(&pod, v1.SchemeGroupVersion.WithKind("Pod")),
