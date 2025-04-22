@@ -281,6 +281,7 @@ func (mgr *UserMgr) UpdateUserAttributesByAdmin(c *gin.Context) {
 	}
 
 	user.Attributes = datatypes.NewJSONType(attributes)
+	user.Nickname = attributes.Nickname
 	if err := u.WithContext(c).Save(user); err != nil {
 		resputil.Error(c, fmt.Sprintf("Failed to update user attributes: %v", err), resputil.NotSpecified)
 		return

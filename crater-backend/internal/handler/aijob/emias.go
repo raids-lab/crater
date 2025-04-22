@@ -2,6 +2,7 @@ package aijob
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -18,7 +19,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
@@ -493,7 +493,7 @@ func (mgr *AIJobMgr) ListUserJob(c *gin.Context) {
 
 	jobs := make([]AIJobResp, len(taskModels))
 	for i := range taskModels {
-		jobs[i] = convertToAIJobResp(taskModels[i])
+		jobs[i], _ = convertToAIJobResp(c, taskModels[i])
 	}
 
 	resputil.Success(c, jobs)
@@ -508,13 +508,13 @@ func (mgr *AIJobMgr) ListAllJob(c *gin.Context) {
 
 	jobs := make([]AIJobResp, len(taskModels))
 	for i := range taskModels {
-		jobs[i] = convertToAIJobResp(taskModels[i])
+		jobs[i], _ = convertToAIJobResp(c, taskModels[i])
 	}
 
 	resputil.Success(c, jobs)
 }
 
-func convertToAIJobResp(aiTask *model.AITask) AIJobResp {
+func convertToAIJobResp(c context.Context, aiTask *model.AITask) (AIJobResp, error) {
 	var runningTimestamp metav1.Time
 	if aiTask.StartedAt != nil {
 		runningTimestamp = metav1.NewTime(*aiTask.StartedAt)
@@ -534,24 +534,34 @@ func convertToAIJobResp(aiTask *model.AITask) AIJobResp {
 
 	resources, _ := model.JSONToResourceList(aiTask.ResourceRequest)
 
+	u := query.User
+	user, err := u.WithContext(c).Where(u.Name.Eq(aiTask.Owner)).First()
+	if err != nil {
+		return AIJobResp{}, err
+	}
+
 	return AIJobResp{
 		ID:            aiTask.ID,
 		Priority:      priority,
 		ProfileStatus: strconv.FormatUint(uint64(aiTask.ProfileStatus), 10),
 		JobResp: vcjob.JobResp{
-			Name:               aiTask.TaskName,
-			JobName:            aiTask.JobName,
-			Owner:              aiTask.Owner,
+			Name:    aiTask.TaskName,
+			JobName: aiTask.JobName,
+			Owner:   aiTask.Owner,
+			UserInfo: model.UserInfo{
+				Nickname: user.Nickname,
+				Username: user.Name,
+			},
 			JobType:            aiTask.TaskType,
 			Queue:              aiTask.UserName,
-			Status:             aiTask.Status,
+			Status:             string(convertJobPhase(aiTask.Status)),
 			CreationTimestamp:  metav1.NewTime(aiTask.CreatedAt),
 			RunningTimestamp:   runningTimestamp,
 			CompletedTimestamp: completedTimestamp,
 			Nodes:              []string{aiTask.Node},
 			Resources:          resources,
 		},
-	}
+	}, nil
 }
 
 type AIJobDetailReq struct {
@@ -715,23 +725,6 @@ func (mgr *AIJobMgr) UpdateSLO(c *gin.Context) {
 	mgr.NotifyTaskUpdate(req.TaskID, token.Username, util.UpdateTask)
 	logutils.Log.Infof("update task success, taskID: %d", req.TaskID)
 	resputil.Success(c, "")
-}
-
-func convertJobPhase(aijobStatus string) batch.JobPhase {
-	switch aijobStatus {
-	case "Pending":
-		return batch.Pending
-	case "Running":
-		return batch.Running
-	case "Succeeded":
-		return batch.Completed
-	case "Failed":
-		return batch.Failed
-	case "Preempted":
-		return batch.Aborted
-	default:
-		return batch.Pending
-	}
 }
 
 // GetJobYaml godoc
