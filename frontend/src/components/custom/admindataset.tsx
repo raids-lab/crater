@@ -10,8 +10,30 @@ import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableT
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ColumnDef } from "@tanstack/react-table";
-import { TrashIcon } from "lucide-react";
+import { Trash2Icon, InfoIcon } from "lucide-react";
+import { DotsHorizontalIcon } from "@radix-ui/react-icons";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { useNavigate } from "react-router-dom";
+import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { format } from "date-fns";
+import UserLabel from "@/components/label/UserLabel";
 const roles = [
   {
     label: "数据集",
@@ -57,7 +79,7 @@ export const AdminDatasetTable = () => {
     queryFn: () => apiAdminGetDataset(),
     select: (res) => res.data.data,
   });
-
+  const navigate = useNavigate();
   const { mutate: deleteDataset } = useMutation({
     mutationFn: (dataset: IDataset) => apiDatasetDelete(dataset.id),
     onSuccess: async (_, dataset) => {
@@ -79,7 +101,10 @@ export const AdminDatasetTable = () => {
     },
     {
       accessorKey: "username",
-      header: "创建者",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={"创建者"} />
+      ),
+      cell: ({ row }) => <UserLabel info={row.original.userInfo} />,
     },
     {
       accessorKey: "createdAt",
@@ -95,16 +120,59 @@ export const AdminDatasetTable = () => {
     {
       id: "actions",
       header: "操作",
-      cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => deleteDataset(row.original)}
-          title="删除数据集"
-        >
-          <TrashIcon className="h-4 w-4 text-red-500" />
-        </Button>
-      ),
+      cell: ({ row }) => {
+        const DatasetInfo = row.original;
+        return (
+          <div className="flex flex-row space-x-1">
+            <AlertDialog>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="h-8 w-8 p-0">
+                    <span className="sr-only">操作</span>
+                    <DotsHorizontalIcon className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel className="text-muted-foreground text-xs">
+                    操作
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={() => navigate(`${DatasetInfo.id}`)}
+                  >
+                    <InfoIcon className="text-highlight-emerald" />
+                    详情
+                  </DropdownMenuItem>
+
+                  <AlertDialogTrigger asChild>
+                    <DropdownMenuItem>
+                      <Trash2Icon className="text-destructive" />
+                      删除
+                    </DropdownMenuItem>
+                  </AlertDialogTrigger>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>删除数据集或模型</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    数据集{DatasetInfo.name}将被删除
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      deleteDataset(row.original);
+                    }}
+                  >
+                    删除
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        );
+      },
     },
   ];
 
@@ -112,7 +180,7 @@ export const AdminDatasetTable = () => {
     <DataTable
       info={{
         title: "数据集管理",
-        description: "管理系统中的所有数据集",
+        description: "管理系统中的所有数据集/模型",
       }}
       storageKey="admin_dataset_management"
       query={query}
