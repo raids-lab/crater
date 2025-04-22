@@ -28,6 +28,7 @@ import DocsButton from "@/components/button/DocsButton";
 import { JobNameCell } from "@/components/label/JobNameLabel";
 import { JobActionsMenu } from "@/components/job/JobActionsMenu";
 import JupyterIcon from "@/components/icon/JupyterIcon";
+import Quota from "./Quota";
 
 const InterOverview = () => {
   const jobType = useAtomValue(globalJobUrl);
@@ -232,6 +233,7 @@ const InterOverview = () => {
           isDanger: true,
         },
       ]}
+      briefChildren={<Quota />}
     >
       <div className="flex flex-row gap-3">
         <DocsButton title="查看文档" url="quick-start/interactive" />

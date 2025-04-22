@@ -40,6 +40,7 @@ import { useAtomValue } from "jotai";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { Badge } from "@/components/ui/badge";
 import { Trash2Icon } from "lucide-react";
+import JobPhaseLabel, { jobPhases } from "@/components/badge/JobPhaseBadge";
 
 export const priorities = [
   {
@@ -53,55 +54,6 @@ export const priorities = [
     value: "low",
     className:
       "text-highlight-slate border-highlight-slate bg-highlight-slate/20",
-  },
-];
-
-export type StatusValue =
-  | "Queueing"
-  | "Created"
-  | "Running"
-  | "Failed"
-  | "Succeeded"
-  | "Preempted";
-
-export const statuses: {
-  value: StatusValue;
-  label: string;
-  className?: string;
-}[] = [
-  {
-    value: "Queueing",
-    label: "检查中",
-    className:
-      "text-highlight-purple border-highlight-purple bg-highlight-purple/20",
-  },
-  {
-    value: "Created",
-    label: "等待中",
-    className:
-      "text-highlight-slate border-highlight-slate bg-highlight-slate/20",
-  },
-  {
-    value: "Running",
-    label: "运行中",
-    className: "text-highlight-sky border-highlight-sky bg-highlight-sky/20",
-  },
-  {
-    value: "Succeeded",
-    label: "已完成",
-    className:
-      "text-highlight-emerald border-highlight-emerald bg-highlight-emerald/20",
-  },
-  {
-    value: "Preempted",
-    label: "被抢占",
-    className:
-      "text-highlight-orange border-highlight-orange bg-highlight-orange/20",
-  },
-  {
-    value: "Failed",
-    label: "失败",
-    className: "text-highlight-red border-highlight-red bg-highlight-red/20",
   },
 ];
 
@@ -151,7 +103,7 @@ const toolbarConfig: DataTableToolbarConfig = {
     {
       key: "status",
       title: "作业状态",
-      option: statuses,
+      option: jobPhases,
     },
     {
       key: "priority",
@@ -248,19 +200,7 @@ const ColocateOverview = () => {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader("status")} />
         ),
-        cell: ({ row }) => {
-          const status = statuses.find(
-            (status) => status.value === row.getValue("status"),
-          );
-          if (!status) {
-            return null;
-          }
-          return (
-            <Badge className={status.className} variant="outline">
-              {status.label}
-            </Badge>
-          );
-        },
+        cell: ({ row }) => <JobPhaseLabel jobPhase={row.getValue("status")} />,
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id));
         },
