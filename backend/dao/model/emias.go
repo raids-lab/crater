@@ -151,10 +151,6 @@ func FormatAITaskToAttr(model *AITask) *TaskAttr {
 	}
 }
 
-//	type Volume struct {
-//		Name string `json:"name"`
-//		Mounts []DirMount `json:"mounts"`
-//	}
 type DirMount struct {
 	Volume    string `json:"volume"`
 	MountPath string `json:"mountPath"`
