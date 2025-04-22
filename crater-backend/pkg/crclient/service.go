@@ -19,6 +19,15 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 )
 
+type CraterJobType string
+
+const (
+	CraterJobTypeTensorflow CraterJobType = "tensorflow"
+	CraterJobTypePytorch    CraterJobType = "pytorch"
+	CraterJobTypeJupyter    CraterJobType = "jupyter"
+	CraterJobTypeCustom     CraterJobType = "custom"
+)
+
 const (
 	LabelKeyBaseURL  = "crater.raids.io/base-url"
 	LabelKeyTaskType = "crater.raids.io/task-type"
@@ -30,11 +39,8 @@ const (
 	Timeout = 5 * time.Second        // Timeout for service creation
 
 	// Added volcano keys
-	LabelKeyJobName      = "volcano.sh/job-name"
-	LabelKeyJobNamespace = "volcano.sh/job-namespace"
-	LabelKeyQueueName    = "volcano.sh/queue-name"
-	LabelKeyTaskIndex    = "volcano.sh/task-index"
-	LabelKeyTaskSpec     = "volcano.sh/task-spec"
+	LabelKeyTaskIndex = "volcano.sh/task-index"
+	LabelKeyTaskSpec  = "volcano.sh/task-spec"
 )
 
 // ServiceManagerInterface 接口定义
@@ -67,7 +73,7 @@ type ServiceManagerInterface interface {
 		host, username string,
 	) (ingressPath string, err error)
 
-	// GenerateLabels 生成标签
+	// GenerateLabels based on TaskType
 	GenerateLabels(podSelector map[string]string) map[string]string
 }
 
@@ -87,7 +93,7 @@ func NewServiceManager(cl client.Client, kubeClient kubernetes.Interface) Servic
 	}
 }
 
-// GenerateLabels 实现
+// GenerateLabels based on TaskType
 func (s *serviceManagerImpl) GenerateLabels(podSelector map[string]string) map[string]string {
 	labels := map[string]string{
 		LabelKeyBaseURL:  podSelector[LabelKeyBaseURL],
@@ -95,13 +101,19 @@ func (s *serviceManagerImpl) GenerateLabels(podSelector map[string]string) map[s
 		LabelKeyTaskUser: podSelector[LabelKeyTaskUser],
 	}
 
-	// Check if distributed job labels are present in podSelector
-	if jobName, ok := podSelector[LabelKeyJobName]; ok {
-		labels[LabelKeyJobName] = jobName
-		labels[LabelKeyJobNamespace] = podSelector[LabelKeyJobNamespace]
-		labels[LabelKeyQueueName] = podSelector[LabelKeyQueueName]
-		labels[LabelKeyTaskIndex] = podSelector[LabelKeyTaskIndex]
-		labels[LabelKeyTaskSpec] = podSelector[LabelKeyTaskSpec]
+	// Adjust labels based on TaskType
+	taskType := podSelector[LabelKeyTaskType]
+	if taskType == string(CraterJobTypeTensorflow) || taskType == string(CraterJobTypePytorch) {
+		if index, ok := podSelector[LabelKeyTaskIndex]; ok {
+			labels[LabelKeyTaskIndex] = index
+		} else {
+			fmt.Printf("Warning: Missing %s in podSelector\n", LabelKeyTaskIndex)
+		}
+		if spec, ok := podSelector[LabelKeyTaskSpec]; ok {
+			labels[LabelKeyTaskSpec] = spec
+		} else {
+			fmt.Printf("Warning: Missing %s in podSelector\n", LabelKeyTaskSpec)
+		}
 	}
 
 	return labels
