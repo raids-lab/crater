@@ -404,10 +404,54 @@ const CUDA_BASE_IMAGE: {
     value:
       "crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04",
   },
-  // {
-  //   label: "no-cuda-ubuntu24.04",
-  //   value: "crater-harbor.act.buaa.edu.cn/library/ubuntu:24.04",
-  // },
+  {
+    imageLabel: "cu11.8.0",
+    label: "CUDA 11.8.0",
+    value:
+      "crater-harbor.act.buaa.edu.cn/nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04",
+  },
+  {
+    imageLabel: "cu11.7.1",
+    label: "CUDA 11.7.1",
+    value:
+      "crater-harbor.act.buaa.edu.cn/nvidia/cuda:11.7.1-cudnn8-devel-ubuntu22.04",
+  },
+  {
+    imageLabel: "cu11.6.1",
+    label: "CUDA 11.6.1",
+    value:
+      "crater-harbor.act.buaa.edu.cn/nvidia/cuda:11.6.1-cudnn8-devel-ubuntu20.04",
+  },
+  {
+    imageLabel: "cu11.5.2",
+    label: "CUDA 11.5.2",
+    value:
+      "crater-harbor.act.buaa.edu.cn/nvidia/cuda:11.5.2-cudnn8-devel-ubuntu20.04",
+  },
+  {
+    imageLabel: "cu11.4.3",
+    label: "CUDA 11.4.3",
+    value:
+      "crater-harbor.act.buaa.edu.cn/nvidia/cuda:11.4.3-cudnn8-devel-ubuntu20.04",
+  },
+  {
+    imageLabel: "cu11.3.1",
+    label: "CUDA 11.3.1",
+    value:
+      "crater-harbor.act.buaa.edu.cn/nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04",
+  },
+  {
+    imageLabel: "cu11.2.2",
+    label: "CUDA 11.2.2",
+    value:
+      "crater-harbor.act.buaa.edu.cn/nvidia/cuda:11.2.2-cudnn8-devel-ubuntu20.04",
+  },
+  {
+    imageLabel: "cu11.1.1",
+    label: "CUDA 11.1.1",
+    value:
+      "crater-harbor.act.buaa.edu.cn/nvidia/cuda:11.1.1-cudnn8-devel-ubuntu20.04",
+  },
   {
     imageLabel: "ubuntu22.04",
     label: "Ubuntu 22.04 (no CUDA)",
@@ -447,7 +491,7 @@ def build():
     base(image="${baseImage}",dev=True)
     install.python(version="${pythonVersion}")
     install.apt_packages([
-        "openssh-server", "build-essential", "iputils-ping", "net-tools", "htop",
+        "openssh-server", "build-essential", "iputils-ping", "net-tools", "htop", "tree"
     ])
     install.apt_packages([${extraAptPackages.map((item) => `"${item}"`)}])
     config.repo(
@@ -456,21 +500,23 @@ def build():
     )
     config.pip_index(url = "https://pypi.tuna.tsinghua.edu.cn/simple")
     install.python_packages(name = [${extraPythonPackages.map((item) => `"${item}"`)}])
+
     run(commands=[
-        "chsh -s /bin/zsh root;",
-        "git clone --depth 1 https://mirrors.tuna.tsinghua.edu.cn/git/ohmyzsh.git;",
-        "ZSH=\\"/usr/share/.oh-my-zsh\\" CHSH=\\"no\\" RUNZSH=\\"no\\" REMOTE=https://mirrors.tuna.tsinghua.edu.cn/git/ohmyzsh.git sh ./ohmyzsh/tools/install.sh;",
-        "chmod a+rx /usr/share/.oh-my-zsh/oh-my-zsh.sh;",
-        "rm -rf ./ohmyzsh;",
-        "git clone --depth=1 https://gitee.com/mirrors/zsh-syntax-highlighting.git /usr/share/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting;",
-        "git clone --depth=1 https://gitee.com/mirrors/zsh-autosuggestions.git /usr/share/.oh-my-zsh/custom/plugins/zsh-autosuggestions;",
-        "echo \\"export skip_global_compinit=1\\" >> /etc/zsh/zshenv;",
-        "echo \\"export ZSH=\\\\\\"/usr/share/.oh-my-zsh\\\\\\"\\" >> /etc/zsh/zshrc;",
-        "echo \\"plugins=(git extract sudo jsontools colored-man-pages zsh-autosuggestions zsh-syntax-highlighting)\\" >> /etc/zsh/zshrc;",
-        "echo \\"ZSH_THEME=\\\\\\"robbyrussell\\\\\\"\\" >> /etc/zsh/zshrc;",
-        "mkdir -p /etc/jupyter;",
-        "echo \\"c.ServerApp.terminado_settings = {\\\\\\"shell_command\\\\\\": [\\\\\\"/bin/zsh\\\\\\"]}\\" >> /etc/jupyter/jupyter_server_config.py;",
-        "echo \\"source \\\\$ZSH/oh-my-zsh.sh\\" >> /etc/zsh/zshrc;",
-        "echo \\"zstyle \\\\\\":omz:update\\\\\\" mode disabled\\" >> /etc/zsh/zshrc;",
+      "chsh -s /bin/zsh root;",
+      "git clone --depth 1 https://mirrors.tuna.tsinghua.edu.cn/git/ohmyzsh.git;",
+      "ZSH=\\"/usr/share/.oh-my-zsh\\" CHSH=\\"no\\" RUNZSH=\\"no\\" REMOTE=https://mirrors.tuna.tsinghua.edu.cn/git/ohmyzsh.git sh ./ohmyzsh/tools/install.sh;",
+      "chmod a+rx /usr/share/.oh-my-zsh/oh-my-zsh.sh;",
+      "rm -rf ./ohmyzsh;",
+      "git clone --depth=1 https://gitee.com/mirrors/zsh-syntax-highlighting.git /usr/share/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting;",
+      "git clone --depth=1 https://gitee.com/mirrors/zsh-autosuggestions.git /usr/share/.oh-my-zsh/custom/plugins/zsh-autosuggestions;",
+      "echo \\"export skip_global_compinit=1\\" >> /etc/zsh/zshenv;",
+      "echo \\"export ZSH=\\\\\\"/usr/share/.oh-my-zsh\\\\\\"\\" >> /etc/zsh/zshrc;",
+      "echo \\"plugins=(git extract sudo jsontools colored-man-pages zsh-autosuggestions zsh-syntax-highlighting)\\" >> /etc/zsh/zshrc;",
+      "echo \\"ZSH_THEME=\\\\\\"robbyrussell\\\\\\"\\" >> /etc/zsh/zshrc;",
+      "echo \\"export ZSH_COMPDUMP=\\\\$ZSH/cache/.zcompdump-\\\\$HOST\\" >> /etc/zsh/zshrc;",
+      "mkdir -p /etc/jupyter;",
+      "echo \\"c.ServerApp.terminado_settings = {\\\\\\"shell_command\\\\\\": [\\\\\\"/bin/zsh\\\\\\"]}\\" >> /etc/jupyter/jupyter_server_config.py;",
+      "echo \\"source \\\\$ZSH/oh-my-zsh.sh\\" >> /etc/zsh/zshrc;",
+      "echo \\"zstyle \\\\\\":omz:update\\\\\\" mode disabled\\" >> /etc/zsh/zshrc;",
     ])
     config.jupyter()`;
