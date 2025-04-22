@@ -98,15 +98,6 @@ const (
 	NodePortLabelKey     = "nodeport.crater.raids.io"
 	AnnotationKeyOpenSSH = "crater.raids.io/open-ssh"
 	SSHContainerPort     = 22
-	LabelKeyBaseURL      = "crater.raids.io/base-url"
-	LabelKeyTaskType     = "crater.raids.io/task-type"
-	LabelKeyTaskUser     = "crater.raids.io/task-user"
-	// Added volcano keys
-	LabelKeyJobName      = "volcano.sh/job-name"
-	LabelKeyJobNamespace = "volcano.sh/job-namespace"
-	LabelKeyQueueName    = "volcano.sh/queue-name"
-	LabelKeyTaskIndex    = "volcano.sh/task-index"
-	LabelKeyTaskSpec     = "volcano.sh/task-spec"
 )
 
 func NewAPIServerMgr(conf *handler.RegisterConfig) handler.Manager {
@@ -389,7 +380,7 @@ func (mgr *APIServerMgr) CreatePodIngress(c *gin.Context) {
 		Protocol:   v1.ProtocolTCP,
 	}
 
-	username := pod.Labels[LabelKeyTaskUser]
+	username := pod.Labels[crclient.LabelKeyTaskUser]
 
 	ingressPath, err := mgr.serviceManager.CreateIngress(
 		c,
@@ -446,8 +437,8 @@ func (mgr *APIServerMgr) DeletePodIngress(c *gin.Context) {
 	}
 
 	// Construct service and ingress names
-	serviceName := fmt.Sprintf("%s-svc-%s", pod.Labels[LabelKeyTaskUser], ingressMgr.Name)
-	ingressName := fmt.Sprintf("%s-ing-%s", pod.Labels[LabelKeyTaskUser], uuid.New().String()[:5])
+	serviceName := fmt.Sprintf("%s-svc-%s", pod.Labels[crclient.LabelKeyTaskUser], ingressMgr.Name)
+	ingressName := fmt.Sprintf("%s-ing-%s", pod.Labels[crclient.LabelKeyTaskUser], uuid.New().String()[:5])
 
 	// Delete the Service
 	if err := mgr.deleteService(c, req.Namespace, serviceName); err != nil {
@@ -581,7 +572,7 @@ func (mgr *APIServerMgr) CreatePodNodeport(c *gin.Context) {
 		},
 		podSelector,
 		port,
-		pod.Labels[LabelKeyTaskUser],
+		pod.Labels[crclient.LabelKeyTaskUser],
 	)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("failed to create nodeport service: %v", err), resputil.NotSpecified)
@@ -631,7 +622,7 @@ func (mgr *APIServerMgr) DeletePodNodeport(c *gin.Context) {
 	}
 
 	// Construct service name
-	serviceName := fmt.Sprintf("%s-np-%s", pod.Labels[LabelKeyTaskUser], nodeportMgr.Name)
+	serviceName := fmt.Sprintf("%s-np-%s", pod.Labels[crclient.LabelKeyTaskUser], nodeportMgr.Name)
 
 	// Delete the Service
 	if err := mgr.deleteService(c, req.Namespace, serviceName); err != nil {

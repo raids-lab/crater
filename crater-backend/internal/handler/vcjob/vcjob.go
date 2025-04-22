@@ -103,10 +103,6 @@ func (mgr *VolcanojobMgr) RegisterAdmin(g *gin.RouterGroup) {
 const (
 	VolcanoSchedulerName = "volcano"
 
-	LabelKeyTaskType = "crater.raids.io/task-type" // 任务类型
-	LabelKeyTaskUser = "crater.raids.io/task-user" // 任务的用户名
-	LabelKeyBaseURL  = "crater.raids.io/base-url"  // 任务的基本URL
-
 	AnnotationKeyUser         = "crater.raids.io/user"          // 用户名，以小写字母开头
 	AnnotationKeyTaskName     = "crater.raids.io/task-name"     // 任务名称（可能是中文）
 	AnnotationKeyTaskTemplate = "crater.raids.io/task-template" // 任务模板
@@ -694,11 +690,11 @@ func (mgr *VolcanojobMgr) GetJobPods(c *gin.Context) {
 	// get pods with label selector
 	vcjob := job.Attributes.Data()
 	var podList = &v1.PodList{}
-	if value, ok := vcjob.Labels[LabelKeyBaseURL]; !ok {
+	if value, ok := vcjob.Labels[crclient.LabelKeyBaseURL]; !ok {
 		resputil.Error(c, "label not found", resputil.NotSpecified)
 		return
 	} else {
-		labels := client.MatchingLabels{LabelKeyBaseURL: value}
+		labels := client.MatchingLabels{crclient.LabelKeyBaseURL: value}
 		err = mgr.client.List(c, podList, client.InNamespace(vcjob.Namespace), labels)
 		if err != nil {
 			resputil.Error(c, err.Error(), resputil.NotSpecified)
@@ -860,11 +856,11 @@ func (mgr *VolcanojobMgr) GetJobEvents(c *gin.Context) {
 
 	// get pod events
 	var podList = &v1.PodList{}
-	if value, ok := vcjob.Labels[LabelKeyBaseURL]; !ok {
+	if value, ok := vcjob.Labels[crclient.LabelKeyBaseURL]; !ok {
 		resputil.Error(c, "label not found", resputil.NotSpecified)
 		return
 	} else {
-		labels := client.MatchingLabels{LabelKeyBaseURL: value}
+		labels := client.MatchingLabels{crclient.LabelKeyBaseURL: value}
 		err = mgr.client.List(c, podList, client.InNamespace(vcjob.Namespace), labels)
 		if err != nil {
 			resputil.Error(c, err.Error(), resputil.NotSpecified)

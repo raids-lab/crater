@@ -43,6 +43,7 @@ import (
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	"github.com/raids-lab/crater/pkg/alert"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/monitor"
 
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
@@ -256,9 +257,9 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 	q := query.Account
 
 	// get user and queue
-	user, err := u.WithContext(ctx).Where(u.Name.Eq(job.Labels[vcjob.LabelKeyTaskUser])).First()
+	user, err := u.WithContext(ctx).Where(u.Name.Eq(job.Labels[crclient.LabelKeyTaskUser])).First()
 	if err != nil {
-		return nil, fmt.Errorf("unable to get user %s: %w", job.Labels[vcjob.LabelKeyTaskUser], err)
+		return nil, fmt.Errorf("unable to get user %s: %w", job.Labels[crclient.LabelKeyTaskUser], err)
 	}
 	queue, err := q.WithContext(ctx).Where(q.Name.Eq(job.Spec.Queue)).First()
 	if err != nil {
@@ -276,7 +277,7 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 		JobName:           job.Name,
 		UserID:            user.ID,
 		AccountID:         queue.ID,
-		JobType:           model.JobType(job.Labels[vcjob.LabelKeyTaskType]),
+		JobType:           model.JobType(job.Labels[crclient.LabelKeyTaskType]),
 		Status:            job.Status.State.Phase,
 		CreationTimestamp: job.CreationTimestamp.Time,
 		Resources:         datatypes.NewJSONType(resources),

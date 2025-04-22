@@ -14,7 +14,7 @@ type DBService interface {
 	UpdateStatus(taskID uint, status string, reason string) error
 	UpdateJobName(taskID uint, jobname string) error
 	DeleteByID(taskID uint) error
-	DeleteByUserAndID(userName string, taskID uint) error
+	DeleteByQueueAndID(userName string, taskID uint) error
 	ForceDeleteByUserAndID(userName string, taskID uint) error
 	ListByTaskType(taskType string, page, pageSize int) ([]*model.AITask, int64, error)
 	ListByUserAndStatuses(userName string, status []string) ([]*model.AITask, error)
@@ -86,9 +86,9 @@ func (s *service) UpdateJobName(taskID uint, jobname string) error {
 	return err
 }
 
-func (s *service) DeleteByUserAndID(userName string, taskID uint) error {
+func (s *service) DeleteByQueueAndID(queue string, taskID uint) error {
 	q := query.AITask
-	_, err := q.WithContext(context.Background()).Where(q.UserName.Eq(userName), q.ID.Eq(taskID)).Update(q.IsDeleted, true)
+	_, err := q.WithContext(context.Background()).Where(q.UserName.Eq(queue), q.ID.Eq(taskID)).Update(q.IsDeleted, true)
 	return err
 }
 
@@ -138,12 +138,12 @@ func (s *service) ListByTaskType(taskType string, page, pageSize int) ([]*model.
 
 func (s *service) ListByQueue(queue string) ([]*model.AITask, error) {
 	q := query.AITask
-	return q.WithContext(context.Background()).Where(q.UserName.Eq(queue), q.IsDeleted.Is(false)).Find()
+	return q.WithContext(context.Background()).Where(q.UserName.Eq(queue)).Order(q.CreatedAt.Desc()).Find()
 }
 
 func (s *service) ListAll() ([]*model.AITask, error) {
 	q := query.AITask
-	return q.WithContext(context.Background()).Where(q.IsDeleted.Is(false)).Find()
+	return q.WithContext(context.Background()).Order(q.CreatedAt.Desc()).Find()
 }
 
 func (s *service) GetByID(taskID uint) (*model.AITask, error) {

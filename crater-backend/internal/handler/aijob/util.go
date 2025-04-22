@@ -1,8 +1,15 @@
 package aijob
 
-import batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
+import (
+	"github.com/raids-lab/crater/dao/model"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
+)
 
-func convertJobPhase(aijobStatus string) batch.JobPhase {
+func convertJobPhase(aijob *model.AITask) batch.JobPhase {
+	if aijob.IsDeleted {
+		return model.Deleted
+	}
+	aijobStatus := aijob.Status
 	switch aijobStatus {
 	case "Pending":
 		return batch.Pending
