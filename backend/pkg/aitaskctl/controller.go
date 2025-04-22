@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -113,7 +114,7 @@ func (c *TaskController) watchJobStatus(ctx context.Context) {
 		select {
 		case status := <-c.jobStatusChan:
 			// 更新task在db中的状态
-			task, err := c.updateTaskStatus(status.TaskID, status.NewStatus, status.Reason)
+			task, err := c.updateTaskStatus(ctx, status.TaskID, status.NewStatus, status.Reason)
 			if err != nil {
 				logutils.Log.Infof("get job status event, taskID: %v, newStatus: %v", status.TaskID, status.NewStatus)
 				continue
@@ -201,7 +202,7 @@ func (c *TaskController) TaskUpdated(event util.TaskUpdateChan) {
 // 	}
 // }
 
-func (c *TaskController) updateTaskStatus(taskID, status, reason string) (*model.AITask, error) {
+func (c *TaskController) updateTaskStatus(ctx context.Context, taskID, status, reason string) (*model.AITask, error) {
 	// convert taskID to uint
 	tid, _ := strconv.ParseUint(taskID, 10, 64)
 
@@ -211,6 +212,17 @@ func (c *TaskController) updateTaskStatus(taskID, status, reason string) (*model
 	}
 	if t.Status != status {
 		err = c.taskDB.UpdateStatus(uint(tid), status, reason)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if t.Node == "" && status == string(aijobapi.Running) {
+		nodeName, err := c.jobControl.GetNodeNameFromTask(ctx, t)
+		if err != nil {
+			return t, nil
+		}
+		t.Node = nodeName
+		err = c.taskDB.UpdateNodeName(t.ID, nodeName)
 		if err != nil {
 			return nil, err
 		}

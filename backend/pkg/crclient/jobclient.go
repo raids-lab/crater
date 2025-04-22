@@ -129,6 +129,9 @@ func (c *JobControl) createTrainingJobFromTask(task *model.AITask) (jobname stri
 		aijobapi.LabelKeyTaskSLO:       strconv.FormatUint(uint64(task.SLO), 10),
 		aijobapi.JobNameLabel:          jobname,
 		aijobapi.LabelKeyEstimatedTime: strconv.FormatUint(uint64(task.EsitmatedTime), 10),
+		LabelKeyBaseURL:                taskID,
+		LabelKeyTaskType:               task.TaskType,
+		LabelKeyTaskUser:               task.Owner,
 	}
 
 	annotations := make(map[string]string)
@@ -201,6 +204,9 @@ func (c *JobControl) createJupyterJobFromTask(task *model.AITask) (jobname strin
 		aijobapi.LabelKeyTaskSLO:       strconv.FormatUint(uint64(task.SLO), 10),
 		aijobapi.JobNameLabel:          jobname,
 		aijobapi.LabelKeyEstimatedTime: strconv.FormatUint(uint64(task.EsitmatedTime), 10),
+		LabelKeyBaseURL:                taskID,
+		LabelKeyTaskType:               task.TaskType,
+		LabelKeyTaskUser:               task.Owner,
 	}
 
 	annotations := make(map[string]string)
@@ -361,4 +367,25 @@ func GenVolumeAndMountsFromAITask(task *model.AITask) ([]corev1.Volume, []corev1
 		}
 	}
 	return volumes, volumeMounts, nil
+}
+
+func (c *JobControl) GetNodeNameFromTask(ctx context.Context, task *model.AITask) (string, error) {
+	//nolint:gosec // taskID is safe
+	taskID := strconv.Itoa(int(task.ID))
+	podLabels := map[string]string{
+		LabelKeyBaseURL:  taskID,
+		LabelKeyTaskType: task.TaskType,
+		LabelKeyTaskUser: task.Owner,
+	}
+	podList := &corev1.PodList{}
+	err := c.List(ctx, podList, client.InNamespace(task.Namespace), client.MatchingLabels(podLabels))
+	if err != nil {
+		return "", err
+	}
+
+	if len(podList.Items) == 0 {
+		return "", fmt.Errorf("no pods found for task %d", task.ID)
+	}
+
+	return podList.Items[0].Spec.NodeName, nil
 }
