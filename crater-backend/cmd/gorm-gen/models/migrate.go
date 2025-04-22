@@ -9,6 +9,10 @@
 // // For ActGPU Cluster (***REMOVED***)
 //
 // CRATER_DEBUG_CONFIG_PATH=${PWD}/etc/debug-config-actgpu.yaml make migrate
+//
+// // For Little Cluster (192.168.5.76)
+//
+// CRATER_DEBUG_CONFIG_PATH=${PWD}/etc/debug-config-little.yaml make migrate
 package main
 
 import (
@@ -25,7 +29,6 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/pkg/models"
 	"github.com/raids-lab/crater/pkg/monitor"
 )
 
@@ -236,6 +239,31 @@ func main() {
 				return tx.Migrator().DropTable("alerts")
 			},
 		},
+		{
+			ID: "202504221200", // 确保ID是唯一的
+			Migrate: func(tx *gorm.DB) error {
+				type AITask struct {
+					DeletedAt gorm.DeletedAt `gorm:"index"`
+				}
+
+				// Add the DeletedAt column to the AITask table
+				if err := tx.Migrator().AddColumn(&AITask{}, "DeletedAt"); err != nil {
+					return err
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type AITask struct {
+					DeletedAt gorm.DeletedAt `gorm:"index"`
+				}
+
+				// Drop the DeletedAt column from the AITask table
+				if err := tx.Migrator().DropColumn(&AITask{}, "DeletedAt"); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -248,7 +276,7 @@ func main() {
 			&model.UserDataset{},
 			&model.Resource{},
 			&model.Job{},
-			&models.AITask{},
+			&model.AITask{},
 			&model.Kaniko{},
 			&model.Image{},
 			&model.Jobtemplate{},

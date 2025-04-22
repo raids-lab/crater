@@ -1,11 +1,50 @@
 package model
 
 import (
+	"encoding/json"
 	"time"
 
+	"github.com/raids-lab/crater/pkg/logutils"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
+)
+
+// TaskType
+const (
+	EmiasTrainingTask   = "training"
+	EmiasJupyterTask    = "jupyter"
+	EmiasDebuggingTask  = "debugging"
+	EmiasInferenceTask  = "inference"
+	EmiasExperimentTask = "experiment"
+
+	EmiasHighSLO = 1
+	EmiasLowSLO  = 0
+
+	EmiasPriorityClassGauranteed = "gpu-guaranteed"
+	EmiasPriorityClassBestEffort = "gpu-besteffort"
+
+	// TaskStatus
+	EmiasTaskQueueingStatus  = "Queueing" // 用户队列里的状态
+	EmiasTaskCreatedStatus   = "Created"  // AIJob Created
+	EmiasTaskPendingStatus   = "Pending"  // AIJob排队的状态
+	EmiasTaskRunningStatus   = "Running"
+	EmiasTaskFailedStatus    = "Failed"
+	EmiasTaskSucceededStatus = "Succeeded"
+	EmiasTaskPreemptedStatus = "Preempted"
+	EmiasTaskFreedStatus     = "Freed"
+
+	// ProfilingStatus
+	EmiasUnProfiled    = 0
+	EmiasProfileQueued = 1
+	EmiasProfiling     = 2
+	EmiasProfileFinish = 3
+	EmiasProfileFailed = 4
+)
+
+var (
+	EmiasTaskOcupiedQuotaStatuses = []string{EmiasTaskCreatedStatus, EmiasTaskPendingStatus, EmiasTaskRunningStatus, EmiasTaskPreemptedStatus}
+	EmiasTaskQueueingStatuses     = []string{EmiasTaskQueueingStatus}
 )
 
 type AITask struct {
@@ -42,4 +81,100 @@ type AITask struct {
 	PodTemplate datatypes.JSONType[v1.PodSpec] `json:"podTemplate"`
 	Node        string                         `json:"node"`
 	Owner       string                         `json:"owner"`
+}
+
+type TaskAttr struct {
+	TaskName        string                `json:"taskName" binding:"required"`
+	UserName        string                // `json:"userName" binding:"required"`
+	SLO             uint                  `json:"slo"`
+	TaskType        string                `json:"taskType" binding:"required"`
+	GPUModel        string                `json:"gpuModel"`
+	SchedulerName   string                `json:"schedulerName"`
+	Image           string                `json:"image" binding:"required"`
+	ResourceRequest v1.ResourceList       `json:"resourceRequest" binding:"required"`
+	Command         string                `json:"command" binding:"required"`
+	Args            map[string]string     `json:"args"`
+	WorkingDir      string                `json:"workingDir"`
+	ShareDirs       map[string][]DirMount `json:"shareDirs"`
+	EsitmatedTime   uint                  `json:"estimatedTime"`
+	// not for request
+	ID        uint      `json:"id"`
+	Namespace string    `json:"namspace"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `gorm:"column:created_at;not null" json:"createdAt"`
+	UpdatedAt time.Time `gorm:"column:updated_at;not null" json:"updatedAt"`
+	StartedAt time.Time `gorm:"column:started_at" json:"startedAt"`
+}
+
+func FormatTaskAttrToModel(task *TaskAttr) *AITask {
+	aiTask := &AITask{
+		TaskName:        task.TaskName,
+		UserName:        task.UserName,
+		Namespace:       task.Namespace,
+		TaskType:        task.TaskType,
+		Image:           task.Image,
+		ResourceRequest: ResourceListToJSON(task.ResourceRequest),
+		WorkingDir:      task.WorkingDir,
+		ShareDirs:       VolumesToJSONString(task.ShareDirs),
+		Command:         task.Command,
+		Args:            MapToJSONString(task.Args),
+		SLO:             task.SLO,
+		Status:          EmiasTaskQueueingStatus,
+		EsitmatedTime:   task.EsitmatedTime,
+	}
+
+	// 单独设置 gorm.Model 嵌入字段
+	aiTask.ID = task.ID
+
+	return aiTask
+}
+
+// TODO: directly return AITask
+func FormatAITaskToAttr(model *AITask) *TaskAttr {
+	resourceJSON, _ := JSONToResourceList(model.ResourceRequest)
+	return &TaskAttr{
+		ID:              model.ID,
+		TaskName:        model.TaskName,
+		UserName:        model.UserName,
+		Namespace:       model.Namespace,
+		TaskType:        model.TaskType,
+		Image:           model.Image,
+		ResourceRequest: resourceJSON,
+		WorkingDir:      model.WorkingDir,
+		ShareDirs:       JSONStringToVolumes(model.ShareDirs),
+		Command:         model.Command,
+		Args:            JSONStringToMap(model.Args),
+		SLO:             model.SLO,
+		Status:          model.Status,
+		CreatedAt:       model.CreatedAt,
+		UpdatedAt:       model.UpdatedAt,
+	}
+}
+
+//	type Volume struct {
+//		Name string `json:"name"`
+//		Mounts []DirMount `json:"mounts"`
+//	}
+type DirMount struct {
+	Volume    string `json:"volume"`
+	MountPath string `json:"mountPath"`
+	SubPath   string `json:"subPath"`
+}
+
+func JSONStringToVolumes(str string) map[string][]DirMount {
+	var volumes map[string][]DirMount
+	err := json.Unmarshal([]byte(str), &volumes)
+	if err != nil {
+		logutils.Log.Errorf("JSONStringToVolumes error: %v", err)
+		return nil
+	}
+	return volumes
+}
+
+func VolumesToJSONString(volumes map[string][]DirMount) string {
+	bytes, err := json.Marshal(volumes)
+	if err != nil {
+		return ""
+	}
+	return string(bytes)
 }

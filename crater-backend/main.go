@@ -49,9 +49,7 @@ import (
 	recommenddljob "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
-	db "github.com/raids-lab/crater/pkg/db/orm"
 	"github.com/raids-lab/crater/pkg/imageregistry"
-	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/packer"
 	"github.com/raids-lab/crater/pkg/profiler"
@@ -233,11 +231,6 @@ func main() {
 	}
 
 	// init db
-	err = db.InitDB()
-	if err != nil {
-		logutils.Log.Errorf("unable to init db:%q", err)
-		os.Exit(1)
-	}
 	query.SetDefault(query.GetDB())
 
 	// init promeClient

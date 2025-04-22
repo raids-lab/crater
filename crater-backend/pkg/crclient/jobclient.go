@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/raids-lab/crater/dao/model"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -17,7 +18,6 @@ import (
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
-	"github.com/raids-lab/crater/pkg/models"
 )
 
 type JobControl struct {
@@ -31,7 +31,7 @@ const (
 	ServicePrefix = "svc-"
 )
 
-func (c *JobControl) GetJobStatus(task *models.AITask) (aijobapi.JobPhase, error) {
+func (c *JobControl) GetJobStatus(task *model.AITask) (aijobapi.JobPhase, error) {
 	// todo: 存储jobname到数据库
 	ns := task.Namespace
 	job := &aijobapi.AIJob{}
@@ -45,7 +45,7 @@ func (c *JobControl) GetJobStatus(task *models.AITask) (aijobapi.JobPhase, error
 	return job.Status.Phase, nil
 }
 
-func (c *JobControl) DeleteJobFromTask(task *models.AITask) error {
+func (c *JobControl) DeleteJobFromTask(task *model.AITask) error {
 	ns := task.Namespace
 	job := &aijobapi.AIJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -60,7 +60,7 @@ func (c *JobControl) DeleteJobFromTask(task *models.AITask) error {
 	}
 
 	// 对于 Jupyter 类型，还需要删除 Service
-	if task.TaskType == models.JupyterTask {
+	if task.TaskType == model.EmiasJupyterTask {
 		svc := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      ServicePrefix + task.JobName,
@@ -107,7 +107,7 @@ func (c *JobControl) DeleteJobFromTask(task *models.AITask) error {
 	return err
 }
 
-func (c *JobControl) createTrainingJobFromTask(task *models.AITask) (jobname string, err error) {
+func (c *JobControl) createTrainingJobFromTask(task *model.AITask) (jobname string, err error) {
 	podSpec := task.PodTemplate.Data()
 	if len(podSpec.Containers) == 0 {
 		err = fmt.Errorf("no container in pod spec")
@@ -133,15 +133,15 @@ func (c *JobControl) createTrainingJobFromTask(task *models.AITask) (jobname str
 
 	annotations := make(map[string]string)
 	annotations[aijobapi.AnnotationKeyProfileStat] = task.ProfileStat
-	if task.ProfileStatus == models.ProfileFinish {
+	if task.ProfileStatus == model.EmiasProfileFinish {
 		annotations[aijobapi.AnnotationKeyPreemptCount] = "0"
 	}
 
 	// set priority class
 	if task.SLO == 0 {
-		podSpec.PriorityClassName = models.PriorityClassBestEffort
+		podSpec.PriorityClassName = model.EmiasPriorityClassBestEffort
 	} else {
-		podSpec.PriorityClassName = models.PriorityClassGauranteed
+		podSpec.PriorityClassName = model.EmiasPriorityClassGauranteed
 	}
 
 	if podSpec.Affinity != nil {
@@ -179,7 +179,7 @@ func (c *JobControl) createTrainingJobFromTask(task *models.AITask) (jobname str
 	return jobname, nil
 }
 
-func (c *JobControl) createJupyterJobFromTask(task *models.AITask) (jobname string, err error) {
+func (c *JobControl) createJupyterJobFromTask(task *model.AITask) (jobname string, err error) {
 	podSpec := task.PodTemplate.Data()
 	if len(podSpec.Containers) == 0 {
 		err = fmt.Errorf("no container in pod spec")
@@ -205,12 +205,12 @@ func (c *JobControl) createJupyterJobFromTask(task *models.AITask) (jobname stri
 
 	annotations := make(map[string]string)
 	annotations[aijobapi.AnnotationKeyProfileStat] = task.ProfileStat
-	if task.ProfileStatus == models.ProfileFinish {
+	if task.ProfileStatus == model.EmiasProfileFinish {
 		annotations[aijobapi.AnnotationKeyPreemptCount] = "0"
 	}
 
 	// set priority class
-	podSpec.PriorityClassName = models.PriorityClassGauranteed
+	podSpec.PriorityClassName = model.EmiasPriorityClassGauranteed
 
 	if podSpec.Affinity != nil {
 		podSpec.SchedulerName = "default-scheduler"
@@ -288,11 +288,11 @@ func (c *JobControl) createJupyterJobFromTask(task *models.AITask) (jobname stri
 }
 
 // task.TaskType 目前有两种类型：training 和 jupyter，如果是 jupyter，则同时创建随机的端口转发
-func (c *JobControl) CreateJobFromTask(task *models.AITask) (jobname string, err error) {
+func (c *JobControl) CreateJobFromTask(task *model.AITask) (jobname string, err error) {
 	switch task.TaskType {
-	case models.TrainingTask:
+	case model.EmiasTrainingTask:
 		return c.createTrainingJobFromTask(task)
-	case models.JupyterTask:
+	case model.EmiasJupyterTask:
 		return c.createJupyterJobFromTask(task)
 	default:
 		err = fmt.Errorf("task type is not valid: %v", task.TaskType)
@@ -300,7 +300,7 @@ func (c *JobControl) CreateJobFromTask(task *models.AITask) (jobname string, err
 	}
 }
 
-func GenVolumeAndMountsFromAITask(task *models.AITask) ([]corev1.Volume, []corev1.VolumeMount, error) {
+func GenVolumeAndMountsFromAITask(task *model.AITask) ([]corev1.Volume, []corev1.VolumeMount, error) {
 	// set volumes
 	// task.UserName is in format of "userid-projectid"
 	splited := strings.Split(task.UserName, "-")
@@ -337,7 +337,7 @@ func GenVolumeAndMountsFromAITask(task *models.AITask) ([]corev1.Volume, []corev
 		},
 	}
 	if task.ShareDirs != "" {
-		taskShareDir := models.JSONStringToVolumes(task.ShareDirs)
+		taskShareDir := model.JSONStringToVolumes(task.ShareDirs)
 		if taskShareDir == nil {
 			logutils.Log.Errorf("parse task share dir: %v", task.ShareDirs)
 			return nil, nil, fmt.Errorf("parse task share dir: %v", task.ShareDirs)

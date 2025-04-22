@@ -9,7 +9,6 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/logutils"
-	"github.com/raids-lab/crater/pkg/models"
 )
 
 type QuotaInfo struct {
@@ -19,7 +18,7 @@ type QuotaInfo struct {
 	Soft      v1.ResourceList
 	HardUsed  v1.ResourceList
 	SoftUsed  v1.ResourceList
-	UsedTasks map[string]*models.AITask
+	UsedTasks map[string]*model.AITask
 }
 
 type QuotaInfoSnapshot struct {
@@ -28,73 +27,73 @@ type QuotaInfoSnapshot struct {
 	Soft      v1.ResourceList
 	HardUsed  v1.ResourceList
 	SoftUsed  v1.ResourceList
-	UsedTasks map[string]*models.AITask
+	UsedTasks map[string]*model.AITask
 }
 
 // AddTask adds Running Job Quota
-func (info *QuotaInfo) AddTask(task *models.AITask) {
+func (info *QuotaInfo) AddTask(task *model.AITask) {
 	info.mu.Lock()
 	defer info.mu.Unlock()
 	key := keyFunc(task)
 	// 没有找到task的时候才添加quota
 	if _, ok := info.UsedTasks[key]; !ok {
 		info.UsedTasks[key] = task
-		resourceRequest, _ := models.JSONToResourceList(task.ResourceRequest)
-		if task.SLO == models.HighSLO {
+		resourceRequest, _ := model.JSONToResourceList(task.ResourceRequest)
+		if task.SLO == model.EmiasHighSLO {
 			AddResourceList(info.HardUsed, resourceRequest)
-		} else if task.SLO == models.LowSLO {
+		} else if task.SLO == model.EmiasLowSLO {
 			AddResourceList(info.SoftUsed, resourceRequest)
 		}
 	}
 }
 
-func (info *QuotaInfoSnapshot) AddTask(task *models.AITask) {
+func (info *QuotaInfoSnapshot) AddTask(task *model.AITask) {
 	key := keyFunc(task)
 	// 没有找到task的时候才添加quota
 	if _, ok := info.UsedTasks[key]; !ok {
 		info.UsedTasks[key] = task
-		resourceRequest, _ := models.JSONToResourceList(task.ResourceRequest)
-		if task.SLO == models.HighSLO {
+		resourceRequest, _ := model.JSONToResourceList(task.ResourceRequest)
+		if task.SLO == model.EmiasHighSLO {
 			AddResourceList(info.HardUsed, resourceRequest)
-		} else if task.SLO == models.LowSLO {
+		} else if task.SLO == model.EmiasLowSLO {
 			AddResourceList(info.SoftUsed, resourceRequest)
 		}
 	}
 }
 
 // DeleteTask deletes Completed or Deleted Job Quota
-func (info *QuotaInfo) DeleteTask(task *models.AITask) {
+func (info *QuotaInfo) DeleteTask(task *model.AITask) {
 	info.mu.Lock()
 	defer info.mu.Unlock()
 	key := keyFunc(task)
 	// 找到quotainfo里的task时才删除quota
 	if task, ok := info.UsedTasks[key]; ok {
 		delete(info.UsedTasks, key)
-		resourceRequest, _ := models.JSONToResourceList(task.ResourceRequest)
-		if task.SLO == models.HighSLO {
+		resourceRequest, _ := model.JSONToResourceList(task.ResourceRequest)
+		if task.SLO == model.EmiasHighSLO {
 			SubResourceList(info.HardUsed, resourceRequest)
-		} else if task.SLO == models.LowSLO {
+		} else if task.SLO == model.EmiasLowSLO {
 			SubResourceList(info.SoftUsed, resourceRequest)
 		}
 	}
 }
 
 // CheckHardQuotaExceed 判断作业的hard quota是否超出限制
-func (info *QuotaInfo) CheckHardQuotaExceed(task *models.AITask) bool {
-	if task.SLO == models.LowSLO {
+func (info *QuotaInfo) CheckHardQuotaExceed(task *model.AITask) bool {
+	if task.SLO == model.EmiasLowSLO {
 		return false
 	}
 	info.mu.Lock()
 	defer info.mu.Unlock()
-	resourcelist, _ := models.JSONToResourceList(task.ResourceRequest)
+	resourcelist, _ := model.JSONToResourceList(task.ResourceRequest)
 	return CheckResourceListExceed(info.Hard, info.HardUsed, resourcelist)
 }
 
-func (info *QuotaInfoSnapshot) CheckHardQuotaExceed(task *models.AITask) bool {
-	if task.SLO == models.LowSLO {
+func (info *QuotaInfoSnapshot) CheckHardQuotaExceed(task *model.AITask) bool {
+	if task.SLO == model.EmiasLowSLO {
 		return false
 	}
-	resourcelist, _ := models.JSONToResourceList(task.ResourceRequest)
+	resourcelist, _ := model.JSONToResourceList(task.ResourceRequest)
 	return CheckResourceListExceed(info.Hard, info.HardUsed, resourcelist)
 }
 
@@ -107,7 +106,7 @@ func (info *QuotaInfo) Snapshot() *QuotaInfoSnapshot {
 		Soft:      info.Soft.DeepCopy(),
 		HardUsed:  info.HardUsed.DeepCopy(),
 		SoftUsed:  info.SoftUsed.DeepCopy(),
-		UsedTasks: make(map[string]*models.AITask),
+		UsedTasks: make(map[string]*model.AITask),
 	}
 }
 
@@ -157,18 +156,18 @@ func (c *TaskController) AddOrUpdateQuotaInfo(queue *model.Account) (added bool,
 			Soft:      quota.Capability,
 			HardUsed:  v1.ResourceList{},
 			SoftUsed:  v1.ResourceList{},
-			UsedTasks: make(map[string]*models.AITask),
+			UsedTasks: make(map[string]*model.AITask),
 		}
 
 		// todo: add db tasks
-		tasksRunning, err := c.taskDB.ListByUserAndStatuses(name, models.TaskOcupiedQuotaStatuses)
+		tasksRunning, err := c.taskDB.ListByUserAndStatuses(name, model.EmiasTaskOcupiedQuotaStatuses)
 		//nolint:staticcheck // TODO: remove this line after fixing the error
 		if err != nil {
 			// todo: handler err
 		}
 
 		for i := range tasksRunning {
-			quotaInfo.AddTask(&tasksRunning[i])
+			quotaInfo.AddTask(tasksRunning[i])
 		}
 
 		c.quotaInfos.Store(name, quotaInfo)

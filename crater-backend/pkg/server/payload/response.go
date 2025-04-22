@@ -4,7 +4,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/raids-lab/crater/pkg/models"
+	"github.com/raids-lab/crater/dao/model"
 )
 
 type CreateTaskResp struct {
@@ -75,7 +75,7 @@ type GPUInfo struct {
 }
 
 type GetTaskResp struct {
-	models.AITask
+	model.AITask
 }
 
 type GetTaskLogResp struct {
