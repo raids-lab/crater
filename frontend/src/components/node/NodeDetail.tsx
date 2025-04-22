@@ -63,6 +63,7 @@ import {
 } from "@/utils/store/config";
 import { useIsAdmin } from "@/hooks/useAdmin";
 import TooltipCopy from "../label/TooltipCopy";
+import { globalSettings } from "@/utils/store";
 
 type GpuDemoProps = React.ComponentProps<typeof Card> & {
   gpuInfo?: {
@@ -155,37 +156,6 @@ const getHeader = (name: string): string => {
     default:
       return name;
   }
-};
-
-const toolbarConfig: DataTableToolbarConfig = {
-  filterInput: {
-    placeholder: "搜索 Pod 名称",
-    key: "name",
-  },
-  filterOptions: [
-    {
-      key: "status",
-      title: "状态",
-      option: podPhases,
-      defaultValues: ["Running"],
-    },
-    {
-      key: "type",
-      title: "类型",
-      option: [
-        {
-          value: "batch.volcano.sh/v1alpha1/Job",
-          label: "BASE",
-        },
-        {
-          value: "aisystem.github.com/v1alpha1/AIJob",
-          label: "EMIAS",
-        },
-      ],
-      defaultValues: ["batch.volcano.sh/v1alpha1/Job"],
-    },
-  ],
-  getHeader: getHeader,
 };
 
 const getColumns = (
@@ -358,6 +328,44 @@ export const NodeDetail: FC = () => {
       }),
     [nodeName, grafanaJob, isAdminView],
   );
+
+  const scheduler = useAtomValue(globalSettings).scheduler;
+  const toolbarConfig: DataTableToolbarConfig = useMemo(() => {
+    return {
+      filterInput: {
+        placeholder: "搜索 Pod 名称",
+        key: "name",
+      },
+      filterOptions: [
+        {
+          key: "status",
+          title: "状态",
+          option: podPhases,
+          defaultValues: ["Running"],
+        },
+        {
+          key: "type",
+          title: "类型",
+          option: [
+            {
+              value: "batch.volcano.sh/v1alpha1/Job",
+              label: "BASE",
+            },
+            {
+              value: "aisystem.github.com/v1alpha1/AIJob",
+              label: "EMIAS",
+            },
+          ],
+          defaultValues: [
+            scheduler === "volcano"
+              ? "batch.volcano.sh/v1alpha1/Job"
+              : "aisystem.github.com/v1alpha1/AIJob",
+          ],
+        },
+      ],
+      getHeader: getHeader,
+    };
+  }, []);
 
   // 修改 BreadCrumb
   useEffect(() => {

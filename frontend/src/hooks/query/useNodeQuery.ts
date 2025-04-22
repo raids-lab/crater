@@ -8,7 +8,7 @@ const useNodeQuery = (onlyWorker?: boolean) => {
     queryKey: ["overview", "nodes"],
     queryFn: apiGetNodes,
     select: (res) =>
-      res.data.data.rows
+      res.data.data
         .sort((a, b) => a.name.localeCompare(b.name))
         .sort((a, b) => {
           // 按照 type 排序，优先 hygon => shenwei => yitian => 空字符串
@@ -17,29 +17,26 @@ const useNodeQuery = (onlyWorker?: boolean) => {
         })
         .filter((x) => !onlyWorker || x.role === "worker")
         .map((x) => {
-          const cpuCapacity = convertKResourceToResource(
-            "cpu",
-            x.capacity && x.capacity.cpu,
-          );
+          const cpuCapacity = convertKResourceToResource("cpu", x.capacity.cpu);
           const cpuAllocated = convertKResourceToResource(
             "cpu",
-            x.allocated && x.allocated.cpu,
+            x.allocated.cpu,
           );
           const memCapacity = convertKResourceToResource(
             "memory",
-            x.capacity && x.capacity.memory,
+            x.capacity.memory,
           );
           const memAllocated = convertKResourceToResource(
             "memory",
-            x.allocated && x.allocated.memory,
+            x.allocated.memory,
           );
           const gpuCapacity = convertKResourceToResource(
             "nvidia.com/gpu",
-            x.capacity && x.capacity["nvidia.com/gpu"],
+            x.capacity.gpu,
           );
           const gpuAllocated = convertKResourceToResource(
             "nvidia.com/gpu",
-            x.allocated && x.allocated["nvidia.com/gpu"],
+            x.allocated.gpu,
           );
 
           const info: ClusterNodeInfo = {
