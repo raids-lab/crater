@@ -1,6 +1,6 @@
 enableLeaderElection: false
 leaderElectionID: 1ca428e5.training-operator.kubeflow.org
-prometheusAPI: http://prometheus-kube-prometheus-prometheus.monitoring:9090
+prometheusAPI: http://192.168.5.76:31110
 serverAddr: :8088
 metricsAddr: :8080
 probeAddr: :8081

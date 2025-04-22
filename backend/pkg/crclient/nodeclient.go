@@ -6,15 +6,75 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/raids-lab/crater/pkg/monitor"
-	"github.com/raids-lab/crater/pkg/server/payload"
 	"github.com/raids-lab/crater/pkg/utils"
 )
+
+type BriefResource struct {
+	CPU string `json:"cpu"`
+	Mem string `json:"memory"`
+	GPU string `json:"gpu"`
+}
+
+type ClusterNodeInfo struct {
+	Type      string            `json:"type"`
+	Name      string            `json:"name"`
+	Role      string            `json:"role"`
+	Labels    map[string]string `json:"labels"`
+	IsReady   string            `json:"isReady"`
+	Taint     string            `json:"taint"`
+	Capacity  BriefResource     `json:"capacity"`
+	Allocated BriefResource     `json:"allocated"`
+	PodCount  int               `json:"podCount"`
+}
+
+type Pod struct {
+	Name           string                  `json:"name"`
+	Namespace      string                  `json:"namespace"`
+	OwnerReference []metav1.OwnerReference `json:"ownerReference"`
+	IP             string                  `json:"ip"`
+	CreateTime     metav1.Time             `json:"createTime"`
+	Status         corev1.PodPhase         `json:"status"`
+	Resources      corev1.ResourceList     `json:"resources"`
+}
+
+type ClusterNodeDetail struct {
+	Name                    string `json:"name"`
+	Role                    string `json:"role"`
+	IsReady                 string `json:"isReady"`
+	Taint                   string `json:"taint"`
+	Time                    string `json:"time"`
+	Address                 string `json:"address"`
+	Os                      string `json:"os"`
+	OsVersion               string `json:"osVersion"`
+	Arch                    string `json:"arch"`
+	KubeletVersion          string `json:"kubeletVersion"`
+	ContainerRuntimeVersion string `json:"containerRuntimeVersion"`
+	GPUMemory               string `json:"gpuMemory"`
+	GPUCount                int    `json:"gpuCount"`
+	GPUArch                 string `json:"gpuArch"`
+}
+
+type ListNodeResp struct {
+	Rows []ClusterNodeInfo `json:"rows"`
+}
+
+type GPUInfo struct {
+	Name        string              `json:"name"`
+	HaveGPU     bool                `json:"haveGPU"`
+	GPUCount    int                 `json:"gpuCount"`
+	GPUUtil     map[string]float32  `json:"gpuUtil"`
+	RelateJobs  map[string][]string `json:"relateJobs"`
+	GPUMemory   string              `json:"gpuMemory"`
+	GPUArch     string              `json:"gpuArch"`
+	GPUDriver   string              `json:"gpuDriver"`
+	CudaVersion string              `json:"cudaVersion"`
+	GPUProduct  string              `json:"gpuProduct"`
+}
 
 type NodeClient struct {
 	client.Client
@@ -150,7 +210,7 @@ func (nc *NodeClient) getNodeGPUCount(nodeName string) int {
 }
 
 // GetNodes 获取所有 Node 列表
-func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
+func (nc *NodeClient) ListNodes() ([]ClusterNodeInfo, error) {
 	var nodes corev1.NodeList
 
 	err := nc.List(context.Background(), &nodes)
@@ -158,7 +218,7 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 		return nil, err
 	}
 
-	nodeInfos := make([]payload.ClusterNodeInfo, len(nodes.Items))
+	nodeInfos := make([]ClusterNodeInfo, len(nodes.Items))
 	CPUMap := nc.PrometheusClient.QueryNodeAllocatedCPU()
 	MemMap := nc.PrometheusClient.QueryNodeAllocatedMemory()
 	GPUMap := nc.PrometheusClient.QueryNodeAllocatedGPU()
@@ -167,16 +227,19 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 	// Loop through each node and print allocated resources
 	for i := range nodes.Items {
 		node := &nodes.Items[i]
-		allocatedInfo := payload.AllocatedInfo{
+
+		allocatedInfo := BriefResource{
 			CPU: formatCPULoad(CPUMap[node.Name]),
 			Mem: formatMemoryLoad(MemMap[node.Name]),
 			GPU: fmt.Sprintf("%d", GPUMap[node.Name]),
 		}
-		gpuCount := nc.getNodeGPUCount(node.Name)
-		capacity_ := node.Status.Capacity
-		if gpuCount > 0 {
-			// 将int类型的gpu_count转换为resource.Quantity类型
-			capacity_["nvidia.com/gpu"] = *resource.NewQuantity(int64(gpuCount), resource.DecimalSI)
+
+		cpuCapacity := node.Status.Capacity[corev1.ResourceCPU]
+		memCapacity := node.Status.Capacity[corev1.ResourceMemory]
+		capacityInfo := BriefResource{
+			CPU: cpuCapacity.String(),
+			Mem: memCapacity.String(),
+			GPU: fmt.Sprintf("%d", nc.getNodeGPUCount(node.Name)),
 		}
 
 		podCount := 0
@@ -186,14 +249,14 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 
 		// 获取节点类型
 		nodeType := node.Labels["crater.raids.io/nodetype"]
-		nodeInfos[i] = payload.ClusterNodeInfo{
+		nodeInfos[i] = ClusterNodeInfo{
 			Type:      nodeType, // 添加节点类型
 			Name:      node.Name,
 			Taint:     taintsToString(node.Spec.Taints),
 			Role:      getNodeRole(node),
 			Labels:    node.Labels,
 			IsReady:   isNodeReady(node),
-			Capacity:  node.Status.Capacity,
+			Capacity:  capacityInfo,
 			Allocated: allocatedInfo,
 			PodCount:  podCount,
 		}
@@ -203,7 +266,7 @@ func (nc *NodeClient) ListNodes() ([]payload.ClusterNodeInfo, error) {
 }
 
 // GetNode 获取指定 Node 的信息
-func (nc *NodeClient) GetNode(ctx context.Context, name string) (payload.ClusterNodeDetail, error) {
+func (nc *NodeClient) GetNode(ctx context.Context, name string) (ClusterNodeDetail, error) {
 	node := &corev1.Node{}
 
 	err := nc.Get(ctx, client.ObjectKey{
@@ -211,10 +274,10 @@ func (nc *NodeClient) GetNode(ctx context.Context, name string) (payload.Cluster
 		Name:      name,
 	}, node)
 	if err != nil {
-		return payload.ClusterNodeDetail{}, err
+		return ClusterNodeDetail{}, err
 	}
 
-	nodeInfo := payload.ClusterNodeDetail{
+	nodeInfo := ClusterNodeDetail{
 		Name:                    node.Name,
 		Role:                    getNodeRole(node),
 		IsReady:                 isNodeReady(node),
@@ -319,7 +382,7 @@ func (nc *NodeClient) DeleteNodetaint(ctx context.Context, name, taint string) e
 	}
 	return err
 }
-func (nc *NodeClient) GetPodsForNode(ctx context.Context, nodeName string) ([]payload.Pod, error) {
+func (nc *NodeClient) GetPodsForNode(ctx context.Context, nodeName string) ([]Pod, error) {
 	// Get Pods for the node, which is a costly operation
 	// TODO(zhangry): Add a cache for this? Or query from Prometheus?
 	podList, err := nc.KubeClient.CoreV1().Pods("").List(ctx, metav1.ListOptions{
@@ -330,10 +393,10 @@ func (nc *NodeClient) GetPodsForNode(ctx context.Context, nodeName string) ([]pa
 	}
 
 	// Initialize the return value
-	pods := make([]payload.Pod, len(podList.Items))
+	pods := make([]Pod, len(podList.Items))
 	for i := range podList.Items {
 		pod := &podList.Items[i]
-		pods[i] = payload.Pod{
+		pods[i] = Pod{
 			Name:           pod.Name,
 			Namespace:      pod.Namespace,
 			IP:             pod.Status.PodIP,
@@ -347,16 +410,16 @@ func (nc *NodeClient) GetPodsForNode(ctx context.Context, nodeName string) ([]pa
 	return pods, nil
 }
 
-func (nc *NodeClient) GetNodeGPUInfo(name string) (payload.GPUInfo, error) {
+func (nc *NodeClient) GetNodeGPUInfo(name string) (GPUInfo, error) {
 	var nodes corev1.NodeList
 
 	err := nc.List(context.Background(), &nodes)
 	if err != nil {
-		return payload.GPUInfo{}, err
+		return GPUInfo{}, err
 	}
 
 	// 初始化返回值
-	gpuInfo := payload.GPUInfo{
+	gpuInfo := GPUInfo{
 		Name:        name,
 		HaveGPU:     false,
 		GPUCount:    0,
@@ -380,7 +443,7 @@ func (nc *NodeClient) GetNodeGPUInfo(name string) (payload.GPUInfo, error) {
 			gpuCount := 0
 			_, err := fmt.Sscanf(gpuCountValue, "%d", &gpuCount)
 			if err != nil {
-				return payload.GPUInfo{}, err
+				return GPUInfo{}, err
 			}
 			gpuInfo.GPUCount = gpuCount
 			gpuInfo.HaveGPU = true
