@@ -20,9 +20,10 @@ import (
 )
 
 const (
-	LabelKeyBaseURL       = "crater.raids.io/base-url"
-	LabelKeyTaskType      = "crater.raids.io/task-type"
-	LabelKeyTaskUser      = "crater.raids.io/task-user"
+	LabelKeyBaseURL  = "crater.raids.io/base-url"
+	LabelKeyTaskType = "crater.raids.io/task-type"
+	LabelKeyTaskUser = "crater.raids.io/task-user"
+
 	AnnotationKeyPortName = "crater.raids.io/port-name" // Annotation key for port name
 
 	Poll    = 500 * time.Millisecond // Polling interval for checking service creation

@@ -546,7 +546,7 @@ func convertToAIJobResp(c context.Context, aiTask *model.AITask) (AIJobResp, err
 		ProfileStatus: strconv.FormatUint(uint64(aiTask.ProfileStatus), 10),
 		JobResp: vcjob.JobResp{
 			Name:    aiTask.TaskName,
-			JobName: aiTask.JobName,
+			JobName: fmt.Sprintf("%d", aiTask.ID),
 			Owner:   aiTask.Owner,
 			UserInfo: model.UserInfo{
 				Nickname: user.Nickname,
@@ -554,7 +554,7 @@ func convertToAIJobResp(c context.Context, aiTask *model.AITask) (AIJobResp, err
 			},
 			JobType:            aiTask.TaskType,
 			Queue:              aiTask.UserName,
-			Status:             string(convertJobPhase(aiTask.Status)),
+			Status:             string(convertJobPhase(aiTask)),
 			CreationTimestamp:  metav1.NewTime(aiTask.CreatedAt),
 			RunningTimestamp:   runningTimestamp,
 			CompletedTimestamp: completedTimestamp,
@@ -637,7 +637,7 @@ func (mgr *AIJobMgr) Get(c *gin.Context) {
 			},
 			JobName:           taskModel.JobName,
 			Queue:             taskModel.UserName,
-			Status:            convertJobPhase(taskModel.Status),
+			Status:            convertJobPhase(taskModel),
 			CreationTimestamp: metav1.NewTime(taskModel.CreatedAt),
 			RunningTimestamp:  runningTimestamp,
 		},
@@ -688,7 +688,7 @@ func (mgr *AIJobMgr) Delete(c *gin.Context) {
 	}
 	mgr.NotifyTaskUpdate(req.JobID, token.AccountName, util.DeleteTask)
 
-	err = mgr.taskService.DeleteByUserAndID(token.AccountName, req.JobID)
+	err = mgr.taskService.DeleteByQueueAndID(token.AccountName, req.JobID)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("delete task failed, err %v", err), resputil.NotSpecified)
 		return

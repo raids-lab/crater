@@ -21,6 +21,7 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/packer"
 	"github.com/raids-lab/crater/pkg/utils"
 )
@@ -325,7 +326,7 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 		return
 	}
 
-	baseURL := vcjob.Labels[LabelKeyBaseURL]
+	baseURL := vcjob.Labels[crclient.LabelKeyBaseURL]
 
 	podName, _ := getPodNameAndLabelFromJob(vcjob)
 
@@ -417,11 +418,11 @@ func (mgr *VolcanojobMgr) CreateJupyterSnapshot(c *gin.Context) {
 
 	// get pod events
 	var podList = &v1.PodList{}
-	if value, ok := vcjob.Labels[LabelKeyBaseURL]; !ok {
+	if value, ok := vcjob.Labels[crclient.LabelKeyBaseURL]; !ok {
 		resputil.Error(c, "label not found", resputil.NotSpecified)
 		return
 	} else {
-		labels := client.MatchingLabels{LabelKeyBaseURL: value}
+		labels := client.MatchingLabels{crclient.LabelKeyBaseURL: value}
 		err = mgr.client.List(c, podList, client.InNamespace(vcjob.Namespace), labels)
 		if err != nil {
 			resputil.Error(c, err.Error(), resputil.NotSpecified)

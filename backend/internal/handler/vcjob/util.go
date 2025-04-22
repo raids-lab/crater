@@ -20,6 +20,7 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/crclient"
 )
 
 type VolumeType uint
@@ -521,9 +522,9 @@ func getLabelAndAnnotations(jobType CraterJobType, token util.JWTMessage, baseUR
 	podAnnotations map[string]string,
 ) {
 	labels = map[string]string{
-		LabelKeyTaskType: string(jobType),
-		LabelKeyTaskUser: token.Username,
-		LabelKeyBaseURL:  baseURL,
+		crclient.LabelKeyTaskType: string(jobType),
+		crclient.LabelKeyTaskUser: token.Username,
+		crclient.LabelKeyBaseURL:  baseURL,
 	}
 	jobAnnotations = map[string]string{
 		AnnotationKeyTaskName:     taskName,
