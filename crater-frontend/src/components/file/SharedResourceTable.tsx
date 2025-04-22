@@ -63,6 +63,7 @@ import DetailTitle from "../layout/DetailTitle";
 import { FileItem, apiGetDatasetFiles } from "@/services/api/file";
 import { FileSizeComponent } from "./FileSize";
 import TooltipButton from "../custom/TooltipButton";
+import { useIsAdmin } from "@/hooks/useAdmin";
 
 interface SharedResourceTableProps {
   resourceType: "model" | "dataset";
@@ -96,6 +97,7 @@ export function SharedResourceTable({
   const datasetId = id ? parseInt(id, 10) : 0;
   const setBreadcrumb = useBreadcrumb();
   const user = useAtomValue(globalUserInfo);
+  const isAdminMode = useIsAdmin();
   const userDatasetData = useQuery({
     queryKey: ["data", "userdataset", datasetId],
     queryFn: () => apiListUsersInDataset(datasetId),
@@ -415,7 +417,7 @@ export function SharedResourceTable({
           title={query.data?.name}
           description={query.data?.extra.editable ? "可编辑" : "只读"}
         >
-          {user?.name === query.data?.userInfo.username && (
+          {(user?.name === query.data?.userInfo.username || isAdminMode) && (
             <div className="flex flex-row space-x-1">
               <DatasetUpdateForm
                 type={resourceType}
