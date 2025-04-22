@@ -1,5 +1,0 @@
-shareDirs:
-  - pvc: dnn-train-data
-    namespace: user-wjh
-  - pvc: jupyterhub-shared-volume
-    namespace: jupyter

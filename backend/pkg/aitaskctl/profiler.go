@@ -1,4 +1,4 @@
-package profiler
+package aitaskctl
 
 import (
 	"context"
@@ -13,7 +13,6 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/pkg/crclient"
-	tasksvc "github.com/raids-lab/crater/pkg/db/task"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/util/queue"
@@ -26,7 +25,7 @@ const (
 type Profiler struct {
 	mutex            sync.Mutex
 	taskQueue        queue.Queue                   //
-	taskDB           tasksvc.DBService             // update profiling status
+	taskDB           DBService                     // update profiling status
 	prometheusClient monitor.PrometheusInterface   // get monitor data
 	podControl       *crclient.ProfilingPodControl // get pod status
 	profilingTimeout time.Duration                 // profiling timeout
@@ -37,7 +36,7 @@ func NewProfiler(mgr manager.Manager, prometheusClient monitor.PrometheusInterfa
 	return &Profiler{
 		mutex:            sync.Mutex{}, // todo: add lock to taskQueue
 		taskQueue:        queue.New(keyFunc, fifoOrdering),
-		taskDB:           tasksvc.NewDBService(),
+		taskDB:           NewDBService(),
 		profilingTimeout: time.Duration(profileTimeout) * time.Second, //todo: configuraion
 		podControl:       &crclient.ProfilingPodControl{Client: mgr.GetClient()},
 		prometheusClient: prometheusClient,

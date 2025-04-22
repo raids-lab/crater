@@ -1,4 +1,4 @@
-package task
+package aitaskctl
 
 import (
 	"context"
@@ -58,7 +58,7 @@ func (s *service) UpdateStatus(taskID uint, status, reason string) error {
 	}
 
 	q := query.AITask
-	updateMap := make(map[string]interface{})
+	updateMap := make(map[string]any)
 	updateMap["status"] = status
 	updateMap["status_reason"] = reason
 
@@ -165,7 +165,7 @@ func (s *service) UpdateProfilingStat(taskID, profileStatus uint, stat, status s
 	q := query.AITask
 	ctx := context.Background()
 
-	updateMap := make(map[string]interface{})
+	updateMap := make(map[string]any)
 	updateMap["profile_status"] = profileStatus
 
 	if profileStatus == 3 { // ProfileFinish

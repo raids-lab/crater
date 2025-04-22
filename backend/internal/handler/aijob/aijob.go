@@ -30,9 +30,7 @@ import (
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	"github.com/raids-lab/crater/pkg/config"
-	tasksvc "github.com/raids-lab/crater/pkg/db/task"
 	"github.com/raids-lab/crater/pkg/logutils"
-	payload "github.com/raids-lab/crater/pkg/server/payload"
 	"github.com/raids-lab/crater/pkg/util"
 )
 
@@ -47,7 +45,7 @@ type AIJobMgr struct {
 	name           string
 	client         client.Client
 	kubeClient     kubernetes.Interface
-	taskService    tasksvc.DBService
+	taskService    aitaskctl.DBService
 	taskController aitaskctl.TaskControllerInterface
 }
 
@@ -56,7 +54,7 @@ func NewAITaskMgr(conf *handler.RegisterConfig) handler.Manager {
 		name:           "aijobs",
 		client:         conf.Client,
 		kubeClient:     conf.KubeClient,
-		taskService:    tasksvc.NewDBService(),
+		taskService:    aitaskctl.NewDBService(),
 		taskController: conf.AITaskCtrl,
 	}
 }
@@ -240,6 +238,10 @@ type (
 	}
 )
 
+type CreateTaskResp struct {
+	TaskID uint
+}
+
 func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 	token := interutil.GetToken(c)
 	var vcReq CreateJupyterReq
@@ -351,7 +353,7 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 	mgr.NotifyTaskUpdate(taskModel.ID, taskModel.UserName, util.CreateTask)
 
 	logutils.Log.Infof("create task success, taskID: %d", taskModel.ID)
-	resp := payload.CreateTaskResp{
+	resp := CreateTaskResp{
 		TaskID: taskModel.ID,
 	}
 	resputil.Success(c, resp)
@@ -457,7 +459,7 @@ func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
 	mgr.NotifyTaskUpdate(taskModel.ID, taskModel.UserName, util.CreateTask)
 
 	logutils.Log.Infof("create task success, taskID: %d", taskModel.ID)
-	resp := payload.CreateTaskResp{
+	resp := CreateTaskResp{
 		TaskID: taskModel.ID,
 	}
 	resputil.Success(c, resp)

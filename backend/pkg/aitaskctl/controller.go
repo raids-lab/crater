@@ -16,9 +16,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/crclient"
-	taskdb "github.com/raids-lab/crater/pkg/db/task"
 	"github.com/raids-lab/crater/pkg/logutils"
-	"github.com/raids-lab/crater/pkg/profiler"
 	"github.com/raids-lab/crater/pkg/util"
 )
 
@@ -30,7 +28,7 @@ type TaskControllerInterface interface {
 	GetQuotaInfoSnapshotByUsername(username string) *QuotaInfoSnapshot
 	Init() error
 	ListQuotaInfoSnapshot() []QuotaInfoSnapshot
-	SetProfiler(srcProfiler *profiler.Profiler)
+	SetProfiler(srcProfiler *Profiler)
 	Start(ctx context.Context) error
 	TaskUpdated(event util.TaskUpdateChan)
 	UpdateQuotaInfoHard(username string, hard v1.ResourceList)
@@ -38,12 +36,12 @@ type TaskControllerInterface interface {
 
 type TaskController struct {
 	jobControl    *crclient.JobControl      // 创建AIJob的接口
-	taskDB        taskdb.DBService          // 获取db中的task
+	taskDB        DBService                 // 获取db中的task
 	taskQueue     *TaskQueue                // 队列信息
 	quotaInfos    sync.Map                  // quota缓存
 	jobStatusChan <-chan util.JobStatusChan // 获取job的状态变更信息，同步到数据库
 	// taskUpdateChan <-chan util.TaskUpdateChan
-	profiler *profiler.Profiler
+	profiler *Profiler
 }
 
 const (
@@ -54,7 +52,7 @@ const (
 func NewTaskController(crClient client.Client, cs kubernetes.Interface, statusChan <-chan util.JobStatusChan) TaskControllerInterface {
 	return &TaskController{
 		jobControl:    &crclient.JobControl{Client: crClient, KubeClient: cs},
-		taskDB:        taskdb.NewDBService(),
+		taskDB:        NewDBService(),
 		taskQueue:     NewTaskQueue(),
 		quotaInfos:    sync.Map{},
 		jobStatusChan: statusChan,
@@ -62,7 +60,7 @@ func NewTaskController(crClient client.Client, cs kubernetes.Interface, statusCh
 	}
 }
 
-func (c *TaskController) SetProfiler(srcProfiler *profiler.Profiler) {
+func (c *TaskController) SetProfiler(srcProfiler *Profiler) {
 	c.profiler = srcProfiler
 }
 
