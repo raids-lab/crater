@@ -27,6 +27,13 @@ const (
 
 	Poll    = 500 * time.Millisecond // Polling interval for checking service creation
 	Timeout = 5 * time.Second        // Timeout for service creation
+
+	// Added volcano keys
+	LabelKeyJobName      = "volcano.sh/job-name"
+	LabelKeyJobNamespace = "volcano.sh/job-namespace"
+	LabelKeyQueueName    = "volcano.sh/queue-name"
+	LabelKeyTaskIndex    = "volcano.sh/task-index"
+	LabelKeyTaskSpec     = "volcano.sh/task-spec"
 )
 
 // ServiceManagerInterface 接口定义
@@ -46,7 +53,8 @@ type ServiceManagerInterface interface {
 		ownerReferences []metav1.OwnerReference,
 		podSelector map[string]string,
 		port *v1.ServicePort,
-		host, prefix, username string,
+		host string,
+		prefix string,
 	) (ingressPath string, err error)
 
 	// CreateIngress 创建一个 ClusterIP 类型的 Service，并创建 Ingress
@@ -57,6 +65,9 @@ type ServiceManagerInterface interface {
 		port *v1.ServicePort,
 		host, username string,
 	) (ingressPath string, err error)
+
+	// GenerateLabels 生成标签
+	GenerateLabels(podSelector map[string]string) map[string]string
 }
 
 // serviceManagerImpl 实现 ServiceManager 接口
@@ -75,13 +86,24 @@ func NewServiceManager(cl client.Client, kubeClient kubernetes.Interface) Servic
 	}
 }
 
-// Helper function to generate labels
-func generateLabels(podSelector map[string]string, username string) map[string]string {
-	return map[string]string{
+// GenerateLabels 实现
+func (s *serviceManagerImpl) GenerateLabels(podSelector map[string]string) map[string]string {
+	labels := map[string]string{
 		LabelKeyBaseURL:  podSelector[LabelKeyBaseURL],
 		LabelKeyTaskType: podSelector[LabelKeyTaskType],
-		LabelKeyTaskUser: username,
+		LabelKeyTaskUser: podSelector[LabelKeyTaskUser],
 	}
+
+	// Check if distributed job labels are present in podSelector
+	if jobName, ok := podSelector[LabelKeyJobName]; ok {
+		labels[LabelKeyJobName] = jobName
+		labels[LabelKeyJobNamespace] = podSelector[LabelKeyJobNamespace]
+		labels[LabelKeyQueueName] = podSelector[LabelKeyQueueName]
+		labels[LabelKeyTaskIndex] = podSelector[LabelKeyTaskIndex]
+		labels[LabelKeyTaskSpec] = podSelector[LabelKeyTaskSpec]
+	}
+
+	return labels
 }
 
 // CreateNodePort 实现
@@ -99,12 +121,8 @@ func (s *serviceManagerImpl) CreateNodePort(
 	serviceName := fmt.Sprintf("%s-np-%s", username, uuid.New().String()[:5])
 	namespace := s.config.Workspace.Namespace
 
-	// Extract labels from podSelector
-	labels := map[string]string{
-		LabelKeyBaseURL:  podSelector[LabelKeyBaseURL],
-		LabelKeyTaskType: podSelector[LabelKeyTaskType],
-		LabelKeyTaskUser: podSelector[LabelKeyTaskUser],
-	}
+	// Determine labels based on job type
+	labels := s.GenerateLabels(podSelector)
 
 	// 创建 NodePort 类型的 Service
 	svc := &v1.Service{
@@ -194,9 +212,8 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 	ownerReferences []metav1.OwnerReference,
 	podSelector map[string]string,
 	port *v1.ServicePort,
-	host,
-	prefix,
-	username string,
+	host string,
+	prefix string,
 ) (ingressPath string, err error) {
 	if port == nil {
 		return "", fmt.Errorf("port and ownerRef cannot be nil")
@@ -204,7 +221,7 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 	namespace := s.config.Workspace.Namespace
 
 	// Generate labels
-	labels := generateLabels(podSelector, username)
+	labels := s.GenerateLabels(podSelector)
 
 	// Create the ClusterIP service
 	serviceName := fmt.Sprintf("%s-svc-%s", prefix, port.Name)
@@ -306,7 +323,7 @@ func (s *serviceManagerImpl) CreateIngress(
 	namespace := s.config.Workspace.Namespace
 
 	// Generate labels
-	labels := generateLabels(podSelector, username)
+	labels := s.GenerateLabels(podSelector)
 
 	// 生成随机8位字符串作为子域名前缀
 	randomPrefix := uuid.New().String()[:5]
