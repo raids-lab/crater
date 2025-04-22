@@ -1,11 +1,16 @@
 import instance, { VERSION } from "@/services/axios";
 import { IResponse } from "@/services/types";
-import { K8sResources } from "@/utils/resource";
 
 export enum NodeType {
   Hygon = "hygon",
   Shenwei = "shenwei",
   Yitian = "yitian",
+}
+
+interface BriefResource {
+  cpu: string;
+  memory: string;
+  gpu: string;
 }
 
 export interface IClusterNodeInfo {
@@ -15,8 +20,8 @@ export interface IClusterNodeInfo {
   labels: Record<string, string>;
   isReady: string;
   taint: string;
-  capacity: K8sResources;
-  allocated: K8sResources;
+  capacity: BriefResource;
+  allocated: BriefResource;
   podCount: number;
 }
 
@@ -71,11 +76,7 @@ export interface IClusterNodeTaint {
   taint: string;
 }
 export const apiGetNodes = () =>
-  instance.get<
-    IResponse<{
-      rows: IClusterNodeInfo[];
-    }>
-  >(VERSION + "/nodes");
+  instance.get<IResponse<IClusterNodeInfo[]>>(VERSION + "/nodes");
 
 export const apiGetNodeDetail = (name: string) =>
   instance.get<IResponse<IClusterNodeDetail>>(VERSION + `/nodes/${name}`);

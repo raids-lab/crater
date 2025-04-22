@@ -9,7 +9,7 @@ import { getHeader } from "@/pages/Admin/Job/Overview";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 import { JobPhase } from "@/services/api/vcjob";
 import JobPhaseLabel, {
-  aijobPhases,
+  getJobPhaseLabel,
   jobPhases,
 } from "@/components/badge/JobPhaseBadge";
 import { IJobInfo, JobType, apiJobAllList } from "@/services/api/vcjob";
@@ -25,7 +25,6 @@ import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
 import {
   globalJobUrl,
-  globalSettings,
   globalUserInfo,
   globalHideUsername,
 } from "@/utils/store";
@@ -62,7 +61,6 @@ const toolbarConfig: DataTableToolbarConfig = {
 export const Component: FC = () => {
   const userInfo = useAtomValue(globalUserInfo);
   const jobType = useAtomValue(globalJobUrl);
-  const { scheduler } = useAtomValue(globalSettings);
 
   const nodeQuery = useNodeQuery(true);
   const { getNicknameByName } = useAccountNameLookup();
@@ -213,11 +211,11 @@ export const Component: FC = () => {
           acc[phase] += 1;
           return acc;
         },
-        {} as Record<string, number>,
+        {} as Record<JobPhase, number>,
       );
     return Object.entries(counts).map(([phase, count]) => ({
       id: phase,
-      label: phase,
+      label: getJobPhaseLabel(phase as JobPhase).label,
       value: count,
     }));
   }, [jobQuery.data]);
@@ -236,17 +234,20 @@ export const Component: FC = () => {
             ? getUserPseudonym(item.owner)
             : item.owner;
           if (!acc[owner]) {
-            acc[owner] = 0;
+            acc[owner] = {
+              nickname: item.userInfo.nickname ?? item.owner,
+              count: 0,
+            };
           }
-          acc[owner] += 1;
+          acc[owner].count += 1;
           return acc;
         },
-        {} as Record<string, number>,
+        {} as Record<string, { nickname: string; count: number }>,
       );
-    return Object.entries(counts).map(([owner, count]) => ({
+    return Object.entries(counts).map(([owner, pair]) => ({
       id: owner,
-      label: owner,
-      value: count,
+      label: hideUsername ? getUserPseudonym(owner) : pair.nickname,
+      value: pair.count,
     }));
   }, [hideUsername, jobQuery.data]);
 
@@ -338,8 +339,7 @@ export const Component: FC = () => {
             data={jobStatus}
             margin={{ top: 25, bottom: 30 }}
             colors={({ id }) => {
-              const phases = scheduler === "volcano" ? jobPhases : aijobPhases;
-              return phases.find((x) => x.value === id)?.color ?? "#000";
+              return jobPhases.find((x) => x.value === id)?.color ?? "#000";
             }}
             arcLabelsTextColor="#ffffff"
           />
