@@ -12,6 +12,7 @@ type DBService interface {
 	Create(task *model.AITask) error
 	Update(task *model.AITask) error
 	UpdateStatus(taskID uint, status string, reason string) error
+	UpdateNodeName(taskID uint, nodeName string) error
 	UpdateJobName(taskID uint, jobname string) error
 	DeleteByID(taskID uint) error
 	DeleteByQueueAndID(userName string, taskID uint) error
@@ -83,6 +84,12 @@ func (s *service) UpdateStatus(taskID uint, status, reason string) error {
 func (s *service) UpdateJobName(taskID uint, jobname string) error {
 	q := query.AITask
 	_, err := q.WithContext(context.Background()).Where(q.ID.Eq(taskID)).Update(q.JobName, jobname)
+	return err
+}
+
+func (s *service) UpdateNodeName(taskID uint, nodeName string) error {
+	q := query.AITask
+	_, err := q.WithContext(context.Background()).Where(q.ID.Eq(taskID)).Update(q.Node, nodeName)
 	return err
 }
 

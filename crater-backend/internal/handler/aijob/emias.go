@@ -13,7 +13,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v2"
-	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -238,127 +237,6 @@ type (
 	}
 )
 
-type CreateTaskResp struct {
-	TaskID uint
-}
-
-func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
-	token := interutil.GetToken(c)
-	var vcReq CreateJupyterReq
-	if err := c.ShouldBindJSON(&vcReq); err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-
-	var req CreateTaskReq
-
-	req.TaskName = vcReq.Name
-	req.Namespace = config.GetConfig().Workspace.Namespace
-	req.UserName = token.AccountName
-	req.SLO = 1
-	req.TaskType = "jupyter"
-	req.Image = vcReq.Image
-	req.ResourceRequest = vcReq.Resource
-
-	taskModel := model.FormatTaskAttrToModel(&req.TaskAttr)
-
-	// Command to start Jupyter
-	commandSchema := "start.sh jupyter lab --allow-root --notebook-dir=/home/%s"
-	command := fmt.Sprintf(commandSchema, token.Username)
-
-	// 1. Volume Mounts
-	volumes, volumeMounts, err := vcjob.GenerateVolumeMounts(c, vcReq.VolumeMounts, token)
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	// 1.1 Support NGC images
-	if !strings.Contains(req.Image, "jupyter") {
-		volumes = append(volumes, v1.Volume{
-			Name: "bash-script-volume",
-			VolumeSource: v1.VolumeSource{
-				ConfigMap: &v1.ConfigMapVolumeSource{
-					LocalObjectReference: v1.LocalObjectReference{
-						Name: "jupyter-start-configmap",
-					},
-					//nolint:mnd // 0755 is the default mode
-					DefaultMode: ptr.To(int32(0755)),
-				},
-			},
-		})
-		volumeMounts = append(volumeMounts, v1.VolumeMount{
-			Name:      "bash-script-volume",
-			MountPath: "/usr/bin/start.sh",
-			ReadOnly:  false,
-			SubPath:   "start.sh",
-		})
-
-		commandSchema := "/usr/bin/start.sh jupyter lab --allow-root --notebook-dir=/home/%s"
-		command = fmt.Sprintf(commandSchema, token.Username)
-	}
-
-	// 2. Env Vars
-	//nolint:mnd // 4 is the number of default envs
-	envs := make([]v1.EnvVar, len(vcReq.Envs)+4)
-	envs[0] = v1.EnvVar{Name: "GRANT_SUDO", Value: "1"}
-	envs[1] = v1.EnvVar{Name: "CHOWN_HOME", Value: "1"}
-	envs[2] = v1.EnvVar{Name: "NB_UID", Value: "1001"}
-	envs[3] = v1.EnvVar{Name: "NB_USER", Value: token.Username}
-	for i, env := range vcReq.Envs {
-		envs[i+4] = env
-	}
-
-	// 3. TODO: Node Affinity for ARM64 Nodes
-	affinity := vcjob.GenerateNodeAffinity(vcReq.Selectors, nil)
-
-	// 5. Create the pod spec
-	podSpec := v1.PodSpec{
-		Affinity: affinity,
-		Volumes:  volumes,
-		Containers: []v1.Container{
-			{
-				Name:    "jupyter-notebook",
-				Image:   req.Image,
-				Command: []string{"bash", "-c", command},
-				Resources: v1.ResourceRequirements{
-					Limits:   vcReq.Resource,
-					Requests: vcReq.Resource,
-				},
-				WorkingDir: fmt.Sprintf("/home/%s", token.Username),
-
-				Env: envs,
-				Ports: []v1.ContainerPort{
-					{ContainerPort: vcjob.JupyterPort, Name: "notebook-port", Protocol: v1.ProtocolTCP},
-				},
-				SecurityContext: &v1.SecurityContext{
-					AllowPrivilegeEscalation: ptr.To(true),
-					RunAsUser:                ptr.To(int64(0)),
-					RunAsGroup:               ptr.To(int64(0)),
-				},
-				TerminationMessagePath:   "/dev/termination-log",
-				TerminationMessagePolicy: v1.TerminationMessageReadFile,
-				VolumeMounts:             volumeMounts,
-			},
-		},
-	}
-
-	taskModel.PodTemplate = datatypes.NewJSONType(podSpec)
-	taskModel.Owner = token.Username
-	err = mgr.taskService.Create(taskModel)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("create task failed, err %v", err), resputil.NotSpecified)
-		return
-	}
-	mgr.NotifyTaskUpdate(taskModel.ID, taskModel.UserName, util.CreateTask)
-
-	logutils.Log.Infof("create task success, taskID: %d", taskModel.ID)
-	resp := CreateTaskResp{
-		TaskID: taskModel.ID,
-	}
-	resputil.Success(c, resp)
-}
-
 // GetJobPods godoc
 // @Summary 获取任务的Pod列表
 // @Description 获取任务的Pod列表
@@ -407,63 +285,6 @@ type (
 		SLO                   uint `json:"slo"`
 	}
 )
-
-// CreateCustom godoc
-// @Summary CreateCustom a new AI job
-// @Description CreateCustom a new AI job by client-go
-// @Tags AIJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param job body any true "CreateCustom AI Job Request"
-// @Success 200 {object} resputil.Response[any] "CreateCustom AI Job Response"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/aijobs/training [post]
-func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
-	var vcReq CreateAIJobReq
-	if err := c.ShouldBindJSON(&vcReq); err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-
-	var req CreateTaskReq
-
-	token := interutil.GetToken(c)
-	req.TaskName = vcReq.Name
-	req.Namespace = config.GetConfig().Workspace.Namespace
-	req.UserName = token.AccountName
-	req.SLO = vcReq.SLO
-	req.TaskType = "training"
-	req.Image = vcReq.Image
-	req.ResourceRequest = vcReq.Resource
-	if vcReq.Command != nil {
-		req.Command = *vcReq.Command
-	}
-	req.WorkingDir = vcReq.WorkingDir
-
-	taskModel := model.FormatTaskAttrToModel(&req.TaskAttr)
-	podSpec, err := vcjob.GenerateCustomPodSpec(c, token, &vcReq.CreateCustomReq)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("generate pod spec failed, err %v", err), resputil.NotSpecified)
-		return
-	}
-
-	taskModel.PodTemplate = datatypes.NewJSONType(podSpec)
-	taskModel.Owner = token.Username
-	err = mgr.taskService.Create(taskModel)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("create task failed, err %v", err), resputil.NotSpecified)
-		return
-	}
-	mgr.NotifyTaskUpdate(taskModel.ID, taskModel.UserName, util.CreateTask)
-
-	logutils.Log.Infof("create task success, taskID: %d", taskModel.ID)
-	resp := CreateTaskResp{
-		TaskID: taskModel.ID,
-	}
-	resputil.Success(c, resp)
-}
 
 type AIJobResp struct {
 	vcjob.JobResp `json:",inline"`
@@ -540,10 +361,15 @@ func convertToAIJobResp(c context.Context, aiTask *model.AITask) (AIJobResp, err
 		return AIJobResp{}, err
 	}
 
+	profileStatus := aiTask.ProfileStatus
+	if aiTask.IsDeleted && profileStatus != model.EmiasProfileFinish {
+		profileStatus = model.EmiasProfileSkipped
+	}
+
 	return AIJobResp{
 		ID:            aiTask.ID,
 		Priority:      priority,
-		ProfileStatus: strconv.FormatUint(uint64(aiTask.ProfileStatus), 10),
+		ProfileStatus: strconv.FormatUint(uint64(profileStatus), 10),
 		JobResp: vcjob.JobResp{
 			Name:    aiTask.TaskName,
 			JobName: fmt.Sprintf("%d", aiTask.ID),

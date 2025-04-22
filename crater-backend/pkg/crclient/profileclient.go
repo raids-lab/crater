@@ -66,14 +66,6 @@ func (c *ProfilingPodControl) CreateProfilePodFromTask(ctx context.Context, task
 
 	// 1. rewrite resourceRequest nvidia.com/* to nvidia.com/p100
 	resourceRequest := make(v1.ResourceList)
-	rawResourceRequest := podSpec.Containers[0].Resources.Requests
-	for k, v := range rawResourceRequest {
-		if strings.Contains(string(k), "nvidia.com") {
-			resourceRequest["nvidia.com/v100"] = v
-		} else {
-			resourceRequest[k] = v
-		}
-	}
 	podSpec.Containers[0].Resources.Requests = resourceRequest
 	podSpec.Containers[0].Resources.Limits = resourceRequest
 

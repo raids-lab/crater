@@ -35,11 +35,12 @@ const (
 	EmiasTaskFreedStatus     = "Freed"
 
 	// ProfilingStatus
-	EmiasUnProfiled    = 0
-	EmiasProfileQueued = 1
-	EmiasProfiling     = 2
-	EmiasProfileFinish = 3
-	EmiasProfileFailed = 4
+	EmiasUnProfiled     = 0
+	EmiasProfileQueued  = 1
+	EmiasProfiling      = 2
+	EmiasProfileFinish  = 3
+	EmiasProfileFailed  = 4
+	EmiasProfileSkipped = 5
 )
 
 var (
