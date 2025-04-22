@@ -10,8 +10,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/raids-lab/crater/dao/model"
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
-	"github.com/raids-lab/crater/pkg/models"
 )
 
 var (
@@ -33,7 +33,7 @@ func (c *ProfilingPodControl) ListProflingPods() ([]v1.Pod, error) {
 	return pods.Items, nil
 }
 
-func (c *ProfilingPodControl) DeleteProfilePodFromTask(task *models.AITask) error {
+func (c *ProfilingPodControl) DeleteProfilePodFromTask(task *model.AITask) error {
 	podName := fmt.Sprintf("%s-%d-profiling", task.TaskName, task.ID)
 	podName = strings.ToLower(podName)
 	podName = strings.ReplaceAll(podName, "_", "-")
@@ -58,7 +58,7 @@ func (c *ProfilingPodControl) GetTaskIDFromPod(pod *v1.Pod) (uint, error) {
 	return uint(taskID), nil
 }
 
-func (c *ProfilingPodControl) CreateProfilePodFromTask(ctx context.Context, task *models.AITask) error {
+func (c *ProfilingPodControl) CreateProfilePodFromTask(ctx context.Context, task *model.AITask) error {
 	podSpec := task.PodTemplate.Data()
 	if len(podSpec.Containers) == 0 {
 		return fmt.Errorf("no container in pod spec")

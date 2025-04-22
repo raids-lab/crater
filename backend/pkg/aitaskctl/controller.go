@@ -16,10 +16,8 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/crclient"
-	quotadb "github.com/raids-lab/crater/pkg/db/quota"
 	taskdb "github.com/raids-lab/crater/pkg/db/task"
 	"github.com/raids-lab/crater/pkg/logutils"
-	"github.com/raids-lab/crater/pkg/models"
 	"github.com/raids-lab/crater/pkg/profiler"
 	"github.com/raids-lab/crater/pkg/util"
 )
@@ -40,7 +38,6 @@ type TaskControllerInterface interface {
 
 type TaskController struct {
 	jobControl    *crclient.JobControl      // 创建AIJob的接口
-	quotaDB       quotadb.DBService         // 获取db中的quota
 	taskDB        taskdb.DBService          // 获取db中的task
 	taskQueue     *TaskQueue                // 队列信息
 	quotaInfos    sync.Map                  // quota缓存
@@ -57,7 +54,6 @@ const (
 func NewTaskController(crClient client.Client, cs kubernetes.Interface, statusChan <-chan util.JobStatusChan) TaskControllerInterface {
 	return &TaskController{
 		jobControl:    &crclient.JobControl{Client: crClient, KubeClient: cs},
-		quotaDB:       quotadb.NewDBService(),
 		taskDB:        taskdb.NewDBService(),
 		taskQueue:     NewTaskQueue(),
 		quotaInfos:    sync.Map{},
@@ -82,7 +78,7 @@ func (c *TaskController) Init() error {
 	for i := range quotas {
 		// 添加quota
 		c.AddOrUpdateQuotaInfo(quotas[i])
-		queueingList, err := c.taskDB.ListByUserAndStatuses(quotas[i].Name, models.TaskQueueingStatuses)
+		queueingList, err := c.taskDB.ListByUserAndStatuses(quotas[i].Name, model.EmiasTaskQueueingStatuses)
 		if err != nil {
 			logutils.Log.Errorf("list user:%v queueing tasks failed, err: %v", quotas[i].Name, err)
 			continue
@@ -130,7 +126,7 @@ func (c *TaskController) watchJobStatus(ctx context.Context) {
 				if quotaInfo != nil {
 					quotaInfo.DeleteTask(task)
 				}
-			} else if status.NewStatus == models.TaskQueueingStatus { // todo: fixme??
+			} else if status.NewStatus == model.EmiasTaskQueueingStatus { // todo: fixme??
 				// 更新task队列
 				c.taskQueue.AddTask(task)
 			}
@@ -168,7 +164,7 @@ func (c *TaskController) TaskUpdated(event util.TaskUpdateChan) {
 			logutils.Log.Errorf("delete job from task failed, err: %v", err)
 		}
 		// delete from profiler
-		if c.profiler != nil && (task.ProfileStatus == models.ProfileQueued || task.ProfileStatus == models.Profiling) {
+		if c.profiler != nil && (task.ProfileStatus == model.EmiasProfileQueued || task.ProfileStatus == model.EmiasProfiling) {
 			c.profiler.DeleteProfilePodFromTask(task.ID)
 		}
 		logutils.Log.Infof("delete task in task controller, %d", event.TaskID)
@@ -207,7 +203,7 @@ func (c *TaskController) TaskUpdated(event util.TaskUpdateChan) {
 // 	}
 // }
 
-func (c *TaskController) updateTaskStatus(taskID, status, reason string) (*models.AITask, error) {
+func (c *TaskController) updateTaskStatus(taskID, status, reason string) (*model.AITask, error) {
 	// convert taskID to uint
 	tid, _ := strconv.ParseUint(taskID, 10, 64)
 
@@ -230,7 +226,7 @@ func (c *TaskController) updateTaskStatus(taskID, status, reason string) (*model
 //nolint:gocyclo // TODO: figure out a better way to handle this
 func (c *TaskController) schedule(_ context.Context) {
 	// 等待调度的队列
-	candiates := make([]*models.AITask, 0)
+	candiates := make([]*model.AITask, 0)
 
 	// 1. guaranteed job schedule
 	for username, q := range c.taskQueue.userQueues {
@@ -243,7 +239,7 @@ func (c *TaskController) schedule(_ context.Context) {
 		}
 		// 2. 从gauranteedQueue队列选出不超过quota的作业
 		for _, t := range q.gauranteedQueue.List() {
-			task := t.(*models.AITask)
+			task := t.(*model.AITask)
 
 			if !quotaCopy.CheckHardQuotaExceed(task) {
 				candiates = append(candiates, task)
@@ -260,15 +256,15 @@ func (c *TaskController) schedule(_ context.Context) {
 	// 2. best effort queue的作业调度
 	for _, q := range c.taskQueue.userQueues {
 		for _, t := range q.bestEffortQueue.List() {
-			task := t.(*models.AITask)
+			task := t.(*model.AITask)
 			// logutils.Log.Infof("user:%v, task: %v, task status:%v, profile status: %v", task.UserName, task.ID, task.Status, task.ProfileStatus)
 			// update profile status
 			if c.profiler != nil {
 				// todo: udpate profile status???
-				if task.Status == models.TaskQueueingStatus && task.ProfileStatus == models.UnProfiled {
+				if task.Status == model.EmiasTaskQueueingStatus && task.ProfileStatus == model.EmiasUnProfiled {
 					c.profiler.SubmitProfileTask(task.ID)
 					logutils.Log.Infof("submit profile task, user:%v taskID:%v, taskName:%v", task.UserName, task.ID, task.TaskName)
-					task.ProfileStatus = models.ProfileQueued
+					task.ProfileStatus = model.EmiasProfileQueued
 				} else {
 					// todo: 优化 check profile status
 					candiates = append(candiates, task)
@@ -291,11 +287,11 @@ func (c *TaskController) schedule(_ context.Context) {
 			continue
 		}
 		// check profiling status
-		if task.ProfileStatus == models.Profiling || task.ProfileStatus == models.ProfileQueued {
+		if task.ProfileStatus == model.EmiasProfiling || task.ProfileStatus == model.EmiasProfileQueued {
 			continue
-		} else if task.ProfileStatus == models.ProfileFailed {
+		} else if task.ProfileStatus == model.EmiasProfileFailed {
 			//nolint:gocritic // TODO: figure out a better way to handle this
-			// c.taskDB.UpdateStatus(task.ID, models.TaskFailedStatus, "task profile failed")
+			// c.taskDB.UpdateStatus(task.ID, model.EmiasTaskFailedStatus, "task profile failed")
 			c.taskQueue.DeleteTask(task)
 			continue
 		}
@@ -310,7 +306,7 @@ func (c *TaskController) schedule(_ context.Context) {
 }
 
 // admitTask 创建对应的aijob到集群中，更新task状态，更新quota
-func (c *TaskController) admitTask(task *models.AITask) error {
+func (c *TaskController) admitTask(task *model.AITask) error {
 	// 重新check quota
 	// 更新quota
 	quotaInfo := c.GetQuotaInfo(task.UserName)
@@ -325,7 +321,7 @@ func (c *TaskController) admitTask(task *models.AITask) error {
 
 	jobname, err := c.jobControl.CreateJobFromTask(task)
 	if err != nil {
-		err = c.taskDB.UpdateStatus(task.ID, models.TaskFailedStatus, err.Error())
+		err = c.taskDB.UpdateStatus(task.ID, model.EmiasTaskFailedStatus, err.Error())
 		if err != nil {
 			return err
 		}
@@ -333,7 +329,7 @@ func (c *TaskController) admitTask(task *models.AITask) error {
 		return err
 	}
 	// 更新task状态
-	err = c.taskDB.UpdateStatus(task.ID, models.TaskCreatedStatus, "AIJob created")
+	err = c.taskDB.UpdateStatus(task.ID, model.EmiasTaskCreatedStatus, "AIJob created")
 	if err != nil {
 		return err
 	}

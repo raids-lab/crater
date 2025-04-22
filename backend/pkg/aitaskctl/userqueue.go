@@ -3,7 +3,7 @@ package aitaskctl
 import (
 	"strconv"
 
-	"github.com/raids-lab/crater/pkg/models"
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/pkg/util/queue"
 )
 
@@ -33,13 +33,13 @@ func NewUserQueue(username string) *userQueue {
 
 // 默认key函数是taskID
 func keyFunc(obj any) string {
-	t := obj.(*models.AITask)
+	t := obj.(*model.AITask)
 	return strconv.FormatUint(uint64(t.ID), 10)
 }
 
 // 按照提交时间顺序排队
 func fifoOrdering(a, b any) bool {
-	tA := a.(*models.AITask)
-	tB := b.(*models.AITask)
+	tA := a.(*model.AITask)
+	tB := b.(*model.AITask)
 	return tA.CreatedAt.After(tB.CreatedAt)
 }

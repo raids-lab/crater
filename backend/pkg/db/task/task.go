@@ -1,33 +1,36 @@
 package task
 
 import (
+	"context"
 	"time"
 
-	db "github.com/raids-lab/crater/pkg/db/orm"
-	"github.com/raids-lab/crater/pkg/models"
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
 )
 
 type DBService interface {
-	Create(task *models.AITask) error
-	Update(task *models.AITask) error
+	Create(task *model.AITask) error
+	Update(task *model.AITask) error
 	UpdateStatus(taskID uint, status string, reason string) error
 	UpdateJobName(taskID uint, jobname string) error
 	DeleteByID(taskID uint) error
 	DeleteByUserAndID(userName string, taskID uint) error
 	ForceDeleteByUserAndID(userName string, taskID uint) error
-	ListByTaskType(taskType string, page, pageSize int) ([]models.AITask, int64, error)
-	ListByUserAndStatuses(userName string, status []string) ([]models.AITask, error)
-	ListByQueue(queue string) ([]models.AITask, error)
-	ListAll() ([]models.AITask, error)
-	GetByID(taskID uint) (*models.AITask, error)
-	GetByQueueAndID(userName string, taskID uint) (*models.AITask, error)
-	GetByJobName(jobName string) (*models.AITask, error)
+	ListByTaskType(taskType string, page, pageSize int) ([]*model.AITask, int64, error)
+	ListByUserAndStatuses(userName string, status []string) ([]*model.AITask, error)
+	ListByQueue(queue string) ([]*model.AITask, error)
+	ListAll() ([]*model.AITask, error)
+	GetByID(taskID uint) (*model.AITask, error)
+	GetByQueueAndID(userName string, taskID uint) (*model.AITask, error)
+	GetByJobName(jobName string) (*model.AITask, error)
 	UpdateProfilingStat(taskID uint, profileStatus uint, stat string, status string) error
 	UpdateToken(taskID uint, token string) error
 	UpdateNodePort(taskID uint, nodePort int32) error
-	GetTaskStatusCount() ([]models.TaskStatusCount, error)
-	GetUserTaskStatusCount(userName string) ([]models.TaskStatusCount, error)
+	GetTaskStatusCount() ([]model.TaskStatusCount, error)
+	GetUserTaskStatusCount(userName string) ([]model.TaskStatusCount, error)
 }
+
+type TaskStatusCount = model.TaskStatusCount
 
 type service struct{}
 
@@ -35,152 +38,212 @@ func NewDBService() DBService {
 	return &service{}
 }
 
-func (s *service) Create(task *models.AITask) error {
-	return db.Orm.Create(task).Error
+func (s *service) Create(task *model.AITask) error {
+	return query.AITask.WithContext(context.Background()).Create(task)
 }
 
-func (s *service) Update(task *models.AITask) error {
-	return db.Orm.Save(task).Error
+func (s *service) Update(task *model.AITask) error {
+	return query.AITask.WithContext(context.Background()).Save(task)
 }
 
 func (s *service) UpdateStatus(taskID uint, status, reason string) error {
-	task, _ := s.GetByID(taskID)
+	ctx := context.Background()
+	task, err := s.GetByID(taskID)
+	if err != nil {
+		return err
+	}
+
 	if task.Status == status {
 		return nil
 	}
-	updateMap := make(map[string]any)
+
+	q := query.AITask
+	updateMap := make(map[string]interface{})
 	updateMap["status"] = status
-	// 取前100
 	updateMap["status_reason"] = reason
+
 	t := time.Now()
 	switch status {
-	case models.TaskCreatedStatus:
+	case "Created":
 		updateMap["admitted_at"] = &t
-	case models.TaskRunningStatus:
+	case "Running":
 		updateMap["started_at"] = &t
-	case models.TaskSucceededStatus, models.TaskFailedStatus:
+	case "Succeeded", "Failed":
 		updateMap["finish_at"] = &t
 		if task.StartedAt != nil {
-			updateMap["duration"] = t.Sub(*task.StartedAt).Seconds()
+			updateMap["duration"] = uint(t.Sub(*task.StartedAt).Seconds())
 		}
-		updateMap["jct"] = t.Sub(task.CreatedAt).Seconds()
+		updateMap["jct"] = uint(t.Sub(task.CreatedAt).Seconds())
 	}
-	err := db.Orm.Model(&models.AITask{}).Where("id = ?", taskID).Updates(updateMap).Error
+
+	_, err = q.WithContext(ctx).Where(q.ID.Eq(taskID)).Updates(updateMap)
 	return err
 }
 
 func (s *service) UpdateJobName(taskID uint, jobname string) error {
-	err := db.Orm.Model(&models.AITask{}).Where("id = ?", taskID).Update("jobname", jobname).Error
+	q := query.AITask
+	_, err := q.WithContext(context.Background()).Where(q.ID.Eq(taskID)).Update(q.JobName, jobname)
 	return err
 }
 
 func (s *service) DeleteByUserAndID(userName string, taskID uint) error {
-	err := db.Orm.Model(&models.AITask{}).Where("username = ? and id = ?", userName, taskID).Update("is_deleted", true).Error
+	q := query.AITask
+	_, err := q.WithContext(context.Background()).Where(q.UserName.Eq(userName), q.ID.Eq(taskID)).Update(q.IsDeleted, true)
 	return err
 }
 
 func (s *service) ForceDeleteByUserAndID(userName string, taskID uint) error {
-	err := db.Orm.Where("username = ? and id = ?", userName, taskID).Delete(&models.AITask{}).Error
+	q := query.AITask
+	_, err := q.WithContext(context.Background()).Where(q.UserName.Eq(userName), q.ID.Eq(taskID)).Delete()
 	return err
 }
 
 func (s *service) DeleteByID(taskID uint) error {
-	return db.Orm.Delete(&models.AITask{}, taskID).Error
+	q := query.AITask
+	_, err := q.WithContext(context.Background()).Where(q.ID.Eq(taskID)).Delete()
+	return err
 }
 
-func (s *service) ListByUserAndStatuses(userName string, statuses []string) ([]models.AITask, error) {
-	var tasks []models.AITask
-	var err error
+func (s *service) ListByUserAndStatuses(userName string, statuses []string) ([]*model.AITask, error) {
+	q := query.AITask
+	ctx := context.Background()
+
 	if len(statuses) == 0 {
-		err = db.Orm.Where("username = ? ", userName).Find(&tasks).Error
-	} else {
-		err = db.Orm.Where("username = ? and status IN ? and is_deleted = ?", userName, statuses, false).Find(&tasks).Error
+		return q.WithContext(ctx).Where(q.UserName.Eq(userName)).Find()
 	}
-	return tasks, err
+
+	// 修复: 使用正确的 In 方法接收字符串切片
+	return q.WithContext(ctx).Where(q.UserName.Eq(userName), q.Status.In(statuses...), q.IsDeleted.Is(false)).Find()
 }
 
-func (s *service) ListByTaskType(taskType string, page, pageSize int) ([]models.AITask, int64, error) {
-	var totalRows int64
-	var tasks []models.AITask
+func (s *service) ListByTaskType(taskType string, page, pageSize int) ([]*model.AITask, int64, error) {
+	q := query.AITask
+	ctx := context.Background()
 
-	query := db.Orm.Model(&models.AITask{}).Where("task_type = ?", taskType)
-	query.Count(&totalRows)
+	// 计算总数
+	count, err := q.WithContext(ctx).Where(q.TaskType.Eq(taskType)).Count()
+	if err != nil {
+		return nil, 0, err
+	}
 
-	query.Order("created_at DESC")
+	// 分页查询
+	qu := q.WithContext(ctx).Where(q.TaskType.Eq(taskType)).Order(q.CreatedAt.Desc())
 	if pageSize > 0 {
-		query = query.Limit(pageSize).Offset(page * pageSize)
+		qu = qu.Offset(page * pageSize).Limit(pageSize)
 	}
-	err := query.Find(&tasks).Error
-	return tasks, totalRows, err
+
+	tasks, err := qu.Find()
+	return tasks, count, err
 }
 
-func (s *service) ListByQueue(queue string) ([]models.AITask, error) {
-	var tasks []models.AITask
-	err := db.Orm.Where("username = ? and is_deleted = ?", queue, false).Find(&tasks).Error
-	return tasks, err
+func (s *service) ListByQueue(queue string) ([]*model.AITask, error) {
+	q := query.AITask
+	return q.WithContext(context.Background()).Where(q.UserName.Eq(queue), q.IsDeleted.Is(false)).Find()
 }
 
-func (s *service) ListAll() ([]models.AITask, error) {
-	var tasks []models.AITask
-	err := db.Orm.Where("is_deleted = ?", false).Find(&tasks).Error
-	return tasks, err
+func (s *service) ListAll() ([]*model.AITask, error) {
+	q := query.AITask
+	return q.WithContext(context.Background()).Where(q.IsDeleted.Is(false)).Find()
 }
 
-func (s *service) GetByID(taskID uint) (*models.AITask, error) {
-	var task models.AITask
-	err := db.Orm.First(&task, taskID).Error
-	return &task, err
+func (s *service) GetByID(taskID uint) (*model.AITask, error) {
+	q := query.AITask
+	return q.WithContext(context.Background()).Where(q.ID.Eq(taskID)).First()
 }
 
-func (s *service) GetByJobName(jobName string) (*models.AITask, error) {
-	var task models.AITask
-	err := db.Orm.Where("jobname = ?", jobName).First(&task).Error
-	return &task, err
+func (s *service) GetByJobName(jobName string) (*model.AITask, error) {
+	q := query.AITask
+	return q.WithContext(context.Background()).Where(q.JobName.Eq(jobName)).First()
 }
 
-func (s *service) GetByQueueAndID(userName string, taskID uint) (*models.AITask, error) {
-	var task models.AITask
-	err := db.Orm.Where("username = ? and id = ?", userName, taskID).First(&task).Error
-	return &task, err
+func (s *service) GetByQueueAndID(userName string, taskID uint) (*model.AITask, error) {
+	q := query.AITask
+	return q.WithContext(context.Background()).Where(q.UserName.Eq(userName), q.ID.Eq(taskID)).First()
 }
 
 func (s *service) UpdateProfilingStat(taskID, profileStatus uint, stat, status string) error {
-	updateMap := make(map[string]any)
+	q := query.AITask
+	ctx := context.Background()
+
+	updateMap := make(map[string]interface{})
 	updateMap["profile_status"] = profileStatus
-	if profileStatus == models.ProfileFinish {
+
+	if profileStatus == 3 { // ProfileFinish
 		updateMap["profile_stat"] = stat
 		if status != "" {
 			updateMap["status"] = status
 		}
 	}
-	err := db.Orm.Model(&models.AITask{}).Where("id = ?", taskID).Updates(updateMap).Error
+
+	_, err := q.WithContext(ctx).Where(q.ID.Eq(taskID)).Updates(updateMap)
 	return err
 }
 
 func (s *service) UpdateToken(taskID uint, token string) error {
-	err := db.Orm.Model(&models.AITask{}).Where("id = ?", taskID).Update("token", token).Error
+	q := query.AITask
+	_, err := q.WithContext(context.Background()).Where(q.ID.Eq(taskID)).Update(q.Token, token)
 	return err
 }
 
 func (s *service) UpdateNodePort(taskID uint, nodePort int32) error {
-	err := db.Orm.Model(&models.AITask{}).Where("id = ?", taskID).Update("node_port", nodePort).Error
+	q := query.AITask
+	_, err := q.WithContext(context.Background()).Where(q.ID.Eq(taskID)).Update(q.NodePort, nodePort)
 	return err
 }
 
-func (s *service) GetTaskStatusCount() ([]models.TaskStatusCount, error) {
-	var stats []models.TaskStatusCount
-	err := db.Orm.Model(&models.AITask{}).Where("is_deleted = ?", false).
-		Select("status, count(*) as count").
-		Group("status").
-		Scan(&stats).Error
-	return stats, err
+type TaskStatusCountResult struct {
+	Status string `json:"status"`
+	Count  int64  `json:"count"`
 }
 
-func (s *service) GetUserTaskStatusCount(userName string) ([]models.TaskStatusCount, error) {
-	var stats []models.TaskStatusCount
-	err := db.Orm.Model(&models.AITask{}).Where("username = ? and is_deleted = ?", userName, false).
-		Select("status, count(*) as count").
-		Group("status").
-		Scan(&stats).Error
-	return stats, err
+func (s *service) GetTaskStatusCount() ([]model.TaskStatusCount, error) {
+	q := query.AITask
+	ctx := context.Background()
+
+	var results []TaskStatusCountResult
+	err := q.WithContext(ctx).Where(q.IsDeleted.Is(false)).
+		Select(q.Status.As("status"), q.Status.Count().As("count")).
+		Group(q.Status).
+		Scan(&results)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换结果格式
+	stats := make([]model.TaskStatusCount, len(results))
+	for i, r := range results {
+		stats[i] = model.TaskStatusCount{
+			Status: r.Status,
+			Count:  int(r.Count),
+		}
+	}
+
+	return stats, nil
+}
+
+func (s *service) GetUserTaskStatusCount(userName string) ([]model.TaskStatusCount, error) {
+	q := query.AITask
+	ctx := context.Background()
+
+	var results []TaskStatusCountResult
+	err := q.WithContext(ctx).Where(q.UserName.Eq(userName), q.IsDeleted.Is(false)).
+		Select(q.Status.As("status"), q.Status.Count().As("count")).
+		Group(q.Status).
+		Scan(&results)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换结果格式
+	stats := make([]model.TaskStatusCount, len(results))
+	for i, r := range results {
+		stats[i] = model.TaskStatusCount{
+			Status: r.Status,
+			Count:  int(r.Count),
+		}
+	}
+
+	return stats, nil
 }

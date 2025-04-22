@@ -32,7 +32,6 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 	tasksvc "github.com/raids-lab/crater/pkg/db/task"
 	"github.com/raids-lab/crater/pkg/logutils"
-	"github.com/raids-lab/crater/pkg/models"
 	payload "github.com/raids-lab/crater/pkg/server/payload"
 	"github.com/raids-lab/crater/pkg/util"
 )
@@ -237,7 +236,7 @@ type (
 	}
 
 	CreateTaskReq struct {
-		models.TaskAttr
+		model.TaskAttr
 	}
 )
 
@@ -259,7 +258,7 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 	req.Image = vcReq.Image
 	req.ResourceRequest = vcReq.Resource
 
-	taskModel := models.FormatTaskAttrToModel(&req.TaskAttr)
+	taskModel := model.FormatTaskAttrToModel(&req.TaskAttr)
 
 	// Command to start Jupyter
 	commandSchema := "start.sh jupyter lab --allow-root --notebook-dir=/home/%s"
@@ -441,7 +440,7 @@ func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
 	}
 	req.WorkingDir = vcReq.WorkingDir
 
-	taskModel := models.FormatTaskAttrToModel(&req.TaskAttr)
+	taskModel := model.FormatTaskAttrToModel(&req.TaskAttr)
 	podSpec, err := vcjob.GenerateCustomPodSpec(c, token, &vcReq.CreateCustomReq)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("generate pod spec failed, err %v", err), resputil.NotSpecified)
@@ -492,7 +491,7 @@ func (mgr *AIJobMgr) ListUserJob(c *gin.Context) {
 
 	jobs := make([]AIJobResp, len(taskModels))
 	for i := range taskModels {
-		jobs[i] = convertToAIJobResp(&taskModels[i])
+		jobs[i] = convertToAIJobResp(taskModels[i])
 	}
 
 	resputil.Success(c, jobs)
@@ -507,13 +506,13 @@ func (mgr *AIJobMgr) ListAllJob(c *gin.Context) {
 
 	jobs := make([]AIJobResp, len(taskModels))
 	for i := range taskModels {
-		jobs[i] = convertToAIJobResp(&taskModels[i])
+		jobs[i] = convertToAIJobResp(taskModels[i])
 	}
 
 	resputil.Success(c, jobs)
 }
 
-func convertToAIJobResp(aiTask *models.AITask) AIJobResp {
+func convertToAIJobResp(aiTask *model.AITask) AIJobResp {
 	var runningTimestamp metav1.Time
 	if aiTask.StartedAt != nil {
 		runningTimestamp = metav1.NewTime(*aiTask.StartedAt)
@@ -531,7 +530,7 @@ func convertToAIJobResp(aiTask *models.AITask) AIJobResp {
 		priority = "low"
 	}
 
-	resources, _ := models.JSONToResourceList(aiTask.ResourceRequest)
+	resources, _ := model.JSONToResourceList(aiTask.ResourceRequest)
 
 	return AIJobResp{
 		ID:            aiTask.ID,

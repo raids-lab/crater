@@ -11,10 +11,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/pkg/crclient"
 	tasksvc "github.com/raids-lab/crater/pkg/db/task"
 	"github.com/raids-lab/crater/pkg/logutils"
-	"github.com/raids-lab/crater/pkg/models"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/util/queue"
 )
@@ -51,7 +51,7 @@ func hashString(s string) uint64 {
 	return h.Sum64()
 }
 
-func (p *Profiler) checkAndGetCache(task *models.AITask) (monitor.PodUtil, bool) {
+func (p *Profiler) checkAndGetCache(task *model.AITask) (monitor.PodUtil, bool) {
 	key := fmt.Sprintf("%s-%s", task.TaskType, task.Command)
 	cacheKey := hashString(key)
 	p.mutex.Lock()
@@ -62,7 +62,7 @@ func (p *Profiler) checkAndGetCache(task *models.AITask) (monitor.PodUtil, bool)
 }
 
 //nolint:gocritic // Must copy the util object
-func (p *Profiler) storeProfileCache(task *models.AITask, util monitor.PodUtil) {
+func (p *Profiler) storeProfileCache(task *model.AITask, util monitor.PodUtil) {
 	key := fmt.Sprintf("%s-%s", task.TaskType, task.Command)
 	cacheKey := hashString(key)
 	p.mutex.Lock()
@@ -82,16 +82,16 @@ func (p *Profiler) SubmitProfileTask(taskID uint) {
 	if ok {
 		logutils.Log.Infof("profile cache hit, taskID:%v, taskName:%v, taskType:%v, command:%v",
 			task.ID, task.TaskName, task.TaskType, task.Command)
-		err = p.taskDB.UpdateProfilingStat(task.ID, models.ProfileFinish, monitor.PodUtilToJSON(util), "")
+		err = p.taskDB.UpdateProfilingStat(task.ID, model.EmiasProfileFinish, monitor.PodUtilToJSON(util), "")
 		if err != nil {
 			logutils.Log.Errorf("update profiling stat failed, taskID:%v, err:%v", taskID, err)
 		}
 		return
 	}
 
-	if task.ProfileStatus == models.UnProfiled {
+	if task.ProfileStatus == model.EmiasUnProfiled {
 		logutils.Log.Infof("submit profiling task, user:%v, taskName:%v, taskID: %v", task.UserName, task.TaskName, taskID)
-		err = p.taskDB.UpdateProfilingStat(task.ID, models.ProfileQueued, "", "")
+		err = p.taskDB.UpdateProfilingStat(task.ID, model.EmiasProfileQueued, "", "")
 		if err != nil {
 			logutils.Log.Errorf("update profiling stat failed, taskID:%v, err:%v", taskID, err)
 		}
@@ -131,20 +131,20 @@ func (p *Profiler) run(ctx context.Context) {
 				if t == nil {
 					continue
 				}
-				task := t.(*models.AITask)
+				task := t.(*model.AITask)
 				// 1. create pod
 				// 2. update task status
 
 				err := p.podControl.CreateProfilePodFromTask(ctx, task)
 				if err != nil {
 					logutils.Log.Errorf("create profiling pod failed, taskID:%v, taskName:%v, err:%v", task.ID, task.TaskName, err)
-					err = p.taskDB.UpdateProfilingStat(task.ID, models.ProfileFailed, "", "")
+					err = p.taskDB.UpdateProfilingStat(task.ID, model.EmiasProfileFailed, "", "")
 					if err != nil {
 						logutils.Log.Errorf("update profiling stat failed, taskID:%v, err:%v", task.ID, err)
 					}
 				} else {
 					logutils.Log.Infof("create profiling pod success, taskID:%v, taskName:%v", task.ID, task.TaskName)
-					err = p.taskDB.UpdateProfilingStat(task.ID, models.Profiling, "", "")
+					err = p.taskDB.UpdateProfilingStat(task.ID, model.EmiasProfiling, "", "")
 					if err != nil {
 						logutils.Log.Errorf("update profiling stat failed, taskID:%v, err:%v", task.ID, err)
 					}
@@ -172,7 +172,7 @@ func (p *Profiler) run(ctx context.Context) {
 					if ok {
 						logutils.Log.Infof("profile cache hit, taskID:%v, taskName:%v, taskType:%v, command:%v",
 							task.ID, task.TaskName, task.TaskType, task.Command)
-						err = p.taskDB.UpdateProfilingStat(task.ID, models.ProfileFinish, monitor.PodUtilToJSON(util), "")
+						err = p.taskDB.UpdateProfilingStat(task.ID, model.EmiasProfileFinish, monitor.PodUtilToJSON(util), "")
 						if err != nil {
 							logutils.Log.Errorf("update profiling stat failed, taskID:%v, err:%v", taskID, err)
 						}
@@ -189,7 +189,7 @@ func (p *Profiler) run(ctx context.Context) {
 				// pod.Status.ContainerStatuses[0].State.Running.StartedAt?
 				// pod.Status.StartTime
 				if pod.Status.Phase == corev1.PodRunning && time.Since(pod.Status.StartTime.Time) < p.profilingTimeout {
-					// p.taskDB.UpdateProfilingStat(task.ID, models.ProfileFailed, "", "")
+					// p.taskDB.UpdateProfilingStat(task.ID, model.EmiasProfileFailed, "", "")
 					// todo: pod running-> update profiling stat
 					continue
 				}
@@ -204,19 +204,19 @@ func (p *Profiler) run(ctx context.Context) {
 
 				jobStatus := ""
 				if pod.Status.Phase == corev1.PodFailed {
-					jobStatus = models.TaskFailedStatus
+					jobStatus = model.EmiasTaskFailedStatus
 				} else if pod.Status.Phase == corev1.PodSucceeded {
-					jobStatus = models.TaskSucceededStatus
+					jobStatus = model.EmiasTaskSucceededStatus
 				}
 				podUtil, err := p.prometheusClient.QueryPodProfileMetric(pod.Namespace, pod.Name)
 				if err != nil {
 					logutils.Log.Errorf("profile query pod util failed, taskID:%v, pod:%v/%v, err:%v", taskID, pod.Namespace, pod.Name, err)
-					err = p.taskDB.UpdateProfilingStat(taskID, models.ProfileFailed, "", jobStatus)
+					err = p.taskDB.UpdateProfilingStat(taskID, model.EmiasProfileFailed, "", jobStatus)
 					if err != nil {
 						logutils.Log.Errorf("update profiling stat failed, taskID:%v, err:%v", taskID, err)
 					}
 				} else {
-					err = p.taskDB.UpdateProfilingStat(taskID, models.ProfileFinish, monitor.PodUtilToJSON(podUtil), jobStatus)
+					err = p.taskDB.UpdateProfilingStat(taskID, model.EmiasProfileFinish, monitor.PodUtilToJSON(podUtil), jobStatus)
 					if err != nil {
 						logutils.Log.Errorf("update profiling stat failed, taskID:%v, err:%v", taskID, err)
 					}

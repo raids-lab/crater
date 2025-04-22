@@ -1,50 +1,10 @@
 package models
 
 import (
-	"encoding/json"
 	"time"
 
 	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
-
-	"github.com/raids-lab/crater/pkg/logutils"
-)
-
-// TaskType
-const (
-	TrainingTask   = "training"
-	JupyterTask    = "jupyter"
-	DebuggingTask  = "debugging"
-	InferenceTask  = "inference"
-	ExperimentTask = "experiment"
-
-	HighSLO = 1
-	LowSLO  = 0
-
-	PriorityClassGauranteed = "gpu-guaranteed"
-	PriorityClassBestEffort = "gpu-besteffort"
-
-	// TaskStatus
-	TaskQueueingStatus  = "Queueing" // 用户队列里的状态
-	TaskCreatedStatus   = "Created"  // AIJob Created
-	TaskPendingStatus   = "Pending"  // AIJob排队的状态
-	TaskRunningStatus   = "Running"
-	TaskFailedStatus    = "Failed"
-	TaskSucceededStatus = "Succeeded"
-	TaskPreemptedStatus = "Preempted"
-	TaskFreedStatus     = "Freed"
-
-	// ProfilingStatus
-	UnProfiled    = 0
-	ProfileQueued = 1
-	Profiling     = 2
-	ProfileFinish = 3
-	ProfileFailed = 4
-)
-
-var (
-	TaskOcupiedQuotaStatuses = []string{TaskCreatedStatus, TaskPendingStatus, TaskRunningStatus, TaskPreemptedStatus}
-	TaskQueueingStatuses     = []string{TaskQueueingStatus}
 )
 
 // TaskModel is task presented in db
@@ -85,58 +45,8 @@ type AITask struct {
 }
 
 // TaskAttr request
-type TaskAttr struct {
-	TaskName        string                `json:"taskName" binding:"required"`
-	UserName        string                // `json:"userName" binding:"required"`
-	SLO             uint                  `json:"slo"`
-	TaskType        string                `json:"taskType" binding:"required"`
-	GPUModel        string                `json:"gpuModel"`
-	SchedulerName   string                `json:"schedulerName"`
-	Image           string                `json:"image" binding:"required"`
-	ResourceRequest v1.ResourceList       `json:"resourceRequest" binding:"required"`
-	Command         string                `json:"command" binding:"required"`
-	Args            map[string]string     `json:"args"`
-	WorkingDir      string                `json:"workingDir"`
-	ShareDirs       map[string][]DirMount `json:"shareDirs"`
-	EsitmatedTime   uint                  `json:"estimatedTime"`
-	// not for request
-	ID        uint      `json:"id"`
-	Namespace string    `json:"namspace"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `gorm:"column:created_at;not null" json:"createdAt"`
-	UpdatedAt time.Time `gorm:"column:updated_at;not null" json:"updatedAt"`
-	StartedAt time.Time `gorm:"column:started_at" json:"startedAt"`
-}
 
 type TaskStatusCount struct {
 	Status string
 	Count  int
-}
-
-//	type Volume struct {
-//		Name string `json:"name"`
-//		Mounts []DirMount `json:"mounts"`
-//	}
-type DirMount struct {
-	Volume    string `json:"volume"`
-	MountPath string `json:"mountPath"`
-	SubPath   string `json:"subPath"`
-}
-
-func JSONStringToVolumes(str string) map[string][]DirMount {
-	var volumes map[string][]DirMount
-	err := json.Unmarshal([]byte(str), &volumes)
-	if err != nil {
-		logutils.Log.Errorf("JSONStringToVolumes error: %v", err)
-		return nil
-	}
-	return volumes
-}
-
-func VolumesToJSONString(volumes map[string][]DirMount) string {
-	bytes, err := json.Marshal(volumes)
-	if err != nil {
-		return ""
-	}
-	return string(bytes)
 }
