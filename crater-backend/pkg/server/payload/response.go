@@ -3,13 +3,7 @@ package payload
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/raids-lab/crater/dao/model"
 )
-
-type CreateTaskResp struct {
-	TaskID uint
-}
 
 type AllocatedInfo struct {
 	CPU string `json:"cpu"`
@@ -18,16 +12,15 @@ type AllocatedInfo struct {
 }
 
 type ClusterNodeInfo struct {
-	Type     string              `json:"type"`
-	Name     string              `json:"name"`
-	Role     string              `json:"role"`
-	Labels   map[string]string   `json:"labels"`
-	IsReady  string              `json:"isReady"`
-	Taint    string              `json:"taint"`
-	Capacity corev1.ResourceList `json:"capacity"`
-	// Alocated v1.ResourceList   `json:"allocated"`
-	Allocated AllocatedInfo `json:"allocated"`
-	PodCount  int           `json:"podCount"`
+	Type      string              `json:"type"`
+	Name      string              `json:"name"`
+	Role      string              `json:"role"`
+	Labels    map[string]string   `json:"labels"`
+	IsReady   string              `json:"isReady"`
+	Taint     string              `json:"taint"`
+	Capacity  corev1.ResourceList `json:"capacity"`
+	Allocated AllocatedInfo       `json:"allocated"`
+	PodCount  int                 `json:"podCount"`
 }
 
 type Pod struct {
@@ -72,12 +65,4 @@ type GPUInfo struct {
 	GPUDriver   string              `json:"gpuDriver"`
 	CudaVersion string              `json:"cudaVersion"`
 	GPUProduct  string              `json:"gpuProduct"`
-}
-
-type GetTaskResp struct {
-	model.AITask
-}
-
-type GetTaskLogResp struct {
-	Logs []string `json:"logs"`
 }

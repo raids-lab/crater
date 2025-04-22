@@ -7,7 +7,6 @@ import (
 
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
-	tasksvc "github.com/raids-lab/crater/pkg/db/task"
 	"github.com/raids-lab/crater/pkg/monitor"
 )
 
@@ -21,7 +20,7 @@ type OperationsMgr struct {
 	client         client.Client
 	kubeClient     kubernetes.Interface
 	promClient     monitor.PrometheusInterface
-	taskService    tasksvc.DBService
+	taskService    aitaskctl.DBService
 	taskController aitaskctl.TaskControllerInterface
 }
 
@@ -31,7 +30,7 @@ func NewOperationsMgr(conf *handler.RegisterConfig) handler.Manager {
 		client:         conf.Client,
 		kubeClient:     conf.KubeClient,
 		promClient:     conf.PrometheusClient,
-		taskService:    tasksvc.NewDBService(),
+		taskService:    aitaskctl.NewDBService(),
 		taskController: conf.AITaskCtrl,
 	}
 }

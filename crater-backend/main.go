@@ -52,7 +52,6 @@ import (
 	"github.com/raids-lab/crater/pkg/imageregistry"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/packer"
-	"github.com/raids-lab/crater/pkg/profiler"
 	"github.com/raids-lab/crater/pkg/reconciler"
 	"github.com/raids-lab/crater/pkg/util"
 )
@@ -123,7 +122,7 @@ func setupCustomCRDAddon(
 
 		// 3. profiler config
 		if backendConfig.SchedulerPlugins.Aijob.EnableProfiling {
-			aijobProfiler := profiler.NewProfiler(mgr, registerConfig.PrometheusClient, backendConfig.SchedulerPlugins.Aijob.ProfilingTimeout)
+			aijobProfiler := aitaskctl.NewProfiler(mgr, registerConfig.PrometheusClient, backendConfig.SchedulerPlugins.Aijob.ProfilingTimeout)
 			taskCtrl.SetProfiler(aijobProfiler)
 			// todo: start profiling
 			aijobProfiler.Start(stopCh)
