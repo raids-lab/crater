@@ -8,7 +8,6 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/logutils"
-	"github.com/raids-lab/crater/pkg/server/payload"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -79,10 +78,7 @@ func (mgr *NodeMgr) ListNode(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("list nodes failed, err %v", err), resputil.NotSpecified)
 		return
 	}
-	resp := payload.ListNodeResp{
-		Rows: nodes,
-	}
-	resputil.Success(c, resp)
+	resputil.Success(c, nodes)
 }
 
 // GetNode godoc
@@ -93,7 +89,7 @@ func (mgr *NodeMgr) ListNode(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param name path string true "节点名称"
-// @Success 200 {object} resputil.Response[payload.ClusterNodeDetail] "成功返回值"
+// @Success 200 {object} resputil.Response[crclient.ClusterNodeDetail] "成功返回值"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/nodes/{name} [get]
@@ -236,7 +232,7 @@ func (mgr *NodeMgr) GetPodsForNode(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param name query string false "节点名称"
-// @Success 200 {object} resputil.Response[payload.GPUInfo] "成功返回值描述"
+// @Success 200 {object} resputil.Response[crclient.GPUInfo] "成功返回值描述"
 // @Failure 400 {object} resputil.Response[any] "请求参数错误"
 // @Failure 500 {object} resputil.Response[any] "其他错误"
 // @Router /v1/nodes/{name}/gpu/ [get]

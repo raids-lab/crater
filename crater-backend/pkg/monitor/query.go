@@ -227,7 +227,7 @@ func (p *PrometheusClient) QueryNodeAllocatedGPU() map[string]int {
 func (p *PrometheusClient) QueryNodeRunningPodCount() map[string]int {
 	query := fmt.Sprintf(`count by (node) (
 	    kube_pod_status_phase{phase="Running"} * 
-		on(pod) group_left(node, created_by_kind) kube_pod_info{namespace=%q, created_by_kind="Job"} == 1
+		on(pod) group_left(node, created_by_kind) kube_pod_info{namespace=%q, created_by_kind=~".*Job.*"} == 1
 	)`, config.GetConfig().Workspace.Namespace)
 	data, err := p.intMapQuery(query, "node")
 	if err != nil {
