@@ -1,25 +1,70 @@
 stages:
+  - build_frontend
+  - build_image
   - deploy
 
-# Deploy to Kubernetes cluster
-deploy-develop:
+variables:
+  HUSKY: "0"
+  HARBOR_REGISTRY_IMAGE: "${HARBOR_REGISTRY}/crater/document"
+
+build_frontend_main:
+  stage: build_frontend
+  image: harbor.act.buaa.edu.cn/crater/node-pnpm:21
+  script:
+    - pnpm config set store-dir .pnpm-store
+    - pnpm config set registry https://registry.npmmirror.com
+    - pnpm install
+    - pnpm build # 这会执行 docusaurus build
+  artifacts:
+    paths:
+      - build/ # Docusaurus 默认构建目录是 build 而不是 dist
+    expire_in: 1 week
+  # 其他部分保持不变...
+
+# Build Docker image and push to harbor registry for main branch
+build_image_main:
+  stage: build_image
+  image:
+    name: harbor.act.buaa.edu.cn/crater/kaniko-executor:debug
+    entrypoint: [""]
+  script:
+    # Since GitLab container registry is not enabled, we need to set up harbor registry manually.
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${HARBOR_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${HARBOR_REGISTRY_USER}" "${HARBOR_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+    - >-
+      /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
+      --destination "${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}"
+  only:
+    - main
+  dependencies:
+    - build_frontend_main
+
+# Deploy to Kubernetes cluster for testing branch
+deploy_testing:
   stage: deploy
   image:
     name: harbor.act.buaa.edu.cn/crater/bitnami-kubectl:240302
     entrypoint: [""]
   script:
     - kubectl config use-context raids/resource-scheduling/crater/web-frontend:crater-cluster
-    - kubectl rollout restart deployment crater-website -n crater
+    - kubectl set image deployment/crater-web-frontend crater-web-frontend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -n crater
   only:
     - main
+  dependencies:
+    - build_image_main
 
-deploy-release:
+# Deploy to Kubernetes cluster for main branch
+deploy_main:
   stage: deploy
   image:
     name: harbor.act.buaa.edu.cn/crater/bitnami-kubectl:240302
     entrypoint: [""]
   script:
     - kubectl config use-context raids/resource-scheduling/crater/web-frontend:actgpu-cluster
-    - kubectl rollout restart deployment crater-website -n crater
+    - kubectl set image deployment/crater-web-frontend crater-web-frontend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -n crater
   only:
     - main
+  dependencies:
+    - build_image_main
