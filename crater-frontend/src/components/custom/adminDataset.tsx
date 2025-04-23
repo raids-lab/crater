@@ -43,6 +43,10 @@ const roles = [
     label: "模型",
     value: "model",
   },
+  {
+    label: "共享文件",
+    value: "sharefile",
+  },
 ];
 export const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {

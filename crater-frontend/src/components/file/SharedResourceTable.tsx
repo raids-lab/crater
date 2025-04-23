@@ -66,7 +66,7 @@ import TooltipButton from "../custom/TooltipButton";
 import { useIsAdmin } from "@/hooks/useAdmin";
 
 interface SharedResourceTableProps {
-  resourceType: "model" | "dataset";
+  resourceType: "model" | "dataset" | "sharefile";
   apiShareDatasetwithUser: (
     ud: UserDataset,
   ) => Promise<AxiosResponse<IResponse<string>>>;
@@ -98,6 +98,18 @@ export function SharedResourceTable({
   const setBreadcrumb = useBreadcrumb();
   const user = useAtomValue(globalUserInfo);
   const isAdminMode = useIsAdmin();
+  const dataTypeLabel = (() => {
+    switch (resourceType) {
+      case "dataset":
+        return "数据集";
+      case "model":
+        return "模型";
+      case "sharefile":
+        return "共享文件";
+      default:
+        return "数据集";
+    }
+  })();
   const userDatasetData = useQuery({
     queryKey: ["data", "userdataset", datasetId],
     queryFn: () => apiListUsersInDataset(datasetId),
@@ -173,10 +185,10 @@ export function SharedResourceTable({
     mutationFn: (datasetID: number) => apiDatasetDelete(datasetID),
     onSuccess: () => {
       navigate(-1);
-      toast.success(`${resourceType === "model" ? "模型" : "数据集"}已删除`);
+      toast.success(`${dataTypeLabel}已删除`);
     },
     onError: () => {
-      toast.error(`删除${resourceType === "model" ? "模型" : "数据集"}失败`);
+      toast.error(`删除${dataTypeLabel}}失败`);
     },
   });
 
@@ -241,8 +253,7 @@ export function SharedResourceTable({
                 <DialogHeader>
                   <DialogTitle>取消用户共享</DialogTitle>
                   <DialogDescription>
-                    和指定的用户取消共享
-                    {resourceType === "model" ? "模型" : "数据集"}
+                    和指定的用户取消共享的{dataTypeLabel}
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
@@ -263,7 +274,7 @@ export function SharedResourceTable({
         ),
       },
     ],
-    [cancelShareWithUser, resourceType],
+    [cancelShareWithUser, dataTypeLabel],
   );
 
   const queueDatasetColumns = useMemo<ColumnDef<QueueDatasetGetResp>[]>(
@@ -303,8 +314,8 @@ export function SharedResourceTable({
                 <DialogHeader>
                   <DialogTitle>取消账户共享</DialogTitle>
                   <DialogDescription>
-                    和指定的账户取消共享
-                    {resourceType === "model" ? "模型" : "数据集"}
+                    和指定的账户取消共享的
+                    {dataTypeLabel}
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
@@ -325,7 +336,7 @@ export function SharedResourceTable({
         ),
       },
     ],
-    [cancelShareWithQueue, resourceType],
+    [cancelShareWithQueue, dataTypeLabel],
   );
   const getHeader = (key: string): string => {
     switch (key) {
@@ -454,8 +465,8 @@ export function SharedResourceTable({
                   <DialogHeader>
                     <DialogTitle>分享至用户</DialogTitle>
                     <DialogDescription>
-                      和指定的用户共享
-                      {resourceType === "model" ? "模型" : "数据集"}
+                      和指定的用户共享的
+                      {dataTypeLabel}
                     </DialogDescription>
                   </DialogHeader>
                   <ShareDatasetToUserDialog
@@ -478,11 +489,9 @@ export function SharedResourceTable({
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>
-                      共享{resourceType === "model" ? "模型" : "数据集"}
-                    </DialogTitle>
+                    <DialogTitle>共享{dataTypeLabel}</DialogTitle>
                     <DialogDescription>
-                      和账户共享{resourceType === "model" ? "模型" : "数据集"}
+                      和账户共享的{dataTypeLabel}
                     </DialogDescription>
                   </DialogHeader>
                   <ShareDatasetToQueueDialog
@@ -497,7 +506,7 @@ export function SharedResourceTable({
                     <Button
                       variant="outline"
                       className="h-8 w-8 p-0 hover:text-red-700"
-                      title={`删除${resourceType === "model" ? "模型" : "数据集"}`}
+                      title={`删除${dataTypeLabel}`}
                     >
                       <Trash size={16} strokeWidth={2} />
                     </Button>
@@ -505,12 +514,9 @@ export function SharedResourceTable({
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>
-                      删除{resourceType === "model" ? "模型" : "数据集"}
-                    </DialogTitle>
+                    <DialogTitle>删除{dataTypeLabel}</DialogTitle>
                     <DialogDescription>
-                      {resourceType === "model" ? "模型" : "数据集"}「
-                      {query.data?.name}」将被删除
+                      {dataTypeLabel}「{query.data?.name}」将被删除
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
@@ -549,7 +555,7 @@ export function SharedResourceTable({
         {
           key: "datasetinfo",
           icon: FileIcon,
-          label: `${resourceType === "model" ? "模型" : "数据集"}基本信息`,
+          label: `${dataTypeLabel}基本信息`,
           children: (
             <div className="space-y-1 md:space-y-2 lg:space-y-3">
               {query.data?.extra.tag && (
@@ -557,7 +563,7 @@ export function SharedResourceTable({
                   <CardHeader>
                     <CardTitle className="flex items-center text-xl">
                       <Folder className="mr-2 h-5 w-5 text-blue-500" />
-                      {resourceType === "model" ? "模型" : "数据集"}标签
+                      {dataTypeLabel}标签
                     </CardTitle>
                     <CardDescription className="text-muted-foreground font-mono text-sm">
                       {query.data?.extra.tag.join("、")}
@@ -570,7 +576,7 @@ export function SharedResourceTable({
                   <CardHeader>
                     <CardTitle className="flex items-center text-xl">
                       <Folder className="mr-2 h-5 w-5 text-blue-500" />
-                      {resourceType === "model" ? "模型" : "数据集"}开源仓库地址
+                      {dataTypeLabel}开源仓库地址
                     </CardTitle>
                     <CardDescription className="text-muted-foreground font-mono text-sm">
                       {query.data?.extra.weburl}
@@ -582,7 +588,7 @@ export function SharedResourceTable({
                 <CardHeader>
                   <CardTitle className="flex items-center text-xl">
                     <Folder className="mr-2 h-5 w-5 text-blue-500" />
-                    {resourceType === "model" ? "模型" : "数据集"}描述
+                    {dataTypeLabel}描述
                   </CardTitle>
                   <CardDescription className="text-muted-foreground font-mono text-sm">
                     {query.data?.describe}
@@ -596,7 +602,7 @@ export function SharedResourceTable({
         {
           key: "usershare",
           icon: User,
-          label: `${resourceType === "model" ? "模型" : "数据集"}共享用户`,
+          label: `${dataTypeLabel}的用户`,
           children: (
             <DataTable
               storageKey="file_share_user"
@@ -609,7 +615,7 @@ export function SharedResourceTable({
         {
           key: "accountshare",
           icon: Users,
-          label: `${resourceType === "model" ? "模型" : "数据集"}共享账户`,
+          label: `${dataTypeLabel}的账户`,
           children: (
             <DataTable
               storageKey="file_share_queue"
@@ -622,7 +628,7 @@ export function SharedResourceTable({
         {
           key: "datasetFiles",
           icon: FilesIcon,
-          label: `${resourceType === "model" ? "模型" : "数据集"}文件`,
+          label: `${dataTypeLabel}的文件目录`,
           children: (
             <>
               <TooltipButton

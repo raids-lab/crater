@@ -31,7 +31,7 @@ import { dataFormSchema, DataFormSchema } from "@/pages/Portal/Data/CreateForm";
 // 复用创建表单的Schema
 
 interface UpdateFormProps {
-  type?: "dataset" | "model";
+  type?: "dataset" | "model" | "sharefile";
   initialData: DataFormSchema & { datasetId: number }; // 添加id字段
   onSuccess?: () => void; // 添加回调函数
 }
@@ -43,8 +43,18 @@ export function DatasetUpdateForm({
 }: UpdateFormProps) {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = React.useState(false);
-  const typestring = type === "model" ? "模型" : "数据集";
-
+  const typestring = (() => {
+    switch (type) {
+      case "dataset":
+        return "数据集";
+      case "model":
+        return "模型";
+      case "sharefile":
+        return "共享文件";
+      default:
+        return "数据集";
+    }
+  })();
   const form = useForm<DataFormSchema>({
     resolver: zodResolver(dataFormSchema),
     defaultValues: {

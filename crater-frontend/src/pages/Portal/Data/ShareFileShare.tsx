@@ -1,3 +1,4 @@
+import { ModelShareTable } from "@/components/file/ModelShareTable";
 import {
   apiCancelShareWithQueue,
   apiCancelShareWithUser,
@@ -5,12 +6,11 @@ import {
   apiShareDatasetwithUser,
   apiDatasetDelete,
 } from "@/services/api/dataset";
-import { ModelShareTable } from "@/components/file/ModelShareTable";
 
-export const Component = () => {
+export function Component() {
   return (
     <ModelShareTable
-      resourceType="model"
+      resourceType="sharefile"
       apiShareDatasetwithQueue={apiShareDatasetwithQueue}
       apiShareDatasetwithUser={apiShareDatasetwithUser}
       apiCancelDatasetSharewithQueue={apiCancelShareWithQueue}
@@ -18,4 +18,4 @@ export const Component = () => {
       apiDatasetDelete={apiDatasetDelete}
     />
   );
-};
+}
