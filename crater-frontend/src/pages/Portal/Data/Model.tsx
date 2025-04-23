@@ -3,8 +3,10 @@ import { apiGetDataset } from "@/services/api/dataset";
 
 import { ModelTable } from "@/components/custom/ModelTable";
 
-const ModelDetail: FC = () => {
-  return <ModelTable apiGetDataset={apiGetDataset} />;
+const ModelDetail: FC<{ sourceType?: "model" | "sharefile" | "dataset" }> = ({
+  sourceType,
+}) => {
+  return <ModelTable apiGetDataset={apiGetDataset} sourceType={sourceType} />;
 };
 
 export default ModelDetail;

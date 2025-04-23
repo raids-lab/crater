@@ -4,7 +4,7 @@ import Modeldetail from "./Model";
 const modelRoutes: RouteObject[] = [
   {
     index: true,
-    element: <Modeldetail />,
+    element: <Modeldetail sourceType="model" />,
   },
   {
     path: ":id",

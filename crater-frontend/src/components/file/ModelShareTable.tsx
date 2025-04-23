@@ -9,6 +9,7 @@ import {
 import { SharedResourceTable } from "./SharedResourceTable";
 
 interface DatesetShareTableProps {
+  resourceType: "model" | "dataset" | "sharefile";
   apiShareDatasetwithUser: (
     ud: UserDataset,
   ) => Promise<AxiosResponse<IResponse<string>>>;
@@ -27,5 +28,5 @@ interface DatesetShareTableProps {
 }
 
 export function ModelShareTable(props: DatesetShareTableProps) {
-  return <SharedResourceTable resourceType="model" {...props} />;
+  return <SharedResourceTable {...props} />;
 }
