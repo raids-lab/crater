@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useNivoTheme } from "@/hooks/useNivoTheme";
+import useNivoTheme from "@/hooks/useNivoTheme";
 import { ResponsiveTimeRange } from "@nivo/calendar";
 import { subDays, format } from "date-fns";
 

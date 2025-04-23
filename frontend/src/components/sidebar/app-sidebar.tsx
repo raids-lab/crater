@@ -8,7 +8,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { useIsAdmin } from "@/hooks/useAdmin";
+import useIsAdmin from "@/hooks/useAdmin";
 import { Role } from "@/services/api/auth";
 import { globalAccount } from "@/utils/store";
 import { useAtomValue } from "jotai";

@@ -2,7 +2,6 @@ import { Outlet, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { NavBreadcrumb } from "@/components/layout/NavBreadcrumb";
 import { useMemo } from "react";
-
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import {
   SidebarInset,
@@ -15,6 +14,7 @@ import { globalFixedLayout, globalSettings } from "@/utils/store";
 import { cn } from "@/lib/utils";
 import { Badge } from "../ui/badge";
 import { CogIcon } from "lucide-react";
+import { WhatsNewDialog } from "./WhatIsNew";
 
 const DashboardLayout = ({ groups }: { groups: NavGroupProps[] }) => {
   const { pathname: rawPath } = useLocation();
@@ -66,6 +66,7 @@ const DashboardLayout = ({ groups }: { groups: NavGroupProps[] }) => {
         >
           <Outlet />
         </motion.div>
+        <WhatsNewDialog />
       </SidebarInset>
     </SidebarProvider>
   );

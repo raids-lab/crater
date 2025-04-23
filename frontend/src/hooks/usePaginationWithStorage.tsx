@@ -2,7 +2,7 @@ import { useState } from "react";
 import { PaginationState } from "@tanstack/react-table";
 import { useLocalStorage } from "usehooks-ts";
 
-export function usePaginationWithStorage(tableKey: string = "default-table") {
+const usePaginationWithStorage = (tableKey: string = "default-table") => {
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useLocalStorage(`${tableKey}-page-size`, 10);
 
@@ -21,4 +21,6 @@ export function usePaginationWithStorage(tableKey: string = "default-table") {
   };
 
   return [pagination, setPagination] as const;
-}
+};
+
+export default usePaginationWithStorage;

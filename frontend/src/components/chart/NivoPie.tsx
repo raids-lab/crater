@@ -1,4 +1,4 @@
-import { useNivoTheme } from "@/hooks/useNivoTheme";
+import useNivoTheme from "@/hooks/useNivoTheme";
 import { MayHaveLabel, PieSvgProps, ResponsivePie } from "@nivo/pie";
 
 const NivoPie = <RawDatum extends MayHaveLabel>(

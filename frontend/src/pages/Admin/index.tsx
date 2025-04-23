@@ -1,11 +1,9 @@
-import { RouteItem } from "@/components/layout/Sidebar";
+import { Navigate, RouteObject } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { FC, PropsWithChildren } from "react";
-import { Navigate, RouteObject } from "react-router-dom";
 import { Role } from "@/services/api/auth";
 import DashboardLayout from "@/components/layout/Dashboard";
 import { User } from "./User";
-// import Volcano from "./Job/Volcano";
 import Resource from "./Cluster/Resource";
 import AccountDetail from "./Account/Detail";
 import {
@@ -30,21 +28,17 @@ import CronPolicy from "./Job/CronPolicy";
 import NetworkOverview from "@/components/monitor/NetworkOverview";
 import NvidiaOverview from "@/components/monitor/NvidiaOverview";
 
-const routeItems: RouteItem[] = [
+const routeItems: RouteObject[] = [
   {
     path: "cluster",
     children: [
       {
-        route: {
-          path: "node/*",
-          lazy: () => import("./Cluster/Node"),
-        },
+        path: "node/*",
+        lazy: () => import("./Cluster/Node"),
       },
       {
-        route: {
-          path: "resource",
-          element: <Resource />,
-        },
+        path: "resource",
+        element: <Resource />,
       },
     ],
   },
@@ -52,83 +46,59 @@ const routeItems: RouteItem[] = [
     path: "monitor",
     children: [
       {
-        route: {
-          path: "network",
-          element: <NetworkOverview />,
-        },
+        path: "network",
+        element: <NetworkOverview />,
       },
       {
-        route: {
-          path: "gpu",
-          element: <NvidiaOverview />,
-        },
+        path: "gpu",
+        element: <NvidiaOverview />,
       },
     ],
   },
   {
-    path: "account",
-    route: {
-      path: "account/*",
-      children: [
-        {
-          index: true,
-          element: <Account />,
-        },
-        {
-          path: ":id",
-          element: <AccountDetail />,
-        },
-      ],
-    },
-    children: [],
+    path: "account/*",
+    children: [
+      {
+        index: true,
+        element: <Account />,
+      },
+      {
+        path: ":id",
+        element: <AccountDetail />,
+      },
+    ],
   },
   {
-    path: "user",
-    children: [],
-    route: {
-      path: "user/*",
-      children: [
-        {
-          index: true,
-          element: <User />,
-        },
-        {
-          path: ":name",
-          element: <UserDetail />,
-        },
-      ],
-    },
+    path: "user/*",
+    children: [
+      {
+        index: true,
+        element: <User />,
+      },
+      {
+        path: ":name",
+        element: <UserDetail />,
+      },
+    ],
   },
   {
-    path: "job",
-    route: {
-      path: "job/*",
-      children: adminJobRoutes,
-    },
-    children: [],
+    path: "job/*",
+    children: adminJobRoutes,
   },
   {
     path: "cron",
-    children: [],
-    route: {
-      path: "cron",
-      element: <CronPolicy />,
-    },
+    element: <CronPolicy />,
   },
   {
     path: "image",
     children: [
       {
-        route: {
-          path: "create/*",
-          lazy: () => import("./Image/Registry"),
-        },
+        path: "create/*",
+        lazy: () => import("./Image/Registry"),
       },
       {
-        route: {
-          path: "upload/*",
-          lazy: () => import("./Image/Image"),
-        },
+        path: "upload/*",
+        lazy: () => import("./Image/Image"),
       },
     ],
   },
@@ -136,26 +106,18 @@ const routeItems: RouteItem[] = [
     path: "data",
     children: [
       {
-        route: {
-          path: "filesystem/*",
-          lazy: () => import("./Data/FileSystem"),
-        },
+        path: "filesystem/*",
+        lazy: () => import("./Data/FileSystem"),
       },
       {
-        route: {
-          path: "dataset/*",
-          children: admindatasetRoutes,
-        },
+        path: "dataset/*",
+        children: admindatasetRoutes,
       },
     ],
   },
   {
     path: "setting",
-    children: [],
-    route: {
-      path: "setting",
-      element: <SystemSetting />,
-    },
+    element: <SystemSetting />,
   },
 ];
 
@@ -285,14 +247,7 @@ export const adminRoute: RouteObject = {
       index: true,
       element: <Navigate to="cluster/node" replace={true} />,
     },
-    ...routeItems.map((item) => {
-      return (
-        item.route ?? {
-          path: item.path,
-          children: item.children.map((child) => child.route),
-        }
-      );
-    }),
+    ...routeItems,
     {
       path: "*",
       element: <NotFound />,

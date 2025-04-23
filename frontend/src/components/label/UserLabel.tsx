@@ -1,6 +1,6 @@
 import { IUserInfo } from "@/services/api/vcjob";
 import TooltipLink from "./TooltipLink";
-import { useIsAdmin } from "@/hooks/useAdmin";
+import useIsAdmin from "@/hooks/useAdmin";
 import { cn } from "@/lib/utils";
 import { useAtomValue } from "jotai";
 import { globalHideUsername } from "@/utils/store";

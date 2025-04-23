@@ -77,19 +77,9 @@ export const craterPath: PathInfo = {
       ],
     },
     {
-      path: "service",
-      title: "我的服务",
+      path: "modal",
+      title: "作业模板",
       isEmpty: true,
-      children: [
-        {
-          path: "microservice",
-          title: "微服务",
-        },
-        {
-          path: "serverless",
-          title: "无服务",
-        },
-      ],
     },
     {
       path: "image",

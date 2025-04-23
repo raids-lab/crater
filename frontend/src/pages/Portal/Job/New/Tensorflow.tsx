@@ -37,7 +37,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { ImageFormField } from "@/components/form/ImageFormField";
 import { VolumeMountsCard } from "@/components/form/DataMountFormField";
 import { MetadataFormTensorflow } from "@/components/form/types";
-import { useTemplateLoader } from "@/hooks/useTemplateLoader";
 import { OtherOptionsFormCard } from "@/components/form/OtherOptionsFormField";
 import PageTitle from "@/components/layout/PageTitle";
 import FormImportButton from "@/components/form/FormImportButton";
@@ -305,24 +304,6 @@ export const Component = () => {
       },
       forwards: [],
     },
-  });
-
-  // Use the template loader hook
-  useTemplateLoader({
-    form,
-    metadata: MetadataFormTensorflow,
-    uiStateUpdaters: [
-      {
-        condition: (data) => data.envs.length > 0,
-        setter: setEnvOpen,
-        value: true,
-      },
-      {
-        condition: (data) => data.nodeSelector.enable || data.alertEnabled,
-        setter: setOtherOpen,
-        value: true,
-      },
-    ],
   });
 
   const {
