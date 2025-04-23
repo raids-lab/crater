@@ -24,7 +24,7 @@ import { BoxIcon } from "lucide-react";
 import ContainerStatusBadge, {
   ContainerStatus,
 } from "../badge/ContainerStatusBadge";
-import { useNamespacedState } from "@/hooks/useNamespacedState";
+import useNamespacedState from "@/hooks/useNamespacedState";
 import LoadingCircleIcon from "../icon/LoadingCircleIcon";
 import TipBadge from "../badge/TipBadge";
 

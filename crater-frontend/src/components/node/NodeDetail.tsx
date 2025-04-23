@@ -61,7 +61,7 @@ import {
   asyncGrafanaJobAtom,
   asyncGrafanaNodeAtom,
 } from "@/utils/store/config";
-import { useIsAdmin } from "@/hooks/useAdmin";
+import useIsAdmin from "@/hooks/useAdmin";
 import TooltipCopy from "../label/TooltipCopy";
 import { globalSettings } from "@/utils/store";
 

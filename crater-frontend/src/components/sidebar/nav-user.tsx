@@ -35,7 +35,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/utils/theme";
 import { toast } from "sonner";
 import { Role } from "@/services/api/auth";
-import { useIsAdmin } from "@/hooks/useAdmin";
+import useIsAdmin from "@/hooks/useAdmin";
 import { asyncUrlWebsiteBaseAtom } from "@/utils/store/config";
 import { UserAvatar } from "../custom/UserDetail/UserAvatar";
 import { getUserPseudonym } from "@/utils/pseudonym";

@@ -1,4 +1,3 @@
-import { RouteItem } from "@/components/layout/Sidebar";
 import { Navigate, RouteObject } from "react-router-dom";
 import DashboardLayout from "@/components/layout/Dashboard";
 import {
@@ -27,35 +26,25 @@ import NetworkOverview from "@/components/monitor/NetworkOverview";
 import UserDetail from "@/components/custom/UserDetail";
 import shareFileRoutes from "./Data/ShareFile";
 
-const portalRoutes: RouteItem[] = [
+const portalRoutes: RouteObject[] = [
   {
-    path: "overview",
-    children: [],
-    route: {
-      path: "overview/*",
-      lazy: () => import("./Overview"),
-    },
+    path: "overview/*",
+    lazy: () => import("./Overview"),
   },
   {
     path: "monitor",
     children: [
       {
-        route: {
-          path: "gpu",
-          element: <NvidiaOverview />,
-        },
+        path: "gpu",
+        element: <NvidiaOverview />,
       },
       {
-        route: {
-          path: "node",
-          element: <ResourseOverview />,
-        },
+        path: "node",
+        element: <ResourseOverview />,
       },
       {
-        route: {
-          path: "network",
-          element: <NetworkOverview />,
-        },
+        path: "network",
+        element: <NetworkOverview />,
       },
     ],
   },
@@ -63,41 +52,29 @@ const portalRoutes: RouteItem[] = [
     path: "job",
     children: [
       {
-        route: {
-          path: "inter/*",
-          children: interactiveRoutes,
-        },
+        path: "inter/*",
+        children: interactiveRoutes,
       },
       {
-        route: {
-          path: "batch/*",
-          children: batchRoutes,
-        },
+        path: "batch/*",
+        children: batchRoutes,
       },
     ],
   },
   {
-    path: "service",
-    route: {
-      path: "modal",
-      element: <AssignmentTemplateList />,
-    },
-    children: [],
+    path: "modal",
+    element: <AssignmentTemplateList />,
   },
   {
     path: "image",
     children: [
       {
-        route: {
-          path: "createimage/*",
-          lazy: () => import("./Image/Registry"),
-        },
+        path: "createimage/*",
+        lazy: () => import("./Image/Registry"),
       },
       {
-        route: {
-          path: "uploadimage/*",
-          lazy: () => import("./Image/Image"),
-        },
+        path: "uploadimage/*",
+        lazy: () => import("./Image/Image"),
       },
     ],
   },
@@ -105,28 +82,20 @@ const portalRoutes: RouteItem[] = [
     path: "data",
     children: [
       {
-        route: {
-          path: "filesystem/*",
-          lazy: () => import("./Data/FileSystem"),
-        },
+        path: "filesystem/*",
+        lazy: () => import("./Data/FileSystem"),
       },
       {
-        route: {
-          path: "dataset/*",
-          children: datasetRoutes,
-        },
+        path: "dataset/*",
+        children: datasetRoutes,
       },
       {
-        route: {
-          path: "model/*",
-          children: modelRoutes,
-        },
+        path: "model/*",
+        children: modelRoutes,
       },
       {
-        route: {
-          path: "sharefile/*",
-          children: shareFileRoutes,
-        },
+        path: "sharefile/*",
+        children: shareFileRoutes,
       },
     ],
   },
@@ -134,43 +103,31 @@ const portalRoutes: RouteItem[] = [
     path: "account",
     children: [
       {
-        route: {
-          path: "member",
-        },
+        path: "member",
       },
     ],
   },
   {
-    path: "user",
-    children: [],
-    route: {
-      path: "user/*",
-      children: [
-        {
-          path: ":name",
-          element: <UserDetail />,
-        },
-      ],
-    },
+    path: "user/*",
+    children: [
+      {
+        path: ":name",
+        element: <UserDetail />,
+      },
+    ],
   },
   {
     path: "setting",
     children: [
       {
-        route: {
-          path: "user",
-          element: <UserSettings />,
-        },
+        path: "user",
+        element: <UserSettings />,
       },
     ],
   },
   {
     path: "feedback",
-    children: [],
-    route: {
-      path: "feedback",
-      element: <FeedBack />,
-    },
+    element: <FeedBack />,
   },
 ];
 
@@ -302,14 +259,7 @@ export const portalRoute: RouteObject = {
       index: true,
       element: <Navigate to="overview" replace />,
     },
-    ...portalRoutes.map((item) => {
-      return (
-        item.route ?? {
-          path: item.path,
-          children: item.children.map((child) => child.route),
-        }
-      );
-    }),
+    ...portalRoutes,
     {
       path: "*",
       element: <NotFound />,

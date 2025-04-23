@@ -1,7 +1,13 @@
 import { NamespacedName } from "@/components/codeblock/PodContainerDialog";
 import { useEffect, useState } from "react";
 
-export const useNamespacedState = (
+/**
+ * `useNamespacedState` is a custom hook that manages the state of a dialog based on a namespaced name.
+ * @param namespacedName - The namespace and name of Pod
+ * @param setNamespacedName - A function to set the namespaced name
+ * @returns A tuple containing the dialog open state and a function to set the dialog open state
+ */
+const useNamespacedState = (
   namespacedName: NamespacedName,
   setNamespacedName: (namespacedName: NamespacedName) => void,
 ) => {
@@ -23,3 +29,5 @@ export const useNamespacedState = (
 
   return [isOpen, setIsOpen] as const;
 };
+
+export default useNamespacedState;

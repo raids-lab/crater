@@ -1,6 +1,10 @@
 import { useLocation } from "react-router-dom";
 
-export const useIsAdmin = () => {
+/**
+ * useIsAdmin is a custom hook that checks if the current path is an admin view.
+ * @returns true if the current path is an admin view, false otherwise
+ */
+const useIsAdmin = () => {
   const location = useLocation();
 
   const pathParts = location.pathname.split("/").filter(Boolean);
@@ -8,3 +12,5 @@ export const useIsAdmin = () => {
 
   return isAdminView;
 };
+
+export default useIsAdmin;

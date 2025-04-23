@@ -63,7 +63,7 @@ import DetailTitle from "../layout/DetailTitle";
 import { FileItem, apiGetDatasetFiles } from "@/services/api/file";
 import { FileSizeComponent } from "./FileSize";
 import TooltipButton from "../custom/TooltipButton";
-import { useIsAdmin } from "@/hooks/useAdmin";
+import useIsAdmin from "@/hooks/useAdmin";
 
 interface SharedResourceTableProps {
   resourceType: "model" | "dataset" | "sharefile";

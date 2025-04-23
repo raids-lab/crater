@@ -6,7 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PodIngressDialogProps } from "@/components/codeblock/PodContainerDialog";
-import { useNamespacedState } from "@/hooks/useNamespacedState";
+import useNamespacedState from "@/hooks/useNamespacedState";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IngressPanel } from "./IngressPanel";
 import { NodeportPanel } from "./NodeportPanel";

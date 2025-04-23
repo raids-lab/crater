@@ -30,7 +30,7 @@ import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
 import { Checkbox } from "@/components/ui/checkbox";
 import { GridIcon } from "lucide-react";
 import PageTitle from "@/components/layout/PageTitle";
-import { usePaginationWithStorage } from "@/hooks/usePaginationWithStorage";
+import usePaginationWithStorage from "@/hooks/usePaginationWithStorage";
 import { useLocalStorage } from "usehooks-ts";
 
 interface DataTableProps<TData, TValue>
