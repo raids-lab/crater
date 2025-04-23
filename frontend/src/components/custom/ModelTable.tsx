@@ -11,23 +11,24 @@ import SandwichSheet from "@/components/sheet/SandwichSheet";
 import { PlusIcon } from "lucide-react";
 
 interface DatesetTableProps {
+  sourceType?: "dataset" | "model" | "sharefile";
   apiGetDataset: () => Promise<AxiosResponse<IResponse<IDataset[]>>>;
 }
 
-export function ModelTable({ apiGetDataset }: DatesetTableProps) {
+export function ModelTable({ apiGetDataset, sourceType }: DatesetTableProps) {
   const data = useQuery({
     queryKey: ["data", "mydataset"],
     queryFn: () => apiGetDataset(),
     select: (res) => res.data.data,
   });
-
+  const sourcetitle = sourceType === "model" ? "模型" : "共享文件";
   const [openSheet, setOpenSheet] = useState(false);
 
   return (
     <DataList
       items={
         data.data
-          ?.filter((dataset) => dataset.type === "model")
+          ?.filter((dataset) => dataset.type === sourceType)
           .map((dataset) => ({
             id: dataset.id,
             name: dataset.name,
@@ -37,19 +38,21 @@ export function ModelTable({ apiGetDataset }: DatesetTableProps) {
             owner: dataset.userInfo,
           })) || []
       }
-      title="模型"
+      title={sourcetitle}
       actionArea={
         <div className="flex flex-row gap-3">
-          <DocsButton title="模型文档" url="file/model" />
+          {sourceType !== "sharefile" && (
+            <DocsButton title={`${sourcetitle}文档`} url="file/model" />
+          )}
           <SandwichSheet
             isOpen={openSheet}
             onOpenChange={setOpenSheet}
-            title="创建模型"
-            description="创建一个新的文件模型集"
+            title={`创建${sourcetitle}`}
+            description={`创建一个新的${sourcetitle}`}
             trigger={
               <Button className="min-w-fit">
                 <PlusIcon />
-                添加模型
+                添加{sourcetitle}
               </Button>
             }
             className="sm:max-w-3xl"
@@ -57,7 +60,7 @@ export function ModelTable({ apiGetDataset }: DatesetTableProps) {
             <div className="pt-1">
               <DataCreateForm
                 closeSheet={() => setOpenSheet(false)}
-                type="model"
+                type={sourceType}
               />
             </div>
           </SandwichSheet>
