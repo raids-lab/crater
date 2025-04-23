@@ -18,11 +18,11 @@ spec:
     spec:
       containers:
         - name: crater-website-container
-          image: ***REMOVED***/website:v0.1.4
+          image: ***REMOVED***/document:{{ .Values.web.document.image.tag }}
           resources:
             limits:
-              cpu: 4000m
-              memory: 4Gi
+              cpu: 100m
+              memory: 256Mi
             requests:
               cpu: 100m
               memory: 128Mi
@@ -33,7 +33,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /website
-              port: 8888
+              port: 80
             initialDelaySeconds: 20
             periodSeconds: 10
       nodeSelector: {{ .Values.nodeSelector | toYaml | nindent 8 }}

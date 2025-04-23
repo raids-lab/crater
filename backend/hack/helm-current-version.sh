@@ -31,14 +31,20 @@ echo "web-frontend 镜像：$frontend_image"
 storage_image=$(kubectl get deploy webdav-deployment -n $WEBDAV_NAMESPACE -o jsonpath='{.spec.template.spec.containers[0].image}')
 echo "webdav 镜像：$storage_image"
 
+# 获取 document 当前使用的镜像
+document_image=$(kubectl get deploy crater-website -n $NAMESPACE -o jsonpath='{.spec.template.spec.containers[0].image}')
+echo "document 镜像：$document_image"
+
 # 提取镜像的 tag（假设镜像名格式为 repository:tag）
 backend_tag=$(echo $backend_image | awk -F: '{print $2}')
 frontend_tag=$(echo $frontend_image | awk -F: '{print $2}')
 storage_tag=$(echo $storage_image | awk -F: '{print $2}')
+document_tag=$(echo $document_image | awk -F: '{print $2}')
 
 # 使用 yq 更新 values.yaml 中对应的 tag
 yq eval ".web.backend.image.tag = \"$backend_tag\"" -i "$VALUES_FILE"
 yq eval ".web.frontend.image.tag = \"$frontend_tag\"" -i "$VALUES_FILE"
 yq eval ".web.storage.image.tag = \"$storage_tag\"" -i "$VALUES_FILE"
+yq eval ".web.document.image.tag = \"$document_tag\"" -i "$VALUES_FILE"
 
 echo "镜像信息已在 $VALUES_FILE 中替换完成。"
