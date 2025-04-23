@@ -25,6 +25,7 @@ import NvidiaOverview from "@/components/monitor/NvidiaOverview";
 import ResourseOverview from "@/components/monitor/ResourceOverview";
 import NetworkOverview from "@/components/monitor/NetworkOverview";
 import UserDetail from "@/components/custom/UserDetail";
+import shareFileRoutes from "./Data/ShareFile";
 
 const portalRoutes: RouteItem[] = [
   {
@@ -119,6 +120,12 @@ const portalRoutes: RouteItem[] = [
         route: {
           path: "model/*",
           children: modelRoutes,
+        },
+      },
+      {
+        route: {
+          path: "sharefile/*",
+          children: shareFileRoutes,
         },
       },
     ],
@@ -252,6 +259,10 @@ const userSidebarGroups: NavGroupProps[] = [
           {
             title: "模型",
             url: "data/model",
+          },
+          {
+            title: "数据共享",
+            url: "data/sharefile",
           },
         ],
       },

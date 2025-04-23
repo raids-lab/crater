@@ -1,5 +1,5 @@
 import { type FC } from "react";
-import { AdminDatasetTable } from "@/components/custom/admindataset";
+import { AdminDatasetTable } from "@/components/custom/adminDataset";
 
 const AdminDataset: FC = () => {
   return <AdminDatasetTable />;

@@ -31,7 +31,7 @@ export const dataFormSchema = z.object({
     }),
   describe: z.string(),
   url: z.string(),
-  type: z.enum(["dataset", "model"]),
+  type: z.enum(["dataset", "model", "sharefile"]),
   tags: z
     .array(
       z.object({
@@ -49,12 +49,23 @@ export type DataFormSchema = z.infer<typeof dataFormSchema>;
 export interface DataCreateFormProps
   extends React.HTMLAttributes<HTMLDivElement> {
   closeSheet: () => void;
-  type?: "dataset" | "model";
+  type?: "dataset" | "model" | "sharefile";
 }
 
 export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
   const queryClient = useQueryClient();
-  const dataTypeLabel = type === "model" ? "模型" : "数据集";
+  const dataTypeLabel = (() => {
+    switch (type) {
+      case "dataset":
+        return "数据集";
+      case "model":
+        return "模型";
+      case "sharefile":
+        return "共享文件";
+      default:
+        return "数据集";
+    }
+  })();
   const { mutate: createImagePack } = useMutation({
     mutationFn: (values: DataFormSchema) =>
       apiDatasetCreate({
@@ -166,6 +177,7 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
             />
           </div>
         </div>
+
         <TagsInput
           form={form}
           tagsPath="tags"
@@ -214,22 +226,26 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="readOnly"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-              <FormLabel className="font-normal">只读{dataTypeLabel}</FormLabel>
-              <FormControl>
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {type === "sharefile" && (
+          <FormField
+            control={form.control}
+            name="readOnly"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
+                <FormLabel className="font-normal">
+                  只读{dataTypeLabel}
+                </FormLabel>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         <div className="grid">
           <Button type="submit">提交数据集</Button>
         </div>

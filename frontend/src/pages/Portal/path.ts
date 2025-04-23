@@ -123,6 +123,10 @@ export const craterPath: PathInfo = {
           path: "model",
           title: "模型",
         },
+        {
+          path: "sharefile",
+          title: "数据共享",
+        },
       ],
     },
     {
