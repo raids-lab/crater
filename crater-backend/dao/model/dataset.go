@@ -8,8 +8,9 @@ import (
 type DataType string
 
 const (
-	DataTypeDataset DataType = "dataset"
-	DataTypeModel   DataType = "model"
+	DataTypeDataset   DataType = "dataset"
+	DataTypeModel     DataType = "model"
+	DataTypeShareFile DataType = "sharefile"
 )
 
 type ExtraContent struct {
