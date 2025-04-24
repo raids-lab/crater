@@ -11,6 +11,10 @@ spec:
     spec:
       template:
         spec:
+        {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+        {{- end }}
           containers:
           - name: cleanup-task
             image: {{ .Values.web.cronjob.image }}
@@ -48,6 +52,10 @@ spec:
     spec:
       template:
         spec:
+        {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+        {{- end }}
           containers:
           - name: cleanup-task
             image: {{ .Values.web.cronjob.image }}
@@ -83,6 +91,10 @@ spec:
     spec:
       template:
         spec:
+        {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+        {{- end }}
           containers:
           - name: cleanup-task
             image: {{ .Values.web.cronjob.image }}
