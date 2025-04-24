@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
   const navigate = useNavigate();
 
-  if (!nodes || nodes.length === 0) {
+  if (!nodes || nodes.length === 0 || nodes[0] === "") {
     return <></>;
   }
 

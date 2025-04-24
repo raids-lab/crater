@@ -48,7 +48,7 @@ import { TimeDistance } from "@/components/custom/TimeDistance";
 import { PodTable } from "./PodTable";
 import { CodeContent } from "@/components/codeblock/ConfigDialog";
 import { LazyContent } from "@/components/codeblock/Dialog";
-import { EventTimeline } from "@/components/custom/Timeline/timeline-layout";
+import { EventTimeline } from "@/components/custom/Timeline/EventTimeline";
 import PageTitle from "@/components/layout/PageTitle";
 import JobTypeLabel from "@/components/badge/JobTypeBadge";
 import { GrafanaIframe } from "@/pages/Embed/Monitor";
