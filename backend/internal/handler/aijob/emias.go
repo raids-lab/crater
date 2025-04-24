@@ -30,6 +30,7 @@ import (
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
+	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/util"
 )
 
@@ -69,9 +70,10 @@ func (mgr *AIJobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("quota", mgr.GetQuota)
 	g.DELETE(":id", mgr.Delete)
 
-	g.GET(":id/detail", mgr.Get)
+	g.GET(":id/detail", mgr.GetDetail)
 	g.GET(":id/yaml", mgr.GetJobYaml)
 	g.GET(":id/pods", mgr.GetJobPods)
+	g.GET(":id/event", mgr.GetJobEvents) // 添加获取事件的路由
 
 	g.POST("training", mgr.CreateCustom)
 	g.POST("jupyter", mgr.CreateJupyterJob)
@@ -79,7 +81,7 @@ func (mgr *AIJobMgr) RegisterProtected(g *gin.RouterGroup) {
 
 func (mgr *AIJobMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.ListUserJob)
-	g.GET(":id/detail", mgr.Get)
+	g.GET(":id/detail", mgr.GetDetail)
 }
 
 func (mgr *AIJobMgr) NotifyTaskUpdate(taskID uint, userName string, op util.TaskOperation) {
@@ -403,9 +405,9 @@ type AIJobDetailResp struct {
 	ProfileStatus string `json:"profileStatus"`
 }
 
-// Get godoc
-// @Summary Get AI job details
-// @Description Get AI job details by client-go
+// GetDetail godoc
+// @Summary GetDetail AI job details
+// @Description GetDetail AI job details by client-go
 // @Tags AIJob
 // @Accept json
 // @Produce json
@@ -415,7 +417,7 @@ type AIJobDetailResp struct {
 // @Failure 400 {object} resputil.Response[any] "Request parameter error"
 // @Failure 500 {object} resputil.Response[any] "Other errors"
 // @Router /v1/aijobs/{id}/detail [get]
-func (mgr *AIJobMgr) Get(c *gin.Context) {
+func (mgr *AIJobMgr) GetDetail(c *gin.Context) {
 	var req AIJobDetailReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
@@ -452,6 +454,12 @@ func (mgr *AIJobMgr) Get(c *gin.Context) {
 		return
 	}
 
+	profileData := monitor.ProfileData{}
+	// unmarshal profile data from taskModel.ProfileStat
+	if taskModel.ProfileStat != "" {
+		_ = json.Unmarshal([]byte(taskModel.ProfileStat), &profileData)
+	}
+
 	resp := AIJobDetailResp{
 		JobDetailResp: vcjob.JobDetailResp{
 			Name:      taskModel.TaskName,
@@ -466,6 +474,10 @@ func (mgr *AIJobMgr) Get(c *gin.Context) {
 			Status:            convertJobPhase(taskModel),
 			CreationTimestamp: metav1.NewTime(taskModel.CreatedAt),
 			RunningTimestamp:  runningTimestamp,
+			ProfileData:       &profileData,
+			ScheduleData: &model.ScheduleData{
+				ImagePullTime: "0",
+			},
 		},
 		Retry:         fmt.Sprintf("%d", 0),
 		Duration:      duration,
@@ -695,4 +707,86 @@ func (mgr *AIJobMgr) getPodLog(c *gin.Context, namespace, podName string) (*byte
 		return nil, err
 	}
 	return buf, nil
+}
+
+// GetJobEvents godoc
+// @Summary 获取AI任务的事件
+// @Description 获取AI任务的事件
+// @Tags AIJob
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path uint true "Job ID"
+// @Success 200 {object} resputil.Response[any] "事件列表"
+// @Failure 400 {object} resputil.Response[any] "请求参数错误"
+// @Failure 500 {object} resputil.Response[any] "其他错误"
+// @Router /v1/aijobs/{id}/event [get]
+func (mgr *AIJobMgr) GetJobEvents(c *gin.Context) {
+	var req AIJobDetailReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	token := interutil.GetToken(c)
+	taskModel, err := mgr.taskService.GetByQueueAndID(token.AccountName, req.JobID)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("get task failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+
+	namespace := taskModel.Namespace
+	jobName := taskModel.JobName
+
+	if jobName == "" {
+		// 作业还在排队中，模拟一个事件，说明作业正在排队
+		jobName = taskModel.TaskName
+		event := &v1.Event{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      jobName,
+				Namespace: namespace,
+			},
+			Reason:        "Queueing",
+			Type:          "Warning",
+			LastTimestamp: metav1.Time{Time: taskModel.CreatedAt},
+			Message:       fmt.Sprintf("Job %s is queueing", jobName),
+		}
+		resputil.Success(c, []v1.Event{*event})
+		return
+	}
+
+	// 获取任务相关事件
+	jobEvents, err := mgr.kubeClient.CoreV1().Events(namespace).List(c, metav1.ListOptions{
+		FieldSelector: fmt.Sprintf("involvedObject.name=%s", jobName),
+		TypeMeta:      metav1.TypeMeta{Kind: "AIJob", APIVersion: "aisystem.github.com/v1alpha1"},
+	})
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	events := jobEvents.Items
+
+	// 获取Pod相关事件
+	podName := fmt.Sprintf("%s-0", taskModel.JobName)
+	podEvents, err := mgr.kubeClient.CoreV1().Events(namespace).List(c, metav1.ListOptions{
+		FieldSelector: fmt.Sprintf("involvedObject.name=%s", podName),
+		TypeMeta:      metav1.TypeMeta{Kind: "Pod"},
+	})
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	// 如果存在Pod事件，则不返回Job事件
+	if len(podEvents.Items) > 0 {
+		events = []v1.Event{}
+	}
+	events = append(events, podEvents.Items...)
+
+	// 按时间排序
+	sort.Slice(events, func(i, j int) bool {
+		return events[i].LastTimestamp.After(events[j].LastTimestamp.Time)
+	})
+
+	resputil.Success(c, events)
 }
