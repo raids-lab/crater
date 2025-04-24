@@ -98,14 +98,14 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	} else {
 		var startScriptConfigMap string
 		var jupyterPath string
-		if strings.Contains(req.Image, "envd") {
-			// 1.2 Configure envd images
-			startScriptConfigMap = "envd-jupyter-start-configmap"
-			jupyterPath = "/opt/conda/envs/envd/bin/jupyter"
-		} else {
-			// 1.3 Configure NGC images
+		if strings.Contains(req.Image, "nvidia") {
+			// 1.2 Configure NGC images
 			startScriptConfigMap = "jupyter-start-configmap"
 			jupyterPath = "jupyter"
+		} else {
+			// 1.3 Configure envd images
+			startScriptConfigMap = "envd-jupyter-start-configmap"
+			jupyterPath = "/opt/conda/envs/envd/bin/jupyter"
 		}
 		volumes = append(volumes, v1.Volume{
 			Name: "bash-script-volume",
