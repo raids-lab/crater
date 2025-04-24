@@ -1,6 +1,7 @@
 # depolyment configuration variables
 createNamespace: false
 createMirationJob: false
+imagePullSecrets: []
 web:
   backend:
     image:
@@ -10,7 +11,7 @@ web:
   migrate:
     image:
       repository: "***REMOVED***/migrate"
-      tag: "v1"
+      tag: "v5"
       pullPolicy: "IfNotPresent"
     admin:
       username: "crater-admin"
@@ -18,7 +19,7 @@ web:
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "e03a6238"
+      tag: "ce8a2f2c"
       pullPolicy: "IfNotPresent"
     config:
       version: "1.0.0"
@@ -142,9 +143,6 @@ backendConfig:
   publicSpacePrefix: ***REMOVED***
   workspace:
     namespace: crater-workspace
-    rwxpvcName: crater-rw-storage
-    roxpvcName: crater-ro-storage
-    ingressName: crater-jobs-ingress
     imageNameSpace: crater-images
   act:
     strictRegisterMode: true
@@ -180,7 +178,7 @@ backendConfig:
       profilingTimeout: 120
     spjob:
       spjobEn: false
-      predictionServiceAddress: ***REMOVED***
+      predictionServiceAddress: http://resource-analyze-svc.kube-gpu-sparse:80
   dindArgs:
     buildkitImage: ***REMOVED***/user-huangsy/buildkit/buildctl:v0.18.2
     nerdctlImage: ***REMOVED***/nerdctl:2.0.1-retry
