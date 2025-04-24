@@ -27,7 +27,6 @@ import {
 } from "@/services/api/imagepack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import FormLabelMust from "@/components/form/FormLabelMust";
-import { ImageSettingsFormCard } from "@/components/form/ImageSettingsFormCard";
 import { DockerfileEditor } from "./DockerfileEditor";
 
 export const envdRawFormSchema = z.object({
@@ -151,12 +150,6 @@ function EnvdRawSheetContent({ form, onSubmit }: EnvdRawSheetContentProps) {
             <FormMessage />
           </FormItem>
         )}
-      />
-      <ImageSettingsFormCard
-        form={form}
-        imageNamePath="imageName"
-        imageTagPath="imageTag"
-        description="输入用户自定义的镜像名和镜像标签，若为空，则由系统自动生成"
       />
     </form>
   );
