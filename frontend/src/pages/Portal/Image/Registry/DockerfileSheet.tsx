@@ -22,6 +22,7 @@ import { MetadataFormDockerfile } from "@/components/form/types";
 import { Input } from "@/components/ui/input";
 import {
   apiUserCreateByDockerfile,
+  dockerfileImageLinkRegex,
   imageNameRegex,
   imageTagRegex,
 } from "@/services/api/imagepack";
@@ -162,6 +163,31 @@ export function DockerfileSheet({
   });
 
   const onSubmit = (values: DockerfileFormValues) => {
+    if (isPending) {
+      toast.error("正在提交，请稍后");
+      return;
+    }
+    const matches = Array.from(
+      values.dockerfile.matchAll(dockerfileImageLinkRegex),
+    );
+    const baseImages = matches.map((match) => match[1]);
+    const baseImage = baseImages[0];
+    if (
+      baseImage.includes("jupyter") &&
+      values.imageName != "" &&
+      !values.imageName?.includes("jupyter")
+    ) {
+      toast.error("基础镜像为 Jupyter 相关镜像时，镜像名称必须包含 jupyter");
+      return;
+    }
+    if (
+      baseImage.includes("nvidia") &&
+      values.imageName != "" &&
+      !values.imageName?.includes("nvidia")
+    ) {
+      toast.error("基础镜像为 NVIDIA 相关镜像时，镜像名称必须包含 nvidia");
+      return;
+    }
     submitDockerfileSheet(values);
   };
 

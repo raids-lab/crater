@@ -258,6 +258,26 @@ export function PipAptSheet({ closeSheet, ...props }: DockerfileSheetProps) {
   });
 
   const onSubmit = (values: PipAptFormValues) => {
+    if (isPending) {
+      toast.error("正在提交，请稍后");
+      return;
+    }
+    if (
+      values.baseImage.includes("jupyter") &&
+      values.imageName != "" &&
+      !values.imageName?.includes("jupyter")
+    ) {
+      toast.error("基础镜像为 Jupyter 相关镜像时，镜像名称必须包含 jupyter");
+      return;
+    }
+    if (
+      values.baseImage.includes("nvidia") &&
+      values.imageName != "" &&
+      !values.imageName?.includes("nvidia")
+    ) {
+      toast.error("基础镜像为 NVIDIA 相关镜像时，镜像名称必须包含 nvidia");
+      return;
+    }
     submitDockerfileSheet(values);
   };
 
