@@ -134,7 +134,7 @@ export const HighlightedPre = React.memo(
             <React.Fragment key={lineIndex}>
               <span>
                 {withLineNumbers && (
-                  <span className={cn("text-highlight-slate/50 mr-2.5")}>
+                  <span className="text-highlight-slate/50 mr-2.5 select-none">
                     {String(lineIndex + 1).padStart(
                       String(tokens.length).length,
                       " ",
