@@ -53,6 +53,7 @@ type AITask struct {
 
 	TaskName  string `gorm:"column:task_name;type:varchar(128);not null" json:"taskName"`
 	UserName  string `gorm:"column:username;type:varchar(128);not null" json:"userName"`
+	Owner     string `json:"owner"`
 	Namespace string `gorm:"column:namespace;type:varchar(128);not null" json:"nameSpace"`
 	TaskType  string `gorm:"column:task_type;type:varchar(128);not null" json:"taskType"`
 
@@ -81,7 +82,6 @@ type AITask struct {
 
 	PodTemplate datatypes.JSONType[v1.PodSpec] `json:"podTemplate"`
 	Node        string                         `json:"node"`
-	Owner       string                         `json:"owner"`
 }
 
 type TaskAttr struct {
