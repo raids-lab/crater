@@ -8,4 +8,5 @@ metadata:
   annotations:
     meta.helm.sh/release-name: {{ .Release.Name }}
     meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+    "helm.sh/resource-policy": keep
 {{- end }}

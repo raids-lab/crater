@@ -16,6 +16,10 @@ spec:
       labels:
         app: crater-web-backend
     spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
       containers:
         - name: crater-web-backend-container
           image: {{ .Values.web.backend.image.repository }}:{{ .Values.web.backend.image.tag }}

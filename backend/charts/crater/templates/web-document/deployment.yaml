@@ -16,6 +16,10 @@ spec:
       labels:
         app: crater-website
     spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
       containers:
         - name: crater-website-container
           image: ***REMOVED***/document:{{ .Values.web.document.image.tag }}
