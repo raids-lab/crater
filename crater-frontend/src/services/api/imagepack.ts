@@ -235,6 +235,9 @@ export const imageNameRegex = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
 export const imageTagRegex =
   /^(?=.{1,128}$)(?![-.])([a-zA-Z0-9_.+-]*)(?<![-.])$/;
 
+export const dockerfileImageLinkRegex =
+  /^FROM\s+(?:--platform=[^\s]+\s+)?([^\s#]+)/gim;
+
 export function parseImageLink(imageLink: string) {
   const parts = imageLink.split(":");
   if (parts.length === 2) {
