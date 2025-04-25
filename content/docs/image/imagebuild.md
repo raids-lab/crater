@@ -1,12 +1,13 @@
-# 镜像制作
-
-为了方便用户定制自己的镜像，我们提供了多种镜像制作功能。
+---
+title: 镜像制作
+description: 为了方便用户定制自己的镜像，我们提供了多种镜像制作功能。
+---
 
 ## 进入镜像制作页面
 
 您可以通过点击侧边栏“数据与镜像”分类中的“镜像管理”菜单中的“镜像制作”，来进入到镜像制作页面。
 
-![alt text](img/imagebuild-homepage.png)
+![Image](./img/imagebuild-homepage.png)
 
 进入页面后，您可以在页面上方看到您使用镜像制作功能制作的镜像总数，以及您 Harbor 镜像仓库的存储用量和限额，同时还能够看到您的 Harbor 项目名称，您可以在 Harbor 的对应项目中找到您制作的镜像。
 
@@ -25,7 +26,7 @@
 
 您可以通过如图所示的下拉按钮选择您期望的构建方式，然后点击按钮呼出构建表单。
 
-![alt text](img/imagebuild-dropdown.png)
+![Image](./img/imagebuild-dropdown.png)
 
 ### 1. Python+CUDA 自定义构建
 
@@ -33,7 +34,7 @@
 
 用户能够在表单中选择相应 Python 和 CUDA 版本，如有需要，用户则应当按规范填入 APT 软件包和 Python requirements 内容，即可轻松完成镜像的构建，构建完成的镜像能够适用于 Jupyter 交互式作业和 Custom 自定义作业。表单详细内容可见下图。
 
-![alt text](img/imagebuild-python+cuda.png)
+![Image](./img/imagebuild-python+cuda.png)
 
 ### 2. 基于现有镜像构建
 
@@ -41,7 +42,7 @@
 
 本构建方式需要您填写一个表单，其中，您必须要选择一个基础镜像，同时必须为镜像提供一个简短的描述，将作为镜像的标识展示。而 APT 软件包和 Python 依赖则可以留空，如果您需要安装软件包，则可以填写软件包名称，多个软件包之间用空格隔开。例如，如果您需要安装 curl 和 tree ，则可以填写 `curl tree`。
 
-![alt text](img/imagebuild-package.png)
+![Image](./img/imagebuild-package.png)
 
 如果您计划运行的项目中包含 requirements.txt 文件，您可以将其内容拷贝至 Python 依赖处进行安装，但需要注意的是，pip 可能会在解析依赖时遇到无法解决的问题，为了避免镜像构建失败，您可以先尝试在容器中手动安装依赖尝试，再根据安装结果填写依赖。上图是一个表单填写的例子。在完成表单之后，您可以点击表单右下角的“开始制作”来启动镜像制作。
 
@@ -51,11 +52,11 @@
 
 如果您选择了本构建方式，则您只需要填写一个镜像描述和完整且语法规范的 Dockerfile（考虑到国内网络问题，在相应的下载和拉取代码中，可能需要进行换源操作），这两项均为必填项，一个可能的示例如下图所示。
 
-![alt text](img/imagebuild-dockerfile.png)
+![Image](./img/imagebuild-dockerfile.png)
 
 这里使用的示例 Dockerfile 见下。
 
-```Dockerfile
+```js
 FROM gpu-harbor.act.buaa.edu.cn/user-liuyizhou/nvidia-pytorch:24.12-v1.2.1
 
 USER root
@@ -77,28 +78,28 @@ RUN pip install onnxruntime-gpu && \
 
 在本构建方式中，用户需要填写一个简短的描述，将作为镜像的标识展示，并设置新镜像的镜像名和镜像标签，最后提供完整的 Envd 脚本，即可完成镜像构建。如用户对 Envd 脚本的使用有疑惑，欢迎随时与我们交流 👏🏻。
 
-![alt text](img/imagebuild-envd-build.png)
+![Image](./img/imagebuild-envd-build.png)
 
 ## 查看镜像
 
 在您点击“开始制作”之后，您将能够在页面下方的列表中看到您提交制作的镜像，初始的状态应为“等待中”。
 
-![alt text](img/imagebuild-result.png)
+![Image](./img/imagebuild-result.png)
 
 您可以通过点击镜像的描述来查看详细信息，此时您将能够在“构建日志”选项卡下看到镜像构建的详细日志，方便您排查可能出现的问题。
 
-![alt text](img/imagebuild-log.png)
+![Image](./img/imagebuild-log.png)
 
 另外，您也可以切换标签页至“Dockerfile”或“Envd 配置”，以查看系统通过表单为您生成或是您填写的 Dockerfile 或者 Envd 脚本。
 
-![alt text](img/imagebuild-dockerfile-show.png)
+![Image](./img/imagebuild-dockerfile-show.png)
 
 最后，如果您的镜像构建成功，则您能够在该页面看到镜像的状态变为“成功”，并且能够看到制作完成的镜像大小。请注意，由于 Docker 使用的分层存储机制，实际的存储用量可能会远小于各镜像的大小总和。同时，您也能够在“镜像列表”中看到您刚刚制作的类型为“Custom”的镜像，您将可以用它来启动“批处理作业”或“交互式作业”。
 
-![alt text](img/imagebuild-list.png)
+![Image](./img/imagebuild-list.png)
 
 ## 导入和导出配置
 
 在填写构建的表单时，您也可以将您的表单导出为 JSON 文件，以便于在下次需要它时从文件中导入，进行复用或是进一步的修改等。
 
-![alt text](img/imagebuild-save.png)
+![Image](./img/imagebuild-save.png)
