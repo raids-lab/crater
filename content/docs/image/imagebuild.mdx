@@ -56,7 +56,7 @@ description: 为了方便用户定制自己的镜像，我们提供了多种镜�
 
 这里使用的示例 Dockerfile 见下。
 
-```js
+```dockerfile
 FROM gpu-harbor.act.buaa.edu.cn/user-liuyizhou/nvidia-pytorch:24.12-v1.2.1
 
 USER root
@@ -72,9 +72,12 @@ RUN pip install onnxruntime-gpu && \
 
 `基于Envd构建`提供了以**类 Python 语法**进行镜像构建的构建方式，本构建方式可以很好地满足深度学习用户对于镜像的构建，并且学习成本低、构建功能强大、构建速度快，相应的简介可以参考链接：
 
-> [Envd 快速开始](https://envd.tensorchord.ai/guide/getting-started.html)
+<Callout title="参考资料">
 
-> [Envd API 参考](https://envd.tensorchord.ai/api/starlark/v1/config.html)
+- [Envd 快速开始](https://envd.tensorchord.ai/guide/getting-started.html)
+- [Envd API 参考](https://envd.tensorchord.ai/api/starlark/v1/config.html)
+
+</Callout>
 
 在本构建方式中，用户需要填写一个简短的描述，将作为镜像的标识展示，并设置新镜像的镜像名和镜像标签，最后提供完整的 Envd 脚本，即可完成镜像构建。如用户对 Envd 脚本的使用有疑惑，欢迎随时与我们交流 👏🏻。
 
