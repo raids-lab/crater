@@ -7,6 +7,7 @@ const config = {
   reactStrictMode: true,
   basePath: "/website",
   output: "export",
+  trailingSlash: true,
   images: {
     unoptimized: true,
   },
