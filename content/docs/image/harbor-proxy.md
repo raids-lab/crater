@@ -3,11 +3,9 @@ title: 镜像代理
 description: Documentation for Harbor Proxy
 ---
 
-:::warning
+## warning
 
 我们的代理服务器经常出现故障，建议您自行下载镜像，并手动上传到 Harbor 仓库中，详情见 [手动上传](./upload.md) 一节。
-
-:::
 
 ## 为什么需要镜像仓库代理
 
