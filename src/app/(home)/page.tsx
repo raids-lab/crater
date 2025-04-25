@@ -13,7 +13,7 @@ export default function HomePage() {
             className="text-sky-600"
           />
           <Card
-            title="用户文档"
+            title="用户指南"
             description="点击阅读"
             href="/docs"
             className="text-orange-600"

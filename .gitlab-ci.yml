@@ -15,7 +15,13 @@ build_frontend_main:
     - pnpm config set store-dir .pnpm-store
     - pnpm config set registry https://registry.npmmirror.com
     - pnpm install
-    - pnpm build # 这会生成 out/ 目录（静态导出模式）
+    - pnpm build
+  cache:
+    key: "crater-nextjs-cache"
+    paths:
+      - .pnpm-store/
+      - node_modules/
+      - .next/cache/
   artifacts:
     paths:
       - out/ # 静态导出目录（Next.js 默认是 out/）
