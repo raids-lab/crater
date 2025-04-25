@@ -178,9 +178,7 @@ func WebDav(c *gin.Context) {
 		return
 	}
 	http.StripPrefix("/api/ss", fs)
-	fmt.Println("URL:", c.Request.URL.Path)
 	c.Request.URL.Path = "/api/ss/" + realPath
-	fmt.Println("newURL:", realPath)
 	fs.ServeHTTP(c.Writer, c.Request)
 	// 直接创建文件夹使用777权限也没有用，可能是因为父目录有设置SetGID位，权限是drwxr-sr-x，于是选择直接修改权限
 	if c.Request.Method == "MKCOL" || c.Request.Method == "PUT" {
@@ -562,9 +560,26 @@ type SpacePaths struct {
 }
 
 func checkSpace() {
+	ctx := context.Background()
+	var baseSpace []string
+	baseSpace = append(baseSpace, config.GetConfig().AccountSpacePrefix,
+		config.GetConfig().UserSpacePrefix, config.GetConfig().PublicSpacePrefix)
+	for _, space := range baseSpace {
+		_, err := fs.FileSystem.Stat(ctx, space)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				fmt.Println("create dir:", space)
+				err = fs.FileSystem.Mkdir(ctx, space, os.FileMode(model.RWXFolderPerm))
+				if err != nil {
+					fmt.Println("can't create dir:", space)
+					fmt.Println("err:", err)
+					return
+				}
+			}
+		}
+	}
 	u := query.User
 	a := query.Account
-	ctx := context.Background()
 	user, err := u.WithContext(ctx).Where(u.ID.IsNotNull()).Find()
 	if err != nil {
 		fmt.Println("can't get user")
