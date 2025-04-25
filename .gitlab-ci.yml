@@ -7,6 +7,7 @@ variables:
   HUSKY: "0"
   HARBOR_REGISTRY_IMAGE: "${HARBOR_REGISTRY}/crater/document"
 
+# 构建阶段：生成静态文件
 build_frontend_main:
   stage: build_frontend
   image: harbor.act.buaa.edu.cn/crater/node-pnpm:21
@@ -14,21 +15,19 @@ build_frontend_main:
     - pnpm config set store-dir .pnpm-store
     - pnpm config set registry https://registry.npmmirror.com
     - pnpm install
-    - pnpm build # 这会执行 docusaurus build
+    - pnpm build # 这会生成 out/ 目录（静态导出模式）
   artifacts:
     paths:
-      - build/ # Docusaurus 默认构建目录是 build 而不是 dist
+      - out/ # 静态导出目录（Next.js 默认是 out/）
     expire_in: 1 week
-  # 其他部分保持不变...
 
-# Build Docker image and push to harbor registry for main branch
+# 构建镜像阶段（无需修改）
 build_image_main:
   stage: build_image
   image:
     name: harbor.act.buaa.edu.cn/crater/kaniko-executor:debug
     entrypoint: [""]
   script:
-    # Since GitLab container registry is not enabled, we need to set up harbor registry manually.
     - mkdir -p /kaniko/.docker
     - echo "{\"auths\":{\"${HARBOR_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${HARBOR_REGISTRY_USER}" "${HARBOR_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
     - >-
@@ -41,7 +40,7 @@ build_image_main:
   dependencies:
     - build_frontend_main
 
-# Deploy to Kubernetes cluster for testing branch
+# 部署阶段（无需修改）
 deploy_testing:
   stage: deploy
   image:
@@ -55,7 +54,6 @@ deploy_testing:
   dependencies:
     - build_image_main
 
-# Deploy to Kubernetes cluster for main branch
 deploy_main:
   stage: deploy
   image:
