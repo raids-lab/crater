@@ -53,13 +53,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { IDlAnalyze, apiDlAnalyze } from "@/services/api/recommend/dlTask";
 import { ProgressBar } from "@/components/custom/ProgressBar";
 import { Cross1Icon } from "@radix-ui/react-icons";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { EnvCard } from "./Custom";
 import { VolumeMountsCard } from "@/components/form/DataMountFormField";
 import { OtherOptionsFormCard } from "@/components/form/OtherOptionsFormField";
@@ -76,9 +69,6 @@ const formSchema = z.object({
     .max(40, {
       message: "作业名称最多包含 40 个字符",
     }),
-  replicas: z.coerce.number().min(1, {
-    message: "副本个数必须大于0",
-  }),
   runningType: z.enum(["one-shot", "long-running"], {
     invalid_type_error: "Select a runningType",
     required_error: "请选择运行模式",
@@ -97,7 +87,6 @@ const formSchema = z.object({
   volumeMounts: volumeMountsSchema,
   alertEnabled: z.boolean().default(true),
   nodeSelector: nodeSelectorSchema,
-  openssh: z.boolean().default(false),
   forwards: forwardsSchema,
 });
 
@@ -128,7 +117,7 @@ export const Component = () => {
         batchSize: values.batchSize,
         vocabularySize: values.dim.map((item) => item.vocabularySize),
         embeddingDim: values.dim.map((item) => item.embeddingDim),
-        replicas: values.replicas,
+        replicas: 1,
         selectors: values.nodeSelector.enable
           ? [
               {
@@ -398,7 +387,7 @@ export const Component = () => {
                   </FormItem>
                 )}
               />
-              <FormField
+              {/* <FormField
                 control={form.control}
                 name="replicas"
                 render={({ field }) => (
@@ -413,8 +402,8 @@ export const Component = () => {
                     <FormMessage />
                   </FormItem>
                 )}
-              />
-              <FormField
+              /> */}
+              {/* <FormField
                 control={form.control}
                 name="runningType"
                 render={({ field }) => (
@@ -442,7 +431,7 @@ export const Component = () => {
                     <FormMessage />
                   </FormItem>
                 )}
-              />
+              /> */}
               <div className="grid grid-cols-3 gap-3">
                 <FormField
                   control={form.control}
@@ -517,7 +506,7 @@ export const Component = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        模型乘加运算数(百万)
+                        模型乘加运算数
                         <FormLabelMust />
                       </FormLabel>
                       <FormControl>
@@ -533,7 +522,7 @@ export const Component = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        模型参数量(千)
+                        模型参数量
                         <FormLabelMust />
                       </FormLabel>
                       <FormControl>
