@@ -10,10 +10,12 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/ptr"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	"github.com/raids-lab/crater/internal/resputil"
@@ -45,14 +47,16 @@ var jobStatusMap = map[corev1.PodPhase]batch.JobPhase{
 }
 
 type SparseJobMgr struct {
-	name      string
-	jobclient *crclient.RecommendDLJobController
+	name       string
+	jobclient  *crclient.RecommendDLJobController
+	kubeClient kubernetes.Interface
 }
 
 func NewSparseJobMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &SparseJobMgr{
-		name:      "spjobs",
-		jobclient: &crclient.RecommendDLJobController{Client: conf.Client},
+		name:       "spjobs",
+		jobclient:  &crclient.RecommendDLJobController{Client: conf.Client},
+		kubeClient: conf.KubeClient,
 	}
 }
 
@@ -68,6 +72,7 @@ func (mgr *SparseJobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET(":name/detail", mgr.GetByName)
 	g.GET(":name/yaml", mgr.GetYaml)
 	g.GET(":name/pods", mgr.GetJobPods)
+	g.GET(":name/events", mgr.GetJobEvents) // 添加获取事件的路由
 
 	g.POST("training", mgr.Create)
 
@@ -211,10 +216,21 @@ func (mgr *SparseJobMgr) List(c *gin.Context) {
 			completedTimestamp = conditions[len(conditions)-1].LastTransitionTime
 		}
 
+		u := query.User
+		user, err := u.WithContext(c).Where(u.Name.Eq(spjob.Spec.Username)).First()
+		if err != nil {
+			resputil.Error(c, fmt.Sprintf("get user failed, err:%v", err), resputil.NotSpecified)
+			return
+		}
+
 		job := vcjob.JobResp{
-			Name:               spjob.Annotations[AnnotationKeyTaskName],
-			JobName:            spjob.Name,
-			Owner:              spjob.Spec.Username,
+			Name:    spjob.Annotations[AnnotationKeyTaskName],
+			JobName: spjob.Name,
+			Owner:   spjob.Spec.Username,
+			UserInfo: model.UserInfo{
+				Nickname: user.Nickname,
+				Username: user.Name,
+			},
 			JobType:            "training",
 			Queue:              token.AccountName,
 			Status:             string(jobStatusMap[pod.Status.Phase]),
@@ -237,18 +253,6 @@ func (mgr *SparseJobMgr) List(c *gin.Context) {
 type (
 	GetRecommendDLJobReq struct {
 		Name string `uri:"name" binding:"required"`
-	}
-	JobDetailResp struct {
-		Name               string        `json:"name"`
-		Namespace          string        `json:"namespace"`
-		Username           string        `json:"username"`
-		JobName            string        `json:"jobName"`
-		JobType            model.JobType `json:"jobType"`
-		Queue              string        `json:"queue"`
-		Status             string        `json:"status"`
-		CreationTimestamp  v1.Time       `json:"createdAt"`
-		RunningTimestamp   v1.Time       `json:"startedAt"`
-		CompletedTimestamp v1.Time       `json:"completedAt"`
 	}
 
 	PodDetail struct {
@@ -298,13 +302,24 @@ func (mgr *SparseJobMgr) GetByName(c *gin.Context) {
 		completeTimestamp = pod.Status.ContainerStatuses[0].State.Terminated.FinishedAt
 	}
 
-	ret := JobDetailResp{
-		Name:               job.Name,
-		JobName:            job.Name,
-		Username:           token.Username,
+	u := query.User
+	user, err := u.WithContext(c).Where(u.Name.Eq(job.Spec.Username)).First()
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("get user failed, err:%v", err), resputil.NotSpecified)
+		return
+	}
+
+	ret := vcjob.JobDetailResp{
+		Name:     job.Name,
+		JobName:  job.Name,
+		Username: token.Username,
+		UserInfo: model.UserInfo{
+			Nickname: user.Nickname,
+			Username: user.Name,
+		},
 		Namespace:          dlNamespace,
 		Queue:              token.AccountName,
-		Status:             string(jobStatusMap[pod.Status.Phase]),
+		Status:             batch.JobPhase(string(jobStatusMap[pod.Status.Phase])),
 		CreationTimestamp:  job.CreationTimestamp,
 		RunningTimestamp:   runningTimestamp,
 		CompletedTimestamp: completeTimestamp,
@@ -535,4 +550,88 @@ func (mgr *SparseJobMgr) AnalyzeResourceUsage(c *gin.Context) {
 			FP32ActiveAvg:  analyzeResp.Data["V100"].FP32ActiveAvg,
 		},
 	})
+}
+
+// GetJobEvents godoc
+// @Summary 获取稀疏推荐作业的事件
+// @Description 获取稀疏推荐作业关联的事件信息
+// @Tags SpJob
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param name path string true "Job Name"
+// @Success 200 {object} resputil.Response[any] "事件列表"
+// @Failure 400 {object} resputil.Response[any] "请求参数错误"
+// @Failure 500 {object} resputil.Response[any] "其他错误"
+// @Router /v1/spjobs/{name}/events [get]
+func (mgr *SparseJobMgr) GetJobEvents(c *gin.Context) {
+	req := &GetRecommendDLJobReq{}
+	if err := c.ShouldBindUri(req); err != nil {
+		resputil.Error(c, fmt.Sprintf("bind request query failed, err:%v", err), resputil.NotSpecified)
+		return
+	}
+
+	var job *recommenddljobapi.RecommendDLJob
+	var err error
+	if job, err = mgr.jobclient.GetRecommendDLJob(c, req.Name, dlNamespace); err != nil {
+		resputil.Error(c, fmt.Sprintf("get recommenddljob failed, err:%v", err), resputil.NotSpecified)
+		return
+	}
+
+	jobName := job.Name
+	namespace := job.Namespace
+
+	if jobName == "" {
+		// 作业还在排队中，模拟一个事件，说明作业正在排队
+		event := &corev1.Event{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      req.Name,
+				Namespace: namespace,
+			},
+			Reason:        "Queueing",
+			Type:          "Warning",
+			LastTimestamp: v1.Time{Time: job.CreationTimestamp.Time},
+			Message:       fmt.Sprintf("Job %s is queueing", req.Name),
+		}
+		resputil.Success(c, []corev1.Event{*event})
+		return
+	}
+
+	// 获取任务相关事件
+	kubeClient := mgr.kubeClient
+	jobEvents, err := kubeClient.CoreV1().Events(namespace).List(c, v1.ListOptions{
+		FieldSelector: fmt.Sprintf("involvedObject.name=%s", jobName),
+		TypeMeta:      v1.TypeMeta{Kind: "RecommendDLJob", APIVersion: "kube-gpu-sparse.kube-gpu-sparse.io/v1"},
+	})
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("list events failed, err:%v", err), resputil.NotSpecified)
+		return
+	}
+	events := jobEvents.Items
+
+	// 获取Pod相关事件
+	pods := mgr.GetPodsByName(c, jobName)
+	if len(pods) > 0 {
+		for _, pod := range pods {
+			podEvents, err := kubeClient.CoreV1().Events(namespace).List(c, v1.ListOptions{
+				FieldSelector: fmt.Sprintf("involvedObject.name=%s", pod.Name),
+				TypeMeta:      v1.TypeMeta{Kind: "Pod"},
+			})
+			if err != nil {
+				continue
+			}
+			// 如果存在Pod事件，则不返回Job事件
+			if len(podEvents.Items) > 0 && len(events) > 0 {
+				events = []corev1.Event{}
+			}
+			events = append(events, podEvents.Items...)
+		}
+	}
+
+	// 按时间排序
+	sort.Slice(events, func(i, j int) bool {
+		return events[i].LastTimestamp.After(events[j].LastTimestamp.Time)
+	})
+
+	resputil.Success(c, events)
 }
