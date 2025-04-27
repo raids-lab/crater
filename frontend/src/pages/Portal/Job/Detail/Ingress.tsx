@@ -15,7 +15,7 @@ export default function PodIngressDialog({
   namespacedName,
   setNamespacedName,
   userName,
-  jobName, // Added missing comma
+  jobName,
 }: PodIngressDialogProps) {
   const [isOpen, setIsOpen] = useNamespacedState(
     namespacedName,
@@ -64,7 +64,9 @@ export default function PodIngressDialog({
               className="grid gap-4 h-full pt-2"
               style={{ display: activeTab === "nodeport" ? "block" : "none" }}
             >
-              {namespacedName && <NodeportPanel namespacedName={namespacedName} userName={userName} />}
+              {namespacedName && (
+                <NodeportPanel namespacedName={namespacedName} userName={userName} />
+              )}
             </TabsContent>
           </Tabs>
         </div>
