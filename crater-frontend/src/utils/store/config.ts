@@ -37,6 +37,7 @@ export const configAtom = atom(async () => {
       },
       featureFlags: {
         enableRegister: false,
+        setDocsAsHome: import.meta.env.VITE_SET_DOCS_AS_HOME === "true",
         enableMockServiceWorker: import.meta.env.VITE_USE_MSW === "true",
       },
     } as AppConfig;
@@ -78,6 +79,10 @@ export const asyncUrlApiBaseAtom = atom(
 
 export const asyncUrlWebsiteBaseAtom = atom(
   async (get) => (await get(configAtom)).url.websiteBase,
+);
+
+export const asyncDocsAsHomeAtom = atom(
+  async (get) => (await get(configAtom)).featureFlags.setDocsAsHome,
 );
 
 // 派生原子 - 按类别导出

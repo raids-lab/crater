@@ -4,7 +4,7 @@
     "host": "gpu.act.buaa.edu.cn",
     "apiBase": "https://gpu.act.buaa.edu.cn/api/",
     "apiVersion": "v1",
-    "websiteBase": "https://gpu.act.buaa.edu.cn/website"
+    "websiteBase": "https://gpu.act.buaa.edu.cn/website/cn"
   },
   "grafana": {
     "overview": {
