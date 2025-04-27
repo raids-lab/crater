@@ -28,14 +28,131 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { UpdateResourceForm } from "./Form";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { RefreshCcwIcon } from "lucide-react";
 import {
   Resource,
   apiAdminResourceSync,
   apiResourceList,
+  apiAdminResourceDelete,
+  apiResourceNetworks,
 } from "@/services/api/resource";
 import { formatBytes } from "@/utils/formatter";
+import { NetworkAssociationForm, UpdateResourceTypeForm } from "./Form";
+
+// New component for Networks cell
+const NetworksCell: FC<{ resourceId: number; resourceType?: string }> = ({
+  resourceId,
+  resourceType,
+}) => {
+  const networksQuery = useQuery({
+    queryKey: ["resource", "networks", resourceId],
+    queryFn: () => apiResourceNetworks(resourceId),
+    enabled: resourceType === "gpu",
+    select: (res) => res.data.data,
+  });
+
+  if (resourceType !== "gpu" || !networksQuery.data?.length) {
+    return <></>;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {networksQuery.data.map((network) => (
+        <Badge key={network.ID} variant="outline" className="font-mono">
+          {network.name}
+        </Badge>
+      ))}
+    </div>
+  );
+};
+
+// New component for Actions cell
+const ActionsCell: FC<{ resource: Resource }> = ({ resource }) => {
+  const [openLabelSheet, setOpenLabelSheet] = useState(false);
+  const [openTypeSheet, setOpenTypeSheet] = useState(false);
+  const [openNetworkSheet, setOpenNetworkSheet] = useState(false);
+  const queryClient = useQueryClient();
+
+  const { mutate: deleteResource } = useMutation({
+    mutationFn: () => apiAdminResourceDelete(resource.ID),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["resource", "list"],
+      });
+      toast.success("资源已删除");
+    },
+  });
+
+  return (
+    <>
+      <AlertDialog>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">操作</span>
+              <DotsHorizontalIcon className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel className="text-muted-foreground text-xs">
+              操作
+            </DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => setOpenLabelSheet(true)}>
+              编辑资源信息
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setOpenTypeSheet(true)}>
+              设置资源类型
+            </DropdownMenuItem>
+            {resource.type === "gpu" && (
+              <DropdownMenuItem onClick={() => setOpenNetworkSheet(true)}>
+                管理网络关联
+              </DropdownMenuItem>
+            )}
+            <AlertDialogTrigger asChild>
+              <DropdownMenuItem className="text-destructive">
+                删除资源
+              </DropdownMenuItem>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>删除资源</AlertDialogTitle>
+                <AlertDialogDescription>
+                  确认删除资源 "{resource.name}" 吗？此操作不可撤销。
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>取消</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => deleteResource()}
+                  className="bg-destructive text-destructive-foreground"
+                >
+                  确认删除
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </AlertDialog>
+      <UpdateResourceForm
+        current={resource}
+        open={openLabelSheet}
+        onOpenChange={setOpenLabelSheet}
+      />
+      <UpdateResourceTypeForm
+        current={resource}
+        open={openTypeSheet}
+        onOpenChange={setOpenTypeSheet}
+      />
+      {resource.type === "gpu" && (
+        <NetworkAssociationForm
+          gpuResource={resource}
+          open={openNetworkSheet}
+          onOpenChange={setOpenNetworkSheet}
+        />
+      )}
+    </>
+  );
+};
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -78,6 +195,35 @@ const columns: ColumnDef<Resource>[] = [
     },
   },
   {
+    accessorKey: "type",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={"类型"} />
+    ),
+    cell: ({ row }) => {
+      const type = row.getValue<string>("type");
+      if (!type) {
+        return <></>;
+      }
+      return (
+        <Badge variant="secondary">
+          {type === "gpu" ? "GPU" : type === "rdma" ? "RDMA" : type}
+        </Badge>
+      );
+    },
+  },
+  {
+    id: "networks",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={"关联网络"} />
+    ),
+    cell: ({ row }) => (
+      <NetworksCell
+        resourceId={row.original.ID}
+        resourceType={row.original.type}
+      />
+    ),
+  },
+  {
     accessorKey: "amount",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title={"总量"} />
@@ -114,40 +260,10 @@ const columns: ColumnDef<Resource>[] = [
       </Badge>
     ),
   },
-  // 添加删除键和更新键
   {
     id: "actions",
     enableHiding: false,
-    cell: ({ row }) => {
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      const [openSheet, setOpenSheet] = useState(false);
-      return (
-        <Dialog open={openSheet} onOpenChange={setOpenSheet}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">操作</span>
-                <DotsHorizontalIcon className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel className="text-muted-foreground text-xs">
-                操作
-              </DropdownMenuLabel>
-              <DialogTrigger asChild>
-                <DropdownMenuItem>编辑资源列表</DropdownMenuItem>
-              </DialogTrigger>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <UpdateResourceForm
-            current={row.original}
-            closeSheet={() => {
-              setOpenSheet(false);
-            }}
-          />
-        </Dialog>
-      );
-    },
+    cell: ({ row }) => <ActionsCell resource={row.original} />,
   },
 ];
 
