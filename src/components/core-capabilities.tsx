@@ -105,7 +105,7 @@ function CapabilityCard({
   color: string;
 }) {
   return (
-    <div className="group bg-white dark:bg-gray-800/80 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-gray-700 backdrop-blur-sm hover:translate-y-[-4px]">
+    <div className="group bg-white dark:bg-gray-800/80 rounded-xl shadow-lg hover:shadow-xl duration-300 overflow-hidden border border-gray-100 dark:border-gray-700 backdrop-blur-sm">
       <div className={cn("h-2 bg-gradient-to-r", color)}></div>
       <div className="p-8">
         <div className="flex items-center gap-4 mb-6">
@@ -113,7 +113,7 @@ function CapabilityCard({
             className={cn(
               "p-3 rounded-xl bg-gradient-to-br shadow-sm",
               color,
-              "transform transition-transform group-hover:scale-110 duration-300"
+              "duration-300"
             )}
           >
             {icon}
@@ -122,10 +122,10 @@ function CapabilityCard({
         </div>
         <ul className="space-y-3">
           {features.map((feature, index) => (
-            <li key={index} className="flex items-start gap-3 group/item">
+            <li key={index} className="flex items-start gap-3">
               <span
                 className={cn(
-                  "inline-block w-2 h-2 rounded-full bg-gradient-to-r mt-2 group-hover/item:scale-125 transition-transform",
+                  "inline-block w-2 h-2 rounded-full bg-gradient-to-r mt-2",
                   color
                 )}
               ></span>

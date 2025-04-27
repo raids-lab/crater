@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@orama/orama':
+        specifier: ^3.1.6
+        version: 3.1.6
+      '@orama/tokenizers':
+        specifier: ^3.1.6
+        version: 3.1.6
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -526,6 +532,10 @@ packages:
   '@orama/orama@3.1.6':
     resolution: {integrity: sha512-qtSrqCqRU93SjEBedz987tvWao1YQSELjBhGkHYGVP7Dg0lBWP6d+uZEIt5gxTAYio/YWWlhivmRABvRfPLmnQ==}
     engines: {node: '>= 16.0.0'}
+
+  '@orama/tokenizers@3.1.6':
+    resolution: {integrity: sha512-WAvM0XAytTkWX27XvqHkEeiO8ev5+Dqo/6xGzHFrRegoYb+dEapR8M7ao97qR5ZaHLIqnC+JweBhkiToQ6Gkbw==}
+    engines: {node: '>= 18.0.0'}
 
   '@radix-ui/number@1.1.1':
     resolution: {integrity: sha512-MkKCwxlXTgz6CFoJx3pCwn07GKp36+aZyu/u2Ln2VrA5DcdyCZkASEDBTd8x5whTQQL5CiYf4prXKLcgQdv29g==}
@@ -3798,6 +3808,10 @@ snapshots:
   '@nolyfill/is-core-module@1.0.39': {}
 
   '@orama/orama@3.1.6': {}
+
+  '@orama/tokenizers@3.1.6':
+    dependencies:
+      '@orama/orama': 3.1.6
 
   '@radix-ui/number@1.1.1': {}
 

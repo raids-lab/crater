@@ -1,4 +1,5 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
+import { i18n } from "@/lib/i18n";
 import { BookIcon, ExternalLinkIcon } from "lucide-react";
 
 import { SVGProps, Ref, forwardRef } from "react";
@@ -38,26 +39,30 @@ CraterIcon.displayName = "CraterIcon";
  * Home Layout: app/(home)/layout.tsx
  * Docs Layout: app/docs/layout.tsx
  */
-export const baseOptions: BaseLayoutProps = {
-  nav: {
-    title: (
-      <>
-        <CraterIcon className="size-6" />
-        Crater
-      </>
-    ),
-  },
-  links: [
-    {
-      text: "用户指南",
-      icon: <BookIcon />,
-      url: "/docs",
-      active: "nested-url",
+export function baseOptions(locale: string): BaseLayoutProps {
+  return {
+    i18n,
+    nav: {
+      title: (
+        <>
+          <CraterIcon className="size-6" />
+          Crater
+        </>
+      ),
+      url: `/${locale}`,
     },
-    {
-      text: "访问 Crater",
-      icon: <ExternalLinkIcon />,
-      url: "https://gpu.act.buaa.edu.cn/portal",
-    },
-  ],
-};
+    links: [
+      {
+        text: locale === "cn" ? "用户指南" : "User Guide",
+        icon: <BookIcon />,
+        url: `/${locale}/docs`,
+        active: "nested-url",
+      },
+      {
+        text: locale === "cn" ? "开始使用" : "Get Started",
+        icon: <ExternalLinkIcon />,
+        url: "https://gpu.act.buaa.edu.cn/portal",
+      },
+    ],
+  };
+}

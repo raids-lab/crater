@@ -1,5 +1,3 @@
-"use client";
-
 import { HeroSection } from "@/components/hero-section";
 import { WhyChooseSection } from "@/components/why-choose-section";
 import { CoreCapabilities } from "@/components/core-capabilities";
@@ -7,6 +5,10 @@ import { TechnicalAdvantages } from "@/components/technical-advantages";
 import { CustomerScenarios } from "@/components/customer-scenarios";
 import { GetStarted } from "@/components/get-started";
 import { FaqSection } from "@/components/faq-section";
+
+export async function generateStaticParams() {
+  return [{ lang: "cn" }, { lang: "en" }];
+}
 
 export default function HomePage() {
   return (
