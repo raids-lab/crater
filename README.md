@@ -3,17 +3,26 @@
 This is a Next.js application generated with
 [Create Fumadocs](https://github.com/fuma-nama/fumadocs).
 
+## Getting Started
+
 Run development server:
 
 ```bash
-npm run dev
-# or
+pnpm config set registry https://registry.npmmirror.com
+pnpm install
 pnpm dev
-# or
-yarn dev
 ```
 
-Open http://localhost:3000 with your browser to see the result.
+Open http://localhost:3000/website with your browser to see the result.
+
+## Build and serve locally:
+
+```bash
+pnpm build
+pnpm dlx serve@latest out --serve-path /website
+```
+
+Open http://localhost:3000/website with your browser to see the result.
 
 ## Learn More
 

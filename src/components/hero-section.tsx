@@ -10,7 +10,7 @@ export function HeroSection() {
       <div className="container mx-auto my-20 max-w-6xl">
         <div className="flex flex-col items-center text-center">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500">
-            Crater - 云原生智算平台
+            Crater · 云原生智算平台
           </h1>
           <p className="text-xl md:text-2xl leading-relaxed text-balance max-w-3xl mb-10 text-gray-700 dark:text-gray-300">
             <span>基于 Kubernetes 的机器学习一站式解决方案</span>
