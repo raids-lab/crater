@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -42,10 +42,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
 import { GridIcon } from "lucide-react";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { asyncUrlHostAtom } from "@/utils/store/config";
 import { useAtomValue } from "jotai";
 import DocsButton from "@/components/button/DocsButton";
+import LoadableButton from "@/components/custom/LoadableButton";
 
 const ingressFormSchema = z.object({
   name: z
@@ -60,13 +61,12 @@ const ingressFormSchema = z.object({
 
 interface IngressPanelProps {
   namespacedName: PodNamespacedName;
-  jobName: string; // Added jobName parameter
+  jobName: string;
 }
 
 export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
   const [isEditIngressDialogOpen, setIsEditIngressDialogOpen] = useState(false);
   const host = useAtomValue(asyncUrlHostAtom);
-  const queryClient = useQueryClient();
 
   const ingressForm = useForm<PodIngressMgr>({
     resolver: zodResolver(ingressFormSchema),
@@ -76,29 +76,26 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
     },
   });
 
-  const { data: ingressList, isLoading } = useQuery({
-    queryKey: ["ingresses", namespacedName],
+  const { namespace, name } = namespacedName || {};
+  const {
+    data: ingressList,
+    isLoading,
+    refetch: refetchIngresses,
+  } = useQuery({
+    queryKey: ["ingresses", namespace, name],
     queryFn: async () => {
-      if (!namespacedName) return [];
-      const response = await apiGetPodIngresses(
-        namespacedName.namespace,
-        namespacedName.name,
-      );
+      if (!namespace || !name) return [];
+      const response = await apiGetPodIngresses(namespace, name);
       return response.data.data.ingresses;
     },
-    enabled: !!namespacedName,
+    enabled: !!namespace && !!name,
   });
 
-  const ingressQueryKey = useMemo(
-    () => ["ingresses", namespacedName],
-    [namespacedName],
-  );
-
-  const createIngressMutation = useMutation({
+  const { mutate: createIngressMutation, isPending: isCreating } = useMutation({
     mutationFn: (data: PodIngressMgr) =>
       apiCreatePodIngress(namespacedName.namespace, namespacedName.name, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ingressQueryKey });
+      void refetchIngresses();
       toast.success("添加成功");
       setIsEditIngressDialogOpen(false);
     },
@@ -107,11 +104,11 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
     },
   });
 
-  const deleteIngressMutation = useMutation({
+  const { mutate: deleteIngressMutation, isPending: isDeleting } = useMutation({
     mutationFn: (data: PodIngressMgr) =>
       apiDeletePodIngress(namespacedName.namespace, namespacedName.name, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ingressQueryKey });
+      void refetchIngresses();
       toast.success("删除成功");
     },
     onError: () => {
@@ -126,13 +123,13 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
 
   const onSubmitIngress = (data: PodIngressMgr) => {
     if (namespacedName) {
-      createIngressMutation.mutate(data);
+      createIngressMutation(data);
     }
   };
 
   const handleDeleteIngress = (data: PodIngressMgr) => {
     if (namespacedName) {
-      deleteIngressMutation.mutate(data);
+      deleteIngressMutation(data);
     }
   };
 
@@ -182,9 +179,7 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
                     size="icon"
                     className="hover:text-destructive"
                     tooltipContent="删除"
-                    disabled={
-                      ingress.port === 8888 || deleteIngressMutation.isPending
-                    }
+                    disabled={ingress.port === 8888 || isDeleting}
                   >
                     <Trash2 className="size-4" />
                   </TooltipButton>
@@ -206,9 +201,9 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
                       <AlertDialogAction
                         variant="destructive"
                         onClick={() => handleDeleteIngress(ingress)}
-                        disabled={deleteIngressMutation.isPending}
+                        disabled={isDeleting}
                       >
-                        {deleteIngressMutation.isPending ? "删除中..." : "删除"}
+                        {isDeleting ? "删除中..." : "删除"}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -224,10 +219,7 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
           title={"帮助文档"}
           url={`toolbox/external-access/ingress-rule`}
         />
-        <Button
-          onClick={handleAddIngress}
-          disabled={createIngressMutation.isPending}
-        >
+        <Button onClick={handleAddIngress} disabled={isCreating}>
           <Plus className="mr-2 size-4" />
           添加 Ingress 规则
         </Button>
@@ -301,9 +293,13 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
                   </FormItem>
                 )}
               />
-              <Button type="submit" disabled={createIngressMutation.isPending}>
-                {createIngressMutation.isPending ? "保存中..." : "保存"}
-              </Button>
+              <LoadableButton
+                isLoading={isCreating}
+                isLoadingText="保存中..."
+                type="submit"
+              >
+                保存
+              </LoadableButton>
             </form>
           </Form>
         </DialogContent>
