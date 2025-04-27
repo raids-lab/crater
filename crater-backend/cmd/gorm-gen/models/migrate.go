@@ -264,6 +264,56 @@ func main() {
 				return nil
 			},
 		},
+		{
+			ID: "202504272234",
+			Migrate: func(tx *gorm.DB) error {
+				type Resource struct {
+					// Resource relationship
+					Type *model.CraterResourceType `gorm:"type:varchar(32);comment:资源类型" json:"type"`
+				}
+
+				// Add the Type and Networks columns to the Resource tableturn err
+
+				if err := tx.Migrator().AddColumn(&Resource{}, "Type"); err != nil {
+					return err
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Resource struct {
+					// Resource relationship
+					Type *model.CraterResourceType `gorm:"type:varchar(32);comment:资源类型" json:"type"`
+				}
+
+				// Drop the Type and Networks columns from the Resource table
+				if err := tx.Migrator().DropColumn(&Resource{}, "Type"); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+		{
+			ID: "202504272311", // 确保ID是唯一的
+			Migrate: func(tx *gorm.DB) error {
+				type ResourceNetwork struct {
+					gorm.Model
+					ResourceID uint `gorm:"primaryKey;comment:资源ID" json:"resourceId"`
+					NetworkID  uint `gorm:"primaryKey;comment:网络ID" json:"networkId"`
+
+					Resource model.Resource `gorm:"foreignKey:ResourceID;constraint:OnDelete:CASCADE;" json:"resource"`
+					Network  model.Resource `gorm:"foreignKey:NetworkID;constraint:OnDelete:CASCADE;" json:"network"`
+				}
+				// Create the table for resource networks
+				if err := tx.Migrator().CreateTable(&ResourceNetwork{}); err != nil {
+					return err
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				// Drop the resource_networks table if rolling back
+				return tx.Migrator().DropTable("resource_networks")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {

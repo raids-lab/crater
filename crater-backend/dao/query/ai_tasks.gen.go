@@ -33,6 +33,7 @@ func newAITask(db *gorm.DB, opts ...gen.DOOption) aITask {
 	_aITask.DeletedAt = field.NewField(tableName, "deleted_at")
 	_aITask.TaskName = field.NewString(tableName, "task_name")
 	_aITask.UserName = field.NewString(tableName, "username")
+	_aITask.Owner = field.NewString(tableName, "owner")
 	_aITask.Namespace = field.NewString(tableName, "namespace")
 	_aITask.TaskType = field.NewString(tableName, "task_type")
 	_aITask.AdmittedAt = field.NewTime(tableName, "admitted_at")
@@ -59,7 +60,6 @@ func newAITask(db *gorm.DB, opts ...gen.DOOption) aITask {
 	_aITask.NodePort = field.NewInt32(tableName, "node_port")
 	_aITask.PodTemplate = field.NewField(tableName, "pod_template")
 	_aITask.Node = field.NewString(tableName, "node")
-	_aITask.Owner = field.NewString(tableName, "owner")
 
 	_aITask.fillFieldMap()
 
@@ -76,6 +76,7 @@ type aITask struct {
 	DeletedAt       field.Field
 	TaskName        field.String
 	UserName        field.String
+	Owner           field.String
 	Namespace       field.String
 	TaskType        field.String
 	AdmittedAt      field.Time
@@ -102,7 +103,6 @@ type aITask struct {
 	NodePort        field.Int32
 	PodTemplate     field.Field
 	Node            field.String
-	Owner           field.String
 
 	fieldMap map[string]field.Expr
 }
@@ -125,6 +125,7 @@ func (a *aITask) updateTableName(table string) *aITask {
 	a.DeletedAt = field.NewField(table, "deleted_at")
 	a.TaskName = field.NewString(table, "task_name")
 	a.UserName = field.NewString(table, "username")
+	a.Owner = field.NewString(table, "owner")
 	a.Namespace = field.NewString(table, "namespace")
 	a.TaskType = field.NewString(table, "task_type")
 	a.AdmittedAt = field.NewTime(table, "admitted_at")
@@ -151,7 +152,6 @@ func (a *aITask) updateTableName(table string) *aITask {
 	a.NodePort = field.NewInt32(table, "node_port")
 	a.PodTemplate = field.NewField(table, "pod_template")
 	a.Node = field.NewString(table, "node")
-	a.Owner = field.NewString(table, "owner")
 
 	a.fillFieldMap()
 
@@ -183,6 +183,7 @@ func (a *aITask) fillFieldMap() {
 	a.fieldMap["deleted_at"] = a.DeletedAt
 	a.fieldMap["task_name"] = a.TaskName
 	a.fieldMap["username"] = a.UserName
+	a.fieldMap["owner"] = a.Owner
 	a.fieldMap["namespace"] = a.Namespace
 	a.fieldMap["task_type"] = a.TaskType
 	a.fieldMap["admitted_at"] = a.AdmittedAt
@@ -209,7 +210,6 @@ func (a *aITask) fillFieldMap() {
 	a.fieldMap["node_port"] = a.NodePort
 	a.fieldMap["pod_template"] = a.PodTemplate
 	a.fieldMap["node"] = a.Node
-	a.fieldMap["owner"] = a.Owner
 }
 
 func (a aITask) clone(db *gorm.DB) aITask {

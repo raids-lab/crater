@@ -36,6 +36,7 @@ func main() {
 		model.Jobtemplate{},
 		model.Alert{},
 		model.AITask{},
+		model.ResourceNetwork{},
 	)
 
 	// 执行并生成代码
