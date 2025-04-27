@@ -4,6 +4,7 @@ import { asyncUrlWebsiteBaseAtom } from "@/utils/store/config";
 import { useAtomValue } from "jotai";
 import { VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
 
 type DocsButtonProps = React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
@@ -23,11 +24,13 @@ const DocsButton = ({
     <Button
       variant={variant ?? "secondary"}
       className={cn("cursor-pointer", className)}
-      onClick={() => window.open(`${website}/docs/${url}`)}
       {...props}
+      asChild
     >
-      <BookOpenIcon />
-      {title}
+      <Link to={`${website}/docs/${url}`}>
+        <BookOpenIcon />
+        {title}
+      </Link>
     </Button>
   );
 };

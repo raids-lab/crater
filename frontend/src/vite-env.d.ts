@@ -21,4 +21,5 @@ interface ImportMetaEnv {
 
   // Development
   readonly VITE_USE_MSW: string;
+  readonly VITE_SET_DOCS_AS_HOME: string;
 }

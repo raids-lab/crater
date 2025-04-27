@@ -17,8 +17,13 @@ import { adminRoute } from "./pages/Admin";
 import Jupyter from "./pages/Embed/IframeJupyter";
 import { logger } from "./utils/loglevel";
 import Website from "./pages/Website";
-import { Provider as JotaiProvider } from "jotai";
+import { getDefaultStore, Provider as JotaiProvider } from "jotai";
 import NotFound from "./components/layout/NotFound";
+import { asyncDocsAsHomeAtom } from "./utils/store/config";
+
+const defaultStore = getDefaultStore();
+
+const docsAsHome = await defaultStore.get(asyncDocsAsHomeAtom);
 
 const router = createBrowserRouter([
   {
@@ -33,12 +38,7 @@ const router = createBrowserRouter([
   },
   {
     path: "/",
-    element: (
-      <Navigate
-        to={process.env.NODE_ENV === "development" ? "/portal" : "/website"}
-        replace
-      />
-    ),
+    element: <Navigate to={docsAsHome ? "/website" : "/portal"} replace />,
   },
   {
     path: "/website",

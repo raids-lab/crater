@@ -290,7 +290,7 @@ export const Component: FC = () => {
           className="lg:col-span-3"
         >
           <div className="flex flex-row gap-3">
-            <DocsButton title="平台文档" url="intro" />
+            <DocsButton title="平台文档" url="" />
             <SplitLinkButton
               title="overview"
               urls={[
