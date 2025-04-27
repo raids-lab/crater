@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -436,23 +435,80 @@ func (mgr *APIServerMgr) DeletePodIngress(c *gin.Context) {
 		return
 	}
 
-	// Construct service and ingress names
-	serviceName := fmt.Sprintf("%s-svc-%s", pod.Labels[crclient.LabelKeyTaskUser], ingressMgr.Name)
-	ingressName := fmt.Sprintf("%s-ing-%s", pod.Labels[crclient.LabelKeyTaskUser], uuid.New().String()[:5])
+	// Retrieve the service to delete
+	serviceToDelete, err := mgr.getServiceForPort(c, req.Namespace, pod.Labels, ingressMgr.Port)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	// Retrieve the ingress associated with the service
+	ingressToDelete, err := mgr.getIngressForService(c, req.Namespace, serviceToDelete.Name)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
 
 	// Delete the Service
-	if err := mgr.deleteService(c, req.Namespace, serviceName); err != nil {
+	if err := mgr.deleteService(c, req.Namespace, serviceToDelete.Name); err != nil {
 		resputil.Error(c, fmt.Sprintf("Failed to delete service: %v", err), resputil.NotSpecified)
 		return
 	}
 
 	// Delete the Ingress
-	if err := mgr.deleteIngress(c, req.Namespace, ingressName); err != nil {
+	if err := mgr.deleteIngress(c, req.Namespace, ingressToDelete.Name); err != nil {
 		resputil.Error(c, fmt.Sprintf("Failed to delete ingress: %v", err), resputil.NotSpecified)
 		return
 	}
 
 	resputil.Success(c, "Ingress rule and associated resources deleted successfully")
+}
+
+func (mgr *APIServerMgr) getServiceForPort(c *gin.Context, namespace string, labels map[string]string, port int32) (*v1.Service, error) {
+	selector := mgr.serviceManager.GenerateLabels(labels)
+
+	// Fetch services matching the filtered labels
+	services := &v1.ServiceList{}
+	listOptions := client.MatchingLabels(selector)
+	if err := mgr.client.List(c, services, listOptions, client.InNamespace(namespace)); err != nil {
+		return nil, fmt.Errorf("failed to list services: %w", err)
+	}
+
+	// Find the service matching the specified port
+	for i := range services.Items {
+		svc := &services.Items[i]
+		if svc.Spec.Type == v1.ServiceTypeClusterIP {
+			for _, svcPort := range svc.Spec.Ports {
+				if svcPort.Port == port {
+					return svc, nil
+				}
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("no matching service found for port: %d", port)
+}
+
+func (mgr *APIServerMgr) getIngressForService(c *gin.Context, namespace, serviceName string) (*networkingv1.Ingress, error) {
+	// Fetch ingresses in the namespace
+	ingresses := &networkingv1.IngressList{}
+	if err := mgr.client.List(c, ingresses, client.InNamespace(namespace)); err != nil {
+		return nil, fmt.Errorf("failed to list ingresses: %w", err)
+	}
+
+	// Find the ingress associated with the service
+	for i := range ingresses.Items {
+		ing := &ingresses.Items[i]
+		for _, rule := range ing.Spec.Rules {
+			for _, path := range rule.HTTP.Paths {
+				if path.Backend.Service != nil && path.Backend.Service.Name == serviceName {
+					return ing, nil
+				}
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("no matching ingress found for service: %s", serviceName)
 }
 
 // GetPodNodeports retrieves the NodePort rules for a pod
@@ -621,11 +677,41 @@ func (mgr *APIServerMgr) DeletePodNodeport(c *gin.Context) {
 		return
 	}
 
-	// Construct service name
-	serviceName := fmt.Sprintf("%s-np-%s", pod.Labels[crclient.LabelKeyTaskUser], nodeportMgr.Name)
+	// Determine selector based on job type
+	selector := mgr.serviceManager.GenerateLabels(pod.Labels)
+
+	// Fetch services matching the filtered labels
+	services := &v1.ServiceList{}
+	listOptions := client.MatchingLabels(selector)
+	if err := mgr.client.List(c, services, listOptions, client.InNamespace(req.Namespace)); err != nil {
+		resputil.Error(c, fmt.Sprintf("Failed to list services: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	// Find the service matching the specified container port
+	var serviceToDelete *v1.Service
+	for i := range services.Items {
+		svc := &services.Items[i]
+		if svc.Spec.Type == v1.ServiceTypeNodePort {
+			for _, port := range svc.Spec.Ports {
+				if port.TargetPort.IntVal == nodeportMgr.ContainerPort {
+					serviceToDelete = svc
+					break
+				}
+			}
+		}
+		if serviceToDelete != nil {
+			break
+		}
+	}
+
+	if serviceToDelete == nil {
+		resputil.Error(c, fmt.Sprintf("No matching service found for container port: %d", nodeportMgr.ContainerPort), resputil.NotSpecified)
+		return
+	}
 
 	// Delete the Service
-	if err := mgr.deleteService(c, req.Namespace, serviceName); err != nil {
+	if err := mgr.deleteService(c, req.Namespace, serviceToDelete.Name); err != nil {
 		resputil.Error(c, fmt.Sprintf("Failed to delete service: %v", err), resputil.NotSpecified)
 		return
 	}
@@ -656,82 +742,6 @@ func (mgr *APIServerMgr) deleteService(c *gin.Context, namespace, serviceName st
 
 func (mgr *APIServerMgr) deleteIngress(c *gin.Context, namespace, ingressName string) error {
 	return mgr.deleteResource(c, namespace, ingressName, "Ingress", &networkingv1.Ingress{})
-}
-
-// DeletePodRule deletes a rule annotation from a Pod
-func (mgr *APIServerMgr) DeletePodRule(
-	c *gin.Context,
-	labelKey string,
-	ruleName string,
-	targetStruct any,
-) error {
-	var req PodContainerReq
-	if err := c.ShouldBindUri(&req); err != nil {
-		return fmt.Errorf("failed to bind URI: %w", err)
-	}
-
-	err := mgr.deletePodAnnotation(c, req, labelKey, ruleName, json.Unmarshal, targetStruct)
-	if err != nil {
-		return fmt.Errorf("failed to delete pod annotation: %w", err)
-	}
-
-	return nil
-}
-
-func (mgr *APIServerMgr) deletePodAnnotation(
-	c *gin.Context,
-	req PodContainerReq,
-	labelPrefix string,
-	ruleName string,
-	decodeFunc func([]byte, any) error,
-	targetStruct any,
-) error {
-	// Fetch the pod
-	var pod v1.Pod
-	if err := mgr.client.Get(c, client.ObjectKey{Namespace: req.Namespace, Name: req.PodName}, &pod); err != nil {
-		return fmt.Errorf("failed to fetch pod: %w", err)
-	}
-
-	// Locate the annotation to delete
-	annotationKey := ""
-	for key, value := range pod.Annotations {
-		if strings.HasPrefix(key, labelPrefix) {
-			// Decode the annotation into the target struct
-			if err := decodeFunc([]byte(value), targetStruct); err == nil {
-				// 动态检查 targetStruct 类型
-				switch rule := targetStruct.(type) {
-				case *PodIngress:
-					// 如果是 Ingress 规则，检查 Name 是否匹配
-					if rule.Name == ruleName {
-						annotationKey = key
-						break
-					}
-				case *PodNodeport:
-					// 如果是 NodePort 规则，检查 Name 是否匹配
-					if rule.Name == ruleName {
-						annotationKey = key
-						break
-					}
-				default:
-					return fmt.Errorf("unsupported rule type")
-				}
-			}
-		}
-	}
-
-	if annotationKey == "" {
-		return fmt.Errorf("rule '%s' not found under prefix '%s'", ruleName, labelPrefix)
-	}
-
-	// Delete the annotation
-	delete(pod.Annotations, annotationKey)
-
-	// Update the pod
-	if err := mgr.client.Update(c, &pod); err != nil {
-		return fmt.Errorf("failed to update pod annotations: %w", err)
-	}
-
-	return nil
 }
 
 func (mgr *APIServerMgr) RegisterAdmin(_ *gin.RouterGroup) {}
