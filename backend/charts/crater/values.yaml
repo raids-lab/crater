@@ -6,7 +6,7 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "2f30da3a"
+      tag: "0fceb341"
       pullPolicy: "IfNotPresent"
   migrate:
     image:
@@ -19,7 +19,7 @@ web:
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "ce8a2f2c"
+      tag: "5cf9d637"
       pullPolicy: "IfNotPresent"
     config:
       version: "1.0.0"
@@ -27,7 +27,7 @@ web:
         host: ***REMOVED***
         apiBase: "https://***REMOVED***/api/"
         apiVersion: "v1"
-        websiteBase: "https://***REMOVED***/website"
+        websiteBase: "https://***REMOVED***/website/cn"
       grafana:
         overview:
           main: "https://gpu-grafana.***REMOVED***/d/f33ade9f-821d-4e96-a7f2-eb16c8b9c447/838ffad"
@@ -47,7 +47,7 @@ web:
   storage:
     image:
       repository: ***REMOVED***
-      tag: "kjfd98d3"
+      tag: "f53ds7cl"
       pullPolicy: "IfNotPresent"
   buildkit:
     image:
@@ -111,7 +111,7 @@ web:
     host: gpu-grafana.***REMOVED***
   document:
     image:
-      tag: 4dc0d4d4
+      tag: 6b15d090
 nodeSelector:
   node-role.kubernetes.io/control-plane: ""
 tolerations:

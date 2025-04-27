@@ -36,7 +36,7 @@ spec:
               protocol: TCP
           readinessProbe:
             httpGet:
-              path: /website
+              path: /website/cn
               port: 80
             initialDelaySeconds: 20
             periodSeconds: 10
