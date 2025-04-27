@@ -6,7 +6,7 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "0fceb341"
+      tag: "4cefb38e"
       pullPolicy: "IfNotPresent"
   migrate:
     image:
@@ -19,7 +19,7 @@ web:
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "5cf9d637"
+      tag: "56eab40d"
       pullPolicy: "IfNotPresent"
     config:
       version: "1.0.0"
@@ -111,7 +111,7 @@ web:
     host: gpu-grafana.***REMOVED***
   document:
     image:
-      tag: 6b15d090
+      tag: 1cf3e5ed
 nodeSelector:
   node-role.kubernetes.io/control-plane: ""
 tolerations:
@@ -143,6 +143,9 @@ backendConfig:
   publicSpacePrefix: ***REMOVED***
   workspace:
     namespace: crater-workspace
+    rwxpvcName: crater-rw-storage
+    roxpvcName: crater-ro-storage
+    ingressName: crater-jobs-ingress
     imageNameSpace: crater-images
   act:
     strictRegisterMode: true
