@@ -39,6 +39,17 @@ func newResource(db *gorm.DB, opts ...gen.DOOption) resource {
 	_resource.Format = field.NewString(tableName, "format")
 	_resource.Priority = field.NewInt(tableName, "priority")
 	_resource.Label = field.NewString(tableName, "label")
+	_resource.Type = field.NewString(tableName, "type")
+	_resource.Networks = resourceManyToManyNetworks{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Networks", "model.Resource"),
+		Networks: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("Networks.Networks", "model.Resource"),
+		},
+	}
 
 	_resource.fillFieldMap()
 
@@ -61,6 +72,8 @@ type resource struct {
 	Format          field.String
 	Priority        field.Int
 	Label           field.String
+	Type            field.String
+	Networks        resourceManyToManyNetworks
 
 	fieldMap map[string]field.Expr
 }
@@ -89,6 +102,7 @@ func (r *resource) updateTableName(table string) *resource {
 	r.Format = field.NewString(table, "format")
 	r.Priority = field.NewInt(table, "priority")
 	r.Label = field.NewString(table, "label")
+	r.Type = field.NewString(table, "type")
 
 	r.fillFieldMap()
 
@@ -113,7 +127,7 @@ func (r *resource) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (r *resource) fillFieldMap() {
-	r.fieldMap = make(map[string]field.Expr, 12)
+	r.fieldMap = make(map[string]field.Expr, 14)
 	r.fieldMap["id"] = r.ID
 	r.fieldMap["created_at"] = r.CreatedAt
 	r.fieldMap["updated_at"] = r.UpdatedAt
@@ -126,6 +140,8 @@ func (r *resource) fillFieldMap() {
 	r.fieldMap["format"] = r.Format
 	r.fieldMap["priority"] = r.Priority
 	r.fieldMap["label"] = r.Label
+	r.fieldMap["type"] = r.Type
+
 }
 
 func (r resource) clone(db *gorm.DB) resource {
@@ -136,6 +152,81 @@ func (r resource) clone(db *gorm.DB) resource {
 func (r resource) replaceDB(db *gorm.DB) resource {
 	r.resourceDo.ReplaceDB(db)
 	return r
+}
+
+type resourceManyToManyNetworks struct {
+	db *gorm.DB
+
+	field.RelationField
+
+	Networks struct {
+		field.RelationField
+	}
+}
+
+func (a resourceManyToManyNetworks) Where(conds ...field.Expr) *resourceManyToManyNetworks {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a resourceManyToManyNetworks) WithContext(ctx context.Context) *resourceManyToManyNetworks {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a resourceManyToManyNetworks) Session(session *gorm.Session) *resourceManyToManyNetworks {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a resourceManyToManyNetworks) Model(m *model.Resource) *resourceManyToManyNetworksTx {
+	return &resourceManyToManyNetworksTx{a.db.Model(m).Association(a.Name())}
+}
+
+type resourceManyToManyNetworksTx struct{ tx *gorm.Association }
+
+func (a resourceManyToManyNetworksTx) Find() (result []*model.Resource, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a resourceManyToManyNetworksTx) Append(values ...*model.Resource) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a resourceManyToManyNetworksTx) Replace(values ...*model.Resource) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a resourceManyToManyNetworksTx) Delete(values ...*model.Resource) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a resourceManyToManyNetworksTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a resourceManyToManyNetworksTx) Count() int64 {
+	return a.tx.Count()
 }
 
 type resourceDo struct{ gen.DO }

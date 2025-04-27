@@ -16,20 +16,21 @@ import (
 )
 
 var (
-	Q              = new(Query)
-	AITask         *aITask
-	Account        *account
-	AccountDataset *accountDataset
-	Alert          *alert
-	Dataset        *dataset
-	Image          *image
-	Job            *job
-	Jobtemplate    *jobtemplate
-	Kaniko         *kaniko
-	Resource       *resource
-	User           *user
-	UserAccount    *userAccount
-	UserDataset    *userDataset
+	Q               = new(Query)
+	AITask          *aITask
+	Account         *account
+	AccountDataset  *accountDataset
+	Alert           *alert
+	Dataset         *dataset
+	Image           *image
+	Job             *job
+	Jobtemplate     *jobtemplate
+	Kaniko          *kaniko
+	Resource        *resource
+	ResourceNetwork *resourceNetwork
+	User            *user
+	UserAccount     *userAccount
+	UserDataset     *userDataset
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
@@ -44,6 +45,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	Jobtemplate = &Q.Jobtemplate
 	Kaniko = &Q.Kaniko
 	Resource = &Q.Resource
+	ResourceNetwork = &Q.ResourceNetwork
 	User = &Q.User
 	UserAccount = &Q.UserAccount
 	UserDataset = &Q.UserDataset
@@ -51,59 +53,62 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:             db,
-		AITask:         newAITask(db, opts...),
-		Account:        newAccount(db, opts...),
-		AccountDataset: newAccountDataset(db, opts...),
-		Alert:          newAlert(db, opts...),
-		Dataset:        newDataset(db, opts...),
-		Image:          newImage(db, opts...),
-		Job:            newJob(db, opts...),
-		Jobtemplate:    newJobtemplate(db, opts...),
-		Kaniko:         newKaniko(db, opts...),
-		Resource:       newResource(db, opts...),
-		User:           newUser(db, opts...),
-		UserAccount:    newUserAccount(db, opts...),
-		UserDataset:    newUserDataset(db, opts...),
+		db:              db,
+		AITask:          newAITask(db, opts...),
+		Account:         newAccount(db, opts...),
+		AccountDataset:  newAccountDataset(db, opts...),
+		Alert:           newAlert(db, opts...),
+		Dataset:         newDataset(db, opts...),
+		Image:           newImage(db, opts...),
+		Job:             newJob(db, opts...),
+		Jobtemplate:     newJobtemplate(db, opts...),
+		Kaniko:          newKaniko(db, opts...),
+		Resource:        newResource(db, opts...),
+		ResourceNetwork: newResourceNetwork(db, opts...),
+		User:            newUser(db, opts...),
+		UserAccount:     newUserAccount(db, opts...),
+		UserDataset:     newUserDataset(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	AITask         aITask
-	Account        account
-	AccountDataset accountDataset
-	Alert          alert
-	Dataset        dataset
-	Image          image
-	Job            job
-	Jobtemplate    jobtemplate
-	Kaniko         kaniko
-	Resource       resource
-	User           user
-	UserAccount    userAccount
-	UserDataset    userDataset
+	AITask          aITask
+	Account         account
+	AccountDataset  accountDataset
+	Alert           alert
+	Dataset         dataset
+	Image           image
+	Job             job
+	Jobtemplate     jobtemplate
+	Kaniko          kaniko
+	Resource        resource
+	ResourceNetwork resourceNetwork
+	User            user
+	UserAccount     userAccount
+	UserDataset     userDataset
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:             db,
-		AITask:         q.AITask.clone(db),
-		Account:        q.Account.clone(db),
-		AccountDataset: q.AccountDataset.clone(db),
-		Alert:          q.Alert.clone(db),
-		Dataset:        q.Dataset.clone(db),
-		Image:          q.Image.clone(db),
-		Job:            q.Job.clone(db),
-		Jobtemplate:    q.Jobtemplate.clone(db),
-		Kaniko:         q.Kaniko.clone(db),
-		Resource:       q.Resource.clone(db),
-		User:           q.User.clone(db),
-		UserAccount:    q.UserAccount.clone(db),
-		UserDataset:    q.UserDataset.clone(db),
+		db:              db,
+		AITask:          q.AITask.clone(db),
+		Account:         q.Account.clone(db),
+		AccountDataset:  q.AccountDataset.clone(db),
+		Alert:           q.Alert.clone(db),
+		Dataset:         q.Dataset.clone(db),
+		Image:           q.Image.clone(db),
+		Job:             q.Job.clone(db),
+		Jobtemplate:     q.Jobtemplate.clone(db),
+		Kaniko:          q.Kaniko.clone(db),
+		Resource:        q.Resource.clone(db),
+		ResourceNetwork: q.ResourceNetwork.clone(db),
+		User:            q.User.clone(db),
+		UserAccount:     q.UserAccount.clone(db),
+		UserDataset:     q.UserDataset.clone(db),
 	}
 }
 
@@ -117,54 +122,57 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:             db,
-		AITask:         q.AITask.replaceDB(db),
-		Account:        q.Account.replaceDB(db),
-		AccountDataset: q.AccountDataset.replaceDB(db),
-		Alert:          q.Alert.replaceDB(db),
-		Dataset:        q.Dataset.replaceDB(db),
-		Image:          q.Image.replaceDB(db),
-		Job:            q.Job.replaceDB(db),
-		Jobtemplate:    q.Jobtemplate.replaceDB(db),
-		Kaniko:         q.Kaniko.replaceDB(db),
-		Resource:       q.Resource.replaceDB(db),
-		User:           q.User.replaceDB(db),
-		UserAccount:    q.UserAccount.replaceDB(db),
-		UserDataset:    q.UserDataset.replaceDB(db),
+		db:              db,
+		AITask:          q.AITask.replaceDB(db),
+		Account:         q.Account.replaceDB(db),
+		AccountDataset:  q.AccountDataset.replaceDB(db),
+		Alert:           q.Alert.replaceDB(db),
+		Dataset:         q.Dataset.replaceDB(db),
+		Image:           q.Image.replaceDB(db),
+		Job:             q.Job.replaceDB(db),
+		Jobtemplate:     q.Jobtemplate.replaceDB(db),
+		Kaniko:          q.Kaniko.replaceDB(db),
+		Resource:        q.Resource.replaceDB(db),
+		ResourceNetwork: q.ResourceNetwork.replaceDB(db),
+		User:            q.User.replaceDB(db),
+		UserAccount:     q.UserAccount.replaceDB(db),
+		UserDataset:     q.UserDataset.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	AITask         IAITaskDo
-	Account        IAccountDo
-	AccountDataset IAccountDatasetDo
-	Alert          IAlertDo
-	Dataset        IDatasetDo
-	Image          IImageDo
-	Job            IJobDo
-	Jobtemplate    IJobtemplateDo
-	Kaniko         IKanikoDo
-	Resource       IResourceDo
-	User           IUserDo
-	UserAccount    IUserAccountDo
-	UserDataset    IUserDatasetDo
+	AITask          IAITaskDo
+	Account         IAccountDo
+	AccountDataset  IAccountDatasetDo
+	Alert           IAlertDo
+	Dataset         IDatasetDo
+	Image           IImageDo
+	Job             IJobDo
+	Jobtemplate     IJobtemplateDo
+	Kaniko          IKanikoDo
+	Resource        IResourceDo
+	ResourceNetwork IResourceNetworkDo
+	User            IUserDo
+	UserAccount     IUserAccountDo
+	UserDataset     IUserDatasetDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		AITask:         q.AITask.WithContext(ctx),
-		Account:        q.Account.WithContext(ctx),
-		AccountDataset: q.AccountDataset.WithContext(ctx),
-		Alert:          q.Alert.WithContext(ctx),
-		Dataset:        q.Dataset.WithContext(ctx),
-		Image:          q.Image.WithContext(ctx),
-		Job:            q.Job.WithContext(ctx),
-		Jobtemplate:    q.Jobtemplate.WithContext(ctx),
-		Kaniko:         q.Kaniko.WithContext(ctx),
-		Resource:       q.Resource.WithContext(ctx),
-		User:           q.User.WithContext(ctx),
-		UserAccount:    q.UserAccount.WithContext(ctx),
-		UserDataset:    q.UserDataset.WithContext(ctx),
+		AITask:          q.AITask.WithContext(ctx),
+		Account:         q.Account.WithContext(ctx),
+		AccountDataset:  q.AccountDataset.WithContext(ctx),
+		Alert:           q.Alert.WithContext(ctx),
+		Dataset:         q.Dataset.WithContext(ctx),
+		Image:           q.Image.WithContext(ctx),
+		Job:             q.Job.WithContext(ctx),
+		Jobtemplate:     q.Jobtemplate.WithContext(ctx),
+		Kaniko:          q.Kaniko.WithContext(ctx),
+		Resource:        q.Resource.WithContext(ctx),
+		ResourceNetwork: q.ResourceNetwork.WithContext(ctx),
+		User:            q.User.WithContext(ctx),
+		UserAccount:     q.UserAccount.WithContext(ctx),
+		UserDataset:     q.UserDataset.WithContext(ctx),
 	}
 }
 
