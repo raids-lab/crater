@@ -42,9 +42,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui-custom/alert-dialog";
 import { GridIcon } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import DocsButton from "@/components/button/DocsButton";
 import { CopyButton } from "@/components/button/copy-button";
+import LoadableButton from "@/components/custom/LoadableButton";
 
 const nodeportFormSchema = z.object({
   name: z
@@ -93,6 +94,43 @@ export function NodeportPanel({ namespacedName }: NodeportPanelProps) {
     enabled: !!namespacedName,
   });
 
+  const { mutate: createNodeportMutation, isPending: isCreating } = useMutation(
+    {
+      mutationFn: (data: PodNodeportMgr) =>
+        apiCreatePodNodeport(
+          namespacedName!.namespace,
+          namespacedName!.name,
+          data,
+        ),
+      onSuccess: () => {
+        void refetchNodeports();
+        toast.success("添加成功");
+        setIsEditNodeportDialogOpen(false);
+      },
+      onError: () => {
+        toast.error("添加失败");
+      },
+    },
+  );
+
+  const { mutate: deleteNodeportMutation, isPending: isDeleting } = useMutation(
+    {
+      mutationFn: (data: PodNodeportMgr) =>
+        apiDeletePodNodeport(
+          namespacedName!.namespace,
+          namespacedName!.name,
+          data,
+        ),
+      onSuccess: () => {
+        void refetchNodeports();
+        toast.success("删除成功");
+      },
+      onError: () => {
+        toast.error("删除失败");
+      },
+    },
+  );
+
   const handleAddNodeport = () => {
     nodeportForm.reset({ name: "", containerPort: 0 });
     setIsEditNodeportDialogOpen(true);
@@ -100,32 +138,13 @@ export function NodeportPanel({ namespacedName }: NodeportPanelProps) {
 
   const onSubmitNodeport = (data: PodNodeportMgr) => {
     if (namespacedName) {
-      apiCreatePodNodeport(
-        namespacedName.namespace,
-        namespacedName.name,
-        data as PodNodeportMgr,
-      )
-        .then(() => {
-          void refetchNodeports();
-          toast.success("添加成功");
-          setIsEditNodeportDialogOpen(false);
-        })
-        .catch(() => {
-          toast.error("添加失败");
-        });
+      createNodeportMutation(data);
     }
   };
 
   const handleDeleteNodeport = (data: PodNodeportMgr) => {
     if (namespacedName) {
-      apiDeletePodNodeport(namespacedName.namespace, namespacedName.name, data)
-        .then(() => {
-          void refetchNodeports();
-          toast.success("删除成功");
-        })
-        .catch(() => {
-          toast.error("删除失败");
-        });
+      deleteNodeportMutation(data);
     }
   };
 
@@ -178,6 +197,7 @@ export function NodeportPanel({ namespacedName }: NodeportPanelProps) {
                       size="icon"
                       className="hover:text-destructive"
                       tooltipContent="删除"
+                      disabled={isDeleting}
                     >
                       <Trash2 className="size-4" />
                     </TooltipButton>
@@ -198,8 +218,9 @@ export function NodeportPanel({ namespacedName }: NodeportPanelProps) {
                       <AlertDialogAction
                         variant="destructive"
                         onClick={() => handleDeleteNodeport(nodeport)}
+                        disabled={isDeleting}
                       >
-                        删除
+                        {isDeleting ? "删除中..." : "删除"}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -213,7 +234,7 @@ export function NodeportPanel({ namespacedName }: NodeportPanelProps) {
             title={"帮助文档"}
             url={`toolbox/external-access/nodeport-rule`}
           />
-          <Button onClick={handleAddNodeport}>
+          <Button onClick={handleAddNodeport} disabled={isCreating}>
             <Plus className="mr-2 size-4" />
             添加 NodePort 规则
           </Button>
@@ -287,7 +308,13 @@ export function NodeportPanel({ namespacedName }: NodeportPanelProps) {
                   </FormItem>
                 )}
               />
-              <Button type="submit">保存</Button>
+              <LoadableButton
+                isLoading={isCreating}
+                isLoadingText="保存中..."
+                type="submit"
+              >
+                保存
+              </LoadableButton>
             </form>
           </Form>
         </DialogContent>
