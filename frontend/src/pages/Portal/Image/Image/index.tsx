@@ -19,6 +19,8 @@ import {
   UpdateDescription,
   UpdateTaskType,
   ListImageResponse,
+  UpdateImageTag,
+  apiUserUpdateImageTags,
 } from "@/services/api/imagepack";
 import { logger } from "@/utils/loglevel";
 import { toast } from "sonner";
@@ -34,6 +36,7 @@ import {
   SquareCheckBig,
   CopyIcon,
   ImportIcon,
+  Tags,
 } from "lucide-react";
 import JobTypeLabel, { jobTypes } from "@/components/badge/JobTypeBadge";
 import { useAtomValue } from "jotai";
@@ -64,6 +67,7 @@ import { StatusDialog } from "./StatusDialog";
 import { RenameDialog } from "./RenameDialog";
 import { DeleteDialog } from "./DeleteDialog";
 import UserLabel from "@/components/label/UserLabel";
+import { TagsDialog } from "./TagsDialog";
 
 const toolbarConfig: DataTableToolbarConfig = {
   globalSearch: {
@@ -89,6 +93,7 @@ enum Dialogs {
   status = "status",
   rename = "rename",
   valid = "valid",
+  tags = "tags",
 }
 
 export const Component: FC = () => {
@@ -188,6 +193,15 @@ export const ImageListTable: FC<ImageListTableProps> = ({
       toast.success("镜像类型已更新");
     },
   });
+
+  const { mutate: updateImageTags } = useMutation({
+    mutationFn: (data: { id: number; tags: string[] }) =>
+      apiUserUpdateImageTags(data),
+    onSuccess: async () => {
+      await refetchImagePackList();
+      toast.success("镜像标签已更新");
+    },
+  });
   const columns: ColumnDef<ImageInfoResponse>[] = [
     {
       accessorKey: "taskType",
@@ -207,6 +221,7 @@ export const ImageListTable: FC<ImageListTableProps> = ({
         <ImageLabel
           description={row.original.description}
           url={row.original.imageLink}
+          tags={row.original.tags}
         />
       ),
     },
@@ -260,6 +275,7 @@ export const ImageListTable: FC<ImageListTableProps> = ({
             userName={user.name}
             onChangeType={updateImageTaskType}
             isAdminMode={isAdminMode}
+            onChangeTags={updateImageTags}
           />
         );
       },
@@ -392,6 +408,7 @@ interface ActionsProps {
   userName: string;
   onChangeType: (data: { id: number; taskType: JobType }) => void;
   isAdminMode: boolean;
+  onChangeTags: (data: { id: number; tags: string[] }) => void;
 }
 
 const Actions: FC<ActionsProps> = ({
@@ -403,6 +420,7 @@ const Actions: FC<ActionsProps> = ({
   userName,
   onChangeType,
   isAdminMode,
+  onChangeTags,
 }) => {
   const [openDialog, setOpenDialog] = useState(false);
   const [dialog, setDialog] = useState<Dialogs | undefined>(undefined);
@@ -495,6 +513,16 @@ const Actions: FC<ActionsProps> = ({
             <DropdownMenuItem
               disabled={isDisabled}
               onClick={() => {
+                setDialog(Dialogs.tags);
+                setOpenDialog(true);
+              }}
+            >
+              <Tags className="text-cyan-600" />
+              修改标签
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={isDisabled}
+              onClick={() => {
                 setDialog(Dialogs.rename);
                 setOpenDialog(true);
               }}
@@ -502,6 +530,7 @@ const Actions: FC<ActionsProps> = ({
               <ListCheck className="text-orange-600" />
               重命名
             </DropdownMenuItem>
+
             <DropdownMenuItem
               disabled={isDisabled}
               onClick={() => {
@@ -545,6 +574,14 @@ const Actions: FC<ActionsProps> = ({
                     .filter((pair) => pair.creator.username === userName)
                     .map((pair) => pair.id),
                 );
+              }}
+            />
+          ) : dialog === Dialogs.tags ? (
+            <TagsDialog
+              initialTags={imageInfo.tags}
+              imageID={imageInfo.ID}
+              onSaveTags={(updateData: UpdateImageTag) => {
+                onChangeTags(updateData);
               }}
             />
           ) : null}

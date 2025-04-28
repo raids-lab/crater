@@ -25,6 +25,7 @@ export type KanikoInfoResponse = {
   podName: string;
   podNameSpace: string;
   userInfo: IUserInfo;
+  tags: string[];
 };
 
 export type ListImageResponse = {
@@ -40,10 +41,7 @@ export type ImageInfoResponse = {
   isPublic: boolean;
   taskType: JobType;
   userInfo: IUserInfo;
-};
-
-export type KanikoLogResponse = {
-  content: string;
+  tags: string[];
 };
 
 export type ProjectCredentialResponse = {
@@ -162,6 +160,7 @@ export interface KanikoCreate {
   requirements: string;
   name: string;
   tag: string;
+  tags: string[];
 }
 
 export interface DockerfileCreate {
@@ -169,6 +168,7 @@ export interface DockerfileCreate {
   dockerfile: string;
   name: string;
   tag: string;
+  tags: string[];
 }
 
 export interface EnvdCreate {
@@ -178,6 +178,7 @@ export interface EnvdCreate {
   tag: string;
   python: string;
   base: string;
+  tags: string[];
 }
 
 export interface ImageUpload {
@@ -186,11 +187,17 @@ export interface ImageUpload {
   imageTag: string;
   description: string;
   taskType: JobType;
+  tags: string[];
 }
 
 export interface UpdateDescription {
   id: number;
   description: string;
+}
+
+export interface UpdateImageTag {
+  id: number;
+  tags: string[];
 }
 
 export interface UpdateTaskType {
@@ -227,6 +234,16 @@ export const ImageTaskType = {
   OpenMPITask: 7, // OpenMPI任务
   UserDefineTask: 8, // 用户自定义任务
 };
+
+export const ImageDefaultTags = [
+  { value: "CUDA" },
+  { value: "Tensorflow" },
+  { value: "Pytorch" },
+  { value: "Ray" },
+  { value: "Python" },
+  { value: "NO-CUDA" },
+  { value: "vLLM" },
+];
 
 export const imageLinkRegex =
   /^[a-zA-Z0-9.-]+(\/[a-zA-Z0-9_.-]+)+:[a-zA-Z0-9_](?:[a-zA-Z0-9_.-]*[a-zA-Z0-9_])?$/;
@@ -334,3 +351,6 @@ export const apiUserCheckImageValid = (linkPairs: ImageLinkPairs) =>
 
 export const apiGetHarborIP = () =>
   instance.get<IResponse<HarborIPData>>(`${VERSION}/images/harbor`);
+
+export const apiUserUpdateImageTags = (data: UpdateImageTag) =>
+  instance.post<IResponse<string>>(`${VERSION}/images/tags`, data);
