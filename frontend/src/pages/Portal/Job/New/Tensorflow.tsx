@@ -346,13 +346,19 @@ export const Component = () => {
     }
     if (
       values.ps.resource.network.enabled !==
-      values.worker.resource.network.enabled
+        values.worker.resource.network.enabled ||
+      (values.ps.resource.network.enabled &&
+        values.ps.resource.network.model !==
+          values.worker.resource.network.model)
     ) {
-      form.setError("ps.resource.network.enabled", {
+      form.setError("ps.resource.network.model", {
         type: "manual",
         message: "RDMA 资源配置必须在所有角色中保持一致",
       });
-      toast.error("RDMA 资源配置必须在所有角色中保持一致");
+      form.setError("worker.resource.network.model", {
+        type: "manual",
+        message: "RDMA 资源配置必须在所有角色中保持一致",
+      });
       return;
     }
     createTask(values);

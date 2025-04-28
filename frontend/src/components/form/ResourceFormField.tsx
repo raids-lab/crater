@@ -36,7 +36,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 interface ResourceFormFieldsProps<T extends FieldValues> {
   form: UseFormReturn<T>;
@@ -59,9 +59,7 @@ export function ResourceFormFields<T extends FieldValues>({
   rdmaPath,
 }: ResourceFormFieldsProps<T>) {
   const gpuCount = form.watch(gpuCountPath);
-  const gpuModel = form.watch(gpuModelPath);
   const grafanaOverview = useAtomValue(asyncGrafanaOverviewAtom);
-  const [rdmaEnabled, setRdmaEnabled] = useState(false);
 
   // 获取可用资源列表
   const { data: resources } = useQuery({
@@ -77,36 +75,11 @@ export function ResourceFormFields<T extends FieldValues>({
           (item) =>
             ({
               value: item.name,
-              label: item.label.toUpperCase(),
+              label: item.label,
               detail: item,
             }) as ComboboxItem<Resource>,
         );
     },
-  });
-
-  const gpuID = useMemo(() => {
-    if (gpuModel) {
-      const gpu = resources?.find((item) => item.value === gpuModel);
-      return gpu?.detail?.ID ?? 0;
-    }
-    return 0;
-  }, [gpuModel, resources]);
-
-  // 获取给定的 GPU 型号对应的网络资源列表
-  const { data: networks } = useQuery({
-    queryKey: ["resources", "networks", "list", gpuID],
-    queryFn: () => apiResourceNetworks(gpuID),
-    select: (res) =>
-      res.data.data
-        .filter((item) => item.amountSingleMax > 0)
-        .map(
-          (item) =>
-            ({
-              value: item.name,
-              label: item.label.toUpperCase(),
-              detail: item,
-            }) as ComboboxItem<Resource>,
-        ),
   });
 
   return (
@@ -206,14 +179,91 @@ export function ResourceFormFields<T extends FieldValues>({
           </FormItem>
         )}
       />
-      {rdmaPath && networks && networks.length > 0 && (
+      {rdmaPath && (
+        <RDMAFormFields
+          form={form}
+          resources={resources ?? []}
+          gpuModelPath={gpuModelPath}
+          rdmaPath={rdmaPath}
+        />
+      )}
+      <div>
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button
+              type="button"
+              variant="secondary"
+              className="cursor-pointer"
+            >
+              <ChartNoAxesColumn className="size-4" />
+              空闲资源查询
+            </Button>
+          </SheetTrigger>
+          <SheetContent className="sm:max-w-4xl">
+            <SheetHeader>
+              <SheetTitle>空闲资源查询</SheetTitle>
+            </SheetHeader>
+            <div className="h-[calc(100vh-6rem)] w-full px-4">
+              <GrafanaIframe baseSrc={grafanaOverview.schedule} />
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
+    </>
+  );
+}
+
+function RDMAFormFields<T extends FieldValues>({
+  form,
+  resources,
+  gpuModelPath,
+  rdmaPath,
+}: {
+  form: UseFormReturn<T>;
+  resources: ComboboxItem<Resource>[];
+  gpuModelPath: FieldPath<T>;
+  rdmaPath: {
+    rdmaEnabled: FieldPath<T>;
+    rdmaLabel: FieldPath<T>;
+  };
+}) {
+  const gpuModel = form.watch(gpuModelPath);
+  const rdmaEnabled = form.watch(rdmaPath.rdmaEnabled);
+  const gpuID = useMemo(() => {
+    if (gpuModel) {
+      const gpu = resources?.find((item) => item.value === gpuModel);
+      return gpu?.detail?.ID ?? 0;
+    }
+    return 0;
+  }, [gpuModel, resources]);
+
+  // 获取给定的 GPU 型号对应的网络资源列表
+  const { data: networks } = useQuery({
+    queryKey: ["resources", "networks", "list", gpuID],
+    queryFn: () => apiResourceNetworks(gpuID),
+    select: (res) =>
+      res.data.data
+        .filter((item) => item.amountSingleMax > 0)
+        .map(
+          (item) =>
+            ({
+              value: item.name,
+              label: item.label,
+              detail: item,
+            }) as ComboboxItem<Resource>,
+        ),
+  });
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {networks && networks.length > 0 && (
         <FormField
           control={form.control}
           name={rdmaPath.rdmaEnabled}
           render={({ field }) => (
-            <FormItem hidden={gpuCount === 0}>
+            <FormItem>
               <div className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                <FormLabel className="font-normal">
+                <FormLabel>
                   启用 RDMA
                   <TooltipProvider delayDuration={100}>
                     <Tooltip>
@@ -240,10 +290,7 @@ export function ResourceFormFields<T extends FieldValues>({
                 <FormControl>
                   <Switch
                     checked={field.value}
-                    onCheckedChange={(value) => {
-                      field.onChange(value);
-                      setRdmaEnabled(value);
-                    }}
+                    onCheckedChange={(value) => field.onChange(value)}
                   />
                 </FormControl>
               </div>
@@ -252,61 +299,35 @@ export function ResourceFormFields<T extends FieldValues>({
           )}
         />
       )}
-      {rdmaEnabled &&
-        rdmaPath?.rdmaLabel &&
-        networks &&
-        networks.length > 0 && (
-          <FormField
-            control={form.control}
-            name={rdmaPath.rdmaLabel}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>RDMA 网络拓扑</FormLabel>
-                <FormControl>
-                  <Combobox
-                    items={networks}
-                    renderLabel={(item) => (
-                      <div className="flex w-full flex-row items-center justify-between gap-3">
-                        <p>{item.label}</p>
-                      </div>
-                    )}
-                    current={field.value ?? ""}
-                    handleSelect={(value) => {
-                      field.onChange(value);
-                    }}
-                    formTitle=" RDMA 网络拓扑"
-                  />
-                </FormControl>
-                <FormDescription>
-                  请保证同一个作业内的不同角色，均使用同一个 RDMA 网络拓扑
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-      <div>
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              type="button"
-              variant="secondary"
-              className="cursor-pointer"
-            >
-              <ChartNoAxesColumn className="size-4" />
-              空闲资源查询
-            </Button>
-          </SheetTrigger>
-          <SheetContent className="sm:max-w-4xl">
-            <SheetHeader>
-              <SheetTitle>空闲资源查询</SheetTitle>
-            </SheetHeader>
-            <div className="h-[calc(100vh-6rem)] w-full px-4">
-              <GrafanaIframe baseSrc={grafanaOverview.schedule} />
-            </div>
-          </SheetContent>
-        </Sheet>
-      </div>
-    </>
+      {rdmaEnabled && networks && networks.length > 0 && (
+        <FormField
+          control={form.control}
+          name={rdmaPath.rdmaLabel}
+          render={({ field }) => (
+            <FormItem>
+              <FormControl>
+                <Combobox
+                  items={networks}
+                  renderLabel={(item) => (
+                    <div className="flex w-full flex-row items-center justify-between gap-3">
+                      <p>{item.label}</p>
+                    </div>
+                  )}
+                  current={field.value ?? ""}
+                  handleSelect={(value) => {
+                    field.onChange(value);
+                  }}
+                  formTitle=" RDMA 网络拓扑"
+                />
+              </FormControl>
+              <FormDescription>
+                请保证同一个作业内的不同角色，均使用同一个 RDMA 网络拓扑
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+    </div>
   );
 }
