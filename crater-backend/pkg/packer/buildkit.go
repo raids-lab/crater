@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/raids-lab/crater/pkg/config"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/raids-lab/crater/pkg/config"
 )
 
 func (b *imagePacker) CreateFromDockerfile(c context.Context, data *BuildKitReq) error {

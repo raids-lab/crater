@@ -175,10 +175,18 @@ func GenerateCustomPodSpec(
 	torelations := GenerateTaintTolerationsForAccount(token)
 	envs := GenerateEnvs(ctx, token, custom.Envs)
 
+	imagePullSecrets := []v1.LocalObjectReference{}
+	if config.GetConfig().ImagePullSecretName != "" {
+		imagePullSecrets = append(imagePullSecrets, v1.LocalObjectReference{
+			Name: config.GetConfig().ImagePullSecretName,
+		})
+	}
+
 	podSpec = v1.PodSpec{
-		Affinity:    affinity,
-		Tolerations: torelations,
-		Volumes:     volumes,
+		Affinity:         affinity,
+		Tolerations:      torelations,
+		Volumes:          volumes,
+		ImagePullSecrets: imagePullSecrets,
 		Containers: []v1.Container{
 			{
 				Name:       string(CraterJobTypeCustom),

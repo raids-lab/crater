@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"strconv"
 
+	"gopkg.in/gomail.v2"
+
 	"github.com/raids-lab/crater/dao/model"
 	config "github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
-	"gopkg.in/gomail.v2"
 )
 
 type SMTPAlerter struct {

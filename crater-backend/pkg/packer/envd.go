@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/raids-lab/crater/pkg/config"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/raids-lab/crater/pkg/config"
 )
 
 func (b *imagePacker) CreateFromEnvd(c context.Context, data *EnvdReq) error {

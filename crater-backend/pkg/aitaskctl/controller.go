@@ -8,11 +8,12 @@ import (
 	"sync"
 	"time"
 
-	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"

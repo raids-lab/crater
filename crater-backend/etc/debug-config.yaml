@@ -1,3 +1,4 @@
+imagePullSecretName: ""
 enableLeaderElection: false
 leaderElectionID: 1ca428e5.training-operator.kubeflow.org
 prometheusAPI: http://***REMOVED***:31110
