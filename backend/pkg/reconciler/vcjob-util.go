@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/raids-lab/crater/dao/model"
-	"github.com/raids-lab/crater/pkg/logutils"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
+
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 const MaxJobEvents = 20

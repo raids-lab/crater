@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 func (p *PrometheusClient) QueryPodProfileMetric(namespace, podname string) (PodUtil, error) {

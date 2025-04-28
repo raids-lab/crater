@@ -5,6 +5,10 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/datatypes"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
+
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	"github.com/raids-lab/crater/internal/resputil"
@@ -12,9 +16,6 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/util"
-	"gorm.io/datatypes"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
 )
 
 type CreateTaskResp struct {
@@ -88,10 +89,18 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 	// 3. TODO: Node Affinity for ARM64 Nodes
 	affinity := vcjob.GenerateNodeAffinity(vcReq.Selectors, nil)
 
+	imagePullSecrets := []v1.LocalObjectReference{}
+	if config.GetConfig().ImagePullSecretName != "" {
+		imagePullSecrets = append(imagePullSecrets, v1.LocalObjectReference{
+			Name: config.GetConfig().ImagePullSecretName,
+		})
+	}
+
 	// 5. Create the pod spec
 	podSpec := v1.PodSpec{
-		Affinity: affinity,
-		Volumes:  volumes,
+		Affinity:         affinity,
+		Volumes:          volumes,
+		ImagePullSecrets: imagePullSecrets,
 		Containers: []v1.Container{
 			{
 				Name:    "jupyter-notebook",

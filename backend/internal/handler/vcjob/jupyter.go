@@ -153,11 +153,19 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		req.AlertEnabled,
 	)
 
+	imagePullSecrets := []v1.LocalObjectReference{}
+	if config.GetConfig().ImagePullSecretName != "" {
+		imagePullSecrets = append(imagePullSecrets, v1.LocalObjectReference{
+			Name: config.GetConfig().ImagePullSecretName,
+		})
+	}
+
 	// 5. Create the pod spec
 	podSpec := v1.PodSpec{
-		Affinity:    affinity,
-		Tolerations: torelations,
-		Volumes:     volumes,
+		Affinity:         affinity,
+		Tolerations:      torelations,
+		Volumes:          volumes,
+		ImagePullSecrets: imagePullSecrets,
 		Containers: []v1.Container{
 			{
 				Name:    string(CraterJobTypeJupyter),

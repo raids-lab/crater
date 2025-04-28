@@ -11,6 +11,7 @@ import (
 )
 
 type Config struct {
+	ImagePullSecretName string `yaml:"imagePullSecretName"` // "The name of the image pull secret."
 	// Leader Election Settings
 	EnableLeaderElection bool `yaml:"enableLeaderElection"` // "Enable leader election for controller manager.
 	// Enabling this will ensure there is only one active controller manager."
