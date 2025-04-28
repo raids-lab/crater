@@ -560,7 +560,7 @@ export const Component = () => {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className={cn(index !== 0 && "sr-only")}>
-                              稀疏特征(万)
+                              稀疏特征
                             </FormLabel>
                             <FormControl>
                               <div className="flex flex-row space-x-2">
@@ -634,12 +634,14 @@ export const Component = () => {
                         <ProgressBar
                           width={analyze.p100.gpuUtilAvg}
                           label={`gpuUtilAvg: ${analyze.p100.gpuUtilAvg.toFixed(2)}%`}
+                          className="h-4"
                         />
                         <ProgressBar
                           width={(analyze.p100.gpuMemoryMaxGB / 16.0) * 100}
                           label={`gpuMemoryMaxGB: ${analyze.p100.gpuMemoryMaxGB.toFixed(
                             2,
                           )}GB`}
+                          className="h-4"
                         />
                       </CardContent>
                     </Card>
@@ -651,12 +653,14 @@ export const Component = () => {
                         <ProgressBar
                           width={analyze.v100.gpuUtilAvg}
                           label={`gpuUtilAvg: ${analyze.v100.gpuUtilAvg.toFixed(2)}%`}
+                          className="h-4"
                         />
                         <ProgressBar
                           width={(analyze.v100.gpuMemoryMaxGB / 32.0) * 100}
                           label={`gpuMemoryMaxGB: ${analyze.v100.gpuMemoryMaxGB.toFixed(
                             2,
                           )}GB`}
+                          className="h-4"
                         />
                         {/* // smActiveAvg: number;
                     // smOccupancyAvg: number;
@@ -667,24 +671,28 @@ export const Component = () => {
                           label={`smActiveAvg: ${analyze.v100.smActiveAvg.toFixed(
                             2,
                           )}%`}
+                          className="h-4"
                         />
                         <ProgressBar
                           width={analyze.v100.smOccupancyAvg}
                           label={`smOccupancyAvg: ${analyze.v100.smOccupancyAvg.toFixed(
                             2,
                           )}%`}
+                          className="h-4"
                         />
                         <ProgressBar
                           width={analyze.v100.fp32ActiveAvg}
                           label={`fp32ActiveAvg: ${analyze.v100.fp32ActiveAvg.toFixed(
                             2,
                           )}%`}
+                          className="h-4"
                         />
                         <ProgressBar
                           width={analyze.v100.dramActiveAvg}
                           label={`dramActiveAvg: ${analyze.v100.dramActiveAvg.toFixed(
                             2,
                           )}%`}
+                          className="h-4"
                         />
                       </CardContent>
                     </Card>

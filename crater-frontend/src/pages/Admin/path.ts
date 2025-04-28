@@ -20,7 +20,7 @@ export const adminPath: PathInfo = {
         },
         {
           path: "resource",
-          title: "资源列表",
+          title: "资源管理",
         },
       ],
     },

@@ -38,7 +38,24 @@ export const resourceSchema = z.object({
         path: ["model"], // The path for the error message
       },
     ),
-  rdma: z.boolean().default(false).optional(),
+  network: z
+    .object({
+      enabled: z.boolean().default(false),
+      model: z.string().optional(),
+    })
+    .refine(
+      (rdma) => {
+        // If a is not null, then b must not be null
+        return (
+          !rdma.enabled ||
+          (rdma.enabled && rdma.model !== null && rdma.model !== undefined)
+        );
+      },
+      {
+        message: "RDMA 型号不能为空",
+        path: ["model"], // The path for the error message
+      },
+    ),
 });
 
 export type ResourceSchema = z.infer<typeof resourceSchema>;
@@ -234,18 +251,10 @@ export const convertToResourceList = (
     memory: `${resource.memory}Gi`,
   };
   if (resource.gpu.model && resource.gpu.count > 0) {
-    if (resource.rdma) {
+    if (resource.network.enabled && resource.network.model) {
       // 作业同时申请 RDMA 和 GPU 时，不需要限制 CPU 和内存
       k8sResource = {};
-      // GPU Model 和 RDMA 资源对应关系：
-      // nvidia.com/v100 => rdma/rdma_v100
-      // nvidia.com/a100 => rdma/rdma_a100
-      // TODO(liyilong): 暂时硬编码，后续需要考虑如何做成配置
-      if (resource.gpu.model === "nvidia.com/v100") {
-        k8sResource["rdma/rdma_v100"] = `1`;
-      } else if (resource.gpu.model === "nvidia.com/a100") {
-        k8sResource["rdma/rdma_a100"] = `1`;
-      }
+      k8sResource[resource.network.model] = "1";
     }
     k8sResource[resource.gpu.model] = `${resource.gpu.count}`;
   }

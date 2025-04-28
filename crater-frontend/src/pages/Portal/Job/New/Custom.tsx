@@ -166,8 +166,15 @@ const dataProcessor = (data: FormSchema) => {
     data.forwards = [];
   }
   // if rdma is enabled, set it to false
-  if (data.task.resource.rdma) {
-    data.task.resource.rdma = false;
+  if (data.task.resource.network) {
+    data.task.resource.network.enabled = false;
+    data.task.resource.network.model = undefined;
+  }
+  if (!data.task.resource.network) {
+    data.task.resource.network = {
+      enabled: false,
+      model: undefined,
+    };
   }
   return data;
 };
