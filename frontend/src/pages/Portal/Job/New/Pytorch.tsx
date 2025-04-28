@@ -33,6 +33,7 @@ import {
   exportToJsonString,
   forwardsSchema,
   jobNameSchema,
+  defaultResource,
 } from "@/utils/form";
 import { useState } from "react";
 import { useAtomValue } from "jotai";
@@ -224,26 +225,14 @@ export const Component = () => {
       ps: {
         taskName: "master",
         replicas: 1,
-        resource: {
-          cpu: 1,
-          gpu: {
-            count: 0,
-          },
-          memory: 2,
-        },
+        resource: defaultResource,
         image: "",
         ports: [],
       },
       worker: {
         taskName: "worker",
         replicas: 1,
-        resource: {
-          cpu: 1,
-          gpu: {
-            count: 0,
-          },
-          memory: 2,
-        },
+        resource: defaultResource,
         image: "",
         ports: [],
       },

@@ -21,6 +21,7 @@ import { CirclePlus } from "lucide-react";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import {
   convertToResourceList,
+  defaultResource,
   envsSchema,
   exportToJsonString,
   forwardsSchema,
@@ -135,13 +136,7 @@ export const Component = () => {
       task: {
         taskName: "training",
         replicas: 1,
-        resource: {
-          cpu: 1,
-          gpu: {
-            count: 0,
-          },
-          memory: 2,
-        },
+        resource: defaultResource,
         image: "",
         shell: "",
         command: "",

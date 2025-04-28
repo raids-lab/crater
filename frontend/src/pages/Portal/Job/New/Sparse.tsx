@@ -178,6 +178,9 @@ export const Component = () => {
             model: "nvidia.com/gpu",
           },
           memory: 2,
+          network: {
+            enabled: false,
+          },
         },
         image: "",
         command: "",
