@@ -60,6 +60,17 @@ export const resourceSchema = z.object({
 
 export type ResourceSchema = z.infer<typeof resourceSchema>;
 
+export const defaultResource: ResourceSchema = {
+  cpu: 1,
+  memory: 2,
+  gpu: {
+    count: 0,
+  },
+  network: {
+    enabled: false,
+  },
+};
+
 export const taskSchema = z.object({
   taskName: z.string().min(1, {
     message: "任务名称不能为空",
