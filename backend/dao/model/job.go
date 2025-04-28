@@ -6,11 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/raids-lab/crater/pkg/monitor"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
+
+	"github.com/raids-lab/crater/pkg/monitor"
 )
 
 const (

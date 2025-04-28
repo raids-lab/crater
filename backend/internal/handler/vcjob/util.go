@@ -16,6 +16,7 @@ import (
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/util"
@@ -397,10 +398,18 @@ func generatePodSpecForParallelJob(
 	envs []v1.EnvVar,
 	ports []v1.ContainerPort,
 ) (podSpec v1.PodSpec) {
+	imagePullSecrets := []v1.LocalObjectReference{}
+	if config.GetConfig().ImagePullSecretName != "" {
+		imagePullSecrets = append(imagePullSecrets, v1.LocalObjectReference{
+			Name: config.GetConfig().ImagePullSecretName,
+		})
+	}
+
 	podSpec = v1.PodSpec{
-		Affinity:    affinity,
-		Tolerations: tolerations,
-		Volumes:     volumes,
+		Affinity:         affinity,
+		Tolerations:      tolerations,
+		Volumes:          volumes,
+		ImagePullSecrets: imagePullSecrets,
 		Containers: []v1.Container{
 			{
 				Name:  task.Name,
