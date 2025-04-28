@@ -1,8 +1,9 @@
 package aijob
 
 import (
-	"github.com/raids-lab/crater/dao/model"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
+
+	"github.com/raids-lab/crater/dao/model"
 )
 
 func convertJobPhase(aijob *model.AITask) batch.JobPhase {

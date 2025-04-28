@@ -134,6 +134,13 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 		AnnotationKeyTaskName: req.Name,
 	}
 
+	imagePullSecrets := []corev1.LocalObjectReference{}
+	if config.GetConfig().ImagePullSecretName != "" {
+		imagePullSecrets = append(imagePullSecrets, corev1.LocalObjectReference{
+			Name: config.GetConfig().ImagePullSecretName,
+		})
+	}
+
 	job := &recommenddljobapi.RecommendDLJob{
 		ObjectMeta: v1.ObjectMeta{
 			Name:        jobName,
@@ -145,7 +152,8 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 			RunningType: req.RunningType,
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
-					Volumes: volumes,
+					Volumes:          volumes,
+					ImagePullSecrets: imagePullSecrets,
 					Containers: []corev1.Container{
 						{
 							Name:  "sparse-recdl",
