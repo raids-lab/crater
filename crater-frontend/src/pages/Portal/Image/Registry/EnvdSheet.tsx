@@ -21,6 +21,7 @@ import { MetadataFormDockerfile } from "@/components/form/types";
 import { Input } from "@/components/ui/input";
 import {
   apiUserCreateByEnvd,
+  ImageDefaultTags,
   imageNameRegex,
   imageTagRegex,
 } from "@/services/api/imagepack";
@@ -29,6 +30,7 @@ import FormLabelMust from "@/components/form/FormLabelMust";
 import Combobox from "@/components/form/Combobox";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageSettingsFormCard } from "@/components/form/ImageSettingsFormCard";
+import { TagsInput } from "@/components/form/TagsInput";
 
 export const envdFormSchema = z.object({
   python: z.string().min(1, "Python version is required"),
@@ -111,6 +113,13 @@ export const envdFormSchema = z.object({
         message: "仅允许字母、数字、_ . + -，且不能以 . 或 - 开头/结尾",
       },
     ),
+  tags: z
+    .array(
+      z.object({
+        value: z.string(),
+      }),
+    )
+    .optional(),
 });
 
 export type EnvdFormValues = z.infer<typeof envdFormSchema>;
@@ -170,37 +179,6 @@ function EnvdSheetContent({ form, onSubmit }: EnvdSheetContentProps) {
             </FormItem>
           )}
         />
-        {/* <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="show-cuda"
-            checked={showCuda}
-            onCheckedChange={(checked) => setShowCuda(checked === true)}
-          />
-          <FormLabel>
-            CUDA
-            <FormLabelMust />
-          </FormLabel>
-        </div>
-
-        <FormField
-          control={form.control}
-          name={"base"}
-          render={({ field }) => (
-            <FormItem className="m-0 flex-1 flex-grow">
-              <FormControl>
-                <Combobox
-                  items={dropdownItems}
-                  current={field.value}
-                  handleSelect={(value) => field.onChange(value)}
-                  formTitle={showCuda ? "CUDA版本" : "Ubuntu版本"}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div> */}
         <FormField
           control={form.control}
           name="base"
@@ -223,6 +201,13 @@ function EnvdSheetContent({ form, onSubmit }: EnvdSheetContentProps) {
           )}
         />
       </div>
+      <TagsInput
+        form={form}
+        tagsPath="tags"
+        label={`镜像标签`}
+        description={`为镜像添加标签，以便分类和搜索`}
+        customTags={ImageDefaultTags}
+      />
       <FormField
         control={form.control}
         name="aptPackages"
@@ -286,6 +271,7 @@ export function EnvdSheet({ closeSheet, ...props }: EnvdSheetProps) {
       description: "",
       imageName: "",
       imageTag: "",
+      tags: [],
     },
   });
 
@@ -311,6 +297,7 @@ export function EnvdSheet({ closeSheet, ...props }: EnvdSheetProps) {
         base:
           CUDA_BASE_IMAGE.find((image) => image.value === values.base)
             ?.imageLabel ?? "",
+        tags: values.tags?.map((item) => item.value) ?? [],
       }),
     onSuccess: async () => {
       await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
