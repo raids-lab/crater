@@ -134,7 +134,7 @@ const adminSidebarGroups: NavGroupProps[] = [
             url: "cluster/node",
           },
           {
-            title: "资源列表",
+            title: "资源管理",
             url: "cluster/resource",
           },
         ],

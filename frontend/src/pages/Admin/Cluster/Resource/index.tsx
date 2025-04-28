@@ -28,7 +28,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { UpdateResourceForm } from "./Form";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCcwIcon } from "lucide-react";
+import {
+  BoxIcon,
+  NetworkIcon,
+  RefreshCcwIcon,
+  TagIcon,
+  Trash2Icon,
+} from "lucide-react";
 import {
   Resource,
   apiAdminResourceSync,
@@ -98,18 +104,22 @@ const ActionsCell: FC<{ resource: Resource }> = ({ resource }) => {
               操作
             </DropdownMenuLabel>
             <DropdownMenuItem onClick={() => setOpenLabelSheet(true)}>
-              编辑资源信息
+              <TagIcon />
+              编辑标签
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setOpenTypeSheet(true)}>
-              设置资源类型
+              <BoxIcon />
+              设置类型
             </DropdownMenuItem>
             {resource.type === "gpu" && (
               <DropdownMenuItem onClick={() => setOpenNetworkSheet(true)}>
-                管理网络关联
+                <NetworkIcon />
+                关联网络
               </DropdownMenuItem>
             )}
             <AlertDialogTrigger asChild>
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem>
+                <Trash2Icon className="text-destructive" />
                 删除资源
               </DropdownMenuItem>
             </AlertDialogTrigger>
@@ -171,26 +181,12 @@ const columns: ColumnDef<Resource>[] = [
     ),
     cell: ({ row }) => {
       return (
-        <Badge className="font-mono font-normal" variant="secondary">
-          {row.getValue<string>("name")}
-        </Badge>
-      );
-    },
-  },
-  {
-    accessorKey: "label",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"别名"} />
-    ),
-    cell: ({ row }) => {
-      const text = row.getValue<string>("label");
-      if (text === "") {
-        return <></>;
-      }
-      return (
-        <Badge className="font-mono font-normal" variant="secondary">
-          {text}
-        </Badge>
+        <div>
+          <p className="font-mono font-semibold">{row.original.label}</p>
+          <p className="text-muted-foreground font-mono text-xs font-normal">
+            {row.getValue<string>("name")}
+          </p>
+        </div>
       );
     },
   },
@@ -294,8 +290,8 @@ export const Component: FC = () => {
       columns={columns}
       toolbarConfig={toolbarConfig}
       info={{
-        title: "资源列表",
-        description: "资源列表用于定义集群中的资源，如 GPU、CPU、内存等",
+        title: "资源管理",
+        description: "展示集群中的资源，如 GPU、CPU、内存等",
       }}
       storageKey="admin_resource_list"
     >

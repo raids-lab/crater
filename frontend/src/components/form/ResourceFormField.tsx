@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import {
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -9,9 +10,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { FieldPath, FieldValues, UseFormReturn } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
-import { apiResourceList } from "@/services/api/resource";
+import {
+  apiResourceList,
+  apiResourceNetworks,
+  Resource,
+} from "@/services/api/resource";
 import FormLabelMust from "@/components/form/FormLabelMust";
-import Combobox from "@/components/form/Combobox";
+import Combobox, { ComboboxItem } from "@/components/form/Combobox";
 import TipBadge from "@/components/badge/TipBadge";
 import { ChartNoAxesColumn, CircleHelpIcon } from "lucide-react";
 import {
@@ -31,6 +36,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
+import { useMemo, useState } from "react";
 
 interface ResourceFormFieldsProps<T extends FieldValues> {
   form: UseFormReturn<T>;
@@ -38,7 +44,10 @@ interface ResourceFormFieldsProps<T extends FieldValues> {
   memoryPath: FieldPath<T>;
   gpuCountPath: FieldPath<T>;
   gpuModelPath: FieldPath<T>;
-  rdmaPath?: FieldPath<T>;
+  rdmaPath?: {
+    rdmaEnabled: FieldPath<T>;
+    rdmaLabel: FieldPath<T>;
+  };
 }
 
 export function ResourceFormFields<T extends FieldValues>({
@@ -50,7 +59,9 @@ export function ResourceFormFields<T extends FieldValues>({
   rdmaPath,
 }: ResourceFormFieldsProps<T>) {
   const gpuCount = form.watch(gpuCountPath);
+  const gpuModel = form.watch(gpuModelPath);
   const grafanaOverview = useAtomValue(asyncGrafanaOverviewAtom);
+  const [rdmaEnabled, setRdmaEnabled] = useState(false);
 
   // 获取可用资源列表
   const { data: resources } = useQuery({
@@ -62,12 +73,40 @@ export function ResourceFormFields<T extends FieldValues>({
           return b.amountSingleMax - a.amountSingleMax;
         })
         .filter((item) => item.amountSingleMax > 0)
-        .map((item) => ({
-          value: item.name,
-          label: item.label.toUpperCase(),
-          detail: item,
-        }));
+        .map(
+          (item) =>
+            ({
+              value: item.name,
+              label: item.label.toUpperCase(),
+              detail: item,
+            }) as ComboboxItem<Resource>,
+        );
     },
+  });
+
+  const gpuID = useMemo(() => {
+    if (gpuModel) {
+      const gpu = resources?.find((item) => item.value === gpuModel);
+      return gpu?.detail?.ID ?? 0;
+    }
+    return 0;
+  }, [gpuModel, resources]);
+
+  // 获取给定的 GPU 型号对应的网络资源列表
+  const { data: networks } = useQuery({
+    queryKey: ["resources", "networks", "list", gpuID],
+    queryFn: () => apiResourceNetworks(gpuID),
+    select: (res) =>
+      res.data.data
+        .filter((item) => item.amountSingleMax > 0)
+        .map(
+          (item) =>
+            ({
+              value: item.name,
+              label: item.label.toUpperCase(),
+              detail: item,
+            }) as ComboboxItem<Resource>,
+        ),
   });
 
   return (
@@ -153,7 +192,13 @@ export function ResourceFormFields<T extends FieldValues>({
                   </div>
                 )}
                 current={field.value ?? ""}
-                handleSelect={(value) => field.onChange(value)}
+                handleSelect={(value) => {
+                  field.onChange(value);
+                  if (rdmaPath) {
+                    form.resetField(rdmaPath.rdmaEnabled);
+                    form.resetField(rdmaPath.rdmaLabel);
+                  }
+                }}
                 formTitle="GPU 型号"
               />
             </FormControl>
@@ -161,10 +206,10 @@ export function ResourceFormFields<T extends FieldValues>({
           </FormItem>
         )}
       />
-      {rdmaPath && (
+      {rdmaPath && networks && networks.length > 0 && (
         <FormField
           control={form.control}
-          name={rdmaPath}
+          name={rdmaPath.rdmaEnabled}
           render={({ field }) => (
             <FormItem hidden={gpuCount === 0}>
               <div className="flex flex-row items-center justify-between space-y-0 space-x-0">
@@ -184,7 +229,10 @@ export function ResourceFormFields<T extends FieldValues>({
                         </p>
                         <p>2. RDMA 启用后，CPU 和内存限制将被忽略</p>
                         <p>3. 如需使用此功能，请尽量申请单个节点上的所有卡</p>
-                        <p>4. 镜像需支持 RDMA，详情见作业文档</p>
+                        <p>
+                          4. 在选择 RDMA 网络时，同一个作业请选择同一个网络拓扑
+                        </p>
+                        <p>5. 镜像需支持 RDMA，详情见作业文档</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -192,7 +240,10 @@ export function ResourceFormFields<T extends FieldValues>({
                 <FormControl>
                   <Switch
                     checked={field.value}
-                    onCheckedChange={field.onChange}
+                    onCheckedChange={(value) => {
+                      field.onChange(value);
+                      setRdmaEnabled(value);
+                    }}
                   />
                 </FormControl>
               </div>
@@ -201,6 +252,39 @@ export function ResourceFormFields<T extends FieldValues>({
           )}
         />
       )}
+      {rdmaEnabled &&
+        rdmaPath?.rdmaLabel &&
+        networks &&
+        networks.length > 0 && (
+          <FormField
+            control={form.control}
+            name={rdmaPath.rdmaLabel}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>RDMA 网络拓扑</FormLabel>
+                <FormControl>
+                  <Combobox
+                    items={networks}
+                    renderLabel={(item) => (
+                      <div className="flex w-full flex-row items-center justify-between gap-3">
+                        <p>{item.label}</p>
+                      </div>
+                    )}
+                    current={field.value ?? ""}
+                    handleSelect={(value) => {
+                      field.onChange(value);
+                    }}
+                    formTitle=" RDMA 网络拓扑"
+                  />
+                </FormControl>
+                <FormDescription>
+                  请保证同一个作业内的不同角色，均使用同一个 RDMA 网络拓扑
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
       <div>
         <Sheet>
           <SheetTrigger asChild>

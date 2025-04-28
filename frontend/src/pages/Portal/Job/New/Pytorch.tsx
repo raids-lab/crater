@@ -144,6 +144,18 @@ const dataProcessor = (data: FormSchema) => {
   if (data.forwards === undefined || data.forwards === null) {
     data.forwards = [];
   }
+  if (!data.ps.resource.network) {
+    data.ps.resource.network = {
+      enabled: false,
+      model: undefined,
+    };
+  }
+  if (!data.worker.resource.network) {
+    data.worker.resource.network = {
+      enabled: false,
+      model: undefined,
+    };
+  }
   return data;
 };
 
@@ -285,11 +297,15 @@ export const Component = () => {
       toast.info("请勿重复提交");
       return;
     }
-    if (values.ps.resource.rdma !== values.worker.resource.rdma) {
-      form.setError("ps.resource.rdma", {
+    if (
+      values.ps.resource.network.enabled !==
+      values.worker.resource.network.enabled
+    ) {
+      form.setError("ps.resource.network.enabled", {
         type: "manual",
         message: "RDMA 资源配置必须在所有角色中保持一致",
       });
+      toast.error("RDMA 资源配置必须在所有角色中保持一致");
       return;
     }
     createTask(values);
@@ -304,7 +320,7 @@ export const Component = () => {
         >
           <PageTitle
             title="Pytorch DDP 作业"
-            description="创建基于 Pytorch 框架的分布式训练任务"
+            description="创建基于 Pytorch 框架的分布式训练作业"
             className="lg:col-span-3"
             tipContent={`版本 ${MetadataFormPytorch.version}`}
           >
@@ -397,7 +413,10 @@ export const Component = () => {
                   memoryPath="ps.resource.memory"
                   gpuCountPath="ps.resource.gpu.count"
                   gpuModelPath="ps.resource.gpu.model"
-                  rdmaPath="ps.resource.rdma"
+                  rdmaPath={{
+                    rdmaEnabled: "ps.resource.network.enabled",
+                    rdmaLabel: "ps.resource.network.model",
+                  }}
                 />
                 <ImageFormField form={form} name="ps.image" />
                 <FormField
@@ -526,7 +545,10 @@ export const Component = () => {
                   memoryPath="worker.resource.memory"
                   gpuCountPath="worker.resource.gpu.count"
                   gpuModelPath="worker.resource.gpu.model"
-                  rdmaPath="worker.resource.rdma"
+                  rdmaPath={{
+                    rdmaEnabled: "worker.resource.network.enabled",
+                    rdmaLabel: "worker.resource.network.model",
+                  }}
                 />
                 <ImageFormField form={form} name="worker.image" />
                 <FormField
