@@ -307,7 +307,7 @@ type GetGPUNetworksReq struct {
 func (mgr *ResourceMgr) GetGPUNetworks(c *gin.Context) {
 	var req ResourcePathReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.BadRequestError(c, fmt.Sprintf("failed to bind request: %v", err))
+		resputil.Success(c, []model.Resource{})
 		return
 	}
 
@@ -315,12 +315,12 @@ func (mgr *ResourceMgr) GetGPUNetworks(c *gin.Context) {
 	r := query.Resource
 	gpuResource, err := r.WithContext(c).Where(r.ID.Eq(req.ID)).First()
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to find GPU resource: %v", err), resputil.NotSpecified)
+		resputil.Success(c, []model.Resource{})
 		return
 	}
 
 	if gpuResource.Type == nil || *gpuResource.Type != model.ResourceTypeGPU {
-		resputil.BadRequestError(c, "specified resource is not a GPU")
+		resputil.Success(c, []model.Resource{})
 		return
 	}
 
@@ -328,7 +328,7 @@ func (mgr *ResourceMgr) GetGPUNetworks(c *gin.Context) {
 	rn := query.ResourceNetwork
 	networkLinks, err := rn.WithContext(c).Where(rn.ResourceID.Eq(req.ID)).Find()
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to find RDMA resources: %v", err), resputil.NotSpecified)
+		resputil.Success(c, []model.Resource{})
 		return
 	}
 
