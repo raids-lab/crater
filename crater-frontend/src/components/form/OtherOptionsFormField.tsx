@@ -76,52 +76,54 @@ export function OtherOptionsFormCard<T extends FieldValues>({
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name={nodeSelectorEnablePath}
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-              <FormLabel className="font-normal">
-                指定工作节点
-                <TooltipProvider delayDuration={100}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      用于调试，或对特定节点进行性能测试场景
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </FormLabel>
-              <FormControl>
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name={nodeSelectorNodeNamePath}
-          render={({ field }) => (
-            <FormItem
-              className={cn({
-                hidden: !nodeSelectorEnabled,
-              })}
-            >
-              <FormControl>
-                <Input {...field} className="font-mono" />
-              </FormControl>
-              <FormDescription>
-                节点名称（可通过空闲资源查询获取）
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="space-y-1.5">
+          <FormField
+            control={form.control}
+            name={nodeSelectorEnablePath}
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
+                <FormLabel className="font-normal">
+                  指定工作节点
+                  <TooltipProvider delayDuration={100}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        用于调试，或对特定节点进行性能测试场景
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </FormLabel>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name={nodeSelectorNodeNamePath}
+            render={({ field }) => (
+              <FormItem
+                className={cn({
+                  hidden: !nodeSelectorEnabled,
+                })}
+              >
+                <FormControl>
+                  <Input {...field} className="font-mono" />
+                </FormControl>
+                <FormDescription>
+                  节点名称（可通过空闲资源查询获取）
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
       </div>
     </AccordionCard>
   );

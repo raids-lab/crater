@@ -66,37 +66,49 @@ export function TemplateInfo<T extends FieldValues>({
   }
 
   return (
-    <Card className="mb-4">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center">
-            {fromJob ? "作业模板" : "预设模板"}
-            <Badge variant="outline" className="ml-2">
-              {fromJob || templateData?.name}
-            </Badge>
-          </CardTitle>
+    <>
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center">
+              {fromJob ? "作业模板" : "预设模板"}
+              <Badge variant="outline" className="ml-2">
+                {fromJob || templateData?.name}
+              </Badge>
+            </CardTitle>
 
-          {templateData?.userInfo.nickname && (
-            <Badge variant="secondary">
-              作者: {templateData.userInfo.nickname}
-            </Badge>
-          )}
-        </div>
-
-        <CardDescription>
-          {fromJob
-            ? `已加载来自作业 ${fromJob} 的模板配置`
-            : templateData?.describe}
-        </CardDescription>
-      </CardHeader>
-
-      {markdownContent && (
-        <CardContent className="pt-0">
-          <div className="">
-            <MarkdownRenderer>{markdownContent}</MarkdownRenderer>
+            {templateData?.userInfo.nickname && (
+              <Badge variant="secondary">
+                作者: {templateData.userInfo.nickname}
+              </Badge>
+            )}
           </div>
-        </CardContent>
+
+          <CardDescription>
+            {fromJob
+              ? `已加载来自作业 ${fromJob} 的模板配置`
+              : templateData?.describe}
+          </CardDescription>
+        </CardHeader>
+
+        {markdownContent && (
+          <CardContent className="pt-0">
+            <div className="">
+              <MarkdownRenderer>{markdownContent}</MarkdownRenderer>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+      {defaultMarkdown && (
+        <Card>
+          <CardHeader>
+            <CardTitle>作业说明</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MarkdownRenderer>{defaultMarkdown}</MarkdownRenderer>
+          </CardContent>
+        </Card>
       )}
-    </Card>
+    </>
   );
 }
