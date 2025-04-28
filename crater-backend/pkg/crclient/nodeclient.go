@@ -197,16 +197,21 @@ func formatMemoryLoad(mem int) string {
 }
 
 // 节点中GPU的数量
-func (nc *NodeClient) getNodeGPUCount(nodeName string) int {
-	gpuUtilMap := nc.PrometheusClient.QueryNodeGPUUtil()
-	count := 0
-	for i := 0; i < len(gpuUtilMap); i++ {
-		gpuUtil := &gpuUtilMap[i]
-		if gpuUtil.Hostname == nodeName {
-			count++
-		}
+func (nc *NodeClient) getGPUCountOfNodes(nodes []corev1.Node) map[string]int {
+	nodeMap := make(map[string]struct{})
+	for i := range nodes {
+		nodeMap[nodes[i].Name] = struct{}{}
 	}
-	return count
+	gpuUtils := nc.PrometheusClient.QueryNodeGPUUtil()
+	gpuCountMap := make(map[string]int)
+	for i := 0; i < len(gpuUtils); i++ {
+		gpuUtil := &gpuUtils[i]
+		if _, ok := nodeMap[gpuUtil.Hostname]; ok {
+			gpuCountMap[gpuUtil.Hostname]++
+		}
+		// try to check ip.
+	}
+	return gpuCountMap
 }
 
 // GetNodes 获取所有 Node 列表
@@ -222,6 +227,8 @@ func (nc *NodeClient) ListNodes() ([]ClusterNodeInfo, error) {
 	CPUMap := nc.PrometheusClient.QueryNodeAllocatedCPU()
 	MemMap := nc.PrometheusClient.QueryNodeAllocatedMemory()
 	GPUMap := nc.PrometheusClient.QueryNodeAllocatedGPU()
+	// 获取节点的 GPU 数量
+	gpuCountMap := nc.getGPUCountOfNodes(nodes.Items)
 	podCountMap := nc.PrometheusClient.QueryNodeRunningPodCount()
 
 	// Loop through each node and print allocated resources
@@ -236,10 +243,11 @@ func (nc *NodeClient) ListNodes() ([]ClusterNodeInfo, error) {
 
 		cpuCapacity := node.Status.Capacity[corev1.ResourceCPU]
 		memCapacity := node.Status.Capacity[corev1.ResourceMemory]
+		gpuCapacity := gpuCountMap[node.Name]
 		capacityInfo := BriefResource{
 			CPU: cpuCapacity.String(),
 			Mem: memCapacity.String(),
-			GPU: fmt.Sprintf("%d", nc.getNodeGPUCount(node.Name)),
+			GPU: fmt.Sprintf("%d", gpuCapacity),
 		}
 
 		podCount := 0

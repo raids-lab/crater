@@ -37,5 +37,16 @@
                 "CRATER_DEBUG_CONFIG_PATH": "${workspaceFolder}/etc/debug-config-little.yaml",
             }
         },
+        {
+            "name": "Ali Server",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/main.go",
+            "env": {
+                "KUBECONFIG": "${workspaceFolder}/kubeconfig_ali",
+                "CRATER_DEBUG_CONFIG_PATH": "${workspaceFolder}/etc/debug-config-ali.yaml",
+            }
+        },
     ]
 }

@@ -80,11 +80,7 @@ func (mgr *ResourceMgr) ListResource(c *gin.Context) {
 	q := r.WithContext(c).Order(r.Priority.Desc())
 	if req.WithVendorDomain {
 		// default use nvidia.com
-		if req.DomainPrefix != nil {
-			q = q.Where(r.VendorDomain.Eq(*req.DomainPrefix))
-		} else {
-			q = q.Where(r.VendorDomain.Eq("nvidia.com"))
-		}
+		q = q.Where(r.Type.Eq(string(model.ResourceTypeGPU)))
 	}
 	resources, err := q.Find()
 	if err != nil {

@@ -13,6 +13,10 @@
 // // For Little Cluster (192.168.5.76)
 //
 // CRATER_DEBUG_CONFIG_PATH=${PWD}/etc/debug-config-little.yaml make migrate
+//
+// // For Ali Cluster (localhost)
+//
+// CRATER_DEBUG_CONFIG_PATH=${PWD}/etc/debug-config-ali.yaml make migrate
 package main
 
 import (
