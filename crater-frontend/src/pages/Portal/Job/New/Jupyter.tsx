@@ -47,6 +47,7 @@ import { TemplateInfo } from "@/components/form/TemplateInfo";
 import { OtherOptionsFormCard } from "@/components/form/OtherOptionsFormField";
 import { EnvFormCard } from "@/components/form/EnvFormField";
 import { ForwardFormCard } from "@/components/form/ForwardFormField";
+import { asyncFeatureFlags } from "@/utils/store/config";
 
 const JupyterMarkdown = `Jupyter 为用户提供交互式的 Web 实验环境，可用于代码调试等场景。
 
@@ -96,6 +97,7 @@ export const Component = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAtomValue(globalUserInfo);
+  const flags = useAtomValue(asyncFeatureFlags);
 
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) => {
@@ -173,6 +175,7 @@ export const Component = () => {
       return;
     }
     if (
+      flags.alertLowCPURequest &&
       values.task.resource.gpu.count > 0 &&
       values.task.resource.cpu <= 2 &&
       values.task.resource.memory <= 4

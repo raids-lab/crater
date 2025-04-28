@@ -28,6 +28,7 @@ export interface AppConfig {
   featureFlags: {
     enableRegister: boolean;
     setDocsAsHome: boolean;
+    alertLowCPURequest: boolean;
     enableMockServiceWorker: boolean;
   };
 }

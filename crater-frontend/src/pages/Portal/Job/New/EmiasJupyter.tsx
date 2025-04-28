@@ -213,26 +213,6 @@ export const Component = () => {
       toast.info("请勿重复提交");
       return;
     }
-    if (
-      values.task.resource.gpu.count > 0 &&
-      values.task.resource.cpu <= 2 &&
-      values.task.resource.memory <= 4
-    ) {
-      form.setError("task.resource.gpu.model", {
-        type: "manual",
-        message:
-          "建议结合节点资源分配情况，妥善调整 CPU 和内存资源申请，避免作业被 OOM Kill",
-      });
-      form.setError("task.resource.cpu", {
-        type: "manual",
-        message: "请增加 CPU 核数",
-      });
-      form.setError("task.resource.memory", {
-        type: "manual",
-        message: "请增加内存大小",
-      });
-      return;
-    }
     createTask(values);
   };
 
