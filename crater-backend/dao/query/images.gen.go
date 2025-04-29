@@ -39,6 +39,7 @@ func newImage(db *gorm.DB, opts ...gen.DOOption) image {
 	_image.TaskType = field.NewString(tableName, "task_type")
 	_image.ImageSource = field.NewUint8(tableName, "image_source")
 	_image.Size = field.NewInt64(tableName, "size")
+	_image.Tags = field.NewField(tableName, "tags")
 	_image.User = imageBelongsToUser{
 		db: db.Session(&gorm.Session{}),
 
@@ -76,6 +77,7 @@ type image struct {
 	TaskType      field.String
 	ImageSource   field.Uint8
 	Size          field.Int64
+	Tags          field.Field
 	User          imageBelongsToUser
 
 	fieldMap map[string]field.Expr
@@ -105,6 +107,7 @@ func (i *image) updateTableName(table string) *image {
 	i.TaskType = field.NewString(table, "task_type")
 	i.ImageSource = field.NewUint8(table, "image_source")
 	i.Size = field.NewInt64(table, "size")
+	i.Tags = field.NewField(table, "tags")
 
 	i.fillFieldMap()
 
@@ -129,7 +132,7 @@ func (i *image) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (i *image) fillFieldMap() {
-	i.fieldMap = make(map[string]field.Expr, 13)
+	i.fieldMap = make(map[string]field.Expr, 14)
 	i.fieldMap["id"] = i.ID
 	i.fieldMap["created_at"] = i.CreatedAt
 	i.fieldMap["updated_at"] = i.UpdatedAt
@@ -142,6 +145,7 @@ func (i *image) fillFieldMap() {
 	i.fieldMap["task_type"] = i.TaskType
 	i.fieldMap["image_source"] = i.ImageSource
 	i.fieldMap["size"] = i.Size
+	i.fieldMap["tags"] = i.Tags
 
 }
 

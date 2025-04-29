@@ -21,8 +21,10 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/go-logr/logr"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
@@ -165,35 +167,29 @@ func (r *BuildKitReconciler) handleRecordNotFound(ctx context.Context, job *batc
 	uID, _ := strconv.Atoi(job.Annotations["build-data/UserID"])
 	//nolint:gosec // userID is very small, integer overflow conversion won't happen
 	userID := uint(uID)
-	dockerfile := job.Annotations["build-data/Dockerfile"]
 	description := job.Annotations["build-data/Description"]
-	envd := job.Annotations["build-data/Envd"]
-	var buildSource model.BuildSource
-	if envd != "" {
-		buildSource = model.Envd
-	} else if dockerfile != "" {
-		buildSource = model.BuildKit
-	} else {
-		buildSource = model.Snapshot
-	}
+	script := job.Annotations["build-data/Script"]
+	source := job.Annotations["build-data/Source"]
+	tags := strings.Split(job.Annotations["build-data/Tags"], "&&")
 	u := query.User
 	_, err := u.WithContext(ctx).Where(u.ID.Eq(userID)).First()
 	if err != nil {
 		logutils.Log.Errorf("get user failed, userID: %d, err: %v", userID, err)
 		return ctrl.Result{}, err
 	}
-	kanikorecord := model.Kaniko{
+	kanikoRecord := model.Kaniko{
 		UserID:        userID,
 		ImagePackName: job.Name,
 		ImageLink:     job.Annotations["build-data/ImageLink"],
 		NameSpace:     job.Namespace,
 		Status:        model.BuildJobInitial,
-		Dockerfile:    &dockerfile,
+		Dockerfile:    &script,
 		Description:   &description,
-		BuildSource:   buildSource,
+		BuildSource:   model.BuildSource(source),
+		Tags:          datatypes.NewJSONType(tags),
 	}
-	if err := k.WithContext(ctx).Create(&kanikorecord); err != nil {
-		logutils.Log.Errorf("create imagepack record failed, params: %+v, %+v", kanikorecord, err)
+	if err := k.WithContext(ctx).Create(&kanikoRecord); err != nil {
+		logutils.Log.Errorf("create imagepack record failed, params: %+v, %+v", kanikoRecord, err)
 	} else {
 		logger.Info("successfully created kaniko record")
 	}
@@ -245,6 +241,7 @@ func (r *BuildKitReconciler) createImageRecord(ctx context.Context, kaniko *mode
 		TaskType:      taskType,
 		ImageSource:   model.ImageCreateType,
 		Size:          kaniko.Size,
+		Tags:          kaniko.Tags,
 	}
 	err = im.WithContext(ctx).Create(image)
 	if err != nil {

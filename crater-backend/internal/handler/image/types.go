@@ -8,33 +8,37 @@ import (
 
 type (
 	CreateKanikoRequest struct {
-		SourceImage        string `json:"image"`
-		PythonRequirements string `json:"requirements"`
-		APTPackages        string `json:"packages"`
-		Description        string `json:"description"`
-		ImageName          string `json:"name"`
-		ImageTag           string `json:"tag"`
+		SourceImage        string   `json:"image"`
+		PythonRequirements string   `json:"requirements"`
+		APTPackages        string   `json:"packages"`
+		Description        string   `json:"description"`
+		ImageName          string   `json:"name"`
+		ImageTag           string   `json:"tag"`
+		Tags               []string `json:"tags"`
 	}
 
 	CreateByDockerfileRequest struct {
-		Description string `json:"description"`
-		Dockerfile  string `json:"dockerfile"`
-		ImageName   string `json:"name"`
-		ImageTag    string `json:"tag"`
+		Description string   `json:"description"`
+		Dockerfile  string   `json:"dockerfile"`
+		ImageName   string   `json:"name"`
+		ImageTag    string   `json:"tag"`
+		Tags        []string `json:"tags"`
 	}
 	CreateByEnvdRequest struct {
-		Description string `json:"description"`
-		Envd        string `json:"envd"`
-		ImageName   string `json:"name"`
-		ImageTag    string `json:"tag"`
-		Python      string `json:"python"`
-		Base        string `json:"base"`
+		Description string   `json:"description"`
+		Envd        string   `json:"envd"`
+		ImageName   string   `json:"name"`
+		ImageTag    string   `json:"tag"`
+		Python      string   `json:"python"`
+		Base        string   `json:"base"`
+		Tags        []string `json:"tags"`
 	}
 
 	UploadImageRequest struct {
 		ImageLink   string        `json:"imageLink"`
 		TaskType    model.JobType `json:"taskType"`
 		Description string        `json:"description"`
+		Tags        []string      `json:"tags"`
 	}
 
 	DeleteKanikoByIDRequest struct {
@@ -85,6 +89,11 @@ type (
 	ChangeImageTaskTypeRequest struct {
 		ID       uint          `json:"id"`
 		TaskType model.JobType `json:"taskType"`
+	}
+
+	ChangeImageTagsRequest struct {
+		ID   uint     `json:"id"`
+		Tags []string `json:"tags"`
 	}
 )
 
@@ -145,6 +154,7 @@ type (
 		Size        int64             `json:"size"`
 		Description string            `json:"description"`
 		UserInfo    model.UserInfo    `json:"userInfo"`
+		Tags        []string          `json:"tags"`
 	}
 
 	ListKanikoResponse struct {
@@ -159,6 +169,7 @@ type (
 		TaskType    model.JobType  `json:"taskType"`
 		IsPublic    bool           `json:"isPublic"`
 		UserInfo    model.UserInfo `json:"userInfo"`
+		Tags        []string       `json:"tags"`
 	}
 
 	ImageInfoLinkPair struct {
@@ -177,6 +188,7 @@ type (
 		ImageName    string
 		ImageTag     string
 		Requirements *string
+		Tags         []string
 	}
 
 	EnvdBuildData struct {
@@ -188,5 +200,6 @@ type (
 		ImageTag    string
 		UserName    string
 		UserID      uint
+		Tags        []string
 	}
 )

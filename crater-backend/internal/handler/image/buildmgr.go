@@ -295,6 +295,7 @@ func (mgr *ImagePackMgr) generateKanikoListResponse(kanikos []*model.Kaniko) Lis
 				Username: kaniko.User.Name,
 				Nickname: kaniko.User.Nickname,
 			},
+			Tags: kaniko.Tags.Data(),
 		}
 		kanikoInfos = append(kanikoInfos, kanikoInfo)
 	}

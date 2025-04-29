@@ -22,6 +22,7 @@ type BuildKitReq struct {
 	Description  *string
 	Registry     *ImageRegistrySecret // If nil, use default registry
 	ImageLink    string
+	Tags         []string
 }
 
 type SnapshotReq struct {
@@ -47,6 +48,7 @@ type EnvdReq struct {
 	Description  *string
 	Registry     *ImageRegistrySecret // If nil, use default registry
 	ImageLink    string
+	Tags         []string
 }
 
 type ImagePackerInterface interface {
@@ -72,6 +74,8 @@ var (
 	BackoffLimitNumber int32 = 0
 	CompletionNumber   int32 = 1
 	ParallelismNumber  int32 = 1
+
+	TagsDelimiter string = "&&"
 )
 
 const (

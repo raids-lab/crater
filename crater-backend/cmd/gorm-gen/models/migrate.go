@@ -318,6 +318,64 @@ func main() {
 				return tx.Migrator().DropTable("resource_networks")
 			},
 		},
+		//nolint:dupl// 相似的migrate代码
+		{
+			ID: "202504281510",
+			Migrate: func(tx *gorm.DB) error {
+				type Kaniko struct {
+					// Resource relationship
+					Tags datatypes.JSONType[[]string] `gorm:"null;comment:镜像标签"`
+				}
+
+				// Add the Type and Networks columns to the Resource tableturn err
+
+				if err := tx.Migrator().AddColumn(&Kaniko{}, "Tags"); err != nil {
+					return err
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Kaniko struct {
+					// Resource relationship
+					Tags datatypes.JSONType[[]string] `gorm:"null;comment:镜像标签"`
+				}
+
+				// Drop the Type and Networks columns from the Resource table
+				if err := tx.Migrator().DropColumn(&Kaniko{}, "Tags"); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+		//nolint:dupl// 相似的migrate代码
+		{
+			ID: "202504281511",
+			Migrate: func(tx *gorm.DB) error {
+				type Image struct {
+					// Resource relationship
+					Tags datatypes.JSONType[[]string] `gorm:"null;comment:镜像标签"`
+				}
+
+				// Add the Type and Networks columns to the Resource tableturn err
+
+				if err := tx.Migrator().AddColumn(&Image{}, "Tags"); err != nil {
+					return err
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Image struct {
+					// Resource relationship
+					Tags datatypes.JSONType[[]string] `gorm:"null;comment:镜像标签"`
+				}
+
+				// Drop the Type and Networks columns from the Resource table
+				if err := tx.Migrator().DropColumn(&Image{}, "Tags"); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
