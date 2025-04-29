@@ -42,6 +42,7 @@ func (mgr *ImagePackMgr) UserCreateKaniko(c *gin.Context) {
 		UserName:     token.Username,
 		UserID:       token.UserID,
 		Requirements: &req.PythonRequirements,
+		Tags:         req.Tags,
 	}
 	mgr.buildFromDockerfile(c, buildData)
 }
@@ -77,6 +78,7 @@ func (mgr *ImagePackMgr) UserCreateByDockerfile(c *gin.Context) {
 		BaseImage:   baseImage,
 		UserName:    token.Username,
 		UserID:      token.UserID,
+		Tags:        req.Tags,
 	}
 	mgr.buildFromDockerfile(c, buildData)
 }
@@ -140,6 +142,7 @@ func (mgr *ImagePackMgr) UserCreateByEnvd(c *gin.Context) {
 		Base:        req.Base,
 		UserName:    token.Username,
 		UserID:      token.UserID,
+		Tags:        req.Tags,
 	}
 	mgr.buildFromEnvd(c, buildData)
 }
@@ -171,6 +174,7 @@ func (mgr *ImagePackMgr) AdminCreate(c *gin.Context) {
 		ImageTag:    req.ImageTag,
 		UserName:    token.Username,
 		UserID:      token.UserID,
+		Tags:        req.Tags,
 	}
 	mgr.buildFromDockerfile(c, buildData)
 }
@@ -227,6 +231,7 @@ func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, data *DockerfileBui
 		UserID:       data.UserID,
 		Description:  &data.Description,
 		Requirements: data.Requirements,
+		Tags:         data.Tags,
 	}
 
 	if err := mgr.imagePacker.CreateFromDockerfile(c, buildkitData); err != nil {
@@ -258,6 +263,7 @@ func (mgr *ImagePackMgr) buildFromEnvd(c *gin.Context, data *EnvdBuildData) {
 		ImageLink:   imageLink,
 		UserID:      data.UserID,
 		Description: &data.Description,
+		Tags:        data.Tags,
 	}
 
 	if err := mgr.imagePacker.CreateFromEnvd(c, envdData); err != nil {
