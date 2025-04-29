@@ -17,12 +17,14 @@ import {
 } from "@/components/ui/command";
 import { Check, ChevronsUpDown } from "lucide-react";
 // import { ScrollArea } from "@/components/ui/scroll-area";
-import { useState } from "react";
-
+import { useMemo, useState } from "react";
+import { TagFilter, useTagFilter } from "./ImageFormField";
+import { Badge } from "@/components/ui/badge";
 export interface ComboboxItem<T> {
   label: string;
   value: string;
   selectedLabel?: string;
+  tags?: string[];
   detail?: T;
 }
 
@@ -35,6 +37,8 @@ type ComboboxProps<T> = React.HTMLAttributes<HTMLDivElement> & {
   renderLabel?: (item: ComboboxItem<T>) => React.ReactNode;
   className?: string;
   useDialog?: boolean;
+  tags?: string[]; // Optional predefined tags
+  tagFilter?: React.ReactNode; // Optional custom tag filter component
 };
 
 const getSelectedLabel = <T,>(
@@ -56,8 +60,30 @@ function Combobox<T>({
   renderLabel,
   className,
   useDialog = false,
+  tags,
+  tagFilter,
 }: ComboboxProps<T>) {
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  // Use the tag filter hook
+  const { allTags, selectedTags, toggleTag, filterItemsByTags } = useTagFilter(
+    items,
+    tags,
+  );
+
+  // Filter items based on search query and selected tags
+  const filteredItems = useMemo(() => {
+    // First filter by tags
+    const tagFilteredItems = filterItemsByTags(items);
+
+    // Then filter by search query
+    return tagFilteredItems.filter((item) => {
+      return (
+        searchQuery === "" ||
+        item.label.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    });
+  }, [items, searchQuery, filterItemsByTags]);
 
   const triggerButton = (
     <FormControl>
@@ -86,12 +112,26 @@ function Combobox<T>({
 
   const commandContent = (
     <Command>
-      <CommandInput placeholder={`查找${formTitle}`} className="h-9" />
+      <CommandInput
+        placeholder={`查找${formTitle}`}
+        className="h-9"
+        onValueChange={setSearchQuery}
+      />
+
+      {tagFilter ||
+        (allTags.length > 0 && (
+          <TagFilter
+            tags={allTags}
+            selectedTags={selectedTags}
+            onTagToggle={toggleTag}
+          />
+        ))}
+
       <CommandList>
         <CommandEmpty>未找到匹配的{formTitle}</CommandEmpty>
         <CommandGroup>
           <div>
-            {items.map((item) => (
+            {filteredItems.map((item) => (
               <CommandItem
                 value={item.label}
                 key={item.value}
@@ -101,7 +141,22 @@ function Combobox<T>({
                 }}
                 className="flex w-full flex-row items-center justify-between"
               >
-                {renderLabel ? renderLabel(item) : <>{item.label}</>}
+                <div className="flex flex-col">
+                  <div>{renderLabel ? renderLabel(item) : item.label}</div>
+                  {item.tags && item.tags.length > 0 && (
+                    <div className="mt-1 flex gap-1">
+                      {item.tags.map((tag) => (
+                        <Badge
+                          key={tag}
+                          variant="secondary"
+                          className="text-xs"
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <Check
                   className={cn(
                     "ml-auto size-4",

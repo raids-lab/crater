@@ -4,6 +4,7 @@ import { FC, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DialogClose,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -15,12 +16,16 @@ import { UpdateImageTag } from "@/services/api/imagepack";
 interface TagsDialogProps {
   initialTags: string[];
   imageID: number;
+  description: string;
+  imageLink: string;
   onSaveTags: (updateData: UpdateImageTag) => void;
 }
 
 export const TagsDialog: FC<TagsDialogProps> = ({
   initialTags,
   imageID: id,
+  description,
+  imageLink,
   onSaveTags,
 }) => {
   const [tags, setTags] = useState<string[]>(initialTags || []);
@@ -65,9 +70,14 @@ export const TagsDialog: FC<TagsDialogProps> = ({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>管理管理</DialogTitle>
+        <DialogTitle>标签管理</DialogTitle>
       </DialogHeader>
-
+      <DialogDescription className="space-y-4 pt-2">
+        <div className="bg-muted/50 rounded-md px-4 py-3">
+          <p className="text-muted-foreground">{description}</p>
+          <p className="mt-1 font-medium break-all">『{imageLink}』</p>
+        </div>
+      </DialogDescription>
       <div className="my-4 flex items-center space-x-2">
         <Input
           ref={inputRef}
