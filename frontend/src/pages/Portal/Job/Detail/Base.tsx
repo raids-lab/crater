@@ -256,7 +256,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
           children: <ProfileDashboard data={data} />,
           scrollable: true,
           hidden:
-            (!data.profileData && !data.scheduleData) ||
+            !data.profileData ||
             jobStatus === JobStatus.Running ||
             jobStatus === JobStatus.NotStarted,
         },

@@ -102,9 +102,9 @@ export const JobInfoSections = ({
       };
     }
     return {
-      runTime: "",
-      pullTime: "",
-      waitTime: "",
+      runTime: undefined,
+      pullTime: undefined,
+      waitTime: undefined,
     };
   }, [props.completedAt, props.createdAt, props.startedAt, props.scheduleData]);
 
@@ -117,31 +117,39 @@ export const JobInfoSections = ({
             <TerminatedSection state={state} index={index} />
           </Fragment>
         ))}
-      <MetricSection
-        title="作业调度信息"
-        icon={<ClockIcon className="h-5 w-5" />}
-      >
-        <MetricCard
-          title="作业排队用时"
-          value={scheduleInfo.waitTime}
-          unit=""
-          description="作业从创建到被调度到节点的时间"
-        />
-        {!!scheduleInfo.pullTime && (
-          <MetricCard
-            title="镜像拉取用时"
-            value={scheduleInfo.pullTime}
-            unit=""
-            description="镜像拉取所花费的时间，为空说明镜像已缓存"
-          />
-        )}
-        <MetricCard
-          title="作业运行用时"
-          value={scheduleInfo.runTime}
-          unit=""
-          description="作业执行的总时长"
-        />
-      </MetricSection>
+      {(scheduleInfo.waitTime ||
+        scheduleInfo.pullTime ||
+        scheduleInfo.runTime) && (
+        <MetricSection
+          title="作业调度信息"
+          icon={<ClockIcon className="h-5 w-5" />}
+        >
+          {scheduleInfo.waitTime && (
+            <MetricCard
+              title="作业排队用时"
+              value={scheduleInfo.waitTime}
+              unit=""
+              description="作业从创建到被调度到节点的时间"
+            />
+          )}
+          {!!scheduleInfo.pullTime && (
+            <MetricCard
+              title="镜像拉取用时"
+              value={scheduleInfo.pullTime}
+              unit=""
+              description="镜像拉取所花费的时间，为空说明镜像已缓存"
+            />
+          )}
+          {scheduleInfo.runTime && (
+            <MetricCard
+              title="作业运行用时"
+              value={scheduleInfo.runTime}
+              unit=""
+              description="作业执行的总时长"
+            />
+          )}
+        </MetricSection>
+      )}
     </>
   );
 };

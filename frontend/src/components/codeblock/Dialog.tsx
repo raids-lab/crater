@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AxiosResponse } from "axios";
 import TipBadge from "../badge/TipBadge";
 import SandwichSheet from "../sheet/SandwichSheet";
+import Nothing from "../placeholder/Nothing";
 
 interface FetchContentProps<T> {
   name: string;
@@ -30,7 +31,7 @@ export function LazyContent<T>({
   });
 
   if (!data) {
-    return <></>;
+    return <Nothing />;
   }
 
   return <>{renderData(data)}</>;
