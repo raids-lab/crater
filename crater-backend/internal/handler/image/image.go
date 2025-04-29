@@ -11,6 +11,7 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/logutils"
+	"gorm.io/datatypes"
 )
 
 // UserUploadImage godoc
@@ -43,6 +44,7 @@ func (mgr *ImagePackMgr) UserUploadImage(c *gin.Context) {
 		TaskType:    req.TaskType,
 		IsPublic:    false,
 		Description: &req.Description,
+		Tags:        datatypes.NewJSONType(req.Tags),
 	}
 	imageQuery := query.Image
 	if err := imageQuery.WithContext(c).Create(imageEntity); err != nil {
@@ -232,11 +234,9 @@ func (mgr *ImagePackMgr) deleteImageByIDList(c *gin.Context, isAdminMode bool, i
 	if !isAdminMode {
 		specifiedQuery = specifiedQuery.Where(iq.UserID.Eq(util.GetToken(c).UserID))
 	}
-	for _, id := range imageIDList {
-		if _, err := specifiedQuery.Where(iq.ID.Eq(id)).Delete(); err != nil {
-			logutils.Log.Errorf("delete image entity failed! err:%v", err)
-			flag = false
-		}
+	if _, err := specifiedQuery.Where(iq.ID.In(imageIDList...)).Delete(); err != nil {
+		logutils.Log.Errorf("delete image entity failed! err:%v", err)
+		flag = false
 	}
 	return flag
 }
@@ -413,10 +413,58 @@ func (mgr *ImagePackMgr) generateImageListResponse(images []*model.Image) ListIm
 				Username: image.User.Name,
 				Nickname: image.User.Nickname,
 			},
+			Tags: image.Tags.Data(),
 		}
 		imageInfos = append(imageInfos, imageInfo)
 	}
 	return ListImageResponse{
 		ImageInfoList: imageInfos,
 	}
+}
+
+// UserChangeImageTagsType godoc
+// @Summary 更新镜像的标签
+// @Description 更新标签
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Router /v1/images/tags [POST]
+func (mgr *ImagePackMgr) UserChangeImageTags(c *gin.Context) {
+	req := &ChangeImageTagsRequest{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		logutils.Log.Errorf("validate tags data failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		return
+	}
+	mgr.changeImageTags(c, req.ID, req.Tags)
+}
+
+// AdminChangeImageTagsType godoc
+// @Summary 管理员更新镜像的标签
+// @Description 管理员更新标签
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Router /v1/admin/images/tags [POST]
+func (mgr *ImagePackMgr) AdminChangeImageTags(c *gin.Context) {
+	req := &ChangeImageTagsRequest{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		logutils.Log.Errorf("validate tags data failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		return
+	}
+	mgr.changeImageTags(c, req.ID, req.Tags)
+}
+
+func (mgr *ImagePackMgr) changeImageTags(c *gin.Context, imageID uint, newTags []string) {
+	imageQuery := query.Image
+	if _, err := imageQuery.WithContext(c).
+		Where(imageQuery.ID.Eq(imageID)).
+		Update(imageQuery.Tags, datatypes.NewJSONType(newTags)); err != nil {
+		logutils.Log.Errorf("update image tags failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, "update tags failed", resputil.NotSpecified)
+	}
+	resputil.Success(c, "")
 }
