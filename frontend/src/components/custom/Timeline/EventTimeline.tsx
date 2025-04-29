@@ -40,9 +40,13 @@ export const EventTimeline = ({ items }: TimelineLayoutProps) => {
                 <div className="bg-primary h-2 w-2 rounded-full" />
               </TimelineIcon>
               <TimelineTitle>
-                <TimeDistance date={item.lastTimestamp} />
-                <span className="text-primary mx-1">-</span>
-                {item.reason}
+                {item.reason && <>{item.reason}</>}
+                {item.lastTimestamp && (
+                  <span className="">
+                    <span className="text-primary mx-1">-</span>
+                    <TimeDistance date={item.lastTimestamp} />
+                  </span>
+                )}
               </TimelineTitle>
             </TimelineHeader>
             <TimelineBody>
@@ -73,7 +77,9 @@ export const EventTimeline = ({ items }: TimelineLayoutProps) => {
                   />
                 )}
               </div>
-              <p className="text-muted-foreground">{item.message}</p>
+              <p className="text-muted-foreground font-mono text-sm">
+                {item.message}
+              </p>
             </TimelineBody>
           </TimelineItem>
         ))}
