@@ -580,6 +580,8 @@ const Actions: FC<ActionsProps> = ({
             <TagsDialog
               initialTags={imageInfo.tags}
               imageID={imageInfo.ID}
+              imageLink={imageInfo.imageLink}
+              description={imageInfo.description}
               onSaveTags={(updateData: UpdateImageTag) => {
                 onChangeTags(updateData);
               }}
