@@ -2,8 +2,8 @@ package packer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/raids-lab/crater/dao/model"
 	batchv1 "k8s.io/api/batch/v1"
@@ -179,6 +179,7 @@ func (b *imagePacker) createJob(
 	buildkitContainer []corev1.Container,
 	volumes []corev1.Volume,
 ) (*batchv1.Job, error) {
+	tagsString, _ := json.Marshal(data.Tags)
 	jobMeta := metav1.ObjectMeta{
 		Name:      data.JobName,
 		Namespace: data.Namespace,
@@ -187,7 +188,7 @@ func (b *imagePacker) createJob(
 			"build-data/ImageLink":   data.ImageLink,
 			"build-data/Script":      *data.Dockerfile,
 			"build-data/Description": *data.Description,
-			"build-data/Tags":        strings.Join(data.Tags, TagsDelimiter),
+			"build-data/Tags":        string(tagsString),
 			"build-data/Source":      string(model.BuildKit),
 		},
 	}

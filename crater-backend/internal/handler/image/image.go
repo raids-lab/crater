@@ -144,6 +144,7 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 				Username: image.User.Name,
 				Nickname: image.User.Nickname,
 			},
+			Tags: image.Tags.Data(),
 		}
 		imageInfos = append(imageInfos, imageInfo)
 	}
