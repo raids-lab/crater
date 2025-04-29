@@ -14,10 +14,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
+	"github.com/raids-lab/crater/pkg/crclient"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/util"
 )
@@ -51,9 +51,14 @@ const (
 )
 
 // NewTaskController returns a new *TaskController
-func NewTaskController(crClient client.Client, cs kubernetes.Interface, statusChan <-chan util.JobStatusChan) TaskControllerInterface {
+func NewTaskController(
+	serviceManager crclient.ServiceManagerInterface,
+	crClient client.Client,
+	cs kubernetes.Interface,
+	statusChan <-chan util.JobStatusChan,
+) TaskControllerInterface {
 	return &TaskController{
-		jobControl:    &crclient.JobControl{Client: crClient, KubeClient: cs},
+		jobControl:    &crclient.JobControl{Client: crClient, KubeClient: cs, ServiceManager: serviceManager},
 		taskDB:        NewDBService(),
 		taskQueue:     NewTaskQueue(),
 		quotaInfos:    sync.Map{},

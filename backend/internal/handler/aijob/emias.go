@@ -29,6 +29,7 @@ import (
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/util"
@@ -454,10 +455,14 @@ func (mgr *AIJobMgr) GetDetail(c *gin.Context) {
 		return
 	}
 
-	profileData := monitor.ProfileData{}
+	var profileDataPtr *monitor.ProfileData
 	// unmarshal profile data from taskModel.ProfileStat
 	if taskModel.ProfileStat != "" {
+		profileData := monitor.ProfileData{}
 		_ = json.Unmarshal([]byte(taskModel.ProfileStat), &profileData)
+		profileDataPtr = &profileData
+	} else {
+		profileDataPtr = nil
 	}
 
 	resp := AIJobDetailResp{
@@ -474,7 +479,7 @@ func (mgr *AIJobMgr) GetDetail(c *gin.Context) {
 			Status:            convertJobPhase(taskModel),
 			CreationTimestamp: metav1.NewTime(taskModel.CreatedAt),
 			RunningTimestamp:  runningTimestamp,
-			ProfileData:       &profileData,
+			ProfileData:       profileDataPtr,
 			ScheduleData: &model.ScheduleData{
 				ImagePullTime: "0",
 			},
@@ -485,6 +490,10 @@ func (mgr *AIJobMgr) GetDetail(c *gin.Context) {
 		ProfileStat:   taskModel.ProfileStat,
 		ProfileStatus: strconv.FormatUint(uint64(taskModel.ProfileStatus), 10),
 	}
+	if taskModel.IsDeleted {
+		resp.CompletedTimestamp = metav1.NewTime(taskModel.UpdatedAt)
+	}
+
 	logutils.Log.Infof("get task success, taskID: %d", req.JobID)
 	resputil.Success(c, resp)
 }
@@ -600,7 +609,7 @@ func (mgr *AIJobMgr) GetJobYaml(c *gin.Context) {
 	namespace := config.GetConfig().Workspace.Namespace
 	if err = mgr.client.Get(c, client.ObjectKey{Name: taskModel.JobName,
 		Namespace: namespace}, job); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.Success(c, nil)
 		return
 	}
 
@@ -648,34 +657,41 @@ func (mgr *AIJobMgr) GetJupyterToken(c *gin.Context) {
 		return
 	}
 
-	svc := &v1.Service{}
+	// Get AIJob to check annotations
+	job := &aijobapi.AIJob{}
 	namespace := config.GetConfig().Workspace.Namespace
-	if err = mgr.client.Get(c, client.ObjectKey{Name: "svc-" + taskModel.JobName, Namespace: namespace}, svc); err != nil {
+	if err = mgr.client.Get(c, client.ObjectKey{Name: taskModel.JobName, Namespace: namespace}, job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	if svc.Spec.Type != v1.ServiceTypeNodePort {
-		resputil.Error(c, "Service type is not NodePort", resputil.NotSpecified)
+	// Construct the full URL directly
+	host := config.GetConfig().Host
+	baseURL := job.Labels[crclient.LabelKeyBaseURL]
+	fullURL := fmt.Sprintf("https://%s/ingress/%s", host, baseURL)
+
+	// Check if jupyter token has been cached in the job annotations
+	const AnnotationKeyJupyter = "jupyter.token"
+	jupyterToken, ok := job.Annotations[AnnotationKeyJupyter]
+	if ok {
+		resputil.Success(c, vcjob.JobTokenResp{
+			BaseURL:   baseURL,
+			Token:     jupyterToken,
+			FullURL:   fullURL,
+			PodName:   fmt.Sprintf("%s-0", taskModel.JobName),
+			Namespace: namespace,
+		})
 		return
 	}
 
-	if len(svc.Spec.Ports) == 0 {
-		resputil.Error(c, "Service port not found", resputil.NotSpecified)
-		return
-	}
-
-	baseURL := fmt.Sprintf("http://10.109.80.1:%d", int(svc.Spec.Ports[0].NodePort))
-
-	// Get the logs of the job pod
-	var jupyterToken string
-
+	// Get the logs of the job pod to find token
 	podName := fmt.Sprintf("%s-0", taskModel.JobName)
 	buf, err := mgr.getPodLog(c, namespace, podName)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
+
 	re := regexp.MustCompile(`\?token=([a-zA-Z0-9]+)`)
 	matches := re.FindStringSubmatch(buf.String())
 	if len(matches) >= 2 {
@@ -685,14 +701,24 @@ func (mgr *AIJobMgr) GetJupyterToken(c *gin.Context) {
 		return
 	}
 
-	if jupyterToken == "" {
-		resputil.Error(c, "Jupyter token not found", resputil.NotSpecified)
-		return
+	// Cache the jupyter token in the job annotations
+	if job.Annotations == nil {
+		job.Annotations = make(map[string]string)
+	}
+	job.Annotations[AnnotationKeyJupyter] = jupyterToken
+	if err := mgr.client.Update(c, job); err != nil {
+		// Log the error but continue, as this is not critical
+		logutils.Log.Errorf("Failed to update job annotations: %v", err)
 	}
 
-	resputil.Success(c, vcjob.JobTokenResp{BaseURL: baseURL, Token: jupyterToken})
+	resputil.Success(c, vcjob.JobTokenResp{
+		BaseURL:   baseURL,
+		Token:     jupyterToken,
+		FullURL:   fullURL,
+		PodName:   podName,
+		Namespace: namespace,
+	})
 }
-
 func (mgr *AIJobMgr) getPodLog(c *gin.Context, namespace, podName string) (*bytes.Buffer, error) {
 	logOptions := &v1.PodLogOptions{}
 	logReq := mgr.kubeClient.CoreV1().Pods(namespace).GetLogs(podName, logOptions)

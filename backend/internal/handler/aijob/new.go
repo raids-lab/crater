@@ -179,6 +179,7 @@ func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
 
 	taskModel := model.FormatTaskAttrToModel(&req.TaskAttr)
 	podSpec, err := vcjob.GenerateCustomPodSpec(c, token, &vcReq.CreateCustomReq)
+	podSpec.Affinity = vcjob.GenerateNodeAffinity(vcReq.Selectors, nil)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("generate pod spec failed, err %v", err), resputil.NotSpecified)
 		return
