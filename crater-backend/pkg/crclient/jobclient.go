@@ -3,15 +3,15 @@ package crclient
 import (
 	"context"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"sync"
 
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/raids-lab/crater/dao/model"
@@ -23,12 +23,13 @@ import (
 
 type JobControl struct {
 	client.Client
-	KubeClient kubernetes.Interface
-	mu         sync.Mutex
+	KubeClient     kubernetes.Interface
+	ServiceManager ServiceManagerInterface
+	mu             sync.Mutex
 }
 
 const (
-	jupyterPort   = 8888
+	JupyterPort   = 8888
 	ServicePrefix = "svc-"
 )
 
@@ -62,7 +63,7 @@ func (c *JobControl) DeleteJobFromTask(task *model.AITask) error {
 
 	// 对于 Jupyter 类型，还需要删除 Service
 	if task.TaskType == model.EmiasJupyterTask {
-		svc := &corev1.Service{
+		svc := &v1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      ServicePrefix + task.JobName,
 				Namespace: ns,
@@ -163,7 +164,7 @@ func (c *JobControl) createTrainingJobFromTask(task *model.AITask) (jobname stri
 		},
 		Spec: aijobapi.JobSpec{
 			Replicas: 1,
-			Template: corev1.PodTemplateSpec{
+			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        jobname,
 					Labels:      labels,
@@ -234,7 +235,7 @@ func (c *JobControl) createJupyterJobFromTask(task *model.AITask) (jobname strin
 		},
 		Spec: aijobapi.JobSpec{
 			Replicas: 1,
-			Template: corev1.PodTemplateSpec{
+			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        jobname,
 					Labels:      labels,
@@ -252,44 +253,30 @@ func (c *JobControl) createJupyterJobFromTask(task *model.AITask) (jobname strin
 		return "", err
 	}
 
-	// 创建 Service，转发 Jupyter 端口
-	svc := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      ServicePrefix + jobname,
-			Namespace: task.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         "aisystem.github.com/v1alpha1",
-					Kind:               "AIJob",
-					Name:               job.Name,
-					UID:                job.UID,
-					BlockOwnerDeletion: ptr.To(true),
-				},
-			},
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: map[string]string{
-				aijobapi.LabelKeyTaskID: taskID,
-			},
-			Ports: []corev1.ServicePort{
-				{
-					Name:       jobname,
-					Port:       80,
-					Protocol:   corev1.ProtocolTCP,
-					TargetPort: intstr.FromInt(jupyterPort),
-					// NodePort:   0, // Kubernetes will allocate a port
-				},
-			},
-			SessionAffinity: corev1.ServiceAffinityNone,
-			Type:            corev1.ServiceTypeNodePort,
-		},
+	// create jupyter notebook ingress
+	port := &v1.ServicePort{
+		Name:       "notebook",
+		Port:       JupyterPort,
+		TargetPort: intstr.FromInt(JupyterPort),
+		Protocol:   v1.ProtocolTCP,
 	}
 
-	err = c.Create(context.Background(), svc)
+	ctx := context.TODO()
+	ingressPath, err := c.ServiceManager.CreateIngressWithPrefix(
+		ctx,
+		[]metav1.OwnerReference{
+			*metav1.NewControllerRef(job, aijobapi.GroupVersion.WithKind("AIJob")),
+		},
+		labels,
+		port,
+		config.GetConfig().Host,
+		taskID,
+	)
 	if err != nil {
-		err = fmt.Errorf("create service %s: %w", task.TaskName, err)
-		return "", err
+		return "", fmt.Errorf("create ingress: %w", err)
 	}
+
+	log.Printf("Ingress created at path: %s", ingressPath)
 
 	return jobname, nil
 }
@@ -307,14 +294,14 @@ func (c *JobControl) CreateJobFromTask(task *model.AITask) (jobname string, err 
 	}
 }
 
-func GenVolumeAndMountsFromAITask(task *model.AITask) ([]corev1.Volume, []corev1.VolumeMount, error) {
+func GenVolumeAndMountsFromAITask(task *model.AITask) ([]v1.Volume, []v1.VolumeMount, error) {
 	// set volumes
 	// task.UserName is in format of "userid-projectid"
 	splited := strings.Split(task.UserName, "-")
 	if len(splited) != 2 {
 		return nil, nil, fmt.Errorf("user name is not valid: %v", task.UserName)
 	}
-	volumeMounts := []corev1.VolumeMount{
+	volumeMounts := []v1.VolumeMount{
 		{
 			Name:      "personal-volume",
 			MountPath: "/home/" + task.UserName,
@@ -325,20 +312,20 @@ func GenVolumeAndMountsFromAITask(task *model.AITask) ([]corev1.Volume, []corev1
 			MountPath: "/dev/shm",
 		},
 	}
-	volumes := []corev1.Volume{
+	volumes := []v1.Volume{
 		{
 			Name: "personal-volume",
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+			VolumeSource: v1.VolumeSource{
+				PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
 					ClaimName: config.GetConfig().Workspace.RWXPVCName,
 				},
 			},
 		},
 		{
 			Name: "cache-volume",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{
-					Medium: corev1.StorageMediumMemory,
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{
+					Medium: v1.StorageMediumMemory,
 				},
 			},
 		},
@@ -350,16 +337,16 @@ func GenVolumeAndMountsFromAITask(task *model.AITask) ([]corev1.Volume, []corev1
 			return nil, nil, fmt.Errorf("parse task share dir: %v", task.ShareDirs)
 		}
 		for pvc, mounts := range taskShareDir {
-			volumes = append(volumes, corev1.Volume{
+			volumes = append(volumes, v1.Volume{
 				Name: pvc,
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				VolumeSource: v1.VolumeSource{
+					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
 						ClaimName: pvc,
 					},
 				},
 			})
 			for _, mount := range mounts {
-				volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				volumeMounts = append(volumeMounts, v1.VolumeMount{
 					Name:      pvc,
 					MountPath: mount.MountPath,
 					SubPath:   mount.SubPath,
@@ -378,7 +365,7 @@ func (c *JobControl) GetNodeNameFromTask(ctx context.Context, task *model.AITask
 		LabelKeyTaskType: task.TaskType,
 		LabelKeyTaskUser: task.Owner,
 	}
-	podList := &corev1.PodList{}
+	podList := &v1.PodList{}
 	err := c.List(ctx, podList, client.InNamespace(task.Namespace), client.MatchingLabels(podLabels))
 	if err != nil {
 		return "", err

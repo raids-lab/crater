@@ -204,12 +204,25 @@ func (nc *NodeClient) getGPUCountOfNodes(nodes []corev1.Node) map[string]int {
 	}
 	gpuUtils := nc.PrometheusClient.QueryNodeGPUUtil()
 	gpuCountMap := make(map[string]int)
-	for i := 0; i < len(gpuUtils); i++ {
+	for i := range gpuUtils {
 		gpuUtil := &gpuUtils[i]
 		if _, ok := nodeMap[gpuUtil.Hostname]; ok {
 			gpuCountMap[gpuUtil.Hostname]++
+			continue
 		}
-		// try to check ip.
+		// try to check ip for ack
+		// TODO(liyilong): remove hack code
+		instanceSlice := strings.Split(gpuUtil.Instance, ":")
+		if len(instanceSlice) != 2 {
+			continue
+		}
+		ip := instanceSlice[0]
+		for k := range nodeMap {
+			if strings.Contains(k, ip) {
+				gpuCountMap[k]++
+				break
+			}
+		}
 	}
 	return gpuCountMap
 }

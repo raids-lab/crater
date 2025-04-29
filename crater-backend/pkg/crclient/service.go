@@ -131,7 +131,7 @@ func (s *serviceManagerImpl) CreateNodePort(
 		return "", 0, fmt.Errorf("port and ownerRef cannot be nil")
 	}
 	// 生成唯一的 Service 名称
-	serviceName := fmt.Sprintf("%s-np-%s", username, uuid.New().String()[:5])
+	serviceName := fmt.Sprintf("np-%s-%s", username, uuid.New().String()[:5])
 	namespace := s.config.Workspace.Namespace
 
 	// Determine labels based on job type
@@ -237,7 +237,7 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 	labels := s.GenerateLabels(podSelector)
 
 	// Create the ClusterIP service
-	serviceName := fmt.Sprintf("%s-svc-%s", prefix, port.Name)
+	serviceName := fmt.Sprintf("svc-%s-%s", prefix, port.Name)
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            serviceName,
@@ -257,7 +257,7 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 	}
 
 	// Create the Ingress
-	ingressName := fmt.Sprintf("%s-ing-%s", prefix, port.Name)
+	ingressName := fmt.Sprintf("ing-%s-%s", prefix, port.Name)
 
 	// Ensure prefix starts with "/"
 	if !strings.HasPrefix(prefix, "/") {
@@ -345,7 +345,7 @@ func (s *serviceManagerImpl) CreateIngress(
 	subdomain := fmt.Sprintf("%s.%s", randomPrefix, host)
 
 	// Create the ClusterIP service
-	serviceName := fmt.Sprintf("%s-%s-svc-%s", username, randomPrefix, port.Name)
+	serviceName := fmt.Sprintf("svc-%s-%s-%s", username, randomPrefix, port.Name)
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            serviceName,
@@ -368,7 +368,7 @@ func (s *serviceManagerImpl) CreateIngress(
 	}
 
 	// Create the Ingress
-	ingressName := fmt.Sprintf("%s-%s-ing-%s", username, randomPrefix, port.Name)
+	ingressName := fmt.Sprintf("ing-%s-%s-%s", username, randomPrefix, port.Name)
 
 	pathType := networkingv1.PathTypePrefix
 	ingress := &networkingv1.Ingress{

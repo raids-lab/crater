@@ -100,6 +100,7 @@ func setupCustomCRDAddon(
 		jobStatusChan := make(chan util.JobStatusChan)
 
 		taskCtrl = aitaskctl.NewTaskController(
+			registerConfig.ServiceManager,
 			mgr.GetClient(),
 			registerConfig.KubeClient,
 			jobStatusChan,
@@ -254,16 +255,17 @@ func main() {
 		os.Exit(1)
 	}
 	registerConfig.Client = mgr.GetClient()
+
+	// 初始化 ServiceManager
+	serviceManager := crclient.NewServiceManager(mgr.GetClient(), clientset)
+	registerConfig.ServiceManager = serviceManager
+
 	// add custom CRD addon
 	err = setupCustomCRDAddon(mgr, backendConfig, &registerConfig, stopCh)
 	if err != nil {
 		setupLog.Error(err, "unable to set up custom CRD addon")
 		os.Exit(1)
 	}
-
-	// 初始化 ServiceManager
-	serviceManager := crclient.NewServiceManager(mgr.GetClient(), clientset)
-	registerConfig.ServiceManager = serviceManager
 
 	// start manager
 	setupLog.Info("starting manager")

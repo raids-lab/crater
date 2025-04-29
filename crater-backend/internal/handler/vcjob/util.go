@@ -318,8 +318,6 @@ func GenerateEnvs(ctx context.Context, token util.JWTMessage, customEnvs []v1.En
 }
 
 func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement, totalRequests v1.ResourceList) (affinity *v1.Affinity) {
-	gpuCount := GetGPUCountFromResource(totalRequests)
-
 	// expressions will override prefer
 	if len(expressions) > 0 {
 		return ptr.To(v1.Affinity{
@@ -333,7 +331,16 @@ func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement, totalRequest
 				}),
 			}),
 		})
-	} else if gpuCount == 0 {
+	}
+
+	// if no resources, return nil
+	if totalRequests == nil {
+		return affinity
+	}
+
+	// if no expressions, use prefer
+	gpuCount := GetGPUCountFromResource(totalRequests)
+	if gpuCount == 0 {
 		return ptr.To(v1.Affinity{
 			NodeAffinity: ptr.To(v1.NodeAffinity{
 				PreferredDuringSchedulingIgnoredDuringExecution: []v1.PreferredSchedulingTerm{
