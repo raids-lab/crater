@@ -177,55 +177,60 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
             />
           </div>
         </div>
-
-        <TagsInput
-          form={form}
-          tagsPath="tags"
-          label={`${dataTypeLabel}标签`}
-          description={`为${dataTypeLabel}添加标签，以便分类和搜索`}
-          customTags={[
-            { value: "大语言模型" },
-            { value: "数据科学" },
-            { value: "自然语言处理" },
-            { value: "计算机视觉" },
-            { value: "强化学习" },
-            { value: "Llama" },
-            { value: "Qwen" },
-            { value: "DeepSeek" },
-          ]}
-        />
-        <FormField
-          control={form.control}
-          name="weburl"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{dataTypeLabel}仓库地址</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormDescription>
-                可提供{dataTypeLabel}开源仓库地址
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="ispublic"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-              <FormLabel className="font-normal">所有用户可见</FormLabel>
-              <FormControl>
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {type !== "sharefile" && (
+          <TagsInput
+            form={form}
+            tagsPath="tags"
+            label={`${dataTypeLabel}标签`}
+            description={`为${dataTypeLabel}添加标签，以便分类和搜索`}
+            customTags={[
+              { value: "大语言模型" },
+              { value: "数据科学" },
+              { value: "自然语言处理" },
+              { value: "计算机视觉" },
+              { value: "强化学习" },
+              { value: "Llama" },
+              { value: "Qwen" },
+              { value: "DeepSeek" },
+            ]}
+          />
+        )}
+        {type !== "sharefile" && (
+          <FormField
+            control={form.control}
+            name="weburl"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{dataTypeLabel}仓库地址</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormDescription>
+                  可提供{dataTypeLabel}开源仓库地址
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+        {type !== "sharefile" && (
+          <FormField
+            control={form.control}
+            name="ispublic"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
+                <FormLabel className="font-normal">所有用户可见</FormLabel>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         {type === "sharefile" && (
           <FormField
             control={form.control}
