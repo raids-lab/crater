@@ -4,6 +4,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ .Values.backendConfig.workspace.rwxpvcName}}
   namespace: {{ .Values.backendConfig.workspace.namespace}}
+  annotations:
+    "helm.sh/resource-policy": keep
 spec:
   accessModes:
     - ReadWriteMany
