@@ -27,7 +27,7 @@ spec:
               value: {{ .Values.web.migrate.admin.password }}
           volumeMounts:
             - name: backend-conf
-              mountPath: /etc/config/config.yaml
+              mountPath: /etc/debug-config.yaml
               subPath: config.yaml
       volumes:
         - name: backend-conf
