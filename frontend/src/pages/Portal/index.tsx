@@ -218,7 +218,7 @@ const userSidebarGroups: NavGroupProps[] = [
             url: "data/model",
           },
           {
-            title: "数据共享",
+            title: "共享文件",
             url: "data/sharefile",
           },
         ],

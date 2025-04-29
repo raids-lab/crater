@@ -115,7 +115,7 @@ export const craterPath: PathInfo = {
         },
         {
           path: "sharefile",
-          title: "数据共享",
+          title: "共享文件",
         },
       ],
     },
