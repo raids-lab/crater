@@ -28,11 +28,13 @@ import useImageQuery from "@/hooks/query/useImageQuery";
 import { Input } from "@/components/ui/input";
 import {
   apiUserCreateKaniko,
+  ImageDefaultTags,
   imageNameRegex,
   imageTagRegex,
 } from "@/services/api/imagepack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ImageSettingsFormCard } from "@/components/form/ImageSettingsFormCard";
+import { TagsInput } from "@/components/form/TagsInput";
 
 export const pipAptFormSchema = z.object({
   baseImage: z.string().min(1, "基础镜像是必填项"),
@@ -111,6 +113,13 @@ export const pipAptFormSchema = z.object({
     ),
   aptPackages: z.string().optional(),
   description: z.string().min(1, "请为镜像添加描述"),
+  tags: z
+    .array(
+      z.object({
+        value: z.string(),
+      }),
+    )
+    .optional(),
 });
 
 export type PipAptFormValues = z.infer<typeof pipAptFormSchema>;
@@ -168,6 +177,13 @@ function PipAptSheetContent({ form, onSubmit }: PipAptSheetContentProps) {
             <FormMessage />
           </FormItem>
         )}
+      />
+      <TagsInput
+        form={form}
+        tagsPath="tags"
+        label={`镜像标签`}
+        description={`为镜像添加标签，以便分类和搜索`}
+        customTags={ImageDefaultTags}
       />
       <FormField
         control={form.control}
@@ -235,6 +251,7 @@ export function PipAptSheet({ closeSheet, ...props }: DockerfileSheetProps) {
       requirements: "",
       aptPackages: "",
       description: "",
+      tags: [],
     },
   });
 
@@ -247,6 +264,7 @@ export function PipAptSheet({ closeSheet, ...props }: DockerfileSheetProps) {
         packages: values.aptPackages ?? "",
         name: values.imageName ?? "",
         tag: values.imageTag ?? "",
+        tags: values.tags?.map((item) => item.value) ?? [],
       }),
     onSuccess: async () => {
       await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
