@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import {
   apiUserCreateByDockerfile,
   dockerfileImageLinkRegex,
+  ImageDefaultTags,
   imageNameRegex,
   imageTagRegex,
 } from "@/services/api/imagepack";
@@ -30,6 +31,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DockerfileEditor } from "./DockerfileEditor";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import { ImageSettingsFormCard } from "@/components/form/ImageSettingsFormCard";
+import { TagsInput } from "@/components/form/TagsInput";
 
 export const dockerfileFormSchema = z.object({
   dockerfile: z.string().min(1, "Dockerfile content is required"),
@@ -64,6 +66,13 @@ export const dockerfileFormSchema = z.object({
         message: "仅允许字母、数字、_ . + -，且不能以 . 或 - 开头/结尾",
       },
     ),
+  tags: z
+    .array(
+      z.object({
+        value: z.string(),
+      }),
+    )
+    .optional(),
 });
 
 export type DockerfileFormValues = z.infer<typeof dockerfileFormSchema>;
@@ -97,6 +106,13 @@ function DockerfileSheetContent({
             <FormMessage />
           </FormItem>
         )}
+      />
+      <TagsInput
+        form={form}
+        tagsPath="tags"
+        label={`镜像标签`}
+        description={`为镜像添加标签，以便分类和搜索`}
+        customTags={ImageDefaultTags}
       />
       <FormField
         control={form.control}
@@ -142,6 +158,7 @@ export function DockerfileSheet({
       description: "",
       imageName: "",
       imageTag: "",
+      tags: [],
     },
   });
 
@@ -152,6 +169,7 @@ export function DockerfileSheet({
         dockerfile: values.dockerfile,
         name: values.imageName ?? "",
         tag: values.imageTag ?? "",
+        tags: values.tags?.map((item) => item.value) ?? [],
       }),
     onSuccess: async () => {
       await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>

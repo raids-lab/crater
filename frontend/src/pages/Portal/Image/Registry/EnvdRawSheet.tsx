@@ -22,12 +22,14 @@ import { MetadataFormDockerfile } from "@/components/form/types";
 import { Input } from "@/components/ui/input";
 import {
   apiUserCreateByEnvd,
+  ImageDefaultTags,
   imageNameRegex,
   imageTagRegex,
 } from "@/services/api/imagepack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import { DockerfileEditor } from "./DockerfileEditor";
+import { TagsInput } from "@/components/form/TagsInput";
 
 export const envdRawFormSchema = z.object({
   envdScript: z.string().min(1, "Envd script content is required"),
@@ -65,6 +67,13 @@ export const envdRawFormSchema = z.object({
         message: "仅允许字母、数字、_ . + -，且不能以 . 或 - 开头/结尾",
       },
     ),
+  tags: z
+    .array(
+      z.object({
+        value: z.string(),
+      }),
+    )
+    .optional(),
 });
 
 export type EnvdRawFormValues = z.infer<typeof envdRawFormSchema>;
@@ -95,6 +104,13 @@ function EnvdRawSheetContent({ form, onSubmit }: EnvdRawSheetContentProps) {
             <FormMessage />
           </FormItem>
         )}
+      />
+      <TagsInput
+        form={form}
+        tagsPath="tags"
+        label={`镜像标签`}
+        description={`为镜像添加标签，以便分类和搜索`}
+        customTags={ImageDefaultTags}
       />
       <div className="grid grid-cols-2 gap-4">
         <FormField
@@ -165,12 +181,14 @@ export function EnvdRawSheet({ closeSheet, ...props }: EnvdRawSheetProps) {
   const form = useForm<EnvdRawFormValues>({
     resolver: zodResolver(envdRawFormSchema),
     defaultValues: {
+      tags: [],
       envdScript: `# syntax=v1
 
 def build():
     base(image="crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04",dev=True)
     install.python(version="3.10")
     install.apt_packages(["openssh-server", "build-essential", "iputils-ping", "net-tools", "htop"])
+    config.pip_index(url = "https://pypi.tuna.tsinghua.edu.cn/simple")
     config.jupyter()`,
       description: "",
       imageName: "",
@@ -187,6 +205,7 @@ def build():
         tag: values.imageTag ?? "",
         python: "",
         base: "",
+        tags: values.tags?.map((item) => item.value) ?? [],
       }),
     onSuccess: async () => {
       await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
