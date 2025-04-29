@@ -2,8 +2,8 @@ package packer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/pkg/config"
@@ -86,6 +86,7 @@ func (b *imagePacker) createEnvdJob(
 	envdContainer []corev1.Container,
 	volumes []corev1.Volume,
 ) (*batchv1.Job, error) {
+	tagsString, _ := json.Marshal(data.Tags)
 	jobMeta := metav1.ObjectMeta{
 		Name:      data.JobName,
 		Namespace: data.Namespace,
@@ -94,7 +95,7 @@ func (b *imagePacker) createEnvdJob(
 			"build-data/ImageLink":   data.ImageLink,
 			"build-data/Script":      *data.Envd,
 			"build-data/Description": *data.Description,
-			"build-data/Tags":        strings.Join(data.Tags, TagsDelimiter),
+			"build-data/Tags":        string(tagsString),
 			"build-data/Source":      string(model.Envd),
 		},
 	}

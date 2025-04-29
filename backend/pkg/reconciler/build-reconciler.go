@@ -18,10 +18,10 @@ package reconciler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/go-logr/logr"
 	"gorm.io/datatypes"
@@ -170,7 +170,8 @@ func (r *BuildKitReconciler) handleRecordNotFound(ctx context.Context, job *batc
 	description := job.Annotations["build-data/Description"]
 	script := job.Annotations["build-data/Script"]
 	source := job.Annotations["build-data/Source"]
-	tags := strings.Split(job.Annotations["build-data/Tags"], "&&")
+	var tags []string
+	_ = json.Unmarshal([]byte(job.Annotations["build-data/Tags"]), &tags)
 	u := query.User
 	_, err := u.WithContext(ctx).Where(u.ID.Eq(userID)).First()
 	if err != nil {
