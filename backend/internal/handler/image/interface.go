@@ -56,6 +56,7 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.POST("/deletekaniko", mgr.UserDeleteKanikoByIDList)
 	g.POST("/type", mgr.UserChangeImageTaskType)
 	g.GET("/harbor", mgr.GetHarborIP)
+	g.POST("/tags", mgr.UserChangeImageTags)
 }
 
 func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -66,6 +67,7 @@ func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.POST("/type", mgr.AdminChangeImageTaskType)
 	g.POST("/change/:id", mgr.AdminUpdateImagePublicStatus)
 	g.POST("/description", mgr.AdminChangeImageDescription)
+	g.POST("/tags", mgr.AdminChangeImageTags)
 }
 
 func NewImagePackMgr(conf *handler.RegisterConfig) handler.Manager {

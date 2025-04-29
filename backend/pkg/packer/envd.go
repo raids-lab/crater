@@ -3,12 +3,13 @@ package packer
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/pkg/config"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/raids-lab/crater/pkg/config"
 )
 
 func (b *imagePacker) CreateFromEnvd(c context.Context, data *EnvdReq) error {
@@ -91,9 +92,10 @@ func (b *imagePacker) createEnvdJob(
 		Annotations: map[string]string{
 			"build-data/UserID":      fmt.Sprint(data.UserID),
 			"build-data/ImageLink":   data.ImageLink,
-			"build-data/Dockerfile":  *data.Envd,
+			"build-data/Script":      *data.Envd,
 			"build-data/Description": *data.Description,
-			"build-data/Envd":        *data.Envd,
+			"build-data/Tags":        strings.Join(data.Tags, TagsDelimiter),
+			"build-data/Source":      string(model.Envd),
 		},
 	}
 
