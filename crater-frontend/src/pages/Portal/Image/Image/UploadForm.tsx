@@ -14,6 +14,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   apiUserUploadImage,
+  ImageDefaultTags,
   imageLinkRegex,
   parseImageLink,
 } from "@/services/api/imagepack";
@@ -31,6 +32,7 @@ import SandwichSheet, {
 } from "@/components/sheet/SandwichSheet";
 import LoadableButton from "@/components/custom/LoadableButton";
 import { PackagePlusIcon } from "lucide-react";
+import { TagsInput } from "@/components/form/TagsInput";
 
 const formSchema = z.object({
   imageLink: z
@@ -53,6 +55,13 @@ const formSchema = z.object({
     .refine((value) => Object.values(JobType).includes(value), {
       message: "请选择任务类型",
     }),
+  tags: z
+    .array(
+      z.object({
+        value: z.string(),
+      }),
+    )
+    .optional(),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -101,6 +110,15 @@ function ImageUploadSheetContent({
           </FormItem>
         )}
       />
+
+      <TagsInput
+        form={form}
+        tagsPath="tags"
+        label={`镜像标签`}
+        description={`为镜像添加标签，以便分类和搜索`}
+        customTags={ImageDefaultTags}
+      />
+
       <FormField
         control={form.control}
         name="taskType"
@@ -163,6 +181,7 @@ export function ImageUploadForm({
         imageTag: imageTag,
         description: values.description,
         taskType: values.taskType,
+        tags: values.tags?.map((item) => item.value) ?? [],
       });
     },
     onSuccess: async (_, { imageLink }) => {
@@ -180,6 +199,7 @@ export function ImageUploadForm({
     defaultValues: {
       imageLink: "",
       description: "",
+      tags: [],
     },
   });
 

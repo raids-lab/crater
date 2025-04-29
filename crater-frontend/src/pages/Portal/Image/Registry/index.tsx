@@ -115,7 +115,6 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
         image: `${i.imageLink} (${i.description})`,
       })),
   });
-
   const refetchImagePackList = async () => {
     try {
       // 并行发送所有异步请求
@@ -147,6 +146,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             <ImageLabel
               description={row.original.description}
               url={row.original.imageLink}
+              tags={row.original.tags}
             />
           }
           to={`${row.original.ID}`}
@@ -262,6 +262,13 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
     },
   ];
   columns = columns.filter((column) => column.id !== "nickName" || isAdminMode);
+  // const tags = useMemo(() => {
+  //   const tags = new Set<string>();
+  //   columns.forEach((image) => {
+  //     image.tags.forEach((tag) => tags.add(tag));
+  //   });
+  //   return Array.from(tags);
+  // }, [items]);
   return (
     <>
       <DataTable
