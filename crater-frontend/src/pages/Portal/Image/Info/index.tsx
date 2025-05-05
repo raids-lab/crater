@@ -165,12 +165,12 @@ function KanikoInfo({ kanikoInfo }: KanikoCard) {
 }
 
 export const KanikoDetail: FC = () => {
-  const { id: kanikoID } = useParams();
+  const { name: ImagePackName } = useParams();
   const { data: kanikoInfo } = useQuery({
-    queryKey: ["imagepack", "get", kanikoID],
-    queryFn: () => apiUserGetKaniko(`${kanikoID}`),
+    queryKey: ["imagepack", "get", ImagePackName],
+    queryFn: () => apiUserGetKaniko(`${ImagePackName}`),
     select: (res) => res.data.data,
-    enabled: !!kanikoID,
+    enabled: !!ImagePackName,
   });
 
   const setBreadcrumb = useBreadcrumb(); // 修改 BreadCrumb
