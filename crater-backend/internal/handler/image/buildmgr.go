@@ -193,7 +193,7 @@ func (mgr *ImagePackMgr) deleteKanikoByID(c *gin.Context, isAdminMode bool, kani
 	return flag, errorMsg
 }
 
-// GetKanikoByID godoc
+// GetKanikoByImagePackName godoc
 // @Summary 获取imagepack的详细信息
 // @Description 获取imagepackname，搜索到imagepack
 // @Tags ImagePack
@@ -202,7 +202,7 @@ func (mgr *ImagePackMgr) deleteKanikoByID(c *gin.Context, isAdminMode bool, kani
 // @Security Bearer
 // @Param id query string true "获取ImagePack的id"
 // @Router /v1/images/get [GET]
-func (mgr *ImagePackMgr) GetKanikoByID(c *gin.Context) {
+func (mgr *ImagePackMgr) GetKanikoByImagePackName(c *gin.Context) {
 	kanikoQuery := query.Kaniko
 	var req GetKanikoRequest
 	var err error
@@ -213,14 +213,14 @@ func (mgr *ImagePackMgr) GetKanikoByID(c *gin.Context) {
 	}
 	var kaniko *model.Kaniko
 	if kaniko, err = kanikoQuery.WithContext(c).
-		Where(kanikoQuery.ID.Eq(req.ID)).
+		Where(kanikoQuery.ImagePackName.Eq(req.ImagePackName)).
 		First(); err != nil {
 		msg := fmt.Sprintf("fetch kaniko by name failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
 
-	podName, podNameSpace := mgr.getPodName(c, req.ID)
+	podName, podNameSpace := mgr.getPodName(c, kaniko.ID)
 	getKanikoResponse := GetKanikoResponse{
 		ID:            kaniko.ID,
 		ImageLink:     kaniko.ImageLink,
@@ -295,7 +295,8 @@ func (mgr *ImagePackMgr) generateKanikoListResponse(kanikos []*model.Kaniko) Lis
 				Username: kaniko.User.Name,
 				Nickname: kaniko.User.Nickname,
 			},
-			Tags: kaniko.Tags.Data(),
+			Tags:          kaniko.Tags.Data(),
+			ImagePackName: kaniko.ImagePackName,
 		}
 		kanikoInfos = append(kanikoInfos, kanikoInfo)
 	}

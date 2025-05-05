@@ -58,7 +58,7 @@ type (
 	}
 
 	GetKanikoRequest struct {
-		ID uint `form:"id" binding:"required"`
+		ImagePackName string `form:"name" binding:"required"`
 	}
 
 	GetKanikoPodRequest struct {
@@ -147,14 +147,15 @@ type (
 
 type (
 	KanikoInfo struct {
-		ID          uint              `json:"ID"`
-		ImageLink   string            `json:"imageLink"`
-		Status      model.BuildStatus `json:"status"`
-		CreatedAt   time.Time         `json:"createdAt"`
-		Size        int64             `json:"size"`
-		Description string            `json:"description"`
-		UserInfo    model.UserInfo    `json:"userInfo"`
-		Tags        []string          `json:"tags"`
+		ID            uint              `json:"ID"`
+		ImageLink     string            `json:"imageLink"`
+		Status        model.BuildStatus `json:"status"`
+		CreatedAt     time.Time         `json:"createdAt"`
+		Size          int64             `json:"size"`
+		Description   string            `json:"description"`
+		UserInfo      model.UserInfo    `json:"userInfo"`
+		Tags          []string          `json:"tags"`
+		ImagePackName string            `json:"imagepackName"`
 	}
 
 	ListKanikoResponse struct {
@@ -162,14 +163,16 @@ type (
 	}
 
 	ImageInfo struct {
-		ID          uint           `json:"ID"`
-		ImageLink   string         `json:"imageLink"`
-		Description *string        `json:"description"`
-		CreatedAt   time.Time      `json:"createdAt"`
-		TaskType    model.JobType  `json:"taskType"`
-		IsPublic    bool           `json:"isPublic"`
-		UserInfo    model.UserInfo `json:"userInfo"`
-		Tags        []string       `json:"tags"`
+		ID               uint                  `json:"ID"`
+		ImageLink        string                `json:"imageLink"`
+		Description      *string               `json:"description"`
+		CreatedAt        time.Time             `json:"createdAt"`
+		TaskType         model.JobType         `json:"taskType"`
+		IsPublic         bool                  `json:"isPublic"`
+		UserInfo         model.UserInfo        `json:"userInfo"`
+		Tags             []string              `json:"tags"`
+		ImageBuildSource model.ImageSourceType `json:"imageBuildSource"`
+		ImagePackName    *string               `json:"imagepackName"`
 	}
 
 	ImageInfoLinkPair struct {
