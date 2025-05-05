@@ -26,6 +26,7 @@ export type KanikoInfoResponse = {
   podNameSpace: string;
   userInfo: IUserInfo;
   tags: string[];
+  imagepackName: string;
 };
 
 export type ListImageResponse = {
@@ -42,6 +43,8 @@ export type ImageInfoResponse = {
   taskType: JobType;
   userInfo: IUserInfo;
   tags: string[];
+  imageBuildSource: imagepackSourceTypeValue;
+  imagepackName: string;
 };
 
 export type ProjectCredentialResponse = {
@@ -304,9 +307,9 @@ export const apiUserDeleteKanikoList = (idList: number[]) =>
     idList,
   });
 
-export const apiUserGetKaniko = (id: string) =>
+export const apiUserGetKaniko = (name: string) =>
   instance.get<IResponse<KanikoInfoResponse>>(
-    `${VERSION}/images/getbyid?id=${id}`,
+    `${VERSION}/images/getbyname?name=${name}`,
   );
 
 export const apiUserListImage = () =>
