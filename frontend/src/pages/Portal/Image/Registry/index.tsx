@@ -149,7 +149,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
               tags={row.original.tags}
             />
           }
-          to={`${row.original.ID}`}
+          to={`${row.original.imagepackName}`}
           tooltip={`查看镜像详情`}
         />
       ),
@@ -474,7 +474,7 @@ export const Component = () => {
       ),
     },
     {
-      path: ":id",
+      path: ":name",
       element: <KanikoDetail />,
     },
   ]);

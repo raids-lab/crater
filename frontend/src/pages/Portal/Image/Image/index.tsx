@@ -68,6 +68,7 @@ import { RenameDialog } from "./RenameDialog";
 import { DeleteDialog } from "./DeleteDialog";
 import UserLabel from "@/components/label/UserLabel";
 import { TagsDialog } from "./TagsDialog";
+import TooltipLink from "@/components/label/TooltipLink";
 
 const toolbarConfig: DataTableToolbarConfig = {
   globalSearch: {
@@ -217,13 +218,31 @@ export const ImageListTable: FC<ImageListTableProps> = ({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeader("image")} />
       ),
-      cell: ({ row }) => (
-        <ImageLabel
-          description={row.original.description}
-          url={row.original.imageLink}
-          tags={row.original.tags}
-        />
-      ),
+      cell: ({ row }) => {
+        if (row.original.imageBuildSource == 1) {
+          return (
+            <TooltipLink
+              name={
+                <ImageLabel
+                  description={row.original.description}
+                  url={row.original.imageLink}
+                  tags={row.original.tags}
+                />
+              }
+              to={`/portal/image/createimage/${row.original.imagepackName}`}
+              tooltip={`查看镜像详情`}
+            />
+          );
+        } else {
+          return (
+            <ImageLabel
+              description={row.original.description}
+              url={row.original.imageLink}
+              tags={row.original.tags}
+            />
+          );
+        }
+      },
     },
     {
       id: "userInfo",
