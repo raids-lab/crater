@@ -383,7 +383,7 @@ const CUDA_BASE_IMAGE: {
     imageLabel: "cu12.2.2",
     label: "CUDA 12.2.2",
     value:
-      "crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.2.2-cudnn9-devel-ubuntu22.04",
+      "crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04",
   },
   {
     imageLabel: "cu12.1.1",
