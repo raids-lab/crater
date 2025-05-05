@@ -43,7 +43,7 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.DELETE("/image/:id", mgr.DeleteImageByID)
 
 	g.GET("/available", mgr.ListAvailableImages)
-	g.GET("/getbyid", mgr.GetKanikoByID)
+	g.GET("/getbyname", mgr.GetKanikoByImagePackName)
 	g.POST("/quota", mgr.UpdateProjectQuota)
 	g.POST("/change/:id", mgr.UserUpdateImagePublicStatus)
 

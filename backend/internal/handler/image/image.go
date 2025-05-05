@@ -45,6 +45,7 @@ func (mgr *ImagePackMgr) UserUploadImage(c *gin.Context) {
 		IsPublic:    false,
 		Description: &req.Description,
 		Tags:        datatypes.NewJSONType(req.Tags),
+		ImageSource: model.ImageUploadType,
 	}
 	imageQuery := query.Image
 	if err := imageQuery.WithContext(c).Create(imageEntity); err != nil {
@@ -414,7 +415,9 @@ func (mgr *ImagePackMgr) generateImageListResponse(images []*model.Image) ListIm
 				Username: image.User.Name,
 				Nickname: image.User.Nickname,
 			},
-			Tags: image.Tags.Data(),
+			Tags:             image.Tags.Data(),
+			ImageBuildSource: image.ImageSource,
+			ImagePackName:    image.ImagePackName,
 		}
 		imageInfos = append(imageInfos, imageInfo)
 	}
