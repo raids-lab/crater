@@ -25,6 +25,7 @@ import {
   dockerfileImageLinkRegex,
   ImageDefaultTags,
   imageNameRegex,
+  ImagePackSource,
   imageTagRegex,
 } from "@/services/api/imagepack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -32,8 +33,10 @@ import { DockerfileEditor } from "./DockerfileEditor";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import { ImageSettingsFormCard } from "@/components/form/ImageSettingsFormCard";
 import { TagsInput } from "@/components/form/TagsInput";
+import { exportToJsonString } from "@/utils/form";
+import { useImageTemplateLoader } from "@/hooks/useTemplateLoader";
 
-export const dockerfileFormSchema = z.object({
+const dockerfileFormSchema = z.object({
   dockerfile: z.string().min(1, "Dockerfile content is required"),
   description: z.string().min(1, "请为镜像添加描述"),
   imageName: z
@@ -80,12 +83,23 @@ export type DockerfileFormValues = z.infer<typeof dockerfileFormSchema>;
 interface DockerfileSheetContentProps {
   form: UseFormReturn<DockerfileFormValues>;
   onSubmit: (values: DockerfileFormValues) => void;
+  imagePackName?: string;
+  setImagePackName: (imagePackName: string) => void;
 }
 
 function DockerfileSheetContent({
   form,
   onSubmit,
+  imagePackName = "",
+  setImagePackName,
 }: DockerfileSheetContentProps) {
+  useImageTemplateLoader({
+    form: form,
+    metadata: MetadataFormDockerfile,
+    imagePackName: imagePackName,
+    setImagePackName: setImagePackName,
+  });
+
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6">
       <FormField
@@ -142,10 +156,14 @@ function DockerfileSheetContent({
 
 interface DockerfileSheetProps extends SandwichSheetProps {
   closeSheet: () => void;
+  imagePackName?: string;
+  setImagePackName: (imagePackName: string) => void;
 }
 
 export function DockerfileSheet({
   closeSheet,
+  imagePackName = "",
+  setImagePackName,
   ...props
 }: DockerfileSheetProps) {
   const queryClient = useQueryClient();
@@ -170,6 +188,8 @@ export function DockerfileSheet({
         name: values.imageName ?? "",
         tag: values.imageTag ?? "",
         tags: values.tags?.map((item) => item.value) ?? [],
+        template: exportToJsonString(MetadataFormDockerfile, values),
+        buildSource: ImagePackSource.Dockerfile,
       }),
     onSuccess: async () => {
       await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
@@ -235,7 +255,12 @@ export function DockerfileSheet({
           </>
         }
       >
-        <DockerfileSheetContent form={form} onSubmit={onSubmit} />
+        <DockerfileSheetContent
+          form={form}
+          imagePackName={imagePackName}
+          setImagePackName={setImagePackName}
+          onSubmit={onSubmit}
+        />
       </SandwichSheet>
     </Form>
   );

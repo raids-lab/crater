@@ -17,12 +17,13 @@ import LoadableButton from "@/components/custom/LoadableButton";
 import { PackagePlusIcon } from "lucide-react";
 import FormImportButton from "@/components/form/FormImportButton";
 import FormExportButton from "@/components/form/FormExportButton";
-import { MetadataFormDockerfile } from "@/components/form/types";
+import { MetadataFormEnvdAdvanced } from "@/components/form/types";
 import { Input } from "@/components/ui/input";
 import {
   apiUserCreateByEnvd,
   ImageDefaultTags,
   imageNameRegex,
+  ImagePackSource,
   imageTagRegex,
 } from "@/services/api/imagepack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -31,8 +32,11 @@ import Combobox from "@/components/form/Combobox";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageSettingsFormCard } from "@/components/form/ImageSettingsFormCard";
 import { TagsInput } from "@/components/form/TagsInput";
+import { exportToJsonString } from "@/utils/form";
+import { toast } from "sonner";
+import { useImageTemplateLoader } from "@/hooks/useTemplateLoader";
 
-export const envdFormSchema = z.object({
+const envdFormSchema = z.object({
   python: z.string().min(1, "Python version is required"),
   base: z.string().min(1, "CUDA version is required"),
   description: z.string().min(1, "请为镜像添加描述"),
@@ -127,12 +131,23 @@ export type EnvdFormValues = z.infer<typeof envdFormSchema>;
 interface EnvdSheetContentProps {
   form: UseFormReturn<EnvdFormValues>;
   onSubmit: (values: EnvdFormValues) => void;
+  imagePackName: string;
+  setImagePackName: (imagePackName: string) => void;
 }
 
-function EnvdSheetContent({ form, onSubmit }: EnvdSheetContentProps) {
-  // const [showCuda, setShowCuda] = useState(true);
-  // const dropdownItems = showCuda ? CUDA_BASE_IMAGE : UBUNTU_BASE_IMAGE;
-  // const labelText = showCuda ? "Cuda Version" : "Ubuntu Version";
+function EnvdSheetContent({
+  form,
+  onSubmit,
+  imagePackName = "",
+  setImagePackName,
+}: EnvdSheetContentProps) {
+  useImageTemplateLoader({
+    form: form,
+    metadata: MetadataFormEnvdAdvanced,
+    imagePackName: imagePackName,
+    setImagePackName: setImagePackName,
+  });
+
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6">
       <FormField
@@ -260,9 +275,16 @@ diffusers==0.31.0`}
 
 interface EnvdSheetProps extends SandwichSheetProps {
   closeSheet: () => void;
+  imagePackName?: string;
+  setImagePackName: (imagePackName: string) => void;
 }
 
-export function EnvdSheet({ closeSheet, ...props }: EnvdSheetProps) {
+export function EnvdSheet({
+  closeSheet,
+  imagePackName = "",
+  setImagePackName,
+  ...props
+}: EnvdSheetProps) {
   const queryClient = useQueryClient();
 
   const form = useForm<EnvdFormValues>({
@@ -298,13 +320,15 @@ export function EnvdSheet({ closeSheet, ...props }: EnvdSheetProps) {
           CUDA_BASE_IMAGE.find((image) => image.value === values.base)
             ?.imageLabel ?? "",
         tags: values.tags?.map((item) => item.value) ?? [],
+        template: exportToJsonString(MetadataFormEnvdAdvanced, values),
+        buildSource: ImagePackSource.EnvdAdvanced,
       }),
     onSuccess: async () => {
       await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
         queryClient.invalidateQueries({ queryKey: ["imagepack", "list"] }),
       );
       closeSheet();
-      // toast.success(`镜像开始制作，请在下方列表中查看制作状态`);
+      toast.success(`镜像开始制作，请在下方列表中查看制作状态`);
     },
   });
 
@@ -318,8 +342,8 @@ export function EnvdSheet({ closeSheet, ...props }: EnvdSheetProps) {
         {...props}
         footer={
           <>
-            <FormImportButton metadata={MetadataFormDockerfile} form={form} />
-            <FormExportButton metadata={MetadataFormDockerfile} form={form} />
+            <FormImportButton metadata={MetadataFormEnvdAdvanced} form={form} />
+            <FormExportButton metadata={MetadataFormEnvdAdvanced} form={form} />
 
             <LoadableButton
               isLoading={isPending}
@@ -338,7 +362,12 @@ export function EnvdSheet({ closeSheet, ...props }: EnvdSheetProps) {
           </>
         }
       >
-        <EnvdSheetContent form={form} onSubmit={onSubmit} />
+        <EnvdSheetContent
+          form={form}
+          imagePackName={imagePackName}
+          setImagePackName={setImagePackName}
+          onSubmit={onSubmit}
+        />
       </SandwichSheet>
     </Form>
   );

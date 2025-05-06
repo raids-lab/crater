@@ -1,3 +1,5 @@
+import { ImagePackSource } from "@/services/api/imagepack";
+
 export interface MetadataFormType {
   version: string;
   type: string;
@@ -33,14 +35,28 @@ export const MetadataFormPytorch: MetadataFormType = {
   type: "pytorch",
 };
 
+// 基于Dockerfile构建
 export const MetadataFormDockerfile: MetadataFormType = {
-  version: "20241208",
-  type: "dockerfile",
+  version: "20250506",
+  type: ImagePackSource.Dockerfile,
 };
 
+// 基于现有镜像构建
 export const MetadataFormPipApt: MetadataFormType = {
-  version: "20250102",
-  type: "pipapt",
+  version: "20250506",
+  type: ImagePackSource.PipApt,
+};
+
+// Python+CUDA自定义构建
+export const MetadataFormEnvdAdvanced: MetadataFormType = {
+  version: "20250506",
+  type: ImagePackSource.EnvdAdvanced,
+};
+
+// 基于Envd构建
+export const MetadataFormEnvdRaw: MetadataFormType = {
+  version: "20250506",
+  type: ImagePackSource.EnvdRaw,
 };
 
 export const MetadataFormJupyterEmias: MetadataFormType = {

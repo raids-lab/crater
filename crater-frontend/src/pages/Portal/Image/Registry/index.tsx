@@ -11,6 +11,7 @@ import {
   apiUserListKaniko,
   getHeader,
   ImageLinkPair,
+  ImagePackSource,
   ImagePackStatus,
   imagepackStatuses,
   KanikoInfoResponse,
@@ -36,6 +37,7 @@ import {
   AlertTriangle,
   CheckCheck,
   SquareCheckBig,
+  RedoDotIcon,
 } from "lucide-react";
 import { useNavigate, useRoutes } from "react-router-dom";
 import KanikoDetail from "../Info";
@@ -99,6 +101,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
   const [openDockerfileSheet, setOpenDockerfileSheet] = useState(false);
   const [openEnvdSheet, setOpenEnvdSheet] = useState(false);
   const [openEnvdRawSheet, setOpenEnvdRawSheet] = useState(false);
+  const [imagePackName, setImagePackName] = useState<string>("");
   const navigate = useNavigate();
   const [openCheckDialog, setCheckOpenDialog] = useState(false);
   const user = useAtomValue(globalUserInfo);
@@ -227,6 +230,32 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                     详情
                   </DropdownMenuItem>
 
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setImagePackName(kanikoInfo.imagepackName);
+                      if (
+                        kanikoInfo.buildSource === ImagePackSource.EnvdAdvanced
+                      ) {
+                        setOpenEnvdSheet(true);
+                      } else if (
+                        kanikoInfo.buildSource === ImagePackSource.EnvdRaw
+                      ) {
+                        setOpenEnvdRawSheet(true);
+                      } else if (
+                        kanikoInfo.buildSource === ImagePackSource.Dockerfile
+                      ) {
+                        setOpenDockerfileSheet(true);
+                      } else if (
+                        kanikoInfo.buildSource === ImagePackSource.PipApt
+                      ) {
+                        setOpenPipAptSheet(true);
+                      }
+                    }}
+                  >
+                    <RedoDotIcon className="text-highlight-purple size-4" />
+                    克隆
+                  </DropdownMenuItem>
+
                   <AlertDialogTrigger asChild>
                     <DropdownMenuItem>
                       <Trash2Icon className="text-destructive" />
@@ -262,13 +291,6 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
     },
   ];
   columns = columns.filter((column) => column.id !== "nickName" || isAdminMode);
-  // const tags = useMemo(() => {
-  //   const tags = new Set<string>();
-  //   columns.forEach((image) => {
-  //     image.tags.forEach((tag) => tags.add(tag));
-  //   });
-  //   return Array.from(tags);
-  // }, [items]);
   return (
     <>
       <DataTable
@@ -415,7 +437,12 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             title="Python + CUDA 自定义构建"
             description="Python+CUDA指定版本构建"
             className="sm:max-w-3xl"
-            closeSheet={() => setOpenEnvdSheet(false)}
+            closeSheet={() => {
+              setOpenEnvdSheet(false);
+              setImagePackName("");
+            }}
+            imagePackName={imagePackName}
+            setImagePackName={setImagePackName}
           />
           <EnvdRawSheet
             isOpen={openEnvdRawSheet}
@@ -423,7 +450,12 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             title="高级 Envd 构建脚本"
             description="直接编写 Envd 构建脚本，实现更复杂的定制化"
             className="sm:max-w-3xl"
-            closeSheet={() => setOpenEnvdRawSheet(false)}
+            closeSheet={() => {
+              setOpenEnvdRawSheet(false);
+              setImagePackName("");
+            }}
+            imagePackName={imagePackName}
+            setImagePackName={setImagePackName}
           />
           <PipAptSheet
             isOpen={openPipAptSheet}
@@ -431,7 +463,12 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             title="基于现有镜像构建"
             description="基于平台提供的基础镜像，快速制作自定义镜像"
             className="sm:max-w-3xl"
-            closeSheet={() => setOpenPipAptSheet(false)}
+            closeSheet={() => {
+              setOpenPipAptSheet(false);
+              setImagePackName("");
+            }}
+            imagePackName={imagePackName}
+            setImagePackName={setImagePackName}
           />
           <DockerfileSheet
             isOpen={openDockerfileSheet}
@@ -439,7 +476,12 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             title="基于 Dockerfile 构建镜像"
             description="基于 Dockerfile 制作镜像"
             className="sm:max-w-3xl"
-            closeSheet={() => setOpenDockerfileSheet(false)}
+            closeSheet={() => {
+              setOpenDockerfileSheet(false);
+              setImagePackName("");
+            }}
+            imagePackName={imagePackName}
+            setImagePackName={setImagePackName}
           />
         </div>
       ) : null}
@@ -481,3 +523,19 @@ export const Component = () => {
 
   return <>{routes}</>;
 };
+
+// export function loadTemplate<T extends FieldValues>({
+//   form,
+//   metadata,
+//   uiStateUpdaters = [],
+//   onSuccess,
+//   dataProcessor,
+// }: TemplateInfoProps<T>) {
+//   useTemplateLoader({
+//     form,
+//     metadata,
+//     uiStateUpdaters,
+//     onSuccess,
+//     dataProcessor,
+//   });
+// }

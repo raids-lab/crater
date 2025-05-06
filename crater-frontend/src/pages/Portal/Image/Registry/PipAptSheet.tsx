@@ -30,13 +30,16 @@ import {
   apiUserCreateKaniko,
   ImageDefaultTags,
   imageNameRegex,
+  ImagePackSource,
   imageTagRegex,
 } from "@/services/api/imagepack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ImageSettingsFormCard } from "@/components/form/ImageSettingsFormCard";
 import { TagsInput } from "@/components/form/TagsInput";
+import { exportToJsonString } from "@/utils/form";
+import { useImageTemplateLoader } from "@/hooks/useTemplateLoader";
 
-export const pipAptFormSchema = z.object({
+const pipAptFormSchema = z.object({
   baseImage: z.string().min(1, "基础镜像是必填项"),
   imageName: z
     .string()
@@ -127,10 +130,24 @@ export type PipAptFormValues = z.infer<typeof pipAptFormSchema>;
 interface PipAptSheetContentProps {
   form: UseFormReturn<PipAptFormValues>;
   onSubmit: (values: PipAptFormValues) => void;
+  imagePackName?: string;
+  setImagePackName: (imagePackName: string) => void;
 }
 
-function PipAptSheetContent({ form, onSubmit }: PipAptSheetContentProps) {
+function PipAptSheetContent({
+  form,
+  onSubmit,
+  imagePackName = "",
+  setImagePackName,
+}: PipAptSheetContentProps) {
   const { data: images } = useImageQuery(JobType.Jupyter);
+
+  useImageTemplateLoader({
+    form: form,
+    metadata: MetadataFormPipApt,
+    imagePackName: imagePackName,
+    setImagePackName: setImagePackName,
+  });
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6">
@@ -237,9 +254,16 @@ diffusers==0.31.0`}
 
 interface DockerfileSheetProps extends SandwichSheetProps {
   closeSheet: () => void;
+  imagePackName?: string;
+  setImagePackName: (imagePackName: string) => void;
 }
 
-export function PipAptSheet({ closeSheet, ...props }: DockerfileSheetProps) {
+export function PipAptSheet({
+  closeSheet,
+  imagePackName = "",
+  setImagePackName,
+  ...props
+}: DockerfileSheetProps) {
   const queryClient = useQueryClient();
 
   const form = useForm<PipAptFormValues>({
@@ -265,6 +289,8 @@ export function PipAptSheet({ closeSheet, ...props }: DockerfileSheetProps) {
         name: values.imageName ?? "",
         tag: values.imageTag ?? "",
         tags: values.tags?.map((item) => item.value) ?? [],
+        template: exportToJsonString(MetadataFormPipApt, values),
+        buildSource: ImagePackSource.PipApt,
       }),
     onSuccess: async () => {
       await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
@@ -325,7 +351,12 @@ export function PipAptSheet({ closeSheet, ...props }: DockerfileSheetProps) {
           </>
         }
       >
-        <PipAptSheetContent form={form} onSubmit={onSubmit} />
+        <PipAptSheetContent
+          form={form}
+          imagePackName={imagePackName}
+          setImagePackName={setImagePackName}
+          onSubmit={onSubmit}
+        />
       </SandwichSheet>
     </Form>
   );

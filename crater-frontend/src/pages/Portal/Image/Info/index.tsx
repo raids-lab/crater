@@ -143,20 +143,22 @@ function KanikoInfo({ kanikoInfo }: KanikoCard) {
             key: "dockerfile",
             icon: CodeIcon,
             label:
-              kanikoInfo.buildSource === "buildkit"
+              kanikoInfo.buildSource === "Dockerfile" ||
+              kanikoInfo.buildSource === "PipApt"
                 ? "Dockerfile"
                 : "Envd 配置",
             children: (
               <CodeContent
                 data={kanikoInfo.dockerfile}
                 language={
-                  kanikoInfo.buildSource === "buildkit"
+                  kanikoInfo.buildSource === "Dockerfile" ||
+                  kanikoInfo.buildSource === "PipApt"
                     ? "dockerfile"
                     : "python"
                 }
               />
             ),
-            hidden: kanikoInfo.buildSource === "snapshot",
+            hidden: kanikoInfo.buildSource === "Snapshot",
           },
         ]}
       />

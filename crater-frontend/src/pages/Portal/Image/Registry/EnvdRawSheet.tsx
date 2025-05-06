@@ -18,20 +18,23 @@ import LoadableButton from "@/components/custom/LoadableButton";
 import { PackagePlusIcon } from "lucide-react";
 import FormImportButton from "@/components/form/FormImportButton";
 import FormExportButton from "@/components/form/FormExportButton";
-import { MetadataFormDockerfile } from "@/components/form/types";
+import { MetadataFormEnvdRaw } from "@/components/form/types";
 import { Input } from "@/components/ui/input";
 import {
   apiUserCreateByEnvd,
   ImageDefaultTags,
   imageNameRegex,
+  ImagePackSource,
   imageTagRegex,
 } from "@/services/api/imagepack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import { DockerfileEditor } from "./DockerfileEditor";
 import { TagsInput } from "@/components/form/TagsInput";
+import { exportToJsonString } from "@/utils/form";
+import { useImageTemplateLoader } from "@/hooks/useTemplateLoader";
 
-export const envdRawFormSchema = z.object({
+const envdRawFormSchema = z.object({
   envdScript: z.string().min(1, "Envd script content is required"),
   description: z.string().min(1, "请为镜像添加描述"),
   imageName: z
@@ -81,9 +84,22 @@ export type EnvdRawFormValues = z.infer<typeof envdRawFormSchema>;
 interface EnvdRawSheetContentProps {
   form: UseFormReturn<EnvdRawFormValues>;
   onSubmit: (values: EnvdRawFormValues) => void;
+  imagePackName?: string;
+  setImagePackName: (imagePackName: string) => void;
 }
 
-function EnvdRawSheetContent({ form, onSubmit }: EnvdRawSheetContentProps) {
+function EnvdRawSheetContent({
+  form,
+  onSubmit,
+  imagePackName = "",
+  setImagePackName,
+}: EnvdRawSheetContentProps) {
+  useImageTemplateLoader({
+    form: form,
+    metadata: MetadataFormEnvdRaw,
+    imagePackName: imagePackName,
+    setImagePackName: setImagePackName,
+  });
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6">
       <FormField
@@ -173,9 +189,16 @@ function EnvdRawSheetContent({ form, onSubmit }: EnvdRawSheetContentProps) {
 
 interface EnvdRawSheetProps extends SandwichSheetProps {
   closeSheet: () => void;
+  imagePackName?: string;
+  setImagePackName: (imagePackName: string) => void;
 }
 
-export function EnvdRawSheet({ closeSheet, ...props }: EnvdRawSheetProps) {
+export function EnvdRawSheet({
+  closeSheet,
+  imagePackName = "",
+  setImagePackName,
+  ...props
+}: EnvdRawSheetProps) {
   const queryClient = useQueryClient();
 
   const form = useForm<EnvdRawFormValues>({
@@ -206,6 +229,8 @@ def build():
         python: "",
         base: "",
         tags: values.tags?.map((item) => item.value) ?? [],
+        template: exportToJsonString(MetadataFormEnvdRaw, values),
+        buildSource: ImagePackSource.EnvdRaw,
       }),
     onSuccess: async () => {
       await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
@@ -226,8 +251,8 @@ def build():
         {...props}
         footer={
           <>
-            <FormImportButton metadata={MetadataFormDockerfile} form={form} />
-            <FormExportButton metadata={MetadataFormDockerfile} form={form} />
+            <FormImportButton metadata={MetadataFormEnvdRaw} form={form} />
+            <FormExportButton metadata={MetadataFormEnvdRaw} form={form} />
 
             <LoadableButton
               isLoading={isPending}
@@ -246,7 +271,12 @@ def build():
           </>
         }
       >
-        <EnvdRawSheetContent form={form} onSubmit={onSubmit} />
+        <EnvdRawSheetContent
+          form={form}
+          imagePackName={imagePackName}
+          setImagePackName={setImagePackName}
+          onSubmit={onSubmit}
+        />
       </SandwichSheet>
     </Form>
   );
