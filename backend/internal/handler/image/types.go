@@ -15,6 +15,7 @@ type (
 		ImageName          string   `json:"name"`
 		ImageTag           string   `json:"tag"`
 		Tags               []string `json:"tags"`
+		Template           string   `json:"template"`
 	}
 
 	CreateByDockerfileRequest struct {
@@ -23,15 +24,18 @@ type (
 		ImageName   string   `json:"name"`
 		ImageTag    string   `json:"tag"`
 		Tags        []string `json:"tags"`
+		Template    string   `json:"template"`
 	}
 	CreateByEnvdRequest struct {
-		Description string   `json:"description"`
-		Envd        string   `json:"envd"`
-		ImageName   string   `json:"name"`
-		ImageTag    string   `json:"tag"`
-		Python      string   `json:"python"`
-		Base        string   `json:"base"`
-		Tags        []string `json:"tags"`
+		Description string            `json:"description"`
+		Envd        string            `json:"envd"`
+		ImageName   string            `json:"name"`
+		ImageTag    string            `json:"tag"`
+		Python      string            `json:"python"`
+		Base        string            `json:"base"`
+		Tags        []string          `json:"tags"`
+		Template    string            `json:"template"`
+		BuildSource model.BuildSource `json:"buildSource"`
 	}
 
 	UploadImageRequest struct {
@@ -156,6 +160,7 @@ type (
 		UserInfo      model.UserInfo    `json:"userInfo"`
 		Tags          []string          `json:"tags"`
 		ImagePackName string            `json:"imagepackName"`
+		BuildSource   model.BuildSource `json:"buildSource"`
 	}
 
 	ListKanikoResponse struct {
@@ -192,6 +197,8 @@ type (
 		ImageTag     string
 		Requirements *string
 		Tags         []string
+		Template     string
+		BuildSource  model.BuildSource
 	}
 
 	EnvdBuildData struct {
@@ -204,5 +211,7 @@ type (
 		UserName    string
 		UserID      uint
 		Tags        []string
+		Template    string
+		BuildSource model.BuildSource
 	}
 )

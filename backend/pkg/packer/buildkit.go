@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/raids-lab/crater/dao/model"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -184,12 +183,13 @@ func (b *imagePacker) createJob(
 		Name:      data.JobName,
 		Namespace: data.Namespace,
 		Annotations: map[string]string{
-			"build-data/UserID":      fmt.Sprint(data.UserID),
-			"build-data/ImageLink":   data.ImageLink,
-			"build-data/Script":      *data.Dockerfile,
-			"build-data/Description": *data.Description,
-			"build-data/Tags":        string(tagsString),
-			"build-data/Source":      string(model.BuildKit),
+			AnnotationKeyUserID:      fmt.Sprint(data.UserID),
+			AnnotationKeyImageLink:   data.ImageLink,
+			AnnotationKeyScript:      *data.Dockerfile,
+			AnnotationKeyDescription: *data.Description,
+			AnnotationKeyTags:        string(tagsString),
+			AnnotationKeySource:      string(data.BuildSource),
+			AnnotationKeyTemplate:    data.Template,
 		},
 	}
 	jobSpec := batchv1.JobSpec{

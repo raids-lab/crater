@@ -479,6 +479,7 @@ func (mgr *VolcanojobMgr) CreateJupyterSnapshot(c *gin.Context) {
 		NodeName:      nodeName,
 		Description:   fmt.Sprintf("Snapshot of %s", job.JobName),
 		ImageLink:     imageLink,
+		BuildSource:   model.Snapshot,
 	})
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)

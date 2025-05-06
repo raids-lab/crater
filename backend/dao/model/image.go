@@ -19,9 +19,11 @@ const (
 type BuildSource string
 
 const (
-	BuildKit BuildSource = "buildkit"
-	Snapshot BuildSource = "snapshot"
-	Envd     BuildSource = "envd"
+	Dockerfile   BuildSource = "Dockerfile"
+	PipApt       BuildSource = "PipApt"
+	Snapshot     BuildSource = "Snapshot"
+	EnvdAdvanced BuildSource = "EnvdAdvanced"
+	EnvdRaw      BuildSource = "EnvdRaw"
 )
 
 type Kaniko struct {
@@ -37,6 +39,7 @@ type Kaniko struct {
 	Dockerfile    *string                      `gorm:"type:text;comment:Dockerfile内容"`
 	BuildSource   BuildSource                  `gorm:"type:varchar(32);not null;default:buildkit;comment:构建来源"`
 	Tags          datatypes.JSONType[[]string] `gorm:"null;comment:镜像标签"`
+	Template      string                       `gorm:"type:text;comment:镜像的模板配置"`
 }
 
 type Image struct {
