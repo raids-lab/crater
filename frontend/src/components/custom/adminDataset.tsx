@@ -32,7 +32,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import { format } from "date-fns";
+import { TimeDistance } from "@/components/custom/TimeDistance";
+import DatasetTypeLabel, {
+  DatasetType,
+} from "@/components/badge/DatasetTybeBadge";
 import UserLabel from "@/components/label/UserLabel";
 const roles = [
   {
@@ -102,6 +105,11 @@ export const AdminDatasetTable = () => {
     {
       accessorKey: "type",
       header: "类型",
+      cell: ({ row }) => {
+        return (
+          <DatasetTypeLabel datasetType={row.getValue<DatasetType>("type")} />
+        );
+      },
     },
     {
       accessorKey: "username",
@@ -113,13 +121,10 @@ export const AdminDatasetTable = () => {
     {
       accessorKey: "createdAt",
       header: "创建时间",
-      cell: ({ row }) => (
-        <div>
-          {row.original.createdAt
-            ? format(new Date(row.original.createdAt), "yyyy-MM-dd HH:mm:ss")
-            : "未知"}
-        </div>
-      ),
+      cell: ({ row }) => {
+        return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
+      },
+      sortingFn: "datetime",
     },
     {
       id: "actions",
