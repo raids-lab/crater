@@ -3,6 +3,7 @@ package packer
 import (
 	"context"
 
+	"github.com/raids-lab/crater/dao/model"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -23,6 +24,8 @@ type BuildKitReq struct {
 	Registry     *ImageRegistrySecret // If nil, use default registry
 	ImageLink    string
 	Tags         []string
+	Template     string
+	BuildSource  model.BuildSource
 }
 
 type SnapshotReq struct {
@@ -31,12 +34,10 @@ type SnapshotReq struct {
 	PodName       string
 	ContainerName string
 	Description   string
-
-	NodeName string
-
-	Registry *ImageRegistrySecret // If nil, use default registry
-
-	ImageLink string
+	NodeName      string
+	Registry      *ImageRegistrySecret // If nil, use default registry
+	ImageLink     string
+	BuildSource   model.BuildSource
 }
 
 type EnvdReq struct {
@@ -49,6 +50,8 @@ type EnvdReq struct {
 	Registry     *ImageRegistrySecret // If nil, use default registry
 	ImageLink    string
 	Tags         []string
+	Template     string
+	BuildSource  model.BuildSource
 }
 
 type ImagePackerInterface interface {
@@ -74,16 +77,21 @@ var (
 	BackoffLimitNumber int32 = 0
 	CompletionNumber   int32 = 1
 	ParallelismNumber  int32 = 1
-
-	TagsDelimiter string = "&&"
 )
 
 const (
-	cpuLimit    = "2"
-	memoryLimit = "4Gi"
-
+	cpuLimit      = "2"
+	memoryLimit   = "4Gi"
 	cpuRequest    = "1"
 	memoryRequest = "2Gi"
+
+	AnnotationKeyUserID      = "build-data/UserID"      // 用户名ID
+	AnnotationKeyImageLink   = "build-data/ImageLink"   // 镜像链接
+	AnnotationKeyScript      = "build-data/Script"      // 镜像构建脚本（Dockerfile or Envd 类型）
+	AnnotationKeyDescription = "build-data/Description" // 镜像描述
+	AnnotationKeyTags        = "build-data/Tags"        // 是镜像标签
+	AnnotationKeySource      = "build-data/Source"      // 镜像构建来源
+	AnnotationKeyTemplate    = "build-data/Template"    // 镜像模板（提交表单转化为Json格式）
 )
 
 func GetImagePackerMgr(cli client.Client) ImagePackerInterface {

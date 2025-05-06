@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/pkg/config"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -91,12 +90,13 @@ func (b *imagePacker) createEnvdJob(
 		Name:      data.JobName,
 		Namespace: data.Namespace,
 		Annotations: map[string]string{
-			"build-data/UserID":      fmt.Sprint(data.UserID),
-			"build-data/ImageLink":   data.ImageLink,
-			"build-data/Script":      *data.Envd,
-			"build-data/Description": *data.Description,
-			"build-data/Tags":        string(tagsString),
-			"build-data/Source":      string(model.Envd),
+			AnnotationKeyUserID:      fmt.Sprint(data.UserID),
+			AnnotationKeyImageLink:   data.ImageLink,
+			AnnotationKeyScript:      *data.Envd,
+			AnnotationKeyDescription: *data.Description,
+			AnnotationKeyTags:        string(tagsString),
+			AnnotationKeySource:      string(data.BuildSource),
+			AnnotationKeyTemplate:    data.Template,
 		},
 	}
 
