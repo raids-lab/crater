@@ -1,12 +1,8 @@
 ---
-title: Vscode Ssh
-description: Documentation for Vscode Ssh
----
-
-sidebar_position: 3
-
 title: VSCode 连接到 Jupyter 容器内
+
 description: 支持用户在创建 Jupyter 作业后，通过 VSCode 直接连接到容器环境，便于利用 VSCode 的代码补全、调试功能以及丰富的插件生态，从而提升开发效率与用户体验。
+---
 
 # VSCode 连接到 Jupyter 容器内
 
@@ -36,11 +32,11 @@ ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
 
 用户创建 Jupyter 作业，具体创建方法可参考详见 [交互式作业](../quick-start/interactive.md)，示例作业如下：
 
-![](./image/vscode-ssh/job.png)
+![](./img/vscode-ssh/job.png)
 
 点击“交互式页面”跳转到 Jupyter Notebook 
 
-![](./image/vscode-ssh/jupyter.png)
+![](./img/vscode-ssh/jupyter.png)
 
 
 
@@ -126,7 +122,7 @@ NodePort 规则允许用户通过集群节点的 IP 地址和指定的端口号�
 
 在 Jupyter 作业详情页创建 NodePort 规则，详细创建流程介绍参见 [设置 NodePort 访问规则](../toolbox/external-access/nodeport-rule.md)。
 
-![](./image/vscode-ssh/nodeport.png)
+![](./img/vscode-ssh/nodeport.png)
 
 **字段说明**：
 
@@ -144,13 +140,13 @@ NodePort 规则允许用户通过集群节点的 IP 地址和指定的端口号�
 
 VSCode 中要安装 Remote-SSH 扩展，见下：
 
-![](./image/vscode-ssh/remote-ssh.png)
+![](./img/vscode-ssh/remote-ssh.png)
 
 ### 配置 **Remote.SSH Config** 文件
 
 在设置中指定 **Remote.SSH Config** 文件的路径：
 
-![](./image/vscode-ssh/setting.png)
+![](./img/vscode-ssh/setting.png)
 
 config 文件参考配置如下：
 
@@ -172,4 +168,4 @@ Host 192.168.5.30
 
 配置完成后即可成功通过 NodePort 在 VSCode 中连接到 Jupyter 容器内：
 
-![](./image/vscode-ssh/connected.png)
+![](./img/vscode-ssh/connected.png)
