@@ -91,7 +91,13 @@ export type ImagePackStatus =
   | "Failed"
   | "";
 
-export type ImagePackSource = "buildkit" | "snapshot" | "envd" | "";
+export enum ImagePackSource {
+  Dockerfile = "Dockerfile",
+  PipApt = "PipApt",
+  Snapshot = "Snapshot",
+  EnvdAdvanced = "EnvdAdvanced",
+  EnvdRaw = "EnvdRaw",
+}
 
 export const imagepackStatuses: {
   value: ImagePackStatus;
@@ -164,6 +170,8 @@ export interface KanikoCreate {
   name: string;
   tag: string;
   tags: string[];
+  template: string;
+  buildSource: ImagePackSource;
 }
 
 export interface DockerfileCreate {
@@ -172,6 +180,8 @@ export interface DockerfileCreate {
   name: string;
   tag: string;
   tags: string[];
+  template: string;
+  buildSource: ImagePackSource;
 }
 
 export interface EnvdCreate {
@@ -182,6 +192,8 @@ export interface EnvdCreate {
   python: string;
   base: string;
   tags: string[];
+  template: string;
+  buildSource: ImagePackSource;
 }
 
 export interface ImageUpload {
@@ -357,3 +369,6 @@ export const apiGetHarborIP = () =>
 
 export const apiUserUpdateImageTags = (data: UpdateImageTag) =>
   instance.post<IResponse<string>>(`${VERSION}/images/tags`, data);
+
+export const apiUserGetImageTemplate = (name: string) =>
+  instance.get<IResponse<string>>(`${VERSION}/images/template?name=${name}`);
