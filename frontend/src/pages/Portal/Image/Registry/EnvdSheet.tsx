@@ -1,4 +1,4 @@
-import { useForm, UseFormReturn } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Form,
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/form";
 import { z } from "zod";
 import SandwichSheet, {
+  SandwichLayout,
   SandwichSheetProps,
 } from "@/components/sheet/SandwichSheet";
 import LoadableButton from "@/components/custom/LoadableButton";
@@ -129,162 +130,16 @@ const envdFormSchema = z.object({
 export type EnvdFormValues = z.infer<typeof envdFormSchema>;
 
 interface EnvdSheetContentProps {
-  form: UseFormReturn<EnvdFormValues>;
-  onSubmit: (values: EnvdFormValues) => void;
+  closeSheet: () => void;
   imagePackName: string;
   setImagePackName: (imagePackName: string) => void;
 }
 
 function EnvdSheetContent({
-  form,
-  onSubmit,
-  imagePackName = "",
+  closeSheet,
+  imagePackName,
   setImagePackName,
 }: EnvdSheetContentProps) {
-  useImageTemplateLoader({
-    form: form,
-    metadata: MetadataFormEnvdAdvanced,
-    imagePackName: imagePackName,
-    setImagePackName: setImagePackName,
-  });
-
-  return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6">
-      <FormField
-        control={form.control}
-        name="description"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              描述
-              <FormLabelMust />
-            </FormLabel>
-            <FormControl>
-              <Input {...field} />
-            </FormControl>
-            <FormDescription>
-              关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <div className="grid grid-cols-2 gap-4">
-        <FormField
-          control={form.control}
-          name="python"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                Python 版本
-                <FormLabelMust />
-              </FormLabel>
-              <FormControl>
-                <Combobox
-                  items={PYTHON_VERSIONS.map((version) => ({
-                    label: version,
-                    value: version,
-                  }))}
-                  current={field.value}
-                  handleSelect={(value) => field.onChange(value)}
-                  formTitle="Python版本"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="base"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                CUDA 版本
-                <FormLabelMust />
-              </FormLabel>
-              <FormControl>
-                <Combobox
-                  items={CUDA_BASE_IMAGE}
-                  current={field.value}
-                  handleSelect={(value) => field.onChange(value)}
-                  formTitle="CUDA版本"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
-      <TagsInput
-        form={form}
-        tagsPath="tags"
-        label={`镜像标签`}
-        description={`为镜像添加标签，以便分类和搜索`}
-        customTags={ImageDefaultTags}
-      />
-      <FormField
-        control={form.control}
-        name="aptPackages"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>APT Packages</FormLabel>
-            <FormControl>
-              <Textarea
-                placeholder="git curl"
-                className="h-24 font-mono"
-                {...field}
-              />
-            </FormControl>
-            <FormDescription>
-              输入要安装的 APT 包，使用空格分隔多个包
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={form.control}
-        name="requirements"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Python 依赖</FormLabel>
-            <FormControl>
-              <Textarea
-                placeholder={`transformers>=4.46.3
-diffusers==0.31.0`}
-                className="h-24 font-mono"
-                {...field}
-              />
-            </FormControl>
-            <FormDescription>
-              请粘贴 requirements.txt 文件的内容，以便安装所需的 Python 包
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <ImageSettingsFormCard
-        form={form}
-        imageNamePath="imageName"
-        imageTagPath="imageTag"
-      />
-    </form>
-  );
-}
-
-interface EnvdSheetProps extends SandwichSheetProps {
-  closeSheet: () => void;
-  imagePackName?: string;
-  setImagePackName: (imagePackName: string) => void;
-}
-
-export function EnvdSheet({
-  closeSheet,
-  imagePackName = "",
-  setImagePackName,
-  ...props
-}: EnvdSheetProps) {
   const queryClient = useQueryClient();
 
   const form = useForm<EnvdFormValues>({
@@ -336,40 +191,183 @@ export function EnvdSheet({
     submitDockerfileSheet(values);
   };
 
+  useImageTemplateLoader({
+    form: form,
+    metadata: MetadataFormEnvdAdvanced,
+    imagePackName: imagePackName,
+    setImagePackName: setImagePackName,
+  });
+
   return (
     <Form {...form}>
-      <SandwichSheet
-        {...props}
-        footer={
-          <>
-            <FormImportButton metadata={MetadataFormEnvdAdvanced} form={form} />
-            <FormExportButton metadata={MetadataFormEnvdAdvanced} form={form} />
-
-            <LoadableButton
-              isLoading={isPending}
-              isLoadingText="正在提交"
-              type="submit"
-              onClick={async () => {
-                const isValid = await form.trigger();
-                if (isValid) {
-                  form.handleSubmit(onSubmit)();
-                }
-              }}
-            >
-              <PackagePlusIcon />
-              开始制作
-            </LoadableButton>
-          </>
-        }
-      >
-        <EnvdSheetContent
-          form={form}
-          imagePackName={imagePackName}
-          setImagePackName={setImagePackName}
-          onSubmit={onSubmit}
-        />
-      </SandwichSheet>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <SandwichLayout
+          footer={
+            <>
+              <FormImportButton
+                metadata={MetadataFormEnvdAdvanced}
+                form={form}
+              />
+              <FormExportButton
+                metadata={MetadataFormEnvdAdvanced}
+                form={form}
+              />
+              <LoadableButton
+                isLoading={isPending}
+                isLoadingText="正在提交"
+                type="submit"
+              >
+                <PackagePlusIcon />
+                开始制作
+              </LoadableButton>
+            </>
+          }
+        >
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  描述
+                  <FormLabelMust />
+                </FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormDescription>
+                  关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="python"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Python 版本
+                    <FormLabelMust />
+                  </FormLabel>
+                  <FormControl>
+                    <Combobox
+                      items={PYTHON_VERSIONS.map((version) => ({
+                        label: version,
+                        value: version,
+                      }))}
+                      current={field.value}
+                      handleSelect={(value) => field.onChange(value)}
+                      formTitle="Python版本"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="base"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    CUDA 版本
+                    <FormLabelMust />
+                  </FormLabel>
+                  <FormControl>
+                    <Combobox
+                      items={CUDA_BASE_IMAGE}
+                      current={field.value}
+                      handleSelect={(value) => field.onChange(value)}
+                      formTitle="CUDA版本"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <TagsInput
+            form={form}
+            tagsPath="tags"
+            label={`镜像标签`}
+            description={`为镜像添加标签，以便分类和搜索`}
+            customTags={ImageDefaultTags}
+          />
+          <FormField
+            control={form.control}
+            name="aptPackages"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>APT Packages</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="git curl"
+                    className="h-24 font-mono"
+                    {...field}
+                  />
+                </FormControl>
+                <FormDescription>
+                  输入要安装的 APT 包，使用空格分隔多个包
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="requirements"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Python 依赖</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder={`transformers>=4.46.3
+diffusers==0.31.0`}
+                    className="h-24 font-mono"
+                    {...field}
+                  />
+                </FormControl>
+                <FormDescription>
+                  请粘贴 requirements.txt 文件的内容，以便安装所需的 Python 包
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <ImageSettingsFormCard
+            form={form}
+            imageNamePath="imageName"
+            imageTagPath="imageTag"
+          />
+        </SandwichLayout>
+      </form>
     </Form>
+  );
+}
+
+interface EnvdSheetProps extends SandwichSheetProps {
+  closeSheet: () => void;
+  imagePackName?: string;
+  setImagePackName: (imagePackName: string) => void;
+}
+
+export function EnvdSheet({
+  closeSheet,
+  imagePackName = "",
+  setImagePackName,
+  ...props
+}: EnvdSheetProps) {
+  return (
+    <SandwichSheet {...props}>
+      <EnvdSheetContent
+        closeSheet={closeSheet}
+        imagePackName={imagePackName}
+        setImagePackName={setImagePackName}
+      />
+    </SandwichSheet>
   );
 }
 

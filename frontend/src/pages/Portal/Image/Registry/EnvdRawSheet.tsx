@@ -1,4 +1,4 @@
-import { useForm, UseFormReturn } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Form,
@@ -12,6 +12,7 @@ import {
 import { z } from "zod";
 import { toast } from "sonner";
 import SandwichSheet, {
+  SandwichLayout,
   SandwichSheetProps,
 } from "@/components/sheet/SandwichSheet";
 import LoadableButton from "@/components/custom/LoadableButton";
@@ -82,123 +83,16 @@ const envdRawFormSchema = z.object({
 export type EnvdRawFormValues = z.infer<typeof envdRawFormSchema>;
 
 interface EnvdRawSheetContentProps {
-  form: UseFormReturn<EnvdRawFormValues>;
-  onSubmit: (values: EnvdRawFormValues) => void;
-  imagePackName?: string;
-  setImagePackName: (imagePackName: string) => void;
-}
-
-function EnvdRawSheetContent({
-  form,
-  onSubmit,
-  imagePackName = "",
-  setImagePackName,
-}: EnvdRawSheetContentProps) {
-  useImageTemplateLoader({
-    form: form,
-    metadata: MetadataFormEnvdRaw,
-    imagePackName: imagePackName,
-    setImagePackName: setImagePackName,
-  });
-  return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6">
-      <FormField
-        control={form.control}
-        name="description"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              描述
-              <FormLabelMust />
-            </FormLabel>
-            <FormControl>
-              <Input {...field} />
-            </FormControl>
-            <FormDescription>
-              关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示。
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <TagsInput
-        form={form}
-        tagsPath="tags"
-        label={`镜像标签`}
-        description={`为镜像添加标签，以便分类和搜索`}
-        customTags={ImageDefaultTags}
-      />
-      <div className="grid grid-cols-2 gap-4">
-        <FormField
-          control={form.control}
-          name="imageName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                镜像名
-                <FormLabelMust />
-              </FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormDescription>自定义镜像名</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="imageTag"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                镜像标签
-                <FormLabelMust />
-              </FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormDescription>自定义镜像标签</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
-      <FormField
-        control={form.control}
-        name="envdScript"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              Envd 脚本
-              <FormLabelMust />
-            </FormLabel>
-            <FormControl>
-              <DockerfileEditor value={field.value} onChange={field.onChange} />
-            </FormControl>
-            <FormDescription>
-              直接编写 envd 构建脚本，以 # syntax=v1 开头，包含 build() 函数
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-    </form>
-  );
-}
-
-interface EnvdRawSheetProps extends SandwichSheetProps {
   closeSheet: () => void;
   imagePackName?: string;
   setImagePackName: (imagePackName: string) => void;
 }
 
-export function EnvdRawSheet({
+function EnvdRawSheetContent({
   closeSheet,
   imagePackName = "",
   setImagePackName,
-  ...props
-}: EnvdRawSheetProps) {
+}: EnvdRawSheetContentProps) {
   const queryClient = useQueryClient();
 
   const form = useForm<EnvdRawFormValues>({
@@ -245,39 +139,143 @@ def build():
     submitEnvdRawSheet(values);
   };
 
+  useImageTemplateLoader({
+    form: form,
+    metadata: MetadataFormEnvdRaw,
+    imagePackName: imagePackName,
+    setImagePackName: setImagePackName,
+  });
+
   return (
     <Form {...form}>
-      <SandwichSheet
-        {...props}
-        footer={
-          <>
-            <FormImportButton metadata={MetadataFormEnvdRaw} form={form} />
-            <FormExportButton metadata={MetadataFormEnvdRaw} form={form} />
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <SandwichLayout
+          footer={
+            <>
+              <FormImportButton metadata={MetadataFormEnvdRaw} form={form} />
+              <FormExportButton metadata={MetadataFormEnvdRaw} form={form} />
 
-            <LoadableButton
-              isLoading={isPending}
-              isLoadingText="正在提交"
-              type="submit"
-              onClick={async () => {
-                const isValid = await form.trigger();
-                if (isValid) {
-                  form.handleSubmit(onSubmit)();
-                }
-              }}
-            >
-              <PackagePlusIcon />
-              开始制作
-            </LoadableButton>
-          </>
-        }
-      >
-        <EnvdRawSheetContent
-          form={form}
-          imagePackName={imagePackName}
-          setImagePackName={setImagePackName}
-          onSubmit={onSubmit}
-        />
-      </SandwichSheet>
+              <LoadableButton
+                isLoading={isPending}
+                isLoadingText="正在提交"
+                type="submit"
+              >
+                <PackagePlusIcon />
+                开始制作
+              </LoadableButton>
+            </>
+          }
+        >
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  描述
+                  <FormLabelMust />
+                </FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormDescription>
+                  关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示。
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <TagsInput
+            form={form}
+            tagsPath="tags"
+            label={`镜像标签`}
+            description={`为镜像添加标签，以便分类和搜索`}
+            customTags={ImageDefaultTags}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="imageName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    镜像名
+                    <FormLabelMust />
+                  </FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormDescription>自定义镜像名</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="imageTag"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    镜像标签
+                    <FormLabelMust />
+                  </FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormDescription>自定义镜像标签</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <FormField
+            control={form.control}
+            name="envdScript"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  Envd 脚本
+                  <FormLabelMust />
+                </FormLabel>
+                <FormControl>
+                  <DockerfileEditor
+                    value={field.value}
+                    onChange={field.onChange}
+                    language="python"
+                  />
+                </FormControl>
+                <FormDescription>
+                  直接编写 envd 构建脚本，以 # syntax=v1 开头，包含 build() 函数
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </SandwichLayout>
+      </form>
     </Form>
+  );
+}
+
+interface EnvdRawSheetProps extends SandwichSheetProps {
+  closeSheet: () => void;
+  imagePackName?: string;
+  setImagePackName: (imagePackName: string) => void;
+}
+
+export function EnvdRawSheet({
+  closeSheet,
+  imagePackName = "",
+  setImagePackName,
+  ...props
+}: EnvdRawSheetProps) {
+  return (
+    <SandwichSheet {...props}>
+      <EnvdRawSheetContent
+        imagePackName={imagePackName}
+        setImagePackName={setImagePackName}
+        closeSheet={closeSheet}
+      />
+    </SandwichSheet>
   );
 }

@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { FileSelectDialog } from "@/components/file/FileSelectDialog";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import { TagsInput } from "@/components/form/TagsInput";
+import { SandwichLayout } from "@/components/sheet/SandwichSheet";
 
 export const dataFormSchema = z.object({
   datasetName: z
@@ -111,149 +112,145 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="flex flex-col space-y-4 px-6"
-      >
-        <FormField
-          control={form.control}
-          name="datasetName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                {dataTypeLabel}名称
-                <FormLabelMust />
-              </FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              {/* <FormMessage>请输入仓库地址</FormMessage> */}
-              <FormMessage />
-            </FormItem>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <SandwichLayout footer={<Button type="submit">提交数据集</Button>}>
+          <FormField
+            control={form.control}
+            name="datasetName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  {dataTypeLabel}名称
+                  <FormLabelMust />
+                </FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                {/* <FormMessage>请输入仓库地址</FormMessage> */}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="describe"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  {dataTypeLabel}描述
+                  <FormLabelMust />
+                </FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <div>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="url"
+                render={({ field }) => (
+                  <FormItem className="col-span-2">
+                    <FormLabel>
+                      {dataTypeLabel}地址
+                      <FormLabelMust />
+                    </FormLabel>
+                    <FormControl>
+                      <FileSelectDialog
+                        value={field.value.split("/").pop()}
+                        isrw={true}
+                        title={`选择${dataTypeLabel}地址`}
+                        handleSubmit={(item) => {
+                          field.onChange(item.id);
+                          form.setValue("url", item.id);
+                        }}
+                      />
+                    </FormControl>
+                    <FormDescription>请选择文件或文件夹</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+          {type !== "sharefile" && (
+            <TagsInput
+              form={form}
+              tagsPath="tags"
+              label={`${dataTypeLabel}标签`}
+              description={`为${dataTypeLabel}添加标签，以便分类和搜索`}
+              customTags={[
+                { value: "大语言模型" },
+                { value: "数据科学" },
+                { value: "自然语言处理" },
+                { value: "计算机视觉" },
+                { value: "强化学习" },
+                { value: "Llama" },
+                { value: "Qwen" },
+                { value: "DeepSeek" },
+              ]}
+            />
           )}
-        />
-        <FormField
-          control={form.control}
-          name="describe"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                {dataTypeLabel}描述
-                <FormLabelMust />
-              </FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div>
-          <div className="grid grid-cols-2 gap-3">
+          {type !== "sharefile" && (
             <FormField
               control={form.control}
-              name="url"
+              name="weburl"
               render={({ field }) => (
-                <FormItem className="col-span-2">
-                  <FormLabel>
-                    {dataTypeLabel}地址
-                    <FormLabelMust />
-                  </FormLabel>
+                <FormItem>
+                  <FormLabel>{dataTypeLabel}仓库地址</FormLabel>
                   <FormControl>
-                    <FileSelectDialog
-                      value={field.value.split("/").pop()}
-                      isrw={true}
-                      title={`选择${dataTypeLabel}地址`}
-                      handleSubmit={(item) => {
-                        field.onChange(item.id);
-                        form.setValue("url", item.id);
-                      }}
-                    />
+                    <Input {...field} />
                   </FormControl>
-                  <FormDescription>请选择文件或文件夹</FormDescription>
+                  <FormDescription>
+                    可提供{dataTypeLabel}开源仓库地址
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-          </div>
-        </div>
-        {type !== "sharefile" && (
-          <TagsInput
-            form={form}
-            tagsPath="tags"
-            label={`${dataTypeLabel}标签`}
-            description={`为${dataTypeLabel}添加标签，以便分类和搜索`}
-            customTags={[
-              { value: "大语言模型" },
-              { value: "数据科学" },
-              { value: "自然语言处理" },
-              { value: "计算机视觉" },
-              { value: "强化学习" },
-              { value: "Llama" },
-              { value: "Qwen" },
-              { value: "DeepSeek" },
-            ]}
-          />
-        )}
-        {type !== "sharefile" && (
-          <FormField
-            control={form.control}
-            name="weburl"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{dataTypeLabel}仓库地址</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormDescription>
-                  可提供{dataTypeLabel}开源仓库地址
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-        {type !== "sharefile" && (
-          <FormField
-            control={form.control}
-            name="ispublic"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                <FormLabel className="font-normal">所有用户可见</FormLabel>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-        {type === "sharefile" && (
-          <FormField
-            control={form.control}
-            name="readOnly"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                <FormLabel className="font-normal">
-                  只读{dataTypeLabel}
-                </FormLabel>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-        <div className="grid">
-          <Button type="submit">提交数据集</Button>
-        </div>
+          )}
+          {type !== "sharefile" && (
+            <FormField
+              control={form.control}
+              name="ispublic"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
+                  <FormLabel className="font-normal">所有用户可见</FormLabel>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+          {type === "sharefile" && (
+            <FormField
+              control={form.control}
+              name="readOnly"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
+                  <FormLabel className="font-normal">
+                    只读{dataTypeLabel}
+                  </FormLabel>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+        </SandwichLayout>
       </form>
     </Form>
   );

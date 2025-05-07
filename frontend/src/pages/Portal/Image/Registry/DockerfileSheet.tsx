@@ -1,4 +1,4 @@
-import { useForm, UseFormReturn } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Form,
@@ -12,6 +12,7 @@ import {
 import { z } from "zod";
 import { toast } from "sonner";
 import SandwichSheet, {
+  SandwichLayout,
   SandwichSheetProps,
 } from "@/components/sheet/SandwichSheet";
 import LoadableButton from "@/components/custom/LoadableButton";
@@ -81,91 +82,16 @@ const dockerfileFormSchema = z.object({
 export type DockerfileFormValues = z.infer<typeof dockerfileFormSchema>;
 
 interface DockerfileSheetContentProps {
-  form: UseFormReturn<DockerfileFormValues>;
-  onSubmit: (values: DockerfileFormValues) => void;
-  imagePackName?: string;
-  setImagePackName: (imagePackName: string) => void;
-}
-
-function DockerfileSheetContent({
-  form,
-  onSubmit,
-  imagePackName = "",
-  setImagePackName,
-}: DockerfileSheetContentProps) {
-  useImageTemplateLoader({
-    form: form,
-    metadata: MetadataFormDockerfile,
-    imagePackName: imagePackName,
-    setImagePackName: setImagePackName,
-  });
-
-  return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6">
-      <FormField
-        control={form.control}
-        name="description"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              描述
-              <FormLabelMust />
-            </FormLabel>
-            <FormControl>
-              <Input {...field} />
-            </FormControl>
-            <FormDescription>
-              关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示。
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <TagsInput
-        form={form}
-        tagsPath="tags"
-        label={`镜像标签`}
-        description={`为镜像添加标签，以便分类和搜索`}
-        customTags={ImageDefaultTags}
-      />
-      <FormField
-        control={form.control}
-        name="dockerfile"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              Dockerfile
-              <FormLabelMust />
-            </FormLabel>
-            <FormControl>
-              <DockerfileEditor value={field.value} onChange={field.onChange} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <ImageSettingsFormCard
-        form={form}
-        imageNamePath="imageName"
-        imageTagPath="imageTag"
-        description="输入用户自定义的镜像名和镜像标签，若为空，则由系统自动生成"
-      />
-    </form>
-  );
-}
-
-interface DockerfileSheetProps extends SandwichSheetProps {
   closeSheet: () => void;
   imagePackName?: string;
   setImagePackName: (imagePackName: string) => void;
 }
 
-export function DockerfileSheet({
+function DockerfileSheetContent({
   closeSheet,
   imagePackName = "",
   setImagePackName,
-  ...props
-}: DockerfileSheetProps) {
+}: DockerfileSheetContentProps) {
   const queryClient = useQueryClient();
 
   const form = useForm<DockerfileFormValues>({
@@ -229,39 +155,108 @@ export function DockerfileSheet({
     submitDockerfileSheet(values);
   };
 
+  useImageTemplateLoader({
+    form: form,
+    metadata: MetadataFormDockerfile,
+    imagePackName: imagePackName,
+    setImagePackName: setImagePackName,
+  });
+
   return (
     <Form {...form}>
-      <SandwichSheet
-        {...props}
-        footer={
-          <>
-            <FormImportButton metadata={MetadataFormDockerfile} form={form} />
-            <FormExportButton metadata={MetadataFormDockerfile} form={form} />
-
-            <LoadableButton
-              isLoading={isPending}
-              isLoadingText="正在提交"
-              type="submit"
-              onClick={async () => {
-                const isValid = await form.trigger();
-                if (isValid) {
-                  form.handleSubmit(onSubmit)();
-                }
-              }}
-            >
-              <PackagePlusIcon />
-              开始制作
-            </LoadableButton>
-          </>
-        }
-      >
-        <DockerfileSheetContent
-          form={form}
-          imagePackName={imagePackName}
-          setImagePackName={setImagePackName}
-          onSubmit={onSubmit}
-        />
-      </SandwichSheet>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <SandwichLayout
+          footer={
+            <>
+              <FormImportButton metadata={MetadataFormDockerfile} form={form} />
+              <FormExportButton metadata={MetadataFormDockerfile} form={form} />
+              <LoadableButton
+                isLoading={isPending}
+                isLoadingText="正在提交"
+                type="submit"
+              >
+                <PackagePlusIcon />
+                开始制作
+              </LoadableButton>
+            </>
+          }
+        >
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  描述
+                  <FormLabelMust />
+                </FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormDescription>
+                  关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示。
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <TagsInput
+            form={form}
+            tagsPath="tags"
+            label={`镜像标签`}
+            description={`为镜像添加标签，以便分类和搜索`}
+            customTags={ImageDefaultTags}
+          />
+          <FormField
+            control={form.control}
+            name="dockerfile"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  Dockerfile
+                  <FormLabelMust />
+                </FormLabel>
+                <FormControl>
+                  <DockerfileEditor
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <ImageSettingsFormCard
+            form={form}
+            imageNamePath="imageName"
+            imageTagPath="imageTag"
+            description="输入用户自定义的镜像名和镜像标签，若为空，则由系统自动生成"
+          />
+        </SandwichLayout>
+      </form>
     </Form>
+  );
+}
+
+interface DockerfileSheetProps extends SandwichSheetProps {
+  closeSheet: () => void;
+  imagePackName?: string;
+  setImagePackName: (imagePackName: string) => void;
+}
+
+export function DockerfileSheet({
+  closeSheet,
+  imagePackName = "",
+  setImagePackName,
+  ...props
+}: DockerfileSheetProps) {
+  return (
+    <SandwichSheet {...props}>
+      <DockerfileSheetContent
+        imagePackName={imagePackName}
+        setImagePackName={setImagePackName}
+        closeSheet={closeSheet}
+      />
+    </SandwichSheet>
   );
 }

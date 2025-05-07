@@ -33,7 +33,6 @@ interface SheetProps extends SandwichSheetProps {
   description?: ReactNode;
   className?: string;
   children: ReactNode;
-  footer?: ReactNode;
   trigger?: ReactNode;
 }
 
@@ -44,11 +43,8 @@ const SandwichSheet = ({
   description,
   className,
   children,
-  footer,
   trigger,
 }: SheetProps) => {
-  const { ref: refRoot, width, height } = useResizeObserver();
-
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
@@ -69,25 +65,40 @@ const SandwichSheet = ({
               )}
             </SheetTitle>
           </SheetHeader>
-          <div
-            className={cn({
-              "h-[calc(100vh_-_156px)]": footer,
-              "h-[calc(100vh_-_72px)]": !footer,
-            })}
-            ref={refRoot}
-          >
-            <ScrollArea style={{ width, height }} className="">
-              {children}
-            </ScrollArea>
-          </div>
-          {footer && (
-            <SheetFooter className="absolute right-0 bottom-0 left-0 flex-row justify-end gap-2 p-6">
-              {footer}
-            </SheetFooter>
-          )}
+          {children}
         </div>
       </SheetContent>
     </Sheet>
+  );
+};
+
+export const SandwichLayout = ({
+  children,
+  footer,
+}: {
+  children: ReactNode;
+  footer?: ReactNode;
+}) => {
+  const { ref: refRoot, width, height } = useResizeObserver();
+  return (
+    <div className="h-screen">
+      <div
+        className={cn({
+          "h-[calc(100vh_-_156px)]": footer,
+          "h-[calc(100vh_-_72px)]": !footer,
+        })}
+        ref={refRoot}
+      >
+        <ScrollArea style={{ width, height }}>
+          <div className="z-50 space-y-4 px-6">{children}</div>
+        </ScrollArea>
+      </div>
+      {footer && (
+        <SheetFooter className="absolute right-0 bottom-0 left-0 h-auto flex-row justify-end gap-2 p-6">
+          {footer}
+        </SheetFooter>
+      )}
+    </div>
   );
 };
 
