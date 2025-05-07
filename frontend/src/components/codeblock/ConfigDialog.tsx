@@ -7,6 +7,7 @@ import useResizeObserver from "use-resize-observer";
 import { ScrollArea, ScrollBar } from "../ui/scroll-area";
 import { CopyButton } from "../button/copy-button";
 import { HighlightedPre } from "../form/markdown-renderer";
+import { cn } from "@/lib/utils";
 
 export interface PodNamespacedName {
   namespace: string;
@@ -16,15 +17,20 @@ export interface PodNamespacedName {
 export function CodeContent({
   data,
   language,
+  className,
 }: {
   data: string;
   language?: string;
+  className?: string;
 }) {
   const { ref: refRoot, width, height } = useResizeObserver();
 
   return (
     <Card
-      className="text-muted-foreground bg-muted/30 relative h-full overflow-hidden p-1 dark:border"
+      className={cn(
+        "text-muted-foreground bg-muted/30 relative h-full overflow-hidden p-1 dark:border",
+        className,
+      )}
       ref={refRoot}
     >
       <ScrollArea style={{ width, height }}>

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { showErrorToast } from "@/utils/toast";
 import { getJobTemplate } from "@/services/api/jobtemplate";
 import { JobTemplate } from "@/services/api/jobtemplate";
+import { apiUserGetImageTemplate } from "@/services/api/imagepack";
 
 export interface UIStateUpdater<T> {
   /** Condition to determine if this state should be updated */
@@ -27,6 +28,23 @@ interface TemplateLoaderOptions<T extends FieldValues> {
   uiStateUpdaters?: UIStateUpdater<T>[];
   /** Optional callback when template loaded successfully */
   onSuccess?: (data: T) => void;
+  /** Optional additional data processing */
+  dataProcessor?: (data: T) => T;
+}
+
+interface ImageTemplateLoaderOptions<T extends FieldValues> {
+  /** The form object to populate */
+  form: UseFormReturn<T>;
+  /** Metadata configuration for import/export */
+  metadata: { version: string; type: string };
+  /** Optional UI state updaters for accordions, tabs, etc. */
+  uiStateUpdaters?: UIStateUpdater<T>[];
+  /** Optional callback when template loaded successfully */
+  onSuccess?: (data: T) => void;
+  /** Required ImagePackName */
+  imagePackName: string;
+  /** Required set ImagePackName func */
+  setImagePackName: (imagePackName: string) => void;
   /** Optional additional data processing */
   dataProcessor?: (data: T) => T;
 }
@@ -145,4 +163,59 @@ export function useTemplateLoader<T extends FieldValues>({
   }, [loadJobTemplate, loadTemplate, fromJob, fromTemplate]);
 
   return { fromJob, fromTemplate, templateData };
+}
+
+export function useImageTemplateLoader<T extends FieldValues>({
+  form,
+  metadata,
+  uiStateUpdaters = [],
+  onSuccess,
+  imagePackName,
+  setImagePackName,
+}: ImageTemplateLoaderOptions<T>) {
+  const { mutate: loadImageTemplate } = useMutation({
+    mutationFn: (imagePackName: string) =>
+      apiUserGetImageTemplate(imagePackName),
+    onSuccess: (response) => {
+      try {
+        // Import the template data
+        const kanikoInfo = importFromJsonString<T>(
+          metadata,
+          response.data.data,
+        );
+
+        // Reset the form with the loaded data
+        form.reset(kanikoInfo);
+        // toast.success(JSON.stringify(kanikoInfo));
+        // Update UI states based on the loaded data
+        uiStateUpdaters.forEach(({ condition, setter, value }) => {
+          if (condition(kanikoInfo)) {
+            setter(value);
+          }
+        });
+
+        // Call the success callback
+        if (onSuccess) {
+          onSuccess(kanikoInfo);
+        }
+
+        // toast.success(`已加载镜像 ${imagePackName} 的模板配置`);
+      } catch (error) {
+        showErrorToast(error);
+      }
+    },
+    onError: () => {
+      toast.error("获取镜像模板失败");
+    },
+  });
+
+  useEffect(() => {
+    if (imagePackName !== "") {
+      loadImageTemplate(imagePackName);
+    }
+
+    return () => {
+      setImagePackName("");
+    };
+  }, [form, imagePackName, loadImageTemplate, setImagePackName]);
 }
