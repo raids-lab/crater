@@ -254,6 +254,7 @@ export const ImageDefaultTags = [
   { value: "CUDA" },
   { value: "Tensorflow" },
   { value: "Pytorch" },
+  { value: "Jupyter" },
   { value: "Ray" },
   { value: "Python" },
   { value: "NO-CUDA" },

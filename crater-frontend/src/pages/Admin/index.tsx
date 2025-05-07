@@ -93,11 +93,11 @@ const routeItems: RouteObject[] = [
     path: "image",
     children: [
       {
-        path: "create/*",
+        path: "createimage/*",
         lazy: () => import("./Image/Registry"),
       },
       {
-        path: "upload/*",
+        path: "uploadimage/*",
         lazy: () => import("./Image/Image"),
       },
     ],
@@ -194,11 +194,11 @@ const adminSidebarGroups: NavGroupProps[] = [
         items: [
           {
             title: "镜像制作",
-            url: "image/create",
+            url: "image/createimage",
           },
           {
             title: "镜像列表",
-            url: "image/upload",
+            url: "image/uploadimage",
           },
         ],
       },
