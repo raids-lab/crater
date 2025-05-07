@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/logutils"
@@ -15,7 +16,7 @@ import (
 	"github.com/raids-lab/crater/pkg/utils"
 )
 
-// UserCreateKaniko godoc
+// UserCreateByPipApt godoc
 // @Summary 创建ImagePack CRD和数据库Kaniko entity
 // @Description 获取参数，生成变量，调用接口
 // @Tags ImagePack
@@ -24,7 +25,7 @@ import (
 // @Security Bearer
 // @Param data body CreateKanikoRequest true "创建ImagePack CRD & Kaniko entity"
 // @Router /v1/images/kaniko [POST]
-func (mgr *ImagePackMgr) UserCreateKaniko(c *gin.Context) {
+func (mgr *ImagePackMgr) UserCreateByPipApt(c *gin.Context) {
 	req := &CreateKanikoRequest{}
 	token := util.GetToken(c)
 	if err := c.ShouldBindJSON(req); err != nil {
@@ -43,6 +44,8 @@ func (mgr *ImagePackMgr) UserCreateKaniko(c *gin.Context) {
 		UserID:       token.UserID,
 		Requirements: &req.PythonRequirements,
 		Tags:         req.Tags,
+		Template:     req.Template,
+		BuildSource:  model.PipApt,
 	}
 	mgr.buildFromDockerfile(c, buildData)
 }
@@ -79,6 +82,8 @@ func (mgr *ImagePackMgr) UserCreateByDockerfile(c *gin.Context) {
 		UserName:    token.Username,
 		UserID:      token.UserID,
 		Tags:        req.Tags,
+		Template:    req.Template,
+		BuildSource: model.Dockerfile,
 	}
 	mgr.buildFromDockerfile(c, buildData)
 }
@@ -143,6 +148,8 @@ func (mgr *ImagePackMgr) UserCreateByEnvd(c *gin.Context) {
 		UserName:    token.Username,
 		UserID:      token.UserID,
 		Tags:        req.Tags,
+		Template:    req.Template,
+		BuildSource: req.BuildSource,
 	}
 	mgr.buildFromEnvd(c, buildData)
 }
@@ -175,6 +182,8 @@ func (mgr *ImagePackMgr) AdminCreate(c *gin.Context) {
 		UserName:    token.Username,
 		UserID:      token.UserID,
 		Tags:        req.Tags,
+		Template:    req.Template,
+		BuildSource: model.Dockerfile,
 	}
 	mgr.buildFromDockerfile(c, buildData)
 }
@@ -232,6 +241,8 @@ func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, data *DockerfileBui
 		Description:  &data.Description,
 		Requirements: data.Requirements,
 		Tags:         data.Tags,
+		Template:     data.Template,
+		BuildSource:  data.BuildSource,
 	}
 
 	if err := mgr.imagePacker.CreateFromDockerfile(c, buildkitData); err != nil {
@@ -264,6 +275,8 @@ func (mgr *ImagePackMgr) buildFromEnvd(c *gin.Context, data *EnvdBuildData) {
 		UserID:      data.UserID,
 		Description: &data.Description,
 		Tags:        data.Tags,
+		Template:    data.Template,
+		BuildSource: data.BuildSource,
 	}
 
 	if err := mgr.imagePacker.CreateFromEnvd(c, envdData); err != nil {

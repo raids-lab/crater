@@ -41,6 +41,7 @@ func newKaniko(db *gorm.DB, opts ...gen.DOOption) kaniko {
 	_kaniko.Dockerfile = field.NewString(tableName, "dockerfile")
 	_kaniko.BuildSource = field.NewString(tableName, "build_source")
 	_kaniko.Tags = field.NewField(tableName, "tags")
+	_kaniko.Template = field.NewString(tableName, "template")
 	_kaniko.User = kanikoBelongsToUser{
 		db: db.Session(&gorm.Session{}),
 
@@ -80,6 +81,7 @@ type kaniko struct {
 	Dockerfile    field.String
 	BuildSource   field.String
 	Tags          field.Field
+	Template      field.String
 	User          kanikoBelongsToUser
 
 	fieldMap map[string]field.Expr
@@ -111,6 +113,7 @@ func (k *kaniko) updateTableName(table string) *kaniko {
 	k.Dockerfile = field.NewString(table, "dockerfile")
 	k.BuildSource = field.NewString(table, "build_source")
 	k.Tags = field.NewField(table, "tags")
+	k.Template = field.NewString(table, "template")
 
 	k.fillFieldMap()
 
@@ -135,7 +138,7 @@ func (k *kaniko) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (k *kaniko) fillFieldMap() {
-	k.fieldMap = make(map[string]field.Expr, 15)
+	k.fieldMap = make(map[string]field.Expr, 16)
 	k.fieldMap["id"] = k.ID
 	k.fieldMap["created_at"] = k.CreatedAt
 	k.fieldMap["updated_at"] = k.UpdatedAt
@@ -150,6 +153,7 @@ func (k *kaniko) fillFieldMap() {
 	k.fieldMap["dockerfile"] = k.Dockerfile
 	k.fieldMap["build_source"] = k.BuildSource
 	k.fieldMap["tags"] = k.Tags
+	k.fieldMap["template"] = k.Template
 
 }
 

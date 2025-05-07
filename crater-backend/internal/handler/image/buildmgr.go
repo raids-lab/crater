@@ -200,7 +200,7 @@ func (mgr *ImagePackMgr) deleteKanikoByID(c *gin.Context, isAdminMode bool, kani
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param id query string true "获取ImagePack的id"
+// @Param name query string true "获取ImagePack的name"
 // @Router /v1/images/get [GET]
 func (mgr *ImagePackMgr) GetKanikoByImagePackName(c *gin.Context) {
 	kanikoQuery := query.Kaniko
@@ -234,6 +234,36 @@ func (mgr *ImagePackMgr) GetKanikoByImagePackName(c *gin.Context) {
 		PodNameSpace:  podNameSpace,
 	}
 	resputil.Success(c, getKanikoResponse)
+}
+
+// GetKanikoTemplateByImagePackName godoc
+// @Summary 获取imagepack的模板信息
+// @Description 获取imagepackname，搜索到imagepack的模板信息
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param name query string true "获取ImagePack的name"
+// @Router /v1/images/get [GET]
+func (mgr *ImagePackMgr) GetKanikoTemplateByImagePackName(c *gin.Context) {
+	kanikoQuery := query.Kaniko
+	var req GetKanikoRequest
+	var err error
+	if err = c.ShouldBindQuery(&req); err != nil {
+		msg := fmt.Sprintf("validate image get parameters failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		return
+	}
+	var kaniko *model.Kaniko
+	if kaniko, err = kanikoQuery.WithContext(c).
+		Where(kanikoQuery.ImagePackName.Eq(req.ImagePackName)).
+		First(); err != nil {
+		msg := fmt.Sprintf("fetch kaniko by name failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, kaniko.Template)
 }
 
 // GetImagepackPodName godoc
@@ -297,6 +327,7 @@ func (mgr *ImagePackMgr) generateKanikoListResponse(kanikos []*model.Kaniko) Lis
 			},
 			Tags:          kaniko.Tags.Data(),
 			ImagePackName: kaniko.ImagePackName,
+			BuildSource:   kaniko.BuildSource,
 		}
 		kanikoInfos = append(kanikoInfos, kanikoInfo)
 	}

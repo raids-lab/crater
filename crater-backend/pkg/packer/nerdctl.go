@@ -24,11 +24,13 @@ func (b *imagePacker) CreateFromSnapshot(c context.Context, data *SnapshotReq) e
 		Name:      jobName,
 		Namespace: config.GetConfig().Workspace.ImageNamespace,
 		Annotations: map[string]string{
-			"build-data/UserID":      fmt.Sprint(data.UserID),
-			"build-data/ImageLink":   data.ImageLink,
-			"build-data/Dockerfile":  "",
-			"build-data/Description": data.Description,
-			"build-data/Envd":        "",
+			AnnotationKeyUserID:      fmt.Sprint(data.UserID),
+			AnnotationKeyImageLink:   data.ImageLink,
+			AnnotationKeyScript:      "",
+			AnnotationKeyDescription: data.Description,
+			AnnotationKeyTags:        "",
+			AnnotationKeySource:      string(data.BuildSource),
+			AnnotationKeyTemplate:    "",
 		},
 	}
 

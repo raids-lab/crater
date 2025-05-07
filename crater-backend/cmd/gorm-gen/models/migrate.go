@@ -376,6 +376,29 @@ func main() {
 				return nil
 			},
 		},
+		{
+			ID: "202505061457",
+			Migrate: func(tx *gorm.DB) error {
+				type Kaniko struct {
+					Template string `gorm:"type:text;comment:镜像的模板配置"`
+				}
+				// Add the Type and Networks columns to the Resource tableturn err
+				if err := tx.Migrator().AddColumn(&Kaniko{}, "Template"); err != nil {
+					return err
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Kaniko struct {
+					Template string `gorm:"type:text;comment:镜像的模板配置"`
+				}
+				// Drop the Type and Networks columns from the Resource table
+				if err := tx.Migrator().DropColumn(&Kaniko{}, "Template"); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
