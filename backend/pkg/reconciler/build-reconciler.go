@@ -40,6 +40,7 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/imageregistry"
 	"github.com/raids-lab/crater/pkg/logutils"
+	"github.com/raids-lab/crater/pkg/packer"
 )
 
 // VcJobReconciler reconciles a AIJob object
@@ -164,14 +165,14 @@ func (r *BuildKitReconciler) handleJobNotFound(ctx context.Context, jobName stri
 func (r *BuildKitReconciler) handleRecordNotFound(ctx context.Context, job *batchv1.Job) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	k := query.Kaniko
-	uID, _ := strconv.Atoi(job.Annotations["build-data/UserID"])
+	uID, _ := strconv.Atoi(job.Annotations[packer.AnnotationKeyUserID])
 	//nolint:gosec // userID is very small, integer overflow conversion won't happen
 	userID := uint(uID)
-	description := job.Annotations["build-data/Description"]
-	script := job.Annotations["build-data/Script"]
-	source := job.Annotations["build-data/Source"]
+	description := job.Annotations[packer.AnnotationKeyDescription]
+	script := job.Annotations[packer.AnnotationKeyScript]
+	source := job.Annotations[packer.AnnotationKeySource]
 	var tags []string
-	_ = json.Unmarshal([]byte(job.Annotations["build-data/Tags"]), &tags)
+	_ = json.Unmarshal([]byte(job.Annotations[packer.AnnotationKeyTags]), &tags)
 	u := query.User
 	_, err := u.WithContext(ctx).Where(u.ID.Eq(userID)).First()
 	if err != nil {
@@ -181,13 +182,14 @@ func (r *BuildKitReconciler) handleRecordNotFound(ctx context.Context, job *batc
 	kanikoRecord := model.Kaniko{
 		UserID:        userID,
 		ImagePackName: job.Name,
-		ImageLink:     job.Annotations["build-data/ImageLink"],
+		ImageLink:     job.Annotations[packer.AnnotationKeyImageLink],
 		NameSpace:     job.Namespace,
 		Status:        model.BuildJobInitial,
 		Dockerfile:    &script,
 		Description:   &description,
 		BuildSource:   model.BuildSource(source),
 		Tags:          datatypes.NewJSONType(tags),
+		Template:      job.Annotations[packer.AnnotationKeyTemplate],
 	}
 	if err := k.WithContext(ctx).Create(&kanikoRecord); err != nil {
 		logutils.Log.Errorf("create imagepack record failed, params: %+v, %+v", kanikoRecord, err)

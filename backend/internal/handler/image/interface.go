@@ -33,7 +33,7 @@ func (mgr *ImagePackMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/kaniko", mgr.UserListKaniko)
-	g.POST("/kaniko", mgr.UserCreateKaniko)
+	g.POST("/kaniko", mgr.UserCreateByPipApt)
 	g.POST("/dockerfile", mgr.UserCreateByDockerfile)
 	g.POST("/envd", mgr.UserCreateByEnvd)
 	g.DELETE("/kaniko/:id", mgr.DeleteKanikoByID)
@@ -57,6 +57,7 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.POST("/type", mgr.UserChangeImageTaskType)
 	g.GET("/harbor", mgr.GetHarborIP)
 	g.POST("/tags", mgr.UserChangeImageTags)
+	g.GET("/template", mgr.GetKanikoTemplateByImagePackName)
 }
 
 func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
