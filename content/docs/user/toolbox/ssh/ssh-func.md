@@ -3,9 +3,6 @@ title: 使用 SSH 功能快速连接
 
 description: 为了帮助用户更便捷的连接到容器，本平台提供了 SSH 功能 。在配置 SSH 免密登陆后，用户可以一键复制连接命令，通过 Terminal 或 VSCode 连接至容器。
 ---
-# 使用 SSH 功能快速连接
-
-为了帮助用户**更便捷的连接到容器**，本平台提供了 **SSH 连接** 功能。在**配置 SSH 免密登陆后**，用户可以**一键复制连接命令**，**通过 Terminal 或 VSCode 连接至容器**。
 
 ## 配置 SSH 免密登录
 
@@ -53,7 +50,7 @@ chmod 600 ~/.ssh/authorized_keys
 
 ![](./img/ssh-func/terminal.png)
 
-##  VSCode 连接
+## VSCode 连接
 
 （1）VSCode 中要安装 Remote-SSH 扩展，见下：
 

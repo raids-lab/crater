@@ -1,0 +1,14 @@
+{
+  "pages": [
+    "---作业与服务---",
+    "quick-start",
+    "---镜像与数据---",
+    "image",
+    "...file",
+    "---更多---",
+    "toolbox",
+    "problems"
+  ],
+  "title": "用户指南",
+  "root": true
+}

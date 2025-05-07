@@ -1,6 +1,6 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 import { i18n } from "@/lib/i18n";
-import { BookIcon, ExternalLinkIcon } from "lucide-react";
+import { BookKeyIcon, BookUserIcon, ExternalLinkIcon } from "lucide-react";
 
 import { SVGProps, Ref, forwardRef } from "react";
 
@@ -54,8 +54,14 @@ export function baseOptions(locale: string): BaseLayoutProps {
     links: [
       {
         text: locale === "cn" ? "用户指南" : "User Guide",
-        icon: <BookIcon />,
-        url: `/${locale}/docs`,
+        icon: <BookUserIcon />,
+        url: `/${locale}/docs/user`,
+        active: "nested-url",
+      },
+      {
+        text: locale === "cn" ? "管理员指南" : "Admin Guide",
+        icon: <BookKeyIcon />,
+        url: `/${locale}/docs/admin`,
         active: "nested-url",
       },
       {

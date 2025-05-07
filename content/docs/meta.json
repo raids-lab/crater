@@ -1,16 +1,12 @@
 {
   "pages": [
-    "---简介---",
+    "---概览---",
     "index",
-    "quick-start",
-    "---功能---",
-    "image",
-    "file",
-    "---更多---",
-    "toolbox",
-    "problems",
-    "..."
+    "---用户指南---",
+    "user",
+    "---管理员指南---",
+    "admin"
   ],
-  "title": "用户指南",
+  "title": "Crater 文档",
   "root": true
 }
