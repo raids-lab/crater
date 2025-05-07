@@ -255,79 +255,82 @@ function RDMAFormFields<T extends FieldValues>({
   });
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <>
       {networks && networks.length > 0 && (
-        <FormField
-          control={form.control}
-          name={rdmaPath.rdmaEnabled}
-          render={({ field }) => (
-            <FormItem>
-              <div className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                <FormLabel>
-                  启用 RDMA
-                  <TooltipProvider delayDuration={100}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <h2 className="mb-0.5 font-semibold">
-                          基于 InfiniBand 的 RDMA：
-                        </h2>
-                        <p>
-                          1. V100 型号速率为 100Gb/s，A100 型号速率为 200Gb/s
-                        </p>
-                        <p>2. RDMA 启用后，CPU 和内存限制将被忽略</p>
-                        <p>3. 如需使用此功能，请尽量申请单个节点上的所有卡</p>
-                        <p>
-                          4. 在选择 RDMA 网络时，同一个作业请选择同一个网络拓扑
-                        </p>
-                        <p>5. 镜像需支持 RDMA，详情见作业文档</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </FormLabel>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={(value) => field.onChange(value)}
-                  />
-                </FormControl>
-              </div>
-              <FormMessage />
-            </FormItem>
+        <div className="flex flex-col gap-1.5">
+          <FormField
+            control={form.control}
+            name={rdmaPath.rdmaEnabled}
+            render={({ field }) => (
+              <FormItem>
+                <div className="flex flex-row items-center justify-between space-y-0 space-x-0">
+                  <FormLabel>
+                    启用 RDMA
+                    <TooltipProvider delayDuration={100}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <h2 className="mb-0.5 font-semibold">
+                            基于 InfiniBand 的 RDMA：
+                          </h2>
+                          <p>
+                            1. V100 型号速率为 100Gb/s，A100 型号速率为 200Gb/s
+                          </p>
+                          <p>2. RDMA 启用后，CPU 和内存限制将被忽略</p>
+                          <p>3. 如需使用此功能，请尽量申请单个节点上的所有卡</p>
+                          <p>
+                            4. 在选择 RDMA
+                            网络时，同一个作业请选择同一个网络拓扑
+                          </p>
+                          <p>5. 镜像需支持 RDMA，详情见作业文档</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </FormLabel>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={(value) => field.onChange(value)}
+                    />
+                  </FormControl>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          {rdmaEnabled && (
+            <FormField
+              control={form.control}
+              name={rdmaPath.rdmaLabel}
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Combobox
+                      items={networks}
+                      renderLabel={(item) => (
+                        <div className="flex w-full flex-row items-center justify-between gap-3">
+                          <p>{item.label}</p>
+                        </div>
+                      )}
+                      current={field.value ?? ""}
+                      handleSelect={(value) => {
+                        field.onChange(value);
+                      }}
+                      formTitle=" RDMA 网络拓扑"
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    请保证同一个作业内的不同角色，均使用同一个 RDMA 网络拓扑
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           )}
-        />
+        </div>
       )}
-      {rdmaEnabled && networks && networks.length > 0 && (
-        <FormField
-          control={form.control}
-          name={rdmaPath.rdmaLabel}
-          render={({ field }) => (
-            <FormItem>
-              <FormControl>
-                <Combobox
-                  items={networks}
-                  renderLabel={(item) => (
-                    <div className="flex w-full flex-row items-center justify-between gap-3">
-                      <p>{item.label}</p>
-                    </div>
-                  )}
-                  current={field.value ?? ""}
-                  handleSelect={(value) => {
-                    field.onChange(value);
-                  }}
-                  formTitle=" RDMA 网络拓扑"
-                />
-              </FormControl>
-              <FormDescription>
-                请保证同一个作业内的不同角色，均使用同一个 RDMA 网络拓扑
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      )}
-    </div>
+    </>
   );
 }
