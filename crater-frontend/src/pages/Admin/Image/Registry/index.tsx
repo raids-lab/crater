@@ -20,7 +20,7 @@ export const Component: FC = () => {
       ),
     },
     {
-      path: ":id",
+      path: ":name",
       element: <KanikoDetail />,
     },
   ]);
