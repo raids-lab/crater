@@ -1,4 +1,4 @@
-import { useForm, UseFormReturn } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Form,
@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { z } from "zod";
 import { toast } from "sonner";
 import SandwichSheet, {
+  SandwichLayout,
   SandwichSheetProps,
 } from "@/components/sheet/SandwichSheet";
 import LoadableButton from "@/components/custom/LoadableButton";
@@ -30,13 +31,16 @@ import {
   apiUserCreateKaniko,
   ImageDefaultTags,
   imageNameRegex,
+  ImagePackSource,
   imageTagRegex,
 } from "@/services/api/imagepack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ImageSettingsFormCard } from "@/components/form/ImageSettingsFormCard";
 import { TagsInput } from "@/components/form/TagsInput";
+import { exportToJsonString } from "@/utils/form";
+import { useImageTemplateLoader } from "@/hooks/useTemplateLoader";
 
-export const pipAptFormSchema = z.object({
+const pipAptFormSchema = z.object({
   baseImage: z.string().min(1, "基础镜像是必填项"),
   imageName: z
     .string()
@@ -125,121 +129,16 @@ export const pipAptFormSchema = z.object({
 export type PipAptFormValues = z.infer<typeof pipAptFormSchema>;
 
 interface PipAptSheetContentProps {
-  form: UseFormReturn<PipAptFormValues>;
-  onSubmit: (values: PipAptFormValues) => void;
-}
-
-function PipAptSheetContent({ form, onSubmit }: PipAptSheetContentProps) {
-  const { data: images } = useImageQuery(JobType.Jupyter);
-
-  return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6">
-      <FormField
-        control={form.control}
-        name="description"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              描述
-              <FormLabelMust />
-            </FormLabel>
-            <FormControl>
-              <Input {...field} />
-            </FormControl>
-            <FormDescription>
-              关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={form.control}
-        name="baseImage"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              现有镜像
-              <FormLabelMust />
-            </FormLabel>
-            <FormControl autoFocus={true}>
-              <Combobox
-                items={images ?? []}
-                current={field.value}
-                handleSelect={(value) => field.onChange(value)}
-                renderLabel={(item) => <ImageItem item={item} />}
-                formTitle="镜像"
-              />
-            </FormControl>
-            <FormDescription>
-              选择一个带有所需 CUDA 和 Python 版本的基础镜像
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <TagsInput
-        form={form}
-        tagsPath="tags"
-        label={`镜像标签`}
-        description={`为镜像添加标签，以便分类和搜索`}
-        customTags={ImageDefaultTags}
-      />
-      <FormField
-        control={form.control}
-        name="aptPackages"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>APT Packages</FormLabel>
-            <FormControl>
-              <Textarea
-                placeholder="git curl"
-                className="h-24 font-mono"
-                {...field}
-              />
-            </FormControl>
-            <FormDescription>
-              输入要安装的 APT 包，使用空格分隔多个包
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={form.control}
-        name="requirements"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Python 依赖</FormLabel>
-            <FormControl>
-              <Textarea
-                placeholder={`transformers>=4.46.3
-diffusers==0.31.0`}
-                className="h-24 font-mono"
-                {...field}
-              />
-            </FormControl>
-            <FormDescription>
-              请粘贴 requirements.txt 文件的内容，以便安装所需的 Python 包
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <ImageSettingsFormCard
-        form={form}
-        imageNamePath="imageName"
-        imageTagPath="imageTag"
-      />
-    </form>
-  );
-}
-
-interface DockerfileSheetProps extends SandwichSheetProps {
   closeSheet: () => void;
+  imagePackName?: string;
+  setImagePackName: (imagePackName: string) => void;
 }
 
-export function PipAptSheet({ closeSheet, ...props }: DockerfileSheetProps) {
+function PipAptSheetContent({
+  closeSheet,
+  imagePackName = "",
+  setImagePackName,
+}: PipAptSheetContentProps) {
   const queryClient = useQueryClient();
 
   const form = useForm<PipAptFormValues>({
@@ -265,6 +164,8 @@ export function PipAptSheet({ closeSheet, ...props }: DockerfileSheetProps) {
         name: values.imageName ?? "",
         tag: values.imageTag ?? "",
         tags: values.tags?.map((item) => item.value) ?? [],
+        template: exportToJsonString(MetadataFormPipApt, values),
+        buildSource: ImagePackSource.PipApt,
       }),
     onSuccess: async () => {
       await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
@@ -298,35 +199,156 @@ export function PipAptSheet({ closeSheet, ...props }: DockerfileSheetProps) {
     }
     submitDockerfileSheet(values);
   };
+  const { data: images } = useImageQuery(JobType.Jupyter);
+
+  useImageTemplateLoader({
+    form: form,
+    metadata: MetadataFormPipApt,
+    imagePackName: imagePackName,
+    setImagePackName: setImagePackName,
+  });
 
   return (
     <Form {...form}>
-      <SandwichSheet
-        {...props}
-        footer={
-          <>
-            <FormImportButton metadata={MetadataFormPipApt} form={form} />
-            <FormExportButton metadata={MetadataFormPipApt} form={form} />
-            <LoadableButton
-              isLoading={isPending}
-              isLoadingText="正在提交"
-              type="submit"
-              onClick={async () => {
-                // Trigger validations before submitting
-                const isValid = await form.trigger();
-                if (isValid) {
-                  form.handleSubmit(onSubmit)();
-                }
-              }}
-            >
-              <PackagePlusIcon />
-              开始制作
-            </LoadableButton>
-          </>
-        }
-      >
-        <PipAptSheetContent form={form} onSubmit={onSubmit} />
-      </SandwichSheet>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <SandwichLayout
+          footer={
+            <>
+              <FormImportButton metadata={MetadataFormPipApt} form={form} />
+              <FormExportButton metadata={MetadataFormPipApt} form={form} />
+              <LoadableButton
+                isLoading={isPending}
+                isLoadingText="正在提交"
+                type="submit"
+              >
+                <PackagePlusIcon />
+                开始制作
+              </LoadableButton>
+            </>
+          }
+        >
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  描述
+                  <FormLabelMust />
+                </FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormDescription>
+                  关于此镜像的简短描述，如包含的软件版本、用途等，将作为镜像标识显示
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="baseImage"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  现有镜像
+                  <FormLabelMust />
+                </FormLabel>
+                <FormControl autoFocus={true}>
+                  <Combobox
+                    items={images ?? []}
+                    current={field.value}
+                    handleSelect={(value) => field.onChange(value)}
+                    renderLabel={(item) => <ImageItem item={item} />}
+                    formTitle="镜像"
+                  />
+                </FormControl>
+                <FormDescription>
+                  选择一个带有所需 CUDA 和 Python 版本的基础镜像
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <TagsInput
+            form={form}
+            tagsPath="tags"
+            label={`镜像标签`}
+            description={`为镜像添加标签，以便分类和搜索`}
+            customTags={ImageDefaultTags}
+          />
+          <FormField
+            control={form.control}
+            name="aptPackages"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>APT Packages</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="git curl"
+                    className="h-24 font-mono"
+                    {...field}
+                  />
+                </FormControl>
+                <FormDescription>
+                  输入要安装的 APT 包，使用空格分隔多个包
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="requirements"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Python 依赖</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder={`transformers>=4.46.3
+diffusers==0.31.0`}
+                    className="h-24 font-mono"
+                    {...field}
+                  />
+                </FormControl>
+                <FormDescription>
+                  请粘贴 requirements.txt 文件的内容，以便安装所需的 Python 包
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <ImageSettingsFormCard
+            form={form}
+            imageNamePath="imageName"
+            imageTagPath="imageTag"
+          />
+        </SandwichLayout>
+      </form>
     </Form>
+  );
+}
+
+interface DockerfileSheetProps extends SandwichSheetProps {
+  closeSheet: () => void;
+  imagePackName?: string;
+  setImagePackName: (imagePackName: string) => void;
+}
+
+export function PipAptSheet({
+  closeSheet,
+  imagePackName = "",
+  setImagePackName,
+  ...props
+}: DockerfileSheetProps) {
+  return (
+    <SandwichSheet {...props}>
+      <PipAptSheetContent
+        imagePackName={imagePackName}
+        setImagePackName={setImagePackName}
+        closeSheet={closeSheet}
+      />
+    </SandwichSheet>
   );
 }
