@@ -229,7 +229,7 @@ export const ImageListTable: FC<ImageListTableProps> = ({
                   tags={row.original.tags}
                 />
               }
-              to={`/portal/image/createimage/${row.original.imagepackName}`}
+              to={`../createimage/${row.original.imagepackName}`}
               tooltip={`查看镜像详情`}
             />
           );

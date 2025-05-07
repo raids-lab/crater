@@ -61,11 +61,11 @@ export const adminPath: PathInfo = {
       isEmpty: true,
       children: [
         {
-          path: "create",
+          path: "createimage",
           title: "镜像制作",
         },
         {
-          path: "upload",
+          path: "uploadimage",
           title: "镜像列表",
         },
       ],

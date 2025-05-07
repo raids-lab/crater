@@ -525,19 +525,3 @@ export const Component = () => {
 
   return <>{routes}</>;
 };
-
-// export function loadTemplate<T extends FieldValues>({
-//   form,
-//   metadata,
-//   uiStateUpdaters = [],
-//   onSuccess,
-//   dataProcessor,
-// }: TemplateInfoProps<T>) {
-//   useTemplateLoader({
-//     form,
-//     metadata,
-//     uiStateUpdaters,
-//     onSuccess,
-//     dataProcessor,
-//   });
-// }
