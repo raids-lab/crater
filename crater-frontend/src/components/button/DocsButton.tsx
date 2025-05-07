@@ -27,7 +27,7 @@ const DocsButton = ({
       {...props}
       asChild
     >
-      <Link to={`${website}/docs/${url}`} reloadDocument>
+      <Link to={`${website}/docs/user/${url}`} reloadDocument>
         <BookOpenIcon />
         {title}
       </Link>
