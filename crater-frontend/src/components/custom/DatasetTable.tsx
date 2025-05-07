@@ -55,12 +55,10 @@ export function DatasetTable({ apiGetDataset }: DatesetTableProps) {
             }
             className="sm:max-w-3xl"
           >
-            <div className="pt-1">
-              <DataCreateForm
-                closeSheet={() => setOpenSheet(false)}
-                type="dataset"
-              />
-            </div>
+            <DataCreateForm
+              closeSheet={() => setOpenSheet(false)}
+              type="dataset"
+            />
           </SandwichSheet>
         </div>
       }

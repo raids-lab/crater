@@ -212,15 +212,10 @@ export function useImageTemplateLoader<T extends FieldValues>({
   useEffect(() => {
     if (imagePackName !== "") {
       loadImageTemplate(imagePackName);
-    } else {
-      toast.info("====");
-      form.reset();
     }
+
     return () => {
       setImagePackName("");
-      // form.reset();
-      const emptyValues = {} as unknown as T;
-      form.reset(emptyValues);
     };
   }, [form, imagePackName, loadImageTemplate, setImagePackName]);
 }

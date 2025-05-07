@@ -57,12 +57,10 @@ export function ModelTable({ apiGetDataset, sourceType }: DatesetTableProps) {
             }
             className="sm:max-w-3xl"
           >
-            <div className="pt-1">
-              <DataCreateForm
-                closeSheet={() => setOpenSheet(false)}
-                type={sourceType}
-              />
-            </div>
+            <DataCreateForm
+              closeSheet={() => setOpenSheet(false)}
+              type={sourceType}
+            />
           </SandwichSheet>
         </div>
       }

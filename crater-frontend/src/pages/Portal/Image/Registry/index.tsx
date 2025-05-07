@@ -249,6 +249,8 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                         kanikoInfo.buildSource === ImagePackSource.PipApt
                       ) {
                         setOpenPipAptSheet(true);
+                      } else {
+                        toast.error("该镜像不支持克隆");
                       }
                     }}
                   >
