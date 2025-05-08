@@ -3,8 +3,8 @@ import { craterPath } from "@/pages/Portal/path";
 
 export type PathInfo = {
   path: string; // router path
-  title: string; // title in sidebar
-  titleNav?: string; // title in navibar (if not set, use title)
+  titleKey: string; // i18n key for title
+  titleNavKey?: string; // i18n key for titleNav
   isEmpty?: boolean; // if true, will disable the return in breadcrumb
   children?: PathInfo[]; // children path info
 };
@@ -24,7 +24,7 @@ export const getBreadcrumbByPath = (
     const item = currentPath.find((item) => item.path === path[i]);
     if (item) {
       result.push({
-        title: item.titleNav ?? item.title,
+        title: item.titleNavKey ?? item.titleKey,
         path: item.path,
         isEmpty: item.isEmpty,
       });
@@ -42,7 +42,7 @@ export const getTitleByPath = (path: string[]): string => {
     const item = currentPath.find((item) => item.path === path[i]);
     if (item) {
       if (i === path.length - 1) {
-        return item.title;
+        return item.titleKey;
       }
       currentPath = item.children || [];
     } else {

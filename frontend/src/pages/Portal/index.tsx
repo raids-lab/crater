@@ -25,6 +25,7 @@ import ResourseOverview from "@/components/monitor/ResourceOverview";
 import NetworkOverview from "@/components/monitor/NetworkOverview";
 import UserDetail from "@/components/custom/UserDetail";
 import shareFileRoutes from "./Data/ShareFile";
+import { useTranslation } from "react-i18next";
 
 const portalRoutes: RouteObject[] = [
   {
@@ -131,127 +132,132 @@ const portalRoutes: RouteObject[] = [
   },
 ];
 
-const userSidebarGroups: NavGroupProps[] = [
-  {
-    title: "资源与监控",
-    items: [
-      {
-        title: "平台概览",
-        url: "overview",
-        icon: SquareChartGanttIcon,
-      },
-      {
-        title: "集群监控",
-        icon: BarChartBigIcon,
-        items: [
-          {
-            title: "GPU 大盘",
-            url: "monitor/gpu",
-          },
-          {
-            title: "空闲资源",
-            url: "monitor/node",
-          },
-          {
-            title: "网络监控",
-            url: "monitor/network",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    title: "作业与服务",
-    items: [
-      {
-        title: "我的作业",
-        icon: FlaskConicalIcon,
-        items: [
-          {
-            title: "自定义作业",
-            url: "job/batch",
-          },
-          {
-            title: "Jupyter Lab",
-            url: "job/inter",
-          },
-        ],
-      },
-      {
-        title: "作业模板",
-        url: "modal",
-        icon: ShoppingBagIcon,
-      },
-    ],
-  },
-  {
-    title: "数据与镜像",
-    items: [
-      {
-        title: "镜像管理",
-        icon: BoxIcon,
-        items: [
-          {
-            title: "镜像制作",
-            url: "image/createimage",
-          },
-          {
-            title: "镜像列表",
-            url: "image/uploadimage",
-          },
-        ],
-      },
-      {
-        title: "数据管理",
-        icon: DatabaseIcon,
-        items: [
-          {
-            title: "文件系统",
-            url: "data/filesystem",
-          },
-          {
-            title: "数据集",
-            url: "data/dataset",
-          },
-          {
-            title: "模型",
-            url: "data/model",
-          },
-          {
-            title: "共享文件",
-            url: "data/sharefile",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    title: "其他",
-    items: [
-      {
-        title: "设置",
-        icon: SettingsIcon,
-        items: [
-          {
-            title: "用户设置",
-            url: "setting/user",
-          },
-        ],
-      },
-      {
-        title: "帮助与反馈",
-        url: "feedback",
-        icon: MessageSquareMoreIcon,
-      },
-    ],
-  },
-];
+// 使用 hook 获取翻译版的侧边栏组
+const useUserSidebarGroups = (): NavGroupProps[] => {
+  const { t } = useTranslation();
+
+  return [
+    {
+      title: t("sidebar.resourceAndMonitoring"),
+      items: [
+        {
+          title: t("navigation.platformOverview"),
+          url: "overview",
+          icon: SquareChartGanttIcon,
+        },
+        {
+          title: t("navigation.clusterMonitoring"),
+          icon: BarChartBigIcon,
+          items: [
+            {
+              title: t("navigation.gpuMonitoring"),
+              url: "monitor/gpu",
+            },
+            {
+              title: t("navigation.freeResources"),
+              url: "monitor/node",
+            },
+            {
+              title: t("navigation.networkMonitoring"),
+              url: "monitor/network",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      title: t("sidebar.jobsAndServices"),
+      items: [
+        {
+          title: t("navigation.myJobs"),
+          icon: FlaskConicalIcon,
+          items: [
+            {
+              title: t("navigation.customJobs"),
+              url: "job/batch",
+            },
+            {
+              title: t("navigation.jupyterLab"),
+              url: "job/inter",
+            },
+          ],
+        },
+        {
+          title: t("navigation.jobTemplates"),
+          url: "modal",
+          icon: ShoppingBagIcon,
+        },
+      ],
+    },
+    {
+      title: t("sidebar.dataAndImages"),
+      items: [
+        {
+          title: t("navigation.imageManagement"),
+          icon: BoxIcon,
+          items: [
+            {
+              title: t("navigation.imageCreation"),
+              url: "image/createimage",
+            },
+            {
+              title: t("navigation.imageList"),
+              url: "image/uploadimage",
+            },
+          ],
+        },
+        {
+          title: t("navigation.dataManagement"),
+          icon: DatabaseIcon,
+          items: [
+            {
+              title: t("navigation.fileSystem"),
+              url: "data/filesystem",
+            },
+            {
+              title: t("navigation.datasets"),
+              url: "data/dataset",
+            },
+            {
+              title: t("navigation.models"),
+              url: "data/model",
+            },
+            {
+              title: t("navigation.sharedFiles"),
+              url: "data/sharefile",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      title: t("sidebar.others"),
+      items: [
+        {
+          title: t("navigation.settings"),
+          icon: SettingsIcon,
+          items: [
+            {
+              title: t("navigation.userSettings"),
+              url: "setting/user",
+            },
+          ],
+        },
+        {
+          title: t("navigation.helpAndFeedback"),
+          url: "feedback",
+          icon: MessageSquareMoreIcon,
+        },
+      ],
+    },
+  ];
+};
 
 export const portalRoute: RouteObject = {
   path: "/portal",
   element: (
     <AuthedRouter>
-      <DashboardLayout groups={userSidebarGroups} />
+      <DashboardLayoutWrapper />
     </AuthedRouter>
   ),
   children: [
@@ -266,3 +272,9 @@ export const portalRoute: RouteObject = {
     },
   ],
 };
+
+// 创建一个包装组件来使用 hooks
+function DashboardLayoutWrapper() {
+  const groups = useUserSidebarGroups();
+  return <DashboardLayout groups={groups} />;
+}

@@ -2,75 +2,75 @@ import { PathInfo } from "@/utils/title";
 
 export const craterPath: PathInfo = {
   path: "portal",
-  title: "Portal",
+  titleKey: "navigation.portal",
   isEmpty: true,
   children: [
     {
       path: "overview",
-      title: "平台概览",
-      titleNav: "异构云资源混合调度与运维平台",
+      titleKey: "navigation.platformOverview",
+      titleNavKey: "navigation.platformFullName",
     },
     {
       path: "monitor",
-      title: "集群监控",
+      titleKey: "navigation.clusterMonitoring",
       isEmpty: true,
       children: [
         {
           path: "gpu",
-          title: "GPU 监控",
+          titleKey: "navigation.gpuMonitoring",
         },
         {
           path: "node",
-          title: "空闲资源",
+          titleKey: "navigation.freeResources",
         },
         {
           path: "network",
-          title: "网络监控",
+          titleKey: "navigation.networkMonitoring",
         },
       ],
     },
     {
       path: "job",
-      title: "我的作业",
+      titleKey: "navigation.myJobs",
       isEmpty: true,
       children: [
         {
           path: "batch",
-          title: "自定义作业",
+          titleKey: "navigation.customJobs",
           children: [
             {
               path: "new-vcjobs",
-              title: "新建自定义作业",
+              titleKey: "navigation.createCustomJob",
             },
             {
               path: "new-aijobs",
-              title: "新建自定义作业",
+              titleKey: "navigation.createCustomJob",
             },
             {
               path: "new-spjobs",
-              title: "新建自定义作业",
+              titleKey: "navigation.createCustomJob",
             },
             {
               path: "new-tensorflow",
-              title: "新建 Tensorflow PS 作业",
+              titleKey: "navigation.createTensorflowJob",
             },
             {
               path: "new-pytorch",
-              title: "新建 Pytorch DDP 作业",
+              titleKey: "navigation.createPytorchJob",
             },
           ],
         },
         {
           path: "inter",
-          title: "Jupyter Lab",
+          titleKey: "navigation.jupyterLab",
           children: [
             {
               path: "new-jupyter-vcjobs",
-              title: "新建 Jupyter Lab",
+              titleKey: "navigation.createJupyterLab",
             },
             {
               path: "new-jupyter-aijobs",
-              title: "新建 Jupyter Lab",
+              titleKey: "navigation.createJupyterLab",
             },
           ],
         },
@@ -78,75 +78,75 @@ export const craterPath: PathInfo = {
     },
     {
       path: "modal",
-      title: "作业模板",
+      titleKey: "navigation.jobTemplates",
       isEmpty: true,
     },
     {
       path: "image",
-      title: "我的镜像",
+      titleKey: "navigation.myImages",
       isEmpty: true,
       children: [
         {
           path: "createimage",
-          title: "镜像制作",
+          titleKey: "navigation.imageCreation",
         },
         {
           path: "uploadimage",
-          title: "镜像列表",
+          titleKey: "navigation.imageList",
         },
       ],
     },
     {
       path: "data",
-      title: "数据管理",
+      titleKey: "navigation.dataManagement",
       isEmpty: true,
       children: [
         {
           path: "filesystem",
-          title: "文件系统",
+          titleKey: "navigation.fileSystem",
         },
         {
           path: "dataset",
-          title: "数据集",
+          titleKey: "navigation.datasets",
         },
         {
           path: "model",
-          title: "模型",
+          titleKey: "navigation.models",
         },
         {
           path: "sharefile",
-          title: "共享文件",
+          titleKey: "navigation.sharedFiles",
         },
       ],
     },
     {
       path: "account",
-      title: "账户管理",
+      titleKey: "navigation.accountManagement",
       isEmpty: true,
       children: [
         {
           path: "member",
-          title: "成员管理",
+          titleKey: "navigation.memberManagement",
         },
       ],
     },
     {
       path: "setting",
-      title: "设置",
+      titleKey: "navigation.settings",
       children: [
         {
           path: "user",
-          title: "用户设置",
+          titleKey: "navigation.userSettings",
         },
         {
           path: "platform",
-          title: "平台设置",
+          titleKey: "navigation.platformSettings",
         },
       ],
     },
     {
       path: "feedback",
-      title: "帮助与反馈",
+      titleKey: "navigation.helpAndFeedback",
     },
   ],
 };

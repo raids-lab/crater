@@ -20,6 +20,7 @@ import Website from "./pages/Website";
 import { getDefaultStore, Provider as JotaiProvider } from "jotai";
 import NotFound from "./components/layout/NotFound";
 import { configDocsAsHomeAtom } from "./utils/store/config";
+import "./i18n";
 
 const defaultStore = getDefaultStore();
 

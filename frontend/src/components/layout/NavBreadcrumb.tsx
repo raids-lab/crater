@@ -12,10 +12,12 @@ import { globalBreadCrumb } from "@/utils/store";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import useBreadcrumb from "@/hooks/useBreadcrumb";
+import { useTranslation } from "react-i18next";
 
 export const NavBreadcrumb = ({ className }: { className: string }) => {
   useBreadcrumb();
   const breadcrumb = useAtomValue(globalBreadCrumb);
+  const { t } = useTranslation();
 
   return (
     <Breadcrumb className={className}>
@@ -32,17 +34,17 @@ export const NavBreadcrumb = ({ className }: { className: string }) => {
                     "text-muted-foreground": breadcrumb.length > 1,
                   })}
                 >
-                  {item.title}
+                  {t(item.title)}
                 </BreadcrumbPage>
               )}
               {!item.isEmpty && (
                 <BreadcrumbItem key={`bread-item-${index}`}>
                   {item.path && index !== breadcrumb.length - 1 ? (
                     <BreadcrumbLink asChild>
-                      <Link to={item.path}>{item.title}</Link>
+                      <Link to={item.path}>{t(item.title)}</Link>
                     </BreadcrumbLink>
                   ) : (
-                    <BreadcrumbPage>{item.title}</BreadcrumbPage>
+                    <BreadcrumbPage>{t(item.title)}</BreadcrumbPage>
                   )}
                 </BreadcrumbItem>
               )}

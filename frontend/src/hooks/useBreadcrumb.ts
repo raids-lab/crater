@@ -3,11 +3,13 @@ import { getBreadcrumbByPath } from "@/utils/title";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useSetAtom } from "jotai";
+import { useTranslation } from "react-i18next";
 
 const useBreadcrumb = () => {
   const setBreadcrumb = useSetAtom(globalBreadCrumb);
   const location = useLocation();
   const [detail, setDetail] = useState<BreadCrumbItem[]>([]);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const pathParts = location.pathname.split("/").filter(Boolean);
@@ -18,7 +20,7 @@ const useBreadcrumb = () => {
       for (let i = 0; i < titles.length; i++) {
         url += `/${titles[i].path}`;
         ans.push({
-          title: titles[i].title,
+          title: t(titles[i].title), // 会在渲染时使用翻译
           path: url,
           isEmpty: titles[i].isEmpty,
         });
@@ -28,7 +30,7 @@ const useBreadcrumb = () => {
       }
       setBreadcrumb(ans.slice(1));
     }
-  }, [location, setBreadcrumb, detail]);
+  }, [location, setBreadcrumb, detail, t]);
 
   return setDetail;
 };

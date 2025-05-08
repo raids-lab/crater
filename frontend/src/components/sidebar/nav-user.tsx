@@ -2,6 +2,7 @@ import {
   BadgeCheck,
   BookOpenIcon,
   ChevronsUpDown,
+  Globe,
   LogOut,
   Moon,
   Sparkles,
@@ -13,7 +14,12 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -39,6 +45,7 @@ import useIsAdmin from "@/hooks/useAdmin";
 import { configUrlWebsiteBaseAtom } from "@/utils/store/config";
 import { UserAvatar } from "../custom/UserDetail/UserAvatar";
 import { getUserPseudonym } from "@/utils/pseudonym";
+import { useTranslation } from "react-i18next";
 
 export function NavUser() {
   const website = useAtomValue(configUrlWebsiteBaseAtom);
@@ -52,10 +59,15 @@ export function NavUser() {
   const setLastView = useSetAtom(globalLastView);
   const isAdminView = useIsAdmin();
   const hideUsername = useAtomValue(globalHideUsername);
+  const { t, i18n } = useTranslation();
 
   const displayName = hideUsername
     ? getUserPseudonym(user.name)
     : user.nickname || user.name;
+
+  const changeLanguage = (lng: "zh" | "en" | "jp" | "ko") => {
+    i18n.changeLanguage(lng);
+  };
 
   return (
     <SidebarMenu>
@@ -98,16 +110,19 @@ export function NavUser() {
                       if (isAdminView) {
                         setLastView("portal");
                         navigate("/portal");
-                        toast.success("切换至用户视图");
+                        toast.success(t("navUser.switchToUserView"));
                       } else {
                         setLastView("admin");
                         navigate("/admin");
-                        toast.success("切换至管理员视图");
+                        toast.success(t("navUser.switchToAdminView"));
                       }
                     }}
                   >
                     <Sparkles />
-                    切换为{isAdminView ? "普通用户" : "管理员"}
+                    {t("navUser.switchTo") +
+                      (isAdminView
+                        ? t("navUser.normalUser")
+                        : t("navUser.admin"))}
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
@@ -117,19 +132,55 @@ export function NavUser() {
               <DropdownMenuItem asChild>
                 <Link to="/portal/setting/user">
                   <BadgeCheck />
-                  个人主页
+                  {t("navUser.personalPage")}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => window.open(website)}>
                 <BookOpenIcon />
-                平台文档
+                {t("navUser.platformDocs")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               >
                 {theme === "light" ? <Moon /> : <Sun />}
-                {theme === "light" ? "深色模式" : "浅色模式"}
+                {theme === "light"
+                  ? t("navUser.darkMode")
+                  : t("navUser.lightMode")}
               </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Globe className="text-muted-foreground mr-2 h-4 w-4" />
+                  {t("navUser.language")}
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuRadioGroup>
+                    <DropdownMenuRadioItem
+                      value="zh"
+                      onClick={() => changeLanguage("zh")}
+                    >
+                      {t("navUser.chinese")}
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem
+                      value="en"
+                      onClick={() => changeLanguage("en")}
+                    >
+                      {t("navUser.english")}
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem
+                      value="jp"
+                      onClick={() => changeLanguage("jp")}
+                    >
+                      {t("navUser.japanese")}
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem
+                      value="ko"
+                      onClick={() => changeLanguage("ko")}
+                    >
+                      {t("navUser.korean")}
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -138,11 +189,11 @@ export function NavUser() {
                 setLastView(isAdminView ? "admin" : "portal");
                 queryClient.clear();
                 resetAll();
-                toast.success("已退出");
+                toast.success(t("navUser.loggedOut"));
               }}
             >
               <LogOut className="dark:text-destructive-foreground" />
-              退出登录
+              {t("navUser.logout")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
