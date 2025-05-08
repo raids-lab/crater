@@ -15,13 +15,18 @@ interface DatesetTableProps {
   apiGetDataset: () => Promise<AxiosResponse<IResponse<IDataset[]>>>;
 }
 
-export function ModelTable({ apiGetDataset, sourceType }: DatesetTableProps) {
+export function DataView({ apiGetDataset, sourceType }: DatesetTableProps) {
   const data = useQuery({
     queryKey: ["data", "mydataset"],
     queryFn: () => apiGetDataset(),
     select: (res) => res.data.data,
   });
-  const sourcetitle = sourceType === "model" ? "模型" : "共享文件";
+  const sourceTitle =
+    sourceType === "model"
+      ? "模型"
+      : sourceType === "sharefile"
+        ? "共享文件"
+        : "数据集";
   const [openSheet, setOpenSheet] = useState(false);
 
   return (
@@ -38,21 +43,21 @@ export function ModelTable({ apiGetDataset, sourceType }: DatesetTableProps) {
             owner: dataset.userInfo,
           })) || []
       }
-      title={sourcetitle}
+      title={sourceTitle}
       actionArea={
         <div className="flex flex-row gap-3">
           {sourceType !== "sharefile" && (
-            <DocsButton title={`${sourcetitle}文档`} url="file/model" />
+            <DocsButton title={`${sourceTitle}文档`} url="file/model" />
           )}
           <SandwichSheet
             isOpen={openSheet}
             onOpenChange={setOpenSheet}
-            title={`创建${sourcetitle}`}
-            description={`创建一个新的${sourcetitle}`}
+            title={`创建${sourceTitle}`}
+            description={`创建一个新的${sourceTitle}`}
             trigger={
               <Button className="min-w-fit">
                 <PlusIcon />
-                添加{sourcetitle}
+                添加{sourceTitle}
               </Button>
             }
             className="sm:max-w-3xl"

@@ -1,3 +1,4 @@
+// ignore-i18n-script
 import { Navigate, RouteObject } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { FC, PropsWithChildren } from "react";

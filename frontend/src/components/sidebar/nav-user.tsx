@@ -1,3 +1,4 @@
+// ignore-i18n-script
 import {
   BadgeCheck,
   BookOpenIcon,
