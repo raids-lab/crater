@@ -12,19 +12,17 @@ import {
 } from "lucide-react";
 import batchRoutes from "./Job/Batch";
 import interactiveRoutes from "./Job/Interactive";
-import datasetRoutes from "./Data";
+import { datasetRoutes, modelRoutes, shareFileRoutes } from "./Data";
 import { NavGroupProps } from "@/components/sidebar/types";
 import AuthedRouter from "./AuthedRouter";
 import NotFound from "@/components/layout/NotFound";
 import FeedBack from "./Feedback";
 import UserSettings from "./Setting/UserSetting";
-import modelRoutes from "./Data/modelIndex";
 import AssignmentTemplateList from "./Job/Store";
 import NvidiaOverview from "@/components/monitor/NvidiaOverview";
 import ResourseOverview from "@/components/monitor/ResourceOverview";
 import NetworkOverview from "@/components/monitor/NetworkOverview";
 import UserDetail from "@/components/custom/UserDetail";
-import shareFileRoutes from "./Data/ShareFile";
 import { useTranslation } from "react-i18next";
 
 const portalRoutes: RouteObject[] = [
