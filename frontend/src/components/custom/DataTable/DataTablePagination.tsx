@@ -139,7 +139,8 @@ export function DataTablePagination<TData>({
           </SelectContent>
         </Select>
         <p className="text-muted-foreground pl-1.5 font-medium">
-          {t("dataTablePagination.updatedAt", { time: updatedAt })}，
+          {t("dataTablePagination.updatedAt", { time: updatedAt })}
+          {", "}
           {table.getFilteredSelectedRowModel().rows.length === 0 ? (
             <>
               {t("dataTablePagination.totalItems", {

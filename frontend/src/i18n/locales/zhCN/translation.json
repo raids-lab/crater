@@ -1,626 +1,964 @@
 {
-  "accountDetail.form.validation.minUsers": "Please select at least one user",
-  "accountDetail.form.validation.invalidRole": "Invalid role",
-  "accountDetail.form.validation.invalidAccess": "Invalid access mode",
-  "accountDetail.table.headers.name": "Username",
-  "accountDetail.table.headers.role": "Account Role",
-  "accountDetail.table.headers.accessmode": "Access Permissions",
-  "accountDetail.table.headers.capability": "Resource Limits",
-  "accountDetail.table.accessmodes.readOnly": "Read Only",
-  "accountDetail.table.accessmodes.readWrite": "Read/Write",
-  "accountDetail.toast.added": "User added successfully",
-  "accountDetail.toast.updated": "User information updated",
-  "accountDetail.toast.removed": "User removed",
-  "accountDetail.table.actions.moreOptions": "More options",
-  "accountDetail.table.actions.operations": "Operations",
-  "accountDetail.table.actions.role": "Role",
-  "accountDetail.table.actions.permissions": "Permissions",
-  "accountDetail.table.actions.delete": "Delete",
-  "accountDetail.dialog.title.deleteUser": "Delete User",
-  "accountDetail.dialog.description.deleteUser": "User 「{{name}}」 will be deleted. Please proceed with caution.",
-  "accountDetail.dialog.cancel": "Cancel",
-  "accountDetail.dialog.delete": "Delete",
-  "accountDetail.table.filter.searchUser": "Search username",
-  "accountDetail.table.filter.role": "Role",
-  "accountDetail.table.filter.permissions": "Permissions",
-  "accountDetail.addUser": "Add User",
-  "accountDetail.form.user": "User",
-  "accountDetail.form.selectUser": "Select user",
-  "accountDetail.form.searchUser": "Search users...",
-  "accountDetail.form.noUsersFound": "No users found",
-  "accountDetail.form.selectUsersToAdd": "Select one or more users to add to the account",
-  "accountDetail.form.role": "Role",
-  "accountDetail.form.userRole.normal": "Regular User",
-  "accountDetail.form.userRole.admin": "Administrator",
-  "accountDetail.form.roleDescription": "Configure the user's role in the account",
-  "accountDetail.form.access": "Access Permissions",
-  "accountDetail.form.access.readOnly": "Read Only",
-  "accountDetail.form.access.readWrite": "Read/Write",
-  "accountDetail.form.accessDescription": "Set access permissions for the user in the account space",
-  "accountDetail.form.cancel": "Cancel",
-  "accountDetail.form.add": "Add",
-  "accountDetail.tabs.users": "User Management",
-  "accountDetail.tabs.quota": "Quota Usage",
-  "accountDetail.error.title": "Unable to load account data",
-  "accountDetail.error.description": "Account does not exist or you don't have access",
-  "accountDetail.info.userCount": "Number of Users",
-  "accountDetail.info.accountLevel": "Account Level",
-  "accountDetail.info.expiry": "Expiry Date",
-  "loadingIndicator.loadingText": "Loading...",
-  "fileSelect.confirmButton": "确认选择",
-  "refreshButton.ariaLabel": "Refresh",
-  "imageItem.tooltip.createdOn": "创建于",
-  "forwardCard.title": "外部访问",
-  "forwardForm.nameLabel": "规则名 {{index}}",
-  "forwardForm.nameDescription": "只能包含小写字母，最多 20 字符",
-  "forwardForm.portLabel": "端口号 {{index}}",
-  "forwardForm.removeButton": "Remove",
-  "forwardForm.addButton": "添加端口转发规则",
-  "quotaCard.used": "Used",
-  "quotaCard.limit": "Limit: ",
-  "quotaCard.entitled": "Entitled: ",
-  "quotaCard.usedLabel": "Used: ",
-  "quotaCard.guaranteed": "Guaranteed: ",
-  "sharedResource.serialNumber": "序号",
-  "sharedResource.userName": "用户名称",
-  "sharedResource.userCancelShare": "取消用户共享",
-  "sharedResource.cancelShare": "取消共享",
-  "sharedResource.cancelUserShare": "取消用户共享",
-  "sharedResource.cancelUserShareDescription": "和指定的用户取消共享的{{type}}",
-  "sharedResource.cancel": "取消",
-  "sharedResource.confirm": "确认",
-  "sharedResource.accountName": "账户名称",
-  "sharedResource.cancelAccountShare": "取消账户共享",
-  "sharedResource.cancelAccountShareDescription": "和指定的账户取消共享的{{type}}",
-  "sharedResource.name": "名称",
-  "sharedResource.lastModified": "更新于",
-  "sharedResource.size": "大小",
-  "sharedResource.shareCanceled": "已取消共享",
-  "sharedResource.deletedSuccess": "{{type}}已删除",
-  "sharedResource.deleteFailed": "删除{{type}}失败",
-  "sharedResource.detail": "详情",
-  "sharedResource.dataset": "数据集",
-  "sharedResource.model": "模型",
-  "sharedResource.sharefile": "共享文件",
-  "sharedResource.userShare": "用户共享",
-  "sharedResource.shareToUser": "分享至用户",
-  "sharedResource.shareToUserDescription": "和指定的用户共享的{{type}}",
-  "sharedResource.accountShare": "账户共享",
-  "sharedResource.shareToAccount": "共享{{type}}",
-  "sharedResource.shareToAccountDescription": "和账户共享的{{type}}",
-  "sharedResource.delete": "删除",
-  "sharedResource.deleteTitle": "删除{{type}}",
-  "sharedResource.deleteDescription": "{{type}}「{{name}}」将被删除",
-  "sharedResource.user": "用户",
-  "sharedResource.createdAt": "创建于",
-  "sharedResource.datasetInfo": "{{type}}基本信息",
-  "sharedResource.datasetTags": "{{type}}标签",
-  "sharedResource.datasetRepo": "{{type}}开源仓库地址",
-  "sharedResource.datasetDescription": "{{type}}描述",
-  "sharedResource.userShares": "{{type}}的用户",
-  "sharedResource.accountShares": "{{type}}的账户",
-  "sharedResource.datasetFiles": "{{type}}的文件目录",
-  "sharedResource.goBack": "返回上一级",
-  "sharedResource.editable": "可编辑",
-  "sharedResource.readOnly": "只读",
-  "combobox.select": "Select {{formTitle}}",
-  "combobox.search": "Search {{formTitle}}",
-  "combobox.noResults": "No matching {{formTitle}} found",
-  "toast.accountDeleted": "账户 {{name}} 已删除",
-  "toast.accountCreated": "账户 {{name}} 新建成功",
-  "toast.accountUpdated": "账户 {{name}} 更新成功",
-  "accountManagement.title": "账户管理",
-  "accountManagement.description": "账户可包含多名用户，每个账户可设置资源配额，公共账户默认不设置配额，优先级最低",
-  "accountForm.createButton": "新建账户",
-  "accountForm.editTitle": "编辑账户",
-  "accountForm.createTitle": "新建账户",
-  "accountForm.description": "账户可包含多名用户，每个账户可设置资源配额和过期时间",
-  "accountForm.nameLabel": "账户名称",
-  "accountForm.nameDescription": "账户名称最多16个字符，可以包含汉字，但必须是唯一的",
-  "accountForm.expiredAtLabel": "过期时间",
-  "accountForm.expiredAtPlaceholder": "请选择日期",
-  "accountForm.expiredAtDescription": "若不填写，账户将永不过期",
-  "accountForm.adminsLabel": "账户管理员",
-  "accountForm.adminsSearchPlaceholder": "搜索用户",
-  "accountForm.adminsPlaceholder": "选择用户",
-  "accountForm.adminsDescription": "指定账户管理员后，账户内的用户管理、资源分配等操作，将由账户管理员负责",
-  "accountForm.quotaLabel": "资源配额",
-  "accountForm.resourcePlaceholder": "资源",
-  "accountForm.guaranteedPlaceholder": "保证",
-  "accountForm.deservedPlaceholder": "应得",
-  "accountForm.capabilityPlaceholder": "上限",
-  "accountForm.quotaDescription": "请输入整数，CPU 资源单位为核数，Memory 资源单位为 GB。如果不填写，则保证和应得为 0，上限为无穷大",
-  "accountForm.addQuotaButton": "添加资源配额维度",
-  "accountForm.updateButton": "更新账户",
+  "accountDetail": {
+    "form": {
+      "validation": {
+        "minUsers": "请至少选择一名用户",
+        "invalidRole": "无效的角色",
+        "invalidAccess": "无效的访问模式"
+      },
+      "user": "用户",
+      "selectUser": "选择用户",
+      "searchUser": "搜索用户...",
+      "noUsersFound": "未找到用户",
+      "selectUsersToAdd": "选择一个或多个用户添加到账户",
+      "role": "角色",
+      "userRole": {
+        "normal": "普通用户",
+        "admin": "管理员"
+      },
+      "roleDescription": "配置用户在账户中的角色",
+      "access": "访问权限",
+      "accessModes": {
+        "readOnly": "只读",
+        "readWrite": "读写"
+      },
+      "accessDescription": "为用户在账户空间中设置访问权限",
+      "cancel": "取消",
+      "add": "添加"
+    },
+    "table": {
+      "headers": {
+        "name": "用户名",
+        "role": "账户角色",
+        "accessmode": "访问权限",
+        "capability": "资源限制"
+      },
+      "accessmodes": {
+        "readOnly": "只读",
+        "readWrite": "读写"
+      },
+      "actions": {
+        "moreOptions": "更多选项",
+        "operations": "操作",
+        "role": "角色",
+        "permissions": "权限",
+        "delete": "删除"
+      },
+      "filter": {
+        "searchUser": "搜索用户名",
+        "role": "角色",
+        "permissions": "权限"
+      }
+    },
+    "toast": {
+      "added": "用户添加成功",
+      "updated": "用户信息已更新",
+      "removed": "用户已移除"
+    },
+    "dialog": {
+      "title": {
+        "deleteUser": "删除用户"
+      },
+      "description": {
+        "deleteUser": "用户「{{name}}」将被删除，请谨慎操作。"
+      },
+      "cancel": "取消",
+      "delete": "删除"
+    },
+    "addUser": "添加用户",
+    "tabs": {
+      "users": "用户管理",
+      "quota": "配额使用"
+    },
+    "error": {
+      "title": "无法加载账户数据",
+      "description": "账户不存在或您没有访问权限"
+    },
+    "info": {
+      "userCount": "用户数量",
+      "accountLevel": "账户等级",
+      "expiry": "过期日期"
+    }
+  },
+  "loadingIndicator": {
+    "loadingText": "加载中..."
+  },
+  "fileSelect": {
+    "confirmButton": "确认选择"
+  },
+  "refreshButton": {
+    "ariaLabel": "刷新"
+  },
+  "imageItem": {
+    "tooltip": {
+      "createdOn": "创建于"
+    }
+  },
+  "forwardCard": {
+    "title": "外部访问"
+  },
+  "forwardForm": {
+    "nameLabel": "规则名 {{index}}",
+    "nameDescription": "只能包含小写字母，最多 20 字符",
+    "portLabel": "端口号 {{index}}",
+    "removeButton": "移除",
+    "addButton": "添加端口转发规则"
+  },
+  "quotaCard": {
+    "used": "已使用",
+    "limit": "限制: ",
+    "entitled": "应得: ",
+    "usedLabel": "已使用: ",
+    "guaranteed": "保证: "
+  },
+  "sharedResource": {
+    "serialNumber": "序号",
+    "userName": "用户名称",
+    "userCancelShare": "取消用户共享",
+    "cancelShare": "取消共享",
+    "cancelUserShare": "取消用户共享",
+    "cancelUserShareDescription": "和指定的用户取消共享的{{type}}",
+    "cancel": "取消",
+    "confirm": "确认",
+    "accountName": "账户名称",
+    "cancelAccountShare": "取消账户共享",
+    "cancelAccountShareDescription": "和指定的账户取消共享的{{type}}",
+    "name": "名称",
+    "lastModified": "更新于",
+    "size": "大小",
+    "shareCanceled": "已取消共享",
+    "deletedSuccess": "{{type}}已删除",
+    "deleteFailed": "删除{{type}}失败",
+    "detail": "详情",
+    "dataset": "数据集",
+    "model": "模型",
+    "sharefile": "共享文件",
+    "userShare": "用户共享",
+    "shareToUser": "分享至用户",
+    "shareToUserDescription": "和指定的用户共享的{{type}}",
+    "accountShare": "账户共享",
+    "shareToAccount": "共享{{type}}",
+    "shareToAccountDescription": "和账户共享的{{type}}",
+    "delete": "删除",
+    "deleteTitle": "删除{{type}}",
+    "deleteDescription": "{{type}}「{{name}}」将被删除",
+    "user": "用户",
+    "createdAt": "创建于",
+    "datasetInfo": "{{type}}基本信息",
+    "datasetTags": "{{type}}标签",
+    "datasetRepo": "{{type}}开源仓库地址",
+    "datasetDescription": "{{type}}描述",
+    "userShares": "{{type}}的用户",
+    "accountShares": "{{type}}的账户",
+    "datasetFiles": "{{type}}的文件目录",
+    "goBack": "返回上一级",
+    "editable": "可编辑",
+    "readOnly": "只读"
+  },
+  "combobox": {
+    "select": "选择 {{formTitle}}",
+    "search": "搜索 {{formTitle}}",
+    "noResults": "未找到匹配的 {{formTitle}}"
+  },
+  "toast": {
+    "accountDeleted": "账户 {{name}} 已删除",
+    "accountCreated": "账户 {{name}} 新建成功",
+    "accountUpdated": "账户 {{name}} 更新成功"
+  },
+  "accountManagement": {
+    "title": "账户管理",
+    "description": "账户可包含多名用户，每个账户可设置资源配额，公共账户默认不设置配额，优先级最低"
+  },
+  "accountForm": {
+    "createButton": "新建账户",
+    "editTitle": "编辑账户",
+    "createTitle": "新建账户",
+    "description": "账户可包含多名用户，每个账户可设置资源配额和过期时间",
+    "nameLabel": "账户名称",
+    "nameDescription": "账户名称最多16个字符，可以包含汉字，但必须是唯一的",
+    "expiredAtLabel": "过期时间",
+    "expiredAtPlaceholder": "请选择日期",
+    "expiredAtDescription": "若不填写，账户将永不过期",
+    "adminsLabel": "账户管理员",
+    "adminsSearchPlaceholder": "搜索用户",
+    "adminsPlaceholder": "选择用户",
+    "adminsDescription": "指定账户管理员后，账户内的用户管理、资源分配等操作，将由账户管理员负责",
+    "quotaLabel": "资源配额",
+    "resourcePlaceholder": "资源",
+    "guaranteedPlaceholder": "保证",
+    "deservedPlaceholder": "应得",
+    "capabilityPlaceholder": "上限",
+    "quotaDescription": "请输入整数，CPU 资源单位为核数，Memory 资源单位为 GB。如果不填写，则保证和应得为 0，上限为无穷大",
+    "addQuotaButton": "添加资源配额维度",
+    "updateButton": "更新账户"
+  },
   "imageSettingsCard": "高级设置",
-  "imageSettingsForm.tipBadgeTitle": "镜像链接",
-  "imageSettingsForm.nameLabel": "名称",
-  "imageSettingsForm.namePlaceholder": "默认镜像名称",
-  "imageSettingsForm.tagLabel": "标签",
-  "imageSettingsForm.tagPlaceholder": "默认镜像标签",
-  "imageSettingsForm.description": "输入用户自定义的镜像名和镜像标签，若为空，则由系统自动生成",
-  "formExportButton.buttonText": "导出配置",
-  "formExportButton.tooltipContent": "将当前配置导出到本地文件",
-  "dataset.type.dataset": "数据集",
-  "dataset.type.model": "模型",
-  "dataset.type.sharefile": "共享文件",
-  "dataset.updateDialog.title": "更新{{type}}",
-  "dataset.form.nameLabel": "{{type}}名称",
-  "dataset.form.describeLabel": "{{type}}描述",
-  "dataset.form.urlLabel": "{{type}}地址",
-  "dataset.form.weburlLabel": "{{type}}仓库地址",
-  "dataset.form.editTitle": "更新",
-  "dataset.fileSelect.title": "选择数据集地址",
-  "dataset.tags.label": "{{type}}标签",
-  "dataset.tags.description": "为{{type}}添加标签，以便分类和搜索",
-  "dataset.toast.success": "{{name}} 更新成功",
-  "dataset.toast.failure": "更新失败，请检查网络或数据格式",
-  "common.cancel": "取消",
-  "common.updating": "更新中...",
-  "dataset.form.updateButton": "更新{{type}}",
-  "otherOptionsFormCard.accordionTitle": "其他选项",
-  "otherOptionsFormCard.receiveStatusNotifications": "接收状态通知",
-  "otherOptionsFormCard.tooltip.receiveEmailNotifications": "通过邮件接收通知：",
-  "otherOptionsFormCard.tooltip.notification1": "1. 作业开始运行通知（排队一段时间后）",
-  "otherOptionsFormCard.tooltip.notification2": "2. 作业运行成功通知",
-  "otherOptionsFormCard.tooltip.notification3": "3. 作业运行失败通知",
-  "otherOptionsFormCard.tooltip.notification4": "4. 作业低利用率/长运行时间即将释放通知",
-  "otherOptionsFormCard.tooltip.notification5": "5. 作业低利用率/长运行时间已释放通知",
-  "otherOptionsFormCard.tooltip.emailSupport": "注：支持北航邮箱、Google 邮箱等",
-  "otherOptionsFormCard.specifyWorkNode": "指定工作节点",
-  "otherOptionsFormCard.tooltip.debugPerformanceTesting": "用于调试，或对特定节点进行性能测试场景",
-  "otherOptionsFormCard.nodeNameDescription": "节点名称（可通过空闲资源查询获取）",
-  "table.headers.nickname": "账户",
-  "table.headers.deserved": "应得",
-  "table.headers.guaranteed": "保证",
-  "table.headers.capability": "上限",
-  "table.tooltip.expired": "已过期",
-  "table.tooltip.valid": "有效",
-  "table.tooltip.expires": "过期",
-  "table.actions.deleteTitle": "删除账户",
-  "table.actions.deleteDescription": "账户 {{name}} 将被删除，请谨慎操作。",
-  "table.actions.delete": "删除",
-  "table.toolbar.searchPlaceholder": "搜索账户名称",
-  "table.actions.manageUser": "管理用户",
-  "table.actions.editQuota": "修改配额",
-  "table.actions.cancel": "取消",
-  "envFormCard.variableName": "变量名 {{index}}",
-  "envFormCard.variableValue": "变量值 {{index}}",
-  "envFormCard.addButton": "添加 {{cardTitle}}",
-  "envFormCard.closeButton": "关闭",
-  "tree.folderTitle.public": "公共空间",
-  "tree.folderTitle.account": "账户空间",
-  "tree.folderTitle.default": "用户空间",
-  "tree.adminFolderTitle.public": "公共空间",
-  "tree.adminFolderTitle.account": "账户空间",
-  "tree.adminFolderTitle.default": "用户空间",
-  "imageFormField.label": "容器镜像",
-  "imageFormField.comboboxFormTitle": "镜像",
-  "tagFilter.label": "按标签筛选",
-  "formImportButton.tooltip": "从本地文件导入作业配置",
-  "formImportButton.buttonText": "导入配置",
-  "formImportButton.successToast": "导入配置成功",
-  "updateResourceForm.title": "编辑资源",
-  "updateResourceForm.description": "{{name}} 的详细信息",
-  "updateResourceForm.label": "别名",
-  "updateResourceForm.formDescription": "用于提交作业时，选择节点类型",
-  "updateResourceForm.cancelButton": "取消",
-  "updateResourceForm.submitButton": "提交",
-  "updateResourceForm.labelError": "别名不能为空",
-  "updateResourceForm.successMessage": "更新成功",
-  "updateResourceTypeForm.title": "设置资源类型",
-  "updateResourceTypeForm.label": "资源类型",
-  "updateResourceTypeForm.placeholder": "选择资源类型",
-  "updateResourceTypeForm.type.default": "无类型",
-  "updateResourceTypeForm.type.gpu": "GPU",
-  "updateResourceTypeForm.type.rdma": "RDMA",
-  "updateResourceTypeForm.formDescription": "GPU 资源可以关联 RDMA 网络资源。",
-  "updateResourceTypeForm.submitButton": "保存",
-  "updateResourceTypeForm.successMessage": "资源类型已更新",
-  "networkAssociationForm.title": "管理网络关联",
-  "networkAssociationForm.gpuResourceLabel": "GPU 资源",
-  "networkAssociationForm.currentNetworksLabel": "当前关联的网络",
-  "networkAssociationForm.availableResourcesLabel": "可用 RDMA 资源",
-  "networkAssociationForm.loadingMessage": "加载中...",
-  "networkAssociationForm.noNetworksMessage": "暂无关联网络",
-  "networkAssociationForm.noResourcesMessage": "暂无可用 RDMA 资源",
-  "networkAssociationForm.disconnectButton": "取消关联",
-  "networkAssociationForm.connectButton": "关联",
-  "networkAssociationForm.addSuccess": "网络关联已添加",
-  "networkAssociationForm.removeSuccess": "网络关联已删除",
-  "networkAssociationForm.doneButton": "完成",
-  "resourceForm.cpuLabel": "CPU (核数)",
-  "resourceForm.memoryLabel": "内存 (GiB)",
-  "resourceForm.gpuCountLabel": "GPU (卡数)",
-  "resourceForm.gpuModelLabel": "GPU 型号",
-  "resourceForm.gpuTip": "可申请至多 {{max}} 张卡",
-  "resourceForm.gpuComboboxTitle": "GPU 型号",
-  "resourceForm.freeResourceButton": "空闲资源查询",
-  "resourceForm.freeResourceSheetTitle": "空闲资源查询",
-  "resourceForm.rdmaLabel": "启用 RDMA",
-  "resourceForm.tooltip.title": "基于 InfiniBand 的 RDMA：",
-  "resourceForm.tooltip.line1": "1. V100 型号速率为 100Gb/s，A100 型号速率为 200Gb/s",
-  "resourceForm.tooltip.line2": "2. RDMA 启用后，CPU 和内存限制将被忽略",
-  "resourceForm.tooltip.line3": "3. 如需使用此功能，请尽量申请单个节点上的所有卡",
-  "resourceForm.tooltip.line4": "4. 在选择 RDMA 网络时，同一个作业请选择同一个网络拓扑",
-  "resourceForm.tooltip.line5": "5. 镜像需支持 RDMA，详情见作业文档",
-  "resourceForm.rdmaNetworkTitle": " RDMA 网络拓扑",
-  "resourceForm.rdmaDescription": "请保证同一个作业内的不同角色，均使用同一个 {{field}} 网络拓扑",
-  "fileSize.bytes": "B",
-  "fileSize.kilobytes": "KB",
-  "fileSize.megabytes": "MB",
-  "fileSize.gigabytes": "GB",
-  "columns.name.header": "名称",
-  "columns.modifytime.header": "更新于",
-  "columns.size.header": "大小",
-  "search.name.placeholder": "搜索名称",
-  "fileActions.download.tooltip": "下载文件",
-  "fileActions.download.success": "下载文件成功！",
-  "fileActions.download.error": "下载失败：{{status}}",
-  "fileActions.download.inProgress": "正在下载该文件",
-  "fileActions.delete.tooltip": "删除{{type}}",
-  "fileActions.delete.title": "删除{{type}}",
-  "fileActions.delete.description": "{{type}} {{name}} 将被永久删除",
-  "fileActions.delete.success": "删除成功",
-  "fileActions.move.tooltip": "移动{{type}}",
-  "fileActions.move.title": "移动{{type}}",
-  "fileActions.move.description": "请选择目标位置，移动后原位置将不再保留",
-  "fileActions.move.currentItem": "正在移动：{{name}}",
-  "fileActions.move.success": "文件移动成功",
-  "fileActions.move.selectTitle": "选择要移动到的位置",
-  "common.delete": "删除",
-  "fileActions.return.tooltip": "返回上一级",
-  "fileActions.upload.tooltip": "上传文件",
-  "fileActions.createFolder.tooltip": "创建文件夹",
-  "fileActions.createFolder.title": "创建新文件夹",
-  "fileActions.createFolder.description": "输入文件夹名",
-  "fileActions.createFolder.nameLabel": "名称",
-  "fileActions.createFolder.success": "文件夹已创建",
-  "resources.actions.menu": "操作菜单",
-  "resources.actions.title": "操作",
-  "resources.actions.editLabels": "编辑标签",
-  "resources.actions.editType": "设置类型",
-  "resources.actions.associateNetworks": "关联网络",
-  "resources.actions.delete": "删除资源",
-  "resources.delete.title": "删除资源",
-  "resources.delete.confirm": "确认删除资源 \"{{name}}\" 吗？此操作不可撤销。",
-  "resources.delete.confirmAction": "确认删除",
-  "resources.delete.success": "资源已删除",
-  "resources.filter.placeholder": "搜索资源名称",
-  "resources.columns.name": "资源",
-  "resources.columns.type": "类型",
-  "resources.columns.networks": "关联网络",
-  "resources.columns.total": "总量",
-  "resources.columns.maxPerNode": "单节点最大数量",
-  "resources.columns.format": "Format",
-  "resources.type.gpu": "GPU",
-  "resources.type.rdma": "RDMA",
-  "resources.info.title": "资源管理",
-  "resources.info.description": "展示集群中的资源，如 GPU、CPU、内存等",
-  "resources.sync.button": "同步资源列表",
-  "resources.sync.title": "同步资源列表",
-  "resources.sync.confirm": "确认更新资源列表信息吗？",
-  "resources.sync.success": "资源列表已同步",
-  "common.confirm": "确认",
-  "tagsInput.label": "标签",
-  "tagsInput.description": "选择已有标签或创建新标签",
-  "tagsInput.noTagsLabel": "选择或添加标签",
-  "tagsInput.searchPlaceholder": "搜索常用标签...",
-  "tagsInput.commonTagsLabel": "常用标签",
-  "tagsInput.addNewLabel": "添加新标签",
-  "tagsInput.newTagPlaceholder": "输入新标签...",
-  "tagsInput.addButton": "添加",
-  "codeBlock.copyMessage": "Copied code to clipboard",
-  "nodeManagement.searchPlaceholder": "搜索节点名称",
-  "nodeManagement.statusFilter": "状态",
-  "nodeManagement.title": "节点管理",
-  "nodeManagement.description": "在这里修改节点的调度策略、是否由某些账户独享等",
-  "nodeManagement.operationSuccess": "操作成功",
-  "nodeManagement.operationFailed": "操作失败: {{error}}",
-  "nodeManagement.occupationSuccess": "节点占有成功",
-  "nodeManagement.occupationFailed": "节点占有失败: {{error}}",
-  "nodeManagement.releaseSuccess": "取消节点占有成功",
-  "nodeManagement.releaseFailed": "取消节点占有失败: {{error}}",
-  "nodeManagement.actionsLabel": "操作",
-  "nodeManagement.accountOccupation": "账户占有",
-  "nodeManagement.releaseOccupation": "取消独占",
-  "nodeManagement.disableScheduling": "禁止调度",
-  "nodeManagement.enableScheduling": "恢复调度",
-  "nodeManagement.occupationDialogTitle": "账户占有",
-  "nodeManagement.releaseDialogTitle": "取消占有",
-  "nodeManagement.confirmRelease": "确定取消{{account}}的占有:",
-  "nodeManagement.cancel": "取消",
-  "nodeManagement.submit": "提交",
-  "fileSelectDialog.userSpace": "用户空间",
-  "fileSelectDialog.accountSpace": "账户空间",
-  "fileSelectDialog.publicSpace": "公共空间",
-  "fileSelectDialog.selectFile": "选择文件",
-  "fileSelectDialog.title": "选择挂载数据",
-  "fileSelectDialog.description": "支持选择单个文件或文件夹",
-  "fileSelectDialog.confirmSelection": "确认选择 {{name}}",
-  "fileSelectDialog.selectedFile": "选择了{{id}}",
-  "fileSelectDialog.selectFileOrFolder": "请选择一个文件或文件夹",
-  "accountSelect.placeholder": "请选择账户",
-  "templateInfo.jobInstructions": "Job Instructions",
-  "templateInfo.jobTemplate": "Job Template",
-  "templateInfo.presetTemplate": "Preset Template",
-  "templateInfo.authorLabel": "Author: {{nickname}}",
-  "templateInfo.loadedFromJob": "Loaded template configuration from job {{fromJob}}",
-  "userEditDialog.title": "编辑用户信息",
-  "userEditDialog.description": "更新用户 {{name}} 的个人信息",
-  "userEditDialog.nicknameLabel": "昵称",
-  "userEditDialog.nicknamePlaceholder": "昵称",
-  "userEditDialog.emailLabel": "邮箱",
-  "userEditDialog.emailPlaceholder": "邮箱地址",
-  "userEditDialog.teacherLabel": "导师",
-  "userEditDialog.teacherPlaceholder": "导师姓名",
-  "userEditDialog.groupLabel": "组别",
-  "userEditDialog.groupPlaceholder": "组别",
-  "userEditDialog.phoneLabel": "手机",
-  "userEditDialog.phonePlaceholder": "手机号码",
-  "userEditDialog.successToast": "用户信息已更新",
-  "userEditDialog.errorToast": "更新失败",
-  "userTable.headers.name": "用户",
-  "userTable.headers.group": "组别",
-  "userTable.headers.teacher": "导师",
-  "userTable.headers.role": "权限",
-  "userTable.headers.status": "状态",
-  "userTable.title": "用户管理",
-  "userTable.description": "在这里查看和管理用户信息",
-  "userTable.editInfo": "编辑信息",
-  "userTable.roleLabel": "权限",
-  "userTable.roles.1": "管理员",
-  "userTable.roles.0": "普通用户",
-  "userTable.delete": "删除",
-  "userTable.deleteTitle": "删除用户",
-  "userTable.deleteDescription": "用户「{{name}}」将被删除，请谨慎操作。",
-  "userTable.deleteSuccess": "用户 {{name}} 已删除",
-  "userTable.roleUpdateSuccess": "用户 {{name}} 权限已更新",
-  "userTable.selfDeleteError": "无法删除自己，如需删除请换个用户登录",
-  "common.moreOptions": "更多选项",
-  "common.actions": "操作",
-  "common.saving": "保存中...",
-  "common.saveChanges": "保存修改",
-  "userForm.emailError": "无效的邮箱地址",
-  "fileUpload.buttonTitle": "上传文件",
-  "fileUpload.successMessage": "文件已上传",
-  "fileUpload.progressLabel": "上传进度：{{progress}}%",
-  "datasetItem.model": "Model",
-  "datasetItem.dataset": "Dataset",
-  "datasetItem.createdOn": "created on",
-  "volumeMounts.cardTitle": "数据挂载",
-  "volumeMounts.mountSource": "Mount Source {{index}}",
-  "volumeMounts.fileTab": "File",
-  "volumeMounts.dataTab": "Data",
-  "volumeMounts.mountPoint": "Mount Point {{index}}",
-  "volumeMounts.defaultMountDescription": "Default persistent user home directory, please modify with caution",
-  "volumeMounts.mountPathDescription": "Can modify the mount path in the container",
-  "volumeMounts.addButton": "Add {{mountType}}",
-  "folderNavigation.pageTitle.title": "文件系统",
-  "folderNavigation.pageTitle.description": "选择一个文件夹以查看其内容，在这里对文件进行上传、下载、移动、删除等操作。",
-  "folderNavigation.folderDescriptions.public": "平台上所有用户都可以访问，如需获取上传权限，请联系管理员。",
-  "folderNavigation.folderDescriptions.account": "账户共享空间，仅限账户内用户访问，如需获取上传权限，请联系账户管理员。",
-  "folderNavigation.folderDescriptions.user": "个人空间，仅限当前用户访问，拥有完全的读写权限。",
-  "folderNavigation.viewButton": "查看{{folder}}",
-  "folderNavigation.noFolders.title": "没有找到文件夹",
-  "folderNavigation.noFolders.description": "您当前没有任何文件夹。",
-  "adminJobOverview.statuses.queueing.label": "检查配额",
-  "adminJobOverview.statuses.created.label": "已创建",
-  "adminJobOverview.statuses.pending.label": "等待中",
-  "adminJobOverview.statuses.running.label": "运行中",
-  "adminJobOverview.statuses.failed.label": "失败",
-  "adminJobOverview.statuses.succeeded.label": "成功",
-  "adminJobOverview.statuses.preempted.label": "被抢占",
-  "adminJobOverview.statuses.deleted.label": "已停止",
-  "adminJobOverview.headers.jobName": "名称",
-  "adminJobOverview.headers.jobType": "类型",
-  "adminJobOverview.headers.queue": "账户",
-  "adminJobOverview.headers.owner": "用户",
-  "adminJobOverview.headers.status": "状态",
-  "adminJobOverview.headers.createdAt": "创建于",
-  "adminJobOverview.headers.startedAt": "开始于",
-  "adminJobOverview.headers.completedAt": "完成于",
-  "adminJobOverview.headers.nodes": "节点",
-  "adminJobOverview.headers.resources": "资源",
-  "adminJobOverview.filters.jobType": "类型",
-  "adminJobOverview.filters.status": "状态",
-  "adminJobOverview.title": "作业管理",
-  "adminJobOverview.description": "管理员可对作业进行锁定以避免被定时策略清理，或手动停止或删除用户的作业",
-  "adminJobOverview.successMessage": "操作成功",
-  "adminJobOverview.actions.dropdown.ariaLabel": "操作",
-  "adminJobOverview.actions.dropdown.title": "操作",
-  "adminJobOverview.actions.dropdown.details": "详情",
-  "adminJobOverview.actions.dropdown.lockTitle": "设置作业自动清除策略",
-  "adminJobOverview.actions.dropdown.lock": "锁定",
-  "adminJobOverview.actions.dropdown.unlock": "解锁",
-  "adminJobOverview.actions.dropdown.stop": "停止",
-  "adminJobOverview.actions.dropdown.delete": "删除",
-  "adminJobOverview.dialog.stop.title": "停止作业",
-  "adminJobOverview.dialog.delete.title": "删除作业",
-  "adminJobOverview.dialog.stop.description": "作业 {{name}} 将停止，除挂载目录之外的文件将无法恢复，请确认已经保存好所需数据。",
-  "adminJobOverview.dialog.delete.description": "作业 {{name}} 将被删除，所有元数据都将被清理。",
-  "adminJobOverview.dialog.cancel": "取消",
-  "adminJobOverview.dialog.stop.action": "停止",
-  "adminJobOverview.dialog.delete.action": "删除",
-  "adminJobOverview.handlers.stopOrDeleteTitle": "停止或删除 {{count}} 个作业",
-  "adminJobOverview.handlers.stopOrDeleteDescription": "作业 {{jobs}} 将被停止或删除，确认要继续吗？",
-  "adminJobOverview.handlers.lockOrUnlockTitle": "锁定或解锁 {{count}} 个作业",
-  "adminJobOverview.handlers.lockOrUnlockDescription": "作业 {{jobs}} 将被锁定或解锁，确认要继续吗？",
-  "adminJobOverview.select.all": "全部",
-  "adminJobOverview.select.recentDays": "近 {{days}} 天数据",
-  "tipBadge.defaultTitle": "WIP",
-  "datasetType.model": "模型",
-  "datasetType.dataset": "数据集",
-  "datasetType.shareFile": "共享文件",
-  "durationDialog.title.lock": "锁定作业",
-  "durationDialog.title.unlock": "解锁作业",
-  "durationDialog.description.lock": "设置 {{count}} 个作业的锁定时长，锁定后作业不会被自动清理。",
-  "durationDialog.description.unlock": "解锁 {{count}} 个作业，解锁后作业将会根据策略自动清理。",
-  "durationDialog.card.title": "选中的作业状态不一致",
-  "durationDialog.card.description": "请选择状态一致的作业（全部已锁定或全部未锁定）进行批量操作。",
-  "durationDialog.button.unlock": "解锁 {{count}} 个作业",
-  "durationDialog.button.unlocking": "解锁中...",
-  "durationDialog.button.lock": "锁定作业",
-  "durationDialog.button.locking": "锁定中...",
-  "durationDialog.form.permanentLock": "永久锁定",
-  "durationDialog.form.permanentLockDescription": "作业将被永久锁定，不会被自动清理策略删除。",
-  "durationDialog.form.days": "天数",
-  "durationDialog.form.hours": "小时",
-  "durationDialog.form.days.min": "天数不能为负数",
-  "durationDialog.form.hours.min": "小时数不能为负数",
-  "durationDialog.form.hours.max": "小时数不能超过23",
-  "durationDialog.form.expirationPreview": "到期时间预览：",
-  "durationDialog.form.currentTime": "当前时间",
-  "durationDialog.toast.lockSuccess": "成功锁定 {{count}} 个作业",
-  "durationDialog.toast.lockError": "锁定操作失败",
-  "durationDialog.toast.unlockSuccess": "成功解锁 {{count}} 个作业",
-  "durationDialog.toast.unlockError": "解锁操作失败",
-  "durationDialog.toast.noDuration": "请设置锁定时长或选择永久锁定",
-  "cronPolicy.title": "定时策略",
-  "cronPolicy.longTimeTitle": "清理长时间作业",
-  "cronPolicy.suspend": "Suspend",
-  "cronPolicy.schedule": "执行计划",
-  "cronPolicy.batchDays": "批处理任务运行天数（BATCH_DAYS）",
-  "cronPolicy.interactiveDays": "交互式任务运行天数（INTERACTIVE_DAYS）",
-  "cronPolicy.longTimeUpdate": "更新清理长时间作业策略",
-  "cronPolicy.lowGpuTitle": "清理低GPU利用率作业",
-  "cronPolicy.timeRange": "时间范围（分钟，TIME_RANGE）",
-  "cronPolicy.util": "利用率（UTIL）",
-  "cronPolicy.waitTime": "等待时间（WAIT_TIME，分钟）",
-  "cronPolicy.lowGpuUpdate": "更新清理低GPU利用率策略",
-  "cronPolicy.jupyterTitle": "清理排队中的 jupyter 任务",
-  "cronPolicy.jupyterWait": "等待时间（JUPYTER_WAIT_MINUTES，分钟）",
-  "cronPolicy.jupyterUpdate": "更新清理排队中的 jupyter 策略",
-  "cronPolicy.runJob": "立即清理",
-  "cronPolicy.confirmTitle": "作业清理确认",
-  "cronPolicy.jobsToDelete": "以下作业将被删除：",
-  "cronPolicy.noJobs": "没有符合条件的作业需要删除。",
-  "cronPolicy.cancel": "取消",
-  "cronPolicy.confirm": "确认",
-  "cronPolicy.invalidCron": "无效的 Cron 表达式，请检查格式和数值范围",
-  "cronPolicy.loadError": "获取策略失败：",
-  "cronPolicy.longTimeSuccess": "清理长时间作业更新成功",
-  "cronPolicy.longTimeError": "清理长时间作业更新失败：",
-  "cronPolicy.lowGpuSuccess": "清理低GPU利用率作业更新成功",
-  "cronPolicy.lowGpuError": "清理低GPU利用率作业更新失败：",
-  "cronPolicy.jupyterSuccess": "清理排队中的 jupyter 任务更新成功",
-  "cronPolicy.jupyterError": "清理排队中的 jupyter 任务更新失败：",
-  "dataTableViewOptions.viewButtonText": "视图",
-  "dataTableViewOptions.viewLabel": "View",
-  "dataTableToolbar.globalSearchPlaceholder": "全局搜索",
-  "dataTableToolbar.clearFiltersButtonTitle": "Clear filters",
-  "dataTableColumnHeader.sortAscending": "升序",
-  "dataTableColumnHeader.sortDescending": "降序",
-  "dataTableColumnHeader.hide": "隐藏",
-  "dataTableFacetedFilter.selected": "已选择 {{count}}",
-  "dataTableFacetedFilter.noResults": "No results",
-  "dataTableFacetedFilter.clearFilter": "Clear filter",
-  "dataTablePagination.refresh": "Refresh",
-  "dataTablePagination.itemsPerPage": "{{count}} 条/页",
-  "dataTablePagination.updatedAt": "更新于 {{time}}",
-  "dataTablePagination.totalItems": "共 {{count}} 条",
-  "dataTablePagination.selectedItems": "Selected {{selected}} / {{total}} items",
-  "dataTablePagination.currentPage": "Page {{page}} / {{totalPages}}",
-  "dataTablePagination.firstPage": "Go to first page",
-  "dataTablePagination.previousPage": "Go to previous page",
-  "dataTablePagination.nextPage": "Go to next page",
-  "dataTablePagination.lastPage": "Go to last page",
-  "dataTablePagination.cancel": "Cancel",
-  "dataTablePagination.confirm": "Confirm",
-  "dataTable.noData": "暂无数据",
-  "dataTable.selectAll": "Select all",
-  "dataTable.selectRow": "Select row",
-  "runningJobs.title": "运行中的作业",
-  "runningJobs.headers.jobName": "作业名称",
-  "runningJobs.headers.status": "状态",
-  "runningJobs.headers.progress": "进度",
-  "jobs.dataPreprocessing": "数据预处理",
-  "jobs.modelTraining": "模型训练",
-  "jobs.resultAnalysis": "结果分析",
-  "statuses.running": "运行中",
-  "statuses.waiting": "等待中",
-  "statuses.queued": "排队中",
-  "sharedItems.title": "分享的模型和数据集",
-  "sharedItems.downloadCount": "下载次数",
-  "recentActivity.title": "近期活动",
-  "recentActivity.uploadDataset": "上传了新的数据集",
-  "recentActivity.updateModel": "更新了图像分类模型",
-  "recentActivity.publishPaper": "发表了新的研究论文",
-  "recentActivity.joinWorkshop": "参与了在线研讨会",
-  "recentActivity.shareRepo": "分享了代码仓库",
-  "userDetail.breadcrumb.title": "用户详情",
-  "userDetail.header.errorTitle": "Error loading user data",
-  "userDetail.header.userNotFound": "User not found",
-  "userDetail.info.advisor.title": "导师",
-  "userDetail.info.researchGroup.title": "课题组",
-  "userDetail.info.joinDate.title": "加入日期",
-  "userDetail.info.notSet": "未设置",
-  "userDetail.tabs.gpuMonitoring": "加速卡监控",
-  "userDetail.tabs.userActivity": "用户活跃度",
-  "userDetail.tabs.runningJobs": "运行中的作业",
-  "userDetail.tabs.sharedResources": "分享的资源",
-  "userDetail.tabs.recentActivity": "近期活动",
-  "userAvatar.alt": "用户头像",
-  "loginHeatmap.title": "用户活跃度",
-  "dataTableViewOptions.viewButton": "View",
-  "dataTableToolbar.searchPlaceholder": "Search",
-  "dataTableToolbar.clearFilters": "Clear filters",
-  "dataTable.ascending": "升序",
-  "dataTable.descending": "降序",
-  "dataTable.hide": "隐藏",
-  "dataTableFacetedFilter.selectedItems": "Selected {{count}}",
-  "pagination.totalRows": "共 {{count}} 条",
-  "pagination.selectedRows": "已选择 {{count}} 条",
-  "pagination.rowsPerPage": "{{count}} 条/页",
-  "pagination.currentPage": "第 {{currentPage}} / {{totalPages}} 页",
-  "pagination.firstPage": "前往首页",
-  "pagination.previousPage": "前往上一页",
-  "pagination.nextPage": "前往下一页",
-  "pagination.lastPage": "前往尾页",
-  "shareDatasetToQueueDialog.select.inputPlaceholder": "搜索账户",
-  "shareDatasetToQueueDialog.select.placeholder": "选择账户",
-  "shareDatasetToQueueDialog.cancel": "取消",
-  "shareDatasetToQueueDialog.share": "共享",
-  "shareDatasetToQueueDialog.success": "共享成功",
-  "adminDatasetTable.toolbar.filter.placeholder": "搜索数据集名称",
-  "adminDatasetTable.toolbar.filter.title": "类型",
-  "adminDatasetTable.toolbar.filter.type.dataset": "数据集",
-  "adminDatasetTable.toolbar.filter.type.model": "模型",
-  "adminDatasetTable.toolbar.filter.type.sharefile": "共享文件",
-  "adminDatasetTable.column.name": "名称",
-  "adminDatasetTable.column.type": "类型",
-  "adminDatasetTable.column.creator": "创建者",
-  "adminDatasetTable.column.createdAt": "创建时间",
-  "adminDatasetTable.column.actions": "操作",
-  "adminDatasetTable.toast.deleteSuccess": "数据集 {{name}} 已删除",
-  "adminDatasetTable.actions.menuTrigger": "操作",
-  "adminDatasetTable.actions.menuLabel": "操作",
-  "adminDatasetTable.actions.viewDetails": "详情",
-  "adminDatasetTable.actions.delete": "删除",
-  "adminDatasetTable.dialog.title": "删除数据集或模型",
-  "adminDatasetTable.dialog.description": "数据集{{name}}将被删除",
-  "adminDatasetTable.dialog.cancel": "取消",
-  "adminDatasetTable.dialog.delete": "删除",
-  "adminDatasetTable.info.title": "数据集管理",
-  "adminDatasetTable.info.description": "管理系统中的所有数据集/模型",
-  "selectBox.inputPlaceholder": "Search...",
-  "selectBox.emptyPlaceholder": "No results found.",
-  "shareDatasetToUserDialog.toastSuccess": "共享成功",
-  "shareDatasetToUserDialog.selectBox.searchPlaceholder": "搜索用户",
-  "shareDatasetToUserDialog.selectBox.selectPlaceholder": "选择用户",
-  "shareDatasetToUserDialog.cancelButton": "取消",
-  "shareDatasetToUserDialog.shareButton": "共享",
-  "smallDataCard.title": "Title",
-  "smallDataCard.description": "Description",
-  "unit.gb": "GB",
-  "unit.gbPerSecond": "GB/s",
-  "dataView.sourceType.model": "模型",
-  "dataView.sourceType.sharefile": "共享文件",
-  "dataView.sourceType.dataset": "数据集",
-  "dataView.docsButtonTitle": "{{sourceTitle}}文档",
-  "dataView.createTitle": "创建{{sourceTitle}}",
-  "dataView.createDescription": "创建一个新的{{sourceTitle}}",
-  "dataView.addButton": "添加{{sourceTitle}}",
+  "imageSettingsForm": {
+    "tipBadgeTitle": "镜像链接",
+    "nameLabel": "名称",
+    "namePlaceholder": "默认镜像名称",
+    "tagLabel": "标签",
+    "tagPlaceholder": "默认镜像标签",
+    "description": "输入用户自定义的镜像名和镜像标签，若为空，则由系统自动生成"
+  },
+  "formExportButton": {
+    "buttonText": "导出配置",
+    "tooltipContent": "将当前配置导出到本地文件"
+  },
+  "dataset": {
+    "type": {
+      "dataset": "数据集",
+      "model": "模型",
+      "sharefile": "共享文件"
+    },
+    "updateDialog": {
+      "title": "更新{{type}}"
+    },
+    "form": {
+      "nameLabel": "{{type}}名称",
+      "describeLabel": "{{type}}描述",
+      "urlLabel": "{{type}}地址",
+      "weburlLabel": "{{type}}仓库地址",
+      "editTitle": "更新",
+      "updateButton": "更新{{type}}"
+    },
+    "fileSelect": {
+      "title": "选择数据集地址"
+    },
+    "tags": {
+      "label": "{{type}}标签",
+      "description": "为{{type}}添加标签，以便分类和搜索"
+    },
+    "toast": {
+      "success": "{{name}} 更新成功",
+      "failure": "更新失败，请检查网络或数据格式"
+    }
+  },
+  "common": {
+    "cancel": "取消",
+    "updating": "更新中...",
+    "moreOptions": "更多选项",
+    "actions": "操作",
+    "saving": "保存中...",
+    "saveChanges": "保存修改",
+    "delete": "删除",
+    "confirm": "确认"
+  },
+  "otherOptionsFormCard": {
+    "accordionTitle": "其他选项",
+    "receiveStatusNotifications": "接收状态通知",
+    "tooltip": {
+      "receiveEmailNotifications": "通过邮件接收通知：",
+      "notification1": "1. 作业开始运行通知（排队一段时间后）",
+      "notification2": "2. 作业运行成功通知",
+      "notification3": "3. 作业运行失败通知",
+      "notification4": "4. 作业低利用率/长运行时间即将释放通知",
+      "notification5": "5. 作业低利用率/长运行时间已释放通知",
+      "emailSupport": "注：支持北航邮箱、Google 邮箱等",
+      "debugPerformanceTesting": "用于调试，或对特定节点进行性能测试场景"
+    },
+    "specifyWorkNode": "指定工作节点",
+    "nodeNameDescription": "节点名称（可通过空闲资源查询获取）"
+  },
+  "table": {
+    "headers": {
+      "nickname": "账户",
+      "deserved": "应得",
+      "guaranteed": "保证",
+      "capability": "上限"
+    },
+    "tooltip": {
+      "expired": "已过期",
+      "valid": "有效",
+      "expires": "过期"
+    },
+    "actions": {
+      "deleteTitle": "删除账户",
+      "deleteDescription": "账户 {{name}} 将被删除，请谨慎操作。",
+      "delete": "删除",
+      "manageUser": "管理用户",
+      "editQuota": "修改配额",
+      "cancel": "取消"
+    },
+    "toolbar": {
+      "searchPlaceholder": "搜索账户名称"
+    }
+  },
+  "envFormCard": {
+    "variableName": "变量名 {{index}}",
+    "variableValue": "变量值 {{index}}",
+    "addButton": "添加 {{cardTitle}}",
+    "closeButton": "关闭"
+  },
+  "tree": {
+    "folderTitle": {
+      "public": "公共空间",
+      "account": "账户空间",
+      "default": "用户空间"
+    },
+    "adminFolderTitle": {
+      "public": "公共空间",
+      "account": "账户空间",
+      "default": "用户空间"
+    }
+  },
+  "imageFormField": {
+    "label": "容器镜像",
+    "comboboxFormTitle": "镜像"
+  },
+  "tagFilter": {
+    "label": "按标签筛选"
+  },
+  "formImportButton": {
+    "tooltip": "从本地文件导入作业配置",
+    "buttonText": "导入配置",
+    "successToast": "导入配置成功"
+  },
+  "updateResourceForm": {
+    "title": "编辑资源",
+    "description": "{{name}} 的详细信息",
+    "label": "别名",
+    "formDescription": "用于提交作业时，选择节点类型",
+    "cancelButton": "取消",
+    "submitButton": "提交",
+    "labelError": "别名不能为空",
+    "successMessage": "更新成功"
+  },
+  "updateResourceTypeForm": {
+    "title": "设置资源类型",
+    "label": "资源类型",
+    "placeholder": "选择资源类型",
+    "type": {
+      "default": "无类型",
+      "gpu": "GPU",
+      "rdma": "RDMA"
+    },
+    "formDescription": "GPU 资源可以关联 RDMA 网络资源。",
+    "submitButton": "保存",
+    "successMessage": "资源类型已更新"
+  },
+  "networkAssociationForm": {
+    "title": "管理网络关联",
+    "gpuResourceLabel": "GPU 资源",
+    "currentNetworksLabel": "当前关联的网络",
+    "availableResourcesLabel": "可用 RDMA 资源",
+    "loadingMessage": "加载中...",
+    "noNetworksMessage": "暂无关联网络",
+    "noResourcesMessage": "暂无可用 RDMA 资源",
+    "disconnectButton": "取消关联",
+    "connectButton": "关联",
+    "addSuccess": "网络关联已添加",
+    "removeSuccess": "网络关联已删除",
+    "doneButton": "完成"
+  },
+  "resourceForm": {
+    "cpuLabel": "CPU (核数)",
+    "memoryLabel": "内存 (GiB)",
+    "gpuCountLabel": "GPU (卡数)",
+    "gpuModelLabel": "GPU 型号",
+    "gpuTip": "可申请至多 {{max}} 张卡",
+    "gpuComboboxTitle": "GPU 型号",
+    "freeResourceButton": "空闲资源查询",
+    "freeResourceSheetTitle": "空闲资源查询",
+    "rdmaLabel": "启用 RDMA",
+    "tooltip": {
+      "title": "基于 InfiniBand 的 RDMA：",
+      "line1": "1. V100 型号速率为 100Gb/s，A100 型号速率为 200Gb/s",
+      "line2": "2. RDMA 启用后，CPU 和内存限制将被忽略",
+      "line3": "3. 如需使用此功能，请尽量申请单个节点上的所有卡",
+      "line4": "4. 在选择 RDMA 网络时，同一个作业请选择同一个网络拓扑",
+      "line5": "5. 镜像需支持 RDMA，详情见作业文档"
+    },
+    "rdmaNetworkTitle": " RDMA 网络拓扑",
+    "rdmaDescription": "请保证同一个作业内的不同角色，均使用同一个 {{field}} 网络拓扑"
+  },
+  "fileSize": {
+    "bytes": "B",
+    "kilobytes": "KB",
+    "megabytes": "MB",
+    "gigabytes": "GB"
+  },
+  "columns": {
+    "name": {
+      "header": "名称"
+    },
+    "modifytime": {
+      "header": "更新于"
+    },
+    "size": {
+      "header": "大小"
+    }
+  },
+  "search": {
+    "name": {
+      "placeholder": "搜索名称"
+    }
+  },
+  "fileActions": {
+    "download": {
+      "tooltip": "下载文件",
+      "success": "下载文件成功！",
+      "error": "下载失败：{{status}}",
+      "inProgress": "正在下载该文件"
+    },
+    "delete": {
+      "tooltip": "删除{{type}}",
+      "title": "删除{{type}}",
+      "description": "{{type}} {{name}} 将被永久删除",
+      "success": "删除成功"
+    },
+    "move": {
+      "tooltip": "移动{{type}}",
+      "title": "移动{{type}}",
+      "description": "请选择目标位置，移动后原位置将不再保留",
+      "currentItem": "正在移动：{{name}}",
+      "success": "文件移动成功",
+      "selectTitle": "选择要移动到的位置"
+    },
+    "return": {
+      "tooltip": "返回上一级"
+    },
+    "upload": {
+      "tooltip": "上传文件"
+    },
+    "createFolder": {
+      "tooltip": "创建文件夹",
+      "title": "创建新文件夹",
+      "description": "输入文件夹名",
+      "nameLabel": "名称",
+      "success": "文件夹已创建"
+    }
+  },
+  "resources": {
+    "actions": {
+      "menu": "操作菜单",
+      "title": "操作",
+      "editLabels": "编辑标签",
+      "editType": "设置类型",
+      "associateNetworks": "关联网络",
+      "delete": "删除资源"
+    },
+    "delete": {
+      "title": "删除资源",
+      "confirm": "确认删除资源 \"{{name}}\" 吗？此操作不可撤销。",
+      "confirmAction": "确认删除",
+      "success": "资源已删除"
+    },
+    "filter": {
+      "placeholder": "搜索资源名称"
+    },
+    "columns": {
+      "name": "资源",
+      "type": "类型",
+      "networks": "关联网络",
+      "total": "总量",
+      "maxPerNode": "单节点最大数量",
+      "format": "格式"
+    },
+    "type": {
+      "gpu": "GPU",
+      "rdma": "RDMA"
+    },
+    "info": {
+      "title": "资源管理",
+      "description": "展示集群中的资源，如 GPU、CPU、内存等"
+    },
+    "sync": {
+      "button": "同步资源列表",
+      "title": "同步资源列表",
+      "confirm": "确认更新资源列表信息吗？",
+      "success": "资源列表已同步"
+    }
+  },
+  "tagsInput": {
+    "label": "标签",
+    "description": "选择已有标签或创建新标签",
+    "noTagsLabel": "选择或添加标签",
+    "searchPlaceholder": "搜索常用标签...",
+    "commonTagsLabel": "常用标签",
+    "addNewLabel": "添加新标签",
+    "newTagPlaceholder": "输入新标签...",
+    "addButton": "添加"
+  },
+  "codeBlock": {
+    "copyMessage": "代码已复制到剪贴板"
+  },
+  "nodeManagement": {
+    "searchPlaceholder": "搜索节点名称",
+    "statusFilter": "状态",
+    "title": "节点管理",
+    "description": "在这里修改节点的调度策略、是否由某些账户独享等",
+    "operationSuccess": "操作成功",
+    "operationFailed": "操作失败: {{error}}",
+    "occupationSuccess": "节点占有成功",
+    "occupationFailed": "节点占有失败: {{error}}",
+    "releaseSuccess": "取消节点占有成功",
+    "releaseFailed": "取消节点占有失败: {{error}}",
+    "actionsLabel": "操作",
+    "accountOccupation": "账户占有",
+    "releaseOccupation": "取消独占",
+    "disableScheduling": "禁止调度",
+    "enableScheduling": "恢复调度",
+    "occupationDialogTitle": "账户占有",
+    "releaseDialogTitle": "取消占有",
+    "confirmRelease": "确定取消{{account}}的占有:",
+    "cancel": "取消",
+    "submit": "提交"
+  },
+  "fileSelectDialog": {
+    "userSpace": "用户空间",
+    "accountSpace": "账户空间",
+    "publicSpace": "公共空间",
+    "selectFile": "选择文件",
+    "title": "选择挂载数据",
+    "description": "支持选择单个文件或文件夹",
+    "confirmSelection": "确认选择 {{name}}",
+    "selectedFile": "选择了{{id}}",
+    "selectFileOrFolder": "请选择一个文件或文件夹"
+  },
+  "accountSelect": {
+    "placeholder": "请选择账户"
+  },
+  "templateInfo": {
+    "jobInstructions": "作业说明",
+    "jobTemplate": "作业模板",
+    "presetTemplate": "预设模板",
+    "authorLabel": "作者: {{nickname}}",
+    "loadedFromJob": "从作业 {{fromJob}} 加载模板配置"
+  },
+  "userEditDialog": {
+    "title": "编辑用户信息",
+    "description": "更新用户 {{name}} 的个人信息",
+    "nicknameLabel": "昵称",
+    "nicknamePlaceholder": "昵称",
+    "emailLabel": "邮箱",
+    "emailPlaceholder": "邮箱地址",
+    "teacherLabel": "导师",
+    "teacherPlaceholder": "导师姓名",
+    "groupLabel": "组别",
+    "groupPlaceholder": "组别",
+    "phoneLabel": "手机",
+    "phonePlaceholder": "手机号码",
+    "successToast": "用户信息已更新",
+    "errorToast": "更新失败"
+  },
+  "userTable": {
+    "headers": {
+      "name": "用户",
+      "group": "组别",
+      "teacher": "导师",
+      "role": "权限",
+      "status": "状态"
+    },
+    "title": "用户管理",
+    "description": "在这里查看和管理用户信息",
+    "editInfo": "编辑信息",
+    "roleLabel": "权限",
+    "roles": {
+      "1": "管理员",
+      "0": "普通用户"
+    },
+    "delete": "删除",
+    "deleteTitle": "删除用户",
+    "deleteDescription": "用户「{{name}}」将被删除，请谨慎操作。",
+    "deleteSuccess": "用户 {{name}} 已删除",
+    "roleUpdateSuccess": "用户 {{name}} 权限已更新",
+    "selfDeleteError": "无法删除自己，如需删除请换个用户登录"
+  },
+  "userForm": {
+    "emailError": "无效的邮箱地址"
+  },
+  "fileUpload": {
+    "buttonTitle": "上传文件",
+    "successMessage": "文件已上传",
+    "progressLabel": "上传进度：{{progress}}%"
+  },
+  "datasetItem": {
+    "model": "模型",
+    "dataset": "数据集",
+    "createdOn": "创建于"
+  },
+  "volumeMounts": {
+    "cardTitle": "数据挂载",
+    "mountSource": "挂载源 {{index}}",
+    "fileTab": "文件",
+    "dataTab": "数据",
+    "mountPoint": "挂载点 {{index}}",
+    "defaultMountDescription": "默认持久化用户主目录，请谨慎修改",
+    "mountPathDescription": "可修改容器内的挂载路径",
+    "addButton": "添加 {{mountType}}"
+  },
+  "folderNavigation": {
+    "pageTitle": {
+      "title": "文件系统",
+      "description": "选择一个文件夹以查看其内容，在这里对文件进行上传、下载、移动、删除等操作。"
+    },
+    "folderDescriptions": {
+      "public": "平台上所有用户都可以访问，如需获取上传权限，请联系管理员。",
+      "account": "账户共享空间，仅限账户内用户访问，如需获取上传权限，请联系账户管理员。",
+      "user": "个人空间，仅限当前用户访问，拥有完全的读写权限。"
+    },
+    "viewButton": "查看{{folder}}",
+    "noFolders": {
+      "title": "没有找到文件夹",
+      "description": "您当前没有任何文件夹。"
+    }
+  },
+  "adminJobOverview": {
+    "statuses": {
+      "queueing": {
+        "label": "检查配额"
+      },
+      "created": {
+        "label": "已创建"
+      },
+      "pending": {
+        "label": "等待中"
+      },
+      "running": {
+        "label": "运行中"
+      },
+      "failed": {
+        "label": "失败"
+      },
+      "succeeded": {
+        "label": "成功"
+      },
+      "preempted": {
+        "label": "被抢占"
+      },
+      "deleted": {
+        "label": "已停止"
+      }
+    },
+    "headers": {
+      "jobName": "名称",
+      "jobType": "类型",
+      "queue": "账户",
+      "owner": "用户",
+      "status": "状态",
+      "createdAt": "创建于",
+      "startedAt": "开始于",
+      "completedAt": "完成于",
+      "nodes": "节点",
+      "resources": "资源"
+    },
+    "filters": {
+      "jobType": "类型",
+      "status": "状态"
+    },
+    "title": "作业管理",
+    "description": "管理员可对作业进行锁定以避免被定时策略清理，或手动停止或删除用户的作业",
+    "successMessage": "操作成功",
+    "actions": {
+      "dropdown": {
+        "ariaLabel": "操作",
+        "title": "操作",
+        "details": "详情",
+        "lockTitle": "设置作业自动清除策略",
+        "lock": "锁定",
+        "unlock": "解锁",
+        "stop": "停止",
+        "delete": "删除"
+      }
+    },
+    "dialog": {
+      "stop": {
+        "title": "停止作业",
+        "description": "作业 {{name}} 将停止，除挂载目录之外的文件将无法恢复，请确认已经保存好所需数据。",
+        "cancel": "取消",
+        "action": "停止"
+      },
+      "delete": {
+        "title": "删除作业",
+        "description": "作业 {{name}} 将被删除，所有元数据都将被清理。",
+        "cancel": "取消",
+        "action": "删除"
+      }
+    },
+    "handlers": {
+      "stopOrDeleteTitle": "停止或删除 {{count}} 个作业",
+      "stopOrDeleteDescription": "作业 {{jobs}} 将被停止或删除，确认要继续吗？",
+      "lockOrUnlockTitle": "锁定或解锁 {{count}} 个作业",
+      "lockOrUnlockDescription": "作业 {{jobs}} 将被锁定或解锁，确认要继续吗？"
+    },
+    "select": {
+      "all": "全部",
+      "recentDays": "近 {{days}} 天数据"
+    }
+  },
+  "tipBadge": {
+    "defaultTitle": "进行中"
+  },
+  "datasetType": {
+    "model": "模型",
+    "dataset": "数据集",
+    "shareFile": "共享文件"
+  },
+  "durationDialog": {
+    "title": {
+      "lock": "锁定作业",
+      "unlock": "解锁作业"
+    },
+    "description": {
+      "lock": "设置 {{count}} 个作业的锁定时长，锁定后作业不会被自动清理。",
+      "unlock": "解锁 {{count}} 个作业，解锁后作业将会根据策略自动清理。"
+    },
+    "card": {
+      "title": "选中的作业状态不一致",
+      "description": "请选择状态一致的作业（全部已锁定或全部未锁定）进行批量操作。"
+    },
+    "button": {
+      "unlock": "解锁 {{count}} 个作业",
+      "unlocking": "解锁中...",
+      "lock": "锁定作业",
+      "locking": "锁定中..."
+    },
+    "form": {
+      "permanentLock": "永久锁定",
+      "permanentLockDescription": "作业将被永久锁定，不会被自动清理策略删除。",
+      "days": {
+        "text": "天数",
+        "min": "天数不能为负数"
+      },
+      "hours": {
+        "text": "小时",
+        "min": "小时数不能为负数",
+        "max": "小时数不能超过23"
+      },
+      "expirationPreview": "到期时间预览：",
+      "currentTime": "当前时间"
+    },
+    "toast": {
+      "lockSuccess": "成功锁定 {{count}} 个作业",
+      "lockError": "锁定操作失败",
+      "unlockSuccess": "成功解锁 {{count}} 个作业",
+      "unlockError": "解锁操作失败",
+      "noDuration": "请设置锁定时长或选择永久锁定"
+    }
+  },
+  "cronPolicy": {
+    "title": "定时策略",
+    "longTimeTitle": "清理长时间作业",
+    "suspend": "暂停",
+    "schedule": "执行计划",
+    "batchDays": "批处理任务运行天数（BATCH_DAYS）",
+    "interactiveDays": "交互式任务运行天数（INTERACTIVE_DAYS）",
+    "longTimeUpdate": "更新清理长时间作业策略",
+    "lowGpuTitle": "清理低GPU利用率作业",
+    "timeRange": "时间范围（分钟，TIME_RANGE）",
+    "util": "利用率（UTIL）",
+    "waitTime": "等待时间（WAIT_TIME，分钟）",
+    "lowGpuUpdate": "更新清理低GPU利用率策略",
+    "jupyterTitle": "清理排队中的 jupyter 任务",
+    "jupyterWait": "等待时间（JUPYTER_WAIT_MINUTES，分钟）",
+    "jupyterUpdate": "更新清理排队中的 jupyter 策略",
+    "runJob": "立即清理",
+    "confirmTitle": "作业清理确认",
+    "jobsToDelete": "以下作业将被删除：",
+    "noJobs": "没有符合条件的作业需要删除。",
+    "cancel": "取消",
+    "confirm": "确认",
+    "invalidCron": "无效的 Cron 表达式，请检查格式和数值范围",
+    "loadError": "获取策略失败：",
+    "longTimeSuccess": "清理长时间作业更新成功",
+    "longTimeError": "清理长时间作业更新失败：",
+    "lowGpuSuccess": "清理低GPU利用率作业更新成功",
+    "lowGpuError": "清理低GPU利用率作业更新失败：",
+    "jupyterSuccess": "清理排队中的 jupyter 任务更新成功",
+    "jupyterError": "清理排队中的 jupyter 任务更新失败："
+  },
+  "dataTableViewOptions": {
+    "viewButtonText": "视图",
+    "viewLabel": "视图"
+  },
+  "dataTableToolbar": {
+    "globalSearchPlaceholder": "全局搜索",
+    "clearFiltersButtonTitle": "清除筛选"
+  },
+  "dataTableColumnHeader": {
+    "sortAscending": "升序",
+    "sortDescending": "降序",
+    "hide": "隐藏"
+  },
+  "dataTableFacetedFilter": {
+    "selected": "已选择 {{count}}",
+    "noResults": "无结果",
+    "clearFilter": "清除筛选"
+  },
+  "dataTablePagination": {
+    "refresh": "刷新",
+    "itemsPerPage": "{{count}} 条/页",
+    "updatedAt": "更新于 {{time}}",
+    "totalItems": "共 {{count}} 条",
+    "selectedItems": "已选择 {{selected}} / {{total}} 条",
+    "currentPage": "第 {{page}} / {{totalPages}} 页",
+    "firstPage": "前往首页",
+    "previousPage": "前往上一页",
+    "nextPage": "前往下一页",
+    "lastPage": "前往尾页",
+    "cancel": "取消",
+    "confirm": "确认"
+  },
+  "dataTable": {
+    "noData": "暂无数据",
+    "selectAll": "全选",
+    "selectRow": "选择行"
+  },
+  "runningJobs": {
+    "title": "运行中的作业",
+    "headers": {
+      "jobName": "作业名称",
+      "status": "状态",
+      "progress": "进度"
+    }
+  },
+  "jobs": {
+    "dataPreprocessing": "数据预处理",
+    "modelTraining": "模型训练",
+    "resultAnalysis": "结果分析"
+  },
+  "statuses": {
+    "running": "运行中",
+    "waiting": "等待中",
+    "queued": "排队中"
+  },
+  "sharedItems": {
+    "title": "分享的模型和数据集",
+    "downloadCount": "下载次数"
+  },
+  "recentActivity": {
+    "title": "近期活动",
+    "uploadDataset": "上传了新的数据集",
+    "updateModel": "更新了图像分类模型",
+    "publishPaper": "发表了新的研究论文",
+    "joinWorkshop": "参与了在线研讨会",
+    "shareRepo": "分享了代码仓库"
+  },
+  "userDetail": {
+    "breadcrumb": {
+      "title": "用户详情"
+    },
+    "header": {
+      "errorTitle": "加载用户数据错误",
+      "userNotFound": "用户未找到"
+    },
+    "info": {
+      "advisor": {
+        "title": "导师"
+      },
+      "researchGroup": {
+        "title": "课题组"
+      },
+      "joinDate": {
+        "title": "加入日期"
+      },
+      "notSet": "未设置"
+    },
+    "tabs": {
+      "gpuMonitoring": "加速卡监控",
+      "userActivity": "用户活跃度",
+      "runningJobs": "运行中的作业",
+      "sharedResources": "分享的资源",
+      "recentActivity": "近期活动"
+    }
+  },
+  "userAvatar": {
+    "alt": "用户头像"
+  },
+  "loginHeatmap": {
+    "title": "用户活跃度"
+  },
+  "pagination": {
+    "totalRows": "共 {{count}} 条",
+    "selectedRows": "已选择 {{count}} 条",
+    "rowsPerPage": "{{count}} 条/页",
+    "currentPage": "第 {{currentPage}} / {{totalPages}} 页",
+    "firstPage": "前往首页",
+    "previousPage": "前往上一页",
+    "nextPage": "前往下一页",
+    "lastPage": "前往尾页"
+  },
+  "shareDatasetToQueueDialog": {
+    "select": {
+      "inputPlaceholder": "搜索账户",
+      "placeholder": "选择账户"
+    },
+    "cancel": "取消",
+    "share": "共享",
+    "success": "共享成功"
+  },
+  "adminDatasetTable": {
+    "toolbar": {
+      "filter": {
+        "placeholder": "搜索数据集名称",
+        "title": "类型",
+        "type": {
+          "dataset": "数据集",
+          "model": "模型",
+          "sharefile": "共享文件"
+        }
+      }
+    },
+    "column": {
+      "name": "名称",
+      "type": "类型",
+      "creator": "创建者",
+      "createdAt": "创建时间",
+      "actions": "操作"
+    },
+    "toast": {
+      "deleteSuccess": "数据集 {{name}} 已删除"
+    },
+    "actions": {
+      "menuTrigger": "操作",
+      "menuLabel": "操作",
+      "viewDetails": "详情",
+      "delete": "删除"
+    },
+    "dialog": {
+      "title": "删除数据集或模型",
+      "description": "数据集{{name}}将被删除",
+      "cancel": "取消",
+      "delete": "删除"
+    },
+    "info": {
+      "title": "数据集管理",
+      "description": "管理系统中的所有数据集/模型"
+    }
+  },
+  "selectBox": {
+    "inputPlaceholder": "搜索...",
+    "emptyPlaceholder": "未找到结果。"
+  },
+  "shareDatasetToUserDialog": {
+    "toastSuccess": "共享成功",
+    "selectBox": {
+      "searchPlaceholder": "搜索用户",
+      "selectPlaceholder": "选择用户"
+    },
+    "cancelButton": "取消",
+    "shareButton": "共享"
+  },
+  "smallDataCard": {
+    "title": "标题",
+    "description": "描述"
+  },
+  "unit": {
+    "gb": "GB",
+    "gbPerSecond": "GB/s"
+  },
+  "dataView": {
+    "sourceType": {
+      "model": "模型",
+      "sharefile": "共享文件",
+      "dataset": "数据集"
+    },
+    "docsButtonTitle": "{{sourceTitle}}文档",
+    "createTitle": "创建{{sourceTitle}}",
+    "createDescription": "创建一个新的{{sourceTitle}}",
+    "addButton": "添加{{sourceTitle}}"
+  },
   "navUser": {
     "switchToUserView": "切换至用户视图",
     "switchToAdminView": "切换至管理员视图",
