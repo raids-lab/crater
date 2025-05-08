@@ -259,7 +259,9 @@ export function DurationDialog({
                       name="days"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t("durationDialog.form.days")}</FormLabel>
+                          <FormLabel>
+                            {t("durationDialog.form.days.text")}
+                          </FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -283,7 +285,7 @@ export function DurationDialog({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
-                            {t("durationDialog.form.hours")}
+                            {t("durationDialog.form.hours.text")}
                           </FormLabel>
                           <FormControl>
                             <Input
