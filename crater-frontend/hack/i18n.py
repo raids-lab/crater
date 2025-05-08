@@ -35,7 +35,7 @@ MAX_RETRIES = 3
 RETRY_DELAY = 2  # seconds
 
 # Project Configuration
-PROJECT_ROOT = "." 
+PROJECT_ROOT = "./src" 
 TRANSLATION_PATH = Path("i18n/locales/zhCN/translation.json")
 TARGET_FOLDERS = ["components/custom", "pages"]
 SCRIPT_VERSION = "1.1.0"  # Update this when making significant changes
@@ -99,6 +99,92 @@ def test_model_connection() -> bool:
         print("Please check your API key and connection settings.")
         return False
 
+def extract_code_and_json(full_content: str) -> Optional[Tuple[str, Dict[str, str]]]:
+    """Improved extraction of code and JSON parts from model response"""
+    # First try the original method
+    last_brace_index = full_content.rfind("{")
+    if last_brace_index != -1:
+        code_part = full_content[:last_brace_index].strip()
+        json_part = full_content[last_brace_index:].strip()
+        
+        # Try parsing the JSON part
+        try:
+            translations = parse_json_with_templates(json_part)
+            return code_part, translations
+        except json.JSONDecodeError:
+            pass  # Try alternative methods
+    
+    # If original method failed, try more sophisticated approaches
+    
+    # Method 1: Look for the last occurrence of "{\n" which is more likely to be JSON start
+    last_json_start = full_content.rfind("{\n")
+    if last_json_start != -1:
+        code_part = full_content[:last_json_start].strip()
+        json_part = full_content[last_json_start:].strip()
+        
+        try:
+            translations = parse_json_with_templates(json_part)
+            return code_part, translations
+        except json.JSONDecodeError:
+            pass
+    
+    # Method 2: Look for the last occurrence of "{\"" (JSON with quoted key)
+    last_json_key_start = full_content.rfind('{"')
+    if last_json_key_start != -1:
+        code_part = full_content[:last_json_key_start].strip()
+        json_part = full_content[last_json_key_start:].strip()
+        
+        try:
+            translations = parse_json_with_templates(json_part)
+            return code_part, translations
+        except json.JSONDecodeError:
+            pass
+    
+    # Method 3: Try to find the outermost matching braces
+    try:
+        # Find the first opening brace that has a matching closing brace at the end
+        stack = []
+        start_index = -1
+        for i, c in enumerate(full_content):
+            if c == '{':
+                if not stack:
+                    start_index = i
+                stack.append(c)
+            elif c == '}':
+                if stack:
+                    stack.pop()
+                    if not stack:  # Found matching outermost braces
+                        code_part = full_content[:start_index].strip()
+                        json_part = full_content[start_index:i+1].strip()
+                        
+                        translations = parse_json_with_templates(json_part)
+                        return code_part, translations
+    except (json.JSONDecodeError, IndexError):
+        pass
+    
+    # If all methods fail
+    return None
+
+def parse_json_with_templates(json_str: str) -> Dict[str, str]:
+    """Parse JSON while handling template strings ({{ }})"""
+    # Replace template markers temporarily
+    template_placeholder_open = "__TEMPLATE_OPEN__"
+    template_placeholder_close = "__TEMPLATE_CLOSE__"
+    temp_json = json_str.replace("{{", template_placeholder_open).replace("}}", template_placeholder_close)
+    
+    # Parse the JSON
+    translations_temp = json.loads(temp_json)
+    
+    # Restore template markers
+    translations = {}
+    for key, value in translations_temp.items():
+        if isinstance(value, str):
+            translations[key] = value.replace(template_placeholder_open, "{{").replace(template_placeholder_close, "}}")
+        else:
+            translations[key] = value
+    
+    return translations
+
 # === OPENAI REQUEST ===
 def call_openai_for_i18n(code: str) -> Optional[Tuple[str, Dict[str, str]]]:
     prompt = f"""
@@ -109,6 +195,7 @@ You are an expert React/i18n developer helping internationalize a React applicat
    - Add import: `import {{ useTranslation }} from 'react-i18next';` at top
    - Initialize hook INSIDE component: `const {{ t }} = useTranslation();`
    - Place hook after all destructured props but before any other logic
+   - If this file does not contain text which needs translation, return the original code with no changes
 
 2. Special Cases:
    - For Zod schemas: Move string literals into component ABOVE any form declarations
@@ -209,6 +296,7 @@ function LoginForm() {{
                 delta = chunk.choices[0].delta
                 if delta.content:
                     content = delta.content
+                    # with colors
                     print(content, end="", flush=True)
                     full_content += content
                     
@@ -226,76 +314,17 @@ function LoginForm() {{
             # remove all thinking content from full_content
             if "</think>" in full_content:
                 # remove everything between <think> and </think>
-                full_content = full_content.replace(thinking_content, "")
+                full_content = full_content.replace(full_content[full_content.index("<think>"):full_content.index("</think>") + len("</think>")], "")
+
+            # check if no thinking content
+            if "<think>" in full_content:
+                print("\n⚠️ Warning: Model included <think> tags in response, which may indicate uncertainty.")
 
             full_content = full_content.replace("```ts", "").replace("```tsx", "").replace("```json", "").replace("```", "").strip()
 
-            last_brace_index = full_content.rfind("{")
-            if last_brace_index == -1:
-                print("\n⚠️ No JSON object found in response. Retrying...")
-                if attempt < MAX_RETRIES - 1:
-                    time.sleep(RETRY_DELAY)
-                    continue
-                else:
-                    raise ValueError("No JSON object found in OpenAI response")
-
-            code_part = full_content[:last_brace_index].strip()
-            json_part = full_content[last_brace_index:].strip()
-
-            try:
-                # 在解析之前替换掉可能导致问题的模板字符串
-                # 将模板字符串中的 {{ 和 }} 临时替换为特殊标记
-                template_placeholder_open = "__TEMPLATE_OPEN__"
-                template_placeholder_close = "__TEMPLATE_CLOSE__"
-                temp_json_part = json_part.replace("{{", template_placeholder_open).replace("}}", template_placeholder_close)
-                
-                # 尝试解析修改后的JSON
-                translations_temp = json.loads(temp_json_part)
-                
-                # 将结果中的临时标记还原为 {{ 和 }}
-                translations = {}
-                for key, value in translations_temp.items():
-                    if isinstance(value, str):
-                        translations[key] = value.replace(template_placeholder_open, "{{").replace(template_placeholder_close, "}}")
-                    else:
-                        translations[key] = value
-                
-                return code_part, translations
-            except json.JSONDecodeError as e:
-                print(f"\n⚠️ JSON parsing failed: {str(e)}")
-                print("Raw JSON content:")
-                print(json_part)
-                
-                # 尝试更复杂的修复方法
-                if attempt < MAX_RETRIES - 1:
-                    print("Retrying with different JSON extraction method...")
-                    try:
-                        # 尝试使用更严格的正则表达式提取JSON
-                        import re
-                        json_match = re.search(r'(\{[\s\S]*\})$', full_content)
-                        if json_match:
-                            better_json = json_match.group(1)
-                            # 同样替换模板字符串
-                            better_json = better_json.replace("{{", template_placeholder_open).replace("}}", template_placeholder_close)
-                            translations_temp = json.loads(better_json)
-                            
-                            # 恢复模板标记
-                            translations = {}
-                            for key, value in translations_temp.items():
-                                if isinstance(value, str):
-                                    translations[key] = value.replace(template_placeholder_open, "{{").replace(template_placeholder_close, "}}")
-                                else:
-                                    translations[key] = value
-                                    
-                            return code_part, translations
-                    except Exception as inner_e:
-                        print(f"Advanced extraction failed: {inner_e}")
-                        
-                    print("Retrying with model...")
-                    time.sleep(RETRY_DELAY)
-                else:
-                    raise e
-                
+            result = extract_code_and_json(full_content)
+            return result
+        
         except Exception as e:
             print(f"\n⚠️ Attempt {attempt+1}/{MAX_RETRIES} failed: {str(e)}")
             if attempt < MAX_RETRIES - 1:
@@ -360,6 +389,8 @@ def process_file(filepath: str):
 # === FILE SCANNER ===
 def find_all_tsx_jsx_files():
     files = []
+    # cd PROJECT_ROOT
+    os.chdir(PROJECT_ROOT)
     for folder in TARGET_FOLDERS:
         for ext in ("tsx", "ts", "jsx", "js"):
             for file in glob.glob(f"{folder}/**/*.{ext}", recursive=True):

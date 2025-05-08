@@ -1,4 +1,15 @@
 {
+  "smallDataCard.title": "Title",
+  "smallDataCard.description": "Description",
+  "unit.gb": "GB",
+  "unit.gbPerSecond": "GB/s",
+  "dataView.sourceType.model": "模型",
+  "dataView.sourceType.sharefile": "共享文件",
+  "dataView.sourceType.dataset": "数据集",
+  "dataView.docsButtonTitle": "{{sourceTitle}}文档",
+  "dataView.createTitle": "创建{{sourceTitle}}",
+  "dataView.createDescription": "创建一个新的{{sourceTitle}}",
+  "dataView.addButton": "添加{{sourceTitle}}",
   "navUser": {
     "switchToUserView": "切换至用户视图",
     "switchToAdminView": "切换至管理员视图",

@@ -1,4 +1,11 @@
 {
+  "dataView.sourceType.model": "Models",
+  "dataView.sourceType.sharefile": "Shared Files",
+  "dataView.sourceType.dataset": "Datasets",
+  "dataView.docsButtonTitle": "{{sourceTitle}} Docs",
+  "dataView.createTitle": "Create {{sourceTitle}}",
+  "dataView.createDescription": "Create {{sourceTitle}} from the template",
+  "dataView.addButton": "Add {{sourceTitle}}",
   "navUser": {
     "switchToUserView": "Switch to user view",
     "switchToAdminView": "Switch to admin view",
