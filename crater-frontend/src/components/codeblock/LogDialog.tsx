@@ -26,7 +26,7 @@ import LoadingCircleIcon from "../icon/LoadingCircleIcon";
 import TooltipButton from "../custom/TooltipButton";
 import { logger } from "@/utils/loglevel";
 import { useAtomValue } from "jotai";
-import { asyncUrlApiBaseAtom } from "@/utils/store/config";
+import { configUrlApiBaseAtom } from "@/utils/store/config";
 
 const DEFAULT_TAIL_LINES = 500;
 
@@ -56,7 +56,7 @@ export function LogCard({
   namespacedName: PodNamespacedName;
   selectedContainer: ContainerInfo;
 }) {
-  const apibaseUrl = useAtomValue(asyncUrlApiBaseAtom);
+  const apibaseUrl = useAtomValue(configUrlApiBaseAtom);
   const queryClient = useQueryClient();
   const [tailLines, setTailLines] = useState(DEFAULT_TAIL_LINES);
   const [timestamps, setTimestamps] = useState(false);

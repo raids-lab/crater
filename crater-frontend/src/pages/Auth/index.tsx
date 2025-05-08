@@ -19,7 +19,7 @@ import {
 import { toast } from "sonner";
 import DocsButton from "@/components/button/DocsButton";
 import { useAtomValue } from "jotai";
-import { asyncUrlWebsiteBaseAtom } from "@/utils/store/config";
+import { configUrlWebsiteBaseAtom } from "@/utils/store/config";
 
 // 定义认证模式枚举
 export enum AuthMode {
@@ -33,7 +33,7 @@ export function Dashboard() {
   const [showRegisterDialog, setShowRegisterDialog] = useState(false);
   const { theme, setTheme } = useTheme();
   const [currentMode, setCurrentMode] = useState<AuthMode>(AuthMode.ACT);
-  const website = useAtomValue(asyncUrlWebsiteBaseAtom);
+  const website = useAtomValue(configUrlWebsiteBaseAtom);
 
   // 处理注册按钮点击
   const handleRegisterClick = () => {

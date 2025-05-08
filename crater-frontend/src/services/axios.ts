@@ -12,7 +12,7 @@ import {
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/utils/store";
 import { showErrorToast } from "@/utils/toast";
 import { getDefaultStore } from "jotai";
-import { asyncUrlApiBaseAtom, asyncVersionAtom } from "@/utils/store/config";
+import { configUrlApiBaseAtom, configVersionAtom } from "@/utils/store/config";
 
 const store = getDefaultStore();
 
@@ -23,14 +23,14 @@ interface AxiosRetryRequestConfig extends AxiosRequestConfig {
 // 异步函数初始化 Axios 实例
 export async function initializeApiClient() {
   // 从 Jotai store 中获取 apiBaseUrl
-  const baseURL = await store.get(asyncUrlApiBaseAtom);
+  const baseURL = await store.get(configUrlApiBaseAtom);
 
   const apiClient = axios.create({
     baseURL,
     withCredentials: true,
   });
 
-  const version = await store.get(asyncVersionAtom);
+  const version = await store.get(configVersionAtom);
 
   return [apiClient, version] as const;
 }

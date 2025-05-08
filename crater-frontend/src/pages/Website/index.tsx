@@ -1,9 +1,9 @@
-import { asyncUrlWebsiteBaseAtom } from "@/utils/store/config";
+import { configUrlWebsiteBaseAtom } from "@/utils/store/config";
 import { useAtomValue } from "jotai";
 import { type FC } from "react";
 
 const Website: FC = () => {
-  const website = useAtomValue(asyncUrlWebsiteBaseAtom);
+  const website = useAtomValue(configUrlWebsiteBaseAtom);
   window.location.href = website;
   return <></>;
 };

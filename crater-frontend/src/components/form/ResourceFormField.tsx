@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/sheet";
 import { GrafanaIframe } from "@/pages/Embed/Monitor";
 import { useAtomValue } from "jotai";
-import { asyncGrafanaOverviewAtom } from "@/utils/store/config";
+import { configGrafanaOverviewAtom } from "@/utils/store/config";
 import { Switch } from "../ui/switch";
 import {
   Tooltip,
@@ -59,7 +59,7 @@ export function ResourceFormFields<T extends FieldValues>({
   rdmaPath,
 }: ResourceFormFieldsProps<T>) {
   const gpuCount = form.watch(gpuCountPath);
-  const grafanaOverview = useAtomValue(asyncGrafanaOverviewAtom);
+  const grafanaOverview = useAtomValue(configGrafanaOverviewAtom);
 
   // 获取可用资源列表
   const { data: resources } = useQuery({

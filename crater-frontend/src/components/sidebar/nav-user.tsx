@@ -36,12 +36,12 @@ import { useTheme } from "@/utils/theme";
 import { toast } from "sonner";
 import { Role } from "@/services/api/auth";
 import useIsAdmin from "@/hooks/useAdmin";
-import { asyncUrlWebsiteBaseAtom } from "@/utils/store/config";
+import { configUrlWebsiteBaseAtom } from "@/utils/store/config";
 import { UserAvatar } from "../custom/UserDetail/UserAvatar";
 import { getUserPseudonym } from "@/utils/pseudonym";
 
 export function NavUser() {
-  const website = useAtomValue(asyncUrlWebsiteBaseAtom);
+  const website = useAtomValue(configUrlWebsiteBaseAtom);
   const { isMobile } = useSidebar();
   const queryClient = useQueryClient();
   const { resetAll } = useResetStore();
