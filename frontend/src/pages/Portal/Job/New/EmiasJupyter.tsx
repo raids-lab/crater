@@ -39,7 +39,7 @@ import { useEffect, useState } from "react";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
 import { MetadataFormJupyterEmias } from "@/components/form/types";
-import LoadableButton from "@/components/custom/LoadableButton";
+import LoadableButton from "@/components/button/LoadableButton";
 import PageTitle from "@/components/layout/PageTitle";
 import { PublishConfigForm } from "./Publish";
 import { ImageFormField } from "@/components/form/ImageFormField";

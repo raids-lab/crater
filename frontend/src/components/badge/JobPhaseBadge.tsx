@@ -64,39 +64,6 @@ export const jobPhases = [
   },
 ];
 
-export const aijobPhases = [
-  {
-    value: "Queueing",
-    label: "检查中",
-    color: "#800080", // 假设的紫色十六进制值，可根据实际情况调整
-  },
-  {
-    value: "Created",
-    label: "等待中",
-    color: "#646464", // 假设的石板灰色十六进制值，可根据实际情况调整
-  },
-  {
-    value: "Running",
-    label: "运行中",
-    color: "#0080ff", // 假设的天蓝色十六进制值，可根据实际情况调整
-  },
-  {
-    value: "Succeeded",
-    label: "已完成",
-    color: "#008000", // 假设的鲜绿色十六进制值，可根据实际情况调整
-  },
-  {
-    value: "Preempted",
-    label: "被抢占",
-    color: "#ffa500", // 假设的橙色十六进制值，可根据实际情况调整
-  },
-  {
-    value: "Failed",
-    label: "失败",
-    color: "#ff0000", // 假设的红色十六进制值，可根据实际情况调整
-  },
-];
-
 export const getJobPhaseLabel = (phase: JobPhase): PhaseBadgeData => {
   switch (phase) {
     case JobPhase.Init:

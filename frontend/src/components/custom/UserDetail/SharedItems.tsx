@@ -1,3 +1,5 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -8,10 +10,12 @@ const items = [
 ];
 
 export default function SharedItems() {
+  const { t } = useTranslation();
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>分享的模型和数据集</CardTitle>
+        <CardTitle>{t("sharedItems.title")}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -22,7 +26,9 @@ export default function SharedItems() {
               </CardHeader>
               <CardContent>
                 <Badge>{item.type}</Badge>
-                <p className="mt-2">下载次数: {item.downloads}</p>
+                <p className="mt-2">
+                  {t("sharedItems.downloadCount")}: {item.downloads}
+                </p>
               </CardContent>
             </Card>
           ))}

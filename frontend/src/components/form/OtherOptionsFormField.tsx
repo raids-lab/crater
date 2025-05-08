@@ -1,3 +1,5 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import {
   FormControl,
   FormDescription,
@@ -19,7 +21,9 @@ import {
 } from "@/components/ui/tooltip";
 import { CircleHelpIcon } from "lucide-react";
 
-export const OtherCard = "其他选项";
+export function getOtherCardTitle(t: (key: string) => string) {
+  return t("otherOptionsFormCard.accordionTitle");
+}
 
 interface OtherOptionsFormCardProps<T extends FieldValues> {
   form: UseFormReturn<T>;
@@ -38,10 +42,15 @@ export function OtherOptionsFormCard<T extends FieldValues>({
   open,
   setOpen,
 }: OtherOptionsFormCardProps<T>) {
+  const { t } = useTranslation();
   const nodeSelectorEnabled = form.watch(nodeSelectorEnablePath);
 
   return (
-    <AccordionCard cardTitle={OtherCard} open={open} setOpen={setOpen}>
+    <AccordionCard
+      cardTitle={t("otherOptionsFormCard.accordionTitle")}
+      open={open}
+      setOpen={setOpen}
+    >
       <div className="mt-3 space-y-3">
         <FormField
           control={form.control}
@@ -49,20 +58,24 @@ export function OtherOptionsFormCard<T extends FieldValues>({
           render={({ field }) => (
             <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
               <FormLabel className="font-normal">
-                接收状态通知
+                {t("otherOptionsFormCard.receiveStatusNotifications")}
                 <TooltipProvider delayDuration={100}>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p className="mb-0.5 font-semibold">通过邮件接收通知：</p>
-                      <p>1. 作业开始运行通知（排队一段时间后）</p>
-                      <p>2. 作业运行成功通知</p>
-                      <p>3. 作业运行失败通知</p>
-                      <p>4. 作业低利用率/长运行时间即将释放通知</p>
-                      <p>5. 作业低利用率/长运行时间已释放通知</p>
-                      <p>注：支持北航邮箱、Google 邮箱等</p>
+                      <p className="mb-0.5 font-semibold">
+                        {t(
+                          "otherOptionsFormCard.tooltip.receiveEmailNotifications",
+                        )}
+                      </p>
+                      <p>{t("otherOptionsFormCard.tooltip.notification1")}</p>
+                      <p>{t("otherOptionsFormCard.tooltip.notification2")}</p>
+                      <p>{t("otherOptionsFormCard.tooltip.notification3")}</p>
+                      <p>{t("otherOptionsFormCard.tooltip.notification4")}</p>
+                      <p>{t("otherOptionsFormCard.tooltip.notification5")}</p>
+                      <p>{t("otherOptionsFormCard.tooltip.emailSupport")}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -83,14 +96,16 @@ export function OtherOptionsFormCard<T extends FieldValues>({
             render={({ field }) => (
               <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
                 <FormLabel className="font-normal">
-                  指定工作节点
+                  {t("otherOptionsFormCard.specifyWorkNode")}
                   <TooltipProvider delayDuration={100}>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
                       </TooltipTrigger>
                       <TooltipContent>
-                        用于调试，或对特定节点进行性能测试场景
+                        {t(
+                          "otherOptionsFormCard.tooltip.debugPerformanceTesting",
+                        )}
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -117,7 +132,7 @@ export function OtherOptionsFormCard<T extends FieldValues>({
                   <Input {...field} className="font-mono" />
                 </FormControl>
                 <FormDescription>
-                  节点名称（可通过空闲资源查询获取）
+                  {t("otherOptionsFormCard.nodeNameDescription")}
                 </FormDescription>
                 <FormMessage />
               </FormItem>

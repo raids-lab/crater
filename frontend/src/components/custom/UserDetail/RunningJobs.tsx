@@ -1,3 +1,5 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -8,25 +10,42 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-const jobs = [
-  { id: 1, name: "数据预处理", status: "运行中", progress: "75%" },
-  { id: 2, name: "模型训练", status: "等待中", progress: "0%" },
-  { id: 3, name: "结果分析", status: "排队中", progress: "0%" },
-];
-
 export default function RunningJobs() {
+  const { t } = useTranslation();
+
+  const jobs = [
+    {
+      id: 1,
+      name: t("jobs.dataPreprocessing"),
+      status: t("statuses.running"),
+      progress: "75%",
+    },
+    {
+      id: 2,
+      name: t("jobs.modelTraining"),
+      status: t("statuses.waiting"),
+      progress: "0%",
+    },
+    {
+      id: 3,
+      name: t("jobs.resultAnalysis"),
+      status: t("statuses.queued"),
+      progress: "0%",
+    },
+  ];
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>运行中的作业</CardTitle>
+        <CardTitle>{t("runningJobs.title")}</CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>作业名称</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead>进度</TableHead>
+              <TableHead>{t("runningJobs.headers.jobName")}</TableHead>
+              <TableHead>{t("runningJobs.headers.status")}</TableHead>
+              <TableHead>{t("runningJobs.headers.progress")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

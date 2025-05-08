@@ -1,4 +1,6 @@
-// https://github.com/shadcn-ui/ui/issues/355
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -15,14 +17,13 @@ import { ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// 修改FileSelect组件初始化File数组为顶层目录
 export const FileSelectDialog = ({
   value,
   handleSubmit,
   disabled,
   allowSelectFile = true,
   isrw = false,
-  title = "选择挂载数据",
+  title,
 }: {
   value?: string;
   handleSubmit: (path: TreeDataItem) => void;
@@ -31,16 +32,17 @@ export const FileSelectDialog = ({
   isrw?: boolean;
   title?: string;
 }) => {
+  const { t } = useTranslation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [content, setContent] = useState<TreeDataItem | undefined>();
 
   const handleSelect = () => {
     if (content) {
       handleSubmit(content);
-      toast.info(`选择了${content.id}`);
+      toast.info(t("fileSelectDialog.selectedFile", { id: content.id }));
       setIsDialogOpen(false);
     } else {
-      toast.warning("请选择一个文件或文件夹");
+      toast.warning(t("fileSelectDialog.selectFileOrFolder"));
     }
   };
 
@@ -59,20 +61,22 @@ export const FileSelectDialog = ({
           >
             {!isDialogOpen && value
               ? value === "user"
-                ? "用户空间"
+                ? t("fileSelectDialog.userSpace")
                 : value === "account"
-                  ? "账户空间"
+                  ? t("fileSelectDialog.accountSpace")
                   : value === "public"
-                    ? "公共空间"
+                    ? t("fileSelectDialog.publicSpace")
                     : value
-              : "选择文件"}
+              : t("fileSelectDialog.selectFile")}
             <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
           </Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>支持选择单个文件或文件夹</DialogDescription>
+            <DialogTitle>{title || t("fileSelectDialog.title")}</DialogTitle>
+            <DialogDescription>
+              {t("fileSelectDialog.description")}
+            </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <div className="border-input relative flex h-80 flex-col gap-2 rounded-md border shadow-xs">
@@ -92,7 +96,7 @@ export const FileSelectDialog = ({
               onClick={handleSelect}
               disabled={!content || (!allowSelectFile && !content.isdir)}
             >
-              确认选择 {content?.name}
+              {t("fileSelectDialog.confirmSelection", { name: content?.name })}
             </Button>
           </DialogFooter>
         </DialogContent>

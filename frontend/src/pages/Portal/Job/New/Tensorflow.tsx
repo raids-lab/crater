@@ -43,7 +43,7 @@ import PageTitle from "@/components/layout/PageTitle";
 import FormImportButton from "@/components/form/FormImportButton";
 import FormExportButton from "@/components/form/FormExportButton";
 import { PublishConfigForm } from "./Publish";
-import LoadableButton from "@/components/custom/LoadableButton";
+import LoadableButton from "@/components/button/LoadableButton";
 import { ResourceFormFields } from "@/components/form/ResourceFormField";
 import { ForwardFormCard } from "@/components/form/ForwardFormField";
 import { EnvFormCard } from "@/components/form/EnvFormField";

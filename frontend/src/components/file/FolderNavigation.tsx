@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -26,16 +29,13 @@ const isAccountFolder = (folder: string) => folder === "account";
 
 const isUserFolder = (folder: string) => folder === "user";
 
-const getFolderDescription = (folder: string) => {
-  // public: 公共空间
-  // q-*: 账户共享空间
-  // u-*: 用户私有空间
+const getFolderDescription = (folder: string, t: (key: string) => string) => {
   if (isPublicFolder(folder)) {
-    return "平台上所有用户都可以访问，如需获取上传权限，请联系管理员。";
+    return t("folderNavigation.folderDescriptions.public");
   } else if (isAccountFolder(folder)) {
-    return "账户共享空间，仅限账户内用户访问，如需获取上传权限，请联系账户管理员。";
+    return t("folderNavigation.folderDescriptions.account");
   }
-  return "个人空间，仅限当前用户访问，拥有完全的读写权限。";
+  return t("folderNavigation.folderDescriptions.user");
 };
 
 const getAccessMode = (folder: string, token: AccountContext) => {
@@ -54,6 +54,7 @@ export default function FolderNavigation({
   data?: FileItem[];
   isadmin: boolean;
 }) {
+  const { t } = useTranslation();
   const [hoveredFolder, setHoveredFolder] = useState<string | null>(null);
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -97,7 +98,6 @@ export default function FolderNavigation({
   };
 
   const handleTitleNavigation = (name: string) => {
-    // TODO(ganhao): 能不能让用户目录和账户目录也对齐公共目录，不要暴露具体的名称
     if (isPublicFolder(name)) {
       if (isadmin) {
         navigate(pathname + "/admin-public");
@@ -122,8 +122,8 @@ export default function FolderNavigation({
   return (
     <div>
       <PageTitle
-        title="文件系统"
-        description="选择一个文件夹以查看其内容，在这里对文件进行上传、下载、移动、删除等操作。"
+        title={t("folderNavigation.pageTitle.title")}
+        description={t("folderNavigation.pageTitle.description")}
       />
       <div
         className={cn("mt-6 grid gap-6", {
@@ -161,14 +161,14 @@ export default function FolderNavigation({
                       <Folder className={cn("size-6", colors.icon)} />
                     )}
                     <CardTitle className="flex flex-row items-center gap-2 text-xl">
-                      {getFolderTitle(r.name)}
+                      {getFolderTitle(t, r.name)}
                       <UserAccessBadge
                         access={getAccessMode(r.name, token).toString()}
                       />
                     </CardTitle>
                   </div>
                   <CardDescription className="leading-relaxed text-balance">
-                    {getFolderDescription(r.name)}
+                    {getFolderDescription(r.name, t)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -196,7 +196,9 @@ export default function FolderNavigation({
                     variant="outline"
                   >
                     <LogInIcon className="mr-2 size-4 transition-transform group-hover:translate-x-1" />
-                    查看{getFolderTitle(r.name)}
+                    {t("folderNavigation.viewButton", {
+                      folder: getFolderTitle(t, r.name),
+                    })}
                     <ChevronRight className="ml-auto size-4 transition-transform group-hover:translate-x-1" />
                   </Button>
                 </CardFooter>
@@ -209,8 +211,12 @@ export default function FolderNavigation({
       {rowData != undefined && data.length === 0 && (
         <div className="py-12 text-center">
           <Folder className="text-muted-foreground/50 mx-auto mb-4 size-12" />
-          <h3 className="mb-2 text-xl font-medium">没有找到文件夹</h3>
-          <p className="text-muted-foreground">您当前没有任何文件夹。</p>
+          <h3 className="mb-2 text-xl font-medium">
+            {t("folderNavigation.noFolders.title")}
+          </h3>
+          <p className="text-muted-foreground">
+            {t("folderNavigation.noFolders.description")}
+          </p>
         </div>
       )}
     </div>

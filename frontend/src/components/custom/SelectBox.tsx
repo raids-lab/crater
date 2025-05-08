@@ -1,4 +1,5 @@
-// Copied from https://github.com/shadcn-ui/ui/issues/927#issuecomment-2272458201
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import { CheckIcon, Cross2Icon } from "@radix-ui/react-icons";
 import React from "react";
 
@@ -50,6 +51,7 @@ const SelectBox = ({
 }: SelectBoxProps & {
   ref?: React.RefObject<HTMLInputElement>;
 }) => {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = React.useState<string>("");
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -138,7 +140,9 @@ const SelectBox = ({
                   value={searchTerm}
                   onValueChange={(e) => setSearchTerm(e)}
                   ref={ref}
-                  placeholder={inputPlaceholder ?? "Search..."}
+                  placeholder={
+                    inputPlaceholder ?? t("selectBox.inputPlaceholder")
+                  }
                   className="h-9"
                 />
                 {searchTerm && (
@@ -152,7 +156,7 @@ const SelectBox = ({
               </div>
               <CommandList>
                 <CommandEmpty>
-                  {emptyPlaceholder ?? "No results found."}
+                  {emptyPlaceholder ?? t("selectBox.emptyPlaceholder")}
                 </CommandEmpty>
                 <CommandGroup>
                   <ScrollArea>
@@ -163,7 +167,6 @@ const SelectBox = ({
                         return (
                           <CommandItem
                             key={option.value}
-                            // value={option.value}
                             onSelect={() => handleSelect(option.value)}
                           >
                             <div

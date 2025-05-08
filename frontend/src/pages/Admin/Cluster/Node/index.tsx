@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
@@ -35,6 +38,7 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
     placeholder: "搜索节点名称",
@@ -51,6 +55,7 @@ const toolbarConfig: DataTableToolbarConfig = {
 };
 
 const NodeForAdmin = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState("");
@@ -75,23 +80,27 @@ const NodeForAdmin = () => {
       apichangeNodeScheduling(nodeId)
         .then(() => {
           refetchTaskList();
-          toast.success("操作成功");
+          toast.success(t("nodeManagement.operationSuccess"));
         })
         .catch((error) => {
-          toast.error(`操作失败: ${error.message}`);
+          toast.error(
+            t("nodeManagement.operationFailed", { error: error.message }),
+          );
         });
     },
-    [refetchTaskList],
+    [refetchTaskList, t],
   );
 
   const { mutate: addNodeTaint } = useMutation({
     mutationFn: apiAddNodeTaint,
     onSuccess: async () => {
       await refetchTaskList();
-      toast.success("节点占有成功");
+      toast.success(t("nodeManagement.occupationSuccess"));
     },
     onError: (error) => {
-      toast.error(`节点占有失败: ${error.message}`);
+      toast.error(
+        t("nodeManagement.occupationFailed", { error: error.message }),
+      );
     },
   });
 
@@ -99,10 +108,10 @@ const NodeForAdmin = () => {
     mutationFn: apiDeleteNodeTaint,
     onSuccess: async () => {
       await refetchTaskList();
-      toast.success("取消节点占有成功");
+      toast.success(t("nodeManagement.releaseSuccess"));
     },
     onError: (error) => {
-      toast.error(`取消节点占有失败: ${error.message}`);
+      toast.error(t("nodeManagement.releaseFailed", { error: error.message }));
     },
   });
 
@@ -159,7 +168,7 @@ const NodeForAdmin = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel className="text-muted-foreground text-xs">
-                  操作
+                  {t("nodeManagement.actionsLabel")}
                 </DropdownMenuLabel>
                 {isReady === "occupied" ? (
                   <DropdownMenuItem
@@ -171,7 +180,7 @@ const NodeForAdmin = () => {
                     }}
                   >
                     <Users size={16} strokeWidth={2} />
-                    取消独占
+                    {t("nodeManagement.releaseOccupation")}
                   </DropdownMenuItem>
                 ) : (
                   <DropdownMenuItem
@@ -182,7 +191,7 @@ const NodeForAdmin = () => {
                     }}
                   >
                     <Users size={16} strokeWidth={2} />
-                    账户占有
+                    {t("nodeManagement.accountOccupation")}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={() => handleNodeScheduling(nodeId)}>
@@ -191,7 +200,9 @@ const NodeForAdmin = () => {
                   ) : (
                     <ZapIcon className="size-4" />
                   )}
-                  {isReady === "true" ? "禁止调度" : "恢复调度"}
+                  {isReady === "true"
+                    ? t("nodeManagement.disableScheduling")
+                    : t("nodeManagement.enableScheduling")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -199,25 +210,41 @@ const NodeForAdmin = () => {
         },
       },
     ],
-    [handleNodeScheduling, nodeColumns],
+    [handleNodeScheduling, nodeColumns, t],
   ); // 确保依赖项是稳定的
 
   return (
     <>
       <DataTable
         info={{
-          title: "节点管理",
-          description: "在这里修改节点的调度策略、是否由某些账户独享等",
+          title: t("nodeManagement.title"),
+          description: t("nodeManagement.description"),
         }}
         storageKey="admin_node_management"
         query={nodeQuery}
         columns={columns}
-        toolbarConfig={toolbarConfig}
+        toolbarConfig={{
+          ...toolbarConfig,
+          filterInput: {
+            ...toolbarConfig.filterInput,
+            placeholder: t("nodeManagement.searchPlaceholder"),
+          },
+          filterOptions: [
+            {
+              ...toolbarConfig.filterOptions[0],
+              title: t("nodeManagement.statusFilter"),
+            },
+          ],
+        }}
       />
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{isOccupation ? "账户占有" : "取消占有"}</DialogTitle>
+            <DialogTitle>
+              {isOccupation
+                ? t("nodeManagement.occupationDialogTitle")
+                : t("nodeManagement.releaseDialogTitle")}
+            </DialogTitle>
           </DialogHeader>
           {isOccupation ? (
             <div className="grid gap-4 py-4">
@@ -229,16 +256,20 @@ const NodeForAdmin = () => {
           ) : (
             <div className="grid gap-4 py-4">
               <div className="flex items-center gap-4">
-                <span>确定取消{selectedAccount}的占有:</span>
+                <span>
+                  {t("nodeManagement.confirmRelease", {
+                    account: selectedAccount,
+                  })}
+                </span>
               </div>
             </div>
           )}
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">取消</Button>
+              <Button variant="outline">{t("nodeManagement.cancel")}</Button>
             </DialogClose>
             <Button variant="default" onClick={handleOccupation}>
-              提交
+              {t("nodeManagement.submit")}
             </Button>
           </DialogFooter>
         </DialogContent>

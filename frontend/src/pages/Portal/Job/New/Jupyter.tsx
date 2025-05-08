@@ -37,7 +37,7 @@ import { globalUserInfo } from "@/utils/store";
 import FormExportButton from "@/components/form/FormExportButton";
 import FormImportButton from "@/components/form/FormImportButton";
 import { MetadataFormJupyter } from "@/components/form/types";
-import LoadableButton from "@/components/custom/LoadableButton";
+import LoadableButton from "@/components/button/LoadableButton";
 import PageTitle from "@/components/layout/PageTitle";
 import { PublishConfigForm } from "./Publish";
 import { ImageFormField } from "@/components/form/ImageFormField";

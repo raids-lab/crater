@@ -1,3 +1,5 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { DataTable } from "@/components/custom/DataTable";
@@ -65,25 +67,30 @@ import TooltipButton from "../custom/TooltipButton";
 import { configUrlApiBaseAtom } from "@/utils/store/config";
 import { AccessMode } from "@/services/api/auth";
 
-const getHeader = (key: string): string => {
+const getHeader = (key: string, t: (key: string) => string): string => {
   switch (key) {
     case "name":
-      return "名称";
+      return t("columns.name.header");
     case "modifytime":
-      return "更新于";
+      return t("columns.modifytime.header");
     case "size":
-      return "大小";
+      return t("columns.size.header");
     default:
       return key;
   }
 };
-const toolbarConfig: DataTableToolbarConfig = {
-  filterInput: {
-    placeholder: "搜索名称",
-    key: "name",
-  },
-  filterOptions: [],
-  getHeader: getHeader,
+
+const getToolbarConfig = (
+  t: (key: string) => string,
+): DataTableToolbarConfig => {
+  return {
+    filterInput: {
+      placeholder: "search.name.placeholder",
+      key: "name",
+    },
+    filterOptions: [],
+    getHeader: (key) => getHeader(key, t),
+  };
 };
 
 interface FilesystemTableProps {
@@ -111,6 +118,7 @@ const FileActions = ({
   canShow: boolean;
 }) => {
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
+  const { t } = useTranslation();
   return (
     <div className="flex flex-row space-x-1">
       {/* 下载按钮（仅文件显示）*/}
@@ -118,7 +126,7 @@ const FileActions = ({
         <TooltipButton
           variant="outline"
           className="h-8 w-8 p-0 hover:text-sky-700"
-          tooltipContent="下载文件"
+          tooltipContent={t("fileActions.download.tooltip")}
           onClick={() => {
             const link = `${apiBaseURL}ss/download${path}/${name}`;
             const o = new XMLHttpRequest();
@@ -137,13 +145,17 @@ const FileActions = ({
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-                toast.success("下载文件成功！");
+                toast.success(t("fileActions.download.success"));
               } else {
-                toast.error("下载失败：" + o.statusText);
+                toast.error(
+                  t("fileActions.download.error", {
+                    status: o.statusText,
+                  }),
+                );
               }
             };
             o.send();
-            toast.info("正在下载该文件");
+            toast.info(t("fileActions.download.inProgress"));
           }}
         >
           <DownloadIcon className="size-4" />
@@ -159,7 +171,9 @@ const FileActions = ({
                 className="hover:text-destructive h-8 w-8 p-0"
                 variant="outline"
                 size="icon"
-                tooltipContent={`删除${isDir ? "文件夹" : "文件"}`}
+                tooltipContent={t("fileActions.delete.tooltip", {
+                  type: isDir ? "folder" : "file",
+                })}
               >
                 <Trash2 size={16} strokeWidth={2} />
               </TooltipButton>
@@ -168,22 +182,26 @@ const FileActions = ({
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>
-                删除{isDir ? "文件夹" : "文件"}
+                {t("fileActions.delete.title", {
+                  type: isDir ? "folder" : "file",
+                })}
               </AlertDialogTitle>
               <AlertDialogDescription>
-                {isDir ? "文件夹" : "文件"}
-                {name}将被永久删除
+                {t("fileActions.delete.description", {
+                  type: isDir ? "folder" : "file",
+                  name,
+                })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
               <AlertDialogAction
                 variant="destructive"
                 onClick={() => {
                   deleteFile(path + "/" + name);
                 }}
               >
-                删除
+                {t("common.delete")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -199,7 +217,9 @@ const FileActions = ({
                 className="hover:text-destructive h-8 w-8 p-0"
                 variant="outline"
                 size="icon"
-                tooltipContent={`移动${isDir ? "文件夹" : "文件"}`}
+                tooltipContent={t("fileActions.move.tooltip", {
+                  type: isDir ? "folder" : "file",
+                })}
               >
                 <Globe size={16} strokeWidth={2} />
               </TooltipButton>
@@ -208,20 +228,21 @@ const FileActions = ({
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle className="text-lg">
-                移动{isDir ? "文件夹" : "文件"}
+                {t("fileActions.move.title", {
+                  type: isDir ? "folder" : "file",
+                })}
               </AlertDialogTitle>
               <AlertDialogDescription>
                 <div className="text-foreground font-medium">
-                  正在移动：
-                  <span className="text-primary">{name}</span>
+                  {t("fileActions.move.currentItem", {
+                    name,
+                  })}
                 </div>
-                <p className="text-sm">
-                  请选择目标位置，移动后原位置将不再保留
-                </p>
+                <p className="text-sm">{t("fileActions.move.description")}</p>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
               <AlertDialogAction asChild>
                 <FileSelectDialog
                   value=""
@@ -253,6 +274,7 @@ export function FileSystemTable({
   apiGetFiles,
   isadmin,
 }: FilesystemTableProps) {
+  const { t } = useTranslation();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [dirName, setDirName] = useState<string>("");
@@ -288,7 +310,7 @@ export function FileSystemTable({
           };
         } else if (index == 3) {
           return {
-            title: getFolderTitle(value),
+            title: getFolderTitle(t, value),
             path: `/portal/data/filesystem/${value}`,
           };
         }
@@ -310,7 +332,7 @@ export function FileSystemTable({
           };
         } else if (index == 3) {
           return {
-            title: getAdminFolderTitle(value),
+            title: getAdminFolderTitle(t, value),
             path: `/admin/data/filesystem/${value}`,
           };
         }
@@ -328,7 +350,7 @@ export function FileSystemTable({
       breadcrumb[breadcrumb.length - 1].path = undefined;
     }
     setBreadcrumb(breadcrumb);
-  }, [isadmin, pathname, setBreadcrumb]);
+  }, [isadmin, pathname, setBreadcrumb, t]);
 
   const backpath = useMemo(() => {
     return pathname.replace(/\/[^/]+$/, "");
@@ -371,7 +393,7 @@ export function FileSystemTable({
   const { mutate: deleteFile } = useMutation({
     mutationFn: (req: string) => apiFileDelete(req),
     onSuccess: async () => {
-      toast.success("删除成功");
+      toast.success(t("fileActions.delete.success"));
       await queryClient.invalidateQueries({
         queryKey: ["data", "filesystem", path],
       });
@@ -396,7 +418,7 @@ export function FileSystemTable({
     mutationFn: ({ fileData, path }: { fileData: MoveFile; path: string }) =>
       apiMoveFile(fileData, path),
     onSuccess: async () => {
-      toast.success("文件移动成功");
+      toast.success(t("fileActions.move.success"));
       await queryClient.invalidateQueries({
         queryKey: ["data", "filesystem", path],
       });
@@ -408,7 +430,7 @@ export function FileSystemTable({
       {
         accessorKey: "name",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("name")} />
+          <DataTableColumnHeader column={column} title={getHeader("name", t)} />
         ),
         cell: ({ row }) => {
           if (row.original.isdir) {
@@ -444,7 +466,7 @@ export function FileSystemTable({
         header: ({ column }) => (
           <DataTableColumnHeader
             column={column}
-            title={getHeader("modifytime")}
+            title={getHeader("modifytime", t)}
           />
         ),
         cell: ({ row }) => {
@@ -456,7 +478,7 @@ export function FileSystemTable({
       {
         accessorKey: "size",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("size")} />
+          <DataTableColumnHeader column={column} title={getHeader("size", t)} />
         ),
         cell: ({ row }) => {
           if (row.original.isdir) {
@@ -486,7 +508,7 @@ export function FileSystemTable({
         },
       },
     ],
-    [navigate, pathname, apiBaseURL, deleteFile, moveFile, path, canShow],
+    [navigate, pathname, apiBaseURL, deleteFile, moveFile, path, canShow, t],
   );
 
   const refInput2 = useRef<HTMLInputElement>(null);
@@ -502,7 +524,7 @@ export function FileSystemTable({
     if (dirName != "") {
       await apiMkdir(`${path}/${dirName}`)
         .then(() => {
-          toast.success("文件夹已创建");
+          toast.success(t("fileActions.createFolder.success"));
         })
         .catch((error) => {
           showErrorToast(error);
@@ -534,7 +556,7 @@ export function FileSystemTable({
           storageKey="filesystem"
           query={query}
           columns={columns}
-          toolbarConfig={toolbarConfig}
+          toolbarConfig={getToolbarConfig(t)}
         >
           <TooltipButton
             variant="outline"
@@ -544,7 +566,7 @@ export function FileSystemTable({
             }}
             className="h-8 w-8"
             disabled={isRoot}
-            tooltipContent="返回上一级"
+            tooltipContent={t("fileActions.return.tooltip")}
           >
             <ArrowLeftIcon className="size-4" />
           </TooltipButton>
@@ -556,20 +578,22 @@ export function FileSystemTable({
                 className="h-8 w-8"
                 size="icon"
                 disabled={isRoot}
-                tooltipContent="创建文件夹"
+                tooltipContent={t("fileActions.createFolder.tooltip")}
               >
                 <FolderPlusIcon className="size-4" />
               </TooltipButton>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>创建新文件夹</DialogTitle>
-                <DialogDescription>输入文件夹名</DialogDescription>
+                <DialogTitle>{t("fileActions.createFolder.title")}</DialogTitle>
+                <DialogDescription>
+                  {t("fileActions.createFolder.description")}
+                </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="name" className="text-right">
-                    名称
+                    {t("fileActions.createFolder.nameLabel")}
                   </Label>
                   <Input
                     id="name"
@@ -584,7 +608,7 @@ export function FileSystemTable({
               <DialogClose>
                 <DialogFooter>
                   <Button type="submit" onClick={() => CreateDir()}>
-                    创建文件夹
+                    {t("common.create")}
                   </Button>
                 </DialogFooter>
               </DialogClose>

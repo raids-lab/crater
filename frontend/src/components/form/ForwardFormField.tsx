@@ -1,5 +1,8 @@
+// i18n-processed-v1.1.0
+// Modified code
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import { useTranslation } from "react-i18next";
 import { Fragment, useState } from "react";
 import { ArrayPath, UseFormReturn, useFieldArray } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -18,7 +21,7 @@ import FormLabelMust from "@/components/form/FormLabelMust";
 import AccordionCard from "@/components/form/AccordionCard";
 import { cn } from "@/lib/utils";
 
-export const ForwardCard = "外部访问";
+const getForwardCardTitle = (t) => t("forwardCard.title");
 
 interface ForwardFormCardProps<
   T extends {
@@ -34,6 +37,7 @@ export function ForwardFormCard<
     forwards: Array<{ name: string; port: number }>;
   },
 >({ form, className }: ForwardFormCardProps<T>) {
+  const { t } = useTranslation();
   const [forwardOpen, setForwardOpen] = useState<boolean>(true);
 
   // Field array for forwards
@@ -48,7 +52,7 @@ export function ForwardFormCard<
 
   return (
     <AccordionCard
-      cardTitle={ForwardCard}
+      cardTitle={getForwardCardTitle(t)}
       open={forwardOpen}
       setOpen={setForwardOpen}
       className={className}
@@ -65,14 +69,14 @@ export function ForwardFormCard<
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        规则名 {index + 1}
+                        {t("forwardForm.nameLabel", { index: index + 1 })}
                         <FormLabelMust />
                       </FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
                       <FormDescription>
-                        只能包含小写字母，最多 20 字符
+                        {t("forwardForm.nameDescription")}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -84,7 +88,7 @@ export function ForwardFormCard<
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        端口号 {index + 1}
+                        {t("forwardForm.portLabel", { index: index + 1 })}
                         <FormLabelMust />
                       </FormLabel>
                       <FormControl>
@@ -115,7 +119,9 @@ export function ForwardFormCard<
                   className="hover:text-secondary-foreground/50 text-muted-foreground absolute top-0 right-0 mt-1 mr-1 -translate-y-3 cursor-pointer p-1 focus:outline-none"
                 >
                   <XIcon className="h-4 w-4" />
-                  <span className="sr-only">Remove</span>
+                  <span className="sr-only">
+                    {t("forwardForm.removeButton")}
+                  </span>
                 </button>
               </div>
             </div>
@@ -133,7 +139,7 @@ export function ForwardFormCard<
           }
         >
           <CirclePlus className="size-4" />
-          添加端口转发规则
+          {t("forwardForm.addButton")}
         </Button>
       </div>
     </AccordionCard>

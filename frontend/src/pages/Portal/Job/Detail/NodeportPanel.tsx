@@ -45,7 +45,7 @@ import { GridIcon } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import DocsButton from "@/components/button/DocsButton";
 import { CopyButton } from "@/components/button/copy-button";
-import LoadableButton from "@/components/custom/LoadableButton";
+import LoadableButton from "@/components/button/LoadableButton";
 
 const nodeportFormSchema = z.object({
   name: z

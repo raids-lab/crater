@@ -1,3 +1,5 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiAdminAccountList } from "@/services/api/account";
@@ -16,6 +18,7 @@ interface AccountSelectProps {
 }
 
 const AccountSelect: React.FC<AccountSelectProps> = ({ value, onChange }) => {
+  const { t } = useTranslation();
   const { data } = useQuery({
     queryKey: ["admin", "accounts"],
     queryFn: apiAdminAccountList,
@@ -25,7 +28,7 @@ const AccountSelect: React.FC<AccountSelectProps> = ({ value, onChange }) => {
     <div>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger id="account-select">
-          <SelectValue placeholder="请选择账户" />
+          <SelectValue placeholder={t("accountSelect.placeholder")} />
         </SelectTrigger>
         <SelectContent>
           {data?.data?.data

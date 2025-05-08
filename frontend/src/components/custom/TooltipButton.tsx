@@ -1,3 +1,4 @@
+// i18n-processed-v1.1.0 (no translatable strings)
 import React from "react";
 import { buttonVariants, Button } from "../ui/button";
 import { cn } from "@/lib/utils";

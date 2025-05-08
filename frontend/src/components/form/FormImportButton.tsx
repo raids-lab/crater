@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { importFromJsonFile } from "@/utils/form";
@@ -25,14 +28,16 @@ function FormImportButton<T extends FieldValues>({
   afterImport,
   form,
   className,
-  buttonText = "导入配置",
+  buttonText,
 }: ImportButtonProps<T>) {
+  const { t } = useTranslation();
+
   return (
     <TooltipButton
       variant="outline"
       type="button"
       className={cn("relative cursor-pointer", className)}
-      tooltipContent="从本地文件导入作业配置"
+      tooltipContent={t("formImportButton.tooltip")}
     >
       <Input
         onChange={(e) => {
@@ -49,7 +54,7 @@ function FormImportButton<T extends FieldValues>({
               }
               form?.reset(data);
               afterImport?.(data);
-              toast.info("导入配置成功");
+              toast.info(t("formImportButton.successToast"));
             })
             .catch((error) => {
               showErrorToast(error);
@@ -59,7 +64,7 @@ function FormImportButton<T extends FieldValues>({
         className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
       />
       <CircleArrowDown className="size-4" />
-      {buttonText}
+      {buttonText || t("formImportButton.buttonText")}
     </TooltipButton>
   );
 }

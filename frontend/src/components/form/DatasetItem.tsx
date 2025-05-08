@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { ComboboxItem } from "./Combobox";
 import { IDataset } from "@/services/api/dataset";
 import TipBadge from "../badge/TipBadge";
@@ -14,6 +17,8 @@ export default function DatasetItem({
 }: {
   item: ComboboxItem<IDataset>;
 }) {
+  const { t } = useTranslation();
+
   const dataType = item.detail?.type;
   return (
     <TooltipProvider delayDuration={100}>
@@ -31,7 +36,11 @@ export default function DatasetItem({
             <div className="mt-1 flex flex-wrap gap-1">
               <TipBadge
                 className="text-highlight-slate bg-highlight-slate/15"
-                title={dataType === "model" ? "模型" : "数据集"}
+                title={
+                  dataType === "model"
+                    ? t("datasetItem.model")
+                    : t("datasetItem.dataset")
+                }
               />
               {item.detail?.extra.tag?.map((tag) => (
                 <TipBadge
@@ -44,7 +53,8 @@ export default function DatasetItem({
           </div>
         </TooltipTrigger>
         <TooltipContent className="flex flex-row gap-0.5">
-          <p>{item.detail?.userInfo.nickname}</p>创建于
+          <p>{item.detail?.userInfo.nickname}</p>
+          {t("datasetItem.createdOn")}
           <TimeDistance date={item.detail?.createdAt} className="text-xs" />
         </TooltipContent>
       </Tooltip>

@@ -11,7 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
-import LoadableButton from "@/components/custom/LoadableButton";
+import LoadableButton from "@/components/button/LoadableButton";
 import { toast } from "sonner";
 import { logger } from "@/utils/loglevel";
 

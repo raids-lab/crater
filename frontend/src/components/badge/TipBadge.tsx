@@ -1,3 +1,5 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Badge } from "../ui/badge";
 import { ReactNode } from "react";
@@ -9,6 +11,8 @@ const TipBadge = ({
   className?: string;
   title?: ReactNode;
 }) => {
+  const { t } = useTranslation();
+
   return (
     <Badge
       className={cn(
@@ -17,7 +21,7 @@ const TipBadge = ({
         className,
       )}
     >
-      {title || "WIP"}
+      {title || t("tipBadge.defaultTitle")}
     </Badge>
   );
 };

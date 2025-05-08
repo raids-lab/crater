@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import {
   FormControl,
   FormField,
@@ -28,9 +31,10 @@ export function ImageFormField<T extends FieldValues>({
   name,
   jobType = JobType.Jupyter,
   required = true,
-  label = "容器镜像",
+  label,
   className,
 }: ImageFormFieldProps<T>) {
+  const { t } = useTranslation();
   const { data: images } = useImageQuery(jobType);
 
   return (
@@ -40,7 +44,7 @@ export function ImageFormField<T extends FieldValues>({
       render={({ field }) => (
         <FormItem className={className}>
           <FormLabel>
-            {label}
+            {label || t("imageFormField.label")}
             {required && <FormLabelMust />}
           </FormLabel>
 
@@ -50,7 +54,7 @@ export function ImageFormField<T extends FieldValues>({
               current={field.value}
               handleSelect={(value) => field.onChange(value)}
               renderLabel={(item) => <ImageItem item={item} />}
-              formTitle="镜像"
+              formTitle={t("imageFormField.comboboxFormTitle")}
             />
           </FormControl>
           <FormMessage />
@@ -73,13 +77,11 @@ export function TagFilter({
   selectedTags,
   onTagToggle,
   className,
-  // label = "按标签筛选",
 }: TagFilterProps) {
   if (tags.length === 0) return null;
 
   return (
     <div className={`border-t border-b px-2 py-2 ${className}`}>
-      {/* <div className="text-muted-foreground mb-1 text-xs">{label}</div> */}
       <div className="flex flex-wrap gap-1 pb-1">
         {tags.map((tag) => (
           <Badge

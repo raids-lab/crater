@@ -1,3 +1,5 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -44,57 +46,65 @@ interface Job {
   };
 }
 
-// 将配置项置于 configs 对象下
-const cleanLongTimeSchema = z.object({
-  suspend: z.boolean(),
-  schedule: z.string().refine((value) => isValidCron(value), {
-    message: "无效的 Cron 表达式，请检查格式和数值范围",
-  }),
-  configs: z.object({
-    BATCH_DAYS: z.coerce.number().int().positive(),
-    INTERACTIVE_DAYS: z.coerce.number().int().positive(),
-  }),
-});
+// Moved Zod schema to component
+const getCronErrorMessage = (t: (key: string) => string) =>
+  t("cronPolicy.invalidCron");
 
-const cleanLowGpuSchema = z.object({
-  suspend: z.boolean(),
-  schedule: z.string().refine((value) => isValidCron(value), {
-    message: "无效的 Cron 表达式，请检查格式和数值范围",
-  }),
-  configs: z.object({
-    TIME_RANGE: z.coerce.number().int().positive(),
-    UTIL: z.coerce.number(),
-    WAIT_TIME: z.coerce.number().int().positive(),
-  }),
-});
+const getCleanLongTimeSchema = (t: (key: string) => string) =>
+  z.object({
+    suspend: z.boolean(),
+    schedule: z.string().refine((value) => isValidCron(value), {
+      message: getCronErrorMessage(t),
+    }),
+    configs: z.object({
+      BATCH_DAYS: z.coerce.number().int().positive(),
+      INTERACTIVE_DAYS: z.coerce.number().int().positive(),
+    }),
+  });
 
-const cleanWaitingJupyterSchema = z.object({
-  suspend: z.boolean(),
-  schedule: z.string().refine((value) => isValidCron(value), {
-    message: "无效的 Cron 表达式，请检查格式和数值范围",
-  }),
-  configs: z.object({
-    JUPYTER_WAIT_MINUTES: z.coerce.number().int().positive(),
-  }),
-});
+const getCleanLowGpuSchema = (t: (key: string) => string) =>
+  z.object({
+    suspend: z.boolean(),
+    schedule: z.string().refine((value) => isValidCron(value), {
+      message: getCronErrorMessage(t),
+    }),
+    configs: z.object({
+      TIME_RANGE: z.coerce.number().int().positive(),
+      UTIL: z.coerce.number(),
+      WAIT_TIME: z.coerce.number().int().positive(),
+    }),
+  });
 
-const formSchema = z.object({
-  cleanLongTime: cleanLongTimeSchema,
-  cleanLowGpu: cleanLowGpuSchema,
-  cleanWaitingJupyter: cleanWaitingJupyterSchema,
-});
+const getCleanWaitingJupyterSchema = (t: (key: string) => string) =>
+  z.object({
+    suspend: z.boolean(),
+    schedule: z.string().refine((value) => isValidCron(value), {
+      message: getCronErrorMessage(t),
+    }),
+    configs: z.object({
+      JUPYTER_WAIT_MINUTES: z.coerce.number().int().positive(),
+    }),
+  });
 
-type FormValues = z.infer<typeof formSchema>;
+const getFormSchema = (t: (key: string) => string) =>
+  z.object({
+    cleanLongTime: getCleanLongTimeSchema(t),
+    cleanLowGpu: getCleanLowGpuSchema(t),
+    cleanWaitingJupyter: getCleanWaitingJupyterSchema(t),
+  });
+
+type FormValues = z.infer<ReturnType<typeof getFormSchema>>;
 
 export default function CronPolicy({ className }: { className?: string }) {
+  const { t } = useTranslation();
   const [dryRunJobs, setDryRunJobs] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
+  const formSchema = getFormSchema(t);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
 
-  // 加载当前策略数据，并转换为表单格式
   useEffect(() => {
     async function loadJobSchedule() {
       setLoading(true);
@@ -116,29 +126,28 @@ export default function CronPolicy({ className }: { className?: string }) {
           };
           form.reset(formData);
         } else {
-          toast.error("获取策略失败：" + res.msg);
+          toast.error(t("cronPolicy.loadError") + res.msg);
         }
       } catch (error) {
-        toast.error("获取策略异常" + error);
+        toast.error(t("cronPolicy.loadError") + error);
       } finally {
         setLoading(false);
       }
     }
     loadJobSchedule();
-  }, [form]);
+  }, [form, t]);
 
-  // 分别提交各个配置的更新
   const onSubmitLongTime = async () => {
     const data = form.getValues("cleanLongTime");
     try {
       const res = await apiJobScheduleChangeAdmin(data);
       if (res.code === 0) {
-        toast.success("清理长时间作业更新成功");
+        toast.success(t("cronPolicy.longTimeSuccess"));
       } else {
-        toast.error("清理长时间作业更新失败：" + res.msg);
+        toast.error(t("cronPolicy.longTimeError") + res.msg);
       }
     } catch (error) {
-      toast.error("更新清理长时间作业策略异常" + error);
+      toast.error(t("cronPolicy.longTimeError") + error);
     }
   };
 
@@ -147,12 +156,12 @@ export default function CronPolicy({ className }: { className?: string }) {
     try {
       const res = await apiJobScheduleChangeAdmin(data);
       if (res.code === 0) {
-        toast.success("清理低GPU利用率作业更新成功");
+        toast.success(t("cronPolicy.lowGpuSuccess"));
       } else {
-        toast.error("清理低GPU利用率作业更新失败：" + res.msg);
+        toast.error(t("cronPolicy.lowGpuError") + res.msg);
       }
     } catch (error) {
-      toast.error("更新清理低GPU利用率策略异常" + error);
+      toast.error(t("cronPolicy.lowGpuError") + error);
     }
   };
 
@@ -161,23 +170,21 @@ export default function CronPolicy({ className }: { className?: string }) {
     try {
       const res = await apiJobScheduleChangeAdmin(data);
       if (res.code === 0) {
-        toast.success("清理排队中的 jupyter 任务更新成功");
+        toast.success(t("cronPolicy.jupyterSuccess"));
       } else {
-        toast.error("清理排队中的 jupyter 任务更新失败：" + res.msg);
+        toast.error(t("cronPolicy.jupyterError") + res.msg);
       }
     } catch (error) {
-      toast.error("更新清理排队中的 jupyter 任务异常" + error);
+      toast.error(t("cronPolicy.jupyterError") + error);
     }
   };
 
   const runJob = async () => {
-    // 模拟干跑作业逻辑
     const mockDryRunJobs = ["Job1", "Job2", "Job3"];
     setDryRunJobs(mockDryRunJobs);
   };
 
   const confirmJobRun = async () => {
-    // 真正执行作业逻辑
     setDryRunJobs([]);
   };
 
@@ -186,7 +193,7 @@ export default function CronPolicy({ className }: { className?: string }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-1.5">
           <AlarmClockIcon className="text-primary" />
-          定时策略
+          {t("cronPolicy.title")}
           <TipBadge />
         </CardTitle>
       </CardHeader>
@@ -196,9 +203,10 @@ export default function CronPolicy({ className }: { className?: string }) {
         ) : (
           <Form {...form}>
             <div className="space-y-8 p-4">
-              {/* 清理长时间作业 */}
               <div className="rounded-md border p-4">
-                <h3 className="mb-4 font-semibold">清理长时间作业</h3>
+                <h3 className="mb-4 font-semibold">
+                  {t("cronPolicy.longTimeTitle")}
+                </h3>
                 <div className="flex flex-wrap gap-4">
                   <FormField
                     control={form.control}
@@ -211,7 +219,7 @@ export default function CronPolicy({ className }: { className?: string }) {
                             onCheckedChange={field.onChange}
                           />
                         </FormControl>
-                        <span>Suspend</span>
+                        <span>{t("cronPolicy.suspend")}</span>
                       </FormItem>
                     )}
                   />
@@ -220,7 +228,9 @@ export default function CronPolicy({ className }: { className?: string }) {
                     name="cleanLongTime.schedule"
                     render={({ field, fieldState }) => (
                       <FormItem className="flex flex-col">
-                        <label className="text-sm">执行计划</label>
+                        <label className="text-sm">
+                          {t("cronPolicy.schedule")}
+                        </label>
                         <FormControl>
                           <Input className="mt-1 font-mono" {...field} />
                         </FormControl>
@@ -238,7 +248,7 @@ export default function CronPolicy({ className }: { className?: string }) {
                     render={({ field, fieldState }) => (
                       <FormItem className="flex flex-col">
                         <label className="text-sm">
-                          批处理任务运行天数（BATCH_DAYS）
+                          {t("cronPolicy.batchDays")}
                         </label>
                         <FormControl>
                           <Input
@@ -261,7 +271,7 @@ export default function CronPolicy({ className }: { className?: string }) {
                     render={({ field, fieldState }) => (
                       <FormItem className="flex flex-col">
                         <label className="text-sm">
-                          交互式任务运行天数（INTERACTIVE_DAYS）
+                          {t("cronPolicy.interactiveDays")}
                         </label>
                         <FormControl>
                           <Input
@@ -284,14 +294,15 @@ export default function CronPolicy({ className }: { className?: string }) {
                     variant="secondary"
                     onClick={form.handleSubmit(onSubmitLongTime)}
                   >
-                    更新清理长时间作业策略
+                    {t("cronPolicy.longTimeUpdate")}
                   </Button>
                 </div>
               </div>
 
-              {/* 清理低GPU利用率作业 */}
               <div className="rounded-md border p-4">
-                <h3 className="mb-4 font-semibold">清理低GPU利用率作业</h3>
+                <h3 className="mb-4 font-semibold">
+                  {t("cronPolicy.lowGpuTitle")}
+                </h3>
                 <div className="flex flex-wrap gap-4">
                   <FormField
                     control={form.control}
@@ -304,7 +315,7 @@ export default function CronPolicy({ className }: { className?: string }) {
                             onCheckedChange={field.onChange}
                           />
                         </FormControl>
-                        <span>Suspend</span>
+                        <span>{t("cronPolicy.suspend")}</span>
                       </FormItem>
                     )}
                   />
@@ -313,7 +324,9 @@ export default function CronPolicy({ className }: { className?: string }) {
                     name="cleanLowGpu.schedule"
                     render={({ field, fieldState }) => (
                       <FormItem className="flex flex-col">
-                        <label className="text-sm">执行计划</label>
+                        <label className="text-sm">
+                          {t("cronPolicy.schedule")}
+                        </label>
                         <FormControl>
                           <Input className="mt-1 font-mono" {...field} />
                         </FormControl>
@@ -331,7 +344,7 @@ export default function CronPolicy({ className }: { className?: string }) {
                     render={({ field, fieldState }) => (
                       <FormItem className="flex flex-col">
                         <label className="text-sm">
-                          时间范围（分钟，TIME_RANGE）
+                          {t("cronPolicy.timeRange")}
                         </label>
                         <FormControl>
                           <Input
@@ -353,7 +366,9 @@ export default function CronPolicy({ className }: { className?: string }) {
                     name="cleanLowGpu.configs.UTIL"
                     render={({ field, fieldState }) => (
                       <FormItem className="flex flex-col">
-                        <label className="text-sm">利用率（UTIL）</label>
+                        <label className="text-sm">
+                          {t("cronPolicy.util")}
+                        </label>
                         <FormControl>
                           <Input
                             type="number"
@@ -376,7 +391,7 @@ export default function CronPolicy({ className }: { className?: string }) {
                     render={({ field, fieldState }) => (
                       <FormItem className="flex flex-col">
                         <label className="text-sm">
-                          等待时间（WAIT_TIME，分钟）
+                          {t("cronPolicy.waitTime")}
                         </label>
                         <FormControl>
                           <Input
@@ -399,15 +414,14 @@ export default function CronPolicy({ className }: { className?: string }) {
                     variant="secondary"
                     onClick={form.handleSubmit(onSubmitLowGpu)}
                   >
-                    更新清理低GPU利用率策略
+                    {t("cronPolicy.lowGpuUpdate")}
                   </Button>
                 </div>
               </div>
 
-              {/* 清理排队中的 jupyter 任务 */}
               <div className="rounded-md border p-4">
                 <h3 className="mb-4 font-semibold">
-                  清理排队中的 jupyter 任务
+                  {t("cronPolicy.jupyterTitle")}
                 </h3>
                 <div className="flex flex-wrap gap-4">
                   <FormField
@@ -421,7 +435,7 @@ export default function CronPolicy({ className }: { className?: string }) {
                             onCheckedChange={field.onChange}
                           />
                         </FormControl>
-                        <span>Suspend</span>
+                        <span>{t("cronPolicy.suspend")}</span>
                       </FormItem>
                     )}
                   />
@@ -430,7 +444,9 @@ export default function CronPolicy({ className }: { className?: string }) {
                     name="cleanWaitingJupyter.schedule"
                     render={({ field, fieldState }) => (
                       <FormItem className="flex flex-col">
-                        <label className="text-sm">执行计划</label>
+                        <label className="text-sm">
+                          {t("cronPolicy.schedule")}
+                        </label>
                         <FormControl>
                           <Input className="mt-1 font-mono" {...field} />
                         </FormControl>
@@ -448,7 +464,7 @@ export default function CronPolicy({ className }: { className?: string }) {
                     render={({ field, fieldState }) => (
                       <FormItem className="flex flex-col">
                         <label className="text-sm">
-                          等待时间（JUPYTER_WAIT_MINUTES，分钟）
+                          {t("cronPolicy.jupyterWait")}
                         </label>
                         <FormControl>
                           <Input
@@ -471,7 +487,7 @@ export default function CronPolicy({ className }: { className?: string }) {
                     variant="secondary"
                     onClick={form.handleSubmit(onSubmitWaitingJupyter)}
                   >
-                    更新清理排队中的 jupyter 策略
+                    {t("cronPolicy.jupyterUpdate")}
                   </Button>
                 </div>
               </div>
@@ -500,29 +516,31 @@ export default function CronPolicy({ className }: { className?: string }) {
                 <path d="m6.8 10.4 6.8 6.8" />
                 <path d="m5 17 1.4-1.4" />
               </svg>
-              立即清理
+              {t("cronPolicy.runJob")}
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>作业清理确认</AlertDialogTitle>
+              <AlertDialogTitle>
+                {t("cronPolicy.confirmTitle")}
+              </AlertDialogTitle>
               <AlertDialogDescription>
                 {dryRunJobs.length > 0 ? (
                   <>
-                    以下作业将被删除：
+                    {t("cronPolicy.jobsToDelete")}:<br />
                     {dryRunJobs.map((job, index) => (
                       <div key={index}>{job}</div>
                     ))}
                   </>
                 ) : (
-                  "没有符合条件的作业需要删除。"
+                  t("cronPolicy.noJobs")
                 )}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogCancel>{t("cronPolicy.cancel")}</AlertDialogCancel>
               <AlertDialogAction onClick={confirmJobRun}>
-                确认
+                {t("cronPolicy.confirm")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

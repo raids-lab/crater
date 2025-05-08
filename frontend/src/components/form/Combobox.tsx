@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { FormControl } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
@@ -20,6 +23,7 @@ import { Check, ChevronsUpDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { TagFilter, useTagFilter } from "./ImageFormField";
 import { Badge } from "@/components/ui/badge";
+
 export interface ComboboxItem<T> {
   label: string;
   value: string;
@@ -63,20 +67,16 @@ function Combobox<T>({
   tags,
   tagFilter,
 }: ComboboxProps<T>) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  // Use the tag filter hook
   const { allTags, selectedTags, toggleTag, filterItemsByTags } = useTagFilter(
     items,
     tags,
   );
 
-  // Filter items based on search query and selected tags
   const filteredItems = useMemo(() => {
-    // First filter by tags
     const tagFilteredItems = filterItemsByTags(items);
-
-    // Then filter by search query
     return tagFilteredItems.filter((item) => {
       return (
         searchQuery === "" ||
@@ -103,7 +103,9 @@ function Combobox<T>({
         onClick={() => !useDialog || setOpen(true)}
       >
         <p className="truncate">
-          {current ? getSelectedLabel(items, current) : `选择${formTitle}`}
+          {current
+            ? getSelectedLabel(items, current)
+            : t("combobox.select", { formTitle })}
         </p>
         <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
       </Button>
@@ -113,7 +115,7 @@ function Combobox<T>({
   const commandContent = (
     <Command>
       <CommandInput
-        placeholder={`查找${formTitle}`}
+        placeholder={t("combobox.search", { formTitle })}
         className="h-9"
         onValueChange={setSearchQuery}
       />
@@ -128,7 +130,7 @@ function Combobox<T>({
         ))}
 
       <CommandList>
-        <CommandEmpty>未找到匹配的{formTitle}</CommandEmpty>
+        <CommandEmpty>{t("combobox.noResults", { formTitle })}</CommandEmpty>
         <CommandGroup>
           <div>
             {filteredItems.map((item) => (

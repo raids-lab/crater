@@ -46,7 +46,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { configUrlHostAtom } from "@/utils/store/config";
 import { useAtomValue } from "jotai";
 import DocsButton from "@/components/button/DocsButton";
-import LoadableButton from "@/components/custom/LoadableButton";
+import LoadableButton from "@/components/button/LoadableButton";
 
 const ingressFormSchema = z.object({
   name: z

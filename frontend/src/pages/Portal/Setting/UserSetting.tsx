@@ -42,7 +42,7 @@ import {
   InputOTPSeparator,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
-import LoadableButton from "@/components/custom/LoadableButton";
+import LoadableButton from "@/components/button/LoadableButton";
 import Quota from "../Job/Interactive/Quota";
 import PageTitle from "@/components/layout/PageTitle";
 import { apiUserEmailVerified } from "@/services/api/user";

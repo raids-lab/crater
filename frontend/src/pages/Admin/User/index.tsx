@@ -1,3 +1,5 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { ColumnDef } from "@tanstack/react-table";
 import {
@@ -134,15 +136,20 @@ const toolbarConfig: DataTableToolbarConfig = {
   getHeader: getHeader,
 };
 
-const userFormSchema = z.object({
-  nickname: z.string().optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  teacher: z.string().optional().or(z.literal("")),
-  group: z.string().optional().or(z.literal("")),
-  phone: z.string().optional().or(z.literal("")),
-});
+const userFormSchema = (t: (key: string) => string) =>
+  z.object({
+    nickname: z.string().optional(),
+    email: z
+      .string()
+      .email(t("userForm.emailError"))
+      .optional()
+      .or(z.literal("")),
+    teacher: z.string().optional().or(z.literal("")),
+    group: z.string().optional().or(z.literal("")),
+    phone: z.string().optional().or(z.literal("")),
+  });
 
-type UserFormValues = z.infer<typeof userFormSchema>;
+type UserFormValues = z.infer<ReturnType<typeof userFormSchema>>;
 
 interface UserEditDialogProps {
   open: boolean;
@@ -151,10 +158,11 @@ interface UserEditDialogProps {
 }
 
 function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const form = useForm<UserFormValues>({
-    resolver: zodResolver(userFormSchema),
+    resolver: zodResolver(userFormSchema(t)),
     defaultValues: {
       nickname: user?.attributes.nickname || "",
       email: user?.attributes.email || "",
@@ -186,12 +194,12 @@ function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps) {
       return apiAdminUpdateUserAttributes(user.name, updateData);
     },
     onSuccess: () => {
-      toast.success("用户信息已更新");
+      toast.success(t("userEditDialog.successToast"));
       queryClient.invalidateQueries({ queryKey: ["admin", "userlist"] });
       onOpenChange(false);
     },
     onError: () => {
-      toast.error("更新失败");
+      toast.error(t("userEditDialog.errorToast"));
     },
   });
 
@@ -203,9 +211,9 @@ function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>编辑用户信息</DialogTitle>
+          <DialogTitle>{t("userEditDialog.title")}</DialogTitle>
           <DialogDescription>
-            更新用户 {user?.name} 的个人信息
+            {t("userEditDialog.description", { name: user?.name })}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -215,9 +223,12 @@ function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps) {
               name="nickname"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>昵称</FormLabel>
+                  <FormLabel>{t("userEditDialog.nicknameLabel")}</FormLabel>
                   <FormControl>
-                    <Input placeholder="昵称" {...field} />
+                    <Input
+                      placeholder={t("userEditDialog.nicknamePlaceholder")}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -228,9 +239,12 @@ function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps) {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>邮箱</FormLabel>
+                  <FormLabel>{t("userEditDialog.emailLabel")}</FormLabel>
                   <FormControl>
-                    <Input placeholder="邮箱地址" {...field} />
+                    <Input
+                      placeholder={t("userEditDialog.emailPlaceholder")}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -241,9 +255,12 @@ function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps) {
               name="teacher"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>导师</FormLabel>
+                  <FormLabel>{t("userEditDialog.teacherLabel")}</FormLabel>
                   <FormControl>
-                    <Input placeholder="导师姓名" {...field} />
+                    <Input
+                      placeholder={t("userEditDialog.teacherPlaceholder")}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -254,9 +271,12 @@ function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps) {
               name="group"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>组别</FormLabel>
+                  <FormLabel>{t("userEditDialog.groupLabel")}</FormLabel>
                   <FormControl>
-                    <Input placeholder="组别" {...field} />
+                    <Input
+                      placeholder={t("userEditDialog.groupPlaceholder")}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -267,9 +287,12 @@ function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps) {
               name="phone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>手机</FormLabel>
+                  <FormLabel>{t("userEditDialog.phoneLabel")}</FormLabel>
                   <FormControl>
-                    <Input placeholder="手机号码" {...field} />
+                    <Input
+                      placeholder={t("userEditDialog.phonePlaceholder")}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -277,7 +300,7 @@ function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps) {
             />
             <DialogFooter>
               <Button type="submit" disabled={isPending}>
-                {isPending ? "保存中..." : "保存修改"}
+                {isPending ? t("common.saving") : t("common.saveChanges")}
               </Button>
             </DialogFooter>
           </form>
@@ -288,6 +311,7 @@ function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps) {
 }
 
 export const User = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { name: currentUserName } = useAtomValue(globalUserInfo);
   const [editUser, setEditUser] = useState<TUser | null>(null);
@@ -310,7 +334,7 @@ export const User = () => {
     mutationFn: (userName: string) => apiAdminUserDelete(userName),
     onSuccess: async (_, userName) => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "userlist"] });
-      toast.success(`用户 ${userName} 已删除`);
+      toast.success(t("userTable.deleteSuccess", { name: userName }));
     },
   });
 
@@ -319,7 +343,9 @@ export const User = () => {
       apiAdminUserUpdateRole(userName, role),
     onSuccess: async (_, variables) => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "userlist"] });
-      toast.success(`用户 ${variables.userName} 权限已更新`);
+      toast.success(
+        t("userTable.roleUpdateSuccess", { name: variables.userName }),
+      );
     },
   });
 
@@ -328,7 +354,10 @@ export const User = () => {
       {
         accessorKey: "name",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("name")} />
+          <DataTableColumnHeader
+            column={column}
+            title={t("userTable.headers.name")}
+          />
         ),
         cell: ({ row }) => (
           <UserLabel
@@ -342,14 +371,20 @@ export const User = () => {
       {
         accessorKey: "group",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("group")} />
+          <DataTableColumnHeader
+            column={column}
+            title={t("userTable.headers.group")}
+          />
         ),
         cell: ({ row }) => <div>{row.original.attributes.group}</div>,
       },
       {
         accessorKey: "teacher",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("teacher")} />
+          <DataTableColumnHeader
+            column={column}
+            title={t("userTable.headers.teacher")}
+          />
         ),
         cell: ({ row }) => <div>{row.original.attributes.teacher}</div>,
       },
@@ -357,7 +392,10 @@ export const User = () => {
       {
         accessorKey: "role",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("role")} />
+          <DataTableColumnHeader
+            column={column}
+            title={t("userTable.headers.role")}
+          />
         ),
         cell: ({ row }) => {
           return <UserRoleBadge role={row.getValue("role")} />;
@@ -369,7 +407,10 @@ export const User = () => {
       {
         accessorKey: "status",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("status")} />
+          <DataTableColumnHeader
+            column={column}
+            title={t("userTable.headers.status")}
+          />
         ),
         cell: ({ row }) => {
           return <UserStatusBadge status={row.getValue("status")} />;
@@ -391,14 +432,14 @@ export const User = () => {
                     <Button
                       variant="ghost"
                       className="h-8 w-8 p-0"
-                      title="更多选项"
+                      title={t("common.moreOptions")}
                     >
                       <DotsHorizontalIcon className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel className="text-muted-foreground text-xs">
-                      操作
+                      {t("common.actions")}
                     </DropdownMenuLabel>
                     <DropdownMenuItem
                       onClick={() => {
@@ -406,10 +447,12 @@ export const User = () => {
                         setEditDialogOpen(true);
                       }}
                     >
-                      编辑信息
+                      {t("userTable.editInfo")}
                     </DropdownMenuItem>
                     <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>权限</DropdownMenuSubTrigger>
+                      <DropdownMenuSubTrigger>
+                        {t("userTable.roleLabel")}
+                      </DropdownMenuSubTrigger>
                       <DropdownMenuSubContent>
                         <DropdownMenuRadioGroup value={`${user.role}`}>
                           {roles.map((role) => (
@@ -423,7 +466,7 @@ export const User = () => {
                                 })
                               }
                             >
-                              {role.label}
+                              {t(`userTable.roles.${role.value}`)}
                             </DropdownMenuRadioItem>
                           ))}
                         </DropdownMenuRadioGroup>
@@ -432,33 +475,33 @@ export const User = () => {
                     <DropdownMenuSeparator />
                     <AlertDialogTrigger asChild>
                       <DropdownMenuItem className="focus:bg-destructive focus:text-destructive-foreground">
-                        删除
+                        {t("userTable.delete")}
                       </DropdownMenuItem>
                     </AlertDialogTrigger>
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>删除用户</AlertDialogTitle>
+                    <AlertDialogTitle>
+                      {t("userTable.deleteTitle")}
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
-                      用户「{user?.name}」将被删除，请谨慎操作。
+                      {t("userTable.deleteDescription", { name: user?.name })}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>取消</AlertDialogCancel>
+                    <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                     <AlertDialogAction
                       variant="destructive"
                       onClick={() => {
                         if (user.name === currentUserName) {
-                          showErrorToast(
-                            "无法删除自己，如需删除请换个用户登录",
-                          );
+                          showErrorToast(t("userTable.selfDeleteError"));
                         } else {
                           deleteUser(user.name);
                         }
                       }}
                     >
-                      删除
+                      {t("common.delete")}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -468,15 +511,15 @@ export const User = () => {
         },
       },
     ],
-    [deleteUser, currentUserName, updateRole],
+    [deleteUser, currentUserName, updateRole, t],
   );
 
   return (
     <>
       <DataTable
         info={{
-          title: "用户管理",
-          description: "在这里查看和管理用户信息",
+          title: t("userTable.title"),
+          description: t("userTable.description"),
         }}
         storageKey="admin_user"
         query={userQuery}

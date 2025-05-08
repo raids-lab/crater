@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Role, apiUserLogin } from "@/services/api/auth";
-import LoadableButton from "@/components/custom/LoadableButton";
+import LoadableButton from "@/components/button/LoadableButton";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { isAxiosError } from "axios";

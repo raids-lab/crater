@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/select";
 import FormExportButton from "@/components/form/FormExportButton";
 import { PublishConfigForm } from "./Publish";
-import LoadableButton from "@/components/custom/LoadableButton";
+import LoadableButton from "@/components/button/LoadableButton";
 import PageTitle from "@/components/layout/PageTitle";
 import FormImportButton from "@/components/form/FormImportButton";
 import { TemplateInfo } from "@/components/form/TemplateInfo";

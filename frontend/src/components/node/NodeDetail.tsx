@@ -365,7 +365,7 @@ export const NodeDetail: FC = () => {
       ],
       getHeader: getHeader,
     };
-  }, []);
+  }, [scheduler]);
 
   // 修改 BreadCrumb
   useEffect(() => {

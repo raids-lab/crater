@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { apiUserSignup } from "@/services/api/auth";
-import LoadableButton from "@/components/custom/LoadableButton";
+import LoadableButton from "@/components/button/LoadableButton";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";

@@ -1,3 +1,5 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -92,6 +94,7 @@ export function SharedResourceTable({
   apiCancelDatasetSharewithQueue,
   apiDatasetDelete,
 }: SharedResourceTableProps) {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string; name: string }>();
   const navigate = useNavigate();
   const datasetId = id ? parseInt(id, 10) : 0;
@@ -101,13 +104,13 @@ export function SharedResourceTable({
   const dataTypeLabel = (() => {
     switch (resourceType) {
       case "dataset":
-        return "数据集";
+        return t("sharedResource.dataset");
       case "model":
-        return "模型";
+        return t("sharedResource.model");
       case "sharefile":
-        return "共享文件";
+        return t("sharedResource.sharefile");
       default:
-        return "数据集";
+        return t("sharedResource.dataset");
     }
   })();
   const userDatasetData = useQuery({
@@ -177,7 +180,7 @@ export function SharedResourceTable({
       void queryClient.invalidateQueries({
         queryKey: ["data", "userdataset", datasetId],
       });
-      toast.success("已取消共享");
+      toast.success(t("sharedResource.shareCanceled"));
     },
   });
 
@@ -185,10 +188,12 @@ export function SharedResourceTable({
     mutationFn: (datasetID: number) => apiDatasetDelete(datasetID),
     onSuccess: () => {
       navigate(-1);
-      toast.success(`${dataTypeLabel}已删除`);
+      toast.success(
+        t("sharedResource.deletedSuccess", { type: dataTypeLabel }),
+      );
     },
     onError: () => {
-      toast.error(`删除${dataTypeLabel}}失败`);
+      toast.error(t("sharedResource.deleteFailed", { type: dataTypeLabel }));
     },
   });
 
@@ -202,13 +207,13 @@ export function SharedResourceTable({
       void queryClient.invalidateQueries({
         queryKey: ["data", "queuedataset", datasetId],
       });
-      toast.success("已取消共享");
+      toast.success(t("sharedResource.shareCanceled"));
     },
   });
 
   useEffect(() => {
-    setBreadcrumb([{ title: "详情" }]);
-  }, [setBreadcrumb]);
+    setBreadcrumb([{ title: t("sharedResource.detail") }]);
+  }, [setBreadcrumb, t]);
 
   const formattedTags = useMemo(() => {
     const tags = query.data?.extra.tag;
@@ -216,19 +221,25 @@ export function SharedResourceTable({
     return tags.map((tag) => ({ value: tag }));
   }, [query.data?.extra.tag]);
 
-  const userDatasetColumns = useMemo<ColumnDef<UserDatasetResp>[]>(
-    () => [
+  const userDatasetColumns = useMemo<ColumnDef<UserDatasetResp>[]>(() => {
+    return [
       {
         accessorKey: "index",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={"序号"} />
+          <DataTableColumnHeader
+            column={column}
+            title={t("sharedResource.serialNumber")}
+          />
         ),
         cell: ({ row }) => <div>{row.index + 1}</div>,
       },
       {
         accessorKey: "name",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={"用户名称"} />
+          <DataTableColumnHeader
+            column={column}
+            title={t("sharedResource.userName")}
+          />
         ),
         cell: ({ row }) => <div>{row.getValue("name")}</div>,
       },
@@ -243,7 +254,7 @@ export function SharedResourceTable({
                   <Button
                     variant="outline"
                     className="h-8 w-8 p-0 hover:text-red-700"
-                    title="取消共享"
+                    title={t("sharedResource.cancelShare")}
                   >
                     <X size={24} strokeWidth={2} />
                   </Button>
@@ -251,20 +262,24 @@ export function SharedResourceTable({
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>取消用户共享</DialogTitle>
+                  <DialogTitle>
+                    {t("sharedResource.cancelUserShare")}
+                  </DialogTitle>
                   <DialogDescription>
-                    和指定的用户取消共享的{dataTypeLabel}
+                    {t("sharedResource.cancelUserShareDescription", {
+                      type: dataTypeLabel,
+                    })}
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                  <DialogClose>取消</DialogClose>
+                  <DialogClose>{t("sharedResource.cancel")}</DialogClose>
                   <DialogClose>
                     <Button
                       type="submit"
                       variant="default"
                       onClick={() => cancelShareWithUser(row.original.id)}
                     >
-                      确认
+                      {t("sharedResource.confirm")}
                     </Button>
                   </DialogClose>
                 </DialogFooter>
@@ -273,23 +288,28 @@ export function SharedResourceTable({
           </div>
         ),
       },
-    ],
-    [cancelShareWithUser, dataTypeLabel],
-  );
+    ];
+  }, [cancelShareWithUser, dataTypeLabel, t]);
 
   const queueDatasetColumns = useMemo<ColumnDef<QueueDatasetGetResp>[]>(
     () => [
       {
         accessorKey: "index",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={"序号"} />
+          <DataTableColumnHeader
+            column={column}
+            title={t("sharedResource.serialNumber")}
+          />
         ),
         cell: ({ row }) => <div>{row.index + 1}</div>,
       },
       {
         accessorKey: "name",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={"账户名称"} />
+          <DataTableColumnHeader
+            column={column}
+            title={t("sharedResource.accountName")}
+          />
         ),
         cell: ({ row }) => <div>{row.getValue("name")}</div>,
       },
@@ -304,7 +324,7 @@ export function SharedResourceTable({
                   <Button
                     variant="outline"
                     className="h-8 w-8 p-0 hover:text-red-700"
-                    title="取消共享"
+                    title={t("sharedResource.cancelShare")}
                   >
                     <X size={24} strokeWidth={2} />
                   </Button>
@@ -312,21 +332,24 @@ export function SharedResourceTable({
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>取消账户共享</DialogTitle>
+                  <DialogTitle>
+                    {t("sharedResource.cancelAccountShare")}
+                  </DialogTitle>
                   <DialogDescription>
-                    和指定的账户取消共享的
-                    {dataTypeLabel}
+                    {t("sharedResource.cancelAccountShareDescription", {
+                      type: dataTypeLabel,
+                    })}
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                  <DialogClose>取消</DialogClose>
+                  <DialogClose>{t("sharedResource.cancel")}</DialogClose>
                   <DialogClose>
                     <Button
                       type="submit"
                       variant="default"
                       onClick={() => cancelShareWithQueue(row.original.id)}
                     >
-                      确认
+                      {t("sharedResource.confirm")}
                     </Button>
                   </DialogClose>
                 </DialogFooter>
@@ -336,23 +359,23 @@ export function SharedResourceTable({
         ),
       },
     ],
-    [cancelShareWithQueue, dataTypeLabel],
+    [cancelShareWithQueue, dataTypeLabel, t],
   );
-  const getHeader = (key: string): string => {
-    switch (key) {
-      case "name":
-        return "名称";
-      case "modifytime":
-        return "更新于";
-      case "size":
-        return "大小";
-      default:
-        return key;
-    }
-  };
 
-  const datasetFilescolumns = useMemo<ColumnDef<FileItem>[]>(
-    () => [
+  const datasetFilescolumns = useMemo<ColumnDef<FileItem>[]>(() => {
+    const getHeader = (key: string): string => {
+      switch (key) {
+        case "name":
+          return t("sharedResource.name");
+        case "modifytime":
+          return t("sharedResource.lastModified");
+        case "size":
+          return t("sharedResource.size");
+        default:
+          return key;
+      }
+    };
+    return [
       {
         accessorKey: "name",
         header: ({ column }) => (
@@ -416,9 +439,8 @@ export function SharedResourceTable({
           }
         },
       },
-    ],
-    [],
-  );
+    ];
+  }, [t]);
 
   return (
     <DetailPage
@@ -426,7 +448,11 @@ export function SharedResourceTable({
         <DetailTitle
           icon={resourceType === "model" ? BotIcon : DatabaseIcon}
           title={query.data?.name}
-          description={query.data?.extra.editable ? "可编辑" : "只读"}
+          description={
+            query.data?.extra.editable
+              ? t("sharedResource.editable")
+              : t("sharedResource.readOnly")
+          }
         >
           {(user?.name === query.data?.userInfo.username || isAdminMode) && (
             <div className="flex flex-row space-x-1">
@@ -455,7 +481,7 @@ export function SharedResourceTable({
                     <Button
                       variant="outline"
                       className="h-8 w-8 p-0 hover:text-red-700"
-                      title="用户共享"
+                      title={t("sharedResource.userShare")}
                     >
                       <User size={16} strokeWidth={2} />
                     </Button>
@@ -463,10 +489,11 @@ export function SharedResourceTable({
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>分享至用户</DialogTitle>
+                    <DialogTitle>{t("sharedResource.shareToUser")}</DialogTitle>
                     <DialogDescription>
-                      和指定的用户共享的
-                      {dataTypeLabel}
+                      {t("sharedResource.shareToUserDescription", {
+                        type: dataTypeLabel,
+                      })}
                     </DialogDescription>
                   </DialogHeader>
                   <ShareDatasetToUserDialog
@@ -481,7 +508,7 @@ export function SharedResourceTable({
                     <Button
                       variant="outline"
                       className="h-8 w-8 p-0 hover:text-red-700"
-                      title="账户共享"
+                      title={t("sharedResource.accountShare")}
                     >
                       <Users size={16} strokeWidth={2} />
                     </Button>
@@ -489,9 +516,15 @@ export function SharedResourceTable({
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>共享{dataTypeLabel}</DialogTitle>
+                    <DialogTitle>
+                      {t("sharedResource.shareToAccount", {
+                        type: dataTypeLabel,
+                      })}
+                    </DialogTitle>
                     <DialogDescription>
-                      和账户共享的{dataTypeLabel}
+                      {t("sharedResource.shareToAccountDescription", {
+                        type: dataTypeLabel,
+                      })}
                     </DialogDescription>
                   </DialogHeader>
                   <ShareDatasetToQueueDialog
@@ -506,7 +539,9 @@ export function SharedResourceTable({
                     <Button
                       variant="outline"
                       className="h-8 w-8 p-0 hover:text-red-700"
-                      title={`删除${dataTypeLabel}`}
+                      title={t("sharedResource.delete", {
+                        type: dataTypeLabel,
+                      })}
                     >
                       <Trash size={16} strokeWidth={2} />
                     </Button>
@@ -514,14 +549,21 @@ export function SharedResourceTable({
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>删除{dataTypeLabel}</DialogTitle>
+                    <DialogTitle>
+                      {t("sharedResource.deleteTitle", { type: dataTypeLabel })}
+                    </DialogTitle>
                     <DialogDescription>
-                      {dataTypeLabel}「{query.data?.name}」将被删除
+                      {t("sharedResource.deleteDescription", {
+                        type: dataTypeLabel,
+                        name: query.data?.name,
+                      })}
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
                     <DialogClose>
-                      <Button variant="outline">取消</Button>
+                      <Button variant="outline">
+                        {t("sharedResource.cancel")}
+                      </Button>
                     </DialogClose>
                     <DialogClose>
                       <Button
@@ -529,7 +571,7 @@ export function SharedResourceTable({
                         variant="default"
                         onClick={() => deleteDataset(datasetId)}
                       >
-                        删除
+                        {t("sharedResource.delete")}
                       </Button>
                     </DialogClose>
                   </DialogFooter>
@@ -541,12 +583,12 @@ export function SharedResourceTable({
       }
       info={[
         {
-          title: "用户",
+          title: t("sharedResource.user"),
           icon: UserRoundIcon,
           value: query.data?.userInfo.username,
         },
         {
-          title: "创建于",
+          title: t("sharedResource.createdAt"),
           icon: CalendarIcon,
           value: <TimeDistance date={query.data?.createdAt} />,
         },
@@ -555,7 +597,7 @@ export function SharedResourceTable({
         {
           key: "datasetinfo",
           icon: FileIcon,
-          label: `${dataTypeLabel}基本信息`,
+          label: t("sharedResource.datasetInfo", { type: dataTypeLabel }),
           children: (
             <div className="space-y-1 md:space-y-2 lg:space-y-3">
               {query.data?.extra.tag && (
@@ -563,7 +605,7 @@ export function SharedResourceTable({
                   <CardHeader>
                     <CardTitle className="flex items-center text-xl">
                       <Folder className="mr-2 h-5 w-5 text-blue-500" />
-                      {dataTypeLabel}标签
+                      {t("sharedResource.datasetTags", { type: dataTypeLabel })}
                     </CardTitle>
                     <CardDescription className="text-muted-foreground font-mono text-sm">
                       {query.data?.extra.tag.join("、")}
@@ -576,7 +618,7 @@ export function SharedResourceTable({
                   <CardHeader>
                     <CardTitle className="flex items-center text-xl">
                       <Folder className="mr-2 h-5 w-5 text-blue-500" />
-                      {dataTypeLabel}开源仓库地址
+                      {t("sharedResource.datasetRepo", { type: dataTypeLabel })}
                     </CardTitle>
                     <CardDescription className="text-muted-foreground font-mono text-sm">
                       {query.data?.extra.weburl}
@@ -588,7 +630,9 @@ export function SharedResourceTable({
                 <CardHeader>
                   <CardTitle className="flex items-center text-xl">
                     <Folder className="mr-2 h-5 w-5 text-blue-500" />
-                    {dataTypeLabel}描述
+                    {t("sharedResource.datasetDescription", {
+                      type: dataTypeLabel,
+                    })}
                   </CardTitle>
                   <CardDescription className="text-muted-foreground font-mono text-sm">
                     {query.data?.describe}
@@ -602,7 +646,7 @@ export function SharedResourceTable({
         {
           key: "usershare",
           icon: User,
-          label: `${dataTypeLabel}的用户`,
+          label: t("sharedResource.userShares", { type: dataTypeLabel }),
           children: (
             <DataTable
               storageKey="file_share_user"
@@ -615,7 +659,7 @@ export function SharedResourceTable({
         {
           key: "accountshare",
           icon: Users,
-          label: `${dataTypeLabel}的账户`,
+          label: t("sharedResource.accountShares", { type: dataTypeLabel }),
           children: (
             <DataTable
               storageKey="file_share_queue"
@@ -628,7 +672,7 @@ export function SharedResourceTable({
         {
           key: "datasetFiles",
           icon: FilesIcon,
-          label: `${dataTypeLabel}的文件目录`,
+          label: t("sharedResource.datasetFiles", { type: dataTypeLabel }),
           children: (
             <>
               <TooltipButton
@@ -636,7 +680,7 @@ export function SharedResourceTable({
                 size="icon"
                 onClick={handleBackClick}
                 className="mb-2 h-8 w-8"
-                tooltipContent="返回上一级"
+                tooltipContent={t("sharedResource.goBack")}
               >
                 <ArrowLeftIcon className="size-4" />
               </TooltipButton>

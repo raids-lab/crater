@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { SVGProps, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -20,6 +23,8 @@ interface DirectoryProps {
 }
 
 function LoadingIndicator() {
+  const { t } = useTranslation();
+
   return (
     <div className="bg-whit bg-opacity-50 absolute inset-0 flex items-center justify-center">
       <div className="flex items-center space-x-3 rounded-md p-3 text-blue-300">
@@ -43,7 +48,7 @@ function LoadingIndicator() {
             d="M22 12A10 10 0 0 1 12 22V12z"
           ></path>
         </svg>
-        <span className="text-lg">Loading...</span>
+        <span className="text-lg">{t("loadingIndicator.loadingText")}</span>
       </div>
     </div>
   );
@@ -146,6 +151,7 @@ export function FileSelect({
   handleSubpathInfo,
   handleSubpath,
 }: FileSelectProps) {
+  const { t } = useTranslation();
   const [selectedPath, setSelectedPath] = useState("");
 
   const [topLevelDirectorieList, setTopLevelDirectorieList] = useState<
@@ -182,7 +188,11 @@ export function FileSelect({
       <div className="bg-slate-150 left-0 flex h-[50px] w-full items-center gap-2.5 rounded-lg border-2 px-1 py-2.5">
         <ChevronRightIcon className="size-4" />
         <div className="flex-1">{selectedPath || ""}</div>
-        <Button aria-label="Refresh" size="icon" onClick={handleRefreshClick}>
+        <Button
+          aria-label={t("refreshButton.ariaLabel")}
+          size="icon"
+          onClick={handleRefreshClick}
+        >
           <RefreshCwIcon className="size-4" />
         </Button>
       </div>
@@ -209,7 +219,7 @@ export function FileSelect({
             handleSubpath(selectedPath);
           }}
         >
-          确认选择
+          {t("fileSelect.confirmButton")}
         </Button>{" "}
         {/* 使用传入的 onClose */}
       </div>

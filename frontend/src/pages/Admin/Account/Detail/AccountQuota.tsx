@@ -1,4 +1,6 @@
-// copied from user view, may refactor later
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import {
   Card,
   CardDescription,
@@ -38,6 +40,7 @@ const QuotaCard = ({
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   resource?: ResourceResp;
 }) => {
+  const { t } = useTranslation();
   const allocated = resource?.allocated?.amount ?? 0;
   const quota = resource?.deserved?.amount ?? resource?.capability?.amount ?? 1;
   const [progress, overflow] = useMemo(() => {
@@ -54,8 +57,15 @@ const QuotaCard = ({
           </div>
           {resource?.label}
         </CardDescription>
-        <p className="text-muted-foreground font-sans text-xs">
-          已用
+        <p
+          className={cn(
+            "text-muted-foreground mx-0.5 font-mono text-xl font-bold",
+            {
+              "text-orange-500": overflow,
+            },
+          )}
+        >
+          {t("quotaCard.used")}
           <span
             className={cn("text-primary mx-0.5 font-mono text-xl font-bold", {
               "text-orange-500": overflow,
@@ -75,23 +85,27 @@ const QuotaCard = ({
         <div className="flex w-full flex-row-reverse items-center justify-between text-xs">
           {resource?.capability?.amount !== undefined && (
             <p className="text-orange-500">
-              上限: {showAmount(resource?.capability?.amount, resource?.label)}
+              {t("quotaCard.limit")}
+              {showAmount(resource?.capability?.amount, resource?.label)}
             </p>
           )}
           {resource?.deserved?.amount !== undefined && (
             <p className="text-teal-500">
-              应得: {showAmount(resource?.deserved?.amount, resource?.label)}
+              {t("quotaCard.entitled")}
+              {showAmount(resource?.deserved?.amount, resource?.label)}
             </p>
           )}
           {resource?.allocated?.amount !== undefined && (
             <p className="text-sky-500">
-              已用: {showAmount(resource?.allocated?.amount, resource?.label)}
+              {t("quotaCard.usedLabel")}
+              {showAmount(resource?.allocated?.amount, resource?.label)}
             </p>
           )}
           {resource?.guarantee?.amount !== undefined &&
             resource?.guarantee?.amount > 0 && (
               <p className="text-slate-500">
-                保证: {showAmount(resource?.guarantee?.amount, resource?.label)}
+                {t("quotaCard.guaranteed")}
+                {showAmount(resource?.guarantee?.amount, resource?.label)}
               </p>
             )}
         </div>

@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Identicon from "@polkadot/react-identicon";
 import { stringToSS58 } from "@/utils/ss58";
@@ -19,9 +22,11 @@ export function UserAvatar({
   className,
   identiconTheme = "beachball",
 }: UserAvatarProps) {
+  const { t } = useTranslation();
+
   return (
     <Avatar className={cn("size-8", className)}>
-      <AvatarImage src={user.avatar} alt="用户头像" />
+      <AvatarImage src={user.avatar} alt={t("userAvatar.alt")} />
       <AvatarFallback>
         <Identicon
           value={stringToSS58(user.name)}

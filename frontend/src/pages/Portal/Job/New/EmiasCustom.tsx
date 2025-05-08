@@ -47,7 +47,7 @@ import { ResourceFormFields } from "@/components/form/ResourceFormField";
 import { ImageFormField } from "@/components/form/ImageFormField";
 import FormExportButton from "@/components/form/FormExportButton";
 import FormImportButton from "@/components/form/FormImportButton";
-import LoadableButton from "@/components/custom/LoadableButton";
+import LoadableButton from "@/components/button/LoadableButton";
 import PageTitle from "@/components/layout/PageTitle";
 import { OtherOptionsFormCard } from "@/components/form/OtherOptionsFormField";
 import { EnvFormCard } from "@/components/form/EnvFormField";

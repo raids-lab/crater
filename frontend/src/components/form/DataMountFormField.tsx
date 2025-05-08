@@ -1,5 +1,7 @@
+// i18n-processed-v1.1.0
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { ArrayPath, Path, UseFormReturn, useFieldArray } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -28,8 +30,6 @@ import { globalUserInfo } from "@/utils/store";
 import { ComboboxItem } from "@/components/form/Combobox";
 import { VolumeMountsSchema, VolumeMountType } from "@/utils/form";
 
-const DataMountCard = "数据挂载";
-
 interface VolumeMountsCardProps<
   T extends {
     volumeMounts: VolumeMountsSchema;
@@ -44,6 +44,7 @@ export function VolumeMountsCard<
     volumeMounts: VolumeMountsSchema;
   },
 >({ form, className }: VolumeMountsCardProps<T>) {
+  const { t } = useTranslation();
   const [dataMountOpen, setDataMountOpen] = useState<boolean>(true);
   const user = useAtomValue(globalUserInfo);
 
@@ -99,7 +100,7 @@ export function VolumeMountsCard<
 
   return (
     <AccordionCard
-      cardTitle={DataMountCard}
+      cardTitle={t("volumeMounts.cardTitle")}
       open={dataMountOpen}
       setOpen={setDataMountOpen}
       className={className}
@@ -119,7 +120,7 @@ export function VolumeMountsCard<
                   return (
                     <FormItem className="relative">
                       <FormLabel>
-                        挂载源 {index + 1}
+                        {t("volumeMounts.mountSource", { index: index + 1 })}
                         <FormLabelMust />
                       </FormLabel>
                       <button
@@ -161,7 +162,7 @@ export function VolumeMountsCard<
                               }
                               disabled={disabled}
                             >
-                              文件
+                              {t("volumeMounts.fileTab")}
                             </TabsTrigger>
                             <TabsTrigger
                               value="dataset"
@@ -173,7 +174,7 @@ export function VolumeMountsCard<
                               }
                               disabled={disabled}
                             >
-                              数据
+                              {t("volumeMounts.dataTab")}
                             </TabsTrigger>
                           </TabsList>
                           <TabsContent value="file">
@@ -237,7 +238,7 @@ export function VolumeMountsCard<
                   return (
                     <FormItem>
                       <FormLabel>
-                        挂载点 {index + 1}
+                        {t("volumeMounts.mountPoint", { index: index + 1 })}
                         <FormLabelMust />
                       </FormLabel>
                       <FormControl>
@@ -245,8 +246,8 @@ export function VolumeMountsCard<
                       </FormControl>
                       <FormDescription>
                         {disabled
-                          ? "默认持久化用户主目录，请谨慎修改"
-                          : "可修改容器中的挂载路径"}
+                          ? t("volumeMounts.defaultMountDescription")
+                          : t("volumeMounts.mountPathDescription")}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -269,7 +270,9 @@ export function VolumeMountsCard<
           }
         >
           <CirclePlus className="size-4" />
-          添加{DataMountCard}
+          {t("volumeMounts.addButton", {
+            mountType: t("volumeMounts.cardTitle"),
+          })}
         </Button>
       </div>
     </AccordionCard>

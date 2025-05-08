@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import {
   apiAdminGetDataset,
   apiDatasetDelete,
@@ -37,48 +40,54 @@ import DatasetTypeLabel, {
   DatasetType,
 } from "@/components/badge/DatasetTybeBadge";
 import UserLabel from "@/components/label/UserLabel";
-const roles = [
+
+const getRoles = (t: (key: string) => string) => [
   {
-    label: "数据集",
+    label: t("adminDatasetTable.toolbar.filter.type.dataset"),
     value: "dataset",
   },
   {
-    label: "模型",
+    label: t("adminDatasetTable.toolbar.filter.type.model"),
     value: "model",
   },
   {
-    label: "共享文件",
+    label: t("adminDatasetTable.toolbar.filter.type.sharefile"),
     value: "sharefile",
   },
 ];
-export const toolbarConfig: DataTableToolbarConfig = {
+
+const getToolbarConfig = (
+  t: (key: string) => string,
+): DataTableToolbarConfig => ({
   filterInput: {
     key: "name",
-    placeholder: "搜索数据集名称",
+    placeholder: t("adminDatasetTable.toolbar.filter.placeholder"),
   },
   filterOptions: [
     {
       key: "type",
-      title: "类型",
-      option: roles,
+      title: t("adminDatasetTable.toolbar.filter.title"),
+      option: getRoles(t),
     },
   ],
   getHeader: (key: string): string => {
     switch (key) {
       case "name":
-        return "名称";
+        return t("adminDatasetTable.column.name");
       case "type":
-        return "类型";
+        return t("adminDatasetTable.column.type");
       case "username":
-        return "创建者";
+        return t("adminDatasetTable.column.creator");
       case "createdAt":
-        return "创建时间";
+        return t("adminDatasetTable.column.createdAt");
       default:
         return key;
     }
   },
-};
+});
+
 export const AdminDatasetTable = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -93,18 +102,20 @@ export const AdminDatasetTable = () => {
       await queryClient.invalidateQueries({
         queryKey: ["admin", "datasets"],
       });
-      toast.success(`数据集 ${dataset.name} 已删除`);
+      toast.success(
+        t("adminDatasetTable.toast.deleteSuccess", { name: dataset.name }),
+      );
     },
   });
 
   const columns: ColumnDef<IDataset>[] = [
     {
       accessorKey: "name",
-      header: "名称",
+      header: t("adminDatasetTable.column.name"),
     },
     {
       accessorKey: "type",
-      header: "类型",
+      header: t("adminDatasetTable.column.type"),
       cell: ({ row }) => {
         return (
           <DatasetTypeLabel datasetType={row.getValue<DatasetType>("type")} />
@@ -114,13 +125,16 @@ export const AdminDatasetTable = () => {
     {
       accessorKey: "username",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={"创建者"} />
+        <DataTableColumnHeader
+          column={column}
+          title={t("adminDatasetTable.column.creator")}
+        />
       ),
       cell: ({ row }) => <UserLabel info={row.original.userInfo} />,
     },
     {
       accessorKey: "createdAt",
-      header: "创建时间",
+      header: t("adminDatasetTable.column.createdAt"),
       cell: ({ row }) => {
         return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
       },
@@ -128,7 +142,7 @@ export const AdminDatasetTable = () => {
     },
     {
       id: "actions",
-      header: "操作",
+      header: t("adminDatasetTable.column.actions"),
       cell: ({ row }) => {
         const DatasetInfo = row.original;
         return (
@@ -137,44 +151,52 @@ export const AdminDatasetTable = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="h-8 w-8 p-0">
-                    <span className="sr-only">操作</span>
+                    <span className="sr-only">
+                      {t("adminDatasetTable.actions.menuTrigger")}
+                    </span>
                     <DotsHorizontalIcon className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel className="text-muted-foreground text-xs">
-                    操作
+                    {t("adminDatasetTable.actions.menuLabel")}
                   </DropdownMenuLabel>
                   <DropdownMenuItem
                     onClick={() => navigate(`${DatasetInfo.id}`)}
                   >
                     <InfoIcon className="text-highlight-emerald" />
-                    详情
+                    {t("adminDatasetTable.actions.viewDetails")}
                   </DropdownMenuItem>
 
                   <AlertDialogTrigger asChild>
                     <DropdownMenuItem>
                       <Trash2Icon className="text-destructive" />
-                      删除
+                      {t("adminDatasetTable.actions.delete")}
                     </DropdownMenuItem>
                   </AlertDialogTrigger>
                 </DropdownMenuContent>
               </DropdownMenu>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>删除数据集或模型</AlertDialogTitle>
+                  <AlertDialogTitle>
+                    {t("adminDatasetTable.dialog.title")}
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
-                    数据集{DatasetInfo.name}将被删除
+                    {t("adminDatasetTable.dialog.description", {
+                      name: DatasetInfo.name,
+                    })}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogCancel>
+                    {t("adminDatasetTable.dialog.cancel")}
+                  </AlertDialogCancel>
                   <AlertDialogAction
                     onClick={() => {
                       deleteDataset(row.original);
                     }}
                   >
-                    删除
+                    {t("adminDatasetTable.dialog.delete")}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -188,13 +210,13 @@ export const AdminDatasetTable = () => {
   return (
     <DataTable
       info={{
-        title: "数据集管理",
-        description: "管理系统中的所有数据集/模型",
+        title: t("adminDatasetTable.info.title"),
+        description: t("adminDatasetTable.info.description"),
       }}
       storageKey="admin_dataset_management"
       query={query}
       columns={columns}
-      toolbarConfig={toolbarConfig}
+      toolbarConfig={getToolbarConfig(t)}
     />
   );
 };

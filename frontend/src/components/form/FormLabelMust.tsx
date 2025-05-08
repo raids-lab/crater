@@ -1,3 +1,4 @@
+// i18n-processed-v1.1.0 (no translatable strings)
 import type { FC } from "react";
 
 const FormLabelMust: FC = () => {

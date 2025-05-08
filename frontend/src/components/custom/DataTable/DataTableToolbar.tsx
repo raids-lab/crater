@@ -1,3 +1,5 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import { Table } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +42,7 @@ export function DataTableToolbar<TData>({
   isLoading,
   children,
 }: DataTableToolbarProps<TData>) {
+  const { t } = useTranslation();
   const isFiltered =
     table.getState().columnFilters.length > 0 ||
     (globalSearch?.enabled && Boolean(table.getState().globalFilter));
@@ -52,7 +55,10 @@ export function DataTableToolbar<TData>({
           <SearchIcon className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
           {globalSearch?.enabled && (
             <Input
-              placeholder={globalSearch.placeholder ?? "全局搜索"}
+              placeholder={
+                globalSearch.placeholder ??
+                t("dataTableToolbar.globalSearchPlaceholder")
+              }
               value={table.getState().globalFilter || ""}
               onChange={(event) => table.setGlobalFilter(event.target.value)}
               className="bg-background h-9 w-[150px] pl-8 lg:w-[250px]"
@@ -91,7 +97,7 @@ export function DataTableToolbar<TData>({
           <Button
             variant="outline"
             size="icon"
-            title="Clear filters"
+            title={t("dataTableToolbar.clearFiltersButtonTitle")}
             type="button"
             onClick={() => {
               table.resetColumnFilters();

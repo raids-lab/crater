@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { DetailPage } from "@/components/layout/DetailPage";
 import RunningJobs from "@/components/custom/UserDetail/RunningJobs";
 import LoginHeatmap from "@/components/custom/UserDetail/LoginHeatmap";
@@ -22,12 +25,13 @@ import { globalHideUsername } from "@/utils/store";
 import { getUserPseudonym } from "@/utils/pseudonym";
 
 export default function UserDetail() {
+  const { t } = useTranslation();
   const setBreadcrumb = useBreadcrumb();
   const hideUsername = useAtomValue(globalHideUsername);
 
   useEffect(() => {
-    setBreadcrumb([{ title: "用户详情" }]);
-  }, [setBreadcrumb]);
+    setBreadcrumb([{ title: t("userDetail.breadcrumb.title") }]);
+  }, [setBreadcrumb, t]);
 
   // Get username from URL parameters
   const { name } = useParams<{ name: string }>();
@@ -71,10 +75,10 @@ export default function UserDetail() {
         header={
           <div>
             <h1 className="text-2xl font-bold text-red-500">
-              Error loading user data
+              {t("userDetail.header.errorTitle")}
             </h1>
             <p className="text-muted-foreground">
-              {(error as Error)?.message || "User not found"}
+              {(error as Error)?.message || t("userDetail.header.userNotFound")}
             </p>
           </div>
         }
@@ -106,17 +110,17 @@ export default function UserDetail() {
   const info = [
     {
       icon: User,
-      title: "导师",
-      value: user.teacher || "未设置",
+      title: t("userDetail.info.advisor.title"),
+      value: user.teacher || t("userDetail.info.notSet"),
     },
     {
       icon: Users,
-      title: "课题组",
-      value: user.group || "未设置",
+      title: t("userDetail.info.researchGroup.title"),
+      value: user.group || t("userDetail.info.notSet"),
     },
     {
       icon: Calendar,
-      title: "加入日期",
+      title: t("userDetail.info.joinDate.title"),
       value: <TimeDistance date={user.createdAt} />,
     },
   ];
@@ -126,7 +130,7 @@ export default function UserDetail() {
     {
       key: "gpu",
       icon: GPUIcon,
-      label: "加速卡监控",
+      label: t("userDetail.tabs.gpuMonitoring"),
       children: (
         <GrafanaIframe
           baseSrc={`${grafanaUser.nvidia}?var-user=${user.name}`}
@@ -136,28 +140,28 @@ export default function UserDetail() {
     {
       key: "activity",
       icon: Activity,
-      label: "用户活跃度",
+      label: t("userDetail.tabs.userActivity"),
       children: <LoginHeatmap />,
       scrollable: true,
     },
     {
       key: "jobs",
       icon: List,
-      label: "运行中的作业",
+      label: t("userDetail.tabs.runningJobs"),
       children: <RunningJobs />,
       scrollable: true,
     },
     {
       key: "shared",
       icon: Database,
-      label: "分享的资源",
+      label: t("userDetail.tabs.sharedResources"),
       children: <SharedItems />,
       scrollable: true,
     },
     {
       key: "recent",
       icon: Calendar,
-      label: "近期活动",
+      label: t("userDetail.tabs.recentActivity"),
       children: <RecentActivity />,
       scrollable: true,
     },

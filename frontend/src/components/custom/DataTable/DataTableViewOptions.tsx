@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 import { Table } from "@tanstack/react-table";
 
@@ -20,16 +23,22 @@ export function DataTableViewOptions<TData>({
   table,
   getHeader,
 }: DataTableViewOptionsProps<TData>) {
+  const { t } = useTranslation();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="ml-auto flex h-9">
           <Settings2Icon className="size-4" />
-          <span className="text-xs">视图</span>
+          <span className="text-xs">
+            {t("dataTableViewOptions.viewButtonText")}
+          </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[150px]">
-        <DropdownMenuLabel>视图</DropdownMenuLabel>
+        <DropdownMenuLabel>
+          {t("dataTableViewOptions.viewLabel")}
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {table
           .getAllColumns()

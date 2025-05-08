@@ -1,19 +1,23 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-const activities = [
-  { id: 1, action: "上传了新的数据集", date: "2023-03-01" },
-  { id: 2, action: "更新了图像分类模型", date: "2023-02-28" },
-  { id: 3, action: "发表了新的研究论文", date: "2023-02-25" },
-  { id: 4, action: "参与了在线研讨会", date: "2023-02-20" },
-  { id: 5, action: "分享了代码仓库", date: "2023-02-15" },
-];
-
 export default function RecentActivity() {
+  const { t } = useTranslation();
+
+  const activities = [
+    { id: 1, action: t("recentActivity.uploadDataset"), date: "2023-03-01" },
+    { id: 2, action: t("recentActivity.updateModel"), date: "2023-02-28" },
+    { id: 3, action: t("recentActivity.publishPaper"), date: "2023-02-25" },
+    { id: 4, action: t("recentActivity.joinWorkshop"), date: "2023-02-20" },
+    { id: 5, action: t("recentActivity.shareRepo"), date: "2023-02-15" },
+  ];
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>近期活动</CardTitle>
+        <CardTitle>{t("recentActivity.title")}</CardTitle>
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[200px]">

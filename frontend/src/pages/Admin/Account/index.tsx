@@ -1,3 +1,5 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import {
   apiAdminAccountList,
   apiAccountCreate,
@@ -14,7 +16,7 @@ import { globalSettings } from "@/utils/store";
 import { DataTable } from "@/components/custom/DataTable";
 import { apiResourceList } from "@/services/api/resource";
 import { AccountFormSchema, formSchema } from "./account-form";
-import { getColumns, toolbarConfig } from "./account-table";
+import { getColumns, getToolbarConfig } from "./account-table";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon, CirclePlusIcon, XIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -30,7 +32,7 @@ import {
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import FormLabelMust from "@/components/form/FormLabelMust";
-import LoadableButton from "@/components/custom/LoadableButton";
+import LoadableButton from "@/components/button/LoadableButton";
 import { z } from "zod";
 import { toast } from "sonner";
 import {
@@ -39,7 +41,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { convertFormToQuota, convertQuotaToForm } from "@/utils/quota";
@@ -51,9 +52,11 @@ import SandwichSheet, {
 import FormImportButton from "@/components/form/FormImportButton";
 import FormExportButton from "@/components/form/FormExportButton";
 import { MetadataFormAccount } from "@/components/form/types";
+import { Calendar } from "@/components/ui/calendar";
 
 export const Account = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { t } = useTranslation();
   const { scheduler } = useAtomValue(globalSettings);
   const queryClient = useQueryClient();
   const [cachedFormName, setCachedFormName] = useState<string | null>(null);
@@ -81,7 +84,7 @@ export const Account = () => {
       await queryClient.invalidateQueries({
         queryKey: ["admin", "accounts"],
       });
-      toast.success(`账户 ${account.nickname} 已删除`);
+      toast.success(t("toast.accountDeleted", { name: account.nickname }));
     },
   });
 
@@ -98,7 +101,7 @@ export const Account = () => {
       await queryClient.invalidateQueries({
         queryKey: ["admin", "accounts"],
       });
-      toast.success(`账户 ${name} 新建成功`);
+      toast.success(t("toast.accountCreated", { name }));
       setIsOpen(false);
     },
   });
@@ -116,7 +119,7 @@ export const Account = () => {
       await queryClient.invalidateQueries({
         queryKey: ["admin", "accounts"],
       });
-      toast.success(`账户 ${name} 更新成功`);
+      toast.success(t("toast.accountUpdated", { name }));
       setIsOpen(false);
     },
   });
@@ -214,32 +217,35 @@ export const Account = () => {
   );
 
   const columns = useMemo(() => {
-    return getColumns(handleEdit, deleteAccount);
-  }, [handleEdit, deleteAccount]);
+    return getColumns(handleEdit, deleteAccount, t);
+  }, [handleEdit, deleteAccount, t]);
 
   return (
     <>
       <DataTable
         info={{
-          title: "账户管理",
-          description:
-            "账户可包含多名用户，每个账户可设置资源配额，公共账户默认不设置配额，优先级最低",
+          title: t("accountManagement.title"),
+          description: t("accountManagement.description"),
         }}
         storageKey="admin_account_management"
         query={query}
         columns={columns}
-        toolbarConfig={toolbarConfig}
+        toolbarConfig={getToolbarConfig(t)}
       >
         <Button onClick={handleCreate}>
           <PlusCircleIcon className="size-4" />
-          新建账户
+          {t("accountForm.createButton")}
         </Button>
       </DataTable>
       <SandwichSheet
         isOpen={isOpen}
         onOpenChange={setIsOpen}
-        title={form.getValues("id") ? "编辑账户" : "新建账户"}
-        description="账户可包含多名用户，每个账户可设置资源配额和过期时间"
+        title={
+          form.getValues("id")
+            ? t("accountForm.editTitle")
+            : t("accountForm.createTitle")
+        }
+        description={t("accountForm.description")}
         className="sm:max-w-4xl"
       >
         <Form {...form}>
@@ -271,12 +277,16 @@ export const Account = () => {
                   <LoadableButton
                     isLoading={isCreatePending || isUpdatePending}
                     isLoadingText={
-                      form.getValues("id") ? "更新账户" : "新建账户"
+                      form.getValues("id")
+                        ? t("accountForm.updateButton")
+                        : t("accountForm.createButton")
                     }
                     type="submit"
                   >
                     <CirclePlusIcon className="size-4" />
-                    {form.getValues("id") ? "更新账户" : "新建账户"}
+                    {form.getValues("id")
+                      ? t("accountForm.updateButton")
+                      : t("accountForm.createButton")}
                   </LoadableButton>
                 </>
               }
@@ -288,7 +298,7 @@ export const Account = () => {
                   render={({ field }) => (
                     <FormItem className="col-span-1 grow">
                       <FormLabel>
-                        账户名称
+                        {t("accountForm.nameLabel")}
                         <FormLabelMust />
                       </FormLabel>
                       <FormControl>
@@ -300,7 +310,7 @@ export const Account = () => {
                         />
                       </FormControl>
                       <FormDescription>
-                        账户名称最多16个字符，可以包含汉字，但必须是唯一的
+                        {t("accountForm.nameDescription")}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -311,7 +321,7 @@ export const Account = () => {
                   name="expiredAt"
                   render={({ field }) => (
                     <FormItem className="col-span-1 flex flex-col">
-                      <FormLabel>过期时间</FormLabel>
+                      <FormLabel>{t("accountForm.expiredAtLabel")}</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -327,7 +337,9 @@ export const Account = () => {
                                   locale: zhCN,
                                 })
                               ) : (
-                                <span>请选择日期</span>
+                                <span>
+                                  {t("accountForm.expiredAtPlaceholder")}
+                                </span>
                               )}
                               <CalendarIcon className="ml-auto size-4 opacity-50" />
                             </Button>
@@ -345,7 +357,7 @@ export const Account = () => {
                         </PopoverContent>
                       </Popover>
                       <FormDescription>
-                        若不填写，账户将永不过期
+                        {t("accountForm.expiredAtDescription")}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -359,21 +371,23 @@ export const Account = () => {
                   render={() => (
                     <FormItem>
                       <FormLabel>
-                        账户管理员
+                        {t("accountForm.adminsLabel")}
                         <FormLabelMust />
                       </FormLabel>
                       <FormControl>
                         <SelectBox
                           className="my-0 h-8"
                           options={userList ?? []}
-                          inputPlaceholder="搜索用户"
-                          placeholder="选择用户"
+                          inputPlaceholder={t(
+                            "accountForm.adminsSearchPlaceholder",
+                          )}
+                          placeholder={t("accountForm.adminsPlaceholder")}
                           value={currentValues.admins}
                           onChange={(value) => form.setValue("admins", value)}
                         />
                       </FormControl>
                       <FormDescription>
-                        指定账户管理员后，账户内的用户管理、资源分配等操作，将由账户管理员负责
+                        {t("accountForm.adminsDescription")}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -381,7 +395,9 @@ export const Account = () => {
                 />
               )}
               <div className="space-y-2">
-                {resourcesFields.length > 0 && <FormLabel>资源配额</FormLabel>}
+                {resourcesFields.length > 0 && (
+                  <FormLabel>{t("accountForm.quotaLabel")}</FormLabel>
+                )}
                 {resourcesFields.map(({ id }, index) => (
                   <div key={id} className="flex flex-row gap-2">
                     <FormField
@@ -392,7 +408,7 @@ export const Account = () => {
                           <FormControl>
                             <Input
                               {...field}
-                              placeholder="资源"
+                              placeholder={t("accountForm.resourcePlaceholder")}
                               className="font-mono"
                             />
                           </FormControl>
@@ -408,7 +424,9 @@ export const Account = () => {
                           <FormControl>
                             <Input
                               type="number"
-                              placeholder="保证"
+                              placeholder={t(
+                                "accountForm.guaranteedPlaceholder",
+                              )}
                               className="font-mono"
                               {...form.register(
                                 `resources.${index}.guaranteed`,
@@ -430,7 +448,7 @@ export const Account = () => {
                           <FormControl>
                             <Input
                               type="string"
-                              placeholder="应得"
+                              placeholder={t("accountForm.deservedPlaceholder")}
                               className="font-mono"
                               {...form.register(`resources.${index}.deserved`, {
                                 valueAsNumber: true,
@@ -449,7 +467,9 @@ export const Account = () => {
                           <FormControl>
                             <Input
                               type="string"
-                              placeholder="上限"
+                              placeholder={t(
+                                "accountForm.capabilityPlaceholder",
+                              )}
                               className="font-mono"
                               {...form.register(
                                 `resources.${index}.capability`,
@@ -477,8 +497,7 @@ export const Account = () => {
                 ))}
                 {resourcesFields.length > 0 && (
                   <FormDescription>
-                    请输入整数，CPU 资源单位为核数，Memory 资源单位为
-                    GB。如果不填写，则保证和应得为 0，上限为无穷大
+                    {t("accountForm.quotaDescription")}
                   </FormDescription>
                 )}
 
@@ -492,7 +511,7 @@ export const Account = () => {
                   }
                 >
                   <CirclePlusIcon className="size-4" />
-                  添加资源配额维度
+                  {t("accountForm.addQuotaButton")}
                 </Button>
               </div>
             </SandwichLayout>

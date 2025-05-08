@@ -1,3 +1,5 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiListUsersNotInDataset, UserDataset } from "@/services/api/dataset";
 import SelectBox from "./SelectBox";
@@ -19,6 +21,7 @@ export function ShareDatasetToUserDialog({
   datasetId,
   apiShareDatasetwithUser,
 }: UserSelectProps) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [users, setUsers] = useState<string[]>([]);
 
@@ -43,7 +46,7 @@ export function ShareDatasetToUserDialog({
         userIDs: users.map((user) => parseInt(user)),
       }),
     onSuccess: () => {
-      toast.success("共享成功");
+      toast.success(t("shareDatasetToUserDialog.toastSuccess"));
       void queryClient.invalidateQueries({
         queryKey: ["data", "userdataset", datasetId],
       });
@@ -56,18 +59,24 @@ export function ShareDatasetToUserDialog({
         <SelectBox
           options={userList ?? []}
           value={users}
-          inputPlaceholder="搜索用户"
-          placeholder="选择用户"
+          inputPlaceholder={t(
+            "shareDatasetToUserDialog.selectBox.searchPlaceholder",
+          )}
+          placeholder={t(
+            "shareDatasetToUserDialog.selectBox.selectPlaceholder",
+          )}
           onChange={setUsers}
         />
       </div>
       <DialogFooter>
         <DialogClose asChild>
-          <Button variant="outline">取消</Button>
+          <Button variant="outline">
+            {t("shareDatasetToUserDialog.cancelButton")}
+          </Button>
         </DialogClose>
         <DialogClose asChild>
           <Button variant="default" onClick={() => shareWithUser(datasetId)}>
-            共享
+            {t("shareDatasetToUserDialog.shareButton")}
           </Button>
         </DialogClose>
       </DialogFooter>
