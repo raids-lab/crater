@@ -1,9 +1,9 @@
 import Monitor from "@/pages/Embed/Monitor";
-import { asyncGrafanaOverviewAtom } from "@/utils/store/config";
+import { configGrafanaOverviewAtom } from "@/utils/store/config";
 import { useAtomValue } from "jotai";
 
 const NvidiaOverview = () => {
-  const grafanaOverview = useAtomValue(asyncGrafanaOverviewAtom);
+  const grafanaOverview = useAtomValue(configGrafanaOverviewAtom);
   return <Monitor baseSrc={grafanaOverview.main} />;
 };
 

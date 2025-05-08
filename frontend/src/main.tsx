@@ -19,11 +19,11 @@ import { logger } from "./utils/loglevel";
 import Website from "./pages/Website";
 import { getDefaultStore, Provider as JotaiProvider } from "jotai";
 import NotFound from "./components/layout/NotFound";
-import { asyncDocsAsHomeAtom } from "./utils/store/config";
+import { configDocsAsHomeAtom } from "./utils/store/config";
 
 const defaultStore = getDefaultStore();
 
-const docsAsHome = await defaultStore.get(asyncDocsAsHomeAtom);
+const docsAsHome = await defaultStore.get(configDocsAsHomeAtom);
 
 const router = createBrowserRouter([
   {

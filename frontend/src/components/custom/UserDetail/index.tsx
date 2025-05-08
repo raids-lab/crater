@@ -16,7 +16,7 @@ import { TimeDistance } from "../TimeDistance";
 import { UserAvatar } from "./UserAvatar";
 import GPUIcon from "@/components/icon/GPUIcon";
 import { GrafanaIframe } from "@/pages/Embed/Monitor";
-import { asyncGrafanaUserAtom } from "@/utils/store/config";
+import { configGrafanaUserAtom } from "@/utils/store/config";
 import { useAtomValue } from "jotai";
 import { globalHideUsername } from "@/utils/store";
 import { getUserPseudonym } from "@/utils/pseudonym";
@@ -43,7 +43,7 @@ export default function UserDetail() {
     select: (data) => data.data.data,
     enabled: !!name,
   });
-  const grafanaUser = useAtomValue(asyncGrafanaUserAtom);
+  const grafanaUser = useAtomValue(configGrafanaUserAtom);
 
   // Loading state
   if (isLoading) {

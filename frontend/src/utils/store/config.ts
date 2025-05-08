@@ -1,39 +1,44 @@
 // src/atoms/configAtom.ts
 import { atom } from "jotai";
-import { loadable } from "jotai/utils";
-import { logger } from "../loglevel";
+import { atomWithStorage } from "jotai/utils";
 import { AppConfig } from "./type";
+// 添加配置存储 key
+export const CONFIG_STORAGE_KEY = "app_config";
+export const CONFIG_VERSION_KEY = "app_config_version";
+
+export const configAtom = atomWithStorage<AppConfig>(
+  CONFIG_STORAGE_KEY,
+  {
+    version: "",
+    url: { host: "", apiBase: "", apiVersion: "", websiteBase: "" },
+    grafana: {
+      overview: { main: "", schedule: "", network: "" },
+      node: { basic: "", nvidia: "" },
+      job: { basic: "", nvidia: "", pod: "" },
+      user: { nvidia: "" },
+    },
+    featureFlags: {
+      enableRegister: false,
+      setDocsAsHome: false,
+      enableMockServiceWorker: false,
+      alertLowCPURequest: true,
+    },
+  },
+  undefined,
+  {
+    getOnInit: true,
+  },
+);
 
 // 创建异步原子来加载配置
-export const configAtom = atom(async () => {
+export const initializeConfig = async () => {
   let config: AppConfig;
-
   // 首先尝试从 config.json 读取配置
-  try {
-    const response = await fetch("/config.json");
-    if (!response.ok) {
-      throw new Error("Failed to load config");
-    }
-    config = await response.json();
-  } catch (error) {
-    logger.error("Error loading config from config.json:", error);
-    // 如果无法加载，创建一个空的基础配置
-    config = {
-      version: "",
-      url: { host: "", apiBase: "", apiVersion: "", websiteBase: "" },
-      grafana: {
-        overview: { main: "", schedule: "", network: "" },
-        node: { basic: "", nvidia: "" },
-        job: { basic: "", nvidia: "", pod: "" },
-        user: { nvidia: "" },
-      },
-      featureFlags: {
-        enableRegister: false,
-        setDocsAsHome: false,
-        enableMockServiceWorker: false,
-      },
-    } as AppConfig;
+  const response = await fetch("/config.json");
+  if (!response.ok) {
+    throw new Error("Failed to load config");
   }
+  config = await response.json();
 
   // 如果是开发环境，用环境变量覆盖部分配置
   if (import.meta.env.MODE === "development") {
@@ -81,51 +86,36 @@ export const configAtom = atom(async () => {
   }
 
   return config;
-});
-
-// 创建一个可加载版本以便在组件中处理加载状态
-export const loadableConfigAtom = loadable(configAtom);
+};
 
 // 派生原子
-export const asyncVersionAtom = atom(
-  async (get) => (await get(configAtom)).url.apiVersion,
+export const configVersionAtom = atom((get) => get(configAtom).url.apiVersion);
+
+export const configAppVersionAtom = atom((get) => get(configAtom).version);
+
+export const configUrlHostAtom = atom((get) => get(configAtom).url.host);
+
+export const configUrlApiBaseAtom = atom((get) => get(configAtom).url.apiBase);
+
+export const configUrlWebsiteBaseAtom = atom(
+  (get) => get(configAtom).url.websiteBase,
 );
 
-export const asyncAppVersionAtom = atom(
-  async (get) => (await get(configAtom)).version,
-);
-
-export const asyncUrlHostAtom = atom(
-  async (get) => (await get(configAtom)).url.host,
-);
-
-export const asyncUrlApiBaseAtom = atom(
-  async (get) => (await get(configAtom)).url.apiBase,
-);
-
-export const asyncUrlWebsiteBaseAtom = atom(
-  async (get) => (await get(configAtom)).url.websiteBase,
-);
-
-export const asyncDocsAsHomeAtom = atom(
-  async (get) => (await get(configAtom)).featureFlags.setDocsAsHome,
+export const configDocsAsHomeAtom = atom(
+  (get) => get(configAtom).featureFlags.setDocsAsHome,
 );
 
 // 派生原子 - 按类别导出
-export const asyncGrafanaOverviewAtom = atom(
-  async (get) => (await get(configAtom)).grafana.overview,
+export const configGrafanaOverviewAtom = atom(
+  (get) => get(configAtom).grafana.overview,
 );
-export const asyncGrafanaNodeAtom = atom(
-  async (get) => (await get(configAtom)).grafana.node,
+export const configGrafanaNodeAtom = atom(
+  (get) => get(configAtom).grafana.node,
 );
-export const asyncGrafanaJobAtom = atom(
-  async (get) => (await get(configAtom)).grafana.job,
-);
-export const asyncGrafanaUserAtom = atom(
-  async (get) => (await get(configAtom)).grafana.user,
+export const configGrafanaJobAtom = atom((get) => get(configAtom).grafana.job);
+export const configGrafanaUserAtom = atom(
+  (get) => get(configAtom).grafana.user,
 );
 
 // Feature Flags
-export const asyncFeatureFlags = atom(
-  async (get) => (await get(configAtom)).featureFlags,
-);
+export const configFeatureFlags = atom((get) => get(configAtom).featureFlags);

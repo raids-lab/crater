@@ -43,7 +43,7 @@ import {
 } from "@/components/ui-custom/alert-dialog";
 import { GridIcon } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { asyncUrlHostAtom } from "@/utils/store/config";
+import { configUrlHostAtom } from "@/utils/store/config";
 import { useAtomValue } from "jotai";
 import DocsButton from "@/components/button/DocsButton";
 import LoadableButton from "@/components/custom/LoadableButton";
@@ -66,7 +66,7 @@ interface IngressPanelProps {
 
 export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
   const [isEditIngressDialogOpen, setIsEditIngressDialogOpen] = useState(false);
-  const host = useAtomValue(asyncUrlHostAtom);
+  const host = useAtomValue(configUrlHostAtom);
 
   const ingressForm = useForm<PodIngressMgr>({
     resolver: zodResolver(ingressFormSchema),

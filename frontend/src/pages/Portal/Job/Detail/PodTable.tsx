@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/sheet";
 import { GrafanaIframe } from "@/pages/Embed/Monitor";
 import { useAtomValue } from "jotai";
-import { asyncGrafanaJobAtom } from "@/utils/store/config";
+import { configGrafanaJobAtom } from "@/utils/store/config";
 import DetailPageLog from "@/components/codeblock/DetailPageLog";
 import TooltipCopy from "@/components/label/TooltipCopy";
 
@@ -146,7 +146,7 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
   const [showTerminal, setShowTerminal] = useState<NamespacedName>();
   const [showIngress, setShowIngress] = useState<NamespacedName>();
   const [showMonitor, setShowMonitor] = useState(false);
-  const grafanaJob = useAtomValue(asyncGrafanaJobAtom);
+  const grafanaJob = useAtomValue(configGrafanaJobAtom);
   const [grafanaUrl, setGrafanaUrl] = useState<string>("");
 
   const query = useQuery({

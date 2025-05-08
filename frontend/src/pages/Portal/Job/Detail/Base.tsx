@@ -61,14 +61,14 @@ import ProfileDashboard from "@/components/metrics/profile-dashboard";
 import { getDaysDifference } from "@/utils/time";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useAtomValue } from "jotai";
-import { asyncGrafanaJobAtom } from "@/utils/store/config";
+import { configGrafanaJobAtom } from "@/utils/store/config";
 import UserLabel from "@/components/label/UserLabel";
 import JupyterIcon from "@/components/icon/JupyterIcon";
 
 export function BaseCore({ jobName }: { jobName: string }) {
   useFixedLayout();
   const navigate = useNavigate();
-  const grafanaJob = useAtomValue(asyncGrafanaJobAtom);
+  const grafanaJob = useAtomValue(configGrafanaJobAtom);
 
   const { data, isLoading } = useQuery({
     queryKey: ["job", "detail", jobName],

@@ -1,6 +1,6 @@
 import { BookOpenIcon } from "lucide-react";
 import { Button, buttonVariants } from "../ui/button";
-import { asyncUrlWebsiteBaseAtom } from "@/utils/store/config";
+import { configUrlWebsiteBaseAtom } from "@/utils/store/config";
 import { useAtomValue } from "jotai";
 import { VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,7 @@ const DocsButton = ({
   className,
   ...props
 }: DocsButtonProps) => {
-  const website = useAtomValue(asyncUrlWebsiteBaseAtom);
+  const website = useAtomValue(configUrlWebsiteBaseAtom);
   return (
     <Button
       variant={variant ?? "secondary"}
