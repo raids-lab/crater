@@ -10,9 +10,9 @@
     "darkMode": "다크 모드",
     "lightMode": "라이트 모드",
     "language": "언어",
-    "chinese": "중국어",
-    "english": "영어",
-    "japanese": "일본어",
+    "chinese": "简体中文",
+    "english": "English",
+    "japanese": "日本語",
     "korean": "한국어",
     "loggedOut": "로그아웃됨",
     "logout": "로그아웃"

@@ -1,7 +1,7 @@
 import CraterIcon from "@/components/icon/CraterIcon";
 import CraterText from "@/components/icon/CraterText";
 import { LoginForm } from "./LoginForm";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { SignupForm } from "./SignupForm";
 import { ExternalLink } from "lucide-react";
 import { useTheme } from "@/utils/theme";
@@ -18,13 +18,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import DocsButton from "@/components/button/DocsButton";
-import { useAtomValue, useSetAtom } from "jotai";
-import {
-  configAtom,
-  configUrlWebsiteBaseAtom,
-  initializeConfig,
-} from "@/utils/store/config";
-import { useQuery } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
+import { configUrlWebsiteBaseAtom } from "@/utils/store/config";
+import useConfigLoader from "@/hooks/useConfigLoader";
 
 // 定义认证模式枚举
 export enum AuthMode {
@@ -33,24 +29,13 @@ export enum AuthMode {
 }
 
 export function Dashboard() {
+  useConfigLoader();
   const [showSignup, setShowSignup] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showRegisterDialog, setShowRegisterDialog] = useState(false);
   const { theme, setTheme } = useTheme();
   const [currentMode, setCurrentMode] = useState<AuthMode>(AuthMode.ACT);
   const website = useAtomValue(configUrlWebsiteBaseAtom);
-  const setAppConfig = useSetAtom(configAtom);
-
-  const { data } = useQuery({
-    queryKey: ["appConfig"],
-    queryFn: initializeConfig,
-  });
-
-  useEffect(() => {
-    if (data) {
-      setAppConfig(data);
-    }
-  }, [data, setAppConfig]);
 
   // 处理注册按钮点击
   const handleRegisterClick = () => {
