@@ -190,6 +190,14 @@ function PipAptSheetContent({
       return;
     }
     if (
+      values.baseImage.includes("envd") &&
+      values.imageName != "" &&
+      !values.imageName?.includes("envd")
+    ) {
+      toast.error("基础镜像为 envd 方式构建的镜像时，镜像名称必须包含 envd");
+      return;
+    }
+    if (
       values.baseImage.includes("nvidia") &&
       values.imageName != "" &&
       !values.imageName?.includes("nvidia")
