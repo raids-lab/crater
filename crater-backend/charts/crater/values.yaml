@@ -6,7 +6,7 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "a3f96f76"
+      tag: "c9009689"
       pullPolicy: "IfNotPresent"
   migrate:
     image:
@@ -19,7 +19,7 @@ web:
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "868dc0fc"
+      tag: "1a752ad1"
       pullPolicy: "IfNotPresent"
     config:
       version: "1.0.0"
@@ -111,7 +111,7 @@ web:
     host: gpu-grafana.***REMOVED***
   document:
     image:
-      tag: 1cf3e5ed
+      tag: ba706dbc
 nodeSelector:
   node-role.kubernetes.io/control-plane: ""
 tolerations:

@@ -49,10 +49,17 @@ data:
     # ========== Command Execution ==========
     # Execute with minimal preserved environment
     if [ $# -gt 0 ]; then
-        # If arguments passed, execute them as commands
-        exec sudo --preserve-env --set-home --user "${NB_USER}" \
-            LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" \
-            "$@"
+        if [ "$1" = "-c" ]; then
+            # 执行命令字符串，使用 zsh -c 并切换到用户
+            exec sudo --preserve-env --set-home --user "${NB_USER}" \
+                LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" \
+                /bin/bash -c "$2"
+        else
+            # 否则当作命令加参数执行（兼容旧用法）
+            exec sudo --preserve-env --set-home --user "${NB_USER}" \
+                LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" \
+                "$@"
+        fi
     else
         # Otherwise just switch user
         exec sudo --preserve-env --set-home --user "${NB_USER}" \
