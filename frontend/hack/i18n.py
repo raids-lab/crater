@@ -140,7 +140,7 @@ def process_file(filepath: str):
 def find_all_tsx_jsx_files():
     files = []
     for folder in TARGET_FOLDERS:
-        for ext in ("tsx", "jsx"):
+        for ext in ("tsx", "ts", "jsx", "js"):
             for file in glob.glob(f"{folder}/**/*.{ext}", recursive=True):
                 if not any(skip in file for skip in ["node_modules", "dist", ".venv"]):
                     files.append(file)

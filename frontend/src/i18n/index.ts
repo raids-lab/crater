@@ -2,9 +2,9 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 
-import enTranslation from "./locales/en/translation.json";
-import zhTranslation from "./locales/zh/translation.json";
-import jpTranslation from "./locales/jp/translation.json";
+import enTranslation from "./locales/enUS/translation.json";
+import zhTranslation from "./locales/zhCN/translation.json";
+import jaTranslation from "./locales/ja/translation.json";
 import koTranslation from "./locales/ko/translation.json";
 
 i18n
@@ -18,8 +18,8 @@ i18n
       zh: {
         translation: zhTranslation,
       },
-      jp: {
-        translation: jpTranslation,
+      ja: {
+        translation: jaTranslation,
       },
       ko: {
         translation: koTranslation,

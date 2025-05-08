@@ -65,7 +65,7 @@ export function NavUser() {
     ? getUserPseudonym(user.name)
     : user.nickname || user.name;
 
-  const changeLanguage = (lng: "zh" | "en" | "jp" | "ko") => {
+  const changeLanguage = (lng: "zh" | "en" | "ja" | "ko") => {
     i18n.changeLanguage(lng);
   };
 
@@ -167,8 +167,8 @@ export function NavUser() {
                       {t("navUser.english")}
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem
-                      value="jp"
-                      onClick={() => changeLanguage("jp")}
+                      value="ja"
+                      onClick={() => changeLanguage("ja")}
                     >
                       {t("navUser.japanese")}
                     </DropdownMenuRadioItem>
