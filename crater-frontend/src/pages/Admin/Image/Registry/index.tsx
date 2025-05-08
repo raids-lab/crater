@@ -1,3 +1,4 @@
+// i18n-processed-v1.1.0 (no translatable strings)
 import KanikoDetail from "@/pages/Portal/Image/Info";
 import { KanikoListTable } from "@/pages/Portal/Image/Registry";
 import {

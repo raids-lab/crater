@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import {
@@ -46,7 +49,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   DialogFooter,
@@ -90,48 +93,60 @@ import { TimeDistance } from "@/components/custom/TimeDistance";
 import { Skeleton } from "@/components/ui/skeleton";
 import DetailTitle from "@/components/layout/DetailTitle";
 
-const formSchema = z.object({
-  userIds: z.array(z.string()).min(1, {
-    message: "请至少选择一个用户",
-  }),
-  role: z.string().min(1, {
-    message: "不支持的角色",
-  }),
-  accessmode: z.string().min(1, {
-    message: "不支持的访问权限",
-  }),
-});
-
-const getHeader = (key: string): string => {
-  switch (key) {
-    case "name":
-      return "用户名";
-    case "role":
-      return "账户权限";
-    case "accessmode":
-      return "读写权限";
-    case "capability":
-      return "资源上限";
-    default:
-      return key;
-  }
-};
-
-const accessmodes = [
-  {
-    label: "只读",
-    value: Access.RO.toString(),
-  },
-  {
-    label: "读写",
-    value: Access.RW.toString(),
-  },
-];
-
 const AccountDetail = () => {
+  const { t } = useTranslation();
   const { id } = useParams();
   const queryClient = useQueryClient();
   const pid = useMemo(() => Number(id), [id]);
+
+  // Moved Zod schema to component
+  const formSchema = useMemo(
+    () =>
+      z.object({
+        userIds: z.array(z.string()).min(1, {
+          message: t("accountDetail.form.validation.minUsers"),
+        }),
+        role: z.string().min(1, {
+          message: t("accountDetail.form.validation.invalidRole"),
+        }),
+        accessmode: z.string().min(1, {
+          message: t("accountDetail.form.validation.invalidAccess"),
+        }),
+      }),
+    [t],
+  );
+
+  const getHeader = useCallback(
+    (key: string): string => {
+      switch (key) {
+        case "name":
+          return t("accountDetail.table.headers.name");
+        case "role":
+          return t("accountDetail.table.headers.role");
+        case "accessmode":
+          return t("accountDetail.table.headers.accessmode");
+        case "capability":
+          return t("accountDetail.table.headers.capability");
+        default:
+          return key;
+      }
+    },
+    [t],
+  );
+
+  const accessModes = useMemo(
+    () => [
+      {
+        label: t("accountDetail.table.accessmodes.readOnly"),
+        value: Access.RO.toString(),
+      },
+      {
+        label: t("accountDetail.table.accessmodes.readWrite"),
+        value: Access.RW.toString(),
+      },
+    ],
+    [t],
+  );
 
   const setBreadcrumb = useBreadcrumb();
 
@@ -158,7 +173,7 @@ const AccountDetail = () => {
     mutationFn: (users: IUserInAccountCreate[]) =>
       Promise.all(users.map((user) => apiAddUser(pid, user))),
     onSuccess: async () => {
-      toast.success("用户已添加");
+      toast.success(t("accountDetail.toast.added"));
       await queryClient.invalidateQueries({
         queryKey: ["account", pid, "users"],
       });
@@ -168,7 +183,7 @@ const AccountDetail = () => {
   const { mutate: updateUser } = useMutation({
     mutationFn: (user: IUserInAccountCreate) => apiUpdateUser(pid, user),
     onSuccess: async () => {
-      toast.success("用户信息已更新");
+      toast.success(t("accountDetail.toast.updated"));
       await queryClient.invalidateQueries({
         queryKey: ["account", pid, "users"],
       });
@@ -182,7 +197,7 @@ const AccountDetail = () => {
   const { mutate: deleteUser } = useMutation({
     mutationFn: (user: IUserInAccountCreate) => apiRemoveUser(pid, user),
     onSuccess: async () => {
-      toast.success("用户已删除");
+      toast.success(t("accountDetail.toast.removed"));
       await queryClient.invalidateQueries({
         queryKey: ["account", pid, "users"],
       });
@@ -207,7 +222,10 @@ const AccountDetail = () => {
       {
         accessorKey: "name",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("name")} />
+          <DataTableColumnHeader
+            column={column}
+            title={t("accountDetail.table.headers.name")}
+          />
         ),
         cell: ({ row }) => (
           <UserLabel
@@ -221,7 +239,10 @@ const AccountDetail = () => {
       {
         accessorKey: "role",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("role")} />
+          <DataTableColumnHeader
+            column={column}
+            title={t("accountDetail.table.headers.role")}
+          />
         ),
         cell: ({ row }) => {
           return <UserRoleBadge role={row.getValue("role")} />;
@@ -235,7 +256,7 @@ const AccountDetail = () => {
         header: ({ column }) => (
           <DataTableColumnHeader
             column={column}
-            title={getHeader("accessmode")}
+            title={t("accountDetail.table.headers.accessmode")}
           />
         ),
         cell: ({ row }) => (
@@ -250,7 +271,7 @@ const AccountDetail = () => {
         header: ({ column }) => (
           <DataTableColumnHeader
             column={column}
-            title={getHeader("capability")}
+            title={t("accountDetail.table.headers.capability")}
           />
         ),
         cell: ({ row }) => {
@@ -271,17 +292,19 @@ const AccountDetail = () => {
                     <Button
                       variant="ghost"
                       className="h-8 w-8 p-0"
-                      title="更多选项"
+                      title={t("accountDetail.table.actions.moreOptions")}
                     >
                       <DotsHorizontalIcon className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel className="text-muted-foreground text-xs">
-                      操作
+                      {t("accountDetail.table.actions.operations")}
                     </DropdownMenuLabel>
                     <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>角色</DropdownMenuSubTrigger>
+                      <DropdownMenuSubTrigger>
+                        {t("accountDetail.table.actions.role")}
+                      </DropdownMenuSubTrigger>
                       <DropdownMenuSubContent>
                         <DropdownMenuRadioGroup value={`${user.role}`}>
                           {userRoles.map((role) => (
@@ -304,10 +327,12 @@ const AccountDetail = () => {
                       </DropdownMenuSubContent>
                     </DropdownMenuSub>
                     <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>权限</DropdownMenuSubTrigger>
+                      <DropdownMenuSubTrigger>
+                        {t("accountDetail.table.actions.permissions")}
+                      </DropdownMenuSubTrigger>
                       <DropdownMenuSubContent>
                         <DropdownMenuRadioGroup value={`${user.accessmode}`}>
-                          {accessmodes.map((accessmode) => (
+                          {accessModes.map((accessmode) => (
                             <DropdownMenuRadioItem
                               key={accessmode.value}
                               value={`${accessmode.value}`}
@@ -328,26 +353,34 @@ const AccountDetail = () => {
                     </DropdownMenuSub>
                     <DropdownMenuSeparator />
                     <AlertDialogTrigger asChild>
-                      <DropdownMenuItem>删除</DropdownMenuItem>
+                      <DropdownMenuItem>
+                        {t("accountDetail.table.actions.delete")}
+                      </DropdownMenuItem>
                     </AlertDialogTrigger>
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>删除用户</AlertDialogTitle>
+                    <AlertDialogTitle>
+                      {t("accountDetail.dialog.title.deleteUser")}
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
-                      用户「{user?.name}」将被删除，请谨慎操作。
+                      {t("accountDetail.dialog.description.deleteUser", {
+                        name: user?.name,
+                      })}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>取消</AlertDialogCancel>
+                    <AlertDialogCancel>
+                      {t("accountDetail.dialog.cancel")}
+                    </AlertDialogCancel>
                     <AlertDialogAction
                       variant="destructive"
                       onClick={() => {
                         deleteUser(user);
                       }}
                     >
-                      删除
+                      {t("accountDetail.dialog.delete")}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -357,24 +390,24 @@ const AccountDetail = () => {
         },
       },
     ],
-    [deleteUser, updateUser],
+    [deleteUser, updateUser, t, accessModes],
   );
 
   const toolbarConfig: DataTableToolbarConfig = {
     filterInput: {
-      placeholder: "搜索用户名",
+      placeholder: t("accountDetail.table.filter.searchUser"),
       key: "name",
     },
     filterOptions: [
       {
         key: "role",
-        title: "角色",
+        title: t("accountDetail.table.filter.role"),
         option: userRoles,
       },
       {
         key: "accessmode",
-        title: "权限",
-        option: accessmodes,
+        title: t("accountDetail.table.filter.permissions"),
+        option: accessModes,
       },
     ],
     getHeader: getHeader,
@@ -447,9 +480,11 @@ const AccountDetail = () => {
         header={
           <div>
             <h1 className="text-2xl font-bold text-red-500">
-              无法加载账户数据
+              {t("accountDetail.error.title")}
             </h1>
-            <p className="text-muted-foreground">账户不存在或您没有权限访问</p>
+            <p className="text-muted-foreground">
+              {t("accountDetail.error.description")}
+            </p>
           </div>
         }
         info={[]}
@@ -471,17 +506,17 @@ const AccountDetail = () => {
   const info = [
     {
       icon: Users,
-      title: "用户数量",
+      title: t("accountDetail.info.userCount"),
       value: accountUsersQuery.data?.length || "加载中...",
     },
     {
       icon: Layers,
-      title: "账户级别",
+      title: t("accountDetail.info.accountLevel"),
       value: "标准",
     },
     {
       icon: Calendar,
-      title: "过期时间",
+      title: t("accountDetail.info.expiry"),
       value: <TimeDistance date={accountInfo.expiredAt} />,
     },
   ];
@@ -498,12 +533,12 @@ const AccountDetail = () => {
         <DialogTrigger asChild>
           <Button className="h-8">
             <UserRoundPlusIcon className="size-4" />
-            添加用户
+            {t("accountDetail.addUser")}
           </Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>添加用户</DialogTitle>
+            <DialogTitle>{t("accountDetail.addUser")}</DialogTitle>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -513,7 +548,7 @@ const AccountDetail = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      用户
+                      {t("accountDetail.form.user")}
                       <FormLabelMust />
                     </FormLabel>
                     <FormControl>
@@ -521,13 +556,13 @@ const AccountDetail = () => {
                         options={userOptions}
                         value={field.value}
                         onChange={field.onChange}
-                        placeholder="选择用户"
-                        inputPlaceholder="搜索用户..."
-                        emptyPlaceholder="没有找到用户"
+                        placeholder={t("accountDetail.form.selectUser")}
+                        inputPlaceholder={t("accountDetail.form.searchUser")}
+                        emptyPlaceholder={t("accountDetail.form.noUsersFound")}
                       />
                     </FormControl>
                     <FormDescription>
-                      可选择一位或多位用户加入到账户中
+                      {t("accountDetail.form.selectUsersToAdd")}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -539,7 +574,7 @@ const AccountDetail = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      角色
+                      {t("accountDetail.form.role")}
                       <FormLabelMust />
                     </FormLabel>
                     <Select
@@ -553,12 +588,18 @@ const AccountDetail = () => {
                       </FormControl>
                       <SelectContent>
                         <SelectGroup>
-                          <SelectItem value="2">普通用户</SelectItem>
-                          <SelectItem value="3">管理员</SelectItem>
+                          <SelectItem value="2">
+                            {t("accountDetail.form.userRole.normal")}
+                          </SelectItem>
+                          <SelectItem value="3">
+                            {t("accountDetail.form.userRole.admin")}
+                          </SelectItem>
                         </SelectGroup>
                       </SelectContent>
                     </Select>
-                    <FormDescription>配置用户在账户中的角色</FormDescription>
+                    <FormDescription>
+                      {t("accountDetail.form.roleDescription")}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -569,7 +610,7 @@ const AccountDetail = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      访问权限
+                      {t("accountDetail.form.access")}
                       <FormLabelMust />
                     </FormLabel>
                     <Select
@@ -583,13 +624,17 @@ const AccountDetail = () => {
                       </FormControl>
                       <SelectContent>
                         <SelectGroup>
-                          <SelectItem value="2">只读</SelectItem>
-                          <SelectItem value="3">读写</SelectItem>
+                          <SelectItem value="2">
+                            {t("accountDetail.form.access.readOnly")}
+                          </SelectItem>
+                          <SelectItem value="3">
+                            {t("accountDetail.form.access.readWrite")}
+                          </SelectItem>
                         </SelectGroup>
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      设置用户在账户空间的访问权限
+                      {t("accountDetail.form.accessDescription")}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -597,9 +642,11 @@ const AccountDetail = () => {
               />
               <DialogFooter>
                 <DialogClose asChild>
-                  <Button variant="outline">取消</Button>
+                  <Button variant="outline">
+                    {t("accountDetail.form.cancel")}
+                  </Button>
                 </DialogClose>
-                <Button type="submit">添加</Button>
+                <Button type="submit">{t("accountDetail.form.add")}</Button>
               </DialogFooter>
             </form>
           </Form>
@@ -613,14 +660,14 @@ const AccountDetail = () => {
     {
       key: "users",
       icon: Users,
-      label: "用户管理",
+      label: t("accountDetail.tabs.users"),
       children: <UserManagement />,
       scrollable: true,
     },
     {
       key: "quota",
       icon: Layers,
-      label: "配额使用情况",
+      label: t("accountDetail.tabs.quota"),
       children: (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Quota accountID={pid} />

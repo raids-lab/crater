@@ -21,10 +21,11 @@ import os
 import json
 import time
 import sys
+import subprocess
 from openai import OpenAI
 import glob
 from pathlib import Path
-from typing import Tuple, Optional, Dict, Any
+from typing import Tuple, Optional, Dict, Any, List
 
 # === CONFIGURATION ===
 # API Configuration
@@ -37,13 +38,16 @@ RETRY_DELAY = 2  # seconds
 # Project Configuration
 PROJECT_ROOT = "./src" 
 TRANSLATION_PATH = Path("i18n/locales/zhCN/translation.json")
-TARGET_FOLDERS = ["components/custom", "pages"]
+TARGET_FOLDERS = ["components/form", "components/custom", "pages"]
 SCRIPT_VERSION = "1.1.0"  # Update this when making significant changes
 
 client = OpenAI(
     api_key=API_KEY,
     base_url=API_BASE_URL
 )
+
+# 存储格式化失败的文件
+formatting_failures = []
 
 # === VERSION CHECK ===
 def has_current_version(filepath: str) -> bool:
@@ -186,26 +190,35 @@ def parse_json_with_templates(json_str: str) -> Dict[str, str]:
     return translations
 
 # === OPENAI REQUEST ===
-def call_openai_for_i18n(code: str) -> Optional[Tuple[str, Dict[str, str]]]:
+def call_openai_for_i18n(code: str) -> Optional[Tuple[str, Dict[str, str], bool]]:
     prompt = f"""
 You are an expert React/i18n developer helping internationalize a React application using react-i18next. Follow these rules STRICTLY:
 
-=== COMPONENT RULES ===
+=== FIRST STEP: FILE ANALYSIS ===
+Determine if the file contains ANY user-facing strings that need internationalization:
+- User-facing strings include: UI text, button labels, error messages, tooltips, placeholders, etc.
+- Technical strings to ignore: variable names, CSS classes, import paths, console logs, comments
+
+If the file contains NO user-facing strings that need translation:
+- Return only the exact string "NO_STRINGS_TO_TRANSLATE" without any other text
+- Do not return the original code
+- Do not add any import statements
+
+=== COMPONENT RULES (if strings need translation) ===
 1. Functional Components:
-   - Add import: `import {{ useTranslation }} from 'react-i18next';` at top
+   - Add import: `import {{ useTranslation }} from "react-i18next";`
    - Initialize hook INSIDE component: `const {{ t }} = useTranslation();`
    - Place hook after all destructured props but before any other logic
-   - If this file does not contain text which needs translation, return the original code with no changes
 
 2. Special Cases:
    - For Zod schemas: Move string literals into component ABOVE any form declarations
    - For constants: Convert to functions that accept t as parameter
    - For external configs: Create i18n wrapper functions
 
-=== TRANSLATION RULES ===
+=== TRANSLATION RULES (if strings need translation) ===
 1. Key Naming:
-   - Use camelCase (e.g. 'submitButton')
-   - Follow hierarchy: [component].[element].[action] (e.g. 'loginForm.emailLabel')
+   - Use camelCase (e.g. "submitButton")
+   - Follow hierarchy: [component].[element].[action] (e.g. "loginForm.emailLabel")
    - Never include dynamic values in keys
    - Keep keys under 3 levels deep maximum
 
@@ -227,7 +240,9 @@ You are an expert React/i18n developer helping internationalize a React applicat
    - Maintain original formatting/indentation
 
 === OUTPUT FORMAT ===
-Return EXACTLY:
+If file contains NO user-facing strings: return ONLY "NO_STRINGS_TO_TRANSLATE"
+
+If file DOES contain user-facing strings, return EXACTLY:
 1. The fully modified code with:
    - Correct imports
    - Proper t() usage
@@ -239,7 +254,7 @@ Return EXACTLY:
    - No nested structures
    - No duplicate keys
 
-Example Output:
+Example Output (with user-facing strings):
 // Modified code
 import {{ useTranslation }} from 'react-i18next';
 
@@ -296,7 +311,6 @@ function LoginForm() {{
                 delta = chunk.choices[0].delta
                 if delta.content:
                     content = delta.content
-                    # with colors
                     print(content, end="", flush=True)
                     full_content += content
                     
@@ -311,19 +325,29 @@ function LoginForm() {{
                     elif in_thinking:
                         thinking_content += content
 
-            # remove all thinking content from full_content
+            # Remove all thinking content from full_content
             if "</think>" in full_content:
-                # remove everything between <think> and </think>
                 full_content = full_content.replace(full_content[full_content.index("<think>"):full_content.index("</think>") + len("</think>")], "")
 
-            # check if no thinking content
-            if "<think>" in full_content:
-                print("\n⚠️ Warning: Model included <think> tags in response, which may indicate uncertainty.")
+            # Check for the special marker indicating no strings to translate
+            full_content = full_content.strip()
+            if "NO_STRINGS_TO_TRANSLATE" in full_content:
+                print("\n✅ File contains no user-facing strings to translate")
+                return None, {}, True  # Return with a flag indicating no translation needed
 
             full_content = full_content.replace("```ts", "").replace("```tsx", "").replace("```json", "").replace("```", "").strip()
 
             result = extract_code_and_json(full_content)
-            return result
+            if result:
+                code_part, translations = result
+                return code_part, translations, False  # Return with flag indicating translation was performed
+            else:
+                print("\n⚠️ Failed to extract code and JSON from response")
+                if attempt < MAX_RETRIES - 1:
+                    print("Retrying...")
+                    time.sleep(RETRY_DELAY)
+                else:
+                    raise ValueError("Could not extract valid code and JSON after multiple attempts")
         
         except Exception as e:
             print(f"\n⚠️ Attempt {attempt+1}/{MAX_RETRIES} failed: {str(e)}")
@@ -332,9 +356,9 @@ function LoginForm() {{
                 time.sleep(RETRY_DELAY)
             else:
                 print("❌ Max retries reached, unable to process this file.")
-                return None
+                return None, {}, False
     
-    return None
+    return None, {}, False
 
 # === TRANSLATION UPDATE ===
 def update_translation_json(new_keys: Dict[str, str]):
@@ -348,6 +372,31 @@ def update_translation_json(new_keys: Dict[str, str]):
     TRANSLATION_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(TRANSLATION_PATH, "w", encoding="utf-8") as f:
         json.dump(merged, f, indent=2, ensure_ascii=False)
+
+# === FORMAT FILE ===
+def format_with_prettier(filepath: str) -> bool:
+    """Format file with Prettier"""
+    try:
+        print(f"🔍 Running Prettier on: {filepath}")
+        # 确保相对于项目根目录运行命令
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        result = subprocess.run(
+            ["pnpm", "dlx", "prettier", "--write", os.path.join(PROJECT_ROOT, filepath)],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        
+        if result.returncode != 0:
+            print(f"⚠️ Prettier formatting failed: {result.stderr}")
+            formatting_failures.append(filepath)
+            return False
+        return True
+    except Exception as e:
+        print(f"⚠️ Error running Prettier: {e}")
+        formatting_failures.append(filepath)
+        return False
 
 # === PROCESS EACH FILE ===
 def process_file(filepath: str):
@@ -369,7 +418,26 @@ def process_file(filepath: str):
         print(f"❌ Failed to process file {filepath}")
         return
         
-    new_code, translations = result
+    new_code, translations, no_strings_flag = result
+    
+    if no_strings_flag:
+        # Just add version comment without modifying the code
+        version_comment = f"// i18n-processed-v{SCRIPT_VERSION} (no translatable strings)\n"
+        if original_code.startswith("// i18n-processed-v"):
+            # Replace existing version comment
+            lines = original_code.splitlines()
+            lines[0] = version_comment
+            new_code = "\n".join(lines)
+        else:
+            new_code = version_comment + original_code
+            
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(new_code)
+            
+        print(f"\n✅ File marked as processed (no translatable strings): {filepath}")
+        # 格式化已修改的文件
+        format_with_prettier(filepath)
+        return
     
     # Verify useTranslation placement
     if "useTranslation" in new_code:
@@ -385,6 +453,9 @@ def process_file(filepath: str):
     print(f"\n✅ File updated: {filepath}")
     update_translation_json(translations)
     print(f"🌍 Added {len(translations)} new translations.")
+    
+    # 格式化已修改的文件
+    format_with_prettier(filepath)
 
 # === FILE SCANNER ===
 def find_all_tsx_jsx_files():
@@ -420,6 +491,15 @@ def main():
         process_file(file)
 
     print("\n🎉 Done! All files processed and translation file updated.")
+    
+    # 输出格式化失败的文件列表
+    if formatting_failures:
+        print("\n⚠️ The following files failed Prettier formatting:")
+        for failed_file in formatting_failures:
+            print(f"  - {failed_file}")
+        print(f"\nTotal formatting failures: {len(formatting_failures)}")
+    else:
+        print("\n✨ All files successfully formatted with Prettier!")
 
 if __name__ == "__main__":
     main()

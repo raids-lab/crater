@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { Row, Table } from "@tanstack/react-table";
 
 import { Button } from "@/components/ui/button";
@@ -50,14 +53,16 @@ export function DataTablePagination<TData>({
   table,
   multipleHandlers,
 }: DataTablePaginationProps<TData>) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex w-full items-center justify-between">
       <div className="flex flex-row items-center space-x-1.5 text-xs">
         {table.getFilteredSelectedRowModel().rows.length > 0 &&
           multipleHandlers &&
           multipleHandlers?.length > 0 &&
-          multipleHandlers.map((multipleHandler) => (
-            <AlertDialog>
+          multipleHandlers.map((multipleHandler, index) => (
+            <AlertDialog key={index}>
               <AlertDialogTrigger asChild>
                 <TooltipButton
                   variant="outline"
@@ -85,7 +90,9 @@ export function DataTablePagination<TData>({
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>取消</AlertDialogCancel>
+                    <AlertDialogCancel>
+                      {t("dataTablePagination.cancel")}
+                    </AlertDialogCancel>
                     <AlertDialogAction
                       variant={
                         multipleHandler.isDanger ? "destructive" : "default"
@@ -98,7 +105,7 @@ export function DataTablePagination<TData>({
                         table.resetRowSelection();
                       }}
                     >
-                      确认
+                      {t("dataTablePagination.confirm")}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </>
@@ -109,7 +116,7 @@ export function DataTablePagination<TData>({
           variant="outline"
           size="icon"
           className="size-9"
-          tooltipContent="刷新"
+          tooltipContent={t("dataTablePagination.refresh")}
           onClick={refetch}
         >
           <RefreshCcw className="h-3.5 w-3.5" />
@@ -126,27 +133,35 @@ export function DataTablePagination<TData>({
           <SelectContent side="top">
             {[10, 20, 50, 100, 200].map((pageSize) => (
               <SelectItem key={pageSize} value={`${pageSize}`}>
-                {pageSize} 条/页
+                {t("dataTablePagination.itemsPerPage", { count: pageSize })}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         <p className="text-muted-foreground pl-1.5 font-medium">
-          更新于 <time dateTime="2023-11-23">{updatedAt}</time>，
+          {t("dataTablePagination.updatedAt", { time: updatedAt })}，
           {table.getFilteredSelectedRowModel().rows.length === 0 ? (
-            <>共 {table.getFilteredRowModel().rows.length} 条</>
+            <>
+              {t("dataTablePagination.totalItems", {
+                count: table.getFilteredRowModel().rows.length,
+              })}
+            </>
           ) : (
             <>
-              已选择 {table.getFilteredSelectedRowModel().rows.length} /{" "}
-              {table.getFilteredRowModel().rows.length} 条
+              {t("dataTablePagination.selectedItems", {
+                selected: table.getFilteredSelectedRowModel().rows.length,
+                total: table.getFilteredRowModel().rows.length,
+              })}
             </>
           )}
         </p>
       </div>
       <div className="flex items-center space-x-6">
         <p className="text-muted-foreground text-xs font-medium">
-          第 {table.getState().pagination.pageIndex + 1} /{" "}
-          {table.getPageCount()} 页
+          {t("dataTablePagination.currentPage", {
+            page: table.getState().pagination.pageIndex + 1,
+            totalPages: table.getPageCount(),
+          })}
         </p>
         <div className="flex items-center space-x-1.5">
           <Button
@@ -154,7 +169,7 @@ export function DataTablePagination<TData>({
             className="hidden size-9 p-0 lg:flex"
             onClick={() => table.setPageIndex(0)}
             disabled={!table.getCanPreviousPage()}
-            title="前往首页"
+            title={t("dataTablePagination.firstPage")}
           >
             <ChevronsLeftIcon className="size-4" />
           </Button>
@@ -163,9 +178,11 @@ export function DataTablePagination<TData>({
             className="size-9 p-0"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
-            title="前往上一页"
+            title={t("dataTablePagination.previousPage")}
           >
-            <span className="sr-only">Go to previous page</span>
+            <span className="sr-only">
+              {t("dataTablePagination.previousPage")}
+            </span>
             <ChevronLeftIcon className="size-4" />
           </Button>
           <Button
@@ -173,9 +190,9 @@ export function DataTablePagination<TData>({
             className="size-9 p-0"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
-            title="前往下一页"
+            title={t("dataTablePagination.nextPage")}
           >
-            <span className="sr-only">Go to next page</span>
+            <span className="sr-only">{t("dataTablePagination.nextPage")}</span>
             <ChevronRightIcon className="size-4" />
           </Button>
           <Button
@@ -183,9 +200,9 @@ export function DataTablePagination<TData>({
             className="hidden size-9 p-0 lg:flex"
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
             disabled={!table.getCanNextPage()}
-            title="前往尾页"
+            title={t("dataTablePagination.lastPage")}
           >
-            <span className="sr-only">Go to last page</span>
+            <span className="sr-only">{t("dataTablePagination.lastPage")}</span>
             <ChevronsRightIcon className="size-4" />
           </Button>
         </div>

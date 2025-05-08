@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -41,18 +44,19 @@ export function DatasetUpdateForm({
   initialData,
   onSuccess,
 }: UpdateFormProps) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = React.useState(false);
   const typestring = (() => {
     switch (type) {
       case "dataset":
-        return "数据集";
+        return t("dataset.type.dataset");
       case "model":
-        return "模型";
+        return t("dataset.type.model");
       case "sharefile":
-        return "共享文件";
+        return t("dataset.type.sharefile");
       default:
-        return "数据集";
+        return t("dataset.type.dataset");
     }
   })();
   const form = useForm<DataFormSchema>({
@@ -85,12 +89,14 @@ export function DatasetUpdateForm({
       }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["data", "mydataset"] });
-      toast.success(`${typestring} ${variables.datasetName} 更新成功`);
+      toast.success(
+        t("dataset.toast.success", { name: variables.datasetName }),
+      );
       setIsOpen(false);
       onSuccess?.();
     },
     onError: () => {
-      toast.error("更新失败，请检查网络或数据格式");
+      toast.error(t("dataset.toast.failure"));
     },
   });
 
@@ -98,7 +104,7 @@ export function DatasetUpdateForm({
     try {
       await updateDataset(values);
     } catch {
-      toast.error("更新失败，请检查网络或数据格式");
+      toast.error(t("dataset.toast.failure"));
     }
   };
 
@@ -117,14 +123,21 @@ export function DatasetUpdateForm({
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" className="h-8 w-8" size="icon" title="更新">
+        <Button
+          variant="outline"
+          className="h-8 w-8"
+          size="icon"
+          title={t("dataset.form.editTitle")}
+        >
           <Pencil size={16} strokeWidth={2} />
         </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>更新{typestring}</DialogTitle>
+          <DialogTitle>
+            {t("dataset.updateDialog.title", { type: typestring })}
+          </DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -135,7 +148,7 @@ export function DatasetUpdateForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    {typestring}名称
+                    {t("dataset.form.nameLabel", { type: typestring })}
                     <FormLabelMust />
                   </FormLabel>
                   <FormControl>
@@ -156,7 +169,7 @@ export function DatasetUpdateForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    {typestring}描述
+                    {t("dataset.form.describeLabel", { type: typestring })}
                     <FormLabelMust />
                   </FormLabel>
                   <FormControl>
@@ -179,7 +192,7 @@ export function DatasetUpdateForm({
                   render={({ field }) => (
                     <FormItem className="col-span-2">
                       <FormLabel>
-                        {typestring}地址
+                        {t("dataset.form.urlLabel", { type: typestring })}
                         <FormLabelMust />
                       </FormLabel>
                       <FormControl>
@@ -189,7 +202,7 @@ export function DatasetUpdateForm({
                             field.onChange(item.id);
                             form.setValue("url", item.id);
                           }}
-                          title="选择数据集地址"
+                          title={t("dataset.fileSelect.title")}
                         />
                       </FormControl>
                       <FormMessage />
@@ -202,8 +215,8 @@ export function DatasetUpdateForm({
             <TagsInput
               form={form}
               tagsPath="tags"
-              label={`${typestring}标签`}
-              description={`为${typestring}添加标签，以便分类和搜索`}
+              label={t("dataset.tags.label", { type: typestring })}
+              description={t("dataset.tags.description", { type: typestring })}
               customTags={[
                 { value: "VLM" },
                 { value: "LLAMA" },
@@ -224,7 +237,9 @@ export function DatasetUpdateForm({
               name="weburl"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{typestring}仓库地址</FormLabel>
+                  <FormLabel>
+                    {t("dataset.form.weburlLabel", { type: typestring })}
+                  </FormLabel>
                   <FormControl>
                     <Input
                       {...field}
@@ -243,10 +258,12 @@ export function DatasetUpdateForm({
                 variant="outline"
                 onClick={() => setIsOpen(false)}
               >
-                取消
+                {t("common.cancel")}
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending ? "更新中..." : `更新${typestring}`}
+                {isPending
+                  ? t("common.updating")
+                  : t("dataset.form.updateButton", { type: typestring })}
               </Button>
             </div>
           </form>

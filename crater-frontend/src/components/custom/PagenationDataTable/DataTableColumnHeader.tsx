@@ -1,3 +1,5 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -26,6 +28,8 @@ export function DataTableColumnHeader<TData, TValue>({
   title,
   className,
 }: DataTableColumnHeaderProps<TData, TValue>) {
+  const { t } = useTranslation();
+
   if (!column.getCanSort()) {
     return <div className={cn("text-xs", className)}>{title}</div>;
   }
@@ -52,16 +56,16 @@ export function DataTableColumnHeader<TData, TValue>({
         <DropdownMenuContent align="start">
           <DropdownMenuItem onClick={() => column.toggleSorting(false)}>
             <ArrowUpIcon className="text-muted-foreground/70 h-3.5 w-3.5" />
-            升序
+            {t("dataTable.ascending")}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => column.toggleSorting(true)}>
             <ArrowDownIcon className="text-muted-foreground/70 h-3.5 w-3.5" />
-            降序
+            {t("dataTable.descending")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => column.toggleVisibility(false)}>
             <EyeNoneIcon className="text-muted-foreground/70 h-3.5 w-3.5" />
-            隐藏
+            {t("dataTable.hide")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

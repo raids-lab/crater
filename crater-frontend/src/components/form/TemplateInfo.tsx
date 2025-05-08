@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import React from "react";
 import { UIStateUpdater, useTemplateLoader } from "@/hooks/useTemplateLoader";
 import { FieldValues, UseFormReturn } from "react-hook-form";
@@ -34,6 +37,8 @@ export function TemplateInfo<T extends FieldValues>({
   dataProcessor,
   defaultMarkdown,
 }: TemplateInfoProps<T>) {
+  const { t } = useTranslation();
+
   // 使用 hook 获取模板信息
   const { fromJob, fromTemplate, templateData } = useTemplateLoader({
     form,
@@ -53,7 +58,7 @@ export function TemplateInfo<T extends FieldValues>({
       return (
         <Card>
           <CardHeader>
-            <CardTitle>作业说明</CardTitle>
+            <CardTitle>{t("templateInfo.jobInstructions")}</CardTitle>
           </CardHeader>
           <CardContent>
             <MarkdownRenderer>{defaultMarkdown}</MarkdownRenderer>
@@ -71,7 +76,9 @@ export function TemplateInfo<T extends FieldValues>({
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center">
-              {fromJob ? "作业模板" : "预设模板"}
+              {fromJob
+                ? t("templateInfo.jobTemplate")
+                : t("templateInfo.presetTemplate")}
               <Badge variant="outline" className="ml-2">
                 {fromJob || templateData?.name}
               </Badge>
@@ -79,14 +86,16 @@ export function TemplateInfo<T extends FieldValues>({
 
             {templateData?.userInfo.nickname && (
               <Badge variant="secondary">
-                作者: {templateData.userInfo.nickname}
+                {t("templateInfo.authorLabel", {
+                  nickname: templateData.userInfo.nickname,
+                })}
               </Badge>
             )}
           </div>
 
           <CardDescription>
             {fromJob
-              ? `已加载来自作业 ${fromJob} 的模板配置`
+              ? t("templateInfo.loadedFromJob", { fromJob })
               : templateData?.describe}
           </CardDescription>
         </CardHeader>
@@ -102,7 +111,7 @@ export function TemplateInfo<T extends FieldValues>({
       {defaultMarkdown && (
         <Card>
           <CardHeader>
-            <CardTitle>作业说明</CardTitle>
+            <CardTitle>{t("templateInfo.jobInstructions")}</CardTitle>
           </CardHeader>
           <CardContent>
             <MarkdownRenderer>{defaultMarkdown}</MarkdownRenderer>

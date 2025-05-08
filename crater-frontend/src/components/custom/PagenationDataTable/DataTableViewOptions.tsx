@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 import { MixerHorizontalIcon } from "@radix-ui/react-icons";
 import { Table } from "@tanstack/react-table";
@@ -23,6 +26,8 @@ export function DataTableViewOptions<TData>({
   getHeader,
   className,
 }: DataTableViewOptionsProps<TData>) {
+  const { t } = useTranslation();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -32,11 +37,15 @@ export function DataTableViewOptions<TData>({
           className={cn("ml-auto flex h-8", className)}
         >
           <MixerHorizontalIcon className="size-4" />
-          <span className="sr-only sm:not-sr-only sm:ml-2">视图</span>
+          <span className="sr-only sm:not-sr-only sm:ml-2">
+            {t("dataTableViewOptions.viewButton")}
+          </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[150px]">
-        <DropdownMenuLabel>视图</DropdownMenuLabel>
+        <DropdownMenuLabel>
+          {t("dataTableViewOptions.viewLabel")}
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {table
           .getAllColumns()

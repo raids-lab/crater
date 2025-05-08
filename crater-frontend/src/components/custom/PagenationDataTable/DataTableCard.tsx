@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import {
   Table,
   TableBody,
@@ -26,6 +29,8 @@ function DataTableCard<TData, TValue>({
   columns,
   loading,
 }: DataTableCardProps<TData, TValue>) {
+  const { t } = useTranslation();
+
   return (
     <Card>
       <CardHeader className="py-3" />
@@ -99,7 +104,7 @@ function DataTableCard<TData, TValue>({
                         colSpan={columns.length}
                         className="h-40 text-center"
                       >
-                        暂无数据
+                        {t("dataTable.noData")}
                       </TableCell>
                     </TableRow>
                   )}

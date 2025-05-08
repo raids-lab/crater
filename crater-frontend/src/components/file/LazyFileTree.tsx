@@ -1,4 +1,6 @@
-// https://github.com/shadcn-ui/ui/issues/355
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import React, { useEffect, useMemo } from "react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -12,6 +14,7 @@ import {
 import useResizeObserver from "use-resize-observer";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { FileItem, apiGetFiles, apiGetRWFiles } from "@/services/api/file";
+
 interface TreeDataItem {
   id: string;
   name: string;
@@ -20,22 +23,25 @@ interface TreeDataItem {
   hasChildren: boolean;
 }
 
-export const getFolderTitle = (folder: string) => {
+export const getFolderTitle = (t: (key: string) => string, folder: string) => {
   if (folder === "public") {
-    return "公共空间";
+    return t("tree.folderTitle.public");
   } else if (folder === "account") {
-    return "账户空间";
+    return t("tree.folderTitle.account");
   }
-  return "用户空间";
+  return t("tree.folderTitle.default");
 };
 
-export const getAdminFolderTitle = (folder: string) => {
+export const getAdminFolderTitle = (
+  t: (key: string) => string,
+  folder: string,
+) => {
   if (folder === "admin-public") {
-    return "公共空间";
+    return t("tree.adminFolderTitle.public");
   } else if (folder === "admin-account") {
-    return "账户空间";
+    return t("tree.adminFolderTitle.account");
   }
-  return "用户空间";
+  return t("tree.adminFolderTitle.default");
 };
 
 type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
@@ -137,15 +143,17 @@ const TreeItem = ({
 }: TreeItemProps & {
   ref?: React.RefObject<HTMLDivElement>;
 }) => {
+  const { t } = useTranslation();
+
   const item: TreeDataItem = useMemo(() => {
     return {
       id: currentPath,
-      name: level === 0 ? getFolderTitle(data.name) : data.name,
+      name: level === 0 ? getFolderTitle(t, data.name) : data.name,
       icon: data.isdir ? FolderIcon : FileDigitIcon,
       isdir: data.isdir,
       hasChildren: data.isdir && data.size > 0,
     };
-  }, [currentPath, data, level]);
+  }, [currentPath, data, level, t]);
 
   useEffect(() => {
     if (data.isdir && data.size > 0) {

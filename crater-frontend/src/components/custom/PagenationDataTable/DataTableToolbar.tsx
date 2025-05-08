@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import { Table } from "@tanstack/react-table";
 
@@ -32,6 +35,7 @@ export function DataTableToolbar<TData>({
   config: { searchKey, filterOptions, getHeader },
   children,
 }: DataTableToolbarProps<TData>) {
+  const { t } = useTranslation();
   const isFiltered = table.getState().columnFilters.length > 0;
 
   return (
@@ -41,7 +45,9 @@ export function DataTableToolbar<TData>({
         <div className="relative ml-auto h-8 flex-1 md:grow-0">
           <Search className="text-muted-foreground absolute top-2 left-2 size-4" />
           <Input
-            placeholder={"查找" + getHeader(searchKey)}
+            placeholder={`${t("dataTableToolbar.searchPlaceholder")} ${getHeader(
+              searchKey,
+            )}`}
             value={
               (table.getColumn(searchKey)?.getFilterValue() as string) ?? ""
             }
@@ -66,7 +72,7 @@ export function DataTableToolbar<TData>({
           <Button
             variant="outline"
             size="icon"
-            title="Clear filters"
+            title={t("dataTableToolbar.clearFilters")}
             type="button"
             onClick={() => table.resetColumnFilters()}
             className="h-8 w-8 border-dashed"
@@ -84,6 +90,7 @@ export function DataTableToolbarRight<TData>({
   table,
   config: { searchKey, filterOptions, getHeader },
 }: DataTableToolbarProps<TData>) {
+  const { t } = useTranslation();
   const isFiltered = table.getState().columnFilters.length > 0;
 
   return (
@@ -92,7 +99,7 @@ export function DataTableToolbarRight<TData>({
         <Button
           variant="outline"
           size="icon"
-          title="Clear filters"
+          title={t("dataTableToolbar.clearFilters")}
           type="button"
           onClick={() => table.resetColumnFilters()}
           className="h-7 w-7 border-dashed"
@@ -114,7 +121,9 @@ export function DataTableToolbarRight<TData>({
       <div className="relative ml-auto h-8">
         <Search className="text-muted-foreground absolute top-2 left-2 size-4" />
         <Input
-          placeholder={"查找" + getHeader(searchKey)}
+          placeholder={`${t("dataTableToolbar.searchPlaceholder")} ${getHeader(
+            searchKey,
+          )}`}
           value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
             table.getColumn(searchKey)?.setFilterValue(event.target.value)

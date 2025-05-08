@@ -1,5 +1,8 @@
+// i18n-processed-v1.1.0
+// Modified code
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import { useTranslation } from "react-i18next";
 import { ArrayPath, UseFormReturn, useFieldArray } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,20 +19,6 @@ import { CirclePlus, XIcon } from "lucide-react";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import AccordionCard from "@/components/form/AccordionCard";
 
-export const EnvCard = "环境变量";
-
-interface EnvFormCardProps<
-  T extends {
-    envs: Array<{ name: string; value: string }>;
-  },
-> {
-  form: UseFormReturn<T>;
-  open?: boolean;
-  setOpen?: (open: boolean) => void;
-  className?: string;
-  cardTitle?: string;
-}
-
 export function EnvFormCard<
   T extends {
     envs: Array<{ name: string; value: string }>;
@@ -39,8 +28,15 @@ export function EnvFormCard<
   open,
   setOpen,
   className,
-  cardTitle = EnvCard,
-}: EnvFormCardProps<T>) {
+  cardTitle = "环境变量",
+}: {
+  form: UseFormReturn<T>;
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  className?: string;
+  cardTitle?: string;
+}) {
+  const { t } = useTranslation();
   // Field array for environment variables
   const {
     fields: envFields,
@@ -73,10 +69,12 @@ export function EnvFormCard<
                       className="data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none"
                     >
                       <XIcon className="size-4" />
-                      <span className="sr-only">Close</span>
+                      <span className="sr-only">
+                        {t("envFormCard.closeButton")}
+                      </span>
                     </button>
                     <FormLabel>
-                      变量名 {index + 1}
+                      {t("envFormCard.variableName", { index: index + 1 })}
                       <FormLabelMust />
                     </FormLabel>
                     <FormControl>
@@ -92,7 +90,7 @@ export function EnvFormCard<
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      变量值 {index + 1}
+                      {t("envFormCard.variableValue", { index: index + 1 })}
                       <FormLabelMust />
                     </FormLabel>
                     <FormControl>
@@ -117,7 +115,7 @@ export function EnvFormCard<
           }
         >
           <CirclePlus className="size-4" />
-          添加{cardTitle}
+          {t("envFormCard.addButton", { cardTitle })}
         </Button>
       </div>
     </AccordionCard>

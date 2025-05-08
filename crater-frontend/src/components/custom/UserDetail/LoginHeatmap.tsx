@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import useNivoTheme from "@/hooks/useNivoTheme";
 import { ResponsiveTimeRange } from "@nivo/calendar";
@@ -19,13 +22,15 @@ const generateRandomData = (days: number) => {
 
   return data;
 };
+
 export default function LoginHeatmap() {
+  const { t } = useTranslation();
   const data = generateRandomData(365);
   const { nivoTheme, theme } = useNivoTheme();
   return (
     <Card>
       <CardHeader>
-        <CardTitle>用户活跃度</CardTitle>
+        <CardTitle>{t("loginHeatmap.title")}</CardTitle>
       </CardHeader>
       <CardContent>
         <div style={{ height: "200px" }}>

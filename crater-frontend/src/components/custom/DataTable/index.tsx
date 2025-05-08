@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -59,6 +62,7 @@ export function DataTable<TData, TValue>({
   briefChildren,
   className,
 }: DataTableProps<TData, TValue>) {
+  const { t } = useTranslation();
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = useLocalStorage<ColumnFiltersState>(
@@ -93,14 +97,14 @@ export function DataTable<TData, TValue>({
               table.toggleAllPageRowsSelected(!!value)
             }
             hidden={table.getRowModel().rows.length === 0}
-            aria-label="Select all"
+            aria-label={t("dataTable.selectAll")}
           />
         ),
         cell: ({ row }) => (
           <Checkbox
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
+            aria-label={t("dataTable.selectRow")}
           />
         ),
         enableSorting: false,
@@ -108,7 +112,7 @@ export function DataTable<TData, TValue>({
       },
       ...columns,
     ];
-  }, [columns, multipleHandlers]);
+  }, [columns, multipleHandlers, t]);
 
   const table = useReactTable({
     data: data,
@@ -210,7 +214,7 @@ export function DataTable<TData, TValue>({
                         <div className="bg-muted mb-4 rounded-full p-3">
                           <GridIcon className="h-6 w-6" />
                         </div>
-                        <p className="select-none">暂无数据</p>
+                        <p className="select-none">{t("dataTable.noData")}</p>
                       </div>
                     </TableCell>
                   )}

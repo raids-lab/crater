@@ -1,5 +1,6 @@
-"use client";
-
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { addHours, format } from "date-fns";
 import { zhCN } from "date-fns/locale";
@@ -32,18 +33,22 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 
-// 定义表单验证模式
-const formSchema = z.object({
-  isPermanent: z.boolean().default(false),
-  days: z.coerce.number().min(0, "天数不能为负数").default(0),
-  hours: z.coerce
-    .number()
-    .min(0, "小时数不能为负数")
-    .max(23, "小时数不能超过23")
-    .default(0),
-});
+// Moved Zod schema to component
+const getFormSchema = (t: (key: string) => string) =>
+  z.object({
+    isPermanent: z.boolean().default(false),
+    days: z.coerce
+      .number()
+      .min(0, t("durationDialog.form.days.min"))
+      .default(0),
+    hours: z.coerce
+      .number()
+      .min(0, t("durationDialog.form.hours.min"))
+      .max(23, t("durationDialog.form.hours.max"))
+      .default(0),
+  });
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = z.infer<ReturnType<typeof getFormSchema>>;
 
 interface DurationDialogProps {
   jobs: IJobInfo[];
@@ -58,14 +63,15 @@ export function DurationDialog({
   setOpen,
   onSuccess,
 }: DurationDialogProps) {
+  const { t } = useTranslation();
   const [expirationDate, setExpirationDate] = useState<Date | null>(null);
   const allLocked = jobs.length > 0 && jobs.every((job) => job.locked);
   const allUnlocked = jobs.length > 0 && jobs.every((job) => !job.locked);
   const mixedState = !allLocked && !allUnlocked;
 
-  // 初始化表单
+  // Initialize form with translated schema
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(getFormSchema(t)),
     defaultValues: {
       isPermanent: false,
       days: 0,
@@ -73,7 +79,7 @@ export function DurationDialog({
     },
   });
 
-  // 使用 React Query 的 useMutation 进行锁定操作
+  // Use React Query for lock mutation
   const lockMutation = useMutation({
     mutationFn: async (values: FormValues) => {
       const { isPermanent, days, hours } = values;
@@ -83,39 +89,43 @@ export function DurationDialog({
           isPermanent,
           days: days || 0,
           hours: hours || 0,
-          minutes: 0, // 始终为 0
+          minutes: 0,
         };
         return apiJobLock(payload);
       });
       return Promise.all(promises);
     },
     onSuccess: () => {
-      toast.success(`成功锁定 ${jobs.length} 个作业`);
+      toast.success(
+        t("durationDialog.toast.lockSuccess", { count: jobs.length }),
+      );
       setOpen(false);
       onSuccess?.();
     },
     onError: () => {
-      toast.error("锁定操作失败");
+      toast.error(t("durationDialog.toast.lockError"));
     },
   });
 
-  // 使用 React Query 的 useMutation 进行解锁操作
+  // Use React Query for unlock mutation
   const unlockMutation = useMutation({
     mutationFn: async () => {
       const promises = jobs.map((job) => apiJobUnlock(job.jobName));
       return Promise.all(promises);
     },
     onSuccess: () => {
-      toast.success(`成功解锁 ${jobs.length} 个作业`);
+      toast.success(
+        t("durationDialog.toast.unlockSuccess", { count: jobs.length }),
+      );
       setOpen(false);
       onSuccess?.();
     },
     onError: () => {
-      toast.error("解锁操作失败");
+      toast.error(t("durationDialog.toast.unlockError"));
     },
   });
 
-  // 重置表单当对话框打开时
+  // Reset form when dialog opens
   useEffect(() => {
     if (open) {
       form.reset({
@@ -127,7 +137,7 @@ export function DurationDialog({
     }
   }, [open, form]);
 
-  // 计算到期时间的函数
+  // Calculate expiration date
   const calculateExpirationDate = (values: FormValues) => {
     const { days, hours, isPermanent } = values;
 
@@ -136,23 +146,18 @@ export function DurationDialog({
       return;
     }
 
-    // 只有当至少有一个值大于0时才计算
     if (days > 0 || hours > 0) {
-      // 创建一个新的日期对象
       const now = new Date();
       let result = new Date(now);
-
-      // 添加时间
       if (days > 0) result = addHours(result, days * 24);
       if (hours > 0) result = addHours(result, hours);
-
       setExpirationDate(result);
     } else {
       setExpirationDate(null);
     }
   };
 
-  // 处理字段变化事件
+  // Handle field changes
   const handleFieldChange = () => {
     setTimeout(() => {
       const values = form.getValues();
@@ -160,13 +165,12 @@ export function DurationDialog({
     }, 0);
   };
 
-  // 提交表单
+  // Submit form
   async function onSubmit(values: FormValues) {
     const { isPermanent, days, hours } = values;
 
-    // 验证输入
     if (!isPermanent && !(days > 0 || hours > 0)) {
-      toast.error("请设置锁定时长或选择永久锁定");
+      toast.error(t("durationDialog.toast.noDuration"));
       return;
     }
 
@@ -177,11 +181,15 @@ export function DurationDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{allLocked ? "解锁作业" : "锁定作业"}</DialogTitle>
+          <DialogTitle>
+            {allLocked
+              ? t("durationDialog.title.unlock")
+              : t("durationDialog.title.lock")}
+          </DialogTitle>
           <DialogDescription>
             {allLocked
-              ? `解锁 ${jobs.length} 个作业，解锁后作业将会根据策略自动清理。`
-              : `设置 ${jobs.length} 个作业的锁定时长，锁定后作业不会被自动清理。`}
+              ? t("durationDialog.description.unlock", { count: jobs.length })
+              : t("durationDialog.description.lock", { count: jobs.length })}
           </DialogDescription>
         </DialogHeader>
 
@@ -191,9 +199,11 @@ export function DurationDialog({
               <CardContent className="flex items-start gap-2 pt-6">
                 <InfoIcon className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-500" />
                 <div>
-                  <p className="font-medium">选中的作业状态不一致</p>
+                  <p className="font-medium">
+                    {t("durationDialog.card.title")}
+                  </p>
                   <p className="text-muted-foreground text-sm">
-                    请选择状态一致的作业（全部已锁定或全部未锁定）进行批量操作。
+                    {t("durationDialog.card.description")}
                   </p>
                 </div>
               </CardContent>
@@ -208,8 +218,8 @@ export function DurationDialog({
           >
             <UnlockIcon className="mr-2 h-4 w-4" />
             {unlockMutation.isPending
-              ? "解锁中..."
-              : `解锁 ${jobs.length} 个作业`}
+              ? t("durationDialog.button.unlocking")
+              : t("durationDialog.button.unlock", { count: jobs.length })}
           </Button>
         ) : (
           <Form {...form}>
@@ -230,9 +240,11 @@ export function DurationDialog({
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
-                      <FormLabel className="text-base">永久锁定</FormLabel>
+                      <FormLabel className="text-base">
+                        {t("durationDialog.form.permanentLock")}
+                      </FormLabel>
                       <p className="text-muted-foreground text-sm">
-                        作业将被永久锁定，不会被自动清理策略删除。
+                        {t("durationDialog.form.permanentLockDescription")}
                       </p>
                     </div>
                   </FormItem>
@@ -247,7 +259,7 @@ export function DurationDialog({
                       name="days"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>天数</FormLabel>
+                          <FormLabel>{t("durationDialog.form.days")}</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -270,7 +282,9 @@ export function DurationDialog({
                       name="hours"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>小时</FormLabel>
+                          <FormLabel>
+                            {t("durationDialog.form.hours")}
+                          </FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -295,7 +309,9 @@ export function DurationDialog({
                       <CardContent>
                         <div className="text-muted-foreground flex items-center gap-2">
                           <CalendarClock className="h-4 w-4" />
-                          <span>到期时间预览：</span>
+                          <span>
+                            {t("durationDialog.form.expirationPreview")}
+                          </span>
                         </div>
                         <div className="mt-2">
                           <p className="text-lg font-medium">
@@ -304,7 +320,7 @@ export function DurationDialog({
                             })}
                           </p>
                           <p className="text-muted-foreground mt-1 text-sm">
-                            当前时间:{" "}
+                            {t("durationDialog.form.currentTime")}:{" "}
                             {format(new Date(), "yyyy年MM月dd日 HH:mm", {
                               locale: zhCN,
                             })}
@@ -323,11 +339,13 @@ export function DurationDialog({
                   onClick={() => setOpen(false)}
                   disabled={lockMutation.isPending}
                 >
-                  取消
+                  {t("common.cancel")}
                 </Button>
                 <Button type="submit" disabled={lockMutation.isPending}>
                   <Lock className="mr-2 h-4 w-4" />
-                  {lockMutation.isPending ? "锁定中..." : "锁定作业"}
+                  {lockMutation.isPending
+                    ? t("durationDialog.button.locking")
+                    : t("durationDialog.button.lock")}
                 </Button>
               </DialogFooter>
             </form>

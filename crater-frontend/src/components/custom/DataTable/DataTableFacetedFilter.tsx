@@ -1,3 +1,5 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import * as React from "react";
 import { CheckIcon } from "@radix-ui/react-icons";
 import { Column } from "@tanstack/react-table";
@@ -42,6 +44,7 @@ export function DataTableFacetedFilter<TData, TValue>({
   options,
   defaultValues,
 }: DataTableFacetedFilterProps<TData, TValue>) {
+  const { t } = useTranslation();
   const facets = column?.getFacetedUniqueValues();
   const selectedValues = new Set(column?.getFilterValue() as string[]);
 
@@ -78,7 +81,9 @@ export function DataTableFacetedFilter<TData, TValue>({
                     variant="secondary"
                     className="rounded-sm px-1 font-normal"
                   >
-                    已选择 {selectedValues.size}
+                    {t("dataTableFacetedFilter.selected", {
+                      count: selectedValues.size,
+                    })}
                   </Badge>
                 ) : (
                   options
@@ -102,7 +107,7 @@ export function DataTableFacetedFilter<TData, TValue>({
         <Command shouldFilter={false}>
           {/* <CommandInput placeholder={title} /> */}
           <CommandList>
-            <CommandEmpty>暂无结果</CommandEmpty>
+            <CommandEmpty>{t("dataTableFacetedFilter.noResults")}</CommandEmpty>
             <CommandGroup>
               {options
                 .filter((option) => 0 < (facets?.get(option.value) || 0))
@@ -156,7 +161,7 @@ export function DataTableFacetedFilter<TData, TValue>({
                     onSelect={() => column?.setFilterValue(undefined)}
                     className="justify-center text-center"
                   >
-                    取消筛选
+                    {t("dataTableFacetedFilter.clearFilter")}
                   </CommandItem>
                 </CommandGroup>
               </>

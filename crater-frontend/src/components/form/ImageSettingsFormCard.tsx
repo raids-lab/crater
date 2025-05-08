@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import {
   FormControl,
   FormDescription,
@@ -17,16 +20,6 @@ import {
 } from "@/components/ui/accordion";
 import TipBadge from "@/components/badge/TipBadge";
 
-export const ImageSettingsCard = "高级设置";
-
-interface ImageSettingsFormCardProps<T extends FieldValues> {
-  form: UseFormReturn<T>;
-  imageNamePath: FieldPath<T>;
-  imageTagPath: FieldPath<T>;
-  description?: string;
-  className?: string;
-}
-
 export function ImageSettingsFormCard<T extends FieldValues>({
   form,
   imageNamePath,
@@ -34,6 +27,8 @@ export function ImageSettingsFormCard<T extends FieldValues>({
   description = "输入用户自定义的镜像名和镜像标签，若为空，则由系统自动生成",
   className,
 }: ImageSettingsFormCardProps<T>) {
+  const { t } = useTranslation();
+
   return (
     <Accordion
       type="single"
@@ -43,8 +38,8 @@ export function ImageSettingsFormCard<T extends FieldValues>({
       <AccordionItem value="image-settings" className="border-none">
         <AccordionTrigger className="px-4 py-3 hover:no-underline">
           <div className="flex flex-row items-center gap-1.5">
-            {ImageSettingsCard}
-            <TipBadge title="镜像链接" />
+            {t("imageSettingsCard")}
+            <TipBadge title={t("imageSettingsForm.tipBadgeTitle")} />
           </div>
         </AccordionTrigger>
         <AccordionContent>
@@ -56,9 +51,12 @@ export function ImageSettingsFormCard<T extends FieldValues>({
                 name={imageNamePath}
                 render={({ field }) => (
                   <FormItem className="flex h-full flex-col">
-                    <FormLabel>名称</FormLabel>
+                    <FormLabel>{t("imageSettingsForm.nameLabel")}</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="默认镜像名称" />
+                      <Input
+                        {...field}
+                        placeholder={t("imageSettingsForm.namePlaceholder")}
+                      />
                     </FormControl>
                     <FormMessage className="min-h-[20px] leading-none" />
                   </FormItem>
@@ -71,9 +69,12 @@ export function ImageSettingsFormCard<T extends FieldValues>({
                 name={imageTagPath}
                 render={({ field }) => (
                   <FormItem className="flex h-full flex-col">
-                    <FormLabel>标签</FormLabel>
+                    <FormLabel>{t("imageSettingsForm.tagLabel")}</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="默认镜像标签" />
+                      <Input
+                        {...field}
+                        placeholder={t("imageSettingsForm.tagPlaceholder")}
+                      />
                     </FormControl>
                     <FormMessage className="min-h-[20px] leading-none" />
                   </FormItem>
@@ -82,10 +83,18 @@ export function ImageSettingsFormCard<T extends FieldValues>({
             </div>
           </div>
           <FormDescription className="mt-2 px-4 pb-4">
-            {description}
+            {t("imageSettingsForm.description", { description })}
           </FormDescription>
         </AccordionContent>
       </AccordionItem>
     </Accordion>
   );
+}
+
+interface ImageSettingsFormCardProps<T extends FieldValues> {
+  form: UseFormReturn<T>;
+  imageNamePath: FieldPath<T>;
+  imageTagPath: FieldPath<T>;
+  description?: string;
+  className?: string;
 }

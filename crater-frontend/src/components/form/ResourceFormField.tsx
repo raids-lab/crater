@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
   FormControl,
@@ -58,6 +61,7 @@ export function ResourceFormFields<T extends FieldValues>({
   gpuModelPath,
   rdmaPath,
 }: ResourceFormFieldsProps<T>) {
+  const { t } = useTranslation();
   const gpuCount = form.watch(gpuCountPath);
   const grafanaOverview = useAtomValue(configGrafanaOverviewAtom);
 
@@ -91,7 +95,7 @@ export function ResourceFormFields<T extends FieldValues>({
           render={() => (
             <FormItem>
               <FormLabel>
-                CPU (核数)
+                {t("resourceForm.cpuLabel")}
                 <FormLabelMust />
               </FormLabel>
               <FormControl>
@@ -110,7 +114,7 @@ export function ResourceFormFields<T extends FieldValues>({
           render={() => (
             <FormItem>
               <FormLabel>
-                内存 (GiB)
+                {t("resourceForm.memoryLabel")}
                 <FormLabelMust />
               </FormLabel>
               <FormControl>
@@ -129,7 +133,7 @@ export function ResourceFormFields<T extends FieldValues>({
           render={() => (
             <FormItem>
               <FormLabel>
-                GPU (卡数)
+                {t("resourceForm.gpuCountLabel")}
                 <FormLabelMust />
               </FormLabel>
               <FormControl>
@@ -149,7 +153,7 @@ export function ResourceFormFields<T extends FieldValues>({
         render={({ field }) => (
           <FormItem hidden={gpuCount === 0}>
             <FormLabel>
-              GPU 型号
+              {t("resourceForm.gpuModelLabel")}
               <FormLabelMust />
             </FormLabel>
             <FormControl>
@@ -159,7 +163,9 @@ export function ResourceFormFields<T extends FieldValues>({
                   <div className="flex w-full flex-row items-center justify-between gap-3">
                     <p>{item.label}</p>
                     <TipBadge
-                      title={`可申请至多 ${item.detail?.amountSingleMax} 张卡`}
+                      title={t("resourceForm.gpuTip", {
+                        max: item.detail?.amountSingleMax,
+                      })}
                       className="bg-highlight-purple/15 text-highlight-purple"
                     />
                   </div>
@@ -172,7 +178,7 @@ export function ResourceFormFields<T extends FieldValues>({
                     form.resetField(rdmaPath.rdmaLabel);
                   }
                 }}
-                formTitle="GPU 型号"
+                formTitle={t("resourceForm.gpuComboboxTitle")}
               />
             </FormControl>
             <FormMessage />
@@ -196,12 +202,14 @@ export function ResourceFormFields<T extends FieldValues>({
               className="cursor-pointer"
             >
               <ChartNoAxesColumn className="size-4" />
-              空闲资源查询
+              {t("resourceForm.freeResourceButton")}
             </Button>
           </SheetTrigger>
           <SheetContent className="sm:max-w-4xl">
             <SheetHeader>
-              <SheetTitle>空闲资源查询</SheetTitle>
+              <SheetTitle>
+                {t("resourceForm.freeResourceSheetTitle")}
+              </SheetTitle>
             </SheetHeader>
             <div className="h-[calc(100vh-6rem)] w-full px-4">
               <GrafanaIframe baseSrc={grafanaOverview.schedule} />
@@ -227,6 +235,7 @@ function RDMAFormFields<T extends FieldValues>({
     rdmaLabel: FieldPath<T>;
   };
 }) {
+  const { t } = useTranslation();
   const gpuModel = form.watch(gpuModelPath);
   const rdmaEnabled = form.watch(rdmaPath.rdmaEnabled);
   const gpuID = useMemo(() => {
@@ -265,7 +274,7 @@ function RDMAFormFields<T extends FieldValues>({
               <FormItem>
                 <div className="flex flex-row items-center justify-between space-y-0 space-x-0">
                   <FormLabel>
-                    启用 RDMA
+                    {t("resourceForm.rdmaLabel")}
                     <TooltipProvider delayDuration={100}>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -273,18 +282,13 @@ function RDMAFormFields<T extends FieldValues>({
                         </TooltipTrigger>
                         <TooltipContent>
                           <h2 className="mb-0.5 font-semibold">
-                            基于 InfiniBand 的 RDMA：
+                            {t("resourceForm.tooltip.title")}
                           </h2>
-                          <p>
-                            1. V100 型号速率为 100Gb/s，A100 型号速率为 200Gb/s
-                          </p>
-                          <p>2. RDMA 启用后，CPU 和内存限制将被忽略</p>
-                          <p>3. 如需使用此功能，请尽量申请单个节点上的所有卡</p>
-                          <p>
-                            4. 在选择 RDMA
-                            网络时，同一个作业请选择同一个网络拓扑
-                          </p>
-                          <p>5. 镜像需支持 RDMA，详情见作业文档</p>
+                          <p>{t("resourceForm.tooltip.line1")}</p>
+                          <p>{t("resourceForm.tooltip.line2")}</p>
+                          <p>{t("resourceForm.tooltip.line3")}</p>
+                          <p>{t("resourceForm.tooltip.line4")}</p>
+                          <p>{t("resourceForm.tooltip.line5")}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -318,11 +322,13 @@ function RDMAFormFields<T extends FieldValues>({
                       handleSelect={(value) => {
                         field.onChange(value);
                       }}
-                      formTitle=" RDMA 网络拓扑"
+                      formTitle={t("resourceForm.rdmaNetworkTitle")}
                     />
                   </FormControl>
                   <FormDescription>
-                    请保证同一个作业内的不同角色，均使用同一个 RDMA 网络拓扑
+                    {t("resourceForm.rdmaDescription", {
+                      field: "RDMA",
+                    })}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

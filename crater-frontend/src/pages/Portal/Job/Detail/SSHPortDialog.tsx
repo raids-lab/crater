@@ -12,7 +12,7 @@ import { Terminal } from "lucide-react";
 import DocsButton from "@/components/button/DocsButton";
 import { apiOpenSSH, SSHInfo } from "@/services/api/vcjob";
 import { useMutation } from "@tanstack/react-query";
-import LoadableButton from "@/components/custom/LoadableButton";
+import LoadableButton from "@/components/button/LoadableButton";
 import { getErrorCode } from "@/services/axios";
 import { ERROR_SERVICE_SSHD_NOT_FOUND } from "@/services/error_code";
 import { toast } from "sonner";

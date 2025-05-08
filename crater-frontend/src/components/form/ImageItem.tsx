@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { ImageInfoResponse } from "@/services/api/imagepack";
 import { ComboboxItem } from "./Combobox";
@@ -16,6 +19,8 @@ export default function ImageItem({
 }: {
   item: ComboboxItem<ImageInfoResponse>;
 }) {
+  const { t } = useTranslation();
+
   return (
     <TooltipProvider delayDuration={100}>
       <Tooltip>
@@ -50,7 +55,8 @@ export default function ImageItem({
           </div>
         </TooltipTrigger>
         <TooltipContent className="flex flex-row gap-0.5">
-          <p>{item.detail?.userInfo.nickname}</p>创建于
+          <p>{item.detail?.userInfo.nickname}</p>
+          {t("imageItem.tooltip.createdOn")}
           <TimeDistance date={item.detail?.createdAt} className="text-xs" />
         </TooltipContent>
       </Tooltip>

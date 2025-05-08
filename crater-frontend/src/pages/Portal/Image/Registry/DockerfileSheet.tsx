@@ -15,7 +15,7 @@ import SandwichSheet, {
   SandwichLayout,
   SandwichSheetProps,
 } from "@/components/sheet/SandwichSheet";
-import LoadableButton from "@/components/custom/LoadableButton";
+import LoadableButton from "@/components/button/LoadableButton";
 import { PackagePlusIcon } from "lucide-react";
 import FormImportButton from "@/components/form/FormImportButton";
 import FormExportButton from "@/components/form/FormExportButton";

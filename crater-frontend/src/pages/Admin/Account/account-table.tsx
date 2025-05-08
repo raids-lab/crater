@@ -1,3 +1,4 @@
+// i18n-processed-v1.1.0
 import { DataTableColumnHeader } from "@/components/custom/PagenationDataTable/DataTableColumnHeader";
 import { IAccount } from "@/services/api/account";
 import { Button } from "@/components/ui/button";
@@ -27,40 +28,49 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { TFunction } from "i18next";
 
-const getHeader = (key: string): string => {
+const getHeader = (key: string, t: (key: string) => string): string => {
   switch (key) {
     case "nickname":
-      return "账户";
+      return t("table.headers.nickname");
     case "deserved":
-      return "应得";
+      return t("table.headers.deserved");
     case "guaranteed":
-      return "保证";
+      return t("table.headers.guaranteed");
     case "capability":
-      return "上限";
+      return t("table.headers.capability");
     default:
       return key;
   }
 };
 
-export const toolbarConfig: DataTableToolbarConfig = {
-  filterInput: {
-    key: "name",
-    placeholder: "搜索账户名称",
-  },
-  filterOptions: [],
-  getHeader: getHeader,
+export const getToolbarConfig = (
+  t: (key: string) => string,
+): DataTableToolbarConfig => {
+  return {
+    filterInput: {
+      key: "name",
+      placeholder: "搜索账户名称",
+    },
+    filterOptions: [],
+    getHeader: (key: string) => getHeader(key, t),
+  };
 };
 
 export const getColumns = (
   handleEdit: (project: IAccount) => void,
   handleDelete: (project: IAccount) => void,
+  t: TFunction<"translation", undefined>,
 ): ColumnDef<IAccount>[] => {
   return [
     {
       accessorKey: "nickname",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("nickname")} />
+        <DataTableColumnHeader
+          column={column}
+          title={getHeader("nickname", t)}
+        />
       ),
       cell: ({ row }) => {
         const expiredAt = row.original.expiredAt
@@ -86,14 +96,14 @@ export const getColumns = (
                     <TooltipTrigger>
                       <span className="text-muted-foreground text-xs">
                         {diff < 0 ? (
-                          <>已过期</>
+                          t("table.tooltip.expired")
                         ) : (
                           <>
                             {formatDistanceToNow(expiredAt, {
                               locale: zhCN,
                               addSuffix: true,
                             })}
-                            有效
+                            {t("table.tooltip.valid")}
                           </>
                         )}
                       </span>
@@ -102,7 +112,8 @@ export const getColumns = (
                       side="right"
                       className="bg-background text-foreground border"
                     >
-                      {format(expiredAt, "PPP", { locale: zhCN })}过期
+                      {format(expiredAt, "PPP", { locale: zhCN })}{" "}
+                      {t("table.tooltip.expires")}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -118,7 +129,7 @@ export const getColumns = (
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
-          title={getHeader("guaranteed")}
+          title={getHeader("guaranteed", t)}
         />
       ),
       cell: ({ row }) => {
@@ -129,7 +140,10 @@ export const getColumns = (
     {
       accessorKey: "deserved",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("deserved")} />
+        <DataTableColumnHeader
+          column={column}
+          title={getHeader("deserved", t)}
+        />
       ),
       cell: ({ row }) => {
         return <ResourceBadges resources={row.original.quota.deserved} />;
@@ -141,7 +155,7 @@ export const getColumns = (
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
-          title={getHeader("capability")}
+          title={getHeader("capability", t)}
         />
       ),
       cell: ({ row }) => {
@@ -157,7 +171,7 @@ export const getColumns = (
           <div className="flex flex-row items-center justify-center gap-1">
             <Link to={`${row.original.id}`}>
               <Button
-                title="管理用户"
+                title={t("table.actions.manageUser")}
                 variant="outline"
                 className="h-8 w-8"
                 size="icon"
@@ -166,7 +180,7 @@ export const getColumns = (
               </Button>
             </Link>
             <Button
-              title="修改配额"
+              title={t("table.actions.editQuota")}
               variant="outline"
               size="icon"
               className="h-8 w-8"
@@ -177,7 +191,7 @@ export const getColumns = (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
-                  title="删除账户"
+                  title={t("table.actions.delete")}
                   variant="outline"
                   size="icon"
                   className="h-8 w-8"
@@ -187,18 +201,24 @@ export const getColumns = (
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>删除账户</AlertDialogTitle>
+                  <AlertDialogTitle>
+                    {t("table.actions.deleteTitle")}
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
-                    账户 {row.original.nickname} 将被删除，请谨慎操作。
+                    {t("table.actions.deleteDescription", {
+                      name: row.original.nickname,
+                    })}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogCancel>
+                    {t("table.actions.cancel")}
+                  </AlertDialogCancel>
                   <AlertDialogAction
                     variant="destructive"
                     onClick={() => handleDelete(row.original)}
                   >
-                    删除
+                    {t("table.actions.delete")}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

@@ -6,7 +6,7 @@ export enum ContainerStatus {
   Terminated = "Terminated",
 }
 
-export const containerStatuses = [
+const containerStatuses = [
   {
     value: "Waiting",
     label: "等待",

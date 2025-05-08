@@ -1,9 +1,11 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import { DataTable } from "@/components/custom/DataTable";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
-import { type FC, useState } from "react";
+import { type FC, useMemo, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,6 +76,7 @@ const NetworksCell: FC<{ resourceId: number; resourceType?: string }> = ({
 
 // New component for Actions cell
 const ActionsCell: FC<{ resource: Resource }> = ({ resource }) => {
+  const { t } = useTranslation();
   const [openLabelSheet, setOpenLabelSheet] = useState(false);
   const [openTypeSheet, setOpenTypeSheet] = useState(false);
   const [openNetworkSheet, setOpenNetworkSheet] = useState(false);
@@ -85,7 +88,7 @@ const ActionsCell: FC<{ resource: Resource }> = ({ resource }) => {
       await queryClient.invalidateQueries({
         queryKey: ["resource", "list"],
       });
-      toast.success("资源已删除");
+      toast.success(t("resources.delete.success"));
     },
   });
 
@@ -95,48 +98,50 @@ const ActionsCell: FC<{ resource: Resource }> = ({ resource }) => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">操作</span>
+              <span className="sr-only">{t("resources.actions.menu")}</span>
               <DotsHorizontalIcon className="size-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel className="text-muted-foreground text-xs">
-              操作
+              {t("resources.actions.title")}
             </DropdownMenuLabel>
             <DropdownMenuItem onClick={() => setOpenLabelSheet(true)}>
               <TagIcon />
-              编辑标签
+              {t("resources.actions.editLabels")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setOpenTypeSheet(true)}>
               <BoxIcon />
-              设置类型
+              {t("resources.actions.editType")}
             </DropdownMenuItem>
             {resource.type === "gpu" && (
               <DropdownMenuItem onClick={() => setOpenNetworkSheet(true)}>
                 <NetworkIcon />
-                关联网络
+                {t("resources.actions.associateNetworks")}
               </DropdownMenuItem>
             )}
             <AlertDialogTrigger asChild>
               <DropdownMenuItem>
                 <Trash2Icon className="text-destructive" />
-                删除资源
+                {t("resources.actions.delete")}
               </DropdownMenuItem>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>删除资源</AlertDialogTitle>
+                <AlertDialogTitle>
+                  {t("resources.delete.title")}
+                </AlertDialogTitle>
                 <AlertDialogDescription>
-                  确认删除资源 "{resource.name}" 吗？此操作不可撤销。
+                  {t("resources.delete.confirm", { name: resource.name })}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>取消</AlertDialogCancel>
+                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={() => deleteResource()}
                   className="bg-destructive text-destructive-foreground"
                 >
-                  确认删除
+                  {t("resources.delete.confirmAction")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -164,107 +169,136 @@ const ActionsCell: FC<{ resource: Resource }> = ({ resource }) => {
   );
 };
 
-const toolbarConfig: DataTableToolbarConfig = {
-  filterInput: {
-    placeholder: "搜索资源名称",
-    key: "name",
-  },
-  filterOptions: [],
-  getHeader: (x) => x,
-};
-
-const columns: ColumnDef<Resource>[] = [
-  {
-    accessorKey: "name",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"资源"} />
-    ),
-    cell: ({ row }) => {
-      return (
-        <div>
-          <p className="font-mono font-semibold">{row.original.label}</p>
-          <p className="text-muted-foreground font-mono text-xs font-normal">
-            {row.getValue<string>("name")}
-          </p>
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: "type",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"类型"} />
-    ),
-    cell: ({ row }) => {
-      const type = row.getValue<string>("type");
-      if (!type) {
-        return <></>;
-      }
-      return (
-        <Badge variant="secondary">
-          {type === "gpu" ? "GPU" : type === "rdma" ? "RDMA" : type}
-        </Badge>
-      );
-    },
-  },
-  {
-    id: "networks",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"关联网络"} />
-    ),
-    cell: ({ row }) => (
-      <NetworksCell
-        resourceId={row.original.ID}
-        resourceType={row.original.type}
-      />
-    ),
-  },
-  {
-    accessorKey: "amount",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"总量"} />
-    ),
-    cell: ({ row }) => {
-      const amount = row.getValue<number>("amount");
-      if (amount > 1024 * 1024) {
-        return <div className="font-mono">{formatBytes(amount)}</div>;
-      }
-      return <div className="font-mono">{row.getValue("amount")}</div>;
-    },
-  },
-  {
-    accessorKey: "amountSingleMax",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"单节点最大数量"} />
-    ),
-    cell: ({ row }) => {
-      const amount = row.getValue<number>("amountSingleMax");
-      if (amount > 1024 * 1024) {
-        return <div className="font-mono">{formatBytes(amount)}</div>;
-      }
-      return <div className="font-mono">{row.getValue("amountSingleMax")}</div>;
-    },
-  },
-  {
-    accessorKey: "format",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={"Format"} />
-    ),
-    cell: ({ row }) => (
-      <Badge className="font-mono font-normal" variant="outline">
-        {row.getValue("format")}
-      </Badge>
-    ),
-  },
-  {
-    id: "actions",
-    enableHiding: false,
-    cell: ({ row }) => <ActionsCell resource={row.original} />,
-  },
-];
-
-export const Component: FC = () => {
+const Resources: FC = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
+
+  const toolbarConfig: DataTableToolbarConfig = useMemo(() => {
+    return {
+      filterInput: {
+        placeholder: t("resources.filter.placeholder"),
+        key: "name",
+      },
+      filterOptions: [],
+      getHeader: (x) => x,
+    };
+  }, [t]);
+
+  const columns: ColumnDef<Resource>[] = useMemo(() => {
+    return [
+      {
+        accessorKey: "name",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={t("resources.columns.name")}
+          />
+        ),
+        cell: ({ row }) => {
+          return (
+            <div>
+              <p className="font-mono font-semibold">{row.original.label}</p>
+              <p className="text-muted-foreground font-mono text-xs font-normal">
+                {row.getValue<string>("name")}
+              </p>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "type",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={t("resources.columns.type")}
+          />
+        ),
+        cell: ({ row }) => {
+          const type = row.getValue<string>("type");
+          if (!type) {
+            return <></>;
+          }
+          return (
+            <Badge variant="secondary">
+              {type === "gpu"
+                ? t("resources.type.gpu")
+                : type === "rdma"
+                  ? t("resources.type.rdma")
+                  : type}
+            </Badge>
+          );
+        },
+      },
+      {
+        id: "networks",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={t("resources.columns.networks")}
+          />
+        ),
+        cell: ({ row }) => (
+          <NetworksCell
+            resourceId={row.original.ID}
+            resourceType={row.original.type}
+          />
+        ),
+      },
+      {
+        accessorKey: "amount",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={t("resources.columns.total")}
+          />
+        ),
+        cell: ({ row }) => {
+          const amount = row.getValue<number>("amount");
+          if (amount > 1024 * 1024) {
+            return <div className="font-mono">{formatBytes(amount)}</div>;
+          }
+          return <div className="font-mono">{row.getValue("amount")}</div>;
+        },
+      },
+      {
+        accessorKey: "amountSingleMax",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={t("resources.columns.maxPerNode")}
+          />
+        ),
+        cell: ({ row }) => {
+          const amount = row.getValue<number>("amountSingleMax");
+          if (amount > 1024 * 1024) {
+            return <div className="font-mono">{formatBytes(amount)}</div>;
+          }
+          return (
+            <div className="font-mono">{row.getValue("amountSingleMax")}</div>
+          );
+        },
+      },
+      {
+        accessorKey: "format",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={t("resources.columns.format")}
+          />
+        ),
+        cell: ({ row }) => (
+          <Badge className="font-mono font-normal" variant="outline">
+            {row.getValue("format")}
+          </Badge>
+        ),
+      },
+      {
+        id: "actions",
+        enableHiding: false,
+        cell: ({ row }) => <ActionsCell resource={row.original} />,
+      },
+    ];
+  }, [t]);
 
   const query = useQuery({
     queryKey: ["resource", "list"],
@@ -280,7 +314,7 @@ export const Component: FC = () => {
     mutationFn: apiAdminResourceSync,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["resource", "list"] });
-      toast.success("资源列表已同步");
+      toast.success(t("resources.sync.success"));
     },
   });
 
@@ -290,8 +324,8 @@ export const Component: FC = () => {
       columns={columns}
       toolbarConfig={toolbarConfig}
       info={{
-        title: "资源管理",
-        description: "展示集群中的资源，如 GPU、CPU、内存等",
+        title: t("resources.info.title"),
+        description: t("resources.info.description"),
       }}
       storageKey="admin_resource_list"
     >
@@ -299,20 +333,20 @@ export const Component: FC = () => {
         <AlertDialogTrigger asChild>
           <Button>
             <RefreshCcwIcon />
-            同步资源列表
+            {t("resources.sync.button")}
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>同步资源列表</AlertDialogTitle>
+            <AlertDialogTitle>{t("resources.sync.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              确认更新资源列表信息吗？
+              {t("resources.sync.confirm")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={() => syncNvidiaLabel()}>
-              确认
+              {t("common.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -321,4 +355,4 @@ export const Component: FC = () => {
   );
 };
 
-export default Component;
+export default Resources;

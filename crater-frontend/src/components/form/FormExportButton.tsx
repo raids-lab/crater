@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { exportToJsonFile } from "@/utils/form";
 import { showErrorToast } from "@/utils/toast";
 import { CircleArrowUp } from "lucide-react";
@@ -16,15 +19,17 @@ function FormExportButton<T extends FieldValues>({
   metadata,
   form,
   className,
-  buttonText = "导出配置",
+  buttonText,
 }: ImportButtonProps<T>) {
+  const { t } = useTranslation();
+
   const currentValues = form?.getValues();
   return (
     <TooltipButton
       variant="outline"
       type="button"
       className={className}
-      tooltipContent="将当前配置导出到本地文件"
+      tooltipContent={t("formExportButton.tooltipContent")}
       onClick={() => {
         form
           ?.trigger()
@@ -56,7 +61,7 @@ function FormExportButton<T extends FieldValues>({
       }}
     >
       <CircleArrowUp className="size-4" />
-      {buttonText}
+      {buttonText || t("formExportButton.buttonText")}
     </TooltipButton>
   );
 }

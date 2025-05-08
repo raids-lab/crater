@@ -1,3 +1,5 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import React, {
   JSX,
   Suspense,
@@ -185,6 +187,7 @@ interface CodeBlockProps extends React.HTMLAttributes<HTMLPreElement> {
 
 const ShikiCodeBlock = React.memo(
   ({ children, className, language, ...restProps }: CodeBlockProps) => {
+    const { t } = useTranslation();
     const code = useMemo(() => {
       if (typeof children === "string") {
         return children;
@@ -215,7 +218,10 @@ const ShikiCodeBlock = React.memo(
             <code>{code}</code>
           </pre>
           <div className="invisible absolute top-2 right-2 flex space-x-1 rounded-lg p-1 opacity-0 transition-all duration-200 group-hover/code:visible group-hover/code:opacity-100">
-            <CopyButton content={code} copyMessage="Copied code to clipboard" />
+            <CopyButton
+              content={code}
+              copyMessage={t("codeBlock.copyMessage")}
+            />
           </div>
         </div>
       );
@@ -236,7 +242,7 @@ const ShikiCodeBlock = React.memo(
         </Suspense>
 
         <div className="invisible absolute top-2 right-2 flex space-x-1 rounded-lg p-1 opacity-0 transition-all duration-200 group-hover/code:visible group-hover/code:opacity-100">
-          <CopyButton content={code} copyMessage="Copied code to clipboard" />
+          <CopyButton content={code} copyMessage={t("codeBlock.copyMessage")} />
         </div>
       </div>
     );

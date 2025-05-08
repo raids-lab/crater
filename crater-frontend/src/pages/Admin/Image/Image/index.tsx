@@ -1,3 +1,4 @@
+// i18n-processed-v1.1.0 (no translatable strings)
 import { ImageListTable } from "@/pages/Portal/Image/Image";
 import {
   apiAdminChangeImageDescription,

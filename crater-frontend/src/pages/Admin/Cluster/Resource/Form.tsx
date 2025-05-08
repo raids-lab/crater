@@ -1,3 +1,5 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -52,7 +54,7 @@ interface UpdateTaskFormProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const formSchema = z.object({
   id: z.number().int(),
-  label: z.string().min(1, { message: "别名不能为空" }),
+  label: z.string().min(1, { message: "updateResourceForm.labelError" }),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -62,6 +64,7 @@ export function UpdateResourceForm({
   onOpenChange,
   current,
 }: UpdateTaskFormProps) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const form = useForm<FormSchema>({
@@ -84,7 +87,7 @@ export function UpdateResourceForm({
       await queryClient.invalidateQueries({
         queryKey: ["resource", "list"],
       });
-      toast.success(`Label ${label} 更新成功`);
+      toast.success(`Label ${label} ${t("updateResourceForm.successMessage")}`);
       onOpenChange(false);
     },
   });
@@ -98,8 +101,10 @@ export function UpdateResourceForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>编辑资源</DialogTitle>
-          <DialogDescription>{current.label} 的详细信息</DialogDescription>
+          <DialogTitle>{t("updateResourceForm.title")}</DialogTitle>
+          <DialogDescription>
+            {t("updateResourceForm.description", { name: current.label })}
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form
@@ -112,12 +117,12 @@ export function UpdateResourceForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    别名
+                    {t("updateResourceForm.label")}
                     <FormLabelMust />
                   </FormLabel>
                   <Input {...field} />
                   <FormDescription>
-                    用于提交作业时，选择节点类型
+                    {t("updateResourceForm.formDescription")}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -125,9 +130,11 @@ export function UpdateResourceForm({
             />
             <DialogFooter className="grid grid-cols-2">
               <Button onClick={closeDialog} variant={"secondary"}>
-                取消
+                {t("updateResourceForm.cancelButton")}
               </Button>
-              <Button type="submit">提交</Button>
+              <Button type="submit">
+                {t("updateResourceForm.submitButton")}
+              </Button>
             </DialogFooter>
           </form>
         </Form>
@@ -151,6 +158,7 @@ export const UpdateResourceTypeForm: FC<UpdateResourceTypeFormProps> = ({
   open,
   onOpenChange,
 }) => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const form = useForm<z.infer<typeof resourceTypeFormSchema>>({
@@ -169,7 +177,7 @@ export const UpdateResourceTypeForm: FC<UpdateResourceTypeFormProps> = ({
       await queryClient.invalidateQueries({
         queryKey: ["resource", "networks", current.ID],
       });
-      toast.success("资源类型已更新");
+      toast.success(t("updateResourceTypeForm.successMessage"));
       onOpenChange(false);
     },
   });
@@ -185,7 +193,7 @@ export const UpdateResourceTypeForm: FC<UpdateResourceTypeFormProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>设置资源类型</DialogTitle>
+          <DialogTitle>{t("updateResourceTypeForm.title")}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -194,24 +202,32 @@ export const UpdateResourceTypeForm: FC<UpdateResourceTypeFormProps> = ({
               name="type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>资源类型</FormLabel>
+                  <FormLabel>{t("updateResourceTypeForm.label")}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="选择资源类型" />
+                        <SelectValue
+                          placeholder={t("updateResourceTypeForm.placeholder")}
+                        />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="default">无类型</SelectItem>
-                      <SelectItem value="gpu">GPU</SelectItem>
-                      <SelectItem value="rdma">RDMA</SelectItem>
+                      <SelectItem value="default">
+                        {t("updateResourceTypeForm.type.default")}
+                      </SelectItem>
+                      <SelectItem value="gpu">
+                        {t("updateResourceTypeForm.type.gpu")}
+                      </SelectItem>
+                      <SelectItem value="rdma">
+                        {t("updateResourceTypeForm.type.rdma")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <FormDescription>
-                    GPU 资源可以关联 RDMA 网络资源。
+                    {t("updateResourceTypeForm.formDescription")}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -219,7 +235,7 @@ export const UpdateResourceTypeForm: FC<UpdateResourceTypeFormProps> = ({
             />
             <div className="flex justify-end">
               <Button type="submit" disabled={isPending}>
-                保存
+                {t("updateResourceTypeForm.submitButton")}
               </Button>
             </div>
           </form>
@@ -240,6 +256,7 @@ export const NetworkAssociationForm: FC<NetworkAssociationFormProps> = ({
   open,
   onOpenChange,
 }) => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   // Fetch all RDMA resources
@@ -266,7 +283,7 @@ export const NetworkAssociationForm: FC<NetworkAssociationFormProps> = ({
       await queryClient.invalidateQueries({
         queryKey: ["resource", "networks", gpuResource.ID],
       });
-      toast.success("网络关联已添加");
+      toast.success(t("networkAssociationForm.addSuccess"));
     },
   });
 
@@ -277,7 +294,7 @@ export const NetworkAssociationForm: FC<NetworkAssociationFormProps> = ({
       await queryClient.invalidateQueries({
         queryKey: ["resource", "networks", gpuResource.ID],
       });
-      toast.success("网络关联已删除");
+      toast.success(t("networkAssociationForm.removeSuccess"));
     },
   });
 
@@ -287,22 +304,30 @@ export const NetworkAssociationForm: FC<NetworkAssociationFormProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>管理网络关联</DialogTitle>
+          <DialogTitle>{t("networkAssociationForm.title")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <h3 className="mb-2 text-sm font-medium">GPU 资源</h3>
+            <h3 className="mb-2 text-sm font-medium">
+              {t("networkAssociationForm.gpuResourceLabel")}
+            </h3>
             <Badge className="font-mono" variant="secondary">
               {gpuResource.name}
             </Badge>
           </div>
 
           <div>
-            <h3 className="mb-2 text-sm font-medium">当前关联的网络</h3>
+            <h3 className="mb-2 text-sm font-medium">
+              {t("networkAssociationForm.currentNetworksLabel")}
+            </h3>
             {currentNetworksQuery.isLoading ? (
-              <div className="text-muted-foreground text-sm">加载中...</div>
+              <div className="text-muted-foreground text-sm">
+                {t("networkAssociationForm.loadingMessage")}
+              </div>
             ) : currentNetworkIds.length === 0 ? (
-              <div className="text-muted-foreground text-sm">暂无关联网络</div>
+              <div className="text-muted-foreground text-sm">
+                {t("networkAssociationForm.noNetworksMessage")}
+              </div>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {currentNetworksQuery.data?.map((network) => (
@@ -319,12 +344,16 @@ export const NetworkAssociationForm: FC<NetworkAssociationFormProps> = ({
           </div>
 
           <div>
-            <h3 className="mb-2 text-sm font-medium">可用 RDMA 资源</h3>
+            <h3 className="mb-2 text-sm font-medium">
+              {t("networkAssociationForm.availableResourcesLabel")}
+            </h3>
             {rdmaResourcesQuery.isLoading ? (
-              <div className="text-muted-foreground text-sm">加载中...</div>
+              <div className="text-muted-foreground text-sm">
+                {t("networkAssociationForm.loadingMessage")}
+              </div>
             ) : rdmaResourcesQuery.data?.length === 0 ? (
               <div className="text-muted-foreground text-sm">
-                暂无可用 RDMA 资源
+                {t("networkAssociationForm.noResourcesMessage")}
               </div>
             ) : (
               <ScrollArea className="h-56 rounded-md border">
@@ -356,7 +385,7 @@ export const NetworkAssociationForm: FC<NetworkAssociationFormProps> = ({
                             onClick={() => removeNetworkAssociation(rdma.ID)}
                           >
                             <XIcon className="size-4" />
-                            取消关联
+                            {t("networkAssociationForm.disconnectButton")}
                           </Button>
                         ) : (
                           <Button
@@ -366,7 +395,7 @@ export const NetworkAssociationForm: FC<NetworkAssociationFormProps> = ({
                             onClick={() => addNetworkAssociation(rdma.ID)}
                           >
                             <PlusCircleIcon className="size-4" />
-                            关联
+                            {t("networkAssociationForm.connectButton")}
                           </Button>
                         )}
                       </div>
@@ -379,7 +408,7 @@ export const NetworkAssociationForm: FC<NetworkAssociationFormProps> = ({
 
           <div className="flex justify-end pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              完成
+              {t("networkAssociationForm.doneButton")}
             </Button>
           </div>
         </div>

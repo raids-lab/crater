@@ -1,5 +1,8 @@
+// i18n-processed-v1.1.0
+// Modified code
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import { useTranslation } from "react-i18next";
 import * as React from "react";
 import { ChevronsUpDown, XIcon } from "lucide-react";
 import { FieldPath, FieldValues, UseFormReturn } from "react-hook-form";
@@ -87,11 +90,12 @@ interface TagsInputProps<T extends FieldValues> {
 export function TagsInput<T extends FieldValues>({
   form,
   tagsPath,
-  label = "标签",
-  description = "选择已有标签或创建新标签",
+  label,
+  description,
   customTags,
   required = false,
 }: TagsInputProps<T>) {
+  const { t } = useTranslation();
   const [open, setOpen] = React.useState(false);
   const [inputValue, setInputValue] = React.useState("");
 
@@ -142,7 +146,7 @@ export function TagsInput<T extends FieldValues>({
       render={() => (
         <FormItem>
           <FormLabel>
-            {label}
+            {label || t("tagsInput.label")}
             {required && <span className="text-destructive ml-1">*</span>}
           </FormLabel>
           <FormControl className="flex flex-col gap-2">
@@ -186,7 +190,7 @@ export function TagsInput<T extends FieldValues>({
                         </div>
                       ) : (
                         <span className="text-muted-foreground mr-auto">
-                          选择或添加标签
+                          {t("tagsInput.noTagsLabel")}
                         </span>
                       )}
                     </div>
@@ -212,7 +216,9 @@ export function TagsInput<T extends FieldValues>({
                 </PopoverTrigger>
                 <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
                   <Command>
-                    <CommandInput placeholder="搜索常用标签..." />
+                    <CommandInput
+                      placeholder={t("tagsInput.searchPlaceholder")}
+                    />
                     <CommandList className="max-h-[200px] overflow-y-auto">
                       <CommandEmpty>
                         <NothingCore className="gap-2" />
@@ -220,7 +226,7 @@ export function TagsInput<T extends FieldValues>({
                       {availableTags.filter(
                         (tag) => !tags.some((t: Tag) => t.value === tag.value),
                       ).length > 0 && (
-                        <CommandGroup heading="常用标签">
+                        <CommandGroup heading={t("tagsInput.commonTagsLabel")}>
                           {availableTags
                             .filter(
                               (tag) =>
@@ -245,11 +251,11 @@ export function TagsInput<T extends FieldValues>({
                     </CommandList>
                     <div className="border-t p-2">
                       <div className="text-muted-foreground mb-2 ml-1 text-xs font-medium">
-                        添加新标签
+                        {t("tagsInput.addNewLabel")}
                       </div>
                       <div className="flex gap-2">
                         <Input
-                          placeholder="输入新标签..."
+                          placeholder={t("tagsInput.newTagPlaceholder")}
                           value={inputValue}
                           onChange={(e) => setInputValue(e.target.value)}
                           onKeyDown={handleKeyDown}
@@ -263,7 +269,7 @@ export function TagsInput<T extends FieldValues>({
                           }}
                           disabled={!inputValue.trim()}
                         >
-                          添加
+                          {t("tagsInput.addButton")}
                         </Button>
                       </div>
                     </div>
@@ -272,7 +278,9 @@ export function TagsInput<T extends FieldValues>({
               </Popover>
             </div>
           </FormControl>
-          <FormDescription>{description}</FormDescription>
+          <FormDescription>
+            {description || t("tagsInput.description")}
+          </FormDescription>
           <FormMessage />
         </FormItem>
       )}

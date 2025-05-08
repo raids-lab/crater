@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import {
   IJobInfo,
   JobType,
@@ -150,30 +153,31 @@ export const getHeader = (key: string): string => {
   }
 };
 
-const toolbarConfig: DataTableToolbarConfig = {
-  globalSearch: {
-    enabled: true,
-  },
-  filterOptions: [
-    {
-      key: "jobType",
-      title: "类型",
-      option: jobTypes,
-    },
-    {
-      key: "status",
-      title: "状态",
-      option: jobPhases,
-    },
-  ],
-  getHeader: getHeader,
-};
-
 const AdminJobOverview = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [days, setDays] = useState(7);
   const [selectedJobs, setSelectedJobs] = useState<IJobInfo[]>([]);
   const [isLockDialogOpen, setIsLockDialogOpen] = useState(false);
+
+  const toolbarConfig: DataTableToolbarConfig = {
+    globalSearch: {
+      enabled: true,
+    },
+    filterOptions: [
+      {
+        key: "jobType",
+        title: t("adminJobOverview.filters.jobType"),
+        option: jobTypes,
+      },
+      {
+        key: "status",
+        title: t("adminJobOverview.filters.status"),
+        option: jobPhases,
+      },
+    ],
+    getHeader: getHeader,
+  };
 
   const vcjobQuery = useQuery({
     queryKey: ["admin", "tasklist", "job", days],
@@ -199,7 +203,7 @@ const AdminJobOverview = () => {
     mutationFn: apiJobDeleteForAdmin,
     onSuccess: async () => {
       await refetchTaskList();
-      toast.success("操作成功");
+      toast.success(t("adminJobOverview.successMessage"));
     },
   });
 
@@ -208,8 +212,34 @@ const AdminJobOverview = () => {
     setIsLockDialogOpen(true);
   }, []);
 
-  const vcjobColumns = useMemo<ColumnDef<IJobInfo>[]>(
-    () => [
+  const vcjobColumns = useMemo<ColumnDef<IJobInfo>[]>(() => {
+    const getHeader = (key: string): string => {
+      switch (key) {
+        case "jobName":
+          return t("adminJobOverview.headers.jobName");
+        case "jobType":
+          return t("adminJobOverview.headers.jobType");
+        case "queue":
+          return t("adminJobOverview.headers.queue");
+        case "owner":
+          return t("adminJobOverview.headers.owner");
+        case "status":
+          return t("adminJobOverview.headers.status");
+        case "createdAt":
+          return t("adminJobOverview.headers.createdAt");
+        case "startedAt":
+          return t("adminJobOverview.headers.startedAt");
+        case "completedAt":
+          return t("adminJobOverview.headers.completedAt");
+        case "nodes":
+          return t("adminJobOverview.headers.nodes");
+        case "resources":
+          return t("adminJobOverview.headers.resources");
+        default:
+          return key;
+      }
+    };
+    return [
       {
         accessorKey: "jobType",
         header: ({ column }) => (
@@ -222,7 +252,7 @@ const AdminJobOverview = () => {
       {
         accessorKey: "jobName",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("name")} />
+          <DataTableColumnHeader column={column} title={getHeader("jobName")} />
         ),
         cell: ({ row }) => <JobNameCell jobInfo={row.original} />,
       },
@@ -286,7 +316,7 @@ const AdminJobOverview = () => {
           />
         ),
         cell: ({ row }) => {
-          return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
+          return <TimeDistance date={row.getValue("createdAt")} />;
         },
         sortingFn: "datetime",
       },
@@ -312,9 +342,7 @@ const AdminJobOverview = () => {
           />
         ),
         cell: ({ row }) => {
-          return (
-            <TimeDistance date={row.getValue("completedAt")}></TimeDistance>
-          );
+          return <TimeDistance date={row.getValue("completedAt")} />;
         },
         sortingFn: "datetime",
       },
@@ -331,30 +359,34 @@ const AdminJobOverview = () => {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
-                      <span className="sr-only">操作</span>
+                      <span className="sr-only">
+                        {t("adminJobOverview.actions.dropdown.ariaLabel")}
+                      </span>
                       <DotsHorizontalIcon className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel className="text-muted-foreground text-xs">
-                      操作
+                      {t("adminJobOverview.actions.dropdown.title")}
                     </DropdownMenuLabel>
                     <Link to={`${jobInfo.jobName}`}>
                       <DropdownMenuItem>
                         <InfoIcon className="text-highlight-emerald" />
-                        详情
+                        {t("adminJobOverview.actions.dropdown.details")}
                       </DropdownMenuItem>
                     </Link>
                     <DropdownMenuItem
                       onClick={() => handleClick(jobInfo)}
-                      title="设置作业自动清除策略"
+                      title={t("adminJobOverview.actions.dropdown.lockTitle")}
                     >
                       {row.original.locked ? (
                         <UnlockIcon className="text-highlight-purple" />
                       ) : (
                         <LockIcon className="text-highlight-purple" />
                       )}
-                      {row.original.locked ? "解锁" : "锁定"}
+                      {row.original.locked
+                        ? t("adminJobOverview.actions.dropdown.unlock")
+                        : t("adminJobOverview.actions.dropdown.lock")}
                     </DropdownMenuItem>
                     <AlertDialogTrigger asChild>
                       <DropdownMenuItem className="group">
@@ -363,7 +395,9 @@ const AdminJobOverview = () => {
                         ) : (
                           <Trash2Icon className="text-destructive" />
                         )}
-                        {shouldStop ? "停止" : "删除"}
+                        {shouldStop
+                          ? t("adminJobOverview.actions.dropdown.stop")
+                          : t("adminJobOverview.actions.dropdown.delete")}
                       </DropdownMenuItem>
                     </AlertDialogTrigger>
                   </DropdownMenuContent>
@@ -371,21 +405,31 @@ const AdminJobOverview = () => {
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>
-                      {shouldStop ? "停止作业" : "删除作业"}
+                      {shouldStop
+                        ? t("adminJobOverview.dialog.stop.title")
+                        : t("adminJobOverview.dialog.delete.title")}
                     </AlertDialogTitle>
                     <AlertDialogDescription>
                       {shouldStop
-                        ? `作业 ${jobInfo?.name} 将停止，除挂载目录之外的文件将无法恢复，请确认已经保存好所需数据。`
-                        : `作业 ${jobInfo?.name} 将被删除，所有元数据都将被清理。`}
+                        ? t("adminJobOverview.dialog.stop.description", {
+                            name: jobInfo?.name,
+                          })
+                        : t("adminJobOverview.dialog.delete.description", {
+                            name: jobInfo?.name,
+                          })}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>取消</AlertDialogCancel>
+                    <AlertDialogCancel>
+                      {t("adminJobOverview.dialog.cancel")}
+                    </AlertDialogCancel>
                     <AlertDialogAction
                       variant="destructive"
                       onClick={() => deleteTask(jobInfo.jobName)}
                     >
-                      {shouldStop ? "停止" : "删除"}
+                      {shouldStop
+                        ? t("adminJobOverview.dialog.stop.action")
+                        : t("adminJobOverview.dialog.delete.action")}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -394,17 +438,15 @@ const AdminJobOverview = () => {
           );
         },
       },
-    ],
-    [deleteTask, handleClick],
-  );
+    ];
+  }, [deleteTask, handleClick, t]);
 
   return (
     <>
       <DataTable
         info={{
-          title: "作业管理",
-          description:
-            "管理员可对作业进行锁定以避免被定时策略清理，或手动停止或删除用户的作业",
+          title: t("adminJobOverview.title"),
+          description: t("adminJobOverview.description"),
         }}
         storageKey="admin_job_overview"
         query={vcjobQuery}
@@ -412,11 +454,15 @@ const AdminJobOverview = () => {
         toolbarConfig={toolbarConfig}
         multipleHandlers={[
           {
-            title: (rows) => `停止或删除 ${rows.length} 个作业`,
+            title: (rows) =>
+              t("adminJobOverview.handlers.stopOrDeleteTitle", {
+                count: rows.length,
+              }),
             description: (rows) => (
               <>
-                作业 {rows.map((row) => row.original.name).join(", ")}{" "}
-                将被停止或删除，确认要继续吗？
+                {t("adminJobOverview.handlers.stopOrDeleteDescription", {
+                  jobs: rows.map((row) => row.original.name).join(", "),
+                })}
               </>
             ),
             icon: <Trash2Icon className="text-destructive" />,
@@ -428,11 +474,15 @@ const AdminJobOverview = () => {
             isDanger: true,
           },
           {
-            title: (rows) => `锁定或解锁 ${rows.length} 个作业`,
+            title: (rows) =>
+              t("adminJobOverview.handlers.lockOrUnlockTitle", {
+                count: rows.length,
+              }),
             description: (rows) => (
               <>
-                作业 {rows.map((row) => row.original.name).join(", ")}{" "}
-                将被锁定或解锁，确认要继续吗？
+                {t("adminJobOverview.handlers.lockOrUnlockDescription", {
+                  jobs: rows.map((row) => row.original.name).join(", "),
+                })}
               </>
             ),
             icon: <LockIcon className="text-highlight-purple" />,
@@ -457,7 +507,9 @@ const AdminJobOverview = () => {
           <SelectContent side="top">
             {[7, 14, 30, 90, -1].map((pageSize) => (
               <SelectItem key={pageSize} value={`${pageSize}`}>
-                {pageSize === -1 ? "全部" : `近 ${pageSize} 天`}数据
+                {pageSize === -1
+                  ? t("adminJobOverview.select.all")
+                  : t("adminJobOverview.select.recentDays", { days: pageSize })}
               </SelectItem>
             ))}
           </SelectContent>

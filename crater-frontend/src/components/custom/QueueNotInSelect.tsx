@@ -1,3 +1,5 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   apiListQueuesNotInDataset,
@@ -22,6 +24,7 @@ export function ShareDatasetToQueueDialog({
   datasetId,
   apiShareDatasetwithQueue,
 }: QueueSelectProps) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [queueIds, setQueueIds] = useState<string[]>([]);
 
@@ -45,7 +48,7 @@ export function ShareDatasetToQueueDialog({
         queueIDs: queueIds.map((queue) => parseInt(queue)),
       }),
     onSuccess: () => {
-      toast.success("共享成功");
+      toast.success(t("shareDatasetToQueueDialog.success"));
       void queryClient.invalidateQueries({
         queryKey: ["data", "queuedataset", datasetId],
       });
@@ -59,18 +62,22 @@ export function ShareDatasetToQueueDialog({
         <SelectBox
           options={queueList ?? []}
           value={queueIds}
-          inputPlaceholder="搜索账户"
-          placeholder="选择账户"
+          inputPlaceholder={t(
+            "shareDatasetToQueueDialog.select.inputPlaceholder",
+          )}
+          placeholder={t("shareDatasetToQueueDialog.select.placeholder")}
           onChange={setQueueIds}
         />
       </div>
       <DialogFooter>
         <DialogClose asChild>
-          <Button variant="outline">取消</Button>
+          <Button variant="outline">
+            {t("shareDatasetToQueueDialog.cancel")}
+          </Button>
         </DialogClose>
         <DialogClose asChild>
           <Button variant="default" onClick={() => shareWithQueue(datasetId)}>
-            共享
+            {t("shareDatasetToQueueDialog.share")}
           </Button>
         </DialogClose>
       </DialogFooter>
