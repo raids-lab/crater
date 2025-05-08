@@ -1,7 +1,7 @@
 import CraterIcon from "@/components/icon/CraterIcon";
 import CraterText from "@/components/icon/CraterText";
 import { LoginForm } from "./LoginForm";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SignupForm } from "./SignupForm";
 import { ExternalLink } from "lucide-react";
 import { useTheme } from "@/utils/theme";
@@ -18,8 +18,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import DocsButton from "@/components/button/DocsButton";
-import { useAtomValue } from "jotai";
-import { configUrlWebsiteBaseAtom } from "@/utils/store/config";
+import { useAtomValue, useSetAtom } from "jotai";
+import {
+  configAtom,
+  configUrlWebsiteBaseAtom,
+  initializeConfig,
+} from "@/utils/store/config";
+import { useQuery } from "@tanstack/react-query";
 
 // 定义认证模式枚举
 export enum AuthMode {
@@ -34,6 +39,18 @@ export function Dashboard() {
   const { theme, setTheme } = useTheme();
   const [currentMode, setCurrentMode] = useState<AuthMode>(AuthMode.ACT);
   const website = useAtomValue(configUrlWebsiteBaseAtom);
+  const setAppConfig = useSetAtom(configAtom);
+
+  const { data } = useQuery({
+    queryKey: ["appConfig"],
+    queryFn: initializeConfig,
+  });
+
+  useEffect(() => {
+    if (data) {
+      setAppConfig(data);
+    }
+  }, [data, setAppConfig]);
 
   // 处理注册按钮点击
   const handleRegisterClick = () => {

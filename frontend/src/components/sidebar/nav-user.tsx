@@ -153,7 +153,7 @@ export function NavUser() {
                   {t("navUser.language")}
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
-                  <DropdownMenuRadioGroup>
+                  <DropdownMenuRadioGroup value={i18n.language}>
                     <DropdownMenuRadioItem
                       value="zh"
                       onClick={() => changeLanguage("zh")}

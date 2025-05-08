@@ -20,9 +20,10 @@ import { configAtom, initializeConfig } from "@/utils/store/config";
 
 const DashboardLayout = ({ groups }: { groups: NavGroupProps[] }) => {
   const { pathname: rawPath } = useLocation();
-  const setAppConfig = useSetAtom(configAtom);
   const fixedLayout = useAtomValue(globalFixedLayout);
   const scheduler = useAtomValue(globalSettings).scheduler;
+
+  const setAppConfig = useSetAtom(configAtom);
 
   const { data } = useQuery({
     queryKey: ["appConfig"],
