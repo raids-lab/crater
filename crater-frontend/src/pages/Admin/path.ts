@@ -2,96 +2,96 @@ import { PathInfo } from "@/utils/title";
 
 export const adminPath: PathInfo = {
   path: "admin",
-  title: "Admin",
+  titleKey: "navigation.admin",
   isEmpty: true,
   children: [
     {
       path: "cluster",
-      title: "资源管理",
+      titleKey: "navigation.resourceManagement",
       isEmpty: true,
       children: [
         {
           path: "node",
-          title: "节点管理",
+          titleKey: "navigation.nodeManagement",
         },
         {
           path: "label",
-          title: "节点标签",
+          titleKey: "navigation.nodeLabels",
         },
         {
           path: "resource",
-          title: "资源管理",
+          titleKey: "navigation.resourceManagement",
         },
       ],
     },
     {
       path: "monitor",
-      title: "集群监控",
+      titleKey: "navigation.clusterMonitoring",
       isEmpty: true,
       children: [
         {
           path: "network",
-          title: "网络监控",
+          titleKey: "navigation.networkMonitoring",
         },
         {
           path: "io",
-          title: "读写监控",
+          titleKey: "navigation.ioMonitoring",
         },
       ],
     },
     {
       path: "account",
-      title: "账户管理",
+      titleKey: "navigation.accountManagement",
     },
     {
       path: "user",
-      title: "用户管理",
+      titleKey: "navigation.userManagement",
     },
     {
       path: "job",
-      title: "作业管理",
+      titleKey: "navigation.jobManagement",
     },
     {
       path: "cron",
-      title: "定时策略",
+      titleKey: "navigation.cronPolicy",
     },
     {
       path: "image",
-      title: "镜像管理",
+      titleKey: "navigation.imageManagement",
       isEmpty: true,
       children: [
         {
           path: "createimage",
-          title: "镜像制作",
+          titleKey: "navigation.imageCreation",
         },
         {
           path: "uploadimage",
-          title: "镜像列表",
+          titleKey: "navigation.imageList",
         },
       ],
     },
     {
       path: "data",
-      title: "数据管理",
+      titleKey: "navigation.dataManagement",
       isEmpty: true,
       children: [
         {
           path: "user",
-          title: "用户文件",
+          titleKey: "navigation.userFiles",
         },
         {
           path: "account",
-          title: "账户文件",
+          titleKey: "navigation.accountFiles",
         },
         {
           path: "dataset",
-          title: "数据集",
+          titleKey: "navigation.datasets",
         },
       ],
     },
     {
       path: "setting",
-      title: "平台设置",
+      titleKey: "navigation.platformSettings",
     },
   ],
 };

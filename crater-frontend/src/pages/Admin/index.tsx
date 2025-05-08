@@ -27,6 +27,7 @@ import SystemSetting from "../Portal/Setting/SystemSetting";
 import CronPolicy from "./Job/CronPolicy";
 import NetworkOverview from "@/components/monitor/NetworkOverview";
 import NvidiaOverview from "@/components/monitor/NvidiaOverview";
+import { useTranslation } from "react-i18next";
 
 const routeItems: RouteObject[] = [
   {
@@ -121,114 +122,118 @@ const routeItems: RouteObject[] = [
   },
 ];
 
-const adminSidebarGroups: NavGroupProps[] = [
-  {
-    title: "资源与监控",
-    items: [
-      {
-        title: "资源管理",
-        icon: ServerIcon,
-        items: [
-          {
-            title: "节点管理",
-            url: "cluster/node",
-          },
-          {
-            title: "资源管理",
-            url: "cluster/resource",
-          },
-        ],
-      },
-      {
-        title: "集群监控",
-        icon: BarChartBigIcon,
-        items: [
-          {
-            title: "GPU 大盘",
-            url: "monitor/gpu",
-          },
-          {
-            title: "网络监控",
-            url: "monitor/network",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    title: "作业与服务",
-    items: [
-      {
-        title: "作业管理",
-        url: "job",
-        icon: FlaskConicalIcon,
-      },
-      {
-        title: "定时策略",
-        url: "cron",
-        icon: AlarmClockIcon,
-      },
-    ],
-  },
-  {
-    title: "用户与账户",
-    items: [
-      {
-        title: "用户管理",
-        url: "user",
-        icon: UserRoundIcon,
-      },
-      {
-        title: "账户管理",
-        url: "account",
-        icon: UsersRoundIcon,
-      },
-    ],
-  },
-  {
-    title: "数据与镜像",
-    items: [
-      {
-        title: "镜像管理",
-        icon: BoxIcon,
-        items: [
-          {
-            title: "镜像制作",
-            url: "image/createimage",
-          },
-          {
-            title: "镜像列表",
-            url: "image/uploadimage",
-          },
-        ],
-      },
-      {
-        title: "数据管理",
-        icon: DatabaseIcon,
-        items: [
-          {
-            title: "文件系统",
-            url: "data/filesystem",
-          },
-          {
-            title: "数据",
-            url: "data/dataset",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    title: "设置",
-    items: [
-      {
-        title: "平台设置",
-        icon: SettingsIcon,
-        url: "setting",
-      },
-    ],
-  },
-];
+const useAdminSidebarGroups = (): NavGroupProps[] => {
+  const { t } = useTranslation();
+
+  return [
+    {
+      title: t("sidebar.resourceAndMonitoring"),
+      items: [
+        {
+          title: t("navigation.resourceManagement"),
+          icon: ServerIcon,
+          items: [
+            {
+              title: t("navigation.nodeManagement"),
+              url: "cluster/node",
+            },
+            {
+              title: t("navigation.resourceManagement"),
+              url: "cluster/resource",
+            },
+          ],
+        },
+        {
+          title: t("navigation.clusterMonitoring"),
+          icon: BarChartBigIcon,
+          items: [
+            {
+              title: t("navigation.gpuMonitoring"),
+              url: "monitor/gpu",
+            },
+            {
+              title: t("navigation.networkMonitoring"),
+              url: "monitor/network",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      title: t("sidebar.jobsAndServices"),
+      items: [
+        {
+          title: t("navigation.jobManagement"),
+          url: "job",
+          icon: FlaskConicalIcon,
+        },
+        {
+          title: t("navigation.cronPolicy"),
+          url: "cron",
+          icon: AlarmClockIcon,
+        },
+      ],
+    },
+    {
+      title: t("sidebar.usersAndAccounts"),
+      items: [
+        {
+          title: t("navigation.userManagement"),
+          url: "user",
+          icon: UserRoundIcon,
+        },
+        {
+          title: t("navigation.accountManagement"),
+          url: "account",
+          icon: UsersRoundIcon,
+        },
+      ],
+    },
+    {
+      title: t("sidebar.dataAndImages"),
+      items: [
+        {
+          title: t("navigation.imageManagement"),
+          icon: BoxIcon,
+          items: [
+            {
+              title: t("navigation.imageCreation"),
+              url: "image/createimage",
+            },
+            {
+              title: t("navigation.imageList"),
+              url: "image/uploadimage",
+            },
+          ],
+        },
+        {
+          title: t("navigation.dataManagement"),
+          icon: DatabaseIcon,
+          items: [
+            {
+              title: t("navigation.fileSystem"),
+              url: "data/filesystem",
+            },
+            {
+              title: t("sidebar.data"),
+              url: "data/dataset",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      title: t("navigation.settings"),
+      items: [
+        {
+          title: t("navigation.platformSettings"),
+          icon: SettingsIcon,
+          url: "setting",
+        },
+      ],
+    },
+  ];
+};
 
 const AuthedRouter: FC<PropsWithChildren> = ({ children }) => {
   const isAuthenticated = useAuth(Role.Admin);
@@ -239,7 +244,7 @@ export const adminRoute: RouteObject = {
   path: "/admin",
   element: (
     <AuthedRouter>
-      <DashboardLayout groups={adminSidebarGroups} />
+      <DashboardLayoutWrapper />
     </AuthedRouter>
   ),
   children: [
@@ -254,3 +259,8 @@ export const adminRoute: RouteObject = {
     },
   ],
 };
+
+function DashboardLayoutWrapper() {
+  const groups = useAdminSidebarGroups();
+  return <DashboardLayout groups={groups} />;
+}
