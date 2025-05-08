@@ -110,7 +110,7 @@ export default function DataList({
   handleDelete,
 }: {
   items: DataItem[];
-  title: "模型" | "数据集" | "作业模板" | "共享文件";
+  title: string;
   actionArea?: React.ReactNode;
   handleDelete?: (id: number) => void;
 }) {

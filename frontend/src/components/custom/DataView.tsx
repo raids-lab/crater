@@ -1,3 +1,5 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -16,17 +18,23 @@ interface DatesetTableProps {
 }
 
 export function DataView({ apiGetDataset, sourceType }: DatesetTableProps) {
+  const { t } = useTranslation();
   const data = useQuery({
     queryKey: ["data", "mydataset"],
     queryFn: () => apiGetDataset(),
     select: (res) => res.data.data,
   });
-  const sourceTitle =
-    sourceType === "model"
-      ? "模型"
-      : sourceType === "sharefile"
-        ? "共享文件"
-        : "数据集";
+
+  const sourceTypeMap = {
+    model: t("dataView.sourceType.model"),
+    sharefile: t("dataView.sourceType.sharefile"),
+    dataset: t("dataView.sourceType.dataset"),
+  };
+
+  const sourceTitle = sourceType
+    ? sourceTypeMap[sourceType]
+    : sourceTypeMap.dataset;
+
   const [openSheet, setOpenSheet] = useState(false);
 
   return (
@@ -47,17 +55,20 @@ export function DataView({ apiGetDataset, sourceType }: DatesetTableProps) {
       actionArea={
         <div className="flex flex-row gap-3">
           {sourceType !== "sharefile" && (
-            <DocsButton title={`${sourceTitle}文档`} url="file/model" />
+            <DocsButton
+              title={t("dataView.docsButtonTitle", { sourceTitle })}
+              url="file/model"
+            />
           )}
           <SandwichSheet
             isOpen={openSheet}
             onOpenChange={setOpenSheet}
-            title={`创建${sourceTitle}`}
-            description={`创建一个新的${sourceTitle}`}
+            title={t("dataView.createTitle", { sourceTitle })}
+            description={t("dataView.createDescription", { sourceTitle })}
             trigger={
               <Button className="min-w-fit">
                 <PlusIcon />
-                添加{sourceTitle}
+                {t("dataView.addButton", { sourceTitle })}
               </Button>
             }
             className="sm:max-w-3xl"
