@@ -55,98 +55,12 @@ import { TemplateInfo } from "@/components/form/TemplateInfo";
 import { OtherOptionsFormCard } from "@/components/form/OtherOptionsFormField";
 import { EnvFormCard } from "@/components/form/EnvFormField";
 import { ForwardFormCard } from "@/components/form/ForwardFormField";
+import TipBadge from "@/components/badge/TipBadge";
 
 const markdown = `## 运行规则
 
 1. 如果申请了 GPU 资源，当过去 2 个小时 GPU 利用率为 0，我们将尝试发送告警信息给用户，建议用户检查作业是否正常运行。若此后半小时 GPU 利用率仍为 0，**系统将释放作业占用的资源**。
 2. 当作业运行超过 4 天，我们将尝试发送告警信息给用户，提醒用户作业运行时间过长；若此后一天内用户未联系管理员说明情况并锁定作业，**系统将释放作业占用的资源**。
-
-## 以普通用户运行
-
-自定义作业默认以 \`root\` 用户运行，这种情况下，由于 Jupyter 交互式作业默认以普通用户运行，可能会导致权限问题。
-
-为了帮助您以普通用户运行自定义作业，我们在容器内注入了 \`/crater-start.sh\` 脚本，您可以通过以下方式使用：
-
-### 方法1：直接执行命令
-在批处理命令前加上脚本调用：
-\`\`\`bash
-/crater-start.sh python your_script.py
-\`\`\`
-
-### 方法2：多步骤执行
-执行脚本后，指定以普通用户权限运行命令，若直接执行命令，则仍以root权限执行：
-\`\`\`bash
-/crater-start.sh
-su - \${NB_USER} -c 'your_command_1'
-su - \${NB_USER} -c 'your_command_2'
-...
-\`\`\`
-
-脚本内容如下：
-
-\`\`\`bash
-#!/bin/bash
-set -euo pipefail  # Strict error handling: undefined vars and pipe errors
-
-# ========== User & Group Configuration ==========
-# Validate required environment variables
-: "\${NB_USER:?NB_USER must be set}"
-: "\${NB_UID:?NB_UID must be set}"
-: "\${NB_GID:?NB_GID must be set}"
-
-# Create group if not exists
-if ! getent group "\${NB_GID}" &>/dev/null; then
-    groupadd --force --gid "\${NB_GID}" --non-unique "\${NB_GROUP:-\${NB_USER}}"
-fi
-
-# Create user if not exists
-if ! id "\${NB_USER}" &>/dev/null; then
-    useradd --no-log-init \\
-            --home "/home/\${NB_USER}" \\
-            --shell /bin/zsh \\
-            --uid "\${NB_UID}" \\
-            --gid "\${NB_GID}" \\
-            --groups 100 \\
-            "\${NB_USER}"
-else
-    echo "User \${NB_USER} already exists, will not recreate"
-fi
-
-# ========== Directory & Permissions ==========
-# Ensure proper home directory setup
-mkdir -p "/home/\${NB_USER}"
-chown "\${NB_UID}:\${NB_GID}" "/home/\${NB_USER}"
-chmod 755 "/home/\${NB_USER}"  # Standard directory permissions
-
-# Configure sudo access
-SUDOERS_FILE="/etc/sudoers.d/nopasswd-\${NB_USER}"
-if [ ! -f "\${SUDOERS_FILE}" ]; then
-    echo "\${NB_USER} ALL=(ALL) NOPASSWD:ALL" > "\${SUDOERS_FILE}"
-    chmod 440 "\${SUDOERS_FILE}"  # Secure sudoers file permissions
-fi
-
-# ========== Shell Environment ==========
-# Initialize zsh configuration
-ZSHRC_FILE="/home/\${NB_USER}/.zshrc"
-if [ ! -f "\${ZSHRC_FILE}" ]; then
-    touch "\${ZSHRC_FILE}"
-    chown "\${NB_UID}:\${NB_GID}" "\${ZSHRC_FILE}"
-fi
-
-# ========== Command Execution ==========
-# Execute with minimal preserved environment
-if [ $# -gt 0 ]; then
-    # If arguments passed, execute them as commands
-    exec sudo --preserve-env --set-home --user "\${NB_USER}" \\
-        LD_LIBRARY_PATH="\${LD_LIBRARY_PATH:-}" \\
-        "$@"
-else
-    # Otherwise just switch user
-    exec sudo --preserve-env --set-home --user "\${NB_USER}" \\
-        LD_LIBRARY_PATH="\${LD_LIBRARY_PATH:-}" \\
-        /bin/zsh
-fi
-\`\`\`
 `;
 
 const formSchema = z.object({
@@ -233,7 +147,7 @@ export const Component = () => {
         replicas: 1,
         resource: defaultResource,
         image: "",
-        shell: "bash",
+        shell: "/crater-start.sh",
         command: "",
         workingDir: "/home/" + user.name,
         ports: [],
@@ -354,15 +268,36 @@ export const Component = () => {
                           onValueChange={field.onChange}
                           value={field.value}
                         >
-                          <SelectTrigger className="w-1/4 font-mono">
+                          <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="bash" className="font-mono">
-                              bash
+                            <SelectItem
+                              value="/crater-start.sh"
+                              className="flex items-center justify-between"
+                            >
+                              <span className="font-mono">bash</span>
+                              <TipBadge title={"普通用户"} />
                             </SelectItem>
-                            <SelectItem value="sh" className="font-mono">
-                              sh
+                            <SelectItem
+                              value="bash"
+                              className="flex items-center justify-between"
+                            >
+                              <span className="font-mono">bash</span>
+                              <TipBadge
+                                className="text-highlight-purple bg-highlight-purple/15"
+                                title={"ROOT 用户"}
+                              />
+                            </SelectItem>
+                            <SelectItem
+                              value="sh"
+                              className="flex items-center justify-between"
+                            >
+                              <span className="font-mono">sh</span>
+                              <TipBadge
+                                className="text-highlight-purple bg-highlight-purple/15"
+                                title={"ROOT 用户"}
+                              />
                             </SelectItem>
                           </SelectContent>
                         </Select>
