@@ -1,3 +1,4 @@
+// i18n-processed-v1.1.0 (no translatable strings)
 import { useAuth } from "@/hooks/useAuth";
 import { FC, PropsWithChildren } from "react";
 import { Navigate } from "react-router-dom";

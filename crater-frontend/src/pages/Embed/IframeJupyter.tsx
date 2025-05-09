@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import type { FC } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -25,6 +28,7 @@ import {
 } from "@/components/ui/sheet";
 
 const Jupyter: FC = () => {
+  const { t } = useTranslation();
   // get param from url
   const { id } = useParams();
   const [namespacedName, setNamespacedName] = useState<NamespacedName>();
@@ -63,7 +67,7 @@ const Jupyter: FC = () => {
   const { mutate: snapshot } = useMutation({
     mutationFn: (jobName: string) => apiJupyterSnapshot(jobName),
     onSuccess: () => {
-      toast.success("已提交快照");
+      toast.success(t("jupyter.snapshot.success"));
       window.open("/portal/image/createimage", "_blank");
     },
   });
@@ -101,15 +105,17 @@ const Jupyter: FC = () => {
       <AlertDialog open={isSnapshotOpen} onOpenChange={setIsSnapshotOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>保存镜像</AlertDialogTitle>
+            <AlertDialogTitle>{t("jupyter.snapshot.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              保存当前作业的镜像，保存期间作业将被暂停
+              {t("jupyter.snapshot.description")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogCancel>
+              {t("jupyter.snapshot.cancel")}
+            </AlertDialogCancel>
             <AlertDialogAction onClick={() => snapshot(id ?? "")}>
-              保存
+              {t("jupyter.snapshot.save")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -117,7 +123,7 @@ const Jupyter: FC = () => {
       <Sheet open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <SheetContent className="sm:max-w-6xl">
           <SheetHeader>
-            <SheetTitle>作业详情</SheetTitle>
+            <SheetTitle>{t("jupyter.detail.title")}</SheetTitle>
           </SheetHeader>
           <div className="h-[calc(100vh-6rem)] w-full px-4">
             <iframe

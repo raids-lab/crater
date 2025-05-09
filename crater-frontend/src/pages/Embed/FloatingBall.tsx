@@ -1,4 +1,7 @@
+// i18n-processed-v1.1.0
+// Modified code
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { motion, useMotionValue } from "framer-motion";
 import { DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Save, LogsIcon, InfoIcon } from "lucide-react";
@@ -22,6 +25,7 @@ export default function FloatingBall({
   handleShowDetail: () => void;
   setIsDragging: (isDragging: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const x = useMotionValue(window.innerWidth - 60);
   const y = useMotionValue(window.innerHeight - 60);
 
@@ -57,7 +61,7 @@ export default function FloatingBall({
               className="bg-background text-foreground flex w-32 flex-col border p-1 [&_span]:hidden"
             >
               <DropdownMenuLabel className="text-muted-foreground text-xs">
-                操作
+                {t("floatingBall.tooltip.operations")}
               </DropdownMenuLabel>
               {/* 按钮 */}
               <Button
@@ -66,7 +70,7 @@ export default function FloatingBall({
                 onClick={handleShowDetail}
               >
                 <InfoIcon className="text-primary" />
-                作业详情
+                {t("floatingBall.tooltip.jobDetails")}
               </Button>
               <Button
                 variant="ghost"
@@ -74,7 +78,7 @@ export default function FloatingBall({
                 onClick={handleShowLog}
               >
                 <LogsIcon className="text-highlight-orange" />
-                日志诊断
+                {t("floatingBall.tooltip.logDiagnosis")}
               </Button>
               <Button
                 variant="ghost"
@@ -82,7 +86,7 @@ export default function FloatingBall({
                 onClick={handleSnapshot}
               >
                 <Save className="text-highlight-purple" />
-                保存镜像
+                {t("floatingBall.tooltip.saveSnapshot")}
               </Button>
             </TooltipContent>
           </Tooltip>

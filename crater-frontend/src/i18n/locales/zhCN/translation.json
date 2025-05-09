@@ -1,4 +1,15 @@
 {
+  "grafanaIframe.title": "grafana",
+  "floatingBall.tooltip.operations": "操作",
+  "floatingBall.tooltip.jobDetails": "作业详情",
+  "floatingBall.tooltip.logDiagnosis": "日志诊断",
+  "floatingBall.tooltip.saveSnapshot": "保存镜像",
+  "jupyter.snapshot.title": "保存镜像",
+  "jupyter.snapshot.description": "保存当前作业的镜像，保存期间作业将被暂停",
+  "jupyter.snapshot.cancel": "取消",
+  "jupyter.snapshot.save": "保存",
+  "jupyter.snapshot.success": "已提交快照",
+  "jupyter.detail.title": "作业详情",
   "accountDetail": {
     "form": {
       "validation": {
