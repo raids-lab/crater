@@ -69,7 +69,10 @@ const dockerfileFormSchema = z.object({
       {
         message: "仅允许字母、数字、_ . + -，且不能以 . 或 - 开头/结尾",
       },
-    ),
+    )
+    .refine((value) => value !== "latest", {
+      message: "镜像标签不能为: 'latest'",
+    }),
   tags: z
     .array(
       z.object({
