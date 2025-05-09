@@ -67,6 +67,8 @@ import { EnvdSheet } from "./EnvdSheet";
 import { EnvdRawSheet } from "./EnvdRawSheet";
 import { ProjectDetail } from "./ProjectDetail";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -319,18 +321,26 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             description: (rows) => (
               <div className="border-destructive/20 bg-destructive/5 rounded-md border px-4 py-3">
                 <div className="flex items-start gap-3">
-                  <AlertTriangle className="text-destructive mt-0.5 h-5 w-5 shrink-0" />
-                  <div>
-                    <p className="text-destructive font-medium">
-                      以下镜像创建任务和对应镜像链接将被删除，确认要继续吗？
+                  <div className="w-full overflow-hidden">
+                    <p className="flex items-center gap-2 font-medium">
+                      <AlertTriangle className="text-destructive h-4 w-4" />
+                      <span className="text-destructive text-sm leading-4">
+                        以下镜像创建任务和对应镜像链接将被删除，确认要继续吗？
+                      </span>
                     </p>
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      {"『" +
-                        rows
-                          .map((row) => row.original.description)
-                          .join("』,『") +
-                        "』"}
-                    </p>
+                    <Separator className="my-2" />
+                    <ScrollArea className="h-[200px] w-full overflow-hidden">
+                      <div className="p-4">
+                        {rows.map((row, index) => (
+                          <p
+                            key={index}
+                            className="text-muted-foreground text-sm"
+                          >
+                            {`『${row.original.description}』`}
+                          </p>
+                        ))}
+                      </div>
+                    </ScrollArea>
                   </div>
                 </div>
               </div>
@@ -347,18 +357,26 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             description: (rows) => (
               <div className="rounded-md border border-green-600/20 bg-green-600/5 px-4 py-3">
                 <div className="flex items-start gap-3">
-                  <SquareCheckBig className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
-                  <div>
-                    <p className="font-medium text-green-600">
-                      以下镜像链接将被检测
+                  <div className="w-full overflow-hidden">
+                    <p className="flex items-center gap-2 font-medium">
+                      <SquareCheckBig className="h-4 w-4 text-green-600" />
+                      <span className="text-sm leading-4 text-green-600">
+                        以下镜像链接将被检测
+                      </span>
                     </p>
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      {"『" +
-                        rows
-                          .map((row) => row.original.description)
-                          .join("』,『") +
-                        "』"}
-                    </p>
+                    <Separator className="my-2" />
+                    <ScrollArea className="h-[200px] w-full overflow-hidden">
+                      <div className="p-4">
+                        {rows.map((row, index) => (
+                          <p
+                            key={index}
+                            className="text-muted-foreground text-sm"
+                          >
+                            {`『${row.original.description}』`}
+                          </p>
+                        ))}
+                      </div>
+                    </ScrollArea>
                   </div>
                 </div>
               </div>
