@@ -29,7 +29,7 @@ from typing import Tuple, Optional, Dict, Any, List
 
 # === CONFIGURATION ===
 # API Configuration
-API_BASE_URL = os.getenv("API_BASE_URL", "http://192.168.5.14:32598/v1")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://192.168.5.22:31444/v1")
 API_KEY = os.getenv("API_KEY", "placeholder")
 MODEL_NAME = os.getenv("MODEL_NAME", "/models/Qwen3-32B")
 MAX_RETRIES = 3

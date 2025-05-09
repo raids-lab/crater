@@ -1,8 +1,12 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import useFixedLayout from "@/hooks/useFixedLayout";
 import { useTheme } from "@/utils/theme";
 import { useMemo, type FC } from "react";
 
 export const GrafanaIframe = ({ baseSrc }: { baseSrc: string }) => {
+  const { t } = useTranslation();
   const { theme } = useTheme();
 
   // if baseURL does not have parameter, add ?, else if baseURL does not ends with &, add &
@@ -18,7 +22,7 @@ export const GrafanaIframe = ({ baseSrc }: { baseSrc: string }) => {
 
   return (
     <iframe
-      title="grafana"
+      title={t("grafanaIframe.title")}
       src={`${base}theme=${theme}&kiosk&timezone=Asia%2FShanghai`}
       height={"100%"}
       width={"100%"}

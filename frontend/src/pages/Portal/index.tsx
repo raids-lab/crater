@@ -1,3 +1,4 @@
+// i18n-processed-v1.1.0 (no translatable strings)
 import { Navigate, RouteObject } from "react-router-dom";
 import DashboardLayout from "@/components/layout/Dashboard";
 import {
@@ -271,7 +272,7 @@ export const portalRoute: RouteObject = {
   ],
 };
 
-// 创建一个包装组件来使用 hooks
+// Create a wrapper component to use the hook
 function DashboardLayoutWrapper() {
   const groups = useUserSidebarGroups();
   return <DashboardLayout groups={groups} />;
