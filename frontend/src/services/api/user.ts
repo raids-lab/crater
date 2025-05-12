@@ -25,6 +25,11 @@ export interface IUser {
   group?: string; // 课题组
   avatar?: string; // 头像
 }
+export interface BaseUserInfo {
+  name: string;
+  nickname: string;
+  space: string;
+}
 
 export const apiGetUser = (userName: string) =>
   instance.get<IResponse<IUser>>(`${VERSION}/users/${userName}`);
@@ -40,3 +45,6 @@ export const apiUserEmailVerified = async () => {
   );
   return res.data;
 };
+
+export const apiGetBaseUserInfo = () =>
+  instance.get<IResponse<BaseUserInfo[]>>(`${VERSION}/admin/users/baseinfo`);
