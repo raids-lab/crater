@@ -70,7 +70,7 @@ export function LogCard({
   const [streamedLogs, setStreamedLogs] = useState<string[]>([]); // 新增：存储流式日志
   const streamEventSource = useRef<EventSource | null>(null); // 新增：SSE连接引用
 
-  const { data: logText } = useQuery({
+  const { data: logText, refetch } = useQuery({
     queryKey: [
       "logtext",
       namespacedName.namespace,
@@ -104,7 +104,7 @@ export function LogCard({
       !!tailLines,
   });
 
-  const { mutate: DownloadTotalLog } = useMutation({
+  const { mutate: downloadAllLog } = useMutation({
     mutationFn: () =>
       apiGetPodContainerLog(
         namespacedName.namespace,
@@ -152,7 +152,7 @@ export function LogCard({
       toast.warning("没有日志可供下载");
       return;
     }
-    DownloadTotalLog();
+    downloadAllLog();
   };
 
   const handleRefresh = () => {
@@ -200,11 +200,7 @@ export function LogCard({
     eventSource.onmessage = (event) => {
       try {
         const logLine = decodeBase64ToUtf8(event.data);
-        // 移除可能的尾部换行符，防止渲染时出现双重换行
-        const trimmedLogLine = logLine.endsWith("\n")
-          ? logLine.slice(0, -1)
-          : logLine;
-        setStreamedLogs((prev) => [...prev, trimmedLogLine]);
+        setStreamedLogs((prev) => [...prev, logLine]);
         if (!streamingPaused && logAreaRef.current) {
           logAreaRef.current.scrollIntoView(false);
         }
@@ -213,9 +209,9 @@ export function LogCard({
       }
     };
 
-    eventSource.onerror = (error) => {
-      logger.error("流式日志连接错误:", error);
-      toast.error("流式日志连接失败，已自动切换到普通模式");
+    eventSource.onerror = () => {
+      toast.error("流式日志连接中止，已自动切换到普通模式");
+      refetch();
       stopStreaming();
     };
 
@@ -263,7 +259,7 @@ export function LogCard({
                 </div>
               )}
               <pre className="px-3 py-3 text-sm break-words whitespace-pre-wrap dark:text-blue-300">
-                {streaming ? streamedLogs.join("\n") : logText}
+                {streaming ? streamedLogs.join("") : logText}
               </pre>
             </div>
             <ScrollBar orientation="horizontal" />

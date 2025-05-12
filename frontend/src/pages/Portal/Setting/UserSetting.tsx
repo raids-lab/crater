@@ -1,3 +1,6 @@
+// i18n-processed-v1.1.0
+// Modified code
+import { useTranslation } from "react-i18next";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -48,25 +51,29 @@ import PageTitle from "@/components/layout/PageTitle";
 import { apiUserEmailVerified } from "@/services/api/user";
 import { TimeDistance } from "@/components/custom/TimeDistance";
 
-const formSchema = z.object({
-  nickname: z.string().min(2, {
-    message: "Nickname must be at least 2 characters.",
-  }),
-  email: z
-    .string()
-    .email({
-      message: "无效的邮箱地址",
-    })
-    .optional()
-    .nullable(),
-  teacher: z.string().optional().nullable(),
-  group: z.string().optional().nullable(),
-  expiredAt: z.string().optional().nullable(),
-  phone: z.string().optional().nullable(),
-  avatar: z.string().url().optional().nullable(),
-});
+// Moved Zod schema to component
+function getFormSchema(t: (key: string) => string) {
+  return z.object({
+    nickname: z.string().min(2, {
+      message: t("userSettings.nicknameError"),
+    }),
+    email: z
+      .string()
+      .email({
+        message: t("userSettings.emailError"),
+      })
+      .optional()
+      .nullable(),
+    teacher: z.string().optional().nullable(),
+    group: z.string().optional().nullable(),
+    expiredAt: z.string().optional().nullable(),
+    phone: z.string().optional().nullable(),
+    avatar: z.string().url().optional().nullable(),
+  });
+}
 
 export default function UserSettings() {
+  const { t } = useTranslation();
   const [user, setUser] = useAtom(globalUserInfo);
   const [avatarPreview, setAvatarPreview] = useState(user.avatar || "");
   const [originalEmail, setOriginalEmail] = useState(user.email || "");
@@ -74,6 +81,8 @@ export default function UserSettings() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isVerifyError, setIsVerifyError] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
+
+  const formSchema = getFormSchema(t);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -98,7 +107,7 @@ export default function UserSettings() {
     mutationFn: (values: IUserAttributes) =>
       apiContextUpdateUserAttributes(values),
     onSuccess: (_data, values) => {
-      toast.success("用户信息已更新");
+      toast.success(t("userSettings.updateSuccess"));
       setUser((prev) => ({ ...prev, ...values }));
     },
   });
@@ -122,7 +131,7 @@ export default function UserSettings() {
       setIsVerifyError(true);
     },
     onSuccess: () => {
-      toast.success("新邮箱已验证");
+      toast.success(t("userSettings.emailVerifiedSuccess"));
       setOriginalEmail(form.getValues("email") ?? "");
       setIsEmailVerified(true);
       setIsDialogOpen(false);
@@ -140,7 +149,7 @@ export default function UserSettings() {
     if (!isEmailVerified && values.email !== originalEmail) {
       form.setError("email", {
         type: "manual",
-        message: "请先验证您的新邮箱地址",
+        message: t("userSettings.verifyEmailFirst"),
       });
       return;
     }
@@ -162,16 +171,16 @@ export default function UserSettings() {
     <>
       <div>
         <PageTitle
-          title="用户配额"
-          description="用户当前配额的使用情况"
+          title={t("userSettings.quotaTitle")}
+          description={t("userSettings.quotaDescription")}
           className="mb-4"
         />
         <Quota />
       </div>
       <div>
         <PageTitle
-          title="用户信息"
-          description="更新您的用户信息，以便我们更好地为您服务"
+          title={t("userSettings.userInfoTitle")}
+          description={t("userSettings.userInfoDescription")}
           className="mb-4"
         />
         <Card className="lg:col-span-2">
@@ -184,13 +193,13 @@ export default function UserSettings() {
                     name="avatar"
                     render={({ field }) => (
                       <FormItem className="flex-1">
-                        <FormLabel>头像</FormLabel>
+                        <FormLabel>{t("userSettings.avatarLabel")}</FormLabel>
                         <FormControl>
                           <div className="flex items-center space-x-4">
                             <Input
                               {...field}
                               value={field.value || ""}
-                              placeholder="Avatar URL"
+                              placeholder={t("userSettings.avatarPlaceholder")}
                               className="font-mono"
                               onChange={(e) => {
                                 field.onChange(e);
@@ -200,7 +209,7 @@ export default function UserSettings() {
                           </div>
                         </FormControl>
                         <FormDescription>
-                          通过图床上传图片，然后将图片链接粘贴到此处
+                          {t("userSettings.avatarDescription")}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -216,7 +225,7 @@ export default function UserSettings() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>邮箱</FormLabel>
+                      <FormLabel>{t("userSettings.emailLabel")}</FormLabel>
                       <FormControl>
                         <div className="flex items-center space-x-2">
                           <Input
@@ -233,7 +242,9 @@ export default function UserSettings() {
                             emailVerified?.verified !== true) && (
                             <LoadableButton
                               isLoading={isSendVerificationPending}
-                              isLoadingText="验证中"
+                              isLoadingText={t(
+                                "userSettings.verificationLoading",
+                              )}
                               variant="secondary"
                               type="button"
                               onClick={() => {
@@ -241,16 +252,16 @@ export default function UserSettings() {
                               }}
                             >
                               <MailPlusIcon />
-                              验证
+                              {t("userSettings.verifyButton")}
                             </LoadableButton>
                           )}
                         </div>
                       </FormControl>
                       <FormDescription>
-                        用于接收通知的邮箱地址
+                        {t("userSettings.emailDescription")}
                         {emailVerified?.lastEmailVerifiedAt && (
                           <span className="ml-0.5">
-                            (上次验证于{" "}
+                            ({t("userSettings.lastVerified")}{" "}
                             <TimeDistance
                               date={emailVerified.lastEmailVerifiedAt}
                             />
@@ -266,7 +277,7 @@ export default function UserSettings() {
               <CardFooter className="px-6 pt-6">
                 <Button type="submit">
                   <UserRoundCogIcon />
-                  更新用户信息
+                  {t("userSettings.updateButton")}
                 </Button>
               </CardFooter>
             </form>
@@ -274,16 +285,19 @@ export default function UserSettings() {
           <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>验证您的邮箱</AlertDialogTitle>
+                <AlertDialogTitle>
+                  {t("userSettings.verifyDialogTitle")}
+                </AlertDialogTitle>
 
                 {isVerifyError ? (
                   <AlertDialogDescription className="text-destructive">
-                    验证码错误，请重新检查
+                    {t("userSettings.invalidCode")}
                   </AlertDialogDescription>
                 ) : (
                   <AlertDialogDescription>
-                    我们向<span>{form.getValues("email")}</span>
-                    发送了一封验证邮件，请输入邮件中的验证码
+                    {t("userSettings.verifyDialogDescription", {
+                      email: form.getValues("email"),
+                    })}
                   </AlertDialogDescription>
                 )}
               </AlertDialogHeader>
@@ -307,7 +321,9 @@ export default function UserSettings() {
                 </InputOTP>
               </div>
               <AlertDialogFooter>
-                <AlertDialogCancel>取消</AlertDialogCancel>
+                <AlertDialogCancel>
+                  {t("userSettings.cancelButton")}
+                </AlertDialogCancel>
                 <Button
                   onClick={() =>
                     verifyEmailCode({
@@ -316,7 +332,7 @@ export default function UserSettings() {
                     })
                   }
                 >
-                  验证
+                  {t("userSettings.verifyButton")}
                 </Button>
               </AlertDialogFooter>
             </AlertDialogContent>

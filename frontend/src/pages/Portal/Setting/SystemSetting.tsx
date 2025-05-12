@@ -1,3 +1,5 @@
+// i18n-processed-v1.1.0
+import { useTranslation } from "react-i18next";
 import {
   Card,
   CardTitle,
@@ -30,17 +32,20 @@ import { globalSettings } from "@/utils/store";
 import { FileCogIcon } from "lucide-react";
 import WarningAlert from "@/components/custom/WarningAlert";
 
-const formSchema = z.object({
-  scheduler: z.enum(["volcano", "colocate", "sparse"], {
-    invalid_type_error: "请选择调度算法",
-    required_error: "请选择调度算法",
-  }),
-  hideUsername: z.boolean().default(false),
-});
+function SystemSetting() {
+  const { t } = useTranslation();
 
-type FormSchema = z.infer<typeof formSchema>;
+  // Moved Zod schema to component
+  const formSchema = z.object({
+    scheduler: z.enum(["volcano", "colocate", "sparse"], {
+      invalid_type_error: t("systemSetting.scheduler.invalidType"),
+      required_error: t("systemSetting.scheduler.required"),
+    }),
+    hideUsername: z.boolean().default(false),
+  });
 
-const SystemSetting = () => {
+  type FormSchema = z.infer<typeof formSchema>;
+
   const [settings, setSettings] = useAtom(globalSettings);
 
   const form = useForm<FormSchema>({
@@ -49,7 +54,7 @@ const SystemSetting = () => {
   });
 
   const handleSubmit = () => {
-    toast.success("更新成功");
+    toast.success(t("systemSetting.toast.success"));
     setSettings(form.getValues());
     // refresh page
     window.location.reload();
@@ -57,12 +62,15 @@ const SystemSetting = () => {
 
   return (
     <>
-      <WarningAlert title={"注意"} description={"项目使用，请谨慎操作"} />
+      <WarningAlert
+        title={t("systemSetting.warning.title")}
+        description={t("systemSetting.warning.description")}
+      />
       <Card>
         <CardHeader>
-          <CardTitle>调度算法</CardTitle>
+          <CardTitle>{t("systemSetting.scheduler.title")}</CardTitle>
           <CardDescription>
-            为您的工作负载选取最佳资源分配和调度策略
+            {t("systemSetting.scheduler.description")}
           </CardDescription>
         </CardHeader>
         <Form {...form}>
@@ -79,17 +87,21 @@ const SystemSetting = () => {
                         defaultValue={field.value}
                       >
                         <SelectTrigger className="">
-                          <SelectValue placeholder="请选择" />
+                          <SelectValue
+                            placeholder={t(
+                              "systemSetting.scheduler.placeholder",
+                            )}
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="volcano">
-                            BASE - 原生调度算法
+                            {t("systemSetting.scheduler.volcano")}
                           </SelectItem>
                           <SelectItem value="colocate">
-                            EMIAS - 面向多租户可抢占异构资源场景的调度算法
+                            {t("systemSetting.scheduler.colocate")}
                           </SelectItem>
                           <SelectItem value="sparse">
-                            SEACS - 面向混合机器学习任务的调度算法
+                            {t("systemSetting.scheduler.sparse")}
                           </SelectItem>
                         </SelectContent>
                       </Select>
@@ -102,15 +114,15 @@ const SystemSetting = () => {
             <CardFooter className="px-6 py-4">
               <Button type="submit">
                 <FileCogIcon />
-                更新调度算法
+                {t("systemSetting.scheduler.submit")}
               </Button>
             </CardFooter>
           </form>
         </Form>
         <CardHeader>
-          <CardTitle>用户名脱敏处理</CardTitle>
+          <CardTitle>{t("systemSetting.username.title")}</CardTitle>
           <CardDescription>
-            对用户名进行脱敏处理，避免暴露集群真实用户信息
+            {t("systemSetting.username.description")}
           </CardDescription>
         </CardHeader>
         <Form {...form}>
@@ -129,11 +141,19 @@ const SystemSetting = () => {
                         defaultValue={field.value ? "true" : "false"}
                       >
                         <SelectTrigger className="">
-                          <SelectValue placeholder="请选择" />
+                          <SelectValue
+                            placeholder={t(
+                              "systemSetting.username.placeholder",
+                            )}
+                          />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="true">是</SelectItem>
-                          <SelectItem value="false">否</SelectItem>
+                          <SelectItem value="true">
+                            {t("systemSetting.username.yes")}
+                          </SelectItem>
+                          <SelectItem value="false">
+                            {t("systemSetting.username.no")}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </FormControl>
@@ -145,7 +165,7 @@ const SystemSetting = () => {
             <CardFooter className="px-6 py-4">
               <Button type="submit">
                 <FileCogIcon />
-                更新用户名设置
+                {t("systemSetting.username.submit")}
               </Button>
             </CardFooter>
           </form>
@@ -153,6 +173,6 @@ const SystemSetting = () => {
       </Card>
     </>
   );
-};
+}
 
 export default SystemSetting;
