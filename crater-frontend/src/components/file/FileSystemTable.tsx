@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { DataTable } from "@/components/custom/DataTable";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, Row } from "@tanstack/react-table";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -66,6 +66,15 @@ import { FileSelectDialog } from "./FileSelectDialog";
 import TooltipButton from "../custom/TooltipButton";
 import { configUrlApiBaseAtom } from "@/utils/store/config";
 import { AccessMode } from "@/services/api/auth";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@radix-ui/react-tooltip";
+import { BaseUserInfo, apiGetBaseUserInfo } from "@/services/api/user";
+import { IAccount, apiAdminAccountList } from "@/services/api/account";
+import { cn } from "@/lib/utils";
 
 const getHeader = (key: string, t: (key: string) => string): string => {
   switch (key) {
@@ -384,12 +393,58 @@ export function FileSystemTable({
     },
   });
 
+  const userInfoQuery = useQuery({
+    queryKey: ["users", "baseinfo"],
+    queryFn: () => {
+      return apiGetBaseUserInfo();
+    },
+    select: (res) => res.data.data,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const userMap = useMemo(() => {
+    // 添加类型断言确保数据安全
+    if (!userInfoQuery.data || !Array.isArray(userInfoQuery.data)) {
+      return new Map<string, BaseUserInfo>();
+    }
+    return new Map(userInfoQuery.data.map((u) => [u.space, u]));
+  }, [userInfoQuery.data]);
+
+  const accountInfoQuery = useQuery({
+    queryKey: ["accounts", "baseinfo"],
+    queryFn: () => {
+      return apiAdminAccountList();
+    },
+    select: (res) => {
+      return res.data.data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const accountMap = useMemo(() => {
+    // 添加类型断言确保数据安全
+    if (!accountInfoQuery.data || !Array.isArray(accountInfoQuery.data)) {
+      return new Map<string, IAccount>();
+    }
+    return new Map(accountInfoQuery.data.map((a) => [a.space, a]));
+  }, [accountInfoQuery.data]);
+
   const isRoot = useMemo(() => {
     const basePath = isadmin
       ? "/admin/data/filesystem"
       : "/portal/data/filesystem";
     return pathname === basePath;
   }, [pathname, isadmin]);
+
+  const isAdminUserSpace = useMemo(() => {
+    const basePath = "/admin/data/filesystem/admin-user";
+    return pathname === basePath;
+  }, [pathname]);
+
+  const isAdminAccountSpace = useMemo(() => {
+    const basePath = "/admin/data/filesystem/admin-account";
+    return pathname === basePath;
+  }, [pathname]);
+
   const { mutate: deleteFile } = useMutation({
     mutationFn: (req: string) => apiFileDelete(req),
     onSuccess: async () => {
@@ -424,43 +479,86 @@ export function FileSystemTable({
       });
     },
   });
+  interface HasNicknameAndName {
+    nickname: string;
+    name: string;
+  }
 
-  const columns = useMemo<ColumnDef<FileItem>[]>(
-    () => [
-      {
-        accessorKey: "name",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("name", t)} />
-        ),
-        cell: ({ row }) => {
-          if (row.original.isdir) {
-            return (
-              <div style={{ display: "flex", alignItems: "center" }}>
-                <Folder className="mr-2 size-5 text-yellow-600 dark:text-yellow-400" />
-                <Button
-                  onClick={() => {
-                    // setFilepath(filepath + "/" + row.original.name);
-                    navigate(pathname + "/" + row.original.name);
-                  }}
-                  variant={"link"}
-                  className="text-secondary-foreground h-8 px-0 text-left font-normal"
-                >
-                  {row.getValue("name")}
-                </Button>
-              </div>
-            );
-          } else {
-            return (
-              <div style={{ display: "flex", alignItems: "center" }}>
+  const renderNameCell = <T extends HasNicknameAndName>(
+    row: Row<FileItem>,
+    infoMap: Map<string, T>,
+    isSpecialPath: boolean,
+  ) => {
+    const targetInfo = infoMap.get(row.getValue("name"));
+    const displayName = targetInfo?.nickname ?? row.getValue("name");
+
+    if (!isSpecialPath) {
+      // 默认渲染逻辑
+      return row.original.isdir ? (
+        <div className="flex items-center">
+          <Folder className="mr-2 size-5 text-yellow-600 dark:text-yellow-400" />
+          <Button
+            onClick={() => navigate(pathname + "/" + row.original.name)}
+            variant="link"
+            className="text-secondary-foreground h-8 px-0 text-left font-normal"
+          >
+            {row.getValue("name")}
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-center">
+          <File className="text-muted-foreground mr-2 size-5" />
+          <span className="text-secondary-foreground">
+            {row.getValue("name")}
+          </span>
+        </div>
+      );
+    }
+
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {row.original.isdir ? (
+              <Button
+                onClick={() => navigate(pathname + "/" + row.original.name)}
+                variant="link"
+                className="text-secondary-foreground hover:text-primary h-8 px-0 text-left font-normal"
+              >
+                <div className="flex items-center">
+                  <Folder className="mr-2 size-5 text-yellow-600 dark:text-yellow-400" />
+                  {displayName}
+                </div>
+              </Button>
+            ) : (
+              <div className="flex items-center">
                 <File className="text-muted-foreground mr-2 size-5" />
-                <span className="text-secondary-foreground">
-                  {row.getValue("name")}
-                </span>
+                <span className="text-secondary-foreground">{displayName}</span>
               </div>
-            );
-          }
-        },
-      },
+            )}
+          </TooltipTrigger>
+          {targetInfo && (
+            <TooltipContent
+              side="top"
+              align="start"
+              className={cn(
+                "bg-primary text-primary-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-fit rounded-md px-3 py-1.5 text-xs text-balance",
+              )}
+            >
+              <p>
+                查看{displayName}
+                <span className="mx-0.5 font-mono">(@{targetInfo.name})</span>
+                的文件信息
+              </p>
+            </TooltipContent>
+          )}
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
+  const baseColumns = useMemo<ColumnDef<FileItem>[]>(() => {
+    return [
       {
         accessorKey: "modifytime",
         header: ({ column }) => (
@@ -507,9 +605,36 @@ export function FileSystemTable({
           );
         },
       },
-    ],
-    [navigate, pathname, apiBaseURL, deleteFile, moveFile, path, canShow, t],
-  );
+    ];
+  }, [apiBaseURL, deleteFile, moveFile, path, canShow, t]);
+
+  const nameColumn = useMemo<ColumnDef<FileItem>[]>(() => {
+    return [
+      {
+        accessorKey: "name",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader("name", t)} />
+        ),
+        cell: ({ row }) => {
+          if (isAdminAccountSpace) {
+            return renderNameCell(row, accountMap, true);
+          } else if (isAdminUserSpace) {
+            return renderNameCell(row, userMap, true);
+          }
+          return renderNameCell(row, new Map(), false);
+        },
+      },
+    ];
+  }, [
+    isAdminUserSpace,
+    isAdminAccountSpace,
+    t,
+    userMap,
+    accountMap,
+    navigate,
+    pathname,
+  ]);
+  const columns = [...nameColumn, ...baseColumns];
 
   const refInput2 = useRef<HTMLInputElement>(null);
 
