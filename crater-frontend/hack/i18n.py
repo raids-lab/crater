@@ -209,9 +209,11 @@ If the file contains NO user-facing strings that need translation:
    - Add import: `import {{ useTranslation }} from "react-i18next";`
    - Initialize hook INSIDE component: `const {{ t }} = useTranslation();`
    - Place hook after all destructured props but before any other logic
+   - hooks must be called inside the component function
+   - Do NOT use hooks outside of the component function
 
 2. Special Cases:
-   - For Zod schemas: Move string literals into component ABOVE any form declarations
+   - For Zod schemas: Move schema defination into component ABOVE any form declarations
    - For constants: Convert to functions that accept t as parameter
    - For external configs: Create i18n wrapper functions
 
@@ -253,6 +255,25 @@ If file DOES contain user-facing strings, return EXACTLY:
    - All new key-value pairs
    - No nested structures
    - No duplicate keys
+
+Example Input (with user-facing strings):
+// Original code
+import {{ useForm }} from 'react-hook-form';
+
+const loginSchema = z.object({{
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters")
+}});
+
+function LoginForm() {{
+    const form = useForm({{ resolver: zodResolver(loginSchema) }});
+    
+    return (
+        <button aria-label="Submit login form">
+        Welcome {{name}}
+        </button>
+    );
+}}
 
 Example Output (with user-facing strings):
 // Modified code
