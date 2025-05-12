@@ -42,6 +42,7 @@ func (mgr *UserMgr) RegisterProtected(g *gin.RouterGroup) {
 
 func (mgr *UserMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.ListUser)
+	g.GET("/baseinfo", mgr.ListUserBaseInfo)
 	g.DELETE("/:name", mgr.DeleteUser)
 	g.PUT("/:name/role", mgr.UpdateRole)
 	g.PUT("/:name/attributes", mgr.UpdateUserAttributesByAdmin)
@@ -73,6 +74,12 @@ type UpdateRoleReq struct {
 
 type UserNameReq struct {
 	Name string `uri:"name" binding:"required"`
+}
+
+type UserBaseInfoResp struct {
+	Name     string `json:"name"`     // 用户名称
+	Nickname string `json:"nickname"` // 用户昵称
+	Space    string `json:"space"`
 }
 
 // DeleteUser godoc
@@ -118,6 +125,31 @@ func (mgr *UserMgr) ListUser(c *gin.Context) {
 	err := u.WithContext(c).
 		Select(u.ID, u.Name, u.Role, u.Status, u.Attributes).
 		Order(u.ID.Desc()).
+		Scan(&users)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("list users failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+	logutils.Log.Infof("list users success, count: %d", len(users))
+	resputil.Success(c, users)
+}
+
+// ListUserBaseInfo godoc
+// @Summary 列出用户基本信息
+// @Description 列出用户信息，姓名，昵称，用户空间
+// @Tags User
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} resputil.Response[any] "成功获取用户信息"
+// @Failure 400 {object} resputil.Response[any] "请求参数错误"
+// @Failure 500 {object} resputil.Response[any] "其他错误"
+// @Router /v1/admin/users/baseinfo [get]
+func (mgr *UserMgr) ListUserBaseInfo(c *gin.Context) {
+	var users []UserBaseInfoResp
+	u := query.User
+	err := u.WithContext(c).
+		Select(u.Name, u.Space, u.Nickname).
 		Scan(&users)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("list users failed, detail: %v", err), resputil.NotSpecified)
