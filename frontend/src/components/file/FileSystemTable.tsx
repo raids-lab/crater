@@ -400,6 +400,7 @@ export function FileSystemTable({
     },
     select: (res) => res.data.data,
     staleTime: 5 * 60 * 1000,
+    enabled: isadmin,
   });
 
   const userMap = useMemo(() => {
@@ -419,6 +420,7 @@ export function FileSystemTable({
       return res.data.data;
     },
     staleTime: 5 * 60 * 1000,
+    enabled: isadmin,
   });
   const accountMap = useMemo(() => {
     // 添加类型断言确保数据安全
