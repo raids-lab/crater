@@ -40,6 +40,7 @@ import DatasetTypeLabel, {
   DatasetType,
 } from "@/components/badge/DatasetTybeBadge";
 import UserLabel from "@/components/label/UserLabel";
+import TooltipLink from "@/components/label/TooltipLink";
 
 const getRoles = (t: (key: string) => string) => [
   {
@@ -112,6 +113,25 @@ export const AdminDatasetTable = () => {
     {
       accessorKey: "name",
       header: t("adminDatasetTable.column.name"),
+      cell: ({ row }) => {
+        return (
+          <div className="relative flex items-center">
+            <TooltipLink
+              name={
+                <div className="flex flex-row items-center">
+                  <p className="max-w-36 truncate">{row.getValue("name")}</p>
+                </div>
+              }
+              to={`${row.original.id}`}
+              tooltip={
+                <div className="flex flex-row items-center justify-between gap-1.5">
+                  <p className="text-xs">查看 {row.getValue("name")} 详情</p>
+                </div>
+              }
+            />
+          </div>
+        );
+      },
     },
     {
       accessorKey: "type",
