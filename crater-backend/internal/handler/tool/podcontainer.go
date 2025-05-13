@@ -25,10 +25,14 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -744,7 +748,10 @@ func (mgr *APIServerMgr) deleteIngress(c *gin.Context, namespace, ingressName st
 	return mgr.deleteResource(c, namespace, ingressName, "Ingress", &networkingv1.Ingress{})
 }
 
-func (mgr *APIServerMgr) RegisterAdmin(_ *gin.RouterGroup) {}
+func (mgr *APIServerMgr) RegisterAdmin(g *gin.RouterGroup) {
+	g.PUT(":namespace/pods/:name/resources", mgr.UpdatePodResources)
+	g.PUT(":namespace/pods/:name/containers/:container/resources", mgr.UpdatePodResources)
+}
 
 type (
 	PodContainerReq struct {
@@ -1084,4 +1091,157 @@ func (mgr *APIServerMgr) GetPodEvents(c *gin.Context) {
 	}
 
 	resputil.Success(c, events.Items)
+}
+
+type (
+	EditPodResourceURIReq struct {
+		Namespace string `uri:"namespace" binding:"required"`
+		PodName   string `uri:"name"      binding:"required"`
+		Container string `uri:"container"` // 可选
+	}
+
+	EditPodResourceRequest struct {
+		Resources v1.ResourceList `json:"resources" binding:"required"`
+	}
+)
+
+// UpdatePodResource godoc
+// @Summary edit pod's resources(cpu, mem)
+// @Description edit pod's resources(cpu, mem)
+// @Tags Operations
+// @Accept json
+// @Produce json
+// @Success 200 {object} resputil.Response[any] "Success"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/namespaces/{namespace}/pods/{name}/containers/{container}/resources [put]
+func (mgr *APIServerMgr) UpdatePodResources(c *gin.Context) {
+	// URI 绑定
+	var uri EditPodResourceURIReq
+	if err := c.ShouldBindUri(&uri); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	// Body 绑定
+	var req EditPodResourceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	var pod v1.Pod
+	if err := mgr.client.Get(c, client.ObjectKey{
+		Namespace: uri.Namespace,
+		Name:      uri.PodName,
+	}, &pod); err != nil {
+		resputil.Error(c, fmt.Sprintf("fetch pod: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	if !isJobPod(&pod) {
+		resputil.Error(c, fmt.Sprintf("%s is not job pod", pod.Name), resputil.NotSpecified)
+		return
+	}
+
+	jobName := pod.OwnerReferences[0].Name
+	if !checkUserPermissionForJob(c, jobName) {
+		resputil.Error(c, fmt.Sprintf("no permission for pod: %s", pod.Name), resputil.NotSpecified)
+		return
+	}
+
+	var containerName *string
+	if uri.Container != "" {
+		containerName = &uri.Container
+	}
+
+	if err := mgr.EditPodResource(c, &pod, containerName, req.Resources); err != nil {
+		resputil.Error(c, fmt.Sprintf("Edit resources: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, "Successfully updated pod resource")
+}
+
+func isJobPod(pod *v1.Pod) bool {
+	if len(pod.OwnerReferences) == 0 {
+		return false
+	}
+
+	owner := pod.OwnerReferences[0]
+	return owner.Kind == "Job" && owner.APIVersion == "batch.volcano.sh/v1alpha1"
+}
+
+func checkUserPermissionForJob(c *gin.Context, jobName string) bool {
+	token := util.GetToken(c)
+	if token.RolePlatform == model.RoleAdmin {
+		return true
+	}
+
+	jobDB := query.Job
+
+	job, err := jobDB.WithContext(c).Where(jobDB.Name.Eq(jobName)).First()
+	if err != nil {
+		return false
+	}
+
+	if job.AccountID != token.AccountID {
+		return false
+	}
+	if job.UserID != token.UserID {
+		return false
+	}
+
+	return true
+}
+
+func (mgr *APIServerMgr) EditPodResource(
+	c *gin.Context,
+	pod *v1.Pod,
+	containerName *string,
+	resources v1.ResourceList,
+) error {
+	ctx := c.Request.Context()
+
+	// 确定要修改的 container 索引
+	idx := 0
+	if containerName != nil {
+		found := false
+		for i := range pod.Spec.Containers {
+			if pod.Spec.Containers[i].Name == *containerName {
+				idx = i
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("container %q not found in pod %s/%s",
+				*containerName, pod.Namespace, pod.Name)
+		}
+	}
+
+	// 只改目标容器的 CPU/Memory
+	ctr := &pod.Spec.Containers[idx]
+	if qty, ok := resources[v1.ResourceCPU]; ok {
+		ctr.Resources.Requests[v1.ResourceCPU] = qty
+		ctr.Resources.Limits[v1.ResourceCPU] = qty
+	}
+	if qty, ok := resources[v1.ResourceMemory]; ok {
+		ctr.Resources.Requests[v1.ResourceMemory] = qty
+		ctr.Resources.Limits[v1.ResourceMemory] = qty
+	}
+
+	// 使用 Update 提交整个 Pod 对象
+	updated, err := mgr.kubeClient.CoreV1().Pods(pod.Namespace).
+		Update(ctx, pod, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("update pod %s/%s container[%d] resources: %w",
+			pod.Namespace, pod.Name, idx, err)
+	}
+
+	logutils.Log.Infof("Updated pod %s/%s container[%d]=%q resources=%+v",
+		updated.Namespace, updated.Name, idx, updated.Spec.Containers[idx].Name,
+		updated.Spec.Containers[idx].Resources)
+
+	return nil
 }
