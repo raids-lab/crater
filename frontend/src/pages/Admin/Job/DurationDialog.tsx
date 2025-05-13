@@ -55,6 +55,7 @@ interface DurationDialogProps {
   open: boolean;
   setOpen: (open: boolean) => void;
   onSuccess?: () => void;
+  setExtend?: boolean;
 }
 
 export function DurationDialog({
@@ -62,12 +63,14 @@ export function DurationDialog({
   open,
   setOpen,
   onSuccess,
+  setExtend,
 }: DurationDialogProps) {
   const { t } = useTranslation();
   const [expirationDate, setExpirationDate] = useState<Date | null>(null);
   const allLocked = jobs.length > 0 && jobs.every((job) => job.locked);
   const allUnlocked = jobs.length > 0 && jobs.every((job) => !job.locked);
   const mixedState = !allLocked && !allUnlocked;
+  const isExtendDialogOpen = setExtend && allLocked;
 
   // Initialize form with translated schema
   const form = useForm<FormValues>({
@@ -138,7 +141,10 @@ export function DurationDialog({
   }, [open, form]);
 
   // Calculate expiration date
-  const calculateExpirationDate = (values: FormValues) => {
+  const calculateExpirationDate = (
+    originExpiredTime: string | undefined,
+    values: FormValues,
+  ) => {
     const { days, hours, isPermanent } = values;
 
     if (isPermanent) {
@@ -149,6 +155,9 @@ export function DurationDialog({
     if (days > 0 || hours > 0) {
       const now = new Date();
       let result = new Date(now);
+      if (originExpiredTime !== undefined && isExtendDialogOpen) {
+        result = new Date(originExpiredTime);
+      }
       if (days > 0) result = addHours(result, days * 24);
       if (hours > 0) result = addHours(result, hours);
       setExpirationDate(result);
@@ -161,7 +170,7 @@ export function DurationDialog({
   const handleFieldChange = () => {
     setTimeout(() => {
       const values = form.getValues();
-      calculateExpirationDate(values);
+      calculateExpirationDate(jobs[0].lockedTimestamp, values);
     }, 0);
   };
 
@@ -182,12 +191,12 @@ export function DurationDialog({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {allLocked
+            {allLocked && !isExtendDialogOpen
               ? t("durationDialog.title.unlock")
               : t("durationDialog.title.lock")}
           </DialogTitle>
           <DialogDescription>
-            {allLocked
+            {allLocked && !isExtendDialogOpen
               ? t("durationDialog.description.unlock", { count: jobs.length })
               : t("durationDialog.description.lock", { count: jobs.length })}
           </DialogDescription>
@@ -209,7 +218,7 @@ export function DurationDialog({
               </CardContent>
             </Card>
           </div>
-        ) : allLocked ? (
+        ) : allLocked && !isExtendDialogOpen ? (
           <Button
             onClick={() => unlockMutation.mutate()}
             className="w-full"
