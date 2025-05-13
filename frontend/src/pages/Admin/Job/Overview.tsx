@@ -159,6 +159,7 @@ const AdminJobOverview = () => {
   const [days, setDays] = useState(7);
   const [selectedJobs, setSelectedJobs] = useState<IJobInfo[]>([]);
   const [isLockDialogOpen, setIsLockDialogOpen] = useState(false);
+  const [isExtendDialogOpen, setIsExtendDialogOpen] = useState(false);
 
   const toolbarConfig: DataTableToolbarConfig = {
     globalSearch: {
@@ -210,6 +211,11 @@ const AdminJobOverview = () => {
   const handleClick = useCallback((jobInfo: IJobInfo) => {
     setSelectedJobs([jobInfo]);
     setIsLockDialogOpen(true);
+  }, []);
+
+  const handleClickToExtend = useCallback((jobInfo: IJobInfo) => {
+    setSelectedJobs([jobInfo]);
+    setIsExtendDialogOpen(true);
   }, []);
 
   const vcjobColumns = useMemo<ColumnDef<IJobInfo>[]>(() => {
@@ -388,6 +394,15 @@ const AdminJobOverview = () => {
                         ? t("adminJobOverview.actions.dropdown.unlock")
                         : t("adminJobOverview.actions.dropdown.lock")}
                     </DropdownMenuItem>
+                    {row.original.locked && (
+                      <DropdownMenuItem
+                        onClick={() => handleClickToExtend(jobInfo)}
+                        title={t("adminJobOverview.actions.dropdown.lockTitle")}
+                      >
+                        <LockIcon className="text-highlight-purple" />
+                        {t("adminJobOverview.actions.dropdown.extend")}
+                      </DropdownMenuItem>
+                    )}
                     <AlertDialogTrigger asChild>
                       <DropdownMenuItem className="group">
                         {shouldStop ? (
@@ -522,6 +537,15 @@ const AdminJobOverview = () => {
         open={isLockDialogOpen}
         setOpen={setIsLockDialogOpen}
         onSuccess={refetchTaskList}
+      />
+
+      {/* Duration Dialog for extending locked jobs */}
+      <DurationDialog
+        jobs={selectedJobs}
+        open={isExtendDialogOpen}
+        setOpen={setIsExtendDialogOpen}
+        onSuccess={refetchTaskList}
+        setExtend={true}
       />
     </>
   );
