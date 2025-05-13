@@ -709,6 +709,7 @@
         "lockTitle": "设置作业自动清除策略",
         "lock": "锁定",
         "unlock": "解锁",
+        "extend": "延长锁定时间",
         "stop": "停止",
         "delete": "删除"
       }
