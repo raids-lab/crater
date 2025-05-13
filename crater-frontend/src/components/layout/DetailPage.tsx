@@ -70,7 +70,7 @@ export function DetailPage({ header, info, tabs: rawTabs }: DetailPageProps) {
             >
               <data.icon className="text-muted-foreground mr-1.5 size-4" />
               <span className="text-muted-foreground truncate text-sm">
-                {data.title}：
+                {data.title}:
               </span>
               <span className="truncate">{data.value}</span>
             </div>
