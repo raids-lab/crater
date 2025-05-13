@@ -80,12 +80,28 @@ func (mgr *OperationsMgr) AddLockTime(c *gin.Context) {
 
 	jobDB := query.Job
 
-	// 永久锁定
-	lockTime := utils.GetPermanentTime()
+	// 检查是否已经永久锁定
+	j, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(req.Name)).First()
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	// 若永久锁定，则不允许延长锁定时间
+	if j.LockedTimestamp == utils.GetPermanentTime() {
+		resputil.Error(c, "Job is already permanently locked", resputil.NotSpecified)
+		return
+	}
 
-	// 非永久锁定
-	if !req.IsPermanent {
-		lockTime = utils.GetLocalTime().Add(
+	// 初始值
+	lockTime := utils.GetLocalTime()
+	if j.LockedTimestamp.After(utils.GetLocalTime()) {
+		lockTime = j.LockedTimestamp
+	}
+
+	if req.IsPermanent {
+		lockTime = utils.GetPermanentTime()
+	} else {
+		lockTime = lockTime.Add(
 			time.Duration(req.Days)*24*time.Hour + time.Duration(req.Hours)*time.Hour + time.Duration(req.Minutes)*time.Minute,
 		)
 	}
