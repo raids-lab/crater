@@ -108,9 +108,13 @@ export function ContainerSelect({
 }
 
 export const TableCellForm = ({
+  namespace,
+  podName,
   selectedContainer,
   appendInfos,
 }: {
+  namespace?: string;
+  podName?: string;
   selectedContainer: ContainerInfo;
   appendInfos?: {
     title: string;
@@ -154,7 +158,12 @@ export const TableCellForm = ({
         <>
           <div className="text-muted-foreground">申请资源</div>
           <div className="col-span-2">
-            <ResourceBadges resources={selectedContainer.resources} />
+            <ResourceBadges
+              namespace={namespace}
+              podName={podName}
+              resources={selectedContainer.resources}
+              showEdit={true}
+            />
           </div>
         </>
       )}
@@ -276,7 +285,11 @@ function Content({
               <legend className="-ml-1 px-2 text-sm font-medium">
                 {selectedContainer.isInitContainer ? "初始化容器" : "容器信息"}
               </legend>
-              <TableCellForm selectedContainer={selectedContainer} />
+              <TableCellForm
+                namespace={namespace}
+                podName={podName}
+                selectedContainer={selectedContainer}
+              />
             </fieldset>
           </div>
         </div>

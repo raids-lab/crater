@@ -228,7 +228,14 @@ const getColumns = (
       <DataTableColumnHeader column={column} title={getHeader("resources")} />
     ),
     cell: ({ row }) => {
-      return <ResourceBadges resources={row.getValue("resources")} />;
+      return (
+        <ResourceBadges
+          namespace={row.original.namespace}
+          podName={row.original.name}
+          resources={row.getValue("resources")}
+          showEdit={true}
+        />
+      );
     },
   },
   {

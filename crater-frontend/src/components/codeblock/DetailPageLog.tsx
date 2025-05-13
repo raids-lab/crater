@@ -82,6 +82,8 @@ export default function DetailPageLog({
                 {selectedContainer.isInitContainer ? "初始化容器" : "容器信息"}
               </legend>
               <TableCellForm
+                namespace={namespace}
+                podName={podName}
                 selectedContainer={selectedContainer}
                 appendInfos={appendInfos}
               />

@@ -47,6 +47,34 @@ export const apiAdminResourceUpdate = (
   });
 };
 
+// @Router /v1/admin/operations/patch/pod/resource [put]
+export const apiAdminResourceReset = (
+  namespace: string | undefined,
+  podName: string | undefined,
+  key: "cpu" | "memory",
+  value: string,
+) => {
+  if (key === "cpu") {
+    return instance.put<IResponse<string>>(
+      `${VERSION}/admin/namespaces/${namespace}/pods/${podName}/resources`,
+      {
+        resources: {
+          cpu: value,
+        },
+      },
+    );
+  } else {
+    return instance.put<IResponse<string>>(
+      `${VERSION}/admin/namespaces/${namespace}/pods/${podName}/resources`,
+      {
+        resources: {
+          memory: value,
+        },
+      },
+    );
+  }
+};
+
 // @Router /v1/admin/resources/{id} [delete]
 export const apiAdminResourceDelete = (id: number) => {
   return instance.delete<IResponse<Resource>>(
