@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Popover,
@@ -22,44 +22,101 @@ interface ResourceBadgesProps {
   showEdit?: boolean;
 }
 
+type UpdateResourceVars = {
+  namespace: string;
+  podName: string;
+  key: "cpu" | "memory";
+  numericValue: string;
+};
+
+// 提取单独的 ResourceBadge 子组件，提高渲染效率
+const ResourceBadge = ({
+  keyName,
+  value,
+  editable,
+  onUpdate,
+}: {
+  keyName: string;
+  value: string;
+  editable: boolean;
+  namespace?: string;
+  podName?: string;
+  onUpdate: (key: "cpu" | "memory", value: string) => void;
+}) => {
+  const [editValue, setEditValue] = useState(value);
+
+  useEffect(() => {
+    setEditValue(value);
+  }, [value]);
+
+  const display =
+    keyName === "cpu"
+      ? `${value}c`
+      : keyName === "memory"
+        ? `${value}`
+        : `${keyName}: ${value}`;
+
+  if (!editable) {
+    return (
+      <Badge variant="secondary" className="font-mono">
+        {display}
+      </Badge>
+    );
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Badge
+          className="cursor-pointer font-mono select-none hover:bg-gray-200"
+          variant="secondary"
+        >
+          {display}
+        </Badge>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 space-y-3 p-4">
+        <h4 className="font-medium">Configure {keyName.toUpperCase()}</h4>
+        <div className="flex items-center gap-2">
+          <Input
+            type="text"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            className="flex-1"
+          />
+        </div>
+        <PopoverClose asChild>
+          <Button
+            size="sm"
+            className="w-full"
+            disabled={!editValue}
+            onClick={() => onUpdate(keyName as "cpu" | "memory", editValue)}
+          >
+            Save
+          </Button>
+        </PopoverClose>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 export default function ResourceBadges({
   namespace,
   podName,
   resources = {},
-  showEdit,
+  showEdit = false,
 }: ResourceBadgesProps) {
   const isAdmin = useIsAdmin();
   const queryClient = useQueryClient();
-  const [localResources, setLocalResources] =
-    useState<Record<string, string>>(resources);
-  const [editingValues, setEditingValues] = useState<Record<string, string>>(
-    {},
-  );
-
-  useEffect(() => {
-    setLocalResources(resources);
-  }, [resources]);
-
-  type UpdateResourceVars = {
-    namespace: string;
-    podName: string;
-    key: "cpu" | "memory";
-    numericValue: string;
-  };
 
   const { mutate: updateResource } = useMutation<
     AxiosResponse<IResponse<string>>,
     Error,
     UpdateResourceVars
   >({
-    mutationFn: ({ podName, key, numericValue }) =>
+    mutationFn: ({ namespace, podName, key, numericValue }) =>
       apiAdminResourceReset(namespace, podName, key, numericValue),
     onSuccess: (_res, { podName, key, numericValue }) => {
       queryClient.invalidateQueries({ queryKey: ["podResources", podName] });
-      setLocalResources((prev) => ({
-        ...prev,
-        [key]: numericValue,
-      }));
       toast.success(
         `${namespace} ${podName} ${key} updated to ${numericValue}`,
       );
@@ -69,25 +126,28 @@ export default function ResourceBadges({
     },
   });
 
-  const updateResourceHandler = (
-    namespace: string | undefined,
-    podName: string | undefined,
-    key: "cpu" | "memory",
-    numericValue: string,
-  ) => {
-    if (podName && namespace) {
-      updateResource({ namespace, podName, key, numericValue });
-    }
-  };
+  // 使用 useCallback 缓存更新函数
+  const handleUpdateResource = useCallback(
+    (key: "cpu" | "memory", value: string) => {
+      if (podName && namespace) {
+        updateResource({ namespace, podName, key, numericValue: value });
+      }
+    },
+    [namespace, podName, updateResource],
+  );
 
-  // Sort cpu first, then memory, then alphabet
-  const sortedEntries = Object.entries(localResources).sort(([a], [b]) => {
-    if (a === "cpu") return -1;
-    if (b === "cpu") return 1;
-    if (a === "memory") return b === "cpu" ? 1 : -1;
-    if (b === "memory") return a === "cpu" ? -1 : 1;
-    return a.localeCompare(b);
-  });
+  // 使用 useMemo 缓存排序结果
+  const sortedEntries = useMemo(
+    () =>
+      Object.entries(resources).sort(([a], [b]) => {
+        if (a === "cpu") return -1;
+        if (b === "cpu") return 1;
+        if (a === "memory") return b === "cpu" ? 1 : -1;
+        if (b === "memory") return a === "cpu" ? -1 : 1;
+        return a.localeCompare(b);
+      }),
+    [resources],
+  );
 
   return (
     <div className="flex flex-col flex-wrap gap-1 lg:flex-row">
@@ -97,66 +157,17 @@ export default function ResourceBadges({
           : rawKey;
         const editable =
           showEdit && isAdmin && (key === "cpu" || key === "memory");
-        const display =
-          key === "cpu"
-            ? `${rawValue}c`
-            : key === "memory"
-              ? `${rawValue}`
-              : `${key}: ${rawValue}`;
-
-        if (!editable) {
-          return (
-            <Badge key={key} variant="secondary" className="font-mono">
-              {display}
-            </Badge>
-          );
-        }
 
         return (
-          <Popover key={key}>
-            <PopoverTrigger asChild>
-              <Badge
-                className="cursor-pointer font-mono select-none hover:bg-gray-200"
-                variant="secondary"
-              >
-                {display}
-              </Badge>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 space-y-3 p-4">
-              <h4 className="font-medium">Configure {key.toUpperCase()}</h4>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="text"
-                  defaultValue={rawValue}
-                  onChange={(e) =>
-                    setEditingValues((prev) => ({
-                      ...prev,
-                      [key]: e.target.value,
-                    }))
-                  }
-                  className="flex-1"
-                />
-              </div>
-              <PopoverClose asChild>
-                <Button
-                  size="sm"
-                  className="w-full"
-                  disabled={!(editingValues[key] ?? rawValue)}
-                  onClick={() => {
-                    const newVal = editingValues[key] ?? rawValue;
-                    updateResourceHandler(
-                      namespace,
-                      podName,
-                      key as "cpu" | "memory",
-                      newVal,
-                    );
-                  }}
-                >
-                  Save
-                </Button>
-              </PopoverClose>
-            </PopoverContent>
-          </Popover>
+          <ResourceBadge
+            key={key}
+            keyName={key}
+            value={rawValue}
+            editable={editable}
+            namespace={namespace}
+            podName={podName}
+            onUpdate={handleUpdateResource}
+          />
         );
       })}
     </div>

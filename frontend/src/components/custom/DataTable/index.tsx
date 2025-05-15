@@ -48,6 +48,7 @@ interface DataTableProps<TData, TValue>
   toolbarConfig?: DataTableToolbarConfig;
   multipleHandlers?: MultipleHandler<TData>[];
   briefChildren?: React.ReactNode;
+  withI18n?: boolean;
   className?: string;
 }
 
@@ -60,6 +61,7 @@ export function DataTable<TData, TValue>({
   multipleHandlers,
   children,
   briefChildren,
+  withI18n = false,
   className,
 }: DataTableProps<TData, TValue>) {
   const { t } = useTranslation();
@@ -97,14 +99,12 @@ export function DataTable<TData, TValue>({
               table.toggleAllPageRowsSelected(!!value)
             }
             hidden={table.getRowModel().rows.length === 0}
-            aria-label={t("dataTable.selectAll")}
           />
         ),
         cell: ({ row }) => (
           <Checkbox
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label={t("dataTable.selectRow")}
           />
         ),
         enableSorting: false,
@@ -112,7 +112,7 @@ export function DataTable<TData, TValue>({
       },
       ...columns,
     ];
-  }, [columns, multipleHandlers, t]);
+  }, [columns, multipleHandlers]);
 
   const table = useReactTable({
     data: data,
@@ -214,7 +214,9 @@ export function DataTable<TData, TValue>({
                         <div className="bg-muted mb-4 rounded-full p-3">
                           <GridIcon className="h-6 w-6" />
                         </div>
-                        <p className="select-none">{t("dataTable.noData")}</p>
+                        <p className="select-none">
+                          {withI18n ? t("dataTable.noData") : "暂无数据"}
+                        </p>
                       </div>
                     </TableCell>
                   )}
