@@ -93,7 +93,7 @@ import { TimeDistance } from "@/components/custom/TimeDistance";
 import { Skeleton } from "@/components/ui/skeleton";
 import DetailTitle from "@/components/layout/DetailTitle";
 
-const AccountDetail = () => {
+export const Component = () => {
   const { t } = useTranslation();
   const { id } = useParams();
   const queryClient = useQueryClient();
@@ -679,5 +679,3 @@ const AccountDetail = () => {
 
   return <DetailPage header={header} info={info} tabs={tabs} />;
 };
-
-export default AccountDetail;

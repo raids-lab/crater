@@ -6,7 +6,6 @@ import { Role } from "@/services/api/auth";
 import DashboardLayout from "@/components/layout/Dashboard";
 import { User } from "./User";
 import Resource from "./Cluster/Resource";
-import AccountDetail from "./Account/Detail";
 import {
   BoxIcon,
   SettingsIcon,
@@ -18,7 +17,6 @@ import {
   BarChartBigIcon,
   AlarmClockIcon,
 } from "lucide-react";
-import { Account } from "./Account";
 import admindatasetRoutes from "./Data";
 import { NavGroupProps } from "@/components/sidebar/types";
 import adminJobRoutes from "./Job";
@@ -62,11 +60,11 @@ const routeItems: RouteObject[] = [
     children: [
       {
         index: true,
-        element: <Account />,
+        lazy: () => import("./Account"),
       },
       {
         path: ":id",
-        element: <AccountDetail />,
+        lazy: () => import("./Account/Detail"),
       },
     ],
   },

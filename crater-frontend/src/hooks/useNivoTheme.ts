@@ -1,12 +1,12 @@
 import nivoDarkTheme from "@/components/chart/darkTheme";
 import nivoLightTheme from "@/components/chart/defaultTheme";
-import { Theme } from "@nivo/core";
+import { PartialTheme } from "@nivo/theming";
 import { useTheme } from "@/utils/theme";
 
 /**
  * `useNivoTheme` is a custom hook that returns the Nivo theme based on the current application theme.
  */
-const useNivoTheme = (): { nivoTheme: Theme; theme: string } => {
+const useNivoTheme = (): { nivoTheme: PartialTheme; theme: string } => {
   const { theme } = useTheme();
   return {
     nivoTheme:

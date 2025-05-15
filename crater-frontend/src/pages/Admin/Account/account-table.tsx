@@ -18,214 +18,220 @@ import { ColumnDef } from "@tanstack/react-table";
 import ResourceBadges from "@/components/badge/ResourceBadges";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import { Link } from "react-router-dom";
-import Identicon from "@polkadot/react-identicon";
-import { stringToSS58 } from "@/utils/ss58";
-import { format, formatDistanceToNow } from "date-fns";
-import { zhCN } from "date-fns/locale";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
+import { apiAdminAccountList } from "@/services/api/account";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { PlusCircleIcon } from "lucide-react";
+import { useMemo } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { apiProjectDelete } from "@/services/api/account";
+import { DataTable } from "@/components/custom/DataTable";
+import { toast } from "sonner";
 
-const getHeader = (key: string, t: (key: string) => string): string => {
+const getHeader = (key: string): string => {
   switch (key) {
     case "nickname":
-      return t("table.headers.nickname");
+      return "table.headers.nickname";
     case "deserved":
-      return t("table.headers.deserved");
+      return "table.headers.deserved";
     case "guaranteed":
-      return t("table.headers.guaranteed");
+      return "table.headers.guaranteed";
     case "capability":
-      return t("table.headers.capability");
+      return "table.headers.capability";
     default:
       return key;
   }
 };
 
-export const getToolbarConfig = (
-  t: (key: string) => string,
-): DataTableToolbarConfig => {
-  return {
-    filterInput: {
-      key: "name",
-      placeholder: "搜索账户名称",
-    },
-    filterOptions: [],
-    getHeader: (key: string) => getHeader(key, t),
-  };
+const toolbarConfig: DataTableToolbarConfig = {
+  filterInput: {
+    key: "name",
+    placeholder: "搜索账户名称",
+  },
+  filterOptions: [],
+  getHeader: (key: string) => getHeader(key),
 };
 
-export const getColumns = (
-  handleEdit: (project: IAccount) => void,
-  handleDelete: (project: IAccount) => void,
-  t: TFunction<"translation", undefined>,
-): ColumnDef<IAccount>[] => {
-  return [
-    {
-      accessorKey: "nickname",
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={getHeader("nickname", t)}
-        />
-      ),
-      cell: ({ row }) => {
-        const expiredAt = row.original.expiredAt
-          ? new Date(row.original.expiredAt)
-          : undefined;
-        const diff = expiredAt ? expiredAt.getTime() - Date.now() : 0;
-        return (
-          <Link
-            to={`${row.original.id}`}
-            className="hover:text-primary flex flex-row items-center justify-start gap-2"
-          >
-            <Identicon
-              value={stringToSS58(row.original.name)}
-              size={32}
-              theme="substrate"
-              className="cursor-pointer!"
-            />
-            <div className="flex flex-col items-start gap-0.5">
-              {row.getValue("nickname")}
-              {expiredAt && (
-                <TooltipProvider delayDuration={10}>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <span className="text-muted-foreground text-xs">
-                        {diff < 0 ? (
-                          t("table.tooltip.expired")
-                        ) : (
-                          <>
-                            {formatDistanceToNow(expiredAt, {
-                              locale: zhCN,
-                              addSuffix: true,
-                            })}
-                            {t("table.tooltip.valid")}
-                          </>
-                        )}
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent
-                      side="right"
-                      className="bg-background text-foreground border"
-                    >
-                      {format(expiredAt, "PPP", { locale: zhCN })}{" "}
-                      {t("table.tooltip.expires")}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </div>
-          </Link>
-        );
-      },
-      enableSorting: false,
+export const AccountTable = ({
+  setIsOpen,
+  setCurrentAccount,
+}: {
+  setIsOpen: (isOpen: boolean) => void;
+  setCurrentAccount: (account: IAccount | null) => void;
+}) => {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ["admin", "accounts"],
+    queryFn: apiAdminAccountList,
+    select: (res) => res.data.data,
+  });
+
+  const { mutate: deleteAccount } = useMutation({
+    mutationFn: (account: IAccount) => apiProjectDelete(account.id),
+    onSuccess: (_, account) => {
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "accounts"],
+      });
+      toast.success(t("toast.accountDeleted", { name: account.nickname }));
     },
-    {
-      accessorKey: "guaranteed",
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={getHeader("guaranteed", t)}
-        />
-      ),
-      cell: ({ row }) => {
-        return <ResourceBadges resources={row.original.quota.guaranteed} />;
-      },
-      enableSorting: false,
-    },
-    {
-      accessorKey: "deserved",
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={getHeader("deserved", t)}
-        />
-      ),
-      cell: ({ row }) => {
-        return <ResourceBadges resources={row.original.quota.deserved} />;
-      },
-      enableSorting: false,
-    },
-    {
-      accessorKey: "capability",
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={getHeader("capability", t)}
-        />
-      ),
-      cell: ({ row }) => {
-        return <ResourceBadges resources={row.original.quota.capability} />;
-      },
-      enableSorting: false,
-    },
-    {
-      id: "actions",
-      enableHiding: false,
-      cell: ({ row }) => {
-        return (
-          <div className="flex flex-row items-center justify-center gap-1">
-            <Link to={`${row.original.id}`}>
-              <Button
-                title={t("table.actions.manageUser")}
-                variant="outline"
-                className="h-8 w-8"
-                size="icon"
-              >
-                <UserRoundIcon className="size-4" />
-              </Button>
-            </Link>
-            <Button
-              title={t("table.actions.editQuota")}
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => handleEdit(row.original)}
+  });
+
+  const columns = useMemo<ColumnDef<IAccount>[]>(() => {
+    const cols: ColumnDef<IAccount>[] = [
+      {
+        accessorKey: "nickname",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={t("table.headers.nickname")}
+          />
+        ),
+        cell: ({ row }) => {
+          return (
+            <Link
+              to={`${row.original.id}`}
+              className="hover:text-primary flex flex-row items-center justify-start gap-2"
             >
-              <PencilIcon className="size-4" />
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  title={t("table.actions.delete")}
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8"
-                >
-                  <TrashIcon className="size-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    {t("table.actions.deleteTitle")}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {t("table.actions.deleteDescription", {
-                      name: row.original.nickname,
-                    })}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>
-                    {t("table.actions.cancel")}
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    variant="destructive"
-                    onClick={() => handleDelete(row.original)}
-                  >
-                    {t("table.actions.delete")}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        );
+              <div className="flex flex-col items-start gap-0.5">
+                {row.getValue("nickname")}
+              </div>
+            </Link>
+          );
+        },
+        enableSorting: false,
       },
-    },
-  ];
+      {
+        accessorKey: "guaranteed",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={t("table.headers.guaranteed")}
+          />
+        ),
+        cell: ({ row }) => {
+          return <ResourceBadges resources={row.original.quota.guaranteed} />;
+        },
+        enableSorting: false,
+      },
+      {
+        accessorKey: "deserved",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={t("table.headers.deserved")}
+          />
+        ),
+        cell: ({ row }) => {
+          return <ResourceBadges resources={row.original.quota.deserved} />;
+        },
+        enableSorting: false,
+      },
+      {
+        accessorKey: "capability",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={t("table.headers.capability")}
+          />
+        ),
+        cell: ({ row }) => {
+          return <ResourceBadges resources={row.original.quota.capability} />;
+        },
+        enableSorting: false,
+      },
+      {
+        id: "actions",
+        enableHiding: false,
+        cell: ({ row }) => {
+          return (
+            <div className="flex flex-row items-center justify-center gap-1">
+              <Link to={`${row.original.id}`}>
+                <Button
+                  title={t("table.actions.manageUser")}
+                  variant="outline"
+                  className="h-8 w-8"
+                  size="icon"
+                >
+                  <UserRoundIcon className="size-4" />
+                </Button>
+              </Link>
+              <Button
+                title={t("table.actions.editQuota")}
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => {
+                  setCurrentAccount(row.original);
+                  setIsOpen(true);
+                }}
+              >
+                <PencilIcon className="size-4" />
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    title={t("table.actions.delete")}
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                  >
+                    <TrashIcon className="size-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {t("table.actions.deleteTitle")}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t("table.actions.deleteDescription", {
+                        name: row.original.nickname,
+                      })}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>
+                      {t("table.actions.cancel")}
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="destructive"
+                      onClick={() => deleteAccount(row.original)}
+                    >
+                      {t("table.actions.delete")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          );
+        },
+      },
+    ];
+    return cols;
+  }, [deleteAccount, setCurrentAccount, setIsOpen, t]);
+
+  return (
+    <DataTable
+      info={{
+        title: t("accountManagement.title"),
+        description: t("accountManagement.description"),
+      }}
+      storageKey="admin_account_management"
+      query={query}
+      columns={columns}
+      toolbarConfig={toolbarConfig}
+    >
+      <Button
+        onClick={() => {
+          setCurrentAccount(null);
+          setIsOpen(true);
+        }}
+      >
+        <PlusCircleIcon className="size-4" />
+        {t("accountForm.createButton")}
+      </Button>
+    </DataTable>
+  );
 };

@@ -349,8 +349,8 @@ export const User = () => {
     },
   });
 
-  const columns = useMemo<ColumnDef<TUser>[]>(
-    () => [
+  const columns = useMemo<ColumnDef<TUser>[]>(() => {
+    return [
       {
         accessorKey: "name",
         header: ({ column }) => (
@@ -510,9 +510,8 @@ export const User = () => {
           );
         },
       },
-    ],
-    [deleteUser, currentUserName, updateRole, t],
-  );
+    ];
+  }, [deleteUser, currentUserName, updateRole, t]);
 
   return (
     <>

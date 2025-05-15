@@ -1,6 +1,6 @@
-import { Theme } from "@nivo/core";
+import { PartialTheme } from "@nivo/theming";
 
-const nivoDarkTheme: Theme = {
+const nivoDarkTheme: PartialTheme = {
   background: "#000000",
   text: {
     fontSize: 11,
@@ -97,7 +97,6 @@ const nivoDarkTheme: Theme = {
     },
   },
   tooltip: {
-    wrapper: {},
     container: {
       background: "#000000",
       color: "#e8e8e8",

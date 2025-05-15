@@ -22,6 +22,7 @@ const DashboardLayout = ({ groups }: { groups: NavGroupProps[] }) => {
   const fixedLayout = useAtomValue(globalFixedLayout);
   const scheduler = useAtomValue(globalSettings).scheduler;
   useConfigLoader();
+
   // 特殊规则，网盘路由切换时，不启用过渡动画
   const motionKey = useMemo(() => {
     // begins with /portal/share/data
