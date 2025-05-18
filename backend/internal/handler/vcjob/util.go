@@ -439,7 +439,8 @@ func generatePodSpecForParallelJob(
 				VolumeMounts:             volumeMounts,
 			},
 		},
-		RestartPolicy: v1.RestartPolicyNever,
+		RestartPolicy:      v1.RestartPolicyNever,
+		EnableServiceLinks: ptr.To(false),
 	}
 	if task.Command != nil {
 		if task.Shell != nil {

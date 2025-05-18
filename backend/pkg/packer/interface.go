@@ -80,10 +80,10 @@ var (
 )
 
 const (
-	cpuLimit      = "2"
-	memoryLimit   = "4Gi"
-	cpuRequest    = "1"
-	memoryRequest = "2Gi"
+	// cpuLimit      = "2"
+	// memoryLimit   = "4Gi"
+	// cpuRequest    = "1"
+	// memoryRequest = "2Gi"
 
 	AnnotationKeyUserID      = "build-data/UserID"      // 用户名ID
 	AnnotationKeyImageLink   = "build-data/ImageLink"   // 镜像链接

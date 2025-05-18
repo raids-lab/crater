@@ -125,6 +125,7 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 				VolumeMounts:             volumeMounts,
 			},
 		},
+		EnableServiceLinks: ptr.To(false),
 	}
 
 	taskModel.PodTemplate = datatypes.NewJSONType(podSpec)

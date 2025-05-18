@@ -190,7 +190,8 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 				VolumeMounts:             volumeMounts,
 			},
 		},
-		RestartPolicy: v1.RestartPolicyNever,
+		RestartPolicy:      v1.RestartPolicyNever,
+		EnableServiceLinks: ptr.To(false),
 	}
 
 	// 6. Create volcano job
