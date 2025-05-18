@@ -167,6 +167,7 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 							VolumeMounts: volumeMounts,
 						},
 					},
+					EnableServiceLinks: ptr.To(false),
 				},
 			},
 			Username:            token.Username,

@@ -213,6 +213,7 @@ func (b *imagePacker) createJob(
 					RunAsGroup: &runAsGroupNumber,
 					FSGroup:    &fsAsGroupNumber,
 				},
+				EnableServiceLinks: ptr.To(false),
 			},
 		},
 		TTLSecondsAfterFinished: &JobCleanTime,

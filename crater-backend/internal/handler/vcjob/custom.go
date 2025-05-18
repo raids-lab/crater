@@ -207,7 +207,8 @@ func GenerateCustomPodSpec(
 				VolumeMounts:             volumeMounts,
 			},
 		},
-		RestartPolicy: v1.RestartPolicyNever,
+		RestartPolicy:      v1.RestartPolicyNever,
+		EnableServiceLinks: ptr.To(false),
 	}
 
 	if custom.Command != nil {
