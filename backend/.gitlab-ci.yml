@@ -1,5 +1,6 @@
 stages:
   - test
+  - build_migrate
   - build_backend
   - build_image
   - deploy
@@ -30,6 +31,27 @@ lint:
     paths:
       - gl-code-quality-report.json
     expire_in: 1 week
+  cache:
+    paths:
+      - .cache
+
+build_migrate:
+  stage: build_migrate
+  image: ***REMOVED***/docker.io/library/golang:1.23-alpine
+  script:
+    - mkdir -p .cache
+    - export GOPATH="$CI_PROJECT_DIR/.cache"
+    - export PATH="$CI_PROJECT_DIR/.cache/bin:$PATH"
+    - go env -w GO111MODULE=on
+    - go env -w GOPROXY=https://goproxy.cn,direct
+    - go mod download
+    - go build -ldflags="-w -s" -o bin/migrate cmd/gorm-gen/models/migrate.go
+  artifacts:
+    paths:
+      - bin/migrate
+    expire_in: 1 hour
+  only:
+    - main
   cache:
     paths:
       - .cache
@@ -77,6 +99,7 @@ build_image:
   only:
     - main
   dependencies:
+    - build_migrate
     - build_backend
 
 # Deploy to Kubernetes cluster
