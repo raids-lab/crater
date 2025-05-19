@@ -1,25 +1,21 @@
 # depolyment configuration variables
 createNamespace: false
-createMirationJob: false
 imagePullSecrets: []
 web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "c9009689"
+      tag: "b0cc9677"
       pullPolicy: "IfNotPresent"
   migrate:
-    image:
-      repository: "***REMOVED***/migrate"
-      tag: "v5"
-      pullPolicy: "IfNotPresent"
+    createMigrationJob: true
     admin:
       username: "crater-admin"
       password: "admin"
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "1a752ad1"
+      tag: "6d67055c"
       pullPolicy: "IfNotPresent"
     config:
       version: "1.0.0"
@@ -47,7 +43,7 @@ web:
   storage:
     image:
       repository: ***REMOVED***
-      tag: "f53ds7cl"
+      tag: "9dsa3543"
       pullPolicy: "IfNotPresent"
   buildkit:
     image:
@@ -111,7 +107,7 @@ web:
     host: gpu-grafana.***REMOVED***
   document:
     image:
-      tag: ba706dbc
+      tag: 4a0d561f
 nodeSelector:
   node-role.kubernetes.io/control-plane: ""
 tolerations:

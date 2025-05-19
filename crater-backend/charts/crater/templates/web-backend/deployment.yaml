@@ -20,6 +20,22 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
     {{- end }}
+      {{- if .Values.web.migrate.createMigrationJob }}
+      initContainers:
+        - name: migration
+          image: {{ .Values.web.backend.image.repository }}:{{ .Values.web.backend.image.tag }}
+          imagePullPolicy: {{ .Values.web.backend.image.pullPolicy }}
+          command: ["./migrate"]
+          env:
+            - name: CRATER_ADMIN_USERNAME
+              value: {{ .Values.web.migrate.admin.username }}
+            - name: CRATER_ADMIN_PASSWORD
+              value: {{ .Values.web.migrate.admin.password }}
+          volumeMounts:
+            - name: backend-conf
+              mountPath: /etc/debug-config.yaml
+              subPath: config.yaml
+      {{- end }}
       containers:
         - name: crater-web-backend-container
           image: {{ .Values.web.backend.image.repository }}:{{ .Values.web.backend.image.tag }}
