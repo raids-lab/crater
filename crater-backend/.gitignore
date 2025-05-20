@@ -8,6 +8,7 @@
 bin
 testbin/*
 Dockerfile.cross
+etc/
 
 # Test binary, build with `go test -c`
 *.test

@@ -1,0 +1,74 @@
+# Volcano Integration Guide
+
+## Overview
+
+[Volcano](https://volcano.sh/en/) is a batch scheduling system designed for high-performance workloads such as AI/ML training, big data, and scientific computing. In Crater, Volcano is used to manage GPU scheduling across multiple labs and users in a fair and preemptive way.
+
+---
+
+## Why Volcano?
+
+We chose Volcano for Crater due to its rich scheduling capabilities, extensible plugin system, and native support for **distributed training**, **fair resource sharing**, and **job-level control**.
+
+Crater leverages the following Volcano components:
+
+- **Queue & Quota CRDs** – Fine-grained GPU resource allocation across labs
+- **Preemption (Capacity Plugin)** – Preemptive scheduling among labs and users
+- **Job CRD & Plugins** – Native support for distributed tasks
+- **Node ordering, job ordering, gang scheduling**, etc.
+
+---
+
+## Lab-Oriented Queue Design
+
+Crater serves a multi-user academic environment, where GPU clusters are shared by various research labs. To manage resource fairness:
+
+- We create a **`Queue`** per lab (e.g., `lab-a`, `lab-b`)
+- Each user is assigned to their respective lab's queue
+- A corresponding **`ResourceQuota`** defines the lab’s guaranteed GPU capacity
+- Volcano's **`capacity` plugin** enforces preemption policies when contention occurs
+
+This design allows:
+
+- Clear **resource boundaries** between labs
+- **Soft quotas** that allow opportunistic sharing
+- **Priority-based preemption** to avoid resource starvation
+
+---
+
+## Support for Distributed Jobs
+
+Crater uses Volcano’s [Job CRD](https://volcano.sh/en/docs/job-tutorial/) to support:
+
+- Distributed PyTorch, TensorFlow, or MPI workloads
+- Gang scheduling and job dependencies
+- Lifecycle management (start, suspend, delete)
+
+We also enable the following scheduling plugins in Volcano:
+
+- `gang` – Ensures pods in the same job start together
+- `svc` – Generates a headless service for distributed training
+- `priority` – Honors user/job priority
+- `numa-aware` – Optional, for performance-sensitive workloads
+
+---
+
+## VLLM Compatibility
+
+We are currently adapting the [vLLM](https://github.com/vllm-project/vllm) inference engine to run under Volcano using custom `Job` CRDs. This allows us to treat large model inference as a distributed workload with integrated scheduling, queueing, and quota enforcement.
+
+---
+
+## LLaMA Factory Compatibility
+
+We are also actively extending support for [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory), another fine-tuning project developed by ACT Lab. Integration efforts focus on enabling distributed fine-tuning jobs using Volcano's `Job` CRD, with scheduling awareness for GPU topology, resource quotas, and job orchestration.
+
+---
+
+## Installation Notes
+
+We recommend installing Volcano via Helm with Crater’s preconfigured values.
+
+📦 Helm values: [`deployments/volcano/values.yaml`](../deployments/volcano/values.yaml)  
+📖 Detailed guide: [`deployments/volcano/README.md`](../deployments/volcano/README.md)
+

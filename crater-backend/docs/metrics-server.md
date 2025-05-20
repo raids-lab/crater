@@ -1,0 +1,39 @@
+# Metrics Server for Crater
+
+## Overview
+
+`metrics-server` is a lightweight and scalable resource usage metrics aggregator for Kubernetes. In the Crater platform, it provides **real-time CPU and memory usage data** for:
+
+- Pod and Node resource monitoring
+- Job scheduling decisions
+- Frontend visualization (e.g., dashboards, usage stats)
+
+Metrics Server is **required** by Kubernetes components such as `kubectl top`, Horizontal Pod Autoscalers (HPA), and Crater's job management UI.
+
+---
+
+## Dependencies
+
+The metrics server must be deployed **after** the Kubernetes cluster is fully operational and can communicate with node components via kubelet.
+
+No external dependencies are required, but make sure:
+
+- The kubelet `--read-only-port` or `--authentication-token-webhook` settings are enabled.
+- Your Kubernetes version is compatible with the chosen metrics-server version.
+
+---
+
+## Crater-Specific Notes
+
+- Crater uses `metrics-server` as part of its **real-time resource display** on the UI.
+- Job submission and resource prediction modules may also read these values to improve scheduling accuracy.
+- The metrics are complementary to Prometheus but provide faster sampling for short-lived pods.
+
+---
+
+## Installation
+
+We recommend using the official Helm chart with Crater's values.
+
+📦 Helm values: [`deployments/metrics-server/values.yaml`](../deployments/metrics-server/values.yaml)  
+📖 Detailed guide: [`deployments/metrics-server/README.md`](../deployments/metrics-server/README.md)

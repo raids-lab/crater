@@ -1,0 +1,177 @@
+basic:
+  controller_image_name: "volcanosh/vc-controller-manager"
+  scheduler_image_name: "volcanosh/vc-scheduler"
+  admission_image_name: "volcanosh/vc-webhook-manager"
+  admission_secret_name: "volcano-admission-secret"
+  admission_config_file: "config/volcano-admission.conf"
+  scheduler_config_file: "config/volcano-scheduler.conf"
+  image_pull_secret: ""
+  image_pull_policy: "Always"
+  image_tag_version: "v1.10.0"
+  admission_port: 8443
+  image_registry: "***REMOVED***/docker.io"
+custom:
+  metrics_enable: false
+  admission_enable: true
+  admission_replicas: 1
+  controller_enable: true
+  controller_replicas: 1
+  scheduler_enable: true
+  scheduler_replicas: 1
+  leader_elect_enable: false
+  enabled_admissions: "/jobs/mutate,/jobs/validate,/podgroups/mutate,/pods/validate,/pods/mutate,/queues/mutate,/queues/validate"
+
+# Override the configuration for admission or scheduler.
+# For example:
+#
+#  scheduler_config_override: |
+#    actions: "enqueue, allocate, backfill"
+#    tiers:
+#    - plugins:
+#      - name: priority
+#      - name: gang
+#        enablePreemptable: false
+#      - name: conformance
+#    - plugins:
+#      - name: overcommit
+#      - name: drf
+#        enablePreemptable: false
+#      - name: predicates
+#      - name: proportion
+#      - name: nodeorder
+#      - name: binpack
+  admission_config_override: ~
+  scheduler_config_override: |
+    actions: "enqueue, allocate, backfill, reclaim"
+    tiers:
+    - plugins:
+      - name: priority
+      - name: gang
+        enablePreemptable: false
+      - name: conformance
+    - plugins:
+      - name: drf
+        enablePreemptable: false
+      - name: predicates
+      - name: capacity
+      - name: nodeorder
+      - name: binpack
+
+# Specify affinity for all main Volcano components or per component.
+# For example:
+#
+#  default_affinity:
+#    podAntiAffinity:
+#      preferredDuringSchedulingIgnoredDuringExecution:
+#        - podAffinityTerm:
+#            labelSelector:
+#              matchLabels:
+#                key: value
+#            topologyKey: kubernetes.io/hostname
+#          weight: 49
+  default_affinity: ~
+  admission_affinity: ~
+  controller_affinity: ~
+  scheduler_affinity: ~
+
+# Specify tolerations for all main Volcano components or per component
+# For example:
+#
+#  default_tolerations:
+#  - key: "example-key1"
+#    operator: "Exists"
+#    effect: "NoSchedule"
+  default_tolerations: 
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+  admission_tolerations: ~
+  controller_tolerations: ~
+  scheduler_tolerations: ~
+
+# Specify securityContext for all main Volcano components or per component
+# For example:
+#
+#  default_sc:
+#    runAsUser: 3000
+#    runAsGroup: 3000
+  default_sc: ~
+  scheduler_sc: ~
+  admission_sc: ~
+  controller_sc: ~
+
+# Specify nodeSelector for all main Volcano components or per component
+# For example:
+#
+#  default_ns:
+#    nodetype: criticalservices
+  default_ns:
+    node-role.kubernetes.io/control-plane: ""
+  admission_ns: ~
+  scheduler_ns: ~
+  controller_ns: ~
+
+
+# Specify labels for Volcano main component deployments and pods
+# For example:
+#
+#  admission_podLabels:
+#    key1: value1
+  admission_podLabels: ~
+  scheduler_podLabels: ~
+  controller_podLabels: ~
+  admission_labels: ~
+  scheduler_labels: ~
+  controller_labels: ~
+
+# Specify labels for all Volcano helm chart objects except for CRDs
+  common_labels: ~
+
+
+# Specify resources for Volcano main component deployments and pods
+# For example:
+#
+#  admission_resources:
+#    limits:
+#      cpu: 300m
+#      memory: 300Mi
+  admission_resources: ~
+  scheduler_resources: ~
+  controller_resources: ~
+
+
+# Specify additional namespace selector expressions for Volcano admission webhooks.
+# For example, if you want Volcano admission webhooks take effect in namespaces with
+# label key="workload-type" and value="batch", and don't take effect in namespaces with
+# label key="kubernetes.io/metadata.name" and values "excluded-ns-1" and "excluded-ns-2",
+# you should set the following value:
+#
+#  webhooks_namespace_selector_expressions:
+#    - key: workload-type
+#      operator: In
+#      values:
+#        - batch
+#    - key: kubernetes.io/metadata.name
+#      operator: NotIn
+#      values:
+#        - excluded-ns-1
+#        - excluded-ns-2
+#
+# Note that {{ .Release.Namespace }} and kube-system namespaces are always ignored.
+  webhooks_namespace_selector_expressions: ~
+
+
+# Specify log level for Volcano main component  
+  admission_log_level: 4
+  scheduler_log_level: 3
+  controller_log_level: 4
+
+# Specify container security context for admission
+# For example:
+#
+# admission_default_csc:
+#   allowPrivilegeEscalation: false
+#   runAsUser: 2000
+  admission_default_csc: ~
+  scheduler_default_csc: ~
+  controller_default_csc: ~
