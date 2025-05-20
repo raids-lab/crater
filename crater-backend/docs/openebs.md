@@ -1,0 +1,38 @@
+# OpenEBS Deployment Guide for Crater
+
+## Overview
+
+Crater relies on **OpenEBS** to manage **local persistent storage** across Kubernetes nodes. Our main goal is to:
+
+- **Enable CRD-based management of local storage resources**, allowing Crater to treat local disks as first-class, declarative resources.
+- Use **OpenEBS Local PV HostPath** to provision volumes directly from node-local paths, achieving predictable and efficient data locality.
+
+This setup is ideal for workloads like model serving or intermediate job caching, where:
+- Latency to local disk is critical.
+- Storage is short-lived but needs proper lifecycle and cleanup.
+- Kubernetes-native volume objects are preferred over hostPath mounts.
+
+## Why OpenEBS Local PV?
+
+OpenEBS supports multiple storage engines. We specifically choose the **Local PV** engine for the following reasons:
+
+- No need for external storage infrastructure.
+- Works well with node affinity and scheduling constraints.
+- Exposes storage usage and lifecycle through Kubernetes CRDs.
+- Supports cleanup of volumes automatically when PVCs are deleted.
+
+> ℹ️ Note: In our configuration, we primarily use the `openebs-hostpath` storage class with node-local paths (e.g., `/mnt/local-disks/`), and configure access via `hostPath`.
+
+## Prerequisites
+
+- `kubectl` and `helm` installed
+- Node directories pre-created at the local disk mount path (e.g. `/mnt/local-disks/`)
+
+## Installation
+
+We provide a customized Helm configuration for OpenEBS to suit Crater's storage needs.
+
+📦 Helm values: [`deployments/openebs/values.yaml`](../deployments/openebs/values.yaml)  
+📖 Detailed guide: [`deployments/openebs/README.md`](../deployments/openebs/README.md)
+
+

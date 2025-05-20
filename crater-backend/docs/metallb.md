@@ -1,0 +1,98 @@
+# MetalLB for Crater
+
+## Overview
+
+[MetalLB](https://metallb.universe.tf/) is a load-balancer implementation for bare-metal Kubernetes clusters. In Crater, it enables **internal service exposure** using **Layer 2 (L2) mode**, which is ideal for environments where nodes reside in the same subnet and can directly communicate—such as campus intranets.
+
+Crater clusters are deployed in a **private university network**, where all nodes and user access points share a common Layer 2 domain. Hence, MetalLB is configured to allocate IPs from a reserved **internal IP address pool**, enabling services of type `LoadBalancer` to be exposed without relying on external cloud providers.
+
+---
+
+## Key Features
+
+- **L2 (ARP/NDP) mode** — simple and effective for intranet environments.
+- Assigns **static internal IPs** to Kubernetes services.
+- Integrates with services like Prometheus, Grafana, and Harbor.
+
+---
+
+## Installation
+
+MetalLB is installed via the official Helm chart.
+
+### 1. Add Helm Repo
+
+```bash
+helm repo add metallb https://metallb.github.io/metallb
+helm repo update
+```
+
+### 2. Install MetalLB
+```bash
+helm upgrade --install metallb metallb/metallb -n metallb-system --version v0.14.8 --create-namespace
+```
+
+## Configuration
+### 1. Create an IPAddressPool
+Configure a pool of available intranet IPs that MetalLB can assign to services:
+```yaml
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: intranet-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - 192.168.100.240-192.168.100.250  # Replace with your campus subnet range
+```
+
+### 2. Configure L2 Advertisement
+Enable L2 broadcasting (ARP/NDP) for the IP pool:
+```yaml
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: intranet-l2
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - intranet-pool
+```
+
+## Usage
+Once installed, services of type LoadBalancer will be assigned IPs from the configured pool.
+
+Example:
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: crater-web
+  namespace: crater-system
+spec:
+  type: LoadBalancer
+  selector:
+    app: crater-ui
+  ports:
+    - port: 80
+      targetPort: 8080
+```
+
+MetalLB will automatically assign an IP (e.g. 192.168.100.241) from the defined pool.
+
+You can view assigned IPs with:
+```bash
+kubectl get services -A -o wide
+```
+
+## Best Practices
+Reserve address pool in your DHCP server or avoid conflicts manually.
+
+Ensure all cluster nodes are in the same L2 broadcast domain.
+
+Avoid exposing services to the public Internet—MetalLB here is used strictly within the campus network.
+
+* Crater combine with [IngressClass](./ingress.md) for unified domain routing. *
+
+# References
+* [MetalLB](https://metallb.universe.tf/)
