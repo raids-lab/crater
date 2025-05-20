@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nfs-test-pod
+spec:
+  containers:
+    - name: test-container
+      image: ***REMOVED***/docker.io/library/busybox:latest
+      command: ["sh", "-c", "echo 'Hello from NFS test pod' > /data/test.txt && sleep 3600"]
+      volumeMounts:
+        - name: nfs-volume
+          mountPath: /data
+  volumes:
+    - name: nfs-volume
+      persistentVolumeClaim:
+        claimName: nfs-client-pvc

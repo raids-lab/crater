@@ -1,0 +1,77 @@
+# Ingress-NGINX Deployment Guide
+
+## Overview
+
+Crater uses the [Ingress-NGINX](https://kubernetes.github.io/ingress-nginx/) controller to manage external access to services. It acts as the primary ingress point for HTTP and HTTPS traffic.
+
+We currently **pin the Ingress-NGINX version to `4.11.3`**, since Crater’s ingress annotations are not yet compatible with versions ≥ `4.12.0`. Attempting to use newer versions will result in routing rewrite errors.
+
+---
+
+## Deployment Modes
+
+### Option 1: Without LoadBalancer (e.g., Bare Metal or Dev Clusters)
+
+In clusters where a LoadBalancer service type is not available, we recommend enabling `hostNetwork` mode.
+
+```bash
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+
+helm upgrade --install ingress-nginx ingress-nginx \
+  --repo https://kubernetes.github.io/ingress-nginx \
+  --namespace ingress-nginx \
+  --create-namespace \
+  --version 4.11.3 \
+  --set controller.image.registry="***REMOVED***/registry.k8s.io" \
+  --set controller.admissionWebhooks.patch.image.registry="***REMOVED***/registry.k8s.io" \
+  --set controller.hostNetwork=true \
+  --set controller.dnsPolicy=ClusterFirstWithHostNet \
+  --set controller.healthCheckHost="10.109.80.4" \
+  --set 'controller.nodeSelector.kubernetes\.io/hostname=cnode1' \
+  --set "controller.tolerations="
+```
+
+🔧 Adjust node selector, tolerations, and healthCheckHost to match your cluster node configuration.
+
+Option 2: With MetalLB (Recommended by Crater)
+In our production clusters, Crater uses MetalLB to allocate internal IPs in Layer 2 mode. The ingress controller is deployed as a LoadBalancer service that gets an internal IP.
+
+```bash
+helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+  --namespace ingress-nginx \
+  --create-namespace \
+  --version 4.11.3 \
+  --set controller.image.registry="***REMOVED***/registry.k8s.io" \
+  --set controller.admissionWebhooks.patch.image.registry="***REMOVED***/registry.k8s.io" \
+  --set controller.allowSnippetAnnotations=true
+```
+
+📌 This config uses an internal IP from MetalLB’s pool and supports service discovery inside a trusted network (e.g., university intranet).
+
+You can verify the external IP assignment via:
+```bash
+kubectl get svc -n ingress-nginx
+```
+
+Example:
+
+```bash
+NAME                       TYPE           EXTERNAL-IP       PORT(S)
+ingress-nginx-controller   LoadBalancer   192.168.100.243   80:31234/TCP,443:31235/TCP
+```
+
+# Version Compatibility Note
+Crater currently depends on certain legacy annotations for ingress routing (e.g., nginx.ingress.kubernetes.io/rewrite-target). These may break in newer ingress-nginx versions. Until full migration, use 4.11.3.
+
+# Uninstall
+To remove the ingress controller:
+
+```bash
+helm uninstall ingress-nginx -n ingress-nginx
+```
+# References
+
+* [Ingress-NGINX Helm Chart](https://github.com/kubernetes/ingress-nginx)
+
+* [Crater Compatibility Notes](../README.md)
