@@ -75,7 +75,6 @@ func GetPermissionFromToken(token util.JWTMessage) model.FilePermission {
 }
 
 // 是列出用户当前账户、公共账户和自己用户空间的地址和实际地址
-// 目前用户的space没有前缀/，账户的有前缀/
 func ListMySpace(userID, accountID uint, c *gin.Context) (allspace, allRealSpace []string) {
 	u := query.User
 	user, err := u.WithContext(c).Where(u.ID.Eq(userID)).First()
@@ -103,7 +102,7 @@ func ListMySpace(userID, accountID uint, c *gin.Context) (allspace, allRealSpace
 			return space, realSpace
 		}
 		space = append(space, strings.TrimLeft(account.Space, "/"))
-		realSpace = append(realSpace, config.GetConfig().AccountSpacePrefix+account.Space)
+		realSpace = append(realSpace, config.GetConfig().AccountSpacePrefix+"/"+account.Space)
 	}
 	space = append(space, config.GetConfig().PublicSpacePrefix)
 	return space, realSpace
@@ -606,7 +605,7 @@ func checkSpace() {
 		}
 	}
 	for _, acc := range account {
-		space := config.GetConfig().AccountSpacePrefix + acc.Space
+		space := config.GetConfig().AccountSpacePrefix + "/" + acc.Space
 		_, err := fs.FileSystem.Stat(ctx, space)
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
@@ -795,7 +794,7 @@ func Redirect(c *gin.Context, path string, token util.JWTMessage) (string, error
 		if err != nil {
 			return "", fmt.Errorf("account does not exist")
 		}
-		res = accountSpacePrefix + account.Space + res
+		res = accountSpacePrefix + "/" + account.Space + res
 	} else if strings.HasPrefix(path, model.AdminPublicPath) {
 		res = strings.TrimPrefix(path, model.AdminPublicPath)
 		res = publicSpacePrefix + res
@@ -826,7 +825,8 @@ func RegisterFile(r *gin.Engine) {
 	r.Handle("GET", "/api/ss/files/*path", GetFiles)
 	r.Handle("GET", "/api/ss/rwfiles", GetFilesWithRWAcc)
 	r.Handle("GET", "/api/ss/rwfiles/*path", GetFilesWithRWAcc)
-	r.Handle("GET", "/api/ss/admin/*path", GetAllFiles)
+	r.Handle("GET", "/api/ss/admin/files", GetAllFiles)
+	r.Handle("GET", "/api/ss/admin/files/*path", GetAllFiles)
 	r.Handle("GET", "/api/ss/download/*path", Download)
 	r.Handle("DELETE", "/api/ss/delete/*path", DeleteFile)
 	r.Handle("GET", "/api/ss/userspace", GetUserSpace)
