@@ -42,6 +42,7 @@ import {
   apiJobGetEvent,
   JobStatus,
   getJobStateType,
+  apiJobGetPods,
 } from "@/services/api/vcjob";
 import JobPhaseLabel from "@/components/badge/JobPhaseBadge";
 import { TimeDistance } from "@/components/custom/TimeDistance";
@@ -64,18 +65,62 @@ import { useAtomValue } from "jotai";
 import { configGrafanaJobAtom } from "@/utils/store/config";
 import UserLabel from "@/components/label/UserLabel";
 import JupyterIcon from "@/components/icon/JupyterIcon";
+import PrefixLinkButton from "@/components/button/PrefixLinkButton";
+import { apiGetPodIngresses } from "@/services/api/tool";
 
 export function BaseCore({ jobName }: { jobName: string }) {
   useFixedLayout();
   const navigate = useNavigate();
   const grafanaJob = useAtomValue(configGrafanaJobAtom);
 
+  // 获取作业详情
   const { data, isLoading } = useQuery({
     queryKey: ["job", "detail", jobName],
     queryFn: () => apiJobGetDetail(jobName),
     select: (res) => res.data.data,
     refetchInterval: REFETCH_INTERVAL,
   });
+
+  // Pod 相关信息获取
+  const podQuery = useQuery({
+    queryKey: ["job", "detail", jobName, "pods"],
+    queryFn: () => apiJobGetPods(jobName),
+    select: (res) => res.data.data.sort((a, b) => a.name.localeCompare(b.name)),
+    enabled: !!jobName,
+  });
+
+  // 使用 useMemo 缓存 namespace 和 podName，避免每次渲染都重新取值
+  const [namespace, podName] = useMemo(() => {
+    const pod = podQuery.data?.[0];
+    return [pod?.namespace, pod?.name];
+  }, [podQuery.data]);
+
+  // ingress 查询依赖 namespace 和 podName，且 enabled 依赖 podQuery.isSuccess
+  const { data: ingressList = [] } = useQuery({
+    queryKey: ["ingresses", namespace, podName],
+    queryFn: async () => {
+      if (!namespace || !podName) return [];
+      const response = await apiGetPodIngresses(namespace, podName);
+      return response.data.data.ingresses;
+    },
+    enabled: !!namespace && !!podName && podQuery.isSuccess,
+  });
+
+  // 用 useMemo 缓存 ingressNames 和 ingressPrefixes，避免不必要的计算
+  const ingressNames = useMemo(
+    () =>
+      Array.isArray(ingressList)
+        ? ingressList.map((ing: { name: string }) => ing.name)
+        : [],
+    [ingressList],
+  );
+  const ingressPrefixes = useMemo(
+    () =>
+      Array.isArray(ingressList)
+        ? ingressList.map((ing: { prefix: string }) => ing.prefix)
+        : [],
+    [ingressList],
+  );
 
   const { mutate: getPortToken } = useMutation({
     mutationFn: (jobName: string) => apiJupyterTokenGet(jobName),
@@ -131,6 +176,14 @@ export function BaseCore({ jobName }: { jobName: string }) {
           descriptionCopiable
         >
           <div className="flex flex-row gap-3">
+            {(data.jobType === JobType.Jupyter ||
+              data.jobType === JobType.Custom) &&
+              data.status === JobPhase.Running && (
+                <PrefixLinkButton
+                  names={ingressNames}
+                  prefixes={ingressPrefixes}
+                />
+              )}
             {(data.jobType === JobType.Jupyter ||
               data.jobType === JobType.Custom) &&
               data.status === JobPhase.Running && (
