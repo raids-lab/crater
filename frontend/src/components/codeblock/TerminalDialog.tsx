@@ -125,8 +125,12 @@ function TerminalCard({
       //另起一行，说明关闭的时间
       terminal.writeln("");
       terminal.writeln("Connection closed on " + new Date().toLocaleString());
-      terminal.writeln("尊敬的用户您好，我们在网页端提供的终端，由于用户无操作、网络波动等因素，并不稳定。");
-      terminal.writeln("这个终端比较适合简易调试的场景，如果您有复杂调试的需求，建议使用 SSH、Jupyter、CodeServer 等功能。");
+      terminal.writeln(
+        "尊敬的用户您好，我们在网页端提供的终端，由于用户无操作、网络波动等因素，并不稳定。",
+      );
+      terminal.writeln(
+        "这个终端比较适合简易调试的场景，如果您有复杂调试的需求，建议使用 SSH、Jupyter、CodeServer 等功能。",
+      );
     };
 
     ws.onopen = () => {
