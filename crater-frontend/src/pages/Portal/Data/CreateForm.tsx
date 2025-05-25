@@ -161,7 +161,7 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
                     <FormControl>
                       <FileSelectDialog
                         value={field.value.split("/").pop()}
-                        isrw={true}
+                        isrw={false}
                         title={`选择${dataTypeLabel}地址`}
                         handleSubmit={(item) => {
                           field.onChange(item.id);
