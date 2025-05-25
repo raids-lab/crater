@@ -303,7 +303,7 @@ func redirectDatasetURL(c *gin.Context, url string, token util.JWTMessage) (stri
 		if aerr != nil {
 			return "", aerr
 		}
-		subPath := filepath.Clean(config.GetConfig().AccountSpacePrefix + account.Space + strings.TrimPrefix(url, "account"))
+		subPath := filepath.Clean(config.GetConfig().AccountSpacePrefix + "/" + account.Space + strings.TrimPrefix(url, "account"))
 		return subPath, nil
 	} else if strings.HasPrefix(url, "user") {
 		u := query.User

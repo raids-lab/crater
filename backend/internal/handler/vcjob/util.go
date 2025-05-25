@@ -173,7 +173,7 @@ func resolveVolumeMount(c context.Context, token util.JWTMessage, vm VolumeMount
 		if err != nil {
 			return v1.VolumeMount{}, err
 		}
-		subPath := filepath.Clean(config.GetConfig().AccountSpacePrefix + account.Space + strings.TrimPrefix(vm.SubPath, "account"))
+		subPath := filepath.Clean(config.GetConfig().AccountSpacePrefix + "/" + account.Space + strings.TrimPrefix(vm.SubPath, "account"))
 		if isReadOnly(token.AccountAccessMode) {
 			// Read-only access
 			return v1.VolumeMount{
