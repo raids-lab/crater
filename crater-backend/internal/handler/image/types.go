@@ -99,11 +99,36 @@ type (
 		ID   uint     `json:"id"`
 		Tags []string `json:"tags"`
 	}
+
+	ShareImageRequest struct {
+		IDList  []uint `json:"idList"`
+		ImageID uint   `json:"imageID"`
+		Type    string `json:"type"` // user: share with user, account: share with account
+	}
+
+	CancelShareImageRequest struct {
+		ID      uint   `json:"id"`
+		ImageID uint   `json:"imageID"`
+		Type    string `json:"type"` // user: cancel share with user, account: cancel share with account
+	}
+
+	ImageGrantRequest struct {
+		ImageID uint `form:"imageID" binding:"required"`
+	}
+
+	UserSearchRequest struct {
+		ImageID uint   `form:"imageID" binding:"required"`
+		Name    string `form:"name"`
+	}
+
+	AccountSearchRequest struct {
+		ImageID uint `form:"imageID" binding:"required"`
+	}
 )
 
 type (
 	ListImageResponse struct {
-		ImageInfoList []ImageInfo `json:"imageList"`
+		ImageInfoList []*ImageInfo `json:"imageList"`
 	}
 
 	GetKanikoResponse struct {
@@ -147,6 +172,15 @@ type (
 	GetHarborIPResponse struct {
 		HarborIP string `json:"ip"`
 	}
+
+	ImageGrantResponse struct {
+		UserList    []ImageGrantedUsers    `json:"userList"`
+		AccountList []ImageGrantedAccounts `json:"accountList"`
+	}
+
+	SearchUserResponse struct {
+		UserList []ImageGrantedUsers `json:"userList"`
+	}
 )
 
 type (
@@ -178,6 +212,7 @@ type (
 		Tags             []string              `json:"tags"`
 		ImageBuildSource model.ImageSourceType `json:"imageBuildSource"`
 		ImagePackName    *string               `json:"imagepackName"`
+		ImageShareStatus model.ImageShareType  `json:"imageShareStatus"`
 	}
 
 	ImageInfoLinkPair struct {
@@ -213,5 +248,15 @@ type (
 		Tags        []string
 		Template    string
 		BuildSource model.BuildSource
+	}
+
+	ImageGrantedUsers struct {
+		Nickname string `json:"nickname"`
+		Name     string `json:"name"`
+		ID       uint   `json:"id"`
+	}
+	ImageGrantedAccounts struct {
+		Name string `json:"name"`
+		ID   uint   `json:"id"`
 	}
 )

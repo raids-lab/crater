@@ -399,6 +399,48 @@ func main() {
 				return nil
 			},
 		},
+		{
+			ID: "202505192046",
+			Migrate: func(tx *gorm.DB) error {
+				type ImageUser struct {
+					gorm.Model
+					ImageID uint
+					Image   model.Image
+					UserID  uint
+					User    model.User
+				}
+
+				// 明确指定表名
+				if err := tx.Table("image_users").Migrator().CreateTable(&ImageUser{}); err != nil {
+					return err
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("image_users") // 删除 imageuser 表
+			},
+		},
+		{
+			ID: "202505192047",
+			Migrate: func(tx *gorm.DB) error {
+				type ImageAccount struct {
+					gorm.Model
+					ImageID   uint
+					Image     model.Image
+					AccountID uint
+					Account   model.Account
+				}
+
+				// 明确指定表名
+				if err := tx.Table("image_accounts").Migrator().CreateTable(&ImageAccount{}); err != nil {
+					return err
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("image_accounts") // 删除 image_accounts 表
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -416,6 +458,8 @@ func main() {
 			&model.Image{},
 			&model.Jobtemplate{},
 			&model.Alert{},
+			&model.ImageAccount{},
+			&model.ImageUser{},
 		)
 		if err != nil {
 			return err

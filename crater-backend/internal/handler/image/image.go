@@ -3,6 +3,7 @@ package image
 import (
 	"fmt"
 	"net/http"
+	"sort"
 
 	"github.com/gin-gonic/gin"
 
@@ -63,20 +64,47 @@ func (mgr *ImagePackMgr) UserUploadImage(c *gin.Context) {
 // @Security Bearer
 // @Router /v1/images/image [GET]
 func (mgr *ImagePackMgr) UserListImage(c *gin.Context) {
-	var images []*model.Image
 	var err error
 	token := util.GetToken(c)
+	var response ListImageResponse
+	var imageInfoList []*ImageInfo
 	imageQuery := query.Image
-	if images, err = imageQuery.WithContext(c).
+	// 1. 获取私有镜像
+	var privateImages []*model.Image
+	if privateImages, err = imageQuery.WithContext(c).
 		Preload(query.Image.User).
 		Where(imageQuery.UserID.Eq(token.UserID)).
 		Order(imageQuery.CreatedAt.Desc()).
+		Find(); err != nil {
+		logutils.Log.Errorf("fetch kaniko entity failed, err:%v", err)
+	}
+	imageInfoList = mgr.processImageListResponse(privateImages, model.Private, imageInfoList)
+	// 2. 获取公共镜像（isPublic = true,兼容旧镜像, TODO:移除isPublic）
+	var oldPublicImages []*model.Image
+	if oldPublicImages, err = imageQuery.WithContext(c).
+		Preload(query.Image.User).
 		Or(imageQuery.IsPublic).
 		Order(imageQuery.CreatedAt.Desc()).
 		Find(); err != nil {
 		logutils.Log.Errorf("fetch kaniko entity failed, err:%v", err)
 	}
-	response := mgr.generateImageListResponse(images)
+	imageInfoList = mgr.processImageListResponse(oldPublicImages, model.Public, imageInfoList)
+	// 2. 获取公共镜像（ImageAccountID = 1）
+	newPublicImages := mgr.getPublicImages(c)
+	imageInfoList = mgr.processImageListResponse(newPublicImages, model.Public, imageInfoList)
+	// 3. 获取本账户拥有的镜像
+	accountSharedImages := mgr.getAccountSharedImages(c, token.AccountID)
+	imageInfoList = mgr.processImageListResponse(accountSharedImages, model.AccountShare, imageInfoList)
+	// 4. 获取其他用户分享的镜像
+	userSharedImages := mgr.getUserSharedImages(c, token.UserID)
+	imageInfoList = mgr.processImageListResponse(userSharedImages, model.UserShare, imageInfoList)
+	// 5. 去除重复的镜像
+	imageInfoList = mgr.deduplicate(imageInfoList)
+	// 6. 降序排序
+	sort.Slice(imageInfoList, func(i, j int) bool {
+		return imageInfoList[i].CreatedAt.After(imageInfoList[j].CreatedAt)
+	})
+	response = ListImageResponse{ImageInfoList: imageInfoList}
 	resputil.Success(c, response)
 }
 
@@ -98,7 +126,9 @@ func (mgr *ImagePackMgr) AdminListImage(c *gin.Context) {
 		Find(); err != nil {
 		logutils.Log.Errorf("fetch image entity failed, err:%v", err)
 	}
-	response := mgr.generateImageListResponse(images)
+	var imageInfoList []*ImageInfo
+	mgr.processImageListResponse(images, model.Public, imageInfoList)
+	response := ListImageResponse{ImageInfoList: imageInfoList}
 	resputil.Success(c, response)
 }
 
@@ -131,6 +161,7 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 		resputil.Error(c, "fetch available image failed", resputil.NotSpecified)
 		return
 	}
+
 	imageInfos := []ImageInfo{}
 	for i := range images {
 		image := images[i]
@@ -151,6 +182,75 @@ func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	}
 	resp := ListAvailableImageResponse{Images: imageInfos}
 	resputil.Success(c, resp)
+}
+
+//nolint:dupl // ignore duplicate code
+func (mgr *ImagePackMgr) getUserSharedImages(c *gin.Context, userID uint) []*model.Image {
+	sharedImages := []*model.Image{}
+	imageShareQuery := query.ImageUser
+	imageShares, err := imageShareQuery.WithContext(c).
+		Preload(imageShareQuery.Image).
+		Preload(imageShareQuery.Image.User).
+		Where(imageShareQuery.UserID.Eq(userID)).
+		Find()
+	if err != nil {
+		logutils.Log.Errorf("fetch shared image failed, err:%v", err)
+		return sharedImages
+	}
+
+	for _, imageShare := range imageShares {
+		sharedImages = append(sharedImages, &imageShare.Image)
+	}
+	return sharedImages
+}
+
+func (mgr *ImagePackMgr) getPublicImages(c *gin.Context) []*model.Image {
+	sharedImages := []*model.Image{}
+	imageShareQuery := query.ImageAccount
+	imageShares, err := imageShareQuery.WithContext(c).
+		Preload(imageShareQuery.Image).
+		Preload(imageShareQuery.Image.User).
+		Where(imageShareQuery.AccountID.Eq(model.DefaultAccountID)).
+		Find()
+	if err != nil {
+		logutils.Log.Errorf("fetch shared image failed, err:%v", err)
+		return sharedImages
+	}
+	for _, imageShare := range imageShares {
+		sharedImages = append(sharedImages, &imageShare.Image)
+	}
+	return sharedImages
+}
+
+//nolint:dupl // ignore duplicate code
+func (mgr *ImagePackMgr) getAccountSharedImages(c *gin.Context, accountID uint) []*model.Image {
+	sharedImages := []*model.Image{}
+	imageShareQuery := query.ImageAccount
+	imageShares, err := imageShareQuery.WithContext(c).
+		Preload(imageShareQuery.Image).
+		Preload(imageShareQuery.Image.User).
+		Where(imageShareQuery.AccountID.Eq(accountID)).
+		Find()
+	if err != nil {
+		logutils.Log.Errorf("fetch shared image failed, err:%v", err)
+		return sharedImages
+	}
+	for _, imageShare := range imageShares {
+		sharedImages = append(sharedImages, &imageShare.Image)
+	}
+	return sharedImages
+}
+
+func (mgr *ImagePackMgr) deduplicate(imageInfoList []*ImageInfo) []*ImageInfo {
+	seen := make(map[uint]struct{})
+	result := []*ImageInfo{}
+	for _, img := range imageInfoList {
+		if _, exists := seen[img.ID]; !exists {
+			seen[img.ID] = struct{}{}
+			result = append(result, img)
+		}
+	}
+	return result
 }
 
 // DeleteImageByID godoc
@@ -243,26 +343,6 @@ func (mgr *ImagePackMgr) deleteImageByIDList(c *gin.Context, isAdminMode bool, i
 	return flag
 }
 
-// UserUpdateImagePublicStatus godoc
-// @Summary 用户模式下更新镜像的公共或私有状态
-// @Description 传入uint参数
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param req body ChangeImagePublicStatusRequest true "更新镜像的ID"
-// @Router /v1/images/change [POST]
-func (mgr *ImagePackMgr) UserUpdateImagePublicStatus(c *gin.Context) {
-	req := &ChangeImagePublicStatusRequest{}
-	var err error
-	if err = c.ShouldBindUri(req); err != nil {
-		logutils.Log.Errorf("validate update image public status params failed, err %v", err)
-		resputil.Error(c, "validate params", resputil.NotSpecified)
-		return
-	}
-	mgr.updateImagePublicStatus(c, false, req.ID)
-}
-
 // AdminUpdateImagePublicStatus godoc
 // @Summary 管理员模式下更新镜像的公共或私有状态
 // @Description 传入uint参数
@@ -280,20 +360,29 @@ func (mgr *ImagePackMgr) AdminUpdateImagePublicStatus(c *gin.Context) {
 		resputil.Error(c, "validate params", resputil.NotSpecified)
 		return
 	}
-	mgr.updateImagePublicStatus(c, true, req.ID)
-}
-
-func (mgr *ImagePackMgr) updateImagePublicStatus(c *gin.Context, isAdminMode bool, imageID uint) {
-	imageQuery := query.Image
-	specifiedQuery := imageQuery.WithContext(c).Preload(query.Image.User)
-	if !isAdminMode {
-		specifiedQuery = specifiedQuery.Where(imageQuery.UserID.Eq(util.GetToken(c).UserID))
-	}
-	if _, err := specifiedQuery.
-		Where(imageQuery.ID.Eq(imageID)).
-		Update(imageQuery.IsPublic, imageQuery.IsPublic.Not()); err != nil {
-		logutils.Log.Errorf("update image image public status failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, "update status failed", resputil.NotSpecified)
+	imageAccountQuery := query.ImageAccount
+	if _, err = imageAccountQuery.WithContext(c).
+		Where(imageAccountQuery.ImageID.Eq(req.ID)).
+		Where(imageAccountQuery.AccountID.Eq(model.DefaultAccountID)).
+		First(); err != nil {
+		imageAccountEntity := &model.ImageAccount{
+			ImageID:   req.ID,
+			AccountID: model.DefaultAccountID,
+		}
+		if err = imageAccountQuery.WithContext(c).Create(imageAccountEntity); err != nil {
+			logutils.Log.Errorf("create image share entity failed, err %v", err)
+			resputil.Error(c, fmt.Sprintf("%+v", err), resputil.NotSpecified)
+			return
+		}
+	} else {
+		if _, err = imageAccountQuery.WithContext(c).
+			Where(imageAccountQuery.ImageID.Eq(req.ID)).
+			Where(imageAccountQuery.AccountID.Eq(model.DefaultAccountID)).
+			Delete(); err != nil {
+			logutils.Log.Errorf("delete image share entity failed, err %v", err)
+			resputil.Error(c, fmt.Sprintf("%+v", err), resputil.NotSpecified)
+			return
+		}
 	}
 	resputil.Success(c, "")
 }
@@ -400,11 +489,15 @@ func (mgr ImagePackMgr) changeImageTaskType(c *gin.Context, isAdminMode bool, im
 	resputil.Success(c, "")
 }
 
-func (mgr *ImagePackMgr) generateImageListResponse(images []*model.Image) ListImageResponse {
-	imageInfos := []ImageInfo{}
+func (mgr *ImagePackMgr) processImageListResponse(
+	images []*model.Image,
+	status model.ImageShareType,
+	imageInfoList []*ImageInfo,
+) []*ImageInfo {
+	imageInfos := []*ImageInfo{}
 	for i := range images {
 		image := images[i]
-		imageInfo := ImageInfo{
+		imageInfo := &ImageInfo{
 			ID:          image.ID,
 			ImageLink:   image.ImageLink,
 			Description: image.Description,
@@ -418,12 +511,12 @@ func (mgr *ImagePackMgr) generateImageListResponse(images []*model.Image) ListIm
 			Tags:             image.Tags.Data(),
 			ImageBuildSource: image.ImageSource,
 			ImagePackName:    image.ImagePackName,
+			ImageShareStatus: status,
 		}
 		imageInfos = append(imageInfos, imageInfo)
 	}
-	return ListImageResponse{
-		ImageInfoList: imageInfos,
-	}
+	imageInfoList = append(imageInfoList, imageInfos...)
+	return imageInfoList
 }
 
 // UserChangeImageTagsType godoc
@@ -471,4 +564,329 @@ func (mgr *ImagePackMgr) changeImageTags(c *gin.Context, imageID uint, newTags [
 		resputil.HTTPError(c, http.StatusBadRequest, "update tags failed", resputil.NotSpecified)
 	}
 	resputil.Success(c, "")
+}
+
+// UserShareImageWithAccount godoc
+// @Summary 分享镜像到账户或用户
+// @Description 普通用户分享镜像到其他账户或用户
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Router /v1/images/share [POST]
+func (mgr *ImagePackMgr) UserShareImage(c *gin.Context) {
+	req := &ShareImageRequest{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		logutils.Log.Errorf("validate tags data failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		return
+	}
+	for _, id := range req.IDList {
+		if req.Type == "user" {
+			if err := mgr.createImageUserEntity(c, req.ImageID, id); err != nil {
+				logutils.Log.Errorf("create image share entity failed, err %v", err)
+				resputil.Error(c, fmt.Sprintf("%+v", err), resputil.NotSpecified)
+				return
+			}
+		} else {
+			if err := mgr.createImageAccountEntity(c, req.ImageID, id); err != nil {
+				logutils.Log.Errorf("create image share entity failed, err %v", err)
+				resputil.Error(c, fmt.Sprintf("%+v", err), resputil.NotSpecified)
+				return
+			}
+		}
+	}
+	resputil.Success(c, "")
+}
+
+//nolint:dupl // ignore duplicate code
+func (mgr *ImagePackMgr) createImageAccountEntity(c *gin.Context, imageID, accountID uint) error {
+	accountImageQuery := query.ImageAccount
+	accountQuery := query.Account
+	if _, err := accountQuery.WithContext(c).Where(accountQuery.ID.Eq(accountID)).First(); err != nil {
+		return err
+	}
+	// check if the image has been shared to this account
+	imageShareEntity, _ := accountImageQuery.WithContext(c).
+		Where(accountImageQuery.ImageID.Eq(imageID)).
+		Where(accountImageQuery.AccountID.Eq(accountID)).
+		First()
+	if imageShareEntity != nil {
+		return fmt.Errorf("image has been shared to this account")
+	}
+	// create a new image share entity
+	imageShareEntity = &model.ImageAccount{
+		ImageID:   imageID,
+		AccountID: accountID,
+	}
+	if err := accountImageQuery.WithContext(c).Create(imageShareEntity); err != nil {
+		return err
+	}
+	return nil
+}
+
+//nolint:dupl // ignore duplicate code
+func (mgr *ImagePackMgr) createImageUserEntity(c *gin.Context, imageID, userID uint) error {
+	userImageQuery := query.ImageUser
+	userQuery := query.User
+	// check if the user exists
+	if _, err := userQuery.WithContext(c).Where(userQuery.ID.Eq(userID)).First(); err != nil {
+		return err
+	}
+	// check if the image has been shared to this user
+	imageShareEntity, _ := userImageQuery.WithContext(c).
+		Where(userImageQuery.ImageID.Eq(imageID)).
+		Where(userImageQuery.UserID.Eq(userID)).
+		First()
+	if imageShareEntity != nil {
+		return fmt.Errorf("image has been shared to this user")
+	}
+	// create a new image share entity
+	imageShareEntity = &model.ImageUser{
+		ImageID: imageID,
+		UserID:  userID,
+	}
+	if err := userImageQuery.WithContext(c).Create(imageShareEntity); err != nil {
+		return err
+	}
+	return nil
+}
+
+// UserCancelShareImageWithAccount godoc
+// @Summary 取消分享镜像到账户
+// @Description 普通用户取消分享镜像到其他账户
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Router /v1/images/share [DELETE]
+func (mgr *ImagePackMgr) UserCancelShareImage(c *gin.Context) {
+	req := &CancelShareImageRequest{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		logutils.Log.Errorf("validate tags data failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		return
+	}
+	if req.Type == "user" {
+		if err := mgr.cancelShareImageWithUser(c, req.ImageID, req.ID); err != nil {
+			resputil.Error(c, fmt.Sprintf("%v", err), resputil.NotSpecified)
+			return
+		}
+	} else {
+		if err := mgr.cancelShareImageWithAccount(c, req.ImageID, req.ID); err != nil {
+			resputil.Error(c, fmt.Sprintf("%v", err), resputil.NotSpecified)
+			return
+		}
+	}
+	resputil.Success(c, "")
+}
+
+//nolint:dupl // ignore duplicate code
+func (mgr *ImagePackMgr) cancelShareImageWithAccount(c *gin.Context, imageID, accountID uint) error {
+	accountImageQuery := query.ImageAccount
+	userQuery := query.User
+	// check if the account exists
+	if _, err := userQuery.WithContext(c).Where(userQuery.ID.Eq(accountID)).First(); err != nil {
+		return fmt.Errorf("account does not exist: %w", err)
+	}
+	// check if the image has been shared to this account
+	imageAccountEntity, _ := accountImageQuery.WithContext(c).
+		Where(accountImageQuery.ImageID.Eq(imageID)).
+		Where(accountImageQuery.AccountID.Eq(accountID)).
+		First()
+	if imageAccountEntity == nil {
+		return fmt.Errorf("image hasn't been shared to this account")
+	}
+	// create a new image share entity
+	if _, err := accountImageQuery.WithContext(c).Delete(imageAccountEntity); err != nil {
+		return fmt.Errorf("cancel share with account failed: %w", err)
+	}
+	return nil
+}
+
+//nolint:dupl // ignore duplicate code
+func (mgr *ImagePackMgr) cancelShareImageWithUser(c *gin.Context, imageID, userID uint) error {
+	userImageQuery := query.ImageUser
+	userQuery := query.User
+	// check if the user exists
+	if _, err := userQuery.WithContext(c).Where(userQuery.ID.Eq(userID)).First(); err != nil {
+		return fmt.Errorf("user does not exist: %w", err)
+	}
+	// check if the image has been shared to this user
+	imageUserEntity, _ := userImageQuery.WithContext(c).
+		Where(userImageQuery.ImageID.Eq(imageID)).
+		Where(userImageQuery.UserID.Eq(userID)).
+		First()
+	if imageUserEntity == nil {
+		return fmt.Errorf("image hasn't been shared to this user")
+	}
+	// create a new image share entity
+	if _, err := userImageQuery.WithContext(c).Delete(imageUserEntity); err != nil {
+		return fmt.Errorf("cancel share with user failed: %w", err)
+	}
+	return nil
+}
+
+// GetImageGrantedUserOrAccount godoc
+// @Summary 获取镜像分享到的用户或账户
+// @Description  获取镜像分享到的用户或账户
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Router /v1/images/grant [GET]
+func (mgr *ImagePackMgr) GetImageGrantedUserOrAccount(c *gin.Context) {
+	req := &ImageGrantRequest{}
+	if err := c.ShouldBindQuery(req); err != nil {
+		logutils.Log.Errorf("validate imageID failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		return
+	}
+
+	grangtedAccounts := []ImageGrantedAccounts{}
+	imageAccountQuery := query.ImageAccount
+	imageAccounts, err := imageAccountQuery.WithContext(c).
+		Preload(imageAccountQuery.Account).
+		Where(imageAccountQuery.ImageID.Eq(req.ImageID)).
+		Find()
+	if err != nil {
+		logutils.Log.Errorf("fetch image share with account failed, err:%v", err)
+		resputil.Error(c, "fetch image share with account failed", resputil.NotSpecified)
+		return
+	}
+	for _, ia := range imageAccounts {
+		grangtedAccounts = append(grangtedAccounts, ImageGrantedAccounts{
+			ID:   ia.Account.ID,
+			Name: ia.Account.Nickname,
+		})
+	}
+
+	grantedUsers := []ImageGrantedUsers{}
+	imageUserQuery := query.ImageUser
+	imageUsers, err := imageUserQuery.WithContext(c).
+		Preload(imageUserQuery.User).
+		Where(imageUserQuery.ImageID.Eq(req.ImageID)).
+		Find()
+	if err != nil {
+		logutils.Log.Errorf("fetch image share with user failed, err:%v", err)
+		resputil.Error(c, "fetch image share with user failed", resputil.NotSpecified)
+		return
+	}
+	for _, iu := range imageUsers {
+		grantedUsers = append(grantedUsers, ImageGrantedUsers{
+			ID:       iu.User.ID,
+			Name:     iu.User.Name,
+			Nickname: iu.User.Nickname,
+		})
+	}
+	resputil.Success(c, ImageGrantResponse{UserList: grantedUsers, AccountList: grangtedAccounts})
+}
+
+// UserSearchNotGrantedAccounts godoc
+// @Summary 获取未被分享该镜像的账户
+// @Description 获取未被分享该镜像的账户
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Router /v1/images/account [GET]
+func (mgr *ImagePackMgr) UserGetImageUngrantedAccounts(c *gin.Context) {
+	req := &AccountSearchRequest{}
+	if err := c.ShouldBindQuery(req); err != nil {
+		logutils.Log.Errorf("validate search failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		return
+	}
+	// 1. 查询已分享的AccountID
+	sharedAccountIDs := []uint{}
+	imageAccountQuery := query.ImageAccount
+	if err := imageAccountQuery.WithContext(c).
+		Where(imageAccountQuery.ImageID.Eq(req.ImageID)).
+		Pluck(imageAccountQuery.AccountID, &sharedAccountIDs); err != nil {
+		logutils.Log.Errorf("query shared account ids failed, err:%v", err)
+		resputil.Error(c, "query shared account ids failed", resputil.NotSpecified)
+		return
+	}
+	// 2. 禁止用户分享给默认用户
+	sharedAccountIDs = append(sharedAccountIDs, model.DefaultAccountID)
+	// 3. 获取用户当前所在的账户
+	userAccountQuery := query.UserAccount
+	accountIDs := []uint{}
+	if err := userAccountQuery.WithContext(c).
+		Where(userAccountQuery.UserID.Eq(util.GetToken(c).UserID)).
+		Pluck(userAccountQuery.AccountID, &accountIDs); err != nil {
+		logutils.Log.Errorf("get user current account failed, err:%v", err)
+		resputil.Error(c, "get user current account failed", resputil.NotSpecified)
+	}
+	// 4. 查询未被分享的Account
+	accountQuery := query.Account
+	accounts, err := accountQuery.WithContext(c).
+		Where(accountQuery.ID.In(accountIDs...)).
+		Where(accountQuery.ID.NotIn(sharedAccountIDs...)).
+		Find()
+	if err != nil {
+		logutils.Log.Errorf("fetch account failed, err:%v", err)
+		resputil.Error(c, "fetch account failed", resputil.NotSpecified)
+		return
+	}
+	// 5. 生成请求内容
+	accountInfos := []ImageGrantedAccounts{}
+	for _, account := range accounts {
+		accountInfos = append(accountInfos, ImageGrantedAccounts{
+			ID:   account.ID,
+			Name: account.Nickname,
+		})
+	}
+	resp := ImageGrantResponse{AccountList: accountInfos}
+	resputil.Success(c, resp)
+}
+
+// UserSearchUngrantedUsers godoc
+// @Summary 获取未被分享该镜像的用户（支持名称模糊搜索）
+// @Description  获取未被分享该镜像的用户
+// @Tags ImagePack
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Router /v1/images/user [GET]
+func (mgr *ImagePackMgr) UserSearchUngrantedUsers(c *gin.Context) {
+	req := &UserSearchRequest{}
+	if err := c.ShouldBindQuery(req); err != nil {
+		logutils.Log.Errorf("validate search failed, err %v", err)
+		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		return
+	}
+
+	// 1. 查询已分享的用户ID
+	sharedUserIDs := []uint{}
+	imageUserQuery := query.ImageUser
+	if err := imageUserQuery.WithContext(c).
+		Where(imageUserQuery.ImageID.Eq(req.ImageID)).
+		Pluck(imageUserQuery.UserID, &sharedUserIDs); err != nil {
+		resputil.Error(c, "query shared user ids failed", resputil.NotSpecified)
+		return
+	}
+	sharedUserIDs = append(sharedUserIDs, util.GetToken(c).UserID)
+	// 2. 查询名称包含该字符串的用户，去除已被分享的用户
+	userQuery := query.User
+	users, err := userQuery.WithContext(c).
+		Where(userQuery.Name.Like(fmt.Sprintf("%%%s%%", req.Name))).
+		Or(userQuery.Nickname.Like(fmt.Sprintf("%%%s%%", req.Name))).
+		Where(userQuery.ID.NotIn(sharedUserIDs...)).
+		Find()
+	if err != nil {
+		logutils.Log.Errorf("fetch user failed, err:%v", err)
+		resputil.Error(c, "fetch user failed", resputil.NotSpecified)
+		return
+	}
+	userInfos := []ImageGrantedUsers{}
+	for _, user := range users {
+		userInfos = append(userInfos, ImageGrantedUsers{
+			ID:       user.ID,
+			Name:     user.Name,
+			Nickname: user.Nickname,
+		})
+	}
+	resp := ImageGrantResponse{UserList: userInfos}
+	resputil.Success(c, resp)
 }
