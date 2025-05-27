@@ -1,8 +1,10 @@
 import { PhaseBadge, PhaseBadgeData } from "./PhaseBadge";
 
 export enum Visibility {
-  Public = "public",
-  Private = "private",
+  Public = "Public",
+  Private = "Private",
+  UserShare = "UserShare",
+  AccountShare = "AccountShare",
 }
 
 export const visibilityTypes = [
@@ -16,7 +18,19 @@ export const visibilityTypes = [
     value: Visibility.Private,
     label: "私有",
     color: "text-highlight-sky bg-highlight-sky/20",
-    description: "仅限创建者及被授权用户可查看和使用的资源",
+    description: "仅限创建者可查看和使用的资源",
+  },
+  {
+    value: Visibility.UserShare,
+    label: "分享",
+    color: "text-highlight-orange bg-highlight-orange/20",
+    description: "其他用户分享的可查看和使用的资源",
+  },
+  {
+    value: Visibility.AccountShare,
+    label: "账户",
+    color: "text-highlight-purple bg-highlight-purple/20",
+    description: "同账户下的用户可查看和使用的资源",
   },
 ];
 

@@ -33,6 +33,7 @@ interface SelectBoxProps {
   options: Option[];
   value?: string[];
   onChange?: (values: string[]) => void;
+  onInputChange?: (value: string) => void;
   placeholder?: string;
   inputPlaceholder?: string;
   emptyPlaceholder?: string;
@@ -48,6 +49,7 @@ const SelectBox = ({
   options,
   value,
   onChange,
+  onInputChange,
 }: SelectBoxProps & {
   ref?: React.RefObject<HTMLInputElement>;
 }) => {
@@ -65,6 +67,11 @@ const SelectBox = ({
 
   const handleClear = () => {
     onChange?.([]);
+  };
+
+  const handleInputChange = (value: string) => {
+    setSearchTerm(value);
+    onInputChange?.(value);
   };
 
   return (
@@ -138,7 +145,7 @@ const SelectBox = ({
               <div className="relative">
                 <CommandInput
                   value={searchTerm}
-                  onValueChange={(e) => setSearchTerm(e)}
+                  onValueChange={handleInputChange}
                   ref={ref}
                   placeholder={
                     inputPlaceholder ?? t("selectBox.inputPlaceholder")
@@ -148,7 +155,10 @@ const SelectBox = ({
                 {searchTerm && (
                   <div
                     className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3"
-                    onClick={() => setSearchTerm("")}
+                    onClick={() => {
+                      setSearchTerm("");
+                      onInputChange?.("");
+                    }}
                   >
                     <Cross2Icon className="size-4" />
                   </div>
