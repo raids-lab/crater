@@ -26,6 +26,15 @@ const (
 	EnvdRaw      BuildSource = "EnvdRaw"
 )
 
+type ImageShareType string
+
+const (
+	Private      ImageShareType = "Private"
+	Public       ImageShareType = "Public"
+	UserShare    ImageShareType = "UserShare"
+	AccountShare ImageShareType = "AccountShare"
+)
+
 type Kaniko struct {
 	gorm.Model
 	UserID        uint
@@ -54,4 +63,20 @@ type Image struct {
 	ImageSource   ImageSourceType              `gorm:"not null;comment:镜像来源类型"`
 	Size          int64                        `gorm:"type:bigint;default:0;comment:镜像大小"`
 	Tags          datatypes.JSONType[[]string] `gorm:"null;comment:镜像标签"`
+}
+
+type ImageUser struct {
+	gorm.Model
+	ImageID uint
+	Image   Image
+	UserID  uint
+	User    User
+}
+
+type ImageAccount struct {
+	gorm.Model
+	ImageID   uint
+	Image     Image
+	AccountID uint
+	Account   Account
 }

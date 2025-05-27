@@ -23,6 +23,8 @@ var (
 	Alert           *alert
 	Dataset         *dataset
 	Image           *image
+	ImageAccount    *imageAccount
+	ImageUser       *imageUser
 	Job             *job
 	Jobtemplate     *jobtemplate
 	Kaniko          *kaniko
@@ -41,6 +43,8 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	Alert = &Q.Alert
 	Dataset = &Q.Dataset
 	Image = &Q.Image
+	ImageAccount = &Q.ImageAccount
+	ImageUser = &Q.ImageUser
 	Job = &Q.Job
 	Jobtemplate = &Q.Jobtemplate
 	Kaniko = &Q.Kaniko
@@ -60,6 +64,8 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		Alert:           newAlert(db, opts...),
 		Dataset:         newDataset(db, opts...),
 		Image:           newImage(db, opts...),
+		ImageAccount:    newImageAccount(db, opts...),
+		ImageUser:       newImageUser(db, opts...),
 		Job:             newJob(db, opts...),
 		Jobtemplate:     newJobtemplate(db, opts...),
 		Kaniko:          newKaniko(db, opts...),
@@ -80,6 +86,8 @@ type Query struct {
 	Alert           alert
 	Dataset         dataset
 	Image           image
+	ImageAccount    imageAccount
+	ImageUser       imageUser
 	Job             job
 	Jobtemplate     jobtemplate
 	Kaniko          kaniko
@@ -101,6 +109,8 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		Alert:           q.Alert.clone(db),
 		Dataset:         q.Dataset.clone(db),
 		Image:           q.Image.clone(db),
+		ImageAccount:    q.ImageAccount.clone(db),
+		ImageUser:       q.ImageUser.clone(db),
 		Job:             q.Job.clone(db),
 		Jobtemplate:     q.Jobtemplate.clone(db),
 		Kaniko:          q.Kaniko.clone(db),
@@ -129,6 +139,8 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		Alert:           q.Alert.replaceDB(db),
 		Dataset:         q.Dataset.replaceDB(db),
 		Image:           q.Image.replaceDB(db),
+		ImageAccount:    q.ImageAccount.replaceDB(db),
+		ImageUser:       q.ImageUser.replaceDB(db),
 		Job:             q.Job.replaceDB(db),
 		Jobtemplate:     q.Jobtemplate.replaceDB(db),
 		Kaniko:          q.Kaniko.replaceDB(db),
@@ -147,6 +159,8 @@ type queryCtx struct {
 	Alert           IAlertDo
 	Dataset         IDatasetDo
 	Image           IImageDo
+	ImageAccount    IImageAccountDo
+	ImageUser       IImageUserDo
 	Job             IJobDo
 	Jobtemplate     IJobtemplateDo
 	Kaniko          IKanikoDo
@@ -165,6 +179,8 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		Alert:           q.Alert.WithContext(ctx),
 		Dataset:         q.Dataset.WithContext(ctx),
 		Image:           q.Image.WithContext(ctx),
+		ImageAccount:    q.ImageAccount.WithContext(ctx),
+		ImageUser:       q.ImageUser.WithContext(ctx),
 		Job:             q.Job.WithContext(ctx),
 		Jobtemplate:     q.Jobtemplate.WithContext(ctx),
 		Kaniko:          q.Kaniko.WithContext(ctx),

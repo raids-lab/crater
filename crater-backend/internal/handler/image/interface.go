@@ -45,7 +45,6 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/available", mgr.ListAvailableImages)
 	g.GET("/getbyname", mgr.GetKanikoByImagePackName)
 	g.POST("/quota", mgr.UpdateProjectQuota)
-	g.POST("/change/:id", mgr.UserUpdateImagePublicStatus)
 
 	g.GET("/podname", mgr.GetImagepackPodName)
 	g.POST("/credential", mgr.UserGetProjectCredential)
@@ -58,6 +57,12 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/harbor", mgr.GetHarborIP)
 	g.POST("/tags", mgr.UserChangeImageTags)
 	g.GET("/template", mgr.GetKanikoTemplateByImagePackName)
+
+	g.POST("/share", mgr.UserShareImage)
+	g.DELETE("/share", mgr.UserCancelShareImage)
+	g.GET("/share", mgr.GetImageGrantedUserOrAccount)
+	g.GET("/user", mgr.UserSearchUngrantedUsers)
+	g.GET("/account", mgr.UserGetImageUngrantedAccounts)
 }
 
 func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {

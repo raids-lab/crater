@@ -37,6 +37,8 @@ func main() {
 		model.Alert{},
 		model.AITask{},
 		model.ResourceNetwork{},
+		model.ImageUser{},
+		model.ImageAccount{},
 	)
 
 	// 执行并生成代码
