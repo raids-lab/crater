@@ -8,6 +8,8 @@ import {
   StopwatchIcon,
 } from "@radix-ui/react-icons";
 import { IUserInfo, JobType } from "./vcjob";
+import { IUserAttributes } from "./admin/user";
+import { Visibility } from "@/components/badge/VisibilityBadge";
 
 export type ListKanikoResponse = {
   kanikoList: KanikoInfoResponse[];
@@ -45,6 +47,7 @@ export type ImageInfoResponse = {
   tags: string[];
   imageBuildSource: imagepackSourceTypeValue;
   imagepackName: string;
+  imageShareStatus: Visibility;
 };
 
 export type ProjectCredentialResponse = {
@@ -58,6 +61,28 @@ export type ProjectDetailResponse = {
   used: number;
   total: number;
   project: string;
+};
+
+export type ImageUsers = {
+  nickname: string;
+  name: string;
+  id: number;
+};
+export type ImageAccounts = {
+  name: string;
+  id: number;
+};
+export type ImageShareObjectsResponse = {
+  userList: ImageUsers[];
+  accountList: ImageAccounts[];
+};
+
+export type SearchUngrantedUserResponse = {
+  userList: IUserAttributes[];
+};
+
+export type GetUngrantedAccountsResponse = {
+  accountList: ImageAccounts[];
 };
 
 export const getHeader = (key: string): string => {
@@ -74,7 +99,7 @@ export const getHeader = (key: string): string => {
       return "类型";
     case "imageType":
       return "镜像类型";
-    case "isPublic":
+    case "imageShareStatus":
       return "可见性";
     case "size":
       return "大小";
@@ -144,21 +169,6 @@ export const imagepackSourceType: {
   {
     value: 2,
     label: "镜像上传",
-  },
-];
-
-export type imagepackPublicPersonalStatusValue = false | true;
-export const imagepackPublicPersonalStatus: {
-  value: imagepackPublicPersonalStatusValue;
-  label: string;
-}[] = [
-  {
-    value: false,
-    label: "私有",
-  },
-  {
-    value: true,
-    label: "公共",
   },
 ];
 
@@ -237,6 +247,31 @@ export interface ImageIDList {
 
 export interface HarborIPData {
   ip: string;
+}
+
+export interface GetImageShare {
+  imageID: number;
+}
+
+export interface AddImageShare {
+  idList: number[];
+  imageID: number;
+  type: string; // user: share with user, account: share with account
+}
+
+export interface DeleteImageShare {
+  id: number;
+  imageID: number;
+  type: string; // user: cancel share with user, account: cancel share with account
+}
+
+export interface SearchUngrantedUsers {
+  imageID: number;
+  // name: string;
+}
+
+export interface GetUngrantedAccounts {
+  imageID: number;
 }
 
 export const ImageTaskType = {
@@ -370,3 +405,33 @@ export const apiUserUpdateImageTags = (data: UpdateImageTag) =>
 
 export const apiUserGetImageTemplate = (name: string) =>
   instance.get<IResponse<string>>(`${VERSION}/images/template?name=${name}`);
+
+export const apiUserGetImageShareObjects = (data: GetImageShare) =>
+  instance.get<IResponse<ImageShareObjectsResponse>>(
+    `${VERSION}/images/share`,
+    {
+      params: data,
+    },
+  );
+
+export const apiUserAddImageShare = (data: AddImageShare) =>
+  instance.post<IResponse<string>>(`${VERSION}/images/share`, data);
+
+export const apiUserDeleteImageShare = (data: DeleteImageShare) =>
+  instance.delete<IResponse<string>>(`${VERSION}/images/share`, { data });
+
+export const apiUserSearchUser = (data: SearchUngrantedUsers) =>
+  instance.get<IResponse<SearchUngrantedUserResponse>>(
+    `${VERSION}/images/user`,
+    {
+      params: data,
+    },
+  );
+
+export const apiUserGetUngrantedAccounts = (data: GetUngrantedAccounts) =>
+  instance.get<IResponse<GetUngrantedAccountsResponse>>(
+    `${VERSION}/images/account`,
+    {
+      params: data,
+    },
+  );
