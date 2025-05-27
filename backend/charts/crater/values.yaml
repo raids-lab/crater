@@ -5,7 +5,7 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "b0cc9677"
+      tag: "1e94acaf"
       pullPolicy: "IfNotPresent"
   migrate:
     createMigrationJob: true
@@ -15,7 +15,7 @@ web:
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "6d67055c"
+      tag: "5acce9b7"
       pullPolicy: "IfNotPresent"
     config:
       version: "1.0.0"
@@ -43,7 +43,7 @@ web:
   storage:
     image:
       repository: ***REMOVED***
-      tag: "9dsa3543"
+      tag: "pfl9s61a"
       pullPolicy: "IfNotPresent"
   buildkit:
     image:
@@ -217,6 +217,6 @@ ssConfig:
 storage:
   create: false
   request: 2Ti
-  storageClass: "nfs-client"
+  storageClass: "rook-ceph-rbd"
   rwName: "crater-rw-storage"
   roName: "crater-ro-storage"
