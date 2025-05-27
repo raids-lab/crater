@@ -37,6 +37,7 @@ import {
   CopyIcon,
   ImportIcon,
   Tags,
+  ListTodo,
 } from "lucide-react";
 import JobTypeLabel, { jobTypes } from "@/components/badge/JobTypeBadge";
 import { useAtomValue } from "jotai";
@@ -71,6 +72,7 @@ import { TagsDialog } from "./TagsDialog";
 import TooltipLink from "@/components/label/TooltipLink";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { ImageShareSheet } from "./ShareImageSheet";
 
 const toolbarConfig: DataTableToolbarConfig = {
   globalSearch: {
@@ -83,7 +85,7 @@ const toolbarConfig: DataTableToolbarConfig = {
       option: jobTypes,
     },
     {
-      key: "visibility",
+      key: "imageShareStatus",
       title: "可见性",
       option: visibilityTypes,
     },
@@ -138,7 +140,7 @@ export const ImageListTable: FC<ImageListTableProps> = ({
   isAdminMode,
 }) => {
   const queryClient = useQueryClient();
-  const [openSheet, setOpenSheet] = useState(false);
+  const [openUploadSheet, setOpenUploadSheet] = useState(false);
   const [openCheckDialog, setCheckOpenDialog] = useState(false);
   const [selectedLinkPairs, setSelectedLinkPairs] = useState<ImageLinkPair[]>(
     [],
@@ -255,12 +257,15 @@ export const ImageListTable: FC<ImageListTableProps> = ({
       cell: ({ row }) => <UserLabel info={row.original.userInfo} />,
     },
     {
-      accessorKey: "visibility",
+      accessorKey: "imageShareStatus",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("isPublic")} />
+        <DataTableColumnHeader
+          column={column}
+          title={getHeader("imageShareStatus")}
+        />
       ),
       cell: ({ row }) => {
-        const visibilityValue = row.getValue<Visibility>("visibility");
+        const visibilityValue = row.getValue<Visibility>("imageShareStatus");
         return <VisibilityBadge visibility={visibilityValue} />;
       },
     },
@@ -417,7 +422,7 @@ export const ImageListTable: FC<ImageListTableProps> = ({
           <Button
             variant="default"
             className="flex items-center gap-2"
-            onClick={() => setOpenSheet(true)}
+            onClick={() => setOpenUploadSheet(true)}
           >
             <ImportIcon />
             导入镜像
@@ -425,12 +430,12 @@ export const ImageListTable: FC<ImageListTableProps> = ({
         ) : null}
       </DataTable>
       <ImageUploadForm
-        isOpen={openSheet}
-        onOpenChange={setOpenSheet}
+        isOpen={openUploadSheet}
+        onOpenChange={setOpenUploadSheet}
         title="导入镜像"
         description="导入镜像"
         className="sm:max-w-3xl"
-        closeSheet={() => setOpenSheet(false)}
+        closeSheet={() => setOpenUploadSheet(false)}
       />
     </>
   );
@@ -460,6 +465,7 @@ const Actions: FC<ActionsProps> = ({
   onChangeTags,
 }) => {
   const [openDialog, setOpenDialog] = useState(false);
+  const [openShareSheet, setOpenShareSheet] = useState(false);
   const [dialog, setDialog] = useState<Dialogs | undefined>(undefined);
   const isDisabled = !isAdminMode && imageInfo.userInfo.username !== userName;
   return (
@@ -501,19 +507,30 @@ const Actions: FC<ActionsProps> = ({
               <CheckCheck className="text-green-600" />
               检验有效性
             </DropdownMenuItem>
+            {isAdminMode && (
+              <DropdownMenuItem
+                disabled={isDisabled}
+                onClick={() => {
+                  setDialog(Dialogs.status);
+                  setOpenDialog(true);
+                }}
+              >
+                {imageInfo.isPublic === true ? (
+                  <Lock className="text-amber-600" />
+                ) : (
+                  <Globe className="text-green-600" />
+                )}
+                {imageInfo.isPublic === true ? "设为私有" : "设为公共"}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               disabled={isDisabled}
               onClick={() => {
-                setDialog(Dialogs.status);
-                setOpenDialog(true);
+                setOpenShareSheet(true);
               }}
             >
-              {imageInfo.isPublic === true ? (
-                <Lock className="text-amber-600" />
-              ) : (
-                <Globe className="text-green-600" />
-              )}
-              {imageInfo.isPublic === true ? "设为私有" : "设为公共"}
+              <ListTodo className="text-green-600" />
+              镜像分享
             </DropdownMenuItem>
             <DropdownMenuSub>
               <DropdownMenuSubTrigger
@@ -626,6 +643,14 @@ const Actions: FC<ActionsProps> = ({
           ) : null}
         </DialogContent>
       </Dialog>
+      <ImageShareSheet
+        imageID={imageInfo.ID}
+        imageName={imageInfo.description}
+        title="镜像分享"
+        description="分享镜像链接到指定的用户或账户"
+        isOpen={openShareSheet}
+        onOpenChange={setOpenShareSheet}
+      ></ImageShareSheet>
     </div>
   );
 };
