@@ -50,15 +50,7 @@ export function SSHPortDialog({
       const [errorCode] = getErrorCode(error);
       if (errorCode === ERROR_SERVICE_SSHD_NOT_FOUND) {
         toast.error(
-          <div className="flex flex-row items-center">
-            未检测到 SSHD 服务，请阅读
-            <DocsButton
-              variant="link"
-              title="帮助文档"
-              url="toolbox/ssh/vscode-ssh"
-              className="text-destructive"
-            />
-          </div>,
+          <div className="flex flex-row items-center">未检测到 SSHD 服务</div>,
         );
       }
     },
