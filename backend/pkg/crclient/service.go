@@ -274,9 +274,12 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 			OwnerReferences: ownerReferences,
 			Labels:          labels,
 			Annotations: map[string]string{
-				"nginx.ingress.kubernetes.io/ssl-redirect":    "true",
-				"nginx.ingress.kubernetes.io/proxy-body-size": "20480m",
-				AnnotationKeyPortName:                         port.Name,
+				"nginx.ingress.kubernetes.io/ssl-redirect":          "true",
+				"nginx.ingress.kubernetes.io/proxy-body-size":       "20480m",
+				"nginx.ingress.kubernetes.io/proxy-connect-timeout": "300",
+				"nginx.ingress.kubernetes.io/proxy-send-timeout":    "300",
+				"nginx.ingress.kubernetes.io/proxy-read-timeout":    "300",
+				AnnotationKeyPortName:                               port.Name,
 			},
 		},
 		Spec: networkingv1.IngressSpec{
@@ -378,9 +381,12 @@ func (s *serviceManagerImpl) CreateIngress(
 			OwnerReferences: ownerReferences,
 			Labels:          labels,
 			Annotations: map[string]string{
-				"nginx.ingress.kubernetes.io/ssl-redirect":    "true",
-				"nginx.ingress.kubernetes.io/proxy-body-size": "20480m",
-				AnnotationKeyPortName:                         port.Name,
+				"nginx.ingress.kubernetes.io/ssl-redirect":          "true",
+				"nginx.ingress.kubernetes.io/proxy-body-size":       "20480m",
+				"nginx.ingress.kubernetes.io/proxy-connect-timeout": "300",
+				"nginx.ingress.kubernetes.io/proxy-send-timeout":    "300",
+				"nginx.ingress.kubernetes.io/proxy-read-timeout":    "300",
+				AnnotationKeyPortName:                               port.Name,
 			},
 		},
 		Spec: networkingv1.IngressSpec{
