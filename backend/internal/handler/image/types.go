@@ -150,7 +150,7 @@ type (
 	}
 
 	ListAvailableImageResponse struct {
-		Images []ImageInfo `json:"images"`
+		Images []*ImageInfo `json:"images"`
 	}
 
 	GetProjectCredentialResponse struct {
