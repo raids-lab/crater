@@ -5,7 +5,7 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "1e94acaf"
+      tag: "363bb1c3"
       pullPolicy: "IfNotPresent"
   migrate:
     createMigrationJob: true
