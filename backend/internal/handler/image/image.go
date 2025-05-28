@@ -64,9 +64,15 @@ func (mgr *ImagePackMgr) UserUploadImage(c *gin.Context) {
 // @Security Bearer
 // @Router /v1/images/image [GET]
 func (mgr *ImagePackMgr) UserListImage(c *gin.Context) {
-	var err error
-	token := util.GetToken(c)
 	var response ListImageResponse
+	imageInfoList := mgr.getImages(c)
+	response = ListImageResponse{ImageInfoList: imageInfoList}
+	resputil.Success(c, response)
+}
+
+func (mgr *ImagePackMgr) getImages(c *gin.Context) []*ImageInfo {
+	token := util.GetToken(c)
+	var err error
 	var imageInfoList []*ImageInfo
 	imageQuery := query.Image
 	// 1. 获取私有镜像
@@ -104,8 +110,7 @@ func (mgr *ImagePackMgr) UserListImage(c *gin.Context) {
 	sort.Slice(imageInfoList, func(i, j int) bool {
 		return imageInfoList[i].CreatedAt.After(imageInfoList[j].CreatedAt)
 	})
-	response = ListImageResponse{ImageInfoList: imageInfoList}
-	resputil.Success(c, response)
+	return imageInfoList
 }
 
 // AdminListImage godoc
@@ -142,45 +147,8 @@ func (mgr *ImagePackMgr) AdminListImage(c *gin.Context) {
 // @Param type query ListAvailableImageRequest true "包含了镜像类型"
 // @Router /v1/images/available [GET]
 func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
-	token := util.GetToken(c)
-	var err error
-	var req ListAvailableImageRequest
-	if err = c.ShouldBindQuery(&req); err != nil {
-		msg := fmt.Sprintf("validate available image parameters failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
-		return
-	}
-	imageQuery := query.Image
-	var images []*model.Image
-	if images, err = imageQuery.WithContext(c).
-		Preload(query.Image.User).
-		Where(imageQuery.UserID.Eq(token.UserID)).
-		Or(imageQuery.IsPublic).
-		Find(); err != nil {
-		logutils.Log.Errorf("fetch available image failed, err:%v", err)
-		resputil.Error(c, "fetch available image failed", resputil.NotSpecified)
-		return
-	}
-
-	imageInfos := []ImageInfo{}
-	for i := range images {
-		image := images[i]
-		imageInfo := ImageInfo{
-			ID:          image.ID,
-			ImageLink:   image.ImageLink,
-			Description: image.Description,
-			CreatedAt:   image.CreatedAt,
-			IsPublic:    image.IsPublic,
-			TaskType:    image.TaskType,
-			UserInfo: model.UserInfo{
-				Username: image.User.Name,
-				Nickname: image.User.Nickname,
-			},
-			Tags: image.Tags.Data(),
-		}
-		imageInfos = append(imageInfos, imageInfo)
-	}
-	resp := ListAvailableImageResponse{Images: imageInfos}
+	imageList := mgr.getImages(c)
+	resp := ListAvailableImageResponse{Images: imageList}
 	resputil.Success(c, resp)
 }
 
