@@ -55,7 +55,7 @@ export function SSHPortDialog({
             <DocsButton
               variant="link"
               title="帮助文档"
-              url="toolbox/ssh/vscode-ssh"
+              url="toolbox/ssh/ssh-func"
               className="text-destructive"
             />
           </div>,
