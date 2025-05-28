@@ -75,17 +75,7 @@ func (mgr *ImagePackMgr) getImages(c *gin.Context) []*ImageInfo {
 	var err error
 	var imageInfoList []*ImageInfo
 	imageQuery := query.Image
-	// 1. 获取私有镜像
-	var privateImages []*model.Image
-	if privateImages, err = imageQuery.WithContext(c).
-		Preload(query.Image.User).
-		Where(imageQuery.UserID.Eq(token.UserID)).
-		Order(imageQuery.CreatedAt.Desc()).
-		Find(); err != nil {
-		logutils.Log.Errorf("fetch kaniko entity failed, err:%v", err)
-	}
-	imageInfoList = mgr.processImageListResponse(privateImages, model.Private, imageInfoList)
-	// 2. 获取公共镜像（isPublic = true,兼容旧镜像, TODO:移除isPublic）
+	// 1. 获取公共镜像（isPublic = true,兼容旧镜像, TODO:移除isPublic）
 	var oldPublicImages []*model.Image
 	if oldPublicImages, err = imageQuery.WithContext(c).
 		Preload(query.Image.User).
@@ -101,12 +91,22 @@ func (mgr *ImagePackMgr) getImages(c *gin.Context) []*ImageInfo {
 	// 3. 获取本账户拥有的镜像
 	accountSharedImages := mgr.getAccountSharedImages(c, token.AccountID)
 	imageInfoList = mgr.processImageListResponse(accountSharedImages, model.AccountShare, imageInfoList)
-	// 4. 获取其他用户分享的镜像
+	// 4. 获取私有镜像
+	var privateImages []*model.Image
+	if privateImages, err = imageQuery.WithContext(c).
+		Preload(query.Image.User).
+		Where(imageQuery.UserID.Eq(token.UserID)).
+		Order(imageQuery.CreatedAt.Desc()).
+		Find(); err != nil {
+		logutils.Log.Errorf("fetch kaniko entity failed, err:%v", err)
+	}
+	imageInfoList = mgr.processImageListResponse(privateImages, model.Private, imageInfoList)
+	// 5. 获取其他用户分享的镜像
 	userSharedImages := mgr.getUserSharedImages(c, token.UserID)
 	imageInfoList = mgr.processImageListResponse(userSharedImages, model.UserShare, imageInfoList)
-	// 5. 去除重复的镜像
+	// 6. 去除重复的镜像
 	imageInfoList = mgr.deduplicate(imageInfoList)
-	// 6. 降序排序
+	// 7. 降序排序
 	sort.Slice(imageInfoList, func(i, j int) bool {
 		return imageInfoList[i].CreatedAt.After(imageInfoList[j].CreatedAt)
 	})
@@ -122,17 +122,42 @@ func (mgr *ImagePackMgr) getImages(c *gin.Context) []*ImageInfo {
 // @Security Bearer
 // @Router /v1/admin/images/image [GET]
 func (mgr *ImagePackMgr) AdminListImage(c *gin.Context) {
-	var images []*model.Image
-	var err error
-	imageQuery := query.Image
-	if images, err = imageQuery.WithContext(c).
-		Preload(query.Image.User).
-		Order(imageQuery.CreatedAt.Desc()).
-		Find(); err != nil {
-		logutils.Log.Errorf("fetch image entity failed, err:%v", err)
-	}
+	var publicImages []*model.Image
+	var privateImages []*model.Image
+	var publicImageIDs []uint
 	var imageInfoList []*ImageInfo
-	mgr.processImageListResponse(images, model.Public, imageInfoList)
+	var err error
+	imageAccountQuery := query.ImageAccount
+	if err = imageAccountQuery.WithContext(c).
+		Where(imageAccountQuery.AccountID.Eq(model.DefaultAccountID)).
+		Pluck(imageAccountQuery.ImageID, &publicImageIDs); err != nil {
+		logutils.Log.Errorf("get public account ids failed, err:%v", err)
+		resputil.Error(c, "get public account ids failed", resputil.NotSpecified)
+		return
+	}
+	imageQuery := query.Image
+	if publicImages, err = imageQuery.WithContext(c).
+		Preload(query.Image.User).
+		Where(imageQuery.ID.In(publicImageIDs...)).
+		Find(); err != nil {
+		logutils.Log.Errorf("fetch public image entity failed, err:%v", err)
+		resputil.Error(c, "fetch public image entity failed", resputil.NotSpecified)
+		return
+	}
+	fmt.Printf("%+v", publicImageIDs)
+	imageInfoList = mgr.processImageListResponse(publicImages, model.Public, imageInfoList)
+	if privateImages, err = imageQuery.WithContext(c).
+		Preload(query.Image.User).
+		Where(imageQuery.ID.NotIn(publicImageIDs...)).
+		Find(); err != nil {
+		logutils.Log.Errorf("fetch public image entity failed, err:%v", err)
+		resputil.Error(c, "fetch public image entity failed", resputil.NotSpecified)
+		return
+	}
+	imageInfoList = mgr.processImageListResponse(privateImages, model.Private, imageInfoList)
+	sort.Slice(imageInfoList, func(i, j int) bool {
+		return imageInfoList[i].CreatedAt.After(imageInfoList[j].CreatedAt)
+	})
 	response := ListImageResponse{ImageInfoList: imageInfoList}
 	resputil.Success(c, response)
 }
