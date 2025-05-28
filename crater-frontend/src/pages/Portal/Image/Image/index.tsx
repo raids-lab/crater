@@ -153,7 +153,8 @@ export const ImageListTable: FC<ImageListTableProps> = ({
     select: (res) =>
       res.data.data.imageList.map((i) => ({
         ...i,
-        visibility: i.isPublic ? Visibility.Public : Visibility.Private,
+        visibility: i.imageShareStatus,
+        isPublic: i.imageShareStatus == Visibility.Public,
         image: `${i.imageLink} (${i.description})`,
       })),
   });
