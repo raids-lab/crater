@@ -18,13 +18,6 @@ import {
   imageLinkRegex,
   parseImageLink,
 } from "@/services/api/imagepack";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import { JobType } from "@/services/api/vcjob";
 import SandwichSheet, {
@@ -43,19 +36,6 @@ const formSchema = z.object({
       message: "镜像链接格式不正确",
     }),
   description: z.string().min(1, { message: "镜像描述不能为空" }),
-  taskType: z
-    .enum([
-      JobType.Custom,
-      JobType.DeepSpeed,
-      JobType.Jupyter,
-      JobType.KubeRay,
-      JobType.OpenMPI,
-      JobType.Pytorch,
-      JobType.Tensorflow,
-    ])
-    .refine((value) => Object.values(JobType).includes(value), {
-      message: "请选择任务类型",
-    }),
   tags: z
     .array(
       z.object({
@@ -82,7 +62,7 @@ function ImageUploadSheetContent({ closeSheet }: ImageUploadSheetContentProps) {
         imageName: imageName,
         imageTag: imageTag,
         description: values.description,
-        taskType: values.taskType,
+        taskType: JobType.Custom,
         tags: values.tags?.map((item) => item.value) ?? [],
       });
     },
@@ -167,54 +147,6 @@ function ImageUploadSheetContent({ closeSheet }: ImageUploadSheetContentProps) {
             label={`镜像标签`}
             description={`为镜像添加标签，以便分类和搜索`}
             customTags={ImageDefaultTags}
-          />
-
-          <FormField
-            control={form.control}
-            name="taskType"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  任务类型
-                  <FormLabelMust />
-                </FormLabel>
-                <FormControl>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <SelectTrigger className="">
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={JobType.Jupyter}>
-                        Jupyter交互式任务
-                      </SelectItem>
-
-                      <SelectItem value={JobType.Tensorflow}>
-                        Tensorflow任务
-                      </SelectItem>
-                      <SelectItem value={JobType.Pytorch}>
-                        Pytorch任务
-                      </SelectItem>
-                      <SelectItem value={JobType.Custom}>
-                        用户自定义任务
-                      </SelectItem>
-                      <SelectItem value={JobType.KubeRay} disabled>
-                        Ray任务
-                      </SelectItem>
-                      <SelectItem value={JobType.DeepSpeed} disabled>
-                        DeepSpeed任务
-                      </SelectItem>
-                      <SelectItem value={JobType.OpenMPI} disabled>
-                        OpenMPI任务
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
           />
         </SandwichLayout>
       </form>
