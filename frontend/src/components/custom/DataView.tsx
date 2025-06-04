@@ -54,12 +54,10 @@ export function DataView({ apiGetDataset, sourceType }: DatesetTableProps) {
       title={sourceTitle}
       actionArea={
         <div className="flex flex-row gap-3">
-          {sourceType !== "sharefile" && (
-            <DocsButton
-              title={t("dataView.docsButtonTitle", { sourceTitle })}
-              url="file/model"
-            />
-          )}
+          <DocsButton
+            title={t("dataView.docsButtonTitle", { sourceTitle })}
+            url={`file/${sourceType}`}
+          />
           <SandwichSheet
             isOpen={openSheet}
             onOpenChange={setOpenSheet}
