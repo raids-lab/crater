@@ -39,7 +39,6 @@ import {
   Tags,
   ListTodo,
 } from "lucide-react";
-import JobTypeLabel, { jobTypes } from "@/components/badge/JobTypeBadge";
 import { useAtomValue } from "jotai";
 import { globalUserInfo } from "@/utils/store";
 import ImageLabel from "@/components/label/ImageLabel";
@@ -79,11 +78,6 @@ const toolbarConfig: DataTableToolbarConfig = {
     enabled: true,
   },
   filterOptions: [
-    {
-      key: "taskType",
-      title: "类型",
-      option: jobTypes,
-    },
     {
       key: "imageShareStatus",
       title: "可见性",
@@ -209,15 +203,6 @@ export const ImageListTable: FC<ImageListTableProps> = ({
     },
   });
   const columns: ColumnDef<ImageInfoResponse>[] = [
-    {
-      accessorKey: "taskType",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("taskType")} />
-      ),
-      cell: ({ row }) => {
-        return <JobTypeLabel jobType={row.getValue("taskType")} />;
-      },
-    },
     {
       accessorKey: "image",
       header: ({ column }) => (
