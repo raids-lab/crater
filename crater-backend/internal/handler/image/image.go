@@ -75,7 +75,7 @@ func (mgr *ImagePackMgr) getImages(c *gin.Context) []*ImageInfo {
 	var err error
 	var imageInfoList []*ImageInfo
 	imageQuery := query.Image
-	// 1. 获取公共镜像（isPublic = true,兼容旧镜像, TODO:移除isPublic）
+	// 1. 获取公共镜像	TODO: 移除IsPublic的兼容代码
 	var oldPublicImages []*model.Image
 	if oldPublicImages, err = imageQuery.WithContext(c).
 		Preload(query.Image.User).
@@ -125,9 +125,11 @@ func (mgr *ImagePackMgr) AdminListImage(c *gin.Context) {
 	var publicImages []*model.Image
 	var privateImages []*model.Image
 	var publicImageIDs []uint
+	var oldPublicImages []uint
 	var imageInfoList []*ImageInfo
 	var err error
 	imageAccountQuery := query.ImageAccount
+	imageQuery := query.Image
 	if err = imageAccountQuery.WithContext(c).
 		Where(imageAccountQuery.AccountID.Eq(model.DefaultAccountID)).
 		Pluck(imageAccountQuery.ImageID, &publicImageIDs); err != nil {
@@ -135,7 +137,15 @@ func (mgr *ImagePackMgr) AdminListImage(c *gin.Context) {
 		resputil.Error(c, "get public account ids failed", resputil.NotSpecified)
 		return
 	}
-	imageQuery := query.Image
+	// TODO: 移除IsPublic的兼容代码
+	if err = imageQuery.WithContext(c).
+		Where(imageQuery.IsPublic).
+		Pluck(imageQuery.ID, &oldPublicImages); err != nil {
+		logutils.Log.Errorf("get old public account ids failed, err:%v", err)
+		resputil.Error(c, "get old public account ids failed", resputil.NotSpecified)
+		return
+	}
+	publicImageIDs = append(publicImageIDs, oldPublicImages...)
 	if publicImages, err = imageQuery.WithContext(c).
 		Preload(query.Image.User).
 		Where(imageQuery.ID.In(publicImageIDs...)).
@@ -144,7 +154,6 @@ func (mgr *ImagePackMgr) AdminListImage(c *gin.Context) {
 		resputil.Error(c, "fetch public image entity failed", resputil.NotSpecified)
 		return
 	}
-	fmt.Printf("%+v", publicImageIDs)
 	imageInfoList = mgr.processImageListResponse(publicImages, model.Public, imageInfoList)
 	if privateImages, err = imageQuery.WithContext(c).
 		Preload(query.Image.User).
@@ -354,6 +363,7 @@ func (mgr *ImagePackMgr) AdminUpdateImagePublicStatus(c *gin.Context) {
 		return
 	}
 	imageAccountQuery := query.ImageAccount
+	imageQuery := query.Image
 	if _, err = imageAccountQuery.WithContext(c).
 		Where(imageAccountQuery.ImageID.Eq(req.ID)).
 		Where(imageAccountQuery.AccountID.Eq(model.DefaultAccountID)).
@@ -367,6 +377,10 @@ func (mgr *ImagePackMgr) AdminUpdateImagePublicStatus(c *gin.Context) {
 			resputil.Error(c, fmt.Sprintf("%+v", err), resputil.NotSpecified)
 			return
 		}
+		// TODO: 移除IsPublic的兼容代码
+		_, _ = imageQuery.WithContext(c).
+			Where(imageQuery.ID.Eq(req.ID)).
+			Update(imageQuery.IsPublic, true)
 	} else {
 		if _, err = imageAccountQuery.WithContext(c).
 			Where(imageAccountQuery.ImageID.Eq(req.ID)).
@@ -376,6 +390,10 @@ func (mgr *ImagePackMgr) AdminUpdateImagePublicStatus(c *gin.Context) {
 			resputil.Error(c, fmt.Sprintf("%+v", err), resputil.NotSpecified)
 			return
 		}
+		// TODO: 移除IsPublic的兼容代码
+		_, _ = imageQuery.WithContext(c).
+			Where(imageQuery.ID.Eq(req.ID)).
+			Update(imageQuery.IsPublic, false)
 	}
 	resputil.Success(c, "")
 }
