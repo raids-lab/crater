@@ -212,24 +212,22 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
               )}
             />
           )}
-          {type !== "sharefile" && (
-            <FormField
-              control={form.control}
-              name="ispublic"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                  <FormLabel className="font-normal">所有用户可见</FormLabel>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
+          <FormField
+            control={form.control}
+            name="ispublic"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
+                <FormLabel className="font-normal">所有用户可见</FormLabel>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           {type === "sharefile" && (
             <FormField
               control={form.control}
