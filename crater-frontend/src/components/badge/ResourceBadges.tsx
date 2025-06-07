@@ -68,8 +68,9 @@ const ResourceBadge = ({
     <Popover>
       <PopoverTrigger asChild>
         <Badge
-          className="cursor-pointer font-mono select-none hover:bg-gray-200"
+          className="hover:bg-primary hover:text-primary-foreground cursor-pointer font-mono select-none"
           variant="secondary"
+          title="Click to edit resource"
         >
           {display}
         </Badge>

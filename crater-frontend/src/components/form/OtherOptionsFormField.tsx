@@ -19,7 +19,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { CircleHelpIcon } from "lucide-react";
+import { CircleHelpIcon, SettingsIcon } from "lucide-react";
 
 export function getOtherCardTitle(t: (key: string) => string) {
   return t("otherOptionsFormCard.accordionTitle");
@@ -48,6 +48,7 @@ export function OtherOptionsFormCard<T extends FieldValues>({
   return (
     <AccordionCard
       cardTitle={t("otherOptionsFormCard.accordionTitle")}
+      icon={SettingsIcon}
       open={open}
       setOpen={setOpen}
     >

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { CardTitle } from "@/components/ui-custom/card";
+import CardTitle from "@/components/label/CardTitle";
+import { LayoutGridIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -264,7 +265,7 @@ export const Component = () => {
           <div className="flex flex-col gap-4 md:gap-6 lg:col-span-2">
             <Card>
               <CardHeader>
-                <CardTitle>基本设置</CardTitle>
+                <CardTitle icon={LayoutGridIcon}>基本设置</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-5">
                 <FormField

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"; // 修改这一行添加 useEffect
+import { useState, useEffect, useMemo } from "react"; // 修改这一行添加 useEffect
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -34,7 +34,6 @@ import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 import { globalUserInfo } from "@/utils/store";
 import { useAtomValue } from "jotai";
-import { CodeContent } from "@/components/codeblock/ConfigDialog";
 
 // Define the form schema with Zod
 const formSchema = z.object({
@@ -54,11 +53,11 @@ export function PublishConfigForm<T extends FieldValues>({
   config,
   configform,
 }: PublishConfigFormProps<T>) {
-  const data = configform?.getValues();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
-  const user = useAtomValue(globalUserInfo);
   const fromTemplate = searchParams.get("fromTemplate");
+
+  const user = useAtomValue(globalUserInfo);
 
   const [isOpen, setIsOpen] = useState(false);
   const { data: templateData } = useQuery({
@@ -67,17 +66,33 @@ export function PublishConfigForm<T extends FieldValues>({
     enabled: !!fromTemplate,
     select: (data) => data?.data?.data || null,
   });
-  // 解析为 JSON 对象
-  const objconfig = typeof config === "string" ? JSON.parse(config) : config;
-  // 合并到新对象
-  const objcombinedConfig = {
-    ...objconfig,
-    data, // 将 B 作为 data 属性
-  };
-  const isUpdate =
-    fromTemplate && templateData?.userInfo.username === user.name;
+
+  const isUpdate = useMemo(() => {
+    return fromTemplate && templateData?.userInfo.username === user.name;
+  }, [fromTemplate, templateData, user.name]);
+
+  const data = configform?.watch();
+
   // 生成字符串 C（带格式化缩进）
-  const formattedConfig = JSON.stringify(objcombinedConfig, null, 2);
+  const formattedConfig = useMemo(() => {
+    // 解析为 JSON 对象
+    const objconfig = typeof config === "string" ? JSON.parse(config) : config;
+    // 合并到新对象
+    const objcombinedConfig = {
+      ...objconfig,
+      data, // 将 B 作为 data 属性
+    };
+    const json = JSON.stringify(objcombinedConfig, null, 2);
+    // 特殊处理，将 /home/username 替换为 /home/${username}
+    if (json.includes(`/home/${user.name}`)) {
+      return json.replace(
+        new RegExp(`/home/${user.name}`, "g"),
+        `/home/\${CRATER_USERNAME}`,
+      );
+    }
+    return json;
+  }, [config, data, user.name]);
+
   const { mutate: createTemplate } = useMutation({
     mutationFn: (values: FormValues) =>
       isUpdate
@@ -163,6 +178,7 @@ export function PublishConfigForm<T extends FieldValues>({
           <SandwichLayout
             footer={
               <Button
+                type="button"
                 onClick={async () => {
                   const isValid = await configform.trigger();
                   if (isValid) {
@@ -172,7 +188,8 @@ export function PublishConfigForm<T extends FieldValues>({
                   }
                 }}
               >
-                {isUpdate ? "更新此配置文件" : "公开此配置文件"}
+                <Share2 />
+                {isUpdate ? "更新配置" : "分享配置"}
               </Button>
             }
           >
@@ -230,13 +247,17 @@ export function PublishConfigForm<T extends FieldValues>({
             />
             <div className="space-y-2">
               <Label htmlFor="config-preview">配置预览</Label>
-              <CodeContent
-                data={formattedConfig}
-                language="json"
-                className="max-w-full"
+              <Textarea
+                value={formattedConfig}
+                className="max-w-full font-mono"
               />
               <Label className="text-muted-foreground font-normal">
                 请确保您不会在此配置中包含任何敏感信息，如密码、密钥等
+                {/* <span className="font-mono">/home/{user.name}</span> 将被替换为
+                <span className="font-mono">
+                  /home/${"{"}CRATER_USERNAME{"}"}
+                </span>
+                ，以保护您的隐私。 */}
               </Label>
             </div>
           </SandwichLayout>

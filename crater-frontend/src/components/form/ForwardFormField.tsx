@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { CirclePlus, XIcon } from "lucide-react";
+import { CirclePlus, NetworkIcon, XIcon } from "lucide-react";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import AccordionCard from "@/components/form/AccordionCard";
 import { cn } from "@/lib/utils";
@@ -53,6 +53,7 @@ export function ForwardFormCard<
   return (
     <AccordionCard
       cardTitle={getForwardCardTitle(t)}
+      icon={NetworkIcon}
       open={forwardOpen}
       setOpen={setForwardOpen}
       className={className}
@@ -116,7 +117,7 @@ export function ForwardFormCard<
                 <button
                   type="button"
                   onClick={() => forwardRemove(index)}
-                  className="hover:text-secondary-foreground/50 text-muted-foreground absolute top-0 right-0 mt-1 mr-1 -translate-y-3 cursor-pointer p-1 focus:outline-none"
+                  className="data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute -top-1.5 right-0 cursor-pointer rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none"
                 >
                   <XIcon className="h-4 w-4" />
                   <span className="sr-only">

@@ -8,8 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { ResourceResp, apiContextQuota } from "@/services/api/context";
 import { globalAccount } from "@/utils/store";
 import { useQuery } from "@tanstack/react-query";
-import { CpuIcon, MemoryStickIcon, NetworkIcon } from "lucide-react";
-import GPUIcon from "@/components/icon/GPUIcon";
+import { CpuIcon, GpuIcon, MemoryStickIcon, NetworkIcon } from "lucide-react";
 import { useAtomValue } from "jotai";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useMemo } from "react";
@@ -108,7 +107,7 @@ const Quota = () => {
         gpu.label.startsWith("rdma") ? (
           <QuotaCard key={i} resource={gpu} icon={NetworkIcon} />
         ) : (
-          <QuotaCard key={i} resource={gpu} icon={GPUIcon} />
+          <QuotaCard key={i} resource={gpu} icon={GpuIcon} />
         ),
       )}
     </div>

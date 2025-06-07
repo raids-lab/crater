@@ -33,8 +33,8 @@ import {
   BoxIcon,
   GaugeIcon,
   NetworkIcon,
+  GpuIcon,
 } from "lucide-react";
-import GPUIcon from "@/components/icon/GPUIcon";
 import useBreadcrumb from "@/hooks/useBreadcrumb";
 import PodPhaseLabel, { podPhases } from "@/components/badge/PodPhaseBadge";
 import { Separator } from "@/components/ui/separator";
@@ -133,7 +133,7 @@ export function GpuCardDemo({ gpuInfo }: GpuDemoProps) {
               );
             }}
           >
-            <GPUIcon className="text-highlight-purple" />
+            <GpuIcon className="text-highlight-purple" />
             <span className="truncate font-normal">加速卡监控</span>
           </Button>
         </CardFooter>
@@ -476,7 +476,7 @@ export const NodeDetail: FC = () => {
         },
         {
           key: "gpu",
-          icon: GPUIcon,
+          icon: GpuIcon,
           label: "加速卡监控",
           children: (
             <GrafanaIframe

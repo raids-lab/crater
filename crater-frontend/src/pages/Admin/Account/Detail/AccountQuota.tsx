@@ -10,8 +10,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { ResourceResp } from "@/services/api/context";
 import { useQuery } from "@tanstack/react-query";
-import { CpuIcon, MemoryStickIcon } from "lucide-react";
-import GPUIcon from "@/components/icon/GPUIcon";
+import { CpuIcon, MemoryStickIcon, GpuIcon } from "lucide-react";
 import { REFETCH_INTERVAL } from "@/config/task";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -128,7 +127,7 @@ const Quota = ({ accountID }: { accountID: number }) => {
       <QuotaCard resource={quota?.cpu} icon={CpuIcon} />
       <QuotaCard resource={quota?.memory} icon={MemoryStickIcon} />
       {quota?.gpus?.map((gpu, i) => (
-        <QuotaCard key={i} resource={gpu} icon={GPUIcon} />
+        <QuotaCard key={i} resource={gpu} icon={GpuIcon} />
       ))}
     </>
   );

@@ -53,7 +53,7 @@ const SplitButton = ({
   return (
     <div className="bg-highlight hover:bg-highlight/90 flex h-9 w-fit items-center rounded-md transition-colors">
       <Button
-        className="text-highlight-foreground hover:text-highlight-foreground cursor-pointer rounded-r-none pr-3 shadow-none hover:bg-transparent dark:hover:bg-transparent"
+        className="text-highlight-foreground hover:text-highlight-foreground cursor-pointer rounded-r-none pr-3 capitalize shadow-none hover:bg-transparent dark:hover:bg-transparent"
         variant="ghost"
         onClick={() => items.find((item) => item.key === position)?.action()}
       >

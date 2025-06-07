@@ -7,10 +7,13 @@ import {
 } from "@/components/ui/accordion";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { LucideIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
+import CardTitle from "../label/CardTitle";
 
 type AccordionCardProps = React.HTMLAttributes<HTMLDivElement> & {
   cardTitle: string;
+  icon: LucideIcon;
   open: boolean;
   setOpen?: (open: boolean) => void;
 };
@@ -45,8 +48,8 @@ const AccordionCard = ({
         onValueChange={handleValueChange}
       >
         <AccordionItem value={cardTitle} className="border-b-0 py-2">
-          <AccordionTrigger className="before:bg-primary/75 relative mx-6 cursor-pointer pl-2.5 text-base leading-none font-semibold tracking-tight before:absolute before:left-0 before:h-4 before:w-1 before:rounded-full hover:no-underline">
-            {cardTitle}
+          <AccordionTrigger className="mx-6 cursor-pointer leading-none tracking-tight hover:no-underline">
+            <CardTitle icon={props.icon}>{cardTitle}</CardTitle>
           </AccordionTrigger>
           <AccordionContent className="px-6">{children}</AccordionContent>
         </AccordionItem>

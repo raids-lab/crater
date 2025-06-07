@@ -7,7 +7,15 @@ import LoginHeatmap from "@/components/custom/UserDetail/LoginHeatmap";
 import SharedItems from "@/components/custom/UserDetail/SharedItems";
 import RecentActivity from "@/components/custom/UserDetail/RecentActivity";
 import TipBadge from "@/components/badge/TipBadge";
-import { Activity, Calendar, Database, List, User, Users } from "lucide-react";
+import {
+  Activity,
+  Calendar,
+  Database,
+  GpuIcon,
+  List,
+  User,
+  Users,
+} from "lucide-react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiGetUser } from "@/services/api/user";
@@ -17,7 +25,6 @@ import useBreadcrumb from "@/hooks/useBreadcrumb";
 import { useEffect } from "react";
 import { TimeDistance } from "../TimeDistance";
 import { UserAvatar } from "./UserAvatar";
-import GPUIcon from "@/components/icon/GPUIcon";
 import { GrafanaIframe } from "@/pages/Embed/Monitor";
 import { configGrafanaUserAtom } from "@/utils/store/config";
 import { useAtomValue } from "jotai";
@@ -129,7 +136,7 @@ export default function UserDetail() {
   const tabs = [
     {
       key: "gpu",
-      icon: GPUIcon,
+      icon: GpuIcon,
       label: t("userDetail.tabs.gpuMonitoring"),
       children: (
         <GrafanaIframe

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { CardTitle } from "@/components/ui-custom/card";
+import CardTitle from "@/components/label/CardTitle";
+import { CpuIcon, LayoutGridIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -29,12 +30,9 @@ import {
   CircleArrowDown,
   CircleArrowUp,
   CirclePlus,
-  XIcon,
 } from "lucide-react";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import Combobox from "@/components/form/Combobox";
-import AccordionCard from "@/components/form/AccordionCard";
-import { Separator } from "@/components/ui/separator";
 import {
   exportToJsonFile,
   importFromJsonFile,
@@ -53,9 +51,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { IDlAnalyze, apiDlAnalyze } from "@/services/api/recommend/dlTask";
 import { ProgressBar } from "@/components/custom/ProgressBar";
 import { Cross1Icon } from "@radix-ui/react-icons";
-import { EnvCard } from "./Custom";
 import { VolumeMountsCard } from "@/components/form/DataMountFormField";
 import { OtherOptionsFormCard } from "@/components/form/OtherOptionsFormField";
+import { EnvFormCard } from "@/components/form/EnvFormField";
 
 const VERSION = "20240528";
 const JOB_TYPE = "single";
@@ -236,15 +234,6 @@ export const Component = () => {
     control: form.control,
   });
 
-  const {
-    fields: envFields,
-    append: envAppend,
-    remove: envRemove,
-  } = useFieldArray<FormSchema>({
-    name: "envs",
-    control: form.control,
-  });
-
   const [analyze, setAnalyze] = useState<IDlAnalyze>();
   const { mutate: analyzeTask } = useMutation({
     mutationFn: () =>
@@ -368,7 +357,7 @@ export const Component = () => {
           </div>
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle>基本设置</CardTitle>
+              <CardTitle icon={LayoutGridIcon}>基本设置</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-5">
               <FormField
@@ -631,7 +620,7 @@ export const Component = () => {
                   <div className="grid grid-cols-2 gap-2">
                     <Card>
                       <CardHeader className="pt-4 pb-3">
-                        <CardTitle>P100 资源占用预测</CardTitle>
+                        <CardTitle icon={CpuIcon}>P100 资源占用预测</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-1.5">
                         <ProgressBar
@@ -650,7 +639,7 @@ export const Component = () => {
                     </Card>
                     <Card>
                       <CardHeader className="pt-4 pb-3">
-                        <CardTitle>V100 资源占用预测</CardTitle>
+                        <CardTitle icon={CpuIcon}>V100 资源占用预测</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-1.5">
                         <ProgressBar
@@ -768,76 +757,7 @@ export const Component = () => {
           </Card>
           <div className="flex flex-col gap-4">
             <VolumeMountsCard form={form} />
-            <AccordionCard
-              cardTitle={EnvCard}
-              open={envOpen}
-              setOpen={setEnvOpen}
-            >
-              <div className="mt-3 space-y-5">
-                {envFields.map((field, index) => (
-                  <div key={field.id}>
-                    <Separator
-                      className={cn("mb-5", index === 0 && "hidden")}
-                    />
-                    <div className="space-y-5">
-                      <FormField
-                        control={form.control}
-                        name={`envs.${index}.name`}
-                        render={({ field }) => (
-                          <FormItem className="relative">
-                            <button
-                              onClick={() => envRemove(index)}
-                              className="data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none"
-                            >
-                              <XIcon className="size-4" />
-                              <span className="sr-only">Close</span>
-                            </button>
-                            <FormLabel>
-                              变量名 {index + 1}
-                              <FormLabelMust />
-                            </FormLabel>
-                            <FormControl>
-                              <Input {...field} className="font-mono" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`envs.${index}.value`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>
-                              变量值 {index + 1}
-                              <FormLabelMust />
-                            </FormLabel>
-                            <FormControl>
-                              <Input {...field} className="font-mono" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full"
-                  onClick={() =>
-                    envAppend({
-                      name: "",
-                      value: "",
-                    })
-                  }
-                >
-                  <CirclePlus className="size-4" />
-                  添加{EnvCard}
-                </Button>
-              </div>
-            </AccordionCard>
+            <EnvFormCard form={form} open={envOpen} setOpen={setEnvOpen} />
             <OtherOptionsFormCard
               form={form}
               alertEnabledPath="alertEnabled"

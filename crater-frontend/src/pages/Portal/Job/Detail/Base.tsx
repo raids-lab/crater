@@ -15,6 +15,7 @@ import {
   Trash2Icon,
   UserRoundIcon,
   XIcon,
+  GpuIcon,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -56,7 +57,6 @@ import { GrafanaIframe } from "@/pages/Embed/Monitor";
 import useFixedLayout from "@/hooks/useFixedLayout";
 import { DetailPage } from "@/components/layout/DetailPage";
 import { hasNvidiaGPU } from "@/utils/resource";
-import GPUIcon from "@/components/icon/GPUIcon";
 import { SSHPortDialog } from "./SSHPortDialog";
 import ProfileDashboard from "@/components/metrics/profile-dashboard";
 import { getDaysDifference } from "@/utils/time";
@@ -371,7 +371,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
         },
         {
           key: "gpu",
-          icon: GPUIcon,
+          icon: GpuIcon,
           label: "加速卡监控",
           children: (
             <GrafanaIframe

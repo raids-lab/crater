@@ -69,7 +69,7 @@ export function DetailPage({ header, info, tabs: rawTabs }: DetailPageProps) {
               className={cn("flex items-center", data.className)}
             >
               <data.icon className="text-muted-foreground mr-1.5 size-4" />
-              <span className="text-muted-foreground truncate text-sm">
+              <span className="text-muted-foreground mr-1.5 truncate text-sm">
                 {data.title}:
               </span>
               <span className="truncate">{data.value}</span>

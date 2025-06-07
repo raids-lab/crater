@@ -293,7 +293,8 @@
     "saving": "保存中...",
     "saveChanges": "保存修改",
     "delete": "删除",
-    "confirm": "确认"
+    "confirm": "确认",
+    "create": "创建"
   },
   "otherOptionsFormCard": {
     "accordionTitle": "其他选项",

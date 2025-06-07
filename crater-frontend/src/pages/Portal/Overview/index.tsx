@@ -16,7 +16,7 @@ import { IJobInfo, JobType, apiJobAllList } from "@/services/api/vcjob";
 import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
 import NivoPie from "@/components/chart/NivoPie";
 import SplitLinkButton from "@/components/button/SplitLinkButton";
-import { FlaskConicalIcon, UserRoundIcon } from "lucide-react";
+import { FlaskConicalIcon, GpuIcon, UserRoundIcon } from "lucide-react";
 import { useRoutes } from "react-router-dom";
 import ResourceBadges from "@/components/badge/ResourceBadges";
 import NodeBadges from "@/components/badge/NodeBadges";
@@ -30,7 +30,6 @@ import {
 } from "@/utils/store";
 import NodeDetail from "@/components/node/NodeDetail";
 import useNodeQuery from "@/hooks/query/useNodeQuery";
-import GPUIcon from "@/components/icon/GPUIcon";
 import PieCard from "@/components/chart/PieCard";
 import DocsButton from "@/components/button/DocsButton";
 import PageTitle from "@/components/layout/PageTitle";
@@ -353,7 +352,7 @@ export const Component: FC = () => {
           <NivoPie data={userStatus} margin={{ top: 25, bottom: 30 }} />
         </PieCard>
         <PieCard
-          icon={GPUIcon}
+          icon={GpuIcon}
           cardTitle="使用中 GPU"
           cardDescription="正在使用的 GPU 资源"
           isLoading={jobQuery.isLoading}
