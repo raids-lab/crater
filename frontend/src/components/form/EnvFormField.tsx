@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { CirclePlus, XIcon } from "lucide-react";
+import { CirclePlus, GlobeIcon, XIcon } from "lucide-react";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import AccordionCard from "@/components/form/AccordionCard";
 
@@ -50,6 +50,7 @@ export function EnvFormCard<
   return (
     <AccordionCard
       cardTitle={cardTitle}
+      icon={GlobeIcon}
       open={open}
       setOpen={setOpen}
       className={className}

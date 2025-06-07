@@ -9,6 +9,8 @@ import { showErrorToast } from "@/utils/toast";
 import { getJobTemplate } from "@/services/api/jobtemplate";
 import { JobTemplate } from "@/services/api/jobtemplate";
 import { apiUserGetImageTemplate } from "@/services/api/imagepack";
+import { useAtomValue } from "jotai";
+import { globalUserInfo } from "@/utils/store";
 
 export interface UIStateUpdater<T> {
   /** Condition to determine if this state should be updated */
@@ -69,6 +71,7 @@ export function useTemplateLoader<T extends FieldValues>({
   dataProcessor,
 }: TemplateLoaderOptions<T>) {
   const [searchParams] = useSearchParams();
+  const user = useAtomValue(globalUserInfo);
   const fromJob = searchParams.get("fromJob");
   const fromTemplate = searchParams.get("fromTemplate");
   const [templateData, setTemplateData] = useState<JobTemplate | null>(null);
@@ -77,6 +80,7 @@ export function useTemplateLoader<T extends FieldValues>({
     mutationFn: (jobName: string) => apiJobTemplate(jobName),
     onSuccess: (response) => {
       try {
+        // replace /home/${CRATER_USERNAME} with /home/${username}
         // Import the template data
         let jobInfo = importFromJsonString<T>(metadata, response.data.data);
 
@@ -114,11 +118,12 @@ export function useTemplateLoader<T extends FieldValues>({
     mutationFn: (templateId: number) => getJobTemplate(templateId),
     onSuccess: (response) => {
       try {
-        // Import the template data
-        let templateInfo = importFromJsonString<T>(
-          metadata,
-          response.data.data.template,
+        const template = response.data.data.template.replace(
+          /\/home\/\${CRATER_USERNAME}/g,
+          `/home/${user.name}`,
         );
+        // Import the template data
+        let templateInfo = importFromJsonString<T>(metadata, template);
 
         // Store template data for display
         setTemplateData(response.data.data);

@@ -10,9 +10,10 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
-import { CardTitle } from "@/components/ui-custom/card";
+import CardTitle from "@/components/label/CardTitle";
 import { Badge } from "@/components/ui/badge";
 import { MarkdownRenderer } from "./markdown-renderer";
+import { InfoIcon, NotepadTextIcon } from "lucide-react";
 
 interface TemplateInfoProps<T extends FieldValues> {
   /** The form object to populate */
@@ -58,7 +59,9 @@ export function TemplateInfo<T extends FieldValues>({
       return (
         <Card>
           <CardHeader>
-            <CardTitle>{t("templateInfo.jobInstructions")}</CardTitle>
+            <CardTitle icon={InfoIcon}>
+              {t("templateInfo.jobInstructions")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <MarkdownRenderer>{defaultMarkdown}</MarkdownRenderer>
@@ -75,7 +78,7 @@ export function TemplateInfo<T extends FieldValues>({
       <Card>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center">
+            <CardTitle icon={NotepadTextIcon} className="flex items-center">
               {fromJob
                 ? t("templateInfo.jobTemplate")
                 : t("templateInfo.presetTemplate")}
@@ -111,7 +114,9 @@ export function TemplateInfo<T extends FieldValues>({
       {defaultMarkdown && (
         <Card>
           <CardHeader>
-            <CardTitle>{t("templateInfo.jobInstructions")}</CardTitle>
+            <CardTitle icon={InfoIcon}>
+              {t("templateInfo.jobInstructions")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <MarkdownRenderer>{defaultMarkdown}</MarkdownRenderer>

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { CardTitle } from "@/components/ui-custom/card";
+import CardTitle from "@/components/label/CardTitle";
+import { HammerIcon, LayoutGridIcon, PickaxeIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -17,12 +18,9 @@ import { Input } from "@/components/ui/input";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiPytorchCreate } from "@/services/api/vcjob";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { CirclePlus, CirclePlusIcon, XIcon } from "lucide-react";
 import FormLabelMust from "@/components/form/FormLabelMust";
-import AccordionCard from "@/components/form/AccordionCard";
-import { Separator } from "@/components/ui/separator";
 import {
   volumeMountsSchema,
   envsSchema,
@@ -50,7 +48,7 @@ import PageTitle from "@/components/layout/PageTitle";
 import { PublishConfigForm } from "./Publish";
 import { TemplateInfo } from "@/components/form/TemplateInfo";
 import { ResourceFormFields } from "@/components/form/ResourceFormField";
-import { ForwardFormCard } from "@/components/form/ForwardFormField";
+import { EnvFormCard } from "@/components/form/EnvFormField";
 
 const markdown = `## 运行规则
 
@@ -137,8 +135,6 @@ const formSchema = z.object({
 });
 
 type FormSchema = z.infer<typeof formSchema>;
-
-const EnvCard = "环境变量";
 
 const dataProcessor = (data: FormSchema) => {
   // Convert forwards to a format suitable for the API
@@ -252,15 +248,6 @@ export const Component = () => {
   });
 
   const {
-    fields: envFields,
-    append: envAppend,
-    remove: envRemove,
-  } = useFieldArray<FormSchema>({
-    name: "envs",
-    control: form.control,
-  });
-
-  const {
     fields: psPortFields,
     append: psPortAppend,
     remove: psPortRemove,
@@ -352,7 +339,7 @@ export const Component = () => {
           <div className="flex flex-col gap-4 md:gap-6 lg:col-span-2">
             <Card>
               <CardHeader>
-                <CardTitle>基本设置</CardTitle>
+                <CardTitle icon={LayoutGridIcon}>基本设置</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-5">
                 <FormField
@@ -378,7 +365,7 @@ export const Component = () => {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>Master</CardTitle>
+                <CardTitle icon={HammerIcon}>Master</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-5">
                 <FormField
@@ -510,7 +497,7 @@ export const Component = () => {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>Worker</CardTitle>
+                <CardTitle icon={PickaxeIcon}>Worker</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-5">
                 <FormField
@@ -666,78 +653,7 @@ export const Component = () => {
 
           <div className="flex flex-col gap-4 md:gap-6">
             <VolumeMountsCard form={form} />
-            <ForwardFormCard form={form} />
-            <AccordionCard
-              cardTitle={EnvCard}
-              open={envOpen}
-              setOpen={setEnvOpen}
-            >
-              <div className="mt-3 space-y-5">
-                {envFields.map((field, index) => (
-                  <div key={field.id}>
-                    <Separator
-                      className={cn("mb-5", index === 0 && "hidden")}
-                    />
-                    <div className="space-y-5">
-                      <FormField
-                        control={form.control}
-                        name={`envs.${index}.name`}
-                        render={({ field }) => (
-                          <FormItem className="relative">
-                            <button
-                              type="button"
-                              onClick={() => envRemove(index)}
-                              className="data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none"
-                            >
-                              <XIcon className="size-4" />
-                              <span className="sr-only">Close</span>
-                            </button>
-                            <FormLabel>
-                              变量名 {index + 1}
-                              <FormLabelMust />
-                            </FormLabel>
-                            <FormControl>
-                              <Input {...field} className="font-mono" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`envs.${index}.value`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>
-                              变量值 {index + 1}
-                              <FormLabelMust />
-                            </FormLabel>
-                            <FormControl>
-                              <Input {...field} className="font-mono" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full"
-                  onClick={() =>
-                    envAppend({
-                      name: "",
-                      value: "",
-                    })
-                  }
-                >
-                  <CirclePlus className="size-4" />
-                  添加{EnvCard}
-                </Button>
-              </div>
-            </AccordionCard>
+            <EnvFormCard form={form} open={envOpen} setOpen={setEnvOpen} />
             <OtherOptionsFormCard
               form={form}
               alertEnabledPath="alertEnabled"

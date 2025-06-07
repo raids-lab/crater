@@ -29,7 +29,7 @@ import {
   File,
   Folder,
   FolderPlusIcon,
-  Globe,
+  MoveIcon,
   Trash2,
 } from "lucide-react";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -131,10 +131,10 @@ const FileActions = ({
   return (
     <div className="flex flex-row space-x-1">
       {/* 下载按钮（仅文件显示）*/}
-      {!isDir && (
+      {!isDir ? (
         <TooltipButton
           variant="outline"
-          className="h-8 w-8 p-0 hover:text-sky-700"
+          className="size-8 p-0 hover:text-sky-700"
           tooltipContent={t("fileActions.download.tooltip")}
           onClick={() => {
             const link = `${apiBaseURL}ss/download${path}/${name}`;
@@ -169,56 +169,11 @@ const FileActions = ({
         >
           <DownloadIcon className="size-4" />
         </TooltipButton>
+      ) : (
+        <div className="size-8" />
       )}
-
-      {/* 删除操作 （有读写权限显示）*/}
-      {canShow && (
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <div>
-              <TooltipButton
-                className="hover:text-destructive h-8 w-8 p-0"
-                variant="outline"
-                size="icon"
-                tooltipContent={t("fileActions.delete.tooltip", {
-                  type: isDir ? "folder" : "file",
-                })}
-              >
-                <Trash2 size={16} strokeWidth={2} />
-              </TooltipButton>
-            </div>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t("fileActions.delete.title", {
-                  type: isDir ? "folder" : "file",
-                })}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {t("fileActions.delete.description", {
-                  type: isDir ? "folder" : "file",
-                  name,
-                })}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-              <AlertDialogAction
-                variant="destructive"
-                onClick={() => {
-                  deleteFile(path + "/" + name);
-                }}
-              >
-                {t("common.delete")}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-
       {/* 移动操作 （有读写权限显示）*/}
-      {canShow && (
+      {canShow ? (
         <AlertDialog open={isMoveDialogOpen} onOpenChange={setIsMoveDialogOpen}>
           <AlertDialogTrigger asChild>
             <div>
@@ -230,7 +185,7 @@ const FileActions = ({
                   type: isDir ? "folder" : "file",
                 })}
               >
-                <Globe size={16} strokeWidth={2} />
+                <MoveIcon size={16} strokeWidth={2} />
               </TooltipButton>
             </div>
           </AlertDialogTrigger>
@@ -274,6 +229,55 @@ const FileActions = ({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+      ) : (
+        <div className="size-8" />
+      )}
+      {/* 删除操作 （有读写权限显示）*/}
+      {canShow ? (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <div>
+              <TooltipButton
+                className="hover:text-destructive h-8 w-8 p-0"
+                variant="outline"
+                size="icon"
+                tooltipContent={t("fileActions.delete.tooltip", {
+                  type: isDir ? "folder" : "file",
+                })}
+              >
+                <Trash2 size={16} strokeWidth={2} />
+              </TooltipButton>
+            </div>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {t("fileActions.delete.title", {
+                  type: isDir ? "folder" : "file",
+                })}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {t("fileActions.delete.description", {
+                  type: isDir ? "folder" : "file",
+                  name,
+                })}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                onClick={() => {
+                  deleteFile(path + "/" + name);
+                }}
+              >
+                {t("common.delete")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      ) : (
+        <div className="size-8" />
       )}
     </div>
   );

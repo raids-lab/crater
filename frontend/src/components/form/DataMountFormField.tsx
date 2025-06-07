@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { CirclePlus, XIcon } from "lucide-react";
+import { CirclePlus, HardDriveIcon, XIcon } from "lucide-react";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import { FileSelectDialog } from "@/components/file/FileSelectDialog";
 import Combobox from "@/components/form/Combobox";
@@ -101,6 +101,7 @@ export function VolumeMountsCard<
   return (
     <AccordionCard
       cardTitle={t("volumeMounts.cardTitle")}
+      icon={HardDriveIcon}
       open={dataMountOpen}
       setOpen={setDataMountOpen}
       className={className}
@@ -128,7 +129,7 @@ export function VolumeMountsCard<
                         onClick={() => {
                           volumeMountRemove(index);
                         }}
-                        className="data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none"
+                        className="data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute -top-1.5 right-0 cursor-pointer rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none"
                       >
                         <XIcon className="size-4" />
                         <span className="sr-only">Close</span>
@@ -160,6 +161,7 @@ export function VolumeMountsCard<
                                   VolumeMountType.FileType,
                                 )
                               }
+                              className="cursor-pointer"
                               disabled={disabled}
                             >
                               {t("volumeMounts.fileTab")}
@@ -172,6 +174,7 @@ export function VolumeMountsCard<
                                   VolumeMountType.DataType,
                                 )
                               }
+                              className="cursor-pointer"
                               disabled={disabled}
                             >
                               {t("volumeMounts.dataTab")}
@@ -186,9 +189,21 @@ export function VolumeMountsCard<
                                   `volumeMounts.${index}.type`,
                                   VolumeMountType.FileType,
                                 );
+                                let mountName = `/data/${item.name}`;
+                                switch (item.id) {
+                                  case "user":
+                                    mountName = `/home/${user.name}`;
+                                    break;
+                                  case "account":
+                                    mountName = `/data/account`;
+                                    break;
+                                  case "public":
+                                    mountName = `/data/public`;
+                                    break;
+                                }
                                 form.setValue(
                                   `volumeMounts.${index}.mountPath`,
-                                  `/data/${item.name}`,
+                                  mountName,
                                 );
                               }}
                               disabled={disabled}
