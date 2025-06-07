@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	queryTimeout = 10 * time.Second
+	queryTimeout = 30 * time.Second
 )
 
 //nolint:gocritic // TODO: remove no linter
