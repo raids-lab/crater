@@ -106,10 +106,14 @@ func (p *PrometheusClient) QueryProfileData(namespacedName types.NamespacedName,
 	profileData.MemRequest = queryMetricWithPtr(fmt.Sprintf("max_over_time(kube_pod_container_resource_requests{namespace=%q,pod=%q,resource=\"memory\"}[%s])/1048576", namespace, podname, promRange))
 	profileData.MemLimit = queryMetricWithPtr(fmt.Sprintf("max_over_time(kube_pod_container_resource_limits{namespace=%q,pod=%q,resource=\"memory\"}[%s])/1048576", namespace, podname, promRange))
 
-	// CPU 相关指标
-	profileData.CPUUsageAvg = queryMetricWithPtr(fmt.Sprintf("avg_over_time(irate(container_cpu_usage_seconds_total{namespace=%q,pod=%q,container!=\"POD\",container!=\"\"}[30s])[%s:])", namespace, podname, promRange))
-	profileData.CPUUsageMax = queryMetricWithPtr(fmt.Sprintf("max_over_time(irate(container_cpu_usage_seconds_total{namespace=%q,pod=%q,container!=\"POD\",container!=\"\"}[30s])[%s:])", namespace, podname, promRange))
-	profileData.CPUUsageStd = queryMetricWithPtr(fmt.Sprintf("stddev_over_time(irate(container_cpu_usage_seconds_total{namespace=%q,pod=%q,container!=\"POD\",container!=\"\"}[30s])[%s:])", namespace, podname, promRange))
+	// CPU 相关指标 - 如果运行时间超过1小时，则只使用最近1小时数据
+	cpuUsageRange := promRange
+	if duration > time.Hour {
+		cpuUsageRange = "1h"
+	}
+	profileData.CPUUsageAvg = queryMetricWithPtr(fmt.Sprintf("avg_over_time(irate(container_cpu_usage_seconds_total{namespace=%q,pod=%q,container!=\"POD\",container!=\"\"}[30s])[%s:])", namespace, podname, cpuUsageRange))
+	profileData.CPUUsageMax = queryMetricWithPtr(fmt.Sprintf("max_over_time(irate(container_cpu_usage_seconds_total{namespace=%q,pod=%q,container!=\"POD\",container!=\"\"}[30s])[%s:])", namespace, podname, cpuUsageRange))
+	profileData.CPUUsageStd = queryMetricWithPtr(fmt.Sprintf("stddev_over_time(irate(container_cpu_usage_seconds_total{namespace=%q,pod=%q,container!=\"POD\",container!=\"\"}[30s])[%s:])", namespace, podname, cpuUsageRange))
 
 	profileData.CPUMemMax = queryMetricWithPtr(fmt.Sprintf("max_over_time(container_memory_usage_bytes{namespace=%q,pod=%q,container!=\"POD\",container!=\"\"}[%s])/1048576", namespace, podname, promRange))
 	profileData.CPUMemAvg = queryMetricWithPtr(fmt.Sprintf("avg_over_time(container_memory_usage_bytes{namespace=%q,pod=%q,container!=\"POD\",container!=\"\"}[%s])/1048576", namespace, podname, promRange))
