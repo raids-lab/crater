@@ -1,0 +1,43 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main] # 只在 main 分支推送时触发
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # 允许写入仓库
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "21"
+          cache: "pnpm"
+
+      - name: Install pnpm
+        run: npm install -g pnpm@8
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build static site
+        run: pnpm build
+
+      # 添加 .nojekyll 文件避免 Jekyll 处理
+      - name: Create .nojekyll
+        run: touch ./out/.nojekyll
+
+      # 部署到 gh-pages 分支
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./out
+          destination_dir: ./ # 部署到根目录
+          keep_files: false # 清除旧文件
