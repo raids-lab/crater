@@ -442,12 +442,11 @@ func generatePodSpecForParallelJob(
 		RestartPolicy:      v1.RestartPolicyNever,
 		EnableServiceLinks: ptr.To(false),
 	}
-	if task.Command != nil {
-		if task.Shell != nil {
-			podSpec.Containers[0].Command = []string{*task.Shell, "-c", *task.Command}
-		} else {
-			podSpec.Containers[0].Command = []string{"sh", "-c", *task.Command}
+	if task.Command != nil && *task.Command != "" {
+		if task.Shell == nil {
+			task.Shell = ptr.To("sh")
 		}
+		podSpec.Containers[0].Command = []string{*task.Shell, "-c", *task.Command}
 	}
 	if task.WorkingDir != nil {
 		podSpec.Containers[0].WorkingDir = *task.WorkingDir

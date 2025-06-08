@@ -211,12 +211,11 @@ func GenerateCustomPodSpec(
 		EnableServiceLinks: ptr.To(false),
 	}
 
-	if custom.Command != nil {
-		if custom.Shell != nil {
-			podSpec.Containers[0].Command = []string{*custom.Shell, "-c", *custom.Command}
-		} else {
-			podSpec.Containers[0].Command = []string{"sh", "-c", *custom.Command}
+	if custom.Command != nil && *custom.Command != "" {
+		if custom.Shell == nil {
+			custom.Shell = ptr.To("sh")
 		}
+		podSpec.Containers[0].Command = []string{*custom.Shell, "-c", *custom.Command}
 	}
 
 	return podSpec, nil
