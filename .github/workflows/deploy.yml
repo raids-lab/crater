@@ -1,43 +1,62 @@
-name: Deploy to GitHub Pages
+name: Deploy Next.js to GitHub Pages
 
 on:
   push:
-    branches: [main] # 只在 main 分支推送时触发
+    branches: [main]
 
 jobs:
-  build-and-deploy:
+  build:
+    name: Build Next.js Site
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # 允许写入仓库
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
+      # 设置 pnpm
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9 # 使用与您项目兼容的pnpm版本
+          run_install: false
+
+      # 设置 Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "21"
+          node-version: 21 # 使用您项目需要的Node版本
           cache: "pnpm"
 
-      - name: Install pnpm
-        run: npm install -g pnpm@8
-
+      # 安装依赖
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build static site
+      # 构建项目
+      - name: Build website
         run: pnpm build
 
-      # 添加 .nojekyll 文件避免 Jekyll 处理
-      - name: Create .nojekyll
+      # 添加.nojekyll文件防止Jekyll处理
+      - name: Create .nojekyll file
         run: touch ./out/.nojekyll
 
-      # 部署到 gh-pages 分支
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      # 上传构建产物
+      - name: Upload Build Artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./out
-          destination_dir: ./ # 部署到根目录
-          keep_files: false # 清除旧文件
+          path: ./out
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
