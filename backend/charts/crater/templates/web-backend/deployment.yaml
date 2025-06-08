@@ -6,6 +6,8 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: crater-web-backend
+  annotations:
+    checksum/config: {{ include (print $.Template.BasePath "/web-backend/configmap.yaml") . | sha256sum }}
 spec:
   replicas: 1
   selector:

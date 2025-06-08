@@ -5,7 +5,7 @@ web:
   backend:
     image:
       repository: ***REMOVED***
-      tag: "363bb1c3"
+      tag: "5499b54c"
       pullPolicy: "IfNotPresent"
   migrate:
     createMigrationJob: true
@@ -15,7 +15,7 @@ web:
   frontend:
     image:
       repository: ***REMOVED***
-      tag: "5acce9b7"
+      tag: "e387f065"
       pullPolicy: "IfNotPresent"
     config:
       version: "1.0.0"
@@ -23,7 +23,7 @@ web:
         host: ***REMOVED***
         apiBase: "https://***REMOVED***/api/"
         apiVersion: "v1"
-        websiteBase: "https://***REMOVED***/website/cn"
+        websiteBase: "https://raids-lab.github.io/website/cn"
       grafana:
         overview:
           main: "https://gpu-grafana.***REMOVED***/d/f33ade9f-821d-4e96-a7f2-eb16c8b9c447/838ffad"
@@ -107,7 +107,7 @@ web:
     host: gpu-grafana.***REMOVED***
   document:
     image:
-      tag: 4a0d561f
+      tag: 529506c0
 nodeSelector:
   node-role.kubernetes.io/control-plane: ""
 tolerations:
