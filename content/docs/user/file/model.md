@@ -11,7 +11,7 @@ description: Documentation for Model
 
 在`数据管理-模型`下，可以查看模型。这里显示的模型包括用户自己创建的、个人被分享的和账户被分享的数据。
 
-![model](./img/model.png)
+![model](./img/model.webp)
 
 每个模型会有一些基本描述，在右边有四个按钮，分别是重命名，个人分享，账户分享和删除。这些操作都需要模型创建者才能使用。
 
@@ -19,14 +19,14 @@ description: Documentation for Model
 
 在模型页面左上角有一个创建数据集按钮，点击后填写模型名称、描述并选择文件夹位置、模型的标签、模型的开源地址，选择是否公开进行创建。
 
-![model-create](./img/model-create.png)
+![model-create](./img/model-create.webp)
 
 创建的模型名称不能相同，选择文件夹时会自动跳出你能看见的公共、个人及当前账户的空间文件，然后进行选择
 
-![alt text](./img/select-file.png)
+![alt text](./img/select-file.webp)
 
 ## 怎么使用模型
 
 在新建作业的页面，右边有个数据挂载框，添加数据挂载后，可以选择模型，然后将其挂载到容器内。
 
-![alt text](./img/mount.png)
+![alt text](./img/mount.webp)

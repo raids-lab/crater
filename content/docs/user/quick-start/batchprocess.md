@@ -167,25 +167,25 @@ if __name__ == '__main__':
 
 在系统中打开数据管理的文件系统并进入用户空间
 
-![openuserspace](./assets/openuserspace.png)
+![openuserspace](./assets/openuserspace.webp)
 
 可以通过为项目单独新建一个文件夹，然后将相关文件导入。
 
-![createfile](./assets/createfile.png)
+![createfile](./assets/createfile.webp)
 
 本示例中将 train.py 文件导入到 mnist 文件夹中
 
-![uploadfile](./assets/uploadfile.png)
+![uploadfile](./assets/uploadfile.webp)
 
 ## 作业提交
 
 在批处理作业中选择自定义单机批处理作业
 
-![selectbatchprocess](./assets/selectbatchprocess.png)
+![selectbatchprocess](./assets/selectbatchprocess.webp)
 
 ### 填写作业信息
 
-![filljobinfo](./assets/filljobinfo.png)
+![filljobinfo](./assets/filljobinfo.webp)
 
 ### 容器镜像选择
 
@@ -214,37 +214,37 @@ python train.py
 
 初始状态是挂载整个用户文件系统。一般来说，文件系统和数据集都会挂载到/mnt/文件夹下
 
-![mount](./assets/mount.png)
+![mount](./assets/mount.webp)
 
 如，导入用户空间下的 mnist 文件夹，可通过 cd /mnt/mnist;指令来访问该文件夹
 
-![filemount](./assets/filemount.png)
+![filemount](./assets/filemount.webp)
 
 与文件夹情况类似，数据集挂载其实是将包含数据集的文件夹整体挂载到/mnt/文件夹下，具体如下
 
-![datasetmount](./assets/datasetmount.png)
+![datasetmount](./assets/datasetmount.webp)
 
-![opendataset](./assets/opendataset.png)
+![opendataset](./assets/opendataset.webp)
 
 ## 作业运行状况查看
 
 在成功创建作业后，会在批处理作业列表中看到刚刚创建的作业，点击作业名称可查看详情
 
-![openjob](./assets/openjob.png)
+![openjob](./assets/openjob.webp)
 
-![checkjob](./assets/checkjob.png)
+![checkjob](./assets/checkjob.webp)
 
 作业运行过程中，可能会报错，比如因为无法打开相对应的文件夹，或者程序执行过程中出现问题，可通过查看日志查看作业运行情况
 
-![checklog](./assets/checklog.png)
+![checklog](./assets/checklog.webp)
 
 此时表示程序正在下载数据集，因系统代理问题可能下载速度较慢，可提前下载数据集上传
 
-![checkjobincmd](./assets/checkjobincmd.png)
+![checkjobincmd](./assets/checkjobincmd.webp)
 
 状态变**已完成**表示批处理作业已顺利执行成功，失败则表示存在问题，可通过日志查看
 
-![jobstatus](./assets/jobstatus.png)
+![jobstatus](./assets/jobstatus.webp)
 
 #### 其他查看作业运行情况的方法
 
@@ -256,7 +256,7 @@ sleep 600;//让程序暂停10分钟
 
 然后通过终端和日志查看你想查看的信息
 
-![openterminal](./assets/openterminal.png)
+![openterminal](./assets/openterminal.webp)
 
 ## 作业结果保存
 
@@ -266,4 +266,4 @@ sleep 600;//让程序暂停10分钟
 torch.save(model.state_dict(), "mnist_cnn.pt")
 ```
 
-![jobsave](./assets/jobsave.png)
+![jobsave](./assets/jobsave.webp)

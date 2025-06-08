@@ -22,7 +22,7 @@ description: 使用 Ingress 规则，您可以指使得外部访问者可以通�
 
 **转发路径**： 所有的访问路径均采用统一格式：`crater.act.buaa.edu.cn/ingress/{userName}-{uuid}`。其中，`userName` 是用户名，`uuid` 为自动生成的五位标识符，指向特定的服务。
 
-![ingress-intro](./img/ingress-intro.png)
+![ingress-intro](./img/ingress-intro.webp)
 
 设置完成后会在对应 Pod 的 `Annotations` 中看到如下内容，使用 `ingress.crater.raids.io` 作为 `key` 值：
 
@@ -45,15 +45,15 @@ metadata:
 
 1. 在作业详情页点击 **设置外部访问规则**。
 
-   ![ingress-entrance](./img/ingress-entrance.png)
+   ![ingress-entrance](./img/ingress-entrance.webp)
 
 2. 点击弹出的对话框中点击 **“添加 Ingress 规则”** ，输入对应的**规则名称**（仅包含小写字母，不超过 20 个字符，不可重复），以及**容器端口**，点击保存。
 
-   ![ingress-new](./img/ingress-new.png)
+   ![ingress-new](./img/ingress-new.webp)
 
 3. 保存成功后即可看到**相应的 Ingress 规则**。
 
-   ![ingress-tensorboard](./img/ingress-tensorboard.png)
+   ![ingress-tensorboard](./img/ingress-tensorboard.webp)
 
 **示例配置**：
 
@@ -110,4 +110,4 @@ tensorboard --port {port} --logdir {your-logs-dir} --bind_all --path_prefix={you
 
 - 用户可以通过 `gpu.act.buaa.edu.cn/ingress/{userName}-{uuid}` 路径访问 TensorBoard，看到对应页面如下：
 
-  ![ingress-tensorboard](./img/ingress-tb-1.png)
+  ![ingress-tensorboard](./img/ingress-tb-1.webp)

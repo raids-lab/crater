@@ -36,11 +36,11 @@ chmod 600 ~/.ssh/authorized_keys
 
 进入**作业详情页**，可以在页面右上角点击 **“SSH 连接”** 按钮。
 
-![](./img/ssh-func/ssh-detail.png)
+![](./img/ssh-func/ssh-detail.webp)
 
 点击后会弹出如下对话框:
 
-![](./img/ssh-func/ssh-func.png)
+![](./img/ssh-func/ssh-func.webp)
 
 可以根据需要复制 Terminal 和 VSCode 的连接命令。
 
@@ -48,13 +48,13 @@ chmod 600 ~/.ssh/authorized_keys
 
 在 Terminal 中输入复制的命令，即可连接到容器内。
 
-![](./img/ssh-func/terminal.png)
+![](./img/ssh-func/terminal.webp)
 
 ## VSCode 连接
 
 （1）VSCode 中要安装 Remote-SSH 扩展，见下：
 
-![](./img/ssh-func/remote-ssh.png)
+![](./img/ssh-func/remote-ssh.webp)
 
 （2）点击 VSCode 左下角的远程连接图标，在弹出的菜单中选择 **“Remote - SSH: Connect to Host”** 。
 
@@ -62,8 +62,8 @@ chmod 600 ~/.ssh/authorized_keys
 
 （4）等待 VSCode 在远程服务器上安装必要的组件（这一步可能需要等待较长的时间）。
 
-![](./img/ssh-func/download-server.png)
+![](./img/ssh-func/download-server.webp)
 
 （5）安装完成后，VSCode 即可连接到容器内。
 
-![](./img/ssh-func/connect.png)
+![](./img/ssh-func/connect.webp)

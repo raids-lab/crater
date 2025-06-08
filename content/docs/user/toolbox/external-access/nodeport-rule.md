@@ -22,7 +22,7 @@ description: NodePort 规则可以暴露服务端口，并允许外部用户通�
 
 **转发路径**： 可通过 `{nodeIP}:{nodePort}` 访问。其中，`nodeIP` 是集群任一节点的地址，`nodePort `为所分配的端口号。
 
-![nodeport-intro](./img/nodeport-intro.png)
+![nodeport-intro](./img/nodeport-intro.webp)
 
 设置完成后会在对应 Pod 的 `Annotations` 中看到如下内容，使用 `nodeport.crater.raids.io` 作为 `key` 值：
 
@@ -43,15 +43,15 @@ metadata:
 
 1. 在作业详情页点击 **“设置外部访问规则”** 。
 
-   ![ingress-entrance](./img/ingress-entrance.png)
+   ![ingress-entrance](./img/ingress-entrance.webp)
 
 2. 点击弹出的对话框中点击 **“添加 NodePort 规则”** ，输入对应的**规则名称**（仅包含小写字母，不超过 20 个字符，不可重复），以及**容器端口**，点击保存。
 
-   ![nodeport-new](./img/nodeport-new.png)
+   ![nodeport-new](./img/nodeport-new.webp)
 
 3. 保存成功后即可看到**相应的 NodePort 规则**。
 
-   ![nodeport-ssh](./img/nodeport-ssh.png)
+   ![nodeport-ssh](./img/nodeport-ssh.webp)
 
 **示例配置**：
 
@@ -77,4 +77,4 @@ metadata:
 
 在 VSCode 中通过 NodePort 连接远程 Jupyter NoteBook 的效果如下：
 
-![vscode-nodeport-ssh](./img/vscode-nodeport-ssh.png)
+![vscode-nodeport-ssh](./img/vscode-nodeport-ssh.webp)

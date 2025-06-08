@@ -11,7 +11,7 @@ description: Documentation for Logger
 
 在作业详情页，点击作业事件按钮，可以查看近一小时的事件。
 
-![events](./image/events.png)
+![events](./image/events.webp)
 
 由于是从集群上获取的事件，默认情况是全英文的，您可以重点关注：
 
@@ -22,6 +22,6 @@ description: Documentation for Logger
 
 作业成功被调度并启动后，您可以查看该作业对应 Pod 的日志信息。
 
-![log](./image/log.png)
+![log](./image/log.webp)
 
 有关可能遇到的问题，请参考 [常见问题](../category/常见问题/)。

@@ -18,7 +18,7 @@ icon: HomeIcon
 
 在`数据管理-数据集`下，可以查看数据集。这里显示的数据集包括用户自己创建的、个人被分享的和账户被分享的数据。
 
-![dataset](./img/dataset.png)
+![dataset](./img/dataset.webp)
 
 每个数据集会有一些基本描述，在右边有四个按钮，分别是删除，个人分享，账户分享和重命名。这些操作都需要数据集创建者才能使用。
 
@@ -26,14 +26,14 @@ icon: HomeIcon
 
 在数据集页面左上角有一个创建数据集按钮，点击后填写名称、描述并选择文件夹位置进行创建。
 
-![dataset-create](./img/dataset-create.png)
+![dataset-create](./img/dataset-create.webp)
 
 创建的数据集名称不能相同，选择文件夹时会自动跳出你能看见的公共、个人及当前账户的空间文件，然后进行选择
 
-![alt text](./img/select-file.png)
+![alt text](./img/select-file.webp)
 
 ## 怎么使用数据集
 
 在新建作业的页面，右边有个数据挂载框，添加数据挂载后，可以选择数据集，然后将其挂载到容器内。
 
-![alt text](./img/mount.png)
+![alt text](./img/mount.webp)

@@ -18,17 +18,17 @@ icon: HomeIcon
 
 在`数据管理-共享文件`下，可以查看共享文件。这里显示的数据集包括用户自己创建的、个人被分享的和账户被分享的文件。
 
-![sharefile](./img/sharefile.png)
+![sharefile](./img/sharefile.webp)
 
 每个共享文件会有一些基本描述，在右边有四个按钮，分别是删除，个人分享，账户分享和重命名。这些操作都需要数据集创建者才能使用。
 
-![image-sharefiledetail](./img/sharefiledetail.png)
+![image-sharefiledetail](./img/sharefiledetail.webp)
 
 ## 怎么创建共享文件
 
 在数据集页面左上角有一个创建共享文件按钮，点击后填写名称、描述并选择文件夹位置进行创建。
 
-![image-sharefilecreate](./img/sharefilecreate.png)
+![image-sharefilecreate](./img/sharefilecreate.webp)
 
 创建的共享文件夹名称不能相同，选择文件夹时会自动跳出你能读写的个人及当前账户的空间文件，然后进行选择
 
@@ -36,4 +36,4 @@ icon: HomeIcon
 
 在新建作业的页面，右边有个数据挂载框，添加数据挂载后，可以通过检索选择相应的共享文件，然后将其挂载到容器内。
 
-![alt text](./img/mount.png)
+![alt text](./img/mount.webp)

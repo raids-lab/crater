@@ -26,19 +26,15 @@ C:\Users\<用户名>\.ssh\id_rsa.pub
 ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
 ```
 
-
-
 ## 创建 Jupyter 作业
 
 用户创建 Jupyter 作业，具体创建方法可参考详见 [交互式作业](../quick-start/interactive.md)，示例作业如下：
 
-![](./img/vscode-ssh/job.png)
+![](./img/vscode-ssh/job.webp)
 
-点击“交互式页面”跳转到 Jupyter Notebook 
+点击“交互式页面”跳转到 Jupyter Notebook
 
-![](./img/vscode-ssh/jupyter.png)
-
-
+![](./img/vscode-ssh/jupyter.webp)
 
 ## 容器内安装 SSHD
 
@@ -77,7 +73,7 @@ sudo service ssh status
 
 ```bash
 (base) liuxw24@jupyter-liuxw24-6838a-default0-0:~$ sudo service ssh restart
- * Restarting OpenBSD Secure Shell server sshd                       [ OK ] 
+ * Restarting OpenBSD Secure Shell server sshd                       [ OK ]
 (base) liuxw24@jupyter-liuxw24-6838a-default0-0:~$ sudo service ssh status
  * sshd is running
 ```
@@ -112,8 +108,6 @@ vim ~/.ssh/authorized_keys
 chmod 600 ~/.ssh/authorized_keys
 ```
 
-
-
 ## 设置 NodePort 规则
 
 可通过设置外部访问规则中的 **NodePort 规则** 暴露服务端口，并使用 NodePort 端口在 VSCode 中连接到 Jupyter 容器内。
@@ -122,17 +116,15 @@ NodePort 规则允许用户通过集群节点的 IP 地址和指定的端口号�
 
 在 Jupyter 作业详情页创建 NodePort 规则，详细创建流程介绍参见 [设置 NodePort 访问规则](../toolbox/external-access/nodeport-rule.md)。
 
-![](./img/vscode-ssh/nodeport.png)
+![](./img/vscode-ssh/nodeport.webp)
 
 **字段说明**：
 
 - **容器端口号** (`containerPort`): 选择 **22** 端口，用于 SSH 服务。
 
-- **集群节点地址**(`address`): 集群任一节点的IP地址，此处为`192.168.5.30`。
+- **集群节点地址**(`address`): 集群任一节点的 IP 地址，此处为`192.168.5.30`。
 
-- **所分配的NodePort端口**(`nodePort`): Kubernetes 会自动从端口范围 30000 到 32767 中为服务分配一个端口号，此处为`32310`。
-
-  
+- **所分配的 NodePort 端口**(`nodePort`): Kubernetes 会自动从端口范围 30000 到 32767 中为服务分配一个端口号，此处为`32310`。
 
 ## VSCode 配置
 
@@ -140,23 +132,23 @@ NodePort 规则允许用户通过集群节点的 IP 地址和指定的端口号�
 
 VSCode 中要安装 Remote-SSH 扩展，见下：
 
-![](./img/vscode-ssh/remote-ssh.png)
+![](./img/vscode-ssh/remote-ssh.webp)
 
 ### 配置 **Remote.SSH Config** 文件
 
 在设置中指定 **Remote.SSH Config** 文件的路径：
 
-![](./img/vscode-ssh/setting.png)
+![](./img/vscode-ssh/setting.webp)
 
 config 文件参考配置如下：
 
 ```yaml
 Host 192.168.5.30
-  HostName 192.168.5.30
-  LogLevel verbose
-  IdentityFile C:\Users\lxw\.ssh\id_rsa
-  Port 32310
-  User liuxw24
+HostName 192.168.5.30
+LogLevel verbose
+IdentityFile C:\Users\lxw\.ssh\id_rsa
+Port 32310
+User liuxw24
 ```
 
 各字段解释如下：
@@ -168,4 +160,4 @@ Host 192.168.5.30
 
 配置完成后即可成功通过 NodePort 在 VSCode 中连接到 Jupyter 容器内：
 
-![](./img/vscode-ssh/connected.png)
+![](./img/vscode-ssh/connected.webp)
