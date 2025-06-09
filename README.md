@@ -15,7 +15,7 @@ pnpm dev
 
 Open http://localhost:3000/website with your browser to see the result.
 
-## Build and serve locally:
+## Build and serve locally
 
 ```bash
 pnpm build
@@ -23,6 +23,12 @@ pnpm dlx serve@latest out --serve-path /website
 ```
 
 Open http://localhost:3000/website with your browser to see the result.
+
+## Before commit
+
+```bash
+./hack/squoosh_images.py
+```
 
 ## Learn More
 
