@@ -24,6 +24,7 @@ import {
 import { notFound } from "next/navigation";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import { getMDXComponents } from "@/mdx-components";
+import { SquarePenIcon } from "lucide-react";
 
 export default async function Page(props: {
   params: Promise<{ lang: string; slug?: string[] }>;
@@ -35,7 +36,13 @@ export default async function Page(props: {
   const MDXContent = page.data.body;
 
   return (
-    <DocsPage toc={page.data.toc} full={page.data.full}>
+    <DocsPage 
+      tableOfContent={{
+        style: 'clerk',
+      }}
+      toc={page.data.toc}
+      full={page.data.full}
+    >
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
       <DocsBody>
@@ -45,6 +52,15 @@ export default async function Page(props: {
             a: createRelativeLink(source, page),
           })}
         />
+        <a
+          href={`https://github.com/raids-lab/website/blob/main/content/docs/${page.file.path}`}
+          rel="noreferrer noopener"
+          target="_blank"
+          className="w-fit border flex items-center gap-2 no-underline rounded-md p-2 font-medium text-sm text-fd-secondary-foreground bg-fd-secondary transition-colors hover:text-fd-accent-foreground hover:bg-fd-accent"
+        >
+          <SquarePenIcon className="size-4" />
+          Edit on GitHub
+        </a>
       </DocsBody>
     </DocsPage>
   );
