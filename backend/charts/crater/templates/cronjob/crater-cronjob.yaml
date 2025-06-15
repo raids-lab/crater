@@ -9,6 +9,9 @@ spec:
   schedule: "{{ .Values.web.cronjob.config.jobs.lowGPUUtil.schedule }}"
   jobTemplate:
     spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 300
+      ttlSecondsAfterFinished: 300
       template:
         spec:
         {{- with .Values.imagePullSecrets }}
@@ -33,7 +36,7 @@ spec:
             envFrom:
             - configMapRef:
                 name: crater-cronjob-config
-          restartPolicy: OnFailure
+          restartPolicy: Never
           volumes:
           - name: scripts-volume
             configMap:
@@ -50,6 +53,9 @@ spec:
   schedule: "{{ .Values.web.cronjob.config.jobs.longTime.schedule }}"
   jobTemplate:
     spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 300
+      ttlSecondsAfterFinished: 300
       template:
         spec:
         {{- with .Values.imagePullSecrets }}
@@ -72,7 +78,7 @@ spec:
             envFrom:
             - configMapRef:
                 name: crater-cronjob-config
-          restartPolicy: OnFailure
+          restartPolicy: Never
           volumes:
           - name: scripts-volume
             configMap:
@@ -89,6 +95,9 @@ spec:
   schedule: "{{ .Values.web.cronjob.config.jobs.waitingJupyter.schedule }}"
   jobTemplate:
     spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 300
+      ttlSecondsAfterFinished: 300
       template:
         spec:
         {{- with .Values.imagePullSecrets }}
@@ -109,7 +118,7 @@ spec:
             envFrom:
             - configMapRef:
                 name: crater-cronjob-config
-          restartPolicy: OnFailure
+          restartPolicy: Never
           volumes:
           - name: scripts-volume
             configMap:

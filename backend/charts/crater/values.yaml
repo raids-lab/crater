@@ -81,7 +81,7 @@ web:
   ingress:
     host: ***REMOVED***
   cronjob:
-    image: ***REMOVED***/curl-jq:latest
+    image: ***REMOVED***/curl-jq:v0
     config:
       USERNAME: "***REMOVED***"
       PASSWORD: "***REMOVED***"
