@@ -26,13 +26,9 @@ import {
   Trash2Icon,
   XIcon,
 } from "lucide-react";
-import {
-  getJobStateType,
-  IJobInfo,
-  JobStatus,
-  JobType,
-} from "@/services/api/vcjob";
+import { getJobStateType, IJobInfo, JobStatus } from "@/services/api/vcjob";
 import { useMemo } from "react";
+import { getNewJobUrl } from "@/utils/job";
 
 interface JobActionsMenuProps {
   jobInfo: IJobInfo;
@@ -41,17 +37,10 @@ interface JobActionsMenuProps {
 
 export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
   const jobStatus = getJobStateType(jobInfo.status);
-  const newJobUrl = useMemo(() => {
-    return jobInfo.jobType === JobType.Jupyter
-      ? "new-jupyter-vcjobs"
-      : jobInfo.jobType === JobType.Custom
-        ? "new-vcjobs"
-        : jobInfo.jobType === JobType.Tensorflow
-          ? "new-tensorflow"
-          : jobInfo.jobType === JobType.Pytorch
-            ? "new-pytorch"
-            : "new-vcjobs";
-  }, [jobInfo.jobType]);
+  const newJobUrl = useMemo(
+    () => getNewJobUrl(jobInfo.jobType),
+    [jobInfo.jobType],
+  );
 
   return (
     <AlertDialog>

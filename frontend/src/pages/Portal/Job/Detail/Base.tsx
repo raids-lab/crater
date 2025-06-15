@@ -16,6 +16,7 @@ import {
   UserRoundIcon,
   XIcon,
   GpuIcon,
+  RedoDotIcon,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -67,6 +68,8 @@ import UserLabel from "@/components/label/UserLabel";
 import JupyterIcon from "@/components/icon/JupyterIcon";
 import PrefixLinkButton from "@/components/button/PrefixLinkButton";
 import { apiGetPodIngresses } from "@/services/api/tool";
+import TooltipButton from "@/components/custom/TooltipButton";
+import { getNewJobUrl } from "@/utils/job";
 
 export function BaseCore({ jobName }: { jobName: string }) {
   useFixedLayout();
@@ -330,8 +333,27 @@ export function BaseCore({ jobName }: { jobName: string }) {
               name={jobName}
               type="yaml"
               fetchData={apiJobGetYaml}
-              renderData={(data) => (
-                <CodeContent data={data} language={"yaml"} />
+              renderData={(yaml) => (
+                <CodeContent
+                  data={yaml}
+                  language={"yaml"}
+                  moreActions={
+                    <>
+                      <TooltipButton
+                        size="icon"
+                        variant="outline"
+                        className="size-8"
+                        tooltipContent="克隆作业"
+                        onClick={() => {
+                          const url = `${getNewJobUrl(data.jobType)}?fromJob=${jobName}`;
+                          navigate(url);
+                        }}
+                      >
+                        <RedoDotIcon />
+                      </TooltipButton>
+                    </>
+                  }
+                />
               )}
             />
           ),

@@ -18,10 +18,12 @@ export function CodeContent({
   data,
   language,
   className,
+  moreActions,
 }: {
   data: string;
   language?: string;
   className?: string;
+  moreActions?: React.ReactNode;
 }) {
   const { ref: refRoot, width, height } = useResizeObserver();
 
@@ -43,12 +45,15 @@ export function CodeContent({
         </HighlightedPre>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
-      <CopyButton
-        className="absolute top-5 right-5 h-8 w-8"
-        content={data ?? ""}
-        variant="outline"
-        size="icon"
-      />
+      <div className="absolute top-5 right-5 flex h-8 flex-row items-center gap-2">
+        {moreActions}
+        <CopyButton
+          className="size-8"
+          content={data ?? ""}
+          variant="outline"
+          size="icon"
+        />
+      </div>
     </Card>
   );
 }
