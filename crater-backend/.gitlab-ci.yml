@@ -42,7 +42,7 @@ lint:
 # 合并构建作业 - 同时生成迁移工具和后端服务
 build_binaries:
   stage: build
-  image: ***REMOVED***/crater/library/golang:1.23-alpine
+  image: ***REMOVED***/docker.io/library/golang:1.23-alpine
   <<: *setup_go
   script:
     - command -v swag >/dev/null || go install github.com/swaggo/swag/cmd/swag@latest
