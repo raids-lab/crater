@@ -45,8 +45,7 @@ build_binaries:
   image: ***REMOVED***/docker.io/library/golang:1.23-alpine
   <<: *setup_go
   script:
-    - command -v swag >/dev/null || go install github.com/swaggo/swag/cmd/swag@latest
-    - swag init
+    - go run github.com/swaggo/swag/cmd/swag@latest init
     - go build -ldflags="-w -s" -o "${BIN_DIR}/migrate" cmd/gorm-gen/models/migrate.go
     - go build -ldflags="-w -s" -o "${BIN_DIR}/controller" main.go
   artifacts:

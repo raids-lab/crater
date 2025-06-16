@@ -165,17 +165,18 @@ type (
 )
 
 // DeleteJob godoc
-// @Summary Delete the job
-// @Description Delete the job by client-go
-// @Tags VolcanoJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name path string true "Job Name"
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/vcjobs/{name} [delete]
+//
+//	@Summary		Delete the job
+//	@Description	Delete the job by client-go
+//	@Tags			VolcanoJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string					true	"Job Name"
+//	@Success		200		{object}	resputil.Response[any]	"Success"
+//	@Failure		400		{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500		{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/vcjobs/{name} [delete]
 func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
 	mgr.deleteJob(c)
 }
@@ -249,17 +250,18 @@ func (mgr *VolcanojobMgr) deleteJob(c *gin.Context) {
 }
 
 // DeleteJobForAdmin godoc
-// @Summary Admin delete the job
-// @Description 管理员删除用户作业
-// @Tags VolcanoJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name path string true "Job Name"
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/vcjobs/{name} [delete]
+//
+//	@Summary		Admin delete the job
+//	@Description	管理员删除用户作业
+//	@Tags			VolcanoJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string					true	"Job Name"
+//	@Success		200		{object}	resputil.Response[any]	"Success"
+//	@Failure		400		{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500		{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/admin/vcjobs/{name} [delete]
 func (mgr *VolcanojobMgr) DeleteJobForAdmin(c *gin.Context) {
 	mgr.deleteJob(c)
 }
@@ -305,16 +307,17 @@ type (
 )
 
 // GetUserJobs godoc
-// @Summary Get the jobs of the user
-// @Description Get the jobs of the user by client-go
-// @Tags VolcanoJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Success 200 {object} resputil.Response[any] "Volcano Job List"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/vcjobs [get]
+//
+//	@Summary		Get the jobs of the user
+//	@Description	Get the jobs of the user by client-go
+//	@Tags			VolcanoJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[any]	"Volcano Job List"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/vcjobs [get]
 func (mgr *VolcanojobMgr) GetUserJobs(c *gin.Context) {
 	token := util.GetToken(c)
 
@@ -333,17 +336,18 @@ func (mgr *VolcanojobMgr) GetUserJobs(c *gin.Context) {
 }
 
 // GetAllJobsInDays godoc
-// @Summary Get all of the jobs
-// @Description 返回指定天数内的所有作业，默认为14天
-// @Tags VolcanoJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param days query int false "Number of days to look back, default is 14" default(14)
-// @Success 200 {object} resputil.Response[any] "admin get Volcano Job List"
-// @Failure 400 {object} resputil.Response[any] "admin Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/vcjobs/all [get]
+//
+//	@Summary		Get all of the jobs
+//	@Description	返回指定天数内的所有作业，默认为14天
+//	@Tags			VolcanoJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			days	query		int						false	"Number of days to look back, default is 14"	default(14)
+//	@Success		200		{object}	resputil.Response[any]	"admin get Volcano Job List"
+//	@Failure		400		{object}	resputil.Response[any]	"admin Request parameter error"
+//	@Failure		500		{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/vcjobs/all [get]
 func (mgr *VolcanojobMgr) GetAllJobsInDays(c *gin.Context) {
 	type QueryParams struct {
 		Days int `form:"days"`
@@ -466,17 +470,18 @@ type (
 )
 
 // GetJobDetail godoc
-// @Summary 获取jupyter详情
-// @Description 调用k8s get crd
-// @Tags VolcanoJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name path string true "Job Name"
-// @Success 200 {object} resputil.Response[any] "任务描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/vcjobs/{name}/detail [get]
+//
+//	@Summary		获取jupyter详情
+//	@Description	调用k8s get crd
+//	@Tags			VolcanoJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string					true	"Job Name"
+//	@Success		200		{object}	resputil.Response[any]	"任务描述"
+//	@Failure		400		{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500		{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/vcjobs/{name}/detail [get]
 func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -539,17 +544,18 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 }
 
 // OpenSSH godoc
-// @Summary 开启 SSH
-// @Description 开启 SSH
-// @Tags VolcanoJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name path string true "Job Name"
-// @Success 200 {object} resputil.Response[any] "SSH开启成功"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/vcjobs/{name}/ssh [post]
+//
+//	@Summary		开启 SSH
+//	@Description	开启 SSH
+//	@Tags			VolcanoJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string					true	"Job Name"
+//	@Success		200		{object}	resputil.Response[any]	"SSH开启成功"
+//	@Failure		400		{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500		{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/vcjobs/{name}/ssh [post]
 func (mgr *VolcanojobMgr) OpenSSH(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -659,17 +665,18 @@ func (mgr *VolcanojobMgr) OpenSSH(c *gin.Context) {
 }
 
 // GetJobPods godoc
-// @Summary 获取任务的Pod列表
-// @Description 获取任务的Pod列表
-// @Tags VolcanoJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name path string true "Job Name"
-// @Success 200 {object} resputil.Response[any] "Pod列表"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/vcjobs/{name}/pods [get]
+//
+//	@Summary		获取任务的Pod列表
+//	@Description	获取任务的Pod列表
+//	@Tags			VolcanoJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string					true	"Job Name"
+//	@Success		200		{object}	resputil.Response[any]	"Pod列表"
+//	@Failure		400		{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500		{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/vcjobs/{name}/pods [get]
 func (mgr *VolcanojobMgr) GetJobPods(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -732,17 +739,18 @@ func (mgr *VolcanojobMgr) GetJobPods(c *gin.Context) {
 }
 
 // GetJobYaml godoc
-// @Summary 获取vcjob Yaml详情
-// @Description 调用k8s get crd
-// @Tags vcjob-jupyter
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name path string true "Job Name"
-// @Success 200 {object} resputil.Response[any] "任务yaml"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/vcjobs/{name}/yaml [get]
+//
+//	@Summary		获取vcjob Yaml详情
+//	@Description	调用k8s get crd
+//	@Tags			vcjob-jupyter
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string					true	"Job Name"
+//	@Success		200		{object}	resputil.Response[any]	"任务yaml"
+//	@Failure		400		{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500		{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/vcjobs/{name}/yaml [get]
 func (mgr *VolcanojobMgr) GetJobYaml(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -788,17 +796,18 @@ func (mgr *VolcanojobMgr) GetJobYaml(c *gin.Context) {
 }
 
 // GetJobTemplate godoc
-// @Summary 获取任务的 template
-// @Description 获取任务的 template
-// @Tags VolcanoJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name path string true "Job Name"
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/vcjobs/{name}/template [get]
+//
+//	@Summary		获取任务的 template
+//	@Description	获取任务的 template
+//	@Tags			VolcanoJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string					true	"Job Name"
+//	@Success		200		{object}	resputil.Response[any]	"Success"
+//	@Failure		400		{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500		{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/vcjobs/{name}/template [get]
 func (mgr *VolcanojobMgr) GetJobTemplate(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -815,17 +824,18 @@ func (mgr *VolcanojobMgr) GetJobTemplate(c *gin.Context) {
 }
 
 // GetJobEvents godoc
-// @Summary 获取任务的事件
-// @Description 获取任务的事件
-// @Tags VolcanoJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name path string true "Job Name"
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/vcjobs/{name}/event [get]
+//
+//	@Summary		获取任务的事件
+//	@Description	获取任务的事件
+//	@Tags			VolcanoJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string					true	"Job Name"
+//	@Success		200		{object}	resputil.Response[any]	"Success"
+//	@Failure		400		{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500		{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/vcjobs/{name}/event [get]
 func (mgr *VolcanojobMgr) GetJobEvents(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -890,15 +900,16 @@ func (mgr *VolcanojobMgr) GetJobEvents(c *gin.Context) {
 }
 
 // ToggleAlertState godoc
-// @Summary set AlertEnabled of the job to the opposite value
-// @Description set AlertEnabled of the job to the opposite value
-// @Tags VolcanoJob
-// @Accept json
-// @Produce json
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/vcjobs/{name}/alert [put]
+//
+//	@Summary		set AlertEnabled of the job to the opposite value
+//	@Description	set AlertEnabled of the job to the opposite value
+//	@Tags			VolcanoJob
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	resputil.Response[any]	"Success"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/vcjobs/{name}/alert [put]
 func (mgr *VolcanojobMgr) ToggleAlertState(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {

@@ -15,13 +15,14 @@ import (
 )
 
 // UserListKaniko godoc
-// @Summary 用户获取镜像构建信息
-// @Description 返回该用户所有的镜像构建数据
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Router /v1/images/kaniko [GET]
+//
+//	@Summary		用户获取镜像构建信息
+//	@Description	返回该用户所有的镜像构建数据
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/images/kaniko [GET]
 func (mgr *ImagePackMgr) UserListKaniko(c *gin.Context) {
 	var kanikos []*model.Kaniko
 	var err error
@@ -40,13 +41,14 @@ func (mgr *ImagePackMgr) UserListKaniko(c *gin.Context) {
 }
 
 // AdminListKaniko godoc
-// @Summary 管理员获取相关镜像的功能
-// @Description 管理员获取所有镜像制作信息
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Router /v1/admin/images/kaniko [GET]
+//
+//	@Summary		管理员获取相关镜像的功能
+//	@Description	管理员获取所有镜像制作信息
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/admin/images/kaniko [GET]
 func (mgr *ImagePackMgr) AdminListKaniko(c *gin.Context) {
 	var kanikos []*model.Kaniko
 	var err error
@@ -60,14 +62,15 @@ func (mgr *ImagePackMgr) AdminListKaniko(c *gin.Context) {
 }
 
 // DeleteKanikoByID godoc
-// @Summary 根据ID删除Kaniko entity
-// @Description 根据ID更新Kaniko的状态为Deleted，起到删除的功能
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param ID body uint true "删除镜像的ID"
-// @Router /v1/images/kaniko/{id} [DELETE]
+//
+//	@Summary		根据ID删除Kaniko entity
+//	@Description	根据ID更新Kaniko的状态为Deleted，起到删除的功能
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			ID	body	uint	true	"删除镜像的ID"
+//	@Router			/v1/images/kaniko/{id} [DELETE]
 func (mgr *ImagePackMgr) DeleteKanikoByID(c *gin.Context) {
 	token := util.GetToken(c)
 	var err error
@@ -86,14 +89,15 @@ func (mgr *ImagePackMgr) DeleteKanikoByID(c *gin.Context) {
 }
 
 // UserDeleteKanikoByIDList godoc
-// @Summary 根据IDList删除Kaniko entity
-// @Description 遍历列表，根据ID更新Kaniko的状态为Deleted，起到删除的功能
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param IDList body []uint true "删除kaniko的IDList"
-// @Router /v1/images/deletekaniko [POST]
+//
+//	@Summary		根据IDList删除Kaniko entity
+//	@Description	遍历列表，根据ID更新Kaniko的状态为Deleted，起到删除的功能
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			IDList	body	[]uint	true	"删除kaniko的IDList"
+//	@Router			/v1/images/deletekaniko [POST]
 func (mgr *ImagePackMgr) UserDeleteKanikoByIDList(c *gin.Context) {
 	var err error
 	var deleteKanikoListRequest DeleteKanikoByIDListRequest
@@ -111,14 +115,15 @@ func (mgr *ImagePackMgr) UserDeleteKanikoByIDList(c *gin.Context) {
 }
 
 // AdminDeleteKanikoByIDList godoc
-// @Summary 管理员模式下根据IDList删除Kaniko entity
-// @Description 管理员模式下遍历列表，根据ID更新Kaniko的状态为Deleted，起到删除的功能
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param IDList body []uint true "删除kaniko的IDList"
-// @Router /v1/admin/images/deletekaniko [POST]
+//
+//	@Summary		管理员模式下根据IDList删除Kaniko entity
+//	@Description	管理员模式下遍历列表，根据ID更新Kaniko的状态为Deleted，起到删除的功能
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			IDList	body	[]uint	true	"删除kaniko的IDList"
+//	@Router			/v1/admin/images/deletekaniko [POST]
 func (mgr *ImagePackMgr) AdminDeleteKanikoByIDList(c *gin.Context) {
 	var err error
 	var deleteKanikoListRequest DeleteKanikoByIDListRequest
@@ -194,14 +199,15 @@ func (mgr *ImagePackMgr) deleteKanikoByID(c *gin.Context, isAdminMode bool, kani
 }
 
 // GetKanikoByImagePackName godoc
-// @Summary 获取imagepack的详细信息
-// @Description 获取imagepackname，搜索到imagepack
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name query string true "获取ImagePack的name"
-// @Router /v1/images/get [GET]
+//
+//	@Summary		获取imagepack的详细信息
+//	@Description	获取imagepackname，搜索到imagepack
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	query	string	true	"获取ImagePack的name"
+//	@Router			/v1/images/get [GET]
 func (mgr *ImagePackMgr) GetKanikoByImagePackName(c *gin.Context) {
 	kanikoQuery := query.Kaniko
 	var req GetKanikoRequest
@@ -237,14 +243,15 @@ func (mgr *ImagePackMgr) GetKanikoByImagePackName(c *gin.Context) {
 }
 
 // GetKanikoTemplateByImagePackName godoc
-// @Summary 获取imagepack的模板信息
-// @Description 获取imagepackname，搜索到imagepack的模板信息
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name query string true "获取ImagePack的name"
-// @Router /v1/images/get [GET]
+//
+//	@Summary		获取imagepack的模板信息
+//	@Description	获取imagepackname，搜索到imagepack的模板信息
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	query	string	true	"获取ImagePack的name"
+//	@Router			/v1/images/get [GET]
 func (mgr *ImagePackMgr) GetKanikoTemplateByImagePackName(c *gin.Context) {
 	kanikoQuery := query.Kaniko
 	var req GetKanikoRequest
@@ -267,14 +274,15 @@ func (mgr *ImagePackMgr) GetKanikoTemplateByImagePackName(c *gin.Context) {
 }
 
 // GetImagepackPodName godoc
-// @Summary 获取镜像构建Pod名称
-// @Description 根据ID获取镜像构建Pod名称和命名空间
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param id query uint true "镜像构建任务ID"
-// @Router /v1/images/podname [GET]
+//
+//	@Summary		获取镜像构建Pod名称
+//	@Description	根据ID获取镜像构建Pod名称和命名空间
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			id	query	uint	true	"镜像构建任务ID"
+//	@Router			/v1/images/podname [GET]
 func (mgr *ImagePackMgr) GetImagepackPodName(c *gin.Context) {
 	var req GetKanikoPodRequest
 	var err error

@@ -83,17 +83,18 @@ type UserBaseInfoResp struct {
 }
 
 // DeleteUser godoc
-// @Summary 删除用户
-// @Description 删除用户
-// @Tags User
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name path string true "username"
-// @Success 200 {object} resputil.Response[string] "删除成功"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/admin/users/{name} [delete]
+//
+//	@Summary		删除用户
+//	@Description	删除用户
+//	@Tags			User
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string						true	"username"
+//	@Success		200		{object}	resputil.Response[string]	"删除成功"
+//	@Failure		400		{object}	resputil.Response[any]		"请求参数错误"
+//	@Failure		500		{object}	resputil.Response[any]		"其他错误"
+//	@Router			/v1/admin/users/{name} [delete]
 func (mgr *UserMgr) DeleteUser(c *gin.Context) {
 	name := c.Param("name")
 	u := query.User
@@ -109,16 +110,17 @@ func (mgr *UserMgr) DeleteUser(c *gin.Context) {
 }
 
 // ListUser godoc
-// @Summary 列出用户信息
-// @Description 列出用户信息（包含私人配额）
-// @Tags User
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Success 200 {object} resputil.Response[any] "成功获取用户信息"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/admin/users [get]
+//
+//	@Summary		列出用户信息
+//	@Description	列出用户信息（包含私人配额）
+//	@Tags			User
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[any]	"成功获取用户信息"
+//	@Failure		400	{object}	resputil.Response[any]	"请求参数错误"
+//	@Failure		500	{object}	resputil.Response[any]	"其他错误"
+//	@Router			/v1/admin/users [get]
 func (mgr *UserMgr) ListUser(c *gin.Context) {
 	var users []UserResp
 	u := query.User
@@ -135,16 +137,17 @@ func (mgr *UserMgr) ListUser(c *gin.Context) {
 }
 
 // ListUserBaseInfo godoc
-// @Summary 列出用户基本信息
-// @Description 列出用户信息，姓名，昵称，用户空间
-// @Tags User
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Success 200 {object} resputil.Response[any] "成功获取用户信息"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/admin/users/baseinfo [get]
+//
+//	@Summary		列出用户基本信息
+//	@Description	列出用户信息，姓名，昵称，用户空间
+//	@Tags			User
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[any]	"成功获取用户信息"
+//	@Failure		400	{object}	resputil.Response[any]	"请求参数错误"
+//	@Failure		500	{object}	resputil.Response[any]	"其他错误"
+//	@Router			/v1/admin/users/baseinfo [get]
 func (mgr *UserMgr) ListUserBaseInfo(c *gin.Context) {
 	var users []UserBaseInfoResp
 	u := query.User
@@ -160,17 +163,18 @@ func (mgr *UserMgr) ListUserBaseInfo(c *gin.Context) {
 }
 
 // GetUser godoc
-// @Summary 获取单个用户信息
-// @Description 获取指定用户的详细信息
-// @Tags User
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name path string true "username"
-// @Success 200 {object} resputil.Response[UserDetailResp] "成功获取用户信息"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/users/{name} [get]
+//
+//	@Summary		获取单个用户信息
+//	@Description	获取指定用户的详细信息
+//	@Tags			User
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string								true	"username"
+//	@Success		200		{object}	resputil.Response[UserDetailResp]	"成功获取用户信息"
+//	@Failure		400		{object}	resputil.Response[any]				"请求参数错误"
+//	@Failure		500		{object}	resputil.Response[any]				"其他错误"
+//	@Router			/v1/users/{name} [get]
 func (mgr *UserMgr) GetUser(c *gin.Context) {
 	name := c.Param("name")
 	u := query.User
@@ -204,18 +208,19 @@ func (mgr *UserMgr) GetUser(c *gin.Context) {
 }
 
 // UpdateRole godoc
-// @Summary 更新角色
-// @Description 更新角色
-// @Tags User
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name path UserNameReq true "username"
-// @Param data body UpdateRoleReq true "role"
-// @Success 200 {object} resputil.Response[string] "更新角色成功"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/admin/users/{name}/role [put]
+//
+//	@Summary		更新角色
+//	@Description	更新角色
+//	@Tags			User
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		UserNameReq					true	"username"
+//	@Param			data	body		UpdateRoleReq				true	"role"
+//	@Success		200		{object}	resputil.Response[string]	"更新角色成功"
+//	@Failure		400		{object}	resputil.Response[any]		"请求参数错误"
+//	@Failure		500		{object}	resputil.Response[any]		"其他错误"
+//	@Router			/v1/admin/users/{name}/role [put]
 func (mgr *UserMgr) UpdateRole(c *gin.Context) {
 	var req UpdateRoleReq
 	var nameReq UserNameReq
@@ -246,16 +251,17 @@ func (mgr *UserMgr) UpdateRole(c *gin.Context) {
 }
 
 // CheckIfEmailVerified godoc
-// @Summary 检查邮箱是否已验证
-// @Description 检查邮箱是否已验证
-// @Tags User
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Success 200 {object} resputil.Response[any] "成功获取用户信息"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/users/email/verified [get]
+//
+//	@Summary		检查邮箱是否已验证
+//	@Description	检查邮箱是否已验证
+//	@Tags			User
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[any]	"成功获取用户信息"
+//	@Failure		400	{object}	resputil.Response[any]	"请求参数错误"
+//	@Failure		500	{object}	resputil.Response[any]	"其他错误"
+//	@Router			/v1/users/email/verified [get]
 func (mgr *UserMgr) CheckIfEmailVerified(c *gin.Context) {
 	type Resp struct {
 		Verified            bool       `json:"verified"`
@@ -279,18 +285,19 @@ func (mgr *UserMgr) CheckIfEmailVerified(c *gin.Context) {
 }
 
 // UpdateUserAttributesByAdmin godoc
-// @Summary 管理员更新用户属性
-// @Description 管理员更新指定用户的属性
-// @Tags User
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name path string true "username"
-// @Param attributes body model.UserAttribute true "用户属性"
-// @Success 200 {object} resputil.Response[any] "用户属性更新成功"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/admin/users/{name}/attributes [put]
+//
+//	@Summary		管理员更新用户属性
+//	@Description	管理员更新指定用户的属性
+//	@Tags			User
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name		path		string					true	"username"
+//	@Param			attributes	body		model.UserAttribute		true	"用户属性"
+//	@Success		200			{object}	resputil.Response[any]	"用户属性更新成功"
+//	@Failure		400			{object}	resputil.Response[any]	"请求参数错误"
+//	@Failure		500			{object}	resputil.Response[any]	"其他错误"
+//	@Router			/v1/admin/users/{name}/attributes [put]
 func (mgr *UserMgr) UpdateUserAttributesByAdmin(c *gin.Context) {
 	var nameReq UserNameReq
 	if err := c.ShouldBindUri(&nameReq); err != nil {

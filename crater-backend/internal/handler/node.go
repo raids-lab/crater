@@ -61,16 +61,17 @@ func (mgr *NodeMgr) RegisterAdmin(g *gin.RouterGroup) {
 }
 
 // ListNode godoc
-// @Summary 获取节点基本信息
-// @Description kubectl + prometheus获取节点基本信息
-// @Tags Node
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Success 200 {object} resputil.Response[string] "成功返回值描述，注意这里返回Json字符串，swagger无法准确解析"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/nodes [get]
+//
+//	@Summary		获取节点基本信息
+//	@Description	kubectl + prometheus获取节点基本信息
+//	@Tags			Node
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[string]	"成功返回值描述，注意这里返回Json字符串，swagger无法准确解析"
+//	@Failure		400	{object}	resputil.Response[any]		"请求参数错误"
+//	@Failure		500	{object}	resputil.Response[any]		"其他错误"
+//	@Router			/v1/nodes [get]
 func (mgr *NodeMgr) ListNode(c *gin.Context) {
 	logutils.Log.Infof("Node List, url: %s", c.Request.URL)
 	nodes, err := mgr.nodeClient.ListNodes()
@@ -82,17 +83,18 @@ func (mgr *NodeMgr) ListNode(c *gin.Context) {
 }
 
 // GetNode godoc
-// @Summary 获取节点详细信息
-// @Description kubectl + prometheus获取节点详细信息
-// @Tags Node
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name path string true "节点名称"
-// @Success 200 {object} resputil.Response[crclient.ClusterNodeDetail] "成功返回值"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/nodes/{name} [get]
+//
+//	@Summary		获取节点详细信息
+//	@Description	kubectl + prometheus获取节点详细信息
+//	@Tags			Node
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string											true	"节点名称"
+//	@Success		200		{object}	resputil.Response[crclient.ClusterNodeDetail]	"成功返回值"
+//	@Failure		400		{object}	resputil.Response[any]							"请求参数错误"
+//	@Failure		500		{object}	resputil.Response[any]							"其他错误"
+//	@Router			/v1/nodes/{name} [get]
 func (mgr *NodeMgr) GetNode(c *gin.Context) {
 	var req NodePodRequest
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -109,17 +111,18 @@ func (mgr *NodeMgr) GetNode(c *gin.Context) {
 }
 
 // UpdataNodeunschedule godoc
-// @Summary 	更新节点调度状态
-// @Description 介绍函数的主要实现逻辑
-// @Tags 接口对应的标签
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name path string true "节点名称"
-// @Success 200 {object} resputil.Response[string] "成功返回值"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/nodes/{name}  [put]
+//
+//	@Summary		更新节点调度状态
+//	@Description	介绍函数的主要实现逻辑
+//	@Tags			接口对应的标签
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string						true	"节点名称"
+//	@Success		200		{object}	resputil.Response[string]	"成功返回值"
+//	@Failure		400		{object}	resputil.Response[any]		"请求参数错误"
+//	@Failure		500		{object}	resputil.Response[any]		"其他错误"
+//	@Router			/v1/nodes/{name}  [put]
 func (mgr *NodeMgr) UpdateNodeunschedule(c *gin.Context) {
 	var req NodePodRequest
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -136,17 +139,18 @@ func (mgr *NodeMgr) UpdateNodeunschedule(c *gin.Context) {
 }
 
 // addNodetaint godoc
-// @Summary 添加节点污点
-// @Description 通过nodeclient调用k8s接口添加节点污点
-// @Tags 接口对应的标签
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param req body NodeTaint true "节点名称+污点"
-// @Success 200 {object} resputil.Response[string] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router  /v1/nodes/{name}/taint  [post]
+//
+//	@Summary		添加节点污点
+//	@Description	通过nodeclient调用k8s接口添加节点污点
+//	@Tags			接口对应的标签
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			req	body		NodeTaint					true	"节点名称+污点"
+//	@Success		200	{object}	resputil.Response[string]	"成功返回值描述"
+//	@Failure		400	{object}	resputil.Response[any]		"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]		"Other errors"
+//	@Router			/v1/nodes/{name}/taint  [post]
 //
 //nolint:dupl// 重复代码
 func (mgr *NodeMgr) AddNodetaint(c *gin.Context) {
@@ -166,17 +170,18 @@ func (mgr *NodeMgr) AddNodetaint(c *gin.Context) {
 }
 
 // DeleteNodeTaint godoc
-// @Summary 删除节点的污点
-// @Description 匹配是否存在该污点，存在则删除
-// @Tags 接口对应的标签
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param req body NodeTaint true "节点名称+污点"
-// @Success 200 {object} resputil.Response[string] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/nodes/name/taint  [delete]
+//
+//	@Summary		删除节点的污点
+//	@Description	匹配是否存在该污点，存在则删除
+//	@Tags			接口对应的标签
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			req	body		NodeTaint					true	"节点名称+污点"
+//	@Success		200	{object}	resputil.Response[string]	"成功返回值描述"
+//	@Failure		400	{object}	resputil.Response[any]		"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]		"Other errors"
+//	@Router			/v1/nodes/name/taint  [delete]
 //
 //nolint:dupl// 重复代码
 func (mgr *NodeMgr) DeleteNodetaint(c *gin.Context) {
@@ -196,17 +201,18 @@ func (mgr *NodeMgr) DeleteNodetaint(c *gin.Context) {
 }
 
 // GetPodsForNode godoc
-// @Summary 获取节点Pod信息
-// @Description kubectl + prometheus获取节点Pod信息
-// @Tags Node
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name query string false "节点名称"
-// @Success 200 {object} resputil.Response[any] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/nodes/{name}/pod/ [get]
+//
+//	@Summary		获取节点Pod信息
+//	@Description	kubectl + prometheus获取节点Pod信息
+//	@Tags			Node
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	query		string					false	"节点名称"
+//	@Success		200		{object}	resputil.Response[any]	"成功返回值描述"
+//	@Failure		400		{object}	resputil.Response[any]	"请求参数错误"
+//	@Failure		500		{object}	resputil.Response[any]	"其他错误"
+//	@Router			/v1/nodes/{name}/pod/ [get]
 func (mgr *NodeMgr) GetPodsForNode(c *gin.Context) {
 	var req NodePodRequest
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -225,17 +231,18 @@ func (mgr *NodeMgr) GetPodsForNode(c *gin.Context) {
 }
 
 // ListNodeGPUUtil godoc
-// @Summary 获取GPU各节点的利用率
-// @Description 查询prometheus获取GPU各节点的利用率
-// @Tags Node
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name query string false "节点名称"
-// @Success 200 {object} resputil.Response[crclient.GPUInfo] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/nodes/{name}/gpu/ [get]
+//
+//	@Summary		获取GPU各节点的利用率
+//	@Description	查询prometheus获取GPU各节点的利用率
+//	@Tags			Node
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	query		string								false	"节点名称"
+//	@Success		200		{object}	resputil.Response[crclient.GPUInfo]	"成功返回值描述"
+//	@Failure		400		{object}	resputil.Response[any]				"请求参数错误"
+//	@Failure		500		{object}	resputil.Response[any]				"其他错误"
+//	@Router			/v1/nodes/{name}/gpu/ [get]
 func (mgr *NodeMgr) ListNodeGPUInfo(c *gin.Context) {
 	var req NodePodRequest
 	if err := c.ShouldBindUri(&req); err != nil {
