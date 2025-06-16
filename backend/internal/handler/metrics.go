@@ -64,16 +64,17 @@ func init() {
 }
 
 // GetMetrics godoc
-// @Summary 获取系统中每种Status的Job的数量
-// @Description 返回Prometheus能够识别的信息
-// @Tags Metrics
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Success 200 {array} resputil.Response[any] "成功返回"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /metrics [get]
+//
+//	@Summary		获取系统中每种Status的Job的数量
+//	@Description	返回Prometheus能够识别的信息
+//	@Tags			Metrics
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{array}		resputil.Response[any]	"成功返回"
+//	@Failure		400	{object}	resputil.Response[any]	"请求参数错误"
+//	@Failure		500	{object}	resputil.Response[any]	"其他错误"
+//	@Router			/metrics [get]
 func (mgr *MetricsMgr) GetMetrics(c *gin.Context) {
 	j := query.Job
 	jobs, err := j.WithContext(c).Find()

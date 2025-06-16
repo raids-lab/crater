@@ -73,16 +73,17 @@ type DatasetResp struct {
 }
 
 // GetDatasets godoc
-// @Summary 获取数据集
-// @Description 获取数据集
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Success 200 {object} resputil.Response[any] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/dataset/mydataset [get]
+//
+//	@Summary		获取数据集
+//	@Description	获取数据集
+//	@Tags			Dataset
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[any]	"成功返回值描述"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/dataset/mydataset [get]
 func (mgr *DatasetMgr) GetDatasets(c *gin.Context) {
 	token := util.GetToken(c)
 	datasets := make(map[uint]DatasetResp)
@@ -126,17 +127,18 @@ func (mgr *DatasetMgr) GetDatasets(c *gin.Context) {
 }
 
 // 函数名称 GetDatasetByID
-// @Summary 通过数据集id获取数据集信息
-// @Description 通过数据集id获取数据集信息
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param req path DatasetGetReq true "数据集ID"
-// @Success 200 {object} resputil.Response[any] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/dataset/detail/{datasetId} [get]
+//
+//	@Summary		通过数据集id获取数据集信息
+//	@Description	通过数据集id获取数据集信息
+//	@Tags			Dataset
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			req	path		DatasetGetReq			true	"数据集ID"
+//	@Success		200	{object}	resputil.Response[any]	"成功返回值描述"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/dataset/detail/{datasetId} [get]
 func (mgr *DatasetMgr) GetDatasetByID(c *gin.Context) {
 	var req DatasetGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -156,16 +158,17 @@ func (mgr *DatasetMgr) GetDatasetByID(c *gin.Context) {
 }
 
 // GetAllDataset godoc
-// @Summary 获取所有数据集
-// @Description 获取所有数据集
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Success 200 {object} resputil.Response[any] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/dataset/alldataset [get]
+//
+//	@Summary		获取所有数据集
+//	@Description	获取所有数据集
+//	@Tags			Dataset
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[any]	"成功返回值描述"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/admin/dataset/alldataset [get]
 func (mgr *DatasetMgr) GetAllDataset(c *gin.Context) {
 	datasets := make(map[uint]DatasetResp)
 	d := query.Dataset
@@ -216,17 +219,18 @@ type DatasetReq struct {
 }
 
 // CreateDataset godoc
-// @Summary 创建数据集
-// @Description 输入数据集名字和URL，创建数据集
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param datasetReq body DatasetReq true "参数描述"
-// @Success 200 {object} resputil.Response[string] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/dataset/create	[post]
+//
+//	@Summary		创建数据集
+//	@Description	输入数据集名字和URL，创建数据集
+//	@Tags			Dataset
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			datasetReq			body		DatasetReq					true	"参数描述"
+//	@Success		200					{object}	resputil.Response[string]	"成功返回值描述"
+//	@Failure		400					{object}	resputil.Response[any]		"Request parameter error"
+//	@Failure		500					{object}	resputil.Response[any]		"Other errors"
+//	@Router			/v1/dataset/create	[post]
 func (mgr *DatasetMgr) CreateDataset(c *gin.Context) {
 	token := util.GetToken(c)
 	var datasetReq DatasetReq
@@ -328,16 +332,17 @@ type cancelsharedUserReq struct {
 }
 
 // ShareDatasetWithUser godoc
-// @Summary 跟用户共享数据集
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param userReq body SharedUserReq true "共享数据集用户"
-// @Success 200 {object} resputil.Response[string] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/dataset/share/user [post]
+//
+//	@Summary	跟用户共享数据集
+//	@Tags		Dataset
+//	@Accept		json
+//	@Produce	json
+//	@Security	Bearer
+//	@Param		userReq	body		SharedUserReq				true	"共享数据集用户"
+//	@Success	200		{object}	resputil.Response[string]	"成功返回值描述"
+//	@Failure	400		{object}	resputil.Response[any]		"Request parameter error"
+//	@Failure	500		{object}	resputil.Response[any]		"Other errors"
+//	@Router		/v1/dataset/share/user [post]
 func (mgr *DatasetMgr) ShareDatasetWithUser(c *gin.Context) {
 	token := util.GetToken(c)
 	var userReq SharedUserReq
@@ -360,17 +365,18 @@ func (mgr *DatasetMgr) ShareDatasetWithUser(c *gin.Context) {
 }
 
 // AdminShareDatasetWithUser godoc
-// @Summary 管理员对用户分享数据集
-// @Description 管理员对用户分享数据集
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param userReq body SharedUserReq true "共享数据集用户"
-// @Success 200 {object} resputil.Response[string] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/dataset/share/user [post]
+//
+//	@Summary		管理员对用户分享数据集
+//	@Description	管理员对用户分享数据集
+//	@Tags			Dataset
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			userReq	body		SharedUserReq				true	"共享数据集用户"
+//	@Success		200		{object}	resputil.Response[string]	"成功返回值描述"
+//	@Failure		400		{object}	resputil.Response[any]		"Request parameter error"
+//	@Failure		500		{object}	resputil.Response[any]		"Other errors"
+//	@Router			/v1/admin/dataset/share/user [post]
 func (mgr *DatasetMgr) AdminShareDatasetWithUser(c *gin.Context) {
 	var userReq SharedUserReq
 	if err := c.ShouldBindJSON(&userReq); err != nil {
@@ -418,17 +424,18 @@ func (mgr *DatasetMgr) shareWithUser(c *gin.Context, userReq SharedUserReq) erro
 }
 
 // 函数名称 CancelShareDatasetWithUser
-// @Summary 普通用户取消数据集共享用户
-// @Description 普通用户取消数据集共享
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param Req body cancelsharedUserReq true "共享数据集用户"
-// @Success 200 {object} resputil.Response[string] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/dataset/cancelshare/user [post]
+//
+//	@Summary		普通用户取消数据集共享用户
+//	@Description	普通用户取消数据集共享
+//	@Tags			Dataset
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			Req	body		cancelsharedUserReq			true	"共享数据集用户"
+//	@Success		200	{object}	resputil.Response[string]	"成功返回值描述"
+//	@Failure		400	{object}	resputil.Response[any]		"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]		"Other errors"
+//	@Router			/v1/dataset/cancelshare/user [post]
 func (mgr *DatasetMgr) CancelShareDatasetWithUser(c *gin.Context) {
 	var Req cancelsharedUserReq
 	if err := c.ShouldBindJSON(&Req); err != nil {
@@ -449,17 +456,18 @@ func (mgr *DatasetMgr) CancelShareDatasetWithUser(c *gin.Context) {
 }
 
 // 函数名称 AdminCancelShareDatasetWithUser
-// @Summary 管理员取消数据集共享用户
-// @Description 管理员取消数据集共享用户
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param Req body cancelsharedUserReq true "共享数据集用户"
-// @Success 200 {object} resputil.Response[string] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/dataset/cancelshare/user [post]
+//
+//	@Summary		管理员取消数据集共享用户
+//	@Description	管理员取消数据集共享用户
+//	@Tags			Dataset
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			Req	body		cancelsharedUserReq			true	"共享数据集用户"
+//	@Success		200	{object}	resputil.Response[string]	"成功返回值描述"
+//	@Failure		400	{object}	resputil.Response[any]		"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]		"Other errors"
+//	@Router			/v1/admin/dataset/cancelshare/user [post]
 func (mgr *DatasetMgr) AdminCancelShareDatasetWithUser(c *gin.Context) {
 	var Req cancelsharedUserReq
 	if err := c.ShouldBindJSON(&Req); err != nil {
@@ -503,17 +511,18 @@ type SharedQueueReq struct {
 }
 
 // ShareDatasetWithQueue godoc
-// @Summary 跟队列共享数据集
-// @Description 跟队列共享数据集
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param queueReq body SharedQueueReq true "共享数据集队列"
-// @Success 200 {object} resputil.Response[string] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/dataset/share/queue [post]
+//
+//	@Summary		跟队列共享数据集
+//	@Description	跟队列共享数据集
+//	@Tags			Dataset
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			queueReq	body		SharedQueueReq				true	"共享数据集队列"
+//	@Success		200			{object}	resputil.Response[string]	"成功返回值描述"
+//	@Failure		400			{object}	resputil.Response[any]		"Request parameter error"
+//	@Failure		500			{object}	resputil.Response[any]		"Other errors"
+//	@Router			/v1/dataset/share/queue [post]
 func (mgr *DatasetMgr) ShareDatasetWithQueue(c *gin.Context) {
 	var queueReq SharedQueueReq
 	if err := c.ShouldBindJSON(&queueReq); err != nil {
@@ -536,17 +545,18 @@ func (mgr *DatasetMgr) ShareDatasetWithQueue(c *gin.Context) {
 }
 
 // AdminShareDatasetWithQueue godoc
-// @Summary 管理员对队列分享数据集
-// @Description 管理员对队列分享数据集
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param queueReq body SharedQueueReq true "共享数据集队列"
-// @Success 200 {object} resputil.Response[string] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/dataset/share/queue [post]
+//
+//	@Summary		管理员对队列分享数据集
+//	@Description	管理员对队列分享数据集
+//	@Tags			Dataset
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			queueReq	body		SharedQueueReq				true	"共享数据集队列"
+//	@Success		200			{object}	resputil.Response[string]	"成功返回值描述"
+//	@Failure		400			{object}	resputil.Response[any]		"Request parameter error"
+//	@Failure		500			{object}	resputil.Response[any]		"Other errors"
+//	@Router			/v1/admin/dataset/share/queue [post]
 func (mgr *DatasetMgr) AdminShareDatasetWithQueue(c *gin.Context) {
 	var queueReq SharedQueueReq
 	d := query.Dataset
@@ -599,17 +609,18 @@ type cancelSharedQueueReq struct {
 }
 
 // 函数名称 CancelShareDatasetWithQueue
-// @Summary 普通用户取消数据共享队列
-// @Description 普通用户取消数据共享队列
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param queueReq body cancelSharedQueueReq true "共享数据集队列"
-// @Success 200 {object} resputil.Response[string] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router  /v1/dataset/cancelshare/queue [post]
+//
+//	@Summary		普通用户取消数据共享队列
+//	@Description	普通用户取消数据共享队列
+//	@Tags			Dataset
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			queueReq	body		cancelSharedQueueReq		true	"共享数据集队列"
+//	@Success		200			{object}	resputil.Response[string]	"成功返回值描述"
+//	@Failure		400			{object}	resputil.Response[any]		"Request parameter error"
+//	@Failure		500			{object}	resputil.Response[any]		"Other errors"
+//	@Router			/v1/dataset/cancelshare/queue [post]
 func (mgr *DatasetMgr) CancelShareDatasetWithQueue(c *gin.Context) {
 	var queueReq cancelSharedQueueReq
 	if err := c.ShouldBindJSON(&queueReq); err != nil {
@@ -632,17 +643,18 @@ func (mgr *DatasetMgr) CancelShareDatasetWithQueue(c *gin.Context) {
 }
 
 // 函数名称 AdmincancelShareDatasetWithQueue
-// @Summary 管理员取消数据共享队列
-// @Description 管理员取消数据共享队列
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param queueReq body cancelSharedQueueReq true "共享数据集队列"
-// @Success 200 {object} resputil.Response[string] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/dataset/cancelshare/queue [post]
+//
+//	@Summary		管理员取消数据共享队列
+//	@Description	管理员取消数据共享队列
+//	@Tags			Dataset
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			queueReq	body		cancelSharedQueueReq		true	"共享数据集队列"
+//	@Success		200			{object}	resputil.Response[string]	"成功返回值描述"
+//	@Failure		400			{object}	resputil.Response[any]		"Request parameter error"
+//	@Failure		500			{object}	resputil.Response[any]		"Other errors"
+//	@Router			/v1/admin/dataset/cancelshare/queue [post]
 func (mgr *DatasetMgr) AdmincancelShareDatasetWithQueue(c *gin.Context) {
 	var queueReq cancelSharedQueueReq
 	err := c.ShouldBindJSON(&queueReq)
@@ -686,17 +698,18 @@ type DeleteDatasetReq struct {
 }
 
 // DeleteDataset godoc
-// @Summary 删除数据集
-// @Description 删除数据集
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param req path DeleteDatasetReq true "删除数据集ID"
-// @Success 200 {object} resputil.Response[string] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/dataset/delete/{id} [delete]
+//
+//	@Summary		删除数据集
+//	@Description	删除数据集
+//	@Tags			Dataset
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			req	path		DeleteDatasetReq			true	"删除数据集ID"
+//	@Success		200	{object}	resputil.Response[string]	"成功返回值描述"
+//	@Failure		400	{object}	resputil.Response[any]		"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]		"Other errors"
+//	@Router			/v1/dataset/delete/{id} [delete]
 func (mgr *DatasetMgr) DeleteDataset(c *gin.Context) {
 	token := util.GetToken(c)
 	var req DeleteDatasetReq
@@ -760,17 +773,18 @@ type UpdateDatasetreq struct {
 
 // swagger
 // UpdateDataset godoc
-// @Summary 更新数据集
-// @Description 更新数据集
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param req body UpdateDatasetreq true "参数描述"
-// @Success 200 {object} resputil.Response[string] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/dataset/update [post]
+//
+//	@Summary		更新数据集
+//	@Description	更新数据集
+//	@Tags			Dataset
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			req	body		UpdateDatasetreq			true	"参数描述"
+//	@Success		200	{object}	resputil.Response[string]	"成功返回值描述"
+//	@Failure		400	{object}	resputil.Response[any]		"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]		"Other errors"
+//	@Router			/v1/dataset/update [post]
 func (mgr *DatasetMgr) UpdateDataset(c *gin.Context) {
 	token := util.GetToken(c)
 	var req UpdateDatasetreq
@@ -838,17 +852,18 @@ type UserDatasetGetResp struct {
 }
 
 // ListUsersOutOfDataset godoc
-// @Summary 没有该数据集权限的用户列表
-// @Description 没有该数据集权限的用户列表
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param req path DatasetGetReq true "数据集ID"
-// @Success 200 {object} resputil.Response[any] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/dataset/{datasetId}/usersNotIn [get]
+//
+//	@Summary		没有该数据集权限的用户列表
+//	@Description	没有该数据集权限的用户列表
+//	@Tags			Dataset
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			req	path		DatasetGetReq			true	"数据集ID"
+//	@Success		200	{object}	resputil.Response[any]	"成功返回值描述"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/dataset/{datasetId}/usersNotIn [get]
 func (mgr *DatasetMgr) ListUsersOutOfDataset(c *gin.Context) {
 	var req DatasetGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -889,17 +904,18 @@ type UserOfDatasetResp struct {
 }
 
 // 函数名称 ListUserOfDataset
-// @Summary 获取该数据集共享用户
-// @Description 获取该数据集共享用户
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param req path DatasetGetReq true "数据集ID"
-// @Success 200 {object} resputil.Response[any] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/dataset/{datasetId}/usersIn [get]
+//
+//	@Summary		获取该数据集共享用户
+//	@Description	获取该数据集共享用户
+//	@Tags			Dataset
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			req	path		DatasetGetReq			true	"数据集ID"
+//	@Success		200	{object}	resputil.Response[any]	"成功返回值描述"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/dataset/{datasetId}/usersIn [get]
 func (mgr *DatasetMgr) ListUserOfDataset(c *gin.Context) {
 	var req DatasetGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -945,17 +961,18 @@ type QueueDatasetGetResp struct {
 }
 
 // ListQueuesOutOfDataset godoc
-// @Summary 没有该数据集权限的队列列表
-// @Description 没有该数据集权限的队列列表
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param req path DatasetGetReq true "数据集ID"
-// @Success 200 {object} resputil.Response[any] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/dataset/{datasetId}/queuesNotIn [get]
+//
+//	@Summary		没有该数据集权限的队列列表
+//	@Description	没有该数据集权限的队列列表
+//	@Tags			Dataset
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			req	path		DatasetGetReq			true	"数据集ID"
+//	@Success		200	{object}	resputil.Response[any]	"成功返回值描述"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/dataset/{datasetId}/queuesNotIn [get]
 func (mgr *DatasetMgr) ListQueuesOutOfDataset(c *gin.Context) {
 	var req DatasetGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -985,17 +1002,18 @@ func (mgr *DatasetMgr) ListQueuesOutOfDataset(c *gin.Context) {
 }
 
 // 函数名称 ListQueueOfDataset
-// @Summary 数据集的共享队列
-// @Description 数据集的共享队列
-// @Tags Dataset
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param req path DatasetGetReq true "数据集ID"
-// @Success 200 {object} resputil.Response[any] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/dataset/{datasetId}/queuesIn [get]
+//
+//	@Summary		数据集的共享队列
+//	@Description	数据集的共享队列
+//	@Tags			Dataset
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			req	path		DatasetGetReq			true	"数据集ID"
+//	@Success		200	{object}	resputil.Response[any]	"成功返回值描述"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/dataset/{datasetId}/queuesIn [get]
 func (mgr *DatasetMgr) ListQueueOfDataset(c *gin.Context) {
 	var req DatasetGetReq
 	if err := c.ShouldBindUri(&req); err != nil {

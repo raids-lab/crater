@@ -24,17 +24,18 @@ type CronjobConfigs struct {
 }
 
 // UpdateCronjobConfig godoc
-// @Summary Update cronjob config
-// @Description Update one cronjob config
-// @Tags Operations
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param use body CronjobConfigs true "CronjobConfigs"
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/operations/cronjob [put]
+//
+//	@Summary		Update cronjob config
+//	@Description	Update one cronjob config
+//	@Tags			Operations
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			use	body		CronjobConfigs			true	"CronjobConfigs"
+//	@Success		200	{object}	resputil.Response[any]	"Success"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/operations/cronjob [put]
 func (mgr *OperationsMgr) UpdateCronjobConfig(c *gin.Context) {
 	var req CronjobConfigs
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -92,16 +93,17 @@ func (mgr *OperationsMgr) updateCronjobConfig(c *gin.Context, cronjobConfigs Cro
 }
 
 // GetCronjobConfigs godoc
-// @Summary Get all cronjob configs
-// @Description Get all cronjob configs
-// @Tags Operations
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/operations/cronjob [get]
+//
+//	@Summary		Get all cronjob configs
+//	@Description	Get all cronjob configs
+//	@Tags			Operations
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[any]	"Success"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/operations/cronjob [get]
 func (mgr *OperationsMgr) GetCronjobConfigs(c *gin.Context) {
 	configs, err := mgr.getCronjobConfigs(c)
 	if err != nil {

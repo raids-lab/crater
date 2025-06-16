@@ -220,19 +220,20 @@ func (mgr *APIServerMgr) GetJobNameFromPod(c *gin.Context, namespace, podName st
 
 // GetPodIngresses retrieves the ingress rules for a pod
 // GetPodIngresses godoc
-// @Summary 获取Pod的Ingress规则
-// @Description 通过Pod注解获取相关的Ingress规则
-// @Tags Pod
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param namespace path string true "命名空间"
-// @Param name path string true "Pod名称"
-// @Success 200 {object} resputil.Response[PodIngressResp] "Pod Ingress规则列表"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 404 {object} resputil.Response[any] "Pod未找到"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/namespaces/{namespace}/pods/{name}/ingresses [get]
+//
+//	@Summary		获取Pod的Ingress规则
+//	@Description	通过Pod注解获取相关的Ingress规则
+//	@Tags			Pod
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			namespace	path		string								true	"命名空间"
+//	@Param			name		path		string								true	"Pod名称"
+//	@Success		200			{object}	resputil.Response[PodIngressResp]	"Pod Ingress规则列表"
+//	@Failure		400			{object}	resputil.Response[any]				"请求参数错误"
+//	@Failure		404			{object}	resputil.Response[any]				"Pod未找到"
+//	@Failure		500			{object}	resputil.Response[any]				"其他错误"
+//	@Router			/v1/namespaces/{namespace}/pods/{name}/ingresses [get]
 func (mgr *APIServerMgr) GetPodIngresses(c *gin.Context) {
 	var req PodContainerReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -340,20 +341,21 @@ func isIngressServiceMatch(ingress *networkingv1.Ingress, svc *v1.Service) bool 
 
 // CreatePodIngress creates a new ingress rule for a pod
 // CreatePodIngress godoc
-// @Summary 创建新的Pod Ingress规则
-// @Description 为指定Pod创建新的Ingress规则，规则名称和端口号必须唯一
-// @Tags Pod
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param namespace path string true "命名空间"
-// @Param name path string true "Pod名称"
-// @Param body body PodIngressMgr true "Ingress规则内容"
-// @Success 200 {object} resputil.Response[PodIngress] "成功创建的Ingress规则"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误或规则冲突"
-// @Failure 404 {object} resputil.Response[any] "Pod未找到"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/namespaces/{namespace}/pods/{name}/ingresses [post]
+//
+//	@Summary		创建新的Pod Ingress规则
+//	@Description	为指定Pod创建新的Ingress规则，规则名称和端口号必须唯一
+//	@Tags			Pod
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			namespace	path		string							true	"命名空间"
+//	@Param			name		path		string							true	"Pod名称"
+//	@Param			body		body		PodIngressMgr					true	"Ingress规则内容"
+//	@Success		200			{object}	resputil.Response[PodIngress]	"成功创建的Ingress规则"
+//	@Failure		400			{object}	resputil.Response[any]			"请求参数错误或规则冲突"
+//	@Failure		404			{object}	resputil.Response[any]			"Pod未找到"
+//	@Failure		500			{object}	resputil.Response[any]			"其他错误"
+//	@Router			/v1/namespaces/{namespace}/pods/{name}/ingresses [post]
 func (mgr *APIServerMgr) CreatePodIngress(c *gin.Context) {
 	var req PodContainerReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -405,20 +407,21 @@ func (mgr *APIServerMgr) CreatePodIngress(c *gin.Context) {
 
 // DeletePodIngress deletes an ingress rule for a pod
 // DeletePodIngress godoc
-// @Summary 删除Pod的Ingress规则
-// @Description 根据规则名称删除指定的Ingress规则，同时删除关联的Service和Ingress
-// @Tags Pod
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param namespace path string true "命名空间"
-// @Param name path string true "Pod名称"
-// @Param body body PodIngressMgr true "要删除的Ingress规则"
-// @Success 200 {object} resputil.Response[string] "Ingress规则删除成功"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误或Ingress规则未找到"
-// @Failure 404 {object} resputil.Response[any] "Pod未找到"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/namespaces/{namespace}/pods/{name}/ingresses [delete]
+//
+//	@Summary		删除Pod的Ingress规则
+//	@Description	根据规则名称删除指定的Ingress规则，同时删除关联的Service和Ingress
+//	@Tags			Pod
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			namespace	path		string						true	"命名空间"
+//	@Param			name		path		string						true	"Pod名称"
+//	@Param			body		body		PodIngressMgr				true	"要删除的Ingress规则"
+//	@Success		200			{object}	resputil.Response[string]	"Ingress规则删除成功"
+//	@Failure		400			{object}	resputil.Response[any]		"请求参数错误或Ingress规则未找到"
+//	@Failure		404			{object}	resputil.Response[any]		"Pod未找到"
+//	@Failure		500			{object}	resputil.Response[any]		"其他错误"
+//	@Router			/v1/namespaces/{namespace}/pods/{name}/ingresses [delete]
 func (mgr *APIServerMgr) DeletePodIngress(c *gin.Context) {
 	var req PodContainerReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -517,19 +520,20 @@ func (mgr *APIServerMgr) getIngressForService(c *gin.Context, namespace, service
 
 // GetPodNodeports retrieves the NodePort rules for a pod
 // GetPodNodeports godoc
-// @Summary 获取Pod的NodePort规则
-// @Description 通过Pod的labels选择相关的Service并获取NodePort规则
-// @Tags Pod
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param namespace path string true "命名空间"
-// @Param name path string true "Pod名称"
-// @Success 200 {object} resputil.Response[PodNodeportResp] "Pod NodePort规则列表"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 404 {object} resputil.Response[any] "Pod未找到"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/namespaces/{namespace}/pods/{name}/nodeports [get]
+//
+//	@Summary		获取Pod的NodePort规则
+//	@Description	通过Pod的labels选择相关的Service并获取NodePort规则
+//	@Tags			Pod
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			namespace	path		string								true	"命名空间"
+//	@Param			name		path		string								true	"Pod名称"
+//	@Success		200			{object}	resputil.Response[PodNodeportResp]	"Pod NodePort规则列表"
+//	@Failure		400			{object}	resputil.Response[any]				"请求参数错误"
+//	@Failure		404			{object}	resputil.Response[any]				"Pod未找到"
+//	@Failure		500			{object}	resputil.Response[any]				"其他错误"
+//	@Router			/v1/namespaces/{namespace}/pods/{name}/nodeports [get]
 func (mgr *APIServerMgr) GetPodNodeports(c *gin.Context) {
 	var req PodContainerReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -582,20 +586,21 @@ func (mgr *APIServerMgr) GetPodNodeports(c *gin.Context) {
 
 // CreatePodNodeport creates a new NodePort rule for a pod
 // CreatePodNodeport godoc
-// @Summary 创建新的Pod NodePort规则
-// @Description 为指定Pod创建新的NodePort规则，规则名称和端口号必须唯一
-// @Tags Pod
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param namespace path string true "命名空间"
-// @Param name path string true "Pod名称"
-// @Param body body PodNodeportMgr true "NodePort规则内容"
-// @Success 200 {object} resputil.Response[PodNodeport] "成功创建的NodePort规则"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误或规则冲突"
-// @Failure 404 {object} resputil.Response[any] "Pod未找到"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/namespaces/{namespace}/pods/{name}/nodeports [post]
+//
+//	@Summary		创建新的Pod NodePort规则
+//	@Description	为指定Pod创建新的NodePort规则，规则名称和端口号必须唯一
+//	@Tags			Pod
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			namespace	path		string							true	"命名空间"
+//	@Param			name		path		string							true	"Pod名称"
+//	@Param			body		body		PodNodeportMgr					true	"NodePort规则内容"
+//	@Success		200			{object}	resputil.Response[PodNodeport]	"成功创建的NodePort规则"
+//	@Failure		400			{object}	resputil.Response[any]			"请求参数错误或规则冲突"
+//	@Failure		404			{object}	resputil.Response[any]			"Pod未找到"
+//	@Failure		500			{object}	resputil.Response[any]			"其他错误"
+//	@Router			/v1/namespaces/{namespace}/pods/{name}/nodeports [post]
 func (mgr *APIServerMgr) CreatePodNodeport(c *gin.Context) {
 	var req PodContainerReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -647,20 +652,21 @@ func (mgr *APIServerMgr) CreatePodNodeport(c *gin.Context) {
 
 // DeletePodNodeport deletes a NodePort rule for a pod
 // DeletePodNodeport godoc
-// @Summary 删除Pod的NodePort规则
-// @Description 根据规则名称删除指定的NodePort规则，同时删除关联的Service
-// @Tags Pod
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param namespace path string true "命名空间"
-// @Param name path string true "Pod名称"
-// @Param body body PodNodeportMgr true "要删除的NodePort规则"
-// @Success 200 {object} resputil.Response[string] "NodePort规则删除成功"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误或NodePort规则未找到"
-// @Failure 404 {object} resputil.Response[any] "Pod未找到"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/namespaces/{namespace}/pods/{name}/nodeports [delete]
+//
+//	@Summary		删除Pod的NodePort规则
+//	@Description	根据规则名称删除指定的NodePort规则，同时删除关联的Service
+//	@Tags			Pod
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			namespace	path		string						true	"命名空间"
+//	@Param			name		path		string						true	"Pod名称"
+//	@Param			body		body		PodNodeportMgr				true	"要删除的NodePort规则"
+//	@Success		200			{object}	resputil.Response[string]	"NodePort规则删除成功"
+//	@Failure		400			{object}	resputil.Response[any]		"请求参数错误或NodePort规则未找到"
+//	@Failure		404			{object}	resputil.Response[any]		"Pod未找到"
+//	@Failure		500			{object}	resputil.Response[any]		"其他错误"
+//	@Router			/v1/namespaces/{namespace}/pods/{name}/nodeports [delete]
 func (mgr *APIServerMgr) DeletePodNodeport(c *gin.Context) {
 	var req PodContainerReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -774,18 +780,19 @@ type (
 )
 
 // GetPodContainers godoc
-// @Summary 获取Pod的容器列表
-// @Description 获取Pod的容器列表
-// @Tags Pod
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param namespace path string true "命名空间"
-// @Param name path string true "Pod名称"
-// @Success 200 {object} resputil.Response[any] "Pod容器列表"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/namespaces/{namespace}/pods/{name}/containers [get]
+//
+//	@Summary		获取Pod的容器列表
+//	@Description	获取Pod的容器列表
+//	@Tags			Pod
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			namespace	path		string					true	"命名空间"
+//	@Param			name		path		string					true	"Pod名称"
+//	@Success		200			{object}	resputil.Response[any]	"Pod容器列表"
+//	@Failure		400			{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500			{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/namespaces/{namespace}/pods/{name}/containers [get]
 func (mgr *APIServerMgr) GetPodContainers(c *gin.Context) {
 	var req PodContainerReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -866,21 +873,22 @@ type (
 )
 
 // GetPodContainerLog godoc
-// @Summary 获取Pod容器日志
-// @Description 获取Pod容器日志
-// @Tags Pod
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param namespace path string true "命名空间"
-// @Param name path string true "Pod名称"
-// @Param container path string true "容器名称"
-// @Param page query int true "页码"
-// @Param size query int true "每页数量"
-// @Success 200 {object} resputil.Response[any] "Pod容器日志"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/namespaces/{namespace}/pods/{name}/containers/{container}/log [get]
+//
+//	@Summary		获取Pod容器日志
+//	@Description	获取Pod容器日志
+//	@Tags			Pod
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			namespace	path		string					true	"命名空间"
+//	@Param			name		path		string					true	"Pod名称"
+//	@Param			container	path		string					true	"容器名称"
+//	@Param			page		query		int						true	"页码"
+//	@Param			size		query		int						true	"每页数量"
+//	@Success		200			{object}	resputil.Response[any]	"Pod容器日志"
+//	@Failure		400			{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500			{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/namespaces/{namespace}/pods/{name}/containers/{container}/log [get]
 func (mgr *APIServerMgr) GetPodContainerLog(c *gin.Context) {
 	// Implementation for fetching and returning the pod container log
 	var req PodContainerLogURIReq
@@ -1060,19 +1068,20 @@ func (mgr *APIServerMgr) GetPodContainerTerminal(c *gin.Context) {
 }
 
 // GetPodEvents godoc
-// @Summary 获取Pod的事件
-// @Description 获取Pod的事件
-// @Tags Pod
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param namespace path string true "命名空间"
-// @Param name path string true "任务名称"
-// @Success 200 {object} resputil.Response[any] "Pod事件列表"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 404 {object} resputil.Response[any] "任务未找到"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/namespaces/{namespace}/pods/{name}/events [get]
+//
+//	@Summary		获取Pod的事件
+//	@Description	获取Pod的事件
+//	@Tags			Pod
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			namespace	path		string					true	"命名空间"
+//	@Param			name		path		string					true	"任务名称"
+//	@Success		200			{object}	resputil.Response[any]	"Pod事件列表"
+//	@Failure		400			{object}	resputil.Response[any]	"请求参数错误"
+//	@Failure		404			{object}	resputil.Response[any]	"任务未找到"
+//	@Failure		500			{object}	resputil.Response[any]	"其他错误"
+//	@Router			/v1/namespaces/{namespace}/pods/{name}/events [get]
 func (mgr *APIServerMgr) GetPodEvents(c *gin.Context) {
 	var req PodContainerReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -1106,15 +1115,16 @@ type (
 )
 
 // UpdatePodResource godoc
-// @Summary edit pod's resources(cpu, mem)
-// @Description edit pod's resources(cpu, mem)
-// @Tags Operations
-// @Accept json
-// @Produce json
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/namespaces/{namespace}/pods/{name}/containers/{container}/resources [put]
+//
+//	@Summary		edit pod's resources(cpu, mem)
+//	@Description	edit pod's resources(cpu, mem)
+//	@Tags			Operations
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	resputil.Response[any]	"Success"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/namespaces/{namespace}/pods/{name}/containers/{container}/resources [put]
 func (mgr *APIServerMgr) UpdatePodResources(c *gin.Context) {
 	// URI 绑定
 	var uri EditPodResourceURIReq

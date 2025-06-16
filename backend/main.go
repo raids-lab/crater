@@ -178,13 +178,13 @@ func setupCustomCRDAddon(
 	return nil
 }
 
-// @title Crater API
-// @version 0.3.0
-// @description This is the API server for Crater, a Multi-tenant AI Model Training Platform based on Kubernetes.
-// @securityDefinitions.apikey Bearer
-// @in header
-// @name Authorization
-// @description 访问 /login 并获取 TOKEN 后，填入 'Bearer ${TOKEN}' 以访问受保护的接口
+// @title						Crater API
+// @version					0.3.0
+// @description				This is the API server for Crater, a Multi-tenant AI Model Training Platform based on Kubernetes.
+// @securityDefinitions.apikey	Bearer
+// @in							header
+// @name						Authorization
+// @description				访问 /login 并获取 TOKEN 后，填入 'Bearer ${TOKEN}' 以访问受保护的接口
 func main() {
 	//-------------------backend----------------------
 	// set global timezone

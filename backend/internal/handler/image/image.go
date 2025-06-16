@@ -16,14 +16,15 @@ import (
 )
 
 // UserUploadImage godoc
-// @Summary 用户上传镜像链接
-// @Description 获取上传镜像的参数，生成变量，调用接口
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param data body UploadImageRequest true "创建Image entity"
-// @Router /v1/images/image [POST]
+//
+//	@Summary		用户上传镜像链接
+//	@Description	获取上传镜像的参数，生成变量，调用接口
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			data	body	UploadImageRequest	true	"创建Image entity"
+//	@Router			/v1/images/image [POST]
 func (mgr *ImagePackMgr) UserUploadImage(c *gin.Context) {
 	req := &UploadImageRequest{}
 	token := util.GetToken(c)
@@ -56,13 +57,14 @@ func (mgr *ImagePackMgr) UserUploadImage(c *gin.Context) {
 }
 
 // UserListImage godoc
-// @Summary 用户获取所有镜像数据
-// @Description 返回该用户所有的镜像数据
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Router /v1/images/image [GET]
+//
+//	@Summary		用户获取所有镜像数据
+//	@Description	返回该用户所有的镜像数据
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/images/image [GET]
 func (mgr *ImagePackMgr) UserListImage(c *gin.Context) {
 	var response ListImageResponse
 	imageInfoList := mgr.getImages(c)
@@ -114,13 +116,14 @@ func (mgr *ImagePackMgr) getImages(c *gin.Context) []*ImageInfo {
 }
 
 // AdminListImage godoc
-// @Summary 管理员获取所有镜像数据
-// @Description 所有的镜像数据
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Router /v1/admin/images/image [GET]
+//
+//	@Summary		管理员获取所有镜像数据
+//	@Description	所有的镜像数据
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/admin/images/image [GET]
 func (mgr *ImagePackMgr) AdminListImage(c *gin.Context) {
 	var publicImages []*model.Image
 	var privateImages []*model.Image
@@ -172,14 +175,15 @@ func (mgr *ImagePackMgr) AdminListImage(c *gin.Context) {
 }
 
 // ListAvailableImages godoc
-// @Summary 用户在运行作业时选择镜像需要调用此接口，来获取可以用的镜像
-// @Description 用userID & jobType 来过滤已完成的镜像
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param type query ListAvailableImageRequest true "包含了镜像类型"
-// @Router /v1/images/available [GET]
+//
+//	@Summary		用户在运行作业时选择镜像需要调用此接口，来获取可以用的镜像
+//	@Description	用userID & jobType 来过滤已完成的镜像
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			type	query	ListAvailableImageRequest	true	"包含了镜像类型"
+//	@Router			/v1/images/available [GET]
 func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
 	imageList := mgr.getImages(c)
 	resp := ListAvailableImageResponse{Images: imageList}
@@ -256,14 +260,15 @@ func (mgr *ImagePackMgr) deduplicate(imageInfoList []*ImageInfo) []*ImageInfo {
 }
 
 // DeleteImageByID godoc
-// @Summary 根据ID删除Image
-// @Description 根据ID更新Image的状态为Deleted，起到删除的功能
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param ID body uint true "删除镜像的ID"
-// @Router /v1/images/image/{id} [DELETE]
+//
+//	@Summary		根据ID删除Image
+//	@Description	根据ID更新Image的状态为Deleted，起到删除的功能
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			ID	body	uint	true	"删除镜像的ID"
+//	@Router			/v1/images/image/{id} [DELETE]
 func (mgr *ImagePackMgr) DeleteImageByID(c *gin.Context) {
 	var err error
 	var deleteImageRequest DeleteImageByIDRequest
@@ -282,14 +287,15 @@ func (mgr *ImagePackMgr) DeleteImageByID(c *gin.Context) {
 }
 
 // UserDeleteImageByIDList godoc
-// @Summary 用户模式根据ID列表删除Image
-// @Description 用户模式根据ID列表的ID更新Image的状态为Deleted，起到删除的功能
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param ID body []uint true "删除镜像的ID"
-// @Router /v1/images/deleteimage [POST]
+//
+//	@Summary		用户模式根据ID列表删除Image
+//	@Description	用户模式根据ID列表的ID更新Image的状态为Deleted，起到删除的功能
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			ID	body	[]uint	true	"删除镜像的ID"
+//	@Router			/v1/images/deleteimage [POST]
 func (mgr *ImagePackMgr) UserDeleteImageByIDList(c *gin.Context) {
 	var err error
 	var deleteImageListRequest DeleteImageByIDListRequest
@@ -307,14 +313,15 @@ func (mgr *ImagePackMgr) UserDeleteImageByIDList(c *gin.Context) {
 }
 
 // AdminDeleteImageByIDList godoc
-// @Summary 管理员模式根据ID列表删除Image
-// @Description 管理员模式根据ID列表的ID更新Image的状态为Deleted，起到删除的功能
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param ID body []uint true "删除镜像的ID"
-// @Router /v1/amdin/images/deleteimage [POST]
+//
+//	@Summary		管理员模式根据ID列表删除Image
+//	@Description	管理员模式根据ID列表的ID更新Image的状态为Deleted，起到删除的功能
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			ID	body	[]uint	true	"删除镜像的ID"
+//	@Router			/v1/amdin/images/deleteimage [POST]
 func (mgr *ImagePackMgr) AdminDeleteImageByIDList(c *gin.Context) {
 	var err error
 	var deleteImageListRequest DeleteImageByIDListRequest
@@ -346,14 +353,15 @@ func (mgr *ImagePackMgr) deleteImageByIDList(c *gin.Context, isAdminMode bool, i
 }
 
 // AdminUpdateImagePublicStatus godoc
-// @Summary 管理员模式下更新镜像的公共或私有状态
-// @Description 传入uint参数
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param req body ChangeImagePublicStatusRequest true "更新镜像的ID"
-// @Router /v1/images/change [POST]
+//
+//	@Summary		管理员模式下更新镜像的公共或私有状态
+//	@Description	传入uint参数
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			req	body	ChangeImagePublicStatusRequest	true	"更新镜像的ID"
+//	@Router			/v1/images/change [POST]
 func (mgr *ImagePackMgr) AdminUpdateImagePublicStatus(c *gin.Context) {
 	req := &ChangeImagePublicStatusRequest{}
 	var err error
@@ -399,13 +407,14 @@ func (mgr *ImagePackMgr) AdminUpdateImagePublicStatus(c *gin.Context) {
 }
 
 // UserChangeImageDescription godoc
-// @Summary 更新镜像的描述
-// @Description 更新描述
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Router /v1/images/description [POST]
+//
+//	@Summary		更新镜像的描述
+//	@Description	更新描述
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/images/description [POST]
 func (mgr *ImagePackMgr) UserChangeImageDescription(c *gin.Context) {
 	req := &ChangeImageDescriptionRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
@@ -417,13 +426,14 @@ func (mgr *ImagePackMgr) UserChangeImageDescription(c *gin.Context) {
 }
 
 // AdminChangeImageDescription godoc
-// @Summary 管理员模式下更新镜像的描述
-// @Description 更新描述
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Router /v1/admin/images/description [POST]
+//
+//	@Summary		管理员模式下更新镜像的描述
+//	@Description	更新描述
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/admin/images/description [POST]
 func (mgr *ImagePackMgr) AdminChangeImageDescription(c *gin.Context) {
 	req := &ChangeImageDescriptionRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
@@ -450,13 +460,14 @@ func (mgr *ImagePackMgr) changeImageDescription(c *gin.Context, isAdminMode bool
 }
 
 // UserChangeImageTaskType godoc
-// @Summary 更新镜像的任务类型
-// @Description 更新任务类型
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Router /v1/images/type [POST]
+//
+//	@Summary		更新镜像的任务类型
+//	@Description	更新任务类型
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/images/type [POST]
 func (mgr *ImagePackMgr) UserChangeImageTaskType(c *gin.Context) {
 	req := &ChangeImageTaskTypeRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
@@ -468,13 +479,14 @@ func (mgr *ImagePackMgr) UserChangeImageTaskType(c *gin.Context) {
 }
 
 // AdminChangeImageTaskType godoc
-// @Summary 管理员更新镜像的任务类型
-// @Description 更新任务类型
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Router /v1/admin/images/type [POST]
+//
+//	@Summary		管理员更新镜像的任务类型
+//	@Description	更新任务类型
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/admin/images/type [POST]
 func (mgr *ImagePackMgr) AdminChangeImageTaskType(c *gin.Context) {
 	req := &ChangeImageTaskTypeRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
@@ -531,13 +543,14 @@ func (mgr *ImagePackMgr) processImageListResponse(
 }
 
 // UserChangeImageTagsType godoc
-// @Summary 更新镜像的标签
-// @Description 更新标签
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Router /v1/images/tags [POST]
+//
+//	@Summary		更新镜像的标签
+//	@Description	更新标签
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/images/tags [POST]
 func (mgr *ImagePackMgr) UserChangeImageTags(c *gin.Context) {
 	req := &ChangeImageTagsRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
@@ -549,13 +562,14 @@ func (mgr *ImagePackMgr) UserChangeImageTags(c *gin.Context) {
 }
 
 // AdminChangeImageTagsType godoc
-// @Summary 管理员更新镜像的标签
-// @Description 管理员更新标签
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Router /v1/admin/images/tags [POST]
+//
+//	@Summary		管理员更新镜像的标签
+//	@Description	管理员更新标签
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/admin/images/tags [POST]
 func (mgr *ImagePackMgr) AdminChangeImageTags(c *gin.Context) {
 	req := &ChangeImageTagsRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
@@ -578,13 +592,14 @@ func (mgr *ImagePackMgr) changeImageTags(c *gin.Context, imageID uint, newTags [
 }
 
 // UserShareImageWithAccount godoc
-// @Summary 分享镜像到账户或用户
-// @Description 普通用户分享镜像到其他账户或用户
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Router /v1/images/share [POST]
+//
+//	@Summary		分享镜像到账户或用户
+//	@Description	普通用户分享镜像到其他账户或用户
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/images/share [POST]
 func (mgr *ImagePackMgr) UserShareImage(c *gin.Context) {
 	req := &ShareImageRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
@@ -664,13 +679,14 @@ func (mgr *ImagePackMgr) createImageUserEntity(c *gin.Context, imageID, userID u
 }
 
 // UserCancelShareImageWithAccount godoc
-// @Summary 取消分享镜像到账户
-// @Description 普通用户取消分享镜像到其他账户
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Router /v1/images/share [DELETE]
+//
+//	@Summary		取消分享镜像到账户
+//	@Description	普通用户取消分享镜像到其他账户
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/images/share [DELETE]
 func (mgr *ImagePackMgr) UserCancelShareImage(c *gin.Context) {
 	req := &CancelShareImageRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
@@ -739,13 +755,14 @@ func (mgr *ImagePackMgr) cancelShareImageWithUser(c *gin.Context, imageID, userI
 }
 
 // GetImageGrantedUserOrAccount godoc
-// @Summary 获取镜像分享到的用户或账户
-// @Description  获取镜像分享到的用户或账户
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Router /v1/images/grant [GET]
+//
+//	@Summary		获取镜像分享到的用户或账户
+//	@Description	获取镜像分享到的用户或账户
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/images/grant [GET]
 func (mgr *ImagePackMgr) GetImageGrantedUserOrAccount(c *gin.Context) {
 	req := &ImageGrantRequest{}
 	if err := c.ShouldBindQuery(req); err != nil {
@@ -794,13 +811,14 @@ func (mgr *ImagePackMgr) GetImageGrantedUserOrAccount(c *gin.Context) {
 }
 
 // UserSearchNotGrantedAccounts godoc
-// @Summary 获取未被分享该镜像的账户
-// @Description 获取未被分享该镜像的账户
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Router /v1/images/account [GET]
+//
+//	@Summary		获取未被分享该镜像的账户
+//	@Description	获取未被分享该镜像的账户
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/images/account [GET]
 func (mgr *ImagePackMgr) UserGetImageUngrantedAccounts(c *gin.Context) {
 	req := &AccountSearchRequest{}
 	if err := c.ShouldBindQuery(req); err != nil {
@@ -853,13 +871,14 @@ func (mgr *ImagePackMgr) UserGetImageUngrantedAccounts(c *gin.Context) {
 }
 
 // UserSearchUngrantedUsers godoc
-// @Summary 获取未被分享该镜像的用户（支持名称模糊搜索）
-// @Description  获取未被分享该镜像的用户
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Router /v1/images/user [GET]
+//
+//	@Summary		获取未被分享该镜像的用户（支持名称模糊搜索）
+//	@Description	获取未被分享该镜像的用户
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/images/user [GET]
 func (mgr *ImagePackMgr) UserSearchUngrantedUsers(c *gin.Context) {
 	req := &UserSearchRequest{}
 	if err := c.ShouldBindQuery(req); err != nil {

@@ -102,15 +102,16 @@ const (
 )
 
 // GetAuthMode godoc
-// @Summary 获取后端用户认证模式
-// @Description 返回后端部署的config值
-// @Tags Auth
-// @Accept json
-// @Produce json
-// @Success 200 {object} resputil.Response[string] "启用认证类型"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "获取相关配置时错误"
-// @Router /auth/mode [get]
+//
+//	@Summary		获取后端用户认证模式
+//	@Description	返回后端部署的config值
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	resputil.Response[string]	"启用认证类型"
+//	@Failure		400	{object}	resputil.Response[any]		"请求参数错误"
+//	@Failure		500	{object}	resputil.Response[any]		"获取相关配置时错误"
+//	@Router			/auth/mode [get]
 func (mgr *AuthMgr) GetAuthMode(c *gin.Context) {
 	if config.GetConfig().ACT.StrictRegisterMode {
 		resputil.Success(c, "act")
@@ -119,17 +120,18 @@ func (mgr *AuthMgr) GetAuthMode(c *gin.Context) {
 }
 
 // Login godoc
-// @Summary 用户登录
-// @Description 校验用户身份，生成包含当前用户和项目的 JWT Token
-// @Tags Auth
-// @Accept json
-// @Produce json
-// @Param data body LoginReq false "查询参数"
-// @Success 200 {object} resputil.Response[LoginResp] "登录成功，返回 JWT Token 和默认个人项目"
-// @Failure 400 {object} resputil.Response[any]	"请求参数错误"
-// @Failure 401 {object} resputil.Response[any]	"用户名或密码错误"
-// @Failure 500 {object} resputil.Response[any]	"数据库交互错误"
-// @Router /auth/login [post]
+//
+//	@Summary		用户登录
+//	@Description	校验用户身份，生成包含当前用户和项目的 JWT Token
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			data	body		LoginReq						false	"查询参数"
+//	@Success		200		{object}	resputil.Response[LoginResp]	"登录成功，返回 JWT Token 和默认个人项目"
+//	@Failure		400		{object}	resputil.Response[any]			"请求参数错误"
+//	@Failure		401		{object}	resputil.Response[any]			"用户名或密码错误"
+//	@Failure		500		{object}	resputil.Response[any]			"数据库交互错误"
+//	@Router			/auth/login [post]
 //
 //nolint:gocyclo // TODO(liyilong): refactor this
 func (mgr *AuthMgr) Login(c *gin.Context) {
@@ -709,17 +711,18 @@ type SwitchQueueReq struct {
 }
 
 // SwitchQueue godoc
-// @Summary 类似登录，切换项目并返回新的 JWT Token
-// @Description 读取body中的项目ID，生成新的 JWT Token
-// @Tags Auth
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param project_id body SwitchQueueReq true "项目ID"
-// @Success 200 {object} resputil.Response[LoginResp] "用户上下文"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/auth/switch [post]
+//
+//	@Summary		类似登录，切换项目并返回新的 JWT Token
+//	@Description	读取body中的项目ID，生成新的 JWT Token
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			project_id	body		SwitchQueueReq					true	"项目ID"
+//	@Success		200			{object}	resputil.Response[LoginResp]	"用户上下文"
+//	@Failure		400			{object}	resputil.Response[any]			"请求参数错误"
+//	@Failure		500			{object}	resputil.Response[any]			"其他错误"
+//	@Router			/v1/auth/switch [post]
 func (mgr *AuthMgr) SwitchQueue(c *gin.Context) {
 	var req SwitchQueueReq
 	if err := c.ShouldBind(&req); err != nil {

@@ -77,16 +77,17 @@ type (
 )
 
 // ListForUser godoc
-// @Summary 获取用户的所有账户
-// @Description 连接用户账户表和账户表，获取用户的所有账户的摘要信息
-// @Tags Project
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Success 200 {object} resputil.Response[[]AccountResp] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/accounts [get]
+//
+//	@Summary		获取用户的所有账户
+//	@Description	连接用户账户表和账户表，获取用户的所有账户的摘要信息
+//	@Tags			Project
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[[]AccountResp]	"成功返回值描述"
+//	@Failure		400	{object}	resputil.Response[any]				"请求参数错误"
+//	@Failure		500	{object}	resputil.Response[any]				"其他错误"
+//	@Router			/v1/accounts [get]
 func (mgr *AccountMgr) ListForUser(c *gin.Context) {
 	token := util.GetToken(c)
 
@@ -126,17 +127,18 @@ type (
 )
 
 // ListForAdmin godoc
-// @Summary 获取所有账户
-// @Description 获取所有账户的摘要信息，支持筛选条件、分页和排序
-// @Tags Project
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param page query ListAllReq true "分页参数"
-// @Success 200 {object} resputil.Response[any] "账户列表"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/admin/projects [get]
+//
+//	@Summary		获取所有账户
+//	@Description	获取所有账户的摘要信息，支持筛选条件、分页和排序
+//	@Tags			Project
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			page	query		ListAllReq				true	"分页参数"
+//	@Success		200		{object}	resputil.Response[any]	"账户列表"
+//	@Failure		400		{object}	resputil.Response[any]	"请求参数错误"
+//	@Failure		500		{object}	resputil.Response[any]	"其他错误"
+//	@Router			/v1/admin/projects [get]
 func (mgr *AccountMgr) ListForAdmin(c *gin.Context) {
 	q := query.Account
 
@@ -167,17 +169,18 @@ type AccountIDReq struct {
 }
 
 // GetAccountByID godoc
-// @Summary 获取指定账户
-// @Description 根据账户ID获取账户的信息
-// @Tags Project
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param aid path AccountIDReq true "projectname"
-// @Success 200 {object} resputil.Response[any] "账户信息"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/admin/accounts/{aid} [get]
+//
+//	@Summary		获取指定账户
+//	@Description	根据账户ID获取账户的信息
+//	@Tags			Project
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			aid	path		AccountIDReq			true	"projectname"
+//	@Success		200	{object}	resputil.Response[any]	"账户信息"
+//	@Failure		400	{object}	resputil.Response[any]	"请求参数错误"
+//	@Failure		500	{object}	resputil.Response[any]	"其他错误"
+//	@Router			/v1/admin/accounts/{aid} [get]
 //
 //nolint:dupl// 重复代码
 func (mgr *AccountMgr) GetAccountByID(c *gin.Context) {
@@ -211,17 +214,18 @@ type AccountNameReq struct {
 }
 
 // GetAccountByName godoc
-// @Summary 获取指定账户
-// @Description 根据账户名称获取账户的信息
-// @Tags Project
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name path AccountNameReq true "projectname"
-// @Success 200 {object} resputil.Response[any] "账户信息"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/accounts/{name} [get]
+//
+//	@Summary		获取指定账户
+//	@Description	根据账户名称获取账户的信息
+//	@Tags			Project
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		AccountNameReq			true	"projectname"
+//	@Success		200		{object}	resputil.Response[any]	"账户信息"
+//	@Failure		400		{object}	resputil.Response[any]	"请求参数错误"
+//	@Failure		500		{object}	resputil.Response[any]	"其他错误"
+//	@Router			/v1/accounts/{name} [get]
 //
 //nolint:dupl// 重复代码
 func (mgr *AccountMgr) GetAccountByName(c *gin.Context) {
@@ -386,17 +390,18 @@ type (
 )
 
 // CreateAccount godoc
-// @Summary 创建团队账户
-// @Description 从请求中获取账户名称、描述和配额，以当前用户为管理员，创建一个团队账户
-// @Tags Project
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param data body any true "账户信息"
-// @Success 200 {object} resputil.Response[ProjectCreateResp] "成功创建账户，返回账户ID"
-// @Failure 400 {object} resputil.Response[any]	"请求参数错误"
-// @Failure 500 {object} resputil.Response[any]	"账户创建失败，返回错误信息"
-// @Router /v1/projects [post]
+//
+//	@Summary		创建团队账户
+//	@Description	从请求中获取账户名称、描述和配额，以当前用户为管理员，创建一个团队账户
+//	@Tags			Project
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			data	body		any										true	"账户信息"
+//	@Success		200		{object}	resputil.Response[ProjectCreateResp]	"成功创建账户，返回账户ID"
+//	@Failure		400		{object}	resputil.Response[any]					"请求参数错误"
+//	@Failure		500		{object}	resputil.Response[any]					"账户创建失败，返回错误信息"
+//	@Router			/v1/projects [post]
 func (mgr *AccountMgr) CreateAccount(c *gin.Context) {
 	token := util.GetToken(c)
 
@@ -512,18 +517,19 @@ func (mgr *AccountMgr) CreateVolcanoQueue(c *gin.Context, token *util.JWTMessage
 }
 
 // UpdateAccount godoc
-// @Summary 更新配额
-// @Description 更新配额
-// @Tags Project
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param aid path AccountIDReq true "projectname"
-// @Param data body any true "更新quota"
-// @Success 200 {object} resputil.Response[string] "成功更新配额"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/admin/projects/{aid} [put]
+//
+//	@Summary		更新配额
+//	@Description	更新配额
+//	@Tags			Project
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			aid		path		AccountIDReq				true	"projectname"
+//	@Param			data	body		any							true	"更新quota"
+//	@Success		200		{object}	resputil.Response[string]	"成功更新配额"
+//	@Failure		400		{object}	resputil.Response[any]		"请求参数错误"
+//	@Failure		500		{object}	resputil.Response[any]		"其他错误"
+//	@Router			/v1/admin/projects/{aid} [put]
 func (mgr *AccountMgr) UpdateAccount(c *gin.Context) {
 	var req AccountCreateOrUpdateReq
 	var uriReq AccountIDReq
@@ -600,17 +606,18 @@ type DeleteProjectResp struct {
 }
 
 // / DeleteAccount godoc
-// @Summary 删除账户
-// @Description 删除账户record和队列crd
-// @Tags Project
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param aid path DeleteProjectReq true "aid"
-// @Success 200 {object} resputil.Response[DeleteProjectResp] "删除的队列名"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/projects/{aid} [delete]
+//
+//	@Summary		删除账户
+//	@Description	删除账户record和队列crd
+//	@Tags			Project
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			aid	path		DeleteProjectReq						true	"aid"
+//	@Success		200	{object}	resputil.Response[DeleteProjectResp]	"删除的队列名"
+//	@Failure		400	{object}	resputil.Response[any]					"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]					"Other errors"
+//	@Router			/v1/admin/projects/{aid} [delete]
 func (mgr *AccountMgr) DeleteAccount(c *gin.Context) {
 	var req DeleteProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -711,19 +718,20 @@ type (
 )
 
 // / AddUserProject godoc
-// @Summary 向账户中添加用户
-// @Description 创建一个userproject
-// @Tags Project
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param uid path uint true "uid"
-// @Param aid path uint true "aid"
-// @Param req body any true "权限角色"
-// @Success 200 {object} resputil.Response[any] "返回添加的用户名和队列名"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/projects/add/{aid}/{uid} [post]
+//
+//	@Summary		向账户中添加用户
+//	@Description	创建一个userproject
+//	@Tags			Project
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			uid	path		uint					true	"uid"
+//	@Param			aid	path		uint					true	"aid"
+//	@Param			req	body		any						true	"权限角色"
+//	@Success		200	{object}	resputil.Response[any]	"返回添加的用户名和队列名"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/admin/projects/add/{aid}/{uid} [post]
 func (mgr *AccountMgr) AddUserProject(c *gin.Context) {
 	var req UserProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -789,19 +797,20 @@ func (mgr *AccountMgr) AddUserProject(c *gin.Context) {
 }
 
 // / UpdateUserProject godoc
-// @Summary 更新账户用户
-// @Description 创建一个userQueue条目
-// @Tags Project
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param uid path uint true "uid"
-// @Param aid path uint true "aid"
-// @Param req body any true "权限角色"
-// @Success 200 {object} resputil.Response[any] "返回添加的用户名和队列名"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/projects/update/{aid}/{uid} [post]
+//
+//	@Summary		更新账户用户
+//	@Description	创建一个userQueue条目
+//	@Tags			Project
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			uid	path		uint					true	"uid"
+//	@Param			aid	path		uint					true	"aid"
+//	@Param			req	body		any						true	"权限角色"
+//	@Success		200	{object}	resputil.Response[any]	"返回添加的用户名和队列名"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/admin/projects/update/{aid}/{uid} [post]
 func (mgr *AccountMgr) UpdateUserProject(c *gin.Context) {
 	var req UserProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -876,17 +885,18 @@ type UserProjectGetResp struct {
 }
 
 // / GetUserInProject godoc
-// @Summary 获取账户下的用户
-// @Description sql查询-join
-// @Tags Project
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param aid path uint true "aid"
-// @Success 200 {object} resputil.Response[any] "userQueue条目"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/projects/userIn/{aid} [get]
+//
+//	@Summary		获取账户下的用户
+//	@Description	sql查询-join
+//	@Tags			Project
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			aid	path		uint					true	"aid"
+//	@Success		200	{object}	resputil.Response[any]	"userQueue条目"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/admin/projects/userIn/{aid} [get]
 func (mgr *AccountMgr) GetUserInProject(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -916,17 +926,18 @@ func (mgr *AccountMgr) GetUserInProject(c *gin.Context) {
 }
 
 // / GetUserOutOfProject godoc
-// @Summary 获取账户外的用户
-// @Description sql查询-subquery
-// @Tags Project
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param aid path uint true "aid"
-// @Success 200 {object} resputil.Response[any] "userQueue条目"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/projects/userOutOf/{aid} [get]
+//
+//	@Summary		获取账户外的用户
+//	@Description	sql查询-subquery
+//	@Tags			Project
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			aid	path		uint					true	"aid"
+//	@Success		200	{object}	resputil.Response[any]	"userQueue条目"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/admin/projects/userOutOf/{aid} [get]
 func (mgr *AccountMgr) GetUserOutOfProject(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -961,18 +972,19 @@ func (mgr *AccountMgr) GetUserOutOfProject(c *gin.Context) {
 }
 
 // / DeleteUserProject godoc
-// @Summary 删除账户用户
-// @Description 删除对应userQueue条目
-// @Tags Project
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param uid path uint true "uid"
-// @Param aid path uint true "aid"
-// @Success 200 {object} resputil.Response[any] "返回添加的用户名和队列名"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/projects/update/{aid}/{uid} [delete]
+//
+//	@Summary		删除账户用户
+//	@Description	删除对应userQueue条目
+//	@Tags			Project
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			uid	path		uint					true	"uid"
+//	@Param			aid	path		uint					true	"aid"
+//	@Success		200	{object}	resputil.Response[any]	"返回添加的用户名和队列名"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/admin/projects/update/{aid}/{uid} [delete]
 func (mgr *AccountMgr) DeleteUserProject(c *gin.Context) {
 	var req UserProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
