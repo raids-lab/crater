@@ -250,9 +250,9 @@ func (mgr *OperationsMgr) getLowGPUUsageVCjobs(c *gin.Context, duration, gpuUtil
 		}
 
 		job, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(owner.Name)).First()
-
 		if err != nil {
 			logutils.Log.Infof("Fail to get vcjob %s\n", owner.Name)
+			continue
 		}
 
 		jobList = append(jobList, job)
