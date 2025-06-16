@@ -10,7 +10,7 @@ variables:
 
 # https://docs.gitlab.com/ee/development/go_guide/#automatic-linting
 lint:
-  image: ***REMOVED***/docker.io/golangci/golangci-lint:v1.61.0
+  image: ***REMOVED***/crater/golangci/golangci-lint:v1.61.0
   stage: test
   script:
     - mkdir -p .cache
@@ -37,7 +37,7 @@ lint:
 
 build_migrate:
   stage: build_migrate
-  image: ***REMOVED***/docker.io/library/golang:1.23-alpine
+  image: ***REMOVED***/crater/library/golang:1.23-alpine
   script:
     - mkdir -p .cache
     - export GOPATH="$CI_PROJECT_DIR/.cache"
@@ -59,7 +59,7 @@ build_migrate:
 # Build backend and generate artifacts
 build_backend:
   stage: build_backend
-  image: ***REMOVED***/docker.io/library/golang:1.23-alpine
+  image: ***REMOVED***/crater/library/golang:1.23-alpine
   script:
     - mkdir -p .cache
     - export GOPATH="$CI_PROJECT_DIR/.cache"
