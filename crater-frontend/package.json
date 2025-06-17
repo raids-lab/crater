@@ -84,6 +84,7 @@
     "remark-gfm": "^4.0.1",
     "shiki": "^1.29.2",
     "sonner": "^1.7.4",
+    "styled-components": "^6.1.18",
     "tailwind-merge": "^3.3.0",
     "tailwindcss-animate": "^1.0.7",
     "use-resize-observer": "^9.1.0",

@@ -623,7 +623,9 @@
   "fileUpload": {
     "buttonTitle": "上传文件",
     "successMessage": "文件已上传",
-    "progressLabel": "上传进度：{{progress}}%"
+    "progressLabel": "上传进度：{{progress}}%",
+    "uploading": "正在上传文件",
+    "processing": "正在处理文件"
   },
   "datasetItem": {
     "model": "模型",
