@@ -395,6 +395,7 @@ export function FileSystemTable({
           }) ?? []
       );
     },
+    staleTime: 10 * 1000,
   });
 
   const userInfoQuery = useQuery({

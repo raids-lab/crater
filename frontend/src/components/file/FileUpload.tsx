@@ -6,33 +6,120 @@ import { UploadIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import styled, { keyframes } from "styled-components";
+
+const progressPulse = keyframes`
+  0% { left: -50%; }
+  100% { left: 150%; }
+`;
+
+// 上传进度指示器容器
+const ProgressContainer = styled.div`
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 16px;
+  width: 240px;
+  transition: all 0.3s ease;
+`;
+
+// 进度条基础样式
+const ProgressBar = styled.div`
+  height: 6px;
+  background: #e0e0e0;
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+  margin-top: 8px;
+`;
+
+// 上传进度条
+const UploadProgress = styled.div<{ $progress: number }>`
+  height: 100%;
+  width: ${(props) => props.$progress}%;
+  background: #3b82f6;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+`;
+
+// 处理状态指示器
+const ProcessingIndicator = styled.div`
+  height: 100%;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+`;
+
+// 处理动画条
+const ProcessingBar = styled.div`
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 40%;
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.2), #10b981);
+  animation: ${progressPulse} 1.5s ease-in-out infinite;
+`;
+
+// 状态标签
+const StatusLabel = styled.div`
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #4b5563;
+  margin-bottom: 4px;
+`;
+
+// 文件名
+const FileName = styled.div`
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 8px;
+`;
 
 interface ProgressProps {
   progress: number;
+  isProcessing: boolean;
+  fileName: string;
 }
 
-const FloatingProgress: React.FC<ProgressProps> = ({ progress }) => {
+const FloatingProgress: React.FC<ProgressProps> = ({
+  progress,
+  isProcessing,
+  fileName,
+}) => {
   const { t } = useTranslation();
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: "20px",
-        right: "20px",
-        zIndex: 1000,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
-    >
-      <progress
-        value={progress}
-        max="100"
-        style={{ width: "200px", marginBottom: "5px" }}
-      />
-      <span>{t("fileUpload.progressLabel", { progress: progress })}</span>
-    </div>
+    <ProgressContainer>
+      <StatusLabel>
+        <span>
+          {isProcessing
+            ? t("fileUpload.processing")
+            : t("fileUpload.uploading")}
+        </span>
+        <span>{isProcessing ? "" : `${progress}%`}</span>
+      </StatusLabel>
+
+      <ProgressBar>
+        {isProcessing ? (
+          <ProcessingIndicator>
+            <ProcessingBar />
+          </ProcessingIndicator>
+        ) : (
+          <UploadProgress $progress={progress} />
+        )}
+      </ProgressBar>
+
+      <FileName>{fileName}</FileName>
+    </ProgressContainer>
   );
 };
 
@@ -45,6 +132,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ uploadPath, disabled }) => {
   const { t } = useTranslation();
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [currentFile, setCurrentFile] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
@@ -60,17 +149,21 @@ const FileUpload: React.FC<FileUploadProps> = ({ uploadPath, disabled }) => {
     if (Files.length == 0) return;
     setIsUploading(true);
     setProgress(0);
-    const filename = Files[0].name.split("/").pop();
+    setCurrentFile(Files[0].name);
+    const file = Files[0];
+    const filename = file.name.split("/").pop();
     if (filename === undefined) return null;
     const filedataBuffer = await Files[0].arrayBuffer();
     try {
       await instance
         .put(`/ss${uploadPath}/${filename}`, filedataBuffer, {
-          onUploadProgress(progressEvent) {
-            const { loaded, total } = progressEvent;
-            if (total !== undefined && total > 0) {
-              const percentCompleted = Math.round((loaded * 100) / total);
-              setProgress(percentCompleted);
+          onUploadProgress(e) {
+            const loaded = e.loaded || 0;
+            const total = e.total || 1;
+            const percentCompleted = Math.round((loaded * 100) / total);
+            setProgress(percentCompleted);
+            if (percentCompleted === 100) {
+              setIsProcessing(true);
             }
           },
         })
@@ -85,8 +178,11 @@ const FileUpload: React.FC<FileUploadProps> = ({ uploadPath, disabled }) => {
           toast.info(error);
         });
     } finally {
-      setIsUploading(false);
-      setTimeout(() => setProgress(0), 500);
+      setTimeout(() => {
+        setIsUploading(false);
+        setIsProcessing(false);
+        setProgress(0);
+      }, 1000);
     }
   };
 
@@ -114,7 +210,13 @@ const FileUpload: React.FC<FileUploadProps> = ({ uploadPath, disabled }) => {
         onChange={handleFileChange}
         style={{ display: "none" }}
       />
-      {progress > 0 && <FloatingProgress progress={progress} />}
+      {(isUploading || isProcessing) && currentFile && (
+        <FloatingProgress
+          progress={progress}
+          isProcessing={isProcessing}
+          fileName={currentFile}
+        />
+      )}
     </>
   );
 };
