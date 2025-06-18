@@ -1,6 +1,6 @@
 ---
 title: 自定义作业
-description: 提交一个PyToch手写识别GPU训练作业
+description: 提交一个PyTorch手写识别GPU训练作业
 ---
 # 批处理作业
 
