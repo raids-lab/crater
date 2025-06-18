@@ -2,10 +2,9 @@
 title: 自定义作业
 description: 提交一个PyToch手写识别GPU训练作业
 ---
-
 # 批处理作业
 
-## 提交一个 PyToch 手写识别 GPU 训练作业
+## 提交一个 PyTorch 手写识别 GPU 训练作业
 
 Crater 的 **单机批处理任务** 用于在一个特定环境下按既定的指令执行并获得结果。
 
