@@ -18,9 +18,10 @@ import "../global.css";
 import { RootProvider } from "fumadocs-ui/provider";
 import type { ReactNode } from "react";
 import type { Translations } from "fumadocs-ui/i18n";
+import OramaSearchDialog from "@/components/search/search";
 
 const cn: Partial<Translations> = {
-  search: "搜索暂不可用",
+  search: "搜索", // Update: Orama search should be available
   searchNoResult: "没有找到结果",
   toc: "目录",
   tocNoHeadings: "没有标题",
@@ -63,15 +64,11 @@ export default async function Layout({
             // translations for UI
             translations: { cn }[lang],
           }}
-          search={{
-            options: {
-              type: "static",
-              api: "/website/api/search",
-            },
-          }}
-        >
-          {children}
-        </RootProvider>
+          // Orama搜索
+          search={{SearchDialog: OramaSearchDialog}}
+      >
+        {children}
+      </RootProvider>
       </body>
     </html>
   );
