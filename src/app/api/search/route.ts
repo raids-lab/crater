@@ -15,26 +15,32 @@
  */
 
 import { source } from "@/lib/source";
-import { createFromSource } from "fumadocs-core/search/server";
-import { createTokenizer } from "@orama/tokenizers/mandarin";
+import { NextResponse } from 'next/server';
+import { type OramaDocument } from 'fumadocs-core/search/orama-cloud';
 
-// it should be cached forever
-export const revalidate = false;
+// ▼ 新增下面这一行代码
+// 这会告诉 Next.js，在执行 `next build` 时，
+// 应该运行一次 GET 函数，并将其结果保存为一个静态的 JSON 文件。
+export const dynamic = 'force-static';
 
-export const { staticGET: GET } = createFromSource(source, undefined, {
-  localeMap: {
-    // you can customise search configs for specific locales, like:
-    // [locale]: Orama options
+export function GET() {
+  const results: OramaDocument[] = [];
 
-    cn: {
-      components: {
-        tokenizer: createTokenizer(),
-      },
-      search: {
-        threshold: 0,
-        tolerance: 0,
-      },
-    },
-    "custom-locale": "english",
-  },
-});
+  // 从 source 获取所有语言和对应的页面
+  source.getLanguages().forEach(({ language, pages }) => {
+    for (const page of pages) {
+      results.push({
+        id: page.url,
+        title: page.data.title,
+        url: page.url,
+        structured: page.data.structuredData ?? '',
+        description: page.data.description,
+        extra_data: {
+          locale: language,
+        }
+      });
+    }
+  });
+
+  return NextResponse.json(results);
+}
