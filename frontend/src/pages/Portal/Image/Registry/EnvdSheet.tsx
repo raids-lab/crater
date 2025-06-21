@@ -594,36 +594,9 @@ const generateBuildScript = (
     "net-tools",
     "htop",
     "tree",
+    "tzdata",
     ...extraAptPackages,
   ];
-
-  // ZSH installation commands (only if enabled)
-  const zshCommands = enableZsh
-    ? [
-        "chsh -s /bin/zsh root",
-        "git clone --depth 1 https://gitee.com/mirrors/oh-my-zsh.git",
-        'ZSH="/usr/share/.oh-my-zsh" CHSH="no" RUNZSH="no" REMOTE=https://gitee.com/mirrors/oh-my-zsh.git sh ./ohmyzsh/tools/install.sh',
-        "chmod a+rx /usr/share/.oh-my-zsh/oh-my-zsh.sh",
-        "rm -rf ./ohmyzsh",
-        "git clone --depth=1 https://gitee.com/mirrors/zsh-syntax-highlighting.git /usr/share/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting",
-        "git clone --depth=1 https://gitee.com/mirrors/zsh-autosuggestions.git /usr/share/.oh-my-zsh/custom/plugins/zsh-autosuggestions",
-        'echo "export skip_global_compinit=1" >> /etc/zsh/zshenv',
-        'echo "export ZSH=\\"/usr/share/.oh-my-zsh\\"" >> /etc/zsh/zshrc',
-        'echo "plugins=(git extract sudo jsontools colored-man-pages zsh-autosuggestions zsh-syntax-highlighting)" >> /etc/zsh/zshrc',
-        'echo "ZSH_THEME=\\"robbyrussell\\"" >> /etc/zsh/zshrc',
-        'echo "export ZSH_COMPDUMP=\\$ZSH/cache/.zcompdump-\\$HOST" >> /etc/zsh/zshrc',
-        'echo "source \\$ZSH/oh-my-zsh.sh" >> /etc/zsh/zshrc',
-        'echo "zstyle \\":omz:update\\" mode disabled" >> /etc/zsh/zshrc',
-      ]
-    : [];
-
-  // Jupyter configuration commands (only if enabled)
-  const jupyterCommands = enableJupyter
-    ? [
-        "mkdir -p /etc/jupyter",
-        'echo "c.ServerApp.terminado_settings = {\\"shell_command\\": [\\"/bin/zsh\\"]}" >> /etc/jupyter/jupyter_server_config.py',
-      ]
-    : [];
 
   // Build the envd script
   let script = `# syntax=v1
@@ -632,7 +605,16 @@ def build():
     base(image="${baseImage}", dev=True)
     install.python(version="${pythonVersion}")
     install.apt_packages([${aptPackages.map((item) => `"${item}"`).join(", ")}])
-    config.pip_index(url="https://pypi.tuna.tsinghua.edu.cn/simple")`;
+    config.repo(
+        url="https://github.com/raids-lab/crater",
+        description="Crater",
+    )
+    config.pip_index(url="https://pypi.tuna.tsinghua.edu.cn/simple")
+    run(commands=[
+        "ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime",
+        "echo 'Asia/Shanghai' > /etc/timezone",
+        "dpkg-reconfigure --frontend noninteractive tzdata"
+    ])`;
 
   // Add Python packages if any
   if (extraPythonPackages.length > 0) {
@@ -640,12 +622,25 @@ def build():
     install.python_packages(name=[${extraPythonPackages.map((item) => `"${item}"`).join(", ")}])`;
   }
 
-  // Add run commands if any
-  const allCommands = [...zshCommands, ...jupyterCommands];
-  if (allCommands.length > 0) {
+  if (enableJupyter && enableZsh) {
     script += `
     run(commands=[
-        ${allCommands.map((cmd) => `"${cmd}"`).join(",\n        ")}
+      "chsh -s /bin/zsh root;",
+      "git clone --depth 1 https://gitee.com/mirrors/oh-my-zsh.git;",
+      "ZSH=\\"/usr/share/.oh-my-zsh\\" CHSH=\\"no\\" RUNZSH=\\"no\\" REMOTE=https://gitee.com/mirrors/oh-my-zsh.git sh ./ohmyzsh/tools/install.sh;",
+      "chmod a+rx /usr/share/.oh-my-zsh/oh-my-zsh.sh;",
+      "rm -rf ./ohmyzsh;",
+      "git clone --depth=1 https://gitee.com/mirrors/zsh-syntax-highlighting.git /usr/share/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting;",
+      "git clone --depth=1 https://gitee.com/mirrors/zsh-autosuggestions.git /usr/share/.oh-my-zsh/custom/plugins/zsh-autosuggestions;",
+      "echo \\"export skip_global_compinit=1\\" >> /etc/zsh/zshenv;",
+      "echo \\"export ZSH=\\\\\\"/usr/share/.oh-my-zsh\\\\\\"\\" >> /etc/zsh/zshrc;",
+      "echo \\"plugins=(git extract sudo jsontools colored-man-pages zsh-autosuggestions zsh-syntax-highlighting)\\" >> /etc/zsh/zshrc;",
+      "echo \\"ZSH_THEME=\\\\\\"robbyrussell\\\\\\"\\" >> /etc/zsh/zshrc;",
+      "echo \\"export ZSH_COMPDUMP=\\\\$ZSH/cache/.zcompdump-\\\\$HOST\\" >> /etc/zsh/zshrc;",
+      "mkdir -p /etc/jupyter;",
+      "echo \\"c.ServerApp.terminado_settings = {\\\\\\"shell_command\\\\\\": [\\\\\\"/bin/zsh\\\\\\"]}\\" >> /etc/jupyter/jupyter_server_config.py;",
+      "echo \\"source \\\\$ZSH/oh-my-zsh.sh\\" >> /etc/zsh/zshrc;",
+      "echo \\"zstyle \\\\\\":omz:update\\\\\\" mode disabled\\" >> /etc/zsh/zshrc;",
     ])`;
   }
 
