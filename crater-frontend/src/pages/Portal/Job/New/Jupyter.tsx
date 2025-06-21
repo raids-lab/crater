@@ -271,6 +271,10 @@ export const Component = () => {
                   memoryPath="task.resource.memory"
                   gpuCountPath="task.resource.gpu.count"
                   gpuModelPath="task.resource.gpu.model"
+                  rdmaPath={{
+                    rdmaEnabled: "task.resource.network.enabled",
+                    rdmaLabel: "task.resource.network.model",
+                  }}
                 />
                 <ImageFormField form={form} name="task.image" />
               </CardContent>

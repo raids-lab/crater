@@ -29,33 +29,39 @@ if [ -z "$zip_file" ] || [ -z "$namespace" ] || [ -z "$secret_name" ]; then
     usage
 fi
 
-# Unzip the file to act.buaa.edu.cn
-# if the filename ends with .zip
-# if the filename ends with .tgz
-# if the filename ends with .tar.gz
-
+# Unzip or extract archive
 if [[ "$zip_file" == *.zip ]]; then
     unzip -o "$zip_file"
-elif [[ "$zip_file" == *.tgz ]]; then
-    tar -xzf "$zip_file"
-elif [[ "$zip_file" == *.tar.gz ]]; then
+elif [[ "$zip_file" == *.tgz || "$zip_file" == *.tar.gz ]]; then
     tar -xzf "$zip_file"
 else
     echo "Error: Invalid file format. Please provide a zip, tgz, or tar.gz file."
     exit 1
 fi
 
+# Find the extracted directory (assumes only one new top-level directory is added)
+extracted_dir=$(unzip -l "$zip_file" | awk '/\/$/ {print $4}' | head -n 1  | sed 's|/$||')
 
-
-# Check if necessary files are present
-if [ ! -f "act.buaa.edu.cn/act.buaa.edu.cn.key" ] || [ ! -f "act.buaa.edu.cn/fullchain.cer" ]; then
-    echo "Error: Required files are missing in the zip file."
+if [ -z "$extracted_dir" ] || [ ! -d "$extracted_dir" ]; then
+    echo "Error: Unable to determine the extracted directory."
     exit 1
 fi
 
-# Create the Kubernetes secret in yaml format
-kubectl delete secret -n "$namespace" "$secret_name"
-kubectl create secret tls "$secret_name" --key act.buaa.edu.cn/act.buaa.edu.cn.key --cert act.buaa.edu.cn/fullchain.cer -n "$namespace"
+# Validate required files exist
+key_file="$extracted_dir/$extracted_dir.key"
+cert_file="$extracted_dir/fullchain.cer"
+
+if [ ! -f "$key_file" ] || [ ! -f "$cert_file" ]; then
+    echo "Error: Required files are missing in the zip file."
+    echo "Expected:"
+    echo "  $key_file"
+    echo "  $cert_file"
+    exit 1
+fi
+
+# Create the Kubernetes TLS secret
+kubectl delete secret -n "$namespace" "$secret_name" --ignore-not-found
+kubectl create secret tls "$secret_name" --key "$key_file" --cert "$cert_file" -n "$namespace"
 
 # Check if secret creation was successful
 if [ $? -eq 0 ]; then
@@ -65,5 +71,5 @@ else
     exit 1
 fi
 
-# Delete the unzipped files
-rm -rf act.buaa.edu.cn
+# Clean up
+rm -rf "$extracted_dir"
