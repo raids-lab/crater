@@ -622,9 +622,9 @@ def build():
     run(commands=[
       "chsh -s /bin/zsh root;",
       "git clone --depth 1 https://gitee.com/mirrors/oh-my-zsh.git;",
-      "ZSH=\\"/usr/share/.oh-my-zsh\\" CHSH=\\"no\\" RUNZSH=\\"no\\" REMOTE=https://gitee.com/mirrors/oh-my-zsh.git sh ./ohmyzsh/tools/install.sh;",
+      "ZSH=\\"/usr/share/.oh-my-zsh\\" CHSH=\\"no\\" RUNZSH=\\"no\\" REMOTE=https://gitee.com/mirrors/oh-my-zsh.git sh ./oh-my-zsh/tools/install.sh;",
       "chmod a+rx /usr/share/.oh-my-zsh/oh-my-zsh.sh;",
-      "rm -rf ./ohmyzsh;",
+      "rm -rf ./oh-my-zsh;",
       "git clone --depth=1 https://gitee.com/mirrors/zsh-syntax-highlighting.git /usr/share/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting;",
       "git clone --depth=1 https://gitee.com/mirrors/zsh-autosuggestions.git /usr/share/.oh-my-zsh/custom/plugins/zsh-autosuggestions;",
       "echo \\"export skip_global_compinit=1\\" >> /etc/zsh/zshenv;",
