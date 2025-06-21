@@ -20,6 +20,7 @@ import { FileSelectDialog } from "@/components/file/FileSelectDialog";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import { TagsInput } from "@/components/form/TagsInput";
 import { SandwichLayout } from "@/components/sheet/SandwichSheet";
+import { useEffect } from "react";
 
 export const dataFormSchema = z.object({
   datasetName: z
@@ -102,6 +103,12 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
       readOnly: true,
     },
   });
+  useEffect(() => {
+    if (type === "sharefile") {
+      form.setValue("ispublic", false);
+      form.setValue("readOnly", false);
+    }
+  }, [type, form]);
 
   // 2. Define a submit handler.
   const onSubmit = (values: DataFormSchema) => {
@@ -212,31 +219,13 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
               )}
             />
           )}
-          <FormField
-            control={form.control}
-            name="ispublic"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                <FormLabel className="font-normal">所有用户可见</FormLabel>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          {type === "sharefile" && (
+          {type !== "sharefile" && (
             <FormField
               control={form.control}
-              name="readOnly"
+              name="ispublic"
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                  <FormLabel className="font-normal">
-                    只读{dataTypeLabel}
-                  </FormLabel>
+                  <FormLabel className="font-normal">所有用户可见</FormLabel>
                   <FormControl>
                     <Switch
                       checked={field.value}
@@ -246,7 +235,7 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
                   <FormMessage />
                 </FormItem>
               )}
-            />
+            ></FormField>
           )}
         </SandwichLayout>
       </form>
