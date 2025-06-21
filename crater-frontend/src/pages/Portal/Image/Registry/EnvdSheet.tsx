@@ -609,12 +609,7 @@ def build():
         url="https://github.com/raids-lab/crater",
         description="Crater",
     )
-    config.pip_index(url="https://pypi.tuna.tsinghua.edu.cn/simple")
-    run(commands=[
-        "ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime",
-        "echo 'Asia/Shanghai' > /etc/timezone",
-        "dpkg-reconfigure --frontend noninteractive tzdata"
-    ])`;
+    config.pip_index(url="https://pypi.tuna.tsinghua.edu.cn/simple")`;
 
   // Add Python packages if any
   if (extraPythonPackages.length > 0) {
