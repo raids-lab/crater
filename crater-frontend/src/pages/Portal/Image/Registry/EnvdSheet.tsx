@@ -15,7 +15,7 @@ import SandwichSheet, {
   SandwichSheetProps,
 } from "@/components/sheet/SandwichSheet";
 import LoadableButton from "@/components/button/LoadableButton";
-import { PackagePlusIcon } from "lucide-react";
+import { PackagePlusIcon, CircleHelpIcon } from "lucide-react";
 import FormImportButton from "@/components/form/FormImportButton";
 import FormExportButton from "@/components/form/FormExportButton";
 import { MetadataFormEnvdAdvanced } from "@/components/form/types";
@@ -36,6 +36,13 @@ import { TagsInput } from "@/components/form/TagsInput";
 import { exportToJsonString } from "@/utils/form";
 import { toast } from "sonner";
 import { useImageTemplateLoader } from "@/hooks/useTemplateLoader";
+import { Switch } from "@/components/ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const envdFormSchema = z.object({
   python: z.string().min(1, "Python version is required"),
@@ -85,6 +92,8 @@ const envdFormSchema = z.object({
         message: "requirements.txt 文件格式无效",
       },
     ),
+  enableJupyter: z.boolean().optional(),
+  enableZsh: z.boolean().optional(),
   imageName: z
     .string()
     .optional()
@@ -152,6 +161,8 @@ function EnvdSheetContent({
       imageName: "",
       imageTag: "",
       tags: [{ value: "Jupyter" }],
+      enableJupyter: true,
+      enableZsh: true,
     },
   });
 
@@ -170,6 +181,8 @@ function EnvdSheetContent({
             ?.split("\n")
             .map((item) => item.trim())
             .filter(Boolean),
+          values.enableJupyter ?? false,
+          values.enableZsh ?? false,
         ),
         name: values.imageName ?? "",
         tag: values.imageTag ?? "",
@@ -340,6 +353,74 @@ diffusers==0.31.0`}
               </FormItem>
             )}
           />
+          <div className="flex flex-col gap-1.5">
+            <FormField
+              control={form.control}
+              name="enableJupyter"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex flex-row items-center justify-between space-y-0 space-x-0">
+                    <FormLabel>
+                      启用 Jupyter
+                      <TooltipProvider delayDuration={100}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>
+                              启用 Jupyter Notebook
+                              支持，允许交互式开发和数据分析
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </FormLabel>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={(value) => field.onChange(value)}
+                      />
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="enableZsh"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex flex-row items-center justify-between space-y-0 space-x-0">
+                    <FormLabel>
+                      启用 ZSH Shell
+                      <TooltipProvider delayDuration={100}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>
+                              安装并配置 ZSH 作为默认 Shell，包含 Oh My Zsh
+                              和常用插件
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </FormLabel>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={(value) => field.onChange(value)}
+                      />
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
           <ImageSettingsFormCard
             form={form}
             imageNamePath="imageName"
@@ -502,38 +583,77 @@ const generateBuildScript = (
   pythonVersion: string = "3.12",
   extraAptPackages: string[] = [],
   extraPythonPackages: string[] = [],
-) => `# syntax=v1
+  enableJupyter: boolean = true,
+  enableZsh: boolean = true,
+) => {
+  // Combine all APT packages into one array
+  const aptPackages = [
+    "openssh-server",
+    "build-essential",
+    "iputils-ping",
+    "net-tools",
+    "htop",
+    "tree",
+    ...extraAptPackages,
+  ];
+
+  // ZSH installation commands (only if enabled)
+  const zshCommands = enableZsh
+    ? [
+        "chsh -s /bin/zsh root",
+        "git clone --depth 1 https://gitee.com/mirrors/oh-my-zsh.git",
+        'ZSH="/usr/share/.oh-my-zsh" CHSH="no" RUNZSH="no" REMOTE=https://gitee.com/mirrors/oh-my-zsh.git sh ./ohmyzsh/tools/install.sh',
+        "chmod a+rx /usr/share/.oh-my-zsh/oh-my-zsh.sh",
+        "rm -rf ./ohmyzsh",
+        "git clone --depth=1 https://gitee.com/mirrors/zsh-syntax-highlighting.git /usr/share/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting",
+        "git clone --depth=1 https://gitee.com/mirrors/zsh-autosuggestions.git /usr/share/.oh-my-zsh/custom/plugins/zsh-autosuggestions",
+        'echo "export skip_global_compinit=1" >> /etc/zsh/zshenv',
+        'echo "export ZSH=\\"/usr/share/.oh-my-zsh\\"" >> /etc/zsh/zshrc',
+        'echo "plugins=(git extract sudo jsontools colored-man-pages zsh-autosuggestions zsh-syntax-highlighting)" >> /etc/zsh/zshrc',
+        'echo "ZSH_THEME=\\"robbyrussell\\"" >> /etc/zsh/zshrc',
+        'echo "export ZSH_COMPDUMP=\\$ZSH/cache/.zcompdump-\\$HOST" >> /etc/zsh/zshrc',
+        'echo "source \\$ZSH/oh-my-zsh.sh" >> /etc/zsh/zshrc',
+        'echo "zstyle \\":omz:update\\" mode disabled" >> /etc/zsh/zshrc',
+      ]
+    : [];
+
+  // Jupyter configuration commands (only if enabled)
+  const jupyterCommands = enableJupyter
+    ? [
+        "mkdir -p /etc/jupyter",
+        'echo "c.ServerApp.terminado_settings = {\\"shell_command\\": [\\"/bin/zsh\\"]}" >> /etc/jupyter/jupyter_server_config.py',
+      ]
+    : [];
+
+  // Build the envd script
+  let script = `# syntax=v1
 
 def build():
-    base(image="${baseImage}",dev=True)
+    base(image="${baseImage}", dev=True)
     install.python(version="${pythonVersion}")
-    install.apt_packages([
-        "openssh-server", "build-essential", "iputils-ping", "net-tools", "htop", "tree"
-    ])
-    install.apt_packages([${extraAptPackages.map((item) => `"${item}"`)}])
-    config.repo(
-        url="https://github.com/tensorchord/envd",
-        description="envd quick start example",
-    )
-    config.pip_index(url = "https://pypi.tuna.tsinghua.edu.cn/simple")
-    install.python_packages(name = [${extraPythonPackages.map((item) => `"${item}"`)}])
+    install.apt_packages([${aptPackages.map((item) => `"${item}"`).join(", ")}])
+    config.pip_index(url="https://pypi.tuna.tsinghua.edu.cn/simple")`;
 
+  // Add Python packages if any
+  if (extraPythonPackages.length > 0) {
+    script += `
+    install.python_packages(name=[${extraPythonPackages.map((item) => `"${item}"`).join(", ")}])`;
+  }
+
+  // Add run commands if any
+  const allCommands = [...zshCommands, ...jupyterCommands];
+  if (allCommands.length > 0) {
+    script += `
     run(commands=[
-      "chsh -s /bin/zsh root;",
-      "git clone --depth 1 https://mirrors.tuna.tsinghua.edu.cn/git/ohmyzsh.git;",
-      "ZSH=\\"/usr/share/.oh-my-zsh\\" CHSH=\\"no\\" RUNZSH=\\"no\\" REMOTE=https://mirrors.tuna.tsinghua.edu.cn/git/ohmyzsh.git sh ./ohmyzsh/tools/install.sh;",
-      "chmod a+rx /usr/share/.oh-my-zsh/oh-my-zsh.sh;",
-      "rm -rf ./ohmyzsh;",
-      "git clone --depth=1 https://gitee.com/mirrors/zsh-syntax-highlighting.git /usr/share/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting;",
-      "git clone --depth=1 https://gitee.com/mirrors/zsh-autosuggestions.git /usr/share/.oh-my-zsh/custom/plugins/zsh-autosuggestions;",
-      "echo \\"export skip_global_compinit=1\\" >> /etc/zsh/zshenv;",
-      "echo \\"export ZSH=\\\\\\"/usr/share/.oh-my-zsh\\\\\\"\\" >> /etc/zsh/zshrc;",
-      "echo \\"plugins=(git extract sudo jsontools colored-man-pages zsh-autosuggestions zsh-syntax-highlighting)\\" >> /etc/zsh/zshrc;",
-      "echo \\"ZSH_THEME=\\\\\\"robbyrussell\\\\\\"\\" >> /etc/zsh/zshrc;",
-      "echo \\"export ZSH_COMPDUMP=\\\\$ZSH/cache/.zcompdump-\\\\$HOST\\" >> /etc/zsh/zshrc;",
-      "mkdir -p /etc/jupyter;",
-      "echo \\"c.ServerApp.terminado_settings = {\\\\\\"shell_command\\\\\\": [\\\\\\"/bin/zsh\\\\\\"]}\\" >> /etc/jupyter/jupyter_server_config.py;",
-      "echo \\"source \\\\$ZSH/oh-my-zsh.sh\\" >> /etc/zsh/zshrc;",
-      "echo \\"zstyle \\\\\\":omz:update\\\\\\" mode disabled\\" >> /etc/zsh/zshrc;",
-    ])
+        ${allCommands.map((cmd) => `"${cmd}"`).join(",\n        ")}
+    ])`;
+  }
+
+  // Add Jupyter config if enabled
+  if (enableJupyter) {
+    script += `
     config.jupyter()`;
+  }
+
+  return script;
+};
