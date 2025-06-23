@@ -24,7 +24,7 @@ RUN rm /etc/nginx/conf.d/default.conf
 COPY ./deploy/nginx.conf /etc/nginx/nginx.conf
 
 # 复制构建产物到指定路径（注意末尾斜杠）
-COPY ./out/ /usr/share/nginx/html/website/
+COPY ./out/ /usr/share/nginx/html/crater/
 
 # 设置权限
 RUN chmod -R 755 /usr/share/nginx/html
