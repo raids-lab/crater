@@ -1,7 +1,10 @@
-import dotenv from 'dotenv';
 import { updateSearchIndexes } from './update-index.mjs';
 
-dotenv.config({ path: '.env.local' });
+if (!process.env.CI) {
+    const dotenv = await import('dotenv');
+    dotenv.config({ path: '.env.local' });
+    console.log('Loaded environment variables from .env.local');
+}
 
 async function main() {
     console.log('Running post-build script...');
