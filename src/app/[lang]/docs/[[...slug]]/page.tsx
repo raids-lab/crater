@@ -53,7 +53,7 @@ export default async function Page(props: {
           })}
         />
         <a
-          href={`https://github.com/raids-lab/website/blob/main/content/docs/${page.file.path}`}
+          href={`https://github.com/raids-lab/crater/blob/main/content/docs/${page.file.path}`}
           rel="noreferrer noopener"
           target="_blank"
           className="w-fit border flex items-center gap-2 no-underline rounded-md p-2 font-medium text-sm text-fd-secondary-foreground bg-fd-secondary transition-colors hover:text-fd-accent-foreground hover:bg-fd-accent"
