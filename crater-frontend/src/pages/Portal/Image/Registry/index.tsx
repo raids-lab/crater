@@ -226,7 +226,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                     操作
                   </DropdownMenuLabel>
                   <DropdownMenuItem
-                    onClick={() => navigate(`${kanikoInfo.ID}`)}
+                    onClick={() => navigate(`${kanikoInfo.imagepackName}`)}
                   >
                     <InfoIcon className="text-highlight-emerald" />
                     详情

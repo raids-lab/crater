@@ -10,11 +10,11 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   apiUserUploadImage,
-  ImageDefaultTags,
+  FetchAllUniqueImageTagObjects,
   imageLinkRegex,
   parseImageLink,
 } from "@/services/api/imagepack";
@@ -73,6 +73,11 @@ function ImageUploadSheetContent({ closeSheet }: ImageUploadSheetContentProps) {
       toast.success(`镜像 ${imageLink} 上传成功`);
       closeSheet();
     },
+  });
+
+  const { data: allImageTags } = useQuery({
+    queryKey: ["allImageTags"],
+    queryFn: FetchAllUniqueImageTagObjects,
   });
 
   // 1. Define your form.
@@ -146,7 +151,7 @@ function ImageUploadSheetContent({ closeSheet }: ImageUploadSheetContentProps) {
             tagsPath="tags"
             label={`镜像标签`}
             description={`为镜像添加标签，以便分类和搜索`}
-            customTags={ImageDefaultTags}
+            customTags={allImageTags}
           />
         </SandwichLayout>
       </form>

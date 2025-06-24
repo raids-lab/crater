@@ -23,12 +23,12 @@ import { MetadataFormEnvdRaw } from "@/components/form/types";
 import { Input } from "@/components/ui/input";
 import {
   apiUserCreateByEnvd,
-  ImageDefaultTags,
+  FetchAllUniqueImageTagObjects,
   imageNameRegex,
   ImagePackSource,
   imageTagRegex,
 } from "@/services/api/imagepack";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import { DockerfileEditor } from "./DockerfileEditor";
 import { TagsInput } from "@/components/form/TagsInput";
@@ -138,6 +138,11 @@ def build():
     },
   });
 
+  const { data: allImageTags } = useQuery({
+    queryKey: ["allImageTags"],
+    queryFn: FetchAllUniqueImageTagObjects,
+  });
+
   const onSubmit = (values: EnvdRawFormValues) => {
     submitEnvdRawSheet(values);
   };
@@ -193,7 +198,7 @@ def build():
             tagsPath="tags"
             label={`镜像标签`}
             description={`为镜像添加标签，以便分类和搜索`}
-            customTags={ImageDefaultTags}
+            customTags={allImageTags}
           />
           <div className="grid grid-cols-2 gap-4">
             <FormField
