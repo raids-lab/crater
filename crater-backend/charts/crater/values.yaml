@@ -4,8 +4,8 @@ imagePullSecrets: []
 web:
   backend:
     image:
-      repository: ***REMOVED***
-      tag: "5499b54c"
+      repository: "***REMOVED***/crater/web-backend"
+      tag: "1ec5eb00"
       pullPolicy: "IfNotPresent"
   migrate:
     createMigrationJob: true
@@ -14,8 +14,8 @@ web:
       password: "admin"
   frontend:
     image:
-      repository: ***REMOVED***
-      tag: "e387f065"
+      repository: "***REMOVED***/crater/web-frontend"
+      tag: "b9b79426"
       pullPolicy: "IfNotPresent"
     config:
       version: "1.0.0"
@@ -23,7 +23,7 @@ web:
         host: ***REMOVED***
         apiBase: "https://***REMOVED***/api/"
         apiVersion: "v1"
-        websiteBase: "https://raids-lab.github.io/website/cn"
+        websiteBase: "https://raids-lab.github.io/crater/cn"
       grafana:
         overview:
           main: "https://gpu-grafana.***REMOVED***/d/f33ade9f-821d-4e96-a7f2-eb16c8b9c447/838ffad"
