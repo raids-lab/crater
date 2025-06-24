@@ -109,10 +109,12 @@ export function TagsInput<T extends FieldValues>({
   const addCustomTag = () => {
     if (
       inputValue.trim() !== "" &&
-      !tags.some((tag: Tag) => tag.value === inputValue.toLowerCase())
+      !tags.some(
+        (tag: Tag) => tag.value.toLowerCase() === inputValue.toLowerCase(),
+      )
     ) {
       const newTag = {
-        value: inputValue.toLowerCase(),
+        value: inputValue,
         label: inputValue,
       };
       form.setValue(tagsPath, [...tags, newTag], { shouldValidate: true });

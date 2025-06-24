@@ -24,12 +24,12 @@ import { Input } from "@/components/ui/input";
 import {
   apiUserCreateByDockerfile,
   dockerfileImageLinkRegex,
-  ImageDefaultTags,
+  FetchAllUniqueImageTagObjects,
   imageNameRegex,
   ImagePackSource,
   imageTagRegex,
 } from "@/services/api/imagepack";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DockerfileEditor } from "./DockerfileEditor";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import { ImageSettingsFormCard } from "@/components/form/ImageSettingsFormCard";
@@ -158,6 +158,11 @@ function DockerfileSheetContent({
     submitDockerfileSheet(values);
   };
 
+  const { data: allImageTags } = useQuery({
+    queryKey: ["allImageTags"],
+    queryFn: FetchAllUniqueImageTagObjects,
+  });
+
   useImageTemplateLoader({
     form: form,
     metadata: MetadataFormDockerfile,
@@ -208,7 +213,7 @@ function DockerfileSheetContent({
             tagsPath="tags"
             label={`镜像标签`}
             description={`为镜像添加标签，以便分类和搜索`}
-            customTags={ImageDefaultTags}
+            customTags={allImageTags}
           />
           <FormField
             control={form.control}

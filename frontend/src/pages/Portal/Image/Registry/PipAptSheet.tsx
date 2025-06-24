@@ -29,12 +29,12 @@ import useImageQuery from "@/hooks/query/useImageQuery";
 import { Input } from "@/components/ui/input";
 import {
   apiUserCreateKaniko,
-  ImageDefaultTags,
+  FetchAllUniqueImageTagObjects,
   imageNameRegex,
   ImagePackSource,
   imageTagRegex,
 } from "@/services/api/imagepack";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ImageSettingsFormCard } from "@/components/form/ImageSettingsFormCard";
 import { TagsInput } from "@/components/form/TagsInput";
 import { exportToJsonString } from "@/utils/form";
@@ -179,6 +179,11 @@ function PipAptSheetContent({
     },
   });
 
+  const { data: allImageTags } = useQuery({
+    queryKey: ["allImageTags"],
+    queryFn: FetchAllUniqueImageTagObjects,
+  });
+
   const onSubmit = (values: PipAptFormValues) => {
     if (isPending) {
       toast.error("正在提交，请稍后");
@@ -287,7 +292,7 @@ function PipAptSheetContent({
             tagsPath="tags"
             label={`镜像标签`}
             description={`为镜像添加标签，以便分类和搜索`}
-            customTags={ImageDefaultTags}
+            customTags={allImageTags}
           />
           <FormField
             control={form.control}
