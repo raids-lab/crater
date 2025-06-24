@@ -42,17 +42,18 @@ type (
 )
 
 // CreateTrainingJob godoc
-// @Summary Create a training job
-// @Description Create a training job
-// @Tags VolcanoJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param CreateTrainingReq body any true "CreateTrainingReq"
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/vcjobs/tensorflow [post]
+//
+//	@Summary		Create a training job
+//	@Description	Create a training job
+//	@Tags			VolcanoJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			CreateTrainingReq	body		any						true	"CreateTrainingReq"
+//	@Success		200					{object}	resputil.Response[any]	"Success"
+//	@Failure		400					{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500					{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/vcjobs/tensorflow [post]
 func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	token := util.GetToken(c)
 

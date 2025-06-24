@@ -17,14 +17,15 @@ import (
 )
 
 // UserCreateByPipApt godoc
-// @Summary 创建ImagePack CRD和数据库Kaniko entity
-// @Description 获取参数，生成变量，调用接口
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param data body CreateKanikoRequest true "创建ImagePack CRD & Kaniko entity"
-// @Router /v1/images/kaniko [POST]
+//
+//	@Summary		创建ImagePack CRD和数据库Kaniko entity
+//	@Description	获取参数，生成变量，调用接口
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			data	body	CreateKanikoRequest	true	"创建ImagePack CRD & Kaniko entity"
+//	@Router			/v1/images/kaniko [POST]
 func (mgr *ImagePackMgr) UserCreateByPipApt(c *gin.Context) {
 	req := &CreateKanikoRequest{}
 	token := util.GetToken(c)
@@ -51,14 +52,15 @@ func (mgr *ImagePackMgr) UserCreateByPipApt(c *gin.Context) {
 }
 
 // UserCreateByDockerfile godoc
-// @Summary 接受用户传入的Dockerfile和描述，创建镜像
-// @Description 获取参数，提取Dockerfile中的基础镜像，调用接口
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param data body CreateByDockerfileRequest true "创建ImagePack CRD"
-// @Router /v1/images/dockerfile [POST]
+//
+//	@Summary		接受用户传入的Dockerfile和描述，创建镜像
+//	@Description	获取参数，提取Dockerfile中的基础镜像，调用接口
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			data	body	CreateByDockerfileRequest	true	"创建ImagePack CRD"
+//	@Router			/v1/images/dockerfile [POST]
 func (mgr *ImagePackMgr) UserCreateByDockerfile(c *gin.Context) {
 	req := &CreateByDockerfileRequest{}
 	token := util.GetToken(c)
@@ -121,14 +123,15 @@ func extractBaseImageFromDockerfile(dockerfile string) (string, error) {
 }
 
 // UserCreateByEnvd godoc
-// @Summary 接受用户传入的Envd内容和描述，创建镜像
-// @Description 获取参数，提取Dockerfile中的基础镜像，调用接口
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param data body CreateByEnvdRequest true "创建ImagePack CRD"
-// @Router /v1/images/envd [POST]
+//
+//	@Summary		接受用户传入的Envd内容和描述，创建镜像
+//	@Description	获取参数，提取Dockerfile中的基础镜像，调用接口
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			data	body	CreateByEnvdRequest	true	"创建ImagePack CRD"
+//	@Router			/v1/images/envd [POST]
 func (mgr *ImagePackMgr) UserCreateByEnvd(c *gin.Context) {
 	req := &CreateByEnvdRequest{}
 	token := util.GetToken(c)
@@ -155,14 +158,15 @@ func (mgr *ImagePackMgr) UserCreateByEnvd(c *gin.Context) {
 }
 
 // AdminCreate godoc
-// @Summary 创建ImagePack CRD和数据库kaniko entity
-// @Description 获取参数，生成变量，调用接口
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param data body CreateKanikoRequest true "创建ImagePack"
-// @Router /v1/admin/images/kaniko [POST]
+//
+//	@Summary		创建ImagePack CRD和数据库kaniko entity
+//	@Description	获取参数，生成变量，调用接口
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			data	body	CreateKanikoRequest	true	"创建ImagePack"
+//	@Router			/v1/admin/images/kaniko [POST]
 func (mgr *ImagePackMgr) AdminCreate(c *gin.Context) {
 	req := &CreateKanikoRequest{}
 	token := util.GetToken(c)

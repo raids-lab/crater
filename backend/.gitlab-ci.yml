@@ -1,29 +1,32 @@
 stages:
   - test
-  - build_migrate
-  - build_backend
+  - build
   - build_image
   - deploy
 
 variables:
   HARBOR_REGISTRY_IMAGE: "${HARBOR_REGISTRY}/crater/web-backend"
+  GO_CACHE_DIR: "${CI_PROJECT_DIR}/.go_cache"
+  BIN_DIR: "${CI_PROJECT_DIR}/bin"
 
-# https://docs.gitlab.com/ee/development/go_guide/#automatic-linting
-lint:
-  image: ***REMOVED***/docker.io/golangci/golangci-lint:v1.61.0
-  stage: test
-  script:
-    - mkdir -p .cache
-    - export GOPATH="$CI_PROJECT_DIR/.cache"
-    - export PATH="$CI_PROJECT_DIR/.cache/bin:$PATH"
+# 使用共享的Go环境准备
+.setup_go: &setup_go
+  before_script:
+    - mkdir -p "${GO_CACHE_DIR}" "${BIN_DIR}"
+    - export GOPATH="${GO_CACHE_DIR}"
+    - export PATH="${GOPATH}/bin:${PATH}"
     - go env -w GO111MODULE=on
     - go env -w GOPROXY=https://goproxy.cn,direct
     - go mod download
-    - command -v swag >/dev/null 2>&1 || go install github.com/swaggo/swag/cmd/swag@latest
+
+# 自动代码质量检查
+lint:
+  image: ***REMOVED***/crater/golangci/golangci-lint:v1.61.0
+  stage: test
+  <<: *setup_go
+  script:
+    - command -v swag >/dev/null || go install github.com/swaggo/swag/cmd/swag@latest
     - swag init
-    # Write the code coverage report to gl-code-quality-report.json
-    # and print linting issues to stdout in the format: path/to/file:line description
-    # remove `--issues-exit-code 0` or set to non-zero to fail the job if linting issues are detected
     - golangci-lint run --print-issued-lines=false --out-format code-climate:gl-code-quality-report.json,line-number
   artifacts:
     reports:
@@ -32,62 +35,38 @@ lint:
       - gl-code-quality-report.json
     expire_in: 1 week
   cache:
+    key: go-mod-cache
     paths:
-      - .cache
+      - "${GO_CACHE_DIR}"
 
-build_migrate:
-  stage: build_migrate
-  image: ***REMOVED***/docker.io/library/golang:1.23-alpine
+# 合并构建作业 - 同时生成迁移工具和后端服务
+build_binaries:
+  stage: build
+  image: ***REMOVED***/crater/library/golang:1.23-alpine
+  <<: *setup_go
   script:
-    - mkdir -p .cache
-    - export GOPATH="$CI_PROJECT_DIR/.cache"
-    - export PATH="$CI_PROJECT_DIR/.cache/bin:$PATH"
-    - go env -w GO111MODULE=on
-    - go env -w GOPROXY=https://goproxy.cn,direct
-    - go mod download
-    - go build -ldflags="-w -s" -o bin/migrate cmd/gorm-gen/models/migrate.go
+    - go run github.com/swaggo/swag/cmd/swag@latest init
+    - go build -ldflags="-w -s" -o "${BIN_DIR}/migrate" cmd/gorm-gen/models/migrate.go
+    - go build -ldflags="-w -s" -o "${BIN_DIR}/controller" main.go
   artifacts:
     paths:
-      - bin/migrate
+      - "${BIN_DIR}"
     expire_in: 1 hour
   only:
     - main
   cache:
+    key: go-mod-cache
     paths:
-      - .cache
+      - "${GO_CACHE_DIR}"
 
-# Build backend and generate artifacts
-build_backend:
-  stage: build_backend
-  image: ***REMOVED***/docker.io/library/golang:1.23-alpine
-  script:
-    - mkdir -p .cache
-    - export GOPATH="$CI_PROJECT_DIR/.cache"
-    - export PATH="$CI_PROJECT_DIR/.cache/bin:$PATH"
-    - go env -w GO111MODULE=on
-    - go env -w GOPROXY=https://goproxy.cn,direct
-    - go mod download
-    - command -v swag >/dev/null 2>&1 || go install github.com/swaggo/swag/cmd/swag@latest
-    - swag init
-    - go build -ldflags="-w -s" -o bin/controller main.go
-  artifacts:
-    paths:
-      - bin/controller
-    expire_in: 1 hour
-  only:
-    - main
-  cache:
-    paths:
-      - .cache
-
-# Build Docker image and push to harbor registry
+# 构建并推送Docker镜像
 build_image:
   stage: build_image
   image:
     name: ***REMOVED***/crater/kaniko-executor:debug
     entrypoint: [""]
+  needs: ["build_binaries"]
   script:
-    # Since GitLab container registry is not enabled, we need to set up harbor registry manually.
     - mkdir -p /kaniko/.docker
     - echo "{\"auths\":{\"${HARBOR_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${HARBOR_REGISTRY_USER}" "${HARBOR_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
     - >-
@@ -98,34 +77,29 @@ build_image:
       --destination "${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}"
   only:
     - main
-  dependencies:
-    - build_migrate
-    - build_backend
 
-# Deploy to Kubernetes cluster
+# 部署到测试集群
 deploy:
   stage: deploy
   image:
     name: ***REMOVED***/crater/bitnami-kubectl:240302
     entrypoint: [""]
+  needs: ["build_image"]
   script:
     - kubectl config use-context raids/resource-scheduling/crater/web-frontend:crater-cluster
     - kubectl set image deployment/crater-web-backend crater-web-backend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -n crater
   only:
     - main
-  dependencies:
-    - build_image
 
-# Deploy to Kubernetes cluster
+# 部署到生产集群
 deploy-release:
   stage: deploy
   image:
     name: ***REMOVED***/crater/bitnami-kubectl:240302
     entrypoint: [""]
+  needs: ["build_image"]
   script:
     - kubectl config use-context raids/resource-scheduling/crater/web-frontend:actgpu-cluster
     - kubectl set image deployment/crater-web-backend crater-web-backend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -n crater
   only:
     - main
-  dependencies:
-    - build_image

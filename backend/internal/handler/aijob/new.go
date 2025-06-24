@@ -145,17 +145,18 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 }
 
 // CreateCustom godoc
-// @Summary CreateCustom a new AI job
-// @Description CreateCustom a new AI job by client-go
-// @Tags AIJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param job body any true "CreateCustom AI Job Request"
-// @Success 200 {object} resputil.Response[any] "CreateCustom AI Job Response"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/aijobs/training [post]
+//
+//	@Summary		CreateCustom a new AI job
+//	@Description	CreateCustom a new AI job by client-go
+//	@Tags			AIJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			job	body		any						true	"CreateCustom AI Job Request"
+//	@Success		200	{object}	resputil.Response[any]	"CreateCustom AI Job Response"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/aijobs/training [post]
 func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
 	var vcReq CreateAIJobReq
 	if err := c.ShouldBindJSON(&vcReq); err != nil {

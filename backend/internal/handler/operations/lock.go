@@ -28,15 +28,16 @@ type ClearLockTimeRequest struct {
 }
 
 // SetKeepWhenLowResourceUsage godoc
-// @Summary set KeepWhenLowResourceUsage of the job to the opposite value
-// @Description set KeepWhenLowResourceUsage of the job to the opposite value
-// @Tags Operations
-// @Accept json
-// @Produce json
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/operations/keep/{name} [put]
+//
+//	@Summary		set KeepWhenLowResourceUsage of the job to the opposite value
+//	@Description	set KeepWhenLowResourceUsage of the job to the opposite value
+//	@Tags			Operations
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	resputil.Response[any]	"Success"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/operations/keep/{name} [put]
 func (mgr *OperationsMgr) SetKeepWhenLowResourceUsage(c *gin.Context) {
 	var req SetKeepRequest
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -60,15 +61,16 @@ func (mgr *OperationsMgr) SetKeepWhenLowResourceUsage(c *gin.Context) {
 }
 
 // SetLockTime godoc
-// @Summary set LockTime of the job
-// @Description set LockTime of the job
-// @Tags Operations
-// @Accept json
-// @Produce json
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/operations/add/locktime [put]
+//
+//	@Summary		set LockTime of the job
+//	@Description	set LockTime of the job
+//	@Tags			Operations
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	resputil.Response[any]	"Success"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/operations/add/locktime [put]
 func (mgr *OperationsMgr) AddLockTime(c *gin.Context) {
 	var req SetLockTimeRequest
 
@@ -119,15 +121,16 @@ func (mgr *OperationsMgr) AddLockTime(c *gin.Context) {
 }
 
 // ClearLockTime godoc
-// @Summary clear LockTime of the job
-// @Description clear LockTime of the job
-// @Tags Operations
-// @Accept json
-// @Produce json
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/operations/clear/locktime [put]
+//
+//	@Summary		clear LockTime of the job
+//	@Description	clear LockTime of the job
+//	@Tags			Operations
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	resputil.Response[any]	"Success"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/operations/clear/locktime [put]
 func (mgr *OperationsMgr) ClearLockTime(c *gin.Context) {
 	var req ClearLockTimeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -144,15 +147,16 @@ func (mgr *OperationsMgr) ClearLockTime(c *gin.Context) {
 }
 
 // GetWhiteList godoc
-// @Summary Get job white list
-// @Description get job white list
-// @Tags Operations
-// @Accept json
-// @Produce json
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/operations/whitelist [get]
+//
+//	@Summary		Get job white list
+//	@Description	get job white list
+//	@Tags			Operations
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	resputil.Response[any]	"Success"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/operations/whitelist [get]
 func (mgr *OperationsMgr) GetWhiteList(c *gin.Context) {
 	whiteList, err := mgr.getJobWhiteList(c)
 	if err != nil {

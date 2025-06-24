@@ -14,13 +14,14 @@ import (
 )
 
 // GetHarborIP godoc
-// @Summary 获取harbor的部署地址
-// @Description 通过后端获取harbor的部署地址
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Router /v1/images/harbor [GET]
+//
+//	@Summary		获取harbor的部署地址
+//	@Description	通过后端获取harbor的部署地址
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/images/harbor [GET]
 func (mgr *ImagePackMgr) GetHarborIP(c *gin.Context) {
 	harborIP := mgr.imageRegistry.GetHarborIP()
 	resp := GetHarborIPResponse{
@@ -30,13 +31,14 @@ func (mgr *ImagePackMgr) GetHarborIP(c *gin.Context) {
 }
 
 // CheckLinkValidity godoc
-// @Summary 检查镜像链接是否有效
-// @Description 通过获取的镜像链接列表，遍历其中的链接，检查是否有效
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Router /v1/images/valid [POST]
+//
+//	@Summary		检查镜像链接是否有效
+//	@Description	通过获取的镜像链接列表，遍历其中的链接，检查是否有效
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/images/valid [POST]
 func (mgr *ImagePackMgr) CheckLinkValidity(c *gin.Context) {
 	req := &CheckLinkValidityRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
@@ -74,13 +76,14 @@ func (mgr *ImagePackMgr) checkLinkValidity(link string) bool {
 }
 
 // UserGetProjectDetail godoc
-// @Summary 获取用户project的信息
-// @Description 获取用户的project的详细信息
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Router /v1/images/quota [GET]
+//
+//	@Summary		获取用户project的信息
+//	@Description	获取用户的project的详细信息
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/images/quota [GET]
 func (mgr *ImagePackMgr) UserGetProjectDetail(c *gin.Context) {
 	token := util.GetToken(c)
 	detail, err := mgr.imageRegistry.GetProjectDetail(c, token.Username)
@@ -96,13 +99,14 @@ func (mgr *ImagePackMgr) UserGetProjectDetail(c *gin.Context) {
 }
 
 // UserGetProjectCredential godoc
-// @Summary 创建用户的harbor项目，并返回用户的harbor项目的凭证
-// @Description 获取参数，生成变量，调用接口
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Router /v1/images/credential [POST]
+//
+//	@Summary		创建用户的harbor项目，并返回用户的harbor项目的凭证
+//	@Description	获取参数，生成变量，调用接口
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/images/credential [POST]
 func (mgr *ImagePackMgr) UserGetProjectCredential(c *gin.Context) {
 	token := util.GetToken(c)
 	if err := mgr.imageRegistry.CheckOrCreateProjectForUser(c, token.Username); err != nil {
@@ -138,14 +142,15 @@ func (mgr *ImagePackMgr) UserGetProjectCredential(c *gin.Context) {
 }
 
 // UpdateProjectQuota godoc
-// @Summary 更新project的配额
-// @Description 传入int64参数，查找用户的project，并更新镜像存储的配额
-// @Tags ImagePack
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param req body UpdateProjectQuotaRequest true "更新镜像的ID和存储大小"
-// @Router /v1/images/quota [POST]
+//
+//	@Summary		更新project的配额
+//	@Description	传入int64参数，查找用户的project，并更新镜像存储的配额
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			req	body	UpdateProjectQuotaRequest	true	"更新镜像的ID和存储大小"
+//	@Router			/v1/images/quota [POST]
 func (mgr *ImagePackMgr) UpdateProjectQuota(c *gin.Context) {
 	req := &UpdateProjectQuotaRequest{}
 	token := util.GetToken(c)

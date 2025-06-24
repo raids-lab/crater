@@ -40,17 +40,18 @@ type CleanLowGPUUsageRequest struct {
 }
 
 // HandleLowGPUUsageJobs godoc
-// @Summary Auto delete not using gpu job list
-// @Description check job list and delete not using gpu job
-// @Tags Operations
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param use query CleanLowGPUUsageRequest true "timeRange util"
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/operations/auto [delete]
+//
+//	@Summary		Auto delete not using gpu job list
+//	@Description	check job list and delete not using gpu job
+//	@Tags			Operations
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			use	query		CleanLowGPUUsageRequest	true	"timeRange util"
+//	@Success		200	{object}	resputil.Response[any]	"Success"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/operations/auto [delete]
 func (mgr *OperationsMgr) HandleLowGPUUsageJobs(c *gin.Context) {
 	var req CleanLowGPUUsageRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -250,9 +251,9 @@ func (mgr *OperationsMgr) getLowGPUUsageVCjobs(c *gin.Context, duration, gpuUtil
 		}
 
 		job, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(owner.Name)).First()
-
 		if err != nil {
 			logutils.Log.Infof("Fail to get vcjob %s\n", owner.Name)
+			continue
 		}
 
 		jobList = append(jobList, job)
@@ -293,17 +294,19 @@ type CleanLongTimeRequest struct {
 }
 
 // HandleLongTimeRunningJobs godoc
-// @Summary Cleanup jobs based on type and duration
-// @Description Delete batch jobs older than 4 days and interactive jobs older than 1 day
-// @Tags Operations
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param use query CleanLongTimeRequest true "batchDays interactiveDays"
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/operations/cleanup [delete]
+//
+//	@Summary		Cleanup jobs based on type and duration
+//	@Description	Delete batch jobs older than 4 days and interactive jobs older than 1 day
+//	@Tags			Operations
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			use	query		CleanLongTimeRequest	true	"batchDays interactiveDays"
+//	@Success		200	{object}	resputil.Response[any]	"Success"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/admin/operations/cleanup [delete]
+//
 // validateCleanupRequest validates the cleanup request parameters
 func (mgr *OperationsMgr) HandleLongTimeRunningJobs(c *gin.Context) {
 	var req CleanLongTimeRequest
@@ -465,17 +468,18 @@ type CancelWaitingJupyterRequest struct {
 }
 
 // HandleWaitingJupyterJobs godoc
-// @Summary Delete unscheduled jupyter jobs
-// @Description check pending jupyter jobs, delete if not scheduled
-// @Tags Operations
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param use query CancelWaitingJupyterRequest true "waitMinitues"
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/operations/waiting/jupyter [delete]
+//
+//	@Summary		Delete unscheduled jupyter jobs
+//	@Description	check pending jupyter jobs, delete if not scheduled
+//	@Tags			Operations
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			use	query		CancelWaitingJupyterRequest	true	"waitMinitues"
+//	@Success		200	{object}	resputil.Response[any]		"Success"
+//	@Failure		400	{object}	resputil.Response[any]		"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]		"Other errors"
+//	@Router			/v1/operations/waiting/jupyter [delete]
 func (mgr *OperationsMgr) HandleWaitingJupyterJobs(c *gin.Context) {
 	var req CancelWaitingJupyterRequest
 	if err := c.ShouldBindQuery(&req); err != nil {

@@ -67,16 +67,17 @@ type (
 )
 
 // GetQuota godoc
-// @Summary Get the queue information
-// @Description query the queue information by client-go
-// @Tags Context
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Success 200 {object} resputil.Response[any] "Volcano Queue Quota"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "other errors"
-// @Router /v1/context/queue [get]
+//
+//	@Summary		Get the queue information
+//	@Description	query the queue information by client-go
+//	@Tags			Context
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[any]	"Volcano Queue Quota"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"other errors"
+//	@Router			/v1/context/queue [get]
 func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 	token := util.GetToken(c)
 
@@ -177,17 +178,18 @@ type (
 )
 
 // UpdateUserAttributes godoc
-// @Summary Update user attributes
-// @Description Update the attributes of the current user
-// @Tags Context
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param attributes body model.UserAttribute true "User attributes"
-// @Success 200 {object} resputil.Response[any] "User attributes updated"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/context/attributes [put]
+//
+//	@Summary		Update user attributes
+//	@Description	Update the attributes of the current user
+//	@Tags			Context
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			attributes	body		model.UserAttribute		true	"User attributes"
+//	@Success		200			{object}	resputil.Response[any]	"User attributes updated"
+//	@Failure		400			{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500			{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/context/attributes [put]
 func (mgr *ContextMgr) UpdateUserAttributes(c *gin.Context) {
 	token := util.GetToken(c)
 	u := query.User
@@ -220,16 +222,17 @@ func (mgr *ContextMgr) UpdateUserAttributes(c *gin.Context) {
 }
 
 // SendUserVerificationCode godoc
-// @Summary Send User Verification Code for email
-// @Description generate random code and save, send it to the user's email
-// @Tags Context
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Success 200 {object} resputil.Response[any] "Successfully send email verification code to user"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "other errors"
-// @Router /v1/context/email/code [post]
+//
+//	@Summary		Send User Verification Code for email
+//	@Description	generate random code and save, send it to the user's email
+//	@Tags			Context
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[any]	"Successfully send email verification code to user"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"other errors"
+//	@Router			/v1/context/email/code [post]
 func (mgr *ContextMgr) SendUserVerificationCode(c *gin.Context) {
 	token := util.GetToken(c)
 	u := query.User
@@ -264,16 +267,17 @@ func getRandomCode() int {
 }
 
 // UpdateUserEmail godoc
-// @Summary Update after judging Verification Code for email
-// @Description judge code and update email for user
-// @Tags Context
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Success 200 {object} resputil.Response[any] "User email updated successfully"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "other errors"
-// @Router /v1/context/email/update [post]
+//
+//	@Summary		Update after judging Verification Code for email
+//	@Description	judge code and update email for user
+//	@Tags			Context
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[any]	"User email updated successfully"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"other errors"
+//	@Router			/v1/context/email/update [post]
 func (mgr *ContextMgr) UpdateUserEmail(c *gin.Context) {
 	token := util.GetToken(c)
 	u := query.User

@@ -41,17 +41,18 @@ type (
 )
 
 // CreateJupyterJob godoc
-// @Summary Create a Jupyter job
-// @Description Create a Jupyter job
-// @Tags VolcanoJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param CreateJupyterReq body CreateJupyterReq true "Create Jupyter Job Request"
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/vcjobs/jupyter [post]
+//
+//	@Summary		Create a Jupyter job
+//	@Description	Create a Jupyter job
+//	@Tags			VolcanoJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			CreateJupyterReq	body		CreateJupyterReq		true	"Create Jupyter Job Request"
+//	@Success		200					{object}	resputil.Response[any]	"Success"
+//	@Failure		400					{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500					{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/vcjobs/jupyter [post]
 func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	token := util.GetToken(c)
 
@@ -291,17 +292,18 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 }
 
 // GetJobToken godoc
-// @Summary Get the ingress base url and jupyter token of the job
-// @Description Get the token of the job by logs
-// @Tags VolcanoJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param jobName path string true "Job Name"
-// @Success 200 {object} resputil.Response[JobTokenResp] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/vcjobs/{name}/token [get]
+//
+//	@Summary		Get the ingress base url and jupyter token of the job
+//	@Description	Get the token of the job by logs
+//	@Tags			VolcanoJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			jobName	path		string							true	"Job Name"
+//	@Success		200		{object}	resputil.Response[JobTokenResp]	"Success"
+//	@Failure		400		{object}	resputil.Response[any]			"Request parameter error"
+//	@Failure		500		{object}	resputil.Response[any]			"Other errors"
+//	@Router			/v1/vcjobs/{name}/token [get]
 func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -389,17 +391,18 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 }
 
 // CreateJupyterSnapshot godoc
-// @Summary Create a snapshot of the jupyter notebook
-// @Description Create nerdctl docker commit to snapshot the jupyter notebook
-// @Tags VolcanoJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name path string true "Job Name"
-// @Success 200 {object} resputil.Response[JobTokenResp] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/vcjobs/jupyter/{name}/snapshot [post]
+//
+//	@Summary		Create a snapshot of the jupyter notebook
+//	@Description	Create nerdctl docker commit to snapshot the jupyter notebook
+//	@Tags			VolcanoJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string							true	"Job Name"
+//	@Success		200		{object}	resputil.Response[JobTokenResp]	"Success"
+//	@Failure		400		{object}	resputil.Response[any]			"Request parameter error"
+//	@Failure		500		{object}	resputil.Response[any]			"Other errors"
+//	@Router			/v1/vcjobs/jupyter/{name}/snapshot [post]
 func (mgr *VolcanojobMgr) CreateJupyterSnapshot(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {

@@ -562,17 +562,18 @@ func (mgr *SparseJobMgr) AnalyzeResourceUsage(c *gin.Context) {
 }
 
 // GetJobEvents godoc
-// @Summary 获取稀疏推荐作业的事件
-// @Description 获取稀疏推荐作业关联的事件信息
-// @Tags SpJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name path string true "Job Name"
-// @Success 200 {object} resputil.Response[any] "事件列表"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/spjobs/{name}/events [get]
+//
+//	@Summary		获取稀疏推荐作业的事件
+//	@Description	获取稀疏推荐作业关联的事件信息
+//	@Tags			SpJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string					true	"Job Name"
+//	@Success		200		{object}	resputil.Response[any]	"事件列表"
+//	@Failure		400		{object}	resputil.Response[any]	"请求参数错误"
+//	@Failure		500		{object}	resputil.Response[any]	"其他错误"
+//	@Router			/v1/spjobs/{name}/events [get]
 func (mgr *SparseJobMgr) GetJobEvents(c *gin.Context) {
 	req := &GetRecommendDLJobReq{}
 	if err := c.ShouldBindUri(req); err != nil {
