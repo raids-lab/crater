@@ -48,6 +48,9 @@ jobs:
 
       # 构建项目
       - name: Build website
+        env:
+          ORAMA_PRIVATE_API_KEY: ${{ secrets.ORAMA_PRIVATE_API_KEY }}
+          ORAMA_INDEX_NAME: ${{ secrets.ORAMA_INDEX_NAME }}
         run: pnpm build
 
       # 添加.nojekyll文件防止Jekyll处理

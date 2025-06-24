@@ -13,16 +13,16 @@ pnpm install
 pnpm dev
 ```
 
-Open http://localhost:3000/website with your browser to see the result.
+Open http://localhost:3000/crater with your browser to see the result.
 
 ## Build and serve locally
 
 ```bash
 pnpm build
-pnpm dlx serve@latest out --serve-path /website
+pnpm dlx serve@latest out --serve-path /crater
 ```
 
-Open http://localhost:3000/website with your browser to see the result.
+Open http://localhost:3000/crater with your browser to see the result.
 
 ## Before commit
 

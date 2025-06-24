@@ -21,7 +21,7 @@ const withMDX = createMDX();
 /** @type {import('next').NextConfig} */
 const config = {
   reactStrictMode: true,
-  basePath: "/website",
+  basePath: "/crater",
   output: "export",
   trailingSlash: true,
   images: {

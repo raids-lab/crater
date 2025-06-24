@@ -86,6 +86,6 @@ export function baseOptions(locale: string): BaseLayoutProps {
         url: "https://gpu.act.buaa.edu.cn/portal",
       },
     ],
-    githubUrl: 'https://github.com/raids-lab/website',
+    githubUrl: 'https://github.com/raids-lab/crater',
   };
 }
