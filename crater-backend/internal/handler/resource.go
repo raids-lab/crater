@@ -58,17 +58,18 @@ type (
 )
 
 // ListResource godoc
-// @Summary Get a list of resources based on the specified parameters
-// @Description If the vendorDomain parameter is provided, the API will return a list of resources that match the specified vendor domain.
-// @Tags Resource
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param vendorDomain query string false "Vendor domain of the resource (For example: 'nvidia.com'	)"
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/resources [get]
+//
+//	@Summary		Get a list of resources based on the specified parameters
+//	@Description	If the vendorDomain parameter is provided, the API will return a list of resources that match the specified vendor domain.
+//	@Tags			Resource
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			vendorDomain	query		string					false	"Vendor domain of the resource (For example: 'nvidia.com'	)"
+//	@Success		200				{object}	resputil.Response[any]	"Success"
+//	@Failure		400				{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500				{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/resources [get]
 func (mgr *ResourceMgr) ListResource(c *gin.Context) {
 	var req ListResourceReq
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -98,16 +99,17 @@ type (
 )
 
 // SyncResource godoc
-// @Summary Get allocatable resources from the Kubernetes cluster and update the database
-// @Description This API will get the allocatable resources from the Kubernetes cluster and update the database with the latest information.
-// @Tags Resource
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/resources/sync [post]
+//
+//	@Summary		Get allocatable resources from the Kubernetes cluster and update the database
+//	@Description	This API will get the allocatable resources from the Kubernetes cluster and update the database with the latest information.
+//	@Tags			Resource
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[any]	"Success"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/admin/resources/sync [post]
 func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
 	nodes, err := mgr.kubeClient.CoreV1().Nodes().List(c, metav1.ListOptions{})
 	if err != nil {
@@ -207,18 +209,19 @@ type (
 )
 
 // UpdateResource godoc
-// @Summary Update a resource's attributes
-// @Description This API will update the label or type of a resource based on the specified ID.
-// @Tags Resource
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param id path uint true "Resource ID"
-// @Param resource body UpdateResourceReq true "Resource attributes to update"
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/resources/{id} [put]
+//
+//	@Summary		Update a resource's attributes
+//	@Description	This API will update the label or type of a resource based on the specified ID.
+//	@Tags			Resource
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			id			path		uint					true	"Resource ID"
+//	@Param			resource	body		UpdateResourceReq		true	"Resource attributes to update"
+//	@Success		200			{object}	resputil.Response[any]	"Success"
+//	@Failure		400			{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500			{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/admin/resources/{id} [put]
 func (mgr *ResourceMgr) UpdateResource(c *gin.Context) {
 	var req UpdateResourceReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -257,17 +260,18 @@ func (mgr *ResourceMgr) UpdateResource(c *gin.Context) {
 }
 
 // DeleteResource godoc
-// @Summary Delete a resource
-// @Description This API will delete a resource based on the specified ID.
-// @Tags Resource
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param id path uint true "Resource ID"
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/resources/{id} [delete]
+//
+//	@Summary		Delete a resource
+//	@Description	This API will delete a resource based on the specified ID.
+//	@Tags			Resource
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			id	path		uint					true	"Resource ID"
+//	@Success		200	{object}	resputil.Response[any]	"Success"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/admin/resources/{id} [delete]
 func (mgr *ResourceMgr) DeleteResource(c *gin.Context) {
 	var param ResourcePathReq
 	if err := c.ShouldBindUri(&param); err != nil {
@@ -289,17 +293,18 @@ type GetGPUNetworksReq struct {
 }
 
 // GetGPUNetworks godoc
-// @Summary Get all RDMA resources linked to a GPU resource
-// @Description This API will return all RDMA resources linked to the specified GPU resource.
-// @Tags Resource
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param gpuId path uint true "GPU Resource ID"
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/resources/gpu/{gpuId}/networks [get]
+//
+//	@Summary		Get all RDMA resources linked to a GPU resource
+//	@Description	This API will return all RDMA resources linked to the specified GPU resource.
+//	@Tags			Resource
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			gpuId	path		uint					true	"GPU Resource ID"
+//	@Success		200		{object}	resputil.Response[any]	"Success"
+//	@Failure		400		{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500		{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/resources/gpu/{gpuId}/networks [get]
 func (mgr *ResourceMgr) GetGPUNetworks(c *gin.Context) {
 	var req ResourcePathReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -354,17 +359,18 @@ type LinkResourceReq struct {
 }
 
 // LinkGPUToRDMA godoc
-// @Summary Link a GPU resource to an RDMA resource
-// @Description This API will create a relationship between a GPU resource and an RDMA resource.
-// @Tags Resource
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param linkRequest body LinkResourceReq true "GPU and RDMA IDs to link"
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/resources/link [post]
+//
+//	@Summary		Link a GPU resource to an RDMA resource
+//	@Description	This API will create a relationship between a GPU resource and an RDMA resource.
+//	@Tags			Resource
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			linkRequest	body		LinkResourceReq			true	"GPU and RDMA IDs to link"
+//	@Success		200			{object}	resputil.Response[any]	"Success"
+//	@Failure		400			{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500			{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/admin/resources/link [post]
 func (mgr *ResourceMgr) LinkGPUToRDMA(c *gin.Context) {
 	var pathReq ResourcePathReq
 	if err := c.ShouldBindUri(&pathReq); err != nil {
@@ -424,18 +430,19 @@ type DeleteResourceLinkReq struct {
 }
 
 // DeleteResourceLink godoc
-// @Summary Delete the link between a GPU resource and an RDMA resource
-// @Description This API will delete the link between a GPU resource and an RDMA resource based on the specified IDs.
-// @Tags Resource
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param id path uint true "GPU Resource ID"
-// @Param networkId path uint true "RDMA Resource ID"
-// @Success 200 {object} resputil.Response[any] "Success"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/admin/resources/{id}/networks/{networkId} [delete]
+//
+//	@Summary		Delete the link between a GPU resource and an RDMA resource
+//	@Description	This API will delete the link between a GPU resource and an RDMA resource based on the specified IDs.
+//	@Tags			Resource
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			id			path		uint					true	"GPU Resource ID"
+//	@Param			networkId	path		uint					true	"RDMA Resource ID"
+//	@Success		200			{object}	resputil.Response[any]	"Success"
+//	@Failure		400			{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500			{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/admin/resources/{id}/networks/{networkId} [delete]
 func (mgr *ResourceMgr) DeleteResourceLink(c *gin.Context) {
 	var req DeleteResourceLinkReq
 	if err := c.ShouldBindUri(&req); err != nil {

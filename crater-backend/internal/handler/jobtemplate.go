@@ -53,16 +53,17 @@ type JobTemplateresp struct {
 }
 
 // swagger
-// @Summary 展示所有作业模板
-// @Description 展示所有作业模板
-// @Tags jobtemplate
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Success 200 {object} resputil.Response[any] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/jobtemplate/list [get]
+//
+//	@Summary		展示所有作业模板
+//	@Description	展示所有作业模板
+//	@Tags			jobtemplate
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[any]	"成功返回值描述"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/jobtemplate/list [get]
 func (mgr *JobTemplateMgr) ListJobTemplate(c *gin.Context) {
 	j := query.Jobtemplate
 	templates, err := j.WithContext(c).Preload(j.User).Where(j.ID.IsNotNull()).Find()
@@ -93,17 +94,18 @@ type GetJobTemplateReq struct {
 }
 
 // swagger
-// @Summary 获取作业模板
-// @Description 获取作业模板
-// @Tags jobtemplate
-// @Accept json
-// @Produce json
-// @Param id path int true "作业模板ID"  // Swagger 注解正确
-// @Security Bearer
-// @Success 200 {object} resputil.Response[any] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/jobtemplate/{id} [get]
+//
+//	@Summary		获取作业模板
+//	@Description	获取作业模板
+//	@Tags			jobtemplate
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path	int	true	"作业模板ID"	//	Swagger	注解正确
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[any]	"成功返回值描述"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/jobtemplate/{id} [get]
 func (mgr *JobTemplateMgr) GetJobTemplate(c *gin.Context) {
 	var req GetJobTemplateReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -141,18 +143,18 @@ type JobTemplateReq struct {
 	Template string `json:"template" binding:"required"`
 }
 
-// @Summary 创建作业模板
-// @Description 创建作业模板
-// @Tags jobtemplate
-// @Accept json
-// @Produce json
-// @Param req body JobTemplateReq true "作业模板"
-// @Success 200 {object} resputil.Response[string] "成功返回值描述"
-// @Security Bearer
-// @Success 200 {object} resputil.Response[any] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router  /v1/jobtemplate/create [post]
+// @Summary		创建作业模板
+// @Description	创建作业模板
+// @Tags			jobtemplate
+// @Accept			json
+// @Produce		json
+// @Param			req	body		JobTemplateReq				true	"作业模板"
+// @Success		200	{object}	resputil.Response[string]	"成功返回值描述"
+// @Security		Bearer
+// @Success		200	{object}	resputil.Response[any]	"成功返回值描述"
+// @Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+// @Failure		500	{object}	resputil.Response[any]	"Other errors"
+// @Router			/v1/jobtemplate/create [post]
 func (mgr *JobTemplateMgr) CreateJobTemplate(c *gin.Context) {
 	token := util.GetToken(c)
 	var jobtemplateReq JobTemplateReq
@@ -181,17 +183,18 @@ type DeleteJobtemplateReq struct {
 }
 
 // DeleteJobTemplate godoc
-// @Summary 删除作业模板
-// @Description 删除作业模板
-// @Tags jobtemplate
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param id path int true "作业模板ID"  // Swagger 注解正确
-// @Success 200 {object} resputil.Response[string] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/jobtemplate/delete/{id} [delete]
+//
+//	@Summary		删除作业模板
+//	@Description	删除作业模板
+//	@Tags			jobtemplate
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			id	path		int							true	"作业模板ID"	//	Swagger	注解正确
+//	@Success		200	{object}	resputil.Response[string]	"成功返回值描述"
+//	@Failure		400	{object}	resputil.Response[any]		"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]		"Other errors"
+//	@Router			/v1/jobtemplate/delete/{id} [delete]
 func (mgr *JobTemplateMgr) DeleteJobTemplate(c *gin.Context) {
 	var req DeleteJobtemplateReq
 	if err := c.ShouldBindUri(&req); err != nil { // ✅ 正确绑定路径参数
@@ -222,17 +225,18 @@ type UpdateJobTemplateReq struct {
 }
 
 // swagger
-// @Summary 更新作业模板
-// @Description 更新作业模板
-// @Tags jobtemplate
-// @Accept json
-// @Produce json
-// @Param req body UpdateJobTemplateReq true "作业模板"
-// @Security Bearer
-// @Success 200 {object} resputil.Response[string] "成功返回值描述"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router  /v1/jobtemplate/update [put]
+//
+//	@Summary		更新作业模板
+//	@Description	更新作业模板
+//	@Tags			jobtemplate
+//	@Accept			json
+//	@Produce		json
+//	@Param			req	body	UpdateJobTemplateReq	true	"作业模板"
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[string]	"成功返回值描述"
+//	@Failure		400	{object}	resputil.Response[any]		"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]		"Other errors"
+//	@Router			/v1/jobtemplate/update [put]
 func (mgr *JobTemplateMgr) UpdateJobTemplate(c *gin.Context) {
 	var jobtemplateReq UpdateJobTemplateReq
 	if err := c.ShouldBindJSON(&jobtemplateReq); err != nil {

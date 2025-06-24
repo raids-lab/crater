@@ -94,16 +94,17 @@ func (mgr *AIJobMgr) NotifyTaskUpdate(taskID uint, userName string, op util.Task
 }
 
 // GetQuota godoc
-// @Summary Get the quota of the queue
-// @Description Get the quota of the queue by client-go
-// @Tags AIJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Success 200 {object} resputil.Response[any] "Quota Information"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/aijobs/quota [get]
+//
+//	@Summary		Get the quota of the queue
+//	@Description	Get the quota of the queue by client-go
+//	@Tags			AIJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[any]	"Quota Information"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/aijobs/quota [get]
 //
 //nolint:gocyclo // TODO: refactor
 func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
@@ -241,17 +242,18 @@ type (
 )
 
 // GetJobPods godoc
-// @Summary 获取任务的Pod列表
-// @Description 获取任务的Pod列表
-// @Tags VolcanoJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param name path string true "Job Name"
-// @Success 200 {object} resputil.Response[any] "Pod列表"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/vcjobs/{name}/pods [get]
+//
+//	@Summary		获取任务的Pod列表
+//	@Description	获取任务的Pod列表
+//	@Tags			VolcanoJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string					true	"Job Name"
+//	@Success		200		{object}	resputil.Response[any]	"Pod列表"
+//	@Failure		400		{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500		{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/vcjobs/{name}/pods [get]
 func (mgr *AIJobMgr) GetJobPods(c *gin.Context) {
 	var req AIJobDetailReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -297,16 +299,17 @@ type AIJobResp struct {
 }
 
 // ListUserJob godoc
-// @Summary ListUserJob AI jobs
-// @Description ListUserJob AI jobs by client-go
-// @Tags AIJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Success 200 {object} resputil.Response[any] "AI Job ListUserJob"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/aijobs [get]
+//
+//	@Summary		ListUserJob AI jobs
+//	@Description	ListUserJob AI jobs by client-go
+//	@Tags			AIJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[any]	"AI Job ListUserJob"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/aijobs [get]
 func (mgr *AIJobMgr) ListUserJob(c *gin.Context) {
 	token := interutil.GetToken(c)
 	taskModels, err := mgr.taskService.ListByQueue(token.AccountName)
@@ -407,17 +410,18 @@ type AIJobDetailResp struct {
 }
 
 // GetDetail godoc
-// @Summary GetDetail AI job details
-// @Description GetDetail AI job details by client-go
-// @Tags AIJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param id path uint true "Job ID"
-// @Success 200 {object} resputil.Response[any] "AI Job Details"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/aijobs/{id}/detail [get]
+//
+//	@Summary		GetDetail AI job details
+//	@Description	GetDetail AI job details by client-go
+//	@Tags			AIJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			id	path		uint					true	"Job ID"
+//	@Success		200	{object}	resputil.Response[any]	"AI Job Details"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/aijobs/{id}/detail [get]
 func (mgr *AIJobMgr) GetDetail(c *gin.Context) {
 	var req AIJobDetailReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -507,17 +511,18 @@ type AIJobLogResp struct {
 }
 
 // Delete godoc
-// @Summary Delete an AI job
-// @Description Delete an AI job by client-go
-// @Tags AIJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param id path uint true "Job ID"
-// @Success 200 {object} resputil.Response[any] "Delete AI Job Response"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/aijobs/{id} [delete]
+//
+//	@Summary		Delete an AI job
+//	@Description	Delete an AI job by client-go
+//	@Tags			AIJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			id	path		uint					true	"Job ID"
+//	@Success		200	{object}	resputil.Response[any]	"Delete AI Job Response"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/aijobs/{id} [delete]
 func (mgr *AIJobMgr) Delete(c *gin.Context) {
 	var req AIJobDetailReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -575,17 +580,18 @@ func (mgr *AIJobMgr) UpdateSLO(c *gin.Context) {
 }
 
 // GetJobYaml godoc
-// @Summary 获取vcjob Yaml详情
-// @Description 调用k8s get crd
-// @Tags vcjob-jupyter
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param jobname query string true "vcjob-name"
-// @Success 200 {object} resputil.Response[any] "任务yaml"
-// @Failure 400 {object} resputil.Response[any] "Request parameter error"
-// @Failure 500 {object} resputil.Response[any] "Other errors"
-// @Router /v1/aijobs/{id}/yaml [get]
+//
+//	@Summary		获取vcjob Yaml详情
+//	@Description	调用k8s get crd
+//	@Tags			vcjob-jupyter
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			jobname	query		string					true	"vcjob-name"
+//	@Success		200		{object}	resputil.Response[any]	"任务yaml"
+//	@Failure		400		{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500		{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/aijobs/{id}/yaml [get]
 func (mgr *AIJobMgr) GetJobYaml(c *gin.Context) {
 	var req AIJobDetailReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -736,17 +742,18 @@ func (mgr *AIJobMgr) getPodLog(c *gin.Context, namespace, podName string) (*byte
 }
 
 // GetJobEvents godoc
-// @Summary 获取AI任务的事件
-// @Description 获取AI任务的事件
-// @Tags AIJob
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param id path uint true "Job ID"
-// @Success 200 {object} resputil.Response[any] "事件列表"
-// @Failure 400 {object} resputil.Response[any] "请求参数错误"
-// @Failure 500 {object} resputil.Response[any] "其他错误"
-// @Router /v1/aijobs/{id}/event [get]
+//
+//	@Summary		获取AI任务的事件
+//	@Description	获取AI任务的事件
+//	@Tags			AIJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			id	path		uint					true	"Job ID"
+//	@Success		200	{object}	resputil.Response[any]	"事件列表"
+//	@Failure		400	{object}	resputil.Response[any]	"请求参数错误"
+//	@Failure		500	{object}	resputil.Response[any]	"其他错误"
+//	@Router			/v1/aijobs/{id}/event [get]
 func (mgr *AIJobMgr) GetJobEvents(c *gin.Context) {
 	var req AIJobDetailReq
 	if err := c.ShouldBindUri(&req); err != nil {
