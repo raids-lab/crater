@@ -22,12 +22,12 @@ import { MetadataFormEnvdAdvanced } from "@/components/form/types";
 import { Input } from "@/components/ui/input";
 import {
   apiUserCreateByEnvd,
-  ImageDefaultTags,
+  FetchAllUniqueImageTagObjects,
   imageNameRegex,
   ImagePackSource,
   imageTagRegex,
 } from "@/services/api/imagepack";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import FormLabelMust from "@/components/form/FormLabelMust";
 import Combobox from "@/components/form/Combobox";
 import { Textarea } from "@/components/ui/textarea";
@@ -203,6 +203,11 @@ function EnvdSheetContent({
     },
   });
 
+  const { data: allImageTags } = useQuery({
+    queryKey: ["allImageTags"],
+    queryFn: FetchAllUniqueImageTagObjects,
+  });
+
   const onSubmit = (values: EnvdFormValues) => {
     submitDockerfileSheet(values);
   };
@@ -310,7 +315,7 @@ function EnvdSheetContent({
             tagsPath="tags"
             label={`镜像标签`}
             description={`为镜像添加标签，以便分类和搜索`}
-            customTags={ImageDefaultTags}
+            customTags={allImageTags}
           />
           <FormField
             control={form.control}

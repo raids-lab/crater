@@ -293,6 +293,48 @@ export const ImageDefaultTags = [
   { value: "vLLM" },
 ];
 
+export async function FetchAllUniqueImageTagObjects(): Promise<
+  { value: string }[]
+> {
+  const res = await apiUserListImage();
+  const imageList = res.data.data.imageList ?? [];
+  // 用 ImageDefaultTags 初始化 Set
+  const tagSet = new Set<string>(ImageDefaultTags.map((item) => item.value));
+  const lowerCaseTagSet = new Set<string>(
+    ImageDefaultTags.map((item) => item.value.toLowerCase()),
+  );
+
+  // 统计所有镜像tags出现频次（忽略大小写）
+  const tagCount: Record<string, { count: number; raw: string }> = {};
+  imageList.forEach((image) => {
+    if (Array.isArray(image.tags)) {
+      image.tags.forEach((tag) => {
+        const lower = tag.toLowerCase();
+        if (lowerCaseTagSet.has(lower)) return; // 跳过已在默认标签中的
+        if (!tagCount[lower]) {
+          tagCount[lower] = { count: 1, raw: tag };
+        } else {
+          tagCount[lower].count += 1;
+        }
+      });
+    }
+  });
+
+  // 取出现频次最高的5个tag
+  const topTags = Object.values(tagCount)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+    .map((item) => item.raw);
+
+  // 合并到set
+  topTags.forEach((tag) => {
+    tagSet.add(tag);
+  });
+
+  // 返回与 ImageDefaultTags 相同格式
+  return Array.from(tagSet).map((tag) => ({ value: tag }));
+}
+
 export const imageLinkRegex =
   /^[a-zA-Z0-9.-]+(\/[a-zA-Z0-9_.-]+)+:[a-zA-Z0-9_](?:[a-zA-Z0-9_.-]*[a-zA-Z0-9_])?$/;
 
