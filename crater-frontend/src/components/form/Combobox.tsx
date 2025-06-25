@@ -21,7 +21,7 @@ import {
 import { Check, ChevronsUpDown } from "lucide-react";
 // import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMemo, useState } from "react";
-import { TagFilter, useTagFilter } from "./ImageFormField";
+import { TagFilter, UseTagFilter } from "./ImageFormField";
 import { Badge } from "@/components/ui/badge";
 
 export interface ComboboxItem<T> {
@@ -70,7 +70,7 @@ function Combobox<T>({
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const { allTags, selectedTags, toggleTag, filterItemsByTags } = useTagFilter(
+  const { allTags, selectedTags, toggleTag, filterItemsByTags } = UseTagFilter(
     items,
     tags,
   );

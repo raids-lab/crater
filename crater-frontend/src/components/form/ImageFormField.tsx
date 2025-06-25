@@ -102,7 +102,7 @@ export function TagFilter({
 }
 
 // Hook for tag filtering logic
-export function useTagFilter<T>(
+export function UseTagFilter<T>(
   items: ComboboxItem<T>[],
   externalTags?: string[],
 ): {
@@ -119,9 +119,16 @@ export function useTagFilter<T>(
     if (externalTags && externalTags.length > 0) return externalTags;
 
     const tagSet = new Set<string>();
+    const lowerCaseTagSet = new Set<string>();
     items.forEach((item) => {
       if (item.tags && Array.isArray(item.tags)) {
-        item.tags.forEach((tag) => tagSet.add(tag));
+        item.tags.forEach((tag) => {
+          const lowerTag = tag.toLowerCase();
+          if (!lowerCaseTagSet.has(lowerTag)) {
+            lowerCaseTagSet.add(lowerTag);
+            tagSet.add(tag); // 保留原始大小写
+          }
+        });
       }
     });
     return Array.from(tagSet);
@@ -140,8 +147,10 @@ export function useTagFilter<T>(
       if (selectedTags.length === 0) return itemsToFilter;
 
       return itemsToFilter.filter((item) => {
+        const lowerCaseTags = new Set(item.tags?.map((t) => t.toLowerCase()));
         return (
-          item.tags && selectedTags.every((tag) => item.tags?.includes(tag))
+          item.tags &&
+          selectedTags.some((tag) => lowerCaseTags.has(tag.toLowerCase()))
         );
       });
     },
