@@ -112,7 +112,12 @@ export const AdminDatasetTable = () => {
   const columns: ColumnDef<IDataset>[] = [
     {
       accessorKey: "name",
-      header: t("adminDatasetTable.column.name"),
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t("adminDatasetTable.column.name")}
+        />
+      ),
       cell: ({ row }) => {
         return (
           <div className="relative flex items-center">
@@ -135,7 +140,12 @@ export const AdminDatasetTable = () => {
     },
     {
       accessorKey: "type",
-      header: t("adminDatasetTable.column.type"),
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t("adminDatasetTable.column.type")}
+        />
+      ),
       cell: ({ row }) => {
         return (
           <DatasetTypeLabel datasetType={row.getValue<DatasetType>("type")} />
@@ -154,7 +164,12 @@ export const AdminDatasetTable = () => {
     },
     {
       accessorKey: "createdAt",
-      header: t("adminDatasetTable.column.createdAt"),
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={t("adminDatasetTable.column.createdAt")}
+        />
+      ),
       cell: ({ row }) => {
         return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
       },
