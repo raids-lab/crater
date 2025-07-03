@@ -16,6 +16,7 @@ type (
 		ImageTag           string   `json:"tag"`
 		Tags               []string `json:"tags"`
 		Template           string   `json:"template"`
+		Archs              []string `json:"archs"`
 	}
 
 	CreateByDockerfileRequest struct {
@@ -25,6 +26,7 @@ type (
 		ImageTag    string   `json:"tag"`
 		Tags        []string `json:"tags"`
 		Template    string   `json:"template"`
+		Archs       []string `json:"archs"`
 	}
 	CreateByEnvdRequest struct {
 		Description string            `json:"description"`
@@ -234,6 +236,7 @@ type (
 		Tags         []string
 		Template     string
 		BuildSource  model.BuildSource
+		Archs        []string
 	}
 
 	EnvdBuildData struct {

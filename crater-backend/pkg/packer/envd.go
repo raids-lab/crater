@@ -42,7 +42,7 @@ func (b *imagePacker) generateEnvdContainer(data *EnvdReq) []corev1.Container {
 	envdContainer := []corev1.Container{
 		{
 			Name:  "buildkit",
-			Image: config.GetConfig().DindArgs.EnvdImage,
+			Image: config.GetConfig().DindArgs.EnvdAmdImage,
 			Args:  buildArgs,
 			Env: []corev1.EnvVar{
 				{
@@ -112,6 +112,9 @@ func (b *imagePacker) createEnvdJob(
 				Containers:         envdContainer,
 				Volumes:            volumes,
 				EnableServiceLinks: ptr.To(false),
+				NodeSelector: map[string]string{
+					"kubernetes.io/arch": "amd64",
+				},
 			},
 		},
 		TTLSecondsAfterFinished: &JobCleanTime,
