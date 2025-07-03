@@ -4,7 +4,7 @@
 // @ts-nocheck
 import { useTranslation } from "react-i18next";
 import * as React from "react";
-import { ChevronsUpDown, XIcon } from "lucide-react";
+import { ChevronsUpDown, XIcon, CircleHelpIcon } from "lucide-react";
 import { FieldPath, FieldValues, UseFormReturn } from "react-hook-form";
 
 import { cn } from "@/lib/utils";
@@ -25,13 +25,18 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { NothingCore } from "../placeholder/Nothing";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Sample predefined tags
 const predefinedTags = [
@@ -85,6 +90,8 @@ interface TagsInputProps<T extends FieldValues> {
   customTags?: Tag[];
   /** Whether the field is required */
   required?: boolean;
+  /** Whether the search and add field is required */
+  imageBuildArch?: boolean;
 }
 
 export function TagsInput<T extends FieldValues>({
@@ -94,6 +101,7 @@ export function TagsInput<T extends FieldValues>({
   description,
   customTags,
   required = false,
+  imageBuildArch = false,
 }: TagsInputProps<T>) {
   const { t } = useTranslation();
   const [open, setOpen] = React.useState(false);
@@ -150,6 +158,16 @@ export function TagsInput<T extends FieldValues>({
           <FormLabel>
             {label || t("tagsInput.label")}
             {required && <span className="text-destructive ml-1">*</span>}
+            <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{description}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </FormLabel>
           <FormControl className="flex flex-col gap-2">
             <div className="flex gap-2">
@@ -192,7 +210,9 @@ export function TagsInput<T extends FieldValues>({
                         </div>
                       ) : (
                         <span className="text-muted-foreground mr-auto">
-                          {t("tagsInput.noTagsLabel")}
+                          {imageBuildArch
+                            ? t("tagsInput.noArchsLabel")
+                            : t("tagsInput.noTagsLabel")}
                         </span>
                       )}
                     </div>
@@ -219,7 +239,11 @@ export function TagsInput<T extends FieldValues>({
                 <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
                   <Command>
                     <CommandInput
-                      placeholder={t("tagsInput.searchPlaceholder")}
+                      placeholder={
+                        imageBuildArch
+                          ? t("tagsInput.archSearchPlaceholder")
+                          : t("tagsInput.searchPlaceholder")
+                      }
                     />
                     <CommandList className="max-h-[200px] overflow-y-auto">
                       <CommandEmpty>
@@ -228,7 +252,13 @@ export function TagsInput<T extends FieldValues>({
                       {availableTags.filter(
                         (tag) => !tags.some((t: Tag) => t.value === tag.value),
                       ).length > 0 && (
-                        <CommandGroup heading={t("tagsInput.commonTagsLabel")}>
+                        <CommandGroup
+                          heading={
+                            imageBuildArch
+                              ? t("tagsInput.commonArchsLabel")
+                              : t("tagsInput.commonTagsLabel")
+                          }
+                        >
                           {availableTags
                             .filter(
                               (tag) =>
@@ -251,38 +281,37 @@ export function TagsInput<T extends FieldValues>({
                         </CommandGroup>
                       )}
                     </CommandList>
-                    <div className="border-t p-2">
-                      <div className="text-muted-foreground mb-2 ml-1 text-xs font-medium">
-                        {t("tagsInput.addNewLabel")}
+                    {!imageBuildArch && (
+                      <div className="border-t p-2">
+                        <div className="text-muted-foreground mb-2 ml-1 text-xs font-medium">
+                          {t("tagsInput.addNewLabel")}
+                        </div>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder={t("tagsInput.newTagPlaceholder")}
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            className="flex-1 text-sm"
+                          />
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => {
+                              addCustomTag();
+                            }}
+                            disabled={!inputValue.trim()}
+                          >
+                            {t("tagsInput.addButton")}
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder={t("tagsInput.newTagPlaceholder")}
-                          value={inputValue}
-                          onChange={(e) => setInputValue(e.target.value)}
-                          onKeyDown={handleKeyDown}
-                          className="flex-1 text-sm"
-                        />
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={() => {
-                            addCustomTag();
-                          }}
-                          disabled={!inputValue.trim()}
-                        >
-                          {t("tagsInput.addButton")}
-                        </Button>
-                      </div>
-                    </div>
+                    )}
                   </Command>
                 </PopoverContent>
               </Popover>
             </div>
           </FormControl>
-          <FormDescription>
-            {description || t("tagsInput.description")}
-          </FormDescription>
           <FormMessage />
         </FormItem>
       )}
