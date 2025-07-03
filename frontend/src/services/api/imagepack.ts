@@ -182,6 +182,7 @@ export interface KanikoCreate {
   tags: string[];
   template: string;
   buildSource: ImagePackSource;
+  archs: string[];
 }
 
 export interface DockerfileCreate {
@@ -192,6 +193,7 @@ export interface DockerfileCreate {
   tags: string[];
   template: string;
   buildSource: ImagePackSource;
+  archs: string[];
 }
 
 export interface EnvdCreate {
@@ -291,6 +293,16 @@ export const ImageDefaultTags = [
   { value: "Jupyter" },
   { value: "Python" },
   { value: "vLLM" },
+];
+
+export const ImageDefaultArchs = [
+  { value: "linux/amd64" },
+  { value: "linux/amd64/v2" },
+  { value: "linux/amd64/v3" },
+  { value: "linux/386" },
+  { value: "linux/arm64" },
+  { value: "linux/arm/v7" },
+  { value: "linux/arm/v6" },
 ];
 
 export async function FetchAllUniqueImageTagObjects(): Promise<

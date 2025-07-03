@@ -526,8 +526,11 @@
     "label": "标签",
     "description": "选择已有标签或创建新标签",
     "noTagsLabel": "选择或添加标签",
+    "noArchsLabel": "选择或添加架构",
     "searchPlaceholder": "搜索常用标签...",
+    "archSearchPlaceholder": "搜索架构...",
     "commonTagsLabel": "常用标签",
+    "commonArchsLabel": "可用架构",
     "addNewLabel": "添加新标签",
     "newTagPlaceholder": "输入新标签...",
     "addButton": "添加"
