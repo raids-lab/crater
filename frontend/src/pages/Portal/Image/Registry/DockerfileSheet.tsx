@@ -80,6 +80,13 @@ const dockerfileFormSchema = z.object({
       }),
     )
     .optional(),
+  imageArchs: z
+    .array(
+      z.object({
+        value: z.string(),
+      }),
+    )
+    .optional(),
 });
 
 export type DockerfileFormValues = z.infer<typeof dockerfileFormSchema>;
@@ -106,6 +113,7 @@ function DockerfileSheetContent({
       imageName: "",
       imageTag: "",
       tags: [],
+      imageArchs: [{ value: "linux/amd64" }],
     },
   });
 
@@ -119,6 +127,7 @@ function DockerfileSheetContent({
         tags: values.tags?.map((item) => item.value) ?? [],
         template: exportToJsonString(MetadataFormDockerfile, values),
         buildSource: ImagePackSource.Dockerfile,
+        archs: values.imageArchs?.map((item) => item.value) ?? [],
       }),
     onSuccess: async () => {
       await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
@@ -238,7 +247,7 @@ function DockerfileSheetContent({
             form={form}
             imageNamePath="imageName"
             imageTagPath="imageTag"
-            description="输入用户自定义的镜像名和镜像标签，若为空，则由系统自动生成"
+            imageBuildArchPath="imageArchs"
           />
         </SandwichLayout>
       </form>

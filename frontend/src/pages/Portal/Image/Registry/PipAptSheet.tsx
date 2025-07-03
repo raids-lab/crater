@@ -127,6 +127,13 @@ const pipAptFormSchema = z.object({
       }),
     )
     .optional(),
+  imageArchs: z
+    .array(
+      z.object({
+        value: z.string(),
+      }),
+    )
+    .optional(),
 });
 
 export type PipAptFormValues = z.infer<typeof pipAptFormSchema>;
@@ -154,6 +161,7 @@ function PipAptSheetContent({
       aptPackages: "",
       description: "",
       tags: [],
+      imageArchs: [{ value: "linux/amd64" }],
     },
   });
 
@@ -169,6 +177,7 @@ function PipAptSheetContent({
         tags: values.tags?.map((item) => item.value) ?? [],
         template: exportToJsonString(MetadataFormPipApt, values),
         buildSource: ImagePackSource.PipApt,
+        archs: values.imageArchs?.map((item) => item.value) ?? [],
       }),
     onSuccess: async () => {
       await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
@@ -339,6 +348,7 @@ diffusers==0.31.0`}
             form={form}
             imageNamePath="imageName"
             imageTagPath="imageTag"
+            imageBuildArchPath="imageArchs"
           />
         </SandwichLayout>
       </form>
