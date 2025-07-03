@@ -47,6 +47,7 @@ func (mgr *ImagePackMgr) UserCreateByPipApt(c *gin.Context) {
 		Tags:         req.Tags,
 		Template:     req.Template,
 		BuildSource:  model.PipApt,
+		Archs:        req.Archs,
 	}
 	mgr.buildFromDockerfile(c, buildData)
 }
@@ -86,6 +87,7 @@ func (mgr *ImagePackMgr) UserCreateByDockerfile(c *gin.Context) {
 		Tags:        req.Tags,
 		Template:    req.Template,
 		BuildSource: model.Dockerfile,
+		Archs:       req.Archs,
 	}
 	mgr.buildFromDockerfile(c, buildData)
 }
@@ -247,6 +249,7 @@ func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, data *DockerfileBui
 		Tags:         data.Tags,
 		Template:     data.Template,
 		BuildSource:  data.BuildSource,
+		Archs:        data.Archs,
 	}
 
 	if err := mgr.imagePacker.CreateFromDockerfile(c, buildkitData); err != nil {

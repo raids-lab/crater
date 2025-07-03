@@ -26,6 +26,7 @@ type BuildKitReq struct {
 	Tags         []string
 	Template     string
 	BuildSource  model.BuildSource
+	Archs        []string
 }
 
 type SnapshotReq struct {
@@ -71,7 +72,6 @@ var (
 	fsAsGroupNumber  int64 = 1000
 
 	harborCreditSecretName string = "buildkit-secret"
-	// buildkitClientSecretName string = "buildkit-client-certs"
 
 	JobCleanTime       int32 = 259200
 	BackoffLimitNumber int32 = 0

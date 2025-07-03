@@ -180,8 +180,11 @@ backendConfig:
       predictionServiceAddress: http://resource-analyze-svc.kube-gpu-sparse:80
   dindArgs:
     buildkitImage: ***REMOVED***/user-huangsy/buildkit/buildctl:v0.18.2
+    buildxImage: ***REMOVED***/user-huangsy/buildx-multiarch:v5
     nerdctlImage: ***REMOVED***/nerdctl:2.0.1-retry
     envdImage: ***REMOVED***/user-huangsy/envd-build-frontend:v1.2.0
+    envdAmdImage: ***REMOVED***/user-huangsy/envd-build-frontend:v1.2.1-amd
+    envdArmImage: ***REMOVED***/user-huangsy/envd-build-frontend:v1.2.1-arm
 # cert-manager configuration variables
 # Usage:
 # helm upgrade --install crater ./charts/crater \
