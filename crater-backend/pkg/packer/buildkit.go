@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -56,14 +57,6 @@ func (b *imagePacker) generateVolumes(jobName string) []corev1.Volume {
 				},
 			},
 		},
-		// {
-		// 	Name: "buildkitcerts",
-		// 	VolumeSource: corev1.VolumeSource{
-		// 		Secret: &corev1.SecretVolumeSource{
-		// 			SecretName: buildkitClientSecretName,
-		// 		},
-		// 	},
-		// },
 		{
 			Name: "configmap-volume",
 			VolumeSource: corev1.VolumeSource{
@@ -80,22 +73,18 @@ func (b *imagePacker) generateVolumes(jobName string) []corev1.Volume {
 
 func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Container {
 	output := fmt.Sprintf("type=image,name=%s,push=true", data.ImageLink)
+	archs := strings.Join(data.Archs, ",")
 	buildArgs := []string{
-		"--addr", "tcp://buildkitd.crater-images:1234",
-		// "--tlscacert=/certs/ca.pem",
-		// "--tlscert=/certs/cert.pem",
-		// "--tlskey=/certs/key.pem",
-		"build",
-		"--frontend", "dockerfile.v0",
 		"--progress", "plain",
-		"--local", "context=/workspace",
-		"--local", "dockerfile=/workspace",
+		"--platform", archs,
+		"--file", "/workspace/Dockerfile",
 		"--output", output,
+		"/workspace",
 	}
 	buildkitContainer := []corev1.Container{
 		{
 			Name:  "buildkit",
-			Image: config.GetConfig().DindArgs.BuildkitImage,
+			Image: config.GetConfig().DindArgs.BuildxImage,
 			Args:  buildArgs,
 			Env: []corev1.EnvVar{
 				{
@@ -104,13 +93,11 @@ func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Cont
 				},
 			},
 			VolumeMounts: []corev1.VolumeMount{
-				// {
-				// 	Name:      "buildkitcerts",
-				// 	MountPath: "/certs",
-				// },
 				{
 					Name:      "harborcredits",
-					MountPath: "/.docker",
+					MountPath: "/.docker/config.json",
+					SubPath:   "config.json", // 只挂载文件，不覆盖目录
+					ReadOnly:  true,
 				},
 				{
 					Name:      "configmap-volume",
@@ -214,6 +201,9 @@ func (b *imagePacker) createJob(
 					FSGroup:    &fsAsGroupNumber,
 				},
 				EnableServiceLinks: ptr.To(false),
+				NodeSelector: map[string]string{
+					"kubernetes.io/arch": "amd64",
+				},
 			},
 		},
 		TTLSecondsAfterFinished: &JobCleanTime,
