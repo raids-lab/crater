@@ -44,9 +44,7 @@ const PieCard = ({
           </TooltipProvider>
         </CardTitle>
       </CardHeader>
-      <div className="flex h-52 items-center justify-center px-2">
-        {children}
-      </div>
+      <div className="relative h-52">{children}</div>
     </Card>
   );
 };
