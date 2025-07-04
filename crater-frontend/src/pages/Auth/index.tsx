@@ -3,7 +3,6 @@ import CraterText from "@/components/icon/CraterText";
 import { LoginForm } from "./LoginForm";
 import { useState } from "react";
 import { SignupForm } from "./SignupForm";
-import { ExternalLink } from "lucide-react";
 import { useTheme } from "@/utils/theme";
 import { ForgotPasswordForm } from "./ForgotPasswordForm";
 import {
@@ -199,7 +198,7 @@ export function Dashboard() {
             <AlertDialogDescription>
               第一次登录平台时，需要从 ACT 门户同步用户信息，请参考「
               <a
-                href={`${website}/docs/quick-start/login`}
+                href={`${website}/docs/user/quick-start/login`}
                 className="text-primary underline"
               >
                 平台访问指南
@@ -209,11 +208,8 @@ export function Dashboard() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => window.open(`${website}/docs/quick-start/login`)}
-            >
-              <ExternalLink className="mr-2 h-4 w-4" />
-              立即阅读
+            <AlertDialogAction asChild>
+              <DocsButton title={"立即阅读"} url={`quick-start/login`} />
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
