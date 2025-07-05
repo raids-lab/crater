@@ -4,7 +4,6 @@ import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-  PopoverClose,
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -85,16 +84,14 @@ const ResourceBadge = ({
             className="flex-1"
           />
         </div>
-        <PopoverClose asChild>
-          <Button
-            size="sm"
-            className="w-full"
-            disabled={!editValue}
-            onClick={() => onUpdate(keyName as "cpu" | "memory", editValue)}
-          >
-            Save
-          </Button>
-        </PopoverClose>
+        <Button
+          size="sm"
+          className="w-full"
+          disabled={!editValue}
+          onClick={() => onUpdate(keyName as "cpu" | "memory", editValue)}
+        >
+          Save
+        </Button>
       </PopoverContent>
     </Popover>
   );

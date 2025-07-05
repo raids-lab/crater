@@ -1,7 +1,7 @@
 // i18n-processed-v1.1.0
 import { useTranslation } from "react-i18next";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { DataTable } from "@/components/custom/DataTable";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
@@ -491,78 +491,83 @@ export function FileSystemTable({
     name: string;
   }
 
-  const renderNameCell = <T extends HasNicknameAndName>(
-    row: Row<FileItem>,
-    infoMap: Map<string, T>,
-    isSpecialPath: boolean,
-  ) => {
-    const targetInfo = infoMap.get(row.getValue("name"));
-    const displayName = targetInfo?.nickname ?? row.getValue("name");
+  const renderNameCell = useCallback(
+    <T extends HasNicknameAndName>(
+      row: Row<FileItem>,
+      infoMap: Map<string, T>,
+      isSpecialPath: boolean,
+    ) => {
+      const targetInfo = infoMap.get(row.getValue("name"));
+      const displayName = targetInfo?.nickname ?? row.getValue("name");
 
-    if (!isSpecialPath) {
-      // 默认渲染逻辑
-      return row.original.isdir ? (
-        <div className="flex items-center">
-          <Folder className="mr-2 size-5 text-yellow-600 dark:text-yellow-400" />
-          <Button
-            onClick={() => navigate(pathname + "/" + row.original.name)}
-            variant="link"
-            className="text-secondary-foreground h-8 px-0 text-left font-normal"
-          >
-            {row.getValue("name")}
-          </Button>
-        </div>
-      ) : (
-        <div className="flex items-center">
-          <File className="text-muted-foreground mr-2 size-5" />
-          <span className="text-secondary-foreground">
-            {row.getValue("name")}
-          </span>
-        </div>
-      );
-    }
-
-    return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            {row.original.isdir ? (
-              <Button
-                onClick={() => navigate(pathname + "/" + row.original.name)}
-                variant="link"
-                className="text-secondary-foreground hover:text-primary h-8 px-0 text-left font-normal"
-              >
-                <div className="flex items-center">
-                  <Folder className="mr-2 size-5 text-yellow-600 dark:text-yellow-400" />
-                  {displayName}
-                </div>
-              </Button>
-            ) : (
-              <div className="flex items-center">
-                <File className="text-muted-foreground mr-2 size-5" />
-                <span className="text-secondary-foreground">{displayName}</span>
-              </div>
-            )}
-          </TooltipTrigger>
-          {targetInfo && (
-            <TooltipContent
-              side="top"
-              align="start"
-              className={cn(
-                "bg-primary text-primary-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-fit rounded-md px-3 py-1.5 text-xs text-balance",
-              )}
+      if (!isSpecialPath) {
+        // 默认渲染逻辑
+        return row.original.isdir ? (
+          <div className="flex items-center">
+            <Folder className="mr-2 size-5 text-yellow-600 dark:text-yellow-400" />
+            <Button
+              onClick={() => navigate(pathname + "/" + row.original.name)}
+              variant="link"
+              className="text-secondary-foreground h-8 px-0 text-left font-normal"
             >
-              <p>
-                查看{displayName}
-                <span className="mx-0.5 font-mono">(@{targetInfo.name})</span>
-                的文件信息
-              </p>
-            </TooltipContent>
-          )}
-        </Tooltip>
-      </TooltipProvider>
-    );
-  };
+              {row.getValue("name")}
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center">
+            <File className="text-muted-foreground mr-2 size-5" />
+            <span className="text-secondary-foreground">
+              {row.getValue("name")}
+            </span>
+          </div>
+        );
+      }
+
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {row.original.isdir ? (
+                <Button
+                  onClick={() => navigate(pathname + "/" + row.original.name)}
+                  variant="link"
+                  className="text-secondary-foreground hover:text-primary h-8 px-0 text-left font-normal"
+                >
+                  <div className="flex items-center">
+                    <Folder className="mr-2 size-5 text-yellow-600 dark:text-yellow-400" />
+                    {displayName}
+                  </div>
+                </Button>
+              ) : (
+                <div className="flex items-center">
+                  <File className="text-muted-foreground mr-2 size-5" />
+                  <span className="text-secondary-foreground">
+                    {displayName}
+                  </span>
+                </div>
+              )}
+            </TooltipTrigger>
+            {targetInfo && (
+              <TooltipContent
+                side="top"
+                align="start"
+                className={cn(
+                  "bg-primary text-primary-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-fit rounded-md px-3 py-1.5 text-xs text-balance",
+                )}
+              >
+                <p>
+                  查看{displayName}
+                  <span className="mx-0.5 font-mono">(@{targetInfo.name})</span>
+                  的文件信息
+                </p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+      );
+    },
+    [navigate, pathname],
+  );
 
   const baseColumns = useMemo<ColumnDef<FileItem>[]>(() => {
     return [
@@ -633,13 +638,12 @@ export function FileSystemTable({
       },
     ];
   }, [
-    isAdminUserSpace,
-    isAdminAccountSpace,
     t,
-    userMap,
+    isAdminAccountSpace,
+    isAdminUserSpace,
+    renderNameCell,
     accountMap,
-    navigate,
-    pathname,
+    userMap,
   ]);
   const columns = [...nameColumn, ...baseColumns];
 
