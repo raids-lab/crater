@@ -1,50 +1,59 @@
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // Reference: https://github.com/kubesphere/console/blob/master/packages/shared/src/stores/pod.ts#L187
-import { useState, useEffect, useMemo, Fragment } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { useState, useEffect, useMemo, Fragment } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiGetPodContainers, ContainerInfo } from "@/services/api/tool";
-import { toast } from "sonner";
-import ResourceBadges from "../badge/ResourceBadges";
-import { cn } from "@/lib/utils";
-import { TimeDistance } from "../custom/TimeDistance";
-import { shortenImageName, shortestImageName } from "@/utils/formatter";
-import { BoxIcon } from "lucide-react";
-import ContainerStatusBadge, {
-  ContainerStatus,
-} from "../badge/ContainerStatusBadge";
-import useNamespacedState from "@/hooks/useNamespacedState";
-import LoadingCircleIcon from "../icon/LoadingCircleIcon";
-import TipBadge from "../badge/TipBadge";
+} from '@/components/ui/select'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiGetPodContainers, ContainerInfo } from '@/services/api/tool'
+import { toast } from 'sonner'
+import ResourceBadges from '../badge/ResourceBadges'
+import { cn } from '@/lib/utils'
+import { TimeDistance } from '../custom/TimeDistance'
+import { shortenImageName, shortestImageName } from '@/utils/formatter'
+import { BoxIcon } from 'lucide-react'
+import ContainerStatusBadge, { ContainerStatus } from '../badge/ContainerStatusBadge'
+import useNamespacedState from '@/hooks/useNamespacedState'
+import LoadingCircleIcon from '../icon/LoadingCircleIcon'
+import TipBadge from '../badge/TipBadge'
 
 export interface PodNamespacedName {
-  namespace: string;
-  name: string;
+  namespace: string
+  name: string
 }
 
-export type NamespacedName = PodNamespacedName | undefined;
+export type NamespacedName = PodNamespacedName | undefined
 
 export interface PodContainerDialogProps {
-  namespacedName: NamespacedName;
-  setNamespacedName: (namespacedName: NamespacedName) => void;
+  namespacedName: NamespacedName
+  setNamespacedName: (namespacedName: NamespacedName) => void
 }
 
 export interface PodIngressDialogProps {
-  namespacedName: NamespacedName;
-  setNamespacedName: (namespacedName: NamespacedName) => void;
-  userName: string;
-  jobName: string;
+  namespacedName: NamespacedName
+  setNamespacedName: (namespacedName: NamespacedName) => void
+  userName: string
+  jobName: string
 }
 
 export function ContainerSelect({
@@ -52,21 +61,19 @@ export function ContainerSelect({
   setCurrentContainer,
   containers,
 }: {
-  currentContainer: ContainerInfo;
-  setCurrentContainer: (container: ContainerInfo) => void;
-  containers: ContainerInfo[];
+  currentContainer: ContainerInfo
+  setCurrentContainer: (container: ContainerInfo) => void
+  containers: ContainerInfo[]
 }) {
   return (
     <Select
       defaultValue={currentContainer.name}
       onValueChange={(name) => {
-        const container = containers.find(
-          (container) => container.name === name,
-        );
+        const container = containers.find((container) => container.name === name)
         if (container) {
-          setCurrentContainer(container);
+          setCurrentContainer(container)
         } else {
-          toast.error("Container not found.");
+          toast.error('Container not found.')
         }
       }}
     >
@@ -78,18 +85,15 @@ export function ContainerSelect({
           <SelectItem key={container.name} value={container.name}>
             <div className="text-muted-foreground flex items-center gap-3">
               <div
-                className={cn(
-                  "flex size-8 items-center justify-center rounded-full font-normal",
-                  {
-                    "bg-primary/15": !container.isInitContainer,
-                    "bg-purple-500/15": container.isInitContainer,
-                  },
-                )}
+                className={cn('flex size-8 items-center justify-center rounded-full font-normal', {
+                  'bg-primary/15': !container.isInitContainer,
+                  'bg-purple-500/15': container.isInitContainer,
+                })}
               >
                 <BoxIcon
-                  className={cn("size-5", {
-                    "text-primary": !container.isInitContainer,
-                    "text-purple-500": container.isInitContainer,
+                  className={cn('size-5', {
+                    'text-primary': !container.isInitContainer,
+                    'text-purple-500': container.isInitContainer,
                   })}
                 />
               </div>
@@ -104,7 +108,7 @@ export function ContainerSelect({
         ))}
       </SelectContent>
     </Select>
-  );
+  )
 }
 
 export const TableCellForm = ({
@@ -113,23 +117,23 @@ export const TableCellForm = ({
   selectedContainer,
   appendInfos,
 }: {
-  namespace?: string;
-  podName?: string;
-  selectedContainer: ContainerInfo;
+  namespace?: string
+  podName?: string
+  selectedContainer: ContainerInfo
   appendInfos?: {
-    title: string;
-    content: React.ReactNode;
-  }[];
+    title: string
+    content: React.ReactNode
+  }[]
 }) => {
   const containerStatus: ContainerStatus = useMemo(() => {
     if (selectedContainer.state.running) {
-      return ContainerStatus.Running;
+      return ContainerStatus.Running
     } else if (selectedContainer.state.terminated) {
-      return ContainerStatus.Terminated;
+      return ContainerStatus.Terminated
     } else {
-      return ContainerStatus.Waiting;
+      return ContainerStatus.Waiting
     }
-  }, [selectedContainer]);
+  }, [selectedContainer])
 
   return (
     <div className="grid grid-cols-3 content-start gap-4 px-1 text-sm">
@@ -149,9 +153,7 @@ export const TableCellForm = ({
       {appendInfos?.map((info, index) => (
         <Fragment key={index}>
           <div className="text-muted-foreground">{info.title}</div>
-          <div className="col-span-2 font-mono break-all whitespace-normal">
-            {info.content}
-          </div>
+          <div className="col-span-2 font-mono break-all whitespace-normal">{info.content}</div>
         </Fragment>
       ))}
       {!!selectedContainer.resources && (
@@ -168,15 +170,11 @@ export const TableCellForm = ({
         </>
       )}
       <div className="text-muted-foreground">重启次数</div>
-      <div className="col-span-2 font-mono">
-        {selectedContainer.restartCount}
-      </div>
+      <div className="col-span-2 font-mono">{selectedContainer.restartCount}</div>
       {selectedContainer.state.terminated && (
         <>
           <div className="text-muted-foreground">退出代码</div>
-          <div className="col-span-2 font-mono">
-            {selectedContainer.state.terminated.exitCode}
-          </div>
+          <div className="col-span-2 font-mono">{selectedContainer.state.terminated.exitCode}</div>
           <div className="text-muted-foreground">退出原因</div>
           <div className="col-span-2 font-mono break-all whitespace-normal">
             {selectedContainer.state.terminated.reason}
@@ -195,9 +193,7 @@ export const TableCellForm = ({
           </div>
           <div className="text-muted-foreground">结束时间</div>
           <div className="col-span-2">
-            <TimeDistance
-              date={selectedContainer.state.terminated.finishedAt}
-            />
+            <TimeDistance date={selectedContainer.state.terminated.finishedAt} />
           </div>
         </>
       )}
@@ -222,44 +218,42 @@ export const TableCellForm = ({
         </>
       )}
     </div>
-  );
-};
+  )
+}
 
 function Content({
   namespacedName,
   ActionComponent,
 }: {
-  namespacedName?: PodNamespacedName;
+  namespacedName?: PodNamespacedName
   ActionComponent: React.ComponentType<{
-    namespacedName: PodNamespacedName;
-    selectedContainer: ContainerInfo;
-  }>;
+    namespacedName: PodNamespacedName
+    selectedContainer: ContainerInfo
+  }>
 }) {
-  const { namespace, name: podName } = namespacedName ?? {};
-  const queryClient = useQueryClient();
+  const { namespace, name: podName } = namespacedName ?? {}
+  const queryClient = useQueryClient()
 
-  const [selectedContainer, setSelectedContainer] = useState<
-    ContainerInfo | undefined
-  >();
+  const [selectedContainer, setSelectedContainer] = useState<ContainerInfo | undefined>()
 
   const { data: containers } = useQuery({
-    queryKey: ["log", "containers", namespace, podName],
+    queryKey: ['log', 'containers', namespace, podName],
     queryFn: () => apiGetPodContainers(namespace, podName),
-    select: (res) => res.data.data.containers.filter((c) => c.name !== ""),
+    select: (res) => res.data.data.containers.filter((c) => c.name !== ''),
     enabled: !!namespace && !!podName,
-  });
+  })
 
   useEffect(() => {
     for (const container of containers || []) {
       if (!container.isInitContainer) {
         setSelectedContainer((prev) => {
-          return prev || container;
-        });
-        void queryClient.invalidateQueries({ queryKey: ["logtext"] });
-        break;
+          return prev || container
+        })
+        void queryClient.invalidateQueries({ queryKey: ['logtext'] })
+        break
       }
     }
-  }, [containers, queryClient]);
+  }, [containers, queryClient])
 
   return (
     <>
@@ -283,7 +277,7 @@ function Content({
             />
             <fieldset className="border-input hidden h-[calc(100vh_-264px)] max-h-full gap-6 overflow-y-auto rounded-lg border p-4 shadow-xs md:grid">
               <legend className="-ml-1 px-2 text-sm font-medium">
-                {selectedContainer.isInitContainer ? "初始化容器" : "容器信息"}
+                {selectedContainer.isInitContainer ? '初始化容器' : '容器信息'}
               </legend>
               <TableCellForm
                 namespace={namespace}
@@ -295,7 +289,7 @@ function Content({
         </div>
       )}
     </>
-  );
+  )
 }
 
 export function PodContainerDialog({
@@ -306,15 +300,12 @@ export function PodContainerDialog({
   type,
 }: PodContainerDialogProps & {
   ActionComponent: React.ComponentType<{
-    namespacedName: PodNamespacedName;
-    selectedContainer: ContainerInfo;
-  }>;
-  type: "shell" | "log";
+    namespacedName: PodNamespacedName
+    selectedContainer: ContainerInfo
+  }>
+  type: 'shell' | 'log'
 }) {
-  const [isOpen, setIsOpen] = useNamespacedState(
-    namespacedName,
-    setNamespacedName,
-  );
+  const [isOpen, setIsOpen] = useNamespacedState(namespacedName, setNamespacedName)
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen} modal={true}>
@@ -323,8 +314,8 @@ export function PodContainerDialog({
         onOpenAutoFocus={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => {
           // 当类型为 shell 时，阻止 ESC 关闭对话框
-          if (type === "shell") {
-            e.preventDefault();
+          if (type === 'shell') {
+            e.preventDefault()
           }
         }}
         // onPointerDownOutside={(e) => {
@@ -341,11 +332,8 @@ export function PodContainerDialog({
             <TipBadge title={type} className="uppercase" />
           </DialogTitle>
         </DialogHeader>
-        <Content
-          namespacedName={namespacedName}
-          ActionComponent={ActionComponent}
-        />
+        <Content namespacedName={namespacedName} ActionComponent={ActionComponent} />
       </DialogContent>
     </Dialog>
-  );
+  )
 }

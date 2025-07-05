@@ -1,39 +1,51 @@
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // i18n-processed-v1.1.0
-import { useTranslation } from "react-i18next";
-import { Table } from "@tanstack/react-table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { DataTableViewOptions } from "./DataTableViewOptions";
-import {
-  DataTableFacetedFilter,
-  DataTableFacetedFilterOption,
-} from "./DataTableFacetedFilter";
-import { SearchIcon, XIcon } from "lucide-react";
+import { useTranslation } from 'react-i18next'
+import { Table } from '@tanstack/react-table'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { DataTableViewOptions } from './DataTableViewOptions'
+import { DataTableFacetedFilter, DataTableFacetedFilterOption } from './DataTableFacetedFilter'
+import { SearchIcon, XIcon } from 'lucide-react'
 
 export type DataTableToolbarConfig = {
   filterOptions: readonly {
-    key: string;
-    title: string;
-    option: DataTableFacetedFilterOption[];
-    defaultValues?: string[];
-  }[];
-  getHeader: (key: string) => string;
+    key: string
+    title: string
+    option: DataTableFacetedFilterOption[]
+    defaultValues?: string[]
+  }[]
+  getHeader: (key: string) => string
 } & (
   | {
-      filterInput: { placeholder: string; key: string };
-      globalSearch?: undefined;
+      filterInput: { placeholder: string; key: string }
+      globalSearch?: undefined
     }
   | {
-      filterInput?: undefined;
-      globalSearch: { enabled: boolean; placeholder?: string };
+      filterInput?: undefined
+      globalSearch: { enabled: boolean; placeholder?: string }
     }
-);
+)
 
-interface DataTableToolbarProps<TData>
-  extends React.HTMLAttributes<HTMLDivElement> {
-  table: Table<TData>;
-  config: DataTableToolbarConfig;
-  isLoading: boolean;
+interface DataTableToolbarProps<TData> extends React.HTMLAttributes<HTMLDivElement> {
+  table: Table<TData>
+  config: DataTableToolbarConfig
+  isLoading: boolean
 }
 
 export function DataTableToolbar<TData>({
@@ -42,10 +54,10 @@ export function DataTableToolbar<TData>({
   isLoading,
   children,
 }: DataTableToolbarProps<TData>) {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
   const isFiltered =
     table.getState().columnFilters.length > 0 ||
-    (globalSearch?.enabled && Boolean(table.getState().globalFilter));
+    (globalSearch?.enabled && Boolean(table.getState().globalFilter))
 
   return (
     <div className="flex items-center justify-between">
@@ -56,10 +68,9 @@ export function DataTableToolbar<TData>({
           {globalSearch?.enabled && (
             <Input
               placeholder={
-                globalSearch.placeholder ??
-                t("dataTableToolbar.globalSearchPlaceholder")
+                globalSearch.placeholder ?? t('dataTableToolbar.globalSearchPlaceholder')
               }
-              value={table.getState().globalFilter || ""}
+              value={table.getState().globalFilter || ''}
               onChange={(event) => table.setGlobalFilter(event.target.value)}
               className="bg-background h-9 w-[150px] pl-8 lg:w-[250px]"
             />
@@ -67,15 +78,9 @@ export function DataTableToolbar<TData>({
           {filterInput && (
             <Input
               placeholder={filterInput.placeholder}
-              value={
-                (table
-                  .getColumn(filterInput.key)
-                  ?.getFilterValue() as string) ?? ""
-              }
+              value={(table.getColumn(filterInput.key)?.getFilterValue() as string) ?? ''}
               onChange={(event) =>
-                table
-                  .getColumn(filterInput.key)
-                  ?.setFilterValue(event.target.value)
+                table.getColumn(filterInput.key)?.setFilterValue(event.target.value)
               }
               className="bg-background h-9 w-[150px] pl-8 lg:w-[250px]"
             />
@@ -91,18 +96,18 @@ export function DataTableToolbar<TData>({
                 options={filterOption.option}
                 defaultValues={filterOption.defaultValues}
               />
-            ),
+            )
         )}
         {isFiltered && !isLoading && (
           <Button
             variant="outline"
             size="icon"
-            title={t("dataTableToolbar.clearFiltersButtonTitle")}
+            title={t('dataTableToolbar.clearFiltersButtonTitle')}
             type="button"
             onClick={() => {
-              table.resetColumnFilters();
+              table.resetColumnFilters()
               if (globalSearch?.enabled) {
-                table.setGlobalFilter("");
+                table.setGlobalFilter('')
               }
             }}
             className="size-9 border-dashed"
@@ -113,5 +118,5 @@ export function DataTableToolbar<TData>({
       </div>
       <DataTableViewOptions table={table} getHeader={getHeader} />
     </div>
-  );
+  )
 }

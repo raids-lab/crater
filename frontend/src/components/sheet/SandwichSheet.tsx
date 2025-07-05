@@ -1,3 +1,19 @@
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import {
   Sheet,
   SheetContent,
@@ -5,35 +21,30 @@ import {
   SheetTitle,
   SheetFooter,
   SheetTrigger,
-} from "@/components/ui/sheet";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
-import useResizeObserver from "use-resize-observer";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { ReactNode } from "react";
-import { HelpCircleIcon } from "lucide-react";
+} from '@/components/ui/sheet'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { cn } from '@/lib/utils'
+import useResizeObserver from 'use-resize-observer'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { ReactNode } from 'react'
+import { HelpCircleIcon } from 'lucide-react'
 
 export interface SandwichSheetProps {
-  isOpen?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  title: ReactNode;
-  description?: ReactNode;
-  className?: string;
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  title: ReactNode
+  description?: ReactNode
+  className?: string
 }
 
 interface SheetProps extends SandwichSheetProps {
-  isOpen?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  title: ReactNode;
-  description?: ReactNode;
-  className?: string;
-  children: ReactNode;
-  trigger?: ReactNode;
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  title: ReactNode
+  description?: ReactNode
+  className?: string
+  children: ReactNode
+  trigger?: ReactNode
 }
 
 const SandwichSheet = ({
@@ -48,7 +59,7 @@ const SandwichSheet = ({
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
-      <SheetContent className={cn("overflow-hidden p-0", className)}>
+      <SheetContent className={cn('overflow-hidden p-0', className)}>
         <div className="relative -z-10 h-screen">
           <SheetHeader className="h-[72px] pt-6 pb-4 pl-6">
             <SheetTitle className="flex flex-row items-center">
@@ -69,23 +80,23 @@ const SandwichSheet = ({
         </div>
       </SheetContent>
     </Sheet>
-  );
-};
+  )
+}
 
 export const SandwichLayout = ({
   children,
   footer,
 }: {
-  children: ReactNode;
-  footer?: ReactNode;
+  children: ReactNode
+  footer?: ReactNode
 }) => {
-  const { ref: refRoot, width, height } = useResizeObserver();
+  const { ref: refRoot, width, height } = useResizeObserver()
   return (
     <div className="h-screen">
       <div
         className={cn({
-          "h-[calc(100vh_-_156px)]": footer,
-          "h-[calc(100vh_-_72px)]": !footer,
+          'h-[calc(100vh_-_156px)]': footer,
+          'h-[calc(100vh_-_72px)]': !footer,
         })}
         ref={refRoot}
       >
@@ -99,7 +110,7 @@ export const SandwichLayout = ({
         </SheetFooter>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default SandwichSheet;
+export default SandwichSheet

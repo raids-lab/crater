@@ -1,16 +1,32 @@
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // i18n-processed-v1.1.0
 // Modified code
-import { useTranslation } from "react-i18next";
-import { useEffect, useState } from "react";
-import { addHours, format } from "date-fns";
-import { zhCN } from "date-fns/locale";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { CalendarClock, InfoIcon, Lock, UnlockIcon } from "lucide-react";
-import { IJobInfo, apiJobLock, apiJobUnlock } from "@/services/api/vcjob";
-import { toast } from "sonner";
-import { useMutation } from "@tanstack/react-query";
+import { useTranslation } from 'react-i18next'
+import { useEffect, useState } from 'react'
+import { addHours, format } from 'date-fns'
+import { zhCN } from 'date-fns/locale'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import * as z from 'zod'
+import { CalendarClock, InfoIcon, Lock, UnlockIcon } from 'lucide-react'
+import { IJobInfo, apiJobLock, apiJobUnlock } from '@/services/api/vcjob'
+import { toast } from 'sonner'
+import { useMutation } from '@tanstack/react-query'
 
 import {
   Dialog,
@@ -19,8 +35,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -28,49 +44,40 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 
 // Moved Zod schema to component
 const getFormSchema = (t: (key: string) => string) =>
   z.object({
     isPermanent: z.boolean().default(false),
-    days: z.coerce
-      .number()
-      .min(0, t("durationDialog.form.days.min"))
-      .default(0),
+    days: z.coerce.number().min(0, t('durationDialog.form.days.min')).default(0),
     hours: z.coerce
       .number()
-      .min(0, t("durationDialog.form.hours.min"))
-      .max(23, t("durationDialog.form.hours.max"))
+      .min(0, t('durationDialog.form.hours.min'))
+      .max(23, t('durationDialog.form.hours.max'))
       .default(0),
-  });
+  })
 
-type FormValues = z.infer<ReturnType<typeof getFormSchema>>;
+type FormValues = z.infer<ReturnType<typeof getFormSchema>>
 
 interface DurationDialogProps {
-  jobs: IJobInfo[];
-  open: boolean;
-  setOpen: (open: boolean) => void;
-  onSuccess?: () => void;
-  setExtend?: boolean;
+  jobs: IJobInfo[]
+  open: boolean
+  setOpen: (open: boolean) => void
+  onSuccess?: () => void
+  setExtend?: boolean
 }
 
-export function DurationDialog({
-  jobs,
-  open,
-  setOpen,
-  onSuccess,
-  setExtend,
-}: DurationDialogProps) {
-  const { t } = useTranslation();
-  const [expirationDate, setExpirationDate] = useState<Date | null>(null);
-  const allLocked = jobs.length > 0 && jobs.every((job) => job.locked);
-  const allUnlocked = jobs.length > 0 && jobs.every((job) => !job.locked);
-  const mixedState = !allLocked && !allUnlocked;
-  const isExtendDialogOpen = setExtend && allLocked;
+export function DurationDialog({ jobs, open, setOpen, onSuccess, setExtend }: DurationDialogProps) {
+  const { t } = useTranslation()
+  const [expirationDate, setExpirationDate] = useState<Date | null>(null)
+  const allLocked = jobs.length > 0 && jobs.every((job) => job.locked)
+  const allUnlocked = jobs.length > 0 && jobs.every((job) => !job.locked)
+  const mixedState = !allLocked && !allUnlocked
+  const isExtendDialogOpen = setExtend && allLocked
 
   // Initialize form with translated schema
   const form = useForm<FormValues>({
@@ -80,12 +87,12 @@ export function DurationDialog({
       days: 0,
       hours: 0,
     },
-  });
+  })
 
   // Use React Query for lock mutation
   const lockMutation = useMutation({
     mutationFn: async (values: FormValues) => {
-      const { isPermanent, days, hours } = values;
+      const { isPermanent, days, hours } = values
       const promises = jobs.map((job) => {
         const payload = {
           name: job.jobName,
@@ -93,40 +100,36 @@ export function DurationDialog({
           days: days || 0,
           hours: hours || 0,
           minutes: 0,
-        };
-        return apiJobLock(payload);
-      });
-      return Promise.all(promises);
+        }
+        return apiJobLock(payload)
+      })
+      return Promise.all(promises)
     },
     onSuccess: () => {
-      toast.success(
-        t("durationDialog.toast.lockSuccess", { count: jobs.length }),
-      );
-      setOpen(false);
-      onSuccess?.();
+      toast.success(t('durationDialog.toast.lockSuccess', { count: jobs.length }))
+      setOpen(false)
+      onSuccess?.()
     },
     onError: () => {
-      toast.error(t("durationDialog.toast.lockError"));
+      toast.error(t('durationDialog.toast.lockError'))
     },
-  });
+  })
 
   // Use React Query for unlock mutation
   const unlockMutation = useMutation({
     mutationFn: async () => {
-      const promises = jobs.map((job) => apiJobUnlock(job.jobName));
-      return Promise.all(promises);
+      const promises = jobs.map((job) => apiJobUnlock(job.jobName))
+      return Promise.all(promises)
     },
     onSuccess: () => {
-      toast.success(
-        t("durationDialog.toast.unlockSuccess", { count: jobs.length }),
-      );
-      setOpen(false);
-      onSuccess?.();
+      toast.success(t('durationDialog.toast.unlockSuccess', { count: jobs.length }))
+      setOpen(false)
+      onSuccess?.()
     },
     onError: () => {
-      toast.error(t("durationDialog.toast.unlockError"));
+      toast.error(t('durationDialog.toast.unlockError'))
     },
-  });
+  })
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -135,55 +138,52 @@ export function DurationDialog({
         isPermanent: false,
         days: 0,
         hours: 0,
-      });
-      setExpirationDate(null);
+      })
+      setExpirationDate(null)
     }
-  }, [open, form]);
+  }, [open, form])
 
   // Calculate expiration date
-  const calculateExpirationDate = (
-    originExpiredTime: string | undefined,
-    values: FormValues,
-  ) => {
-    const { days, hours, isPermanent } = values;
+  const calculateExpirationDate = (originExpiredTime: string | undefined, values: FormValues) => {
+    const { days, hours, isPermanent } = values
 
     if (isPermanent) {
-      setExpirationDate(null);
-      return;
+      setExpirationDate(null)
+      return
     }
 
     if (days > 0 || hours > 0) {
-      const now = new Date();
-      let result = new Date(now);
+      const now = new Date()
+      let result = new Date(now)
       if (originExpiredTime !== undefined && isExtendDialogOpen) {
-        result = new Date(originExpiredTime);
+        result = new Date(originExpiredTime)
       }
-      if (days > 0) result = addHours(result, days * 24);
-      if (hours > 0) result = addHours(result, hours);
-      setExpirationDate(result);
+      if (days > 0) result = addHours(result, days * 24)
+      if (hours > 0) result = addHours(result, hours)
+      setExpirationDate(result)
     } else {
-      setExpirationDate(null);
+      setExpirationDate(null)
     }
-  };
+  }
 
   // Handle field changes
   const handleFieldChange = () => {
     setTimeout(() => {
-      const values = form.getValues();
-      calculateExpirationDate(jobs[0].lockedTimestamp, values);
-    }, 0);
-  };
+      const values = form.getValues()
+      calculateExpirationDate(jobs[0].lockedTimestamp, values)
+    }, 0)
+  }
 
   // Submit form
   async function onSubmit(values: FormValues) {
-    const { isPermanent, days, hours } = values;
+    const { isPermanent, days, hours } = values
 
     if (!isPermanent && !(days > 0 || hours > 0)) {
-      toast.error(t("durationDialog.toast.noDuration"));
-      return;
+      toast.error(t('durationDialog.toast.noDuration'))
+      return
     }
 
-    lockMutation.mutate(values);
+    lockMutation.mutate(values)
   }
 
   return (
@@ -192,13 +192,13 @@ export function DurationDialog({
         <DialogHeader>
           <DialogTitle>
             {allLocked && !isExtendDialogOpen
-              ? t("durationDialog.title.unlock")
-              : t("durationDialog.title.lock")}
+              ? t('durationDialog.title.unlock')
+              : t('durationDialog.title.lock')}
           </DialogTitle>
           <DialogDescription>
             {allLocked && !isExtendDialogOpen
-              ? t("durationDialog.description.unlock", { count: jobs.length })
-              : t("durationDialog.description.lock", { count: jobs.length })}
+              ? t('durationDialog.description.unlock', { count: jobs.length })
+              : t('durationDialog.description.lock', { count: jobs.length })}
           </DialogDescription>
         </DialogHeader>
 
@@ -208,11 +208,9 @@ export function DurationDialog({
               <CardContent className="flex items-start gap-2 pt-6">
                 <InfoIcon className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-500" />
                 <div>
-                  <p className="font-medium">
-                    {t("durationDialog.card.title")}
-                  </p>
+                  <p className="font-medium">{t('durationDialog.card.title')}</p>
                   <p className="text-muted-foreground text-sm">
-                    {t("durationDialog.card.description")}
+                    {t('durationDialog.card.description')}
                   </p>
                 </div>
               </CardContent>
@@ -227,8 +225,8 @@ export function DurationDialog({
           >
             <UnlockIcon className="mr-2 h-4 w-4" />
             {unlockMutation.isPending
-              ? t("durationDialog.button.unlocking")
-              : t("durationDialog.button.unlock", { count: jobs.length })}
+              ? t('durationDialog.button.unlocking')
+              : t('durationDialog.button.unlock', { count: jobs.length })}
           </Button>
         ) : (
           <Form {...form}>
@@ -244,23 +242,23 @@ export function DurationDialog({
                         onCheckedChange={field.onChange}
                         onBlur={field.onBlur}
                         onClick={() => {
-                          setTimeout(handleFieldChange, 0);
+                          setTimeout(handleFieldChange, 0)
                         }}
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel className="text-base">
-                        {t("durationDialog.form.permanentLock")}
+                        {t('durationDialog.form.permanentLock')}
                       </FormLabel>
                       <p className="text-muted-foreground text-sm">
-                        {t("durationDialog.form.permanentLockDescription")}
+                        {t('durationDialog.form.permanentLockDescription')}
                       </p>
                     </div>
                   </FormItem>
                 )}
               />
 
-              {!form.watch("isPermanent") && (
+              {!form.watch('isPermanent') && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
@@ -268,9 +266,7 @@ export function DurationDialog({
                       name="days"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>
-                            {t("durationDialog.form.days.text")}
-                          </FormLabel>
+                          <FormLabel>{t('durationDialog.form.days.text')}</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -278,8 +274,8 @@ export function DurationDialog({
                               placeholder="0"
                               {...field}
                               onChange={(e) => {
-                                field.onChange(e);
-                                handleFieldChange();
+                                field.onChange(e)
+                                handleFieldChange()
                               }}
                             />
                           </FormControl>
@@ -293,9 +289,7 @@ export function DurationDialog({
                       name="hours"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>
-                            {t("durationDialog.form.hours.text")}
-                          </FormLabel>
+                          <FormLabel>{t('durationDialog.form.hours.text')}</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -304,8 +298,8 @@ export function DurationDialog({
                               placeholder="0"
                               {...field}
                               onChange={(e) => {
-                                field.onChange(e);
-                                handleFieldChange();
+                                field.onChange(e)
+                                handleFieldChange()
                               }}
                             />
                           </FormControl>
@@ -320,19 +314,17 @@ export function DurationDialog({
                       <CardContent>
                         <div className="text-muted-foreground flex items-center gap-2">
                           <CalendarClock className="h-4 w-4" />
-                          <span>
-                            {t("durationDialog.form.expirationPreview")}
-                          </span>
+                          <span>{t('durationDialog.form.expirationPreview')}</span>
                         </div>
                         <div className="mt-2">
                           <p className="text-lg font-medium">
-                            {format(expirationDate, "yyyy年MM月dd日 HH:mm", {
+                            {format(expirationDate, 'yyyy年MM月dd日 HH:mm', {
                               locale: zhCN,
                             })}
                           </p>
                           <p className="text-muted-foreground mt-1 text-sm">
-                            {t("durationDialog.form.currentTime")}:{" "}
-                            {format(new Date(), "yyyy年MM月dd日 HH:mm", {
+                            {t('durationDialog.form.currentTime')}:{' '}
+                            {format(new Date(), 'yyyy年MM月dd日 HH:mm', {
                               locale: zhCN,
                             })}
                           </p>
@@ -350,13 +342,13 @@ export function DurationDialog({
                   onClick={() => setOpen(false)}
                   disabled={lockMutation.isPending}
                 >
-                  {t("common.cancel")}
+                  {t('common.cancel')}
                 </Button>
                 <Button type="submit" disabled={lockMutation.isPending}>
                   <Lock className="mr-2 h-4 w-4" />
                   {lockMutation.isPending
-                    ? t("durationDialog.button.locking")
-                    : t("durationDialog.button.lock")}
+                    ? t('durationDialog.button.locking')
+                    : t('durationDialog.button.lock')}
                 </Button>
               </DialogFooter>
             </form>
@@ -364,5 +356,5 @@ export function DurationDialog({
         )}
       </DialogContent>
     </Dialog>
-  );
+  )
 }

@@ -1,14 +1,25 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import * as z from 'zod'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -17,19 +28,15 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Trash2, Plus, ExternalLink } from "lucide-react";
-import { PodNamespacedName } from "@/components/codeblock/PodContainerDialog";
-import FormLabelMust from "@/components/form/FormLabelMust";
-import { toast } from "sonner";
-import TooltipButton from "@/components/custom/TooltipButton";
-import {
-  apiGetPodIngresses,
-  apiCreatePodIngress,
-  apiDeletePodIngress,
-} from "@/services/api/tool";
-import { PodIngressMgr } from "@/services/api/tool";
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Trash2, Plus, ExternalLink } from 'lucide-react'
+import { PodNamespacedName } from '@/components/codeblock/PodContainerDialog'
+import FormLabelMust from '@/components/form/FormLabelMust'
+import { toast } from 'sonner'
+import TooltipButton from '@/components/custom/TooltipButton'
+import { apiGetPodIngresses, apiCreatePodIngress, apiDeletePodIngress } from '@/services/api/tool'
+import { PodIngressMgr } from '@/services/api/tool'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,13 +47,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui-custom/alert-dialog";
-import { GridIcon } from "lucide-react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { configUrlHostAtom } from "@/utils/store/config";
-import { useAtomValue } from "jotai";
-import DocsButton from "@/components/button/DocsButton";
-import LoadableButton from "@/components/button/LoadableButton";
+} from '@/components/ui-custom/alert-dialog'
+import { GridIcon } from 'lucide-react'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { configUrlHostAtom } from '@/utils/store/config'
+import { useAtomValue } from 'jotai'
+import DocsButton from '@/components/button/DocsButton'
+import LoadableButton from '@/components/button/LoadableButton'
 
 const ingressFormSchema = z.object({
   name: z
@@ -54,92 +61,90 @@ const ingressFormSchema = z.object({
     .min(1)
     .max(20)
     .regex(/^[a-z]+$/, {
-      message: "只能包含小写字母",
+      message: '只能包含小写字母',
     }),
   port: z.number().int().positive(),
-});
+})
 
 interface IngressPanelProps {
-  namespacedName: PodNamespacedName;
-  jobName: string;
+  namespacedName: PodNamespacedName
+  jobName: string
 }
 
 export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
-  const [isEditIngressDialogOpen, setIsEditIngressDialogOpen] = useState(false);
-  const host = useAtomValue(configUrlHostAtom);
+  const [isEditIngressDialogOpen, setIsEditIngressDialogOpen] = useState(false)
+  const host = useAtomValue(configUrlHostAtom)
 
   const ingressForm = useForm<PodIngressMgr>({
     resolver: zodResolver(ingressFormSchema),
     defaultValues: {
-      name: "",
+      name: '',
       port: 0,
     },
-  });
+  })
 
-  const { namespace, name } = namespacedName || {};
+  const { namespace, name } = namespacedName || {}
   const {
     data: ingressList,
     isLoading,
     refetch: refetchIngresses,
   } = useQuery({
-    queryKey: ["ingresses", namespace, name],
+    queryKey: ['ingresses', namespace, name],
     queryFn: async () => {
-      if (!namespace || !name) return [];
-      const response = await apiGetPodIngresses(namespace, name);
-      return response.data.data.ingresses;
+      if (!namespace || !name) return []
+      const response = await apiGetPodIngresses(namespace, name)
+      return response.data.data.ingresses
     },
     enabled: !!namespace && !!name,
-  });
+  })
 
   const { mutate: createIngressMutation, isPending: isCreating } = useMutation({
     mutationFn: (data: PodIngressMgr) =>
       apiCreatePodIngress(namespacedName.namespace, namespacedName.name, data),
     onSuccess: () => {
-      void refetchIngresses();
-      toast.success("添加成功");
-      setIsEditIngressDialogOpen(false);
+      void refetchIngresses()
+      toast.success('添加成功')
+      setIsEditIngressDialogOpen(false)
     },
     onError: () => {
-      toast.error("添加失败");
+      toast.error('添加失败')
     },
-  });
+  })
 
   const { mutate: deleteIngressMutation, isPending: isDeleting } = useMutation({
     mutationFn: (data: PodIngressMgr) =>
       apiDeletePodIngress(namespacedName.namespace, namespacedName.name, data),
     onSuccess: () => {
-      void refetchIngresses();
-      toast.success("删除成功");
+      void refetchIngresses()
+      toast.success('删除成功')
     },
     onError: () => {
-      toast.error("删除失败");
+      toast.error('删除失败')
     },
-  });
+  })
 
   const handleAddIngress = () => {
-    ingressForm.reset({ name: "", port: 0 });
-    setIsEditIngressDialogOpen(true);
-  };
+    ingressForm.reset({ name: '', port: 0 })
+    setIsEditIngressDialogOpen(true)
+  }
 
   const onSubmitIngress = (data: PodIngressMgr) => {
     if (namespacedName) {
-      createIngressMutation(data);
+      createIngressMutation(data)
     }
-  };
+  }
 
   const handleDeleteIngress = (data: PodIngressMgr) => {
     if (namespacedName) {
-      deleteIngressMutation(data);
+      deleteIngressMutation(data)
     }
-  };
+  }
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         {isLoading ? (
-          <div className="text-muted-foreground py-6 text-center">
-            加载中...
-          </div>
+          <div className="text-muted-foreground py-6 text-center">加载中...</div>
         ) : !ingressList || ingressList.length === 0 ? (
           <div className="text-muted-foreground text-center">
             <div className="flex flex-col items-center justify-center pt-8">
@@ -166,7 +171,7 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
                 size="icon"
                 className="hover:text-primary"
                 onClick={() => {
-                  window.open(ingress.prefix, "_blank");
+                  window.open(ingress.prefix, '_blank')
                 }}
                 tooltipContent="访问链接"
               >
@@ -203,7 +208,7 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
                         onClick={() => handleDeleteIngress(ingress)}
                         disabled={isDeleting}
                       >
-                        {isDeleting ? "删除中..." : "删除"}
+                        {isDeleting ? '删除中...' : '删除'}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -215,20 +220,14 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
       </div>
 
       <div className="flex justify-end gap-2">
-        <DocsButton
-          title={"帮助文档"}
-          url={`toolbox/external-access/ingress-rule`}
-        />
+        <DocsButton title={'帮助文档'} url={`toolbox/external-access/ingress-rule`} />
         <Button onClick={handleAddIngress} disabled={isCreating}>
           <Plus className="mr-2 size-4" />
           添加 Ingress 规则
         </Button>
       </div>
 
-      <Dialog
-        open={isEditIngressDialogOpen}
-        onOpenChange={setIsEditIngressDialogOpen}
-      >
+      <Dialog open={isEditIngressDialogOpen} onOpenChange={setIsEditIngressDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>添加 Ingress 规则</DialogTitle>
@@ -236,7 +235,7 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
           <Form {...ingressForm}>
             <form
               onSubmit={(e) => {
-                void ingressForm.handleSubmit(onSubmitIngress)(e);
+                void ingressForm.handleSubmit(onSubmitIngress)(e)
               }}
               className="space-y-4"
             >
@@ -252,9 +251,7 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
-                    <FormDescription>
-                      只能包含小写字母，不超过20个字符。
-                    </FormDescription>
+                    <FormDescription>只能包含小写字母，不超过20个字符。</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -273,31 +270,25 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
                         {...field}
                         type="text"
                         onChange={(e) => {
-                          const value = e.target.value;
-                          if (value === "") {
-                            field.onChange(null);
+                          const value = e.target.value
+                          if (value === '') {
+                            field.onChange(null)
                           } else {
-                            const parsed = parseInt(value, 10);
+                            const parsed = parseInt(value, 10)
                             if (!isNaN(parsed)) {
-                              field.onChange(parsed);
+                              field.onChange(parsed)
                             }
                           }
                         }}
-                        value={field.value ?? ""}
+                        value={field.value ?? ''}
                       />
                     </FormControl>
-                    <FormDescription>
-                      请输入容器内需要转发的端口号。
-                    </FormDescription>
+                    <FormDescription>请输入容器内需要转发的端口号。</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <LoadableButton
-                isLoading={isCreating}
-                isLoadingText="保存中..."
-                type="submit"
-              >
+              <LoadableButton isLoading={isCreating} isLoadingText="保存中..." type="submit">
                 保存
               </LoadableButton>
             </form>
@@ -305,5 +296,5 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
         </DialogContent>
       </Dialog>
     </div>
-  );
-};
+  )
+}

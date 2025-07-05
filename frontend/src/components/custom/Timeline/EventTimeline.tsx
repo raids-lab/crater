@@ -1,6 +1,22 @@
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // i18n-processed-v1.1.0 (no translatable strings)
-import TipBadge from "@/components/badge/TipBadge";
-import { TimeDistance } from "../TimeDistance";
+import TipBadge from '@/components/badge/TipBadge'
+import { TimeDistance } from '../TimeDistance'
 import {
   Timeline,
   TimelineItem,
@@ -9,12 +25,12 @@ import {
   TimelineIcon,
   TimelineTitle,
   TimelineBody,
-} from "@/components/custom/Timeline/Timeline";
-import { Event as KubernetesEvent } from "kubernetes-types/core/v1";
-import { cn } from "@/lib/utils";
+} from '@/components/custom/Timeline/Timeline'
+import { Event as KubernetesEvent } from 'kubernetes-types/core/v1'
+import { cn } from '@/lib/utils'
 
 interface TimelineLayoutProps {
-  items: KubernetesEvent[]; // Replace any[] with the actual type of items.
+  items: KubernetesEvent[] // Replace any[] with the actual type of items.
 }
 
 export const EventTimeline = ({ items }: TimelineLayoutProps) => {
@@ -23,15 +39,12 @@ export const EventTimeline = ({ items }: TimelineLayoutProps) => {
       {items
         .sort((a, b) => {
           if (!a.lastTimestamp) {
-            return -1;
+            return -1
           }
           if (!b.lastTimestamp) {
-            return 1;
+            return 1
           }
-          return (
-            new Date(b.lastTimestamp).getTime() -
-            new Date(a.lastTimestamp).getTime()
-          );
+          return new Date(b.lastTimestamp).getTime() - new Date(a.lastTimestamp).getTime()
         })
         .map((item, index) => (
           <TimelineItem key={index}>
@@ -55,16 +68,16 @@ export const EventTimeline = ({ items }: TimelineLayoutProps) => {
                 <TipBadge
                   title={item.type}
                   className={cn({
-                    "bg-secondary text-secondary-foreground hover:bg-accent capitalize":
-                      item.type === "Normal",
+                    'bg-secondary text-secondary-foreground hover:bg-accent capitalize':
+                      item.type === 'Normal',
                   })}
                 />
                 {item.involvedObject.kind && (
                   <TipBadge
                     title={item.involvedObject.kind}
                     className={cn({
-                      "bg-secondary text-secondary-foreground hover:bg-accent capitalize":
-                        item.type === "Normal",
+                      'bg-secondary text-secondary-foreground hover:bg-accent capitalize':
+                        item.type === 'Normal',
                     })}
                   />
                 )}
@@ -72,18 +85,16 @@ export const EventTimeline = ({ items }: TimelineLayoutProps) => {
                   <TipBadge
                     title={item.involvedObject.name}
                     className={cn({
-                      "bg-secondary text-secondary-foreground hover:bg-accent":
-                        item.type === "Normal",
+                      'bg-secondary text-secondary-foreground hover:bg-accent':
+                        item.type === 'Normal',
                     })}
                   />
                 )}
               </div>
-              <p className="text-muted-foreground font-mono text-sm">
-                {item.message}
-              </p>
+              <p className="text-muted-foreground font-mono text-sm">{item.message}</p>
             </TimelineBody>
           </TimelineItem>
         ))}
     </Timeline>
-  );
-};
+  )
+}

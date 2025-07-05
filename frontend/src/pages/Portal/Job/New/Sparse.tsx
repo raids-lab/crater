@@ -1,10 +1,26 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import CardTitle from "@/components/label/CardTitle";
-import { CpuIcon, LayoutGridIcon } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import CardTitle from '@/components/label/CardTitle'
+import { CpuIcon, LayoutGridIcon } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -13,26 +29,16 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { useForm, useFieldArray } from "react-hook-form";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  apiJobTemplate,
-  apiJTaskImageList,
-  apiSparseCreate,
-  JobType,
-} from "@/services/api/vcjob";
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import {
-  ChevronLeftIcon,
-  CircleArrowDown,
-  CircleArrowUp,
-  CirclePlus,
-} from "lucide-react";
-import FormLabelMust from "@/components/form/FormLabelMust";
-import Combobox from "@/components/form/Combobox";
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { useForm, useFieldArray } from 'react-hook-form'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiJobTemplate, apiJTaskImageList, apiSparseCreate, JobType } from '@/services/api/vcjob'
+import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
+import { ChevronLeftIcon, CircleArrowDown, CircleArrowUp, CirclePlus } from 'lucide-react'
+import FormLabelMust from '@/components/form/FormLabelMust'
+import Combobox from '@/components/form/Combobox'
 import {
   exportToJsonFile,
   importFromJsonFile,
@@ -43,33 +49,33 @@ import {
   nodeSelectorSchema,
   VolumeMountType,
   forwardsSchema,
-} from "@/utils/form";
-import { useEffect, useState } from "react";
-import { useAtomValue } from "jotai";
-import { globalUserInfo } from "@/utils/store";
-import { Textarea } from "@/components/ui/textarea";
-import { IDlAnalyze, apiDlAnalyze } from "@/services/api/recommend/dlTask";
-import { ProgressBar } from "@/components/custom/ProgressBar";
-import { Cross1Icon } from "@radix-ui/react-icons";
-import { VolumeMountsCard } from "@/components/form/DataMountFormField";
-import { OtherOptionsFormCard } from "@/components/form/OtherOptionsFormField";
-import { EnvFormCard } from "@/components/form/EnvFormField";
+} from '@/utils/form'
+import { useEffect, useState } from 'react'
+import { useAtomValue } from 'jotai'
+import { globalUserInfo } from '@/utils/store'
+import { Textarea } from '@/components/ui/textarea'
+import { IDlAnalyze, apiDlAnalyze } from '@/services/api/recommend/dlTask'
+import { ProgressBar } from '@/components/custom/ProgressBar'
+import { Cross1Icon } from '@radix-ui/react-icons'
+import { VolumeMountsCard } from '@/components/form/DataMountFormField'
+import { OtherOptionsFormCard } from '@/components/form/OtherOptionsFormField'
+import { EnvFormCard } from '@/components/form/EnvFormField'
 
-const VERSION = "20240528";
-const JOB_TYPE = "single";
+const VERSION = '20240528'
+const JOB_TYPE = 'single'
 
 const formSchema = z.object({
   jobName: z
     .string()
     .min(1, {
-      message: "作业名称不能为空",
+      message: '作业名称不能为空',
     })
     .max(40, {
-      message: "作业名称最多包含 40 个字符",
+      message: '作业名称最多包含 40 个字符',
     }),
-  runningType: z.enum(["one-shot", "long-running"], {
-    invalid_type_error: "Select a runningType",
-    required_error: "请选择运行模式",
+  runningType: z.enum(['one-shot', 'long-running'], {
+    invalid_type_error: 'Select a runningType',
+    required_error: '请选择运行模式',
   }),
   macs: z.coerce.number(),
   params: z.coerce.number(),
@@ -78,7 +84,7 @@ const formSchema = z.object({
     z.object({
       vocabularySize: z.coerce.number(),
       embeddingDim: z.coerce.number(),
-    }),
+    })
   ),
   task: taskSchema,
   envs: envsSchema,
@@ -86,16 +92,16 @@ const formSchema = z.object({
   alertEnabled: z.boolean().default(true),
   nodeSelector: nodeSelectorSchema,
   forwards: forwardsSchema,
-});
+})
 
-type FormSchema = z.infer<typeof formSchema>;
+type FormSchema = z.infer<typeof formSchema>
 
 export const Component = () => {
-  const [envOpen, setEnvOpen] = useState<boolean>(false);
-  const [otherOpen, setOtherOpen] = useState<boolean>(false);
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const user = useAtomValue(globalUserInfo);
+  const [envOpen, setEnvOpen] = useState<boolean>(false)
+  const [otherOpen, setOtherOpen] = useState<boolean>(false)
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const user = useAtomValue(globalUserInfo)
 
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) =>
@@ -119,8 +125,8 @@ export const Component = () => {
         selectors: values.nodeSelector.enable
           ? [
               {
-                key: "kubernetes.io/hostname",
-                operator: "In",
+                key: 'kubernetes.io/hostname',
+                operator: 'In',
                 values: [`${values.nodeSelector.nodeName}`],
               },
             ]
@@ -132,57 +138,57 @@ export const Component = () => {
             data: currentValues,
           },
           null,
-          2,
+          2
         ),
       }),
     onSuccess: async (_, { jobName }) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["job"] }),
-        queryClient.invalidateQueries({ queryKey: ["context", "quota"] }),
-        queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
-      ]);
-      toast.success(`作业 ${jobName} 创建成功`);
-      navigate(-1);
+        queryClient.invalidateQueries({ queryKey: ['job'] }),
+        queryClient.invalidateQueries({ queryKey: ['context', 'quota'] }),
+        queryClient.invalidateQueries({ queryKey: ['aitask', 'stats'] }),
+      ])
+      toast.success(`作业 ${jobName} 创建成功`)
+      navigate(-1)
     },
-  });
+  })
   const imagesInfo = useQuery({
-    queryKey: ["jupyter", "images"],
+    queryKey: ['jupyter', 'images'],
     queryFn: () => apiJTaskImageList(JobType.Custom),
     select: (res) => {
       return res.data.data.images.map((item) => ({
         value: item.imageLink,
         label: item.imageLink,
-      }));
+      }))
     },
-  });
+  })
 
   // 1. Define your form.
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      jobName: "",
-      runningType: "one-shot",
+      jobName: '',
+      runningType: 'one-shot',
       macs: 0,
       params: 0,
       batchSize: 0,
       dim: [],
       task: {
-        taskName: "training",
+        taskName: 'training',
         replicas: 1,
         resource: {
           cpu: 1,
           gpu: {
             count: 0,
-            model: "nvidia.com/gpu",
+            model: 'nvidia.com/gpu',
           },
           memory: 2,
           network: {
             enabled: false,
           },
         },
-        image: "",
-        command: "",
-        workingDir: "/home/" + user.name,
+        image: '',
+        command: '',
+        workingDir: '/home/' + user.name,
         ports: [],
       },
       volumeMounts: [
@@ -198,75 +204,75 @@ export const Component = () => {
       },
       forwards: [],
     },
-  });
+  })
 
   const { mutate: fetchJobTemplate } = useMutation({
     mutationFn: (jobName: string) => apiJobTemplate(jobName),
     onSuccess: (response) => {
-      const jobInfo = JSON.parse(response.data.data);
-      form.reset(jobInfo.data);
+      const jobInfo = JSON.parse(response.data.data)
+      form.reset(jobInfo.data)
 
       if (jobInfo.data.envs.length > 0) {
-        setEnvOpen(true);
+        setEnvOpen(true)
       }
     },
     onError: () => {
-      toast.error(`解析错误，导入配置失败`);
+      toast.error(`解析错误，导入配置失败`)
     },
-  });
+  })
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const fromJob = params.get("fromJob");
+    const params = new URLSearchParams(location.search)
+    const fromJob = params.get('fromJob')
     if (fromJob) {
-      fetchJobTemplate(fromJob);
+      fetchJobTemplate(fromJob)
     }
-  }, [fetchJobTemplate]);
+  }, [fetchJobTemplate])
 
-  const currentValues = form.watch();
+  const currentValues = form.watch()
 
   const {
     fields: dimFields,
     append: dimAppend,
     remove: dimRemove,
   } = useFieldArray<FormSchema>({
-    name: "dim",
+    name: 'dim',
     control: form.control,
-  });
+  })
 
-  const [analyze, setAnalyze] = useState<IDlAnalyze>();
+  const [analyze, setAnalyze] = useState<IDlAnalyze>()
   const { mutate: analyzeTask } = useMutation({
     mutationFn: () =>
       apiDlAnalyze({
-        runningType: form.getValues("runningType"),
+        runningType: form.getValues('runningType'),
         relationShips: [],
-        macs: parseInt(form.getValues("macs") as unknown as string),
-        params: parseInt(form.getValues("params") as unknown as string),
-        batchSize: parseInt(form.getValues("batchSize") as unknown as string),
+        macs: parseInt(form.getValues('macs') as unknown as string),
+        params: parseInt(form.getValues('params') as unknown as string),
+        batchSize: parseInt(form.getValues('batchSize') as unknown as string),
         vocabularySize: form
-          .getValues("dim")
+          .getValues('dim')
           .map((item) => parseInt(item.vocabularySize as unknown as string)),
         embeddingDim: form
-          .getValues("dim")
+          .getValues('dim')
           .map((item) => parseInt(item.embeddingDim as unknown as string)),
       }),
     onSuccess: (data) => {
-      setAnalyze(data.data.data);
+      setAnalyze(data.data.data)
     },
-  });
+  })
 
   // 2. Define a submit handler.
   const onSubmit = (values: FormSchema) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
     if (isPending) {
-      return;
+      return
     }
-    createTask(values);
+    createTask(values)
     if (isPending) {
-      toast.info("请勿重复提交");
+      toast.info('请勿重复提交')
     }
-  };
+  }
 
   return (
     <>
@@ -291,29 +297,21 @@ export const Component = () => {
               </h1>
             </div>
             <div className="flex flex-row gap-3">
-              <Button
-                variant="outline"
-                type="button"
-                className="relative cursor-pointer"
-              >
+              <Button variant="outline" type="button" className="relative cursor-pointer">
                 <Input
                   onChange={(e) => {
-                    importFromJsonFile<FormSchema>(
-                      VERSION,
-                      JOB_TYPE,
-                      e.target.files?.[0],
-                    )
+                    importFromJsonFile<FormSchema>(VERSION, JOB_TYPE, e.target.files?.[0])
                       .then((data) => {
-                        form.reset(data);
+                        form.reset(data)
 
                         if (data.envs.length > 0) {
-                          setEnvOpen(true);
+                          setEnvOpen(true)
                         }
-                        toast.success(`导入配置成功`);
+                        toast.success(`导入配置成功`)
                       })
                       .catch(() => {
-                        toast.error(`解析错误，导入配置失败`);
-                      });
+                        toast.error(`解析错误，导入配置失败`)
+                      })
                   }}
                   type="file"
                   className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
@@ -330,7 +328,7 @@ export const Component = () => {
                     .trigger()
                     .then((isValid) => {
                       if (!isValid) {
-                        return;
+                        return
                       }
                       exportToJsonFile(
                         {
@@ -338,12 +336,12 @@ export const Component = () => {
                           type: JOB_TYPE,
                           data: currentValues,
                         },
-                        currentValues.jobName + ".json",
-                      );
+                        currentValues.jobName + '.json'
+                      )
                     })
                     .catch((error) => {
-                      toast.error((error as Error).message);
-                    });
+                      toast.error((error as Error).message)
+                    })
                 }}
               >
                 <CircleArrowUp className="size-4" />
@@ -372,9 +370,7 @@ export const Component = () => {
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
-                    <FormDescription>
-                      名称可重复，最多包含 40 个字符
-                    </FormDescription>
+                    <FormDescription>名称可重复，最多包含 40 个字符</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -437,7 +433,7 @@ export const Component = () => {
                       <FormControl>
                         <Input
                           type="number"
-                          {...form.register("task.resource.cpu", {
+                          {...form.register('task.resource.cpu', {
                             valueAsNumber: true,
                           })}
                         />
@@ -458,7 +454,7 @@ export const Component = () => {
                       <FormControl>
                         <Input
                           type="number"
-                          {...form.register("task.resource.gpu.count", {
+                          {...form.register('task.resource.gpu.count', {
                             valueAsNumber: true,
                           })}
                         />
@@ -480,7 +476,7 @@ export const Component = () => {
                         <FormControl>
                           <Input
                             type="number"
-                            {...form.register("task.resource.memory", {
+                            {...form.register('task.resource.memory', {
                               valueAsNumber: true,
                             })}
                           />
@@ -551,9 +547,7 @@ export const Component = () => {
                         name={`dim.${index}`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className={cn(index !== 0 && "sr-only")}>
-                              稀疏特征
-                            </FormLabel>
+                            <FormLabel className={cn(index !== 0 && 'sr-only')}>稀疏特征</FormLabel>
                             <FormControl>
                               <div className="flex flex-row space-x-2">
                                 <Input
@@ -583,7 +577,7 @@ export const Component = () => {
                                 <div>
                                   <Button
                                     size="icon"
-                                    variant={"outline"}
+                                    variant={'outline'}
                                     onClick={() => dimRemove(index)}
                                   >
                                     <Cross1Icon className="h-3 w-3" />
@@ -602,17 +596,11 @@ export const Component = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() =>
-                      dimAppend({ embeddingDim: 0, vocabularySize: 0 })
-                    }
+                    onClick={() => dimAppend({ embeddingDim: 0, vocabularySize: 0 })}
                   >
                     添加稀疏特征维度
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => analyzeTask()}
-                  >
+                  <Button type="button" variant="outline" onClick={() => analyzeTask()}>
                     分析
                   </Button>
                 </div>
@@ -630,9 +618,7 @@ export const Component = () => {
                         />
                         <ProgressBar
                           width={(analyze.p100.gpuMemoryMaxGB / 16.0) * 100}
-                          label={`gpuMemoryMaxGB: ${analyze.p100.gpuMemoryMaxGB.toFixed(
-                            2,
-                          )}GB`}
+                          label={`gpuMemoryMaxGB: ${analyze.p100.gpuMemoryMaxGB.toFixed(2)}GB`}
                           className="h-4"
                         />
                       </CardContent>
@@ -649,9 +635,7 @@ export const Component = () => {
                         />
                         <ProgressBar
                           width={(analyze.v100.gpuMemoryMaxGB / 32.0) * 100}
-                          label={`gpuMemoryMaxGB: ${analyze.v100.gpuMemoryMaxGB.toFixed(
-                            2,
-                          )}GB`}
+                          label={`gpuMemoryMaxGB: ${analyze.v100.gpuMemoryMaxGB.toFixed(2)}GB`}
                           className="h-4"
                         />
                         {/* // smActiveAvg: number;
@@ -660,30 +644,22 @@ export const Component = () => {
                     // dramActiveAvg: number; */}
                         <ProgressBar
                           width={analyze.v100.smActiveAvg}
-                          label={`smActiveAvg: ${analyze.v100.smActiveAvg.toFixed(
-                            2,
-                          )}%`}
+                          label={`smActiveAvg: ${analyze.v100.smActiveAvg.toFixed(2)}%`}
                           className="h-4"
                         />
                         <ProgressBar
                           width={analyze.v100.smOccupancyAvg}
-                          label={`smOccupancyAvg: ${analyze.v100.smOccupancyAvg.toFixed(
-                            2,
-                          )}%`}
+                          label={`smOccupancyAvg: ${analyze.v100.smOccupancyAvg.toFixed(2)}%`}
                           className="h-4"
                         />
                         <ProgressBar
                           width={analyze.v100.fp32ActiveAvg}
-                          label={`fp32ActiveAvg: ${analyze.v100.fp32ActiveAvg.toFixed(
-                            2,
-                          )}%`}
+                          label={`fp32ActiveAvg: ${analyze.v100.fp32ActiveAvg.toFixed(2)}%`}
                           className="h-4"
                         />
                         <ProgressBar
                           width={analyze.v100.dramActiveAvg}
-                          label={`dramActiveAvg: ${analyze.v100.dramActiveAvg.toFixed(
-                            2,
-                          )}%`}
+                          label={`dramActiveAvg: ${analyze.v100.dramActiveAvg.toFixed(2)}%`}
                           className="h-4"
                         />
                       </CardContent>
@@ -725,8 +701,7 @@ export const Component = () => {
                       <Textarea {...field} className="h-24 font-mono" />
                     </FormControl>
                     <FormDescription>
-                      将覆盖镜像的启动命令，可通过{" "}
-                      <span className="font-mono">;</span> 拆分多行命令
+                      将覆盖镜像的启动命令，可通过 <span className="font-mono">;</span> 拆分多行命令
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -745,8 +720,7 @@ export const Component = () => {
                       <Input {...field} className="font-mono" />
                     </FormControl>
                     <FormDescription>
-                      用户文件夹位于{" "}
-                      <span className="font-mono">/home/{user.name}</span>
+                      用户文件夹位于 <span className="font-mono">/home/{user.name}</span>
                       ，重启后数据不会丢失
                     </FormDescription>
                     <FormMessage />
@@ -770,5 +744,5 @@ export const Component = () => {
         </form>
       </Form>
     </>
-  );
-};
+  )
+}

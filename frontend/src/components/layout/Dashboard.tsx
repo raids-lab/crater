@@ -1,36 +1,48 @@
-import { Outlet, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
-import { NavBreadcrumb } from "@/components/layout/NavBreadcrumb";
-import { useMemo } from "react";
-import { AppSidebar } from "@/components/sidebar/app-sidebar";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { NavGroupProps } from "../sidebar/types";
-import { useAtomValue } from "jotai";
-import { globalFixedLayout, globalSettings } from "@/utils/store";
-import { cn } from "@/lib/utils";
-import { Badge } from "../ui/badge";
-import { CogIcon } from "lucide-react";
-import { WhatsNewDialog } from "./WhatIsNew";
-import useConfigLoader from "@/hooks/useConfigLoader";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { Outlet, useLocation } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { NavBreadcrumb } from '@/components/layout/NavBreadcrumb'
+import { useMemo } from 'react'
+import { AppSidebar } from '@/components/sidebar/app-sidebar'
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import { NavGroupProps } from '../sidebar/types'
+import { useAtomValue } from 'jotai'
+import { globalFixedLayout, globalSettings } from '@/utils/store'
+import { cn } from '@/lib/utils'
+import { Badge } from '../ui/badge'
+import { CogIcon } from 'lucide-react'
+import { WhatsNewDialog } from './WhatIsNew'
+import useConfigLoader from '@/hooks/useConfigLoader'
 
 const DashboardLayout = ({ groups }: { groups: NavGroupProps[] }) => {
-  const { pathname: rawPath } = useLocation();
-  const fixedLayout = useAtomValue(globalFixedLayout);
-  const scheduler = useAtomValue(globalSettings).scheduler;
-  useConfigLoader();
+  const { pathname: rawPath } = useLocation()
+  const fixedLayout = useAtomValue(globalFixedLayout)
+  const scheduler = useAtomValue(globalSettings).scheduler
+  useConfigLoader()
 
   // 特殊规则，网盘路由切换时，不启用过渡动画
   const motionKey = useMemo(() => {
     // begins with /portal/share/data
-    if (rawPath.startsWith("/portal/data/filesystem/")) {
-      return "/portal/data/filesystem/";
+    if (rawPath.startsWith('/portal/data/filesystem/')) {
+      return '/portal/data/filesystem/'
     }
-    return rawPath;
-  }, [rawPath]);
+    return rawPath
+  }, [rawPath])
 
   return (
     <SidebarProvider>
@@ -38,17 +50,16 @@ const DashboardLayout = ({ groups }: { groups: NavGroupProps[] }) => {
       <SidebarInset>
         <header
           className={cn(
-            "flex h-16 shrink-0 items-center justify-between gap-2 px-6 transition-[width,height] ease-linear",
+            'flex h-16 shrink-0 items-center justify-between gap-2 px-6 transition-[width,height] ease-linear',
             // "group-has-data-[collapsible=icon]/sidebar-wrapper:h-16",
-            fixedLayout &&
-              "header-fixed peer/header fixed z-50 w-[inherit] rounded-md",
+            fixedLayout && 'header-fixed peer/header fixed z-50 w-[inherit] rounded-md'
           )}
         >
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
             <NavBreadcrumb className="hidden md:flex" />
           </div>
-          {scheduler !== "volcano" && (
+          {scheduler !== 'volcano' && (
             <Badge variant="secondary" className="uppercase">
               <CogIcon />
               {scheduler}
@@ -57,13 +68,13 @@ const DashboardLayout = ({ groups }: { groups: NavGroupProps[] }) => {
         </header>
         <motion.div
           key={motionKey}
-          initial={{ opacity: 0, y: "3vh" }}
+          initial={{ opacity: 0, y: '3vh' }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", duration: 1.2 }}
+          transition={{ type: 'spring', duration: 1.2 }}
           className={cn(
-            "flex flex-col gap-6 p-6 pt-0",
+            'flex flex-col gap-6 p-6 pt-0',
             fixedLayout &&
-              "absolute top-0 right-0 bottom-0 left-0 w-full grow overflow-hidden peer-[.header-fixed]/header:mt-16",
+              'absolute top-0 right-0 bottom-0 left-0 w-full grow overflow-hidden peer-[.header-fixed]/header:mt-16'
           )}
         >
           <Outlet />
@@ -71,7 +82,7 @@ const DashboardLayout = ({ groups }: { groups: NavGroupProps[] }) => {
         <WhatsNewDialog />
       </SidebarInset>
     </SidebarProvider>
-  );
-};
+  )
+}
 
-export default DashboardLayout;
+export default DashboardLayout

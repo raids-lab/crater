@@ -1,24 +1,40 @@
-import { Input } from "@/components/ui/input";
-import { Plus, X, Loader2, Check } from "lucide-react";
-import { FC, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { Input } from '@/components/ui/input'
+import { Plus, X, Loader2, Check } from 'lucide-react'
+import { FC, useRef, useState } from 'react'
+import { Button } from '@/components/ui/button'
 import {
   DialogClose,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
-import { UpdateImageTag } from "@/services/api/imagepack";
+} from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
+import { toast } from 'sonner'
+import { UpdateImageTag } from '@/services/api/imagepack'
 
 interface TagsDialogProps {
-  initialTags: string[];
-  imageID: number;
-  description: string;
-  imageLink: string;
-  onSaveTags: (updateData: UpdateImageTag) => void;
+  initialTags: string[]
+  imageID: number
+  description: string
+  imageLink: string
+  onSaveTags: (updateData: UpdateImageTag) => void
 }
 
 export const TagsDialog: FC<TagsDialogProps> = ({
@@ -28,44 +44,44 @@ export const TagsDialog: FC<TagsDialogProps> = ({
   imageLink,
   onSaveTags,
 }) => {
-  const [tags, setTags] = useState<string[]>(initialTags || []);
-  const [newTag, setNewTag] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [tags, setTags] = useState<string[]>(initialTags || [])
+  const [newTag, setNewTag] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const handleAddTag = () => {
-    const trimmedTag = newTag.trim();
+    const trimmedTag = newTag.trim()
     if (trimmedTag && !tags.includes(trimmedTag)) {
-      setTags([...tags, trimmedTag]);
-      setNewTag("");
-      inputRef.current?.focus();
+      setTags([...tags, trimmedTag])
+      setNewTag('')
+      inputRef.current?.focus()
     } else if (tags.includes(trimmedTag)) {
-      toast.info("标签已存在");
+      toast.info('标签已存在')
     }
-  };
+  }
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      handleAddTag();
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      handleAddTag()
     }
-  };
+  }
 
   const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter((tag) => tag !== tagToRemove));
-  };
+    setTags(tags.filter((tag) => tag !== tagToRemove))
+  }
 
   const handleSave = async () => {
     try {
-      setIsSaving(true);
-      await onSaveTags({ id, tags });
-      toast.success("标签保存成功");
+      setIsSaving(true)
+      await onSaveTags({ id, tags })
+      toast.success('标签保存成功')
     } catch (error) {
-      toast.error("保存标签失败" + error);
+      toast.error('保存标签失败' + error)
     } finally {
-      setIsSaving(false);
+      setIsSaving(false)
     }
-  };
+  }
 
   return (
     <>
@@ -94,16 +110,10 @@ export const TagsDialog: FC<TagsDialogProps> = ({
 
       <div className="flex max-h-[200px] flex-wrap gap-2 overflow-y-auto">
         {tags.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            暂无标签，请添加新标签
-          </p>
+          <p className="text-muted-foreground text-sm">暂无标签，请添加新标签</p>
         ) : (
           tags.map((tag) => (
-            <Badge
-              key={tag}
-              variant="secondary"
-              className="group px-3 py-1.5 text-sm"
-            >
+            <Badge key={tag} variant="secondary" className="group px-3 py-1.5 text-sm">
               {tag}
               <button
                 onClick={() => handleRemoveTag(tag)}
@@ -139,5 +149,5 @@ export const TagsDialog: FC<TagsDialogProps> = ({
         </Button>
       </DialogFooter>
     </>
-  );
-};
+  )
+}

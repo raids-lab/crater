@@ -1,47 +1,55 @@
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // i18n-processed-v1.1.0
 // Modified code
-import { useTranslation } from "react-i18next";
-import { DetailPage } from "@/components/layout/DetailPage";
-import RunningJobs from "@/components/custom/UserDetail/RunningJobs";
-import LoginHeatmap from "@/components/custom/UserDetail/LoginHeatmap";
-import SharedItems from "@/components/custom/UserDetail/SharedItems";
-import RecentActivity from "@/components/custom/UserDetail/RecentActivity";
-import TipBadge from "@/components/badge/TipBadge";
-import {
-  Activity,
-  Calendar,
-  Database,
-  GpuIcon,
-  List,
-  User,
-  Users,
-} from "lucide-react";
-import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { apiGetUser } from "@/services/api/user";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Role } from "@/services/api/auth";
-import useBreadcrumb from "@/hooks/useBreadcrumb";
-import { useEffect } from "react";
-import { TimeDistance } from "../TimeDistance";
-import { UserAvatar } from "./UserAvatar";
-import { GrafanaIframe } from "@/pages/Embed/Monitor";
-import { configGrafanaUserAtom } from "@/utils/store/config";
-import { useAtomValue } from "jotai";
-import { globalHideUsername } from "@/utils/store";
-import { getUserPseudonym } from "@/utils/pseudonym";
+import { useTranslation } from 'react-i18next'
+import { DetailPage } from '@/components/layout/DetailPage'
+import RunningJobs from '@/components/custom/UserDetail/RunningJobs'
+import LoginHeatmap from '@/components/custom/UserDetail/LoginHeatmap'
+import SharedItems from '@/components/custom/UserDetail/SharedItems'
+import RecentActivity from '@/components/custom/UserDetail/RecentActivity'
+import TipBadge from '@/components/badge/TipBadge'
+import { Activity, Calendar, Database, GpuIcon, List, User, Users } from 'lucide-react'
+import { useParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { apiGetUser } from '@/services/api/user'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Role } from '@/services/api/auth'
+import useBreadcrumb from '@/hooks/useBreadcrumb'
+import { useEffect } from 'react'
+import { TimeDistance } from '../TimeDistance'
+import { UserAvatar } from './UserAvatar'
+import { GrafanaIframe } from '@/pages/Embed/Monitor'
+import { configGrafanaUserAtom } from '@/utils/store/config'
+import { useAtomValue } from 'jotai'
+import { globalHideUsername } from '@/utils/store'
+import { getUserPseudonym } from '@/utils/pseudonym'
 
 export default function UserDetail() {
-  const { t } = useTranslation();
-  const setBreadcrumb = useBreadcrumb();
-  const hideUsername = useAtomValue(globalHideUsername);
+  const { t } = useTranslation()
+  const setBreadcrumb = useBreadcrumb()
+  const hideUsername = useAtomValue(globalHideUsername)
 
   useEffect(() => {
-    setBreadcrumb([{ title: t("userDetail.breadcrumb.title") }]);
-  }, [setBreadcrumb, t]);
+    setBreadcrumb([{ title: t('userDetail.breadcrumb.title') }])
+  }, [setBreadcrumb, t])
 
   // Get username from URL parameters
-  const { name } = useParams<{ name: string }>();
+  const { name } = useParams<{ name: string }>()
 
   // Fetch user data
   const {
@@ -49,12 +57,12 @@ export default function UserDetail() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["user", name],
-    queryFn: () => apiGetUser(name || ""),
+    queryKey: ['user', name],
+    queryFn: () => apiGetUser(name || ''),
     select: (data) => data.data.data,
     enabled: !!name,
-  });
-  const grafanaUser = useAtomValue(configGrafanaUserAtom);
+  })
+  const grafanaUser = useAtomValue(configGrafanaUserAtom)
 
   // Loading state
   if (isLoading) {
@@ -72,7 +80,7 @@ export default function UserDetail() {
         info={[]}
         tabs={[]}
       />
-    );
+    )
   }
 
   // Error state
@@ -81,18 +89,16 @@ export default function UserDetail() {
       <DetailPage
         header={
           <div>
-            <h1 className="text-2xl font-bold text-red-500">
-              {t("userDetail.header.errorTitle")}
-            </h1>
+            <h1 className="text-2xl font-bold text-red-500">{t('userDetail.header.errorTitle')}</h1>
             <p className="text-muted-foreground">
-              {(error as Error)?.message || t("userDetail.header.userNotFound")}
+              {(error as Error)?.message || t('userDetail.header.userNotFound')}
             </p>
           </div>
         }
         info={[]}
         tabs={[]}
       />
-    );
+    )
   }
 
   // User header content with actual data
@@ -101,9 +107,7 @@ export default function UserDetail() {
       <UserAvatar user={user} className="size-20" size={80} />
       <div>
         <h1 className="flex items-center gap-2 text-3xl font-bold">
-          {hideUsername
-            ? getUserPseudonym(user.name)
-            : user.nickname || user.name}
+          {hideUsername ? getUserPseudonym(user.name) : user.nickname || user.name}
           {user.role === Role.Admin && <TipBadge />}
         </h1>
         <p className="text-muted-foreground">
@@ -111,68 +115,64 @@ export default function UserDetail() {
         </p>
       </div>
     </div>
-  );
+  )
 
   // User basic information
   const info = [
     {
       icon: User,
-      title: t("userDetail.info.advisor.title"),
-      value: user.teacher || t("userDetail.info.notSet"),
+      title: t('userDetail.info.advisor.title'),
+      value: user.teacher || t('userDetail.info.notSet'),
     },
     {
       icon: Users,
-      title: t("userDetail.info.researchGroup.title"),
-      value: user.group || t("userDetail.info.notSet"),
+      title: t('userDetail.info.researchGroup.title'),
+      value: user.group || t('userDetail.info.notSet'),
     },
     {
       icon: Calendar,
-      title: t("userDetail.info.joinDate.title"),
+      title: t('userDetail.info.joinDate.title'),
       value: <TimeDistance date={user.createdAt} />,
     },
-  ];
+  ]
 
   // Tab configuration
   const tabs = [
     {
-      key: "gpu",
+      key: 'gpu',
       icon: GpuIcon,
-      label: t("userDetail.tabs.gpuMonitoring"),
-      children: (
-        <GrafanaIframe
-          baseSrc={`${grafanaUser.nvidia}?var-user=${user.name}`}
-        />
-      ),
+      label: t('userDetail.tabs.gpuMonitoring'),
+      children: <GrafanaIframe baseSrc={`${grafanaUser.nvidia}?var-user=${user.name}`} />,
     },
     {
-      key: "activity",
+      key: 'activity',
       icon: Activity,
-      label: t("userDetail.tabs.userActivity"),
+      label: t('userDetail.tabs.userActivity'),
       children: <LoginHeatmap />,
       scrollable: true,
     },
     {
-      key: "jobs",
+      key: 'jobs',
       icon: List,
-      label: t("userDetail.tabs.runningJobs"),
+      label: t('userDetail.tabs.runningJobs'),
       children: <RunningJobs />,
       scrollable: true,
     },
     {
-      key: "shared",
+      key: 'shared',
       icon: Database,
-      label: t("userDetail.tabs.sharedResources"),
+      label: t('userDetail.tabs.sharedResources'),
       children: <SharedItems />,
       scrollable: true,
     },
     {
-      key: "recent",
+      key: 'recent',
       icon: Calendar,
-      label: t("userDetail.tabs.recentActivity"),
+      label: t('userDetail.tabs.recentActivity'),
       children: <RecentActivity />,
       scrollable: true,
     },
-  ];
+  ]
 
-  return <DetailPage header={header} info={info} tabs={tabs} />;
+  return <DetailPage header={header} info={info} tabs={tabs} />
 }

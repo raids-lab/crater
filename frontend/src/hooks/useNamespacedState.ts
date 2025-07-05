@@ -1,5 +1,21 @@
-import { NamespacedName } from "@/components/codeblock/PodContainerDialog";
-import { useEffect, useState } from "react";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { NamespacedName } from '@/components/codeblock/PodContainerDialog'
+import { useEffect, useState } from 'react'
 
 /**
  * `useNamespacedState` is a custom hook that manages the state of a dialog based on a namespaced name.
@@ -9,25 +25,25 @@ import { useEffect, useState } from "react";
  */
 const useNamespacedState = (
   namespacedName: NamespacedName,
-  setNamespacedName: (namespacedName: NamespacedName) => void,
+  setNamespacedName: (namespacedName: NamespacedName) => void
 ) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false)
 
   // if namespacedName is set, open the dialog
   // if dialog is closed, reset the namespacedName
   useEffect(() => {
     if (namespacedName) {
-      setIsOpen(true);
+      setIsOpen(true)
     }
-  }, [namespacedName]);
+  }, [namespacedName])
 
   useEffect(() => {
     if (!isOpen) {
-      setNamespacedName(undefined);
+      setNamespacedName(undefined)
     }
-  }, [isOpen, setNamespacedName]);
+  }, [isOpen, setNamespacedName])
 
-  return [isOpen, setIsOpen] as const;
-};
+  return [isOpen, setIsOpen] as const
+}
 
-export default useNamespacedState;
+export default useNamespacedState

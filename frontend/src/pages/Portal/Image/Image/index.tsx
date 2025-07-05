@@ -1,12 +1,28 @@
-import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type FC, useState } from "react";
-import { ColumnDef } from "@tanstack/react-table";
-import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import { DataTable } from "@/components/custom/DataTable";
-import { Button } from "@/components/ui/button";
-import { ImageUploadForm } from "./UploadForm";
-import { TimeDistance } from "@/components/custom/TimeDistance";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { DataTableToolbarConfig } from '@/components/custom/DataTable/DataTableToolbar'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { type FC, useState } from 'react'
+import { ColumnDef } from '@tanstack/react-table'
+import { DataTableColumnHeader } from '@/components/custom/DataTable/DataTableColumnHeader'
+import { DataTable } from '@/components/custom/DataTable'
+import { Button } from '@/components/ui/button'
+import { ImageUploadForm } from './UploadForm'
+import { TimeDistance } from '@/components/custom/TimeDistance'
 import {
   getHeader,
   apiUserListImage,
@@ -21,10 +37,10 @@ import {
   ListImageResponse,
   UpdateImageTag,
   apiUserUpdateImageTags,
-} from "@/services/api/imagepack";
-import { logger } from "@/utils/loglevel";
-import { toast } from "sonner";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+} from '@/services/api/imagepack'
+import { logger } from '@/utils/loglevel'
+import { toast } from 'sonner'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import {
   CheckCheck,
   Globe,
@@ -38,10 +54,10 @@ import {
   ImportIcon,
   Tags,
   ListTodo,
-} from "lucide-react";
-import { useAtomValue } from "jotai";
-import { globalUserInfo } from "@/utils/store";
-import ImageLabel from "@/components/label/ImageLabel";
+} from 'lucide-react'
+import { useAtomValue } from 'jotai'
+import { globalUserInfo } from '@/utils/store'
+import ImageLabel from '@/components/label/ImageLabel'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -53,25 +69,22 @@ import {
   DropdownMenuSubContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-} from "@/components/ui/dropdown-menu";
-import { DotsHorizontalIcon } from "@radix-ui/react-icons";
-import { JobType } from "@/services/api/vcjob";
-import { AxiosResponse } from "axios";
-import { IResponse } from "@/services/types";
-import VisibilityBadge, {
-  Visibility,
-  visibilityTypes,
-} from "@/components/badge/VisibilityBadge";
-import { ValidDialog } from "./ValidDialog";
-import { StatusDialog } from "./StatusDialog";
-import { RenameDialog } from "./RenameDialog";
-import { DeleteDialog } from "./DeleteDialog";
-import UserLabel from "@/components/label/UserLabel";
-import { TagsDialog } from "./TagsDialog";
-import TooltipLink from "@/components/label/TooltipLink";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { ImageShareSheet } from "./ShareImageSheet";
+} from '@/components/ui/dropdown-menu'
+import { DotsHorizontalIcon } from '@radix-ui/react-icons'
+import { JobType } from '@/services/api/vcjob'
+import { AxiosResponse } from 'axios'
+import { IResponse } from '@/services/types'
+import VisibilityBadge, { Visibility, visibilityTypes } from '@/components/badge/VisibilityBadge'
+import { ValidDialog } from './ValidDialog'
+import { StatusDialog } from './StatusDialog'
+import { RenameDialog } from './RenameDialog'
+import { DeleteDialog } from './DeleteDialog'
+import UserLabel from '@/components/label/UserLabel'
+import { TagsDialog } from './TagsDialog'
+import TooltipLink from '@/components/label/TooltipLink'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Separator } from '@/components/ui/separator'
+import { ImageShareSheet } from './ShareImageSheet'
 
 const toolbarConfig: DataTableToolbarConfig = {
   globalSearch: {
@@ -79,20 +92,20 @@ const toolbarConfig: DataTableToolbarConfig = {
   },
   filterOptions: [
     {
-      key: "imageShareStatus",
-      title: "可见性",
+      key: 'imageShareStatus',
+      title: '可见性',
       option: visibilityTypes,
     },
   ],
   getHeader: getHeader,
-};
+}
 
 enum Dialogs {
-  delete = "delete",
-  status = "status",
-  rename = "rename",
-  valid = "valid",
-  tags = "tags",
+  delete = 'delete',
+  status = 'status',
+  rename = 'rename',
+  valid = 'valid',
+  tags = 'tags',
 }
 
 export const Component: FC = () => {
@@ -105,24 +118,16 @@ export const Component: FC = () => {
       apiChangeImageTaskType={apiUserChangeImageTaskType}
       isAdminMode={false}
     />
-  );
-};
+  )
+}
 
 interface ImageListTableProps {
-  apiListImage: () => Promise<AxiosResponse<IResponse<ListImageResponse>>>;
-  apiDeleteImageList: (
-    idList: number[],
-  ) => Promise<AxiosResponse<IResponse<string>>>;
-  apiChangeImagePublicStatus: (
-    id: number,
-  ) => Promise<AxiosResponse<IResponse<string>>>;
-  apiChangeImageDescription: (
-    data: UpdateDescription,
-  ) => Promise<AxiosResponse<IResponse<string>>>;
-  apiChangeImageTaskType: (
-    data: UpdateTaskType,
-  ) => Promise<AxiosResponse<IResponse<string>>>;
-  isAdminMode: boolean;
+  apiListImage: () => Promise<AxiosResponse<IResponse<ListImageResponse>>>
+  apiDeleteImageList: (idList: number[]) => Promise<AxiosResponse<IResponse<string>>>
+  apiChangeImagePublicStatus: (id: number) => Promise<AxiosResponse<IResponse<string>>>
+  apiChangeImageDescription: (data: UpdateDescription) => Promise<AxiosResponse<IResponse<string>>>
+  apiChangeImageTaskType: (data: UpdateTaskType) => Promise<AxiosResponse<IResponse<string>>>
+  isAdminMode: boolean
 }
 
 export const ImageListTable: FC<ImageListTableProps> = ({
@@ -133,16 +138,14 @@ export const ImageListTable: FC<ImageListTableProps> = ({
   apiChangeImageTaskType,
   isAdminMode,
 }) => {
-  const queryClient = useQueryClient();
-  const [openUploadSheet, setOpenUploadSheet] = useState(false);
-  const [openCheckDialog, setCheckOpenDialog] = useState(false);
-  const [selectedLinkPairs, setSelectedLinkPairs] = useState<ImageLinkPair[]>(
-    [],
-  );
+  const queryClient = useQueryClient()
+  const [openUploadSheet, setOpenUploadSheet] = useState(false)
+  const [openCheckDialog, setCheckOpenDialog] = useState(false)
+  const [selectedLinkPairs, setSelectedLinkPairs] = useState<ImageLinkPair[]>([])
 
-  const user = useAtomValue(globalUserInfo);
+  const user = useAtomValue(globalUserInfo)
   const imageInfo = useQuery({
-    queryKey: ["imagelink", "list"],
+    queryKey: ['imagelink', 'list'],
     queryFn: () => apiListImage(),
     select: (res) =>
       res.data.data.imageList.map((i) => ({
@@ -151,63 +154,56 @@ export const ImageListTable: FC<ImageListTableProps> = ({
         isPublic: i.imageShareStatus == Visibility.Public,
         image: `${i.imageLink} (${i.description})`,
       })),
-  });
+  })
 
   const refetchImagePackList = async () => {
     try {
       // 并行发送所有异步请求
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["imagelink", "list"] }),
-      ]);
+      await Promise.all([queryClient.invalidateQueries({ queryKey: ['imagelink', 'list'] })])
     } catch (error) {
-      logger.error("更新查询失败", error);
+      logger.error('更新查询失败', error)
     }
-  };
+  }
   const { mutate: deleteUserImageList } = useMutation({
     mutationFn: (idList: number[]) => apiDeleteImageList(idList),
     onSuccess: async () => {
-      await refetchImagePackList();
-      toast.success("镜像已删除");
+      await refetchImagePackList()
+      toast.success('镜像已删除')
     },
-  });
+  })
   const { mutate: changeImagePublicStatus } = useMutation({
     mutationFn: (id: number) => apiChangeImagePublicStatus(id),
     onSuccess: async () => {
-      await refetchImagePackList();
-      toast.success("镜像状态更新");
+      await refetchImagePackList()
+      toast.success('镜像状态更新')
     },
-  });
+  })
   const { mutate: updateImageDescription } = useMutation({
-    mutationFn: (data: { id: number; description: string }) =>
-      apiChangeImageDescription(data),
+    mutationFn: (data: { id: number; description: string }) => apiChangeImageDescription(data),
     onSuccess: async () => {
-      await refetchImagePackList();
-      toast.success("镜像描述已更新");
+      await refetchImagePackList()
+      toast.success('镜像描述已更新')
     },
-  });
+  })
   const { mutate: updateImageTaskType } = useMutation({
-    mutationFn: (data: { id: number; taskType: JobType }) =>
-      apiChangeImageTaskType(data),
+    mutationFn: (data: { id: number; taskType: JobType }) => apiChangeImageTaskType(data),
     onSuccess: async () => {
-      await refetchImagePackList();
-      toast.success("镜像类型已更新");
+      await refetchImagePackList()
+      toast.success('镜像类型已更新')
     },
-  });
+  })
 
   const { mutate: updateImageTags } = useMutation({
-    mutationFn: (data: { id: number; tags: string[] }) =>
-      apiUserUpdateImageTags(data),
+    mutationFn: (data: { id: number; tags: string[] }) => apiUserUpdateImageTags(data),
     onSuccess: async () => {
-      await refetchImagePackList();
-      toast.success("镜像标签已更新");
+      await refetchImagePackList()
+      toast.success('镜像标签已更新')
     },
-  });
+  })
   const columns: ColumnDef<ImageInfoResponse>[] = [
     {
-      accessorKey: "image",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("image")} />
-      ),
+      accessorKey: 'image',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('image')} />,
       cell: ({ row }) => {
         if (row.original.imageBuildSource == 1) {
           return (
@@ -222,7 +218,7 @@ export const ImageListTable: FC<ImageListTableProps> = ({
               to={`../createimage/${row.original.imagepackName}`}
               tooltip={`查看镜像详情`}
             />
-          );
+          )
         } else {
           return (
             <ImageLabel
@@ -230,46 +226,43 @@ export const ImageListTable: FC<ImageListTableProps> = ({
               url={row.original.imageLink}
               tags={row.original.tags}
             />
-          );
+          )
         }
       },
     },
     {
-      id: "userInfo",
-      accessorKey: "userInfo",
+      id: 'userInfo',
+      accessorKey: 'userInfo',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("userInfo")} />
+        <DataTableColumnHeader column={column} title={getHeader('userInfo')} />
       ),
       cell: ({ row }) => <UserLabel info={row.original.userInfo} />,
     },
     {
-      accessorKey: "imageShareStatus",
+      accessorKey: 'imageShareStatus',
       header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={getHeader("imageShareStatus")}
-        />
+        <DataTableColumnHeader column={column} title={getHeader('imageShareStatus')} />
       ),
       cell: ({ row }) => {
-        const visibilityValue = row.getValue<Visibility>("imageShareStatus");
-        return <VisibilityBadge visibility={visibilityValue} />;
+        const visibilityValue = row.getValue<Visibility>('imageShareStatus')
+        return <VisibilityBadge visibility={visibilityValue} />
       },
     },
     {
-      accessorKey: "createdAt",
+      accessorKey: 'createdAt',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("createdAt")} />
+        <DataTableColumnHeader column={column} title={getHeader('createdAt')} />
       ),
       cell: ({ row }) => {
-        return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
+        return <TimeDistance date={row.getValue('createdAt')}></TimeDistance>
       },
-      sortingFn: "datetime",
+      sortingFn: 'datetime',
     },
     {
-      id: "actions",
+      id: 'actions',
       enableHiding: false,
       cell: ({ row }) => {
-        const imageInfo = row.original;
+        const imageInfo = row.original
         return (
           <Actions
             imageInfo={imageInfo}
@@ -289,17 +282,17 @@ export const ImageListTable: FC<ImageListTableProps> = ({
             isAdminMode={isAdminMode}
             onChangeTags={updateImageTags}
           />
-        );
+        )
       },
     },
-  ];
+  ]
 
   return (
     <>
       <DataTable
         info={{
-          title: "镜像列表",
-          description: "展示可用的公共或私有镜像，在作业提交时可供选择",
+          title: '镜像列表',
+          description: '展示可用的公共或私有镜像，在作业提交时可供选择',
         }}
         storageKey="imagelink"
         query={imageInfo}
@@ -323,10 +316,7 @@ export const ImageListTable: FC<ImageListTableProps> = ({
                     <ScrollArea className="h-[200px] w-full overflow-hidden">
                       <div className="p-4">
                         {rows.map((row, index) => (
-                          <p
-                            key={index}
-                            className="text-muted-foreground text-sm"
-                          >
+                          <p key={index} className="text-muted-foreground text-sm">
                             {`『${row.original.description}』`}
                           </p>
                         ))}
@@ -338,8 +328,8 @@ export const ImageListTable: FC<ImageListTableProps> = ({
             ),
             icon: <Trash2Icon className="text-destructive" />,
             handleSubmit: (rows) => {
-              const ids = rows.map((row) => row.original.ID);
-              deleteUserImageList(ids);
+              const ids = rows.map((row) => row.original.ID)
+              deleteUserImageList(ids)
             },
             isDanger: true,
           },
@@ -351,18 +341,13 @@ export const ImageListTable: FC<ImageListTableProps> = ({
                   <div className="w-full overflow-hidden">
                     <p className="flex items-center gap-2 font-medium">
                       <SquareCheckBig className="h-4 w-4 text-green-600" />
-                      <span className="text-sm leading-4 text-green-600">
-                        以下镜像链接将被检测
-                      </span>
+                      <span className="text-sm leading-4 text-green-600">以下镜像链接将被检测</span>
                     </p>
                     <Separator className="my-2" />
                     <ScrollArea className="h-[200px] w-full overflow-hidden">
                       <div className="p-4">
                         {rows.map((row, index) => (
-                          <p
-                            key={index}
-                            className="text-muted-foreground text-sm"
-                          >
+                          <p key={index} className="text-muted-foreground text-sm">
                             {`『${row.original.description}』`}
                           </p>
                         ))}
@@ -380,9 +365,9 @@ export const ImageListTable: FC<ImageListTableProps> = ({
                   imageLink: row.original.imageLink,
                   description: row.original.description,
                   creator: row.original.userInfo,
-                })),
-              );
-              setCheckOpenDialog(true);
+                }))
+              )
+              setCheckOpenDialog(true)
             },
             isDanger: false,
           },
@@ -398,8 +383,8 @@ export const ImageListTable: FC<ImageListTableProps> = ({
                     ? invalidPairs.map((pair) => pair.id)
                     : invalidPairs
                         .filter((pair) => pair.creator.username === user.name)
-                        .map((pair) => pair.id),
-                );
+                        .map((pair) => pair.id)
+                )
               }}
             />
           </DialogContent>
@@ -424,19 +409,19 @@ export const ImageListTable: FC<ImageListTableProps> = ({
         closeSheet={() => setOpenUploadSheet(false)}
       />
     </>
-  );
-};
+  )
+}
 
 interface ActionsProps {
-  imageInfo: ImageInfoResponse;
-  onChangeStatus: (id: number) => void;
-  onUpdateDescription: (data: { id: number; description: string }) => void;
-  linkPairs: ImageLinkPair[];
-  onDeleteImageList: (ids: number[]) => void;
-  userName: string;
-  onChangeType: (data: { id: number; taskType: JobType }) => void;
-  isAdminMode: boolean;
-  onChangeTags: (data: { id: number; tags: string[] }) => void;
+  imageInfo: ImageInfoResponse
+  onChangeStatus: (id: number) => void
+  onUpdateDescription: (data: { id: number; description: string }) => void
+  linkPairs: ImageLinkPair[]
+  onDeleteImageList: (ids: number[]) => void
+  userName: string
+  onChangeType: (data: { id: number; taskType: JobType }) => void
+  isAdminMode: boolean
+  onChangeTags: (data: { id: number; tags: string[] }) => void
 }
 
 const Actions: FC<ActionsProps> = ({
@@ -450,10 +435,10 @@ const Actions: FC<ActionsProps> = ({
   isAdminMode,
   onChangeTags,
 }) => {
-  const [openDialog, setOpenDialog] = useState(false);
-  const [openShareSheet, setOpenShareSheet] = useState(false);
-  const [dialog, setDialog] = useState<Dialogs | undefined>(undefined);
-  const isDisabled = !isAdminMode && imageInfo.userInfo.username !== userName;
+  const [openDialog, setOpenDialog] = useState(false)
+  const [openShareSheet, setOpenShareSheet] = useState(false)
+  const [dialog, setDialog] = useState<Dialogs | undefined>(undefined)
+  const isDisabled = !isAdminMode && imageInfo.userInfo.username !== userName
   return (
     <div className="flex flex-row space-x-1">
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
@@ -465,20 +450,18 @@ const Actions: FC<ActionsProps> = ({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel className="text-muted-foreground text-xs">
-              操作
-            </DropdownMenuLabel>
+            <DropdownMenuLabel className="text-muted-foreground text-xs">操作</DropdownMenuLabel>
             <DropdownMenuItem
               onClick={() => {
                 navigator.clipboard
                   .writeText(imageInfo.imageLink)
                   .then(() => {
-                    toast.success("镜像地址已复制到剪贴板");
+                    toast.success('镜像地址已复制到剪贴板')
                   })
                   .catch((err) => {
-                    toast.error("复制失败");
-                    logger.error("复制失败", err);
-                  });
+                    toast.error('复制失败')
+                    logger.error('复制失败', err)
+                  })
               }}
             >
               <CopyIcon className="text-blue-600" />
@@ -486,8 +469,8 @@ const Actions: FC<ActionsProps> = ({
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
-                setDialog(Dialogs.valid);
-                setOpenDialog(true);
+                setDialog(Dialogs.valid)
+                setOpenDialog(true)
               }}
             >
               <CheckCheck className="text-green-600" />
@@ -497,8 +480,8 @@ const Actions: FC<ActionsProps> = ({
               <DropdownMenuItem
                 disabled={isDisabled}
                 onClick={() => {
-                  setDialog(Dialogs.status);
-                  setOpenDialog(true);
+                  setDialog(Dialogs.status)
+                  setOpenDialog(true)
                 }}
               >
                 {imageInfo.isPublic === true ? (
@@ -506,13 +489,13 @@ const Actions: FC<ActionsProps> = ({
                 ) : (
                   <Globe className="text-green-600" />
                 )}
-                {imageInfo.isPublic === true ? "设为私有" : "设为公共"}
+                {imageInfo.isPublic === true ? '设为私有' : '设为公共'}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
               disabled={isDisabled}
               onClick={() => {
-                setOpenShareSheet(true);
+                setOpenShareSheet(true)
               }}
             >
               <ListTodo className="text-green-600" />
@@ -521,7 +504,7 @@ const Actions: FC<ActionsProps> = ({
             <DropdownMenuSub>
               <DropdownMenuSubTrigger
                 disabled={isDisabled}
-                className={`${isDisabled ? "cursor-not-allowed opacity-50 data-disabled:pointer-events-none" : ""} group`}
+                className={`${isDisabled ? 'cursor-not-allowed opacity-50 data-disabled:pointer-events-none' : ''} group`}
               >
                 <Tag className="mr-2 size-4 text-cyan-600" />
                 更改类型
@@ -532,11 +515,9 @@ const Actions: FC<ActionsProps> = ({
                     <DropdownMenuRadioItem
                       key={key}
                       value={key}
-                      disabled={[
-                        JobType.DeepSpeed,
-                        JobType.KubeRay,
-                        JobType.OpenMPI,
-                      ].includes(JobType[key as keyof typeof JobType])}
+                      disabled={[JobType.DeepSpeed, JobType.KubeRay, JobType.OpenMPI].includes(
+                        JobType[key as keyof typeof JobType]
+                      )}
                       onClick={() =>
                         onChangeType({
                           id: imageInfo.ID,
@@ -553,8 +534,8 @@ const Actions: FC<ActionsProps> = ({
             <DropdownMenuItem
               disabled={isDisabled}
               onClick={() => {
-                setDialog(Dialogs.tags);
-                setOpenDialog(true);
+                setDialog(Dialogs.tags)
+                setOpenDialog(true)
               }}
             >
               <Tags className="text-cyan-600" />
@@ -563,8 +544,8 @@ const Actions: FC<ActionsProps> = ({
             <DropdownMenuItem
               disabled={isDisabled}
               onClick={() => {
-                setDialog(Dialogs.rename);
-                setOpenDialog(true);
+                setDialog(Dialogs.rename)
+                setOpenDialog(true)
               }}
             >
               <ListCheck className="text-orange-600" />
@@ -574,8 +555,8 @@ const Actions: FC<ActionsProps> = ({
             <DropdownMenuItem
               disabled={isDisabled}
               onClick={() => {
-                setDialog(Dialogs.delete);
-                setOpenDialog(true);
+                setDialog(Dialogs.delete)
+                setOpenDialog(true)
               }}
             >
               <Trash2Icon className="text-red-600" />
@@ -612,8 +593,8 @@ const Actions: FC<ActionsProps> = ({
                 onDeleteImageList(
                   invalidPairs
                     .filter((pair) => pair.creator.username === userName)
-                    .map((pair) => pair.id),
-                );
+                    .map((pair) => pair.id)
+                )
               }}
             />
           ) : dialog === Dialogs.tags ? (
@@ -623,7 +604,7 @@ const Actions: FC<ActionsProps> = ({
               imageLink={imageInfo.imageLink}
               description={imageInfo.description}
               onSaveTags={(updateData: UpdateImageTag) => {
-                onChangeTags(updateData);
+                onChangeTags(updateData)
               }}
             />
           ) : null}
@@ -638,5 +619,5 @@ const Actions: FC<ActionsProps> = ({
         onOpenChange={setOpenShareSheet}
       ></ImageShareSheet>
     </div>
-  );
-};
+  )
+}

@@ -1,9 +1,25 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import CardTitle from "@/components/label/CardTitle";
-import { LayoutGridIcon } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import CardTitle from '@/components/label/CardTitle'
+import { LayoutGridIcon } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import {
   Form,
   FormControl,
@@ -12,14 +28,14 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { useForm } from "react-hook-form";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiTrainingCreate } from "@/services/api/vcjob";
-import { toast } from "sonner";
-import { CirclePlus } from "lucide-react";
-import FormLabelMust from "@/components/form/FormLabelMust";
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { useForm } from 'react-hook-form'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { apiTrainingCreate } from '@/services/api/vcjob'
+import { toast } from 'sonner'
+import { CirclePlus } from 'lucide-react'
+import FormLabelMust from '@/components/form/FormLabelMust'
 import {
   volumeMountsSchema,
   envsSchema,
@@ -31,38 +47,38 @@ import {
   forwardsSchema,
   jobNameSchema,
   defaultResource,
-} from "@/utils/form";
-import { useState } from "react";
-import { useAtomValue } from "jotai";
-import { globalUserInfo } from "@/utils/store";
-import { Textarea } from "@/components/ui/textarea";
-import { ImageFormField } from "@/components/form/ImageFormField";
-import { VolumeMountsCard } from "@/components/form/DataMountFormField";
-import { MetadataFormCustom } from "@/components/form/types";
-import { ResourceFormFields } from "@/components/form/ResourceFormField";
+} from '@/utils/form'
+import { useState } from 'react'
+import { useAtomValue } from 'jotai'
+import { globalUserInfo } from '@/utils/store'
+import { Textarea } from '@/components/ui/textarea'
+import { ImageFormField } from '@/components/form/ImageFormField'
+import { VolumeMountsCard } from '@/components/form/DataMountFormField'
+import { MetadataFormCustom } from '@/components/form/types'
+import { ResourceFormFields } from '@/components/form/ResourceFormField'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import FormExportButton from "@/components/form/FormExportButton";
-import { PublishConfigForm } from "./Publish";
-import LoadableButton from "@/components/button/LoadableButton";
-import PageTitle from "@/components/layout/PageTitle";
-import FormImportButton from "@/components/form/FormImportButton";
-import { TemplateInfo } from "@/components/form/TemplateInfo";
-import { OtherOptionsFormCard } from "@/components/form/OtherOptionsFormField";
-import { EnvFormCard } from "@/components/form/EnvFormField";
-import { ForwardFormCard } from "@/components/form/ForwardFormField";
-import TipBadge from "@/components/badge/TipBadge";
+} from '@/components/ui/select'
+import FormExportButton from '@/components/form/FormExportButton'
+import { PublishConfigForm } from './Publish'
+import LoadableButton from '@/components/button/LoadableButton'
+import PageTitle from '@/components/layout/PageTitle'
+import FormImportButton from '@/components/form/FormImportButton'
+import { TemplateInfo } from '@/components/form/TemplateInfo'
+import { OtherOptionsFormCard } from '@/components/form/OtherOptionsFormField'
+import { EnvFormCard } from '@/components/form/EnvFormField'
+import { ForwardFormCard } from '@/components/form/ForwardFormField'
+import TipBadge from '@/components/badge/TipBadge'
 
 const markdown = `## 运行规则
 
 1. 如果申请了 GPU 资源，当过去 2 个小时 GPU 利用率为 0，我们将尝试发送告警信息给用户，建议用户检查作业是否正常运行。若此后半小时 GPU 利用率仍为 0，**系统将释放作业占用的资源**。
 2. 当作业运行超过 4 天，我们将尝试发送告警信息给用户，提醒用户作业运行时间过长；若此后一天内用户未联系管理员说明情况并锁定作业，**系统将释放作业占用的资源**。
-`;
+`
 
 const formSchema = z.object({
   jobName: jobNameSchema,
@@ -72,37 +88,37 @@ const formSchema = z.object({
   nodeSelector: nodeSelectorSchema,
   alertEnabled: z.boolean().default(true),
   forwards: forwardsSchema,
-});
+})
 
-type FormSchema = z.infer<typeof formSchema>;
+type FormSchema = z.infer<typeof formSchema>
 
 const dataProcessor = (data: FormSchema) => {
   // Convert forwards to a format suitable for the API
   if (data.forwards === undefined || data.forwards === null) {
-    data.forwards = [];
+    data.forwards = []
   }
   // if rdma is enabled, set it to false
   if (data.task.resource.network) {
-    data.task.resource.network.enabled = false;
-    data.task.resource.network.model = undefined;
+    data.task.resource.network.enabled = false
+    data.task.resource.network.model = undefined
   }
   if (!data.task.resource.network) {
     data.task.resource.network = {
       enabled: false,
       model: undefined,
-    };
+    }
   }
-  return data;
-};
+  return data
+}
 
-export const EnvCard = "环境变量";
+export const EnvCard = '环境变量'
 
 export const Component = () => {
-  const [envOpen, setEnvOpen] = useState<boolean>(false);
-  const [otherOpen, setOtherOpen] = useState<boolean>(true);
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const user = useAtomValue(globalUserInfo);
+  const [envOpen, setEnvOpen] = useState<boolean>(false)
+  const [otherOpen, setOtherOpen] = useState<boolean>(true)
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const user = useAtomValue(globalUserInfo)
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) =>
       apiTrainingCreate({
@@ -119,8 +135,8 @@ export const Component = () => {
         selectors: values.nodeSelector.enable
           ? [
               {
-                key: "kubernetes.io/hostname",
-                operator: "In",
+                key: 'kubernetes.io/hostname',
+                operator: 'In',
                 values: [`${values.nodeSelector.nodeName}`],
               },
             ]
@@ -129,28 +145,28 @@ export const Component = () => {
       }),
     onSuccess: async (_, { jobName }) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["job"] }),
-        queryClient.invalidateQueries({ queryKey: ["context", "quota"] }),
-        queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
-      ]);
-      toast.success(`作业 ${jobName} 创建成功`);
-      navigate(-1);
+        queryClient.invalidateQueries({ queryKey: ['job'] }),
+        queryClient.invalidateQueries({ queryKey: ['context', 'quota'] }),
+        queryClient.invalidateQueries({ queryKey: ['aitask', 'stats'] }),
+      ])
+      toast.success(`作业 ${jobName} 创建成功`)
+      navigate(-1)
     },
-  });
+  })
 
   // 1. Define your form.
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      jobName: "",
+      jobName: '',
       task: {
-        taskName: "training",
+        taskName: 'training',
         replicas: 1,
         resource: defaultResource,
-        image: "",
-        shell: "/crater-start.sh",
-        command: "",
-        workingDir: "/home/" + user.name,
+        image: '',
+        shell: '/crater-start.sh',
+        command: '',
+        workingDir: '/home/' + user.name,
         ports: [],
       },
       volumeMounts: [
@@ -167,18 +183,18 @@ export const Component = () => {
       },
       forwards: [],
     },
-  });
+  })
 
   // 2. Define a submit handler.
   const onSubmit = (values: FormSchema) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
     if (isPending) {
-      toast.info("请勿重复提交");
-      return;
+      toast.info('请勿重复提交')
+      return
     }
-    createTask(values);
-  };
+    createTask(values)
+  }
 
   return (
     <>
@@ -200,23 +216,16 @@ export const Component = () => {
                 dataProcessor={dataProcessor}
                 afterImport={(data) => {
                   if (data.envs.length > 0) {
-                    setEnvOpen(true);
+                    setEnvOpen(true)
                   }
                   if (data.nodeSelector.enable) {
-                    setOtherOpen(true);
+                    setOtherOpen(true)
                   }
                 }}
               />
               <FormExportButton metadata={MetadataFormCustom} form={form} />
-              <PublishConfigForm
-                config={MetadataFormCustom}
-                configform={form}
-              />
-              <LoadableButton
-                isLoading={isPending}
-                isLoadingText="提交作业"
-                type="submit"
-              >
+              <PublishConfigForm config={MetadataFormCustom} configform={form} />
+              <LoadableButton isLoading={isPending} isLoadingText="提交作业" type="submit">
                 <CirclePlus className="size-4" />
                 提交作业
               </LoadableButton>
@@ -240,9 +249,7 @@ export const Component = () => {
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
-                      <FormDescription>
-                        名称可重复，最多包含 40 个字符
-                      </FormDescription>
+                      <FormDescription>名称可重复，最多包含 40 个字符</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -265,10 +272,7 @@ export const Component = () => {
                         <FormLabelMust />
                       </FormLabel>
                       <FormControl>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -278,26 +282,20 @@ export const Component = () => {
                               className="flex items-center justify-between"
                             >
                               <span className="font-mono">bash</span>
-                              <TipBadge title={"普通用户"} />
+                              <TipBadge title={'普通用户'} />
                             </SelectItem>
-                            <SelectItem
-                              value="bash"
-                              className="flex items-center justify-between"
-                            >
+                            <SelectItem value="bash" className="flex items-center justify-between">
                               <span className="font-mono">bash</span>
                               <TipBadge
                                 className="text-highlight-purple bg-highlight-purple/15"
-                                title={"ROOT 用户"}
+                                title={'ROOT 用户'}
                               />
                             </SelectItem>
-                            <SelectItem
-                              value="sh"
-                              className="flex items-center justify-between"
-                            >
+                            <SelectItem value="sh" className="flex items-center justify-between">
                               <span className="font-mono">sh</span>
                               <TipBadge
                                 className="text-highlight-purple bg-highlight-purple/15"
-                                title={"ROOT 用户"}
+                                title={'ROOT 用户'}
                               />
                             </SelectItem>
                           </SelectContent>
@@ -330,7 +328,7 @@ conda activate base;
                       </FormControl>
                       <FormDescription>
                         可通过
-                        <span className="mx-0.5 font-mono">;</span>{" "}
+                        <span className="mx-0.5 font-mono">;</span>{' '}
                         拆分多行命令。若不输入，将使用镜像的启动命令
                       </FormDescription>
                       <FormMessage />
@@ -351,9 +349,7 @@ conda activate base;
                       </FormControl>
                       <FormDescription>
                         默认为用户主目录
-                        <span className="mx-0.5 font-mono">
-                          /home/{user.name}
-                        </span>
+                        <span className="mx-0.5 font-mono">/home/{user.name}</span>
                         ，重启后数据不会丢失
                       </FormDescription>
                       <FormMessage />
@@ -372,8 +368,7 @@ conda activate base;
                   value: true,
                 },
                 {
-                  condition: (data) =>
-                    data.nodeSelector.enable || data.alertEnabled,
+                  condition: (data) => data.nodeSelector.enable || data.alertEnabled,
                   setter: setOtherOpen,
                   value: true,
                 },
@@ -398,5 +393,5 @@ conda activate base;
         </form>
       </Form>
     </>
-  );
-};
+  )
+}

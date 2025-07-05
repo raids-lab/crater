@@ -1,62 +1,78 @@
-import { LucideIcon } from "lucide-react";
-import { ReactNode, useMemo } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import useFixedLayout from "@/hooks/useFixedLayout";
-import { ScrollArea, ScrollBar } from "../ui/scroll-area";
-import { cn } from "@/lib/utils";
-import { useSearchParams } from "react-router-dom";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { LucideIcon } from 'lucide-react'
+import { ReactNode, useMemo } from 'react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import useFixedLayout from '@/hooks/useFixedLayout'
+import { ScrollArea, ScrollBar } from '../ui/scroll-area'
+import { cn } from '@/lib/utils'
+import { useSearchParams } from 'react-router-dom'
 
 interface DetailTabProps {
-  key: string;
-  icon?: LucideIcon;
-  label: string;
-  children: ReactNode;
-  scrollable?: boolean;
-  hidden?: boolean;
+  key: string
+  icon?: LucideIcon
+  label: string
+  children: ReactNode
+  scrollable?: boolean
+  hidden?: boolean
 }
 
 interface DetailInfoProps {
-  icon: LucideIcon;
-  title: string;
-  value: ReactNode;
-  className?: string;
+  icon: LucideIcon
+  title: string
+  value: ReactNode
+  className?: string
 }
 
 interface DetailPageProps {
-  header: ReactNode;
-  info: DetailInfoProps[];
-  tabs: DetailTabProps[];
+  header: ReactNode
+  info: DetailInfoProps[]
+  tabs: DetailTabProps[]
 }
 
 export function DetailPage({ header, info, tabs: rawTabs }: DetailPageProps) {
-  useFixedLayout();
-  const [searchParams, setSearchParams] = useSearchParams();
+  useFixedLayout()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const tabs = useMemo(() => {
-    return rawTabs.filter((tab) => !tab.hidden);
-  }, [rawTabs]);
+    return rawTabs.filter((tab) => !tab.hidden)
+  }, [rawTabs])
 
   // 从 URL 查询参数中获取当前标签
   const currentTab = useMemo(() => {
-    const tabFromUrl = searchParams.get("tab");
+    const tabFromUrl = searchParams.get('tab')
     // 检查 URL 中的标签是否存在且可见
     if (tabFromUrl && tabs.some((tab) => tab.key === tabFromUrl)) {
-      return tabFromUrl;
+      return tabFromUrl
     }
     // 默认使用第一个可见标签
-    return tabs.length > 0 ? tabs[0].key : "";
-  }, [searchParams, tabs]);
+    return tabs.length > 0 ? tabs[0].key : ''
+  }, [searchParams, tabs])
 
   // 处理标签切换
   const handleTabChange = (value: string) => {
     setSearchParams(
       (params) => {
-        params.set("tab", value);
-        return params;
+        params.set('tab', value)
+        return params
       },
-      { replace: true },
-    );
-  };
+      { replace: true }
+    )
+  }
 
   return (
     <div className="flex h-full w-full flex-col space-y-6">
@@ -64,14 +80,9 @@ export function DetailPage({ header, info, tabs: rawTabs }: DetailPageProps) {
         {header}
         <div className="text-muted-foreground grid grid-cols-3 gap-3 text-sm">
           {info.map((data, index) => (
-            <div
-              key={index}
-              className={cn("flex items-center", data.className)}
-            >
+            <div key={index} className={cn('flex items-center', data.className)}>
               <data.icon className="text-muted-foreground mr-1.5 size-4" />
-              <span className="text-muted-foreground mr-1.5 truncate text-sm">
-                {data.title}:
-              </span>
+              <span className="text-muted-foreground mr-1.5 truncate text-sm">{data.title}:</span>
               <span className="truncate">{data.value}</span>
             </div>
           ))}
@@ -84,11 +95,7 @@ export function DetailPage({ header, info, tabs: rawTabs }: DetailPageProps) {
       >
         <TabsList className="tabs-list-underline">
           {tabs.map((tab) => (
-            <TabsTrigger
-              key={tab.key}
-              className="tabs-trigger-underline"
-              value={tab.key}
-            >
+            <TabsTrigger key={tab.key} className="tabs-trigger-underline" value={tab.key}>
               {tab.icon && <tab.icon className="size-4" />}
               <p className="hidden md:block">{tab.label}</p>
             </TabsTrigger>
@@ -102,13 +109,11 @@ export function DetailPage({ header, info, tabs: rawTabs }: DetailPageProps) {
                 <ScrollBar orientation="horizontal" />
               </ScrollArea>
             ) : (
-              <div className="h-[calc(100vh_-_300px)] w-full">
-                {tab.children}
-              </div>
+              <div className="h-[calc(100vh_-_300px)] w-full">{tab.children}</div>
             )}
           </TabsContent>
         ))}
       </Tabs>
     </div>
-  );
+  )
 }

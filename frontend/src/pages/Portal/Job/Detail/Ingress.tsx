@@ -1,15 +1,26 @@
-import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { PodIngressDialogProps } from "@/components/codeblock/PodContainerDialog";
-import useNamespacedState from "@/hooks/useNamespacedState";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { IngressPanel } from "./IngressPanel";
-import { NodeportPanel } from "./NodeportPanel";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { useState } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { PodIngressDialogProps } from '@/components/codeblock/PodContainerDialog'
+import useNamespacedState from '@/hooks/useNamespacedState'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { IngressPanel } from './IngressPanel'
+import { NodeportPanel } from './NodeportPanel'
 
 export default function PodIngressDialog({
   namespacedName,
@@ -17,11 +28,8 @@ export default function PodIngressDialog({
   userName,
   jobName,
 }: PodIngressDialogProps) {
-  const [isOpen, setIsOpen] = useNamespacedState(
-    namespacedName,
-    setNamespacedName,
-  );
-  const [activeTab, setActiveTab] = useState<"ingress" | "nodeport">("ingress");
+  const [isOpen, setIsOpen] = useNamespacedState(namespacedName, setNamespacedName)
+  const [activeTab, setActiveTab] = useState<'ingress' | 'nodeport'>('ingress')
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -72,5 +80,5 @@ export default function PodIngressDialog({
         </div>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

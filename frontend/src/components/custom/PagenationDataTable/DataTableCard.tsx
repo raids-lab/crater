@@ -1,6 +1,22 @@
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // i18n-processed-v1.1.0
 // Modified code
-import { useTranslation } from "react-i18next";
+import { useTranslation } from 'react-i18next'
 import {
   Table,
   TableBody,
@@ -8,20 +24,16 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import {
-  ColumnDef,
-  Table as TableType,
-  flexRender,
-} from "@tanstack/react-table";
+} from '@/components/ui/table'
+import { ColumnDef, Table as TableType, flexRender } from '@tanstack/react-table'
 
-import { DataTablePagination } from "./DataTablePagination";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { DataTablePagination } from './DataTablePagination'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 
 interface DataTableCardProps<TData, TValue> {
-  table: TableType<TData>;
-  columns: ColumnDef<TData, TValue>[];
-  loading: boolean;
+  table: TableType<TData>
+  columns: ColumnDef<TData, TValue>[]
+  loading: boolean
 }
 
 function DataTableCard<TData, TValue>({
@@ -29,7 +41,7 @@ function DataTableCard<TData, TValue>({
   columns,
   loading,
 }: DataTableCardProps<TData, TValue>) {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
   return (
     <Card>
@@ -39,21 +51,15 @@ function DataTableCard<TData, TValue>({
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow
-                  key={headerGroup.id}
-                  className="bg-accent hover:bg-accent"
-                >
+                <TableRow key={headerGroup.id} className="bg-accent hover:bg-accent">
                   {headerGroup.headers.map((header) => {
                     return (
                       <TableHead key={header.id} colSpan={header.colSpan}>
                         {header.isPlaceholder
                           ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
+                          : flexRender(header.column.columnDef.header, header.getContext())}
                       </TableHead>
-                    );
+                    )
                   })}
                 </TableRow>
               ))}
@@ -61,16 +67,10 @@ function DataTableCard<TData, TValue>({
             <TableBody>
               {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                  >
+                  <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}
                   </TableRow>
@@ -100,11 +100,8 @@ function DataTableCard<TData, TValue>({
                     </TableRow>
                   ) : (
                     <TableRow>
-                      <TableCell
-                        colSpan={columns.length}
-                        className="h-40 text-center"
-                      >
-                        {t("dataTable.noData")}
+                      <TableCell colSpan={columns.length} className="h-40 text-center">
+                        {t('dataTable.noData')}
                       </TableCell>
                     </TableRow>
                   )}
@@ -112,14 +109,11 @@ function DataTableCard<TData, TValue>({
               )}
             </TableBody>
           </Table>
-          <DataTablePagination
-            table={table}
-            hidden={table.getRowModel().rows?.length === 0}
-          />
+          <DataTablePagination table={table} hidden={table.getRowModel().rows?.length === 0} />
         </>
       </CardContent>
     </Card>
-  );
+  )
 }
 
-export default DataTableCard;
+export default DataTableCard

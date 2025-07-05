@@ -1,18 +1,29 @@
-import { MetricSection } from "../ui-custom/metric-section";
-import { ProgressCard } from "../ui-custom/progress-card";
-import { MetricCard } from "../ui-custom/metric-card";
-import {
-  Cpu,
-  MemoryStickIcon as Memory,
-  ArrowDownUp,
-  GpuIcon,
-} from "lucide-react";
-import { IJupyterDetail, ProfileData } from "@/services/api/vcjob";
-import { useMemo } from "react";
-import { JobInfoSections } from "./ScheduleInfoSection";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { MetricSection } from '../ui-custom/metric-section'
+import { ProgressCard } from '../ui-custom/progress-card'
+import { MetricCard } from '../ui-custom/metric-card'
+import { Cpu, MemoryStickIcon as Memory, ArrowDownUp, GpuIcon } from 'lucide-react'
+import { IJupyterDetail, ProfileData } from '@/services/api/vcjob'
+import { useMemo } from 'react'
+import { JobInfoSections } from './ScheduleInfoSection'
 
 interface ProfileDashboardProps {
-  data: IJupyterDetail;
+  data: IJupyterDetail
 }
 
 export const containsBaseMetrics = (profileData: ProfileData) => {
@@ -23,23 +34,23 @@ export const containsBaseMetrics = (profileData: ProfileData) => {
     profileData.cpu_mem_avg !== undefined ||
     profileData.cpu_mem_max !== undefined ||
     profileData.cpu_mem_std !== undefined
-  );
-};
+  )
+}
 
 export default function ProfileDashboard({ data }: ProfileDashboardProps) {
   const profileData = useMemo(() => {
     if (data?.profileData) {
-      return data.profileData;
+      return data.profileData
     }
-    return null;
-  }, [data]);
+    return null
+  }, [data])
 
   if (!profileData) {
     return (
       <div className="space-y-6">
         <JobInfoSections data={data} />
       </div>
-    );
+    )
   }
 
   // Check if CPU metrics exist
@@ -49,13 +60,13 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
     profileData.cpu_usage_std !== undefined ||
     profileData.cpu_mem_avg !== undefined ||
     profileData.cpu_mem_max !== undefined ||
-    profileData.cpu_mem_std !== undefined;
+    profileData.cpu_mem_std !== undefined
 
   // Check if GPU utilization metrics exist
   const hasGpuUtilMetrics =
     profileData.gpu_util_avg !== undefined ||
     profileData.gpu_util_max !== undefined ||
-    profileData.gpu_util_std !== undefined;
+    profileData.gpu_util_std !== undefined
 
   // Check if memory metrics exist
   const hasMemoryMetrics =
@@ -65,7 +76,7 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
     profileData.mem_copy_util_avg !== undefined ||
     profileData.mem_copy_util_max !== undefined ||
     profileData.mem_copy_util_std !== undefined ||
-    profileData.gpu_mem_max !== undefined;
+    profileData.gpu_mem_max !== undefined
 
   // Check if SM metrics exist
   const hasSmMetrics =
@@ -75,13 +86,13 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
     profileData.sm_occupancy_avg !== undefined ||
     profileData.sm_occupancy_max !== undefined ||
     profileData.sm_occupancy_std !== undefined ||
-    profileData.sm_util_std !== undefined;
+    profileData.sm_util_std !== undefined
 
   // Check if tensor metrics exist
   const hasTensorMetrics =
     profileData.tensor_active_avg !== undefined ||
     profileData.tensor_active_max !== undefined ||
-    profileData.tensor_active_std !== undefined;
+    profileData.tensor_active_std !== undefined
 
   // Check if fp metrics exist
   const hasFpMetrics =
@@ -93,14 +104,14 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
     profileData.fp32_active_std !== undefined ||
     profileData.fp16_active_avg !== undefined ||
     profileData.fp16_active_max !== undefined ||
-    profileData.fp16_active_std !== undefined;
+    profileData.fp16_active_std !== undefined
 
   // Check if PCIe metrics exist
   const hasPcieMetrics =
     profileData.pcie_tx_avg !== undefined ||
     profileData.pcie_tx_max !== undefined ||
     profileData.pcie_rx_avg !== undefined ||
-    profileData.pcie_rx_max !== undefined;
+    profileData.pcie_rx_max !== undefined
 
   return (
     <div className="space-y-6">
@@ -172,10 +183,7 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
       )}
       {/* GPU Utilization Section */}
       {hasGpuUtilMetrics && (
-        <MetricSection
-          title="GPU 利用率相关指标"
-          icon={<GpuIcon className="h-5 w-5" />}
-        >
+        <MetricSection title="GPU 利用率相关指标" icon={<GpuIcon className="h-5 w-5" />}>
           {profileData.gpu_util_avg !== undefined && (
             <ProgressCard
               title="Average GPU Utilization"
@@ -205,10 +213,7 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
       )}
       {/* Memory Utilization Section */}
       {hasMemoryMetrics && (
-        <MetricSection
-          title="GPU 内存相关指标"
-          icon={<Memory className="h-5 w-5" />}
-        >
+        <MetricSection title="GPU 内存相关指标" icon={<Memory className="h-5 w-5" />}>
           {profileData.gpu_mem_avg !== undefined && (
             <ProgressCard
               title="Average GPU Memory"
@@ -291,10 +296,7 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
       )}
       {/* SM Metrics Section */}
       {hasSmMetrics && (
-        <MetricSection
-          title="GPU 流式多处理器相关指标"
-          icon={<GpuIcon className="h-5 w-5" />}
-        >
+        <MetricSection title="GPU 流式多处理器相关指标" icon={<GpuIcon className="h-5 w-5" />}>
           {profileData.sm_active_avg !== undefined && (
             <ProgressCard
               title="Average SM Active"
@@ -371,10 +373,7 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
       )}
       {/* Tensor Section */}
       {hasTensorMetrics && (
-        <MetricSection
-          title="Tensor 相关指标"
-          icon={<GpuIcon className="h-5 w-5" />}
-        >
+        <MetricSection title="Tensor 相关指标" icon={<GpuIcon className="h-5 w-5" />}>
           {profileData.tensor_active_avg !== undefined && (
             <ProgressCard
               title="Average Tensor Active"
@@ -403,10 +402,7 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
       )}
       {/* FP Section */}
       {hasFpMetrics && (
-        <MetricSection
-          title="FP 相关指标"
-          icon={<GpuIcon className="h-5 w-5" />}
-        >
+        <MetricSection title="FP 相关指标" icon={<GpuIcon className="h-5 w-5" />}>
           {profileData.fp64_active_avg !== undefined && (
             <ProgressCard
               title="Average FP64 Active"
@@ -483,10 +479,7 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
       )}
       {/* PCIe Transfer Section */}
       {hasPcieMetrics && (
-        <MetricSection
-          title="PCIe 传输相关指标"
-          icon={<ArrowDownUp className="h-5 w-5" />}
-        >
+        <MetricSection title="PCIe 传输相关指标" icon={<ArrowDownUp className="h-5 w-5" />}>
           {profileData.pcie_tx_avg !== undefined && (
             <MetricCard
               title="Average PCIe TX"
@@ -522,5 +515,5 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
         </MetricSection>
       )}
     </div>
-  );
+  )
 }
