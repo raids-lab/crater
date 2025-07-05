@@ -134,5 +134,4 @@ jobs:
           package-name: crater-frontend
           delete-untagged: true
           keep-at-most: 2
-          filter-tags: sha-*
-          skip-tags: main
+          skip-tags: v*
