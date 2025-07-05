@@ -1,5 +1,5 @@
 # 使用 Nginx 稳定版的 Alpine 版本作为基础镜像
-FROM harbor.act.buaa.edu.cn/crater/nginx:240302
+FROM nginx:stable-alpine
 
 # 复制定制的 nginx 配置
 COPY ./deploy/nginx.conf /etc/nginx/nginx.conf
