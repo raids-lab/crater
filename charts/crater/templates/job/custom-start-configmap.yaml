@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-start-configmap
+  namespace: {{ .Values.backendConfig.workspace.namespace}}
+data:
+  start.sh: |
+    #!/bin/bash
+    set -euo pipefail
+    # ========== Shell Detection ==========
+    # Auto-detect available shell with fallback
+    detect_shell() {
+        for shell in /bin/zsh /bin/bash /bin/sh; do
+            if [ -x "$shell" ]; then
+                echo "$shell"
+                return 0
+            fi
+        done
+        echo "ERROR: No valid shell found!" >&2
+        exit 1
+    }
+    DEFAULT_SHELL=$(detect_shell)
+    # ========== User & Group Configuration ==========
+    : "${NB_USER:?NB_USER must be set}"
+    : "${NB_UID:?NB_UID must be set}"
+    : "${NB_GID:?NB_GID must be set}"
+    if ! getent group "${NB_GID}" &>/dev/null; then
+        groupadd --force --gid "${NB_GID}" --non-unique "${NB_GROUP:-${NB_USER}}"
+    fi
+    if ! id "${NB_USER}" &>/dev/null; then
+        useradd --no-log-init \
+                --home "/home/${NB_USER}" \
+                --shell "${DEFAULT_SHELL}" \
+                --uid "${NB_UID}" \
+                --gid "${NB_GID}" \
+                --groups 100 \
+                "${NB_USER}"
+    else
+        echo "User ${NB_USER} already exists, will not recreate"
+    fi
+    # ========== Directory & Permissions ==========
+    mkdir -p "/home/${NB_USER}"
+    chown "${NB_UID}:${NB_GID}" "/home/${NB_USER}"
+    chmod 755 "/home/${NB_USER}"
+    SUDOERS_FILE="/etc/sudoers.d/nopasswd-${NB_USER}"
+    if [ ! -f "${SUDOERS_FILE}" ]; then
+        echo "${NB_USER} ALL=(ALL) NOPASSWD:ALL" > "${SUDOERS_FILE}"
+        chmod 440 "${SUDOERS_FILE}"
+    fi
+    # ========== Shell Environment ==========
+    # Create shell rc file based on detected shell
+    SHELL_TYPE=$(basename "${DEFAULT_SHELL}")
+    SHELL_RC="/home/${NB_USER}/.${SHELL_TYPE}rc"
+    if [ ! -f "${SHELL_RC}" ]; then
+        touch "${SHELL_RC}"
+        chown "${NB_UID}:${NB_GID}" "${SHELL_RC}"
+    fi
+    # ========== Command Execution ==========
+    if [ $# -gt 0 ]; then
+        if [ "$1" = "-c" ]; then
+            exec sudo --preserve-env --set-home --user "${NB_USER}" \
+                LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" \
+                "${DEFAULT_SHELL}" -c "$2"
+        else
+            exec sudo --preserve-env --set-home --user "${NB_USER}" \
+                LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" \
+                "$@"
+        fi
+    else
+        exec sudo --preserve-env --set-home --user "${NB_USER}" \
+            LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" \
+            "${DEFAULT_SHELL}"
+    fi

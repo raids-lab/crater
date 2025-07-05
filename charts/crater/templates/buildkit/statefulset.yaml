@@ -1,0 +1,142 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: buildkitd
+  name: buildkitd
+  namespace: {{ .Values.backendConfig.workspace.imageNameSpace }}
+spec:
+  serviceName: buildkitd
+  podManagementPolicy: Parallel
+  replicas: {{ .Values.buildkitConfig.replicas }}
+  selector:
+    matchLabels:
+      app: buildkitd
+  template:
+    metadata:
+      labels:
+        app: buildkitd
+      annotations:
+        container.apparmor.security.beta.kubernetes.io/buildkitd: unconfined
+    spec:
+      {{- if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}  
+      {{- end }}
+      securityContext:
+        # Needs Kubernetes >= 1.19
+        seccompProfile:
+          type: Unconfined
+        # To change UID/GID, you need to rebuild the image
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: buildkitd
+          image: {{ .Values.images.buildkit.repository }}:{{ .Values.images.buildkit.tag }}
+          args:
+            - --addr
+            - unix:///run/user/1000/buildkit/buildkitd.sock
+            - --addr
+            - tcp://0.0.0.0:1234
+            - --oci-worker-no-process-sandbox
+            - --config
+            - /home/user/.config/buildkit/buildkitd.toml
+          readinessProbe:
+            exec:
+              command:
+                - buildctl
+                - debug
+                - workers
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          livenessProbe:
+            exec:
+              command:
+                - buildctl
+                - debug
+                - workers
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          ports:
+            - containerPort: 1234
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: true
+            capabilities:
+              add:
+                - CHOWN
+                - DAC_OVERRIDE
+                - FOWNER
+                - FSETID
+                - SETGID
+                - SETUID
+                - SETFCAP
+              drop:
+                - ALL
+            privileged: false
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: Unconfined
+          volumeMounts:
+            # Dockerfile has `VOLUME /home/user/.local/share/buildkit` by default too,
+            # but the default VOLUME does not work with rootless on Google's Container-Optimized OS
+            # as it is mounted with `nosuid,nodev`.
+            # https://github.com/moby/buildkit/issues/879#issuecomment-1240347038
+            - mountPath: /home/user/.local/share/buildkit
+              name: buildkit
+            - name: config
+              readOnly: true
+              mountPath: /home/user/.config/buildkit/buildkitd.toml
+              subPath: buildkitd.toml
+          resources:
+            requests:
+              cpu: {{ .Values.buildkitConfig.resources.requests.cpu }}
+              memory: {{ .Values.buildkitConfig.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.buildkitConfig.resources.limits.cpu }}
+              memory: {{ .Values.buildkitConfig.resources.limits.memory }}
+          env:
+            - name: HTTPS_PROXY
+              value: {{ .Values.buildkitConfig.httpsProxy }}
+            - name: NO_PROXY
+              value: {{ .Values.buildkitConfig.noProxy }}
+      volumes:
+        - name: config
+          configMap:
+            name: buildkitd-config
+            items:
+              - key: buildkitd.toml
+                path: buildkitd.toml
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: buildkit
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: {{ .Values.buildkitConfig.cache.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.buildkitConfig.cache.storageSize }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: buildkitd
+  name: buildkitd
+  namespace: {{ .Values.backendConfig.workspace.imageNameSpace }}
+spec:
+  ports:
+    - port: 1234
+      protocol: TCP
+  selector:
+    app: buildkitd
