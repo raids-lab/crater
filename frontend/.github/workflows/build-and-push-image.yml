@@ -93,9 +93,6 @@ jobs:
       # 创建构建器实例支持多平台
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: |
-            image=moby/buildkit:master
 
       # 登录 Docker Hub
       - name: Log in to GHCR
@@ -105,27 +102,25 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Determine image tags
-        id: set-tags
-        run: |
-          # 如果是标签推送事件
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            version_tag="${GITHUB_REF#refs/tags/}"
-            echo "tags=${{ env.REGISTRY }}/${{ env.IMAGE_REPO }}:$version_tag" >> $GITHUB_OUTPUT
-          else
-            echo "tags=${{ env.REGISTRY }}/${{ env.IMAGE_REPO }}:${{ needs.build-frontend.outputs.commit_short_sha }}" >> $GITHUB_OUTPUT
-          fi
-
-          # 总是添加 latest 标签
-          echo "tags=${{ env.REGISTRY }}/${{ env.IMAGE_REPO }}:latest" >> $GITHUB_OUTPUT
-        shell: bash
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # list of Docker images to use as base name for tags
+          images: |
+            ghcr.io/raids-lab/crater-frontend
+          # generate Docker tags based on the following events/attributes
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
 
       - name: Build and push multi-arch image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: Dockerfile
           platforms: linux/amd64, linux/arm64
           push: true
-          tags: |
-            ${{ steps.set-tags.outputs.tags }}
+          tags: ${{ steps.meta.outputs.tags }}
